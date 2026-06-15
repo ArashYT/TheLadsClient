@@ -1,0 +1,99 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+version = project.mod_version
+group = project.maven_group
+repositories {
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+}
+loom {}
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    implementation "club.minnced:java-discord-rpc:2.0.1"
+    include "club.minnced:java-discord-rpc:2.0.1"
+    compileOnly fileTree(dir: rootProject.file("../The Lads Client Packwiz/mods"), include: "*.jar")
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.0"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.10.0"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    testImplementation "org.mockito:mockito-core:5.14.2"
+    testImplementation "org.mockito:mockito-junit-jupiter:5.14.2"
+    testImplementation "net.bytebuddy:byte-buddy:1.15.11"
+    testImplementation "net.bytebuddy:byte-buddy-agent:1.15.11"
+}
+processResources {
+    def version = project.version
+    inputs.property "version", version
+    filesMatching("fabric.mod.json") { expand "version": version }
+}
+tasks.withType(JavaCompile).configureEach { it.options.release = 25 }
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.toVersion(25)
+    targetCompatibility = JavaVersion.toVersion(25)
+}
+jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    def projectName = project.name
+    inputs.property "projectName", projectName
+    from("LICENSE") { rename { "${it}_$projectName"} }
+    
+    // Shade Xaero's Minimap
+    from(zipTree(file("shading_libs/xaerominimap-fabric-26.1.2-26.1.0.jar"))) {
+        exclude "META-INF/MANIFEST.MF"
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+        exclude "fabric.mod.json"
+    }
+    // Shade XaeroLib
+    from(zipTree(file("temp_unzip/xaero/META-INF/jars/xaerolib-fabric-26.1.2-1.1.15.jar"))) {
+        exclude "META-INF/MANIFEST.MF"
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+        exclude "fabric.mod.json"
+    }
+    // Shade Xaero's Worldmap
+    from(zipTree(file("shading_libs/xaeroworldmap-fabric-26.1.2-1.41.0.jar"))) {
+        exclude "META-INF/MANIFEST.MF"
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+        exclude "fabric.mod.json"
+    }
+    // Shade ScalableLux (Starlight)
+    from(zipTree(file("shading_libs/ScalableLux-0.2.0+fabric.2b63825-all.jar"))) {
+        exclude "META-INF/MANIFEST.MF"
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+        exclude "fabric.mod.json"
+    }
+}
+publishing {
+    publications { create("mavenJava", MavenPublication) { from components.java } }
+    repositories {}
+}
+test {
+    useJUnitPlatform()
+    systemProperty 'net.bytebuddy.experimental', 'true'
+}
+tasks.register('deploy', Copy) {
+    dependsOn jar
+    from jar.archiveFile
+    into "C:/The Lads Client/mods"
+}
+apply from: 'dumpInv.gradle'  
+tasks.register('runReflect', JavaExec) {
+    mainClass = 'com.thelads.core.ReflectionTest'
+    classpath = sourceSets.test.runtimeClasspath
+}
+
+task runPayloadTest(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.thelads.core.client.PayloadTest'
+}

@@ -1,0 +1,36 @@
+package com.thelads.core.client;
+
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+
+@Environment(EnvType.CLIENT)
+public class ModSyncNetworking {
+
+    // public static final Identifier HANDSHAKE_ID = new Identifier("thelads", "handshake");
+    public static final CustomPacketPayload.Type<ModSyncPayload> HANDSHAKE_TYPE = new CustomPacketPayload.Type<>(new Identifier("thelads", "handshake"));
+
+    public record ModSyncPayload() implements CustomPacketPayload {
+        public static final StreamCodec<FriendlyByteBuf, ModSyncPayload> CODEC = StreamCodec.unit(new ModSyncPayload());
+
+        @Override
+        public CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
+            return HANDSHAKE_TYPE;
+        }
+    }
+
+    public static void register() {
+        // Disabled temporarily for compilation
+    }
+}
