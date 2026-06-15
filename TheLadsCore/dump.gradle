@@ -1,0 +1,12 @@
+task dumpGui {
+    doLast {
+        def cl = project.buildscript.classLoader
+        // but we need the minecraft classes. They are in compile classpath.
+        def urls = configurations.compileClasspath.files.collect { it.toURI().toURL() }
+        def loader = new java.net.URLClassLoader(urls as java.net.URL[], cl)
+        def guiClass = loader.loadClass('net.minecraft.client.gui.GuiGraphicsExtractor')
+        guiClass.declaredMethods.each { m ->
+            println m.name + " " + m.parameterTypes.collect{it.name}
+        }
+    }
+}

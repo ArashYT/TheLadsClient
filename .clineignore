@@ -1,0 +1,25 @@
+# Ignore build directories
+**/bin/
+**/obj/
+**/build/
+**/.gradle/
+
+# Ignore temporary/backup folders
+removed-mods-backup/
+temp_auth/
+temp_capes/
+temp_renderscale/
+temp_scalablelux/
+test_auth_reflect/
+
+# Ignore media and archives
+*.zip
+*.jar
+*.png
+*.jpg
+*.jpeg
+
+# Ignore history files
+aider.chat.history.md
+aider.input.history
+.agents/

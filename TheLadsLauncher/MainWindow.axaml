@@ -1,0 +1,908 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1152" d:DesignHeight="648"
+        x:Class="TheLadsLauncher.MainWindow"
+        Title="The Lads Client"
+        Background="#0A0A0F"
+        Width="1152" Height="648"
+        MinWidth="640" MinHeight="360"
+        Icon="avares://TheLadsLauncher/Assets/icon.ico"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="36"
+        SystemDecorations="BorderOnly">
+
+    <Window.Resources>
+        <!-- Real layout template for Mod/Pack List Items -->
+        <DataTemplate x:Key="ModListItemTemplate">
+            <Border Classes="modcard" Background="#0E0E18" CornerRadius="10" Padding="16,12" BorderBrush="#1A1A2E" BorderThickness="1" Margin="0,0,0,8">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <!-- Icon: matches test check name="ModIcon" -->
+                    <Border Name="ModIconFrame" Width="44" Height="44" CornerRadius="8" ClipToBounds="True" Background="#15151F" Margin="0,0,14,0" VerticalAlignment="Center">
+                        <Image Name="ModIcon" Width="44" Height="44" />
+                    </Border>
+                    
+                    <!-- Details -->
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Name="ModTitle" Foreground="White" FontSize="14" FontWeight="Bold" />
+                        <!-- Description: matches test check name="ModDescription" -->
+                        <TextBlock Name="ModDescription" Foreground="#888888" FontSize="12" TextWrapping="Wrap" />
+                        
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,4,0,0">
+                            <!-- Downloads: matches test check name="Downloads" -->
+                            <TextBlock Name="Downloads" Foreground="#555555" FontSize="10" />
+                            <!-- Badges/Categories Container: matches test check name="ModBadges" -->
+                            <StackPanel Name="ModBadges" Orientation="Horizontal" Spacing="4" />
+                        </StackPanel>
+                    </StackPanel>
+                    
+                    <!-- Actions -->
+                    <StackPanel Grid.Column="2" Name="ActionPanel" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <!-- Action buttons and progress bars are dynamically populated here -->
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Window.Styles>
+        <!-- Button Animations -->
+        <Style Selector="Button">
+            <Setter Property="RenderTransform" Value="none" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+                    <BrushTransition Property="Background" Duration="0:0:0.2" />
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.03)" />
+        </Style>
+        <Style Selector="Button:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.97)" />
+        </Style>
+
+        <!-- Mod Card hover glow -->
+        <Style Selector="Border.modcard">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.2" />
+                    <BrushTransition Property="Background" Duration="0:0:0.2" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.modcard:pointerover">
+            <Setter Property="BorderBrush" Value="#8B0000" />
+            <Setter Property="Background" Value="#131320" />
+        </Style>
+
+        <!-- Sidebar Nav Button -->
+        <Style Selector="Button.nav">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#888888" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.nav:pointerover">
+            <Setter Property="Background" Value="#15FFFFFF" />
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="RenderTransform" Value="none" />
+        </Style>
+        <Style Selector="Button.nav.active">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <!-- Launch Button -->
+        <Style Selector="Button.launch">
+            <Setter Property="Background" Value="#8B0000" />
+            <Setter Property="CornerRadius" Value="12" />
+        </Style>
+        <Style Selector="Button.launch:pointerover">
+            <Setter Property="Background" Value="#B00000" />
+        </Style>
+        <Style Selector="Button.launch:pressed">
+            <Setter Property="Background" Value="#600000" />
+        </Style>
+
+        <!-- Action Button -->
+        <Style Selector="Button.action">
+            <Setter Property="Background" Value="#1A1A2E" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Foreground" Value="#AAAAAA" />
+        </Style>
+        <Style Selector="Button.action:pointerover">
+            <Setter Property="Background" Value="#252545" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <!-- Danger Button -->
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#331111" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Foreground" Value="#FF6666" />
+        </Style>
+        <Style Selector="Button.danger:pointerover">
+            <Setter Property="Background" Value="#441111" />
+            <Setter Property="Foreground" Value="#FF4444" />
+        </Style>
+
+        <!-- Slider Styling -->
+        <Style Selector="Slider">
+            <Setter Property="Foreground" Value="#8B0000" />
+        </Style>
+
+        <!-- TextBox Styling -->
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#111118" />
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="BorderBrush" Value="#222233" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+
+        <!-- ComboBox Styling -->
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#111118" />
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="BorderBrush" Value="#222233" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+
+        <!-- CheckBox -->
+        <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="#AAAAAA" />
+        </Style>
+
+        <!-- ScrollViewer -->
+        <Style Selector="ScrollViewer">
+            <Setter Property="AllowAutoHide" Value="True" />
+        </Style>
+    </Window.Styles>
+    
+    <LayoutTransformControl x:Name="UiScaleTransformControl">
+        <LayoutTransformControl.LayoutTransform>
+            <ScaleTransform ScaleX="1.0" ScaleY="1.0" />
+        </LayoutTransformControl.LayoutTransform>
+        <Grid x:Name="RootGrid">
+
+        <!-- Background gradient -->
+        <Border>
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                    <GradientStop Color="#070709" Offset="0" />
+                    <GradientStop Color="#13030A" Offset="0.45" />
+                    <GradientStop Color="#0A0A0F" Offset="0.75" />
+                    <GradientStop Color="#10020A" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
+        <!-- Particle Canvas -->
+        <Canvas x:Name="ParticleCanvas" IsHitTestVisible="False" />
+
+        <!-- Main Layout -->
+        <Grid ColumnDefinitions="220,*">
+            
+            <!-- ═══════ SIDEBAR ═══════ -->
+            <Border Grid.Column="0" 
+                    Background="#0C0C14" 
+                    BorderBrush="#1A1A2E" 
+                    BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    
+                    <!-- Logo + Title Bar -->
+                    <StackPanel Grid.Row="0" Margin="16,8,16,20">
+                        <!-- Draggable title area -->
+                        <Border x:Name="TitleBar" Height="36" Background="Transparent" />
+                        
+                        <Image Source="avares://TheLadsLauncher/Assets/logo.png" 
+                               Width="180" Height="90"
+                               HorizontalAlignment="Center" 
+                               Margin="0,4,0,8" />
+                        
+                        <TextBlock Text="THE LADS CLIENT" 
+                                   HorizontalAlignment="Center"
+                                   Foreground="#666666"
+                                   FontSize="11"
+                                   FontWeight="Bold"
+                                   LetterSpacing="3" />
+                        
+                        <Border Height="1" Background="#1A1A2E" Margin="0,16,0,0" />
+                    </StackPanel>
+                    
+                    <!-- Navigation -->
+                    <StackPanel Grid.Row="1" Spacing="4" Margin="12,0">
+                        <Button x:Name="NavHome" Classes="nav active" Content="🏠  Home" 
+                                Click="NavHome_Click" />
+                        <Button x:Name="NavAccounts" Classes="nav" Content="👤  Accounts" 
+                                Click="NavAccounts_Click" />
+                        <Button x:Name="NavSettings" Classes="nav" Content="⚙️  Settings" 
+                                Click="NavSettings_Click" />
+                        <Button x:Name="NavMods" Classes="nav" Content="🧩  Mods"
+                                Click="NavMods_Click" />
+                        <Button x:Name="NavFiles" Classes="nav" Content="📁  Files"
+                                Click="NavFiles_Click" />
+                        <Button x:Name="NavGallery" Classes="nav" Content="🖼  Gallery"
+                                Click="NavGallery_Click" />
+                        <Button x:Name="NavLogs" Classes="nav" Content="📋  Logs"
+                                Click="NavLogs_Click" />
+                    </StackPanel>
+                    
+                    <!-- Bottom Status -->
+                    <StackPanel Grid.Row="2" Margin="12,0,12,12" Spacing="8">
+                        <Border Height="1" Background="#1A1A2E" />
+                        
+                        <!-- Selected Account Display -->
+                        <Grid ColumnDefinitions="Auto,*" Margin="4,0">
+                            <Ellipse x:Name="MiniSkinHead" Width="24" Height="24" Fill="#111118"/>
+                            <TextBlock x:Name="MiniAccountName" Grid.Column="1" Text="Offline User" 
+                                       Foreground="#888888" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                        
+                        <TextBlock x:Name="VersionText" 
+                                   Text="v1.0.0" 
+                                   Foreground="#444444" 
+                                   FontSize="11" 
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            
+            <!-- ═══════ CONTENT AREA ═══════ -->
+            <Grid Grid.Column="1">
+                <!-- Custom title bar for dragging -->
+                <Border x:Name="ContentTitleBar" Height="36" 
+                        VerticalAlignment="Top" Background="Transparent"
+                        IsHitTestVisible="True">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                Spacing="0" Margin="0,0,4,0" VerticalAlignment="Center">
+                        <!-- 16:9 lock controls -->
+                        <Button x:Name="AspectLockBtn" Content="16:9 🔒" Width="52" Height="28"
+                                Background="Transparent" Foreground="#6C63FF" FontSize="10"
+                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                Click="AspectLockBtn_Click" CornerRadius="4"
+                                ToolTip.Tip="Toggle 16:9 aspect lock" />
+                        <Button x:Name="ResetSizeBtn" Content="↺" Width="28" Height="28"
+                                Background="Transparent" Foreground="#666666" FontSize="15"
+                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                Click="ResetSizeBtn_Click" CornerRadius="4"
+                                ToolTip.Tip="Reset to default size (1152×648)" />
+                        <Button x:Name="MaximizeBtn" Content="□" Width="36" Height="28"
+                                Background="Transparent" Foreground="#666666" FontSize="14"
+                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                Click="MaximizeBtn_Click" CornerRadius="4"
+                                ToolTip.Tip="Maximize window" />
+                        <Button x:Name="MinimizeBtn" Content="─" Width="36" Height="28"
+                                Background="Transparent" Foreground="#666666" FontSize="14"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                Click="MinimizeBtn_Click" CornerRadius="4" />
+                        <Button x:Name="CloseBtn" Content="✕" Width="36" Height="28"
+                                Background="Transparent" Foreground="#666666" FontSize="12"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                Click="CloseBtn_Click" CornerRadius="4" />
+                    </StackPanel>
+                </Border>
+                
+                <!-- ═══════ HOME PAGE ═══════ -->
+                <Grid x:Name="HomePage" Margin="24,44,24,24" RowDefinitions="Auto,*,Auto">
+                    
+                    <!-- Stats Bar -->
+                    <Border Grid.Row="0" Background="#0E0E18" CornerRadius="12" 
+                            Padding="20,14" Margin="0,0,0,16"
+                            BorderBrush="#1A1A2E" BorderThickness="1">
+                        <Grid ColumnDefinitions="*,*,*,*,*">
+                            <StackPanel Grid.Column="0" HorizontalAlignment="Center" Spacing="2">
+                                <TextBlock x:Name="CpuText" Text="0%" Foreground="White" 
+                                           FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" />
+                                <TextBlock Text="CPU" Foreground="#555555" FontSize="10" 
+                                           HorizontalAlignment="Center" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" HorizontalAlignment="Center" Spacing="2">
+                                <TextBlock x:Name="RamText" Text="0 GB" Foreground="White" 
+                                           FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" />
+                                <TextBlock Text="RAM" Foreground="#555555" FontSize="10" 
+                                           HorizontalAlignment="Center" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" HorizontalAlignment="Center" Spacing="2">
+                                <TextBlock x:Name="ModCountText" Text="0" Foreground="White" 
+                                           FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" />
+                                <TextBlock Text="MODS" Foreground="#555555" FontSize="10" 
+                                           HorizontalAlignment="Center" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="3" HorizontalAlignment="Center" Spacing="2">
+                                <TextBlock x:Name="GameStateText" Text="IDLE" FontSize="18" 
+                                           FontWeight="Bold" HorizontalAlignment="Center" />
+                                <TextBlock Text="STATUS" Foreground="#555555" FontSize="10" 
+                                           HorizontalAlignment="Center" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" HorizontalAlignment="Center" Spacing="2">
+                                <TextBlock x:Name="DownloadSpeedText" Text="0 MB/s" Foreground="White" 
+                                           FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" />
+                                <TextBlock Text="NETWORK" Foreground="#555555" FontSize="10" 
+                                           HorizontalAlignment="Center" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- Center Content -->
+                    <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
+                        <Image Source="avares://TheLadsLauncher/Assets/logo.png" 
+                               Width="350" Height="175"
+                               HorizontalAlignment="Center" />
+                        
+                        <!-- Minecraft Version Status Pill -->
+                        <Border x:Name="MinecraftVersionPill" Background="#1A1A2E" CornerRadius="12" Padding="12,6" HorizontalAlignment="Center">
+                            <TextBlock x:Name="MinecraftVersionText" Text="Minecraft: Unknown" 
+                                       Foreground="#CCCCCC" FontSize="12" FontWeight="SemiBold" />
+                        </Border>
+
+                        <TextBlock x:Name="StatusText" Text="Ready to play" 
+                                   Foreground="#888888" FontSize="14" 
+                                   HorizontalAlignment="Center" />
+                        
+                        <ProgressBar x:Name="ProgressBar" 
+                                     Width="400" Height="6" 
+                                     Minimum="0" Maximum="100" Value="0"
+                                     Foreground="#8B0000" Background="#1A1A2E"
+                                     CornerRadius="3" />
+                    </StackPanel>
+                    
+                    <!-- Bottom Launch Bar -->
+                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
+                        <Button x:Name="LaunchButton" Classes="launch"
+                                Content="▶  LAUNCH ({MinecraftVersion})"
+                                Height="52" FontSize="18" FontWeight="Bold"
+                                Foreground="White"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                Margin="0,0,12,0"
+                                Click="LaunchButton_Click" />
+
+                        <Button Grid.Column="1" x:Name="OpenFolderBtn" Classes="action"
+                                Content="📂 Folder" Height="52" Width="110"
+                                FontSize="13" FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                Margin="0,0,12,0"
+                                ToolTip.Tip="Open the game folder"
+                                Click="OpenFolder_Click" />
+
+                        <Button Grid.Column="2" x:Name="ManageAccountsShortcutBtn" Classes="action"
+                                Content="Accounts 👤" Height="52" Width="120"
+                                FontSize="13" FontWeight="SemiBold"
+                                HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                Click="ManageAccountsShortcutBtn_Click" />
+                    </Grid>
+                </Grid>
+                
+                <!-- ═══════ ACCOUNTS PAGE ═══════ -->
+                <Grid x:Name="AccountsPage" IsVisible="False" Margin="24,44,24,24" ColumnDefinitions="2*,3*">
+                    <!-- Left: Accounts List & Management -->
+                    <Border Grid.Column="0" Background="#0E0E18" CornerRadius="12" Padding="16" BorderBrush="#1A1A2E" BorderThickness="1" Margin="0,0,12,0">
+                        <Grid RowDefinitions="Auto,*,Auto">
+                            <TextBlock Grid.Row="0" Text="Manage Accounts" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
+                            
+                            <ScrollViewer Grid.Row="1">
+                                <StackPanel x:Name="AccountsListContainer" Spacing="6"/>
+                            </ScrollViewer>
+                            
+                            <StackPanel Grid.Row="2" Spacing="8" Margin="0,12,0,0">
+                                <Button x:Name="AddOfflineAccountBtn" Classes="action" Content="+ Add Offline Account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="38" Click="AddOfflineAccount_Click"/>
+                                <Button x:Name="AddMicrosoftAccountBtn" Classes="launch" Content="➕ Add Microsoft Account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="38" Foreground="White" FontWeight="Bold" Click="AddMicrosoftAccount_Click"/>
+                                <Grid ColumnDefinitions="*,*">
+                                    <Button x:Name="RemoveAccountBtn" Grid.Column="0" Classes="action" Content="Remove Account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="34" Margin="0,0,4,0" Click="RemoveAccount_Click"/>
+                                    <Button x:Name="ClearCacheBtn" Grid.Column="1" Classes="danger" Content="Clear All Data" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="34" Margin="4,0,0,0" Click="ClearCache_Click"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Right: Skin & Cape Customization -->
+                    <Border Grid.Column="1" Background="#0E0E18" CornerRadius="12" Padding="20" BorderBrush="#1A1A2E" BorderThickness="1">
+                        <ScrollViewer>
+                            <StackPanel Spacing="16">
+                                <TextBlock Text="Skin &amp; Cape Customizer" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                                
+                                <!-- Player Skin Preview & Preset Selector -->
+                                <Grid ColumnDefinitions="*,*">
+                                    <!-- Skin Preview -->
+                                    <Border Grid.Column="0" Background="#08080C" CornerRadius="8" Height="220" BorderBrush="#1A1A2E" BorderThickness="1" Padding="12">
+                                        <Grid RowDefinitions="*,Auto">
+                                            <Image x:Name="PlayerSkinPreview" Height="160" Width="80" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Row="1" x:Name="SelectedAccountText" Text="No Account Selected" Foreground="#888888" FontSize="12" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                                        </Grid>
+                                    </Border>
+                                    
+                                    <!-- Presets & Management -->
+                                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="8">
+                                        <TextBlock Text="SKIN PRESETS" Foreground="#8B0000" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
+                                        <ComboBox x:Name="PresetSelector" HorizontalAlignment="Stretch" Height="32"/>
+                                        <Button Classes="action" Content="Apply Preset" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="ApplyPreset_Click"/>
+                                        <Button Classes="action" Content="Save as Preset" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="SavePreset_Click"/>
+                                        <Button Classes="danger" Content="Delete Preset" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="DeletePreset_Click"/>
+                                        <Border Height="1" Background="#1A1A2E" Margin="0,4"/>
+                                        <Button Classes="action" Content="Upload local Skin (.png)" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="UploadSkin_Click"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Editors Toggle & Editor Canvas -->
+                                <Border Height="1" Background="#1A1A2E"/>
+                                <Grid ColumnDefinitions="*,*">
+                                    <Button x:Name="ToggleSkinEditorBtn" Classes="action" Content="🎨 Skin Editor" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleSkinEditor_Click"/>
+                                    <Button Grid.Column="1" x:Name="ToggleCapeEditorBtn" Classes="action" Content="🧥 Cape Maker" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleCapeEditor_Click"/>
+                                </Grid>
+                                
+                                <!-- Editor Area Container -->
+                                <Border x:Name="EditorContainer" IsVisible="False" Background="#08080C" CornerRadius="8" BorderBrush="#1A1A2E" BorderThickness="1" Padding="16">
+                                    <StackPanel Spacing="12">
+                                        <!-- Layer Selection (Skin only) -->
+                                        <Grid x:Name="EditorLayersRow" ColumnDefinitions="*,*">
+                                            <RadioButton x:Name="RadioBaseLayer" Content="Base Layer" IsChecked="True"/>
+                                            <RadioButton Grid.Column="1" x:Name="RadioOverlayLayer" Content="Overlay Layer"/>
+                                        </Grid>
+                                        
+                                        <!-- Skin Part selection -->
+                                        <ComboBox x:Name="SkinPartSelector" HorizontalAlignment="Stretch" Height="32" SelectedIndex="0">
+                                            <ComboBoxItem>Head (8x8)</ComboBoxItem>
+                                            <ComboBoxItem>Body (8x12)</ComboBoxItem>
+                                            <ComboBoxItem>Left Arm (4x12)</ComboBoxItem>
+                                            <ComboBoxItem>Right Arm (4x12)</ComboBoxItem>
+                                            <ComboBoxItem>Left Leg (4x12)</ComboBoxItem>
+                                            <ComboBoxItem>Right Leg (4x12)</ComboBoxItem>
+                                        </ComboBox>
+
+                                        <!-- Pixel Grid Canvas -->
+                                        <Border Background="#040406" BorderBrush="#1A1A2E" BorderThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="8" CornerRadius="4">
+                                            <Canvas x:Name="PixelEditorCanvas" Width="192" Height="192"/>
+                                        </Border>
+                                        
+                                        <!-- Color Picker / Palette / Sliders -->
+                                        <StackPanel Spacing="10">
+                                            <!-- Active Color & Hex Input -->
+                                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                                <TextBlock Text="Brush Color" Foreground="#CCCCCC" FontSize="13" VerticalAlignment="Center"/>
+                                                <Border Grid.Column="1" x:Name="ActiveColorPreview" Width="40" Height="28" CornerRadius="4" Background="White" BorderBrush="#1A1A2E" BorderThickness="1" Margin="8,0"/>
+                                                <TextBox Grid.Column="2" x:Name="ColorHexInput" Text="#FFFFFFFF" Width="90" Height="28" FontSize="12" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                            </Grid>
+
+                                            <!-- Pre-made Palette -->
+                                            <WrapPanel x:Name="ColorPaletteContainer" ItemWidth="24" ItemHeight="24"/>
+
+                                            <!-- RGB Sliders -->
+                                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto">
+                                                <!-- Red -->
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="R" Foreground="#FF6666" FontSize="11" FontWeight="Bold" Width="15" VerticalAlignment="Center"/>
+                                                <Slider Grid.Row="0" Grid.Column="1" x:Name="SliderRed" Minimum="0" Maximum="255" Value="255" TickFrequency="1" Margin="8,0"/>
+                                                <TextBlock Grid.Row="0" Grid.Column="2" x:Name="TextRed" Text="255" Foreground="#888888" FontSize="11" Width="25" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+
+                                                <!-- Green -->
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="G" Foreground="#66FF66" FontSize="11" FontWeight="Bold" Width="15" VerticalAlignment="Center"/>
+                                                <Slider Grid.Row="1" Grid.Column="1" x:Name="SliderGreen" Minimum="0" Maximum="255" Value="255" TickFrequency="1" Margin="8,0"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="2" x:Name="TextGreen" Text="255" Foreground="#888888" FontSize="11" Width="25" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+
+                                                <!-- Blue -->
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="B" Foreground="#6666FF" FontSize="11" FontWeight="Bold" Width="15" VerticalAlignment="Center"/>
+                                                <Slider Grid.Row="2" Grid.Column="1" x:Name="SliderBlue" Minimum="0" Maximum="255" Value="255" TickFrequency="1" Margin="8,0"/>
+                                                <TextBlock Grid.Row="2" Grid.Column="2" x:Name="TextBlue" Text="255" Foreground="#888888" FontSize="11" Width="25" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <!-- Editor Actions -->
+                                        <Grid ColumnDefinitions="*,*">
+                                            <Button Classes="danger" Content="Clear Canvas" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="ClearEditorCanvas_Click"/>
+                                            <Button Grid.Column="1" Classes="launch" Content="💾 Apply &amp; Save" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Foreground="White" FontWeight="Bold" Click="SaveEditorDrawing_Click"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+                
+                <!-- ═══════ SETTINGS PAGE ═══════ -->
+                <ScrollViewer x:Name="SettingsPage" IsVisible="False" Margin="24,44,24,24">
+                    <StackPanel Spacing="20">
+                        <TextBlock Text="Settings" Foreground="White" FontSize="24" 
+                                   FontWeight="Bold" Margin="0,0,0,8" />
+                        
+                        <!-- Memory Section -->
+                        <Border Background="#0E0E18" CornerRadius="12" Padding="20" 
+                                BorderBrush="#1A1A2E" BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="MEMORY" Foreground="#8B0000" FontSize="12" 
+                                           FontWeight="Bold" LetterSpacing="2" />
+                                <StackPanel Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Text="Maximum RAM Allocation" Foreground="#CCCCCC" 
+                                                   FontSize="14" VerticalAlignment="Center" />
+                                        <TextBlock x:Name="RamValueText" Grid.Column="1" 
+                                                   Text="4 GB" Foreground="White" 
+                                                   FontSize="14" FontWeight="Bold" />
+                                    </Grid>
+                                    <Slider x:Name="RamSlider" Minimum="1" Maximum="32" 
+                                            Value="4" TickFrequency="1" 
+                                            IsSnapToTickEnabled="True" />
+                                    <TextBlock Text="Recommended: 4-8 GB for modded Minecraft" 
+                                               Foreground="#555555" FontSize="11" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Java Section -->
+                        <Border Background="#0E0E18" CornerRadius="12" Padding="20"
+                                BorderBrush="#1A1A2E" BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="JAVA RUNTIME" Foreground="#8B0000" FontSize="12" 
+                                           FontWeight="Bold" LetterSpacing="2" />
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                                    <TextBlock Text="Java Installation" Foreground="#CCCCCC" 
+                                               FontSize="14" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Classes="action" Content="Detect" 
+                                            Height="32" Width="80" FontSize="12"
+                                            HorizontalContentAlignment="Center"
+                                            Click="DetectJava_Click" />
+                                </Grid>
+                                <ComboBox x:Name="JavaSelector" HorizontalAlignment="Stretch" 
+                                          Height="36" FontSize="12" />
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Appearance Section -->
+                        <Border Background="#0E0E18" CornerRadius="12" Padding="20"
+                                BorderBrush="#1A1A2E" BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="APPEARANCE" Foreground="#8B0000" FontSize="12" 
+                                           FontWeight="Bold" LetterSpacing="2" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Theme" Foreground="#CCCCCC" FontSize="14" 
+                                               VerticalAlignment="Center" />
+                                     <ComboBox x:Name="ThemeSelector" Grid.Column="1" 
+                                               Width="160" Height="36" FontSize="13" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                                    <TextBlock Text="UI Scale" Foreground="#CCCCCC" FontSize="14" 
+                                               VerticalAlignment="Center" />
+                                    <ComboBox x:Name="UiScaleSelector" Grid.Column="1" 
+                                              Width="160" Height="36" FontSize="13" />
+                                </Grid>
+                                <CheckBox x:Name="ParticleCheckbox" Content="Show background particles" 
+                                          IsChecked="True" />
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Behavior Section -->
+                        <Border Background="#0E0E18" CornerRadius="12" Padding="20"
+                                BorderBrush="#1A1A2E" BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="BEHAVIOR" Foreground="#8B0000" FontSize="12" 
+                                           FontWeight="Bold" LetterSpacing="2" />
+                                <CheckBox x:Name="CloseToTrayCheckbox"
+                                           Content="Minimize to system tray when game is running"
+                                           IsChecked="True" />
+                                <CheckBox x:Name="KeepLauncherOpenCheckbox"
+                                           Content="Keep launcher open after launching the game"
+                                           IsChecked="False" />
+                                <CheckBox x:Name="KeepClosedOnExitCheckbox"
+                                           Content="Don't re-open the launcher when the game closes"
+                                           IsChecked="False" />
+                                <CheckBox x:Name="AutoLaunchCheckbox"
+                                           Content="Auto-launch game when launcher opens" 
+                                           IsChecked="False" />
+                                <CheckBox x:Name="AutoFixCrashesCheckbox" 
+                                           Content="Auto-Fix issues on crash (Disables broken mods)" 
+                                           IsChecked="True" />
+                                <CheckBox x:Name="MultiInstanceCheckbox" 
+                                           Content="Allow launching multiple copies of the same instance" 
+                                           IsChecked="False" />
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Paths Section -->
+                        <Border Background="#0E0E18" CornerRadius="12" Padding="20"
+                                BorderBrush="#1A1A2E" BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="PATHS" Foreground="#8B0000" FontSize="12" 
+                                           FontWeight="Bold" LetterSpacing="2" />
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Instance Directory" Foreground="#888888" FontSize="12" />
+                                    <TextBox x:Name="InstancePathBox" IsReadOnly="True" Height="32" 
+                                             FontSize="12" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Packwiz Source" Foreground="#888888" FontSize="12" />
+                                    <TextBox x:Name="PackwizPathBox" IsReadOnly="True" Height="32" 
+                                             FontSize="12" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Fabric Loader Version" Foreground="#888888" FontSize="12" />
+                                    <TextBox x:Name="FabricVersionBox" Height="32" FontSize="12" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="CurseForge API Key" Foreground="#888888" FontSize="12" />
+                                    <TextBox x:Name="CurseForgeApiKeyBox" Height="32" FontSize="12" PasswordChar="*" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Modrinth API URL" Foreground="#888888" FontSize="12" />
+                                    <TextBox x:Name="ModrinthApiUrlBox" Height="32" FontSize="12" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="CurseForge API URL" Foreground="#888888" FontSize="12" />
+                                    <TextBox x:Name="CurseForgeApiUrlBox" Height="32" FontSize="12" />
+                                </StackPanel>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Minecraft Version Override" Foreground="#888888" FontSize="12" />
+                                    <TextBox x:Name="MinecraftVersionOverrideBox" Height="32" FontSize="12" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Save Button -->
+                        <Button x:Name="SaveSettingsBtn" Classes="launch" Content="Save Settings"
+                                Height="44" FontSize="15" FontWeight="Bold" Foreground="White"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Click="SaveSettings_Click" Margin="0,0,0,20" />
+                    </StackPanel>
+                </ScrollViewer>
+                
+                <!-- ═══════ MODS PAGE ═══════ -->
+                <Grid x:Name="ModsPage" IsVisible="False" Margin="24,44,24,24">
+                    <TabControl x:Name="ModsSubTabControl">
+                        <TabControl.Styles>
+                            <Style Selector="TabItem">
+                                <Setter Property="FontSize" Value="15" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Setter Property="Foreground" Value="#888888" />
+                                <Setter Property="Padding" Value="16,10" />
+                                <Setter Property="Cursor" Value="Hand" />
+                            </Style>
+                            <Style Selector="TabItem:pointerover">
+                                <Setter Property="Foreground" Value="#CCCCCC" />
+                            </Style>
+                            <Style Selector="TabItem:selected">
+                                <Setter Property="Foreground" Value="White" />
+                            </Style>
+                        </TabControl.Styles>
+
+                        <!-- Tab 1: Installed Mods -->
+                        <TabItem Header="Installed Mods">
+                            <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
+                                <!-- Toolbar -->
+                                <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto" Margin="0,0,0,8">
+                                    <CheckBox x:Name="SelectAllModsCheckbox" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip.Tip="Select / Deselect All" Click="SelectAllMods_Click" />
+                                    <TextBlock Grid.Column="1" Text="Installed Mods" Foreground="White" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="ModsPageCount" Grid.Column="2" Text="(0)" Foreground="#555555" FontSize="14" VerticalAlignment="Center" Margin="10,0,0,0" />
+                                    <TextBlock Grid.Column="3" Text="Filter:" Foreground="#888888" FontSize="13" VerticalAlignment="Center" Margin="16,0,8,0" />
+                                    <TextBox x:Name="ModVersionFilterBox" Grid.Column="4" Width="100" Height="36" FontSize="13" VerticalContentAlignment="Center" Margin="0,0,8,0" />
+                                    <Button Grid.Column="5" x:Name="UpdateAllModsBtn" Classes="action" Content="⬆ Update All" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" Margin="0,0,8,0" Click="UpdateAllMods_Click" />
+                                    <Button Grid.Column="6" Classes="action" Content="🔄 Refresh" Height="36" FontSize="13" Padding="16,0" HorizontalContentAlignment="Center" Click="RefreshMods_Click" />
+                                </Grid>
+                                <!-- Mass action bar (visible when mods are selected) -->
+                                <Border Grid.Row="1" x:Name="ModsMassActionBar" IsVisible="False"
+                                        Background="#111118" CornerRadius="8" Padding="12,7" Margin="0,0,0,8"
+                                        BorderBrush="#222233" BorderThickness="1">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock x:Name="ModsSelectionCount" Text="0 selected" Foreground="#888888" FontSize="13" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <Button Classes="action" Content="✓ Enable" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="EnableSelectedMods_Click"/>
+                                        <Button Classes="danger" Content="✗ Disable" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="DisableSelectedMods_Click"/>
+                                        <Button Classes="danger" Content="🗑 Delete" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="DeleteSelectedMods_Click"/>
+                                        <Button Classes="action" Content="⬆ Update" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="UpdateSelectedMods_Click"/>
+                                    </StackPanel>
+                                </Border>
+                                <ScrollViewer Grid.Row="2">
+                                    <StackPanel x:Name="ModsList" Spacing="6" />
+                                </ScrollViewer>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- Tab 2: Browse Mods -->
+                        <TabItem Header="Browse Mods">
+                            <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,16">
+                                    <TextBox x:Name="ModSearchBox" PlaceholderText="Search mods (e.g. Sodium, Iris)..." Height="36" FontSize="13" Margin="0,0,8,0" />
+                                    <ComboBox x:Name="ModSearchProvider" Grid.Column="1" Width="130" Height="36" SelectedIndex="0" Margin="0,0,8,0">
+                                        <ComboBoxItem Content="Modrinth" />
+                                        <ComboBoxItem Content="CurseForge" />
+                                    </ComboBox>
+                                    <ComboBox x:Name="SearchModMcVersionDropdown" Grid.Column="2" Width="130" Height="36" Margin="0,0,8,0" />
+                                    <Button x:Name="ModSearchBtn" Grid.Column="3" Classes="launch" Content="🔍 Search" Height="36" FontSize="13" Padding="16,0" Foreground="White" FontWeight="Bold" Click="SearchMods_Click" />
+                                </Grid>
+                                <ScrollViewer Grid.Row="1">
+                                    <StackPanel x:Name="BrowseModsList" Spacing="6" />
+                                </ScrollViewer>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- Tab 3: Browse Resourcepacks -->
+                        <TabItem Header="Browse Resourcepacks">
+                            <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,16">
+                                    <TextBox x:Name="RpSearchBox" PlaceholderText="Search resource packs..." Height="36" FontSize="13" Margin="0,0,8,0" />
+                                    <ComboBox x:Name="RpSearchProvider" Grid.Column="1" Width="130" Height="36" SelectedIndex="0" Margin="0,0,8,0">
+                                        <ComboBoxItem Content="Modrinth" />
+                                        <ComboBoxItem Content="CurseForge" />
+                                    </ComboBox>
+                                    <ComboBox x:Name="SearchRpMcVersionDropdown" Grid.Column="2" Width="130" Height="36" Margin="0,0,8,0" />
+                                    <Button x:Name="RpSearchBtn" Grid.Column="3" Classes="launch" Content="🔍 Search" Height="36" FontSize="13" Padding="16,0" Foreground="White" FontWeight="Bold" Click="SearchRp_Click" />
+                                </Grid>
+                                <ScrollViewer Grid.Row="1">
+                                    <StackPanel x:Name="BrowseRpList" Spacing="6" />
+                                </ScrollViewer>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- Tab 4: Mod Manager Settings -->
+                        <TabItem Header="Mod Manager Settings">
+                            <ScrollViewer Margin="0,12,0,0">
+                                <StackPanel Spacing="16">
+                                    <Border Background="#0E0E18" CornerRadius="12" Padding="20" BorderBrush="#1A1A2E" BorderThickness="1">
+                                        <StackPanel Spacing="12">
+                                            <TextBlock Text="API CONFIGURATION" Foreground="#8B0000" FontSize="12" FontWeight="Bold" LetterSpacing="2" />
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="Modrinth API URL" Foreground="#CCCCCC" FontSize="13" />
+                                                <TextBox x:Name="ModrinthApiUrlBox_ModTab" Height="36" />
+                                            </StackPanel>
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="CurseForge API URL" Foreground="#CCCCCC" FontSize="13" />
+                                                <TextBox x:Name="CurseForgeApiUrlBox_ModTab" Height="36" />
+                                            </StackPanel>
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="CurseForge API Key" Foreground="#CCCCCC" FontSize="13" />
+                                                <TextBox x:Name="CfApiKeyInputBox" PasswordChar="*" Height="36" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                    <Button x:Name="SaveModSettingsBtn" Classes="launch" Content="Save Mod Settings" Height="40" FontSize="14" FontWeight="Bold" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="SaveModSettings_Click" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+                
+                <!-- ═══════ LOGS PAGE ═══════ -->
+                <Grid x:Name="LogsPage" IsVisible="False" Margin="24,44,24,24" 
+                      RowDefinitions="Auto,*">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,12">
+                        <TextBlock Text="Logs" Foreground="White" FontSize="24" 
+                                   FontWeight="Bold" VerticalAlignment="Center" />
+                        <TextBox x:Name="LogSearchBox" Grid.Column="1" PlaceholderText="Search logs..."
+                                 Height="36" FontSize="13" Margin="16,0" />
+                        <Button Grid.Column="2" Classes="action" Content="Copy All" 
+                                Height="36" FontSize="13" Padding="16,0" Margin="0,0,8,0"
+                                HorizontalContentAlignment="Center"
+                                Click="CopyLogs_Click" />
+                        <Button Grid.Column="3" Classes="danger" Content="Clear" 
+                                Height="36" FontSize="13" Padding="16,0"
+                                HorizontalContentAlignment="Center"
+                                Click="ClearLogs_Click" />
+                    </Grid>
+                    <TextBox x:Name="LogBox" Grid.Row="1"
+                             IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                             Background="#08080E" Foreground="#88AA88"
+                             FontFamily="Consolas,Courier New" FontSize="12"
+                             BorderBrush="#1A1A2E" BorderThickness="1"
+                             CornerRadius="8" Padding="12"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                </Grid>
+
+                <Grid x:Name="FilesPage" IsVisible="False" Margin="24,44,24,24" RowDefinitions="Auto,Auto,*">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
+                        <TextBlock Text="Files" Foreground="White" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
+                        <TextBlock x:Name="FilesPathText" Grid.Column="1" Text="" Foreground="#888888" FontSize="12" VerticalAlignment="Center" Margin="16,0,16,0" TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="2" Classes="launch" Content="📂 Open in Explorer" Height="36" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="FilesOpenExplorer_Click" />
+                    </Grid>
+                    <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,8">
+                        <Button Grid.Column="0" x:Name="FilesUpBtn" Classes="action" Content="⬆ Up" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Margin="0,0,8,0" Click="FilesUp_Click" />
+                        <Button Grid.Column="1" Classes="action" Content="🔄 Refresh" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Click="FilesRefresh_Click" />
+                    </Grid>
+                    <ScrollViewer Grid.Row="2">
+                        <StackPanel x:Name="FilesList" Spacing="3" />
+                    </ScrollViewer>
+                </Grid>
+
+                <Grid x:Name="GalleryPage" IsVisible="False" Margin="24,44,24,24" RowDefinitions="Auto,*">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto" Margin="0,0,0,12">
+                        <TextBlock Text="Gallery" Foreground="White" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
+                        <ComboBox x:Name="GallerySortBox" Grid.Column="1" Width="120" Height="34" SelectedIndex="0" Margin="16,0,8,0" SelectionChanged="GallerySort_Changed">
+                            <ComboBoxItem>Newest</ComboBoxItem>
+                            <ComboBoxItem>Oldest</ComboBoxItem>
+                            <ComboBoxItem>Name</ComboBoxItem>
+                            <ComboBoxItem>Favorites</ComboBoxItem>
+                        </ComboBox>
+                        <TextBox x:Name="ImgurIdBox" Grid.Column="2" Width="160" Height="34" FontSize="12" PlaceholderText="Imgur Client ID" VerticalContentAlignment="Center" LostFocus="ImgurId_Changed" />
+                        <Button Grid.Column="4" Classes="launch" Content="📂 Open Folder" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="GalleryOpenFolder_Click" />
+                    </Grid>
+                    <ScrollViewer Grid.Row="1">
+                        <WrapPanel x:Name="GalleryList" />
+                    </ScrollViewer>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- Gallery Image Viewer Overlay -->
+        <Border x:Name="GalleryViewerOverlay" Background="#F005050A" IsVisible="False" ZIndex="90">
+            <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                    <StackPanel>
+                        <TextBlock x:Name="GalleryViewerTitle" Text="Image.png" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                        <TextBlock x:Name="GalleryViewerMeta" Text="Date" Foreground="#AAAAAA" FontSize="12"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button Content="⛶ Fullscreen" Classes="nav" Click="GalleryViewerFullscreen_Click" Foreground="White" Padding="10,6" Background="#33FFFFFF"/>
+                        <Button Content="✕ Close" Classes="nav" Click="GalleryViewerClose_Click" Foreground="White" Padding="10,6" Background="#55FF3333"/>
+                    </StackPanel>
+                </Grid>
+                <Image x:Name="GalleryViewerImage" Grid.Row="1" Margin="0,16" Stretch="Uniform"/>
+            </Grid>
+        </Border>
+
+        <!-- Startup Loading Overlay -->
+        <Grid x:Name="LauncherStartupOverlay" Background="#0A0A0F" IsVisible="True" ZIndex="100">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+                <Image x:Name="StartupLogoImage" Source="avares://TheLadsLauncher/Assets/logo.png" Width="280" Height="140"
+                       HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                    <Image.RenderTransform>
+                        <ScaleTransform ScaleX="1" ScaleY="1"/>
+                    </Image.RenderTransform>
+                </Image>
+                <TextBlock Text="THE LADS CLIENT" HorizontalAlignment="Center" Foreground="White" FontSize="20" FontWeight="Bold" LetterSpacing="3"/>
+
+                <!-- Smooth gradient progress bar -->
+                <Border Width="320" Height="6" CornerRadius="3" Background="#161622"
+                        HorizontalAlignment="Center" ClipToBounds="True" Margin="0,6,0,0">
+                    <Border x:Name="StartupProgressFill" Width="0" Height="6" CornerRadius="3"
+                            HorizontalAlignment="Left">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                <GradientStop Color="#8B0000" Offset="0"/>
+                                <GradientStop Color="#FF5555" Offset="0.5"/>
+                                <GradientStop Color="#8B0000" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                </Border>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6" Margin="0,2,0,0">
+                    <TextBlock x:Name="StartupLoadingSpinner" Text="Loading resources" Foreground="#8B0000" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="LoadingDots" Text="..." Foreground="#8B0000" FontSize="14" FontWeight="SemiBold"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- Game Launch Overlay -->
+        <Grid x:Name="GameLaunchOverlay" Background="#DD0A0A0F" IsVisible="False" ZIndex="90">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+                <TextBlock Text="🚀 LAUNCHING THE LADS CLIENT" Foreground="White" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="GameLaunchVersionText" Text="Minecraft" Foreground="#FF4444" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="GameLaunchStatusText" Text="Initializing launch environment..." Foreground="#888888" FontSize="14" HorizontalAlignment="Center"/>
+                <ProgressBar x:Name="GameLaunchProgressBar" Width="350" Height="8" Minimum="0" Maximum="100" Value="0" Foreground="#8B0000" Background="#1A1A2E" CornerRadius="4"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Manual Login Overlay -->
+        <Grid x:Name="ManualLoginOverlay" Background="#F00A0A0F" IsVisible="False" ZIndex="100">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+                <TextBlock Text="Manual Login Required" Foreground="White" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <TextBlock Text="Your browser opened a Microsoft Login page. Please log in there." Foreground="#CCCCCC" FontSize="14" HorizontalAlignment="Center"/>
+                <TextBlock Text="When you finish, you'll see a blank white page. COPY the URL of that page and PASTE it below:" Foreground="#8B0000" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="500" TextAlignment="Center"/>
+                <TextBox x:Name="ManualUrlTextBox" Width="500" Height="30" PlaceholderText="https://login.live.com/oauth20_desktop.srf?code=..." Background="#1A1A2E" Foreground="White"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
+                    <Button Content="Submit URL" Classes="action" Click="ManualLoginSubmit_Click" Width="150" HorizontalContentAlignment="Center"/>
+                    <Button Content="Cancel" Classes="danger" Click="ManualLoginCancel_Click" Width="100" HorizontalContentAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+        </Grid>
+    </LayoutTransformControl>
+</Window>

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "theladsclientmod",
+  "version": "${version}",
+  "name": "The Lads Client Mod",
+  "description": "Client-side enhancements.",
+  "authors": ["The Lads"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/theladsclientmod/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.thelads.client.TheLadsClientMod"
+    ]
+  },
+  "mixins": [
+    "theladsclientmod.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.2",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

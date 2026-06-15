@@ -1,0 +1,26 @@
+{
+    "schemaVersion":  1,
+    "id":  "asynclogger",
+    "version":  "1.1.2+26.1.1-fabric",
+    "name":  "Async Logger",
+    "description":  "Make loggers asynchronous for higher logging throughput and better performance",
+    "authors":  [
+                    "decce"
+                ],
+    "contact":  {
+                    "homepage":  "https://modrinth.com/mod/asynclogger",
+                    "sources":  "https://github.com/decce6/asynclogger",
+                    "issues":  "https://github.com/decce6/asynclogger/issues"
+                },
+    "license":  "LGPL-3.0-only",
+    "icon":  "asynclogger.png",
+    "entrypoints":  {
+                        "main":  [
+                                     "me.decce.asynclogger.fabric.FabricEntrypoint"
+                                 ]
+                    },
+    "depends":  {
+                    "minecraft":  "\u003e=26.1",
+                    "fabricloader":  "\u003e=0.16.0"
+                }
+}

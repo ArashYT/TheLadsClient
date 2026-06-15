@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:views="using:TheLadsLauncher.Views"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="TheLadsLauncher.Views.ConfigEditorView">
+    <Grid ColumnDefinitions="250,*">
+        <!-- Left Sidebar: File List -->
+        <Border Grid.Column="0" Background="#0E0E18" CornerRadius="12" BorderBrush="#1A1A2E" BorderThickness="1" Margin="0,0,12,0" Padding="12">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <TextBlock Text="Config Files" Foreground="White" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                <ListBox x:Name="ConfigFilesList" Grid.Row="1" Background="Transparent" BorderThickness="0" 
+                         SelectionChanged="ConfigFilesList_SelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="views:ConfigFileItem">
+                            <TextBlock Text="{Binding DisplayName}" Foreground="#CCCCCC" ToolTip.Tip="{Binding FullPath}" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Button Grid.Row="2" x:Name="RefreshFilesBtn" Content="🔄 Refresh List" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,12,0,0" Click="RefreshFilesBtn_Click" Classes="action" />
+            </Grid>
+        </Border>
+
+        <!-- Right Side: Editor -->
+        <Border Grid.Column="1" Background="#0E0E18" CornerRadius="12" BorderBrush="#1A1A2E" BorderThickness="1" Padding="12">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <TextBlock x:Name="CurrentFileText" Text="Select a config file to edit" Foreground="White" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                <TextBox x:Name="EditorTextBox" Grid.Row="1" AcceptsReturn="True" TextWrapping="NoWrap" FontFamily="Consolas, Courier New, Monospace" Background="#111118" Foreground="#CCCCCC" BorderBrush="#222233" CornerRadius="6" Padding="12" />
+                <Grid Grid.Row="2" ColumnDefinitions="*,*" Margin="0,12,0,0">
+                    <Button Grid.Column="0" x:Name="ReloadBtn" Content="↺ Reload" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,4,0" Click="ReloadBtn_Click" Classes="action" />
+                    <Button Grid.Column="1" x:Name="SaveBtn" Content="💾 Save" Classes="launch" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="4,0,0,0" Click="SaveBtn_Click" />
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
