@@ -1,0 +1,70 @@
+{
+	"schemaVersion": 1,
+	"id": "theladscore",
+	"version": "${version}",
+	"name": "The Lads Core",
+	"description": "Core mod for The Lads Client, integrating utility features.",
+	"authors": [
+		"The Lads"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/modid/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"preLaunch": [
+			"com.thelads.core.client.LadsEarlyWindow"
+		],
+		"main": [
+			"com.thelads.core.TheLadsCore"
+		],
+		"client": [
+			"com.thelads.core.client.TheLadsCoreClient",
+			"xaero.lib.XaeroLibFabric",
+			"xaero.minimap.XaeroMinimapFabric",
+			"xaero.map.WorldMapFabric"
+		],
+		"server": [
+			"xaero.lib.XaeroLibFabric",
+			"xaero.minimap.XaeroMinimapFabric",
+			"xaero.map.WorldMapFabric"
+		],
+		"modmenu": [
+			"com.thelads.core.client.TheLadsModMenu"
+		],
+		"sodium:config_api_user": [
+			"com.thelads.core.client.renderscale.RenderScaleConfigEntryPoint"
+		]
+	},
+	"mixins": [
+		"theladscore.mixins.json",
+		"xaerolib.mixins.json",
+		"xaerolib.fabric.mixins.json",
+		"xaerohud.mixins.json",
+		"xaerohud.fabric.mixins.json",
+		"xaerominimap.mixins.json",
+		"xaerominimap.fabric.mixins.json",
+		"xaeroworldmap.mixins.json",
+		"xaeroworldmap.fabric.mixins.json",
+		"scalablelux.mixins.json"
+	],
+	"accessWidener": "scalablelux.accesswidener",
+	"provides": [
+		"xaerominimap",
+		"xaeroworldmap",
+		"scalablelux",
+		"xaerolib"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.2",
+		"minecraft": "*",
+		"java": ">=25",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"modmenu": "*"
+	}
+}

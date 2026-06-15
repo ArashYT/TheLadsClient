@@ -1,0 +1,43 @@
+name: Build and Release Launcher
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Update Version in LauncherSettings.cs
+      shell: powershell
+      run: |
+        $path = "TheLadsLauncher_Clean/LauncherSettings.cs"
+        $content = Get-Content -Path $path -Raw
+        $version = "1.0.${{ github.run_number }}"
+        $content = $content -replace 'public string LauncherVersion \{ get; set; \} = ".*";', "public string LauncherVersion { get; set; } = `"$version`";"
+        Set-Content -Path $path -Value $content
+
+    - name: Publish the Launcher
+      run: dotnet publish "TheLadsLauncher_Clean/TheLadsLauncher.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish_out
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v1.0.${{ github.run_number }}
+        name: Release v1.0.${{ github.run_number }}
+        files: publish_out/TheLadsLauncher.exe
+        draft: false
+        prerelease: false
+        generate_release_notes: true
