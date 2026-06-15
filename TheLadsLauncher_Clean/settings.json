@@ -1,0 +1,29 @@
+{
+    "MaxRamMb": 4096,
+    "MinRamMb": 512,
+    "JavaPath": "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.3.9-hotspot\\bin\\java.exe",
+    "AutoDetectJava": true,
+    "InstancePath": "C:\\The Lads Client",
+    "PackwizPath": "C:\\Users\\Arash\\Desktop\\Lads Client\\The Lads Client Packwiz",
+    "FabricVersion": "fabric-loader-0.19.2-26.1.2",
+    "Theme": "DarkRed",
+    "ShowParticles": true,
+    "CloseToTray": true,
+    "AutoLaunch": false,
+    "AutoFixCrashes": true,
+    "MinimizeOnLaunch": true,
+    "AllowMultiInstance": false,
+    "UiScale": "100%",
+    "OfflineAccounts": [
+        "TestPlayer"
+    ],
+    "AccountOrder": [],
+    "LauncherVersion": "1.0.0",
+    "UpdateUrl": "",
+    "CurseForgeApiKey": "",
+    "ModrinthApiUrl": "https://api.modrinth.com/v2",
+    "CurseForgeApiUrl": "https://api.curseforge.com/v1",
+    "SelectedMinecraftVersionOverride": "",
+    "WindowWidth": 1000,
+    "WindowHeight": 650
+}

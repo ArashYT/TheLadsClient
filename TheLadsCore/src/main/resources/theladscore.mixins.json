@@ -1,0 +1,54 @@
+{
+	"required": true,
+	"package": "com.thelads.core.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"refmap": "theladscore.refmap.json",
+	"mixins": [
+	],
+	"client": [
+		"GameMenuMixin",
+		"DynamicFPSMixin",
+		"PlayerTabOverlayMixin",
+		"LoadingOverlayMixin",
+		"GuiMixin",
+		"GameRendererMixin",
+		"DisconnectedScreenMixin",
+		"ScreenshotMixin",
+		"cosmetics.AbstractClientPlayerMixin",
+		"TitleScreenMixin",
+		"MouseHandlerMixin",
+		"ScreenMixin",
+		"ItemInHandRendererMixin",
+		"XaeroMinimapMixin",
+		"VoiceChatMixin",
+		"MultiplayerScreenMixin",
+		"OnlineServerEntryAccessor",
+		"capes.AccessorEntityRenderDispatcher",
+		"capes.MixinCapeFeatureRenderer",
+		"capes.MixinEntityRenderDispatcher",
+		"capes.MixinPlayerInfo",
+		"capes.MixinSkinCustomizationScreen",
+		"ScreenBackgroundMixin",
+		"SelectionListMixin",
+		"WindowMixin",
+		"EntityRendererMixin",
+		"ChatComponentMixin",
+		"PackCompatibilityMixin",
+		"KeyboardAfkMixin",
+		"MouseAfkMixin",
+		"MultiPlayerGameModeMixin",
+		"LivingEntityMixin",
+		"ClientPacketListenerMixin",
+		"MinecraftClientMixin",
+		"DebugScreenOverlayMixin",
+		"renderscale.MinecraftMixin",
+		"renderscale.GameRendererMixin",
+		"renderscale.RenderTargetMixin"
+	],
+	"injectors": {
+		"defaultRequire": 0
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
