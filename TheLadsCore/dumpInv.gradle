@@ -3,7 +3,19 @@ task dumpInv {
         def cl = project.buildscript.classLoader
         def urls = configurations.compileClasspath.files.collect { it.toURI().toURL() }
         def loader = new java.net.URLClassLoader(urls as java.net.URL[], cl)
-        def invClass = loader.loadClass('net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry')
-        invClass.methods.each { println "METHOD: " + invClass.name }
+        try {
+            def clazz = loader.loadClass('net.minecraft.util.Util')
+            clazz.declaredMethods.each { m ->
+                if (m.name.toLowerCase().contains("executor") || m.name.toLowerCase().contains("pool")) {
+                    println "METHOD: " + m.name + " returns " + m.returnType.name + " params " + m.parameterTypes.collect { it.name }
+                }
+            }
+        } catch (Exception e) {
+            println "FAILED: " + e.toString()
+        }
     }
 }
+
+
+
+
