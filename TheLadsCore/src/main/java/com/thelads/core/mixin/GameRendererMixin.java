@@ -4,6 +4,7 @@ import com.thelads.core.config.CycleOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
+import com.thelads.core.mixin.imixin.VBLivingEntityExtension;
 import com.thelads.core.modules.ZoomModule;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
@@ -26,8 +27,7 @@ public class GameRendererMixin {
 
     @Shadow @Final private GameRenderState gameRenderState;
 
-    @Unique private float ladsSmoothedVY = 0f;
-    @Unique private boolean ladsVYInit = false;
+    @Unique private float lads_partialTick = 1.0f;
 
     // OldDamageTilt: stronger directional screen roll on damage
     @Inject(method = "bobHurt", at = @At("TAIL"), require = 0)
@@ -53,44 +53,18 @@ public class GameRendererMixin {
         poseStack.mulPose(Axis.YP.rotationDegrees(rr));
     }
 
-    // VerticalBobbing: smooth vertical view bob when jumping / falling
+    // VerticalBobbing: X-axis camera tilt based on vertical velocity, matching vertical-bobbing mod behaviour
     @Inject(method = "bobView", at = @At("TAIL"), require = 0)
     private void ladsVerticalBobbing(CameraRenderState cameraState, PoseStack poseStack, CallbackInfo ci) {
         Module m = ModuleManager.getInstance().getModule("VerticalBobbing");
         if (m == null || !m.isEnabled()) return;
 
-        var ers = cameraState.entityRenderState;
-        if (!ers.isPlayer) return;
-
-        // Constant vertical component of vanilla bob (no extra multiplier needed)
-        float walk = ers.backwardsInterpolatedWalkDistance;
-        float bob  = ers.bob;
-        poseStack.translate(0.0F, -Math.abs(Mth.cos(walk * (float) Math.PI) * bob) * 0.5F, 0.0F);
-
-        // Smooth vertical velocity from player Y-delta to avoid per-tick snap
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) {
-            float rawVY = (float) (mc.player.getY() - mc.player.yOld);
-            
-            // To prevent jitter, we use a very soft spring that smooths out the 20Hz tick rate
-            if (!ladsVYInit) {
-                ladsSmoothedVY = rawVY;
-                ladsVYInit = true;
-            } else {
-                // Ultra-smooth lerp (approx frame-rate independent if FPS is high, but soft enough to hide tick jitter)
-                ladsSmoothedVY += (rawVY - ladsSmoothedVY) * 0.08f;
-            }
+        if (mc.player == null) return;
 
-            float intensity = 1.0f;
-            Option vbIntensityOpt = m.getOption("Intensity");
-            if (vbIntensityOpt instanceof CycleOption) {
-                intensity = new float[]{0.4f, 1.0f, 2.0f}[((CycleOption) vbIntensityOpt).getIndex()];
-            }
-            
-            // Apply a cubic easing to the smoothed velocity to make the turn-around points softer
-            float easedVY = ladsSmoothedVY * ladsSmoothedVY * ladsSmoothedVY * 5.0f;
-            poseStack.translate(0.0F, Mth.clamp(easedVY, -0.5f, 0.5f) * intensity, 0.0F);
-        }
+        VBLivingEntityExtension ext = (VBLivingEntityExtension) mc.player;
+        float rot = Mth.lerp(lads_partialTick, ext.vB$getPrevRot(), ext.vB$getRot());
+        poseStack.mulPose(Axis.XP.rotationDegrees(rot));
     }
 
     // Zoom: inject after extractCamera populates cameraRenderState.projectionMatrix.
@@ -98,6 +72,7 @@ public class GameRendererMixin {
     // (m00 = 1/(aspect*tan(fov/2)), m11 = 1/tan(fov/2) — dividing by mult < 1 zooms in).
     @Inject(method = "extractCamera", at = @At("TAIL"), require = 0)
     private void ladsZoomFov(DeltaTracker dt, float a, float b, CallbackInfo ci) {
+        lads_partialTick = dt.getGameTimeDeltaPartialTick(true);
         ZoomModule zoom = (ZoomModule) ModuleManager.getInstance().getModule("Zoom");
         if (zoom == null || !zoom.isActive()) return;
         float mult = zoom.getFovMultiplier(dt.getGameTimeDeltaPartialTick(false));
