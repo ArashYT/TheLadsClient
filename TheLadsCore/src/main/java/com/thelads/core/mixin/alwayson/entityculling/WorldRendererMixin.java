@@ -30,7 +30,7 @@ package com.thelads.core.mixin.alwayson.entityculling;
 import com.thelads.core.features.alwayson.entityculling.EntityCullingModBase;
 import com.thelads.core.features.alwayson.entityculling.NMSCullingHelper;
 import com.thelads.core.mixin.alwayson.entityculling.LivingEntityRendererAccessor;
-import com.thelads.core.mixin.alwayson.entityculling.access.Cullable;
+import com.thelads.core.features.alwayson.entityculling.versionless.access.Cullable;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Camera;

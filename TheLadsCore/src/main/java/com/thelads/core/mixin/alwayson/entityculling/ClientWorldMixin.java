@@ -23,7 +23,7 @@ package com.thelads.core.mixin.alwayson.entityculling;
 import com.thelads.core.features.alwayson.entityculling.EntityCullingModBase;
 import com.thelads.core.features.alwayson.entityculling.NMSCullingHelper;
 import com.thelads.core.mixin.alwayson.entityculling.DisplayAccessor;
-import com.thelads.core.mixin.alwayson.entityculling.access.Cullable;
+import com.thelads.core.features.alwayson.entityculling.versionless.access.Cullable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.sounds.SoundEvents;
