@@ -41,6 +41,78 @@ public class TheLadsCoreClient implements ClientModInitializer {
         LOGGER.info("The Lads Core Client initialized!");
         Capes.INSTANCE.onInitializeClient();
 
+        // Initialize Better Stats Screen client
+        com.thelads.core.features.alwayson.betterstatisticscreen.client.BetterStatsClient.init();
+
+        // Initialize Client Sort always-on client feature
+        new com.thelads.core.features.alwayson.clientsort.ClientSortClientFabric().onInitializeClient();
+
+        // ImmediatelyFast — early config init (onRenderSystemInit called via its MixinMinecraft)
+        com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast.earlyInit();
+
+        // Advancements Reloaded — loads mod config
+        new com.thelads.core.features.alwayson.advancementsreloaded.AdvancementsReloadedFabric().onInitializeClient();
+
+        // Entity Culling — registers tick event for culling
+        new com.thelads.core.features.alwayson.entityculling.EntityCullingMod().onInitializeClient();
+
+        // Raise Sound Limit — loads sound config and injector
+        new com.thelads.core.features.alwayson.raisesoundlimit.RSLSMod().onInitializeClient();
+
+        // 3D Skin Layers — initializes skin layer rendering
+        new com.thelads.core.features.alwayson.skinlayers.SkinLayersMod().onInitializeClient();
+
+        // Raised — client-side hotbar lift
+        new dev.yurisuika.raised.RaisedClient().onInitializeClient();
+
+        // Passive Shield — client-side shield rendering
+        new com.natamus.passiveshield.ModFabricClient().onInitializeClient();
+
+        // Immersive Hotbar — client-side hotbar rendering
+        new derp.immersivehotbar.ImmersiveHotbarClient().onInitializeClient();
+
+        // ScreenFX — client-side screen effect rendering
+        new com.laryisland.screenfx.ScreenFX().onInitializeClient();
+
+        // Fancy Door Animations — client-side door animation
+        new io.github.yxmna.fancydooranim.FancyDoorAnimClient().onInitializeClient();
+
+        // Threads — client-side thread display
+        new com.threads.Threads().onInitializeClient();
+
+        // WaveyCapes — animated cape rendering
+        new dev.tr7zw.waveycapes.WaveyCapesMod().onInitializeClient();
+
+        // AppleSkin — client-side food saturation HUD
+        new squeek.appleskin.AppleSkin().onInitializeClient();
+
+        // Entity View Distance — client-side entity distance slider
+        new eu.pb4.entityviewdistance.EVDMod().onInitializeClient();
+
+        // Not Enough Animations — player animation improvements
+        new dev.tr7zw.notenoughanimations.NEAnimationsMod().onInitializeClient();
+
+        // Client Tweaks — various client-side tweaks
+        new net.blay09.mods.clienttweaks.fabric.client.FabricClientTweaksClient().onInitializeClient();
+
+        // Cursors Extended — custom cursor support
+        new io.github.fishstiz.cursors_extended.CursorsExtendedFabric().onInitializeClient();
+
+        // Ixeris — UI improvements
+        new me.decce.ixeris.fabric.IxerisModFabric().onInitializeClient();
+
+        // Resource Pack Options — client-side pack config
+        new dev.jfronny.respackopts.platform.fabric.RespackoptsClientFabric().onInitializeClient();
+
+        // Enhanced Tooltips — richer item tooltip rendering
+        new dev.ultimatchamp.enhancedtooltips.loaders.EnhancedTooltipsFabric().onInitializeClient();
+
+        // Extreme Sound Muffler — per-sound volume control
+        new com.leobeliik.extremesoundmuffler.SoundMufflerFabric().onInitializeClient();
+
+        // Just Enough Items — client-side recipe browser
+        new mezz.jei.fabric.JustEnoughItemsClient().onInitializeClient();
+
         ConfigManager.load();
         ProfileManager.get().load();
 

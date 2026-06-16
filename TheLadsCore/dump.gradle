@@ -1,12 +1,21 @@
 task dumpGui {
     doLast {
         def cl = project.buildscript.classLoader
-        // but we need the minecraft classes. They are in compile classpath.
         def urls = configurations.compileClasspath.files.collect { it.toURI().toURL() }
         def loader = new java.net.URLClassLoader(urls as java.net.URL[], cl)
-        def guiClass = loader.loadClass('net.minecraft.client.gui.GuiGraphicsExtractor')
-        guiClass.declaredMethods.each { m ->
-            println m.name + " " + m.parameterTypes.collect{it.name}
+        for (String name : ['net.minecraft.util.thread.NameableExecutor', 'net.minecraft.TracingExecutor', 'net.minecraft.util.thread.ConsecutiveExecutor']) {
+            try {
+                def clazz = loader.loadClass(name)
+                println "CLASS: " + clazz.name
+                println "  Interfaces: " + clazz.interfaces.collect { it.name }
+                println "  Superclass: " + clazz.superclass?.name
+                clazz.declaredConstructors.each { c ->
+                    println "  Constructor: " + c.parameterTypes.collect { it.name }
+                }
+            } catch (Exception e) {
+                println "FAILED TO LOAD " + name + ": " + e.toString()
+            }
         }
     }
 }
+
