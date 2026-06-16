@@ -1,7 +1,7 @@
 /*
  * Decompiled with CFR 0.152.
  */
-package com.thelads.core.mixin.alwayson.entityculling.access;
+package com.thelads.core.features.alwayson.entityculling.versionless.access;
 
 public interface Cullable {
     public void setTimeout();

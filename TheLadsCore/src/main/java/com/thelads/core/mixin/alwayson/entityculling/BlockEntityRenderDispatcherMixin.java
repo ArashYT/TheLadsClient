@@ -17,7 +17,7 @@
 package com.thelads.core.mixin.alwayson.entityculling;
 
 import com.thelads.core.features.alwayson.entityculling.EntityCullingModBase;
-import com.thelads.core.mixin.alwayson.entityculling.access.Cullable;
+import com.thelads.core.features.alwayson.entityculling.versionless.access.Cullable;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;

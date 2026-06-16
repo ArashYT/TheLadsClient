@@ -67,12 +67,40 @@ function Invoke-Build {
     Ok "Deployed -> $target"
 
     # Clean up old standalone and old version jars from Packwiz mods folder
+    # These mods are shaded into TheLadsCore — standalone copies cause duplicate mod ID conflicts
     Info "Cleaning up old standalone jars from Packwiz mods..."
-    Get-ChildItem -Path $ModsDir -Filter "capes-*.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
-    Get-ChildItem -Path $ModsDir -Filter "render scale *.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
-    Get-ChildItem -Path $ModsDir -Filter "xaerominimap-*.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
-    Get-ChildItem -Path $ModsDir -Filter "xaeroworldmap-*.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
-    Get-ChildItem -Path $ModsDir -Filter "ScalableLux-*.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
+    $shadedModPatterns = @(
+        "capes-*.jar",
+        "render scale *.jar",
+        "xaerominimap-*.jar",
+        "xaeroworldmap-*.jar",
+        "ScalableLux-*.jar",
+        "clientsort-*.jar",
+        "serverpingerfixer*.jar",
+        "raised-*.jar",
+        "quick-pack-*.jar",
+        "passiveshield-*.jar",
+        "immersive-hotbar-*.jar",
+        "screenfx-*.jar",
+        "fancy-door-anim-*.jar",
+        "Threads-*.jar",
+        "waveycapes-*.jar",
+        "waveycapes-fabric-*.jar",
+        "appleskin-*.jar",
+        "entity-view-distance-*.jar",
+        "notenoughanimations-*.jar",
+        "clienttweaks-*.jar",
+        "cursors_extended-*.jar",
+        "respackopts-*.jar",
+        "Ixeris-*.jar",
+        "betterf1-*.jar",
+        "EnhancedTooltips-*.jar",
+        "ExtremeSoundMuffler-*.jar",
+        "jei-*.jar"
+    )
+    foreach ($pattern in $shadedModPatterns) {
+        Get-ChildItem -Path $ModsDir -Filter $pattern -ErrorAction SilentlyContinue | Remove-Item -Force
+    }
     Get-ChildItem -Path $ModsDir -Filter "TheLadsCore-*.jar" | Where-Object { $_.Name -ne "TheLadsCore-$ver.jar" } | Remove-Item -Force
 
     # Clean up index.toml entries for deleted standalone mods
@@ -87,7 +115,28 @@ function Invoke-Build {
             'file = "mods/xaeroworldmap-.*"',
             'file = "mods/ScalableLux-.*"',
             'file = "mods/capes-.*"',
-            'file = "mods/render scale .*"'
+            'file = "mods/render scale .*"',
+            'file = "mods/clientsort-.*"',
+            'file = "mods/serverpingerfixer.*"',
+            'file = "mods/raised-.*"',
+            'file = "mods/quick-pack-.*"',
+            'file = "mods/passiveshield-.*"',
+            'file = "mods/immersive-hotbar-.*"',
+            'file = "mods/screenfx-.*"',
+            'file = "mods/fancy-door-anim-.*"',
+            'file = "mods/Threads-.*"',
+            'file = "mods/waveycapes-.*"',
+            'file = "mods/appleskin-.*"',
+            'file = "mods/entity-view-distance-.*"',
+            'file = "mods/notenoughanimations-.*"',
+            'file = "mods/clienttweaks-.*"',
+            'file = "mods/cursors_extended-.*"',
+            'file = "mods/respackopts-.*"',
+            'file = "mods/Ixeris-.*"',
+            'file = "mods/betterf1-.*"',
+            'file = "mods/EnhancedTooltips-.*"',
+            'file = "mods/ExtremeSoundMuffler-.*"',
+            'file = "mods/jei-.*"'
         )
 
         for ($i = 1; $i -lt $parts.Length; $i++) {
@@ -117,12 +166,10 @@ function Invoke-Build {
             if (Test-Path $instMods) {
                 # Clean up old versions of TheLadsCore from this instance mods folder first
                 Get-ChildItem -Path $instMods -Filter "TheLadsCore-*.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
-                # Clean up old standalone jars from the instance mods folder
-                Get-ChildItem -Path $instMods -Filter "capes-*.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
-                Get-ChildItem -Path $instMods -Filter "render scale *.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
-                Get-ChildItem -Path $instMods -Filter "xaerominimap-*.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
-                Get-ChildItem -Path $instMods -Filter "xaeroworldmap-*.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
-                Get-ChildItem -Path $instMods -Filter "ScalableLux-*.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
+                # Clean up standalone jars for mods shaded into TheLadsCore (prevents duplicate mod ID conflicts)
+                foreach ($pattern in $shadedModPatterns) {
+                    Get-ChildItem -Path $instMods -Filter $pattern -ErrorAction SilentlyContinue | Remove-Item -Force
+                }
                 
                 $instTarget = Join-Path $instMods "TheLadsCore-$ver.jar"
                 Copy-Item $jar.FullName $instTarget -Force

@@ -54,23 +54,21 @@ public abstract class MobMixin extends LivingEntity implements LadsEquipmentTrac
     }
 
     @Inject(at={@At("TAIL")}, method="addAdditionalSaveData")
-    private void letmedespawn$writeCustomDataToNbt(net.minecraft.nbt.CompoundTag compoundTag, CallbackInfo ci) {
+    private void letmedespawn$writeCustomDataToNbt(net.minecraft.world.level.storage.ValueOutput output, CallbackInfo ci) {
         int mask = 0;
         for (int i = 0; i < lads$pickedSlots.length; i++) {
             if (lads$pickedSlots[i]) {
                 mask |= (1 << i);
             }
         }
-        compoundTag.putInt("lads$pickedSlots", mask);
+        output.putInt("lads$pickedSlots", mask);
     }
     
     @Inject(at={@At("HEAD")}, method="readAdditionalSaveData")
-    private void letmedespawn$readCustomDataFromNbt(net.minecraft.nbt.CompoundTag compoundTag, CallbackInfo ci) {
-        if (compoundTag.contains("lads$pickedSlots")) {
-            int mask = compoundTag.getInt("lads$pickedSlots").orElse(0);
-            for (int i = 0; i < lads$pickedSlots.length; i++) {
-                lads$pickedSlots[i] = (mask & (1 << i)) != 0;
-            }
+    private void letmedespawn$readCustomDataFromNbt(net.minecraft.world.level.storage.ValueInput input, CallbackInfo ci) {
+        int mask = input.getIntOr("lads$pickedSlots", 0);
+        for (int i = 0; i < lads$pickedSlots.length; i++) {
+            lads$pickedSlots[i] = (mask & (1 << i)) != 0;
         }
     }
 
