@@ -619,9 +619,15 @@
                                 <CheckBox x:Name="QuickLaunchCheckbox"
                                            Content="Quick Launch — skip file verification (faster, disable if game is broken)"
                                            IsChecked="False" />
+                                <CheckBox x:Name="SyncResourcePacksCheckbox"
+                                           Content="Sync resource packs from global .minecraft folder on launch"
+                                           IsChecked="False" />
+                                <CheckBox x:Name="SyncScreenshotsCheckbox"
+                                           Content="Sync screenshots to global .minecraft folder on game close"
+                                           IsChecked="True" />
                             </StackPanel>
                         </Border>
-                        
+
                         <!-- Paths Section -->
                         <Border Background="#0E0E18" CornerRadius="12" Padding="20"
                                 BorderBrush="#1A1A2E" BorderThickness="1">

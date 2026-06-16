@@ -67,6 +67,10 @@ public class LauncherSettings
     public bool FullscreenOnLaunch { get; set; } = true;
     public bool QuickLaunch { get; set; } = false;   // skip asset verification if already installed
 
+    // Sync
+    public bool SyncResourcePacksFromGlobal { get; set; } = false;
+    public bool SyncScreenshotsToGlobal { get; set; } = true;
+
     public static LauncherSettings Load()
     {
         try
