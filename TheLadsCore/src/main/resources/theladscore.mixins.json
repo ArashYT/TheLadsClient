@@ -91,7 +91,6 @@
 		"LivingEntityMixin",
 		"ClientPacketListenerMixin",
 		"MinecraftClientMixin",
-		"DebugScreenOverlayMixin",
 		"renderscale.MinecraftMixin",
 		"renderscale.GameRendererMixin",
 		"renderscale.RenderTargetMixin",
