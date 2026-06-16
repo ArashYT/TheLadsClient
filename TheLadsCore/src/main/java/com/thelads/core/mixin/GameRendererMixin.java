@@ -4,7 +4,7 @@ import com.thelads.core.config.CycleOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
-import com.thelads.core.mixin.imixin.VBLivingEntityExtension;
+import com.thelads.core.util.VBLivingEntityExtension;
 import com.thelads.core.modules.ZoomModule;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;

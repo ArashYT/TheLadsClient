@@ -1,4 +1,4 @@
-package com.thelads.core.mixin.imixin;
+package com.thelads.core.util;
 
 public interface VBLivingEntityExtension {
     float vB$getPrevRot();

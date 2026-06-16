@@ -2,7 +2,7 @@ package com.thelads.core.mixin;
 
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
-import com.thelads.core.mixin.imixin.VBLivingEntityExtension;
+import com.thelads.core.util.VBLivingEntityExtension;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;

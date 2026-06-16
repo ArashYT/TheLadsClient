@@ -1,7 +1,7 @@
 package com.thelads.core.mixin;
 
 import com.thelads.core.modules.killbanner.KillTracker;
-import com.thelads.core.mixin.imixin.VBLivingEntityExtension;
+import com.thelads.core.util.VBLivingEntityExtension;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
