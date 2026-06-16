@@ -2358,6 +2358,8 @@ public partial class MainWindow : Window
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
         MultiInstanceCheckbox.IsChecked = settings.AllowMultiInstance;
         ParticleCheckbox.IsChecked = settings.ShowParticles;
+        SyncResourcePacksCheckbox.IsChecked = settings.SyncResourcePacksFromGlobal;
+        SyncScreenshotsCheckbox.IsChecked = settings.SyncScreenshotsToGlobal;
 
         InstancePathBox.Text = settings.InstancePath;
         PackwizPathBox.Text = settings.PackwizPath;
@@ -2422,6 +2424,8 @@ public partial class MainWindow : Window
         settings.FullscreenOnLaunch = FullscreenOnLaunchCheckbox.IsChecked ?? true;
         settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
         settings.ShowParticles = ParticleCheckbox.IsChecked ?? true;
+        settings.SyncResourcePacksFromGlobal = SyncResourcePacksCheckbox.IsChecked ?? false;
+        settings.SyncScreenshotsToGlobal = SyncScreenshotsCheckbox.IsChecked ?? true;
         settings.FabricVersion = FabricVersionBox.Text ?? settings.FabricVersion;
         settings.CurseForgeApiKey = CurseForgeApiKeyBox.Text ?? "";
         settings.ModrinthApiUrl = ModrinthApiUrlBox.Text ?? settings.ModrinthApiUrl;
@@ -3362,11 +3366,18 @@ public partial class MainWindow : Window
                     StatusText.Text = "Game exited normally.";
                     Log("[Launcher] Game exited normally.");
                 }
+
+                if (settings.SyncScreenshotsToGlobal)
+                    SyncScreenshotsToGlobal();
             });
         };
 
         process.OutputDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game] {ev.Data}"); };
         process.ErrorDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game ERROR] {ev.Data}"); };
+
+        // Sync resource packs from global .minecraft folder before launch.
+        if (settings.SyncResourcePacksFromGlobal)
+            SyncResourcePacksFromGlobal();
 
         // Apply fullscreen setting by patching options.txt before launch.
         if (settings.FullscreenOnLaunch)
@@ -3510,6 +3521,85 @@ public partial class MainWindow : Window
     // ═══════════════════════════════════════
     //  CRASH DETECTION
     // ═══════════════════════════════════════
+
+    private void SyncResourcePacksFromGlobal()
+    {
+        try
+        {
+            string globalPacks = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                ".minecraft", "resourcepacks");
+            string instancePacks = Path.Combine(settings.InstancePath, "resourcepacks");
+
+            if (!Directory.Exists(globalPacks)) return;
+            Directory.CreateDirectory(instancePacks);
+
+            int count = 0;
+            foreach (string src in Directory.GetFileSystemEntries(globalPacks))
+            {
+                string name = Path.GetFileName(src);
+                string dst = Path.Combine(instancePacks, name);
+                if (File.Exists(src))
+                {
+                    if (!File.Exists(dst) || File.GetLastWriteTime(src) > File.GetLastWriteTime(dst))
+                    {
+                        File.Copy(src, dst, overwrite: true);
+                        count++;
+                    }
+                }
+                else if (Directory.Exists(src) && !Directory.Exists(dst))
+                {
+                    CopyDirectoryRecursive(src, dst);
+                    count++;
+                }
+            }
+            Log($"[Sync] Synced {count} resource pack(s) from global .minecraft.");
+        }
+        catch (Exception ex)
+        {
+            Log($"[Sync] Resource packs sync failed: {ex.Message}");
+        }
+    }
+
+    private void SyncScreenshotsToGlobal()
+    {
+        try
+        {
+            string instanceScreenshots = Path.Combine(settings.InstancePath, "screenshots");
+            string globalScreenshots = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                ".minecraft", "screenshots");
+
+            if (!Directory.Exists(instanceScreenshots)) return;
+            Directory.CreateDirectory(globalScreenshots);
+
+            int count = 0;
+            foreach (string src in Directory.GetFiles(instanceScreenshots))
+            {
+                string dst = Path.Combine(globalScreenshots, Path.GetFileName(src));
+                if (!File.Exists(dst) || File.GetLastWriteTime(src) > File.GetLastWriteTime(dst))
+                {
+                    File.Copy(src, dst, overwrite: true);
+                    count++;
+                }
+            }
+            if (count > 0)
+                Log($"[Sync] Synced {count} screenshot(s) to global .minecraft.");
+        }
+        catch (Exception ex)
+        {
+            Log($"[Sync] Screenshots sync failed: {ex.Message}");
+        }
+    }
+
+    private static void CopyDirectoryRecursive(string src, string dst)
+    {
+        Directory.CreateDirectory(dst);
+        foreach (string file in Directory.GetFiles(src))
+            File.Copy(file, Path.Combine(dst, Path.GetFileName(file)), overwrite: true);
+        foreach (string dir in Directory.GetDirectories(src))
+            CopyDirectoryRecursive(dir, Path.Combine(dst, Path.GetFileName(dir)));
+    }
 
     private void HandleCrashDetection()
     {
