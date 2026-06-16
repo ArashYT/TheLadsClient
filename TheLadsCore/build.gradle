@@ -18,6 +18,7 @@ dependencies {
     implementation "club.minnced:java-discord-rpc:2.0.1"
     include "club.minnced:java-discord-rpc:2.0.1"
     compileOnly fileTree(dir: rootProject.file("../The Lads Client Packwiz/mods"), include: "*.jar")
+    compileOnly fileTree(dir: file("shading_libs"), include: "*.jar")
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.0"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.10.0"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
