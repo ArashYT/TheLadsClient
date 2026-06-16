@@ -19,7 +19,7 @@ import com.thelads.core.features.alwayson.entityculling.occlusionculling.Occlusi
 import com.thelads.core.features.alwayson.entityculling.occlusionculling.util.Vec3d;
 import com.thelads.core.features.alwayson.entityculling.EntityCullingModBase;
 import com.thelads.core.features.alwayson.entityculling.NMSCullingHelper;
-import com.thelads.core.mixin.alwayson.entityculling.access.Cullable;
+import com.thelads.core.features.alwayson.entityculling.versionless.access.Cullable;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
