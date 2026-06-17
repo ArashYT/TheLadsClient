@@ -358,8 +358,15 @@
                     </StackPanel>
                     
                     <!-- Bottom Launch Bar -->
-                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
-                        <Button x:Name="LaunchButton" Classes="launch"
+                    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto">
+                        <!-- Alt-account selector: launch as a different account without changing your main -->
+                        <ComboBox x:Name="LaunchAccountSelector" Grid.Column="0"
+                                  Height="52" Width="180" Margin="0,0,12,0"
+                                  FontSize="13" VerticalContentAlignment="Center"
+                                  HorizontalContentAlignment="Left"
+                                  ToolTip.Tip="Launch with this account (does not change your main account)"
+                                  SelectionChanged="LaunchAccountSelector_SelectionChanged" />
+                        <Button x:Name="LaunchButton" Grid.Column="1" Classes="launch"
                                 Content="▶  LAUNCH ({MinecraftVersion})"
                                 Height="52" FontSize="18" FontWeight="Bold"
                                 Foreground="White"
@@ -376,7 +383,7 @@
                             </Button.ContextMenu>
                         </Button>
 
-                        <Button Grid.Column="1" x:Name="OpenFolderBtn" Classes="action"
+                        <Button Grid.Column="2" x:Name="OpenFolderBtn" Classes="action"
                                 Content="📂 Folder" Height="52" Width="110"
                                 FontSize="13" FontWeight="SemiBold"
                                 HorizontalContentAlignment="Center"
@@ -385,7 +392,7 @@
                                 ToolTip.Tip="Open the game folder"
                                 Click="OpenFolder_Click" />
 
-                        <Button Grid.Column="2" x:Name="ManageAccountsShortcutBtn" Classes="action"
+                        <Button Grid.Column="3" x:Name="ManageAccountsShortcutBtn" Classes="action"
                                 Content="Accounts 👤" Height="52" Width="120"
                                 FontSize="13" FontWeight="SemiBold"
                                 HorizontalContentAlignment="Center"
@@ -676,7 +683,7 @@
                 </ScrollViewer>
                 
                 <!-- ═══════ MODS PAGE ═══════ -->
-                <Grid x:Name="ModsPage" IsVisible="False" Margin="24,44,24,24">
+                <Grid x:Name="ModsPage" IsVisible="False" Margin="24,44,24,24" DragDrop.AllowDrop="True">
                     <TabControl x:Name="ModsSubTabControl">
                         <TabControl.Styles>
                             <Style Selector="TabItem">
@@ -698,14 +705,25 @@
                         <TabItem Header="Installed Mods">
                             <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
                                 <!-- Toolbar -->
-                                <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto" Margin="0,0,0,8">
+                                <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="0,0,0,8">
                                     <CheckBox x:Name="SelectAllModsCheckbox" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip.Tip="Select / Deselect All" Click="SelectAllMods_Click" />
                                     <TextBlock Grid.Column="1" Text="Installed Mods" Foreground="White" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" />
                                     <TextBlock x:Name="ModsPageCount" Grid.Column="2" Text="(0)" Foreground="#555555" FontSize="14" VerticalAlignment="Center" Margin="10,0,0,0" />
-                                    <TextBlock Grid.Column="3" Text="Filter:" Foreground="#888888" FontSize="13" VerticalAlignment="Center" Margin="16,0,8,0" />
-                                    <TextBox x:Name="ModVersionFilterBox" Grid.Column="4" Width="100" Height="36" FontSize="13" VerticalContentAlignment="Center" Margin="0,0,8,0" />
-                                    <Button Grid.Column="5" x:Name="UpdateAllModsBtn" Classes="action" Content="⬆ Update All" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" Margin="0,0,8,0" Click="UpdateAllMods_Click" />
-                                    <Button Grid.Column="6" Classes="action" Content="🔄 Refresh" Height="36" FontSize="13" Padding="16,0" HorizontalContentAlignment="Center" Click="RefreshMods_Click" />
+                                    <TextBox x:Name="ModNameSearchBox" Grid.Column="3" Height="36" FontSize="13" VerticalContentAlignment="Center"
+                                             Margin="16,0,8,0" PlaceholderText="Search installed mods…  (press Enter)"
+                                             KeyUp="ModNameSearch_KeyUp" />
+                                    <TextBlock Grid.Column="4" Text="Filter:" Foreground="#888888" FontSize="13" VerticalAlignment="Center" Margin="8,0,8,0" />
+                                    <TextBox x:Name="ModVersionFilterBox" Grid.Column="5" Width="100" Height="36" FontSize="13" VerticalContentAlignment="Center" Margin="0,0,8,0" KeyUp="ModNameSearch_KeyUp" />
+                                    <Button Grid.Column="6" x:Name="AddModBtn" Classes="action" Content="➕ Add ▾" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" Margin="0,0,8,0" ToolTip.Tip="Add a mod from a .jar file or a folder of jars">
+                                        <Button.Flyout>
+                                            <MenuFlyout>
+                                                <MenuItem Header="Add from file…" Click="AddModFromFile_Click" />
+                                                <MenuItem Header="Add from folder…" Click="AddModFromFolder_Click" />
+                                            </MenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                    <Button Grid.Column="7" x:Name="UpdateAllModsBtn" Classes="action" Content="⬆ Update All" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" Margin="0,0,8,0" Click="UpdateAllMods_Click" />
+                                    <Button Grid.Column="8" Classes="action" Content="🔄 Refresh" Height="36" FontSize="13" Padding="16,0" HorizontalContentAlignment="Center" Click="RefreshMods_Click" />
                                 </Grid>
                                 <!-- Mass action bar (visible when mods are selected) -->
                                 <Border Grid.Row="1" x:Name="ModsMassActionBar" IsVisible="False"

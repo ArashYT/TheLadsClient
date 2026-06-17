@@ -37,6 +37,10 @@ public partial class MainWindow : Window
     private LauncherSettings settings;
 
     private string _selectedAccount = "";
+    // Alt-account launch override: when non-empty, the next launch uses this account
+    // WITHOUT changing _selectedAccount (the user's main). Set via LaunchAccountSelector.
+    private string _launchAccountOverride = "";
+    private bool _populatingLaunchSelector = false;
     private List<Process> _runningProcesses = new();
     private TaskCompletionSource<bool>? _installChoiceTcs;
     private DispatcherTimer? _updateCheckTimer;
@@ -172,6 +176,13 @@ public partial class MainWindow : Window
         LoadAccounts();
         InitializeEditor();
 
+        // Enable drag-and-drop of .jar files onto the Mods page to install them.
+        if (ModsPage != null)
+        {
+            ModsPage.AddHandler(DragDrop.DragOverEvent, ModsPage_DragOver);
+            ModsPage.AddHandler(DragDrop.DropEvent, ModsPage_Drop);
+        }
+
         // === Fancy startup animation: breathing logo + smooth eased progress bar ===
         const double startupDurationMs = 2200.0;
         const double startupBarWidth = 320.0;
@@ -276,18 +287,21 @@ public partial class MainWindow : Window
                     }
                 }
 
-                // 2. Check for updates on startup
-                if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = "Checking for updates";
-                var update = await AutoUpdater.CheckForUpdatesAsync(settings.LauncherVersion);
-                if (update != null)
+                // 2. Check for updates on startup (skippable for local/dev testing via env var)
+                if (Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") != "1")
                 {
-                    if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = $"Downloading update v{update.LatestVersion}";
-                    bool downloaded = await AutoUpdater.DownloadUpdateAsync(update.DownloadUrl, update.LatestVersion);
-                    if (downloaded)
+                    if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = "Checking for updates";
+                    var update = await AutoUpdater.CheckForUpdatesAsync(settings.LauncherVersion);
+                    if (update != null)
                     {
-                        if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = "Applying update";
-                        updateApplied = true;
-                        AutoUpdater.ApplyUpdateAndRestart();
+                        if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = $"Downloading update v{update.LatestVersion}";
+                        bool downloaded = await AutoUpdater.DownloadUpdateAsync(update.DownloadUrl, update.LatestVersion);
+                        if (downloaded)
+                        {
+                            if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = "Applying update";
+                            updateApplied = true;
+                            AutoUpdater.ApplyUpdateAndRestart();
+                        }
                     }
                 }
             }
@@ -445,6 +459,7 @@ public partial class MainWindow : Window
 
     private async Task PollForUpdatesAsync()
     {
+        if (Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1") return;
         try
         {
             var update = await AutoUpdater.CheckForUpdatesAsync(settings.LauncherVersion);
@@ -1259,6 +1274,7 @@ public partial class MainWindow : Window
         _ = WriteLadsProfileAsync(_selectedAccount);
         _ = WriteLadsAccountsJsonAsync();
         RenderAccountsList(allAccountNames);
+        PopulateLaunchSelector(allAccountNames);
 
         // Update Launch button context menu
         var launchMenu = this.FindControl<ContextMenu>("LaunchContextMenu") ?? LaunchContextMenu;
@@ -1312,6 +1328,61 @@ public partial class MainWindow : Window
         }
     }
 
+    // Fills the alt-account launch selector. The main account (_selectedAccount) is shown
+    // selected by default; choosing any other entry sets _launchAccountOverride so the next
+    // launch uses it WITHOUT changing the main account.
+    private void PopulateLaunchSelector(List<string> allAccountNames)
+    {
+        if (LaunchAccountSelector == null) return;
+        _populatingLaunchSelector = true;
+        try
+        {
+            LaunchAccountSelector.Items.Clear();
+            foreach (var name in allAccountNames)
+            {
+                bool isOffline = settings.OfflineAccounts.Contains(name);
+                LaunchAccountSelector.Items.Add(new ComboBoxItem
+                {
+                    Content = name + (isOffline ? "  (Offline)" : "  (MS)"),
+                    Tag = name
+                });
+            }
+
+            // Keep an existing override selected if it still exists; otherwise default to main.
+            string target = !string.IsNullOrEmpty(_launchAccountOverride) && allAccountNames.Contains(_launchAccountOverride)
+                ? _launchAccountOverride
+                : _selectedAccount;
+            if (string.IsNullOrEmpty(_launchAccountOverride) || !allAccountNames.Contains(_launchAccountOverride))
+                _launchAccountOverride = "";
+
+            foreach (var obj in LaunchAccountSelector.Items)
+            {
+                if (obj is ComboBoxItem cbi && (cbi.Tag as string) == target)
+                {
+                    LaunchAccountSelector.SelectedItem = cbi;
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            _populatingLaunchSelector = false;
+        }
+    }
+
+    private void LaunchAccountSelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_populatingLaunchSelector) return;
+        if (LaunchAccountSelector?.SelectedItem is ComboBoxItem cbi && cbi.Tag is string name)
+        {
+            // Only treat it as an override when it differs from the main account.
+            _launchAccountOverride = (name == _selectedAccount) ? "" : name;
+            Log(string.IsNullOrEmpty(_launchAccountOverride)
+                ? "[Launcher] Launch account set to main account."
+                : $"[Launcher] Next launch will use alt account: {_launchAccountOverride} (main unchanged).");
+        }
+    }
+
     private void RenderAccountsList(List<string> allAccountNames)
     {
         AccountsListContainer.Children.Clear();
@@ -1346,7 +1417,7 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    string headUrl = $"https://mc-heads.net/avatar/{username}/24";
+                    string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(username))}/24";
                     var headBytes = await _httpClient.GetByteArrayAsync(headUrl);
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
@@ -1649,6 +1720,24 @@ public partial class MainWindow : Window
     //  SKIN & CAPE CUSTOMIZATION / EDITOR
     // ═══════════════════════════════════════
 
+    // mc-heads renders by username OR uuid. Prefer the account's real UUID (most reliable,
+    // reflects the current skin); fall back to the username. NOTE: the legacy "/body/player/<name>"
+    // form silently ignores the name and always returns a default Steve — never use it.
+    private string ResolveSkinId(string username)
+    {
+        try
+        {
+            var msAcc = loginHandler.AccountManager.GetAccounts()
+                .FirstOrDefault(a =>
+                    (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == username)
+                as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount;
+            string? uuid = msAcc?.Profile?.UUID;
+            if (!string.IsNullOrEmpty(uuid)) return uuid;
+        }
+        catch { }
+        return username;
+    }
+
     private async Task LoadPlayerSkin(string username)
     {
         try
@@ -1656,8 +1745,10 @@ public partial class MainWindow : Window
             SelectedAccountText.Text = username;
             MiniAccountName.Text = username;
 
-            // Load 3D-like body render
-            string bodyUrl = $"https://mc-heads.net/body/player/{username}/150";
+            string skinId = ResolveSkinId(username);
+
+            // Load 3D-like body render (use uuid/username directly — NOT the broken /player/ path)
+            string bodyUrl = $"https://mc-heads.net/body/{Uri.EscapeDataString(skinId)}/150";
             var bodyBytes = await _httpClient.GetByteArrayAsync(bodyUrl);
             using (var ms = new MemoryStream(bodyBytes))
             {
@@ -1665,7 +1756,7 @@ public partial class MainWindow : Window
             }
 
             // Load head for mini icon
-            string headUrl = $"https://mc-heads.net/avatar/{username}/24";
+            string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(skinId)}/24";
             var headBytes = await _httpClient.GetByteArrayAsync(headUrl);
             using (var ms = new MemoryStream(headBytes))
             {
@@ -1793,17 +1884,26 @@ public partial class MainWindow : Window
                 if (acc is CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount gameAcc)
                 {
                     string? username = gameAcc.Profile?.Username;
-                    if (string.IsNullOrEmpty(username)) continue;
-
                     string uuid = gameAcc.Profile?.UUID ?? "";
                     string accessToken = "";
                     try
                     {
+                        // Silent auth also hydrates the username/uuid for accounts whose cached
+                        // Profile metadata isn't populated yet — so we never drop a real account.
                         var session = await loginHandler.AuthenticateSilently(acc);
+                        if (string.IsNullOrEmpty(username)) username = session.Username;
                         uuid = session.UUID ?? uuid;
                         accessToken = session.AccessToken ?? "";
                     }
                     catch { }
+
+                    // Only skip if we genuinely couldn't resolve a username from cache OR silent auth.
+                    if (string.IsNullOrEmpty(username))
+                    {
+                        Log("[Accounts] Skipped an MS account with no resolvable username.");
+                        continue;
+                    }
+                    if (accountsList.Any(a => a.username == username)) continue;
 
                     accountsList.Add(new LadsAccountJson
                     {
@@ -2601,6 +2701,7 @@ public partial class MainWindow : Window
         string rpPath = Path.Combine(settings.InstancePath, "resourcepacks");
 
         string filterText = ModVersionFilterBox.Text?.Trim() ?? "";
+        string nameQuery = ModNameSearchBox?.Text?.Trim() ?? "";
         string fabricVersion = settings.FabricVersion;
         string instancePath = settings.InstancePath;
 
@@ -2737,7 +2838,12 @@ public partial class MainWindow : Window
                     }
                     catch {}
 
-                    if (matchesFilter)
+                    bool matchesName = string.IsNullOrEmpty(nameQuery)
+                        || displayName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase)
+                        || fileName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase)
+                        || modId.Contains(nameQuery, StringComparison.OrdinalIgnoreCase);
+
+                    if (matchesFilter && matchesName)
                     {
                         list.Add(new ModFileItem
                         {
@@ -2773,8 +2879,11 @@ public partial class MainWindow : Window
                     {
                         matchesFilter = fileName.Contains(filterText, StringComparison.OrdinalIgnoreCase);
                     }
+                    bool matchesName = string.IsNullOrEmpty(nameQuery)
+                        || displayName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase)
+                        || fileName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase);
 
-                    if (matchesFilter)
+                    if (matchesFilter && matchesName)
                     {
                         list.Add(new ModFileItem
                         {
@@ -2965,6 +3074,104 @@ public partial class MainWindow : Window
     }
 
     private void RefreshMods_Click(object? sender, RoutedEventArgs e) => LoadModsList();
+
+    // ─── Add / search / drag-drop for installed mods ───────────────
+
+    private void ModNameSearch_KeyUp(object? sender, KeyEventArgs e)
+    {
+        // Re-scan on Enter (cheap key-by-key re-scan is avoided because it re-reads jar metadata).
+        if (e.Key == Key.Enter) LoadModsList();
+    }
+
+    private async void AddModFromFile_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var files = await this.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Add mod .jar file(s)",
+                AllowMultiple = true,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Fabric mod (*.jar)") { Patterns = new[] { "*.jar" } }
+                }
+            });
+            if (files == null || files.Count == 0) return;
+            int added = InstallModFiles(files.Select(f => f.Path.LocalPath));
+            StatusText.Text = $"Added {added} mod(s).";
+            LoadModsList();
+        }
+        catch (Exception ex) { Log($"[Mods] Add from file failed: {ex.Message}"); }
+    }
+
+    private async void AddModFromFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var folders = await this.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Add all .jar files from a folder",
+                AllowMultiple = false
+            });
+            if (folders == null || folders.Count == 0) return;
+            string dir = folders[0].Path.LocalPath;
+            if (!Directory.Exists(dir)) return;
+            int added = InstallModFiles(Directory.GetFiles(dir, "*.jar"));
+            StatusText.Text = $"Added {added} mod(s) from folder.";
+            LoadModsList();
+        }
+        catch (Exception ex) { Log($"[Mods] Add from folder failed: {ex.Message}"); }
+    }
+
+    private void ModsPage_DragOver(object? sender, DragEventArgs e)
+    {
+        // Only accept file drops (Avalonia 12 data-transfer API)
+        e.DragEffects = e.DataTransfer.Contains(DataFormat.File)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void ModsPage_Drop(object? sender, DragEventArgs e)
+    {
+        try
+        {
+            var files = e.DataTransfer.TryGetFiles();
+            if (files != null)
+            {
+                int added = InstallModFiles(files.Select(f => f.Path.LocalPath));
+                if (added > 0)
+                {
+                    StatusText.Text = $"Added {added} mod(s) via drag-and-drop.";
+                    LoadModsList();
+                }
+            }
+        }
+        catch (Exception ex) { Log($"[Mods] Drop failed: {ex.Message}"); }
+        e.Handled = true;
+    }
+
+    // Copies the given .jar paths into the instance mods folder. Returns the number installed.
+    private int InstallModFiles(IEnumerable<string> paths)
+    {
+        string modsDir = Path.Combine(settings.InstancePath, "mods");
+        Directory.CreateDirectory(modsDir);
+        int count = 0;
+        foreach (var src in paths)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(src) || !src.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!File.Exists(src)) continue;
+                string dest = Path.Combine(modsDir, Path.GetFileName(src));
+                File.Copy(src, dest, overwrite: true);
+                Log($"[Mods] Installed {Path.GetFileName(src)}");
+                count++;
+            }
+            catch (Exception ex) { Log($"[Mods] Failed to copy {src}: {ex.Message}"); }
+        }
+        return count;
+    }
 
     // ─── Multi-select helpers ───────────────
 
@@ -3244,7 +3451,16 @@ public partial class MainWindow : Window
 
         GameLaunchStatusText.Text = "Checking version...";
 
-        string selectedUser = _selectedAccount;
+        // Use the alt-account override if the user picked one; otherwise the main account.
+        // This launches the alt WITHOUT changing _selectedAccount (the persisted main).
+        string selectedUser = (!string.IsNullOrEmpty(_launchAccountOverride)
+                && (settings.OfflineAccounts.Contains(_launchAccountOverride)
+                    || loginHandler.AccountManager.GetAccounts().Any(a =>
+                        (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == _launchAccountOverride)))
+            ? _launchAccountOverride
+            : _selectedAccount;
+        if (selectedUser != _selectedAccount)
+            Log($"[Launcher] Launching with alt account '{selectedUser}' (main stays '{_selectedAccount}').");
         bool isOffline = settings.OfflineAccounts.Contains(selectedUser)
             || selectedUser == "TestPlayer"
             || Environment.GetCommandLineArgs().Contains("--auto-launch-offline");
@@ -3299,6 +3515,10 @@ public partial class MainWindow : Window
         }
 
         LoadAccounts();
+        // If launching an alt, make sure the game reads the alt's profile (not the main's,
+        // which LoadAccounts just wrote). Awaited so it's the last write before process start.
+        if (selectedUser != _selectedAccount)
+            await WriteLadsProfileAsync(selectedUser);
         GameLaunchStatusText.Text = $"Welcome, {session.Username}!";
         Log($"[Auth] Logged in as {session.Username}");
 

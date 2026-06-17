@@ -46,7 +46,7 @@ public class LauncherSettings
     public System.Collections.Generic.List<string> AccountOrder { get; set; } = new();
 
     // Version
-    public string LauncherVersion { get; set; } = "1.0.0";
+    public string LauncherVersion { get; set; } = "1.0.3";
     public string UpdateUrl { get; set; } = "";
 
     // API Keys

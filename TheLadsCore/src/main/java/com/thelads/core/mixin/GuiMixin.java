@@ -201,11 +201,13 @@ public class GuiMixin {
     }
 
     @ModifyArg(
+        // 26.1.2: every blitSprite overload takes a RenderPipeline first arg now, so the old
+        // (Identifier,IIII) descriptor never matched (silently dead). x is now arg index 2.
         method = "extractItemHotbar",
         at = @At(value = "INVOKE",
-                 target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lnet/minecraft/resources/Identifier;IIII)V",
+                 target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V",
                  ordinal = 1),
-        index = 1,
+        index = 2,
         require = 0
     )
     private int ladsModifyHotbarSelectionX(int originalX) {
