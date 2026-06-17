@@ -1,6 +1,8 @@
 package com.thelads.core.modules;
 
 import com.thelads.core.config.Module;
+import com.thelads.core.config.BoolOption;
+import com.thelads.core.config.Option;
 import club.minnced.discord.rpc.DiscordEventHandlers;
 import club.minnced.discord.rpc.DiscordRPC;
 import club.minnced.discord.rpc.DiscordRichPresence;
@@ -36,9 +38,18 @@ public class DiscordRpcModule extends Module {
 
     public DiscordRpcModule() {
         super("DiscordRPC", "Show your game status in Discord.");
+        addOption(new BoolOption("Show MC Version", true));
+        addOption(new BoolOption("Show Server Name", true));
+        addOption(new BoolOption("Show Server IP", false));   // off by default for privacy
+        addOption(new BoolOption("Show Elapsed Time", true));
         ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
         loadClientId();
         resolveVersion();
+    }
+
+    private boolean opt(String name, boolean def) {
+        Option o = getOption(name);
+        return (o instanceof BoolOption b) ? b.get() : def;
     }
 
     // ── Native loading ───────────────────────────────────────────────────────
@@ -153,29 +164,42 @@ public class DiscordRpcModule extends Module {
         if (now - lastUpdate < 3000) return;
         lastUpdate = now;
 
+        boolean showVer = opt("Show MC Version", true);
+        boolean showName = opt("Show Server Name", true);
+        boolean showIp = opt("Show Server IP", false);
+        String verPart = showVer ? "MC " + mcVersion : "";
+
         DiscordRichPresence p = new DiscordRichPresence();
-        p.startTimestamp = startTimestamp;
+        p.startTimestamp = opt("Show Elapsed Time", true) ? startTimestamp : 0;
         p.largeImageKey  = "lads";          // upload "lads" asset in Discord dev portal
         p.largeImageText = "The Lads Client";
         p.smallImageKey  = "minecraft";
-        p.smallImageText = "MC " + mcVersion;
+        p.smallImageText = showVer ? "MC " + mcVersion : "The Lads Client";
 
         if (mc.level == null) {
             p.state   = "Main Menu";
-            p.details = "MC " + mcVersion;
+            p.details = verPart;
         } else if (mc.isLocalServer()) {
             p.state   = "Singleplayer";
-            p.details = "MC " + mcVersion;
+            p.details = verPart;
         } else if (mc.getCurrentServer() != null) {
             String serverName = mc.getCurrentServer().name;
             String serverIp   = mc.getCurrentServer().ip;
-            p.state   = serverName != null && !serverName.isBlank() ? serverName : serverIp;
-            p.details = "MC " + mcVersion + " · " + serverIp;
+            p.state   = (showName && serverName != null && !serverName.isBlank()) ? serverName
+                      : (showIp ? serverIp : "Multiplayer");
+            p.details = showIp ? join(verPart, serverIp) : verPart;
         } else {
             p.state   = "In Game";
-            p.details = "MC " + mcVersion;
+            p.details = verPart;
         }
+        if (p.details == null || p.details.isBlank()) p.details = "Playing";
 
         lib.Discord_UpdatePresence(p);
+    }
+
+    private static String join(String a, String b) {
+        if (a == null || a.isBlank()) return b;
+        if (b == null || b.isBlank()) return a;
+        return a + " · " + b;
     }
 }
