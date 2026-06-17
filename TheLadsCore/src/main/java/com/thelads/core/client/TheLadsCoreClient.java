@@ -259,6 +259,10 @@ public class TheLadsCoreClient implements ClientModInitializer {
             if (pm instanceof com.thelads.core.modules.PerformanceManagerModule) {
                 ((com.thelads.core.modules.PerformanceManagerModule) pm).tick(client);
             }
+            Module bf3 = ModuleManager.getInstance().getModule("BetterF3");
+            if (bf3 instanceof com.thelads.core.modules.BetterF3Module) {
+                ((com.thelads.core.modules.BetterF3Module) bf3).tick(client);
+            }
 
             // Sample clicks for the CPS counter / keystrokes overlay
             CpsTracker.get().tick(client);
