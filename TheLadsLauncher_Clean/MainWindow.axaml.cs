@@ -828,6 +828,11 @@ public partial class MainWindow : Window
     }
 
     private string _viewerPath = "";
+    // Gallery viewer zoom/pan state
+    private double _viewerZoom = 1.0;
+    private double _viewerPanX = 0, _viewerPanY = 0;
+    private bool _viewerDragging = false;
+    private Avalonia.Point _viewerLastPointer;
 
     private void ShowGalleryViewer(string path)
     {
@@ -840,7 +845,63 @@ public partial class MainWindow : Window
             GalleryViewerImage.Source = new Bitmap(fs);
         }
         catch { GalleryViewerImage.Source = null; }
+        ResetViewerZoom();
         GalleryViewerOverlay.IsVisible = true;
+    }
+
+    // ─── Gallery viewer zoom + pan ───────────────
+    private void ResetViewerZoom()
+    {
+        _viewerZoom = 1.0;
+        _viewerPanX = 0; _viewerPanY = 0;
+        _viewerDragging = false;
+        ApplyViewerTransform();
+    }
+
+    private void ApplyViewerTransform()
+    {
+        if (GalleryViewerImage == null) return;
+        GalleryViewerImage.RenderTransformOrigin = Avalonia.RelativePoint.Center;
+        var g = new TransformGroup();
+        g.Children.Add(new ScaleTransform(_viewerZoom, _viewerZoom));
+        g.Children.Add(new TranslateTransform(_viewerPanX, _viewerPanY));
+        GalleryViewerImage.RenderTransform = g;
+        GalleryViewerImage.Cursor = new Avalonia.Input.Cursor(
+            _viewerZoom > 1.0 ? Avalonia.Input.StandardCursorType.SizeAll : Avalonia.Input.StandardCursorType.Arrow);
+    }
+
+    private void GalleryViewer_Wheel(object? sender, Avalonia.Input.PointerWheelEventArgs e)
+    {
+        double factor = e.Delta.Y > 0 ? 1.15 : 1.0 / 1.15;
+        double newZoom = Math.Clamp(_viewerZoom * factor, 1.0, 8.0);
+        if (Math.Abs(newZoom - _viewerZoom) < 0.0001) return;
+        _viewerZoom = newZoom;
+        if (_viewerZoom <= 1.0) { _viewerPanX = 0; _viewerPanY = 0; } // snap back to centered
+        ApplyViewerTransform();
+        e.Handled = true;
+    }
+
+    private void GalleryViewer_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        if (_viewerZoom <= 1.0) return; // only pan when zoomed in
+        _viewerDragging = true;
+        _viewerLastPointer = e.GetPosition(GalleryViewerOverlay);
+        e.Handled = true;
+    }
+
+    private void GalleryViewer_PointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
+    {
+        if (!_viewerDragging) return;
+        var p = e.GetPosition(GalleryViewerOverlay);
+        _viewerPanX += p.X - _viewerLastPointer.X;
+        _viewerPanY += p.Y - _viewerLastPointer.Y;
+        _viewerLastPointer = p;
+        ApplyViewerTransform();
+    }
+
+    private void GalleryViewer_PointerReleased(object? sender, Avalonia.Input.PointerReleasedEventArgs e)
+    {
+        _viewerDragging = false;
     }
 
     private void GalleryViewerClose_Click(object? sender, RoutedEventArgs e)
@@ -848,6 +909,7 @@ public partial class MainWindow : Window
         GalleryViewerOverlay.IsVisible = false;
         GalleryViewerImage.Source = null;
         _viewerPath = "";
+        ResetViewerZoom();
     }
 
     private void GalleryViewerFullscreen_Click(object? sender, RoutedEventArgs e)
