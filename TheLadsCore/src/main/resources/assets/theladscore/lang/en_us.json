@@ -3,5 +3,7 @@
     "key.thelads.hud": "Edit HUD Layout",
     "key.thelads.auth": "Account Switcher",
     "key.thelads.zoom": "Zoom",
-    "key.thelads.nametags": "Toggle Nametags"
+    "key.thelads.nametags": "Toggle Nametags",
+    "key.thelads.togglesneak": "Toggle Sneak",
+    "key.thelads.togglesprint": "Toggle Sprint"
 }

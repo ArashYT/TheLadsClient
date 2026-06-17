@@ -34,6 +34,8 @@ public class TheLadsCoreClient implements ClientModInitializer {
     public static KeyMapping authKeyBind;
     public static KeyMapping zoomKeyBind;
     public static KeyMapping nametagsKeyBind;
+    public static KeyMapping toggleSneakKeyBind;
+    public static KeyMapping toggleSprintKeyBind;
     private static boolean earlyWindowChecked = false;
 
     @Override
@@ -168,6 +170,19 @@ public class TheLadsCoreClient implements ClientModInitializer {
             net.minecraft.client.KeyMapping.Category.MISC
         ));
 
+        // Unbound by default — bind in Options > Controls. These TOGGLE sneak/sprint;
+        // the vanilla Sneak/Sprint keys remain as hold-to-sneak/sprint.
+        toggleSneakKeyBind = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+            "key.thelads.togglesneak",
+            GLFW.GLFW_KEY_UNKNOWN,
+            net.minecraft.client.KeyMapping.Category.MISC
+        ));
+        toggleSprintKeyBind = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+            "key.thelads.togglesprint",
+            GLFW.GLFW_KEY_UNKNOWN,
+            net.minecraft.client.KeyMapping.Category.MISC
+        ));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             // Last-resort cleanup: if the preLaunch loading window still wasn't
             // adopted by the time the game ticks, don't let it linger.
@@ -201,6 +216,25 @@ public class TheLadsCoreClient implements ClientModInitializer {
                             net.minecraft.network.chat.Component.literal(
                                 nt.isEnabled() ? "Nametags hidden" : "Nametags shown"));
                     }
+                }
+            }
+
+            while (toggleSneakKeyBind.consumeClick()) {
+                Module m = ModuleManager.getInstance().getModule("ToggleSneak");
+                if (m instanceof ToggleSneakModule tsn2 && tsn2.isEnabled()) {
+                    tsn2.onToggleKey();
+                    if (client.player != null)
+                        client.player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
+                            tsn2.isToggled() ? "Sneak: ON" : "Sneak: OFF"));
+                }
+            }
+            while (toggleSprintKeyBind.consumeClick()) {
+                Module m = ModuleManager.getInstance().getModule("ToggleSprint");
+                if (m instanceof ToggleSprintModule tsp2 && tsp2.isEnabled()) {
+                    tsp2.onToggleKey();
+                    if (client.player != null)
+                        client.player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
+                            tsp2.isToggled() ? "Sprint: ON" : "Sprint: OFF"));
                 }
             }
 
