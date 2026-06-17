@@ -108,10 +108,12 @@ public class ModuleManager {
         register(fb);
 
         ToggleSprintModule ts = new ToggleSprintModule();
+        ts.addOption(new CycleOption("Mode", 0, "Toggle", "Always"));
         ts.addOption(new BoolOption("Disable on sneak", true));
         register(ts);
 
         ToggleSneakModule tsn = new ToggleSneakModule();
+        tsn.addOption(new CycleOption("Mode", 0, "Toggle", "Always"));
         tsn.addOption(new BoolOption("Disable on jump", false));
         register(tsn);
         ZoomModule zm = new ZoomModule();
