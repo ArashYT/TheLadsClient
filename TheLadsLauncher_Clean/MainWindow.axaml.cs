@@ -229,7 +229,11 @@ public partial class MainWindow : Window
                 string installedExe = Path.Combine(installedDir, "TheLadsLauncher.exe");
                 string currentExe = Process.GetCurrentProcess().MainModule?.FileName ?? "";
                 
-                bool isDebug = currentExe.Contains("\\bin\\Debug\\") || currentExe.Contains("\\bin\\Release\\") || System.Diagnostics.Debugger.IsAttached;
+                // \bin\NewBuild\ is the published build the user actually runs from (its own folder
+                // with the dll + runtime). Treat it like Debug/Release so it never shows the install
+                // prompt — installing it would copy only the apphost exe and leave a non-runnable copy.
+                bool isDebug = currentExe.Contains("\\bin\\Debug\\") || currentExe.Contains("\\bin\\Release\\")
+                    || currentExe.Contains("\\bin\\NewBuild\\") || System.Diagnostics.Debugger.IsAttached;
                 if (!string.IsNullOrEmpty(currentExe) && !string.Equals(currentExe, installedExe, StringComparison.OrdinalIgnoreCase) && !isDebug)
                 {
                     InstallationOverlay.IsVisible = true;
