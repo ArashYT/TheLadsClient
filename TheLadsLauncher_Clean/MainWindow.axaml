@@ -924,7 +924,9 @@
             </StackPanel>
         </Grid>
         <!-- Gallery Photo Viewer Overlay -->
-        <Grid x:Name="GalleryViewerOverlay" IsVisible="False" Background="#EE000000" ZIndex="95">
+        <Grid x:Name="GalleryViewerOverlay" IsVisible="False" Background="#EE000000" ZIndex="95"
+              PointerWheelChanged="GalleryViewer_Wheel"
+              ClipToBounds="True">
             <DockPanel LastChildFill="True" VerticalAlignment="Top" Height="48" Background="#18FFFFFF">
                 <Button DockPanel.Dock="Right" Content="✕" Width="48" Height="48" FontSize="18"
                         Click="GalleryViewerClose_Click" Background="Transparent" Foreground="#CCCCCC"/>
@@ -934,9 +936,15 @@
                 <TextBlock x:Name="GalleryViewerTitle" Foreground="White" FontSize="13" FontWeight="SemiBold"
                            VerticalAlignment="Center" Margin="16,0,0,0" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
-            <Image x:Name="GalleryViewerImage" Stretch="Uniform" Margin="0,48,0,36"/>
+            <Image x:Name="GalleryViewerImage" Stretch="Uniform" Margin="0,48,0,36"
+                   RenderTransformOrigin="0.5,0.5"
+                   PointerPressed="GalleryViewer_PointerPressed"
+                   PointerMoved="GalleryViewer_PointerMoved"
+                   PointerReleased="GalleryViewer_PointerReleased"/>
             <TextBlock x:Name="GalleryViewerMeta" Foreground="#666666" FontSize="11"
                        VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+            <TextBlock Text="Scroll to zoom · drag to pan" Foreground="#55FFFFFF" FontSize="10"
+                       VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,12,10"/>
         </Grid>
 
         <!-- Update Available Banner (Floating Toast top-right) -->
