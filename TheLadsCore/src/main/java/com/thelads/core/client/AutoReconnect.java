@@ -5,6 +5,8 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.network.chat.Component;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -25,6 +27,11 @@ public class AutoReconnect {
     private ServerData server;
     private long shownAt;
     private boolean cancelled;
+    private Button cancelButton; // the disconnect screen's Cancel button, for the live countdown
+
+    public void setCancelButton(Button b) {
+        this.cancelButton = b;
+    }
 
     public static AutoReconnect get() {
         return INSTANCE;
@@ -95,11 +102,18 @@ public class AutoReconnect {
     }
 
     public void tick(Minecraft mc) {
-        if (!isModuleEnabled() || cancelled || server == null) return;
         if (!(mc.screen instanceof DisconnectedScreen)) {
             attempts = 0;
+            cancelButton = null;
             return;
         }
+        // Live countdown on the Cancel button: "Cancel Auto-Reconnect (5s)".
+        if (cancelButton != null) {
+            cancelButton.setMessage(isModuleEnabled() && !cancelled
+                ? Component.literal("Cancel Auto-Reconnect (" + secondsLeft() + "s)")
+                : Component.literal("Cancel Auto-Reconnect"));
+        }
+        if (!isModuleEnabled() || cancelled || server == null) return;
         if (System.currentTimeMillis() - shownAt >= getDelayMs()) {
             if (attempts < getMaxAttempts()) {
                 attempts++;

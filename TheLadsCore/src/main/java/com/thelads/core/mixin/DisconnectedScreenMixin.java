@@ -27,14 +27,22 @@ public abstract class DisconnectedScreenMixin extends Screen {
         AutoReconnect.get().onScreenShown(this.parent, mc.getCurrentServer());
 
         int y = this.height - 30;
-        this.addRenderableWidget(Button.builder(Component.literal("Reconnect"),
-                b -> AutoReconnect.get().reconnect())
-            .bounds(this.width / 2 - 154, y, 150, 20).build());
-
         if (AutoReconnect.get().isModuleEnabled()) {
-            this.addRenderableWidget(Button.builder(Component.literal("Cancel Auto-Reconnect"),
+            // Reconnect + Cancel as a centered pair (span -154..+154 around the middle).
+            this.addRenderableWidget(Button.builder(Component.literal("Reconnect"),
+                    b -> AutoReconnect.get().reconnect())
+                .bounds(this.width / 2 - 154, y, 150, 20).build());
+            Button cancel = Button.builder(Component.literal("Cancel Auto-Reconnect"),
                     b -> AutoReconnect.get().cancel())
-                .bounds(this.width / 2 + 4, y, 150, 20).build());
+                .bounds(this.width / 2 + 4, y, 150, 20).build();
+            this.addRenderableWidget(cancel);
+            AutoReconnect.get().setCancelButton(cancel); // tick updates its label with the countdown
+        } else {
+            // Only the Reconnect button — center it instead of leaving it off to the left.
+            this.addRenderableWidget(Button.builder(Component.literal("Reconnect"),
+                    b -> AutoReconnect.get().reconnect())
+                .bounds(this.width / 2 - 75, y, 150, 20).build());
+            AutoReconnect.get().setCancelButton(null);
         }
     }
 }
