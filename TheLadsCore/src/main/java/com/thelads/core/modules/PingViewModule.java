@@ -27,8 +27,9 @@ public class PingViewModule extends Module {
         }
 
         tickCounter++;
-        // Send a ping packet every 20 ticks (1 second)
-        if (tickCounter >= 20) {
+        // Send a ping packet every 5 ticks (~4x/second) so the displayed number updates
+        // in near-realtime instead of refreshing only once per second.
+        if (tickCounter >= 5) {
             tickCounter = 0;
             long currentTime = System.currentTimeMillis();
             pingIdCounter++;

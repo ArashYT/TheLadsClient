@@ -75,7 +75,7 @@ public class LadsSettingsScreen extends Screen {
         for (String s : new String[]{"Coordinates","Biome","Direction","Speed","Day","Time","PingHUD","XaeroMinimap"}) CAT_MAP.put(s,"Info");
         for (String s : new String[]{"Health","Hunger","XP","ArmorHUD","Potions","KillBanner"}) CAT_MAP.put(s,"Combat");
         for (String s : new String[]{"Keystrokes","CPS"}) CAT_MAP.put(s,"Input");
-        for (String s : new String[]{"Fullbright","ToggleSprint","ToggleSneak","Zoom","AutoReconnect","ToggleNametags","VoiceChat"}) CAT_MAP.put(s,"Utility");
+        for (String s : new String[]{"Fullbright","ToggleSprint","ToggleSneak","Zoom","AutoReconnect","Nametags","VoiceChat"}) CAT_MAP.put(s,"Utility");
     }
     private static final Map<String, Integer> CAT_COLOR = new HashMap<>();
     static {
