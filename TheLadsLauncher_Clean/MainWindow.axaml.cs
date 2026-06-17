@@ -506,7 +506,14 @@ public partial class MainWindow : Window
     private void NavAccounts_Click(object? sender, RoutedEventArgs e) => NavigateTo("Accounts");
     private void ManageAccountsShortcutBtn_Click(object? sender, RoutedEventArgs e) => NavigateTo("Accounts");
     private void NavSettings_Click(object? sender, RoutedEventArgs e) => NavigateTo("Settings");
-    private void NavMods_Click(object? sender, RoutedEventArgs e) { LoadModsList(); NavigateTo("Mods"); }
+    private bool _modsListLoaded = false;
+    private void NavMods_Click(object? sender, RoutedEventArgs e)
+    {
+        // Only build the list the first time. Rebuilding on every visit reset the scroll
+        // position and replayed the row fade-in animation. Refresh/Add still rebuild explicitly.
+        if (!_modsListLoaded) { _modsListLoaded = true; LoadModsList(); }
+        NavigateTo("Mods");
+    }
     private void NavFiles_Click(object? sender, RoutedEventArgs e) { LoadFiles(settings.InstancePath); NavigateTo("Files"); }
     private void NavLogs_Click(object? sender, RoutedEventArgs e) => NavigateTo("Logs");
 
