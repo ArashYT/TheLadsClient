@@ -21,6 +21,10 @@ public class TexturePackHudElement extends HudElement {
     private static final int ICON_GAP   = 2;
     private static final int PADDING    = 4;
 
+    // Cache of pack-id -> registered icon texture (loaded once from each pack's pack.png).
+    private static final java.util.Map<String, Identifier> ICON_CACHE = new java.util.HashMap<>();
+    private static final java.util.Set<String> NO_ICON = new java.util.HashSet<>();
+
     public TexturePackHudElement() {
         this.x = 5;
         this.y = 285;
@@ -61,8 +65,8 @@ public class TexturePackHudElement extends HudElement {
         int rendered = 0;
         for (int i = packNames.size() - 1; i >= 0 && rendered < show; i--) {
             String packId = packNames.get(i);
-            Identifier iconId = Identifier.fromNamespaceAndPath("theladscore", "packicon/" + safeId(packId));
-            // Try to draw the pack icon; fall back to a colour square
+            // Load the pack's real pack.png (cached); null means none available -> placeholder
+            Identifier iconId = loadIcon(mc, packId);
             drawPackIcon(g, iconId, ix, iy, ICON_SIZE);
             // Pack name beside icon (truncated, no "file/" prefix or .zip extension)
             String label = truncate(displayName(packId), 14);
@@ -110,15 +114,56 @@ public class TexturePackHudElement extends HudElement {
     }
 
     private void drawPackIcon(GuiGraphicsExtractor g, Identifier icon, int x, int y, int size) {
-        // Attempt to draw the icon texture; if it's missing MC renders the missing-texture
+        if (icon == null) {
+            // No pack.png available — draw a clean placeholder square instead of the
+            // glitched missing-texture sprite.
+            g.fill(x, y, x + size, y + size, 0xFF2A2A3E);
+            g.fill(x + 1, y + 1, x + size - 1, y + size - 1, 0xFF6C63FF);
+            return;
+        }
         try {
             g.pose().pushMatrix();
             g.blit(RenderPipelines.GUI_TEXTURED, icon, x, y, 0f, 0f, size, size, size, size);
             g.pose().popMatrix();
         } catch (Exception ignored) {
-            // Draw a coloured placeholder square
             g.fill(x, y, x + size, y + size, 0xFF6C63FF);
             g.fill(x + 1, y + 1, x + size - 1, y + size - 1, 0xFF1A1A2E);
+        }
+    }
+
+    /**
+     * Loads a resource pack's own {@code pack.png} as a registered dynamic texture (once),
+     * returning the texture Identifier. Returns null when the pack has no icon — the old code
+     * always blitted an unregistered {@code theladscore:packicon/...} id, which is why every
+     * icon rendered as the purple/black missing-texture.
+     */
+    private static Identifier loadIcon(Minecraft mc, String packId) {
+        Identifier cached = ICON_CACHE.get(packId);
+        if (cached != null) return cached;
+        if (NO_ICON.contains(packId)) return null;
+        try {
+            PackRepository repo = mc.getResourcePackRepository();
+            Pack pack = null;
+            for (Pack p : repo.getSelectedPacks()) {
+                if (p.getId().equals(packId)) { pack = p; break; }
+            }
+            if (pack == null) { NO_ICON.add(packId); return null; }
+            try (net.minecraft.server.packs.PackResources res = pack.open()) {
+                net.minecraft.server.packs.resources.IoSupplier<java.io.InputStream> sup = res.getRootResource("pack.png");
+                if (sup == null) { NO_ICON.add(packId); return null; }
+                try (java.io.InputStream in = sup.get()) {
+                    com.mojang.blaze3d.platform.NativeImage img = com.mojang.blaze3d.platform.NativeImage.read(in);
+                    Identifier id = Identifier.fromNamespaceAndPath("theladscore", "packicon/" + safeId(packId));
+                    net.minecraft.client.renderer.texture.DynamicTexture tex =
+                        new net.minecraft.client.renderer.texture.DynamicTexture(() -> "lads_packicon_" + safeId(packId), img);
+                    mc.getTextureManager().register(id, tex);
+                    ICON_CACHE.put(packId, id);
+                    return id;
+                }
+            }
+        } catch (Exception e) {
+            NO_ICON.add(packId);
+            return null;
         }
     }
 

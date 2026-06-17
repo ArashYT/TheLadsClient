@@ -159,7 +159,9 @@ public class KillBannerRenderer {
             int x = centerX - destW / 2;
             int y = reaverBottomY - destH;
 
-            extractor.blit(RenderPipelines.GUI_TEXTURED, sheets[sheetIndex], x, y, u, v, destW, destH, 2048, 2048, 256, 176);
+            // (destW,destH) = on-screen size, (256,176) = sampled frame region, (2048,2048) = full sheet.
+            // These last four were swapped, which sampled a 2048² region from a 256×176 texture = glitched sprite.
+            extractor.blit(RenderPipelines.GUI_TEXTURED, sheets[sheetIndex], x, y, u, v, destW, destH, 256, 176, 2048, 2048);
         }
     }
 }

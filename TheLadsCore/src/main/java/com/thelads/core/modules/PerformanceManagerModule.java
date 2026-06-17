@@ -20,6 +20,16 @@ public class PerformanceManagerModule extends Module {
     public void tick(Minecraft mc) {
         if (!this.isEnabled() || mc.level == null) return;
 
+        // Don't adjust render distance while the window is unfocused. DynamicFPS caps the
+        // framerate when unfocused (e.g. 60 or lower), so the measured FPS is artificial —
+        // letting it shrink the render distance here would wrongly stick after refocusing.
+        if (!mc.isWindowActive()) {
+            fpsSum = 0;
+            fpsCount = 0;
+            lastCheckTime = System.currentTimeMillis();
+            return;
+        }
+
         long currentTime = System.currentTimeMillis();
         fpsSum += mc.getFps();
         fpsCount++;

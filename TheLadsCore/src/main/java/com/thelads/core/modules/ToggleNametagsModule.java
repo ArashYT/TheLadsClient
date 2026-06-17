@@ -11,12 +11,12 @@ import net.minecraft.world.entity.player.Player;
 public class ToggleNametagsModule extends Module {
 
     public ToggleNametagsModule() {
-        super("ToggleNametags", "Hide nametags above players and mobs (toggle with keybind).");
+        super("Nametags", "Customize nametags: hide them, remove the background, add a shadow, highlight your own.");
     }
 
     /** Queried by EntityRendererMixin for every nametag render check. */
     public static boolean shouldHide(Entity entity) {
-        Module m = ModuleManager.getInstance().getModule("ToggleNametags");
+        Module m = ModuleManager.getInstance().getModule("Nametags");
         if (!(m instanceof ToggleNametagsModule tn) || !tn.isEnabled()) return false;
 
         Option o = tn.getOption("Hide");

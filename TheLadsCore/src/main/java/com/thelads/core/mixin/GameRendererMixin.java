@@ -64,7 +64,13 @@ public class GameRendererMixin {
 
         VBLivingEntityExtension ext = (VBLivingEntityExtension) mc.player;
         float rot = Mth.lerp(lads_partialTick, ext.vB$getPrevRot(), ext.vB$getRot());
-        poseStack.mulPose(Axis.XP.rotationDegrees(rot));
+        // Apply the Intensity option (Low/Normal/High) — it was previously ignored, so the setting did nothing.
+        float intensity = 1.0f;
+        Option io = m.getOption("Intensity");
+        if (io instanceof CycleOption c) {
+            intensity = switch (c.getIndex()) { case 0 -> 0.5f; case 2 -> 1.5f; default -> 1.0f; };
+        }
+        poseStack.mulPose(Axis.XP.rotationDegrees(rot * intensity));
     }
 
     // Zoom: inject after extractCamera populates cameraRenderState.projectionMatrix.

@@ -192,7 +192,7 @@ public class TheLadsCoreClient implements ClientModInitializer {
                 }
             }
             while (nametagsKeyBind.consumeClick()) {
-                Module nt = ModuleManager.getInstance().getModule("ToggleNametags");
+                Module nt = ModuleManager.getInstance().getModule("Nametags");
                 if (nt != null) {
                     nt.toggle();
                     ConfigManager.save();
