@@ -710,10 +710,10 @@
                                     <TextBlock Grid.Column="1" Text="Installed Mods" Foreground="White" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" />
                                     <TextBlock x:Name="ModsPageCount" Grid.Column="2" Text="(0)" Foreground="#555555" FontSize="14" VerticalAlignment="Center" Margin="10,0,0,0" />
                                     <TextBox x:Name="ModNameSearchBox" Grid.Column="3" Height="36" FontSize="13" VerticalContentAlignment="Center"
-                                             Margin="16,0,8,0" PlaceholderText="Search installed mods…  (press Enter)"
-                                             KeyUp="ModNameSearch_KeyUp" />
+                                             Margin="16,0,8,0" PlaceholderText="Search installed mods…"
+                                             TextChanged="ModNameSearch_TextChanged" />
                                     <TextBlock Grid.Column="4" Text="Filter:" Foreground="#888888" FontSize="13" VerticalAlignment="Center" Margin="8,0,8,0" />
-                                    <TextBox x:Name="ModVersionFilterBox" Grid.Column="5" Width="100" Height="36" FontSize="13" VerticalContentAlignment="Center" Margin="0,0,8,0" KeyUp="ModNameSearch_KeyUp" />
+                                    <TextBox x:Name="ModVersionFilterBox" Grid.Column="5" Width="100" Height="36" FontSize="13" VerticalContentAlignment="Center" Margin="0,0,8,0" TextChanged="ModVersionFilter_TextChanged" />
                                     <Button Grid.Column="6" x:Name="AddModBtn" Classes="action" Content="➕ Add ▾" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" Margin="0,0,8,0" ToolTip.Tip="Add a mod from a .jar file or a folder of jars">
                                         <Button.Flyout>
                                             <MenuFlyout>
@@ -746,14 +746,13 @@
                         <!-- Tab 2: Browse Mods -->
                         <TabItem Header="Browse Mods">
                             <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
-                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,16">
-                                    <TextBox x:Name="ModSearchBox" PlaceholderText="Search mods (e.g. Sodium, Iris)..." Height="36" FontSize="13" Margin="0,0,8,0" />
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,16">
+                                    <TextBox x:Name="ModSearchBox" PlaceholderText="🔍 Search mods (e.g. Sodium, Iris) — searches as you type" Height="36" FontSize="13" Margin="0,0,8,0" TextChanged="ModSearchBox_TextChanged" />
                                     <ComboBox x:Name="ModSearchProvider" Grid.Column="1" Width="130" Height="36" SelectedIndex="0" Margin="0,0,8,0">
                                         <ComboBoxItem Content="Modrinth" />
                                         <ComboBoxItem Content="CurseForge" />
                                     </ComboBox>
                                     <ComboBox x:Name="SearchModMcVersionDropdown" Grid.Column="2" Width="130" Height="36" Margin="0,0,8,0" />
-                                    <Button x:Name="ModSearchBtn" Grid.Column="3" Classes="launch" Content="🔍 Search" Height="36" FontSize="13" Padding="16,0" Foreground="White" FontWeight="Bold" Click="SearchMods_Click" />
                                 </Grid>
                                 <ScrollViewer Grid.Row="1">
                                     <StackPanel x:Name="BrowseModsList" Spacing="6" />
@@ -764,14 +763,13 @@
                         <!-- Tab 3: Browse Resourcepacks -->
                         <TabItem Header="Browse Resourcepacks">
                             <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
-                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,16">
-                                    <TextBox x:Name="RpSearchBox" PlaceholderText="Search resource packs..." Height="36" FontSize="13" Margin="0,0,8,0" />
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,16">
+                                    <TextBox x:Name="RpSearchBox" PlaceholderText="🔍 Search resource packs — searches as you type" Height="36" FontSize="13" Margin="0,0,8,0" TextChanged="RpSearchBox_TextChanged" />
                                     <ComboBox x:Name="RpSearchProvider" Grid.Column="1" Width="130" Height="36" SelectedIndex="0" Margin="0,0,8,0">
                                         <ComboBoxItem Content="Modrinth" />
                                         <ComboBoxItem Content="CurseForge" />
                                     </ComboBox>
                                     <ComboBox x:Name="SearchRpMcVersionDropdown" Grid.Column="2" Width="130" Height="36" Margin="0,0,8,0" />
-                                    <Button x:Name="RpSearchBtn" Grid.Column="3" Classes="launch" Content="🔍 Search" Height="36" FontSize="13" Padding="16,0" Foreground="White" FontWeight="Bold" Click="SearchRp_Click" />
                                 </Grid>
                                 <ScrollViewer Grid.Row="1">
                                     <StackPanel x:Name="BrowseRpList" Spacing="6" />

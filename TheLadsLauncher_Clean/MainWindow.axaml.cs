@@ -2774,7 +2774,7 @@ public partial class MainWindow : Window
         string rpPath = Path.Combine(settings.InstancePath, "resourcepacks");
 
         string filterText = ModVersionFilterBox.Text?.Trim() ?? "";
-        string nameQuery = ModNameSearchBox?.Text?.Trim() ?? "";
+        string nameQuery = ""; // name search is applied live via row visibility, not a re-scan
         string fabricVersion = settings.FabricVersion;
         string instancePath = settings.InstancePath;
 
@@ -3099,6 +3099,8 @@ public partial class MainWindow : Window
             };
 
             var wrapper = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(0, 0, 0, 8) };
+            // Searchable text for live (visibility) filtering by the name search box.
+            wrapper.Tag = (mod.DisplayName + " " + mod.ModId + " " + System.IO.Path.GetFileName(mod.FilePath)).ToLowerInvariant();
             Grid.SetColumn(cb, 0);
             Grid.SetColumn(row, 1);
             wrapper.Children.Add(cb);
@@ -3106,6 +3108,7 @@ public partial class MainWindow : Window
             ModsList.Children.Add(wrapper);
         }
         ModsPageCount.Text = $"({totalEnabledCount})";
+        ApplyInstalledNameFilter(); // re-apply any active name search to the freshly built rows
     }
 
 
@@ -3150,11 +3153,20 @@ public partial class MainWindow : Window
 
     // ─── Add / search / drag-drop for installed mods ───────────────
 
-    private void ModNameSearch_KeyUp(object? sender, KeyEventArgs e)
+    // Live name search: just toggle row visibility (no jar re-scan), so it updates as you type.
+    private void ApplyInstalledNameFilter()
     {
-        // Re-scan on Enter (cheap key-by-key re-scan is avoided because it re-reads jar metadata).
-        if (e.Key == Key.Enter) LoadModsList();
+        if (ModsList == null) return;
+        string q = ModNameSearchBox?.Text?.Trim().ToLowerInvariant() ?? "";
+        foreach (var child in ModsList.Children)
+            if (child is Control c)
+                c.IsVisible = q.Length == 0 || ((c.Tag as string) ?? "").Contains(q);
     }
+
+    private void ModNameSearch_TextChanged(object? sender, TextChangedEventArgs e) => ApplyInstalledNameFilter();
+
+    // The version "Filter" box does change which mods are scanned, so it rebuilds the list.
+    private void ModVersionFilter_TextChanged(object? sender, TextChangedEventArgs e) => LoadModsList();
 
     private async void AddModFromFile_Click(object? sender, RoutedEventArgs e)
     {
@@ -4799,10 +4811,6 @@ public partial class MainWindow : Window
     {
         try
         {
-            ModSearchBtn.IsEnabled = false;
-            ModSearchBtn.Content = "🔍 Searching...";
-            BrowseModsList.Children.Clear();
-
             string query = ModSearchBox.Text ?? "";
             string provider = (ModSearchProvider.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
             string mcVersion = SearchModMcVersionDropdown.SelectedItem as string ?? ResolveMinecraftVersion();
@@ -4823,21 +4831,12 @@ public partial class MainWindow : Window
         {
             Log($"[Search Error] {ex.Message}");
         }
-        finally
-        {
-            ModSearchBtn.IsEnabled = true;
-            ModSearchBtn.Content = "🔍 Search";
-        }
     }
 
     private async void SearchRp_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
-            RpSearchBtn.IsEnabled = false;
-            RpSearchBtn.Content = "🔍 Searching...";
-            BrowseRpList.Children.Clear();
-
             string query = RpSearchBox.Text ?? "";
             string provider = (RpSearchProvider.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
             string mcVersion = SearchRpMcVersionDropdown.SelectedItem as string ?? ResolveMinecraftVersion();
@@ -4858,11 +4857,33 @@ public partial class MainWindow : Window
         {
             Log($"[Search Error] {ex.Message}");
         }
-        finally
+    }
+
+    // Debounced live search for the Browse tabs: query ~450ms after the user stops typing,
+    // so it updates automatically without an explicit Search button or hammering the API.
+    private DispatcherTimer? _modSearchTimer;
+    private DispatcherTimer? _rpSearchTimer;
+
+    private void ModSearchBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_modSearchTimer == null)
         {
-            RpSearchBtn.IsEnabled = true;
-            RpSearchBtn.Content = "🔍 Search";
+            _modSearchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+            _modSearchTimer.Tick += (s, _) => { _modSearchTimer!.Stop(); SearchMods_Click(null, new RoutedEventArgs()); };
         }
+        _modSearchTimer.Stop();
+        _modSearchTimer.Start();
+    }
+
+    private void RpSearchBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_rpSearchTimer == null)
+        {
+            _rpSearchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+            _rpSearchTimer.Tick += (s, _) => { _rpSearchTimer!.Stop(); SearchRp_Click(null, new RoutedEventArgs()); };
+        }
+        _rpSearchTimer.Stop();
+        _rpSearchTimer.Start();
     }
 
     private static string FormatDownloadCount(long count)
