@@ -8,6 +8,9 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -28,6 +31,12 @@ public class CosmeticsBackend {
     private static final java.util.Map<Identifier, Integer> refCounts = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.Map<Identifier, Long> unassigned = new java.util.concurrent.ConcurrentHashMap<>();
 
+    // Raw PNG bytes for each registered texture, so equipped cosmetics can be
+    // re-created (persisted to disk + restored on the next launch). Cleaned in
+    // lockstep with refCounts whenever a texture is fully released.
+    private static final java.util.Map<Identifier, byte[]> textureData = new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile boolean loaded = false;
+
     private static TextureRegistrar registrar = CosmeticsBackend::defaultRegisterTexture;
 
     public static void setRegistrar(TextureRegistrar newRegistrar) {
@@ -42,6 +51,7 @@ public class CosmeticsBackend {
                 unassigned.remove(id);
                 if (refCounts.getOrDefault(id, 0) <= 0) {
                     refCounts.remove(id);
+                    textureData.remove(id);
                     Minecraft.getInstance().execute(() -> {
                         net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(id);
                         if (tex != null) {
@@ -74,6 +84,7 @@ public class CosmeticsBackend {
             int newCount = refCounts.merge(oldIdentifier, -1, Integer::sum);
             if (newCount <= 0) {
                 refCounts.remove(oldIdentifier);
+                textureData.remove(oldIdentifier);
                 Minecraft.getInstance().execute(() -> {
                     net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(oldIdentifier);
                     if (tex != null) {
@@ -93,6 +104,7 @@ public class CosmeticsBackend {
             int newCount = refCounts.merge(oldIdentifier, -1, Integer::sum);
             if (newCount <= 0) {
                 refCounts.remove(oldIdentifier);
+                textureData.remove(oldIdentifier);
                 Minecraft.getInstance().execute(() -> {
                     net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(oldIdentifier);
                     if (tex != null) {
@@ -124,6 +136,7 @@ public class CosmeticsBackend {
             int newCount = refCounts.merge(oldIdentifier, -1, Integer::sum);
             if (newCount <= 0) {
                 refCounts.remove(oldIdentifier);
+                textureData.remove(oldIdentifier);
                 Minecraft.getInstance().execute(() -> {
                     net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(oldIdentifier);
                     if (tex != null) {
@@ -143,6 +156,7 @@ public class CosmeticsBackend {
             int newCount = refCounts.merge(oldIdentifier, -1, Integer::sum);
             if (newCount <= 0) {
                 refCounts.remove(oldIdentifier);
+                textureData.remove(oldIdentifier);
                 Minecraft.getInstance().execute(() -> {
                     net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(oldIdentifier);
                     if (tex != null) {
@@ -272,6 +286,7 @@ public class CosmeticsBackend {
     private static CompletableFuture<Identifier> registerTexture(byte[] data) {
         return registrar.register(data).thenApply(id -> {
             unassigned.put(id, System.currentTimeMillis());
+            textureData.put(id, data);
             return id;
         });
     }
@@ -298,5 +313,70 @@ public class CosmeticsBackend {
             }
         });
         return future;
+    }
+
+    private static File persistFile() {
+        return new File(Minecraft.getInstance().gameDirectory, "thelads_cosmetics.json");
+    }
+
+    private static void writeSection(JsonObject section, java.util.Map<UUID, Identifier> active) {
+        for (java.util.Map.Entry<UUID, Identifier> entry : active.entrySet()) {
+            byte[] data = textureData.get(entry.getValue());
+            if (data != null) {
+                section.addProperty(entry.getKey().toString(), Base64.getEncoder().encodeToString(data));
+            }
+        }
+    }
+
+    /** Persist the currently active skins/capes (as base64 PNG data) so they survive a restart. */
+    public static void persist() {
+        JsonObject root = new JsonObject();
+        JsonObject skins = new JsonObject();
+        JsonObject capes = new JsonObject();
+        writeSection(skins, activeSkins);
+        writeSection(capes, activeCapes);
+        root.add("skins", skins);
+        root.add("capes", capes);
+
+        try (FileWriter writer = new FileWriter(persistFile())) {
+            GSON.toJson(root, writer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void loadSection(JsonObject section, boolean isCape) {
+        if (section == null) return;
+        for (java.util.Map.Entry<String, com.google.gson.JsonElement> entry : section.entrySet()) {
+            try {
+                UUID uuid = UUID.fromString(entry.getKey());
+                byte[] data = Base64.getDecoder().decode(entry.getValue().getAsString());
+                registerTexture(data).thenAccept(id -> {
+                    if (isCape) {
+                        setActiveCape(uuid, id);
+                    } else {
+                        setActiveSkin(uuid, id);
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /** Restore persisted skins/capes from disk. Safe to call once at client startup. */
+    public static void load() {
+        if (loaded) return;
+        loaded = true;
+        File file = persistFile();
+        if (!file.exists()) return;
+        try (FileReader reader = new FileReader(file)) {
+            JsonObject root = GSON.fromJson(reader, JsonObject.class);
+            if (root == null) return;
+            loadSection(root.getAsJsonObject("skins"), false);
+            loadSection(root.getAsJsonObject("capes"), true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
