@@ -72,6 +72,7 @@ public class BetterF3Module extends Module {
 
     public boolean isTextShadow()       { return textShadow.get(); }
     public int     getBackgroundColor() { return background.getColor(); }
+    public boolean isPositionBottom()   { return position.getIndex() == 1; }
 
     public List<String> filterLeftText(List<String> list) {
         if (list == null) return new ArrayList<>();

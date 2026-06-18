@@ -1,6 +1,5 @@
 @echo off
-REM Build check used by the AI's --auto-test loop. Single clean command (no shell
-REM operators) so Aider can call it reliably. Fails if the mod OR its test sources
-REM don't compile -> the AI keeps fixing until this returns success.
+REM Build check run by RunAITask.bat AFTER the AI finishes editing.
+REM Lives at the repo root; gradlew is inside TheLadsCore.
 cd /d "%~dp0TheLadsCore"
 call gradlew.bat compileJava compileTestJava --console=plain
