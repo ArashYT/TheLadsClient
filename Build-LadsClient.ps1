@@ -59,6 +59,25 @@ function Invoke-Build {
     if (-not $jar) { throw "No output jar found in build\libs" }
     Info "Built jar: $($jar.Name)"
 
+    # --- 2b) Patch the access widener into the jar ---
+    # Fabric Loom caches the embedded access widener and does NOT re-embed edits to
+    # scalablelux.accesswidener (even after `clean`), so the built jar ships a stale
+    # copy missing the entries merged from shaded mods (cursors_extended CursorType,
+    # JEI, raised, respackopts, etc.). That causes IllegalAccessError crashes at
+    # runtime. Re-embed the current source AW directly so the jar is always correct.
+    $awSrc = Join-Path $Core 'scalablelux.accesswidener'
+    if (Test-Path $awSrc) {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $awText = [System.IO.File]::ReadAllText($awSrc)
+        $zip = [System.IO.Compression.ZipFile]::Open($jar.FullName, [System.IO.Compression.ZipArchiveMode]::Update)
+        $entry = $zip.GetEntry('scalablelux.accesswidener')
+        if ($entry) { $entry.Delete() }
+        $ne = $zip.CreateEntry('scalablelux.accesswidener')
+        $sw = New-Object System.IO.StreamWriter($ne.Open()); $sw.Write($awText); $sw.Dispose()
+        $zip.Dispose()
+        Ok "Access widener re-embedded into jar ($((($awText -split "`n" | Where-Object { $_ -match '^(accessible|extendable|mutable)\s' }).Count)) entries)."
+    }
+
     if ($NoDeploy) { Ok "Build complete (deploy skipped)."; return }
 
     # --- 3) deploy ---
@@ -72,6 +91,19 @@ function Invoke-Build {
     $shadedModPatterns = @(
         "capes-*.jar",
         "render scale *.jar",
+        # Mods source-ported into TheLadsCore (alwayson.*) — standalone copies
+        # double-apply the same mixins and crash (e.g. ImmediatelyFast GlCommandEncoder,
+        # rsls SoundSystem, HyperLaunch/ViaFabricPlus executor cast).
+        "ImmediatelyFast-*.jar",
+        "entityculling-*.jar",
+        "skinlayers3d-*.jar",
+        "SmoothScrollingRefurbished*.jar",
+        "BetterRenderDistance-*.jar",
+        "betterstats-*.jar",
+        "advancements_reloaded-*.jar",
+        "vmp-fabric-*.jar",
+        "hyperlaunch-*.jar",
+        "rsls-*.jar",
         "xaerominimap-*.jar",
         "xaeroworldmap-*.jar",
         "ScalableLux-*.jar",
@@ -111,6 +143,16 @@ function Invoke-Build {
         $newParts += $parts[0] # The header
 
         $excludePatterns = @(
+            'file = "mods/ImmediatelyFast-.*"',
+            'file = "mods/entityculling-.*"',
+            'file = "mods/skinlayers3d-.*"',
+            'file = "mods/SmoothScrollingRefurbished.*"',
+            'file = "mods/BetterRenderDistance-.*"',
+            'file = "mods/betterstats-.*"',
+            'file = "mods/advancements_reloaded-.*"',
+            'file = "mods/vmp-fabric-.*"',
+            'file = "mods/hyperlaunch-.*"',
+            'file = "mods/rsls-.*"',
             'file = "mods/xaerominimap-.*"',
             'file = "mods/xaeroworldmap-.*"',
             'file = "mods/ScalableLux-.*"',
