@@ -9,6 +9,9 @@ import net.minecraft.client.gui.components.debug.DebugScreenEntries;
 import net.minecraft.client.gui.components.debug.DebugScreenEntryStatus;
 import net.minecraft.resources.Identifier;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Customizes the F3 debug screen. 26.1.2 rebuilt the debug overlay around a
  * {@link DebugScreenEntries} registry (each line is a {@link Identifier} with a
@@ -69,4 +72,20 @@ public class BetterF3Module extends Module {
 
     public boolean isTextShadow()       { return textShadow.get(); }
     public int     getBackgroundColor() { return background.getColor(); }
+
+    public List<String> filterLeftText(List<String> list) {
+        if (list == null) return new ArrayList<>();
+        ArrayList<String> out = new ArrayList<>(list);
+        if (!isEnabled()) return out;
+        out.removeIf(line -> line != null && line.startsWith("XYZ:"));
+        return out;
+    }
+
+    public List<String> filterRightText(List<String> list) {
+        if (list == null) return new ArrayList<>();
+        ArrayList<String> out = new ArrayList<>(list);
+        if (!isEnabled()) return out;
+        out.removeIf(line -> line != null && line.startsWith("Java:"));
+        return out;
+    }
 }
