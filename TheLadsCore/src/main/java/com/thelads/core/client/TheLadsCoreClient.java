@@ -189,6 +189,8 @@ public class TheLadsCoreClient implements ClientModInitializer {
             if (!earlyWindowChecked) {
                 earlyWindowChecked = true;
                 LadsEarlyWindow.abandonIfUnused();
+                // Restore equipped cosmetics persisted from a previous session
+                com.thelads.core.client.cosmetics.backend.CosmeticsBackend.load();
             }
 
             while (settingsKeyBind.consumeClick()) {

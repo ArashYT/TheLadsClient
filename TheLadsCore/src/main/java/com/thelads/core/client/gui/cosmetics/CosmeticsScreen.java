@@ -186,7 +186,18 @@ public class CosmeticsScreen extends Screen {
         }).bounds(previewX + 5, previewBtnY, 48, 20).build());
 
         this.addRenderableWidget(Button.builder(Component.literal("Equip"), (btn) -> {
-            // Placeholder: Send equip packet to server
+            if (this.previewTexture != null && this.minecraft != null && this.minecraft.player != null) {
+                java.util.UUID uuid = this.minecraft.player.getUUID();
+                if (this.isCapeTarget) {
+                    CosmeticsBackend.setActiveCape(uuid, this.previewTexture);
+                } else {
+                    CosmeticsBackend.setActiveSkin(uuid, this.previewTexture);
+                }
+                CosmeticsBackend.persist();
+                this.statusMessage = "Equipped!";
+            } else {
+                this.statusMessage = "Equip failed.";
+            }
         }).bounds(previewX + 56, previewBtnY, 48, 20).build());
 
         this.addRenderableWidget(Button.builder(Component.literal("Reset"), (btn) -> {
