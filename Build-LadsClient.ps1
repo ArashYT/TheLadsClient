@@ -67,6 +67,7 @@ function Invoke-Build {
     # runtime. Re-embed the current source AW directly so the jar is always correct.
     $awSrc = Join-Path $Core 'scalablelux.accesswidener'
     if (Test-Path $awSrc) {
+        Add-Type -AssemblyName System.IO.Compression
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         $awText = [System.IO.File]::ReadAllText($awSrc)
         $zip = [System.IO.Compression.ZipFile]::Open($jar.FullName, [System.IO.Compression.ZipArchiveMode]::Update)
@@ -220,24 +221,43 @@ function Invoke-Build {
         }
     }
 
+    # Copy to The Lads Client instance if it exists
+    $ladsClientPath = "C:\The Lads Client\mods"
+    if (Test-Path $ladsClientPath) {
+        # Clean up old versions of TheLadsCore from this instance mods folder first
+        Get-ChildItem -Path $ladsClientPath -Filter "TheLadsCore-*.jar" -ErrorAction SilentlyContinue | Remove-Item -Force
+        # Clean up standalone jars for mods shaded into TheLadsCore (prevents duplicate mod ID conflicts)
+        foreach ($pattern in $shadedModPatterns) {
+            Get-ChildItem -Path $ladsClientPath -Filter $pattern -ErrorAction SilentlyContinue | Remove-Item -Force
+        }
+        
+        $ladsTarget = Join-Path $ladsClientPath "TheLadsCore-$ver.jar"
+        Copy-Item $jar.FullName $ladsTarget -Force
+        Ok "Copied to Lads Client instance -> $ladsTarget"
+    }
+
     # --- 4) refresh Packwiz hashes ---
-    $rel     = "mods/TheLadsCore-$ver.jar"
-    $newHash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLower()
+    if (Test-Path $IndexToml) {
+        $rel     = "mods/TheLadsCore-$ver.jar"
+        $newHash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLower()
 
-    $idx = [System.IO.File]::ReadAllText($IndexToml)
-    $jarPattern = 'file = "mods/TheLadsCore-[^`"]+"\r?\nhash = "[0-9a-fA-F]{64}"'
-    if (-not ($idx -match $jarPattern)) { throw "Entry for mods/TheLadsCore-*.jar not found in index.toml" }
-    
-    # Standardize newlines to handle replacement cleanly
-    $replacement = "file = `"$rel`"`r`nhash = `"$newHash`""
-    $idx = [regex]::Replace($idx, 'file = "mods/TheLadsCore-[^`"]+"\r?\nhash = "[0-9a-fA-F]{64}"', $replacement)
-    [System.IO.File]::WriteAllText($IndexToml, $idx)
+        $idx = [System.IO.File]::ReadAllText($IndexToml)
+        $jarPattern = 'file = "mods/TheLadsCore-[^`"]+"\r?\nhash = "[0-9a-fA-F]{64}"'
+        if (-not ($idx -match $jarPattern)) { throw "Entry for mods/TheLadsCore-*.jar not found in index.toml" }
+        
+        # Standardize newlines to handle replacement cleanly
+        $replacement = "file = `"$rel`"`r`nhash = `"$newHash`""
+        $idx = [regex]::Replace($idx, 'file = "mods/TheLadsCore-[^`"]+"\r?\nhash = "[0-9a-fA-F]{64}"', $replacement)
+        [System.IO.File]::WriteAllText($IndexToml, $idx)
 
-    $idxHash = (Get-FileHash $IndexToml -Algorithm SHA256).Hash.ToLower()
-    $pack = [System.IO.File]::ReadAllText($PackToml)
-    $pack = [regex]::Replace($pack, '(\[index\][\s\S]*?hash = ")[0-9a-fA-F]{64}(")', ('${1}' + $idxHash + '${2}'))
-    [System.IO.File]::WriteAllText($PackToml, $pack)
-    Ok "Packwiz hashes refreshed (jar + index)."
+        $idxHash = (Get-FileHash $IndexToml -Algorithm SHA256).Hash.ToLower()
+        $pack = [System.IO.File]::ReadAllText($PackToml)
+        $pack = [regex]::Replace($pack, '(\[index\][\s\S]*?hash = ")[0-9a-fA-F]{64}(")', ('${1}' + $idxHash + '${2}'))
+        [System.IO.File]::WriteAllText($PackToml, $pack)
+        Ok "Packwiz hashes refreshed (jar + index)."
+    } else {
+        Info "index.toml not found; skipped Packwiz hash refresh."
+    }
 
     # --- 5) optional launcher ---
     if ($Launcher) {

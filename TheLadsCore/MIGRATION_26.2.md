@@ -3,6 +3,12 @@
 **Status: BLOCKED ON UPSTREAM — cannot complete now (26.2 is brand new; ~1/3 of the mod
 stack has no 26.2 build yet).** Assessment done 2026-06-17.
 
+### Re-check log
+- **2026-06-18:** Re-ran the readiness check (live, Modrinth). Still blocked — only `sodium`
+  has a 26.2 Fabric build. All source-ported blockers (immediatelyfast, 3dskinlayers, jei,
+  betterstats, advancements-reloaded, appleskin, not-enough-animations, xaeros-world-map,
+  raised, enhanced-tooltips) still return **no 26.2 version**. No migration attempted.
+
 ## What's ready
 - **Fabric is buildable on 26.2:** `fabric-api 0.152.1+26.2` exists. Loom will fetch 26.2
   mappings. Pin changes (in `gradle.properties`) when proceeding:

@@ -19,12 +19,10 @@
 			"com.thelads.core.client.LadsEarlyWindow"
 		],
 		"main": [
-			"com.thelads.core.TheLadsCore",
-			"com.thelads.core.features.alwayson.clientsort.ClientSortFabric"
+			"com.thelads.core.TheLadsCore"
 		],
 		"client": [
 			"com.thelads.core.client.TheLadsCoreClient",
-			"com.thelads.core.features.alwayson.clientsort.ClientSortClientFabric",
 			"xaero.lib.XaeroLibFabric",
 			"xaero.minimap.XaeroMinimapFabric",
 			"xaero.map.WorldMapFabric"
@@ -39,6 +37,13 @@
 		],
 		"sodium:config_api_user": [
 			"com.thelads.core.client.renderscale.RenderScaleConfigEntryPoint"
+		],
+		"jei_mod_plugin": [
+			"mezz.jei.library.plugins.vanilla.VanillaPlugin",
+			"mezz.jei.library.plugins.jei.JeiInternalPlugin",
+			"mezz.jei.library.plugins.debug.JeiDebugPlugin",
+			"mezz.jei.fabric.plugins.fabric.FabricGuiPlugin",
+			"mezz.jei.gui.plugins.JeiGuiPlugin"
 		]
 	},
 	"mixins": [
