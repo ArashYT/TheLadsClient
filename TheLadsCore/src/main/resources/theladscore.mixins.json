@@ -168,6 +168,7 @@
 		"auto.obe2621010.BlockEntityMixin",
 		"auto.obe2621010.ChestBlockEntityMixin",
 		"auto.obe2621010.ShulkerBoxBlockEntityMixin",
+		"auto.farblockentityrendering21.BlockEntityRendererMixin",
 		"VerticalBobbingPlayerMixin"
 	],
 	"injectors": {
