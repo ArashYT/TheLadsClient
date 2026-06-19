@@ -28,8 +28,8 @@ import net.minecraft.world.level.saveddata.maps.MapId;
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast;
 import com.thelads.core.features.alwayson.immediatelyfast.feature.map_atlas_generation.MapAtlasTexture;
-import com.thelads.core.mixin.alwayson.immediatelyfast.interfaces.IMapRenderState;
-import com.thelads.core.mixin.alwayson.immediatelyfast.interfaces.IMapTextureManager;
+import com.thelads.core.features.alwayson.immediatelyfast.injection.interfaces.IMapRenderState;
+import com.thelads.core.features.alwayson.immediatelyfast.injection.interfaces.IMapTextureManager;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -78,4 +78,3 @@ public abstract class MixinMapRenderer {
         }
     }
 }
-

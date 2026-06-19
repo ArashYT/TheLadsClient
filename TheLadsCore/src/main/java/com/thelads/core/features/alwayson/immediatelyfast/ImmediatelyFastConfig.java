@@ -1,14 +1,14 @@
 package com.thelads.core.features.alwayson.immediatelyfast;
 
 public class ImmediatelyFastConfig {
-    public boolean enhanced_batching = true;
-    public boolean font_atlas_resizing = true;
+    public boolean enhanced_batching = false;
+    public boolean font_atlas_resizing = false;
     public int font_atlas_size = 1024;
-    public boolean map_atlas_generation = true;
+    public boolean map_atlas_generation = false;
     public int map_atlas_size = 2048;
-    public boolean skip_text_translucency_sorting = true;
+    public boolean skip_text_translucency_sorting = false;
     public boolean fast_text_lookup = true;
-    public boolean avoid_redundant_framebuffer_switching = true;
+    public boolean avoid_redundant_framebuffer_switching = false;
     public boolean fix_slow_buffer_upload_on_apple_gpu = true;
     public boolean experimental_disable_resource_pack_conflict_handling = false;
     public boolean experimental_sign_text_buffering = false;
