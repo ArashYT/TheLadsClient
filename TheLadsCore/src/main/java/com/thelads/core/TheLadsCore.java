@@ -60,6 +60,9 @@ public class TheLadsCore implements ModInitializer {
 
 		// Just Enough Items — registers JEI plugin system
 		new mezz.jei.fabric.JustEnoughItems().onInitialize();
+
+		// Modern Advancements — server-side networking, advancement tracking, optional HTTP API
+		new com.thelads.core.features.auto.modernadvancements.ModernAdvancements().onInitialize();
 	}
 }
 

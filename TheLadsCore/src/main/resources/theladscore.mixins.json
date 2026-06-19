@@ -53,7 +53,9 @@
 		"alwayson.vmp.playerwatching.optimize_nearby_player_lookups.MixinServerWorld",
 		"alwayson.vmp.playerwatching.optimize_nearby_player_lookups.MixinSpawnDensityCapper",
 		"alwayson.vmp.playerwatching.optimize_nearby_player_lookups.MixinThreadedAnvilChunkStorage",
-		"alwayson.vmp.ticketsystem.ticketpropagator.MixinChunkLevelManager"
+		"alwayson.vmp.ticketsystem.ticketpropagator.MixinChunkLevelManager",
+		"auto.modernadvancementsscreen1901262.AdvancementTypeMixin",
+		"auto.modernadvancementsscreen1901262.PlayerAdvancementsMixin"
 	],
 	"client": [
 		"GameMenuMixin",
@@ -169,6 +171,11 @@
 		"auto.obe2621010.ChestBlockEntityMixin",
 		"auto.obe2621010.ShulkerBoxBlockEntityMixin",
 		"auto.farblockentityrendering21.BlockEntityRendererMixin",
+		"auto.modernadvancementsscreen1901262.AdvancementToastAccessor",
+		"auto.modernadvancementsscreen1901262.ChatListenerMixin",
+		"auto.modernadvancementsscreen1901262.GuiMixin",
+		"auto.modernadvancementsscreen1901262.ScreenClickMixin",
+		"auto.modernadvancementsscreen1901262.ToastManagerMixin",
 		"VerticalBobbingPlayerMixin"
 	],
 	"injectors": {
