@@ -18,7 +18,7 @@ dependencies {
     implementation "club.minnced:java-discord-rpc:2.0.1"
     include "club.minnced:java-discord-rpc:2.0.1"
     compileOnly fileTree(dir: rootProject.file("../The Lads Client Packwiz/mods"), include: "*.jar")
-    compileOnly fileTree(dir: file("shading_libs"), include: "*.jar")
+    compileOnly fileTree(dir: file("shading_libs"), include: "**/*.jar")
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.0"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.10.0"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
@@ -241,6 +241,35 @@ jar {
     }
     // Shade Just Enough Items (JEI)
     from(zipTree(file("shading_libs/jei-26.1.2-fabric-29.6.2.31.jar"))) {
+        exclude "META-INF/MANIFEST.MF"
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+        exclude "fabric.mod.json"
+    }
+    // Shade JIJ dependencies (respackopts dependencies)
+    from(zipTree(file("shading_libs/jij/muscript-all-2.0.0.jar"))) {
+        exclude "META-INF/MANIFEST.MF"
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+        exclude "fabric.mod.json"
+    }
+    from(zipTree(file("shading_libs/jij/muscript-json-2.0.0.jar"))) {
+        exclude "META-INF/MANIFEST.MF"
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+        exclude "fabric.mod.json"
+    }
+    from(zipTree(file("shading_libs/jij/fiber-0.23.0-2.jar"))) {
+        exclude "META-INF/MANIFEST.MF"
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+        exclude "fabric.mod.json"
+    }
+    from(zipTree(file("shading_libs/jij/shogi-api-26.1.2.2-SNAPSHOT.jar"))) {
         exclude "META-INF/MANIFEST.MF"
         exclude "META-INF/*.SF"
         exclude "META-INF/*.DSA"

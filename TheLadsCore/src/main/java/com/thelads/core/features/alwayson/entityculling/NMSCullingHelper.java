@@ -12,7 +12,7 @@
  */
 package com.thelads.core.features.alwayson.entityculling;
 
-import com.thelads.core.mixin.alwayson.entityculling.access.EntityRendererInter;
+import com.thelads.core.features.alwayson.entityculling.access.EntityRendererInter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.world.entity.Entity;
