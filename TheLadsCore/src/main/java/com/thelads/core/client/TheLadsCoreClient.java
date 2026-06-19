@@ -116,6 +116,9 @@ public class TheLadsCoreClient implements ClientModInitializer {
         // Just Enough Items — client-side recipe browser
         new mezz.jei.fabric.JustEnoughItemsClient().onInitializeClient();
 
+        // Modern Advancements — custom advancement screen, HUD tracker, keybinds, client networking
+        new com.thelads.core.features.auto.modernadvancements.ModernAdvancementsClient().onInitializeClient();
+
         ConfigManager.load();
         ProfileManager.get().load();
 
