@@ -28,7 +28,7 @@ import net.minecraft.client.resources.MapTextureManager;
 import net.minecraft.world.level.saveddata.maps.MapId;
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import com.thelads.core.features.alwayson.immediatelyfast.feature.map_atlas_generation.MapAtlasTexture;
-import com.thelads.core.mixin.alwayson.immediatelyfast.interfaces.IMapTextureManager;
+import com.thelads.core.features.alwayson.immediatelyfast.injection.interfaces.IMapTextureManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;

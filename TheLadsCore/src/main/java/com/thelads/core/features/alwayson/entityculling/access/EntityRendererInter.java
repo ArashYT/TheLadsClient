@@ -8,7 +8,7 @@
  *  net.minecraft.world.entity.Entity
  *  net.minecraft.world.phys.AABB
  */
-package com.thelads.core.mixin.alwayson.entityculling.access;
+package com.thelads.core.features.alwayson.entityculling.access;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.MultiBufferSource;

@@ -14,7 +14,7 @@
 package com.thelads.core.mixin.alwayson.entityculling;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.thelads.core.mixin.alwayson.entityculling.access.EntityRendererInter;
+import com.thelads.core.features.alwayson.entityculling.access.EntityRendererInter;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.network.chat.Component;

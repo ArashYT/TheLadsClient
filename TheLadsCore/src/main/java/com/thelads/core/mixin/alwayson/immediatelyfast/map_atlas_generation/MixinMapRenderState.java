@@ -10,7 +10,7 @@ package com.thelads.core.mixin.alwayson.immediatelyfast.map_atlas_generation;
 
 import net.minecraft.client.renderer.state.MapRenderState;
 import com.thelads.core.features.alwayson.immediatelyfast.feature.map_atlas_generation.MapAtlasTexture;
-import com.thelads.core.mixin.alwayson.immediatelyfast.interfaces.IMapRenderState;
+import com.thelads.core.features.alwayson.immediatelyfast.injection.interfaces.IMapRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -54,4 +54,3 @@ implements IMapRenderState {
         this.immediatelyFast$atlasTexture = atlasTexture;
     }
 }
-
