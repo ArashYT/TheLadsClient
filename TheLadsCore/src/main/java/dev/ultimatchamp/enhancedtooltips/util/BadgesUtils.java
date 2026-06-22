@@ -44,7 +44,7 @@ public class BadgesUtils {
         }
         String namespace = BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace();
         Component finalText = text;
-        if (text.toFlatList().isEmpty() || !namespace.equals("minecraft") && ItemGroupsUtils.ITEM_GROUP_KEYS.stream().map(key -> Component.translatable((String)key).getString()).anyMatch(arg_0 -> BadgesUtils.lambda$getBadgeText$1(finalText, arg_0))) {
+        if (text.toFlatList().isEmpty() || !namespace.equals("minecraft") && ItemGroupsUtils.ITEM_GROUP_KEYS.stream().map(key -> Component.translatable((String)key).getString()).anyMatch(arg_0 -> arg_0.contains(finalText.getString()))) {
             text = Component.literal((String)BadgesUtils.getMods().getOrDefault(namespace, ""));
             fillColor = BadgesUtils.getColorFromModName(namespace);
         }
@@ -97,8 +97,6 @@ public class BadgesUtils {
         context.fill(x, y, x + width, y + 1, color);
     }
 
-    private static /* synthetic */ boolean lambda$getBadgeText$1(Component finalText, String s) {
-        return s.contains(finalText.getString());
-    }
+
 }
 
