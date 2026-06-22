@@ -15,4 +15,11 @@ public class MultiPlayerGameModeMixin {
     private void onAttack(Player player, Entity target, CallbackInfo ci) {
         KillTracker.setLastAttackedEntity(target);
     }
+
+    @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
+    private void ladsSafeTick(CallbackInfo ci) {
+        if (net.minecraft.client.Minecraft.getInstance().player == null) {
+            ci.cancel();
+        }
+    }
 }
