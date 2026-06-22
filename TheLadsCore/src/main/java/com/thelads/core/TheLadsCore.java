@@ -37,6 +37,12 @@ public class TheLadsCore implements ModInitializer {
 		// VMP (Very Many Players) — server-side chunk/entity-tracking optimizations
 		new com.thelads.core.features.alwayson.vmp.VMPMod().onInitialize();
 
+		// AppleSkin — registers networking payload types on the common side
+		new squeek.appleskin.AppleSkinCommon().onInitialize();
+
+		// Just Enough Items — registers JEI plugin system on the common side
+		new mezz.jei.fabric.JustEnoughItems().onInitialize();
+
 
 		// Quick Pack — server-side item packing logic
 		new me.drex.quickpack.fabric.QuickPackFabric().onInitialize();
