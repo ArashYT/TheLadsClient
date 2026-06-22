@@ -72,8 +72,6 @@
 		{"config": "cursors_extended.fabric.mixins.json", "environment": "client"},
 		"respackopts.mixins.json",
 		{"config": "respackopts.client.mixins.json", "environment": "client"},
-		{"config": "ixeris.mixins.json", "environment": "client"},
-		{"config": "ixeris.core.mixins.json", "environment": "client"},
 		"enhancedtooltips.mixins.json",
 		"extremesoundmuffler.mixins.json",
 		"lambdynlights.mixins.json",

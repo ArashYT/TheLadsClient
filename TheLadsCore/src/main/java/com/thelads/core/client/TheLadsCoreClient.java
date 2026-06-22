@@ -102,8 +102,8 @@ public class TheLadsCoreClient implements ClientModInitializer {
         // Cursors Extended — custom cursor support
         new io.github.fishstiz.cursors_extended.CursorsExtendedFabric().onInitializeClient();
 
-        // Ixeris — UI improvements
-        new me.decce.ixeris.fabric.IxerisModFabric().onInitializeClient();
+        // Ixeris — UI improvements (DISABLED: Causes native JVM OpenGL crash on 26.2)
+        // new me.decce.ixeris.fabric.IxerisModFabric().onInitializeClient();
 
         // Resource Pack Options — client-side pack config
         new dev.jfronny.respackopts.platform.fabric.RespackoptsClientFabric().onInitializeClient();
