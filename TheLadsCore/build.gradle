@@ -8,6 +8,29 @@ repositories {
     mavenCentral()
     maven { url 'https://jitpack.io' }
 }
+// Merged dev-only JAR: shading libs without fabric.mod.json so Fabric Loader
+// doesn't double-register their entrypoints during runClient.
+configurations {
+    shadedRuntimeLibs
+}
+
+def devShadedJar = layout.buildDirectory.file("dev-shaded-all.jar")
+
+tasks.register('createDevShadedJar', Jar) {
+    archiveFileName = "dev-shaded-all.jar"
+    destinationDirectory = layout.buildDirectory.dir(".")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    configurations.shadedRuntimeLibs.each { f ->
+        from(zipTree(f)) {
+            exclude "fabric.mod.json"
+            exclude "META-INF/MANIFEST.MF"
+            exclude "META-INF/*.SF"
+            exclude "META-INF/*.DSA"
+            exclude "META-INF/*.RSA"
+        }
+    }
+}
+
 loom {
     accessWidenerPath = file("src/main/resources/scalablelux.accesswidener")
 }
@@ -24,6 +47,9 @@ dependencies {
     compileOnly fileTree(dir: rootProject.file("../The Lads Client Packwiz/mods"), include: "*.jar")
     compileOnly fileTree(dir: file("shading_libs"), include: "**/*.jar")
     compileOnly fileTree(dir: file("temp_unzip"), include: "**/*.jar")
+    shadedRuntimeLibs fileTree(dir: file("shading_libs"), include: "**/*.jar")
+    shadedRuntimeLibs fileTree(dir: file("temp_unzip"), include: "**/*.jar")
+    localRuntime files(devShadedJar) { builtBy 'createDevShadedJar' }
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.0"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.10.0"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
@@ -40,6 +66,8 @@ processResources {
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 25
 }
+// Ensure the merged dev JAR exists before running the client
+tasks.named('runClient') { dependsOn 'createDevShadedJar' }
 java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.toVersion(25)
