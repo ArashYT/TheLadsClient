@@ -60,7 +60,6 @@
 		{"config": "screenfx.mixins.json", "environment": "client"},
 		"fwa.mixins.json",
 		{"config": "fwa.client.mixins.json", "environment": "client"},
-		{"config": "fancy-door-anim.client.mixins.json", "environment": "client"},
 		"waveycapes.mixins.json",
 		"appleskin.mixins.json",
 		{"config": "appleskin.jei.mixins.json", "environment": "client"},
