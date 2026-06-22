@@ -29,7 +29,7 @@ public final class ClientHooks {
         mc.execute(() -> {
             try {
                 if (mc.levelRenderer != null) {
-                    mc.levelRenderer.allChanged();
+                    mc.levelRenderer.resetLevelRenderData();
                 }
             }
             finally {

@@ -49,7 +49,7 @@ public class IrisCompat {
         }
         catch (Throwable t) {
             ImmediatelyFast.LOGGER.error("Failed to initialize Iris compatibility.", t);
-            System.exit(-1);
+            IRIS_LOADED = false;
         }
     }
 }

@@ -2,7 +2,6 @@
 	"required": true,
 	"package": "com.thelads.core.mixin.alwayson.clientsort",
 	"compatibilityLevel": "JAVA_25",
-	"refmap": "theladscore.refmap.json",
 	"plugin": "com.thelads.core.features.alwayson.clientsort.util.MixinConfigPlugin",
 	"mixins": [
 		"accessor.ContainerAccessor",

@@ -136,7 +136,7 @@ public class TriggerButtonManager {
         boolean enabled = Config.options().showButtons;
         boolean isEditorC = false;
         boolean isEditorP = false;
-        Screen currentScreen = Minecraft.getInstance().screen;
+        Screen currentScreen = Minecraft.getInstance().gui.screen();
         if (currentScreen instanceof SelectorScreen) {
             isEditorC = true;
             isEditorP = true;
@@ -217,7 +217,7 @@ public class TriggerButtonManager {
         }
         if (autoPress) {
             ClientSortClient.taskManager.schedule(isPlayerInv ? Config.options().autoOpDelayPlayer : Config.options().autoOpDelayContainer, () -> {
-                if (Minecraft.getInstance().screen == screen && !KeybindManager.isDown(KeybindManager.CANCEL_AUTO_KEY) && (isPlayerInv ? playerButtons : containerButtons).contains((Object)button)) {
+                if (Minecraft.getInstance().gui.screen() == screen && !KeybindManager.isDown(KeybindManager.CANCEL_AUTO_KEY) && (isPlayerInv ? playerButtons : containerButtons).contains((Object)button)) {
                     button.onPress((InputWithModifiers)new MouseButtonEvent((double)button.getX(), (double)button.getY(), new MouseButtonInfo(0, 0)));
                 }
             });
@@ -278,7 +278,7 @@ public class TriggerButtonManager {
         }
         if (autoPress) {
             ClientSortClient.taskManager.schedule(isPlayerInv ? Config.options().autoOpDelayPlayer : Config.options().autoOpDelayContainer, () -> {
-                if (Minecraft.getInstance().screen == screen && !KeybindManager.isDown(KeybindManager.CANCEL_AUTO_KEY) && (isPlayerInv ? playerButtons : containerButtons).contains((Object)button)) {
+                if (Minecraft.getInstance().gui.screen() == screen && !KeybindManager.isDown(KeybindManager.CANCEL_AUTO_KEY) && (isPlayerInv ? playerButtons : containerButtons).contains((Object)button)) {
                     button.onPress((InputWithModifiers)new MouseButtonEvent((double)button.getX(), (double)button.getY(), new MouseButtonInfo(0, 0)));
                 }
             });

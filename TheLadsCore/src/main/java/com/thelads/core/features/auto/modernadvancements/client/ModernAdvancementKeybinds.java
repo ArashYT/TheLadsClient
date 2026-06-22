@@ -43,13 +43,13 @@ public class ModernAdvancementKeybinds {
 
    public static void create() {
       ClientTickEvents.END_CLIENT_TICK.register((EndTick)client -> {
-         if (client.screen == null) {
+         if (client.gui.screen() == null) {
             while (TRACKING_HUD_SETTINGS.consumeClick()) {
-               client.setScreenAndShow(new HudEditScreen(client.screen));
+               client.setScreenAndShow(new HudEditScreen(client.gui.screen()));
             }
 
             while (TOAST_HUD_SETTINGS.consumeClick()) {
-               client.setScreenAndShow(new ToastEditScreen(client.screen));
+               client.setScreenAndShow(new ToastEditScreen(client.gui.screen()));
             }
 
             while (TOGGLE_HUD.consumeClick()) {

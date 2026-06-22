@@ -26,7 +26,7 @@ public abstract class ScreenBackgroundMixin {
         if (!((Object) this instanceof JoinMultiplayerScreen)) return;
         if (this.minecraft == null || this.minecraft.level != null) return;
         this.extractPanorama(g, partialTick);
-        this.minecraft.gui.extractDeferredSubtitles();
+        this.minecraft.gui.hud.extractDeferredSubtitles();
         ci.cancel();
     }
 }

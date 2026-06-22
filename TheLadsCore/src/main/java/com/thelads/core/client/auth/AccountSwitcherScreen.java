@@ -22,6 +22,8 @@ public class AccountSwitcherScreen extends Screen {
     private String statusMessage = "Select an option below";
     private final MicrosoftAuthenticator auth = new MicrosoftAuthenticator();
     private final List<LadsAccount> accounts = new ArrayList<>();
+    private net.minecraft.world.entity.player.PlayerSkin activeSkin;
+    private UUID activeProfileId;
 
     public static class LadsAccount {
         public final String username;
@@ -198,7 +200,7 @@ public class AccountSwitcherScreen extends Screen {
         
         // Back
         if (mx >= cx - 100 && mx < cx + 100 && my >= buttonY + 8 && my < buttonY + 28) {
-            Minecraft.getInstance().setScreen(parent);
+            Minecraft.getInstance().setScreenAndShow(parent);
             return true;
         }
         
@@ -232,8 +234,25 @@ public class AccountSwitcherScreen extends Screen {
 
         // Draw Player Head
         try {
-            net.minecraft.world.entity.player.PlayerSkin skin = Minecraft.getInstance().getSkinManager().createLookup(new com.mojang.authlib.GameProfile(u.getProfileId(), u.getName()), false).get();
-            net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(g, skin, cardX + 6, cardY + 4, 16);
+            if (activeSkin == null || !activeProfileId.equals(u.getProfileId())) {
+                activeProfileId = u.getProfileId();
+                com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(u.getProfileId(), u.getName());
+                activeSkin = net.minecraft.client.resources.DefaultPlayerSkin.get(u.getProfileId());
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
+                        com.mojang.authlib.yggdrasil.ProfileResult result = Minecraft.getInstance().services().sessionService().fetchProfile(u.getProfileId(), true);
+                        com.mojang.authlib.GameProfile filledProfile = result != null ? result.profile() : profile;
+                        Minecraft.getInstance().execute(() -> {
+                            try {
+                                if (activeProfileId.equals(u.getProfileId())) {
+                                    activeSkin = Minecraft.getInstance().getSkinManager().createLookup(filledProfile, true).get();
+                                }
+                            } catch (Exception ignored) {}
+                        });
+                    } catch (Exception ignored) {}
+                });
+            }
+            net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(g, activeSkin, cardX + 6, cardY + 4, 16);
         } catch (Exception ex) {
             // Ignore
         }

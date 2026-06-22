@@ -58,7 +58,7 @@ public final class ToggleMenu extends MainMenu {
 
         this.addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> {
             if (this.minecraft != null) {
-                this.minecraft.setScreen(this.lastScreen);
+                this.minecraft.setScreenAndShow(this.lastScreen);
             }
         }).pos(this.width / 2 - 100, this.height / 7 + 120).size(200, 20).build());
     }

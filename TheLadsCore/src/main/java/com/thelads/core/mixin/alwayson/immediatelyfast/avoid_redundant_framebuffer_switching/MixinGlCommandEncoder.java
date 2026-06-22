@@ -24,11 +24,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MixinGlCommandEncoder {
     @WrapWithCondition(method={"finishRenderPass"}, at={@At(value="INVOKE", target="Lcom/mojang/blaze3d/opengl/GlStateManager;_glBindFramebuffer(II)V")})
     private boolean dontUnbindFramebuffer(int target, int framebuffer) {
-        return false;
+        return !com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast.isEnabled();
     }
 
     @Inject(method={"presentTexture"}, at={@At(value="HEAD")})
     private void unbindFramebufferBeforePresenting(CallbackInfo ci) {
+        if (!com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast.isEnabled()) {
+            return;
+        }
         GlStateManager._glBindFramebuffer((int)36160, (int)0);
     }
 }

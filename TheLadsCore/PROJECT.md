@@ -19,9 +19,9 @@ To replace 33 external mod JARs, their features are ported directly into `TheLad
 | **M1** | Exploration, Decompilation & Reference Prep | Decompile 33 target mods to `temp_decompiled_mods/`, setup PROJECT.md, run test compile. | **DONE** |
 | **M2** | Port Always-On Performance & Utility Mods | Port: ImmediatelyFast, Entity Culling, Very Many Players (VMP), Better Render Distance, Let Me Respawn, Hyper Launch, Smooth Scrolling, Raise Sound Limit. | **DONE** |
 | **M3** | Port Always-On UI & Client Mods | Port: 3D Skin Layers, Advancements Reloaded, Better Statistic Screen, Client Sort, Quick Pack, Resource Pack Options, Raised, Ixeris. | **IN_PROGRESS** |
-| **M4** | Port Configurable UI & HUD Modules | Port: immersive hotbar, screenFX, Apple Skin, Better f1, Client Tweaks, Cursors extended, enhanced toolbars, Fancy Door Animations, NotEnoughAnimations, Wavey Capes. | PLANNED |
-| **M5** | Port Configurable System & Utility Modules | Port: Extreme Sound Muffler, Entity View Distance, Just Enough Items (JEI), Lamb Dynamic Lights, Passive Shield, Server Pinger Fixer, Threads. | PLANNED |
-| **M6** | Registry Integration & Mod Cleanup | Register configurable modules in GUI, delete original JAR files from Packwiz/mods, final E2E test. | PLANNED |
+| **M4** | Port Configurable UI & HUD Modules | Port: immersive hotbar, screenFX, Apple Skin, Better f1, Client Tweaks, Cursors extended, enhanced toolbars, Fancy Door Animations, NotEnoughAnimations, Wavey Capes. | **PLANNED** |
+| **M5** | Port Configurable System & Utility Modules | Port: Extreme Sound Muffler, Entity View Distance, Just Enough Items (JEI), Lamb Dynamic Lights, Passive Shield, Server Pinger Fixer, Threads. | **PLANNED** |
+| **M6** | Registry Integration & Mod Cleanup | Register configurable modules in GUI, delete original JAR files from Packwiz/mods, final E2E test. | **PLANNED** |
 
 ## Interface Contracts
 ### Config ↔ GUI

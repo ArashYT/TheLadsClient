@@ -1,6 +1,7 @@
 package com.thelads.core.modules;
 
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import net.minecraft.client.Minecraft;
 
@@ -11,9 +12,14 @@ public class PerformanceManagerModule extends Module {
 
     public PerformanceManagerModule() {
         super("PerformanceManager", "Dynamically adjusts render distance based on FPS to improve performance.");
-        this.addOption(new CycleOption("Target FPS", 1, "30", "60", "120", "144", "240"));
-        this.addOption(new CycleOption("Min Distance", 0, "2", "4", "6", "8"));
-        this.addOption(new CycleOption("Max Distance", 3, "8", "12", "16", "24", "32"));
+        int refreshRate = 60;
+        try {
+            refreshRate = Minecraft.getInstance().getWindow().getRefreshRate();
+            if (refreshRate <= 0) refreshRate = 60;
+        } catch (Exception e) {}
+        this.addOption(new SliderOption("Target FPS", refreshRate, 30, 360, 1));
+        this.addOption(new SliderOption("Min Distance", 2, 2, 8, 2));
+        this.addOption(new SliderOption("Max Distance", 32, 8, 32, 4));
         this.lastCheckTime = System.currentTimeMillis();
     }
 
@@ -37,9 +43,9 @@ public class PerformanceManagerModule extends Module {
         if (currentTime - lastCheckTime > 5000) { // evaluate every 5 seconds
             if (fpsCount > 0) {
                 int avgFps = fpsSum / fpsCount;
-                int targetFps = Integer.parseInt(((CycleOption) getOption("Target FPS")).getValue());
-                int minDistance = Integer.parseInt(((CycleOption) getOption("Min Distance")).getValue());
-                int maxDistance = Integer.parseInt(((CycleOption) getOption("Max Distance")).getValue());
+                int targetFps = ((SliderOption) getOption("Target FPS")).getIntValue();
+                int minDistance = ((SliderOption) getOption("Min Distance")).getIntValue();
+                int maxDistance = ((SliderOption) getOption("Max Distance")).getIntValue();
 
                 int currentDist = mc.options.renderDistance().get();
 

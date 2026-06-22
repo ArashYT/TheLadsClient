@@ -1,11 +1,11 @@
 package com.thelads.core.mixin;
 
 import com.thelads.core.config.BoolOption;
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import com.thelads.core.modules.PingViewModule;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
@@ -57,16 +57,19 @@ public class PlayerTabOverlayMixin {
     @Unique
     private float ladsScale(Module m) {
         Option o = m.getOption("Size");
-        int idx = (o instanceof CycleOption) ? ((CycleOption) o).getIndex() : 2;
-        float[] scales = { 0.5f, 0.75f, 1.0f, 1.25f, 1.5f };
-        return scales[Math.max(0, Math.min(scales.length - 1, idx))];
+        if (o instanceof SliderOption) {
+            return (float) ((SliderOption) o).getValue() / 100f;
+        }
+        return 1.0f;
     }
 
     @Unique
     private int ladsOffset(Module m, String name) {
         Option o = m.getOption(name);
-        int idx = (o instanceof CycleOption) ? ((CycleOption) o).getIndex() : 2;
-        return (idx - 2) * 20;
+        if (o instanceof SliderOption) {
+            return ((SliderOption) o).getIntValue();
+        }
+        return 0;
     }
 
 
@@ -101,8 +104,8 @@ public class PlayerTabOverlayMixin {
         Module m = ModuleManager.getInstance().getModule("TabList");
         if (m != null && m.isEnabled()) {
             Option bgOpt = m.getOption("Background");
-            if (bgOpt instanceof CycleOption) {
-                int idx = ((CycleOption) bgOpt).getIndex();
+            if (bgOpt instanceof DropdownOption) {
+                int idx = ((DropdownOption) bgOpt).getIndex();
                 if (idx == 3) return;                         // Off
                 if (idx == 1) color = (0xCC000000) | (color & 0x00FFFFFF); // Dark
                 if (idx == 2) color = (0x33FFFFFF) | (color & 0x00FFFFFF); // Light

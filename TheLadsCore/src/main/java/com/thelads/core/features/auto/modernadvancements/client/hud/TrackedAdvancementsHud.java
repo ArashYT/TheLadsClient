@@ -42,7 +42,7 @@ public class TrackedAdvancementsHud implements HudElement {
    public void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
       if (!ModernAdvancementsClient.CONFIG.hideTracker()) {
          Minecraft mc = Minecraft.getInstance();
-         if (mc.screen == null && mc.getConnection() != null) {
+         if (mc.gui.screen() == null && mc.getConnection() != null) {
             ClientAdvancements handler = mc.getConnection().getAdvancements();
             Font font = mc.font;
             List<Identifier> tracked = TrackingManager.getInstance().getTracked();

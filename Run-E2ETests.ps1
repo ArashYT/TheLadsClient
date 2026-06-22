@@ -27,6 +27,8 @@ if (-not (Test-Path $mixinsPath)) {
 $mixinsContent = Get-Content $mixinsPath -Raw
 $hasCapesMixins = $mixinsContent -match "capes\."
 $hasRenderScaleMixins = $mixinsContent -match "renderscale\."
+$hasImmediatelyFastMixins = $mixinsContent -match "immediatelyfast\."
+$hasSkinLayersMixins = $mixinsContent -match "skinlayers\."
 
 Write-Output "[Validation] Checking theladscore.mixins.json:"
 if ($hasCapesMixins) {
@@ -41,7 +43,84 @@ if ($hasRenderScaleMixins) {
     Write-Output "  - Render Scale Mixins: NOT FOUND (not yet ported/integrated)"
 }
 
-# 2. Standalone jar files cleanup checks
+if ($hasImmediatelyFastMixins) {
+    Write-Output "  - ImmediatelyFast Mixins: FOUND"
+} else {
+    Write-Output "  - ImmediatelyFast Mixins: NOT FOUND (not yet ported/integrated)"
+}
+
+if ($hasSkinLayersMixins) {
+    Write-Output "  - SkinLayers Mixins: FOUND"
+} else {
+    Write-Output "  - SkinLayers Mixins: NOT FOUND (not yet ported/integrated)"
+}
+
+# 2. gradle.properties version checks
+$propertiesPath = "TheLadsCore/gradle.properties"
+Write-Output "[Validation] Checking gradle.properties for Minecraft 26.2 target:"
+if (Test-Path $propertiesPath) {
+    $propertiesContent = Get-Content $propertiesPath -Raw
+    if ($propertiesContent -match "minecraft_version\s*=\s*(?<version>\S+)") {
+        $mcVersion = $Matches['version']
+        if ($mcVersion -eq "26.2") {
+            Write-Output "  - Minecraft Version: Target 26.2 (PASS)"
+        } else {
+            Write-Warning "  - Minecraft Version: target is not 26.2 (currently: $mcVersion)"
+        }
+    } else {
+        Write-Warning "  - Minecraft Version: minecraft_version not found in gradle.properties"
+    }
+} else {
+    Write-Warning "  - gradle.properties not found at $propertiesPath"
+}
+
+# 3. Shaded jar verification checks
+Write-Output "[Validation] Checking shaded jar statuses in build output:"
+$buildLibsDir = "TheLadsCore/build/libs"
+$foundJar = $false
+if (Test-Path $buildLibsDir) {
+    $jars = Get-ChildItem -Path $buildLibsDir -Filter "*.jar" -ErrorAction SilentlyContinue | Where-Object { $_.Name -notlike "*-sources.jar" -and $_.Name -notlike "*-dev.jar" }
+    if ($jars) {
+        $jarPath = $jars[0].FullName
+        $foundJar = $true
+        Write-Output "  - Found build output jar: $($jars[0].Name)"
+        
+        try {
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($jarPath)
+            
+            $jeiPresent = $null -ne ($zip.Entries | Where-Object { $_.FullName -eq "mezz/jei/api/IModPlugin.class" })
+            $xaeroPresent = $null -ne ($zip.Entries | Where-Object { $_.FullName -eq "xaero/map/WorldMapFabric.class" })
+            $starlightPresent = $null -ne ($zip.Entries | Where-Object { $_.FullName -eq "ca/spottedleaf/starlight/common/light/StarLightEngine.class" })
+            
+            if ($jeiPresent) {
+                Write-Output "    - JEI Shaded Class (IModPlugin): FOUND"
+            } else {
+                Write-Warning "    - JEI Shaded Class (IModPlugin): NOT FOUND in build jar"
+            }
+            if ($xaeroPresent) {
+                Write-Output "    - Xaero World Map Shaded Class: FOUND"
+            } else {
+                Write-Warning "    - Xaero World Map Shaded Class: NOT FOUND in build jar"
+            }
+            if ($starlightPresent) {
+                Write-Output "    - StarLight Lighting Engine Shaded Class: FOUND"
+            } else {
+                Write-Warning "    - StarLight Lighting Engine Shaded Class: NOT FOUND in build jar"
+            }
+            
+            $zip.Dispose()
+        } catch {
+            Write-Warning "    - Failed to inspect built jar entries: $_"
+        }
+    }
+}
+
+if (-not $foundJar) {
+    Write-Warning "  - No built output jar found in $buildLibsDir. Run '.\gradlew.bat build' in TheLadsCore to generate it."
+}
+
+# 4. Standalone jar files cleanup checks
 $oldCapesPattern = "capes-*.jar"
 $oldRenderScalePattern = "render scale *.jar"
 $packwizModsPath = "The Lads Client Packwiz/mods"

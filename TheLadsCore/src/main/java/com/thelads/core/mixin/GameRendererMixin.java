@@ -1,6 +1,7 @@
 package com.thelads.core.mixin;
 
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
@@ -44,8 +45,8 @@ public class GameRendererMixin {
 
         float maxTilt = 5.0F;
         Option io = m.getOption("Intensity");
-        if (io instanceof CycleOption) {
-            maxTilt = new float[]{ 3.0F, 5.0F, 9.0F }[((CycleOption) io).getIndex()];
+        if (io instanceof DropdownOption) {
+            maxTilt = new float[]{ 3.0F, 5.0F, 9.0F }[((DropdownOption) io).getIndex()];
         }
 
         poseStack.mulPose(Axis.YP.rotationDegrees(-rr));
@@ -67,7 +68,7 @@ public class GameRendererMixin {
         // Apply the Intensity option (Low/Normal/High) — it was previously ignored, so the setting did nothing.
         float intensity = 1.0f;
         Option io = m.getOption("Intensity");
-        if (io instanceof CycleOption c) {
+        if (io instanceof DropdownOption c) {
             intensity = switch (c.getIndex()) { case 0 -> 0.5f; case 2 -> 1.5f; default -> 1.0f; };
         }
         poseStack.mulPose(Axis.XP.rotationDegrees(rot * intensity));

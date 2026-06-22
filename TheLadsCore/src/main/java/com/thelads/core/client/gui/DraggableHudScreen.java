@@ -97,7 +97,7 @@ public class DraggableHudScreen extends Screen {
                 el.render(g);
             }
 
-            int w = el.getRenderWidth(), h = el.getRenderHeight();
+            int w = (int)(el.getRenderWidth() * s), h = (int)(el.getRenderHeight() * s);
             String name = el.getModuleName();
 
             // Determine border colour: dragging > selected > grouped > normal
@@ -321,9 +321,10 @@ public class DraggableHudScreen extends Screen {
         List<HudElement> els = HudManager.getInstance().getElements();
         for (int i = els.size() - 1; i >= 0; i--) {
             HudElement el = els.get(i);
+            float s = el.getScale();
             if (el.isEnabled()
-                && mx >= el.getX() && mx <= el.getX() + el.getRenderWidth()
-                && my >= el.getY() && my <= el.getY() + el.getRenderHeight()) {
+                && mx >= el.getX() && mx <= el.getX() + el.getRenderWidth() * s
+                && my >= el.getY() && my <= el.getY() + el.getRenderHeight() * s) {
                 return el;
             }
         }

@@ -1,0 +1,991 @@
+Starting a Gradle Daemon, 1 incompatible and 148 stopped Daemons could not be reused, use --status for details
+
+> Configure project :
+Fabric Loom: 1.16.3
+
+> Task :compileJava
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\entityculling\access\EntityRendererInter.java:14: error: cannot find symbol
+import net.minecraft.client.renderer.MultiBufferSource;
+                                    ^
+  symbol:   class MultiBufferSource
+  location: package net.minecraft.client.renderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\entityculling\access\EntityRendererInter.java:22: error: cannot find symbol
+    public void shadowRenderNameTag(T var1, Component var2, PoseStack var3, MultiBufferSource var4, int var5, float var6);
+                                                                            ^
+  symbol:   class MultiBufferSource
+  location: interface EntityRendererInter<T>
+  where T is a type-variable:
+    T extends Entity declared in interface EntityRendererInter
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:33: error: cannot find symbol
+import net.minecraft.client.renderer.MultiBufferSource;
+                                    ^
+  symbol:   class MultiBufferSource
+  location: package net.minecraft.client.renderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:42: error: package MultiBufferSource does not exist
+extends MultiBufferSource.BufferSource
+                         ^
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\entityculling\EntityRendererMixin.java:18: error: cannot find symbol
+import net.minecraft.client.renderer.MultiBufferSource;
+                                    ^
+  symbol:   class MultiBufferSource
+  location: package net.minecraft.client.renderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\entityculling\EntityRendererMixin.java:35: error: cannot find symbol
+    public void shadowRenderNameTag(T entity, Component component, PoseStack poseStack, MultiBufferSource multiBufferSource, int light, float delta) {
+                                                                                        ^
+  symbol:   class MultiBufferSource
+  location: class EntityRendererMixin<T>
+  where T is a type-variable:
+    T extends Entity declared in class EntityRendererMixin
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\enhanced_batching\MixinFeatureRenderDispatcher.java:16: error: cannot find symbol
+import net.minecraft.client.renderer.MultiBufferSource;
+                                    ^
+  symbol:   class MultiBufferSource
+  location: package net.minecraft.client.renderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\enhanced_batching\MixinFeatureRenderDispatcher.java:29: error: package MultiBufferSource does not exist
+    private MultiBufferSource.BufferSource bufferSource;
+                             ^
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\enhanced_batching\MixinRenderBuffers.java:17: error: cannot find symbol
+import net.minecraft.client.renderer.MultiBufferSource;
+                                    ^
+  symbol:   class MultiBufferSource
+  location: package net.minecraft.client.renderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\enhanced_batching\MixinRenderBuffers.java:28: error: package MultiBufferSource does not exist
+    private MultiBufferSource.BufferSource replaceEntityBufferSource(SequencedMap<RenderType, ByteBufferBuilder> fixedBuffers, ByteBufferBuilder sharedBuffer) {
+                             ^
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\fast_text_lookup\MixinFont_GlyphVisitor.java:16: error: cannot find symbol
+import net.minecraft.client.renderer.MultiBufferSource;
+                                    ^
+  symbol:   class MultiBufferSource
+  location: package net.minecraft.client.renderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\fast_text_lookup\MixinFont_GlyphVisitor.java:31: error: cannot find symbol
+    private VertexConsumer reduceGetBufferCalls(MultiBufferSource instance, RenderType renderType) {
+                                                ^
+  symbol:   class MultiBufferSource
+  location: class MixinFont_GlyphVisitor
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\betterstatisticscreen\resource\BLanguage.java:317: warning: [removal] getProperty(@org.jetbrains.annotations.NotNull String) in BetterStats has been deprecated and marked for removal
+        ClickEvent.OpenUrl clickEvent = new ClickEvent.OpenUrl(URI.create(BetterStats.getProperty("mod.link.homepage")));
+                                                                                     ^
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\widget\TriggerButton.java:102: error: cannot find symbol
+            if (Minecraft.getInstance().screen instanceof EditorScreen) {
+                                       ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\widget\TriggerButton.java:141: error: cannot find symbol
+                if (Minecraft.getInstance().screen instanceof EditorScreen) {
+                                           ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\widget\TriggerButton.java:155: error: cannot find symbol
+        if (Minecraft.getInstance().screen instanceof EditorScreen) {
+                                   ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\TriggerButtonManager.java:139: error: cannot find symbol
+        Screen currentScreen = Minecraft.getInstance().screen;
+                                                      ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\TriggerButtonManager.java:220: error: cannot find symbol
+                if (Minecraft.getInstance().screen == screen && !KeybindManager.isDown(KeybindManager.CANCEL_AUTO_KEY) && (isPlayerInv ? playerButtons : containerButtons).contains((Object)button)) {
+                                           ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\TriggerButtonManager.java:281: error: cannot find symbol
+                if (Minecraft.getInstance().screen == screen && !KeybindManager.isDown(KeybindManager.CANCEL_AUTO_KEY) && (isPlayerInv ? playerButtons : containerButtons).contains((Object)button)) {
+                                           ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\entityculling\EntityCullingModBase.java:102: error: cannot find symbol
+            this.cullTask.setCameraMC(client.gameRenderer.getCamera().position());
+                                                         ^
+  symbol:   method getCamera()
+  location: variable gameRenderer of type GameRenderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\entityculling\NMSCullingHelper.java:38: error: cannot find symbol
+            return EntityType.ARMOR_STAND.getDimensions().makeBoundingBox(entity.position());
+                             ^
+  symbol:   variable ARMOR_STAND
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:63: error: cannot find symbol
+            return super.getBuffer(renderType);
+                   ^
+  symbol:   variable super
+  location: class BatchableBufferSource
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:67: error: cannot find symbol
+        if (!this.drawDynamicBuffersFirst && this.lastSharedType != null && this.lastSharedType != renderType && !this.fixedBuffers.containsKey(this.lastSharedType)) {
+                                                 ^
+  symbol: variable lastSharedType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:67: error: cannot find symbol
+        if (!this.drawDynamicBuffersFirst && this.lastSharedType != null && this.lastSharedType != renderType && !this.fixedBuffers.containsKey(this.lastSharedType)) {
+                                                                                ^
+  symbol: variable lastSharedType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:67: error: cannot find symbol
+        if (!this.drawDynamicBuffersFirst && this.lastSharedType != null && this.lastSharedType != renderType && !this.fixedBuffers.containsKey(this.lastSharedType)) {
+                                                                                                                                                    ^
+  symbol: variable lastSharedType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:67: error: cannot find symbol
+        if (!this.drawDynamicBuffersFirst && this.lastSharedType != null && this.lastSharedType != renderType && !this.fixedBuffers.containsKey(this.lastSharedType)) {
+                                                                                                                      ^
+  symbol: variable fixedBuffers
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:75: error: cannot find symbol
+            bufferBuilder = new BufferBuilder(this.getNextByteBufferBuilder(), renderType.mode(), renderType.format());
+                                                                                         ^
+  symbol:   method mode()
+  location: variable renderType of type RenderType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:76: error: cannot find symbol
+            this.lastSharedType = renderType;
+                ^
+  symbol: variable lastSharedType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:79: error: cannot find symbol
+        } else if (this.fixedBuffers.containsKey(renderType)) {
+                       ^
+  symbol: variable fixedBuffers
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:80: error: cannot find symbol
+            bufferBuilder = new BufferBuilder((ByteBufferBuilder)this.fixedBuffers.get(renderType), renderType.mode(), renderType.format());
+                                                                     ^
+  symbol: variable fixedBuffers
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:80: error: cannot find symbol
+            bufferBuilder = new BufferBuilder((ByteBufferBuilder)this.fixedBuffers.get(renderType), renderType.mode(), renderType.format());
+                                                                                                              ^
+  symbol:   method mode()
+  location: variable renderType of type RenderType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:82: error: cannot find symbol
+            bufferBuilder = new BufferBuilder(this.getNextByteBufferBuilder(), renderType.mode(), renderType.format());
+                                                                                         ^
+  symbol:   method mode()
+  location: variable renderType of type RenderType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:83: error: cannot find symbol
+            this.lastSharedType = renderType;
+                ^
+  symbol: variable lastSharedType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:103: error: cannot find symbol
+        this.lastSharedType = null;
+            ^
+  symbol: variable lastSharedType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:108: error: cannot find symbol
+            if (this.fixedBuffers.containsKey(renderType)) continue;
+                    ^
+  symbol: variable fixedBuffers
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:122: error: cannot find symbol
+            super.endBatch();
+            ^
+  symbol:   variable super
+  location: class BatchableBufferSource
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:130: error: cannot find symbol
+        for (RenderType renderType : this.fixedBuffers.keySet()) {
+                                         ^
+  symbol: variable fixedBuffers
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:137: error: cannot find symbol
+            super.endBatch(renderType);
+            ^
+  symbol:   variable super
+  location: class BatchableBufferSource
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:151: error: cannot find symbol
+        this.lastSharedType = null;
+            ^
+  symbol: variable lastSharedType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:171: error: cannot find symbol
+                ByteBufferBuilder prevBufferBuilder = this.sharedBuffer;
+                                                          ^
+  symbol: variable sharedBuffer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:172: error: cannot find symbol
+                this.sharedBuffer = bufferBuilder.buffer;
+                    ^
+  symbol: variable sharedBuffer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:173: error: no suitable method found for endBatch(RenderType,BufferBuilder)
+                this.endBatch(renderType, bufferBuilder);
+                    ^
+    method BatchableBufferSource.endBatch() is not applicable
+      (actual and formal argument lists differ in length)
+    method BatchableBufferSource.endBatch(RenderType) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:174: error: cannot find symbol
+                this.sharedBuffer = prevBufferBuilder;
+                    ^
+  symbol: variable sharedBuffer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:178: error: cannot find symbol
+        if (this.lastSharedType == renderType) {
+                ^
+  symbol: variable lastSharedType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:179: error: cannot find symbol
+            this.lastSharedType = null;
+                ^
+  symbol: variable lastSharedType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:209: error: cannot find symbol
+        if (this.sharedBuffer != FALLBACK_BUFFER && this.lastSharedType == null && this.sharedBuffer.pointer != 0L) {
+                ^
+  symbol: variable sharedBuffer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:209: error: cannot find symbol
+        if (this.sharedBuffer != FALLBACK_BUFFER && this.lastSharedType == null && this.sharedBuffer.pointer != 0L) {
+                                                        ^
+  symbol: variable lastSharedType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:209: error: cannot find symbol
+        if (this.sharedBuffer != FALLBACK_BUFFER && this.lastSharedType == null && this.sharedBuffer.pointer != 0L) {
+                                                                                       ^
+  symbol: variable sharedBuffer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:210: error: cannot find symbol
+            return this.sharedBuffer;
+                       ^
+  symbol: variable sharedBuffer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:35: error: cannot find symbol
+        String gpuVendor = RenderSystem.getDevice().getVendor();
+                                                   ^
+  symbol:   method getVendor()
+  location: class GpuDevice
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:36: error: cannot find symbol
+        String gpuModel = RenderSystem.getDevice().getRenderer();
+                                                  ^
+  symbol:   method getRenderer()
+  location: class GpuDevice
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:37: error: cannot find symbol
+        String backendName = RenderSystem.getDevice().getBackendName();
+                                                     ^
+  symbol:   method getBackendName()
+  location: class GpuDevice
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:38: error: cannot find symbol
+        String backendVersion = RenderSystem.getDevice().getVersion();
+                                                        ^
+  symbol:   method getVersion()
+  location: class GpuDevice
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:48: error: cannot find symbol
+        if (config.fix_slow_buffer_upload_on_apple_gpu && isApple && !RenderSystem.getDevice().getEnabledExtensions().contains("GL_ARB_direct_state_access") && !RenderSystem.getDevice().getEnabledExtensions().contains("GL_ARB_buffer_storage")) {
+                                                                                              ^
+  symbol:   method getEnabledExtensions()
+  location: class GpuDevice
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:48: error: cannot find symbol
+        if (config.fix_slow_buffer_upload_on_apple_gpu && isApple && !RenderSystem.getDevice().getEnabledExtensions().contains("GL_ARB_direct_state_access") && !RenderSystem.getDevice().getEnabledExtensions().contains("GL_ARB_buffer_storage")) {
+                                                                                                                                                                                         ^
+  symbol:   method getEnabledExtensions()
+  location: class GpuDevice
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\modernadvancements\client\hud\TrackedAdvancementsHud.java:45: error: cannot find symbol
+         if (mc.screen == null && mc.getConnection() != null) {
+               ^
+  symbol:   variable screen
+  location: variable mc of type Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\modernadvancements\client\ModernAdvancementKeybinds.java:46: error: cannot find symbol
+         if (client.screen == null) {
+                   ^
+  symbol:   variable screen
+  location: variable client of type Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\modernadvancements\client\ModernAdvancementKeybinds.java:48: error: cannot find symbol
+               client.setScreenAndShow(new HudEditScreen(client.screen));
+                                                               ^
+  symbol:   variable screen
+  location: variable client of type Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\modernadvancements\client\ModernAdvancementKeybinds.java:52: error: cannot find symbol
+               client.setScreenAndShow(new ToastEditScreen(client.screen));
+                                                                 ^
+  symbol:   variable screen
+  location: variable client of type Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\modernadvancements\data\handler\AdvancementScreenshotManager.java:57: error: cannot find symbol
+         mc.getMainRenderTarget(),
+           ^
+  symbol:   method getMainRenderTarget()
+  location: variable mc of type Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\obe\RenderModeManager.java:45: error: cannot find symbol
+            mc.levelRenderer.blockChanged(null, pos, null, null, 8);
+                            ^
+  symbol:   method blockChanged(<null>,BlockPos,<null>,<null>,int)
+  location: variable levelRenderer of type LevelRenderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\decentscreenshot\DecentScreenshotClient.java:33: error: cannot find symbol
+                if (client.screen != null) continue;
+                          ^
+  symbol:   variable screen
+  location: variable client of type Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\farblockentityrendering\ConfigManager.java:59: error: cannot find symbol
+                mc.levelRenderer.allChanged();
+                                ^
+  symbol:   method allChanged()
+  location: variable levelRenderer of type LevelRenderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\clientsort\client\AbstractContainerScreenMixin.java:198: error: cannot find symbol
+        if (!((Object)((Object)this)).equals((Object)Minecraft.getInstance().screen)) {
+                                                                            ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\clientsort\client\AbstractContainerScreenMixin.java:216: error: cannot find symbol
+            if (!(Minecraft.getInstance().screen instanceof EditorScreen)) {
+                                         ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\clientsort\client\ScreenMixin.java:36: error: cannot find symbol
+        if (Minecraft.getInstance().screen instanceof CreativeModeInventoryScreen) {
+                                   ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\entityculling\WorldRendererMixin.java:73: error: cannot find symbol
+            state.entityType = EntityType.INTERACTION;
+                                         ^
+  symbol:   variable INTERACTION
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\entityculling\WorldRendererMixin.java:98: error: cannot find symbol
+                        avatarState.entityType = EntityType.PLAYER;
+                                                           ^
+  symbol:   variable PLAYER
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\map_atlas_generation\MixinMapTextureManager_MapInstance.java:71: warning: Unsafe is internal proprietary API and may be removed in a future release
+            java.lang.reflect.Field theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+                                                        ^
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\map_atlas_generation\MixinMapTextureManager_MapInstance.java:73: warning: Unsafe is internal proprietary API and may be removed in a future release
+            sun.misc.Unsafe unsafe = (sun.misc.Unsafe) theUnsafe.get(null);
+                    ^
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\map_atlas_generation\MixinMapTextureManager_MapInstance.java:73: warning: Unsafe is internal proprietary API and may be removed in a future release
+            sun.misc.Unsafe unsafe = (sun.misc.Unsafe) theUnsafe.get(null);
+                                              ^
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\map_atlas_generation\MixinMapTextureManager_MapInstance.java:128: error: no suitable method found for writeToTexture(GpuTexture,NativeImage,int,int,int,int,int,int,int,int)
+            RenderSystem.getDevice().createCommandEncoder().writeToTexture(atlasTexture.getTexture(), atlasImage, 0, 0, this.immediatelyFast$atlasX, this.immediatelyFast$atlasY, 128, 128, this.immediatelyFast$atlasX, this.immediatelyFast$atlasY);
+                                                           ^
+    method CommandEncoder.writeToTexture(GpuTexture,NativeImage) is not applicable
+      (actual and formal argument lists differ in length)
+    method CommandEncoder.writeToTexture(GpuTexture,NativeImage,int,int,int,int) is not applicable
+      (actual and formal argument lists differ in length)
+    method CommandEncoder.writeToTexture(GpuTexture,ByteBuffer,int,int,int,int,int,int) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\skinlayers\CustomHeadLayerMixin.java:27: error: cannot find symbol
+        boolean inGui = Minecraft.getInstance().screen != null;
+                                               ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\skinlayers\CustomHeadLayerMixin.java:28: error: cannot find symbol
+        if (!inGui && Minecraft.getInstance().player != null && Minecraft.getInstance().gameRenderer.getMainCamera().position().distanceToSqr(livingEntityRenderState.x, livingEntityRenderState.y, livingEntityRenderState.z) > (double)(SkinLayersModBase.config.renderDistanceLOD * SkinLayersModBase.config.renderDistanceLOD)) {
+                                                                                                    ^
+  symbol:   method getMainCamera()
+  location: variable gameRenderer of type GameRenderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\skinlayers\PlayerModelMixin.java:70: error: cannot find symbol
+        boolean inGui = Minecraft.getInstance().screen != null;
+                                               ^
+  symbol:   variable screen
+  location: class Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\skinlayers\PlayerModelMixin.java:71: error: cannot find symbol
+        if (!inGui && (Minecraft.getInstance().player == null || abstractClientPlayer.distanceToSqr(Minecraft.getInstance().gameRenderer.getMainCamera().position()) > (double) (SkinLayersModBase.config.renderDistanceLOD * SkinLayersModBase.config.renderDistanceLOD))) {
+                                                                                                                                        ^
+  symbol:   method getMainCamera()
+  location: variable gameRenderer of type GameRenderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\skinlayers\SkullBlockEntityRendererMixin.java:40: error: cannot find symbol
+        Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().position();
+                                                          ^
+  symbol:   method getMainCamera()
+  location: variable gameRenderer of type GameRenderer
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\RaisedMixin.java:20: error: cannot find symbol
+        return mc.screen instanceof ChatScreen;
+                 ^
+  symbol:   variable screen
+  location: variable mc of type Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\renderscale\RenderTargetMixin.java:16: error: cannot find symbol
+        if (client != null && (Object)this == (Object)client.getMainRenderTarget()) {
+                                                            ^
+  symbol:   method getMainRenderTarget()
+  location: variable client of type Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\ScreenBackgroundMixin.java:29: error: cannot find symbol
+        this.minecraft.gui.extractDeferredSubtitles();
+                          ^
+  symbol:   method extractDeferredSubtitles()
+  location: variable gui of type Gui
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\modules\ToggleSneakModule.java:47: error: cannot find symbol
+            if (mc.screen != null) mc.player.setShiftKeyDown(true);
+                  ^
+  symbol:   variable screen
+  location: variable mc of type Minecraft
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\tr7zw\notenoughanimations\animations\hands\HugAnimation.java:52: error: cannot find symbol
+        if (entHit != null && entHit.getEntity().getType() == EntityType.PLAYER) {
+                                                                        ^
+  symbol:   variable PLAYER
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\tr7zw\notenoughanimations\animations\hands\PetAnimation.java:62: error: cannot find symbol
+        if (entHit != null && (entHit.getEntity().getType() == EntityType.WOLF || entHit.getEntity().getType() == EntityType.CAT) && Math.abs(dif = (pet = (TamableAnimal)entHit.getEntity()).getY() - entity.getY()) < 0.6) {
+                                                                         ^
+  symbol:   variable WOLF
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\tr7zw\notenoughanimations\animations\hands\PetAnimation.java:62: error: cannot find symbol
+        if (entHit != null && (entHit.getEntity().getType() == EntityType.WOLF || entHit.getEntity().getType() == EntityType.CAT) && Math.abs(dif = (pet = (TamableAnimal)entHit.getEntity()).getY() - entity.getY()) < 0.6) {
+                                                                                                                            ^
+  symbol:   variable CAT
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\FoodTooltipComponent.java:217: error: cannot find symbol
+                Identifier effectTexture = Gui.getMobEffectSprite((Holder)statusEffect.getEffect());
+                                              ^
+  symbol:   method getMobEffectSprite(Holder)
+  location: class Gui
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:264: error: cannot find symbol
+        return new ArmorStand(EntityType.ARMOR_STAND, (Level)Minecraft.getInstance().level);
+                                        ^
+  symbol:   variable ARMOR_STAND
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:268: error: cannot find symbol
+        EntityType entityType = EntityType.HORSE;
+                                          ^
+  symbol:   variable HORSE
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:285: error: cannot find symbol
+        Nautilus nautilus = (Nautilus)EntityType.NAUTILUS.create((Level)Minecraft.getInstance().level, EntitySpawnReason.SPAWN_ITEM_USE);
+                                                ^
+  symbol:   variable NAUTILUS
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:301: error: cannot find symbol
+        EntityType entityType = EntityType.WOLF;
+                                          ^
+  symbol:   variable WOLF
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:348: error: cannot find symbol
+        if (entityType == EntityType.VILLAGER || entityType == EntityType.ZOMBIE_VILLAGER) {
+                                    ^
+  symbol:   variable VILLAGER
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:348: error: cannot find symbol
+        if (entityType == EntityType.VILLAGER || entityType == EntityType.ZOMBIE_VILLAGER) {
+                                                                         ^
+  symbol:   variable ZOMBIE_VILLAGER
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\PotionEffectTooltipComponent.java:131: error: cannot find symbol
+            Identifier effectTexture = Gui.getMobEffectSprite((Holder)effect.getEffect());
+                                          ^
+  symbol:   method getMobEffectSprite(Holder)
+  location: class Gui
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\EnhancedTooltips.java:133: error: cannot find symbol
+            if ((patt0$temp = stack.getItem()) instanceof HangingEntityItemTypeAccessor && (decorationItem = (HangingEntityItemTypeAccessor)patt0$temp).get() == EntityType.PAINTING && EnhancedTooltipsConfig.load().paintingTooltip.enabled) {
+                                                                                                                                                                           ^
+  symbol:   variable PAINTING
+  location: class EntityType
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:86: error: cannot find symbol
+            this.drawSaturationOverlay(saturationRenderEvent, mc, 0.0f, 1.0f, mc.gui.getGuiTicks());
+                                                                                    ^
+  symbol:   method getGuiTicks()
+  location: variable gui of type Gui
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:88: error: cannot find symbol
+        if ((result = this.heldFood.result(mc.gui.getGuiTicks(), player)) == null) {
+                                                 ^
+  symbol:   method getGuiTicks()
+  location: variable gui of type Gui
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:100: error: cannot find symbol
+            this.drawHungerOverlay(hungerRenderEvent, mc, foodHunger, this.flashAlpha, FoodHelper.isRotten(result.consumableComponent), mc.gui.getGuiTicks());
+                                                                                                                                              ^
+  symbol:   method getGuiTicks()
+  location: variable gui of type Gui
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:105: error: cannot find symbol
+                this.drawSaturationOverlay(saturationRenderEvent, mc, saturationGained, this.flashAlpha, mc.gui.getGuiTicks());
+                                                                                                               ^
+  symbol:   method getGuiTicks()
+  location: variable gui of type Gui
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:119: error: cannot find symbol
+        FoodHelper.QueriedFoodResult result = this.heldFood.result(mc.gui.getGuiTicks(), player);
+                                                                         ^
+  symbol:   method getGuiTicks()
+  location: variable gui of type Gui
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:124: error: cannot find symbol
+        if (this.shouldShowEstimatedHealth(player, mc.gui.getGuiTicks())) {
+                                                         ^
+  symbol:   method getGuiTicks()
+  location: variable gui of type Gui
+C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:136: error: cannot find symbol
+                this.drawHealthOverlay(healthRenderEvent, mc, this.flashAlpha, mc.gui.getGuiTicks());
+                                                                                     ^
+  symbol:   method getGuiTicks()
+  location: variable gui of type Gui
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+96 errors
+4 warnings
+
+> Task :compileJava FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/Arash/Desktop/Lads%20Client/TheLadsCore/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava'.
+> Compilation failed; see the compiler output below.
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\map_atlas_generation\MixinMapTextureManager_MapInstance.java:71: warning: Unsafe is internal proprietary API and may be removed in a future release
+              java.lang.reflect.Field theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+                                                          ^
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\map_atlas_generation\MixinMapTextureManager_MapInstance.java:73: warning: Unsafe is internal proprietary API and may be removed in a future release
+              sun.misc.Unsafe unsafe = (sun.misc.Unsafe) theUnsafe.get(null);
+                      ^
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\map_atlas_generation\MixinMapTextureManager_MapInstance.java:73: warning: Unsafe is internal proprietary API and may be removed in a future release
+              sun.misc.Unsafe unsafe = (sun.misc.Unsafe) theUnsafe.get(null);
+                                                ^
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:173: error: no suitable method found for endBatch(RenderType,BufferBuilder)
+                  this.endBatch(renderType, bufferBuilder);
+                      ^
+      method BatchableBufferSource.endBatch() is not applicable
+        (actual and formal argument lists differ in length)
+      method BatchableBufferSource.endBatch(RenderType) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\map_atlas_generation\MixinMapTextureManager_MapInstance.java:128: error: no suitable method found for writeToTexture(GpuTexture,NativeImage,int,int,int,int,int,int,int,int)
+              RenderSystem.getDevice().createCommandEncoder().writeToTexture(atlasTexture.getTexture(), atlasImage, 0, 0, this.immediatelyFast$atlasX, this.immediatelyFast$atlasY, 128, 128, this.immediatelyFast$atlasX, this.immediatelyFast$atlasY);
+                                                             ^
+      method CommandEncoder.writeToTexture(GpuTexture,NativeImage) is not applicable
+        (actual and formal argument lists differ in length)
+      method CommandEncoder.writeToTexture(GpuTexture,NativeImage,int,int,int,int) is not applicable
+        (actual and formal argument lists differ in length)
+      method CommandEncoder.writeToTexture(GpuTexture,ByteBuffer,int,int,int,int,int,int) is not applicable
+        (actual and formal argument lists differ in length)
+  Note: Recompile with -Xlint:deprecation for details.
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\entityculling\access\EntityRendererInter.java:14: error: cannot find symbol
+  import net.minecraft.client.renderer.MultiBufferSource;
+                                      ^
+    symbol:   class MultiBufferSource
+    location: package net.minecraft.client.renderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\entityculling\access\EntityRendererInter.java:22: error: cannot find symbol
+      public void shadowRenderNameTag(T var1, Component var2, PoseStack var3, MultiBufferSource var4, int var5, float var6);
+                                                                              ^
+    symbol:   class MultiBufferSource
+    location: interface EntityRendererInter<T>
+    where T is a type-variable:
+      T extends Entity declared in interface EntityRendererInter
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:33: error: cannot find symbol
+  import net.minecraft.client.renderer.MultiBufferSource;
+                                      ^
+    symbol:   class MultiBufferSource
+    location: package net.minecraft.client.renderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\entityculling\EntityRendererMixin.java:18: error: cannot find symbol
+  import net.minecraft.client.renderer.MultiBufferSource;
+                                      ^
+    symbol:   class MultiBufferSource
+    location: package net.minecraft.client.renderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\entityculling\EntityRendererMixin.java:35: error: cannot find symbol
+      public void shadowRenderNameTag(T entity, Component component, PoseStack poseStack, MultiBufferSource multiBufferSource, int light, float delta) {
+                                                                                          ^
+    symbol:   class MultiBufferSource
+    location: class EntityRendererMixin<T>
+    where T is a type-variable:
+      T extends Entity declared in class EntityRendererMixin
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\enhanced_batching\MixinFeatureRenderDispatcher.java:16: error: cannot find symbol
+  import net.minecraft.client.renderer.MultiBufferSource;
+                                      ^
+    symbol:   class MultiBufferSource
+    location: package net.minecraft.client.renderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\enhanced_batching\MixinRenderBuffers.java:17: error: cannot find symbol
+  import net.minecraft.client.renderer.MultiBufferSource;
+                                      ^
+    symbol:   class MultiBufferSource
+    location: package net.minecraft.client.renderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\fast_text_lookup\MixinFont_GlyphVisitor.java:16: error: cannot find symbol
+  import net.minecraft.client.renderer.MultiBufferSource;
+                                      ^
+    symbol:   class MultiBufferSource
+    location: package net.minecraft.client.renderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\fast_text_lookup\MixinFont_GlyphVisitor.java:31: error: cannot find symbol
+      private VertexConsumer reduceGetBufferCalls(MultiBufferSource instance, RenderType renderType) {
+                                                  ^
+    symbol:   class MultiBufferSource
+    location: class MixinFont_GlyphVisitor
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\widget\TriggerButton.java:102: error: cannot find symbol
+              if (Minecraft.getInstance().screen instanceof EditorScreen) {
+                                         ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\widget\TriggerButton.java:141: error: cannot find symbol
+                  if (Minecraft.getInstance().screen instanceof EditorScreen) {
+                                             ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\widget\TriggerButton.java:155: error: cannot find symbol
+          if (Minecraft.getInstance().screen instanceof EditorScreen) {
+                                     ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\TriggerButtonManager.java:139: error: cannot find symbol
+          Screen currentScreen = Minecraft.getInstance().screen;
+                                                        ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\TriggerButtonManager.java:220: error: cannot find symbol
+                  if (Minecraft.getInstance().screen == screen && !KeybindManager.isDown(KeybindManager.CANCEL_AUTO_KEY) && (isPlayerInv ? playerButtons : containerButtons).contains((Object)button)) {
+                                             ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\clientsort\gui\TriggerButtonManager.java:281: error: cannot find symbol
+                  if (Minecraft.getInstance().screen == screen && !KeybindManager.isDown(KeybindManager.CANCEL_AUTO_KEY) && (isPlayerInv ? playerButtons : containerButtons).contains((Object)button)) {
+                                             ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\entityculling\NMSCullingHelper.java:38: error: cannot find symbol
+              return EntityType.ARMOR_STAND.getDimensions().makeBoundingBox(entity.position());
+                               ^
+    symbol:   variable ARMOR_STAND
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:63: error: cannot find symbol
+              return super.getBuffer(renderType);
+                     ^
+    symbol:   variable super
+    location: class BatchableBufferSource
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:122: error: cannot find symbol
+              super.endBatch();
+              ^
+    symbol:   variable super
+    location: class BatchableBufferSource
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:137: error: cannot find symbol
+              super.endBatch(renderType);
+              ^
+    symbol:   variable super
+    location: class BatchableBufferSource
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\modernadvancements\client\hud\TrackedAdvancementsHud.java:45: error: cannot find symbol
+           if (mc.screen == null && mc.getConnection() != null) {
+                 ^
+    symbol:   variable screen
+    location: variable mc of type Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\modernadvancements\client\ModernAdvancementKeybinds.java:46: error: cannot find symbol
+           if (client.screen == null) {
+                     ^
+    symbol:   variable screen
+    location: variable client of type Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\modernadvancements\client\ModernAdvancementKeybinds.java:48: error: cannot find symbol
+                 client.setScreenAndShow(new HudEditScreen(client.screen));
+                                                                 ^
+    symbol:   variable screen
+    location: variable client of type Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\modernadvancements\client\ModernAdvancementKeybinds.java:52: error: cannot find symbol
+                 client.setScreenAndShow(new ToastEditScreen(client.screen));
+                                                                   ^
+    symbol:   variable screen
+    location: variable client of type Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\decentscreenshot\DecentScreenshotClient.java:33: error: cannot find symbol
+                  if (client.screen != null) continue;
+                            ^
+    symbol:   variable screen
+    location: variable client of type Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\clientsort\client\AbstractContainerScreenMixin.java:198: error: cannot find symbol
+          if (!((Object)((Object)this)).equals((Object)Minecraft.getInstance().screen)) {
+                                                                              ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\clientsort\client\AbstractContainerScreenMixin.java:216: error: cannot find symbol
+              if (!(Minecraft.getInstance().screen instanceof EditorScreen)) {
+                                           ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\clientsort\client\ScreenMixin.java:36: error: cannot find symbol
+          if (Minecraft.getInstance().screen instanceof CreativeModeInventoryScreen) {
+                                     ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\entityculling\WorldRendererMixin.java:73: error: cannot find symbol
+              state.entityType = EntityType.INTERACTION;
+                                           ^
+    symbol:   variable INTERACTION
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\entityculling\WorldRendererMixin.java:98: error: cannot find symbol
+                          avatarState.entityType = EntityType.PLAYER;
+                                                             ^
+    symbol:   variable PLAYER
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\skinlayers\CustomHeadLayerMixin.java:27: error: cannot find symbol
+          boolean inGui = Minecraft.getInstance().screen != null;
+                                                 ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\skinlayers\PlayerModelMixin.java:70: error: cannot find symbol
+          boolean inGui = Minecraft.getInstance().screen != null;
+                                                 ^
+    symbol:   variable screen
+    location: class Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\RaisedMixin.java:20: error: cannot find symbol
+          return mc.screen instanceof ChatScreen;
+                   ^
+    symbol:   variable screen
+    location: variable mc of type Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\modules\ToggleSneakModule.java:47: error: cannot find symbol
+              if (mc.screen != null) mc.player.setShiftKeyDown(true);
+                    ^
+    symbol:   variable screen
+    location: variable mc of type Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\tr7zw\notenoughanimations\animations\hands\HugAnimation.java:52: error: cannot find symbol
+          if (entHit != null && entHit.getEntity().getType() == EntityType.PLAYER) {
+                                                                          ^
+    symbol:   variable PLAYER
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\tr7zw\notenoughanimations\animations\hands\PetAnimation.java:62: error: cannot find symbol
+          if (entHit != null && (entHit.getEntity().getType() == EntityType.WOLF || entHit.getEntity().getType() == EntityType.CAT) && Math.abs(dif = (pet = (TamableAnimal)entHit.getEntity()).getY() - entity.getY()) < 0.6) {
+                                                                           ^
+    symbol:   variable WOLF
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\tr7zw\notenoughanimations\animations\hands\PetAnimation.java:62: error: cannot find symbol
+          if (entHit != null && (entHit.getEntity().getType() == EntityType.WOLF || entHit.getEntity().getType() == EntityType.CAT) && Math.abs(dif = (pet = (TamableAnimal)entHit.getEntity()).getY() - entity.getY()) < 0.6) {
+                                                                                                                              ^
+    symbol:   variable CAT
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:264: error: cannot find symbol
+          return new ArmorStand(EntityType.ARMOR_STAND, (Level)Minecraft.getInstance().level);
+                                          ^
+    symbol:   variable ARMOR_STAND
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:268: error: cannot find symbol
+          EntityType entityType = EntityType.HORSE;
+                                            ^
+    symbol:   variable HORSE
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:285: error: cannot find symbol
+          Nautilus nautilus = (Nautilus)EntityType.NAUTILUS.create((Level)Minecraft.getInstance().level, EntitySpawnReason.SPAWN_ITEM_USE);
+                                                  ^
+    symbol:   variable NAUTILUS
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:301: error: cannot find symbol
+          EntityType entityType = EntityType.WOLF;
+                                            ^
+    symbol:   variable WOLF
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:348: error: cannot find symbol
+          if (entityType == EntityType.VILLAGER || entityType == EntityType.ZOMBIE_VILLAGER) {
+                                      ^
+    symbol:   variable VILLAGER
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\ModelViewerTooltipComponent.java:348: error: cannot find symbol
+          if (entityType == EntityType.VILLAGER || entityType == EntityType.ZOMBIE_VILLAGER) {
+                                                                           ^
+    symbol:   variable ZOMBIE_VILLAGER
+    location: class EntityType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\EnhancedTooltips.java:133: error: cannot find symbol
+              if ((patt0$temp = stack.getItem()) instanceof HangingEntityItemTypeAccessor && (decorationItem = (HangingEntityItemTypeAccessor)patt0$temp).get() == EntityType.PAINTING && EnhancedTooltipsConfig.load().paintingTooltip.enabled) {
+                                                                                                                                                                             ^
+    symbol:   variable PAINTING
+    location: class EntityType
+  Note: Recompile with -Xlint:unchecked for details.
+  Note: Some input files use or override a deprecated API.
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\betterstatisticscreen\resource\BLanguage.java:317: warning: [removal] getProperty(@org.jetbrains.annotations.NotNull String) in BetterStats has been deprecated and marked for removal
+          ClickEvent.OpenUrl clickEvent = new ClickEvent.OpenUrl(URI.create(BetterStats.getProperty("mod.link.homepage")));
+                                                                                       ^
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:67: error: cannot find symbol
+          if (!this.drawDynamicBuffersFirst && this.lastSharedType != null && this.lastSharedType != renderType && !this.fixedBuffers.containsKey(this.lastSharedType)) {
+                                                   ^
+    symbol: variable lastSharedType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:67: error: cannot find symbol
+          if (!this.drawDynamicBuffersFirst && this.lastSharedType != null && this.lastSharedType != renderType && !this.fixedBuffers.containsKey(this.lastSharedType)) {
+                                                                                  ^
+    symbol: variable lastSharedType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:67: error: cannot find symbol
+          if (!this.drawDynamicBuffersFirst && this.lastSharedType != null && this.lastSharedType != renderType && !this.fixedBuffers.containsKey(this.lastSharedType)) {
+                                                                                                                                                      ^
+    symbol: variable lastSharedType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:67: error: cannot find symbol
+          if (!this.drawDynamicBuffersFirst && this.lastSharedType != null && this.lastSharedType != renderType && !this.fixedBuffers.containsKey(this.lastSharedType)) {
+                                                                                                                        ^
+    symbol: variable fixedBuffers
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:76: error: cannot find symbol
+              this.lastSharedType = renderType;
+                  ^
+    symbol: variable lastSharedType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:79: error: cannot find symbol
+          } else if (this.fixedBuffers.containsKey(renderType)) {
+                         ^
+    symbol: variable fixedBuffers
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:80: error: cannot find symbol
+              bufferBuilder = new BufferBuilder((ByteBufferBuilder)this.fixedBuffers.get(renderType), renderType.mode(), renderType.format());
+                                                                       ^
+    symbol: variable fixedBuffers
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:83: error: cannot find symbol
+              this.lastSharedType = renderType;
+                  ^
+    symbol: variable lastSharedType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:103: error: cannot find symbol
+          this.lastSharedType = null;
+              ^
+    symbol: variable lastSharedType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:108: error: cannot find symbol
+              if (this.fixedBuffers.containsKey(renderType)) continue;
+                      ^
+    symbol: variable fixedBuffers
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:130: error: cannot find symbol
+          for (RenderType renderType : this.fixedBuffers.keySet()) {
+                                           ^
+    symbol: variable fixedBuffers
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:151: error: cannot find symbol
+          this.lastSharedType = null;
+              ^
+    symbol: variable lastSharedType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:171: error: cannot find symbol
+                  ByteBufferBuilder prevBufferBuilder = this.sharedBuffer;
+                                                            ^
+    symbol: variable sharedBuffer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:172: error: cannot find symbol
+                  this.sharedBuffer = bufferBuilder.buffer;
+                      ^
+    symbol: variable sharedBuffer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:174: error: cannot find symbol
+                  this.sharedBuffer = prevBufferBuilder;
+                      ^
+    symbol: variable sharedBuffer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:178: error: cannot find symbol
+          if (this.lastSharedType == renderType) {
+                  ^
+    symbol: variable lastSharedType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:179: error: cannot find symbol
+              this.lastSharedType = null;
+                  ^
+    symbol: variable lastSharedType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:209: error: cannot find symbol
+          if (this.sharedBuffer != FALLBACK_BUFFER && this.lastSharedType == null && this.sharedBuffer.pointer != 0L) {
+                  ^
+    symbol: variable sharedBuffer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:209: error: cannot find symbol
+          if (this.sharedBuffer != FALLBACK_BUFFER && this.lastSharedType == null && this.sharedBuffer.pointer != 0L) {
+                                                          ^
+    symbol: variable lastSharedType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:209: error: cannot find symbol
+          if (this.sharedBuffer != FALLBACK_BUFFER && this.lastSharedType == null && this.sharedBuffer.pointer != 0L) {
+                                                                                         ^
+    symbol: variable sharedBuffer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:210: error: cannot find symbol
+              return this.sharedBuffer;
+                         ^
+    symbol: variable sharedBuffer
+  Note: Some input files use unchecked or unsafe operations.
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\entityculling\EntityCullingModBase.java:102: error: cannot find symbol
+              this.cullTask.setCameraMC(client.gameRenderer.getCamera().position());
+                                                           ^
+    symbol:   method getCamera()
+    location: variable gameRenderer of type GameRenderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:75: error: cannot find symbol
+              bufferBuilder = new BufferBuilder(this.getNextByteBufferBuilder(), renderType.mode(), renderType.format());
+                                                                                           ^
+    symbol:   method mode()
+    location: variable renderType of type RenderType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:80: error: cannot find symbol
+              bufferBuilder = new BufferBuilder((ByteBufferBuilder)this.fixedBuffers.get(renderType), renderType.mode(), renderType.format());
+                                                                                                                ^
+    symbol:   method mode()
+    location: variable renderType of type RenderType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:82: error: cannot find symbol
+              bufferBuilder = new BufferBuilder(this.getNextByteBufferBuilder(), renderType.mode(), renderType.format());
+                                                                                           ^
+    symbol:   method mode()
+    location: variable renderType of type RenderType
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:35: error: cannot find symbol
+          String gpuVendor = RenderSystem.getDevice().getVendor();
+                                                     ^
+    symbol:   method getVendor()
+    location: class GpuDevice
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:36: error: cannot find symbol
+          String gpuModel = RenderSystem.getDevice().getRenderer();
+                                                    ^
+    symbol:   method getRenderer()
+    location: class GpuDevice
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:37: error: cannot find symbol
+          String backendName = RenderSystem.getDevice().getBackendName();
+                                                       ^
+    symbol:   method getBackendName()
+    location: class GpuDevice
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:38: error: cannot find symbol
+          String backendVersion = RenderSystem.getDevice().getVersion();
+                                                          ^
+    symbol:   method getVersion()
+    location: class GpuDevice
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:48: error: cannot find symbol
+          if (config.fix_slow_buffer_upload_on_apple_gpu && isApple && !RenderSystem.getDevice().getEnabledExtensions().contains("GL_ARB_direct_state_access") && !RenderSystem.getDevice().getEnabledExtensions().contains("GL_ARB_buffer_storage")) {
+                                                                                                ^
+    symbol:   method getEnabledExtensions()
+    location: class GpuDevice
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\ImmediatelyFast.java:48: error: cannot find symbol
+          if (config.fix_slow_buffer_upload_on_apple_gpu && isApple && !RenderSystem.getDevice().getEnabledExtensions().contains("GL_ARB_direct_state_access") && !RenderSystem.getDevice().getEnabledExtensions().contains("GL_ARB_buffer_storage")) {
+                                                                                                                                                                                           ^
+    symbol:   method getEnabledExtensions()
+    location: class GpuDevice
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\modernadvancements\data\handler\AdvancementScreenshotManager.java:57: error: cannot find symbol
+           mc.getMainRenderTarget(),
+             ^
+    symbol:   method getMainRenderTarget()
+    location: variable mc of type Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\auto\obe\RenderModeManager.java:45: error: cannot find symbol
+              mc.levelRenderer.blockChanged(null, pos, null, null, 8);
+                              ^
+    symbol:   method blockChanged(<null>,BlockPos,<null>,<null>,int)
+    location: variable levelRenderer of type LevelRenderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\farblockentityrendering\ConfigManager.java:59: error: cannot find symbol
+                  mc.levelRenderer.allChanged();
+                                  ^
+    symbol:   method allChanged()
+    location: variable levelRenderer of type LevelRenderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\skinlayers\CustomHeadLayerMixin.java:28: error: cannot find symbol
+          if (!inGui && Minecraft.getInstance().player != null && Minecraft.getInstance().gameRenderer.getMainCamera().position().distanceToSqr(livingEntityRenderState.x, livingEntityRenderState.y, livingEntityRenderState.z) > (double)(SkinLayersModBase.config.renderDistanceLOD * SkinLayersModBase.config.renderDistanceLOD)) {
+                                                                                                      ^
+    symbol:   method getMainCamera()
+    location: variable gameRenderer of type GameRenderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\skinlayers\PlayerModelMixin.java:71: error: cannot find symbol
+          if (!inGui && (Minecraft.getInstance().player == null || abstractClientPlayer.distanceToSqr(Minecraft.getInstance().gameRenderer.getMainCamera().position()) > (double) (SkinLayersModBase.config.renderDistanceLOD * SkinLayersModBase.config.renderDistanceLOD))) {
+                                                                                                                                          ^
+    symbol:   method getMainCamera()
+    location: variable gameRenderer of type GameRenderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\skinlayers\SkullBlockEntityRendererMixin.java:40: error: cannot find symbol
+          Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().position();
+                                                            ^
+    symbol:   method getMainCamera()
+    location: variable gameRenderer of type GameRenderer
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\renderscale\RenderTargetMixin.java:16: error: cannot find symbol
+          if (client != null && (Object)this == (Object)client.getMainRenderTarget()) {
+                                                              ^
+    symbol:   method getMainRenderTarget()
+    location: variable client of type Minecraft
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\ScreenBackgroundMixin.java:29: error: cannot find symbol
+          this.minecraft.gui.extractDeferredSubtitles();
+                            ^
+    symbol:   method extractDeferredSubtitles()
+    location: variable gui of type Gui
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\FoodTooltipComponent.java:217: error: cannot find symbol
+                  Identifier effectTexture = Gui.getMobEffectSprite((Holder)statusEffect.getEffect());
+                                                ^
+    symbol:   method getMobEffectSprite(Holder)
+    location: class Gui
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\dev\ultimatchamp\enhancedtooltips\component\PotionEffectTooltipComponent.java:131: error: cannot find symbol
+              Identifier effectTexture = Gui.getMobEffectSprite((Holder)effect.getEffect());
+                                            ^
+    symbol:   method getMobEffectSprite(Holder)
+    location: class Gui
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:86: error: cannot find symbol
+              this.drawSaturationOverlay(saturationRenderEvent, mc, 0.0f, 1.0f, mc.gui.getGuiTicks());
+                                                                                      ^
+    symbol:   method getGuiTicks()
+    location: variable gui of type Gui
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:88: error: cannot find symbol
+          if ((result = this.heldFood.result(mc.gui.getGuiTicks(), player)) == null) {
+                                                   ^
+    symbol:   method getGuiTicks()
+    location: variable gui of type Gui
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:100: error: cannot find symbol
+              this.drawHungerOverlay(hungerRenderEvent, mc, foodHunger, this.flashAlpha, FoodHelper.isRotten(result.consumableComponent), mc.gui.getGuiTicks());
+                                                                                                                                                ^
+    symbol:   method getGuiTicks()
+    location: variable gui of type Gui
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:105: error: cannot find symbol
+                  this.drawSaturationOverlay(saturationRenderEvent, mc, saturationGained, this.flashAlpha, mc.gui.getGuiTicks());
+                                                                                                                 ^
+    symbol:   method getGuiTicks()
+    location: variable gui of type Gui
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:119: error: cannot find symbol
+          FoodHelper.QueriedFoodResult result = this.heldFood.result(mc.gui.getGuiTicks(), player);
+                                                                           ^
+    symbol:   method getGuiTicks()
+    location: variable gui of type Gui
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:124: error: cannot find symbol
+          if (this.shouldShowEstimatedHealth(player, mc.gui.getGuiTicks())) {
+                                                           ^
+    symbol:   method getGuiTicks()
+    location: variable gui of type Gui
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\squeek\appleskin\client\HUDOverlayHandler.java:136: error: cannot find symbol
+                  this.drawHealthOverlay(healthRenderEvent, mc, this.flashAlpha, mc.gui.getGuiTicks());
+                                                                                       ^
+    symbol:   method getGuiTicks()
+    location: variable gui of type Gui
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\features\alwayson\immediatelyfast\feature\core\BatchableBufferSource.java:42: error: package MultiBufferSource does not exist
+  extends MultiBufferSource.BufferSource
+                           ^
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\enhanced_batching\MixinFeatureRenderDispatcher.java:29: error: package MultiBufferSource does not exist
+      private MultiBufferSource.BufferSource bufferSource;
+                               ^
+  C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\alwayson\immediatelyfast\enhanced_batching\MixinRenderBuffers.java:28: error: package MultiBufferSource does not exist
+      private MultiBufferSource.BufferSource replaceEntityBufferSource(SequencedMap<RenderType, ByteBufferBuilder> fixedBuffers, ByteBufferBuilder sharedBuffer) {
+                               ^
+  96 errors
+  4 warnings
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.4.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 8s
+1 actionable task: 1 executed

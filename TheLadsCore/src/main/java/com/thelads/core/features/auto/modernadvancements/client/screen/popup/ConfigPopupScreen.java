@@ -123,7 +123,7 @@ public class ConfigPopupScreen {
          ModernAdvancementsClient.CONFIG.matchWindowSize()
       );
       rowY += rowH;
-      this.renderCycleOption(
+      this.renderDropdownOption(
          context, mouseX, mouseY, panelX + padding, rowY, panelWidth - padding * 2, this.layoutModeLabel(ModernAdvancementsClient.CONFIG.layoutMode())
       );
       rowY += rowH + 6;
@@ -146,7 +146,7 @@ public class ConfigPopupScreen {
       context.text(this.font, Component.translatable(label, new Object[]{value ? "☑" : "☐"}), x + 2, y + 3, value ? -7798904 : -3355444, false);
    }
 
-   private void renderCycleOption(GuiGraphicsExtractor context, int mouseX, int mouseY, int x, int y, int width, String valueText) {
+   private void renderDropdownOption(GuiGraphicsExtractor context, int mouseX, int mouseY, int x, int y, int width, String valueText) {
       boolean hovered = mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + 14;
       if (hovered) {
          context.fill(x, y, x + width, y + 14, 822083583);

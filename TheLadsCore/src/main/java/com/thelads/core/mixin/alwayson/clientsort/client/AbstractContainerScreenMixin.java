@@ -75,8 +75,9 @@ extends Screen {
     protected AbstractContainerMenu menu;
     @Shadow
     protected Slot hoveredSlot;
-    @Shadow
-    private ItemStack draggingItem;
+    // draggingItem removed in 26.2
+    @Unique
+    private ItemStack clientsort$noDragging = ItemStack.EMPTY;
 
     protected AbstractContainerScreenMixin(Component title) {
         super(title);
@@ -116,7 +117,7 @@ extends Screen {
             return null;
         }
         Options options = this.minecraft.options;
-        if (inputMatcher.apply(options.keyPickItem).booleanValue() && this.minecraft.player.hasInfiniteMaterials() && (this.hoveredSlot.hasItem() || !this.draggingItem.isEmpty() || !this.menu.getCarried().isEmpty())) {
+        if (inputMatcher.apply(options.keyPickItem).booleanValue() && this.minecraft.player.hasInfiniteMaterials() && (this.hoveredSlot.hasItem() || !this.clientsort$noDragging.isEmpty() || !this.menu.getCarried().isEmpty())) {
             return null;
         }
         if (inputMatcher.apply(options.keyDrop).booleanValue() && this.hoveredSlot.hasItem()) {
@@ -149,7 +150,7 @@ extends Screen {
 
     @Unique
     private boolean clientsort$openEditor() {
-        Minecraft.getInstance().setScreen((Screen)new SelectorScreen((AbstractContainerScreen<?>)(Object)this));
+        Minecraft.getInstance().setScreenAndShow((Screen)new SelectorScreen((AbstractContainerScreen<?>)(Object)this));
         return true;
     }
 
@@ -195,7 +196,7 @@ extends Screen {
 
     @Inject(method={"extractRenderState"}, at={@At(value="TAIL")})
     private void afterRender(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
-        if (!((Object)((Object)this)).equals((Object)Minecraft.getInstance().screen)) {
+        if (!((Object)((Object)this)).equals((Object)Minecraft.getInstance().gui.screen())) {
             return;
         }
         if (com.thelads.core.features.alwayson.clientsort.ClientSortClient.overlayMessage != null) {
@@ -213,7 +214,7 @@ extends Screen {
         for (Slot slot : this.menu.slots) {
             int slotId = ((ISlot)slot).clientsort$getIndexInMenu();
             int slotIdx = ((ISlot)slot).clientsort$getIndexInContainer();
-            if (!(Minecraft.getInstance().screen instanceof EditorScreen)) {
+            if (!(Minecraft.getInstance().gui.screen() instanceof EditorScreen)) {
                 Object object = ClientSort.getObj(slot, this.getMenu());
                 if (object == null) continue;
                 boolean isPlayerInv = slot.container instanceof Inventory;

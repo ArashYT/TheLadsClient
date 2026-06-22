@@ -183,7 +183,7 @@ public class ImageViewerScreen extends Screen {
         if (event.button() == 0) {
             // Close button click
             if (mx >= this.width - 40 && mx < this.width - 16 && my >= 10 && my < 30) {
-                this.minecraft.setScreen(parent);
+                this.minecraft.setScreenAndShow(parent);
                 return true;
             }
             // Delete button click
@@ -262,7 +262,7 @@ public class ImageViewerScreen extends Screen {
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
         if (key == 256) { // Escape key
-            this.minecraft.setScreen(parent);
+            this.minecraft.setScreenAndShow(parent);
             return true;
         }
         if (key == 262) { // Right Arrow key
@@ -322,7 +322,7 @@ public class ImageViewerScreen extends Screen {
 
         if (shots.isEmpty()) {
             releaseCurrentTexture();
-            this.minecraft.setScreen(parent);
+            this.minecraft.setScreenAndShow(parent);
         } else {
             if (currentIndex >= shots.size()) {
                 currentIndex = shots.size() - 1;

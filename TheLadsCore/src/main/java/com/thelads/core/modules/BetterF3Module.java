@@ -1,7 +1,8 @@
 package com.thelads.core.modules;
 
 import com.thelads.core.config.Module;
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.ColorOption;
 import net.minecraft.client.Minecraft;
@@ -23,14 +24,14 @@ import java.util.List;
  * the new {@code DebugScreenOverlay.extractRenderState} path.
  */
 public class BetterF3Module extends Module {
-    public final CycleOption fpsUpdateRate   = new CycleOption("FPS Update", 1, "Instant", "Fast", "Normal", "Slow");
-    public final BoolOption  showXYZ         = new BoolOption("Show XYZ", true);
+    public final DropdownOption fpsUpdateRate   = new DropdownOption("FPS Update", 1, "Instant", "Fast", "Normal", "Slow");
+    public final BoolOption  showXYZ         = new BoolOption("Show XYZ", false);
     public final BoolOption  showJava        = new BoolOption("Show Java/Version", false);
     public final BoolOption  showMemory      = new BoolOption("Show Memory", true);
     public final BoolOption  showTargetBlock = new BoolOption("Show Target Block", true);
     public final BoolOption  textShadow      = new BoolOption("Text Shadow", true);
     public final ColorOption background      = new ColorOption("Background", true, 0x80000000);
-    public final CycleOption position        = new CycleOption("Position", 0, "Top", "Bottom");
+    public final DropdownOption position        = new DropdownOption("Position", 0, "Top", "Bottom");
 
     public BetterF3Module() {
         super("BetterF3", "Customize the F3 debug screen (toggle lines, shadow, background).");
@@ -78,7 +79,12 @@ public class BetterF3Module extends Module {
         if (list == null) return new ArrayList<>();
         ArrayList<String> out = new ArrayList<>(list);
         if (!isEnabled()) return out;
-        out.removeIf(line -> line != null && line.startsWith("XYZ:"));
+        if (!showXYZ.get()) {
+            out.removeIf(line -> line != null && (line.startsWith("XYZ:") || line.startsWith("Block:") || line.startsWith("Chunk:")));
+        }
+        if (!showTargetBlock.get()) {
+            out.removeIf(line -> line != null && line.startsWith("Targeted Block:"));
+        }
         return out;
     }
 
@@ -86,7 +92,12 @@ public class BetterF3Module extends Module {
         if (list == null) return new ArrayList<>();
         ArrayList<String> out = new ArrayList<>(list);
         if (!isEnabled()) return out;
-        out.removeIf(line -> line != null && line.startsWith("Java:"));
+        if (!showJava.get()) {
+            out.removeIf(line -> line != null && line.startsWith("Java:"));
+        }
+        if (!showMemory.get()) {
+            out.removeIf(line -> line != null && (line.startsWith("Mem:") || line.startsWith("Allocated:")));
+        }
         return out;
     }
 }

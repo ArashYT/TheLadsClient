@@ -232,7 +232,7 @@ public class GalleryEnhancementsTest {
             fail(e);
         }
 
-        verify(mockMinecraft).setScreen(parent);
+        verify(mockMinecraft).setScreenAndShow(parent);
     }
 
     @Test

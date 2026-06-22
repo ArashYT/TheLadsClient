@@ -147,19 +147,19 @@ extends Screen {
         Button copyPolicyKeyButton = Button.builder((Component)Localization.localized("editor", "copyPolicyKey", new Object[0]), button -> mc.keyboardHandler.setClipboard(this.rep.activePolicyKey == null ? "null" : this.rep.activePolicyKey)).pos(x, movingY += 21).size(width, height).build();
         copyPolicyKeyButton.active = this.rep.activePolicyKey != null;
         this.addRenderableWidget(copyPolicyKeyButton);
-        Button splitPolicyClassButton = Button.builder((Component)Localization.localized("editor", "splitPolicyClass", new Object[0]), button -> Minecraft.getInstance().setScreen((Screen)new ConfirmScreen(confirm -> {
+        Button splitPolicyClassButton = Button.builder((Component)Localization.localized("editor", "splitPolicyClass", new Object[0]), button -> Minecraft.getInstance().setScreenAndShow((Screen)new ConfirmScreen(confirm -> {
             if (confirm) {
                 Config.options().classPolicies.put(ClassPolicy.getKey(this.lowestPolicyClassName, null), new ClassPolicy(this.lowestPolicyClassName, null, this.buttons.getFirst().offset, this.offsetFromSlot, this.buttons.getFirst().operationAllowed ? (this.buttons.getFirst().active ? Policy.KEYBIND_BUTTON : Policy.KEYBIND) : Policy.NONE, this.buttons.get((int)1).operationAllowed ? (this.buttons.getFirst().active ? Policy.KEYBIND_BUTTON : Policy.KEYBIND) : Policy.NONE, this.buttons.get((int)2).operationAllowed ? (this.buttons.getFirst().active ? Policy.KEYBIND_BUTTON : Policy.KEYBIND) : Policy.NONE, this.buttons.get((int)3).operationAllowed ? (this.buttons.getFirst().active ? Policy.KEYBIND_BUTTON : Policy.KEYBIND) : Policy.NONE, this.autoOp, this.autoOpOther, new TreeSet<Integer>(this.ignoredSlots)));
                 Config.save();
                 this.init();
             }
-            Minecraft.getInstance().setScreen((Screen)this);
+            Minecraft.getInstance().setScreenAndShow((Screen)this);
         }, (Component)Localization.localized("title", "confirm.splitPolicyClass", new Object[0]), (Component)Localization.localized("message", "confirm.splitPolicyClass", Component.literal((String)(this.rep.activePolicyKey == null ? this.lowestPolicyClassName : this.rep.activePolicyKey)).withStyle(ChatFormatting.GOLD), Component.literal((String)this.lowestPolicyClassName).withStyle(ChatFormatting.GOLD))))).tooltip(Tooltip.create((Component)Localization.localized("editor", "splitPolicyClass.tooltip", new Object[0]))).pos(x, movingY += 21).size(width, height).build();
         splitPolicyClassButton.active = this.rep.activePolicyKey != null && !((String)ClassPolicy.parseKey(this.rep.activePolicyKey).getFirst()).equals(this.lowestPolicyClassName);
         this.addRenderableWidget(splitPolicyClassButton);
         Button splitPolicyTitleButton = Button.builder((Component)Localization.localized("editor", "splitPolicyTitle", new Object[0]), button -> {
             Component invTitle = this.isPlayerInv ? ((AbstractContainerScreenAccessor)this.underlay).clientsort$getPlayerInventoryTitle() : this.underlay.getTitle();
-            Minecraft.getInstance().setScreen((Screen)new ConfirmScreen(confirm -> {
+            Minecraft.getInstance().setScreenAndShow((Screen)new ConfirmScreen(confirm -> {
                 if (confirm) {
                     if (ClassPolicy.hasInvTitle(this.rep.activePolicyKey)) {
                         com.thelads.core.features.alwayson.clientsort.ClientSortClient.LOG.error("Cannot split policy with title: activePolicyKey '{}' already has title.", this.rep.activePolicyKey);
@@ -169,7 +169,7 @@ extends Screen {
                     Config.save();
                     this.init();
                 }
-                Minecraft.getInstance().setScreen((Screen)this);
+                Minecraft.getInstance().setScreenAndShow((Screen)this);
             }, (Component)Localization.localized("title", "confirm.splitPolicyTitle", new Object[0]), (Component)Localization.localized("message", "confirm.splitPolicyTitle", Component.literal((String)(this.rep.activePolicyKey == null ? this.lowestPolicyClassName : this.rep.activePolicyKey)).withStyle(ChatFormatting.GOLD), Component.literal((String)invTitle.getString()).withStyle(ChatFormatting.GOLD))));
         }).tooltip(Tooltip.create((Component)Localization.localized("editor", "splitPolicyTitle.tooltip", new Object[0]))).pos(x, movingY += 21).size(width, height).build();
         splitPolicyTitleButton.active = this.rep.activePolicyKey != null && !ClassPolicy.hasInvTitle(this.rep.activePolicyKey);
@@ -187,13 +187,13 @@ extends Screen {
             this.repositionButtons(this.buttons.getFirst(), before);
         }).tooltip(Tooltip.create((Component)Localization.localized("editor", "moveToDefault.tooltip", new Object[0]))).pos(x, movingY += 21).size(width, height).build();
         this.addRenderableWidget(moveToDefaultButton);
-        Button saveAsDefaultButton = Button.builder((Component)Localization.localized("editor", "saveAsDefault", new Object[0]), button -> Minecraft.getInstance().setScreen((Screen)new ConfirmScreen(confirm -> {
+        Button saveAsDefaultButton = Button.builder((Component)Localization.localized("editor", "saveAsDefault", new Object[0]), button -> Minecraft.getInstance().setScreenAndShow((Screen)new ConfirmScreen(confirm -> {
             if (confirm) {
                 Config.options().layoutOffset = this.buttons.getFirst().offset;
                 Config.save();
                 this.init();
             }
-            Minecraft.getInstance().setScreen((Screen)this);
+            Minecraft.getInstance().setScreenAndShow((Screen)this);
         }, (Component)Localization.localized("title", "confirm.saveAsDefault", new Object[0]), (Component)Localization.localized("message", "confirm.saveAsDefault", new Object[0])))).tooltip(Tooltip.create((Component)Localization.localized("editor", "saveAsDefault.tooltip", new Object[0]))).pos(x, movingY += 21).size(width, height).build();
         this.addRenderableWidget(saveAsDefaultButton);
         @NotNull CycleButton autoOpOtherButton = CycleButton.booleanBuilder((Component)Component.literal((String)"1").withStyle(ChatFormatting.RED), (Component)Component.literal((String)"0").withStyle(ChatFormatting.GREEN), (boolean)this.autoOpOther).withTooltip(v -> Tooltip.create((Component)Localization.localized("editor", "autoOp.other.tooltip", new Object[0]))).displayOnlyValue().create(x + width - 10, movingY += 21, 10, height, (Component)Component.empty(), (b, v) -> {
@@ -227,7 +227,7 @@ extends Screen {
         this.addRenderableWidget(undoChangesButton);
         Button reselectButton = Button.builder((Component)Localization.localized("editor", "reselect", new Object[0]), button -> {
             this.onClose();
-            Minecraft.getInstance().setScreen((Screen)new SelectorScreen(this.underlay, this));
+            Minecraft.getInstance().setScreenAndShow((Screen)new SelectorScreen(this.underlay, this));
         }).tooltip(Tooltip.create((Component)Localization.localized("editor", "reselect.tooltip", new Object[0]))).pos(x, movingY += 21).size(width, height).build();
         this.addRenderableWidget(reselectButton);
         Button cancelButton = Button.builder((Component)CommonComponents.GUI_CANCEL, button -> this.onClose()).pos(x, movingY += 21).size(width, height).build();
@@ -294,7 +294,7 @@ extends Screen {
     public void onClose() {
         super.onClose();
         this.lastScreen.init(this.width, this.height);
-        Minecraft.getInstance().setScreen(this.lastScreen);
+        Minecraft.getInstance().setScreenAndShow(this.lastScreen);
     }
 
     public void saveAndClose() {

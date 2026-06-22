@@ -41,8 +41,8 @@ public class RenderModeManager {
             mc.execute(() -> setDirty(pos));
             return;
         }
-        if (mc.levelRenderer != null) {
-            mc.levelRenderer.blockChanged(null, pos, null, null, 8);
+        if (mc.level != null) {
+            mc.level.setBlocksDirty(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), mc.level.getBlockState(pos));
         }
     }
 

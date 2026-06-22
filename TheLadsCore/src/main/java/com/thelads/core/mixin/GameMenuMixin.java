@@ -35,10 +35,10 @@ public abstract class GameMenuMixin extends Screen {
         int half = (rowW - 4) / 2;
 
         this.addRenderableWidget(Button.builder(Component.literal("Lads Client"), (button) -> {
-            this.minecraft.setScreen(new LadsSettingsScreen(this));
+            this.minecraft.setScreenAndShow(new LadsSettingsScreen(this));
         }).bounds(x, y, half, 20).build());
         this.addRenderableWidget(Button.builder(Component.literal("Gallery"), (button) -> {
-            this.minecraft.setScreen(new GalleryScreen(this));
+            this.minecraft.setScreenAndShow(new com.thelads.core.features.decentscreenshot.ScreenshotGalleryScreen(this));
         }).bounds(x + half + 4, y, rowW - half - 4, 20).build());
     }
 

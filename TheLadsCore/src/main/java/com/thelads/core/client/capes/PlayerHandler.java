@@ -376,8 +376,8 @@ public final class PlayerHandler {
             CapeType capeType = CapeType.MINECRAFT;
             if (capesMod != null) {
                 var opt = capesMod.getOption("Preferred Cape");
-                if (opt instanceof com.thelads.core.config.CycleOption) {
-                    capeType = CapeType.values()[((com.thelads.core.config.CycleOption) opt).getIndex()];
+                if (opt instanceof com.thelads.core.config.DropdownOption) {
+                    capeType = CapeType.values()[((com.thelads.core.config.DropdownOption) opt).getIndex()];
                 }
             }
             final CapeType targetCape = capeType;

@@ -1,0 +1,13 @@
+/*
+ * Decompiled with CFR 0.152.
+ */
+package dev.tr7zw.notenoughanimations.versionless.animations;
+
+public enum HoldUpModes {
+    CONFIG,
+    ALL,
+    NONE,
+    CONFIG_INVERTED;
+
+}
+

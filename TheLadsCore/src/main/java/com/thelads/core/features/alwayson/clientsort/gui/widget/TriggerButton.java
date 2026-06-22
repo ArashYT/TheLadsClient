@@ -99,7 +99,7 @@ extends Button {
         if (this.isMouseOver(event.x(), event.y())) {
             boolean rightClick;
             boolean bl = rightClick = event.button() == 1;
-            if (Minecraft.getInstance().screen instanceof EditorScreen) {
+            if (Minecraft.getInstance().gui.screen() instanceof EditorScreen) {
                 if (rightClick) {
                     if (event.hasShiftDown()) {
                         this.operationAllowed = !this.operationAllowed;
@@ -122,7 +122,7 @@ extends Button {
     }
 
     public void openEditScreen() {
-        Minecraft.getInstance().setScreen((Screen)(this.isPlayerInv ? new PlayerEditorScreen(this.screen, this) : new ContainerEditorScreen(this.screen, this)));
+        Minecraft.getInstance().setScreenAndShow((Screen)(this.isPlayerInv ? new PlayerEditorScreen(this.screen, this) : new ContainerEditorScreen(this.screen, this)));
     }
 
     public void extractContents(@NotNull GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
@@ -138,7 +138,7 @@ extends Button {
         }
         if (this.isMouseOver(mouseX, mouseY)) {
             if (((AbstractWidgetAccessor)((Object)this)).clientsort$getTooltip().get() == null) {
-                if (Minecraft.getInstance().screen instanceof EditorScreen) {
+                if (Minecraft.getInstance().gui.screen() instanceof EditorScreen) {
                     MutableComponent visibilityStatus = Localization.localized("editor", this.active ? "enabled" : "disabled", new Object[0]).withStyle(this.active ? ChatFormatting.GREEN : ChatFormatting.RED);
                     MutableComponent operationStatus = Localization.localized("editor", this.operationAllowed ? "enabled" : "disabled", new Object[0]).withStyle(this.operationAllowed ? ChatFormatting.GREEN : ChatFormatting.RED);
                     this.setTooltip(Tooltip.create((Component)Component.empty().append(this.name).append("\n").append((Component)Localization.localized("editor", "visibility", visibilityStatus)).append("\n").append((Component)Localization.localized("editor", "operation", operationStatus))));
@@ -152,7 +152,7 @@ extends Button {
     }
 
     protected void onDrag(@NotNull MouseButtonEvent event, double dragX, double dragY) {
-        if (Minecraft.getInstance().screen instanceof EditorScreen) {
+        if (Minecraft.getInstance().gui.screen() instanceof EditorScreen) {
             AbstractContainerScreenAccessor acs = (AbstractContainerScreenAccessor)this.screen;
             int newX = Math.clamp((long)((int)event.x() - 6), 0, this.screen.width - 13);
             int newY = Math.clamp((long)((int)event.y() - 6), 0, this.screen.height - 13);

@@ -13,6 +13,12 @@ public class EntityRendererMixin {
 
     @Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true, require = 0)
     private void ladsToggleNametags(Entity entity, double distanceSq, CallbackInfoReturnable<Boolean> cir) {
-        if (ToggleNametagsModule.shouldHide(entity)) cir.setReturnValue(false);
+        if (ToggleNametagsModule.shouldHide(entity)) {
+            cir.setReturnValue(false);
+            return;
+        }
+        if (ToggleNametagsModule.shouldShowOwn(entity)) {
+            cir.setReturnValue(true);
+        }
     }
 }
