@@ -33,7 +33,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(value={BlockEntityRenderDispatcher.class})
 public abstract class BlockEntityRenderDispatcherMixin {
     @Inject(method={"tryExtractRenderState"}, at={@At(value="HEAD")}, cancellable=true)
-    public void tryExtractRenderState(BlockEntity blockEntity, float f, ModelFeatureRenderer.CrumblingOverlay crumblingOverlay, CallbackInfoReturnable<BlockEntityRenderState> info) {
+    public void tryExtractRenderState(BlockEntity blockEntity, float f, ModelFeatureRenderer.CrumblingOverlay crumblingOverlay, boolean bl, CallbackInfoReturnable<BlockEntityRenderState> info) {
         if (EntityCullingModBase.instance.config.skipBlockEntityCulling) {
             return;
         }
