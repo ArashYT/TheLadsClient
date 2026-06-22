@@ -23,7 +23,7 @@ public class LauncherSettings
     public string InstancePath { get; set; } = @"C:\The Lads Client";
     public string PackwizPath { get; set; } = @"C:\Users\Arash\Desktop\Lads Client\The Lads Client Packwiz";
     public string PackwizUrl { get; set; } = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/The%20Lads%20Client%20Packwiz/pack.toml";
-    public string FabricVersion { get; set; } = "fabric-loader-0.19.2-26.1.2";
+    public string FabricVersion { get; set; } = "fabric-loader-0.19.3-26.2";
 
     // Appearance
     public string Theme { get; set; } = "DarkRed";
