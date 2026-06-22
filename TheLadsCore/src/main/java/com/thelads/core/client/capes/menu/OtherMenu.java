@@ -34,12 +34,12 @@ public final class OtherMenu extends MainMenu {
                     sessionService.joinServer(uuid, this.minecraft.getUser().getAccessToken(), serverId);
                     String uuidStr = uuid.toString().replace("-", "");
                     String url = "https://optifine.net/capeChange?u=" + uuidStr + "&n=" + this.minecraft.getUser().getName() + "&s=" + serverId;
-                    this.minecraft.setScreen(new ConfirmLinkScreen(bool -> {
+                    this.minecraft.setScreenAndShow(new ConfirmLinkScreen(bool -> {
                         if (bool) {
                             Util.getPlatform().openUri(url);
                         }
                         if (this.minecraft != null) {
-                            this.minecraft.setScreen(this);
+                            this.minecraft.setScreenAndShow(this);
                         }
                     }, url, true));
                 }
@@ -50,7 +50,7 @@ public final class OtherMenu extends MainMenu {
 
         this.addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> {
             if (this.minecraft != null) {
-                this.minecraft.setScreen(this.lastScreen);
+                this.minecraft.setScreenAndShow(this.lastScreen);
             }
         }).pos(this.width / 2 - buttonW / 2, this.height / 7 + 48).size(buttonW, 20).build());
     }

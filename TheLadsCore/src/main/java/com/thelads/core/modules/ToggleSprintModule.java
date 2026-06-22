@@ -1,7 +1,8 @@
 package com.thelads.core.modules;
 
 import com.thelads.core.config.BoolOption;
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.Option;
 import net.minecraft.client.Minecraft;
@@ -51,6 +52,6 @@ public class ToggleSprintModule extends Module {
     }
     private int optCycle(String name, int def) {
         Option o = getOption(name);
-        return (o instanceof CycleOption c) ? c.getIndex() : def;
+        return (o instanceof DropdownOption c) ? c.getIndex() : def;
     }
 }

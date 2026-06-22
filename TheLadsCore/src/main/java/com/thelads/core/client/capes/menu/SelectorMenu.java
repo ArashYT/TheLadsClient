@@ -17,6 +17,8 @@ import org.joml.Vector3f;
 
 public final class SelectorMenu extends MainMenu {
     private long lastTime;
+    private boolean dropdownOpen = false;
+    private Button capeTypeButton;
 
     public SelectorMenu(Screen parent, Options gameOptions) {
         super(parent, gameOptions);
@@ -33,41 +35,35 @@ public final class SelectorMenu extends MainMenu {
     @Override
     protected void init() {
         super.init();
-        int buttonW = 200;
         CapeConfig config = Capes.INSTANCE.getCONFIG();
 
-        this.addRenderableWidget(Button.builder(config.getClientCapeType().getText(), button -> {
-            config.setClientCapeType(config.getClientCapeType().cycle());
-            config.save();
-            button.setMessage(config.getClientCapeType().getText());
-            PlaceholderEntity.INSTANCE.setCapeLoaded(false);
-        }).pos(this.width / 2 - buttonW / 2, 60).size(buttonW, 20).build());
+        this.capeTypeButton = Button.builder(config.getClientCapeType().getText(), button -> {
+            this.dropdownOpen = !this.dropdownOpen;
+        }).pos(this.width / 4 - 50, 60).size(100, 20).build();
+        this.addRenderableWidget(this.capeTypeButton);
 
         this.addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> {
             if (this.minecraft != null) {
-                this.minecraft.setScreen(this.lastScreen);
+                this.minecraft.setScreenAndShow(this.lastScreen);
             }
-        }).pos(this.width / 2 - buttonW / 2, 220).size(buttonW, 20).build());
+        }).pos(this.width / 4 - 50, 220).size(100, 20).build());
 
-        buttonW = 100;
         this.addRenderableWidget(Button.builder(Component.translatable("options.capes.selector.player"), button -> {
             PlaceholderEntity.INSTANCE.setShowBody(!PlaceholderEntity.INSTANCE.getShowBody());
-        }).pos(this.width / 4 - buttonW / 2, 145).size(buttonW, 20).build());
+        }).pos(this.width / 4 - 50, 145).size(100, 20).build());
 
         this.addRenderableWidget(Button.builder(Component.translatable("options.capes.selector.elytra"), button -> {
             PlaceholderEntity.INSTANCE.setShowElytra(!PlaceholderEntity.INSTANCE.getShowElytra());
-        }).pos(this.width / 4 - buttonW / 2, 120).size(buttonW, 20).build());
-
-        // Dummy/hidden button matching CFR output:
-        this.addRenderableWidget(Button.builder(Component.literal("DO NOT ASK WHY THIS EXISTS"), button -> {})
-            .size(0, 0).build());
+        }).pos(this.width / 4 - 50, 120).size(100, 20).build());
     }
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
-        int playerX = this.width / 2 - 50;
-        int playerY = 65;
+        int playerX1 = this.width * 3 / 4 - 50;
+        int playerX2 = this.width * 3 / 4 + 50;
+        int playerY1 = 65;
+        int playerY2 = 365;
         long time = System.currentTimeMillis();
         PlaceholderEntity entity = PlaceholderEntity.INSTANCE;
         if (time > this.lastTime + 16) {
@@ -75,7 +71,35 @@ public final class SelectorMenu extends MainMenu {
             entity.setPrevX(entity.getX() + 0.025);
             entity.updateLimbs();
         }
-        this.drawEntity(graphics, playerX, playerY, playerX + 100, playerY + 300, PlaceholderEntity.INSTANCE);
+        this.drawEntity(graphics, playerX1, playerY1, playerX2, playerY2, PlaceholderEntity.INSTANCE);
+
+        if (this.dropdownOpen) {
+            graphics.nextStratum();
+            com.thelads.core.client.capes.CapeType[] types = com.thelads.core.client.capes.CapeType.values();
+            int bw = 100;
+            int bx = this.width / 4 - 50;
+            int by = 80;
+            int itemH = 20;
+            int listH = types.length * itemH;
+            
+            // Draw background (dark color) and red outline matching client style
+            graphics.fill(bx, by, bx + bw, by + listH, 0xCC180A0A);
+            // Draw border
+            graphics.fill(bx, by, bx + bw, by + 1, 0xFFD32F2F);
+            graphics.fill(bx, by + listH - 1, bx + bw, by + listH, 0xFFD32F2F);
+            graphics.fill(bx, by, bx + 1, by + listH, 0xFFD32F2F);
+            graphics.fill(bx + bw - 1, by, bx + bw, by + listH, 0xFFD32F2F);
+            
+            for (int k = 0; k < types.length; k++) {
+                int iy = by + k * itemH;
+                boolean hovered = mouseX >= bx && mouseX < bx + bw && mouseY >= iy && mouseY < iy + itemH;
+                if (hovered) {
+                    graphics.fill(bx + 1, iy + 1, bx + bw - 1, iy + itemH - 1, 0xCC2A1010);
+                }
+                String text = types[k].getStylized();
+                graphics.centeredText(this.font, text, bx + bw / 2, iy + 6, hovered ? 0xFFFF5252 : 0xFFFFFFFF);
+            }
+        }
     }
 
     public void drawEntity(GuiGraphicsExtractor context, int x1, int y1, int x2, int y2, PlaceholderEntity entity) {
@@ -87,10 +111,41 @@ public final class SelectorMenu extends MainMenu {
     }
 
     @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean isDouble) {
+        if (this.dropdownOpen) {
+            double mx = event.x();
+            double my = event.y();
+            com.thelads.core.client.capes.CapeType[] types = com.thelads.core.client.capes.CapeType.values();
+            int bw = 100;
+            int bx = this.width / 4 - 50;
+            int by = 80;
+            int itemH = 20;
+            int listH = types.length * itemH;
+            
+            if (mx >= bx && mx < bx + bw && my >= by && my < by + listH) {
+                int clickedIdx = (int) ((my - by) / itemH);
+                if (clickedIdx >= 0 && clickedIdx < types.length) {
+                    CapeConfig config = Capes.INSTANCE.getCONFIG();
+                    config.setClientCapeType(types[clickedIdx]);
+                    config.save();
+                    this.capeTypeButton.setMessage(config.getClientCapeType().getText());
+                    PlaceholderEntity.INSTANCE.setCapeLoaded(false);
+                }
+            }
+            this.dropdownOpen = false;
+            return true;
+        }
+        return super.mouseClicked(event, isDouble);
+    }
+
+    @Override
     public boolean mouseDragged(MouseButtonEvent click, double offsetX, double offsetY) {
-        super.mouseDragged(click, offsetX, offsetY);
-        PlaceholderEntity.INSTANCE.setPrevYaw(PlaceholderEntity.INSTANCE.getYaw());
-        PlaceholderEntity.INSTANCE.setYaw(PlaceholderEntity.INSTANCE.getYaw() - (float) offsetX);
-        return true;
+        if (click.x() >= this.width / 2) {
+            super.mouseDragged(click, offsetX, offsetY);
+            PlaceholderEntity.INSTANCE.setPrevYaw(PlaceholderEntity.INSTANCE.getYaw());
+            PlaceholderEntity.INSTANCE.setYaw(PlaceholderEntity.INSTANCE.getYaw() - (float) offsetX);
+            return true;
+        }
+        return super.mouseDragged(click, offsetX, offsetY);
     }
 }

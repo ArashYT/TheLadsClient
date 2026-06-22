@@ -55,7 +55,7 @@ public class ConfigScreenProvider {
             messageWidget.setMaxWidth(240);
             messageWidget.setCentered(true);
             this.addRenderableWidget(messageWidget);
-            Button openLinkButton = Button.builder((Component)Localization.localized("message", "viewModrinth", new Object[0]), button -> Minecraft.getInstance().setScreen((Screen)new ConfirmLinkScreen(open -> {
+            Button openLinkButton = Button.builder((Component)Localization.localized("message", "viewModrinth", new Object[0]), button -> Minecraft.getInstance().setScreenAndShow((Screen)new ConfirmLinkScreen(open -> {
                 if (open) {
                     Util.getPlatform().openUri(this.modUrl);
                 }
@@ -68,7 +68,7 @@ public class ConfigScreenProvider {
 
         @Override
         public void onClose() {
-            Minecraft.getInstance().setScreen(this.parent);
+            Minecraft.getInstance().setScreenAndShow(this.parent);
         }
     }
 
@@ -93,7 +93,7 @@ public class ConfigScreenProvider {
 
         @Override
         public void onClose() {
-            Minecraft.getInstance().setScreen(this.parent);
+            Minecraft.getInstance().setScreenAndShow(this.parent);
         }
     }
 }

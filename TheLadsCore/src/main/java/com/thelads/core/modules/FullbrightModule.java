@@ -1,6 +1,7 @@
 package com.thelads.core.modules;
 
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.Option;
 import net.minecraft.client.Minecraft;
@@ -43,8 +44,8 @@ public class FullbrightModule extends Module {
 
     private double getTargetGamma() {
         Option o = getOption("Level");
-        if (o instanceof CycleOption) {
-            int idx = ((CycleOption) o).getIndex();
+        if (o instanceof DropdownOption) {
+            int idx = ((DropdownOption) o).getIndex();
             if (idx >= 0 && idx < GAMMA_LEVELS.length) return GAMMA_LEVELS[idx];
         }
         return 10.0;

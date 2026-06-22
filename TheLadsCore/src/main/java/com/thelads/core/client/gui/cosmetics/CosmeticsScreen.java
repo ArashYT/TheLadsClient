@@ -217,7 +217,7 @@ public class CosmeticsScreen extends Screen {
             this.minecraft.getTextureManager().release(this.previewTexture);
         }
         this.previewTexture = null;
-        this.minecraft.setScreen(this.parent);
+        this.minecraft.setScreenAndShow(this.parent);
     }
 
     @Override

@@ -20,6 +20,9 @@ public abstract class PauseScreenBetterStatsMixin extends Screen {
     private Supplier<Screen> modifyStatsButton(Supplier<Screen> original) {
         if (original.get() instanceof StatsScreen && this.minecraft.player != null) {
             return () -> {
+                if (!com.thelads.core.config.ModuleManager.getInstance().getModule("BetterStats").isEnabled()) {
+                    return original.get();
+                }
                 if (com.mojang.blaze3d.platform.InputConstants.isKeyDown(this.minecraft.getWindow(), 340) ||
                     com.mojang.blaze3d.platform.InputConstants.isKeyDown(this.minecraft.getWindow(), 344)) {
                     return original.get();

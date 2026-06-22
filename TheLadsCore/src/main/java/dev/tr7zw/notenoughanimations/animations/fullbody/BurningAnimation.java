@@ -1,0 +1,65 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  net.minecraft.client.model.player.PlayerModel
+ *  net.minecraft.client.player.AbstractClientPlayer
+ *  net.minecraft.util.Mth
+ *  net.minecraft.world.effect.MobEffects
+ *  net.minecraft.world.entity.HumanoidArm
+ */
+package dev.tr7zw.notenoughanimations.animations.fullbody;
+
+import dev.tr7zw.notenoughanimations.access.PlayerData;
+import dev.tr7zw.notenoughanimations.api.BasicAnimation;
+import dev.tr7zw.notenoughanimations.util.AnimationUtil;
+import dev.tr7zw.notenoughanimations.util.NMSWrapper;
+import dev.tr7zw.notenoughanimations.versionless.NEABaseMod;
+import dev.tr7zw.notenoughanimations.versionless.animations.BodyPart;
+import net.minecraft.client.model.player.PlayerModel;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.HumanoidArm;
+
+public class BurningAnimation
+extends BasicAnimation {
+    private BodyPart[] parts = new BodyPart[]{BodyPart.LEFT_ARM, BodyPart.RIGHT_ARM, BodyPart.HEAD};
+
+    @Override
+    public boolean isEnabled() {
+        return NEABaseMod.config.burningAnimation;
+    }
+
+    @Override
+    public boolean isValid(AbstractClientPlayer entity, PlayerData data) {
+        return entity.isOnFire() && !entity.hasEffect(MobEffects.FIRE_RESISTANCE);
+    }
+
+    @Override
+    public BodyPart[] getBodyParts(AbstractClientPlayer entity, PlayerData data) {
+        return this.parts;
+    }
+
+    @Override
+    public int getPriority(AbstractClientPlayer entity, PlayerData data) {
+        return 400;
+    }
+
+    @Override
+    public void apply(AbstractClientPlayer entity, PlayerData data, PlayerModel model, BodyPart part, float delta, float tickCounter) {
+        if (part == BodyPart.HEAD) {
+            AnimationUtil.setHeadYRot(model, model.head.yRot + Mth.sin((double)entity.tickCount) * 0.1f);
+            return;
+        }
+        if (entity.swinging && NMSWrapper.getArm(entity, entity.swingingArm) == part) {
+            return;
+        }
+        float armHeight = Mth.sin((double)entity.tickCount) * 0.1f;
+        if (part == BodyPart.LEFT_ARM) {
+            armHeight *= -1.0f;
+        }
+        AnimationUtil.applyArmTransforms(model, part == BodyPart.LEFT_ARM ? HumanoidArm.LEFT : HumanoidArm.RIGHT, -2.6f + armHeight, -0.2f, -0.3f);
+    }
+}
+

@@ -260,7 +260,7 @@ public class GalleryScreen extends Screen {
         double my = event.y();
         if (event.button() == 0) {
             if (mx >= this.width - 40 && mx < this.width - 16 && my >= 12 && my < 32) {
-                this.minecraft.setScreen(parent);
+                this.minecraft.setScreenAndShow(parent);
                 return true;
             }
             if (mx >= this.width - 130 && mx < this.width - 46 && my >= 12 && my < 32) {
@@ -308,7 +308,7 @@ public class GalleryScreen extends Screen {
                         return true;
                     }
                     // Otherwise open the image viewer screen
-                    this.minecraft.setScreen(new ImageViewerScreen(this, shots, shots.indexOf(f)));
+                    this.minecraft.setScreenAndShow(new ImageViewerScreen(this, shots, shots.indexOf(f)));
                     return true;
                 }
                 y += rowStride;
@@ -320,7 +320,7 @@ public class GalleryScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (event.key() == 256) {
-            this.minecraft.setScreen(parent);
+            this.minecraft.setScreenAndShow(parent);
             return true;
         }
         return super.keyPressed(event);

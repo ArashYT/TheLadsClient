@@ -27,7 +27,7 @@ public class StressTestHarness {
         for (int i = 0; i < 50; i++) {
             // 1. Simulate opening the Cosmetics Screen
             CosmeticsScreen screen = new CosmeticsScreen(null);
-            mc.setScreen(screen);
+            mc.setScreenAndShow(screen);
             
             // 2. Fetch a new texture
             Identifier newTexture = CosmeticsBackend.fetchByFile(testImageFile).join();

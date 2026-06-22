@@ -38,8 +38,8 @@ public class RenderScaleOptions {
         var mod = getModule();
         if (mod != null) {
             var opt = mod.getOption("Preset");
-            if (opt instanceof com.thelads.core.config.CycleOption) {
-                return RenderScalePreset.values()[((com.thelads.core.config.CycleOption) opt).getIndex()];
+            if (opt instanceof com.thelads.core.config.DropdownOption) {
+                return RenderScalePreset.values()[((com.thelads.core.config.DropdownOption) opt).getIndex()];
             }
         }
         return RenderScalePreset.CUSTOM;
@@ -49,8 +49,8 @@ public class RenderScaleOptions {
         var mod = getModule();
         if (mod != null) {
             var opt = mod.getOption("Preset");
-            if (opt instanceof com.thelads.core.config.CycleOption) {
-                ((com.thelads.core.config.CycleOption) opt).setIndex(preset.ordinal());
+            if (opt instanceof com.thelads.core.config.DropdownOption) {
+                ((com.thelads.core.config.DropdownOption) opt).setIndex(preset.ordinal());
                 com.thelads.core.config.ConfigManager.save();
             }
         }
@@ -73,8 +73,8 @@ public class RenderScaleOptions {
                 };
             }
             var opt = mod.getOption("Scale");
-            if (opt instanceof com.thelads.core.config.CycleOption) {
-                int index = ((com.thelads.core.config.CycleOption) opt).getIndex();
+            if (opt instanceof com.thelads.core.config.DropdownOption) {
+                int index = ((com.thelads.core.config.DropdownOption) opt).getIndex();
                 return switch (index) {
                     case 0 -> 0.50f;
                     case 1 -> 0.75f;
@@ -93,7 +93,7 @@ public class RenderScaleOptions {
         var mod = getModule();
         if (mod != null) {
             var opt = mod.getOption("Scale");
-            if (opt instanceof com.thelads.core.config.CycleOption) {
+            if (opt instanceof com.thelads.core.config.DropdownOption) {
                 int index = 2; // default 100%
                 if (scale <= 0.5f) index = 0;
                 else if (scale <= 0.75f) index = 1;
@@ -101,7 +101,7 @@ public class RenderScaleOptions {
                 else if (scale <= 1.25f) index = 3;
                 else if (scale <= 1.5f) index = 4;
                 else index = 5;
-                ((com.thelads.core.config.CycleOption) opt).setIndex(index);
+                ((com.thelads.core.config.DropdownOption) opt).setIndex(index);
                 com.thelads.core.config.ConfigManager.save();
             }
         }
@@ -115,8 +115,8 @@ public class RenderScaleOptions {
                 return preset == RenderScalePreset.ULTRA_PERFORMANCE ? ScaleAlgorithm.NEAREST : ScaleAlgorithm.LINEAR;
             }
             var opt = mod.getOption("Algorithm");
-            if (opt instanceof com.thelads.core.config.CycleOption) {
-                return ScaleAlgorithm.values()[((com.thelads.core.config.CycleOption) opt).getIndex()];
+            if (opt instanceof com.thelads.core.config.DropdownOption) {
+                return ScaleAlgorithm.values()[((com.thelads.core.config.DropdownOption) opt).getIndex()];
             }
         }
         return ScaleAlgorithm.LINEAR;
@@ -126,8 +126,8 @@ public class RenderScaleOptions {
         var mod = getModule();
         if (mod != null) {
             var opt = mod.getOption("Algorithm");
-            if (opt instanceof com.thelads.core.config.CycleOption) {
-                ((com.thelads.core.config.CycleOption) opt).setIndex(algorithm.ordinal());
+            if (opt instanceof com.thelads.core.config.DropdownOption) {
+                ((com.thelads.core.config.DropdownOption) opt).setIndex(algorithm.ordinal());
                 com.thelads.core.config.ConfigManager.save();
             }
         }
@@ -164,8 +164,8 @@ public class RenderScaleOptions {
         var mod = getModule();
         if (mod != null) {
             var opt = mod.getOption("Target FPS");
-            if (opt instanceof com.thelads.core.config.CycleOption) {
-                int index = ((com.thelads.core.config.CycleOption) opt).getIndex();
+            if (opt instanceof com.thelads.core.config.DropdownOption) {
+                int index = ((com.thelads.core.config.DropdownOption) opt).getIndex();
                 return switch (index) {
                     case 0 -> 30;
                     case 1 -> 60;
@@ -183,14 +183,14 @@ public class RenderScaleOptions {
         var mod = getModule();
         if (mod != null) {
             var opt = mod.getOption("Target FPS");
-            if (opt instanceof com.thelads.core.config.CycleOption) {
+            if (opt instanceof com.thelads.core.config.DropdownOption) {
                 int index = 1; // default 60
                 if (targetFps <= 30) index = 0;
                 else if (targetFps <= 60) index = 1;
                 else if (targetFps <= 90) index = 2;
                 else if (targetFps <= 120) index = 3;
                 else index = 4;
-                ((com.thelads.core.config.CycleOption) opt).setIndex(index);
+                ((com.thelads.core.config.DropdownOption) opt).setIndex(index);
                 com.thelads.core.config.ConfigManager.save();
             }
         }
@@ -200,8 +200,8 @@ public class RenderScaleOptions {
         var mod = getModule();
         if (mod != null) {
             var opt = mod.getOption("Min Scale");
-            if (opt instanceof com.thelads.core.config.CycleOption) {
-                int index = ((com.thelads.core.config.CycleOption) opt).getIndex();
+            if (opt instanceof com.thelads.core.config.DropdownOption) {
+                int index = ((com.thelads.core.config.DropdownOption) opt).getIndex();
                 return switch (index) {
                     case 0 -> 0.50f;
                     case 1 -> 0.75f;
@@ -217,12 +217,12 @@ public class RenderScaleOptions {
         var mod = getModule();
         if (mod != null) {
             var opt = mod.getOption("Min Scale");
-            if (opt instanceof com.thelads.core.config.CycleOption) {
+            if (opt instanceof com.thelads.core.config.DropdownOption) {
                 int index = 0; // default 50%
                 if (minScale <= 0.5f) index = 0;
                 else if (minScale <= 0.75f) index = 1;
                 else index = 2;
-                ((com.thelads.core.config.CycleOption) opt).setIndex(index);
+                ((com.thelads.core.config.DropdownOption) opt).setIndex(index);
                 com.thelads.core.config.ConfigManager.save();
             }
         }

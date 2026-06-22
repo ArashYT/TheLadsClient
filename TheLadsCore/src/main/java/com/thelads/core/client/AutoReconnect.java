@@ -1,6 +1,7 @@
 package com.thelads.core.client;
 
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
@@ -53,7 +54,7 @@ public class AutoReconnect {
         Module m = ModuleManager.getInstance().getModule("AutoReconnect");
         if (m != null) {
             Option o = m.getOption("Delay");
-            if (o instanceof CycleOption c) {
+            if (o instanceof DropdownOption c) {
                 int idx = c.getIndex();
                 if (idx >= 0 && idx < DELAY_OPTIONS.length) return DELAY_OPTIONS[idx];
             }
@@ -65,7 +66,7 @@ public class AutoReconnect {
         Module m = ModuleManager.getInstance().getModule("AutoReconnect");
         if (m != null) {
             Option o = m.getOption("Max attempts");
-            if (o instanceof CycleOption c) {
+            if (o instanceof DropdownOption c) {
                 return switch (c.getIndex()) {
                     case 0 -> 1;
                     case 1 -> 2;
@@ -98,11 +99,11 @@ public class AutoReconnect {
         }
         cancelled = true;
         ServerAddress addr = ServerAddress.parseString(data.ip);
-        ConnectScreen.startConnecting(parent != null ? parent : mc.screen, mc, addr, data, false, null);
+        ConnectScreen.startConnecting(parent != null ? parent : mc.gui.screen(), mc, addr, data, false, null);
     }
 
     public void tick(Minecraft mc) {
-        if (!(mc.screen instanceof DisconnectedScreen)) {
+        if (!(mc.gui.screen() instanceof DisconnectedScreen)) {
             attempts = 0;
             cancelButton = null;
             return;

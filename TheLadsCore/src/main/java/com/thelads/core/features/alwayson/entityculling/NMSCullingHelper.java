@@ -35,7 +35,7 @@ public class NMSCullingHelper {
     public static AABB getCullingBox(Entity entity) {
         ArmorStand armorStand;
         if (entity instanceof ArmorStand && (armorStand = (ArmorStand)entity).isMarker()) {
-            return EntityType.ARMOR_STAND.getDimensions().makeBoundingBox(entity.position());
+            return net.minecraft.world.entity.EntityTypes.ARMOR_STAND.getDimensions().makeBoundingBox(entity.position());
         }
         EntityRenderer renderer = MC.getEntityRenderDispatcher().getRenderer(entity);
         if (renderer == null) {

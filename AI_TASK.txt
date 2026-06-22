@@ -1,0 +1,16 @@
+In Minecraft 26.2, the HUD class was renamed from `net.minecraft.client.gui.Gui` to `net.minecraft.client.gui.Hud`.
+Several methods were also renamed:
+- displayScoreboardSidebar -> extractScoreboardSidebar
+- renderTitle -> extractTitle  
+- renderCrosshair -> extractCrosshair
+- renderCameraOverlays -> extractCameraOverlays
+- extractExperienceBar -> extractExperienceLevel
+- extractMountHealth -> extractVehicleHealth
+
+Update the following files to change `@Mixin(Gui.class)` to `@Mixin(Hud.class)` and fix any method references:
+- Change `import net.minecraft.client.gui.Gui;` to `import net.minecraft.client.gui.Hud;`
+- Change `@Mixin(Gui.class)` to `@Mixin(Hud.class)`
+- Change method name strings in @Inject/@Redirect/@ModifyArg annotations if they reference renamed methods
+
+Do NOT change `GuiGraphicsExtractor` - that class name has NOT changed.
+Do NOT rename the Java class itself or the file - only change the @Mixin target and imports.

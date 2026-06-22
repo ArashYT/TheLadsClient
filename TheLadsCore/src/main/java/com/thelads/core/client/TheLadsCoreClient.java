@@ -36,6 +36,7 @@ public class TheLadsCoreClient implements ClientModInitializer {
     public static KeyMapping nametagsKeyBind;
     public static KeyMapping toggleSneakKeyBind;
     public static KeyMapping toggleSprintKeyBind;
+    public static KeyMapping worldMapKeyBind;
     private static boolean earlyWindowChecked = false;
 
     @Override
@@ -65,20 +66,20 @@ public class TheLadsCoreClient implements ClientModInitializer {
         // 3D Skin Layers — initializes skin layer rendering
         new com.thelads.core.features.alwayson.skinlayers.SkinLayersMod().onInitializeClient();
 
-        // Raised — client-side hotbar lift
-        new dev.yurisuika.raised.RaisedClient().onInitializeClient();
+        // Raised — disabled for 26.2 (26.1.1 jar; our RaisedMixin.java covers Hud.class behavior)
+        // new dev.yurisuika.raised.RaisedClient().onInitializeClient();
 
         // Passive Shield — client-side shield rendering
         new com.natamus.passiveshield.ModFabricClient().onInitializeClient();
 
-        // Immersive Hotbar — client-side hotbar rendering
-        new derp.immersivehotbar.ImmersiveHotbarClient().onInitializeClient();
+        // Immersive Hotbar — disabled for 26.2 (Gui→Hud rename breaks mixins, no 26.2 version)
+        // new derp.immersivehotbar.ImmersiveHotbarClient().onInitializeClient();
 
         // ScreenFX — client-side screen effect rendering
         new com.laryisland.screenfx.ScreenFX().onInitializeClient();
 
-        // Fancy Door Animations — client-side door animation
-        new io.github.yxmna.fancydooranim.FancyDoorAnimClient().onInitializeClient();
+        // Fancy Door Animations — disabled entrypoint for 26.2 (26.1.x jar; mixins still active)
+        // new io.github.yxmna.fancydooranim.FancyDoorAnimClient().onInitializeClient();
 
         // Threads — client-side thread display
         new com.threads.Threads().onInitializeClient();
@@ -113,8 +114,7 @@ public class TheLadsCoreClient implements ClientModInitializer {
         // Extreme Sound Muffler — per-sound volume control
         new com.leobeliik.extremesoundmuffler.SoundMufflerFabric().onInitializeClient();
 
-        // Just Enough Items — client-side recipe browser
-        new mezz.jei.fabric.JustEnoughItemsClient().onInitializeClient();
+
 
         // Modern Advancements — custom advancement screen, HUD tracker, keybinds, client networking
         new com.thelads.core.features.auto.modernadvancements.ModernAdvancementsClient().onInitializeClient();
@@ -187,6 +187,12 @@ public class TheLadsCoreClient implements ClientModInitializer {
             net.minecraft.client.KeyMapping.Category.MISC
         ));
 
+        worldMapKeyBind = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+            "key.thelads.worldmap",
+            GLFW.GLFW_KEY_M,
+            net.minecraft.client.KeyMapping.Category.MISC
+        ));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             // Last-resort cleanup: if the preLaunch loading window still wasn't
             // adopted by the time the game ticks, don't let it linger.
@@ -198,18 +204,18 @@ public class TheLadsCoreClient implements ClientModInitializer {
             }
 
             while (settingsKeyBind.consumeClick()) {
-                if (client.screen == null) {
-                    client.setScreen(new LadsSettingsScreen(null));
+                if (client.gui.screen() == null) {
+                    client.setScreenAndShow(new LadsSettingsScreen(null));
                 }
             }
             while (hudKeyBind.consumeClick()) {
-                if (client.screen == null) {
-                    client.setScreen(new DraggableHudScreen());
+                if (client.gui.screen() == null) {
+                    client.setScreenAndShow(new DraggableHudScreen());
                 }
             }
             while (authKeyBind.consumeClick()) {
-                if (client.screen == null) {
-                    client.setScreen(new AccountSwitcherScreen(null));
+                if (client.gui.screen() == null) {
+                    client.setScreenAndShow(new AccountSwitcherScreen(null));
                 }
             }
             while (nametagsKeyBind.consumeClick()) {
@@ -241,6 +247,14 @@ public class TheLadsCoreClient implements ClientModInitializer {
                     if (client.player != null)
                         client.player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
                             tsp2.isToggled() ? "Sprint: ON" : "Sprint: OFF"));
+                }
+            }
+            while (worldMapKeyBind.consumeClick()) {
+                Module m = ModuleManager.getInstance().getModule("XaeroWorldmap");
+                if (m != null && m.isEnabled()) {
+                    if (client.gui.screen() == null) {
+                        client.setScreenAndShow(new com.thelads.core.client.gui.LadsWorldMapScreen(null));
+                    }
                 }
             }
 

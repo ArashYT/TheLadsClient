@@ -13,7 +13,7 @@ public class RenderTargetMixin {
     @Inject(method={"resize"}, at={@At(value="HEAD")})
     private void onResize(int width, int height, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
-        if (client != null && (Object)this == (Object)client.getMainRenderTarget()) {
+        if (client != null && (Object)this == (Object)client.gameRenderer.mainRenderTarget()) {
             RenderScaleManager.onMainTargetResized(width, height);
         }
     }

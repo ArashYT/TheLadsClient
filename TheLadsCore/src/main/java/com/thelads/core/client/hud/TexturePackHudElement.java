@@ -1,7 +1,8 @@
 package com.thelads.core.client.hud;
 
 import com.thelads.core.config.BoolOption;
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
@@ -83,6 +84,23 @@ public class TexturePackHudElement extends HudElement {
             drawBackground(g); // re-draw to cover expanded area
             g.text(mc.font, "+" + (total - show) + " more", ix, iy, 0xFFAAAAAA, false);
         }
+    }
+
+    private String topPackName(Minecraft mc) {
+        if (mc == null || mc.options == null || mc.options.resourcePacks == null || mc.options.resourcePacks.isEmpty()) {
+            return "Default";
+        }
+        List<String> packs = mc.options.resourcePacks;
+        String s = packs.get(packs.size() - 1);
+        if (s.startsWith("file/")) {
+            s = s.substring(5);
+        } else if (s.startsWith("fabric/")) {
+            s = s.substring(7);
+        }
+        if (s.endsWith(".zip")) {
+            s = s.substring(0, s.length() - 4);
+        }
+        return s;
     }
 
     private List<String> getActivePacks(Minecraft mc, boolean showHidden) {

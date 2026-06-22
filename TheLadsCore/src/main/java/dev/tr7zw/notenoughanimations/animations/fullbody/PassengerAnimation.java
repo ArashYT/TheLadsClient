@@ -1,0 +1,44 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  net.minecraft.client.model.player.PlayerModel
+ *  net.minecraft.client.player.AbstractClientPlayer
+ */
+package dev.tr7zw.notenoughanimations.animations.fullbody;
+
+import dev.tr7zw.notenoughanimations.access.PlayerData;
+import dev.tr7zw.notenoughanimations.api.BasicAnimation;
+import dev.tr7zw.notenoughanimations.versionless.animations.BodyPart;
+import net.minecraft.client.model.player.PlayerModel;
+import net.minecraft.client.player.AbstractClientPlayer;
+
+public class PassengerAnimation
+extends BasicAnimation {
+    private final BodyPart[] parts = new BodyPart[]{BodyPart.BODY};
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
+
+    @Override
+    public boolean isValid(AbstractClientPlayer entity, PlayerData data) {
+        return entity.isPassenger();
+    }
+
+    @Override
+    public BodyPart[] getBodyParts(AbstractClientPlayer entity, PlayerData data) {
+        return this.parts;
+    }
+
+    @Override
+    public int getPriority(AbstractClientPlayer entity, PlayerData data) {
+        return 3500;
+    }
+
+    @Override
+    public void apply(AbstractClientPlayer entity, PlayerData data, PlayerModel model, BodyPart part, float delta, float tickCounter) {
+    }
+}
+

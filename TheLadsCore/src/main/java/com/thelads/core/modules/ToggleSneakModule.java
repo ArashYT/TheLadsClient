@@ -1,7 +1,8 @@
 package com.thelads.core.modules;
 
 import com.thelads.core.config.BoolOption;
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.Option;
 import net.minecraft.client.Minecraft;
@@ -43,7 +44,7 @@ public class ToggleSneakModule extends Module {
         if (wantSneak) {
             mc.options.keyShift.setDown(true);
             // Keep crouching even while a screen is open (vanilla releases sneak otherwise).
-            if (mc.screen != null) mc.player.setShiftKeyDown(true);
+            if (mc.gui.screen() != null) mc.player.setShiftKeyDown(true);
         } else if (lastWantSneak) {
             // Just turned off: release once. When steady-off we don't touch the key,
             // so the vanilla hold-to-sneak key keeps working normally.
@@ -58,6 +59,6 @@ public class ToggleSneakModule extends Module {
     }
     private int optCycle(String name, int def) {
         Option o = getOption(name);
-        return (o instanceof CycleOption c) ? c.getIndex() : def;
+        return (o instanceof DropdownOption c) ? c.getIndex() : def;
     }
 }

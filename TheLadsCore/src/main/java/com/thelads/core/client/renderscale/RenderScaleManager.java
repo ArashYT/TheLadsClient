@@ -35,7 +35,7 @@ public class RenderScaleManager {
         if (client == null) {
             return;
         }
-        RenderTarget main = client.getMainRenderTarget();
+        RenderTarget main = client.gameRenderer.mainRenderTarget();
         if (main == null) {
             return;
         }
@@ -88,7 +88,7 @@ public class RenderScaleManager {
         if (client == null) {
             return;
         }
-        RenderTarget main = client.getMainRenderTarget();
+        RenderTarget main = client.gameRenderer.mainRenderTarget();
         if (main == null) {
             return;
         }
@@ -98,11 +98,11 @@ public class RenderScaleManager {
 
     public static void customBlit(RenderTarget src, RenderTarget dest, FilterMode filterMode) {
         RenderSystem.assertOnRenderThread();
-        try (RenderPass renderpass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Blit render target", dest.getColorTextureView(), OptionalInt.empty());){
+        try (RenderPass renderpass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Blit render target", dest.getColorTextureView(), java.util.Optional.empty());){
             renderpass.setPipeline(RenderPipelines.TRACY_BLIT);
             RenderSystem.bindDefaultUniforms((RenderPass)renderpass);
             renderpass.bindTexture("InSampler", src.getColorTextureView(), RenderSystem.getSamplerCache().getClampToEdge(filterMode));
-            renderpass.draw(0, 3);
+            renderpass.draw(0, 3, 0, 1);
         }
     }
 

@@ -32,9 +32,8 @@ public class HudManager {
         add(new CpsHudElement(), "CPS");
         add(new TexturePackHudElement(), "TexturePacks");
         add(new PotionHudElement(), "Potions");
-
-        add(new XaeroMinimapHudElement(), "XaeroMinimap");
-        add(new VoiceChatHudElement(), "VoiceChat");
+        add(new PaperdollHudElement(), "Paperdoll");
+        add(new XaeroMinimapHudElement(), "XaeroWorldmap");
         
         // Scoreboard proxy — driven by GuiMixin; this element controls position in the HUD editor.
         scoreboardElement = new ScoreboardHudElement();
@@ -55,7 +54,7 @@ public class HudManager {
 
     public void render(GuiGraphicsExtractor g, DeltaTracker tickDelta) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.options != null && mc.options.hideGui) return;
+        if (mc.options != null && mc.gui.hud.isHidden) return;
 
         int screenW = mc.getWindow().getGuiScaledWidth();
         int screenH = mc.getWindow().getGuiScaledHeight();

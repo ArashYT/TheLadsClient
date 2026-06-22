@@ -1,7 +1,7 @@
 package com.thelads.core.features.alwayson.immediatelyfast;
 
 public class ImmediatelyFastConfig {
-    public boolean enhanced_batching = false;
+    public boolean enhanced_batching = true;
     public boolean font_atlas_resizing = false;
     public int font_atlas_size = 1024;
     public boolean map_atlas_generation = false;

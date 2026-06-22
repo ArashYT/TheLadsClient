@@ -3,7 +3,9 @@ package com.thelads.core.client.gui;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.ColorOption;
 import com.thelads.core.config.ConfigManager;
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
+import com.thelads.core.config.TextOption;
 import com.thelads.core.config.HudSettings;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.Option;
@@ -21,6 +23,9 @@ import java.util.List;
 public class ModuleOptionsScreen extends Screen {
     private final Screen parent;
     private final Module module;
+    private Option activeDropdownOption = null;
+    private double scrollOffset = 0;
+    private SliderOption draggingSlider = null;
 
     private static final int BG         = 0xDD050508; // Translucent dark obsidian black/red base
     private static final int CARD       = 0xCC180A0A; // Glassy obsidian cards with subtle crimson tint
@@ -62,15 +67,23 @@ public class ModuleOptionsScreen extends Screen {
         drawStarfield(g, System.currentTimeMillis());
 
         g.text(this.font, "§l§c" + module.getName(), 30, 22, TEXT, true);
-        g.text(this.font, "§7" + module.getDescription(), 30, 36, TEXT_DIM, false);
+        g.textWithWordWrap(this.font, Component.literal(module.getDescription()), 30, 36, this.width - 60, TEXT_DIM, false);
 
         int cx = 30;
         int cw = this.width - 60;
         List<String> rows = rows();
+
+        int visibleH = (this.height - 40) - 55;
+        int totalH = rows.size() * 34;
+        int maxScroll = Math.max(0, totalH - visibleH);
+        this.scrollOffset = Math.max(0.0, Math.min(this.scrollOffset, maxScroll));
+
+        g.enableScissor(30, 55, this.width - 30, this.height - 40);
+
         for (int i = 0; i < rows.size(); i++) {
             String row = rows.get(i);
-            int y = rowY(i);
-            boolean hov = mouseX >= cx && mouseX < cx + cw && mouseY >= y && mouseY < y + ROW_H;
+            int y = 60 + i * 34 - (int)scrollOffset;
+            boolean hov = mouseX >= cx && mouseX < cx + cw && mouseY >= y && mouseY < y + ROW_H && mouseY >= 55 && mouseY < this.height - 40;
             g.fill(cx, y, cx + cw, y + ROW_H, hov ? CARD_HOVER : CARD);
             g.fill(cx, y + 3, cx + 3, y + ROW_H - 3, ACCENT);
             if (hov) {
@@ -92,13 +105,36 @@ public class ModuleOptionsScreen extends Screen {
                 g.text(this.font, "§f" + optName, cx + 12, y + 10, TEXT, false);
                 if (o instanceof BoolOption) {
                     drawToggle(g, cx + cw - 50, y + 6, ((BoolOption) o).get());
-                } else if (o instanceof CycleOption) {
-                    CycleOption c = (CycleOption) o;
+                } else if (o instanceof DropdownOption) {
+                    DropdownOption c = (DropdownOption) o;
                     int bw = 120;
                     int bx = cx + cw - bw - 6;
                     int by = y + 5;
                     g.fill(bx, by, bx + bw, by + 18, OFF);
-                    g.text(this.font, c.getValue(), bx + bw / 2 - this.font.width(c.getValue()) / 2, by + 5, TEXT, false);
+                    String valText = c.getValue() + " ▼";
+                    g.text(this.font, valText, bx + bw / 2 - this.font.width(valText) / 2, by + 5, TEXT, false);
+                } else if (o instanceof SliderOption) {
+                    SliderOption s = (SliderOption) o;
+                    int sw = 120;
+                    int sx = cx + cw - sw - 6;
+                    int sy = y + 5;
+                    g.fill(sx, sy, sx + sw, sy + 18, OFF);
+                    double min = s.getMin();
+                    double max = s.getMax();
+                    double val = s.getValue();
+                    int fillWidth = (int) (((val - min) / (max - min)) * sw);
+                    g.fill(sx, sy, sx + fillWidth, sy + 18, ACCENT);
+                    String vText = s.getStep() >= 1.0 || s.getStep() == 0 ? String.valueOf(s.getIntValue()) : String.format("%.1f", val);
+                    g.text(this.font, vText, sx + sw / 2 - this.font.width(vText) / 2, sy + 5, TEXT, false);
+                } else if (o instanceof TextOption) {
+                    TextOption t = (TextOption) o;
+                    int tw = 120;
+                    int tx = cx + cw - tw - 6;
+                    int ty = y + 5;
+                    g.fill(tx, ty, tx + tw, ty + 18, OFF);
+                    String display = t.getValue();
+                    if (display.length() > 15) display = display.substring(0, 15) + "...";
+                    g.text(this.font, display, tx + 4, ty + 5, TEXT, false);
                 } else if (o instanceof ColorOption) {
                     ColorOption co = (ColorOption) o;
                     g.fill(cx + cw - 29, y + 5, cx + cw - 11, y + 23, 0xFF000000);
@@ -110,21 +146,58 @@ public class ModuleOptionsScreen extends Screen {
             }
         }
 
+        g.disableScissor();
+
         // Back button
-        int by = rowY(rows.size()) + 6;
-        boolean bh = mouseX >= cx && mouseX < cx + 100 && mouseY >= by && mouseY < by + 22;
-        g.fill(cx, by, cx + 100, by + 22, bh ? 0xFF8B0000 : 0xFF551111);
-        g.text(this.font, "§f< Back", cx + 10, by + 7, TEXT, true);
+        int backX = 30;
+        int backY = this.height - 30;
+        boolean bh = mouseX >= backX && mouseX < backX + 100 && mouseY >= backY && mouseY < backY + 22;
+        g.fill(backX, backY, backX + 100, backY + 22, bh ? 0xFF8B0000 : 0xFF551111);
+        g.text(this.font, "§f< Back", backX + 10, backY + 7, TEXT, true);
         if (bh) {
-            drawBorder(g, cx, by, cx + 100, by + 22, 0xFFFF5252, 1);
+            drawBorder(g, backX, backY, backX + 100, backY + 22, 0xFFFF5252, 1);
         }
 
         // Reset Settings button
-        boolean rh = mouseX >= cx + 110 && mouseX < cx + 220 && mouseY >= by && mouseY < by + 22;
-        g.fill(cx + 110, by, cx + 220, by + 22, rh ? 0xFFB22222 : 0xFF7B0000);
-        g.text(this.font, "§f↺ Reset Settings", cx + 120, by + 7, TEXT, true);
+        int resetX = 140;
+        int resetY = this.height - 30;
+        boolean rh = mouseX >= resetX && mouseX < resetX + 110 && mouseY >= resetY && mouseY < resetY + 22;
+        g.fill(resetX, resetY, resetX + 110, resetY + 22, rh ? 0xFFB22222 : 0xFF7B0000);
+        g.text(this.font, "§f↺ Reset Settings", resetX + 10, resetY + 7, TEXT, true);
         if (rh) {
-            drawBorder(g, cx + 110, by, cx + 220, by + 22, 0xFFFF5252, 1);
+            drawBorder(g, resetX, resetY, resetX + 110, resetY + 22, 0xFFFF5252, 1);
+        }
+
+        if (activeDropdownOption instanceof DropdownOption) {
+            DropdownOption activeOpt = (DropdownOption) activeDropdownOption;
+            int rowIdx = rows().indexOf("opt:" + activeOpt.getName());
+            if (rowIdx != -1) {
+                int ry = 60 + rowIdx * 34 - (int)scrollOffset;
+                int rby = ry + 5;
+                int rbw = 120;
+                int rbx = cx + cw - rbw - 6;
+                
+                String[] choices = activeOpt.getChoices();
+                int itemH = 18;
+                int listH = choices.length * itemH;
+                boolean renderUp = (rby + 18 + listH > this.height);
+                int listY = renderUp ? (rby - listH) : (rby + 18);
+                
+                // Render dropdown background and border
+                g.pose().pushMatrix();
+                g.fill(rbx, listY, rbx + rbw, listY + listH, 0xFF151515);
+                drawBorder(g, rbx, listY, rbx + rbw, listY + listH, 0xFFFF5555, 1);
+                
+                for (int k = 0; k < choices.length; k++) {
+                    int iy = listY + k * itemH;
+                    boolean itemHov = mouseX >= rbx && mouseX < rbx + rbw && mouseY >= iy && mouseY < iy + itemH;
+                    if (itemHov) {
+                        g.fill(rbx + 1, iy + 1, rbx + rbw - 1, iy + itemH - 1, 0xFFCC0000); // Solid red highlight
+                    }
+                    g.text(this.font, choices[k], rbx + rbw / 2 - this.font.width(choices[k]) / 2, iy + 5, TEXT, false);
+                }
+                g.pose().popMatrix();
+            }
         }
 
         super.extractRenderState(g, mouseX, mouseY, partialTick);
@@ -165,61 +238,43 @@ public class ModuleOptionsScreen extends Screen {
         double my = event.y();
         int cx = 30;
         int cw = this.width - 60;
-        List<String> rows = rows();
-        for (int i = 0; i < rows.size(); i++) {
-            int y = rowY(i);
-            if (mx < cx || mx >= cx + cw || my < y || my >= y + ROW_H) {
-                continue;
-            }
-            String row = rows.get(i);
-            if (row.equals("enabled")) {
-                module.toggle();
-                ConfigManager.save();
-                return true;
-            }
-            if (row.equals("color")) {
-                HudModule hm = (HudModule) module;
-                int init = hm.isUseGlobalColor() ? HudSettings.getInstance().getGlobalColor() : hm.getCustomColor();
-                this.minecraft.setScreen(new ColorPickerScreen(this, init, true, hm.isUseGlobalColor(),
-                    (useGlobal, color) -> {
-                        hm.setUseGlobalColor(useGlobal);
-                        if (!useGlobal) hm.setCustomColor(color);
+
+        if (activeDropdownOption instanceof DropdownOption) {
+            DropdownOption activeOpt = (DropdownOption) activeDropdownOption;
+            int rowIdx = rows().indexOf("opt:" + activeOpt.getName());
+            if (rowIdx != -1) {
+                int ry = 60 + rowIdx * 34 - (int)scrollOffset;
+                int rby = ry + 5;
+                int rbw = 120;
+                int rbx = cx + cw - rbw - 6;
+                
+                String[] choices = activeOpt.getChoices();
+                int itemH = 18;
+                int listH = choices.length * itemH;
+                boolean renderUp = (rby + 18 + listH > this.height);
+                int listY = renderUp ? (rby - listH) : (rby + 18);
+                
+                if (mx >= rbx && mx < rbx + rbw && my >= listY && my < listY + listH) {
+                    int clickedIdx = (int) ((my - listY) / itemH);
+                    if (clickedIdx >= 0 && clickedIdx < choices.length) {
+                        activeOpt.setIndex(clickedIdx);
+                        module.touch();
                         ConfigManager.save();
-                    }));
-                return true;
+                    }
+                }
             }
-            Option o = module.getOption(row.substring(4));
-            if (o instanceof BoolOption) {
-                ((BoolOption) o).toggle();
-                module.touch();
-                ConfigManager.save();
-                return true;
-            }
-            if (o instanceof CycleOption) {
-                ((CycleOption) o).cycle();
-                module.touch();
-                ConfigManager.save();
-                return true;
-            }
-            if (o instanceof ColorOption) {
-                final ColorOption co = (ColorOption) o;
-                this.minecraft.setScreen(new ColorPickerScreen(this, co.getColor(), true, co.isUseGlobal(),
-                    (useGlobal, color) -> {
-                        co.setUseGlobal(useGlobal);
-                        co.setColor(color);
-                        ConfigManager.save();
-                    }));
-                return true;
-            }
+            activeDropdownOption = null;
             return true;
         }
-        int by = rowY(rows.size()) + 6;
-        if (mx >= cx && mx < cx + 100 && my >= by && my < by + 22) {
-            this.minecraft.setScreen(parent);
+
+        // Check Back button click: X = [30, 130], Y = [this.height - 30, this.height - 8]
+        if (mx >= 30 && mx < 130 && my >= this.height - 30 && my < this.height - 8) {
+            this.minecraft.setScreenAndShow(parent);
             return true;
         }
-        // Reset Settings — restore every option (and colour) to default
-        if (mx >= cx + 110 && mx < cx + 220 && my >= by && my < by + 22) {
+
+        // Check Reset button click: X = [140, 250], Y = [this.height - 30, this.height - 8]
+        if (mx >= 140 && mx < 250 && my >= this.height - 30 && my < this.height - 8) {
             for (Option opt : module.getOptions()) {
                 opt.reset();
             }
@@ -230,13 +285,116 @@ public class ModuleOptionsScreen extends Screen {
             ConfigManager.save();
             return true;
         }
+
+        // For option row clicks: check if mouse Y is within [55, this.height - 40].
+        if (my >= 55 && my < this.height - 40) {
+            double adjustedY = my + scrollOffset;
+            List<String> rows = rows();
+            for (int i = 0; i < rows.size(); i++) {
+                int y = rowY(i);
+                if (mx < cx || mx >= cx + cw || adjustedY < y || adjustedY >= y + ROW_H) {
+                    continue;
+                }
+                String row = rows.get(i);
+                if (row.equals("enabled")) {
+                    module.toggle();
+                    ConfigManager.save();
+                    return true;
+                }
+                if (row.equals("color")) {
+                    HudModule hm = (HudModule) module;
+                    int init = hm.isUseGlobalColor() ? HudSettings.getInstance().getGlobalColor() : hm.getCustomColor();
+                    this.minecraft.setScreenAndShow(new ColorPickerScreen(this, init, true, hm.isUseGlobalColor(),
+                        (useGlobal, color) -> {
+                            hm.setUseGlobalColor(useGlobal);
+                            if (!useGlobal) hm.setCustomColor(color);
+                            ConfigManager.save();
+                        }));
+                    return true;
+                }
+                Option o = module.getOption(row.substring(4));
+                if (o instanceof BoolOption) {
+                    ((BoolOption) o).toggle();
+                    module.touch();
+                    ConfigManager.save();
+                    return true;
+                }
+                if (o instanceof DropdownOption) {
+                    activeDropdownOption = o;
+                    return true;
+                }
+                if (o instanceof SliderOption) {
+                    SliderOption s = (SliderOption) o;
+                    int sw = 120;
+                    int sx = cx + cw - sw - 6;
+                    if (mx >= sx && mx < sx + sw) {
+                        draggingSlider = s;
+                        double pct = (mx - sx) / (double) sw;
+                        s.setValue(s.getMin() + pct * (s.getMax() - s.getMin()));
+                        module.touch();
+                    }
+                    return true;
+                }
+                if (o instanceof TextOption) {
+                    return true;
+                }
+                if (o instanceof ColorOption) {
+                    final ColorOption co = (ColorOption) o;
+                    this.minecraft.setScreenAndShow(new ColorPickerScreen(this, co.getColor(), true, co.isUseGlobal(),
+                        (useGlobal, color) -> {
+                            co.setUseGlobal(useGlobal);
+                            co.setColor(color);
+                            ConfigManager.save();
+                        }));
+                    return true;
+                }
+                return true;
+            }
+        }
         return super.mouseClicked(event, isDouble);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (draggingSlider != null && event.button() == 0) {
+            int rowIdx = rows().indexOf("opt:" + draggingSlider.getName());
+            int cx = 30;
+            int cw = this.width - 60;
+            int sw = 120;
+            int sx = cx + cw - sw - 6;
+            double pct = Math.max(0.0, Math.min(1.0, (event.x() - sx) / (double) sw));
+            draggingSlider.setValue(draggingSlider.getMin() + pct * (draggingSlider.getMax() - draggingSlider.getMin()));
+            module.touch();
+            return true;
+        }
+        return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (draggingSlider != null && event.button() == 0) {
+            ConfigManager.save();
+            draggingSlider = null;
+            return true;
+        }
+        return super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        int visibleH = (this.height - 40) - 55;
+        int totalH = rows().size() * 34;
+        int maxScroll = Math.max(0, totalH - visibleH);
+        this.scrollOffset -= scrollY * 16;
+        if (this.scrollOffset < 0) this.scrollOffset = 0;
+        if (this.scrollOffset > maxScroll) this.scrollOffset = maxScroll;
+        return true;
     }
 
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (event.key() == 256) {
-            this.minecraft.setScreen(parent);
+            this.minecraft.setScreenAndShow(parent);
             return true;
         }
         return super.keyPressed(event);
@@ -244,7 +402,7 @@ public class ModuleOptionsScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.setScreenAndShow(parent);
     }
 
     @Override

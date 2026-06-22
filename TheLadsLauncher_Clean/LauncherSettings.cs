@@ -33,6 +33,10 @@ public class LauncherSettings
     public bool CloseToTray { get; set; } = true;
     public bool AutoLaunch { get; set; } = false;
     public bool AutoFixCrashes { get; set; } = true;
+    public bool AutoRelaunchOnCrash { get; set; } = false;
+    public bool AutoRejoinServer { get; set; } = false;
+    public string LastServerIp { get; set; } = "";
+    public int LastServerPort { get; set; } = 25565;
     public bool MinimizeOnLaunch { get; set; } = true;
     public bool AllowMultiInstance { get; set; } = false;
     public bool KeepLauncherOpen { get; set; } = false;   // don't hide/close after launching the game
@@ -46,7 +50,7 @@ public class LauncherSettings
     public System.Collections.Generic.List<string> AccountOrder { get; set; } = new();
 
     // Version
-    public string LauncherVersion { get; set; } = "1.0.3";
+    public string LauncherVersion { get; set; } = "1.0.4";
     public string UpdateUrl { get; set; } = "";
 
     // API Keys

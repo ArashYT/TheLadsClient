@@ -1990,6 +1990,8 @@ public partial class MainWindow : Window
         // QuickLaunchCheckbox.IsChecked = settings.QuickLaunch;
         AutoLaunchCheckbox.IsChecked = settings.AutoLaunch;
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
+        AutoRelaunchOnCrashCheckbox.IsChecked = settings.AutoRelaunchOnCrash;
+        AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
         MultiInstanceCheckbox.IsChecked = settings.AllowMultiInstance;
         ParticleCheckbox.IsChecked = settings.ShowParticles;
 
@@ -2052,6 +2054,8 @@ public partial class MainWindow : Window
         settings.KeepClosedOnExit = KeepClosedOnExitCheckbox.IsChecked ?? false;
         settings.AutoLaunch = AutoLaunchCheckbox.IsChecked ?? false;
         settings.AutoFixCrashes = AutoFixCrashesCheckbox.IsChecked ?? true;
+        settings.AutoRelaunchOnCrash = AutoRelaunchOnCrashCheckbox.IsChecked ?? false;
+        settings.AutoRejoinServer = AutoRejoinServerCheckbox.IsChecked ?? false;
         settings.AllowMultiInstance = MultiInstanceCheckbox.IsChecked ?? false;
         // settings.FullscreenOnLaunch = FullscreenOnLaunchCheckbox.IsChecked ?? true;
         // settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
@@ -2116,8 +2120,8 @@ public partial class MainWindow : Window
     }
 
     // Extracts the Minecraft version from a version id, supporting both legacy (1.20.1)
-    // and modern (26.1.2) version formats.
-    // e.g. "fabric-loader-0.19.2-26.1.2" -> "26.1.2", "1.21.1" -> "1.21.1"
+    // and modern (26.2) version formats.
+    // e.g. "fabric-loader-0.19.2-26.2" -> "26.2", "1.21.1" -> "1.21.1"
     private static string? ExtractMcVersionFromId(string versionId)
     {
         // Loader-style ids: the MC version is the part after the loader version
@@ -2159,7 +2163,7 @@ public partial class MainWindow : Window
                     }
                 }
 
-                // 2. Direct Match (e.g. 1.20.1 or 26.1.2)
+                // 2. Direct Match (e.g. 1.20.1 or 26.2)
                 if (Regex.IsMatch(versionId, @"^\d+\.\d+(?:\.\d+)?$"))
                 {
                     return versionId;
@@ -2951,6 +2955,16 @@ public partial class MainWindow : Window
             JavaPath = settings.JavaPath
         };
 
+        if (settings.AutoRejoinServer && !string.IsNullOrEmpty(settings.LastServerIp))
+        {
+            launchOpt.ServerIp = settings.LastServerIp;
+            if (settings.LastServerPort > 0)
+            {
+                launchOpt.ServerPort = settings.LastServerPort;
+            }
+            Log($"[Launcher] Auto-Rejoin enabled. Server: {settings.LastServerIp}:{settings.LastServerPort}");
+        }
+
         if (settings.QuickLaunch)
         {
             GameLaunchStatusText.Text = "Quick launching (skipping verification)...";
@@ -3111,6 +3125,18 @@ public partial class MainWindow : Window
             string crashDir = Path.Combine(settings.InstancePath, "crash-reports");
             string latestLog = Path.Combine(settings.InstancePath, "logs", "latest.log");
 
+            if (File.Exists(latestLog))
+            {
+                string logContent = File.ReadAllText(latestLog);
+                var ipMatch = Regex.Match(logContent, @"Connecting to ([a-zA-Z0-9\.\-_]+), (\d+)");
+                if (ipMatch.Success)
+                {
+                    settings.LastServerIp = ipMatch.Groups[1].Value;
+                    settings.LastServerPort = int.Parse(ipMatch.Groups[2].Value);
+                    settings.Save();
+                }
+            }
+
             string crashInfo = "The game has crashed.";
             string? crashFile = null;
 
@@ -3163,7 +3189,7 @@ public partial class MainWindow : Window
 
             Log($"[Crash] {crashInfo}");
 
-            if (settings.AutoFixCrashes)
+            if (false && settings.AutoFixCrashes)
             {
                 bool fixedCrash = false;
 
@@ -3238,6 +3264,14 @@ public partial class MainWindow : Window
                     _ = LaunchGame();
                     return;
                 }
+            }
+
+            if (settings.AutoRelaunchOnCrash)
+            {
+                Log("[Crash Detection] Auto-relaunching due to AutoRelaunchOnCrash setting.");
+                StatusText.Text = "Auto-relaunching after crash...";
+                _ = LaunchGame();
+                return;
             }
 
             ShowCrashDialog(crashInfo, crashFile);
@@ -3614,7 +3648,7 @@ public partial class MainWindow : Window
     {
         string activeVersion = ResolveMinecraftVersion();
         var versionList = new List<string> { activeVersion };
-        var commonVersions = new[] { "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5" };
+        var commonVersions = new[] { "26.2", "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5" };
         
         foreach (var v in commonVersions)
         {

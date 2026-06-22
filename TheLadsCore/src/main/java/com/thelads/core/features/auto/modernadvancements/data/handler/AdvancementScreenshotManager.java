@@ -54,7 +54,7 @@ public class AdvancementScreenshotManager {
       File outputFile = getFile(advId, mc);
       boolean var4 = outputFile.getParentFile().mkdirs();
       Screenshot.takeScreenshot(
-         mc.getMainRenderTarget(),
+         mc.gameRenderer.mainRenderTarget(),
          image -> Util.ioPool()
             .execute(
                () -> {

@@ -19,7 +19,7 @@ public class MainMenu extends OptionsSubScreen {
 
         Button selectorBtn = Button.builder(Component.translatable("options.capes.selector"), button -> {
             if (this.minecraft != null) {
-                this.minecraft.setScreen(new SelectorMenu(this.lastScreen, this.options));
+                this.minecraft.setScreenAndShow(new SelectorMenu(this.lastScreen, this.options));
             }
         }).pos(this.width / 2 - buttonW / 2, 35).size(buttonW, 20).build();
         selectorBtn.active = !(this instanceof SelectorMenu);
@@ -27,7 +27,7 @@ public class MainMenu extends OptionsSubScreen {
 
         Button toggleBtn = Button.builder(Component.translatable("options.capes.toggle"), button -> {
             if (this.minecraft != null) {
-                this.minecraft.setScreen(new ToggleMenu(this.lastScreen, this.options));
+                this.minecraft.setScreenAndShow(new ToggleMenu(this.lastScreen, this.options));
             }
         }).pos(this.width / 2 - (buttonW + offset), 35).size(buttonW, 20).build();
         toggleBtn.active = !(this instanceof ToggleMenu);
@@ -35,7 +35,7 @@ public class MainMenu extends OptionsSubScreen {
 
         Button otherBtn = Button.builder(Component.translatable("options.capes.other"), button -> {
             if (this.minecraft != null) {
-                this.minecraft.setScreen(new OtherMenu(this.lastScreen, this.options));
+                this.minecraft.setScreenAndShow(new OtherMenu(this.lastScreen, this.options));
             }
         }).pos(this.width / 2 + offset, 35).size(buttonW, 20).build();
         otherBtn.active = !(this instanceof OtherMenu);

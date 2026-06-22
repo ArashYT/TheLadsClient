@@ -32,7 +32,12 @@ public class SkullBlockEntityRendererMixin {
 
     @Inject(method = "extractRenderState", at = @At("HEAD"))
     private void extractRenderState(SkullBlockEntity skullBlockEntity, SkullBlockRenderState skullBlockRenderState, float f, Vec3 vec3, ModelFeatureRenderer.CrumblingOverlay crumblingOverlay, CallbackInfo ci) {
-        Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().position();
+        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("SkinLayers").isEnabled()) {
+            SkullRendererCache.renderNext = false;
+            SkullRendererCache.lastSkull = null;
+            return;
+        }
+        Vec3 camera = Minecraft.getInstance().gameRenderer.mainCamera().position();
         if (!SkinLayersModBase.config.enableSkulls) {
             return;
         }

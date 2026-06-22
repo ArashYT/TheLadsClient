@@ -70,7 +70,7 @@ public class WorldRendererMixin {
         if (!cullable.isForcedVisible() && cullable.isCulled() && !NMSCullingHelper.ignoresCulling(entity)) {
             ++EntityCullingModBase.instance.skippedEntities;
             EntityRenderState state = new EntityRenderState();
-            state.entityType = EntityType.INTERACTION;
+            state.entityType = net.minecraft.world.entity.EntityTypes.INTERACTION;
             state = WorldRendererMixin.processNametag(entity, partialTick, state);
             state.x = Mth.lerp((double)partialTick, (double)entity.xOld, (double)entity.getX());
             state.y = Mth.lerp((double)partialTick, (double)entity.yOld, (double)entity.getY());
@@ -95,7 +95,7 @@ public class WorldRendererMixin {
                     Entity checkEntity = entity;
                     if (d < 100.0 && (display = checkEntity.belowNameDisplay()) != null) {
                         AvatarRenderState avatarState = new AvatarRenderState();
-                        avatarState.entityType = EntityType.PLAYER;
+                        avatarState.entityType = net.minecraft.world.entity.EntityTypes.PLAYER;
                         avatarState.scoreText = display;
                         avatarState.isInvisibleToPlayer = true;
                         state = avatarState;

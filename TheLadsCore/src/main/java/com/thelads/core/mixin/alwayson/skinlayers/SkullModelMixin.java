@@ -31,7 +31,7 @@ public class SkullModelMixin implements SkullModelAccessor {
 
     @Inject(method = "setupAnim", at = @At("HEAD"))
     public void setupAnim(SkullModelBase.State state, CallbackInfo ci) {
-        if (state instanceof SkullModelStateAccessor) {
+        if (state instanceof SkullModelStateAccessor && com.thelads.core.config.ModuleManager.getInstance().getModule("SkinLayers").isEnabled()) {
             SkullModelStateAccessor accessor = (SkullModelStateAccessor) state;
             if (accessor.getSkullSettings() != null) {
                 this.injectHatMesh(accessor.getSkullSettings().getMesh());

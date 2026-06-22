@@ -442,4 +442,47 @@ public class ConfigurableModulesTest extends BaseMcModsTest {
         assertEquals(0xFFFF5555, getPingColor.invoke(module, 250));
         assertEquals(0xFFFF5555, getPingColor.invoke(module, -10));
     }
+
+    @Test
+    @EnabledIfClassPresent({
+        "com.thelads.core.modules.EnhancedTooltipsModule",
+        "com.thelads.core.features.configurable.enhancedtooltips.EnhancedTooltipsModule",
+        "com.thelads.core.features.configurable.EnhancedTooltipsModule"
+    })
+    public void testEnhancedTooltips() throws Exception {
+        runConfigurableModuleTest("EnhancedTooltips",
+            "com.thelads.core.modules.EnhancedTooltipsModule",
+            "com.thelads.core.features.configurable.enhancedtooltips.EnhancedTooltipsModule",
+            "com.thelads.core.features.configurable.EnhancedTooltipsModule"
+        );
+    }
+
+    @Test
+    @EnabledIfClassPresent({
+        "com.thelads.core.modules.BetterStatsModule",
+        "com.thelads.core.features.configurable.betterstats.BetterStatsModule",
+        "com.thelads.core.features.configurable.BetterStatsModule"
+    })
+    public void testBetterStats() throws Exception {
+        runConfigurableModuleTest("BetterStats",
+            "com.thelads.core.modules.BetterStatsModule",
+            "com.thelads.core.features.configurable.betterstats.BetterStatsModule",
+            "com.thelads.core.features.configurable.BetterStatsModule"
+        );
+    }
+
+    @Test
+    @EnabledIfClassPresent({
+        "com.thelads.core.modules.AdvancementsReloadedModule",
+        "com.thelads.core.features.configurable.advancementsreloaded.AdvancementsReloadedModule",
+        "com.thelads.core.features.configurable.AdvancementsReloadedModule"
+    })
+    public void testAdvancementsReloaded() throws Exception {
+        runConfigurableModuleTest("AdvancementsReloaded",
+            "com.thelads.core.modules.AdvancementsReloadedModule",
+            "com.thelads.core.features.configurable.advancementsreloaded.AdvancementsReloadedModule",
+            "com.thelads.core.features.configurable.AdvancementsReloadedModule"
+        );
+    }
 }
+

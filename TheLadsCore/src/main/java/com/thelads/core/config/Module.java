@@ -4,18 +4,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Module {
+    public enum Category { ALL, NEW, HUD, SERVER, MECHANIC }
+    
     private final String name;
     private final String description;
     private boolean enabled;
     private boolean favorite;
     private long lastModified;
     private final List<Option> options = new ArrayList<>();
+    private Category category = Category.ALL;
 
     public Module(String name, String description) {
         this.name = name;
         this.description = description;
         this.enabled = false;
     }
+
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
 
     /** Adds a customizable option and returns it (for keeping a reference). */
     public <T extends Option> T addOption(T option) {

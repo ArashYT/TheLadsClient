@@ -129,7 +129,7 @@ extends Screen {
             }
         }
         this.lastScreen.init(this.width, this.height);
-        Minecraft.getInstance().setScreen(this.lastScreen);
+        Minecraft.getInstance().setScreenAndShow(this.lastScreen);
     }
 
     public boolean mouseClicked(@NotNull MouseButtonEvent event, boolean doubleClick) {

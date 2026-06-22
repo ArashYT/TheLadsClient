@@ -20,6 +20,9 @@ public abstract class PauseScreenAdvrMixin extends Screen {
     private Supplier<Screen> modifyAdvancementsButton(Supplier<Screen> original) {
         if (original.get() instanceof AdvancementsScreen && this.minecraft.player != null && this.minecraft.player.connection != null) {
             return () -> {
+                if (!com.thelads.core.config.ModuleManager.getInstance().getModule("AdvancementsReloaded").isEnabled()) {
+                    return original.get();
+                }
                 if (this.minecraft.player != null && this.minecraft.player.connection != null) {
                     return new AdvancementReloadedScreen(this.minecraft.player.connection.getAdvancements(), this);
                 }

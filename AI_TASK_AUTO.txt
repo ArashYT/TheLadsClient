@@ -1,0 +1,12 @@
+﻿OUTPUT RULES: Output ONLY the code blocks for the new files you create. No commentary.
+TASK: Recreate the "Animatium" mod natively inside this Fabric mod (Minecraft 26.1.2, Java).
+Description: Visual Tweaks/QOL Settings For Modern Minecraft Versions, Aimed At 1.7/1.8 players.
+Create NEW Mixin classes under package com.thelads.core.mixin.auto.animatium322612fabric
+(path: TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/).
+The original mod hooked these classes/features as a guide: accessor.AbstractRecipeBookScreenAccessor, accessor.AbstractSelectionListAccessor, accessor.CameraAccessor, accessor.ClientLevelDataAccessor, accessor.GameRendererAccessor, accessor.GuiRendererAccessor, accessor.LivingEntityAccessor, accessor.PlayerAccessor, accessor.SlotAccessor, v1.entity.armor_hurt.MixinEquipmentLayerRenderer, v1.entity.armor_hurt.MixinOverlayTexture, v1.entity.cape_movement.MixinAvatarRenderer_CapeRotation, v1.entity.cape_movement.MixinCapeLayer_Position, v1.entity.cape_movement.MixinModelFeatureRenderer_CapeSwinging, v1.entity.fishing.MixinFishingHookRenderer, v1.entity.fishing.MixinItemModelResolver, v1.entity.flame.MixinFlameFeatureRenderer, v1.entity.glint.MixinTextureManager, v1.entity.glint.MixinTextureTransform, v1.entity.items.MixinAvatarRenderer_HeldItemArmLogic, v1.entity.items.MixinHumanoidMobRenderer_FixDoubleUsage, v1.entity.items.MixinItemInHandRenderer_DamageTintItems, v1.entity.items.MixinItemInHandRenderer_HeldItemArmLogic, v1.entity.MixinHumanoidModel, v1.entity.MixinLivingEntityRenderer, v1.entity.nametag.MixinLivingEntityRenderer, v1.entity.nametag.MixinNameTagFeatureRenderer, v1.entity.nametag.MixinNameTagFeatureStorage, v1.entity.particles
+For each feature, write a Mixin targeting the matching net.minecraft.* class.
+HARD RULES:
+- Put require = 0 on EVERY @Inject / @ModifyArg / @Redirect (a wrong target must be a harmless no-op).
+- Only create files under com.thelads.core.mixin.auto.animatium322612fabric . Do NOT modify any existing file.
+- Match the style in TheLadsCore/src/main/java/com/thelads/core/mixin/GuiMixin.java .
+- Use only real Minecraft / Java / Mixin APIs. If unsure, use a minimal safe @Inject at HEAD.
