@@ -41,7 +41,7 @@ public class TheLadsCore implements ModInitializer {
 		new squeek.appleskin.AppleSkinCommon().onInitialize();
 
 		// Just Enough Items — registers JEI plugin system on the common side
-		new mezz.jei.fabric.JustEnoughItems().onInitialize();
+		// new mezz.jei.fabric.JustEnoughItems().onInitialize();
 
 
 		// Quick Pack — server-side item packing logic
