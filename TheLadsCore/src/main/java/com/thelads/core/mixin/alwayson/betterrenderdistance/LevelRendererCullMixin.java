@@ -37,8 +37,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value={LevelRenderer.class})
 public abstract class LevelRendererCullMixin {
-    @Shadow
-    private Minecraft minecraft;
+
     @Shadow
     private ObjectArrayList<SectionRenderDispatcher.RenderSection> visibleSections;
     @Shadow
@@ -59,7 +58,7 @@ public abstract class LevelRendererCullMixin {
         if (!BRDConfig.enabled) {
             return;
         }
-        Minecraft mc = this.minecraft;
+        Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.options == null) {
             return;
         }
