@@ -37,8 +37,6 @@ public class TheLadsCore implements ModInitializer {
 		// VMP (Very Many Players) — server-side chunk/entity-tracking optimizations
 		new com.thelads.core.features.alwayson.vmp.VMPMod().onInitialize();
 
-		// Raised — moves the hotbar up when using health/hunger bars
-		new dev.yurisuika.raised.Raised().onInitialize();
 
 		// Quick Pack — server-side item packing logic
 		new me.drex.quickpack.fabric.QuickPackFabric().onInitialize();
@@ -46,11 +44,10 @@ public class TheLadsCore implements ModInitializer {
 		// Passive Shield — registers passive shield behaviour
 		new com.natamus.passiveshield.ModFabric().onInitialize();
 
-		// Immersive Hotbar — registers config and events
-		new derp.immersivehotbar.ImmersiveHotbar().onInitialize();
+		// Immersive Hotbar — disabled for 26.2 (Gui→Hud rename breaks mixins)
+		// new derp.immersivehotbar.ImmersiveHotbar().onInitialize();
 
-		// AppleSkin — registers food value events
-		new squeek.appleskin.AppleSkinCommon().onInitialize();
+
 
 		// Entity View Distance — registers server-side entity distance config
 		new eu.pb4.entityviewdistance.EVDMod().onInitialize();
@@ -58,8 +55,7 @@ public class TheLadsCore implements ModInitializer {
 		// Resource Pack Options (respackopts) — registers pack config system
 		new dev.jfronny.respackopts.platform.fabric.RespackoptsFabric().onInitialize();
 
-		// Just Enough Items — registers JEI plugin system
-		new mezz.jei.fabric.JustEnoughItems().onInitialize();
+
 
 		// Modern Advancements — server-side networking, advancement tracking, optional HTTP API
 		new com.thelads.core.features.auto.modernadvancements.ModernAdvancements().onInitialize();

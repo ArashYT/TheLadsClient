@@ -28,8 +28,9 @@ public class ArmorHudElement extends HudElement {
             int gh = mc.getWindow().getGuiScaledHeight();
             this.width = 80;
             this.height = 30;
-            this.x = gw / 2 - this.width / 2;     // centred over the hotbar
-            this.y = gh - 22 - this.height;       // sit directly above the hotbar
+            int offhandOffset = (mc.player != null && !mc.player.getOffhandItem().isEmpty()) ? 29 : 0;
+            this.x = (gw / 2) - 91 - this.width - offhandOffset;
+            this.y = gh - this.height - 2;
         }
 
         drawBackground(g);

@@ -32,8 +32,22 @@ public abstract class TitleScreenMixin extends Screen {
         this.addRenderableWidget(
             Button.builder(
                 Component.literal("⇄ Switch Account"),
-                btn -> Minecraft.getInstance().setScreen(new AccountSwitcherScreen((Screen)(Object)this))
+                btn -> Minecraft.getInstance().setScreenAndShow(new AccountSwitcherScreen((Screen)(Object)this))
             ).bounds(CARD_MARGIN, cardY, CARD_W, 20).build()
+        );
+
+        int rightX = this.width - 105;
+        this.addRenderableWidget(
+            Button.builder(
+                Component.literal("Gallery"),
+                btn -> Minecraft.getInstance().setScreenAndShow(new com.thelads.core.client.gui.GalleryScreen((Screen)(Object)this))
+            ).bounds(rightX, this.height - 25, 100, 20).build()
+        );
+        this.addRenderableWidget(
+            Button.builder(
+                Component.literal("Lads Settings"),
+                btn -> Minecraft.getInstance().setScreenAndShow(new com.thelads.core.client.gui.LadsSettingsScreen((Screen)(Object)this))
+            ).bounds(rightX - 105, this.height - 25, 100, 20).build()
         );
     }
 

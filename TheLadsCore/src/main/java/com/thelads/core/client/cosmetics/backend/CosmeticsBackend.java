@@ -43,7 +43,7 @@ public class CosmeticsBackend {
         registrar = newRegistrar;
     }
 
-    private static void cleanupUnassigned() {
+    private static synchronized void cleanupUnassigned() {
         long now = System.currentTimeMillis();
         for (java.util.Map.Entry<Identifier, Long> entry : unassigned.entrySet()) {
             if (now - entry.getValue() > 60000) { // 60 seconds
@@ -52,13 +52,16 @@ public class CosmeticsBackend {
                 if (refCounts.getOrDefault(id, 0) <= 0) {
                     refCounts.remove(id);
                     textureData.remove(id);
-                    Minecraft.getInstance().execute(() -> {
-                        net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(id);
-                        if (tex != null) {
-                            tex.close();
-                        }
-                        Minecraft.getInstance().getTextureManager().release(id);
-                    });
+                    Minecraft mc = Minecraft.getInstance();
+                    if (mc != null) {
+                        mc.execute(() -> {
+                            net.minecraft.client.renderer.texture.AbstractTexture tex = mc.getTextureManager().getTexture(id);
+                            if (tex != null) {
+                                tex.close();
+                            }
+                            mc.getTextureManager().release(id);
+                        });
+                    }
                 }
             }
         }
@@ -69,11 +72,15 @@ public class CosmeticsBackend {
         return activeSkins.get(uuid);
     }
 
-    public static void setActiveSkin(UUID uuid, Identifier skin) {
+    public static synchronized void setActiveSkin(UUID uuid, Identifier skin) {
         if (uuid == null) return;
         cleanupUnassigned();
         Identifier oldIdentifier;
         if (skin != null) {
+            Identifier current = activeSkins.get(uuid);
+            if (skin.equals(current)) {
+                return;
+            }
             unassigned.remove(skin);
             refCounts.merge(skin, 1, Integer::sum);
             oldIdentifier = activeSkins.put(uuid, skin);
@@ -85,18 +92,21 @@ public class CosmeticsBackend {
             if (newCount <= 0) {
                 refCounts.remove(oldIdentifier);
                 textureData.remove(oldIdentifier);
-                Minecraft.getInstance().execute(() -> {
-                    net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(oldIdentifier);
-                    if (tex != null) {
-                        tex.close();
-                    }
-                    Minecraft.getInstance().getTextureManager().release(oldIdentifier);
-                });
+                Minecraft mc = Minecraft.getInstance();
+                if (mc != null) {
+                    mc.execute(() -> {
+                        net.minecraft.client.renderer.texture.AbstractTexture tex = mc.getTextureManager().getTexture(oldIdentifier);
+                        if (tex != null) {
+                            tex.close();
+                        }
+                        mc.getTextureManager().release(oldIdentifier);
+                    });
+                }
             }
         }
     }
 
-    public static void clearActiveSkin(UUID uuid) {
+    public static synchronized void clearActiveSkin(UUID uuid) {
         if (uuid == null) return;
         cleanupUnassigned();
         Identifier oldIdentifier = activeSkins.remove(uuid);
@@ -105,13 +115,16 @@ public class CosmeticsBackend {
             if (newCount <= 0) {
                 refCounts.remove(oldIdentifier);
                 textureData.remove(oldIdentifier);
-                Minecraft.getInstance().execute(() -> {
-                    net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(oldIdentifier);
-                    if (tex != null) {
-                        tex.close();
-                    }
-                    Minecraft.getInstance().getTextureManager().release(oldIdentifier);
-                });
+                Minecraft mc = Minecraft.getInstance();
+                if (mc != null) {
+                    mc.execute(() -> {
+                        net.minecraft.client.renderer.texture.AbstractTexture tex = mc.getTextureManager().getTexture(oldIdentifier);
+                        if (tex != null) {
+                            tex.close();
+                        }
+                        mc.getTextureManager().release(oldIdentifier);
+                    });
+                }
             }
         }
     }
@@ -121,11 +134,15 @@ public class CosmeticsBackend {
         return activeCapes.get(uuid);
     }
 
-    public static void setActiveCape(UUID uuid, Identifier cape) {
+    public static synchronized void setActiveCape(UUID uuid, Identifier cape) {
         if (uuid == null) return;
         cleanupUnassigned();
         Identifier oldIdentifier;
         if (cape != null) {
+            Identifier current = activeCapes.get(uuid);
+            if (cape.equals(current)) {
+                return;
+            }
             unassigned.remove(cape);
             refCounts.merge(cape, 1, Integer::sum);
             oldIdentifier = activeCapes.put(uuid, cape);
@@ -137,18 +154,21 @@ public class CosmeticsBackend {
             if (newCount <= 0) {
                 refCounts.remove(oldIdentifier);
                 textureData.remove(oldIdentifier);
-                Minecraft.getInstance().execute(() -> {
-                    net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(oldIdentifier);
-                    if (tex != null) {
-                        tex.close();
-                    }
-                    Minecraft.getInstance().getTextureManager().release(oldIdentifier);
-                });
+                Minecraft mc = Minecraft.getInstance();
+                if (mc != null) {
+                    mc.execute(() -> {
+                        net.minecraft.client.renderer.texture.AbstractTexture tex = mc.getTextureManager().getTexture(oldIdentifier);
+                        if (tex != null) {
+                            tex.close();
+                        }
+                        mc.getTextureManager().release(oldIdentifier);
+                    });
+                }
             }
         }
     }
 
-    public static void clearActiveCape(UUID uuid) {
+    public static synchronized void clearActiveCape(UUID uuid) {
         if (uuid == null) return;
         cleanupUnassigned();
         Identifier oldIdentifier = activeCapes.remove(uuid);
@@ -157,13 +177,16 @@ public class CosmeticsBackend {
             if (newCount <= 0) {
                 refCounts.remove(oldIdentifier);
                 textureData.remove(oldIdentifier);
-                Minecraft.getInstance().execute(() -> {
-                    net.minecraft.client.renderer.texture.AbstractTexture tex = Minecraft.getInstance().getTextureManager().getTexture(oldIdentifier);
-                    if (tex != null) {
-                        tex.close();
-                    }
-                    Minecraft.getInstance().getTextureManager().release(oldIdentifier);
-                });
+                Minecraft mc = Minecraft.getInstance();
+                if (mc != null) {
+                    mc.execute(() -> {
+                        net.minecraft.client.renderer.texture.AbstractTexture tex = mc.getTextureManager().getTexture(oldIdentifier);
+                        if (tex != null) {
+                            tex.close();
+                        }
+                        mc.getTextureManager().release(oldIdentifier);
+                    });
+                }
             }
         }
     }

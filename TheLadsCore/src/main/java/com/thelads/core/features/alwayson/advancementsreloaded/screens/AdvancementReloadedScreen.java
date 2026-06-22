@@ -102,7 +102,7 @@ public class AdvancementReloadedScreen extends Screen implements ClientAdvanceme
         this.searchBox.setHint(SEARCH_HINT_TEXT);
         this.searchBox.setCanLoseFocus(true);
         this.searchBox.setVisible(true);
-        this.searchBox.setTextColor(ARGB.opaque(ChatFormatting.WHITE.getColor()));
+        this.searchBox.setTextColor(ARGB.opaque(net.minecraft.network.chat.TextColor.fromLegacyFormat(ChatFormatting.WHITE).getValue()));
         this.searchBox.setBordered(true);
         this.searchBox.setMaxLength(32);
         this.searchBox.setValue(this.searchText);
@@ -111,7 +111,7 @@ public class AdvancementReloadedScreen extends Screen implements ClientAdvanceme
     }
 
     private void initSettingsButton() {
-        SpriteIconButton settingsIconButton = this.addRenderableWidget(SpriteIconButton.builder(Component.translatable("options.settings"), button -> this.minecraft.setScreen(ConfigurationScreen.screen(this)), true).width(20).sprite(GEAR_GUI_SPRITE_TEXURE, 14, 14).build());
+        SpriteIconButton settingsIconButton = this.addRenderableWidget(SpriteIconButton.builder(Component.translatable("options.settings"), button -> this.minecraft.setScreenAndShow(ConfigurationScreen.screen(this)), true).width(20).sprite(GEAR_GUI_SPRITE_TEXURE, 14, 14).build());
         settingsIconButton.setPosition(this.width - 25, 5);
     }
 
@@ -126,7 +126,7 @@ public class AdvancementReloadedScreen extends Screen implements ClientAdvanceme
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(this.parent);
+        this.minecraft.setScreenAndShow(this.parent);
     }
 
     @Override
@@ -224,7 +224,7 @@ public class AdvancementReloadedScreen extends Screen implements ClientAdvanceme
             return true;
         }
         if (this.minecraft.options.keyAdvancements.matches(event)) {
-            this.minecraft.setScreen(this.parent);
+            this.minecraft.setScreenAndShow(this.parent);
             this.minecraft.mouseHandler.grabMouse();
             return true;
         }
@@ -326,7 +326,7 @@ public class AdvancementReloadedScreen extends Screen implements ClientAdvanceme
         Objects.requireNonNull(this.font);
         this.contentHeight += 9 * this.font.split(title, maxTextWidth).size() + 4;
         if (Configuration.displayDescription && description != null) {
-            context.textWithWordWrap(this.font, description, sidebarXOffset, paddingTop, maxTextWidth, ARGB.opaque(((DisplayInfo)this.getSelectedWidget().getAdvancement().display().get()).getType().getChatColor().getColor()));
+            context.textWithWordWrap(this.font, description, sidebarXOffset, paddingTop, maxTextWidth, ARGB.opaque(net.minecraft.network.chat.TextColor.fromLegacyFormat(((DisplayInfo)this.getSelectedWidget().getAdvancement().display().get()).getType().getChatColor()).getValue()));
             Objects.requireNonNull(this.font);
             paddingTop += 9 * this.font.split(description, maxTextWidth).size() + 4;
             Objects.requireNonNull(this.font);

@@ -1,0 +1,71 @@
+Can't initialize prompt toolkit: No Windows console found. Are you running 
+cmd.exe?
+───────────────────────────────────────────────────────────────────────────────
+Creating empty file C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\shulkerbox\Shulker
+TooltipMixin.java
+Aider v0.86.2
+Model: ollama_chat/qwen-coder-7b-fast with whole edit format
+Git repo: .git with 934 files
+Repo-map: using 512 tokens, auto refresh
+Added 
+TheLadsCore\src\main\java\com\thelads\core\mixin\auto\shulkerbox\ShulkerTooltip
+Mixin.java to the chat.
+Added AI_CONVENTIONS.md to the chat (read-only).
+
+
+TheLadsCore\src\main\java\com\thelads\core\mixin\GuiMixin.java
+TheLadsCore\src\main\java\com\thelads\core\mixin\auto\shulkerbox\ShulkerTooltip
+Mixin.java                                                                     
+
+                                                                               
+@@ -0,0 +1,36 @@                                                               
++package com.thelads.core.mixin.auto.shulkerbox;                               
++                                                                              
++import net.minecraft.world.item.BlockItem;                                    
++import net.minecraft.world.item.ItemStack;                                    
++import net.minecraft.nbt.CompoundTag;                                         
++import net.minecraft.network.chat.Component;                                  
++import net.minecraft.world.level.block.entity.ShulkerBoxBlockEntity;          
++import org.spongepowered.asm.mixin.Mixin;                                     
++import org.spongepowered.asm.mixin.injection.At;                              
++import org.spongepowered.asm.mixin.injection.Inject;                          
++import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;           
++                                                                              
++@Mixin(BlockItem.class)                                                       
++public class ShulkerTooltipMixin {                                            
++                                                                              
++    @Inject(method = "appendHoverText", at = @At("TAIL"), require = 0)        
++    private void appendShulkerBoxContents(ItemStack stack,                    
+net.minecraft.world.level.Level level, List<Component> tooltip, CallbackInfo   
+ci) {                                                                          
++        if (stack.hasTag() && stack.getTag().contains("BlockEntityTag")) {    
++            CompoundTag blockEntityTag =                                      
+stack.getTag().getCompound("BlockEntityTag");                                  
++            if (blockEntityTag.contains("Items")) {                           
++                try {                                                         
++                    ShulkerBoxBlockEntity shulkerBox = new                    
+ShulkerBoxBlockEntity(null, null);                                             
++                    shulkerBox.load(blockEntityTag.getCompound("Items"));     
++                    for (int i = 0; i < shulkerBox.getContainerSize() && i <  
+5; i++) {                                                                      
++                        net.minecraft.world.item.ItemStack itemStack =        
+shulkerBox.getItem(i);                                                         
++                        if (!itemStack.isEmpty()) {                           
++                            tooltip.add(Component.literal(itemStack.getCount()
++ "x " + itemStack.getDisplayName().getString()));                             
++                        }                                                     
++                    }                                                         
++                } catch (Exception e) {                                       
++                    // Handle any exceptions that may occur during the process
++                }                                                             
++            }                                                                 
++        }                                                                     
++    }                                                                         
++}                                                                             
+                                                                               
+
+Tokens: 4.4k sent, 395 received.
+Applied edit to 
+TheLadsCore\src\main\java\com\thelads\core\mixin\auto\shulkerbox\ShulkerTooltip
+Mixin.java

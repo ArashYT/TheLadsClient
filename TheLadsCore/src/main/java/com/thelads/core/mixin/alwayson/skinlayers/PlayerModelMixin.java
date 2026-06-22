@@ -67,8 +67,8 @@ public class PlayerModelMixin<T extends LivingEntity> extends HumanoidModel<Avat
         ((ModelPartInjector) (Object) this.rightSleeve).setInjectedMesh(null, null);
         ((ModelPartInjector) (Object) this.leftPants).setInjectedMesh(null, null);
         ((ModelPartInjector) (Object) this.rightPants).setInjectedMesh(null, null);
-        boolean inGui = Minecraft.getInstance().screen != null;
-        if (!inGui && (Minecraft.getInstance().player == null || abstractClientPlayer.distanceToSqr(Minecraft.getInstance().gameRenderer.getMainCamera().position()) > (double) (SkinLayersModBase.config.renderDistanceLOD * SkinLayersModBase.config.renderDistanceLOD))) {
+        boolean inGui = Minecraft.getInstance().gui.screen() != null;
+        if (!inGui && (Minecraft.getInstance().player == null || abstractClientPlayer.distanceToSqr(Minecraft.getInstance().gameRenderer.mainCamera().position()) > (double) (SkinLayersModBase.config.renderDistanceLOD * SkinLayersModBase.config.renderDistanceLOD))) {
             return;
         }
         if (!SkinUtil.setup3dLayers(abstractClientPlayer, settings, this.slim)) {

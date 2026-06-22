@@ -81,9 +81,14 @@ public class DiscordRpcModule extends Module {
             Files.createDirectories(dir);
             Path target = dir.resolve(resource.substring(resource.lastIndexOf('/') + 1));
             Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-            String existing = System.getProperty("jna.library.path");
-            System.setProperty("jna.library.path",
-                existing == null || existing.isEmpty() ? dir.toString() : existing + File.pathSeparator + dir);
+            
+            try {
+                com.sun.jna.NativeLibrary.addSearchPath("discord-rpc", dir.toString());
+            } catch (Throwable t) {
+                String existing = System.getProperty("jna.library.path");
+                System.setProperty("jna.library.path",
+                    existing == null || existing.isEmpty() ? dir.toString() : existing + File.pathSeparator + dir);
+            }
         }
     }
 

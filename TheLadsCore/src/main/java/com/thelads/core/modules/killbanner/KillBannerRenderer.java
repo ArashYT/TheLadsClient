@@ -58,13 +58,29 @@ public class KillBannerRenderer {
         triggerKill(killCount);
     }
 
+    private static final net.minecraft.sounds.SoundEvent[] REAVER_SOUNDS = new net.minecraft.sounds.SoundEvent[] {
+        net.minecraft.sounds.SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("theladscore", "reaver_kill_1")),
+        net.minecraft.sounds.SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("theladscore", "reaver_kill_2")),
+        net.minecraft.sounds.SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("theladscore", "reaver_kill_3")),
+        net.minecraft.sounds.SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("theladscore", "reaver_kill_4")),
+        net.minecraft.sounds.SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("theladscore", "reaver_kill_5"))
+    };
+
     public static void triggerKill(int level) {
         currentKillLevel = level;
         killTriggerTime = System.currentTimeMillis();
         try {
             Minecraft mc = Minecraft.getInstance();
             if (mc != null && mc.getSoundManager() != null) {
-                mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0F));
+                int index = Math.min(5, Math.max(1, level)) - 1;
+                Module mod = ModuleManager.getInstance().getModule("KillBanner");
+                if (mod instanceof KillBannerModule && ((KillBannerModule) mod).bannerStyle.getIndex() == 1) {
+                    // Reaver Style Sound
+                    mc.getSoundManager().play(SimpleSoundInstance.forUI(REAVER_SOUNDS[index], 1.0F));
+                } else {
+                    // Base Style Sound
+                    mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0F));
+                }
             }
         } catch (Throwable t) {
             // Safe guard for headless tests
@@ -138,29 +154,16 @@ public class KillBannerRenderer {
             float u = col * 256f;
             float v = row * 176f;
 
-            // Valorant-style entrance/exit: subtle pop-in, scale-fade at the end
-            float progress = (float) frameIndex / totalFrames;
-            float scale = 1.0f;
-            if (progress < 0.08f) {
-                float p = progress / 0.08f;
-                scale = 0.85f + 0.15f * p; // gentle pop-in: 0.85 → 1.0
-            } else if (progress > 0.85f) {
-                float p = (progress - 0.85f) / 0.15f;
-                scale = Math.max(0.0f, 1.0f - p); // fade-out: 1.0 → 0
-            }
-            if (scale <= 0.0f) return;
-
-            // Native sprite frame is 256×176; render at that size scaled by animation
-            int destW = (int) (256 * scale);
-            int destH = (int) (176 * scale);
+            // Native sprite frame is 256×176. Scale down to ~96x66 for the UI
+            int destW = 96;
+            int destH = 66;
 
             // Position: horizontally centered, sits just above the hotbar (like Valorant)
-            int reaverBottomY = height - 22;
+            int reaverBottomY = height - 25;
             int x = centerX - destW / 2;
             int y = reaverBottomY - destH;
 
             // (destW,destH) = on-screen size, (256,176) = sampled frame region, (2048,2048) = full sheet.
-            // These last four were swapped, which sampled a 2048² region from a 256×176 texture = glitched sprite.
             extractor.blit(RenderPipelines.GUI_TEXTURED, sheets[sheetIndex], x, y, u, v, destW, destH, 256, 176, 2048, 2048);
         }
     }

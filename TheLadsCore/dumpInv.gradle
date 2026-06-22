@@ -4,10 +4,11 @@ task dumpInv {
         def urls = configurations.compileClasspath.files.collect { it.toURI().toURL() }
         def loader = new java.net.URLClassLoader(urls as java.net.URL[], cl)
         try {
-            def clazz = loader.loadClass('net.minecraft.util.Util')
-            clazz.declaredMethods.each { m ->
-                if (m.name.toLowerCase().contains("executor") || m.name.toLowerCase().contains("pool")) {
-                    println "METHOD: " + m.name + " returns " + m.returnType.name + " params " + m.parameterTypes.collect { it.name }
+            def clazz = loader.loadClass('com.mojang.blaze3d.systems.RenderPass')
+            println "SUCCESS: loaded RenderPass"
+            clazz.getDeclaredMethods().each { m ->
+                if (m.name.contains("draw")) {
+                    println "  METHOD: " + m.toString()
                 }
             }
         } catch (Exception e) {
@@ -15,7 +16,3 @@ task dumpInv {
         }
     }
 }
-
-
-
-

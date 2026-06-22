@@ -22,6 +22,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MixinRenderSystem {
     @Inject(method={"flipFrame"}, at={@At(value="HEAD")})
     private static void unbindFramebufferBeforeSwappingBuffers(CallbackInfo ci) {
+        if (!com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast.isEnabled()) {
+            return;
+        }
         GlStateManager._glBindFramebuffer((int)36160, (int)0);
     }
 }

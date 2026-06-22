@@ -99,7 +99,7 @@ public class EntityCullingModBase {
                 changed = true;
             }
             this.cullTask.setIngame(true);
-            this.cullTask.setCameraMC(client.gameRenderer.getMainCamera().position());
+            this.cullTask.setCameraMC(client.gameRenderer.mainCamera().position());
             this.cullTask.requestCull = true;
             if (changed) {
                 this.lastTickTime = (double)(System.nanoTime() - start) / 1000000.0;

@@ -125,7 +125,7 @@ public abstract class MixinMapTextureManager_MapInstance {
                     atlasImage.setPixel(this.immediatelyFast$atlasX + x, this.immediatelyFast$atlasY + y, MapColor.getColorFromPackedId((int)this.data.colors[i]));
                 }
             }
-            RenderSystem.getDevice().createCommandEncoder().writeToTexture(atlasTexture.getTexture(), atlasImage, 0, 0, this.immediatelyFast$atlasX, this.immediatelyFast$atlasY, 128, 128, this.immediatelyFast$atlasX, this.immediatelyFast$atlasY);
+            RenderSystem.getDevice().createCommandEncoder().writeToTexture(atlasTexture.getTexture(), atlasImage, 0, 0, this.immediatelyFast$atlasX, this.immediatelyFast$atlasY);
             this.requiresUpload = false;
         }
     }

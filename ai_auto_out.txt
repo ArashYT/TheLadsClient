@@ -1,0 +1,1350 @@
+Can't initialize prompt toolkit: No Windows console found. Are you running 
+cmd.exe?
+───────────────────────────────────────────────────────────────────────────────
+Aider v0.86.2
+Model: ollama_chat/qwen-coder-7b-fast with whole edit format
+Git repo: .git with 935 files
+Repo-map: using 512 tokens, auto refresh
+Added AI_CONVENTIONS.md to the chat (read-only).
+
+
+TheLadsCore\src\main\java\com\thelads\core\mixin\GuiMixin.java
+Repo-map can't include C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\farblockentityrend
+ering21\BlockEntityRendererDispatcherMixin.java
+Has it been deleted from the file system but not from git?
+Repo-map can't include C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\farblockentityrend
+ering21\BlockEntityRendererMixin.java
+Has it been deleted from the file system but not from git?
+Repo-map can't include C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\farblockentityrend
+ering21\BlockEntityRendererProviderMixin.java
+Has it been deleted from the file system but not from git?
+Repo-map can't include C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\modernadvancements
+screen1901262\AdvancementToastAccessor.java
+Has it been deleted from the file system but not from git?
+Repo-map can't include C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\modernadvancements
+screen1901262\AdvancementTypeMixin.java
+Has it been deleted from the file system but not from git?
+Repo-map can't include C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\modernadvancements
+screen1901262\ChatListenerMixin.java
+Has it been deleted from the file system but not from git?
+Repo-map can't include C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\modernadvancements
+screen1901262\GuiMixin.java
+Has it been deleted from the file system but not from git?
+Repo-map can't include C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\modernadvancements
+screen1901262\PlayerAdvancementsMixin.java
+Has it been deleted from the file system but not from git?
+Repo-map can't include C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\modernadvancements
+screen1901262\ScreenClickMixin.java
+Has it been deleted from the file system but not from git?
+Repo-map can't include C:\Users\Arash\Desktop\Lads 
+Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto\modernadvancements
+screen1901262\ToastManagerMixin.java
+Has it been deleted from the file system but not from git?
+To implement the "Animatium" mod natively inside this Fabric mod for Minecraft 
+26.1.2, we need to create Mixin classes targeting the specified Minecraft      
+classes. Each Mixin class will be placed under the                             
+com.thelads.core.mixin.auto.animatium322612fabric package.                     
+
+Here are the new Mixin classes:                                                
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAbstractRecipeBookScreenAccessor.java                                        
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;    
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(AbstractRecipeBookScreen.class)                                         
+                                                                               
+public class MixinAbstractRecipeBookScreenAccessor {                           
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "isPauseScreen", at = @At("HEAD"), cancellable = true,    
+require = 0)                                                                   
+                                                                               
+    private void ladsIsPauseScreen(CallbackInfoReturnable<Boolean> cir) {      
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAbstractSelectionListAccessor.java                                           
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.gui.components.AbstractSelectionList;              
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(AbstractSelectionList.class)                                            
+                                                                               
+public class MixinAbstractSelectionListAccessor {                              
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "scrollAmount", at = @At("HEAD"), cancellable = true,     
+require = 0)                                                                   
+                                                                               
+    private void ladsScrollAmount(CallbackInfoReturnable<Float> cir) {         
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inCameraAccessor.java                                                          
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.Camera;                                            
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(Camera.class)                                                           
+                                                                               
+public class MixinCameraAccessor {                                             
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "getRenderOffset", at = @At("HEAD"), cancellable = true,  
+require = 0)                                                                   
+                                                                               
+    private void ladsGetRenderOffset(CallbackInfoReturnable<Vec3> cir) {       
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inClientLevelDataAccessor.java                                                 
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.level.ClientLevel;                                 
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(ClientLevel.class)                                                      
+                                                                               
+public class MixinClientLevelDataAccessor {                                    
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "getSkyColor", at = @At("HEAD"), cancellable = true,      
+require = 0)                                                                   
+                                                                               
+    private void ladsGetSkyColor(CallbackInfoReturnable<Vec3> cir) {           
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inGameRendererAccessor.java                                                    
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.GameRenderer;                             
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(GameRenderer.class)                                                     
+                                                                               
+public class MixinGameRendererAccessor {                                       
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "getMainCamera", at = @At("HEAD"), cancellable = true,    
+require = 0)                                                                   
+                                                                               
+    private void ladsGetMainCamera(CallbackInfoReturnable<Camera> cir) {       
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inGuiRendererAccessor.java                                                     
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.gui.GuiRenderer;                          
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(GuiRenderer.class)                                                      
+                                                                               
+public class MixinGuiRendererAccessor {                                        
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inLivingEntityAccessor.java                                                    
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.world.entity.LivingEntity;                                
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(LivingEntity.class)                                                     
+                                                                               
+public class MixinLivingEntityAccessor {                                       
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "getHealth", at = @At("HEAD"), cancellable = true, require
+= 0)                                                                           
+                                                                               
+    private void ladsGetHealth(CallbackInfoReturnable<Float> cir) {            
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inPlayerAccessor.java                                                          
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.world.entity.player.Player;                               
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(Player.class)                                                           
+                                                                               
+public class MixinPlayerAccessor {                                             
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "getMaxHealth", at = @At("HEAD"), cancellable = true,     
+require = 0)                                                                   
+                                                                               
+    private void ladsGetMaxHealth(CallbackInfoReturnable<Float> cir) {         
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inSlotAccessor.java                                                            
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.world.inventory.Slot;                                     
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(Slot.class)                                                             
+                                                                               
+public class MixinSlotAccessor {                                               
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "getHasItem", at = @At("HEAD"), cancellable = true,       
+require = 0)                                                                   
+                                                                               
+    private void ladsGetHasItem(CallbackInfoReturnable<Boolean> cir) {         
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inEquipmentLayerRenderer.java                                                  
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.EquipmentLayerRenderer;     
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(EquipmentLayerRenderer.class)                                           
+                                                                               
+public class MixinEquipmentLayerRenderer {                                     
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "renderArmor", at = @At("HEAD"), cancellable = true,      
+require = 0)                                                                   
+                                                                               
+    private void ladsRenderArmor(CallbackInfo ci) {                            
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inOverlayTexture.java                                                          
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.OverlayTexture;             
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(OverlayTexture.class)                                                   
+                                                                               
+public class MixinOverlayTexture {                                             
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAvatarRenderer_CapeRotation.java                                             
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.AvatarRenderer;             
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(AvatarRenderer.class)                                                   
+                                                                               
+public class MixinAvatarRenderer_CapeRotation {                                
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "renderCape", at = @At("HEAD"), cancellable = true,       
+require = 0)                                                                   
+                                                                               
+    private void ladsRenderCape(CallbackInfo ci) {                             
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inCapeLayer_Position.java                                                      
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.CapeLayer;                  
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(CapeLayer.class)                                                        
+                                                                               
+public class MixinCapeLayer_Position {                                         
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inModelFeatureRenderer_CapeSwinging.java                                       
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.ModelFeatureRenderer;       
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(ModelFeatureRenderer.class)                                             
+                                                                               
+public class MixinModelFeatureRenderer_CapeSwinging {                          
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inFishingHookRenderer.java                                                     
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.FishingHookLayer;           
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(FishingHookLayer.class)                                                 
+                                                                               
+public class MixinFishingHookRenderer {                                        
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inItemModelResolver.java                                                       
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.ItemModelResolver;          
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(ItemModelResolver.class)                                                
+                                                                               
+public class MixinItemModelResolver {                                          
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inFlameFeatureRenderer.java                                                    
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.FlameFeatureRenderer;       
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(FlameFeatureRenderer.class)                                             
+                                                                               
+public class MixinFlameFeatureRenderer {                                       
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inTextureManager.java                                                          
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.texture.TextureManager;                   
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(TextureManager.class)                                                   
+                                                                               
+public class MixinTextureManager {                                             
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "bind", at = @At("HEAD"), cancellable = true, require = 0)
+                                                                               
+    private void ladsBind(CallbackInfo ci) {                                   
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inTextureTransform.java                                                        
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.texture.TextureTransform;                 
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(TextureTransform.class)                                                 
+                                                                               
+public class MixinTextureTransform {                                           
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "apply", at = @At("HEAD"), cancellable = true, require =  
+0)                                                                             
+                                                                               
+    private void ladsApply(CallbackInfo ci) {                                  
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAvatarRenderer_HeldItemArmLogic.java                                         
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.AvatarRenderer;             
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(AvatarRenderer.class)                                                   
+                                                                               
+public class MixinAvatarRenderer_HeldItemArmLogic {                            
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "renderHeldItemArms", at = @At("HEAD"), cancellable =     
+true, require = 0)                                                             
+                                                                               
+    private void ladsRenderHeldItemArms(CallbackInfo ci) {                     
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inHumanoidMobRenderer_FixDoubleUsage.java                                      
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.HumanoidMobLayer;           
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(HumanoidMobLayer.class)                                                 
+                                                                               
+public class MixinHumanoidMobRenderer_FixDoubleUsage {                         
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inItemInHandRenderer_DamageTintItems.java                                      
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;            
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(ItemInHandLayer.class)                                                  
+                                                                               
+public class MixinItemInHandRenderer_DamageTintItems {                         
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inItemInHandRenderer_HeldItemArmLogic.java                                     
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;            
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(ItemInHandLayer.class)                                                  
+                                                                               
+public class MixinItemInHandRenderer_HeldItemArmLogic {                        
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inHumanoidModel.java                                                           
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.model.HumanoidModel;                               
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(HumanoidModel.class)                                                    
+                                                                               
+public class MixinHumanoidModel {                                              
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "setupAnim", at = @At("HEAD"), cancellable = true, require
+= 0)                                                                           
+                                                                               
+    private void ladsSetupAnim(CallbackInfo ci) {                              
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inLivingEntityRenderer.java                                                    
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;              
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(LivingEntityRenderer.class)                                             
+                                                                               
+public class MixinLivingEntityRenderer {                                       
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inNameTagFeatureRenderer.java                                                  
+
+                                                                               
+package com.thelads.core.mixin.auto/animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.NameTagFeatureRenderer;     
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(NameTagFeatureRenderer.class)                                           
+                                                                               
+public class MixinNameTagFeatureRenderer {                                     
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inNameTagFeatureStorage.java                                                   
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.renderer.entity.layers.NameTagFeatureStorage;      
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(NameTagFeatureStorage.class)                                            
+                                                                               
+public class MixinNameTagFeatureStorage {                                      
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 
+0)                                                                             
+                                                                               
+    private void ladsRender(CallbackInfo ci) {                                 
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+path:                                                                          
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inParticles.java                                                               
+
+                                                                               
+package com.thelads.core.mixin.auto.animatium322612fabric;                     
+                                                                               
+                                                                               
+                                                                               
+import net.minecraft.client.particles.ParticleEngine;                          
+                                                                               
+import org.spongepowered.asm.mixin.Mixin;                                      
+                                                                               
+import org.spongepowered.asm.mixin.injection.At;                               
+                                                                               
+import org.spongepowered.asm.mixin.injection.Inject;                           
+                                                                               
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;  
+                                                                               
+                                                                               
+                                                                               
+@Mixin(ParticleEngine.class)                                                   
+                                                                               
+public class MixinParticles {                                                  
+                                                                               
+                                                                               
+                                                                               
+    @Inject(method = "add", at = @At("HEAD"), cancellable = true, require = 0) 
+                                                                               
+    private void ladsAdd(CallbackInfo ci) {                                    
+                                                                               
+        // Custom logic here                                                   
+                                                                               
+    }                                                                          
+                                                                               
+}                                                                              
+                                                                               
+
+These Mixin classes provide a basic structure for modifying various aspects of 
+Minecraft's rendering and gameplay. Each class targets a specific Minecraft    
+class and includes an @Inject method with require = 0 to ensure that the       
+injection is harmless if the target method does not exist.                     
+
+Tokens: 4.4k sent, 4.9k received.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAbstractRecipeBookScreenAccessor.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAbstractRecipeBookScreenAccessor.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAbstractSelectionListAccessor.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAbstractSelectionListAccessor.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inCameraAccessor.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inCameraAccessor.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inClientLevelDataAccessor.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inClientLevelDataAccessor.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inGameRendererAccessor.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inGameRendererAccessor.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inGuiRendererAccessor.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inGuiRendererAccessor.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inLivingEntityAccessor.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inLivingEntityAccessor.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inPlayerAccessor.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inPlayerAccessor.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inSlotAccessor.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inSlotAccessor.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inEquipmentLayerRenderer.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inEquipmentLayerRenderer.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inOverlayTexture.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inOverlayTexture.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAvatarRenderer_CapeRotation.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAvatarRenderer_CapeRotation.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inCapeLayer_Position.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inCapeLayer_Position.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inModelFeatureRenderer_CapeSwinging.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inModelFeatureRenderer_CapeSwinging.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inFishingHookRenderer.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inFishingHookRenderer.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inItemModelResolver.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inItemModelResolver.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inFlameFeatureRenderer.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inFlameFeatureRenderer.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inTextureManager.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inTextureManager.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inTextureTransform.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inTextureTransform.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAvatarRenderer_HeldItemArmLogic.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inAvatarRenderer_HeldItemArmLogic.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inHumanoidMobRenderer_FixDoubleUsage.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inHumanoidMobRenderer_FixDoubleUsage.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inItemInHandRenderer_DamageTintItems.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inItemInHandRenderer_DamageTintItems.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inItemInHandRenderer_HeldItemArmLogic.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inItemInHandRenderer_HeldItemArmLogic.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inHumanoidModel.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inHumanoidModel.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inLivingEntityRenderer.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inLivingEntityRenderer.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inNameTagFeatureRenderer.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inNameTagFeatureRenderer.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inNameTagFeatureStorage.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inNameTagFeatureStorage.java, skipping edits.
+
+path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inParticles.java
+Unable to create path: 
+TheLadsCore/src/main/java/com/thelads/core/mixin/auto/animatium322612fabric/Mix
+inParticles.java, skipping edits.

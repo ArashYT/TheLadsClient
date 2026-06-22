@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 
 /**
  * A single named, persistable setting on a Module. Concrete types:
- * {@link BoolOption} (toggle) and {@link CycleOption} (pick-one list).
+ * {@link BoolOption} (toggle), {@link DropdownOption} (pick-one list), {@link SliderOption} (numerical range), and {@link TextOption} (text input).
  */
 public abstract class Option {
     protected final String name;
