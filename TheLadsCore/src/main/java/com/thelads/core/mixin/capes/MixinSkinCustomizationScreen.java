@@ -30,7 +30,7 @@ public abstract class MixinSkinCustomizationScreen extends OptionsSubScreen {
     public void addOptions(CallbackInfo info) {
         SpriteIconButton button = SpriteIconButton.builder(Component.empty(), buttonWidget -> {
             if (this.minecraft != null) {
-                this.minecraft.setScreen(this.capes$selectorMenu);
+                this.minecraft.setScreenAndShow(this.capes$selectorMenu);
             }
         }, true)
         .size(20, 20)

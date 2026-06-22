@@ -21,8 +21,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class CustomHeadLayerMixin<T extends LivingEntity, M extends EntityModel> {
     @Inject(method = "resolveSkullRenderType", at = @At("HEAD"))
     private void resolveSkullRenderType(LivingEntityRenderState livingEntityRenderState, SkullBlock.Type type, CallbackInfoReturnable<RenderType> ci) {
-        boolean inGui = Minecraft.getInstance().screen != null;
-        if (!inGui && Minecraft.getInstance().player != null && Minecraft.getInstance().gameRenderer.getMainCamera().position().distanceToSqr(livingEntityRenderState.x, livingEntityRenderState.y, livingEntityRenderState.z) > (double)(SkinLayersModBase.config.renderDistanceLOD * SkinLayersModBase.config.renderDistanceLOD)) {
+        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("SkinLayers").isEnabled()) {
+            return;
+        }
+        boolean inGui = Minecraft.getInstance().gui.screen() != null;
+        if (!inGui && Minecraft.getInstance().player != null && Minecraft.getInstance().gameRenderer.mainCamera().position().distanceToSqr(livingEntityRenderState.x, livingEntityRenderState.y, livingEntityRenderState.z) > (double)(SkinLayersModBase.config.renderDistanceLOD * SkinLayersModBase.config.renderDistanceLOD)) {
             return;
         }
         if (!(livingEntityRenderState.headItem.isEmpty() && livingEntityRenderState.wornHeadType == null || livingEntityRenderState.wornHeadProfile == null)) {

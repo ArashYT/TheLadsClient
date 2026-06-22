@@ -4,12 +4,13 @@ import com.thelads.core.client.hud.HudElement;
 import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.client.hud.ScoreboardHudElement;
 import com.thelads.core.config.BoolOption;
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.Hud;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.network.chat.Component;
@@ -28,7 +29,7 @@ import com.thelads.core.modules.killbanner.KillBannerRenderer;
 import java.util.ArrayList;
 import java.util.List;
 
-@Mixin(Gui.class)
+@Mixin(Hud.class)
 public class GuiMixin {
 
     @Inject(method = "extractRenderState", at = @At("TAIL"), require = 0)
@@ -39,7 +40,7 @@ public class GuiMixin {
 
     // ── Scoreboard: cancel vanilla, render at the element's exact position ──
 
-    @Inject(method = "displayScoreboardSidebar", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "extractScoreboardSidebar", at = @At("HEAD"), cancellable = true, require = 0)
     private void ladsScoreboardRender(GuiGraphicsExtractor g, Objective objective, CallbackInfo ci) {
         Module m = ModuleManager.getInstance().getModule("Scoreboard");
         if (m == null || !m.isEnabled()) return;
@@ -156,8 +157,8 @@ public class GuiMixin {
     private int[] ladsResolveBg(Module m) {
         // returns [background fill, header fill]
         Option o = m.getOption("Background");
-        if (o instanceof CycleOption) {
-            switch (((CycleOption) o).getIndex()) {
+        if (o instanceof DropdownOption) {
+            switch (((DropdownOption) o).getIndex()) {
                 case 1: return new int[]{ 0xCC000000, 0xFF1A1A1A }; // Dark
                 case 2: return new int[]{ 0x33FFFFFF,  0x55FFFFFF }; // Light
                 case 3: return new int[]{ 0, 0 };                    // Off
@@ -188,13 +189,13 @@ public class GuiMixin {
         } else {
             float speed = 0.5f;
             Option speedOpt = m.getOption("Speed");
-            if (speedOpt instanceof CycleOption) {
-                int idx = ((CycleOption) speedOpt).getIndex();
+            if (speedOpt instanceof DropdownOption) {
+                int idx = ((DropdownOption) speedOpt).getIndex();
                 if (idx == 0) speed = 0.2f;
                 else if (idx == 1) speed = 0.4f;
                 else speed = 0.7f;
             }
-            float dt = tickDelta.getRealtimeDeltaTicks();
+            float dt = Math.min(1.0f, tickDelta.getRealtimeDeltaTicks());
             float lerpAmt = 1.0f - (float) Math.exp(-speed * 5.0f * dt);
             ladsInterpolatedSlot = net.minecraft.util.Mth.lerp(lerpAmt, ladsInterpolatedSlot, selected);
         }

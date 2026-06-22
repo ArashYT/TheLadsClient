@@ -14,6 +14,15 @@ public class ImmediatelyFast {
     public static ImmediatelyFastConfig config;
     public static ImmediatelyFastRuntimeConfig runtimeConfig;
 
+    public static boolean isEnabled() {
+        try {
+            com.thelads.core.config.Module m = com.thelads.core.config.ModuleManager.getInstance().getModule("ImmediatelyFast");
+            return m != null && m.isEnabled();
+        } catch (Throwable t) {
+            return true;
+        }
+    }
+
     public static void earlyInit() {
         if (config != null) {
             return;
@@ -23,10 +32,10 @@ public class ImmediatelyFast {
     }
 
     public static void onRenderSystemInit() {
-        String gpuVendor = RenderSystem.getDevice().getVendor();
-        String gpuModel = RenderSystem.getDevice().getRenderer();
-        String backendName = RenderSystem.getDevice().getBackendName();
-        String backendVersion = RenderSystem.getDevice().getVersion();
+        String gpuVendor = RenderSystem.getDevice().getDeviceInfo().vendorName();
+        String gpuModel = RenderSystem.getDevice().getDeviceInfo().name();
+        String backendName = RenderSystem.getDevice().getDeviceInfo().backendName();
+        String backendVersion = RenderSystem.getDevice().getDeviceInfo().driverInfo();
         LOGGER.info("Initializing ImmediatelyFast " + VERSION + " on " + gpuModel + " (" + gpuVendor + ") with " + backendName + " " + backendVersion);
         
         boolean isApple = false;
@@ -36,7 +45,7 @@ public class ImmediatelyFast {
         }
         Objects.requireNonNull(config, "Config not loaded yet");
         Objects.requireNonNull(runtimeConfig, "Runtime config not created yet");
-        if (config.fix_slow_buffer_upload_on_apple_gpu && isApple && !RenderSystem.getDevice().getEnabledExtensions().contains("GL_ARB_direct_state_access") && !RenderSystem.getDevice().getEnabledExtensions().contains("GL_ARB_buffer_storage")) {
+        if (config.fix_slow_buffer_upload_on_apple_gpu && isApple && !RenderSystem.getDevice().getDeviceInfo().underlyingExtensions().contains("GL_ARB_direct_state_access") && !RenderSystem.getDevice().getDeviceInfo().underlyingExtensions().contains("GL_ARB_buffer_storage")) {
             runtimeConfig.disable_fast_buffer_upload = true;
         }
         if (FabricLoader.getInstance().isModLoaded("iris")) {

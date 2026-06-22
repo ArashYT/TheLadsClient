@@ -59,6 +59,9 @@ implements AutoCloseable {
     }
 
     public VertexConsumer getBuffer(RenderType renderType) {
+        if (!com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast.isEnabled()) {
+            return super.getBuffer(renderType);
+        }
         BufferBuilder bufferBuilder;
         boolean hasBufferForRenderType;
         if (!this.drawDynamicBuffersFirst && this.lastSharedType != null && this.lastSharedType != renderType && !this.fixedBuffers.containsKey(this.lastSharedType)) {
@@ -69,14 +72,14 @@ implements AutoCloseable {
         }
         boolean bl = hasBufferForRenderType = renderType.canConsolidateConsecutiveGeometry() && this.dynamicBuffers.containsKey(renderType);
         if (!renderType.canConsolidateConsecutiveGeometry()) {
-            bufferBuilder = new BufferBuilder(this.getNextByteBufferBuilder(), renderType.mode(), renderType.format());
+            bufferBuilder = new BufferBuilder(this.getNextByteBufferBuilder(), renderType.primitiveTopology(), renderType.format());
             this.lastSharedType = renderType;
         } else if (hasBufferForRenderType) {
             bufferBuilder = (BufferBuilder)this.dynamicBuffers.get(renderType).iterator().next();
         } else if (this.fixedBuffers.containsKey(renderType)) {
-            bufferBuilder = new BufferBuilder((ByteBufferBuilder)this.fixedBuffers.get(renderType), renderType.mode(), renderType.format());
+            bufferBuilder = new BufferBuilder((ByteBufferBuilder)this.fixedBuffers.get(renderType), renderType.primitiveTopology(), renderType.format());
         } else {
-            bufferBuilder = new BufferBuilder(this.getNextByteBufferBuilder(), renderType.mode(), renderType.format());
+            bufferBuilder = new BufferBuilder(this.getNextByteBufferBuilder(), renderType.primitiveTopology(), renderType.format());
             this.lastSharedType = renderType;
         }
         if (IrisCompat.IRIS_LOADED) {
@@ -115,6 +118,10 @@ implements AutoCloseable {
     }
 
     public void endBatch() {
+        if (!com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast.isEnabled()) {
+            super.endBatch();
+            return;
+        }
         if (this.activeRenderTypes.isEmpty()) {
             this.close();
             return;
@@ -126,6 +133,10 @@ implements AutoCloseable {
     }
 
     public void endBatch(RenderType renderType) {
+        if (!com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast.isEnabled()) {
+            super.endBatch(renderType);
+            return;
+        }
         if (this.drawDynamicBuffersFirst) {
             this.endLastBatch();
         }
@@ -134,6 +145,9 @@ implements AutoCloseable {
 
     @Override
     public void close() {
+        if (!com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast.isEnabled()) {
+            return;
+        }
         this.lastSharedType = null;
         this.drawDynamicBuffersFirst = false;
         for (Set<BufferBuilder> set : this.dynamicBuffers.values()) {

@@ -98,6 +98,9 @@ public class SkinUtil {
     }
 
     public static boolean setup3dLayers(AbstractClientPlayer abstractClientPlayerEntity, PlayerSettings settings, boolean thinArms) {
+        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("SkinLayers").isEnabled()) {
+            return false;
+        }
         PlayerSkin playerSkin = abstractClientPlayerEntity.getSkin();
         Identifier skinLocation = playerSkin != null && playerSkin.body() != null ? playerSkin.body().texturePath() : null;
         if (skinLocation == null) {
@@ -138,6 +141,9 @@ public class SkinUtil {
     }
 
     public static boolean setup3dLayers(GameProfile gameprofile, SkullSettings settings) {
+        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("SkinLayers").isEnabled()) {
+            return false;
+        }
         if (gameprofile == null) {
             return false;
         }
@@ -161,6 +167,9 @@ public class SkinUtil {
     }
 
     public static boolean setup3dLayers(Identifier playerSkin, SkullSettings settings) {
+        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("SkinLayers").isEnabled()) {
+            return false;
+        }
         if (playerSkin == null) {
             return false;
         }

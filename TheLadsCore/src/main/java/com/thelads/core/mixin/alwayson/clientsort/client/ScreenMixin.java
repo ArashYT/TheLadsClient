@@ -33,7 +33,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ScreenMixin {
     @Inject(method={"init(II)V"}, at={@At(value="INVOKE", target="Lnet/minecraft/client/gui/screens/Screen;init()V", shift=At.Shift.AFTER)})
     private void afterInit(CallbackInfo ci) {
-        if (Minecraft.getInstance().screen instanceof CreativeModeInventoryScreen) {
+        if (Minecraft.getInstance().gui.screen() instanceof CreativeModeInventoryScreen) {
             return;
         }
         this.clientsort$afterInit();

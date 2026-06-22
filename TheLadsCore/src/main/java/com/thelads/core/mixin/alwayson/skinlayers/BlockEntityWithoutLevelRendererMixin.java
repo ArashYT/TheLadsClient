@@ -16,6 +16,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class BlockEntityWithoutLevelRendererMixin {
     @Inject(method = "extractArgument", at = @At("HEAD"))
     public void extractArgument(ItemStack itemStack, CallbackInfoReturnable<PlayerSkinRenderCache.RenderInfo> cir) {
+        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("SkinLayers").isEnabled()) {
+            SkullRendererCache.renderNext = false;
+            SkullRendererCache.lastSkull = null;
+            return;
+        }
         ResolvableProfile profileComponent = itemStack.get(net.minecraft.core.component.DataComponents.PROFILE);
         GameProfile profile = profileComponent != null ? profileComponent.partialProfile() : null;
         if (profile != null) {

@@ -24,8 +24,7 @@ public abstract class DynamicFPSMixin {
         if (baseModule instanceof DynamicFPSModule dynFps) {
             dynFps.setOriginalFramerateLimit(cir.getReturnValue());
             dynFps.onWindowFocusChanged(this.minecraft.isWindowActive());
-            int limit = dynFps.getCurrentFramerateLimit();
-            cir.setReturnValue(limit);
+            cir.setReturnValue(dynFps.getCurrentFramerateLimit());
         }
     }
 }

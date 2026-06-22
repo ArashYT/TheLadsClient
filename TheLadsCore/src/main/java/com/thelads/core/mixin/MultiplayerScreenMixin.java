@@ -42,7 +42,7 @@ public abstract class MultiplayerScreenMixin extends Screen {
         // Account switch button — top-left
         this.addRenderableWidget(Button.builder(
             Component.literal("⇄ Account"),
-            btn -> Minecraft.getInstance().setScreen(new AccountSwitcherScreen((Screen)(Object) this))
+            btn -> Minecraft.getInstance().setScreenAndShow(new AccountSwitcherScreen((Screen)(Object) this))
         ).bounds(8, 6, 90, 20).build());
 
         // Copy IP button — top middle

@@ -617,6 +617,12 @@
                                 <CheckBox x:Name="AutoFixCrashesCheckbox" 
                                            Content="Auto-Fix issues on crash (Disables broken mods)" 
                                            IsChecked="True" />
+                               <CheckBox x:Name="AutoRelaunchOnCrashCheckbox" 
+                                          Content="Auto-relaunch game on crash" 
+                                          IsChecked="False" />
+                               <CheckBox x:Name="AutoRejoinServerCheckbox" 
+                                          Content="Auto-rejoin last server on launch (Reads logs)" 
+                                          IsChecked="False" />
                                 <CheckBox x:Name="MultiInstanceCheckbox"
                                            Content="Allow launching multiple copies of the same instance"
                                            IsChecked="False" />

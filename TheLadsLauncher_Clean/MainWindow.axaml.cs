@@ -2529,6 +2529,8 @@ public partial class MainWindow : Window
         QuickLaunchCheckbox.IsChecked = settings.QuickLaunch;
         AutoLaunchCheckbox.IsChecked = settings.AutoLaunch;
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
+        AutoRelaunchOnCrashCheckbox.IsChecked = settings.AutoRelaunchOnCrash;
+        AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
         MultiInstanceCheckbox.IsChecked = settings.AllowMultiInstance;
         ParticleCheckbox.IsChecked = settings.ShowParticles;
         SyncResourcePacksCheckbox.IsChecked = settings.SyncResourcePacksFromGlobal;
@@ -2593,6 +2595,8 @@ public partial class MainWindow : Window
         settings.KeepClosedOnExit = KeepClosedOnExitCheckbox.IsChecked ?? false;
         settings.AutoLaunch = AutoLaunchCheckbox.IsChecked ?? false;
         settings.AutoFixCrashes = AutoFixCrashesCheckbox.IsChecked ?? true;
+        settings.AutoRelaunchOnCrash = AutoRelaunchOnCrashCheckbox.IsChecked ?? false;
+        settings.AutoRejoinServer = AutoRejoinServerCheckbox.IsChecked ?? false;
         settings.AllowMultiInstance = MultiInstanceCheckbox.IsChecked ?? false;
         settings.FullscreenOnLaunch = FullscreenOnLaunchCheckbox.IsChecked ?? true;
         settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
@@ -3626,6 +3630,16 @@ public partial class MainWindow : Window
             JavaPath = settings.JavaPath
         };
 
+        if (settings.AutoRejoinServer && !string.IsNullOrEmpty(settings.LastServerIp))
+        {
+            launchOpt.ServerIp = settings.LastServerIp;
+            if (settings.LastServerPort > 0)
+            {
+                launchOpt.ServerPort = settings.LastServerPort;
+            }
+            Log($"[Launcher] Auto-Rejoin enabled. Server: {settings.LastServerIp}:{settings.LastServerPort}");
+        }
+
         if (settings.QuickLaunch)
         {
             GameLaunchStatusText.Text = "Quick launching (skipping verification)...";
@@ -3913,6 +3927,18 @@ public partial class MainWindow : Window
             string crashDir = Path.Combine(settings.InstancePath, "crash-reports");
             string latestLog = Path.Combine(settings.InstancePath, "logs", "latest.log");
 
+            if (File.Exists(latestLog))
+            {
+                string logContent = File.ReadAllText(latestLog);
+                var ipMatch = System.Text.RegularExpressions.Regex.Match(logContent, @"Connecting to ([a-zA-Z0-9\.\-_]+), (\d+)");
+                if (ipMatch.Success)
+                {
+                    settings.LastServerIp = ipMatch.Groups[1].Value;
+                    settings.LastServerPort = int.Parse(ipMatch.Groups[2].Value);
+                    settings.Save();
+                }
+            }
+
             string crashInfo = "The game has crashed.";
             string? crashFile = null;
 
@@ -3969,70 +3995,8 @@ public partial class MainWindow : Window
             {
                 bool fixedCrash = false;
 
-                if (crashFile != null && File.Exists(crashFile))
-                {
-                    string crashContent = File.ReadAllText(crashFile);
-                    var match = Regex.Match(crashContent, @"provided by '([^']+)'");
-                    if (match.Success)
-                    {
-                        string modId = match.Groups[1].Value;
-                        string? disabledMod = DisableModById(modId);
-                        if (disabledMod != null)
-                        {
-                            Log($"[AutoFix] Disabled {disabledMod} due to crash.");
-                            fixedCrash = true;
-                        }
-                    }
-
-                    // Mixin crashes (MixinTransformerError / MixinApplyError): find the offending mod
-                    if (!fixedCrash && (crashContent.Contains("MixinTransformerError") || crashContent.Contains("MixinApplyError") || crashContent.Contains("InvalidMixinException")))
-                    {
-                        string? culprit = FindMixinCulpritMod(crashContent);
-                        if (culprit != null)
-                        {
-                            string? disabledMod = DisableModById(culprit) ?? DisableModByMixinConfig(culprit);
-                            if (disabledMod != null)
-                            {
-                                Log($"[AutoFix] Disabled {disabledMod} due to a mixin failure.");
-                                crashInfo += $"\nAuto-fixed: disabled '{disabledMod}'.";
-                                fixedCrash = true;
-                            }
-                        }
-                    }
-                }
-
-                if (!fixedCrash && File.Exists(latestLog))
-                {
-                    var logContent = File.ReadAllText(latestLog);
-                    var match = Regex.Match(logContent, @"Mod '([^']+)' \(([^)]+)\) requires");
-                    if (!match.Success) match = Regex.Match(logContent, @"incompatible with.*'([^']+)' \(([^)]+)\)");
-                    if (match.Success)
-                    {
-                        string modId = match.Groups[2].Value;
-                        string? disabledMod = DisableModById(modId);
-                        if (disabledMod != null)
-                        {
-                            Log($"[AutoFix] Disabled {disabledMod} due to missing/incompatible dependencies.");
-                            fixedCrash = true;
-                        }
-                    }
-
-                    // Mixin failures often only appear in latest.log
-                    if (!fixedCrash && (logContent.Contains("MixinTransformerError") || logContent.Contains("MixinApplyError") || logContent.Contains("InvalidMixinException")))
-                    {
-                        string? culprit = FindMixinCulpritMod(logContent);
-                        if (culprit != null)
-                        {
-                            string? disabledMod = DisableModById(culprit) ?? DisableModByMixinConfig(culprit);
-                            if (disabledMod != null)
-                            {
-                                Log($"[AutoFix] Disabled {disabledMod} due to a mixin failure.");
-                                crashInfo += $"\nAuto-fixed: disabled '{disabledMod}'.";
-                                fixedCrash = true;
-                            }
-                        }
-                    }
-                }
+                // AutoFixCrashes removed by user request
+                // The launcher will no longer rename crashed mods to .disabled
 
                 if (fixedCrash)
                 {
@@ -4040,6 +4004,14 @@ public partial class MainWindow : Window
                     _ = LaunchGame();
                     return;
                 }
+            }
+
+            if (settings.AutoRelaunchOnCrash)
+            {
+                Log("[Crash Detection] Auto-relaunching due to AutoRelaunchOnCrash setting.");
+                StatusText.Text = "Auto-relaunching after crash...";
+                _ = LaunchGame();
+                return;
             }
 
             ShowCrashDialog(crashInfo, crashFile);
@@ -4089,7 +4061,7 @@ public partial class MainWindow : Window
                 if (archive.GetEntry(mixinConfigName) != null)
                 {
                     archive.Dispose();
-                    File.Move(file, file + ".disabled");
+                    // File.Move(file, file + ".disabled");
                     LoadModsList();
                     return Path.GetFileName(file);
                 }
@@ -4120,8 +4092,8 @@ public partial class MainWindow : Window
                     if (match.Success && match.Groups[1].Value == targetModId)
                     {
                         archive.Dispose();
-                        string dest = file + ".disabled";
-                        File.Move(file, dest);
+                        // string dest = file + ".disabled";
+                        // File.Move(file, dest);
                         LoadModsList();
                         return Path.GetFileName(file);
                     }

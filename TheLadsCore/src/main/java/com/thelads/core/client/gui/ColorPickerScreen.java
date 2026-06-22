@@ -237,12 +237,12 @@ public class ColorPickerScreen extends Screen {
             // Apply
             if (mx >= PV_X && mx < PV_X + 100 && my >= rowY && my < rowY + 22) {
                 if (callback != null) callback.apply(useGlobal, currentColor());
-                this.minecraft.setScreen(parent);
+                this.minecraft.setScreenAndShow(parent);
                 return true;
             }
             // Cancel
             if (mx >= PV_X && mx < PV_X + 100 && my >= rowY + 28 && my < rowY + 50) {
-                this.minecraft.setScreen(parent);
+                this.minecraft.setScreenAndShow(parent);
                 return true;
             }
         }
@@ -300,7 +300,7 @@ public class ColorPickerScreen extends Screen {
             }
             return true; // swallow other keys while editing
         }
-        if (k == 256) { this.minecraft.setScreen(parent); return true; }
+        if (k == 256) { this.minecraft.setScreenAndShow(parent); return true; }
         return super.keyPressed(event);
     }
 
@@ -327,7 +327,7 @@ public class ColorPickerScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(parent);
+        this.minecraft.setScreenAndShow(parent);
     }
 
     @Override

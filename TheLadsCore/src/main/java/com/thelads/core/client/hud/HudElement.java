@@ -7,7 +7,8 @@ import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.HudSettings;
 import com.thelads.core.config.Option;
 import com.thelads.core.config.BoolOption;
-import com.thelads.core.config.CycleOption;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.ColorOption;
 import com.thelads.core.client.ChromaUtil;
 import com.thelads.core.modules.HudModule;
@@ -145,8 +146,8 @@ public abstract class HudElement {
             Module m = ModuleManager.getInstance().getModule(moduleName);
             if (m != null) {
                 Option o = m.getOption(name);
-                if (o instanceof CycleOption) {
-                    return ((CycleOption) o).getIndex();
+                if (o instanceof DropdownOption) {
+                    return ((DropdownOption) o).getIndex();
                 }
             }
         }

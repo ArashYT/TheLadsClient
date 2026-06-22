@@ -13,6 +13,20 @@ public class PingViewModule extends Module {
 
     public PingViewModule() {
         super("PingView", "Shows numeric ping in tab list");
+        addOption(new com.thelads.core.config.BoolOption("Show 'ms'", true));
+        addOption(new com.thelads.core.config.DropdownOption("Bracket Style", 0, "None", "[]", "()", "<>"));
+    }
+
+    private boolean optBool(String name, boolean def) {
+        com.thelads.core.config.Option o = getOption(name);
+        if (o instanceof com.thelads.core.config.BoolOption bo) return bo.get();
+        return def;
+    }
+
+    private int optCycle(String name, int def) {
+        com.thelads.core.config.Option o = getOption(name);
+        if (o instanceof com.thelads.core.config.DropdownOption c) return c.getIndex();
+        return def;
     }
 
     public static void onTick() {
@@ -27,8 +41,6 @@ public class PingViewModule extends Module {
         }
 
         tickCounter++;
-        // Send a ping packet every 5 ticks (~4x/second) so the displayed number updates
-        // in near-realtime instead of refreshing only once per second.
         if (tickCounter >= 5) {
             tickCounter = 0;
             long currentTime = System.currentTimeMillis();
@@ -55,7 +67,13 @@ public class PingViewModule extends Module {
         if (displayPing < 0) {
             return "???";
         }
-        return displayPing + "ms";
+        boolean showMs = optBool("Show 'ms'", true);
+        int brackets = optCycle("Bracket Style", 0);
+        String text = displayPing + (showMs ? "ms" : "");
+        if (brackets == 1) text = "[" + text + "]";
+        else if (brackets == 2) text = "(" + text + ")";
+        else if (brackets == 3) text = "<" + text + ">";
+        return text;
     }
 
     public int getPingColor(int ping) {
