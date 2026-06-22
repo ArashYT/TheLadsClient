@@ -55,6 +55,7 @@
                    "alwayson.vmp.ticketsystem.ticketpropagator.MixinChunkLevelManager"
                ],
     "client":  [
+                   "CameraMixin",
                    "c2me.ReplayModC2MEHookMixin",
                    "GameMenuMixin",
                    "DynamicFPSMixin",
