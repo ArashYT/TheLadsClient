@@ -41,9 +41,14 @@ public class GuiMixin {
     // ── Scoreboard: cancel vanilla, render at the element's exact position ──
 
     @Inject(method = "extractScoreboardSidebar", at = @At("HEAD"), cancellable = true, require = 0)
-    private void ladsScoreboardRender(GuiGraphicsExtractor g, Objective objective, CallbackInfo ci) {
+    private void ladsScoreboardRender(GuiGraphicsExtractor g, DeltaTracker deltaTracker, CallbackInfo ci) {
         Module m = ModuleManager.getInstance().getModule("Scoreboard");
         if (m == null || !m.isEnabled()) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        Objective objective = mc.level.getScoreboard().getDisplayObjective(net.minecraft.world.scores.DisplaySlot.SIDEBAR);
+        if (objective == null) return;
 
         ci.cancel(); // always take over when the module is on
         ScoreboardHudElement sbEl = HudManager.getInstance().getScoreboardElement();
