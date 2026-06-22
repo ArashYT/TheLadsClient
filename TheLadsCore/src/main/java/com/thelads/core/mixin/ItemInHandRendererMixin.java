@@ -20,6 +20,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ItemInHandRenderer.class)
 public class ItemInHandRendererMixin {
 
+    // ── Pre-spawn tick safety hook ───────────────────────────────────────────
+
+    @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
+    private void ladsSafeTick(CallbackInfo ci) {
+        if (net.minecraft.client.Minecraft.getInstance().player == null) {
+            ci.cancel();
+        }
+    }
+
     // ── Optifine-style hand zoom ─────────────────────────────────────────────
 
     @Inject(method = "renderHandsWithItems", at = @At("HEAD"), require = 0)
