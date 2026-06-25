@@ -21,7 +21,8 @@ public class LauncherSettings
 
     // Paths
     public string InstancePath { get; set; } = @"C:\The Lads Client";
-    public string PackwizPath { get; set; } = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/pack.toml";
+    public string PackwizPath { get; set; } = @"C:\Users\Arash\Desktop\Lads Client\The Lads Client Packwiz";
+    public string PackwizUrl { get; set; } = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/The%20Lads%20Client%20Packwiz/pack.toml";
     public string FabricVersion { get; set; } = "fabric-loader-0.19.3-26.2";
 
     // Appearance
@@ -40,17 +41,6 @@ public class LauncherSettings
     public bool AllowMultiInstance { get; set; } = false;
     public bool KeepLauncherOpen { get; set; } = false;   // don't hide/close after launching the game
     public bool KeepClosedOnExit { get; set; } = false;   // don't re-open the launcher when the game closes
-    public bool FullscreenOnLaunch { get; set; } = false;
-    public bool QuickLaunch { get; set; } = false;
-
-    // Discord RPC
-    public bool EnableDiscordRpc { get; set; } = true;
-    public bool DiscordRpcShowIp { get; set; } = false;
-
-
-    // Sync
-    public bool SyncResourcePacksFromGlobal { get; set; } = false;
-    public bool SyncScreenshotsToGlobal { get; set; } = true;
 
     // Gallery
     public List<string> GalleryFavorites { get; set; } = new();
@@ -60,7 +50,7 @@ public class LauncherSettings
     public System.Collections.Generic.List<string> AccountOrder { get; set; } = new();
 
     // Version
-    public string LauncherVersion { get; set; } = "1.0.0";
+    public string LauncherVersion { get; set; } = "1.0.4";
     public string UpdateUrl { get; set; } = "";
 
     // API Keys
@@ -76,6 +66,15 @@ public class LauncherSettings
     // Window
     public double WindowWidth { get; set; } = 1000;
     public double WindowHeight { get; set; } = 650;
+
+    // Launch
+    public bool FullscreenOnLaunch { get; set; } = true;
+    public bool QuickLaunch { get; set; } = false;   // skip asset verification if already installed
+    public string QuickLaunchServerIp { get; set; } = "";  // server to join on launch ("" = auto from logs)
+
+    // Sync
+    public bool SyncResourcePacksFromGlobal { get; set; } = false;
+    public bool SyncScreenshotsToGlobal { get; set; } = true;
 
     public static LauncherSettings Load()
     {
@@ -143,50 +142,6 @@ public class LauncherSettings
                 }
             }
         }
-        paths.Sort((a, b) => 
-        {
-            int GetVer(string path)
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(path, @"(?:jdk|jre)-?(\d+)");
-                if (match.Success && int.TryParse(match.Groups[1].Value, out int v)) return v;
-                match = System.Text.RegularExpressions.Regex.Match(path, @"1\.(\d+)\.");
-                if (match.Success && int.TryParse(match.Groups[1].Value, out int v2)) return v2;
-                return 0;
-            }
-            return GetVer(b).CompareTo(GetVer(a));
-        });
-
         return paths.ToArray();
-    }
-
-    public static int GetRequiredJavaVersion(string mcVersion)
-    {
-        // 1.20.4 or similar
-        if (mcVersion.StartsWith("1."))
-        {
-            var parts = mcVersion.Split('.');
-            if (parts.Length >= 2 && int.TryParse(parts[1], out int minor))
-            {
-                if (minor <= 16) return 8;
-                if (minor == 17) return 16;
-                if (minor >= 18 && minor <= 20) return 17;
-                if (minor >= 21 && minor <= 24) return 21;
-                return 25; // 1.25+ fallback
-            }
-        }
-        else
-        {
-            // like "26.2"
-            var parts = mcVersion.Split('.');
-            if (int.TryParse(parts[0], out int major))
-            {
-                if (major <= 16) return 8;
-                if (major == 17) return 16;
-                if (major >= 18 && major <= 20) return 17;
-                if (major >= 21 && major <= 24) return 21;
-                return 25; // fallback
-            }
-        }
-        return 21; // default safe fallback
     }
 }
