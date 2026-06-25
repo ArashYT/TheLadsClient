@@ -3122,6 +3122,12 @@ public partial class MainWindow : Window
         {
             process = await launcher.InstallAndBuildProcessAsync(launchVersionId, launchOpt);
         }
+        
+        process.StartInfo.ArgumentList.Remove("--sun-misc-unsafe-memory-access=allow");
+        if (!string.IsNullOrEmpty(process.StartInfo.Arguments))
+        {
+            process.StartInfo.Arguments = process.StartInfo.Arguments.Replace("--sun-misc-unsafe-memory-access=allow", "");
+        }
 
         _runningProcesses.Add(process);
 
