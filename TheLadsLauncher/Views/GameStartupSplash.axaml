@@ -1,0 +1,45 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="TheLadsLauncher.Views.GameStartupSplash"
+        Title="The Lads Client"
+        Width="460" Height="280"
+        CanResize="False"
+        SystemDecorations="None"
+        Topmost="True"
+        ShowInTaskbar="True"
+        WindowStartupLocation="CenterScreen"
+        Background="#0A0A0F">
+    <Border BorderBrush="#22FFFFFF" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14">
+            <Image Source="avares://TheLadsLauncher/Assets/logo.png" Width="200" Height="100"
+                   HorizontalAlignment="Center"/>
+            <TextBlock Text="THE LADS CLIENT" HorizontalAlignment="Center" Foreground="White"
+                       FontSize="16" FontWeight="Bold" LetterSpacing="3"/>
+
+            <!-- Indeterminate sweep bar -->
+            <Border Width="300" Height="5" CornerRadius="3" Background="#161622"
+                    HorizontalAlignment="Center" ClipToBounds="True" Margin="0,4,0,0">
+                <Border x:Name="SweepFill" Width="90" Height="5" CornerRadius="3" HorizontalAlignment="Left">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                            <GradientStop Color="#8B0000" Offset="0"/>
+                            <GradientStop Color="#FF5555" Offset="0.5"/>
+                            <GradientStop Color="#8B0000" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.RenderTransform>
+                        <TranslateTransform X="-90"/>
+                    </Border.RenderTransform>
+                </Border>
+            </Border>
+
+            <TextBlock x:Name="SplashStatusText" Text="Starting Java..." HorizontalAlignment="Center"
+                       Foreground="#FF5555" FontSize="13" FontWeight="SemiBold"/>
+            <TextBlock Text="The game window will appear in a moment" HorizontalAlignment="Center"
+                       Foreground="#66FFFFFF" FontSize="11"/>
+        </StackPanel>
+    </Border>
+</Window>
