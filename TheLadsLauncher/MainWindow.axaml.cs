@@ -1,8 +1,4 @@
 using System;
-using System.Net;
-using System.Net.Sockets;
-using System.IO.Pipes;
-using System.Text;
 using System.Net.Http;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -41,7 +37,13 @@ public partial class MainWindow : Window
     private LauncherSettings settings;
 
     private string _selectedAccount = "";
+    // Alt-account launch override: when non-empty, the next launch uses this account
+    // WITHOUT changing _selectedAccount (the user's main). Set via LaunchAccountSelector.
+    private string _launchAccountOverride = "";
+    private bool _populatingLaunchSelector = false;
     private List<Process> _runningProcesses = new();
+    private TaskCompletionSource<bool>? _installChoiceTcs;
+    private DispatcherTimer? _updateCheckTimer;
 
     // ── 16:9 aspect ratio lock ───────────────────────────────────────────────
     private bool   _lockAspect     = true;
@@ -117,22 +119,7 @@ public partial class MainWindow : Window
 
         InitializeComponent();
 
-        // Wire up event handlers that need to avoid nulls during initialization
-        if (GallerySortBox != null)
-        {
-            GallerySortBox.SelectionChanged += GallerySort_Changed;
-        }
-
         settings = LauncherSettings.Load();
-        if (settings.AutoDetectJava && !System.IO.File.Exists(settings.JavaPath))
-        {
-            var installs = settings.DetectJavaInstallations();
-            if (installs.Length > 0)
-            {
-                settings.JavaPath = installs[0];
-                settings.Save();
-            }
-        }
         Log($"[Settings] Loaded settings from BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
         Log($"[Settings] ModrinthApiUrl: '{settings.ModrinthApiUrl}', CurseForgeApiUrl: '{settings.CurseForgeApiUrl}', OverrideVersion: '{settings.SelectedMinecraftVersionOverride}', FabricVersion: '{settings.FabricVersion}'");
         loginHandler = JELoginHandlerBuilder.BuildDefault();
@@ -189,6 +176,13 @@ public partial class MainWindow : Window
         LoadAccounts();
         InitializeEditor();
 
+        // Enable drag-and-drop of .jar files onto the Mods page to install them.
+        if (ModsPage != null)
+        {
+            ModsPage.AddHandler(DragDrop.DragOverEvent, ModsPage_DragOver);
+            ModsPage.AddHandler(DragDrop.DropEvent, ModsPage_Drop);
+        }
+
         // === Fancy startup animation: breathing logo + smooth eased progress bar ===
         const double startupDurationMs = 2200.0;
         const double startupBarWidth = 320.0;
@@ -227,33 +221,116 @@ public partial class MainWindow : Window
 
         this.Loaded += async (s, e) =>
         {
-            // Check for updates during splash screen launch
-            var updateInfo = await UpdateChecker.CheckForUpdatesAsync("ArashYT/TheLadsClient", Program.Version);
-            if (updateInfo != null)
+            bool updateApplied = false;
+            try
             {
-                _pendingUpdateUrl = updateInfo.DownloadUrl;
-                UpdateVersionText.Text = $"Version: {updateInfo.LatestVersion}";
-                UpdateChangelogText.Text = updateInfo.Changelog;
+                // 1. Check for installation
+                string installedDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "The Lads Client");
+                string installedExe = Path.Combine(installedDir, "TheLadsLauncher.exe");
+                string currentExe = Process.GetCurrentProcess().MainModule?.FileName ?? "";
                 
-                startupAnimTimer.Stop();
-                if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
-                LoadingDots.Text = "";
-                LauncherStartupOverlay.IsVisible = true;
-
-                await UpdaterService.DownloadAndApplyUpdateAsync(_pendingUpdateUrl, progress =>
+                // \bin\NewBuild\ is the published build the user actually runs from (its own folder
+                // with the dll + runtime). Treat it like Debug/Release so it never shows the install
+                // prompt — installing it would copy only the apphost exe and leave a non-runnable copy.
+                bool isDebug = currentExe.Contains("\\bin\\Debug\\") || currentExe.Contains("\\bin\\Release\\")
+                    || currentExe.Contains("\\bin\\NewBuild\\") || System.Diagnostics.Debugger.IsAttached;
+                if (!string.IsNullOrEmpty(currentExe) && !string.Equals(currentExe, installedExe, StringComparison.OrdinalIgnoreCase) && !isDebug)
                 {
-                    StartupLoadingSpinner.Text = $"Updating client to v{updateInfo.LatestVersion}... {progress:F1}%";
-                });
+                    InstallationOverlay.IsVisible = true;
+                    _installChoiceTcs = new TaskCompletionSource<bool>();
+                    bool install = await _installChoiceTcs.Task;
+                    InstallationOverlay.IsVisible = false;
+                    
+                    if (install)
+                    {
+                        try
+                        {
+                            Directory.CreateDirectory(installedDir);
+                            File.Copy(currentExe, installedExe, true);
+                            
+                            // Copy settings.json if exists
+                            string currentSettings = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+                            string installedSettings = Path.Combine(installedDir, "settings.json");
+                            if (File.Exists(currentSettings))
+                            {
+                                File.Copy(currentSettings, installedSettings, true);
+                            }
+                            
+                            // Create shortcuts using PowerShell COM object call
+                            string desktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "The Lads Client.lnk");
+                            string startMenuDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs");
+                            string startMenuPath = Path.Combine(startMenuDir, "The Lads Client.lnk");
+                            
+                            string psCommand = $"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('{desktopPath}');$s.TargetPath='{installedExe}';$s.WorkingDirectory='{installedDir}';$s.Save();" +
+                                               $"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('{startMenuPath}');$s.TargetPath='{installedExe}';$s.WorkingDirectory='{installedDir}';$s.Save();";
+                                               
+                            var psStartInfo = new ProcessStartInfo
+                            {
+                                FileName = "powershell.exe",
+                                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psCommand}\"",
+                                CreateNoWindow = true,
+                                UseShellExecute = false
+                            };
+                            using var psProc = Process.Start(psStartInfo);
+                            psProc?.WaitForExit();
+                            
+                            // Launch the installed one
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = installedExe,
+                                WorkingDirectory = installedDir,
+                                UseShellExecute = true
+                            });
+                            
+                            Environment.Exit(0);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log($"[Installation Error] {ex.Message}");
+                        }
+                    }
+                }
 
-                // Fallback in case updater fails or returns without restarting
-                LauncherStartupOverlay.IsVisible = false;
+                // 2. Check for updates on startup (skippable for local/dev testing via env var)
+                if (Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") != "1")
+                {
+                    if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = "Checking for updates";
+                    var update = await AutoUpdater.CheckForUpdatesAsync(settings.LauncherVersion);
+                    if (update != null)
+                    {
+                        if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = $"Downloading update v{update.LatestVersion}";
+                        bool downloaded = await AutoUpdater.DownloadUpdateAsync(update.DownloadUrl, update.LatestVersion);
+                        if (downloaded)
+                        {
+                            if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = "Applying update";
+                            updateApplied = true;
+                            AutoUpdater.ApplyUpdateAndRestart();
+                        }
+                    }
+                }
             }
-            else
+            catch (Exception ex)
             {
-                await Task.Delay((int)startupDurationMs + 150);
+                Log($"[Startup Update Error] {ex.Message}");
+            }
+
+            if (!updateApplied)
+            {
+                await Task.Delay(500); // Small grace period
                 startupAnimTimer.Stop();
                 if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
                 LauncherStartupOverlay.IsVisible = false;
+                
+                // Start background update timer (every 10 minutes)
+                _updateCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(10) };
+                _updateCheckTimer.Tick += async (sender, args) => await PollForUpdatesAsync();
+                _updateCheckTimer.Start();
+                
+                // Initial check in background after startup
+                _ = Task.Run(async () => {
+                    await Task.Delay(5000);
+                    await PollForUpdatesAsync();
+                });
             }
         };
         
@@ -360,27 +437,52 @@ public partial class MainWindow : Window
 
         // Version display
         VersionText.Text = $"v{settings.LauncherVersion}";
-        CheckForUpdates();
         UpdateMinecraftVersionDisplay();
         InitializeSearchMcVersions();
         _ = TriggerDefaultSearchesAsync();
-        StartTcpServer();
     }
 
     // ═══════════════════════════════════════
     //  NAVIGATION
     // ═══════════════════════════════════════
 
-    private async void CheckForUpdates()
+    private void InstallLauncher_Click(object? sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(settings.UpdateUrl)) return;
-        var info = await UpdateChecker.CheckForUpdatesAsync(settings.UpdateUrl, settings.LauncherVersion);
-        if (info != null)
+        _installChoiceTcs?.TrySetResult(true);
+    }
+
+    private void SkipInstall_Click(object? sender, RoutedEventArgs e)
+    {
+        _installChoiceTcs?.TrySetResult(false);
+    }
+
+    private void ApplyUpdate_Click(object? sender, RoutedEventArgs e)
+    {
+        AutoUpdater.ApplyUpdateAndRestart();
+    }
+
+    private async Task PollForUpdatesAsync()
+    {
+        if (Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1") return;
+        try
         {
-            Dispatcher.UIThread.Post(() => {
-                StatusText.Text = $"Update available: v{info.LatestVersion}!";
-                Log($"[Update] New version available: v{info.LatestVersion}. Changelog: {info.Changelog}");
-            });
+            var update = await AutoUpdater.CheckForUpdatesAsync(settings.LauncherVersion);
+            if (update != null && !AutoUpdater.IsUpdateReady)
+            {
+                bool downloaded = await AutoUpdater.DownloadUpdateAsync(update.DownloadUrl, update.LatestVersion);
+                if (downloaded)
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        UpdateBannerText.Text = $"Launcher Update Ready: v{update.LatestVersion} is downloaded and ready to apply.";
+                        UpdateBanner.IsVisible = true;
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"[Update Poll Error] {ex.Message}");
         }
     }
 
@@ -408,7 +510,14 @@ public partial class MainWindow : Window
     private void NavAccounts_Click(object? sender, RoutedEventArgs e) => NavigateTo("Accounts");
     private void ManageAccountsShortcutBtn_Click(object? sender, RoutedEventArgs e) => NavigateTo("Accounts");
     private void NavSettings_Click(object? sender, RoutedEventArgs e) => NavigateTo("Settings");
-    private void NavMods_Click(object? sender, RoutedEventArgs e) { LoadModsList(); NavigateTo("Mods"); }
+    private bool _modsListLoaded = false;
+    private void NavMods_Click(object? sender, RoutedEventArgs e)
+    {
+        // Only build the list the first time. Rebuilding on every visit reset the scroll
+        // position and replayed the row fade-in animation. Refresh/Add still rebuild explicitly.
+        if (!_modsListLoaded) { _modsListLoaded = true; LoadModsList(); }
+        NavigateTo("Mods");
+    }
     private void NavFiles_Click(object? sender, RoutedEventArgs e) { LoadFiles(settings.InstancePath); NavigateTo("Files"); }
     private void NavLogs_Click(object? sender, RoutedEventArgs e) => NavigateTo("Logs");
 
@@ -546,13 +655,13 @@ public partial class MainWindow : Window
     // ═══════════════════════════════════════
 
     private void NavGallery_Click(object? sender, RoutedEventArgs e) { LoadGallery(); NavigateTo("Gallery"); }
-    private void GallerySort_Changed(object? sender, Avalonia.Controls.SelectionChangedEventArgs e) { try { if (GalleryPage?.IsVisible == true && GalleryList != null) LoadGallery(); } catch { } }
+    private void GallerySort_Changed(object? sender, Avalonia.Controls.SelectionChangedEventArgs e) { if (GalleryPage?.IsVisible == true) LoadGallery(); }
     private void ImgurId_Changed(object? sender, RoutedEventArgs e) { settings.ImgurClientId = ImgurIdBox.Text ?? ""; settings.Save(); }
     private void GalleryOpenFolder_Click(object? sender, RoutedEventArgs e) => OpenPath(Path.Combine(settings.InstancePath, "screenshots"));
 
     private void LoadGallery()
     {
-        if (GalleryList == null) return;
+        SyncFavoritesWithGame();
         GalleryList.Children.Clear();
         if (ImgurIdBox != null) ImgurIdBox.Text = settings.ImgurClientId;
 
@@ -646,21 +755,95 @@ public partial class MainWindow : Window
         catch { return ""; }
     }
 
+    private void SyncFavoritesWithGame()
+    {
+        try
+        {
+            string favPath = Path.Combine(settings.InstancePath, "config", "gallery_favorites.json");
+            if (File.Exists(favPath))
+            {
+                string json = File.ReadAllText(favPath);
+                var gameFavs = JsonSerializer.Deserialize<List<string>>(json);
+                if (gameFavs != null)
+                {
+                    bool changed = false;
+                    foreach (var fav in gameFavs)
+                    {
+                        if (!settings.GalleryFavorites.Contains(fav))
+                        {
+                            settings.GalleryFavorites.Add(fav);
+                            changed = true;
+                        }
+                    }
+                    if (settings.GalleryFavorites.Count != gameFavs.Count || changed)
+                    {
+                        settings.GalleryFavorites = gameFavs;
+                        settings.Save();
+                    }
+                }
+            }
+            else
+            {
+                if (settings.GalleryFavorites.Count > 0)
+                {
+                    string dir = Path.GetDirectoryName(favPath);
+                    if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                    string json = JsonSerializer.Serialize(settings.GalleryFavorites);
+                    File.WriteAllText(favPath, json);
+                }
+            }
+        }
+        catch { }
+    }
+
     private void ToggleGalleryFav(string name)
     {
         if (settings.GalleryFavorites.Contains(name)) settings.GalleryFavorites.Remove(name);
         else settings.GalleryFavorites.Add(name);
         settings.Save();
+        try
+        {
+            string favPath = Path.Combine(settings.InstancePath, "config", "gallery_favorites.json");
+            string dir = Path.GetDirectoryName(favPath);
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            string json = JsonSerializer.Serialize(settings.GalleryFavorites);
+            File.WriteAllText(favPath, json);
+        }
+        catch { }
         LoadGallery();
     }
 
     private void DeleteScreenshot(string path)
     {
-        try { File.Delete(path); Log($"[Gallery] Deleted: {Path.GetFileName(path)}"); LoadGallery(); }
+        try {
+            File.Delete(path);
+            Log($"[Gallery] Deleted: {Path.GetFileName(path)}");
+            string jsonPath = path + ".json";
+            if (File.Exists(jsonPath)) File.Delete(jsonPath);
+            string name = Path.GetFileName(path);
+            if (settings.GalleryFavorites.Contains(name))
+            {
+                settings.GalleryFavorites.Remove(name);
+                settings.Save();
+                try
+                {
+                    string favPath = Path.Combine(settings.InstancePath, "config", "gallery_favorites.json");
+                    string json = JsonSerializer.Serialize(settings.GalleryFavorites);
+                    File.WriteAllText(favPath, json);
+                }
+                catch {}
+            }
+            LoadGallery();
+        }
         catch (Exception ex) { Log($"[Gallery] delete failed: {ex.Message}"); }
     }
 
     private string _viewerPath = "";
+    // Gallery viewer zoom/pan state
+    private double _viewerZoom = 1.0;
+    private double _viewerPanX = 0, _viewerPanY = 0;
+    private bool _viewerDragging = false;
+    private Avalonia.Point _viewerLastPointer;
 
     private void ShowGalleryViewer(string path)
     {
@@ -673,23 +856,71 @@ public partial class MainWindow : Window
             GalleryViewerImage.Source = new Bitmap(fs);
         }
         catch { GalleryViewerImage.Source = null; }
+        ResetViewerZoom();
         GalleryViewerOverlay.IsVisible = true;
     }
 
-    protected override void OnKeyDown(KeyEventArgs e)
+    // ─── Gallery viewer zoom + pan ───────────────
+    private void ResetViewerZoom()
     {
-        base.OnKeyDown(e);
-        if (e.Key == Key.Escape && GalleryViewerOverlay.IsVisible == true)
-        {
-            GalleryViewerOverlay.IsVisible = false;
-            GalleryViewerImage.Source = null;
-        }
+        _viewerZoom = 1.0;
+        _viewerPanX = 0; _viewerPanY = 0;
+        _viewerDragging = false;
+        ApplyViewerTransform();
+    }
+
+    private void ApplyViewerTransform()
+    {
+        if (GalleryViewerImage == null) return;
+        GalleryViewerImage.RenderTransformOrigin = Avalonia.RelativePoint.Center;
+        var g = new TransformGroup();
+        g.Children.Add(new ScaleTransform(_viewerZoom, _viewerZoom));
+        g.Children.Add(new TranslateTransform(_viewerPanX, _viewerPanY));
+        GalleryViewerImage.RenderTransform = g;
+        GalleryViewerImage.Cursor = new Avalonia.Input.Cursor(
+            _viewerZoom > 1.0 ? Avalonia.Input.StandardCursorType.SizeAll : Avalonia.Input.StandardCursorType.Arrow);
+    }
+
+    private void GalleryViewer_Wheel(object? sender, Avalonia.Input.PointerWheelEventArgs e)
+    {
+        double factor = e.Delta.Y > 0 ? 1.15 : 1.0 / 1.15;
+        double newZoom = Math.Clamp(_viewerZoom * factor, 1.0, 8.0);
+        if (Math.Abs(newZoom - _viewerZoom) < 0.0001) return;
+        _viewerZoom = newZoom;
+        if (_viewerZoom <= 1.0) { _viewerPanX = 0; _viewerPanY = 0; } // snap back to centered
+        ApplyViewerTransform();
+        e.Handled = true;
+    }
+
+    private void GalleryViewer_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        if (_viewerZoom <= 1.0) return; // only pan when zoomed in
+        _viewerDragging = true;
+        _viewerLastPointer = e.GetPosition(GalleryViewerOverlay);
+        e.Handled = true;
+    }
+
+    private void GalleryViewer_PointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
+    {
+        if (!_viewerDragging) return;
+        var p = e.GetPosition(GalleryViewerOverlay);
+        _viewerPanX += p.X - _viewerLastPointer.X;
+        _viewerPanY += p.Y - _viewerLastPointer.Y;
+        _viewerLastPointer = p;
+        ApplyViewerTransform();
+    }
+
+    private void GalleryViewer_PointerReleased(object? sender, Avalonia.Input.PointerReleasedEventArgs e)
+    {
+        _viewerDragging = false;
     }
 
     private void GalleryViewerClose_Click(object? sender, RoutedEventArgs e)
     {
         GalleryViewerOverlay.IsVisible = false;
         GalleryViewerImage.Source = null;
+        _viewerPath = "";
+        ResetViewerZoom();
     }
 
     private void GalleryViewerFullscreen_Click(object? sender, RoutedEventArgs e)
@@ -697,6 +928,27 @@ public partial class MainWindow : Window
         this.WindowState = this.WindowState == WindowState.FullScreen
             ? WindowState.Normal
             : WindowState.FullScreen;
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && GalleryViewerOverlay != null && GalleryViewerOverlay.IsVisible)
+        {
+            if (!this.IsActive || this.WindowState == WindowState.Minimized)
+            {
+                base.OnKeyDown(e);
+                return;
+            }
+            GalleryViewerOverlay.IsVisible = false;
+            if (GalleryViewerImage != null)
+            {
+                GalleryViewerImage.Source = null;
+            }
+            _viewerPath = "";
+            e.Handled = true;
+            return;
+        }
+        base.OnKeyDown(e);
     }
 
     private void OpenFolderSelect(string path)
@@ -1005,10 +1257,7 @@ public partial class MainWindow : Window
     private void Log(string message)
     {
         lock (_logFileLock)
-        {
-            string logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launcher_debug.txt");
-            System.IO.File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] {message}\n");
-        }
+            System.IO.File.AppendAllText(@"C:\Users\Arash\Desktop\launcher_debug.txt", $"[{DateTime.Now:HH:mm:ss}] {message}\n");
         Dispatcher.UIThread.Post(() =>
         {
             string timestamped = $"[{DateTime.Now:HH:mm:ss}] {message}";
@@ -1095,58 +1344,115 @@ public partial class MainWindow : Window
             PlayerSkinPreview.Source = null;
         }
 
-        if (HomeAccountSelectorComboBox != null)
-        {
-            HomeAccountSelectorComboBox.SelectionChanged -= HomeAccountSelectorComboBox_SelectionChanged;
-            HomeAccountSelectorComboBox.Items.Clear();
-            foreach (var name in allAccountNames)
-            {
-                HomeAccountSelectorComboBox.Items.Add(name);
-            }
-            if (!string.IsNullOrEmpty(_selectedAccount) && allAccountNames.Contains(_selectedAccount))
-            {
-                HomeAccountSelectorComboBox.SelectedItem = _selectedAccount;
-            }
-            else
-            {
-                HomeAccountSelectorComboBox.SelectedItem = null;
-            }
-            HomeAccountSelectorComboBox.SelectionChanged += HomeAccountSelectorComboBox_SelectionChanged;
-        }
-
         _ = WriteLadsProfileAsync(_selectedAccount);
+        _ = WriteLadsAccountsJsonAsync();
         RenderAccountsList(allAccountNames);
+        PopulateLaunchSelector(allAccountNames);
+
+        // Update Launch button context menu
+        var launchMenu = this.FindControl<ContextMenu>("LaunchContextMenu") ?? LaunchContextMenu;
+        if (launchMenu != null)
+        {
+            var items = new System.Collections.Generic.List<object>();
+            var header = new MenuItem { Header = "Launch with account:", IsEnabled = false };
+            items.Add(header);
+            items.Add(new Separator());
+
+            foreach (var accName in allAccountNames)
+            {
+                var item = new MenuItem { Header = accName };
+                if (accName == _selectedAccount)
+                {
+                    item.Icon = "✓";
+                }
+                
+                item.Click += async (s, e) =>
+                {
+                    // Select this account first
+                    _selectedAccount = accName;
+                    MiniAccountName.Text = accName;
+                    await LoadPlayerSkin(accName);
+                    await WriteLadsProfileAsync(accName);
+                    Log($"[Auth] Switched account via launch menu to: {accName}");
+                    
+                    // Trigger launch
+                    try
+                    {
+                        LaunchButton.IsEnabled = false;
+                        await LaunchGame();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"[CRASH] {ex.Message}");
+                    }
+                    finally
+                    {
+                        LaunchButton.IsEnabled = true;
+                        GameLaunchOverlay.IsVisible = false;
+                    }
+                };
+                items.Add(item);
+            }
+            launchMenu.Items.Clear();
+            foreach (var it in items)
+            {
+                launchMenu.Items.Add(it);
+            }
+        }
     }
 
-    private void HomeAccountSelectorComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    // Fills the alt-account launch selector. The main account (_selectedAccount) is shown
+    // selected by default; choosing any other entry sets _launchAccountOverride so the next
+    // launch uses it WITHOUT changing the main account.
+    private void PopulateLaunchSelector(List<string> allAccountNames)
     {
-        if (HomeAccountSelectorComboBox != null && HomeAccountSelectorComboBox.SelectedItem is string selectedName)
+        if (LaunchAccountSelector == null) return;
+        _populatingLaunchSelector = true;
+        try
         {
-            if (_selectedAccount != selectedName)
+            LaunchAccountSelector.Items.Clear();
+            foreach (var name in allAccountNames)
             {
-                _selectedAccount = selectedName;
-                MiniAccountName.Text = _selectedAccount;
-                _ = LoadPlayerSkin(_selectedAccount);
-                _ = WriteLadsProfileAsync(_selectedAccount);
-
-                // Reload accounts list in settings/customizer to update borders and mini display
-                var msAccounts = loginHandler.AccountManager.GetAccounts().ToList();
-                var allAccountNames = new List<string>();
-                foreach (var acc in msAccounts)
+                bool isOffline = settings.OfflineAccounts.Contains(name);
+                LaunchAccountSelector.Items.Add(new ComboBoxItem
                 {
-                    string? u = (acc as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username;
-                    if (u != null) allAccountNames.Add(u);
-                }
-                foreach (var off in settings.OfflineAccounts)
-                {
-                    if (!allAccountNames.Contains(off)) allAccountNames.Add(off);
-                }
-                allAccountNames = allAccountNames.OrderBy(name => {
-                    int idx = settings.AccountOrder.IndexOf(name);
-                    return idx == -1 ? 999 : idx;
-                }).ToList();
-                RenderAccountsList(allAccountNames);
+                    Content = name + (isOffline ? "  (Offline)" : "  (MS)"),
+                    Tag = name
+                });
             }
+
+            // Keep an existing override selected if it still exists; otherwise default to main.
+            string target = !string.IsNullOrEmpty(_launchAccountOverride) && allAccountNames.Contains(_launchAccountOverride)
+                ? _launchAccountOverride
+                : _selectedAccount;
+            if (string.IsNullOrEmpty(_launchAccountOverride) || !allAccountNames.Contains(_launchAccountOverride))
+                _launchAccountOverride = "";
+
+            foreach (var obj in LaunchAccountSelector.Items)
+            {
+                if (obj is ComboBoxItem cbi && (cbi.Tag as string) == target)
+                {
+                    LaunchAccountSelector.SelectedItem = cbi;
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            _populatingLaunchSelector = false;
+        }
+    }
+
+    private void LaunchAccountSelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_populatingLaunchSelector) return;
+        if (LaunchAccountSelector?.SelectedItem is ComboBoxItem cbi && cbi.Tag is string name)
+        {
+            // Only treat it as an override when it differs from the main account.
+            _launchAccountOverride = (name == _selectedAccount) ? "" : name;
+            Log(string.IsNullOrEmpty(_launchAccountOverride)
+                ? "[Launcher] Launch account set to main account."
+                : $"[Launcher] Next launch will use alt account: {_launchAccountOverride} (main unchanged).");
         }
     }
 
@@ -1184,7 +1490,7 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    string headUrl = $"https://mc-heads.net/avatar/{username}/24";
+                    string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(username))}/24";
                     var headBytes = await _httpClient.GetByteArrayAsync(headUrl);
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
@@ -1487,6 +1793,24 @@ public partial class MainWindow : Window
     //  SKIN & CAPE CUSTOMIZATION / EDITOR
     // ═══════════════════════════════════════
 
+    // mc-heads renders by username OR uuid. Prefer the account's real UUID (most reliable,
+    // reflects the current skin); fall back to the username. NOTE: the legacy "/body/player/<name>"
+    // form silently ignores the name and always returns a default Steve — never use it.
+    private string ResolveSkinId(string username)
+    {
+        try
+        {
+            var msAcc = loginHandler.AccountManager.GetAccounts()
+                .FirstOrDefault(a =>
+                    (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == username)
+                as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount;
+            string? uuid = msAcc?.Profile?.UUID;
+            if (!string.IsNullOrEmpty(uuid)) return uuid;
+        }
+        catch { }
+        return username;
+    }
+
     private async Task LoadPlayerSkin(string username)
     {
         try
@@ -1494,8 +1818,10 @@ public partial class MainWindow : Window
             SelectedAccountText.Text = username;
             MiniAccountName.Text = username;
 
-            // Load 3D-like body render
-            string bodyUrl = $"https://mc-heads.net/body/player/{username}/150";
+            string skinId = ResolveSkinId(username);
+
+            // Load 3D-like body render (use uuid/username directly — NOT the broken /player/ path)
+            string bodyUrl = $"https://mc-heads.net/body/{Uri.EscapeDataString(skinId)}/150";
             var bodyBytes = await _httpClient.GetByteArrayAsync(bodyUrl);
             using (var ms = new MemoryStream(bodyBytes))
             {
@@ -1503,7 +1829,7 @@ public partial class MainWindow : Window
             }
 
             // Load head for mini icon
-            string headUrl = $"https://mc-heads.net/avatar/{username}/24";
+            string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(skinId)}/24";
             var headBytes = await _httpClient.GetByteArrayAsync(headUrl);
             using (var ms = new MemoryStream(headBytes))
             {
@@ -1536,9 +1862,18 @@ public partial class MainWindow : Window
                 var msAcc = loginHandler.AccountManager.GetAccounts()
                     .FirstOrDefault(a =>
                         (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == username);
-                if (msAcc is CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount gameAcc)
+                if (msAcc != null)
                 {
-                    uuid = gameAcc.Profile?.UUID ?? "";
+                    try
+                    {
+                        var session = await loginHandler.AuthenticateSilently(msAcc);
+                        uuid = session.UUID ?? uuid;
+                        accessToken = session.AccessToken ?? "";
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"[Profile] Silent auth failed for {username}: {ex.Message}");
+                    }
                 }
             }
 
@@ -1598,6 +1933,118 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Log($"[Profile] Failed to write lads_profile.json: {ex.Message}");
+        }
+    }
+
+    public class LadsAccountJson
+    {
+        public string username { get; set; } = "";
+        public string uuid { get; set; } = "";
+        public string type { get; set; } = "";
+        public string accessToken { get; set; } = "";
+    }
+
+    private async Task WriteLadsAccountsJsonAsync()
+    {
+        try
+        {
+            var msAccounts = loginHandler.AccountManager.GetAccounts().ToList();
+            var accountsList = new System.Collections.Generic.List<LadsAccountJson>();
+
+            // 1. Add Microsoft accounts
+            foreach (var acc in msAccounts)
+            {
+                if (acc is CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount gameAcc)
+                {
+                    string? username = gameAcc.Profile?.Username;
+                    string uuid = gameAcc.Profile?.UUID ?? "";
+                    string accessToken = "";
+                    try
+                    {
+                        // Silent auth also hydrates the username/uuid for accounts whose cached
+                        // Profile metadata isn't populated yet — so we never drop a real account.
+                        var session = await loginHandler.AuthenticateSilently(acc);
+                        if (string.IsNullOrEmpty(username)) username = session.Username;
+                        uuid = session.UUID ?? uuid;
+                        accessToken = session.AccessToken ?? "";
+                    }
+                    catch { }
+
+                    // Only skip if we genuinely couldn't resolve a username from cache OR silent auth.
+                    if (string.IsNullOrEmpty(username))
+                    {
+                        Log("[Accounts] Skipped an MS account with no resolvable username.");
+                        continue;
+                    }
+                    if (accountsList.Any(a => a.username == username)) continue;
+
+                    accountsList.Add(new LadsAccountJson
+                    {
+                        username = username,
+                        uuid = uuid,
+                        type = "microsoft",
+                        accessToken = accessToken
+                    });
+                }
+            }
+
+            // 2. Add Offline accounts
+            foreach (var username in settings.OfflineAccounts)
+            {
+                if (string.IsNullOrEmpty(username)) continue;
+                if (accountsList.Any(a => a.username == username)) continue;
+
+                string uuid = "";
+                try
+                {
+                    using (var md5 = System.Security.Cryptography.MD5.Create())
+                    {
+                        byte[] hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes("OfflinePlayer:" + username));
+                        hash[6] = (byte)((hash[6] & 0x0f) | 0x30);
+                        hash[8] = (byte)((hash[8] & 0x3f) | 0x80);
+                        uuid = new Guid(hash).ToString();
+                    }
+                }
+                catch { }
+
+                accountsList.Add(new LadsAccountJson
+                {
+                    username = username,
+                    uuid = uuid,
+                    type = "offline",
+                    accessToken = "0"
+                });
+            }
+
+            // Ensure TestPlayer is there if empty
+            if (!accountsList.Any())
+            {
+                accountsList.Add(new LadsAccountJson
+                {
+                    username = "TestPlayer",
+                    uuid = Guid.NewGuid().ToString(),
+                    type = "offline",
+                    accessToken = "0"
+                });
+            }
+
+            string json = System.Text.Json.JsonSerializer.Serialize(accountsList,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            string path = System.IO.Path.Combine(settings.InstancePath, "lads_accounts.json");
+            
+            // Ensure directory exists
+            string dir = Path.GetDirectoryName(path) ?? "";
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+            
+            await System.IO.File.WriteAllTextAsync(path, json);
+            Log($"[Accounts] lads_accounts.json updated with {accountsList.Count} accounts.");
+        }
+        catch (Exception ex)
+        {
+            Log($"[Accounts ERROR] Failed to write lads_accounts.json: {ex.Message}");
         }
     }
 
@@ -2078,43 +2525,17 @@ public partial class MainWindow : Window
         CloseToTrayCheckbox.IsChecked = settings.CloseToTray;
         KeepLauncherOpenCheckbox.IsChecked = settings.KeepLauncherOpen;
         KeepClosedOnExitCheckbox.IsChecked = settings.KeepClosedOnExit;
-        // FullscreenOnLaunchCheckbox.IsChecked = settings.FullscreenOnLaunch;
-        // QuickLaunchCheckbox.IsChecked = settings.QuickLaunch;
+        FullscreenOnLaunchCheckbox.IsChecked = settings.FullscreenOnLaunch;
+        QuickLaunchCheckbox.IsChecked = settings.QuickLaunch;
         AutoLaunchCheckbox.IsChecked = settings.AutoLaunch;
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
         AutoRelaunchOnCrashCheckbox.IsChecked = settings.AutoRelaunchOnCrash;
         AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
+        PopulateServerList();
         MultiInstanceCheckbox.IsChecked = settings.AllowMultiInstance;
         ParticleCheckbox.IsChecked = settings.ShowParticles;
-        EnableDiscordRpcCheckbox.IsChecked = settings.EnableDiscordRpc;
-        DiscordRpcShowIpCheckbox.IsChecked = settings.DiscordRpcShowIp;
-
-        // Initialize and bind HomePage Server Auto-Join controls
-        AutoJoinServerCheckbox_Home.IsChecked = settings.AutoRejoinServer;
-        ServerIpBox_Home.Text = settings.LastServerIp;
-        ServerPortBox_Home.Text = settings.LastServerPort.ToString();
-
-        AutoJoinServerCheckbox_Home.Click += (s, e) => {
-            settings.AutoRejoinServer = AutoJoinServerCheckbox_Home.IsChecked ?? false;
-            AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
-            settings.Save();
-        };
-
-        ServerIpBox_Home.PropertyChanged += (s, e) => {
-            if (e.Property.Name == "Text") {
-                settings.LastServerIp = ServerIpBox_Home.Text ?? "";
-                settings.Save();
-            }
-        };
-
-        ServerPortBox_Home.PropertyChanged += (s, e) => {
-            if (e.Property.Name == "Text") {
-                if (int.TryParse(ServerPortBox_Home.Text, out int port)) {
-                    settings.LastServerPort = port;
-                    settings.Save();
-                }
-            }
-        };
+        SyncResourcePacksCheckbox.IsChecked = settings.SyncResourcePacksFromGlobal;
+        SyncScreenshotsCheckbox.IsChecked = settings.SyncScreenshotsToGlobal;
 
         InstancePathBox.Text = settings.InstancePath;
         PackwizPathBox.Text = settings.PackwizPath;
@@ -2148,6 +2569,48 @@ public partial class MainWindow : Window
         UiScaleSelector.SelectedItem = settings.UiScale;
     }
 
+    // ── Server list picker ────────────────────────────────────────────────────
+
+    private record ServerListItem(string Display, string? Ip)
+    {
+        public override string ToString() => Display;
+    }
+
+    private void PopulateServerList()
+    {
+        QuickLaunchServerComboBox.Items.Clear();
+        QuickLaunchServerComboBox.Items.Add(new ServerListItem("Auto (detect from logs)", null));
+
+        var servers = MinecraftServerListReader.Read(settings.InstancePath);
+        foreach (var s in servers)
+            QuickLaunchServerComboBox.Items.Add(new ServerListItem($"{s.Name}  ({s.Ip})", s.Ip));
+
+        // Restore saved selection
+        if (!string.IsNullOrEmpty(settings.QuickLaunchServerIp))
+        {
+            foreach (var item in QuickLaunchServerComboBox.Items)
+            {
+                if (item is ServerListItem sli && sli.Ip == settings.QuickLaunchServerIp)
+                {
+                    QuickLaunchServerComboBox.SelectedItem = sli;
+                    return;
+                }
+            }
+            // Saved IP no longer in server list — add it as a manual entry
+            var manual = new ServerListItem($"{settings.QuickLaunchServerIp} (manual)", settings.QuickLaunchServerIp);
+            QuickLaunchServerComboBox.Items.Add(manual);
+            QuickLaunchServerComboBox.SelectedItem = manual;
+        }
+        else
+        {
+            QuickLaunchServerComboBox.SelectedIndex = 0;
+        }
+    }
+
+    private void RefreshServerList_Click(object? sender, RoutedEventArgs e) => PopulateServerList();
+
+    // ── Java selector ─────────────────────────────────────────────────────────
+
     private void PopulateJavaSelector()
     {
         JavaSelector.Items.Clear();
@@ -2177,13 +2640,16 @@ public partial class MainWindow : Window
         settings.AutoFixCrashes = AutoFixCrashesCheckbox.IsChecked ?? true;
         settings.AutoRelaunchOnCrash = AutoRelaunchOnCrashCheckbox.IsChecked ?? false;
         settings.AutoRejoinServer = AutoRejoinServerCheckbox.IsChecked ?? false;
-        AutoJoinServerCheckbox_Home.IsChecked = settings.AutoRejoinServer;
+        if (QuickLaunchServerComboBox.SelectedItem is ServerListItem sli && sli.Ip != null)
+            settings.QuickLaunchServerIp = sli.Ip;
+        else
+            settings.QuickLaunchServerIp = "";
         settings.AllowMultiInstance = MultiInstanceCheckbox.IsChecked ?? false;
-        settings.EnableDiscordRpc = EnableDiscordRpcCheckbox.IsChecked ?? true;
-        settings.DiscordRpcShowIp = DiscordRpcShowIpCheckbox.IsChecked ?? false;
-        // settings.FullscreenOnLaunch = FullscreenOnLaunchCheckbox.IsChecked ?? true;
-        // settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
+        settings.FullscreenOnLaunch = FullscreenOnLaunchCheckbox.IsChecked ?? true;
+        settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
         settings.ShowParticles = ParticleCheckbox.IsChecked ?? true;
+        settings.SyncResourcePacksFromGlobal = SyncResourcePacksCheckbox.IsChecked ?? false;
+        settings.SyncScreenshotsToGlobal = SyncScreenshotsCheckbox.IsChecked ?? true;
         settings.FabricVersion = FabricVersionBox.Text ?? settings.FabricVersion;
         settings.CurseForgeApiKey = CurseForgeApiKeyBox.Text ?? "";
         settings.ModrinthApiUrl = ModrinthApiUrlBox.Text ?? settings.ModrinthApiUrl;
@@ -2244,8 +2710,8 @@ public partial class MainWindow : Window
     }
 
     // Extracts the Minecraft version from a version id, supporting both legacy (1.20.1)
-    // and modern (26.2) version formats.
-    // e.g. "fabric-loader-0.19.2-26.2" -> "26.2", "1.21.1" -> "1.21.1"
+    // and modern (26.1.2) version formats.
+    // e.g. "fabric-loader-0.19.2-26.1.2" -> "26.1.2", "1.21.1" -> "1.21.1"
     private static string? ExtractMcVersionFromId(string versionId)
     {
         // Loader-style ids: the MC version is the part after the loader version
@@ -2287,7 +2753,7 @@ public partial class MainWindow : Window
                     }
                 }
 
-                // 2. Direct Match (e.g. 1.20.1 or 26.2)
+                // 2. Direct Match (e.g. 1.20.1 or 26.1.2)
                 if (Regex.IsMatch(versionId, @"^\d+\.\d+(?:\.\d+)?$"))
                 {
                     return versionId;
@@ -2359,6 +2825,7 @@ public partial class MainWindow : Window
         string rpPath = Path.Combine(settings.InstancePath, "resourcepacks");
 
         string filterText = ModVersionFilterBox.Text?.Trim() ?? "";
+        string nameQuery = ""; // name search is applied live via row visibility, not a re-scan
         string fabricVersion = settings.FabricVersion;
         string instancePath = settings.InstancePath;
 
@@ -2495,11 +2962,13 @@ public partial class MainWindow : Window
                     }
                     catch {}
 
-                    if (matchesFilter)
-                    {
-                        if (displayName == "Potions") displayName = "Potion Effects";
-                        if (displayName == "JEI Module") displayName = "JEI (Just Enough Items)";
+                    bool matchesName = string.IsNullOrEmpty(nameQuery)
+                        || displayName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase)
+                        || fileName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase)
+                        || modId.Contains(nameQuery, StringComparison.OrdinalIgnoreCase);
 
+                    if (matchesFilter && matchesName)
+                    {
                         list.Add(new ModFileItem
                         {
                             FilePath = file,
@@ -2534,8 +3003,11 @@ public partial class MainWindow : Window
                     {
                         matchesFilter = fileName.Contains(filterText, StringComparison.OrdinalIgnoreCase);
                     }
+                    bool matchesName = string.IsNullOrEmpty(nameQuery)
+                        || displayName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase)
+                        || fileName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase);
 
-                    if (matchesFilter)
+                    if (matchesFilter && matchesName)
                     {
                         list.Add(new ModFileItem
                         {
@@ -2678,6 +3150,8 @@ public partial class MainWindow : Window
             };
 
             var wrapper = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(0, 0, 0, 8) };
+            // Searchable text for live (visibility) filtering by the name search box.
+            wrapper.Tag = (mod.DisplayName + " " + mod.ModId + " " + System.IO.Path.GetFileName(mod.FilePath)).ToLowerInvariant();
             Grid.SetColumn(cb, 0);
             Grid.SetColumn(row, 1);
             wrapper.Children.Add(cb);
@@ -2685,6 +3159,7 @@ public partial class MainWindow : Window
             ModsList.Children.Add(wrapper);
         }
         ModsPageCount.Text = $"({totalEnabledCount})";
+        ApplyInstalledNameFilter(); // re-apply any active name search to the freshly built rows
     }
 
 
@@ -2726,6 +3201,113 @@ public partial class MainWindow : Window
     }
 
     private void RefreshMods_Click(object? sender, RoutedEventArgs e) => LoadModsList();
+
+    // ─── Add / search / drag-drop for installed mods ───────────────
+
+    // Live name search: just toggle row visibility (no jar re-scan), so it updates as you type.
+    private void ApplyInstalledNameFilter()
+    {
+        if (ModsList == null) return;
+        string q = ModNameSearchBox?.Text?.Trim().ToLowerInvariant() ?? "";
+        foreach (var child in ModsList.Children)
+            if (child is Control c)
+                c.IsVisible = q.Length == 0 || ((c.Tag as string) ?? "").Contains(q);
+    }
+
+    private void ModNameSearch_TextChanged(object? sender, TextChangedEventArgs e) => ApplyInstalledNameFilter();
+
+    // The version "Filter" box does change which mods are scanned, so it rebuilds the list.
+    private void ModVersionFilter_TextChanged(object? sender, TextChangedEventArgs e) => LoadModsList();
+
+    private async void AddModFromFile_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var files = await this.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Add mod .jar file(s)",
+                AllowMultiple = true,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Fabric mod (*.jar)") { Patterns = new[] { "*.jar" } }
+                }
+            });
+            if (files == null || files.Count == 0) return;
+            int added = InstallModFiles(files.Select(f => f.Path.LocalPath));
+            StatusText.Text = $"Added {added} mod(s).";
+            LoadModsList();
+        }
+        catch (Exception ex) { Log($"[Mods] Add from file failed: {ex.Message}"); }
+    }
+
+    private async void AddModFromFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var folders = await this.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Add all .jar files from a folder",
+                AllowMultiple = false
+            });
+            if (folders == null || folders.Count == 0) return;
+            string dir = folders[0].Path.LocalPath;
+            if (!Directory.Exists(dir)) return;
+            int added = InstallModFiles(Directory.GetFiles(dir, "*.jar"));
+            StatusText.Text = $"Added {added} mod(s) from folder.";
+            LoadModsList();
+        }
+        catch (Exception ex) { Log($"[Mods] Add from folder failed: {ex.Message}"); }
+    }
+
+    private void ModsPage_DragOver(object? sender, DragEventArgs e)
+    {
+        // Only accept file drops (Avalonia 12 data-transfer API)
+        e.DragEffects = e.DataTransfer.Contains(DataFormat.File)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void ModsPage_Drop(object? sender, DragEventArgs e)
+    {
+        try
+        {
+            var files = e.DataTransfer.TryGetFiles();
+            if (files != null)
+            {
+                int added = InstallModFiles(files.Select(f => f.Path.LocalPath));
+                if (added > 0)
+                {
+                    StatusText.Text = $"Added {added} mod(s) via drag-and-drop.";
+                    LoadModsList();
+                }
+            }
+        }
+        catch (Exception ex) { Log($"[Mods] Drop failed: {ex.Message}"); }
+        e.Handled = true;
+    }
+
+    // Copies the given .jar paths into the instance mods folder. Returns the number installed.
+    private int InstallModFiles(IEnumerable<string> paths)
+    {
+        string modsDir = Path.Combine(settings.InstancePath, "mods");
+        Directory.CreateDirectory(modsDir);
+        int count = 0;
+        foreach (var src in paths)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(src) || !src.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!File.Exists(src)) continue;
+                string dest = Path.Combine(modsDir, Path.GetFileName(src));
+                File.Copy(src, dest, overwrite: true);
+                Log($"[Mods] Installed {Path.GetFileName(src)}");
+                count++;
+            }
+            catch (Exception ex) { Log($"[Mods] Failed to copy {src}: {ex.Message}"); }
+        }
+        return count;
+    }
 
     // ─── Multi-select helpers ───────────────
 
@@ -2920,44 +3502,10 @@ public partial class MainWindow : Window
 
             await LaunchGame();
         } catch (Exception ex) {
-            string crashPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash_launchbtn.txt");
-            System.IO.File.WriteAllText(crashPath, ex.ToString());
+            System.IO.File.WriteAllText(@"C:\Users\Arash\Desktop\crash_launchbtn.txt", ex.ToString());
             Log($"[CRASH] {ex.Message}");
         } finally {
             LaunchButton.IsEnabled = true;
-            GameLaunchOverlay.IsVisible = false;
-        }
-    }
-
-    private async void QuickLaunchButton_Click(object? sender, RoutedEventArgs e)
-    {
-        try {
-            LaunchButton.IsEnabled = false;
-            QuickLaunchButton.IsEnabled = false;
-
-            if (string.IsNullOrEmpty(_selectedAccount))
-            {
-                StatusText.Text = "Select or add an account first.";
-                Log("[Launcher] Launch aborted: no account is selected.");
-                NavigateTo("Accounts");
-                return;
-            }
-
-            bool originalQuickLaunch = settings.QuickLaunch;
-            settings.QuickLaunch = true;
-            try
-            {
-                await LaunchGame();
-            }
-            finally
-            {
-                settings.QuickLaunch = originalQuickLaunch;
-            }
-        } catch (Exception ex) {
-            Log($"[CRASH] {ex.Message}");
-        } finally {
-            LaunchButton.IsEnabled = true;
-            QuickLaunchButton.IsEnabled = true;
             GameLaunchOverlay.IsVisible = false;
         }
     }
@@ -3039,7 +3587,16 @@ public partial class MainWindow : Window
 
         GameLaunchStatusText.Text = "Checking version...";
 
-        string selectedUser = _selectedAccount;
+        // Use the alt-account override if the user picked one; otherwise the main account.
+        // This launches the alt WITHOUT changing _selectedAccount (the persisted main).
+        string selectedUser = (!string.IsNullOrEmpty(_launchAccountOverride)
+                && (settings.OfflineAccounts.Contains(_launchAccountOverride)
+                    || loginHandler.AccountManager.GetAccounts().Any(a =>
+                        (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == _launchAccountOverride)))
+            ? _launchAccountOverride
+            : _selectedAccount;
+        if (selectedUser != _selectedAccount)
+            Log($"[Launcher] Launching with alt account '{selectedUser}' (main stays '{_selectedAccount}').");
         bool isOffline = settings.OfflineAccounts.Contains(selectedUser)
             || selectedUser == "TestPlayer"
             || Environment.GetCommandLineArgs().Contains("--auto-launch-offline");
@@ -3094,6 +3651,10 @@ public partial class MainWindow : Window
         }
 
         LoadAccounts();
+        // If launching an alt, make sure the game reads the alt's profile (not the main's,
+        // which LoadAccounts just wrote). Awaited so it's the last write before process start.
+        if (selectedUser != _selectedAccount)
+            await WriteLadsProfileAsync(selectedUser);
         GameLaunchStatusText.Text = $"Welcome, {session.Username}!";
         Log($"[Auth] Logged in as {session.Username}");
 
@@ -3103,25 +3664,8 @@ public partial class MainWindow : Window
             await RunPackwizInstaller();
         }
 
-        string launchVersionId = await ResolveLaunchVersionIdAsync();
+        string launchVersionId = ResolveLaunchVersionId();
         Log($"[Launcher] Building process for {launchVersionId}...");
-
-        string mcVer = settings.FabricVersion.Split('-').LastOrDefault();
-        int requiredJava = LauncherSettings.GetRequiredJavaVersion(mcVer);
-        
-        GameLaunchStatusText.Text = $"Verifying Java {requiredJava}...";
-        try 
-        {
-            await EnsureCorrectJavaVersionAsync(requiredJava);
-        }
-        catch (Exception ex)
-        {
-            GameLaunchStatusText.Text = $"Java Error: {ex.Message}";
-            Log($"[JavaManager] Error: {ex}");
-            await Task.Delay(3000);
-            GameLaunchOverlay.IsVisible = false;
-            return;
-        }
 
         // QuickLaunch: skip asset verification for a faster startup.
         // If the game fails to start, the user should turn QuickLaunch off.
@@ -3133,14 +3677,30 @@ public partial class MainWindow : Window
             JavaPath = settings.JavaPath
         };
 
-        if (settings.AutoRejoinServer && !string.IsNullOrEmpty(settings.LastServerIp))
+        if (settings.AutoRejoinServer)
         {
-            launchOpt.ServerIp = settings.LastServerIp;
-            if (settings.LastServerPort > 0)
+            // Prefer a manually-picked server; fall back to the last log-detected one
+            string rejoinIp = !string.IsNullOrEmpty(settings.QuickLaunchServerIp)
+                ? settings.QuickLaunchServerIp
+                : settings.LastServerIp;
+
+            if (!string.IsNullOrEmpty(rejoinIp))
             {
-                launchOpt.ServerPort = settings.LastServerPort;
+                // Parse host:port if present
+                int colon = rejoinIp.LastIndexOf(':');
+                if (colon > 0 && int.TryParse(rejoinIp.Substring(colon + 1), out int parsedPort))
+                {
+                    launchOpt.ServerIp = rejoinIp.Substring(0, colon);
+                    launchOpt.ServerPort = parsedPort;
+                }
+                else
+                {
+                    launchOpt.ServerIp = rejoinIp;
+                    if (settings.LastServerPort > 0 && string.IsNullOrEmpty(settings.QuickLaunchServerIp))
+                        launchOpt.ServerPort = settings.LastServerPort;
+                }
+                Log($"[Launcher] Auto-Rejoin: {launchOpt.ServerIp}:{launchOpt.ServerPort}");
             }
-            Log($"[Launcher] Auto-Rejoin enabled. Server: {settings.LastServerIp}:{settings.LastServerPort}");
         }
 
         if (settings.QuickLaunch)
@@ -3152,12 +3712,6 @@ public partial class MainWindow : Window
         else
         {
             process = await launcher.InstallAndBuildProcessAsync(launchVersionId, launchOpt);
-        }
-        
-        process.StartInfo.ArgumentList.Remove("--sun-misc-unsafe-memory-access=allow");
-        if (!string.IsNullOrEmpty(process.StartInfo.Arguments))
-        {
-            process.StartInfo.Arguments = process.StartInfo.Arguments.Replace("--sun-misc-unsafe-memory-access=allow", "");
         }
 
         _runningProcesses.Add(process);
@@ -3194,11 +3748,18 @@ public partial class MainWindow : Window
                     StatusText.Text = "Game exited normally.";
                     Log("[Launcher] Game exited normally.");
                 }
+
+                if (settings.SyncScreenshotsToGlobal)
+                    SyncScreenshotsToGlobal();
             });
         };
 
         process.OutputDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game] {ev.Data}"); };
         process.ErrorDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game ERROR] {ev.Data}"); };
+
+        // Sync resource packs from global .minecraft folder before launch.
+        if (settings.SyncResourcePacksFromGlobal)
+            SyncResourcePacksFromGlobal();
 
         // Apply fullscreen setting by patching options.txt before launch.
         if (settings.FullscreenOnLaunch)
@@ -3227,7 +3788,6 @@ public partial class MainWindow : Window
         // Prepend JVM performance flags. G1GC is used instead of ZGC for fast startup
         // (ZGC + AlwaysPreTouch was causing the 10-15s freeze before the window appeared).
         string jvmFlags =
-            $"-Xms{settings.MaxRamMb}m " +
             "-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:+DisableExplicitGC " +
             "-XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=50 " +
             "-XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:G1HeapRegionSize=32M " +
@@ -3250,9 +3810,15 @@ public partial class MainWindow : Window
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
+        // Pop the startup splash immediately so there is never a dead gap
+        // between pressing Launch and the Minecraft window appearing.
+        var startupSplash = new Views.GameStartupSplash();
+        startupSplash.Show();
+        _ = WatchForGameWindowAsync(process, startupSplash);
+
         // Boost to RealTime during game startup so loading is faster; revert after 120s.
         _ = Task.Run(async () => {
-            try { process.PriorityClass = ProcessPriorityClass.High; Log("[Launcher] Process priority set to High."); }
+            try { process.PriorityClass = ProcessPriorityClass.RealTime; Log("[Launcher] Process priority set to RealTime."); }
             catch { }
             await Task.Delay(120_000);
             try {
@@ -3271,99 +3837,48 @@ public partial class MainWindow : Window
             this.Hide();
     }
 
-    private async Task EnsureCorrectJavaVersionAsync(int requiredVersion)
-    {
-        // 1. Is current JavaPath valid and correct version?
-        if (System.IO.File.Exists(settings.JavaPath))
-        {
-            string currentVerText = await GetJavaVersionTextAsync(settings.JavaPath);
-            if (currentVerText.Contains($"version \"{requiredVersion}.") || currentVerText.Contains($"version \"1.{requiredVersion}."))
-            {
-                return; // Everything is good!
-            }
-        }
-
-        // 2. See if we have another installed version that satisfies it
-        var installs = settings.DetectJavaInstallations();
-        foreach (var path in installs)
-        {
-            string verText = await GetJavaVersionTextAsync(path);
-            if (verText.Contains($"version \"{requiredVersion}.") || verText.Contains($"version \"1.{requiredVersion}."))
-            {
-                settings.JavaPath = path;
-                settings.Save();
-                PopulateJavaSelector();
-                Log($"[JavaManager] Switched JavaPath to valid local install: {path}");
-                return;
-            }
-        }
-
-        // 3. Download it
-        string newPath = await JavaManager.DownloadJavaAsync(requiredVersion, (status) =>
-        {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                GameLaunchStatusText.Text = status;
-            });
-        });
-
-        settings.JavaPath = newPath;
-        settings.Save();
-        PopulateJavaSelector();
-        Log($"[JavaManager] Downloaded and configured Java {requiredVersion} at {newPath}");
-    }
-
-    private async Task<string> GetJavaVersionTextAsync(string javaExe)
+    // Keeps the startup splash visible until the game window actually exists
+    // (the mod's early window makes that fast), then closes it.
+    private async Task WatchForGameWindowAsync(System.Diagnostics.Process process, Views.GameStartupSplash splash)
     {
         try
         {
-            var p = new System.Diagnostics.Process();
-            p.StartInfo.FileName = javaExe;
-            p.StartInfo.Arguments = "-version";
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.RedirectStandardError = true;
-            p.StartInfo.CreateNoWindow = true;
-            p.Start();
-            string output = await p.StandardError.ReadToEndAsync();
-            await p.WaitForExitAsync();
-            return output;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (sw.Elapsed < TimeSpan.FromSeconds(120))
+            {
+                if (process.HasExited)
+                {
+                    Log("[Launcher] Game exited before its window appeared.");
+                    break;
+                }
+                try
+                {
+                    process.Refresh();
+                    if (process.MainWindowHandle != IntPtr.Zero)
+                    {
+                        Log($"[Launcher] Game window detected after {sw.Elapsed.TotalSeconds:F1}s.");
+                        break;
+                    }
+                }
+                catch { break; }
+                await Task.Delay(150);
+            }
         }
-        catch
-        {
-            return "";
-        }
+        catch { }
+
+        // Small grace period so the game's first (black) frame is on screen
+        // before the splash disappears.
+        await Task.Delay(500);
+        Dispatcher.UIThread.Post(() => { try { splash.Close(); } catch { } });
     }
 
     // If the configured version doesn't exist in the instance's versions folder,
-    // we will attempt to download it from meta.fabricmc.net. If that fails,
     // fall back to the newest installed fabric-loader profile instead of failing.
-    private async Task<string> ResolveLaunchVersionIdAsync()
+    private string ResolveLaunchVersionId()
     {
         string want = settings.FabricVersion;
         string vdir = Path.Combine(settings.InstancePath, "versions");
-        string jsonPath = Path.Combine(vdir, want, want + ".json");
-        
-        if (File.Exists(jsonPath)) return want;
-
-        try
-        {
-            // Attempt to automatically download the fabric loader profile json if missing
-            var match = Regex.Match(want, @"fabric-loader-([\d\.]+)-([\d\.]+)");
-            if (match.Success)
-            {
-                string loaderVer = match.Groups[1].Value;
-                string mcVer = match.Groups[2].Value;
-                string url = $"https://meta.fabricmc.net/v2/versions/loader/{mcVer}/{loaderVer}/profile/json";
-                Directory.CreateDirectory(Path.Combine(vdir, want));
-                var json = await _httpClient.GetStringAsync(url);
-                File.WriteAllText(jsonPath, json);
-                return want;
-            }
-        }
-        catch (Exception ex)
-        {
-            Log($"[Launcher] Could not automatically download fabric profile: {ex.Message}");
-        }
+        if (File.Exists(Path.Combine(vdir, want, want + ".json"))) return want;
 
         if (Directory.Exists(vdir))
         {
@@ -3389,6 +3904,85 @@ public partial class MainWindow : Window
     //  CRASH DETECTION
     // ═══════════════════════════════════════
 
+    private void SyncResourcePacksFromGlobal()
+    {
+        try
+        {
+            string globalPacks = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                ".minecraft", "resourcepacks");
+            string instancePacks = Path.Combine(settings.InstancePath, "resourcepacks");
+
+            if (!Directory.Exists(globalPacks)) return;
+            Directory.CreateDirectory(instancePacks);
+
+            int count = 0;
+            foreach (string src in Directory.GetFileSystemEntries(globalPacks))
+            {
+                string name = Path.GetFileName(src);
+                string dst = Path.Combine(instancePacks, name);
+                if (File.Exists(src))
+                {
+                    if (!File.Exists(dst) || File.GetLastWriteTime(src) > File.GetLastWriteTime(dst))
+                    {
+                        File.Copy(src, dst, overwrite: true);
+                        count++;
+                    }
+                }
+                else if (Directory.Exists(src) && !Directory.Exists(dst))
+                {
+                    CopyDirectoryRecursive(src, dst);
+                    count++;
+                }
+            }
+            Log($"[Sync] Synced {count} resource pack(s) from global .minecraft.");
+        }
+        catch (Exception ex)
+        {
+            Log($"[Sync] Resource packs sync failed: {ex.Message}");
+        }
+    }
+
+    private void SyncScreenshotsToGlobal()
+    {
+        try
+        {
+            string instanceScreenshots = Path.Combine(settings.InstancePath, "screenshots");
+            string globalScreenshots = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                ".minecraft", "screenshots");
+
+            if (!Directory.Exists(instanceScreenshots)) return;
+            Directory.CreateDirectory(globalScreenshots);
+
+            int count = 0;
+            foreach (string src in Directory.GetFiles(instanceScreenshots))
+            {
+                string dst = Path.Combine(globalScreenshots, Path.GetFileName(src));
+                if (!File.Exists(dst) || File.GetLastWriteTime(src) > File.GetLastWriteTime(dst))
+                {
+                    File.Copy(src, dst, overwrite: true);
+                    count++;
+                }
+            }
+            if (count > 0)
+                Log($"[Sync] Synced {count} screenshot(s) to global .minecraft.");
+        }
+        catch (Exception ex)
+        {
+            Log($"[Sync] Screenshots sync failed: {ex.Message}");
+        }
+    }
+
+    private static void CopyDirectoryRecursive(string src, string dst)
+    {
+        Directory.CreateDirectory(dst);
+        foreach (string file in Directory.GetFiles(src))
+            File.Copy(file, Path.Combine(dst, Path.GetFileName(file)), overwrite: true);
+        foreach (string dir in Directory.GetDirectories(src))
+            CopyDirectoryRecursive(dir, Path.Combine(dst, Path.GetFileName(dir)));
+    }
+
     private void HandleCrashDetection()
     {
         try
@@ -3399,7 +3993,7 @@ public partial class MainWindow : Window
             if (File.Exists(latestLog))
             {
                 string logContent = File.ReadAllText(latestLog);
-                var ipMatch = Regex.Match(logContent, @"Connecting to ([a-zA-Z0-9\.\-_]+), (\d+)");
+                var ipMatch = System.Text.RegularExpressions.Regex.Match(logContent, @"Connecting to ([a-zA-Z0-9\.\-_]+), (\d+)");
                 if (ipMatch.Success)
                 {
                     settings.LastServerIp = ipMatch.Groups[1].Value;
@@ -3460,74 +4054,12 @@ public partial class MainWindow : Window
 
             Log($"[Crash] {crashInfo}");
 
-            if (false && settings.AutoFixCrashes)
+            if (settings.AutoFixCrashes)
             {
                 bool fixedCrash = false;
 
-                if (crashFile != null && File.Exists(crashFile))
-                {
-                    string crashContent = File.ReadAllText(crashFile);
-                    var match = Regex.Match(crashContent, @"provided by '([^']+)'");
-                    if (match.Success)
-                    {
-                        string modId = match.Groups[1].Value;
-                        string? disabledMod = DisableModById(modId);
-                        if (disabledMod != null)
-                        {
-                            Log($"[AutoFix] Disabled {disabledMod} due to crash.");
-                            fixedCrash = true;
-                        }
-                    }
-
-                    // Mixin crashes (MixinTransformerError / MixinApplyError): find the offending mod
-                    if (!fixedCrash && (crashContent.Contains("MixinTransformerError") || crashContent.Contains("MixinApplyError") || crashContent.Contains("InvalidMixinException")))
-                    {
-                        string? culprit = FindMixinCulpritMod(crashContent);
-                        if (culprit != null)
-                        {
-                            string? disabledMod = DisableModById(culprit) ?? DisableModByMixinConfig(culprit);
-                            if (disabledMod != null)
-                            {
-                                Log($"[AutoFix] Disabled {disabledMod} due to a mixin failure.");
-                                crashInfo += $"\nAuto-fixed: disabled '{disabledMod}'.";
-                                fixedCrash = true;
-                            }
-                        }
-                    }
-                }
-
-                if (!fixedCrash && File.Exists(latestLog))
-                {
-                    var logContent = File.ReadAllText(latestLog);
-                    var match = Regex.Match(logContent, @"Mod '([^']+)' \(([^)]+)\) requires");
-                    if (!match.Success) match = Regex.Match(logContent, @"incompatible with.*'([^']+)' \(([^)]+)\)");
-                    if (match.Success)
-                    {
-                        string modId = match.Groups[2].Value;
-                        string? disabledMod = DisableModById(modId);
-                        if (disabledMod != null)
-                        {
-                            Log($"[AutoFix] Disabled {disabledMod} due to missing/incompatible dependencies.");
-                            fixedCrash = true;
-                        }
-                    }
-
-                    // Mixin failures often only appear in latest.log
-                    if (!fixedCrash && (logContent.Contains("MixinTransformerError") || logContent.Contains("MixinApplyError") || logContent.Contains("InvalidMixinException")))
-                    {
-                        string? culprit = FindMixinCulpritMod(logContent);
-                        if (culprit != null)
-                        {
-                            string? disabledMod = DisableModById(culprit) ?? DisableModByMixinConfig(culprit);
-                            if (disabledMod != null)
-                            {
-                                Log($"[AutoFix] Disabled {disabledMod} due to a mixin failure.");
-                                crashInfo += $"\nAuto-fixed: disabled '{disabledMod}'.";
-                                fixedCrash = true;
-                            }
-                        }
-                    }
-                }
+                // AutoFixCrashes removed by user request
+                // The launcher will no longer rename crashed mods to .disabled
 
                 if (fixedCrash)
                 {
@@ -3592,7 +4124,7 @@ public partial class MainWindow : Window
                 if (archive.GetEntry(mixinConfigName) != null)
                 {
                     archive.Dispose();
-                    File.Move(file, file + ".disabled");
+                    // File.Move(file, file + ".disabled");
                     LoadModsList();
                     return Path.GetFileName(file);
                 }
@@ -3623,8 +4155,8 @@ public partial class MainWindow : Window
                     if (match.Success && match.Groups[1].Value == targetModId)
                     {
                         archive.Dispose();
-                        string dest = file + ".disabled";
-                        File.Move(file, dest);
+                        // string dest = file + ".disabled";
+                        // File.Move(file, dest);
                         LoadModsList();
                         return Path.GetFileName(file);
                     }
@@ -3740,53 +4272,25 @@ public partial class MainWindow : Window
                     Log("[Launcher] Over 80 mods detected. Purging mods directory for a clean sync...");
                     Directory.Delete(modsDir, true);
                     Directory.CreateDirectory(modsDir);
+                    File.Delete(Path.Combine(settings.InstancePath, ".packwiz-synced"));
                 }
             } 
             catch (Exception ex) { Log($"[Launcher] Mod purge failed: {ex.Message}"); }
         }
 
-        // Fast path: the mod sync re-verifies every mod and is slow. Skip it entirely
-        // when the pack hasn't changed since the last successful sync.
-        string packToml = Path.Combine(settings.PackwizPath, "pack.toml");
-        string syncMarker = Path.Combine(settings.InstancePath, ".packwiz-synced");
-        string packStamp = null;
         try
         {
-            if (File.Exists(packToml))
-            {
-                using var sha = System.Security.Cryptography.SHA256.Create();
-                packStamp = Convert.ToHexString(sha.ComputeHash(File.ReadAllBytes(packToml)));
-                if (File.Exists(syncMarker) && File.ReadAllText(syncMarker).Trim() == packStamp)
-                {
-                    Log("[Packwiz] Pack unchanged — skipping mod sync (fast launch).");
-                    return;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log($"[Packwiz] skip-check failed, will sync: {ex.Message}");
-        }
-
-        try
-        {
+            Log("[Packwiz] Syncing mods from remote repository...");
             var process = new Process();
             process.StartInfo.FileName = settings.JavaPath;
-            
-            string packUrl = settings.PackwizPath;
-            if (!packUrl.StartsWith("http") && !packUrl.StartsWith("file://"))
-            {
-                // It's a local folder path, convert to file:// URL pointing to pack.toml
-                string localFile = packUrl.EndsWith("pack.toml") ? packUrl : Path.Combine(packUrl, "pack.toml");
-                packUrl = $"file:///{localFile.Replace("\\", "/")}";
-            }
-
+            string packUrl = string.IsNullOrWhiteSpace(settings.PackwizUrl) 
+                ? $"file:///{settings.PackwizPath.Replace("\\", "/")}/pack.toml".Replace(" ", "%20")
+                : settings.PackwizUrl;
+                
             string bootstrapJar = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "packwiz-installer-bootstrap.jar");
 
             if (!File.Exists(bootstrapJar))
-                bootstrapJar = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "packwiz-installer-bootstrap.jar");
-
-            packUrl = packUrl.Replace(" ", "%20");
+                bootstrapJar = @"C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher\packwiz-installer-bootstrap.jar";
 
             process.StartInfo.Arguments = $"-jar \"{bootstrapJar}\" --no-gui \"{packUrl}\"";
             process.StartInfo.WorkingDirectory = settings.InstancePath;
@@ -3798,17 +4302,13 @@ public partial class MainWindow : Window
             process.Start();
             await process.WaitForExitAsync();
 
-            // Remember this pack state so the next launch can skip the sync.
-            try
+            if (process.ExitCode != 0)
             {
-                if (packStamp != null && process.ExitCode == 0)
-                {
-                    File.WriteAllText(syncMarker, packStamp);
-                }
+                Log($"[Packwiz ERROR] Mod sync finished with exit code {process.ExitCode}");
             }
-            catch (Exception ex)
+            else
             {
-                Log($"[Packwiz] could not write sync marker: {ex.Message}");
+                Log("[Packwiz] Mod sync completed successfully.");
             }
         }
         catch (Exception ex)
@@ -3825,7 +4325,7 @@ public partial class MainWindow : Window
     {
         _trayIcon = new TrayIcon
         {
-            Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://TheLadsLauncher/Assets/icon.ico"))),
+            Icon = new WindowIcon(@"C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher\Assets\icon.ico"),
             ToolTipText = "The Lads Client",
             IsVisible = true
         };
@@ -3942,7 +4442,7 @@ public partial class MainWindow : Window
     {
         string activeVersion = ResolveMinecraftVersion();
         var versionList = new List<string> { activeVersion };
-        var commonVersions = new[] { "26.2", "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5" };
+        var commonVersions = new[] { "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5" };
         
         foreach (var v in commonVersions)
         {
@@ -3977,9 +4477,19 @@ public partial class MainWindow : Window
             // Populate the browse tabs with popular mods / resource packs by default,
             // so the page isn't blank before the user types a query (Prism-style).
             var modResults = await SearchModrinthAsync("", mcVersion, isResourcePack: false);
+            if (!string.IsNullOrWhiteSpace(settings.CurseForgeApiKey))
+            {
+                var cfMods = await SearchCurseForgeAsync("", mcVersion, isResourcePack: false);
+                modResults.AddRange(cfMods);
+            }
             RenderSearchResults(modResults, mcVersion, isResourcePack: false, BrowseModsList);
 
             var rpResults = await SearchModrinthAsync("", mcVersion, isResourcePack: true);
+            if (!string.IsNullOrWhiteSpace(settings.CurseForgeApiKey))
+            {
+                var cfRps = await SearchCurseForgeAsync("", mcVersion, isResourcePack: true);
+                rpResults.AddRange(cfRps);
+            }
             RenderSearchResults(rpResults, mcVersion, isResourcePack: true, BrowseRpList);
 
             Log($"[Search] Default browse loaded: {modResults.Count} mods, {rpResults.Count} packs");
@@ -4012,14 +4522,12 @@ public partial class MainWindow : Window
         try
         {
             // Modrinth facets: filter by project_type (not a "mods" category, which
-            // doesn't exist) and by loader. Intentionally NOT filtering by game
-            // version — this pack targets a version Modrinth may not list yet, and a
-            // versions facet would filter out every result (the cause of the empty
-            // page). The correct file for the target version is chosen at install time.
+            // doesn't exist) and by loader.
             string projectType = isResourcePack ? "resourcepack" : "mod";
             var facets = new List<string[]>();
             facets.Add(new[] { $"project_type:{projectType}" });
             if (!isResourcePack) facets.Add(new[] { "categories:fabric" });
+            if (!string.IsNullOrEmpty(mcVersion)) facets.Add(new[] { $"versions:{mcVersion}" });
 
             string facetsJson = JsonSerializer.Serialize(facets);
             string baseUrl = string.IsNullOrWhiteSpace(settings.ModrinthApiUrl) ? "https://api.modrinth.com/v2" : settings.ModrinthApiUrl.TrimEnd('/');
@@ -4354,10 +4862,6 @@ public partial class MainWindow : Window
     {
         try
         {
-            ModSearchBtn.IsEnabled = false;
-            ModSearchBtn.Content = "🔍 Searching...";
-            BrowseModsList.Children.Clear();
-
             string query = ModSearchBox.Text ?? "";
             string provider = (ModSearchProvider.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
             string mcVersion = SearchModMcVersionDropdown.SelectedItem as string ?? ResolveMinecraftVersion();
@@ -4378,21 +4882,12 @@ public partial class MainWindow : Window
         {
             Log($"[Search Error] {ex.Message}");
         }
-        finally
-        {
-            ModSearchBtn.IsEnabled = true;
-            ModSearchBtn.Content = "🔍 Search";
-        }
     }
 
     private async void SearchRp_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
-            RpSearchBtn.IsEnabled = false;
-            RpSearchBtn.Content = "🔍 Searching...";
-            BrowseRpList.Children.Clear();
-
             string query = RpSearchBox.Text ?? "";
             string provider = (RpSearchProvider.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
             string mcVersion = SearchRpMcVersionDropdown.SelectedItem as string ?? ResolveMinecraftVersion();
@@ -4413,11 +4908,33 @@ public partial class MainWindow : Window
         {
             Log($"[Search Error] {ex.Message}");
         }
-        finally
+    }
+
+    // Debounced live search for the Browse tabs: query ~450ms after the user stops typing,
+    // so it updates automatically without an explicit Search button or hammering the API.
+    private DispatcherTimer? _modSearchTimer;
+    private DispatcherTimer? _rpSearchTimer;
+
+    private void ModSearchBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_modSearchTimer == null)
         {
-            RpSearchBtn.IsEnabled = true;
-            RpSearchBtn.Content = "🔍 Search";
+            _modSearchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+            _modSearchTimer.Tick += (s, _) => { _modSearchTimer!.Stop(); SearchMods_Click(null, new RoutedEventArgs()); };
         }
+        _modSearchTimer.Stop();
+        _modSearchTimer.Start();
+    }
+
+    private void RpSearchBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_rpSearchTimer == null)
+        {
+            _rpSearchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+            _rpSearchTimer.Tick += (s, _) => { _rpSearchTimer!.Stop(); SearchRp_Click(null, new RoutedEventArgs()); };
+        }
+        _rpSearchTimer.Stop();
+        _rpSearchTimer.Start();
     }
 
     private static string FormatDownloadCount(long count)
@@ -4592,287 +5109,6 @@ public partial class MainWindow : Window
 
             listPanel.Children.Add(row);
         }
-    }
-
-    // Discord RPC IPC logic
-    private TcpListener? _tcpListener;
-    private CancellationTokenSource? _tcpCts;
-    private DiscordRpcClient _discordRpcClient = new();
-
-    private void StartTcpServer()
-    {
-        _tcpCts = new CancellationTokenSource();
-        var token = _tcpCts.Token;
-
-        Task.Run(async () =>
-        {
-            try
-            {
-                _tcpListener = new TcpListener(IPAddress.Loopback, 24442);
-                _tcpListener.Start();
-                Log("[Discord IPC] TCP Server started on port 24442.");
-
-                while (!token.IsCancellationRequested)
-                {
-                    var client = await _tcpListener.AcceptTcpClientAsync(token);
-                    _ = HandleTcpClientAsync(client, token);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"[Discord IPC] TCP Server error: {ex.Message}");
-            }
-        }, token);
-    }
-
-    private async Task HandleTcpClientAsync(TcpClient client, CancellationToken token)
-    {
-        Log("[Discord IPC] Client connected from " + client.Client.RemoteEndPoint);
-        using (client)
-        using (var stream = client.GetStream())
-        using (var reader = new StreamReader(stream, Encoding.UTF8))
-        {
-            while (!token.IsCancellationRequested && client.Connected)
-            {
-                string? line = await reader.ReadLineAsync(token);
-                if (line == null) break;
-
-                try
-                {
-                    var update = JsonSerializer.Deserialize<ModStateUpdate>(line, new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
-
-                    if (update != null)
-                    {
-                        UpdateDiscordPresence(update);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log($"[Discord IPC] Error parsing mod state update: {ex.Message}");
-                }
-            }
-        }
-        Log("[Discord IPC] Client disconnected.");
-    }
-
-    private void UpdateDiscordPresence(ModStateUpdate update)
-    {
-        if (!settings.EnableDiscordRpc)
-        {
-            _discordRpcClient.Close();
-            return;
-        }
-
-        string details = $"Playing Minecraft {update.Version}";
-        string state = update.Singleplayer ? "Playing Singleplayer" : 
-                       (settings.DiscordRpcShowIp ? $"Playing on {update.ServerIp}" : "Playing Multiplayer");
-
-        long startTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        if (update.ElapsedTime > 1000000000)
-        {
-            startTimestamp = update.ElapsedTime;
-        }
-        else if (update.ElapsedTime > 0)
-        {
-            startTimestamp -= update.ElapsedTime;
-        }
-
-        _discordRpcClient.SetActivity(details, state, startTimestamp, "minecraft", $"Minecraft {update.Version}");
-    }
-
-    private string _pendingUpdateUrl = "";
-
-    private async void UpdateNow_Click(object? sender, RoutedEventArgs e)
-    {
-        UpdateActionButtons.IsVisible = false;
-        UpdateStatusText.IsVisible = true;
-        UpdateProgressBar.IsVisible = true;
-        UpdateProgressBar.Value = 0;
-
-        await UpdaterService.DownloadAndApplyUpdateAsync(_pendingUpdateUrl, progress =>
-        {
-            UpdateProgressBar.Value = progress;
-            UpdateStatusText.Text = $"Downloading... {progress:F1}%";
-        });
-    }
-
-    private void UpdateSkip_Click(object? sender, RoutedEventArgs e)
-    {
-        AutoUpdateOverlay.IsVisible = false;
-    }
-
-    protected override void OnClosed(EventArgs e)
-    {
-        try
-        {
-            _tcpCts?.Cancel();
-            _tcpListener?.Stop();
-        }
-        catch { }
-        _discordRpcClient.Close();
-        base.OnClosed(e);
-    }
-}
-
-public class ModStateUpdate
-{
-    public bool Singleplayer { get; set; }
-    public string ServerIp { get; set; } = "";
-    public string Version { get; set; } = "";
-    public long ElapsedTime { get; set; }
-}
-
-public class DiscordRpcClient : IDisposable
-{
-    private NamedPipeClientStream? _pipe;
-    private const string ClientId = "1381291760984940618";
-
-    public bool IsConnected => _pipe?.IsConnected == true;
-
-    public bool Connect()
-    {
-        if (IsConnected) return true;
-
-        Close();
-
-        for (int i = 0; i < 10; i++)
-        {
-            try
-            {
-                var pipeName = $"discord-ipc-{i}";
-                _pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
-                _pipe.Connect(150);
-
-                WriteMessageWithTimeout(0, $"{{\"v\":1,\"client_id\":\"{ClientId}\"}}", 250);
-
-                byte[] header = new byte[8];
-                int read = ReadWithTimeout(header, 0, 8, 250);
-                if (read == 8)
-                {
-                    int opcode = BitConverter.ToInt32(header, 0);
-                    int len = BitConverter.ToInt32(header, 4);
-                    byte[] buffer = new byte[len];
-                    ReadWithTimeout(buffer, 0, len, 250);
-                    return true;
-                }
-            }
-            catch
-            {
-                Close();
-            }
-        }
-
-        return false;
-    }
-
-    public void SetActivity(string details, string state, long startTimestamp, string smallImage, string smallText)
-    {
-        if (!IsConnected && !Connect())
-        {
-            return;
-        }
-
-        try
-        {
-            var pid = Environment.ProcessId;
-            var nonce = Guid.NewGuid().ToString();
-
-            var payload = new
-            {
-                cmd = "SET_ACTIVITY",
-                args = new
-                {
-                    pid = pid,
-                    activity = new
-                    {
-                        state = state,
-                        details = details,
-                        timestamps = new
-                        {
-                            start = startTimestamp
-                        },
-                        assets = new
-                        {
-                            large_image = "lads",
-                            large_text = "The Lads Client",
-                            small_image = smallImage,
-                            small_text = smallText
-                        }
-                    }
-                },
-                nonce = nonce
-            };
-
-            string json = JsonSerializer.Serialize(payload);
-            WriteMessageWithTimeout(1, json, 250);
-
-            byte[] header = new byte[8];
-            int read = ReadWithTimeout(header, 0, 8, 250);
-            if (read == 8)
-            {
-                int len = BitConverter.ToInt32(header, 4);
-                byte[] buffer = new byte[len];
-                ReadWithTimeout(buffer, 0, len, 250);
-            }
-        }
-        catch
-        {
-            Close();
-        }
-    }
-
-    private int ReadWithTimeout(byte[] buffer, int offset, int count, int timeoutMs)
-    {
-        if (_pipe == null) return 0;
-        using var cts = new CancellationTokenSource(timeoutMs);
-        try
-        {
-            var valTask = _pipe.ReadAsync(buffer, offset, count, cts.Token);
-            return valTask.GetAwaiter().GetResult();
-        }
-        catch (OperationCanceledException)
-        {
-            throw new TimeoutException("Read from Discord IPC pipe timed out.");
-        }
-    }
-
-    private void WriteMessageWithTimeout(int opcode, string json, int timeoutMs)
-    {
-        if (_pipe == null) return;
-        byte[] payloadBytes = Encoding.UTF8.GetBytes(json);
-        byte[] header = new byte[8];
-        Buffer.BlockCopy(BitConverter.GetBytes(opcode), 0, header, 0, 4);
-        Buffer.BlockCopy(BitConverter.GetBytes(payloadBytes.Length), 0, header, 4, 4);
-
-        using var cts = new CancellationTokenSource(timeoutMs);
-        try
-        {
-            _pipe.WriteAsync(header, 0, 8, cts.Token).GetAwaiter().GetResult();
-            _pipe.WriteAsync(payloadBytes, 0, payloadBytes.Length, cts.Token).GetAwaiter().GetResult();
-            _pipe.FlushAsync(cts.Token).GetAwaiter().GetResult();
-        }
-        catch (OperationCanceledException)
-        {
-            throw new TimeoutException("Write to Discord IPC pipe timed out.");
-        }
-    }
-
-    public void Close()
-    {
-        try
-        {
-            _pipe?.Dispose();
-        }
-        catch { }
-        _pipe = null;
-    }
-
-    public void Dispose()
-    {
-        Close();
     }
 }
 

@@ -1,67 +1,36 @@
 using System;
+using System.IO;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Linq;
+using Avalonia.Threading;
 
 namespace TheLadsLauncher;
 
 public class UpdateInfo
 {
-    public string LatestVersion { get; set; } = "";
+    public string LatestVersion { get; set; } = "1.0.0";
     public string DownloadUrl { get; set; } = "";
     public string Changelog { get; set; } = "";
 }
 
 public class UpdateChecker
 {
-    public static async Task<UpdateInfo?> CheckForUpdatesAsync(string repoName, string currentVersion)
+    public static async Task<UpdateInfo?> CheckForUpdatesAsync(string updateUrl, string currentVersion)
     {
+        if (string.IsNullOrWhiteSpace(updateUrl))
+            return null;
+
         try
         {
             using var client = new HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(10);
-            client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("TheLadsLauncher", currentVersion));
+            client.Timeout = TimeSpan.FromSeconds(5);
+            var response = await client.GetStringAsync(updateUrl);
+            var info = JsonSerializer.Deserialize<UpdateInfo>(response, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             
-            // Fetch all releases (includes pre-releases), API returns newest first
-            var response = await client.GetStringAsync($"https://api.github.com/repos/{repoName}/releases");
-            using var document = JsonDocument.Parse(response);
-            var rootArray = document.RootElement;
-            
-            if (rootArray.ValueKind != JsonValueKind.Array || rootArray.GetArrayLength() == 0) return null;
-            var root = rootArray[0];
-            
-            string tagName = root.GetProperty("tag_name").GetString() ?? "";
-            string body = root.GetProperty("body").GetString() ?? "";
-            
-            // Normalize version strings by removing 'v' prefix
-            string latestVersion = tagName.TrimStart('v');
-            string currentVerClean = currentVersion.TrimStart('v');
-            
-            if (IsNewerVersion(currentVerClean, latestVersion))
+            if (info != null && IsNewerVersion(currentVersion, info.LatestVersion))
             {
-                var assets = root.GetProperty("assets").EnumerateArray();
-                string downloadUrl = "";
-                foreach (var asset in assets)
-                {
-                    string name = asset.GetProperty("name").GetString() ?? "";
-                    if (name.Equals("TheLadsLauncher.exe", StringComparison.OrdinalIgnoreCase))
-                    {
-                        downloadUrl = asset.GetProperty("browser_download_url").GetString() ?? "";
-                        break; 
-                    }
-                }
-                
-                if (!string.IsNullOrEmpty(downloadUrl))
-                {
-                    return new UpdateInfo
-                    {
-                        LatestVersion = latestVersion,
-                        DownloadUrl = downloadUrl,
-                        Changelog = body
-                    };
-                }
+                return info;
             }
         }
         catch { }
