@@ -2,7 +2,7 @@ hash-format = "sha256"
 
 [[files]]
 file = "config/fabric_loader_dependencies.json"
-hash = "254eb2c6c5161d1e4a77b9565bf6dd2e8aa49268404111862119a52528057c55"
+hash = "5308f39b7315a3257c20eee30253bbf4afea6209bd10b7ed98454cdd12bb502e"
 
 [[files]]
 file = "config/fancymenu/assets/intros/mojang-intro.gif"
@@ -69,20 +69,8 @@ file = "mods/Controlling-fabric-26.1.2-26.1.2.4.jar"
 hash = "41c27b42fa109c4f051a34ec52fbffe17cadf339794cca02fb4656df52a56fb1"
 
 [[files]]
-file = "mods/EnhancedTooltips-1.9.1+fabric.26.1.2.jar.removed"
-hash = "8c3212084dd9ad40ac4d13ba78914320d0e9fb197fc9b17cf04e1f16b8f9f572"
-
-[[files]]
-file = "mods/ExtremeSoundMuffler-3.58.1_Fabric-26.1.jar.removed"
-hash = "5e832be7d6d9d0554a08cd7753305c717b6f4fc7a0c040820338a7e44fc766c2"
-
-[[files]]
 file = "mods/Flashback-0.40.0-for-MC26.1.jar"
 hash = "535407a9e4471415b46b719e116374d63886a4cb8fcfeba87a13280a8fed2c2e"
-
-[[files]]
-file = "mods/Ixeris-4.4.2+26.1.2-fabric.jar.removed"
-hash = "f0443b7822876f4865b174838d4f4a1c6f2971ef2351b6e22411a6d942495a77"
 
 [[files]]
 file = "mods/Jade-mc26.1-Fabric-26.1.0.jar"
@@ -121,8 +109,8 @@ file = "mods/Stfu-2.9.1-26.1.jar"
 hash = "db3fe766029fd8ee8b0b56eaafdf3d3fd9eeb641a242c85619a02d76bbcba366"
 
 [[files]]
-file = "mods/Threads-1.2.1-26.1.1.jar.removed"
-hash = "98c3521897f95c1a8ced85c105b917475b6f491e04c0be35f4c00a7bde8df3be"
+file = "mods/TheLadsCore-1.41.18.jar"
+hash = "d19eca6fb604d4cb80de2e94b70a40c3f4f244e0bd5dc567afedbe0fd278b8d7"
 
 [[files]]
 file = "mods/ViaFabricPlus-4.5.4.jar"
@@ -137,20 +125,12 @@ file = "mods/almanac-1.26.x-fabric-1.6.2.1.jar"
 hash = "46769316733518a6cbd0138dc34627db79de4c6f6d0aadc1849fa960ffc54098"
 
 [[files]]
-file = "mods/appleskin-fabric-mc26.1-3.0.9.jar.removed"
-hash = "88d0b2711fe8c6a1696cf19f21c7e07d63a6ecfccf888bb90260566fc6ac4dbe"
-
-[[files]]
 file = "mods/asynclogger-1.1.2+26.1.1-fabric.jar"
 hash = "593b45a51db2fa8278cbd8e8673ac9485a74a33b3b8c62f631944373b3c042cb"
 
 [[files]]
 file = "mods/balm-fabric-26.1.2-26.1.2.6.jar"
 hash = "d9d6db03c976c54454a95e57662c9847c4f72682af5097e20d8a63d5486cf671"
-
-[[files]]
-file = "mods/betterf1-fabric-26.1-1.1.jar.removed"
-hash = "a3115c7e869431db3837858d7ab0c828f4f3bd2f7c8eafd470595470719e1a71"
 
 [[files]]
 file = "mods/buttonanimations-1.2.0-26.1x.jar"
@@ -177,10 +157,6 @@ file = "mods/citresewn-continuation-1.2.2-fork.12+26.1.2.jar"
 hash = "5af049c76addbbf1a4eb4c3f4c8073075950561b5a5d959de4afa22712618e67"
 
 [[files]]
-file = "mods/clienttweaks-fabric-26.1.2-26.1.2.3.jar.removed"
-hash = "7be99659fb2891f485212b273846b25e5ad914505a02f36bca16d55c14039b2e"
-
-[[files]]
 file = "mods/cloth-config-26.1.154.jar"
 hash = "fb7a5d869ce10eaac2c2fe9ab84b4fc011a1fbfa575a93be9845a386a7f0c7d3"
 
@@ -205,16 +181,8 @@ file = "mods/cupboard-fabric-26.1-3.7.jar"
 hash = "95d3ddee388bb75fce478cf9cac17119bae01bc91b2d9be3d0718f88274b748b"
 
 [[files]]
-file = "mods/cursors_extended-fabric-4.1.6+26.1.jar.removed"
-hash = "e6a2501760e177eb7390418cfea42ee16efacec61ca85faf80705fe0a2c75ea8"
-
-[[files]]
 file = "mods/emoji-type-2.3.0-1.21.3-fabric.jar"
 hash = "0923c971b25cda6b783b37f839d5ae0505e5e38ade2a7cad1e2b14f87adac470"
-
-[[files]]
-file = "mods/entity-view-distance-1.8.1+26.1.jar.removed"
-hash = "042336304d53c281deb9f7ff0566ae0698b1e7630101f3e1b365993521f64c72"
 
 [[files]]
 file = "mods/entity_model_features-3.2.4-26.1-fabric.jar"
@@ -233,10 +201,6 @@ file = "mods/fabric-language-kotlin-1.13.12+kotlin.2.4.0.jar"
 hash = "36c5dd8b728e3470d2882ae63119b93a20500fc0ea6f5c945c12bf65b5ab1832"
 
 [[files]]
-file = "mods/fancy-door-anim-1.4.0.jar.removed"
-hash = "d0470f734ce6d5056479f5c13dd268c9658fbda75d10e924fe74751e6301c69d"
-
-[[files]]
 file = "mods/fancymenu_fabric_3.9.1_MC_26.1.1-26.1.2.jar"
 hash = "3d2c58ad9aa7b06ff95b243fa69b7f81ff7ae203f69e853374d681685ee541f4"
 
@@ -253,16 +217,8 @@ file = "mods/fzzy_config-0.7.6+26.1.jar"
 hash = "1fde1eb7ea7a0c28c6619871c9b768969368e66bff3962ebb804dfab6556b8a6"
 
 [[files]]
-file = "mods/immersive-hotbar-1.1.1-26.1.jar.removed"
-hash = "7add648079c44a9eb93b01f6053a3d58a5a731d629f4fc39ea2cc4ab2cc3706f"
-
-[[files]]
 file = "mods/iris-fabric-1.10.9+mc26.1.1.jar"
 hash = "aea0eefb174d19ad97a812b6de2e304f0d3abc50357b316908cf1035f1514b07"
-
-[[files]]
-file = "mods/jei-26.1.2-fabric-29.6.2.31.jar.removed"
-hash = "861f8d54493497d35b0a15c3b81729211c61b67dd2ffc9d13361d11a6127b8f1"
 
 [[files]]
 file = "mods/konkrete_fabric_1.10.2_MC_26.1.1.jar"
@@ -325,14 +281,6 @@ file = "mods/netprodis-2.0.0+26.1.jar"
 hash = "f3d8c38855e1fe1e09be5727afaf166207a8747cc8b3de5aec84aed7c50e9e17"
 
 [[files]]
-file = "mods/notenoughanimations-fabric-1.12.3-mc26.1.jar.removed"
-hash = "34f12fa8a6b6bcfd323101804040d7a9f6484abc959fc3c1c3c22e6c6dfddf79"
-
-[[files]]
-file = "mods/passiveshield-26.1.2-3.9.jar.removed"
-hash = "4b9c94c66d2deef943d908e066113de367e15c87daf9f978d23507899dd49bbb"
-
-[[files]]
 file = "mods/placeholder-api-3.0.0+26.1.jar"
 hash = "7c4893195ab4bec56d05a5fd4521bd9bc8619ef11aa0a5c83a426a99d2191062"
 
@@ -341,28 +289,8 @@ file = "mods/polymer-qol-1.0.2+26.1.jar"
 hash = "5bcb424a268f10958a0eb884ef574e2a03822fd9044ea99f69412aeecbacf042"
 
 [[files]]
-file = "mods/quick-pack-fabric-1.3.1+26.1.2.jar.removed"
-hash = "d0841a83bcce07340ed2d9f572502218c984ef6934e6db7b688260e8e113643a"
-
-[[files]]
-file = "mods/raised-fabric-26.1.1-5.1.2.jar.removed"
-hash = "f7cf46025a1ed8a43b02e7df30468f05bf4fe9812dd1b8a96a740e07b15001af"
-
-[[files]]
 file = "mods/reeses-sodium-options-fabric-2.0.5+mc26.1.1.jar"
 hash = "432f60df294ff2bf6b0debeb9750115c7d27ecb548d917e6ca7e31fd40cc83b9"
-
-[[files]]
-file = "mods/respackopts-26.1.2.jar.removed"
-hash = "adb536346abc9c2912ca7e8a0f2e4d529a7828ca10403b13f8a828bc71bdb3ef"
-
-[[files]]
-file = "mods/screenfx-1.5.1+26.1.2.jar.removed"
-hash = "05bb2954b63707792ed8559efef0ccb545e4a5b406da571387dcb7fbabfe4ed6"
-
-[[files]]
-file = "mods/serverpingerfixer+26.1-1.1.0.jar.removed"
-hash = "4140372e4633f04047a4565ef5835994529e157101bfb98f92f6cd45b43ee42c"
 
 [[files]]
 file = "mods/sodium-extra-fabric-0.8.7+mc26.1.1.jar"
@@ -387,10 +315,6 @@ hash = "3d15ccb862f351a8b964f72fceec2b6117b8cabf7a16fd3eeda68c87b82021c1"
 [[files]]
 file = "mods/voicechat-fabric-2.6.18+26.1.2.jar"
 hash = "727a0f875bef5e17c5932a79b731533c52aa9911989df140bf116f07a106c74a"
-
-[[files]]
-file = "mods/waveycapes-fabric-1.9.2-mc26.1.jar.removed"
-hash = "deae7e0d6a475ae0fe795aac0c9f9634f191e7027243ab496e3bf2c3194e52e6"
 
 [[files]]
 file = "mods/yet_another_config_lib_v3-3.9.3+26.1-fabric.jar"

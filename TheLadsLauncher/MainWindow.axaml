@@ -978,7 +978,7 @@
                 </StackPanel>
             </StackPanel>
         </Grid>
-        <!-- Auto-Update Overlay -->
+        <!-- Auto-Update Overlay (Bypassed by auto-updater in Loaded handler) -->
         <Grid x:Name="AutoUpdateOverlay" Background="#F00A0A0F" IsVisible="False" ZIndex="110">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
                 <TextBlock Text="A New Launcher Update is Available!" Foreground="White" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>

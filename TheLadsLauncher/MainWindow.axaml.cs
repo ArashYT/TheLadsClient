@@ -227,19 +227,33 @@ public partial class MainWindow : Window
 
         this.Loaded += async (s, e) =>
         {
-            await Task.Delay((int)startupDurationMs + 150);
-            startupAnimTimer.Stop();
-            if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
-            LauncherStartupOverlay.IsVisible = false;
-
-            // Check for updates
+            // Check for updates during splash screen launch
             var updateInfo = await UpdateChecker.CheckForUpdatesAsync("ArashYT/TheLadsClient", Program.Version);
             if (updateInfo != null)
             {
                 _pendingUpdateUrl = updateInfo.DownloadUrl;
                 UpdateVersionText.Text = $"Version: {updateInfo.LatestVersion}";
                 UpdateChangelogText.Text = updateInfo.Changelog;
-                AutoUpdateOverlay.IsVisible = true;
+                
+                startupAnimTimer.Stop();
+                if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
+                LoadingDots.Text = "";
+                LauncherStartupOverlay.IsVisible = true;
+
+                await UpdaterService.DownloadAndApplyUpdateAsync(_pendingUpdateUrl, progress =>
+                {
+                    StartupLoadingSpinner.Text = $"Updating client to v{updateInfo.LatestVersion}... {progress:F1}%";
+                });
+
+                // Fallback in case updater fails or returns without restarting
+                LauncherStartupOverlay.IsVisible = false;
+            }
+            else
+            {
+                await Task.Delay((int)startupDurationMs + 150);
+                startupAnimTimer.Stop();
+                if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
+                LauncherStartupOverlay.IsVisible = false;
             }
         };
         

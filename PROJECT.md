@@ -1,25 +1,22 @@
-# Project: Minecraft Client Performance Optimization
+# Project: Lads Client Mod List Revert and Launcher Auto-Updater
 
 ## Architecture
-- **TheLadsCore (Fabric Mod, Java 25/26)**: Core client-side optimizations and benchmark hooks.
-- **TheLadsLauncher (C# Avalonia UI)**: Handles process launching, resource updates, and starting offline/online games.
-- **Performance Mods**: Sodium, Lithium, BadOptimizations, FerriteCore, Language Reload, More Culling, and C2ME are integrated.
+- **Packwiz Directory**: Manages Minecraft client mods. Recent changes added redundant mods that must be reverted.
+- **TheLadsLauncher**: Avalonia UI C# application. Its updater logic must run silently.
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | Exploration & Benchmark Design | Investigate load points, startup, and FPS hooks. Design benchmark mixins. | None | DONE |
-| 2 | Benchmark Implementation | Implement automated benchmark script and performance measuring hooks. | M1 | DONE |
-| 3 | Load Time Optimizations | Implement class preloading, lazy-loading resource packs, world-load screen skip. | M2 | IN_PROGRESS |
-| 4 | Rendering & FPS Optimizations | Implement optimization mixins, tune Sodium/Iris settings, optimize chunk rendering. | M2 | PLANNED |
-| 5 | E2E Verification & Auditing | Run benchmarks, verify performance improvement, run forensic audit. | M3, M4 | PLANNED |
-| 6 | Resource Pack Override System | Update hidden resource packs, ensure layering, add disable option under a new 'packs' tab in settings UI. | M5 | PLANNED |
+| 1 | Exploration & Analysis | Explore Packwiz history and launcher XAML/CS updater code | None | DONE |
+| 2 | Implementation | Revert Packwiz mods and modify launcher for silent update | M1 | DONE |
+| 3 | Verification & Audit | Verify git status, run dotnet build, and audit code integrity | M2 | DONE |
 
 ## Interface Contracts
-- Benchmark JVM parameter `-Dthelads.benchmark=true` launches Minecraft directly into a reproducible test world, runs for a duration (e.g. 20s), logs metrics to `benchmark_results.json`, and exits.
-- Optimizations are toggleable or integrated cleanly within standard Fabric/Minecraft lifecycles.
+### Auto-Updater Silent Loop
+- Bypasses MainWindow "Update Now" popup.
+- Triggers update sequence instantly when updates are detected.
+- Closes launcher and restarts correctly once downloaded.
 
-## Code Layout
-- `TheLadsCore/src/main/java/com/thelads/core/features/alwayson/benchmark/` - Benchmark logging and auto-load logic.
-- `TheLadsCore/src/main/java/com/thelads/core/mixin/alwayson/optimization/` - Custom FPS, chunk loading, world load screen, and startup optimizations.
-- `benchmark_runner.ps1` - Automated benchmark runner at the project root.
+### Packwiz Mod List Restoration
+- Reduces mod count back to ~56 mods.
+- Reverts redundant mod index entries.
