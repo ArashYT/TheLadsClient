@@ -3092,6 +3092,23 @@ public partial class MainWindow : Window
         string launchVersionId = await ResolveLaunchVersionIdAsync();
         Log($"[Launcher] Building process for {launchVersionId}...");
 
+        string mcVer = settings.FabricVersion.Split('-').LastOrDefault();
+        int requiredJava = LauncherSettings.GetRequiredJavaVersion(mcVer);
+        
+        GameLaunchStatusText.Text = $"Verifying Java {requiredJava}...";
+        try 
+        {
+            await EnsureCorrectJavaVersionAsync(requiredJava);
+        }
+        catch (Exception ex)
+        {
+            GameLaunchStatusText.Text = $"Java Error: {ex.Message}";
+            Log($"[JavaManager] Error: {ex}");
+            await Task.Delay(3000);
+            GameLaunchOverlay.IsVisible = false;
+            return;
+        }
+
         // QuickLaunch: skip asset verification for a faster startup.
         // If the game fails to start, the user should turn QuickLaunch off.
         System.Diagnostics.Process process;
@@ -3238,6 +3255,69 @@ public partial class MainWindow : Window
         // Hide to tray after launch, unless the user wants the launcher to stay open.
         if (settings.CloseToTray && !settings.KeepLauncherOpen)
             this.Hide();
+    }
+
+    private async Task EnsureCorrectJavaVersionAsync(int requiredVersion)
+    {
+        // 1. Is current JavaPath valid and correct version?
+        if (System.IO.File.Exists(settings.JavaPath))
+        {
+            string currentVerText = await GetJavaVersionTextAsync(settings.JavaPath);
+            if (currentVerText.Contains($"version \"{requiredVersion}.") || currentVerText.Contains($"version \"1.{requiredVersion}."))
+            {
+                return; // Everything is good!
+            }
+        }
+
+        // 2. See if we have another installed version that satisfies it
+        var installs = settings.DetectJavaInstallations();
+        foreach (var path in installs)
+        {
+            string verText = await GetJavaVersionTextAsync(path);
+            if (verText.Contains($"version \"{requiredVersion}.") || verText.Contains($"version \"1.{requiredVersion}."))
+            {
+                settings.JavaPath = path;
+                settings.Save();
+                PopulateJavaSelector();
+                Log($"[JavaManager] Switched JavaPath to valid local install: {path}");
+                return;
+            }
+        }
+
+        // 3. Download it
+        string newPath = await JavaManager.DownloadJavaAsync(requiredVersion, (status) =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                GameLaunchStatusText.Text = status;
+            });
+        });
+
+        settings.JavaPath = newPath;
+        settings.Save();
+        PopulateJavaSelector();
+        Log($"[JavaManager] Downloaded and configured Java {requiredVersion} at {newPath}");
+    }
+
+    private async Task<string> GetJavaVersionTextAsync(string javaExe)
+    {
+        try
+        {
+            var p = new System.Diagnostics.Process();
+            p.StartInfo.FileName = javaExe;
+            p.StartInfo.Arguments = "-version";
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.RedirectStandardError = true;
+            p.StartInfo.CreateNoWindow = true;
+            p.Start();
+            string output = await p.StandardError.ReadToEndAsync();
+            await p.WaitForExitAsync();
+            return output;
+        }
+        catch
+        {
+            return "";
+        }
     }
 
     // If the configured version doesn't exist in the instance's versions folder,
@@ -3663,7 +3743,15 @@ public partial class MainWindow : Window
         {
             var process = new Process();
             process.StartInfo.FileName = settings.JavaPath;
-            string packUrl = $"file:///{settings.PackwizPath.Replace("\\", "/")}/pack.toml";
+            
+            string packUrl = settings.PackwizPath;
+            if (!packUrl.StartsWith("http") && !packUrl.StartsWith("file://"))
+            {
+                // It's a local folder path, convert to file:// URL pointing to pack.toml
+                string localFile = packUrl.EndsWith("pack.toml") ? packUrl : Path.Combine(packUrl, "pack.toml");
+                packUrl = $"file:///{localFile.Replace("\\", "/")}";
+            }
+
             string bootstrapJar = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "packwiz-installer-bootstrap.jar");
 
             if (!File.Exists(bootstrapJar))
