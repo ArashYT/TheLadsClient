@@ -1,4 +1,8 @@
 using System;
+using System.Net;
+using System.Net.Sockets;
+using System.IO.Pipes;
+using System.Text;
 using System.Net.Http;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -218,6 +222,16 @@ public partial class MainWindow : Window
             startupAnimTimer.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
+
+            // Check for updates
+            var updateInfo = await UpdateChecker.CheckForUpdatesAsync("ArashYT/TheLadsClient", Program.Version);
+            if (updateInfo != null)
+            {
+                _pendingUpdateUrl = updateInfo.DownloadUrl;
+                UpdateVersionText.Text = $"Version: {updateInfo.LatestVersion}";
+                UpdateChangelogText.Text = updateInfo.Changelog;
+                AutoUpdateOverlay.IsVisible = true;
+            }
         };
         
         // Stats timer (1 second)
@@ -327,6 +341,7 @@ public partial class MainWindow : Window
         UpdateMinecraftVersionDisplay();
         InitializeSearchMcVersions();
         _ = TriggerDefaultSearchesAsync();
+        StartTcpServer();
     }
 
     // ═══════════════════════════════════════
@@ -1054,8 +1069,59 @@ public partial class MainWindow : Window
             PlayerSkinPreview.Source = null;
         }
 
+        if (HomeAccountSelectorComboBox != null)
+        {
+            HomeAccountSelectorComboBox.SelectionChanged -= HomeAccountSelectorComboBox_SelectionChanged;
+            HomeAccountSelectorComboBox.Items.Clear();
+            foreach (var name in allAccountNames)
+            {
+                HomeAccountSelectorComboBox.Items.Add(name);
+            }
+            if (!string.IsNullOrEmpty(_selectedAccount) && allAccountNames.Contains(_selectedAccount))
+            {
+                HomeAccountSelectorComboBox.SelectedItem = _selectedAccount;
+            }
+            else
+            {
+                HomeAccountSelectorComboBox.SelectedItem = null;
+            }
+            HomeAccountSelectorComboBox.SelectionChanged += HomeAccountSelectorComboBox_SelectionChanged;
+        }
+
         _ = WriteLadsProfileAsync(_selectedAccount);
         RenderAccountsList(allAccountNames);
+    }
+
+    private void HomeAccountSelectorComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (HomeAccountSelectorComboBox != null && HomeAccountSelectorComboBox.SelectedItem is string selectedName)
+        {
+            if (_selectedAccount != selectedName)
+            {
+                _selectedAccount = selectedName;
+                MiniAccountName.Text = _selectedAccount;
+                _ = LoadPlayerSkin(_selectedAccount);
+                _ = WriteLadsProfileAsync(_selectedAccount);
+
+                // Reload accounts list in settings/customizer to update borders and mini display
+                var msAccounts = loginHandler.AccountManager.GetAccounts().ToList();
+                var allAccountNames = new List<string>();
+                foreach (var acc in msAccounts)
+                {
+                    string? u = (acc as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username;
+                    if (u != null) allAccountNames.Add(u);
+                }
+                foreach (var off in settings.OfflineAccounts)
+                {
+                    if (!allAccountNames.Contains(off)) allAccountNames.Add(off);
+                }
+                allAccountNames = allAccountNames.OrderBy(name => {
+                    int idx = settings.AccountOrder.IndexOf(name);
+                    return idx == -1 ? 999 : idx;
+                }).ToList();
+                RenderAccountsList(allAccountNames);
+            }
+        }
     }
 
     private void RenderAccountsList(List<string> allAccountNames)
@@ -1994,6 +2060,35 @@ public partial class MainWindow : Window
         AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
         MultiInstanceCheckbox.IsChecked = settings.AllowMultiInstance;
         ParticleCheckbox.IsChecked = settings.ShowParticles;
+        EnableDiscordRpcCheckbox.IsChecked = settings.EnableDiscordRpc;
+        DiscordRpcShowIpCheckbox.IsChecked = settings.DiscordRpcShowIp;
+
+        // Initialize and bind HomePage Server Auto-Join controls
+        AutoJoinServerCheckbox_Home.IsChecked = settings.AutoRejoinServer;
+        ServerIpBox_Home.Text = settings.LastServerIp;
+        ServerPortBox_Home.Text = settings.LastServerPort.ToString();
+
+        AutoJoinServerCheckbox_Home.Click += (s, e) => {
+            settings.AutoRejoinServer = AutoJoinServerCheckbox_Home.IsChecked ?? false;
+            AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
+            settings.Save();
+        };
+
+        ServerIpBox_Home.PropertyChanged += (s, e) => {
+            if (e.Property.Name == "Text") {
+                settings.LastServerIp = ServerIpBox_Home.Text ?? "";
+                settings.Save();
+            }
+        };
+
+        ServerPortBox_Home.PropertyChanged += (s, e) => {
+            if (e.Property.Name == "Text") {
+                if (int.TryParse(ServerPortBox_Home.Text, out int port)) {
+                    settings.LastServerPort = port;
+                    settings.Save();
+                }
+            }
+        };
 
         InstancePathBox.Text = settings.InstancePath;
         PackwizPathBox.Text = settings.PackwizPath;
@@ -2056,7 +2151,10 @@ public partial class MainWindow : Window
         settings.AutoFixCrashes = AutoFixCrashesCheckbox.IsChecked ?? true;
         settings.AutoRelaunchOnCrash = AutoRelaunchOnCrashCheckbox.IsChecked ?? false;
         settings.AutoRejoinServer = AutoRejoinServerCheckbox.IsChecked ?? false;
+        AutoJoinServerCheckbox_Home.IsChecked = settings.AutoRejoinServer;
         settings.AllowMultiInstance = MultiInstanceCheckbox.IsChecked ?? false;
+        settings.EnableDiscordRpc = EnableDiscordRpcCheckbox.IsChecked ?? true;
+        settings.DiscordRpcShowIp = DiscordRpcShowIpCheckbox.IsChecked ?? false;
         // settings.FullscreenOnLaunch = FullscreenOnLaunchCheckbox.IsChecked ?? true;
         // settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
         settings.ShowParticles = ParticleCheckbox.IsChecked ?? true;
@@ -2373,6 +2471,9 @@ public partial class MainWindow : Window
 
                     if (matchesFilter)
                     {
+                        if (displayName == "Potions") displayName = "Potion Effects";
+                        if (displayName == "JEI Module") displayName = "JEI (Just Enough Items)";
+
                         list.Add(new ModFileItem
                         {
                             FilePath = file,
@@ -2801,6 +2902,39 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void QuickLaunchButton_Click(object? sender, RoutedEventArgs e)
+    {
+        try {
+            LaunchButton.IsEnabled = false;
+            QuickLaunchButton.IsEnabled = false;
+
+            if (string.IsNullOrEmpty(_selectedAccount))
+            {
+                StatusText.Text = "Select or add an account first.";
+                Log("[Launcher] Launch aborted: no account is selected.");
+                NavigateTo("Accounts");
+                return;
+            }
+
+            bool originalQuickLaunch = settings.QuickLaunch;
+            settings.QuickLaunch = true;
+            try
+            {
+                await LaunchGame();
+            }
+            finally
+            {
+                settings.QuickLaunch = originalQuickLaunch;
+            }
+        } catch (Exception ex) {
+            Log($"[CRASH] {ex.Message}");
+        } finally {
+            LaunchButton.IsEnabled = true;
+            QuickLaunchButton.IsEnabled = true;
+            GameLaunchOverlay.IsVisible = false;
+        }
+    }
+
     private async Task LaunchGame()
     {
         if (!settings.AllowMultiInstance && _runningProcesses.Any(p => !p.HasExited))
@@ -3043,6 +3177,7 @@ public partial class MainWindow : Window
         // Prepend JVM performance flags. G1GC is used instead of ZGC for fast startup
         // (ZGC + AlwaysPreTouch was causing the 10-15s freeze before the window appeared).
         string jvmFlags =
+            $"-Xms{settings.MaxRamMb}m " +
             "-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:+DisableExplicitGC " +
             "-XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=50 " +
             "-XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:G1HeapRegionSize=32M " +
@@ -4298,6 +4433,287 @@ public partial class MainWindow : Window
 
             listPanel.Children.Add(row);
         }
+    }
+
+    // Discord RPC IPC logic
+    private TcpListener? _tcpListener;
+    private CancellationTokenSource? _tcpCts;
+    private DiscordRpcClient _discordRpcClient = new();
+
+    private void StartTcpServer()
+    {
+        _tcpCts = new CancellationTokenSource();
+        var token = _tcpCts.Token;
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                _tcpListener = new TcpListener(IPAddress.Loopback, 24442);
+                _tcpListener.Start();
+                Log("[Discord IPC] TCP Server started on port 24442.");
+
+                while (!token.IsCancellationRequested)
+                {
+                    var client = await _tcpListener.AcceptTcpClientAsync(token);
+                    _ = HandleTcpClientAsync(client, token);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"[Discord IPC] TCP Server error: {ex.Message}");
+            }
+        }, token);
+    }
+
+    private async Task HandleTcpClientAsync(TcpClient client, CancellationToken token)
+    {
+        Log("[Discord IPC] Client connected from " + client.Client.RemoteEndPoint);
+        using (client)
+        using (var stream = client.GetStream())
+        using (var reader = new StreamReader(stream, Encoding.UTF8))
+        {
+            while (!token.IsCancellationRequested && client.Connected)
+            {
+                string? line = await reader.ReadLineAsync(token);
+                if (line == null) break;
+
+                try
+                {
+                    var update = JsonSerializer.Deserialize<ModStateUpdate>(line, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    if (update != null)
+                    {
+                        UpdateDiscordPresence(update);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"[Discord IPC] Error parsing mod state update: {ex.Message}");
+                }
+            }
+        }
+        Log("[Discord IPC] Client disconnected.");
+    }
+
+    private void UpdateDiscordPresence(ModStateUpdate update)
+    {
+        if (!settings.EnableDiscordRpc)
+        {
+            _discordRpcClient.Close();
+            return;
+        }
+
+        string details = $"Playing Minecraft {update.Version}";
+        string state = update.Singleplayer ? "Playing Singleplayer" : 
+                       (settings.DiscordRpcShowIp ? $"Playing on {update.ServerIp}" : "Playing Multiplayer");
+
+        long startTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (update.ElapsedTime > 1000000000)
+        {
+            startTimestamp = update.ElapsedTime;
+        }
+        else if (update.ElapsedTime > 0)
+        {
+            startTimestamp -= update.ElapsedTime;
+        }
+
+        _discordRpcClient.SetActivity(details, state, startTimestamp, "minecraft", $"Minecraft {update.Version}");
+    }
+
+    private string _pendingUpdateUrl = "";
+
+    private async void UpdateNow_Click(object? sender, RoutedEventArgs e)
+    {
+        UpdateActionButtons.IsVisible = false;
+        UpdateStatusText.IsVisible = true;
+        UpdateProgressBar.IsVisible = true;
+        UpdateProgressBar.Value = 0;
+
+        await UpdaterService.DownloadAndApplyUpdateAsync(_pendingUpdateUrl, progress =>
+        {
+            UpdateProgressBar.Value = progress;
+            UpdateStatusText.Text = $"Downloading... {progress:F1}%";
+        });
+    }
+
+    private void UpdateSkip_Click(object? sender, RoutedEventArgs e)
+    {
+        AutoUpdateOverlay.IsVisible = false;
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        try
+        {
+            _tcpCts?.Cancel();
+            _tcpListener?.Stop();
+        }
+        catch { }
+        _discordRpcClient.Close();
+        base.OnClosed(e);
+    }
+}
+
+public class ModStateUpdate
+{
+    public bool Singleplayer { get; set; }
+    public string ServerIp { get; set; } = "";
+    public string Version { get; set; } = "";
+    public long ElapsedTime { get; set; }
+}
+
+public class DiscordRpcClient : IDisposable
+{
+    private NamedPipeClientStream? _pipe;
+    private const string ClientId = "1381291760984940618";
+
+    public bool IsConnected => _pipe?.IsConnected == true;
+
+    public bool Connect()
+    {
+        if (IsConnected) return true;
+
+        Close();
+
+        for (int i = 0; i < 10; i++)
+        {
+            try
+            {
+                var pipeName = $"discord-ipc-{i}";
+                _pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+                _pipe.Connect(150);
+
+                WriteMessageWithTimeout(0, $"{{\"v\":1,\"client_id\":\"{ClientId}\"}}", 250);
+
+                byte[] header = new byte[8];
+                int read = ReadWithTimeout(header, 0, 8, 250);
+                if (read == 8)
+                {
+                    int opcode = BitConverter.ToInt32(header, 0);
+                    int len = BitConverter.ToInt32(header, 4);
+                    byte[] buffer = new byte[len];
+                    ReadWithTimeout(buffer, 0, len, 250);
+                    return true;
+                }
+            }
+            catch
+            {
+                Close();
+            }
+        }
+
+        return false;
+    }
+
+    public void SetActivity(string details, string state, long startTimestamp, string smallImage, string smallText)
+    {
+        if (!IsConnected && !Connect())
+        {
+            return;
+        }
+
+        try
+        {
+            var pid = Environment.ProcessId;
+            var nonce = Guid.NewGuid().ToString();
+
+            var payload = new
+            {
+                cmd = "SET_ACTIVITY",
+                args = new
+                {
+                    pid = pid,
+                    activity = new
+                    {
+                        state = state,
+                        details = details,
+                        timestamps = new
+                        {
+                            start = startTimestamp
+                        },
+                        assets = new
+                        {
+                            large_image = "lads",
+                            large_text = "The Lads Client",
+                            small_image = smallImage,
+                            small_text = smallText
+                        }
+                    }
+                },
+                nonce = nonce
+            };
+
+            string json = JsonSerializer.Serialize(payload);
+            WriteMessageWithTimeout(1, json, 250);
+
+            byte[] header = new byte[8];
+            int read = ReadWithTimeout(header, 0, 8, 250);
+            if (read == 8)
+            {
+                int len = BitConverter.ToInt32(header, 4);
+                byte[] buffer = new byte[len];
+                ReadWithTimeout(buffer, 0, len, 250);
+            }
+        }
+        catch
+        {
+            Close();
+        }
+    }
+
+    private int ReadWithTimeout(byte[] buffer, int offset, int count, int timeoutMs)
+    {
+        if (_pipe == null) return 0;
+        using var cts = new CancellationTokenSource(timeoutMs);
+        try
+        {
+            var valTask = _pipe.ReadAsync(buffer, offset, count, cts.Token);
+            return valTask.GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+            throw new TimeoutException("Read from Discord IPC pipe timed out.");
+        }
+    }
+
+    private void WriteMessageWithTimeout(int opcode, string json, int timeoutMs)
+    {
+        if (_pipe == null) return;
+        byte[] payloadBytes = Encoding.UTF8.GetBytes(json);
+        byte[] header = new byte[8];
+        Buffer.BlockCopy(BitConverter.GetBytes(opcode), 0, header, 0, 4);
+        Buffer.BlockCopy(BitConverter.GetBytes(payloadBytes.Length), 0, header, 4, 4);
+
+        using var cts = new CancellationTokenSource(timeoutMs);
+        try
+        {
+            _pipe.WriteAsync(header, 0, 8, cts.Token).GetAwaiter().GetResult();
+            _pipe.WriteAsync(payloadBytes, 0, payloadBytes.Length, cts.Token).GetAwaiter().GetResult();
+            _pipe.FlushAsync(cts.Token).GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+            throw new TimeoutException("Write to Discord IPC pipe timed out.");
+        }
+    }
+
+    public void Close()
+    {
+        try
+        {
+            _pipe?.Dispose();
+        }
+        catch { }
+        _pipe = null;
+    }
+
+    public void Dispose()
+    {
+        Close();
     }
 }
 

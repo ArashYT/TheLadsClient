@@ -116,6 +116,8 @@ accessible field net/minecraft/client/gui/components/toasts/ToastManager visible
 accessible class net/minecraft/client/gui/components/toasts/ToastManager$ToastInstance
 accessible method net/minecraft/world/item/crafting/ShapedRecipePattern shrink (Ljava/util/List;)[Ljava/lang/String;
 accessible field net/minecraft/client/gui/Hud isHidden Z
+accessible class net/minecraft/client/multiplayer/LevelLoadTracker$ClientLevelReady
+accessible method net/minecraft/client/multiplayer/LevelLoadTracker$ClientLevelReady <init> (J)V
 
-
-
+# LambDynLights access fix
+accessible method net/minecraft/client/renderer/culling/Frustum cubeInFrustum (DDDDDD)I

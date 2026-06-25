@@ -5,7 +5,8 @@
         mc:Ignorable="d" d:DesignWidth="1152" d:DesignHeight="648"
         x:Class="TheLadsLauncher.MainWindow"
         Title="The Lads Client"
-        Background="#0A0A0F"
+        Background="Transparent"
+        TransparencyLevelHint="AcrylicBlur,Mica"
         Width="1152" Height="648"
         MinWidth="640" MinHeight="360"
         Icon="avares://TheLadsLauncher/Assets/icon.ico"
@@ -17,7 +18,7 @@
     <Window.Resources>
         <!-- Real layout template for Mod/Pack List Items -->
         <DataTemplate x:Key="ModListItemTemplate">
-            <Border Classes="modcard" Background="#0E0E18" CornerRadius="10" Padding="16,12" BorderBrush="#1A1A2E" BorderThickness="1" Margin="0,0,0,8">
+            <Border Classes="modcard" Background="#CC0E0E18" CornerRadius="10" Padding="16,12" BorderBrush="#25FFFFFF" BorderThickness="1" Margin="0,0,0,8">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                     <!-- Icon: matches test check name="ModIcon" -->
                     <Border Name="ModIconFrame" Width="44" Height="44" CornerRadius="8" ClipToBounds="True" Background="#15151F" Margin="0,0,14,0" VerticalAlignment="Center">
@@ -98,6 +99,9 @@
         </Style>
         <Style Selector="Button.nav.active">
             <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#1A8B0000" />
+            <Setter Property="BorderBrush" Value="#8B0000" />
+            <Setter Property="BorderThickness" Value="2,0,0,0" />
         </Style>
 
         <!-- Launch Button -->
@@ -141,18 +145,38 @@
 
         <!-- TextBox Styling -->
         <Style Selector="TextBox">
-            <Setter Property="Background" Value="#111118" />
+            <Setter Property="Background" Value="#CC0B0B10" />
             <Setter Property="Foreground" Value="#CCCCCC" />
-            <Setter Property="BorderBrush" Value="#222233" />
-            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="BorderBrush" Value="#252535" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="TextBox:focus">
+            <Setter Property="BorderBrush" Value="#8B0000" />
+            <Setter Property="Background" Value="#E50B0B10" />
         </Style>
 
         <!-- ComboBox Styling -->
         <Style Selector="ComboBox">
-            <Setter Property="Background" Value="#111118" />
+            <Setter Property="Background" Value="#CC0B0B10" />
             <Setter Property="Foreground" Value="#CCCCCC" />
-            <Setter Property="BorderBrush" Value="#222233" />
-            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="BorderBrush" Value="#252535" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ComboBox:pointerover">
+            <Setter Property="BorderBrush" Value="#8B0000" />
+            <Setter Property="Background" Value="#E50B0B10" />
         </Style>
 
         <!-- CheckBox -->
@@ -172,14 +196,25 @@
         </LayoutTransformControl.LayoutTransform>
         <Grid x:Name="RootGrid">
 
-        <!-- Background gradient -->
-        <Border>
+        <!-- Background: Acrylic glassmorphic layer -->
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial
+                    BackgroundSource="Digger"
+                    TintColor="#0A0A0F"
+                    TintOpacity="0.8"
+                    MaterialOpacity="0.7" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+        
+        <!-- Dark gradient overlay for extra depth and brand color -->
+        <Border IsHitTestVisible="False" Opacity="0.6">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
                     <GradientStop Color="#070709" Offset="0" />
-                    <GradientStop Color="#13030A" Offset="0.45" />
+                    <GradientStop Color="#1A000A" Offset="0.45" />
                     <GradientStop Color="#0A0A0F" Offset="0.75" />
-                    <GradientStop Color="#10020A" Offset="1" />
+                    <GradientStop Color="#15000A" Offset="1" />
                 </LinearGradientBrush>
             </Border.Background>
         </Border>
@@ -192,8 +227,8 @@
             
             <!-- ═══════ SIDEBAR ═══════ -->
             <Border Grid.Column="0" 
-                    Background="#0C0C14" 
-                    BorderBrush="#1A1A2E" 
+                    Background="#AA0C0C14" 
+                    BorderBrush="#1AFFFFFF" 
                     BorderThickness="0,0,1,0">
                 <Grid RowDefinitions="Auto,*,Auto">
                     
@@ -297,9 +332,9 @@
                 <Grid x:Name="HomePage" Margin="24,44,24,24" RowDefinitions="Auto,*,Auto">
                     
                     <!-- Stats Bar -->
-                    <Border Grid.Row="0" Background="#0E0E18" CornerRadius="12" 
+                    <Border Grid.Row="0" Background="#CC0E0E18" CornerRadius="12" 
                             Padding="20,14" Margin="0,0,0,16"
-                            BorderBrush="#1A1A2E" BorderThickness="1">
+                            BorderBrush="#25FFFFFF" BorderThickness="1">
                         <Grid ColumnDefinitions="*,*,*,*,*">
                             <StackPanel Grid.Column="0" HorizontalAlignment="Center" Spacing="2">
                                 <TextBlock x:Name="CpuText" Text="0%" Foreground="White" 
@@ -346,6 +381,20 @@
                                        Foreground="#CCCCCC" FontSize="12" FontWeight="SemiBold" />
                         </Border>
 
+                        <!-- Server Auto-Join Panel -->
+                        <Border Background="#CC0E0E18" CornerRadius="12" Padding="12" BorderBrush="#25FFFFFF" BorderThickness="1" Width="520">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0">
+                                <CheckBox x:Name="AutoJoinServerCheckbox_Home" Content="Auto-Join" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" x:Name="ServerIpBox_Home" PlaceholderText="Server Address" Height="30" FontSize="12" VerticalContentAlignment="Center" Margin="0,0,6,0"/>
+                                <Button Grid.Column="2" x:Name="QuickLaunchButton" Classes="action"
+                                        Content="🚀 Quick Launch" Height="30" FontSize="11" FontWeight="Bold"
+                                        Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"
+                                        Click="QuickLaunchButton_Click" />
+                                <TextBlock Grid.Column="3" Text=":" VerticalAlignment="Center" Foreground="#888888" Margin="0,0,4,0"/>
+                                <TextBox Grid.Column="4" x:Name="ServerPortBox_Home" PlaceholderText="25565" Width="65" Height="30" FontSize="12" VerticalContentAlignment="Center"/>
+                            </Grid>
+                        </Border>
+
                         <TextBlock x:Name="StatusText" Text="Ready to play" 
                                    Foreground="#888888" FontSize="14" 
                                    HorizontalAlignment="Center" />
@@ -359,15 +408,29 @@
                     
                     <!-- Bottom Launch Bar -->
                     <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
-                        <Button x:Name="LaunchButton" Classes="launch"
-                                Content="▶  LAUNCH ({MinecraftVersion})"
-                                Height="52" FontSize="18" FontWeight="Bold"
-                                Foreground="White"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"
-                                VerticalContentAlignment="Center"
-                                Margin="0,0,12,0"
-                                Click="LaunchButton_Click" />
+                        <!-- Combined Launch Button and Alternative Accounts Dropdown -->
+                        <Grid Grid.Column="0" ColumnDefinitions="*,Auto" Margin="0,0,12,0">
+                            <Button Grid.Column="0" Grid.ColumnSpan="2" x:Name="LaunchButton" Classes="launch"
+                                    Content="▶  LAUNCH ({MinecraftVersion})"
+                                    Height="52" FontSize="16" FontWeight="Bold"
+                                    Foreground="White"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center"
+                                    Padding="0,0,160,0"
+                                    Click="LaunchButton_Click" />
+
+                            <ComboBox Grid.Column="1" x:Name="HomeAccountSelectorComboBox"
+                                      Width="160" Height="40"
+                                      FontSize="13" VerticalContentAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,8,0"
+                                      Background="#3A0000"
+                                      Foreground="White"
+                                      BorderThickness="0"
+                                      CornerRadius="8"
+                                      SelectionChanged="HomeAccountSelectorComboBox_SelectionChanged" />
+                        </Grid>
 
                         <Button Grid.Column="1" x:Name="OpenFolderBtn" Classes="action"
                                 Content="📂 Folder" Height="52" Width="110"
@@ -390,7 +453,7 @@
                 <!-- ═══════ ACCOUNTS PAGE ═══════ -->
                 <Grid x:Name="AccountsPage" IsVisible="False" Margin="24,44,24,24" ColumnDefinitions="2*,3*">
                     <!-- Left: Accounts List & Management -->
-                    <Border Grid.Column="0" Background="#0E0E18" CornerRadius="12" Padding="16" BorderBrush="#1A1A2E" BorderThickness="1" Margin="0,0,12,0">
+                    <Border Grid.Column="0" Background="#CC0E0E18" CornerRadius="12" Padding="16" BorderBrush="#25FFFFFF" BorderThickness="1" Margin="0,0,12,0">
                         <Grid RowDefinitions="Auto,*,Auto">
                             <TextBlock Grid.Row="0" Text="Manage Accounts" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
                             
@@ -410,7 +473,7 @@
                     </Border>
 
                     <!-- Right: Skin & Cape Customization -->
-                    <Border Grid.Column="1" Background="#0E0E18" CornerRadius="12" Padding="20" BorderBrush="#1A1A2E" BorderThickness="1">
+                    <Border Grid.Column="1" Background="#CC0E0E18" CornerRadius="12" Padding="20" BorderBrush="#25FFFFFF" BorderThickness="1">
                         <ScrollViewer>
                             <StackPanel Spacing="16">
                                 <TextBlock Text="Skin &amp; Cape Customizer" Foreground="White" FontSize="18" FontWeight="Bold"/>
@@ -418,7 +481,7 @@
                                 <!-- Player Skin Preview & Preset Selector -->
                                 <Grid ColumnDefinitions="*,*">
                                     <!-- Skin Preview -->
-                                    <Border Grid.Column="0" Background="#08080C" CornerRadius="8" Height="220" BorderBrush="#1A1A2E" BorderThickness="1" Padding="12">
+                                    <Border Grid.Column="0" Background="#AA08080C" CornerRadius="8" Height="220" BorderBrush="#25FFFFFF" BorderThickness="1" Padding="12">
                                         <Grid RowDefinitions="*,Auto">
                                             <Image x:Name="PlayerSkinPreview" Height="160" Width="80" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             <TextBlock Grid.Row="1" x:Name="SelectedAccountText" Text="No Account Selected" Foreground="#888888" FontSize="12" HorizontalAlignment="Center" Margin="0,8,0,0"/>
@@ -611,6 +674,12 @@
                                           IsChecked="False" />
                                 <CheckBox x:Name="MultiInstanceCheckbox" 
                                            Content="Allow launching multiple copies of the same instance" 
+                                           IsChecked="False" />
+                                <CheckBox x:Name="EnableDiscordRpcCheckbox" 
+                                           Content="Enable Discord Rich Presence" 
+                                           IsChecked="True" />
+                                <CheckBox x:Name="DiscordRpcShowIpCheckbox" 
+                                           Content="Show Server IP in Rich Presence" 
                                            IsChecked="False" />
                             </StackPanel>
                         </Border>
@@ -909,6 +978,25 @@
                 </StackPanel>
             </StackPanel>
         </Grid>
+        <!-- Auto-Update Overlay -->
+        <Grid x:Name="AutoUpdateOverlay" Background="#F00A0A0F" IsVisible="False" ZIndex="110">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+                <TextBlock Text="A New Launcher Update is Available!" Foreground="White" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="UpdateVersionText" Text="Version: Unknown" Foreground="#CCCCCC" FontSize="14" HorizontalAlignment="Center"/>
+                <ScrollViewer MaxHeight="150" Margin="0,10">
+                    <TextBlock x:Name="UpdateChangelogText" Text="" Foreground="#888888" FontSize="12" TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Center"/>
+                </ScrollViewer>
+                
+                <TextBlock x:Name="UpdateStatusText" Text="Downloading..." Foreground="#8B0000" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" IsVisible="False"/>
+                <ProgressBar x:Name="UpdateProgressBar" Width="350" Height="8" Minimum="0" Maximum="100" Value="0" Foreground="#8B0000" Background="#1A1A2E" CornerRadius="4" IsVisible="False"/>
+                
+                <StackPanel x:Name="UpdateActionButtons" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
+                    <Button Content="Update Now" Classes="launch" Click="UpdateNow_Click" Width="150" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold"/>
+                    <Button Content="Skip" Classes="action" Click="UpdateSkip_Click" Width="100" HorizontalContentAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
         </Grid>
     </LayoutTransformControl>
 </Window>

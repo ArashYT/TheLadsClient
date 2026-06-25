@@ -35,6 +35,7 @@ public class ToggleNametagsModule extends Module {
         int idx = (o instanceof DropdownOption c) ? c.getIndex() : 0;
         boolean isPlayer = entity instanceof Player;
         return switch (idx) {
+            case 0 -> false;      // None
             case 1 -> isPlayer;   // Players only
             case 2 -> !isPlayer;  // Mobs only
             default -> true;      // Everything

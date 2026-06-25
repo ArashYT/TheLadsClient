@@ -1,0 +1,29 @@
+{
+  "required": true,
+  "plugin" : "xaero.common.mixin.plugin.MixinPlugin",
+  "minVersion": "0.8",
+  "package": "xaero.common.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "MixinFabricPlayerList",
+    "MixinFabricMinecraftServer",
+    "MixinFabricPlayerEntity"
+  ],
+  "client": [
+    "MixinFabricBatchableBufferSource",
+    "MixinFabricChatListener",
+    "MixinFabricBossBarHud",
+    "MixinFabricClientPacketListener",
+    "MixinFabricGameRenderer",
+    "MixinOptionalInGameHud",
+    "MixinOptionalLevelRenderer",
+    "MixinFabricKeyMapping",
+    "MixinFabricMinecraftClient",
+    "MixinFabricSpriteAtlasTexture"
+  ],
+  "server": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

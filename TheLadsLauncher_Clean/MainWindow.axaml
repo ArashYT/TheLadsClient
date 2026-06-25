@@ -620,9 +620,16 @@
                                <CheckBox x:Name="AutoRelaunchOnCrashCheckbox" 
                                           Content="Auto-relaunch game on crash" 
                                           IsChecked="False" />
-                               <CheckBox x:Name="AutoRejoinServerCheckbox" 
-                                          Content="Auto-rejoin last server on launch (Reads logs)" 
+                               <CheckBox x:Name="AutoRejoinServerCheckbox"
+                                          Content="Auto-rejoin server on launch"
                                           IsChecked="False" />
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="20,0,0,0">
+                                    <TextBlock Text="Server:" Foreground="#888888" FontSize="12" VerticalAlignment="Center" />
+                                    <ComboBox x:Name="QuickLaunchServerComboBox" Width="260" Height="28" FontSize="12"
+                                              ToolTip.Tip="Pick a server from your Minecraft server list, or use Auto to detect from game logs" />
+                                    <Button x:Name="RefreshServerListBtn" Content="↻" Width="28" Height="28" FontSize="14"
+                                            ToolTip.Tip="Reload server list from servers.dat" Click="RefreshServerList_Click" />
+                                </StackPanel>
                                 <CheckBox x:Name="MultiInstanceCheckbox"
                                            Content="Allow launching multiple copies of the same instance"
                                            IsChecked="False" />

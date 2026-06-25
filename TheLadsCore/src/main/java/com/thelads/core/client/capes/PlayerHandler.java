@@ -381,7 +381,18 @@ public final class PlayerHandler {
                 }
             }
             final CapeType targetCape = capeType;
-            capeExecutor.submit(() -> playerHandler.setCape(targetCape));
+            capeExecutor.submit(() -> {
+                if (playerHandler.setCape(targetCape)) {
+                    return;
+                }
+                for (CapeType type : CapeType.values()) {
+                    if (type != targetCape) {
+                        if (playerHandler.setCape(type)) {
+                            break;
+                        }
+                    }
+                }
+            });
         } else if (!playerHandler.getHasLoadedTextures()) {
             com.thelads.core.config.Module capesMod = com.thelads.core.config.ModuleManager.getInstance().getModule("Capes");
             if (capesMod != null && !capesMod.isEnabled()) {

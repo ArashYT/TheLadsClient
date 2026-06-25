@@ -1,0 +1,6 @@
+{
+	"match": {
+		"type": "minecraft:glow_item_frame"
+	},
+	"luminance": 12
+}

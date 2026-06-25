@@ -1,0 +1,8 @@
+{
+	"match": {
+		"type": "minecraft:magma_cube"
+	},
+	"luminance": {
+		"type": "lambdynlights:magma_cube"
+	}
+}

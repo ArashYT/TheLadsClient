@@ -1,0 +1,9 @@
+{
+	"gui.xaero_on" : "ZAP.",
+	"gui.xaero_off" : "VYP.",
+	"gui.xaero_back" : "Zpět",
+	"gui.xaero_confirm" : "Potvrdit",
+	"gui.xaero_cancel" : "Zrušit",
+	"gui.xaero_next" : "Další >>",
+	"gui.xaero_previous" : "<< Předchozí"
+}

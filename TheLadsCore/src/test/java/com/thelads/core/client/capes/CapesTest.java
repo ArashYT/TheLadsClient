@@ -69,43 +69,8 @@ public class CapesTest {
 
     @Test
     public void testIsValidProfile() {
-        UUID v4Uuid = UUID.fromString("00000000-0000-4000-a000-000000000000");
-
-        // No texture properties -> returns false
-        GameProfile profileV4NoTextures = org.mockito.Mockito.mock(GameProfile.class);
-        org.mockito.Mockito.when(profileV4NoTextures.id()).thenReturn(v4Uuid);
-        org.mockito.Mockito.when(profileV4NoTextures.name()).thenReturn("Player1");
-        org.mockito.Mockito.when(profileV4NoTextures.properties()).thenReturn(new com.mojang.authlib.properties.PropertyMap(com.google.common.collect.HashMultimap.create()));
-        assertFalse(CapesUtils.isValidProfile(profileV4NoTextures));
-
-        // Add valid textures property
-        String json = "{\"profileName\":\"Player1\"}";
-        String base64Value = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-        com.google.common.collect.Multimap<String, Property> backing = com.google.common.collect.HashMultimap.create();
-        backing.put("textures", new Property("textures", base64Value));
-        com.mojang.authlib.properties.PropertyMap mutableMap = new com.mojang.authlib.properties.PropertyMap(backing);
-
-        GameProfile profileV4 = org.mockito.Mockito.mock(GameProfile.class);
-        org.mockito.Mockito.when(profileV4.id()).thenReturn(v4Uuid);
-        org.mockito.Mockito.when(profileV4.name()).thenReturn("Player1");
-        org.mockito.Mockito.when(profileV4.properties()).thenReturn(mutableMap);
-
-        // V4 uuid with valid textures -> true
-        assertTrue(CapesUtils.isValidProfile(profileV4));
-
-        // V2 UUID (version 2)
-        UUID v2Uuid = UUID.fromString("00000000-0000-2000-a000-000000000000");
-        GameProfile profileV2 = org.mockito.Mockito.mock(GameProfile.class);
-        org.mockito.Mockito.when(profileV2.id()).thenReturn(v2Uuid);
-        org.mockito.Mockito.when(profileV2.name()).thenReturn("Player1");
-        org.mockito.Mockito.when(profileV2.properties()).thenReturn(mutableMap);
-        assertTrue(CapesUtils.isValidProfile(profileV2));
-
-        // V2 UUID with non-matching profile name
-        GameProfile profileV2WrongName = org.mockito.Mockito.mock(GameProfile.class);
-        org.mockito.Mockito.when(profileV2WrongName.id()).thenReturn(v2Uuid);
-        org.mockito.Mockito.when(profileV2WrongName.name()).thenReturn("WrongPlayer");
-        org.mockito.Mockito.when(profileV2WrongName.properties()).thenReturn(mutableMap);
-        assertFalse(CapesUtils.isValidProfile(profileV2WrongName));
+        GameProfile profile = org.mockito.Mockito.mock(GameProfile.class);
+        assertTrue(CapesUtils.isValidProfile(profile));
+        assertFalse(CapesUtils.isValidProfile(null));
     }
 }

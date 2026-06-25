@@ -1,0 +1,12 @@
+{
+	"gui.xaero_on" : "开",
+	"gui.xaero_off" : "关",
+	"gui.xaero_back" : "返回",
+	"gui.xaero_confirm" : "确认",
+	"gui.xaero_cancel" : "取消",
+	"gui.xaero_settings_search_placeholder" : "搜索……",
+	"gui.xaero_settings_search" : "设置搜索",
+	"gui.xaero_settings_not_found" : "找不到与你的输入匹配的项！",
+	"gui.xaero_next" : "下一页 >>",
+	"gui.xaero_previous" : "<< 上一页"
+}

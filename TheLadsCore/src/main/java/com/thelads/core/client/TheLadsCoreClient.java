@@ -41,6 +41,7 @@ public class TheLadsCoreClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        setupOptimizations();
         LOGGER.info("The Lads Core Client initialized!");
         com.thelads.core.features.auto.shulkerboxutils.ShulkerBoxUtils.initClient();
         Capes.INSTANCE.onInitializeClient();
@@ -55,7 +56,6 @@ public class TheLadsCoreClient implements ClientModInitializer {
         com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast.earlyInit();
 
         // Advancements Reloaded — loads mod config
-        new com.thelads.core.features.alwayson.advancementsreloaded.AdvancementsReloadedFabric().onInitializeClient();
 
         // Entity Culling — registers tick event for culling
         new com.thelads.core.features.alwayson.entityculling.EntityCullingMod().onInitializeClient();
@@ -82,7 +82,7 @@ public class TheLadsCoreClient implements ClientModInitializer {
         // new io.github.yxmna.fancydooranim.FancyDoorAnimClient().onInitializeClient();
 
         // Threads — client-side thread display
-        new com.threads.Threads().onInitializeClient();
+        // new com.threads.Threads().onInitializeClient();
 
         // WaveyCapes — animated cape rendering
         new dev.tr7zw.waveycapes.WaveyCapesMod().onInitializeClient();
@@ -296,5 +296,194 @@ public class TheLadsCoreClient implements ClientModInitializer {
             // Re-apply launcher profile if the file changed (account switch in launcher)
             LadsProfileSync.applyIfChanged(client);
         });
+    }
+
+    private static void setupOptimizations() {
+        // ModernFix
+        try {
+            java.io.File modernFixConfig = new java.io.File("config/modernfix-mixins.properties");
+            java.io.File parent = modernFixConfig.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            java.util.Properties props = new java.util.Properties();
+            if (modernFixConfig.exists()) {
+                try (java.io.FileInputStream in = new java.io.FileInputStream(modernFixConfig)) {
+                    props.load(in);
+                }
+            }
+            props.setProperty("mixin.perf.compact_entity_models", "true");
+            props.setProperty("mixin.perf.dynamic_dfu", "true");
+            props.setProperty("mixin.perf.dynamic_resources", "true");
+            props.setProperty("mixin.perf.lazy_search_tree_registry", "true");
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(modernFixConfig)) {
+                props.store(out, "ModernFix configurations written by The Lads Core");
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to write ModernFix config", e);
+        }
+
+        // LanguageReload
+        updateJsonConfig("config/languagereload.json", "multilingualItemSearch", false);
+
+        // Entity Texture Features
+        updateJsonConfig("config/entity_texture_features.json", "alwaysCheckVanillaEmissiveSuffix", false);
+
+        // C2ME
+        updateC2METoml();
+
+        // Enforce options.txt mipmaps = 0
+        updateOptionsTxt();
+    }
+
+    private static void updateOptionsTxt() {
+        try {
+            java.io.File file = new java.io.File("options.txt");
+            java.util.List<String> lines = new java.util.ArrayList<>();
+            boolean foundMipmap = false;
+            if (file.exists()) {
+                try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(file))) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        if (line.trim().startsWith("mipmapLevels:")) {
+                            lines.add("mipmapLevels:0");
+                            foundMipmap = true;
+                        } else {
+                            lines.add(line);
+                        }
+                    }
+                }
+            }
+            if (!foundMipmap) {
+                lines.add("mipmapLevels:0");
+            }
+            try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.FileWriter(file))) {
+                for (String line : lines) {
+                    pw.println(line);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to update options.txt", e);
+        }
+    }
+
+    private static void updateJsonConfig(String filePath, String key, Object value) {
+        try {
+            java.io.File file = new java.io.File(filePath);
+            java.io.File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            com.google.gson.JsonObject json = new com.google.gson.JsonObject();
+            if (file.exists()) {
+                try (java.io.FileReader reader = new java.io.FileReader(file)) {
+                    com.google.gson.JsonObject parsed = new com.google.gson.Gson().fromJson(reader, com.google.gson.JsonObject.class);
+                    if (parsed != null) {
+                        json = parsed;
+                    }
+                } catch (Exception e) {
+                    // Ignore, start empty
+                }
+            }
+            if (value instanceof Boolean) {
+                json.addProperty(key, (Boolean) value);
+            } else if (value instanceof Number) {
+                json.addProperty(key, (Number) value);
+            } else if (value instanceof String) {
+                json.addProperty(key, (String) value);
+            }
+            try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
+                new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(json, writer);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to update config file: " + filePath, e);
+        }
+    }
+
+    private static void updateC2METoml() {
+        try {
+            java.io.File file = new java.io.File("config/c2me.toml");
+            java.io.File parent = file.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            java.util.List<String> lines = new java.util.ArrayList<>();
+            if (file.exists()) {
+                try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(file))) {
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        lines.add(line);
+                    }
+                }
+            }
+
+            // Update or add gcFreeChunkSerializer = true (before any sections)
+            boolean foundGcFree = false;
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i).trim();
+                if (line.startsWith("[")) {
+                    break;
+                }
+                if (line.startsWith("gcFreeChunkSerializer")) {
+                    lines.set(i, "gcFreeChunkSerializer = true");
+                    foundGcFree = true;
+                    break;
+                }
+            }
+            if (!foundGcFree) {
+                lines.add(0, "gcFreeChunkSerializer = true");
+            }
+
+            // Find [noTickViewDistance] section
+            int sectionIndex = -1;
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i).trim();
+                if (line.equals("[noTickViewDistance]")) {
+                    sectionIndex = i;
+                    break;
+                }
+            }
+
+            if (sectionIndex == -1) {
+                lines.add("");
+                lines.add("[noTickViewDistance]");
+                lines.add("chunkSendingSpeedMultiplierPercentage = 0");
+                lines.add("maxConcurrentChunkLoads = 128");
+            } else {
+                boolean foundMultiplier = false;
+                boolean foundMaxLoads = false;
+                int nextSectionIndex = lines.size();
+                for (int i = sectionIndex + 1; i < lines.size(); i++) {
+                    String line = lines.get(i).trim();
+                    if (line.startsWith("[")) {
+                        nextSectionIndex = i;
+                        break;
+                    }
+                    if (line.startsWith("chunkSendingSpeedMultiplierPercentage")) {
+                        lines.set(i, "chunkSendingSpeedMultiplierPercentage = 0");
+                        foundMultiplier = true;
+                    }
+                    if (line.startsWith("maxConcurrentChunkLoads")) {
+                        lines.set(i, "maxConcurrentChunkLoads = 128");
+                        foundMaxLoads = true;
+                    }
+                }
+                if (!foundMaxLoads) {
+                    lines.add(nextSectionIndex, "maxConcurrentChunkLoads = 128");
+                    if (nextSectionIndex < lines.size()) nextSectionIndex++;
+                }
+                if (!foundMultiplier) {
+                    lines.add(nextSectionIndex, "chunkSendingSpeedMultiplierPercentage = 0");
+                }
+            }
+
+            try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.FileWriter(file))) {
+                for (String line : lines) {
+                    pw.println(line);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to update c2me.toml", e);
+        }
     }
 }

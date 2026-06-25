@@ -22,7 +22,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.thelads.core.modules.killbanner.KillBannerRenderer;
 
@@ -118,8 +117,8 @@ public class GuiMixin {
         // Clamp so the scoreboard never renders off-screen, regardless of element position
         int screenW = mc.getWindow().getGuiScaledWidth();
         int screenH = mc.getWindow().getGuiScaledHeight();
-        int ex = Mth.clamp(sbEl.getX(), 0, Math.max(0, screenW - sbW));
-        int ey = Mth.clamp(sbEl.getY(), 0, Math.max(0, screenH - sbH));
+        int ex = Mth.clamp(sbEl.getX(), 0, Math.max(0, screenW - (int) (sbW * scale)));
+        int ey = Mth.clamp(sbEl.getY(), 0, Math.max(0, screenH - (int) (sbH * scale)));
 
         var pose = g.pose();
         pose.pushMatrix();
@@ -206,21 +205,4 @@ public class GuiMixin {
         }
     }
 
-    @ModifyArg(
-        // 26.1.2: every blitSprite overload takes a RenderPipeline first arg now, so the old
-        // (Identifier,IIII) descriptor never matched (silently dead). x is now arg index 2.
-        method = "extractItemHotbar",
-        at = @At(value = "INVOKE",
-                 target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V",
-                 ordinal = 1),
-        index = 2,
-        require = 0
-    )
-    private int ladsModifyHotbarSelectionX(int originalX) {
-        Module m = ModuleManager.getInstance().getModule("SmoothHotbar");
-        if (m == null || !m.isEnabled() || ladsInterpolatedSlot < 0) return originalX;
-        Minecraft mc = Minecraft.getInstance();
-        int guiWidth = mc.getWindow().getGuiScaledWidth();
-        return guiWidth / 2 - 91 - 1 + (int) (ladsInterpolatedSlot * 20.0f);
-    }
 }

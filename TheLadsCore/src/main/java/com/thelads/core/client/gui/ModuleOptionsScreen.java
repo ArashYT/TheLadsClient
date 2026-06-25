@@ -3,6 +3,7 @@ package com.thelads.core.client.gui;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.ColorOption;
 import com.thelads.core.config.ConfigManager;
+import com.thelads.core.config.DoubleOption;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.TextOption;
@@ -25,7 +26,7 @@ public class ModuleOptionsScreen extends Screen {
     private final Module module;
     private Option activeDropdownOption = null;
     private double scrollOffset = 0;
-    private SliderOption draggingSlider = null;
+    private Option draggingSlider = null;
 
     private static final int BG         = 0xDD050508; // Translucent dark obsidian black/red base
     private static final int CARD       = 0xCC180A0A; // Glassy obsidian cards with subtle crimson tint
@@ -40,6 +41,7 @@ public class ModuleOptionsScreen extends Screen {
         super(Component.literal(module.getName() + " Options"));
         this.parent = parent;
         this.module = module;
+        this.module.setLastOpenedTime(System.currentTimeMillis());
     }
 
     /** Deterministic row order, shared by render and click handling. */
@@ -125,6 +127,19 @@ public class ModuleOptionsScreen extends Screen {
                     int fillWidth = (int) (((val - min) / (max - min)) * sw);
                     g.fill(sx, sy, sx + fillWidth, sy + 18, ACCENT);
                     String vText = s.getStep() >= 1.0 || s.getStep() == 0 ? String.valueOf(s.getIntValue()) : String.format("%.1f", val);
+                    g.text(this.font, vText, sx + sw / 2 - this.font.width(vText) / 2, sy + 5, TEXT, false);
+                } else if (o instanceof DoubleOption) {
+                    DoubleOption s = (DoubleOption) o;
+                    int sw = 120;
+                    int sx = cx + cw - sw - 6;
+                    int sy = y + 5;
+                    g.fill(sx, sy, sx + sw, sy + 18, OFF);
+                    double min = s.getMin();
+                    double max = s.getMax();
+                    double val = s.get();
+                    int fillWidth = (int) (((val - min) / (max - min)) * sw);
+                    g.fill(sx, sy, sx + fillWidth, sy + 18, ACCENT);
+                    String vText = String.format("%.1f", val);
                     g.text(this.font, vText, sx + sw / 2 - this.font.width(vText) / 2, sy + 5, TEXT, false);
                 } else if (o instanceof TextOption) {
                     TextOption t = (TextOption) o;
@@ -335,6 +350,18 @@ public class ModuleOptionsScreen extends Screen {
                     }
                     return true;
                 }
+                if (o instanceof DoubleOption) {
+                    DoubleOption s = (DoubleOption) o;
+                    int sw = 120;
+                    int sx = cx + cw - sw - 6;
+                    if (mx >= sx && mx < sx + sw) {
+                        draggingSlider = s;
+                        double pct = (mx - sx) / (double) sw;
+                        s.set(s.getMin() + pct * (s.getMax() - s.getMin()));
+                        module.touch();
+                    }
+                    return true;
+                }
                 if (o instanceof TextOption) {
                     return true;
                 }
@@ -363,7 +390,13 @@ public class ModuleOptionsScreen extends Screen {
             int sw = 120;
             int sx = cx + cw - sw - 6;
             double pct = Math.max(0.0, Math.min(1.0, (event.x() - sx) / (double) sw));
-            draggingSlider.setValue(draggingSlider.getMin() + pct * (draggingSlider.getMax() - draggingSlider.getMin()));
+            if (draggingSlider instanceof SliderOption) {
+                SliderOption s = (SliderOption) draggingSlider;
+                s.setValue(s.getMin() + pct * (s.getMax() - s.getMin()));
+            } else if (draggingSlider instanceof DoubleOption) {
+                DoubleOption s = (DoubleOption) draggingSlider;
+                s.set(s.getMin() + pct * (s.getMax() - s.getMin()));
+            }
             module.touch();
             return true;
         }

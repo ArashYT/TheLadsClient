@@ -1,0 +1,9 @@
+{
+	"gui.xaero_on" : "Sim",
+	"gui.xaero_off" : "Não",
+	"gui.xaero_back" : "Voltar",
+	"gui.xaero_confirm" : "Salvar",
+	"gui.xaero_cancel" : "Cancelar",
+	"gui.xaero_next" : "Seguinte >>",
+	"gui.xaero_previous" : "<< Anterior"
+}

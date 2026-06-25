@@ -1,0 +1,25 @@
+{
+  "cursors_extended.options": "Configurações do Cursor",
+  "cursors_extended.options.enabled": "Ativado",
+  "cursors_extended.options.scale": "Escala",
+  "cursors_extended.options.xhot": "Deslocamento X",
+  "cursors_extended.options.yhot": "Deslocamento Y",
+  "cursors_extended.options.cursor-type.default": "Padrão",
+  "cursors_extended.options.cursor-type.pointing_hand": "Ponteiro",
+  "cursors_extended.options.cursor-type.grabbing": "Agarro",
+  "cursors_extended.options.cursor-type.ibeam": "Texto",
+  "cursors_extended.options.cursor-type.shift": "Deslocamento",
+
+  "cursors_extended.options.adapt.item_slot": "Espaço de Item do Inventário",
+  "cursors_extended.options.adapt.item_grab": "Pegar Item no Inventário",
+  "cursors_extended.options.adapt.creative_tabs": "Aba do Inventário Criativo",
+  "cursors_extended.options.adapt.enchantments": "Botões de Encantamento",
+  "cursors_extended.options.adapt.stonecutter": "Botões de Receita da Cortadora de Pedra",
+  "cursors_extended.options.adapt.loom": "Botões do Tear",
+  "cursors_extended.options.adapt.advancements": "Aba de Progressos",
+  "cursors_extended.options.adapt.world": "Botão de Jogar no Mundo",
+  "cursors_extended.options.adapt.server": "Botão de Jogar no Servidor",
+
+  "cursors_extended.options.adapt": "Cursor Adaptável",
+  "cursors_extended.options.adapt.tooltip": "Atualiza a configuração ativada para todos os cursores, exceto o cursor Padrão."
+}

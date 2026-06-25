@@ -18,6 +18,17 @@ import java.util.function.IntSupplier;
 public class LoadingOverlayMixin {
     @Shadow @Final private Minecraft minecraft;
     @Shadow private float currentProgress;
+    @Shadow @Final private net.minecraft.server.packs.resources.ReloadInstance reload;
+    @Shadow @Final private java.util.function.Consumer<java.util.Optional<Throwable>> onFinish;
+
+    @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
+    private void onTick(CallbackInfo ci) {
+        if (this.reload.done().isDone()) {
+            this.onFinish.accept(java.util.Optional.empty());
+            this.minecraft.gui.setOverlay(null);
+            ci.cancel();
+        }
+    }
 
     @Redirect(
         method = "extractRenderState",

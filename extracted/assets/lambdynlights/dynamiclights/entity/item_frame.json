@@ -1,0 +1,11 @@
+{
+	"match": {
+		"type": [
+			"minecraft:item_frame",
+			"minecraft:glow_item_frame"
+		]
+	},
+	"luminance": {
+		"type": "lambdynlights:item_frame"
+	}
+}

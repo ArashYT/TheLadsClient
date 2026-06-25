@@ -2531,6 +2531,7 @@ public partial class MainWindow : Window
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
         AutoRelaunchOnCrashCheckbox.IsChecked = settings.AutoRelaunchOnCrash;
         AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
+        PopulateServerList();
         MultiInstanceCheckbox.IsChecked = settings.AllowMultiInstance;
         ParticleCheckbox.IsChecked = settings.ShowParticles;
         SyncResourcePacksCheckbox.IsChecked = settings.SyncResourcePacksFromGlobal;
@@ -2568,6 +2569,48 @@ public partial class MainWindow : Window
         UiScaleSelector.SelectedItem = settings.UiScale;
     }
 
+    // ── Server list picker ────────────────────────────────────────────────────
+
+    private record ServerListItem(string Display, string? Ip)
+    {
+        public override string ToString() => Display;
+    }
+
+    private void PopulateServerList()
+    {
+        QuickLaunchServerComboBox.Items.Clear();
+        QuickLaunchServerComboBox.Items.Add(new ServerListItem("Auto (detect from logs)", null));
+
+        var servers = MinecraftServerListReader.Read(settings.InstancePath);
+        foreach (var s in servers)
+            QuickLaunchServerComboBox.Items.Add(new ServerListItem($"{s.Name}  ({s.Ip})", s.Ip));
+
+        // Restore saved selection
+        if (!string.IsNullOrEmpty(settings.QuickLaunchServerIp))
+        {
+            foreach (var item in QuickLaunchServerComboBox.Items)
+            {
+                if (item is ServerListItem sli && sli.Ip == settings.QuickLaunchServerIp)
+                {
+                    QuickLaunchServerComboBox.SelectedItem = sli;
+                    return;
+                }
+            }
+            // Saved IP no longer in server list — add it as a manual entry
+            var manual = new ServerListItem($"{settings.QuickLaunchServerIp} (manual)", settings.QuickLaunchServerIp);
+            QuickLaunchServerComboBox.Items.Add(manual);
+            QuickLaunchServerComboBox.SelectedItem = manual;
+        }
+        else
+        {
+            QuickLaunchServerComboBox.SelectedIndex = 0;
+        }
+    }
+
+    private void RefreshServerList_Click(object? sender, RoutedEventArgs e) => PopulateServerList();
+
+    // ── Java selector ─────────────────────────────────────────────────────────
+
     private void PopulateJavaSelector()
     {
         JavaSelector.Items.Clear();
@@ -2597,6 +2640,10 @@ public partial class MainWindow : Window
         settings.AutoFixCrashes = AutoFixCrashesCheckbox.IsChecked ?? true;
         settings.AutoRelaunchOnCrash = AutoRelaunchOnCrashCheckbox.IsChecked ?? false;
         settings.AutoRejoinServer = AutoRejoinServerCheckbox.IsChecked ?? false;
+        if (QuickLaunchServerComboBox.SelectedItem is ServerListItem sli && sli.Ip != null)
+            settings.QuickLaunchServerIp = sli.Ip;
+        else
+            settings.QuickLaunchServerIp = "";
         settings.AllowMultiInstance = MultiInstanceCheckbox.IsChecked ?? false;
         settings.FullscreenOnLaunch = FullscreenOnLaunchCheckbox.IsChecked ?? true;
         settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
@@ -3630,14 +3677,30 @@ public partial class MainWindow : Window
             JavaPath = settings.JavaPath
         };
 
-        if (settings.AutoRejoinServer && !string.IsNullOrEmpty(settings.LastServerIp))
+        if (settings.AutoRejoinServer)
         {
-            launchOpt.ServerIp = settings.LastServerIp;
-            if (settings.LastServerPort > 0)
+            // Prefer a manually-picked server; fall back to the last log-detected one
+            string rejoinIp = !string.IsNullOrEmpty(settings.QuickLaunchServerIp)
+                ? settings.QuickLaunchServerIp
+                : settings.LastServerIp;
+
+            if (!string.IsNullOrEmpty(rejoinIp))
             {
-                launchOpt.ServerPort = settings.LastServerPort;
+                // Parse host:port if present
+                int colon = rejoinIp.LastIndexOf(':');
+                if (colon > 0 && int.TryParse(rejoinIp.Substring(colon + 1), out int parsedPort))
+                {
+                    launchOpt.ServerIp = rejoinIp.Substring(0, colon);
+                    launchOpt.ServerPort = parsedPort;
+                }
+                else
+                {
+                    launchOpt.ServerIp = rejoinIp;
+                    if (settings.LastServerPort > 0 && string.IsNullOrEmpty(settings.QuickLaunchServerIp))
+                        launchOpt.ServerPort = settings.LastServerPort;
+                }
+                Log($"[Launcher] Auto-Rejoin: {launchOpt.ServerIp}:{launchOpt.ServerPort}");
             }
-            Log($"[Launcher] Auto-Rejoin enabled. Server: {settings.LastServerIp}:{settings.LastServerPort}");
         }
 
         if (settings.QuickLaunch)

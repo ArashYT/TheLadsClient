@@ -70,6 +70,7 @@ public class LauncherSettings
     // Launch
     public bool FullscreenOnLaunch { get; set; } = true;
     public bool QuickLaunch { get; set; } = false;   // skip asset verification if already installed
+    public string QuickLaunchServerIp { get; set; } = "";  // server to join on launch ("" = auto from logs)
 
     // Sync
     public bool SyncResourcePacksFromGlobal { get; set; } = false;

@@ -139,7 +139,7 @@ implements DataHolder<HeldItemHandler.HeldItemState> {
                     if (NEABaseMod.config.animateLanterns && entity instanceof PlayerData) {
                         PlayerData playerData = (PlayerData)entity;
                         if (this.lanternItems.contains(itemStack.getItem())) {
-                            this.lanternAnimation(entity, playerData, itemStack, arm, matrices, vertexConsumers, livingEntityRenderState, armedModel);
+                            this.lanternAnimation(entity, playerData, itemStack, arm, matrices, vertexConsumers, livingEntityRenderState, armedModel, light);
                             info.cancel();
                             return;
                         }
@@ -201,7 +201,7 @@ implements DataHolder<HeldItemHandler.HeldItemState> {
         }
     }
 
-    private void lanternAnimation(LivingEntity entity, PlayerData playerData, ItemStack itemStack, HumanoidArm arm, PoseStack matrices, SubmitNodeCollector vertexConsumers, LivingEntityRenderState livingEntityRenderState, ArmedModel armedModel) {
+    private void lanternAnimation(LivingEntity entity, PlayerData playerData, ItemStack itemStack, HumanoidArm arm, PoseStack matrices, SubmitNodeCollector vertexConsumers, LivingEntityRenderState livingEntityRenderState, ArmedModel armedModel, int light) {
         double rawDelta;
         matrices.pushPose();
         armedModel.translateToHand((EntityRenderState)livingEntityRenderState, arm, matrices);
@@ -258,7 +258,7 @@ implements DataHolder<HeldItemHandler.HeldItemState> {
         matrices.translate(-chainOffset, -chainYOffset, -chainOffset);
         BlockModelRenderState blockState = new BlockModelRenderState();
         ((EntityRenderDispatcherAccessor)Minecraft.getInstance().getEntityRenderDispatcher()).nea$getBlockModelResolver().update(blockState, Block.byItem((Item)itemStack.getItem()).defaultBlockState(), BlockDisplayContext.create());
-        blockState.submit(matrices, vertexConsumers, 0xF000F0, OverlayTexture.NO_OVERLAY, 0);
+        blockState.submit(matrices, vertexConsumers, light, OverlayTexture.NO_OVERLAY, 0);
         matrices.popPose();
     }
 
