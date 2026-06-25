@@ -43,11 +43,10 @@ public class FullbrightModule extends Module {
     }
 
     private double getTargetGamma() {
-        Option o = getOption("Level");
-        if (o instanceof DropdownOption) {
-            int idx = ((DropdownOption) o).getIndex();
-            if (idx >= 0 && idx < GAMMA_LEVELS.length) return GAMMA_LEVELS[idx];
+        Option o = getOption("Brightness Multiplier");
+        if (o instanceof SliderOption) {
+            return ((SliderOption) o).getValue();
         }
-        return 10.0;
+        return 1.0;
     }
 }

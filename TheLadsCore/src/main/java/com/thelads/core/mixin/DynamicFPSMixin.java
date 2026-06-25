@@ -20,11 +20,22 @@ public abstract class DynamicFPSMixin {
 
     @Inject(method = "getFramerateLimit", at = @At("RETURN"), cancellable = true, require = 0)
     private void onGetFramerateLimit(CallbackInfoReturnable<Integer> cir) {
+        int limit = cir.getReturnValue();
         Module baseModule = ModuleManager.getInstance().getModule("DynamicFPS");
         if (baseModule instanceof DynamicFPSModule dynFps) {
-            dynFps.setOriginalFramerateLimit(cir.getReturnValue());
+            dynFps.setOriginalFramerateLimit(limit);
             dynFps.onWindowFocusChanged(this.minecraft.isWindowActive());
-            cir.setReturnValue(dynFps.getCurrentFramerateLimit());
+            limit = dynFps.getCurrentFramerateLimit();
         }
+
+        int exordiumLimit = com.thelads.core.modules.ExordiumModule.getFpsLimit();
+        if (exordiumLimit > 0) {
+            if (this.minecraft.isWindowActive()) {
+                limit = exordiumLimit;
+            } else {
+                limit = Math.min(limit, exordiumLimit);
+            }
+        }
+        cir.setReturnValue(limit);
     }
 }

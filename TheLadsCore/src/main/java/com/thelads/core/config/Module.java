@@ -11,6 +11,7 @@ public class Module {
     private boolean enabled;
     private boolean favorite;
     private long lastModified;
+    private long lastOpenedTime;
     private final List<Option> options = new ArrayList<>();
     private Category category = Category.ALL;
 
@@ -90,6 +91,14 @@ public class Module {
 
     public void setLastModified(long lastModified) {
         this.lastModified = lastModified;
+    }
+
+    public long getLastOpenedTime() {
+        return lastOpenedTime;
+    }
+
+    public void setLastOpenedTime(long lastOpenedTime) {
+        this.lastOpenedTime = lastOpenedTime;
     }
 
     /** Mark this module as just changed (for "last modified" sorting). */

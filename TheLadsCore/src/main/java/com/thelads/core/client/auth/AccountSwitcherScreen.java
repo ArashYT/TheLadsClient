@@ -24,6 +24,7 @@ public class AccountSwitcherScreen extends Screen {
     private final List<LadsAccount> accounts = new ArrayList<>();
     private net.minecraft.world.entity.player.PlayerSkin activeSkin;
     private UUID activeProfileId;
+    private final java.util.Map<String, net.minecraft.world.entity.player.PlayerSkin> accountSkins = new java.util.concurrent.ConcurrentHashMap<>();
 
     public static class LadsAccount {
         public final String username;
@@ -52,6 +53,7 @@ public class AccountSwitcherScreen extends Screen {
 
     private void loadAccounts() {
         accounts.clear();
+        accountSkins.clear();
         File f = new File("C:/The Lads Client/lads_accounts.json");
         if (f.exists()) {
             try {
@@ -236,23 +238,28 @@ public class AccountSwitcherScreen extends Screen {
         try {
             if (activeSkin == null || !activeProfileId.equals(u.getProfileId())) {
                 activeProfileId = u.getProfileId();
-                com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(u.getProfileId(), u.getName());
                 activeSkin = net.minecraft.client.resources.DefaultPlayerSkin.get(u.getProfileId());
+                final UUID capturedId = u.getProfileId();
+                final String capturedName = u.getName();
                 java.util.concurrent.CompletableFuture.runAsync(() -> {
                     try {
-                        com.mojang.authlib.yggdrasil.ProfileResult result = Minecraft.getInstance().services().sessionService().fetchProfile(u.getProfileId(), true);
-                        com.mojang.authlib.GameProfile filledProfile = result != null ? result.profile() : profile;
+                        com.mojang.authlib.GameProfile baseProfile = new com.mojang.authlib.GameProfile(capturedId, capturedName);
+                        com.mojang.authlib.yggdrasil.ProfileResult result =
+                            Minecraft.getInstance().services().sessionService().fetchProfile(capturedId, true);
+                        com.mojang.authlib.GameProfile filledProfile = (result != null) ? result.profile() : baseProfile;
+                        // Resolve skin on background thread so we don't block the main thread
+                        net.minecraft.world.entity.player.PlayerSkin skin =
+                            Minecraft.getInstance().getSkinManager().createLookup(filledProfile, false).get();
+                        if (skin == null) skin = net.minecraft.client.resources.DefaultPlayerSkin.get(capturedId);
+                        final net.minecraft.world.entity.player.PlayerSkin resolvedSkin = skin;
                         Minecraft.getInstance().execute(() -> {
-                            try {
-                                if (activeProfileId.equals(u.getProfileId())) {
-                                    activeSkin = Minecraft.getInstance().getSkinManager().createLookup(filledProfile, true).get();
-                                }
-                            } catch (Exception ignored) {}
+                            if (capturedId.equals(activeProfileId)) activeSkin = resolvedSkin;
                         });
                     } catch (Exception ignored) {}
                 });
             }
-            net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(g, activeSkin, cardX + 6, cardY + 4, 16);
+            if (activeSkin != null)
+                net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(g, activeSkin, cardX + 6, cardY + 4, 16);
         } catch (Exception ex) {
             // Ignore
         }
@@ -267,6 +274,32 @@ public class AccountSwitcherScreen extends Screen {
         for (LadsAccount acc : accounts) {
             String label = acc.type.equalsIgnoreCase("microsoft") ? acc.username + " (MS)" : acc.username + " (Offline)";
             drawLadsButton(g, label, cx - 100, buttonY, 200, 20, mouseX, mouseY);
+            // Draw per-account skin head if available
+            net.minecraft.world.entity.player.PlayerSkin accSkin = accountSkins.get(acc.uuid);
+            if (accSkin == null && acc.uuid != null && !acc.uuid.isEmpty()) {
+                final String capturedUuid = acc.uuid;
+                final String capturedName = acc.username;
+                accountSkins.put(capturedUuid, net.minecraft.client.resources.DefaultPlayerSkin.get(
+                    UUID.fromString(capturedUuid.replaceFirst(
+                        "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)",
+                        "$1-$2-$3-$4-$5")))); // set default immediately so we only fetch once
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
+                        UUID uuid = UUID.fromString(capturedUuid.replaceFirst(
+                            "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)",
+                            "$1-$2-$3-$4-$5"));
+                        com.mojang.authlib.GameProfile p = new com.mojang.authlib.GameProfile(uuid, capturedName);
+                        com.mojang.authlib.yggdrasil.ProfileResult r = Minecraft.getInstance().services().sessionService().fetchProfile(uuid, true);
+                        com.mojang.authlib.GameProfile fp = (r != null) ? r.profile() : p;
+                        net.minecraft.world.entity.player.PlayerSkin s = Minecraft.getInstance().getSkinManager().createLookup(fp, false).get();
+                        if (s != null) accountSkins.put(capturedUuid, s);
+                    } catch (Exception ignored) {}
+                });
+            }
+            try {
+                if (accSkin != null)
+                    net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(g, accSkin, cx - 100 + 2, buttonY + 2, 16);
+            } catch (Exception ignored) {}
             buttonY += 26;
         }
 

@@ -46,7 +46,7 @@ public class PlayerTabOverlayMixin {
         ladsTabPushed = true;
     }
 
-    @Inject(method = "extractRenderState", at = @At("TAIL"), require = 0)
+    @Inject(method = "extractRenderState", at = @At("RETURN"), require = 0)
     private void ladsTabPost(GuiGraphicsExtractor graphics, int width, net.minecraft.world.scores.Scoreboard scoreboard, net.minecraft.world.scores.Objective objective, CallbackInfo ci) {
         if (ladsTabPushed) {
             graphics.pose().popMatrix();

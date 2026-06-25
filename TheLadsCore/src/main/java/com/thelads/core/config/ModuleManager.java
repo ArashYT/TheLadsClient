@@ -19,7 +19,6 @@ import com.thelads.core.modules.EnhancedTooltipsModule;
 import com.thelads.core.modules.EnhancedToolbarsModule;
 import com.thelads.core.modules.NotEnoughAnimationsModule;
 import com.thelads.core.modules.BetterStatsModule;
-import com.thelads.core.modules.AdvancementsReloadedModule;
 import com.thelads.core.modules.SkinLayersModule;
 import com.thelads.core.modules.ImmediatelyFastModule;
 
@@ -108,15 +107,16 @@ public class ModuleManager {
         tp.addOption(new BoolOption("Show All", false));
         tp.addOption(new DropdownOption("Max Packs", 2, "1", "2", "3", "4", "5", "6", "7", "8"));
         tp.addOption(new BoolOption("Show Hidden", false));
+        tp.addOption(new BoolOption("Disable Hidden Overrides", false));
         register(tp);
 
-        HudModule pot = hud("Potions", "Show your active potion effects.");
+        HudModule pot = hud("Potion Effects", "Show your active potion effects.");
         pot.addOption(new BoolOption("Show duration", true));
         pot.addOption(new BoolOption("Show when empty", false));
 
         // Gameplay toggle modules (driven by client tick, no mixins)
         FullbrightModule fb = new FullbrightModule();
-        fb.addOption(new DropdownOption("Level", 2, "High", "Very High", "Max", "Infinite"));
+        fb.addOption(new SliderOption("Brightness Multiplier", 1.0, 10.0, 1.0, 0.5));
         register(fb, Module.Category.MECHANIC);
 
         ToggleSprintModule ts = new ToggleSprintModule();
@@ -145,13 +145,10 @@ public class ModuleManager {
 
         // Dynamic FPS per-situation
         com.thelads.core.modules.DynamicFPSModule dynFps = new com.thelads.core.modules.DynamicFPSModule();
-        dynFps.addOption(new DropdownOption("Unfocused FPS", 2, "1", "5", "10", "15", "20", "30", "60", "Unlimited"));
-        dynFps.addOption(new DropdownOption("AFK FPS",       3, "1", "5", "10", "15", "20", "30", "60", "Unlimited"));
         register(dynFps, Module.Category.MECHANIC);
 
         // Gameplay visibility / chat (replacements for external mods)
         com.thelads.core.modules.ToggleNametagsModule tnm = new com.thelads.core.modules.ToggleNametagsModule();
-        tnm.addOption(new DropdownOption("Hide", 0, "All", "Players", "Mobs"));
         register(tnm, Module.Category.MECHANIC);
 
         com.thelads.core.modules.TitleScreenModule tsm = new com.thelads.core.modules.TitleScreenModule();
@@ -208,9 +205,8 @@ public class ModuleManager {
                 super.setIndex(i);
                 var config = com.thelads.core.client.capes.Capes.getCONFIG();
                 if (config != null) {
-                    int idx = getIndex();
-                    if (idx >= 0 && idx < com.thelads.core.client.capes.CapeType.values().length) {
-                        config.setClientCapeType(com.thelads.core.client.capes.CapeType.values()[idx]);
+                    if (i >= 0 && i < com.thelads.core.client.capes.CapeType.values().length) {
+                        config.setClientCapeType(com.thelads.core.client.capes.CapeType.values()[i]);
                         config.save();
                     }
                 }
@@ -347,6 +343,7 @@ public class ModuleManager {
         register(farBlock);
 
         Module raised = new Module("Raised", "Moves the hotbar up when the chat is open.");
+        raised.addOption(new SliderOption("Distance", 0, 50, 14, 1));
         raised.setEnabled(true);
         register(raised);
 
@@ -370,9 +367,6 @@ public class ModuleManager {
         betterStats.setEnabled(true);
         register(betterStats);
 
-        AdvancementsReloadedModule advancementsReloaded = new AdvancementsReloadedModule();
-        advancementsReloaded.setEnabled(true);
-        register(advancementsReloaded);
 
         Module disableNarrator = new Module("DisableNarrator", "Disables the annoying narrator.");
         disableNarrator.setEnabled(true);

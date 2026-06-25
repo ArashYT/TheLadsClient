@@ -1,0 +1,9 @@
+{
+	"gui.xaero_on" : "Da",
+	"gui.xaero_off" : "Ne",
+	"gui.xaero_back" : "Natrag",
+	"gui.xaero_confirm" : "Potvrdi",
+	"gui.xaero_cancel" : "Poništi",
+	"gui.xaero_next" : "Sljedeće >>",
+	"gui.xaero_previous" : "<< Prethodno"
+}

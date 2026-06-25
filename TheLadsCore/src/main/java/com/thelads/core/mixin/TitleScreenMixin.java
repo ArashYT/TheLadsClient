@@ -51,6 +51,11 @@ public abstract class TitleScreenMixin extends Screen {
         );
     }
 
+    @Inject(method = "init", at = @At("TAIL"), require = 0)
+    private void ladsBenchmarkTitleScreenInit(CallbackInfo ci) {
+        com.thelads.core.client.benchmark.BenchmarkTracker.setTitleScreenReadyTime(System.nanoTime());
+    }
+
     @Inject(method = "extractRenderState", at = @At("HEAD"), require = 0)
     private void ladsRenderAccountCard(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         int cardX = CARD_MARGIN;

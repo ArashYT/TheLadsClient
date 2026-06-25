@@ -1,0 +1,48 @@
+{
+  "modmenu.descriptionTranslation.cursors_extended": "Anpassbarer Mauszeiger für Minecraft.",
+
+  "cursors_extended.options": "Mauszeiger-Einstellungen",
+  "cursors_extended.options.enabled": "Aktiviert",
+  "cursors_extended.options.scale": "Skalierung",
+  "cursors_extended.options.xhot": "X-Versatz",
+  "cursors_extended.options.yhot": "Y-Versatz",
+  "cursors_extended.options.animate": "Animation",
+  "cursors_extended.options.animate-reset": "Animation neu starten",
+
+  "cursors_extended.options.cursor-type.default": "Standard",
+  "cursors_extended.options.cursor-type.pointing_hand": "Zeiger",
+  "cursors_extended.options.cursor-type.grabbing": "Greifhand",
+  "cursors_extended.options.cursor-type.ibeam": "Text",
+  "cursors_extended.options.cursor-type.shift": "Shift",
+  "cursors_extended.options.cursor-type.busy": "Ladekreis",
+  "cursors_extended.options.cursor-type.crosshair": "Fadenkreuz",
+  "cursors_extended.options.cursor-type.resize_ew": "Strecken OW",
+  "cursors_extended.options.cursor-type.resize_ns": "Strecken NS",
+  "cursors_extended.options.cursor-type.resize_nwse": "Strecken NWSO",
+  "cursors_extended.options.cursor-type.resize_nesw": "Strecken NOSW",
+  "cursors_extended.options.cursor-type.not_allowed": "Nicht erlaubt",
+
+  "cursors_extended.options.global.title": "Globale Cursor-Einstellungen",
+  "cursors_extended.options.global.tooltip": "Überschreibt die %1$s-Einstellung für alle Cursor. Aktualisiert die %1$s-Einstellung des Cursors nicht.",
+  "cursors_extended.options.global.inactive.tooltip": "%1$s wird von den globalen Cursor-Einstellungen überschrieben.",
+  "cursors_extended.options.global.animation": "Cursor-Animationen",
+  "cursors_extended.options.global.animation.tooltip": "Aktualisiert die Animationseinstellung für alle animierten Cursor.",
+
+  "cursors_extended.options.adapt": "Adaptiver Mauszeiger",
+  "cursors_extended.options.adapt.tooltip": "Aktualisiert die Aktivierungsoption für alle Mauszeiger außer dem Standard-Mauszeiger.",
+  "cursors_extended.options.adapt.item_slot": "Inventar-Gegenstand-Slot",
+  "cursors_extended.options.adapt.item_grab": "Inventar-Gegenstand aufnehmen",
+  "cursors_extended.options.adapt.creative_tabs": "Kreativmodus-Tabs",
+  "cursors_extended.options.adapt.enchantments": "Verzauberungstisch-Schaltflächen",
+  "cursors_extended.options.adapt.stonecutter": "Schleifstein-Rezept-Schaltflächen",
+  "cursors_extended.options.adapt.loom": "Webstuhl-Muster-Schaltflächen",
+  "cursors_extended.options.adapt.advancements": "Fortschritts-Tabs",
+  "cursors_extended.options.adapt.world": "Spielstart-Schaltfläche für Welt-Symbol",
+  "cursors_extended.options.adapt.server": "Spielstart-Schaltfläche für Server-Symbol",
+
+  "cursors_extended.options.resource_pack.reset": "Cursor-Einstellungen zurücksetzen",
+  "cursors_extended.options.resource_pack.reset.tooltip": "Setzt persönliche Cursor-Einstellungen zurück, sodass sie den Einstellungen aus Ressourcenpaketen (oder den Standardwerten) entsprechen.",
+
+  "cursors_extended.options.compat.remap_cursors": "Standard-Cursor neu zuweisen (GLFW)",
+  "cursors_extended.options.compat.remap_cursors.info": "Weist Standard-Cursor den entsprechenden Minecraft-Cursor zu.\n\nWARNUNG: Deaktivieren kann zu Kompatibilitätsproblemen mit bestimmten Mods führen."
+}

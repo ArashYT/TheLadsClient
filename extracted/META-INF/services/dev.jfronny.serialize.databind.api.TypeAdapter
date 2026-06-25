@@ -1,0 +1,12 @@
+dev.jfronny.muscript.json.impl.typed.additional.DDateTypeAdapter
+dev.jfronny.muscript.json.impl.typed.additional.DEnumTypeAdapter
+dev.jfronny.muscript.json.impl.typed.additional.DTimeTypeAdapter
+dev.jfronny.muscript.json.impl.typed.DBoolTypeAdapter
+dev.jfronny.muscript.json.impl.typed.DCallableTypeAdapter
+dev.jfronny.muscript.json.impl.typed.DListTypeAdapter
+dev.jfronny.muscript.json.impl.typed.DNullTypeAdapter
+dev.jfronny.muscript.json.impl.typed.DNumberTypeAdapter
+dev.jfronny.muscript.json.impl.typed.DObjectTypeAdapter
+dev.jfronny.muscript.json.impl.typed.DStringTypeAdapter
+dev.jfronny.muscript.json.impl.typed.DynamicBaseTypeAdapter
+dev.jfronny.muscript.json.impl.DynamicTypeAdapter

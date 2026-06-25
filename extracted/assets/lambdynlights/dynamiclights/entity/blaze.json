@@ -1,0 +1,10 @@
+{
+	"match": {
+		"type": "minecraft:blaze"
+	},
+	"luminance": {
+		"type": "lambdynlights:wet_sensitive",
+		"dry": 10,
+		"wet": 4
+	}
+}

@@ -1,0 +1,11 @@
+{
+	"match": {
+		"type": "minecraft:item_display"
+	},
+	"luminance": {
+		"type": "lambdynlights:display",
+		"luminance": {
+			"type": "lambdynlights:display/item"
+		}
+	}
+}

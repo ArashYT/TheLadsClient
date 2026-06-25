@@ -1,0 +1,9 @@
+{
+	"gui.xaero_on" : "Oui",
+	"gui.xaero_off" : "Non",
+	"gui.xaero_back" : "Retour",
+	"gui.xaero_confirm" : "Confirmer",
+	"gui.xaero_cancel" : "Annuler",
+	"gui.xaero_next" : "Suivant >>",
+	"gui.xaero_previous" : "<< Precedent"
+}
