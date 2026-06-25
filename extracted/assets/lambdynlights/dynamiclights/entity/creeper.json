@@ -1,0 +1,8 @@
+{
+	"match": {
+		"type": "minecraft:creeper"
+	},
+	"luminance": {
+		"type": "lambdynlights:creeper"
+	}
+}

@@ -24,7 +24,11 @@ public abstract class DisconnectedScreenMixin extends Screen {
     @Inject(method = "init", at = @At("TAIL"), require = 0)
     private void ladsAddReconnect(CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
-        AutoReconnect.get().onScreenShown(this.parent, mc.getCurrentServer());
+        net.minecraft.client.multiplayer.ServerData server = mc.getCurrentServer();
+        if (server == null) {
+            server = AutoReconnect.get().getLastServer();
+        }
+        AutoReconnect.get().onScreenShown(this.parent, server);
 
         int y = this.height - 30;
         if (AutoReconnect.get().isModuleEnabled()) {

@@ -1,0 +1,9 @@
+{
+	"gui.xaero_on" : "Ναι",
+	"gui.xaero_off" : "Όχι",
+	"gui.xaero_back" : "Πίσω",
+	"gui.xaero_confirm" : "Αποδοχή",
+	"gui.xaero_cancel" : "Άκυρο",
+	"gui.xaero_next" : "Επόμενο >>",
+	"gui.xaero_previous" : "<< Προηγούμενο"
+}

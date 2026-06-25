@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.natamus.passiveshield_common_neoforge.mixin",
+  "plugin": "com.natamus.collective.neoforge.mixin.plugin.NeoForgeMixinConfigPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+
+  ],
+  "client": [
+  
+  ],
+  "server": [
+
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

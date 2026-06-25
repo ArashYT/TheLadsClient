@@ -1,0 +1,9 @@
+{
+	"gui.xaero_on" : "ON",
+	"gui.xaero_off" : "OFF",
+	"gui.xaero_back" : "戻る",
+	"gui.xaero_confirm" : "保存",
+	"gui.xaero_cancel" : "キャンセル",
+	"gui.xaero_next" : "次 >>",
+	"gui.xaero_previous" : "<< 前"
+}

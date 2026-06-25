@@ -80,24 +80,41 @@ public class DraggableHudScreen extends Screen {
         for (HudElement el : HudManager.getInstance().getElements()) {
             if (!el.isEnabled()) continue;
 
-            int x = el.getX(), y = el.getY();
             float s = el.getScale();
+            int screenW = this.width;
+            int screenH = this.height;
+            int cx = net.minecraft.util.Mth.clamp(el.getX(), 0, Math.max(0, screenW - el.getRenderWidth()));
+            int cy = net.minecraft.util.Mth.clamp(el.getY(), 0, Math.max(0, screenH - el.getRenderHeight()));
 
             if (el instanceof ScoreboardHudElement sbEl) {
-                sbEl.renderEditorPreview(g);
-            } else if (s != 1.0f) {
+                int oldX = sbEl.getX();
+                int oldY = sbEl.getY();
+                sbEl.setPosition(cx, cy);
+                if (s != 1.0f || cx != el.getX() || cy != el.getY()) {
+                    var pose = g.pose();
+                    pose.pushMatrix();
+                    pose.translate(cx, cy);
+                    if (s != 1.0f) pose.scale(s, s);
+                    pose.translate(-el.getX(), -el.getY());
+                    sbEl.renderEditorPreview(g);
+                    pose.popMatrix();
+                } else {
+                    sbEl.renderEditorPreview(g);
+                }
+                sbEl.setPosition(oldX, oldY);
+            } else if (s != 1.0f || cx != el.getX() || cy != el.getY()) {
                 var pose = g.pose();
                 pose.pushMatrix();
-                pose.translate(x, y);
-                pose.scale(s, s);
-                pose.translate(-x, -y);
+                pose.translate(cx, cy);
+                if (s != 1.0f) pose.scale(s, s);
+                pose.translate(-el.getX(), -el.getY());
                 el.render(g);
                 pose.popMatrix();
             } else {
                 el.render(g);
             }
 
-            int w = (int)(el.getRenderWidth() * s), h = (int)(el.getRenderHeight() * s);
+            int w = el.getRenderWidth(), h = el.getRenderHeight();
             String name = el.getModuleName();
 
             // Determine border colour: dragging > selected > grouped > normal
@@ -110,15 +127,15 @@ public class DraggableHudScreen extends Screen {
             }
 
             // Draw border
-            g.fill(x - 1, y - 1, x + w + 1, y,     color);
-            g.fill(x - 1, y + h, x + w + 1, y + h + 1, color);
-            g.fill(x - 1, y, x,     y + h, color);
-            g.fill(x + w, y, x + w + 1, y + h, color);
+            g.fill(cx - 1, cy - 1, cx + w + 1, cy,     color);
+            g.fill(cx - 1, cy + h, cx + w + 1, cy + h + 1, color);
+            g.fill(cx - 1, cy, cx,     cy + h, color);
+            g.fill(cx + w, cy, cx + w + 1, cy + h, color);
 
             // Lock icon (drawn as a small filled square with inner hole)
             if (name != null && hs.isLocked(name)) {
-                g.fill(x + w - 8, y + 1, x + w - 1, y + 8, 0xFFFFDD44);
-                g.fill(x + w - 7, y + 2, x + w - 2, y + 7, 0xFF444400);
+                g.fill(cx + w - 8, cy + 1, cx + w - 1, cy + 8, 0xFFFFDD44);
+                g.fill(cx + w - 7, cy + 2, cx + w - 2, cy + 7, 0xFF444400);
             }
         }
 
@@ -223,6 +240,9 @@ public class DraggableHudScreen extends Screen {
         if (sy[1] != Integer.MIN_VALUE) { py = sy[0]; guideY = sy[1]; }
         else py = Math.round(py / (float) GRID) * GRID;
 
+        px = net.minecraft.util.Mth.clamp(px, 0, Math.max(0, this.width - w));
+        py = net.minecraft.util.Mth.clamp(py, 0, Math.max(0, this.height - h));
+
         int dx = px - dragging.getX();
         int dy = py - dragging.getY();
         dragging.setPosition(px, py);
@@ -318,13 +338,18 @@ public class DraggableHudScreen extends Screen {
     // ──────────────────────────────────────────────────────────────────────────
 
     private HudElement hitTest(double mx, double my) {
+        int screenW = this.width;
+        int screenH = this.height;
         List<HudElement> els = HudManager.getInstance().getElements();
         for (int i = els.size() - 1; i >= 0; i--) {
             HudElement el = els.get(i);
-            float s = el.getScale();
-            if (el.isEnabled()
-                && mx >= el.getX() && mx <= el.getX() + el.getRenderWidth() * s
-                && my >= el.getY() && my <= el.getY() + el.getRenderHeight() * s) {
+            if (!el.isEnabled()) continue;
+            int cx = net.minecraft.util.Mth.clamp(el.getX(), 0, Math.max(0, screenW - el.getRenderWidth()));
+            int cy = net.minecraft.util.Mth.clamp(el.getY(), 0, Math.max(0, screenH - el.getRenderHeight()));
+            int w = el.getRenderWidth();
+            int h = el.getRenderHeight();
+            
+            if (mx >= cx && mx <= cx + w && my >= cy && my <= cy + h) {
                 return el;
             }
         }

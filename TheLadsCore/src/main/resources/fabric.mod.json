@@ -23,12 +23,10 @@
                                  ],
                         "client":  [
                                        "com.thelads.core.client.TheLadsCoreClient",
-                                       "com.thelads.core.features.signalloss.SignalLossClient",
-                                       "xaero.lib.XaeroLibFabric",
-                                       "xaero.minimap.XaeroMinimapFabric"
+                                       "com.thelads.core.features.signalloss.SignalLossClient"
                                    ],
                         "server":  [
-                                       "xaero.lib.XaeroLibFabric",
+                                       
                                        "xaero.minimap.XaeroMinimapFabric"
                                    ],
                         "modmenu":  [
@@ -36,26 +34,19 @@
                                     ],
                         "sodium:config_api_user":  [
                                                        "com.thelads.core.client.renderscale.RenderScaleConfigEntryPoint"
-                                                   ],
-                        "jei_mod_plugin":  [
-                                               "mezz.jei.library.plugins.vanilla.VanillaPlugin",
-                                               "mezz.jei.library.plugins.jei.JeiInternalPlugin",
-                                               "mezz.jei.library.plugins.debug.JeiDebugPlugin",
-                                               "mezz.jei.fabric.plugins.fabric.FabricGuiPlugin",
-                                               "mezz.jei.gui.plugins.JeiGuiPlugin"
-                                           ]
+                                                   ]
                     },
     "mixins": [
 		"theladscore.mixins.json",
 		"theladscore.clientsort.mixins.json",
-		"xaerolib.mixins.json",
-		"xaerolib.fabric.mixins.json",
-		"xaerohud.mixins.json",
-		"xaerohud.fabric.mixins.json",
-		"xaerominimap.mixins.json",
-		"xaerominimap.fabric.mixins.json",
+		"theladscore-optimization.mixins.json",
+		
+		
+		
+		
+		
+		
 		"scalablelux.mixins.json",
-		"serverpingerfixer.mixins.json",
 		"quick-pack.mixins.json",
 		{"config": "screenfx.mixins.json", "environment": "client"},
 		"fwa.mixins.json",
@@ -116,3 +107,7 @@
                      "modmenu":  "*"
                  }
 }
+
+
+
+

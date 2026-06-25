@@ -41,7 +41,7 @@ public class PingViewModule extends Module {
         }
 
         tickCounter++;
-        if (tickCounter >= 5) {
+        if (tickCounter >= 20) {
             tickCounter = 0;
             long currentTime = System.currentTimeMillis();
             pingIdCounter++;

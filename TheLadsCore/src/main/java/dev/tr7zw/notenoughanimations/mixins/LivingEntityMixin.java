@@ -24,10 +24,33 @@ public class LivingEntityMixin {
         if (!com.thelads.core.config.ModuleManager.getInstance().getModule("NotEnoughAnimations").isEnabled()) {
             return;
         }
-        PlayerData data;
-        if (this instanceof PlayerData && (data = (PlayerData)((Object)this)).isDisableBodyRotation()) {
-            data.setDisableBodyRotation(false);
-            info.cancel();
+        if ((Object)this instanceof net.minecraft.client.player.AbstractClientPlayer player) {
+            PlayerData data = (PlayerData) player;
+            if (data.isDisableBodyRotation()) {
+                data.setDisableBodyRotation(false);
+                info.cancel();
+                return;
+            }
+            boolean isCameraEntity = player == net.minecraft.client.Minecraft.getInstance().getCameraEntity();
+            boolean applyLock = true;
+            if (!isCameraEntity && !dev.tr7zw.notenoughanimations.versionless.NEABaseMod.config.applyRotationLockToEveryone) {
+                applyLock = false;
+            }
+            if (isCameraEntity && dev.tr7zw.notenoughanimations.versionless.NEABaseMod.config.limitRotationLockToFP && net.minecraft.client.Minecraft.getInstance().options.getCameraType() != net.minecraft.client.CameraType.FIRST_PERSON) {
+                applyLock = false;
+            }
+            if (applyLock) {
+                var lock = dev.tr7zw.notenoughanimations.versionless.NEABaseMod.config.rotationLock;
+                if (lock == dev.tr7zw.notenoughanimations.versionless.RotationLock.FIXED && player.getVehicle() == null) {
+                    player.yBodyRot = g;
+                    info.cancel();
+                    return;
+                } else if (lock == dev.tr7zw.notenoughanimations.versionless.RotationLock.SMOOTH && player.getVehicle() == null) {
+                    player.yBodyRot = net.minecraft.util.Mth.rotLerp(0.3f, player.yBodyRot, g);
+                    info.cancel();
+                    return;
+                }
+            }
         }
     }
 }

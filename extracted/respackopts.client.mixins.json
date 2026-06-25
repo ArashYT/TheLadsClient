@@ -1,0 +1,16 @@
+{
+    "required": true,
+    "minVersion": "0.8",
+    "package": "dev.jfronny.respackopts.mixin",
+    "compatibilityLevel": "JAVA_8",
+    "client": [
+        "ClientLanguageAccessor",
+        "GlslPreprocessorMixin",
+        "LanguageManagerMixin",
+        "OptionsScreenMixin",
+        "PackSelectionScreen$WatcherMixin"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

@@ -26,6 +26,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GameRenderer.class)
 public class GameRendererMixin {
 
+    @Inject(method = "renderLevel", at = @At("HEAD"))
+    private void ladsBenchmarkRenderLevel(DeltaTracker deltaTracker, CallbackInfo ci) {
+        com.thelads.core.client.benchmark.BenchmarkTracker.onRenderLevelHead();
+    }
+
     @Shadow @Final private GameRenderState gameRenderState;
 
     @Unique private float lads_partialTick = 1.0f;

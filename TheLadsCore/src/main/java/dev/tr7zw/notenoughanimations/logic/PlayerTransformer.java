@@ -58,17 +58,9 @@ public class PlayerTransformer {
                     this.interpolate(model.rightLeg, last, 27, timePassed, differentFrame, speed, this.deltaTick);
                 }
             }
-            boolean bl = isCameraEntity = entity == GeneralUtil.getCameraEntity();
-            if (!(!isCameraEntity && !NEABaseMod.config.applyRotationLockToEveryone || data.isDisableBodyRotation() || isCameraEntity && NEABaseMod.config.limitRotationLockToFP && this.mc.options.getCameraType() != CameraType.FIRST_PERSON)) {
-                if ((NEABaseMod.config.rotationLock == RotationLock.SMOOTH || NEABaseMod.config.rotationLock == RotationLock.NONE && data.isRotateBodyToHead()) && entity.getVehicle() == null) {
-                    this.interpolateYawBodyHead(entity, last, 36, timePassed, differentFrame, 0.5f);
-                } else if (NEABaseMod.config.rotationLock == RotationLock.FIXED && entity.getVehicle() == null && differentFrame) {
-                    entity.yBodyRot = entity.yHeadRot;
-                    entity.yBodyRotO = entity.yHeadRotO;
-                } else if (differentFrame) {
-                    last[36] = entity.yBodyRot;
-                    last[37] = entity.yBodyRotO;
-                }
+            if (differentFrame) {
+                last[36] = entity.yBodyRot;
+                last[37] = entity.yBodyRotO;
             }
             data.setUpdated(this.tickId);
         }

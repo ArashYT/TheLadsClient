@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "package": "me.decce.ixeris.mixins",
+  "refmap": "ixeris.mixins.refmap.json",
+  "minVersion": "0.8",
+  "plugin": "me.decce.ixeris.IxerisMixinPlugin",
+  "client": [
+    "MainMixin",
+    "MinecraftMixin",
+    "MouseHandlerAccessor",
+    "MouseHandlerMixin",
+    "RenderSystemMixin",
+    "TitleScreenMixin",
+    "WindowMixin",
+    "enhanced_fps_limiter.RenderSystemMixin",
+    "macos.MacosUtilMixin",
+    "macos.MinecraftMixin",
+    "workarounds.WindowAccessor"
+  ],
+  "mixins": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

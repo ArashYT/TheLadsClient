@@ -1,0 +1,9 @@
+{
+	"gui.xaero_on" : "Ieslēgts",
+	"gui.xaero_off" : "Izslēgts",
+	"gui.xaero_back" : "Atpakaļ",
+	"gui.xaero_confirm" : "Piekrist",
+	"gui.xaero_cancel" : "Atcelt",
+	"gui.xaero_next" : "Nākošais >>",
+	"gui.xaero_previous" : "<< Iepriekšējais"
+}

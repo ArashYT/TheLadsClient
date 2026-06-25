@@ -124,7 +124,11 @@ implements ClientModInitializer {
         animationProgress = Mth.clamp((float)animationProgress, (float)0.0f, (float)1.0f);
         if (animationProgress > 0.0f) {
             double displayTime = isOverThreshold ? lagSeconds : displayedLagTime;
-            String timeString = String.format("%.1f", displayTime);
+            long totalMs = (long) (displayTime * 1000.0);
+            long minutes = (totalMs / 60000L) % 60L;
+            long seconds = (totalMs / 1000L) % 60L;
+            long tenths = (totalMs / 100L) % 10L;
+            String timeString = String.format("%02d:%02d.%d", minutes, seconds, tenths);
             MutableComponent text = Component.translatable((String)"signalloss.toast.lost", (Object[])new Object[]{timeString});
             SignalLossClient.renderToast(drawContext, client.font, client.getWindow().getGuiScaledWidth(), (Component)text, animationProgress);
         }

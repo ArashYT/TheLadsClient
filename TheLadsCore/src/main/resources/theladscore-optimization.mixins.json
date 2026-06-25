@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "net.minecraft.client.mixin.optimization",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "CrashReportMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

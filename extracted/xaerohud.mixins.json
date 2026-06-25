@@ -1,0 +1,35 @@
+{
+  "required": true,
+  "plugin" : "xaero.common.mixin.plugin.MixinPlugin",
+  "minVersion": "0.8",
+  "package": "xaero.common.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "MixinMinecraftServer",
+    "MixinPlayerList",
+    "MixinServerPlayer"
+  ],
+  "client": [
+    "MixinAbstractClientPlayerEntity",
+    "MixinBufferSource",
+    "MixinChatListener",
+    "MixinChunkDeltaUpdateS2CPacket",
+    "MixinClientPlayerEntity",
+    "MixinClientPlayNetworkHandler",
+    "MixinClientWorld",
+    "MixinGameRenderer",
+    "MixinGuiGraphics",
+    "MixinGuiRenderer",
+    "MixinLevelStorageAccess",
+    "MixinLocalPlayer",
+    "MixinMinecraftClient",
+    "MixinModel",
+    "MixinModelPart",
+    "MixinWorldChunk"
+  ],
+  "server": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

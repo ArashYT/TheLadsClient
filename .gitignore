@@ -41,3 +41,9 @@ test_*/
 *.mp4
 *.gif
 *.zip
+
+Output/
+*.exe
+
+upload.ps1
+upload_release.py

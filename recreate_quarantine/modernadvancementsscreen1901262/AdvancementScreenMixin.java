@@ -1,0 +1,1 @@
+package com.thelads.core.mixin.auto.modernadvancementsscreen1901262; import org.spongepowered.asm.mixin.Mixin; @Mixin(net.minecraft.client.gui.screens.Screen.class) public class AdvancementScreenMixin {}

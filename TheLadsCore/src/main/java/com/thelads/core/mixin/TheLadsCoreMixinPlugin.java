@@ -15,14 +15,62 @@ public class TheLadsCoreMixinPlugin implements IMixinConfigPlugin {
     private boolean hasCarpet;
     private boolean hasKrypton;
     private boolean hasRaknetify;
+    private boolean hasC2me;
 
     @Override
     public void onLoad(String mixinPackage) {
+        com.thelads.core.client.benchmark.BenchmarkTracker.setEarlyStartTime(System.nanoTime());
         this.hasSodium = FabricLoader.getInstance().isModLoaded("sodium");
         this.hasCarpet = FabricLoader.getInstance().isModLoaded("carpet");
         this.hasKrypton = FabricLoader.getInstance().isModLoaded("krypton");
         this.hasRaknetify = FabricLoader.getInstance().isModLoaded("raknetify");
+        this.hasC2me = FabricLoader.getInstance().isModLoaded("c2me");
         
+        // Spin up a background daemon thread that preloads heavy classes
+        Thread preloader = new Thread(() -> {
+            // Sleep for 5 seconds to bypass the early classloader mixin phase and prevent deadlock
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                return;
+            }
+
+            // Wait until Minecraft is bootstrapped to avoid "Not bootstrapped" errors
+            while (true) {
+                try {
+                    java.lang.reflect.Field field = Class.forName("net.minecraft.server.Bootstrap").getDeclaredField("isBootstrapped");
+                    field.setAccessible(true);
+                    if ((boolean) field.get(null)) {
+                        break;
+                    }
+                } catch (Throwable t) {
+                    // Ignore, continue waiting
+                }
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
+
+            String[] classesToPreload = {
+                "com.mojang.datafixers.DataFixers",
+                "net.minecraft.commands.Commands",
+                "net.minecraft.world.level.block.Blocks",
+                "net.minecraft.world.item.Items",
+                "net.minecraft.world.entity.EntityType"
+            };
+            for (String className : classesToPreload) {
+                try {
+                    Class.forName(className);
+                } catch (Throwable t) {
+                    // Ignore
+                }
+            }
+        }, "TheLads-ClassPreloader");
+        preloader.setDaemon(true);
+        preloader.start();
+
         // Trigger early initialization of ImmediatelyFast
         ImmediatelyFast.earlyInit();
         
@@ -63,6 +111,9 @@ public class TheLadsCoreMixinPlugin implements IMixinConfigPlugin {
             }
             if (mixinClassName.contains(".networking.eventloops.")) {
                 return false;
+            }
+            if (mixinClassName.contains(".ticketsystem.")) {
+                return !this.hasC2me;
             }
             if (mixinClassName.contains(".playerwatching.optimize_nearby_entity_tracking_lookups.")) {
                 return Config.USE_OPTIMIZED_ENTITY_TRACKING;

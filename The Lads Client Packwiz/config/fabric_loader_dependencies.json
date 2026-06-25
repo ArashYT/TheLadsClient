@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "overrides": {
+    "balm": { "-depends": { "minecraft": "(.*)" } },
+    "buttonanimations": { "-depends": { "minecraft": "(.*)" } },
+    "catalogue": { "-depends": { "minecraft": "(.*)" } },
+    "citresewn": { "-depends": { "minecraft": "(.*)" } },
+    "clumps": { "-depends": { "minecraft": "(.*)" } },
+    "configured": { "-depends": { "minecraft": "(.*)" } },
+    "configureddefaults": { "-depends": { "minecraft": "(.*)" } },
+    "controlling": { "-depends": { "minecraft": "(.*)" } },
+    "searchables": { "-depends": { "minecraft": "(.*)" } },
+    "yet_another_config_lib_v3": { "-depends": { "minecraft": "(.*)" } },
+    "emojitype": { "-depends": { "minecraft": "(.*)" } },
+    "flashback": { "-depends": { "minecraft": "(.*)" } },
+    "lazy_ai_pixelindiedev": { "-depends": { "minecraft": "(.*)" } },
+    "lithium": { "-depends": { "minecraft": "(.*)" } },
+    "menulogue": { "-depends": { "minecraft": "(.*)" } },
+    "modernfix": { "-depends": { "minecraft": "(.*)" } },
+    "mousetweaks": { "-depends": { "minecraft": "(.*)" } },
+    "resourcepackoverrides": { "-depends": { "minecraft": "(.*)" } },
+    "resourcify": { "-depends": { "minecraft": "(.*)" } },
+    "sound_physics_remastered": { "-depends": { "minecraft": "(.*)" } },
+    "soundcontrol": { "-depends": { "minecraft": "(.*)" } },
+    "tcdcommons": { "-depends": { "minecraft": "(.*)" } },
+    "viafabricplus": { "-depends": { "minecraft": "(.*)" } },
+    "voicechat": { "-depends": { "minecraft": "(.*)" } },
+    "xaeroplus": { "-depends": { "minecraft": "(.*)", "xaeroworldmap": "(.*)" } },
+    "betterconfig": { "-depends": { "minecraft": "(.*)" } },
+    "kuma_api": { "-depends": { "minecraft": "(.*)" } }
+  }
+}

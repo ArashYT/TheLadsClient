@@ -50,6 +50,13 @@ dependencies {
     shadedRuntimeLibs fileTree(dir: file("shading_libs"), include: "**/*.jar")
     shadedRuntimeLibs fileTree(dir: file("temp_unzip"), include: "**/*.jar")
     localRuntime files(devShadedJar) { builtBy 'createDevShadedJar' }
+    localRuntime fileTree("C:/The Lads Client/mods") {
+        include "*.jar"
+        exclude "TheLadsCore-*.jar"
+        exclude "modernfix-*.jar"
+        exclude "entity_model_features-*.jar"
+        exclude "entity_texture_features-*.jar"
+    }
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.0"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.10.0"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
@@ -57,6 +64,8 @@ dependencies {
     testImplementation "org.mockito:mockito-junit-jupiter:5.14.2"
     testImplementation "net.bytebuddy:byte-buddy:1.15.11"
     testImplementation "net.bytebuddy:byte-buddy-agent:1.15.11"
+    testImplementation fileTree(dir: file("shading_libs"), include: "**/*.jar")
+    testImplementation fileTree(dir: file("temp_unzip"), include: "**/*.jar")
 }
 processResources {
     def version = project.version
@@ -67,7 +76,19 @@ tasks.withType(JavaCompile).configureEach {
     it.options.release = 25
 }
 // Ensure the merged dev JAR exists before running the client
-tasks.named('runClient') { dependsOn 'createDevShadedJar' }
+tasks.named('runClient') {
+    dependsOn 'createDevShadedJar'
+    if (providers.systemProperty("thelads.benchmark").isPresent()) {
+        systemProperty "thelads.benchmark", providers.systemProperty("thelads.benchmark").get()
+    } else if (System.getProperty("thelads.benchmark") != null) {
+        systemProperty "thelads.benchmark", System.getProperty("thelads.benchmark")
+    }
+    if (project.hasProperty("thelads.benchmark")) {
+        systemProperty "thelads.benchmark", project.property("thelads.benchmark")
+    }
+    systemProperty "fabric.skipDependencyCheck", "true"
+    systemProperty "fabric.skipDependencyChecks", "true"
+}
 java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.toVersion(25)
@@ -106,13 +127,13 @@ jar {
         exclude "fabric.mod.json"
     }
     // Shade ServerPingerFixer
-    from(zipTree(file("shading_libs/serverpingerfixer+26.1-1.1.0.jar"))) {
-        exclude "META-INF/MANIFEST.MF"
-        exclude "META-INF/*.SF"
-        exclude "META-INF/*.DSA"
-        exclude "META-INF/*.RSA"
-        exclude "fabric.mod.json"
-    }
+    // from(zipTree(file("shading_libs/serverpingerfixer+26.1-1.1.0.jar"))) {
+    //     exclude "META-INF/MANIFEST.MF"
+    //     exclude "META-INF/*.SF"
+    //     exclude "META-INF/*.DSA"
+    //     exclude "META-INF/*.RSA"
+    //     exclude "fabric.mod.json"
+    // }
 
     // Shade Quick Pack
     from(zipTree(file("shading_libs/quick-pack-fabric-1.3.1+26.2.jar"))) {
@@ -132,16 +153,16 @@ jar {
     }
     // Shade Raised (client-side hotbar lift) — use 26.1.1 classes; exclude raised.mixins.json (targets Gui.class)
     // Our own RaisedMixin.java in theladscore.mixins.json replaces it with correct 26.2 Hud.class targets
-    from(zipTree(file("shading_libs/raised-fabric-26.1.1-5.1.2.jar"))) {
-        exclude "META-INF/MANIFEST.MF"
-        exclude "META-INF/*.SF"
-        exclude "META-INF/*.DSA"
-        exclude "META-INF/*.RSA"
-        exclude "fabric.mod.json"
-        exclude "raised.mixins.json"   // Old 26.1 mixin config targets Gui.class — crashes in 26.2
-        exclude "raised.refmap.json"
-        exclude "raised.accesswidener"  // Not needed, we don't need its AW
-    }
+    // from(zipTree(file("shading_libs/raised-fabric-26.1.1-5.1.2.jar"))) {
+    //     exclude "META-INF/MANIFEST.MF"
+    //     exclude "META-INF/*.SF"
+    //     exclude "META-INF/*.DSA"
+    //     exclude "META-INF/*.RSA"
+    //     exclude "fabric.mod.json"
+    //     exclude "raised.mixins.json"   // Old 26.1 mixin config targets Gui.class — crashes in 26.2
+    //     exclude "raised.refmap.json"
+    //     exclude "raised.accesswidener"  // Not needed, we don't need its AW
+    // }
     // Immersive Hotbar disabled — no 26.2 version, its Gui-targeting mixins crash with Hud rename
     // from(zipTree(file("shading_libs/immersive-hotbar-1.1.1-26.1.jar"))) {
     //     exclude "META-INF/MANIFEST.MF"
@@ -176,13 +197,13 @@ jar {
     }
     // Shade Threads
 
-    from(zipTree(file("shading_libs/Threads-1.2.1-26.1.1.jar"))) {
-        exclude "META-INF/MANIFEST.MF"
-        exclude "META-INF/*.SF"
-        exclude "META-INF/*.DSA"
-        exclude "META-INF/*.RSA"
-        exclude "fabric.mod.json"
-    }
+    // from(zipTree(file("shading_libs/Threads-1.2.1-26.1.1.jar"))) {
+    //     exclude "META-INF/MANIFEST.MF"
+    //     exclude "META-INF/*.SF"
+    //     exclude "META-INF/*.DSA"
+    //     exclude "META-INF/*.RSA"
+    //     exclude "fabric.mod.json"
+    // }
     // Shade WaveyCapes
     from(zipTree(file("shading_libs/waveycapes-fabric-1.10.2-mc26.2.jar"))) {
         exclude "META-INF/MANIFEST.MF"
@@ -202,13 +223,13 @@ jar {
     }
     // Shade EnhancedTooltips (26.1.2 jar — no 26.2 version; our GuiMixin.java already targets Hud.class)
     // Our src/main/resources/enhancedtooltips.mixins.json overrides the one in the JAR via EXCLUDE strategy
-    from(zipTree(file("shading_libs/EnhancedTooltips-1.9.1+fabric.26.1.2.jar"))) {
-        exclude "META-INF/MANIFEST.MF"
-        exclude "META-INF/*.SF"
-        exclude "META-INF/*.DSA"
-        exclude "META-INF/*.RSA"
-        exclude "fabric.mod.json"
-    }
+    // from(zipTree(file("shading_libs/EnhancedTooltips-1.9.1+fabric.26.1.2.jar"))) {
+    //     exclude "META-INF/MANIFEST.MF"
+    //     exclude "META-INF/*.SF"
+    //     exclude "META-INF/*.DSA"
+    //     exclude "META-INF/*.RSA"
+    //     exclude "fabric.mod.json"
+    // }
 
 
 

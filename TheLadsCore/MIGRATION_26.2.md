@@ -8,6 +8,7 @@ stack has no 26.2 build yet).** Assessment done 2026-06-17.
   has a 26.2 Fabric build. All source-ported blockers (immediatelyfast, 3dskinlayers, jei,
   betterstats, advancements-reloaded, appleskin, not-enough-animations, xaeros-world-map,
   raised, enhanced-tooltips) still return **no 26.2 version**. No migration attempted.
+- **2026-06-22:** Re-checked all 11 mods. Major progress — 7/11 now READY. Still blocked on 4: `betterstats`, `advancements-reloaded`, `raised`, `enhanced-tooltips`. Migration remains blocked.
 
 ## What's ready
 - **Fabric is buildable on 26.2:** `fabric-api 0.152.1+26.2` exists. Loom will fetch 26.2
