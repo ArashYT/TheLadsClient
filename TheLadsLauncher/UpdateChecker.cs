@@ -46,7 +46,7 @@ public class UpdateChecker
                 foreach (var asset in assets)
                 {
                     string name = asset.GetProperty("name").GetString() ?? "";
-                    if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    if (name.Equals("TheLadsLauncher.exe", StringComparison.OrdinalIgnoreCase))
                     {
                         downloadUrl = asset.GetProperty("browser_download_url").GetString() ?? "";
                         break; 
