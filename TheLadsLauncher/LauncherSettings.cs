@@ -143,6 +143,19 @@ public class LauncherSettings
                 }
             }
         }
+        paths.Sort((a, b) => 
+        {
+            int GetVer(string path)
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(path, @"(?:jdk|jre)-?(\d+)");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out int v)) return v;
+                match = System.Text.RegularExpressions.Regex.Match(path, @"1\.(\d+)\.");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out int v2)) return v2;
+                return 0;
+            }
+            return GetVer(b).CompareTo(GetVer(a));
+        });
+
         return paths.ToArray();
     }
 }
