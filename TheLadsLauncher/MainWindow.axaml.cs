@@ -124,6 +124,15 @@ public partial class MainWindow : Window
         }
 
         settings = LauncherSettings.Load();
+        if (settings.AutoDetectJava && !System.IO.File.Exists(settings.JavaPath))
+        {
+            var installs = settings.DetectJavaInstallations();
+            if (installs.Length > 0)
+            {
+                settings.JavaPath = installs[0];
+                settings.Save();
+            }
+        }
         Log($"[Settings] Loaded settings from BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
         Log($"[Settings] ModrinthApiUrl: '{settings.ModrinthApiUrl}', CurseForgeApiUrl: '{settings.CurseForgeApiUrl}', OverrideVersion: '{settings.SelectedMinecraftVersionOverride}', FabricVersion: '{settings.FabricVersion}'");
         loginHandler = JELoginHandlerBuilder.BuildDefault();
@@ -3080,7 +3089,7 @@ public partial class MainWindow : Window
             await RunPackwizInstaller();
         }
 
-        string launchVersionId = ResolveLaunchVersionId();
+        string launchVersionId = await ResolveLaunchVersionIdAsync();
         Log($"[Launcher] Building process for {launchVersionId}...");
 
         // QuickLaunch: skip asset verification for a faster startup.
@@ -3226,12 +3235,35 @@ public partial class MainWindow : Window
     }
 
     // If the configured version doesn't exist in the instance's versions folder,
+    // we will attempt to download it from meta.fabricmc.net. If that fails,
     // fall back to the newest installed fabric-loader profile instead of failing.
-    private string ResolveLaunchVersionId()
+    private async Task<string> ResolveLaunchVersionIdAsync()
     {
         string want = settings.FabricVersion;
         string vdir = Path.Combine(settings.InstancePath, "versions");
-        if (File.Exists(Path.Combine(vdir, want, want + ".json"))) return want;
+        string jsonPath = Path.Combine(vdir, want, want + ".json");
+        
+        if (File.Exists(jsonPath)) return want;
+
+        try
+        {
+            // Attempt to automatically download the fabric loader profile json if missing
+            var match = Regex.Match(want, @"fabric-loader-([\d\.]+)-([\d\.]+)");
+            if (match.Success)
+            {
+                string loaderVer = match.Groups[1].Value;
+                string mcVer = match.Groups[2].Value;
+                string url = $"https://meta.fabricmc.net/v2/versions/loader/{mcVer}/{loaderVer}/profile/json";
+                Directory.CreateDirectory(Path.Combine(vdir, want));
+                var json = await _httpClient.GetStringAsync(url);
+                File.WriteAllText(jsonPath, json);
+                return want;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"[Launcher] Could not automatically download fabric profile: {ex.Message}");
+        }
 
         if (Directory.Exists(vdir))
         {
