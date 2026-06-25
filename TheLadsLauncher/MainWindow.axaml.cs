@@ -982,7 +982,10 @@ public partial class MainWindow : Window
     private void Log(string message)
     {
         lock (_logFileLock)
-            System.IO.File.AppendAllText(@"C:\Users\Arash\Desktop\launcher_debug.txt", $"[{DateTime.Now:HH:mm:ss}] {message}\n");
+        {
+            string logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "launcher_debug.txt");
+            System.IO.File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] {message}\n");
+        }
         Dispatcher.UIThread.Post(() =>
         {
             string timestamped = $"[{DateTime.Now:HH:mm:ss}] {message}";
@@ -2894,7 +2897,8 @@ public partial class MainWindow : Window
 
             await LaunchGame();
         } catch (Exception ex) {
-            System.IO.File.WriteAllText(@"C:\Users\Arash\Desktop\crash_launchbtn.txt", ex.ToString());
+            string crashPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crash_launchbtn.txt");
+            System.IO.File.WriteAllText(crashPath, ex.ToString());
             Log($"[CRASH] {ex.Message}");
         } finally {
             LaunchButton.IsEnabled = true;
@@ -3625,7 +3629,7 @@ public partial class MainWindow : Window
             string bootstrapJar = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "packwiz-installer-bootstrap.jar");
 
             if (!File.Exists(bootstrapJar))
-                bootstrapJar = @"C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher\packwiz-installer-bootstrap.jar";
+                bootstrapJar = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "packwiz-installer-bootstrap.jar");
 
             packUrl = packUrl.Replace(" ", "%20");
 
@@ -3666,7 +3670,7 @@ public partial class MainWindow : Window
     {
         _trayIcon = new TrayIcon
         {
-            Icon = new WindowIcon(@"C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher\Assets\icon.ico"),
+            Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://TheLadsLauncher/Assets/icon.ico"))),
             ToolTipText = "The Lads Client",
             IsVisible = true
         };

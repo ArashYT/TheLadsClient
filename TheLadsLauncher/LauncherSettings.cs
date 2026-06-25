@@ -21,7 +21,7 @@ public class LauncherSettings
 
     // Paths
     public string InstancePath { get; set; } = @"C:\The Lads Client";
-    public string PackwizPath { get; set; } = @"C:\Users\Arash\Desktop\Lads Client\The Lads Client Packwiz";
+    public string PackwizPath { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "The Lads Client", "Packwiz");
     public string FabricVersion { get; set; } = "fabric-loader-0.19.3-26.2";
 
     // Appearance
