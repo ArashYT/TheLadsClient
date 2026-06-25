@@ -1,5 +1,5 @@
 #define MyAppName "The Lads Client"
-#define MyAppVersion "1.0.7"
+#define MyAppVersion "1.0.10"
 #define MyAppPublisher "ArashYT"
 #define MyAppURL "https://github.com/ArashYT/TheLadsClient"
 #define MyAppExeName "TheLadsLauncher.exe"
