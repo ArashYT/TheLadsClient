@@ -21,7 +21,7 @@ public class LauncherSettings
 
     // Paths
     public string InstancePath { get; set; } = @"C:\The Lads Client";
-    public string PackwizPath { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "The Lads Client", "Packwiz");
+    public string PackwizPath { get; set; } = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/pack.toml";
     public string FabricVersion { get; set; } = "fabric-loader-0.19.3-26.2";
 
     // Appearance
@@ -157,5 +157,36 @@ public class LauncherSettings
         });
 
         return paths.ToArray();
+    }
+
+    public static int GetRequiredJavaVersion(string mcVersion)
+    {
+        // 1.20.4 or similar
+        if (mcVersion.StartsWith("1."))
+        {
+            var parts = mcVersion.Split('.');
+            if (parts.Length >= 2 && int.TryParse(parts[1], out int minor))
+            {
+                if (minor <= 16) return 8;
+                if (minor == 17) return 16;
+                if (minor >= 18 && minor <= 20) return 17;
+                if (minor >= 21 && minor <= 24) return 21;
+                return 25; // 1.25+ fallback
+            }
+        }
+        else
+        {
+            // like "26.2"
+            var parts = mcVersion.Split('.');
+            if (int.TryParse(parts[0], out int major))
+            {
+                if (major <= 16) return 8;
+                if (major == 17) return 16;
+                if (major >= 18 && major <= 20) return 17;
+                if (major >= 21 && major <= 24) return 21;
+                return 25; // fallback
+            }
+        }
+        return 21; // default safe fallback
     }
 }
