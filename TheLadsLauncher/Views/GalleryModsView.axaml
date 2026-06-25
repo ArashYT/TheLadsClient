@@ -1,0 +1,144 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:views="using:TheLadsLauncher.Views"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+             x:Class="TheLadsLauncher.Views.GalleryModsView">
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="Gallery &amp; Mods" Foreground="White" FontSize="24" FontWeight="Bold" Margin="0,0,0,12" />
+
+        <TabControl Grid.Row="1" Background="Transparent">
+            
+            <!-- Gallery (Screenshots) -->
+            <TabItem Header="Gallery (Screenshots)">
+                <Grid RowDefinitions="Auto, *">
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Content="Refresh" Click="RefreshScreenshots_Click" />
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="1">
+                        <ItemsControl x:Name="ScreenshotsList">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="views:ScreenshotItem">
+                                    <Border Background="#1A1A2E" CornerRadius="8" Padding="8" Margin="8" Width="200">
+                                        <StackPanel>
+                                            <Image Source="{Binding Image}" Height="120" Stretch="UniformToFill" />
+                                            <TextBlock Text="{Binding FileName}" Foreground="White" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" ToolTip.Tip="{Binding FileName}" />
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                                                <ToggleButton Content="★" IsChecked="{Binding IsFavorite}" Command="{Binding ToggleFavoriteCommand}" />
+                                                <Button Content="Delete" Command="{Binding DeleteCommand}" Foreground="Red" Margin="4,0,0,0" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- Local Library -->
+            <TabItem Header="Local Library (Mods &amp; Packs)">
+                <Grid RowDefinitions="Auto, *">
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12" Spacing="8">
+                        <TextBox x:Name="LocalSearchBox" Watermark="Search installed..." Width="200" KeyUp="LocalSearchBox_KeyUp" />
+                        <ComboBox x:Name="LocalTypeFilter" SelectedIndex="0" SelectionChanged="LocalFilter_SelectionChanged">
+                            <ComboBoxItem>Mods</ComboBoxItem>
+                            <ComboBoxItem>Resource Packs</ComboBoxItem>
+                        </ComboBox>
+                        <Button Content="Refresh" Click="RefreshLocal_Click" />
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1">
+                        <ItemsControl x:Name="LocalItemsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="views:GalleryItem">
+                                    <Border Background="#1A1A2E" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                        <Grid ColumnDefinitions="Auto, *, Auto">
+                                            <StackPanel Grid.Column="1" Margin="12,0,12,0">
+                                                <TextBlock Text="{Binding Title}" Foreground="White" FontSize="16" FontWeight="Bold"/>
+                                                <TextBlock Text="{Binding Description}" Foreground="#CCCCCC" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                                                <CheckBox Content="Enabled" IsChecked="{Binding IsEnabled}" Command="{Binding ToggleStateCommand}"/>
+                                                <Button Content="Delete" Command="{Binding DeleteCommand}" Foreground="Red"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- Discover -->
+            <TabItem Header="Discover">
+                <Grid RowDefinitions="Auto, *">
+                    <Border Grid.Row="0" Background="#0E0E18" CornerRadius="12" BorderBrush="#1A1A2E" BorderThickness="1" Margin="0,0,0,12" Padding="12">
+                        <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
+                            <TextBlock Text="Discover" Foreground="White" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                            
+                            <TextBox x:Name="DiscoverSearchBox" Grid.Column="1" Watermark="Search online..." 
+                                     VerticalAlignment="Center" Margin="0,0,12,0" Background="#111118" Foreground="#CCCCCC" CornerRadius="6" KeyUp="DiscoverSearchBox_KeyUp" />
+                                     
+                            <ComboBox x:Name="DiscoverTypeFilter" Grid.Column="2" SelectedIndex="0" VerticalAlignment="Center" Margin="0,0,12,0" SelectionChanged="DiscoverFilter_SelectionChanged">
+                                <ComboBoxItem>Mods</ComboBoxItem>
+                                <ComboBoxItem>Resource Packs</ComboBoxItem>
+                            </ComboBox>
+
+                            <ComboBox x:Name="DiscoverSourceFilter" Grid.Column="3" SelectedIndex="0" VerticalAlignment="Center" Margin="0,0,12,0" SelectionChanged="DiscoverFilter_SelectionChanged">
+                                <ComboBoxItem>Modrinth</ComboBoxItem>
+                                <ComboBoxItem>CurseForge</ComboBoxItem>
+                            </ComboBox>
+
+                            <Button x:Name="DiscoverSearchBtn" Grid.Column="4" Content="Search" Classes="launch" Click="DiscoverSearchBtn_Click" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1" Background="#0E0E18" CornerRadius="12" BorderBrush="#1A1A2E" BorderThickness="1" Padding="12">
+                        <Grid RowDefinitions="Auto, *">
+                            <TextBlock x:Name="StatusText" Grid.Row="0" Text="Loading..." Foreground="#AAAAAA" Margin="0,0,0,8" IsVisible="False" />
+                            <ScrollViewer Grid.Row="1">
+                                <ItemsControl x:Name="DiscoverItemsList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="views:GalleryItem">
+                                            <Border Background="#1A1A2E" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                                <Grid ColumnDefinitions="64, *, Auto">
+                                                    <!-- Icon -->
+                                                    <Image Grid.Column="0" Source="{Binding Icon}" Width="64" Height="64" Stretch="Uniform" VerticalAlignment="Top"/>
+                                                    
+                                                    <!-- Details -->
+                                                    <StackPanel Grid.Column="1" Margin="12,0,12,0">
+                                                        <TextBlock Text="{Binding Title}" Foreground="White" FontSize="16" FontWeight="Bold"/>
+                                                        <TextBlock Text="{Binding Author}" Foreground="#888888" FontSize="12" Margin="0,2,0,8"/>
+                                                        <TextBlock Text="{Binding Description}" Foreground="#CCCCCC" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+                                                    </StackPanel>
+                                                    
+                                                    <!-- Actions -->
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="8">
+                                                        <Button Content="{Binding ActionButtonText}" 
+                                                                Command="{Binding ActionCommand}" 
+                                                                Width="100" HorizontalContentAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>
