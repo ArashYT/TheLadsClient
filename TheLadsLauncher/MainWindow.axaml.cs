@@ -120,6 +120,16 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         settings = LauncherSettings.Load();
+        if (settings.LauncherVersion != Program.Version)
+        {
+            settings.LauncherVersion = Program.Version;
+            settings.Save();
+        }
+        if (settings.FabricVersion == "fabric-loader-0.19.3-26.2")
+        {
+            settings.FabricVersion = "fabric-loader-0.19.3-26.1.2";
+            settings.Save();
+        }
         Log($"[Settings] Loaded settings from BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
         Log($"[Settings] ModrinthApiUrl: '{settings.ModrinthApiUrl}', CurseForgeApiUrl: '{settings.CurseForgeApiUrl}', OverrideVersion: '{settings.SelectedMinecraftVersionOverride}', FabricVersion: '{settings.FabricVersion}'");
         loginHandler = JELoginHandlerBuilder.BuildDefault();
@@ -295,7 +305,7 @@ public partial class MainWindow : Window
                 if (Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") != "1")
                 {
                     if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = "Checking for updates";
-                    var update = await AutoUpdater.CheckForUpdatesAsync(settings.LauncherVersion);
+                    var update = await AutoUpdater.CheckForUpdatesAsync(Program.Version);
                     if (update != null)
                     {
                         if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = $"Downloading update v{update.LatestVersion}";
@@ -466,7 +476,7 @@ public partial class MainWindow : Window
         if (Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1") return;
         try
         {
-            var update = await AutoUpdater.CheckForUpdatesAsync(settings.LauncherVersion);
+            var update = await AutoUpdater.CheckForUpdatesAsync(Program.Version);
             if (update != null && !AutoUpdater.IsUpdateReady)
             {
                 bool downloaded = await AutoUpdater.DownloadUpdateAsync(update.DownloadUrl, update.LatestVersion);
