@@ -1,13 +1,13 @@
 [Setup]
 AppName=The Lads Client
-AppVersion=0.14.7
+AppVersion=0.14.8
 DefaultDirName={localappdata}\The Lads Client
 DefaultGroupName=The Lads Client
 UninstallDisplayIcon={app}\TheLadsLauncher.exe
 Compression=lzma2
 SolidCompression=yes
 OutputDir=.
-OutputBaseFilename=LadsClient_Installer_BETA_0.14.7
+OutputBaseFilename=LadsClient_Installer_BETA_0.14.8
 PrivilegesRequired=lowest
 
 [Files]
