@@ -1,0 +1,119 @@
+accessWidener v1 official
+
+# BlockStateBase.ShapeCache
+accessible class net/minecraft/world/level/block/state/BlockBehaviour$BlockStateBase$Cache
+#accessible field net/minecraft/world/level/block/state/BlockBehaviour$BlockStateBase$Cache lightBlock I
+
+
+# LevelChunkSection
+accessible field net/minecraft/world/level/chunk/LevelChunkSection states Lnet/minecraft/world/level/chunk/PalettedContainer;
+
+
+# PalettedContainer
+accessible method net/minecraft/world/level/chunk/PalettedContainer get (I)Ljava/lang/Object;
+
+
+# ChunkMap
+accessible field net/minecraft/server/level/ChunkMap level Lnet/minecraft/server/level/ServerLevel;
+accessible field net/minecraft/server/level/ChunkMap mainThreadExecutor Lnet/minecraft/util/thread/BlockableEventLoop;
+
+accessible method net/minecraft/server/level/ChunkMap getUpdatingChunkIfPresent (J)Lnet/minecraft/server/level/ChunkHolder;
+accessible method net/minecraft/server/level/ChunkMap getVisibleChunkIfPresent (J)Lnet/minecraft/server/level/ChunkHolder;
+accessible method net/minecraft/server/level/ChunkMap getChunkQueueLevel (J)Ljava/util/function/IntSupplier;
+
+# LevelLightEngine
+mutable field net/minecraft/world/level/lighting/LevelLightEngine blockEngine Lnet/minecraft/world/level/lighting/LightEngine;
+mutable field net/minecraft/world/level/lighting/LevelLightEngine skyEngine Lnet/minecraft/world/level/lighting/LightEngine;
+
+# ThreadedLevelLightEngine
+accessible class net/minecraft/server/level/ThreadedLevelLightEngine$TaskType
+
+# VMP / NearbyEntityTracking / Entity Tracker access
+accessible class net/minecraft/server/level/ChunkMap$TrackedEntity
+accessible class net/minecraft/server/level/ChunkMap$DistanceManager
+accessible class net/minecraft/world/level/LocalMobCapCalculator$MobCounts
+accessible class net/minecraft/server/level/LoadingChunkTracker
+accessible class net/minecraft/server/commands/SpreadPlayersCommand$Position
+
+# LetMeDespawn Mob field access
+accessible field net/minecraft/world/entity/Mob persistenceRequired Z
+
+# ImmediatelyFast / BatchableBufferSource access
+accessible class com/mojang/blaze3d/opengl/GlCommandEncoder
+accessible class net/minecraft/client/resources/MapTextureManager$MapInstance
+accessible field net/minecraft/client/renderer/rendertype/RenderType name Ljava/lang/String;
+accessible field com/mojang/blaze3d/vertex/BufferBuilder buffer Lcom/mojang/blaze3d/vertex/ByteBufferBuilder;
+accessible field net/minecraft/client/renderer/MultiBufferSource$BufferSource sharedBuffer Lcom/mojang/blaze3d/vertex/ByteBufferBuilder;
+mutable field net/minecraft/client/renderer/MultiBufferSource$BufferSource sharedBuffer Lcom/mojang/blaze3d/vertex/ByteBufferBuilder;
+accessible method net/minecraft/client/renderer/MultiBufferSource$BufferSource endBatch (Lnet/minecraft/client/renderer/rendertype/RenderType;Lcom/mojang/blaze3d/vertex/BufferBuilder;)V
+accessible class net/minecraft/client/renderer/rendertype/RenderSetup$TextureBinding
+accessible field net/minecraft/client/renderer/rendertype/RenderSetup textures Ljava/util/Map;
+accessible field net/minecraft/client/renderer/rendertype/RenderType state Lnet/minecraft/client/renderer/rendertype/RenderSetup;
+accessible field com/mojang/blaze3d/vertex/ByteBufferBuilder pointer J
+accessible field com/mojang/blaze3d/vertex/ByteBufferBuilder capacity J
+
+# DirectStateAccess buffer methods for ImmediatelyFast
+accessible method com/mojang/blaze3d/opengl/DirectStateAccess bufferSubData (IJLjava/nio/ByteBuffer;I)V
+accessible method com/mojang/blaze3d/opengl/DirectStateAccess bufferData (ILjava/nio/ByteBuffer;I)V
+
+# Additional access wideners to resolve compilation errors
+accessible field net/minecraft/client/Minecraft fontManager Lnet/minecraft/client/gui/font/FontManager;
+accessible method net/minecraft/server/commands/SpreadPlayersCommand$Position <init> ()V
+accessible method net/minecraft/world/level/LocalMobCapCalculator$MobCounts <init> ()V
+
+# === Merged from shaded mods' access wideners (lost when fabric.mod.json was excluded during shading) ===
+
+# cursors_extended (cursors_extended.classtweaker)
+accessible method com/mojang/blaze3d/platform/cursor/CursorType <init> (Ljava/lang/String;J)V
+accessible field com/mojang/blaze3d/platform/cursor/CursorType handle J
+accessible field com/mojang/blaze3d/platform/Window currentCursor Lcom/mojang/blaze3d/platform/cursor/CursorType;
+
+# EnhancedTooltips (enhancedtooltips_noremap.classtweaker)
+accessible class net/minecraft/world/item/CreativeModeTab$ItemDisplayBuilder
+
+# entity-view-distance (entityviewdistance.accesswidener)
+accessible class net/minecraft/client/OptionInstance$ValueSet
+
+# raised (raised.accesswidener)
+extendable method net/minecraft/client/gui/components/AbstractSelectionList getEntryAtPosition (DD)Lnet/minecraft/client/gui/components/AbstractSelectionList$Entry;
+extendable method net/minecraft/client/gui/components/AbstractSelectionList getFirstEntryY ()I
+accessible field net/minecraft/client/gui/components/AbstractSelectionList hovered Lnet/minecraft/client/gui/components/AbstractSelectionList$Entry;
+
+# respackopts (respackopts.accesswidener)
+accessible class net/minecraft/server/packs/FilePackResources$SharedZipFileAccess
+
+# JEI (jei.accesswidener)
+accessible field net/minecraft/client/gui/components/EditBox canLoseFocus Z
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen hoveredSlot Lnet/minecraft/world/inventory/Slot;
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen leftPos I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen topPos I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageWidth I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageHeight I
+accessible field net/minecraft/client/gui/screens/recipebook/RecipeBookComponent width I
+accessible field net/minecraft/client/gui/screens/recipebook/RecipeBookComponent height I
+accessible field net/minecraft/client/gui/screens/recipebook/RecipeBookComponent xOffset I
+accessible field net/minecraft/client/gui/screens/recipebook/RecipeBookComponent tabButtons Ljava/util/List;
+accessible method net/minecraft/client/gui/screens/recipebook/RecipeBookComponent getXOrigin ()I
+accessible method net/minecraft/client/gui/screens/recipebook/RecipeBookComponent getYOrigin ()I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractRecipeBookScreen recipeBookComponent Lnet/minecraft/client/gui/screens/recipebook/RecipeBookComponent;
+accessible field net/minecraft/client/renderer/texture/SpriteContents byMipLevel [Lcom/mojang/blaze3d/platform/NativeImage;
+accessible field net/minecraft/world/item/crafting/SmithingTransformRecipe base Lnet/minecraft/world/item/crafting/Ingredient;
+accessible field net/minecraft/world/item/crafting/SmithingTransformRecipe addition Ljava/util/Optional;
+accessible field net/minecraft/world/item/crafting/SmithingTransformRecipe template Ljava/util/Optional;
+accessible field net/minecraft/world/item/crafting/SmithingTrimRecipe base Lnet/minecraft/world/item/crafting/Ingredient;
+accessible field net/minecraft/world/item/crafting/SmithingTrimRecipe addition Lnet/minecraft/world/item/crafting/Ingredient;
+accessible field net/minecraft/world/item/crafting/SmithingTrimRecipe template Lnet/minecraft/world/item/crafting/Ingredient;
+accessible field net/minecraft/world/item/alchemy/PotionBrewing containers Ljava/util/List;
+accessible field net/minecraft/world/item/alchemy/PotionBrewing potionMixes Ljava/util/List;
+accessible field net/minecraft/world/item/alchemy/PotionBrewing containerMixes Ljava/util/List;
+accessible method net/minecraft/world/item/alchemy/PotionBrewing$Mix ingredient ()Lnet/minecraft/world/item/crafting/Ingredient;
+accessible method net/minecraft/client/gui/GuiGraphicsExtractor setTooltipForNextFrameInternal (Lnet/minecraft/client/gui/Font;Ljava/util/List;IILnet/minecraft/client/gui/screens/inventory/tooltip/ClientTooltipPositioner;Lnet/minecraft/resources/Identifier;Z)V
+accessible method net/minecraft/client/gui/GuiGraphicsExtractor blitSprite (Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;IIIIIIIII)V
+accessible method net/minecraft/client/gui/GuiGraphicsExtractor blitNineSlicedSprite (Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;Lnet/minecraft/client/resources/metadata/gui/GuiSpriteScaling$NineSlice;IIIII)V
+accessible method net/minecraft/client/gui/GuiGraphicsExtractor blitTiledSprite (Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;IIIIIIIIIII)V
+accessible method net/minecraft/world/inventory/GrindstoneMenu computeResult (Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)Lnet/minecraft/world/item/ItemStack;
+accessible field net/minecraft/client/gui/components/toasts/ToastManager visibleToasts Ljava/util/List;
+accessible class net/minecraft/client/gui/components/toasts/ToastManager$ToastInstance
+accessible method net/minecraft/world/item/crafting/ShapedRecipePattern shrink (Ljava/util/List;)[Ljava/lang/String;
+
+

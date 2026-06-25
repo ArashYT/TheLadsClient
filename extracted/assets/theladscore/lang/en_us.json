@@ -1,0 +1,21 @@
+{
+    "key.thelads.settings": "Open Lads Settings",
+    "key.thelads.hud": "Edit HUD Layout",
+    "key.thelads.auth": "Account Switcher",
+    "key.thelads.zoom": "Zoom",
+    "key.thelads.nametags": "Toggle Nametags",
+    "key.thelads.togglesneak": "Toggle Sneak",
+    "key.thelads.togglesprint": "Toggle Sprint",
+    "signalloss.toast.lost": "Connection Lost!",
+    "signalloss.toast.recovered": "Connection Recovered!",
+    "signalloss.command.set.timeout": "Timeout set to %s ms",
+    "signalloss.command.set.min_warning": "Min warning set to %s ms",
+    "signalloss.command.set.linger": "Linger set to %s ms",
+    "signalloss.command.set.background": "Background set to %s",
+    "signalloss.command.set.textcolor": "Text color set to %s",
+    "signalloss.command.error.color": "Invalid color format",
+    "signalloss.command.set.bgcolor": "Background color set to %s",
+    "signalloss.command.set.singleplayer": "Singleplayer set to %s",
+    "signalloss.command.set.position": "Position set to %s",
+    "signalloss.command.error.position": "Invalid position"
+}

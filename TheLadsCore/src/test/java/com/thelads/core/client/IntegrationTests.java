@@ -488,14 +488,14 @@ public class IntegrationTests {
 
         try {
             Object moduleManager = Class.forName("com.thelads.core.config.ModuleManager").getMethod("getInstance").invoke(null);
-            Object module = moduleManager.getClass().getMethod("getModule", String.class).invoke(moduleManager, "JustEnoughItems");
+            Object module = moduleManager.getClass().getMethod("getModule", String.class).invoke(moduleManager, "JEI (Just Enough Items)");
 
             // JEI module registration check (compile-safe/fallback if not registered yet)
             if (module != null) {
                 Method getEnabled = module.getClass().getMethod("isEnabled");
-                assertTrue((boolean) getEnabled.invoke(module), "JustEnoughItems module should default to enabled");
+                assertTrue((boolean) getEnabled.invoke(module), "JEI (Just Enough Items) module should default to enabled");
             } else {
-                System.out.println("JustEnoughItems is not registered in ModuleManager yet.");
+                System.out.println("JEI (Just Enough Items) is not registered in ModuleManager yet.");
             }
         } catch (Exception e) {
             fail("Failed during JEI integration tests", e);

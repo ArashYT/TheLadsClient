@@ -1,0 +1,11 @@
+{
+	"match": {
+		"type": "minecraft:block_display"
+	},
+	"luminance": {
+		"type": "lambdynlights:display",
+		"luminance": {
+			"type": "lambdynlights:display/block"
+		}
+	}
+}

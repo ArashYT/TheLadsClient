@@ -31,7 +31,7 @@ public class HudManager {
         add(new KeystrokesHudElement(), "Keystrokes");
         add(new CpsHudElement(), "CPS");
         add(new TexturePackHudElement(), "TexturePacks");
-        add(new PotionHudElement(), "Potions");
+        add(new PotionHudElement(), "Potion Effects");
         add(new PaperdollHudElement(), "Paperdoll");
         add(new XaeroMinimapHudElement(), "XaeroWorldmap");
         
@@ -54,7 +54,7 @@ public class HudManager {
 
     public void render(GuiGraphicsExtractor g, DeltaTracker tickDelta) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.options != null && mc.gui.hud.isHidden) return;
+        try { if (mc.options != null && mc.gui != null && mc.gui.hud != null && mc.gui.hud.isHidden) return; } catch (Exception ignored) {}
 
         int screenW = mc.getWindow().getGuiScaledWidth();
         int screenH = mc.getWindow().getGuiScaledHeight();

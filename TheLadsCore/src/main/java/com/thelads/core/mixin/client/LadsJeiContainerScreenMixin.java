@@ -47,7 +47,7 @@ public abstract class LadsJeiContainerScreenMixin extends Screen {
 
     @Inject(method = "init", at = @At("TAIL"))
     private void onInit(CallbackInfo ci) {
-        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("JeiModule").isEnabled()) {
+        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("JEI (Just Enough Items)").isEnabled()) {
             this.ladsSearchBox = null;
             return;
         }
@@ -70,14 +70,22 @@ public abstract class LadsJeiContainerScreenMixin extends Screen {
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void onExtractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("JeiModule").isEnabled() || this.ladsSearchBox == null) {
+        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("JEI (Just Enough Items)").isEnabled() || this.ladsSearchBox == null) {
             return;
         }
 
-        this.ladsSearchBox.setX(leftPos + imageWidth + 10);
-        this.ladsSearchBox.setY(topPos + 10);
-
-        g.text(this.font, "JEI Search", leftPos + imageWidth + 10, topPos - 4, 0xFFFF5555);
+        var jei = com.thelads.core.config.ModuleManager.getInstance().getModule("JEI (Just Enough Items)");
+        var centerOpt = jei != null ? jei.getOption("Center Search Bar") : null;
+        boolean centerSearch = centerOpt instanceof com.thelads.core.config.BoolOption bo && bo.get();
+        if (centerSearch) {
+            this.ladsSearchBox.setX(this.width / 2 - 40);
+            this.ladsSearchBox.setY(this.height - 24);
+            g.text(this.font, "JEI Search", this.width / 2 - 40, this.height - 35, 0xFFFF5555);
+        } else {
+            this.ladsSearchBox.setX(leftPos + imageWidth + 10);
+            this.ladsSearchBox.setY(topPos + 10);
+            g.text(this.font, "JEI Search", leftPos + imageWidth + 10, topPos - 4, 0xFFFF5555);
+        }
 
         int startX = leftPos + imageWidth + 10;
         int startY = topPos + 32;
@@ -114,13 +122,28 @@ public abstract class LadsJeiContainerScreenMixin extends Screen {
         g.text(this.font, "Next >", startX + 50, pageY, (ladsSearchPage + 1) * (columns * rows) < ladsFilteredItems.size() ? 0xFFFFFFFF : 0x55FFFFFF);
 
         if (hoveredItem != null) {
-            g.setTooltipForNextFrame(this.font, hoveredItem.getDefaultInstance(), mouseX, mouseY);
+            var showIdsOpt = jei != null ? jei.getOption("Show Item IDs") : null;
+            boolean showIds = showIdsOpt instanceof com.thelads.core.config.BoolOption bo && bo.get();
+            ItemStack stack = hoveredItem.getDefaultInstance();
+            if (showIds) {
+                var id = BuiltInRegistries.ITEM.getKey(hoveredItem);
+                if (id != null) {
+                    List<net.minecraft.util.FormattedCharSequence> tooltip = new ArrayList<>();
+                    tooltip.add(stack.getHoverName().getVisualOrderText());
+                    tooltip.add(Component.literal(id.toString()).withStyle(net.minecraft.ChatFormatting.DARK_GRAY).getVisualOrderText());
+                    g.setTooltipForNextFrame(this.font, tooltip, mouseX, mouseY);
+                } else {
+                    g.setTooltipForNextFrame(this.font, stack, mouseX, mouseY);
+                }
+            } else {
+                g.setTooltipForNextFrame(this.font, stack, mouseX, mouseY);
+            }
         }
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void onMouseClicked(MouseButtonEvent event, boolean isDouble, CallbackInfoReturnable<Boolean> cir) {
-        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("JeiModule").isEnabled() || this.ladsSearchBox == null) {
+        if (!com.thelads.core.config.ModuleManager.getInstance().getModule("JEI (Just Enough Items)").isEnabled() || this.ladsSearchBox == null) {
             return;
         }
 
@@ -162,9 +185,27 @@ public abstract class LadsJeiContainerScreenMixin extends Screen {
 
             if (mx >= x && mx < x + 16 && my >= y && my < y + 16) {
                 Item item = ladsFilteredItems.get(i);
-                this.minecraft.setScreenAndShow(new com.thelads.core.client.gui.LadsRecipeViewerScreen(this, item.getDefaultInstance()));
-                cir.setReturnValue(true);
-                return;
+                var jei = com.thelads.core.config.ModuleManager.getInstance().getModule("JEI (Just Enough Items)");
+                var showRecipesOpt = jei != null ? jei.getOption("Show Recipes") : null;
+                boolean showRecipes = showRecipesOpt instanceof com.thelads.core.config.BoolOption bo ? bo.get() : true;
+                var cheatOpt = jei != null ? jei.getOption("Cheat Mode") : null;
+                boolean cheatMode = cheatOpt instanceof com.thelads.core.config.BoolOption bo && bo.get();
+
+                if (cheatMode && this.minecraft.player != null) {
+                    var id = BuiltInRegistries.ITEM.getKey(item);
+                    if (id != null) {
+                        this.minecraft.player.connection.sendCommand("give @s " + id.toString() + " 64");
+                    }
+                    cir.setReturnValue(true);
+                    return;
+                } else if (showRecipes) {
+                    this.minecraft.setScreenAndShow(new com.thelads.core.client.gui.LadsRecipeViewerScreen(this, item.getDefaultInstance()));
+                    cir.setReturnValue(true);
+                    return;
+                } else {
+                    cir.setReturnValue(true);
+                    return;
+                }
             }
         }
     }

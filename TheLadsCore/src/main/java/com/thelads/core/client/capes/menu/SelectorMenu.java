@@ -130,6 +130,7 @@ public final class SelectorMenu extends MainMenu {
                     config.save();
                     this.capeTypeButton.setMessage(config.getClientCapeType().getText());
                     PlaceholderEntity.INSTANCE.setCapeLoaded(false);
+                    com.thelads.core.client.capes.PlayerHandler.onLoadTexture(this.minecraft.getGameProfile());
                 }
             }
             this.dropdownOpen = false;

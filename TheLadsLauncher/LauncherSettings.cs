@@ -43,6 +43,11 @@ public class LauncherSettings
     public bool FullscreenOnLaunch { get; set; } = false;
     public bool QuickLaunch { get; set; } = false;
 
+    // Discord RPC
+    public bool EnableDiscordRpc { get; set; } = true;
+    public bool DiscordRpcShowIp { get; set; } = false;
+
+
     // Sync
     public bool SyncResourcePacksFromGlobal { get; set; } = false;
     public bool SyncScreenshotsToGlobal { get; set; } = true;

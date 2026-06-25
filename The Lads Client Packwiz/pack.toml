@@ -1,0 +1,13 @@
+name = "The Lads Client"
+author = "ArashYT"
+version = "BETA-0.14"
+pack-format = "packwiz:1.1.0"
+
+[index]
+file = "index.toml"
+hash-format = "sha256"
+hash = "f1c55ed3ff6113859535fdd5d524f2c0046ea43650c97faf5fae272b4eb4e287"
+
+[versions]
+fabric = "0.19.3"
+minecraft = "26.2"

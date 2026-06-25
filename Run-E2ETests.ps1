@@ -7,10 +7,10 @@ Write-Output "=== Step 1: Running Java Integration Tests ==="
 Push-Location TheLadsCore
 try {
     # Run tests using gradlew wrapper
-    .\gradlew.bat test --tests "com.thelads.core.client.IntegrationTests"
-    Write-Output "Java IntegrationTests passed successfully!"
+    .\gradlew.bat test --tests "com.thelads.core.client.IntegrationTests" --tests "com.thelads.core.client.E2EPolishTests"
+    Write-Output "Java Integration and E2E Polish tests passed successfully!"
 } catch {
-    Write-Error "Java IntegrationTests failed!"
+    Write-Error "Java tests failed!"
     Pop-Location
     exit 1
 }

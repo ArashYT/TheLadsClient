@@ -47,22 +47,39 @@ implements EnhancedTooltipsTooltipComponent {
         if (remaining <= 0) {
             return Component.empty();
         }
-        return switch (this.config.durability.durabilityTooltip) {
-            case EnhancedTooltipsConfig.DurabilityTooltipMode.VALUE -> {
-                if (this.config.durability.durabilityBar) {
-                    yield Component.literal((String)(" " + remaining + " / " + this.stack.getMaxDamage()));
+        var module = com.thelads.core.config.ModuleManager.getInstance().getModule("EnhancedToolbars");
+        boolean showMax = true;
+        boolean colorize = true;
+        if (module != null && module.isEnabled()) {
+            var showMaxOpt = module.getOption("Show Max Durability");
+            if (showMaxOpt instanceof com.thelads.core.config.BoolOption bo) showMax = bo.get();
+            var colorizeOpt = module.getOption("Colorize Durability");
+            if (colorizeOpt instanceof com.thelads.core.config.BoolOption bo) colorize = bo.get();
+        }
+
+        switch (this.config.durability.durabilityTooltip) {
+            case VALUE: {
+                Style remainingStyle = Style.EMPTY;
+                if (colorize) remainingStyle = remainingStyle.withColor(this.stack.getBarColor());
+
+                MutableComponent comp = Component.literal(" ").append(Component.literal(String.valueOf(remaining)).setStyle(remainingStyle));
+                if (showMax) {
+                    Style maxStyle = Style.EMPTY;
+                    if (colorize) maxStyle = maxStyle.withColor(-16711936);
+                    comp = comp.append(Component.literal(" / ").setStyle(Style.EMPTY.withColor(-4539718)))
+                               .append(Component.literal(String.valueOf(this.stack.getMaxDamage())).setStyle(maxStyle));
                 }
-                yield Component.literal((String)" ").append((Component)Component.literal((String)String.valueOf(remaining)).setStyle(Style.EMPTY.withColor(this.stack.getBarColor()))).append((Component)Component.literal((String)" / ").setStyle(Style.EMPTY.withColor(-4539718))).append((Component)Component.literal((String)String.valueOf(this.stack.getMaxDamage())).setStyle(Style.EMPTY.withColor(-16711936)));
+                return comp;
             }
-            case EnhancedTooltipsConfig.DurabilityTooltipMode.PERCENTAGE -> {
-                MutableComponent percentageText = Component.literal((String)(" " + remaining * 100 / this.stack.getMaxDamage() + "%"));
-                if (this.config.durability.durabilityBar) {
-                    yield percentageText;
-                }
-                yield (Component)percentageText.toFlatList(Style.EMPTY.withColor(this.stack.getBarColor())).getFirst();
+            case PERCENTAGE: {
+                int pct = remaining * 100 / this.stack.getMaxDamage();
+                Style remainingStyle = Style.EMPTY;
+                if (colorize) remainingStyle = remainingStyle.withColor(this.stack.getBarColor());
+                return Component.literal(" " + pct + "%").setStyle(remainingStyle);
             }
-            default -> Component.empty();
-        };
+            default:
+                return Component.empty();
+        }
     }
 
     @Override

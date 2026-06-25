@@ -30,6 +30,7 @@ package com.thelads.core.mixin.alwayson.raisesoundlimit;
 import com.thelads.core.features.alwayson.raisesoundlimit.common.ListFromSortedSet;
 import com.thelads.core.features.alwayson.raisesoundlimit.common.SoundSystemDuck;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.sugar.Share;
@@ -223,6 +224,23 @@ implements SoundSystemDuck {
     @Override
     public SoundEngineExecutor rsls$getExecutor() {
         return this.executor;
+    }
+
+    @Inject(method = "calculateVolume(FLnet/minecraft/sounds/SoundSource;)F", at = @At("RETURN"), cancellable = true)
+    private void onCalculateVolume(float volume, net.minecraft.sounds.SoundSource source, CallbackInfoReturnable<Float> cir) {
+        com.thelads.core.config.Module baseModule = com.thelads.core.config.ModuleManager.getInstance().getModule("DynamicFPS");
+        if (baseModule instanceof com.thelads.core.modules.DynamicFPSModule dynFps) {
+            boolean active = Minecraft.getInstance().isWindowActive();
+            boolean afk = dynFps.isAfk();
+            if (!active || afk) {
+                com.thelads.core.config.Option opt = dynFps.getOption("Lower Master Volume By (%)");
+                if (opt instanceof com.thelads.core.config.SliderOption so) {
+                    double reductionPct = so.getValue();
+                    float multiplier = (float) (1.0 - (reductionPct / 100.0));
+                    cir.setReturnValue(cir.getReturnValue() * multiplier);
+                }
+            }
+        }
     }
 }
 

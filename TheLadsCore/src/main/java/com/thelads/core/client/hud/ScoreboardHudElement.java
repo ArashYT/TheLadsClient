@@ -43,25 +43,39 @@ public class ScoreboardHudElement extends HudElement {
         int headerCol = 0xBB2A2040;
         int textCol  = resolveColor();
 
+        Module m = com.thelads.core.config.ModuleManager.getInstance().getModule("Scoreboard");
+        boolean hideNumbers = m != null && m.getOption("Hide Red Numbers") instanceof com.thelads.core.config.BoolOption bo && bo.get();
+
         if (obj != null) {
             // Real scoreboard data — use sorted list via ArrayList
             var scores = new java.util.ArrayList<>(sb.listPlayerScores(obj));
             int maxLines = Math.min(scores.size(), 15);
             int lineH    = mc.font.lineHeight + 2;
-            Module m = com.thelads.core.config.ModuleManager.getInstance().getModule("Scoreboard");
-            boolean hideNumbers = m != null && m.getOption("Hide Red Numbers") instanceof com.thelads.core.config.BoolOption bo && bo.get();
 
-            // Calculate width if numbers are hidden
             int maxW = mc.font.width(obj.getDisplayName());
-            if (hideNumbers) {
-                for (int i = 0; i < maxLines && i < scores.size(); i++) {
-                    int rw = mc.font.width(scores.get(scores.size() - 1 - i).owner());
-                    if (rw > maxW) maxW = rw;
+            java.util.List<net.minecraft.network.chat.Component> names = new java.util.ArrayList<>();
+            java.util.List<String> vals = new java.util.ArrayList<>();
+            for (int i = 0; i < maxLines && i < scores.size(); i++) {
+                var entry = scores.get(scores.size() - 1 - i);
+                var team = sb.getPlayersTeam(entry.owner());
+                var nameComp = net.minecraft.world.scores.PlayerTeam.formatNameForTeam(team, net.minecraft.network.chat.Component.literal(entry.owner()));
+                String valStr = String.valueOf(entry.value());
+                names.add(nameComp);
+                vals.add(valStr);
+                
+                int rw;
+                if (hideNumbers) {
+                    rw = mc.font.width(nameComp);
+                } else {
+                    rw = mc.font.width(nameComp) + 4 + mc.font.width(valStr);
                 }
-                this.width = maxW + 8;
-            } else {
-                this.width = 96;
+                if (rw > maxW) maxW = rw;
             }
+
+            int sbW = maxW + 8;
+            int sbH = maxLines == 0 ? lineH + 4 : lineH * (maxLines + 1) + 6;
+            this.width = sbW;
+            this.height = sbH;
 
             g.fill(x, y, x + width, y + height, bgCol);
             g.fill(x, y, x + width, y + lineH + 2, headerCol);
@@ -80,21 +94,35 @@ public class ScoreboardHudElement extends HudElement {
                 ly += lineH;
             }
         } else {
-            // No active scoreboard — show placeholder
-            Module m = com.thelads.core.config.ModuleManager.getInstance().getModule("Scoreboard");
-            boolean hideNumbers = m != null && m.getOption("Hide Red Numbers") instanceof com.thelads.core.config.BoolOption bo && bo.get();
+            // No active scoreboard — show placeholder with dynamically computed size
+            int lineH = mc.font.lineHeight + 2;
+            int maxW = mc.font.width("Scoreboard");
+            
+            java.util.List<String> pNames = java.util.List.of("Player A", "Player B", "Player C");
+            java.util.List<String> pScores = java.util.List.of("42", "37", "21");
+            for (int i = 0; i < pNames.size(); i++) {
+                int rw;
+                if (hideNumbers) {
+                    rw = mc.font.width(pNames.get(i));
+                } else {
+                    rw = mc.font.width(pNames.get(i)) + 4 + mc.font.width(pScores.get(i));
+                }
+                if (rw > maxW) maxW = rw;
+            }
+            int sbW = maxW + 8;
+            int sbH = lineH * (pNames.size() + 1) + 6;
+            this.width = sbW;
+            this.height = sbH;
 
-            this.width  = hideNumbers ? 68 : 88;
-            this.height = 56;
             g.fill(x, y, x + width, y + height, bgCol);
-            g.fill(x, y, x + width, y + 12, headerCol);
+            g.fill(x, y, x + width, y + lineH + 2, headerCol);
             g.centeredText(mc.font, "Scoreboard", x + width / 2, y + 2, 0xFFFFFF55);
-            g.text(mc.font, "Player A",  x + 3, y + 16, textCol, false);
-            if (!hideNumbers) g.text(mc.font, "42",        x + width - mc.font.width("42") - 3, y + 16, 0xFFFF5555, false);
-            g.text(mc.font, "Player B",  x + 3, y + 28, textCol, false);
-            if (!hideNumbers) g.text(mc.font, "37",        x + width - mc.font.width("37") - 3, y + 28, 0xFFFF5555, false);
-            g.text(mc.font, "Player C",  x + 3, y + 40, textCol, false);
-            if (!hideNumbers) g.text(mc.font, "21",        x + width - mc.font.width("21") - 3, y + 40, 0xFFFF5555, false);
+            g.text(mc.font, "Player A",  x + 3, y + lineH + 4, textCol, false);
+            if (!hideNumbers) g.text(mc.font, "42",        x + width - mc.font.width("42") - 3, y + lineH + 4, 0xFFFF5555, false);
+            g.text(mc.font, "Player B",  x + 3, y + lineH * 2 + 4, textCol, false);
+            if (!hideNumbers) g.text(mc.font, "37",        x + width - mc.font.width("37") - 3, y + lineH * 2 + 4, 0xFFFF5555, false);
+            g.text(mc.font, "Player C",  x + 3, y + lineH * 3 + 4, textCol, false);
+            if (!hideNumbers) g.text(mc.font, "21",        x + width - mc.font.width("21") - 3, y + lineH * 3 + 4, 0xFFFF5555, false);
         }
     }
 }

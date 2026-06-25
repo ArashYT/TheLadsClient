@@ -29,6 +29,15 @@ public class AutoReconnect {
     private long shownAt;
     private boolean cancelled;
     private Button cancelButton; // the disconnect screen's Cancel button, for the live countdown
+    private ServerData lastServer;
+
+    public void setLastServer(ServerData server) {
+        this.lastServer = server;
+    }
+
+    public ServerData getLastServer() {
+        return this.lastServer;
+    }
 
     public void setCancelButton(Button b) {
         this.cancelButton = b;

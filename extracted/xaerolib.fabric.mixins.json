@@ -1,0 +1,21 @@
+{
+    "required": true,
+    "plugin" : "xaero.lib.mixin.plugin.MixinPlugin",
+    "minVersion": "0.8",
+    "package": "xaero.lib.mixin",
+    "compatibilityLevel": "JAVA_17",
+    "mixins": [
+        "MixinPlayerFabric",
+        "MixinPlayerListFabric"
+    ],
+    "client": [
+        "MixinGameRendererFabric",
+        "MixinMinecraftClientFabric"
+    ],
+    "server": [
+    ],
+    "injectors": {
+      "defaultRequire": 1
+    }
+}
+  
