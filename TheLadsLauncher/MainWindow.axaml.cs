@@ -125,9 +125,9 @@ public partial class MainWindow : Window
             settings.LauncherVersion = Program.Version;
             settings.Save();
         }
-        if (settings.FabricVersion == "fabric-loader-0.19.3-26.2")
+        if (settings.FabricVersion == "fabric-loader-0.19.3-26.2" || settings.FabricVersion == "fabric-loader-0.19.3-26.1.2")
         {
-            settings.FabricVersion = "fabric-loader-0.19.3-26.1.2";
+            settings.FabricVersion = "fabric-loader-0.19.2-26.1.2";
             settings.Save();
         }
         Log($"[Settings] Loaded settings from BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
