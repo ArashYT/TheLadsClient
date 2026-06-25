@@ -1,13 +1,19 @@
+#define MyAppName "The Lads Client"
+#define MyAppVersion "1.0.6"
+#define MyAppPublisher "ArashYT"
+#define MyAppURL "https://github.com/ArashYT/TheLadsClient"
+#define MyAppExeName "TheLadsLauncher.exe"
+
 [Setup]
-AppName=The Lads Client
-AppVersion=0.14.15
-DefaultDirName={localappdata}\The Lads Client
-DefaultGroupName=The Lads Client
-UninstallDisplayIcon={app}\TheLadsLauncher.exe
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+DefaultDirName={localappdata}\{#MyAppName}
+DefaultGroupName={#MyAppName}
+UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
 SolidCompression=yes
 OutputDir=.
-OutputBaseFilename=LadsClient_Installer_BETA_0.14.15
+OutputBaseFilename=LadsClient_Installer_BETA_{#MyAppVersion}
 PrivilegesRequired=lowest
 
 [Files]
