@@ -3730,6 +3730,21 @@ public partial class MainWindow : Window
             return;
         }
 
+        string modsDir = Path.Combine(settings.InstancePath, "mods");
+        if (Directory.Exists(modsDir))
+        {
+            try 
+            {
+                if (Directory.GetFiles(modsDir, "*.jar").Length > 80)
+                {
+                    Log("[Launcher] Over 80 mods detected. Purging mods directory for a clean sync...");
+                    Directory.Delete(modsDir, true);
+                    Directory.CreateDirectory(modsDir);
+                }
+            } 
+            catch (Exception ex) { Log($"[Launcher] Mod purge failed: {ex.Message}"); }
+        }
+
         // Fast path: the mod sync re-verifies every mod and is slow. Skip it entirely
         // when the pack hasn't changed since the last successful sync.
         string packToml = Path.Combine(settings.PackwizPath, "pack.toml");

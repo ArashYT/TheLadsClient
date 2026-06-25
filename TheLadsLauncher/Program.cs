@@ -5,7 +5,7 @@ namespace TheLadsLauncher;
 
 class Program
 {
-    public const string Version = "0.14.15";
+    public const string Version = "1.0.6";
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
