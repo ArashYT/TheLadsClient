@@ -1,10 +1,6 @@
 hash-format = "sha256"
 
 [[files]]
-file = "config/fabric_loader_dependencies.json"
-hash = "5308f39b7315a3257c20eee30253bbf4afea6209bd10b7ed98454cdd12bb502e"
-
-[[files]]
 file = "config/fancymenu/assets/intros/mojang-intro.gif"
 hash = "0761c07cdb9f8cafd338cbbf1b4078b198ce9cfb33040b43822c85b8a517e5f4"
 
@@ -186,10 +182,6 @@ hash = "8e370529288f3d744051604347f32d00c8ea95f2a9efe453c29fe2c4de4bd45b"
 [[files]]
 file = "mods/mru-1.0.28+lts+26.1-fabric.jar"
 hash = "9c83099cc08b223965dd0fb222986aadc6123e6eba35b63901de6e27f69631e1"
-
-[[files]]
-file = "mods/packwiz-installer.jar"
-hash = "c9f646908d340d84773948a9a7d98bc1dae250d35e1016dc6e2b8459760b5598"
 
 [[files]]
 file = "mods/placeholder-api-3.1.0-beta.1+26.2.jar"
