@@ -1,9 +1,0 @@
-{
-	"gui.xaero_on" : "AAN",
-	"gui.xaero_off" : "UIT",
-	"gui.xaero_back" : "Terug",
-	"gui.xaero_confirm" : "Bevestigen",
-	"gui.xaero_cancel" : "Anuleren",
-	"gui.xaero_next" : "Volgende >>",
-	"gui.xaero_previous" : "<< Vorige"
-}

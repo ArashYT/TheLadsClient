@@ -125,11 +125,7 @@ public partial class MainWindow : Window
             settings.LauncherVersion = Program.Version;
             settings.Save();
         }
-        if (settings.FabricVersion == "fabric-loader-0.19.3-26.2" || settings.FabricVersion == "fabric-loader-0.19.3-26.1.2")
-        {
-            settings.FabricVersion = "fabric-loader-0.19.2-26.1.2";
-            settings.Save();
-        }
+        
         Log($"[Settings] Loaded settings from BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
         Log($"[Settings] ModrinthApiUrl: '{settings.ModrinthApiUrl}', CurseForgeApiUrl: '{settings.CurseForgeApiUrl}', OverrideVersion: '{settings.SelectedMinecraftVersionOverride}', FabricVersion: '{settings.FabricVersion}'");
         loginHandler = JELoginHandlerBuilder.BuildDefault();
@@ -4455,7 +4451,7 @@ public partial class MainWindow : Window
     {
         string activeVersion = ResolveMinecraftVersion();
         var versionList = new List<string> { activeVersion };
-        var commonVersions = new[] { "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5" };
+        var commonVersions = new[] { "26.2", "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5" };
         
         foreach (var v in commonVersions)
         {

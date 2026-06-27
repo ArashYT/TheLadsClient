@@ -1,8 +1,0 @@
-{
-	"match": {
-		"type": "minecraft:glow_squid"
-	},
-	"luminance": {
-		"type": "lambdynlights:glow_squid"
-	}
-}
