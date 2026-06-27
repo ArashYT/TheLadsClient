@@ -144,4 +144,15 @@ if (Test-Path $InstallerExePath) {
     }
 }
 
-Write-Host "Release $TagName successfully published to GitHub!"
+# 8. Copy to backups folder
+$BackupDir = "C:\Users\Arash\Desktop\lads client backups\v$Version"
+if (-not (Test-Path $BackupDir)) {
+    New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
+}
+Write-Host "Saving backup of release to $BackupDir..."
+Copy-Item $ExePath -Destination $BackupDir
+if (Test-Path $InstallerExePath) {
+    Copy-Item $InstallerExePath -Destination $BackupDir
+}
+
+Write-Host "Release $TagName successfully published to GitHub and saved to backups!"

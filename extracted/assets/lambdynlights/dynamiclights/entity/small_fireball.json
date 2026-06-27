@@ -1,9 +1,0 @@
-{
-	"match": {
-		"type": "minecraft:small_fireball"
-	},
-	"luminance": {
-		"type": "lambdynlights:water_sensitive",
-		"out_of_water": 12
-	}
-}
