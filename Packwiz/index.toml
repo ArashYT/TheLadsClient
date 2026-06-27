@@ -89,10 +89,6 @@ file = "mods/XaeroPlus-2.32.4+fabric-26.2-WM1.41.3-MM26.1.3.jar"
 hash = "018de3036e76d8cad4dbb1d6d75272635356f919e141df0dfbe470040a14744d"
 
 [[files]]
-file = "mods/asynclogger-2.0.1+26.1.2-fabric.jar"
-hash = "e6507e46233f06690b95fbfdcdb90e20d4449be562d5026a27f8405bc6c87e9f"
-
-[[files]]
 file = "mods/balm-fabric-26.2-26.2.0.1.jar"
 hash = "4e57e4f2a1931d902b72060486f7b23eb9d69d8003efb7a333f3323f1f9f7378"
 
@@ -178,10 +174,6 @@ hash = "5c2dc5bac03c335e40e692030fb5f16d806ef010ed16e768494d0043ca10b84f"
 [[files]]
 file = "mods/modmenu-20.0.0-beta.4.jar"
 hash = "8e370529288f3d744051604347f32d00c8ea95f2a9efe453c29fe2c4de4bd45b"
-
-[[files]]
-file = "mods/mru-1.0.28+lts+26.1-fabric.jar"
-hash = "9c83099cc08b223965dd0fb222986aadc6123e6eba35b63901de6e27f69631e1"
 
 [[files]]
 file = "mods/placeholder-api-3.1.0-beta.1+26.2.jar"
