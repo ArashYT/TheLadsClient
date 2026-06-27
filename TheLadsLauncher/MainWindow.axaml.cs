@@ -36,7 +36,20 @@ public partial class MainWindow : Window
     private JELoginHandler loginHandler;
     private LauncherSettings settings;
 
-    private string _selectedAccount = "";
+    private string _selectedAccountInternal = "";
+    private string _selectedAccount 
+    {
+        get => _selectedAccountInternal;
+        set 
+        {
+            _selectedAccountInternal = value;
+            if (settings != null)
+            {
+                settings.MainAccount = value;
+                settings.Save();
+            }
+        }
+    }
     // Alt-account launch override: when non-empty, the next launch uses this account
     // WITHOUT changing _selectedAccount (the user's main). Set via LaunchAccountSelector.
     private string _launchAccountOverride = "";
@@ -1344,6 +1357,11 @@ public partial class MainWindow : Window
 
         // Update AccountOrder settings array to match
         settings.AccountOrder = allAccountNames.ToList();
+
+        if (string.IsNullOrEmpty(_selectedAccountInternal) && !string.IsNullOrEmpty(settings.MainAccount))
+        {
+            _selectedAccountInternal = settings.MainAccount;
+        }
 
         if (allAccountNames.Count > 0)
         {

@@ -48,6 +48,7 @@ public class LauncherSettings
     public string UiScale { get; set; } = "100%";
     public System.Collections.Generic.List<string> OfflineAccounts { get; set; } = new();
     public System.Collections.Generic.List<string> AccountOrder { get; set; } = new();
+    public string MainAccount { get; set; } = "";
 
     // Version
     public string LauncherVersion { get; set; } = "1.0.4";
