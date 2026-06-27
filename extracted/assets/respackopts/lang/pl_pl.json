@@ -1,6 +1,0 @@
-{
-  "respackopts.loadFailed": "Nie udało się załadować paczek zasobów",
-  "respackopts.loadError": "Wystąpił problem z konfiguracją paczki zasobów. Sprawdź logi gry",
-  "respackopts.configure": "Konfiguruj",
-  "respackopts.invalid": "Nieprawidłowa wartość"
-}

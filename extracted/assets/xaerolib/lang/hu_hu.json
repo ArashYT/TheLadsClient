@@ -1,9 +1,0 @@
-{
-	"gui.xaero_on" : "BE",
-	"gui.xaero_off" : "KI",
-	"gui.xaero_back" : "Vissza",
-	"gui.xaero_confirm" : "Megerősít",
-	"gui.xaero_cancel" : "Mégsem",
-	"gui.xaero_next" : "Következő >>",
-	"gui.xaero_previous" : "<< Előző"
-}

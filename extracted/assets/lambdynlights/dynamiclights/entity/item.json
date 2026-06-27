@@ -1,8 +1,0 @@
-{
-	"match": {
-		"type": "minecraft:item"
-	},
-	"luminance": {
-		"type": "lambdynlights:item_entity"
-	}
-}
