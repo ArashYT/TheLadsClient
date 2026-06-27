@@ -65,10 +65,6 @@ file = "mods/Controlling-fabric-26.2-26.2.2.jar"
 hash = "088b44cce84a7d02476a3194ac5bbe6f3ab31e921af894093c4d357ebcb25fc1"
 
 [[files]]
-file = "mods/Flashback-0.41.1-for-MC26.2.jar"
-hash = "1325169ca7ba2a06a048eff8b7f6868b33be0ac7bccad5667628367b8f20bba1"
-
-[[files]]
 file = "mods/Ksyxis-1.4.3.jar"
 hash = "23c8c5993004f0584eb27b19b4397b7aa8833f41b8f2d1ea201ee54a60f964b9"
 
@@ -206,118 +202,6 @@ hash = "12439f538c54ebf31b2f434e87c07b41876ee1b262b3dad4bc1bffe9c55e9095"
 [[files]]
 file = "mods/reeses-sodium-options-fabric-2.2.0+mc26.2.jar"
 hash = "ed99ee73feb0316f010dc66470aaa12c99e6a636409f2e6cac821ed5acc7dcf2"
-
-[[files]]
-file = "mods/resourcepacks/3D-fishing-hook-bobber-3.0-fancy-with-line.zip"
-hash = "acb4614558be0c99ee06afbfc425635f4bffae84f90a7df2d67f45f7468a3ead"
-
-[[files]]
-file = "mods/resourcepacks/AndrosDiscordEmojis.zip"
-hash = "88efd24105cfae6d855e28fcd7799ee14d7b549c12cf456f56ced01a93d71e49"
-
-[[files]]
-file = "mods/resourcepacks/Better Fire (26.1).zip"
-hash = "a04b229c19dfdd71e31f2c9d4e6a8bd972ce91ecc0cd42cadaa8264fac1b0113"
-
-[[files]]
-file = "mods/resourcepacks/BunnyGirlSenpaiGUIPack-[1.21.11].zip"
-hash = "9e242c784823ff26df1d30d0d703691b91f21d7809f1d235149b6489ea2e8256"
-
-[[files]]
-file = "mods/resourcepacks/CLEAN WATER.zip"
-hash = "a63911d80196a34be7b13eaacc40aec74fadca2d1cb01c1f1052be5f03fd1577"
-
-[[files]]
-file = "mods/resourcepacks/Chat+ v.1.3.zip"
-hash = "e02e51196429d91ca24e881e23cac6df07b6448bc69001f6265e18cf4ba35a2c"
-
-[[files]]
-file = "mods/resourcepacks/Crimson Forest.zip"
-hash = "dd6e3c09daa64d19b49c6fac29258cb47fcd02a11668ca693a7914901fce308c"
-
-[[files]]
-file = "mods/resourcepacks/FlowFont_69.0-88.0_1.3.zip"
-hash = "51707f4735fef1ee34a81f6363285836ad1e8790b19154425581f864231cd58d"
-
-[[files]]
-file = "mods/resourcepacks/HD SHIELD.zip"
-hash = "b86c0baedfa30476a5ae687aa1de8164bfd90bfc205dcd4ce4ce2427209eb0d3"
-
-[[files]]
-file = "mods/resourcepacks/Icons v.1.13.4.zip"
-hash = "79e4c2221b85716086dac99fa9f87c0f88a5c325d870caca9e7b3ac4a4bf01c5"
-
-[[files]]
-file = "mods/resourcepacks/PvP-CrossHair 26.1.2.zip"
-hash = "e195bce46d16b61dd51607f3475ee447239fe2383751345b5d404235e26f8a5a"
-
-[[files]]
-file = "mods/resourcepacks/Realistic Sky.zip"
-hash = "c07b423fa9cca4a56785d627bcf1c52690a62e6e7bd91dade04ba87d16eecf30"
-
-[[files]]
-file = "mods/resourcepacks/SmoothFont_1.21.zip"
-hash = "f55bc6ffda76744c2afad7049b3c733fab22b12ff5a51c1d444211e93b4931da"
-
-[[files]]
-file = "mods/resourcepacks/The Lads Network - 3D-v1.0.zip"
-hash = "a34be8aad3ba7809a6df4a3d5d2f0a7531140151862541f39180029b6d26bb49"
-
-[[files]]
-file = "mods/resourcepacks/The Lads Network - Blocks v1.0.zip"
-hash = "e70646a197ee17350f788c532eb1bbe086fc004316dac966ea5e54bc2a9434d2"
-
-[[files]]
-file = "mods/resourcepacks/The Lads Network - Items v1.0.zip"
-hash = "ba088e8d0ba6cd17eb40669c6ade08005dbccbc710080c5727ff64affb099eec"
-
-[[files]]
-file = "mods/resourcepacks/The Lads Network - Misc v10.zip"
-hash = "55a80d7cb3b350906a462bb2435b1536482471bb089c81bdad5b1c78e9ea5836"
-
-[[files]]
-file = "mods/resourcepacks/The Lads Network - UI & Sounds v1.0.zip"
-hash = "60858661cca7311bc3aa54e3ecb093150fc6909a7a6d01deeadce9633fc007e5"
-
-[[files]]
-file = "mods/resourcepacks/The Lads Network UI & Sounds-v1.0.zip"
-hash = "1adac2a221e9bfb18abb74885328b2007215f79a6381892e6ee35e509b9622ff"
-
-[[files]]
-file = "mods/resourcepacks/The-Lads-UI-&-Sounds-v1.0.zip"
-hash = "677bbed7405a3a0f8acdc82404d7a4a06871af5bbbc6f3f3a6206ca5601d8f21"
-
-[[files]]
-file = "mods/resourcepacks/UD Refined - Lite - 1.20.2-26.x.zip"
-hash = "377e6622591c44a209bc1a4568b55505e65a1dcc70290594446cca25fc2524c4"
-
-[[files]]
-file = "mods/resourcepacks/Undopia_Different_Axolotl_Buckets_1.21.11_v.1.0.zip"
-hash = "440161e2ea93022925c4bb7b456e28d28ce898de591d46d4dbf9ecef86b65a12"
-
-[[files]]
-file = "mods/resourcepacks/Unique Dark - Lite - 1.20.2-26.x.zip"
-hash = "1ef180de9d8cd111af1ec2fe5a073423b7dcd217b942baf6c37813b52eeb30f9"
-
-[[files]]
-file = "mods/resourcepacks/Vanilla Heart Health Bar HUD Hotbar.zip"
-hash = "9d99a53b5a42d92c014282b5f79694a46583430776a530b982df832a7c15ef7a"
-
-[[files]]
-file = "mods/resourcepacks/twemoji.zip"
-hash = "e3dd4602a95caffc31ff6228e906ae99ee747cd6ab0fc6fa73111eda6e8c1b60"
-
-[[files]]
-file = "mods/resourcepacks/§aChests§8-§aReimagined§0_§8[v1.8.2]§0.zip"
-hash = "9801a6c3693fce130339dd2b8d26a4bcd7ee4897c5a32d36e29edd4ee7bf921c"
-
-[[files]]
-file = "mods/resourcepacks/§b☁ §3§lClear Weather§8§o §8v1.0.1.zip"
-hash = "03f99a0e452b5fde5313b4a8cc84d03031e92e47e6b573be3cb910f07560cd49"
-
-[[files]]
-file = "mods/resourcepacks/§dChicknTurtleBetterShield-v1.2.zip"
-hash = "51440baba76855a9479bb6f2f8fd3e8ab539d014b577405938211d137f5f0e30"
 
 [[files]]
 file = "mods/simple-voice-chat.pw.toml"
