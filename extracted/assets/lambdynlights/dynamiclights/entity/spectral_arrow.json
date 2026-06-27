@@ -1,8 +1,0 @@
-{
-	"match": {
-		"type": "minecraft:spectral_arrow"
-	},
-	"luminance": {
-		"type": "lambdynlights:arrow/derived_from_self_item"
-	}
-}
