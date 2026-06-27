@@ -123,6 +123,17 @@ public partial class MainWindow : Window
         if (settings.LauncherVersion != Program.Version)
         {
             settings.LauncherVersion = Program.Version;
+            
+            // Migrate to 26.2 and new Packwiz URLs if the user has legacy settings
+            if (settings.FabricVersion.Contains("26.1.2") || settings.FabricVersion.Contains("0.19.2"))
+                settings.FabricVersion = "fabric-loader-0.19.3-26.2";
+            
+            if (settings.PackwizPath.Contains("The Lads Client Packwiz"))
+                settings.PackwizPath = @"C:\Users\Arash\Desktop\Lads Client\Packwiz";
+                
+            if (settings.PackwizUrl.Contains("The%20Lads%20Client%20Packwiz"))
+                settings.PackwizUrl = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/pack.toml";
+            
             settings.Save();
         }
         
