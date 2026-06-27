@@ -86,7 +86,7 @@ hash = "83f5b3d3a0ef19f0ac9da07c6acb4bb817f95efcda237ca91cbddcc5339d3add"
 
 [[files]]
 file = "mods/TheLadsCore-1.41.18.jar"
-hash = "d19eca6fb604d4cb80de2e94b70a40c3f4f244e0bd5dc567afedbe0fd278b8d7"
+hash = "bb3699cd689e1fd65722b67cf14a633cf05958bab3c4cdca7b3a49c2e5a3e743"
 
 [[files]]
 file = "mods/ViaFabricPlus-4.6.0.jar"
@@ -95,10 +95,6 @@ hash = "df7339f422b6798c9b500d0b2afe9338292bb4ade124926c2261de361cfb3cce"
 [[files]]
 file = "mods/XaeroPlus-2.32.4+fabric-26.2-WM1.41.3-MM26.1.3.jar"
 hash = "018de3036e76d8cad4dbb1d6d75272635356f919e141df0dfbe470040a14744d"
-
-[[files]]
-file = "mods/almanac-1.26.x-fabric-1.6.2.1.jar"
-hash = "46769316733518a6cbd0138dc34627db79de4c6f6d0aadc1849fa960ffc54098"
 
 [[files]]
 file = "mods/asynclogger-2.0.1+26.1.2-fabric.jar"
@@ -117,6 +113,54 @@ file = "mods/collective-26.2.0-8.32.jar"
 hash = "a773dd1f2e830cc917d088950b9e5b178ccf0768e955730ba2d3b2740c81f082"
 
 [[files]]
+file = "mods/config/fabric_loader_dependencies.json"
+hash = "5308f39b7315a3257c20eee30253bbf4afea6209bd10b7ed98454cdd12bb502e"
+
+[[files]]
+file = "mods/config/fancymenu/assets/intros/mojang-intro.gif"
+hash = "0761c07cdb9f8cafd338cbbf1b4078b198ce9cfb33040b43822c85b8a517e5f4"
+
+[[files]]
+file = "mods/config/fancymenu/assets/mojang_studios_loading_60fps.mp4"
+hash = "d8c2a054f366dad54b3ae9e2a640025d4b477f79bbd243a8a26faedde855878f"
+
+[[files]]
+file = "mods/config/fancymenu/assets/rainbow.gif"
+hash = "c242188f04e671da658bfb6f40aa6db8f8a54320b924e1e532d6889609c2a3c0"
+
+[[files]]
+file = "mods/config/fancymenu/assets/rgb.gif"
+hash = "9b32f73ebcfd1daafe45c5e5c963f5a9fda136b4338d758192e3eeeaea9a8060"
+
+[[files]]
+file = "mods/config/fancymenu/assets/rickroll.mp4"
+hash = "4b0851062cca17ce34f57a77832ee97b92fb90eb0fc7337d18cd760346bbb4d2"
+
+[[files]]
+file = "mods/config/fancymenu/assets/smooth-loading-unscreen.gif"
+hash = "6385ae44a24353be363b33ff1c534744af03818539df17ba330e3f16df303622"
+
+[[files]]
+file = "mods/config/fancymenu/assets/smooth_loading.mp4"
+hash = "0cfdd6f9b14accdb69c301c074a463fe8ad487f05806eb6799dfaa8ab5365191"
+
+[[files]]
+file = "mods/config/fancymenu/assets/source.gif"
+hash = "37030071fa54d132b3fef9dcabaf3110970ed081165c32579dc5604f3fafb8ba"
+
+[[files]]
+file = "mods/config/fancymenu/assets/throbber_12.gif"
+hash = "4959158798bd4b5b016b36a225431c503a485140bab233c4011ec7b4203cae96"
+
+[[files]]
+file = "mods/config/fancymenu/assets/windows_loading_screen.gif"
+hash = "274fcad499652b0d5c9a2a3da0eba8703d1245de06dc20925e5ebb11b6a9af2c"
+
+[[files]]
+file = "mods/config/fancymenu/intros/mojang-intro.gif"
+hash = "0761c07cdb9f8cafd338cbbf1b4078b198ce9cfb33040b43822c85b8a517e5f4"
+
+[[files]]
 file = "mods/continuity-3.0.1+26.2.jar"
 hash = "2094a52b98e247f664ef2ecdbb41d7dcad7779cc7a8fb87f0ed8a4f8196c0446"
 
@@ -131,6 +175,10 @@ hash = "531a722a6a259301eee465b59a37738e45d57af693818169bedc37b8265ee666"
 [[files]]
 file = "mods/entity_model_features-3.2.6-26.2-fabric.jar"
 hash = "876a3e4ffda021a6266df87208f2d9980322cf86223d4fe1e313ca996631f115"
+
+[[files]]
+file = "mods/entity_texture_features-7.1.1-26.2-fabric.jar"
+hash = "f469bc914302a13a5c767296623df60fb0cc3d4e4a02a77c56541a733ad36e3a"
 
 [[files]]
 file = "mods/entitytexturefeatures.pw.toml"
@@ -149,6 +197,10 @@ metafile = true
 [[files]]
 file = "mods/fabric-language-kotlin-1.13.12+kotlin.2.4.0.jar"
 hash = "36c5dd8b728e3470d2882ae63119b93a20500fc0ea6f5c945c12bf65b5ab1832"
+
+[[files]]
+file = "mods/fabric.mod.json"
+hash = "c17841907840db7fcea8ef8d060c229e9f93b153c3ab9041b5c36df823ba419a"
 
 [[files]]
 file = "mods/ferritecore-9.0.0-fabric.jar"
@@ -176,16 +228,16 @@ file = "mods/language-reload-1.7.7+26.2.jar"
 hash = "2534bd600e66868c7a4ea120b3cc1b7c89c5293fe24f8e5184822d4474fc05c0"
 
 [[files]]
-file = "mods/letmedespawn-1.26.x-fabric-1.6.2.1.jar"
-hash = "dadfddc1ff23aea36bf327a2dd169fd2d45bf17b385a96228fe709ea21492882"
-
-[[files]]
 file = "mods/libjf-26.2.0.jar"
 hash = "38bad93a4825497df1826edfdce04cc63b2872b26f0fc6491cdc448f50915480"
 
 [[files]]
 file = "mods/lithium-fabric-0.25.1+mc26.2.jar"
 hash = "7025a7fab00eb65d7c3ac12c696d541d0670481ee6956f0645cac382a7d0f825"
+
+[[files]]
+file = "mods/migrate_26.2.py"
+hash = "c648429280d81b2135f76e1d5db413176b745c48a163b562cc59c4c2d10033b2"
 
 [[files]]
 file = "mods/modlistmemory-fabric-1.3.0-beta.1+26.2-pre-2.jar"
@@ -200,6 +252,14 @@ file = "mods/mru-1.0.28+lts+26.1-fabric.jar"
 hash = "9c83099cc08b223965dd0fb222986aadc6123e6eba35b63901de6e27f69631e1"
 
 [[files]]
+file = "mods/packwiz-installer.jar"
+hash = "c9f646908d340d84773948a9a7d98bc1dae250d35e1016dc6e2b8459760b5598"
+
+[[files]]
+file = "mods/packwiz.json"
+hash = "e0a51cb7e4116ba306c86691c499d122213f424edce388b2a27c99f328ab018a"
+
+[[files]]
 file = "mods/placeholder-api-3.1.0-beta.1+26.2.jar"
 hash = "c2ca2b5c397a0c198a32e7af68d2d0a011bc2c7baeae5cffd3996efd65c5069e"
 
@@ -212,6 +272,118 @@ file = "mods/reeses-sodium-options-fabric-2.2.0+mc26.2.jar"
 hash = "ed99ee73feb0316f010dc66470aaa12c99e6a636409f2e6cac821ed5acc7dcf2"
 
 [[files]]
+file = "mods/resourcepacks/3D-fishing-hook-bobber-3.0-fancy-with-line.zip"
+hash = "acb4614558be0c99ee06afbfc425635f4bffae84f90a7df2d67f45f7468a3ead"
+
+[[files]]
+file = "mods/resourcepacks/AndrosDiscordEmojis.zip"
+hash = "88efd24105cfae6d855e28fcd7799ee14d7b549c12cf456f56ced01a93d71e49"
+
+[[files]]
+file = "mods/resourcepacks/Better Fire (26.1).zip"
+hash = "a04b229c19dfdd71e31f2c9d4e6a8bd972ce91ecc0cd42cadaa8264fac1b0113"
+
+[[files]]
+file = "mods/resourcepacks/BunnyGirlSenpaiGUIPack-[1.21.11].zip"
+hash = "9e242c784823ff26df1d30d0d703691b91f21d7809f1d235149b6489ea2e8256"
+
+[[files]]
+file = "mods/resourcepacks/CLEAN WATER.zip"
+hash = "a63911d80196a34be7b13eaacc40aec74fadca2d1cb01c1f1052be5f03fd1577"
+
+[[files]]
+file = "mods/resourcepacks/Chat+ v.1.3.zip"
+hash = "e02e51196429d91ca24e881e23cac6df07b6448bc69001f6265e18cf4ba35a2c"
+
+[[files]]
+file = "mods/resourcepacks/Crimson Forest.zip"
+hash = "dd6e3c09daa64d19b49c6fac29258cb47fcd02a11668ca693a7914901fce308c"
+
+[[files]]
+file = "mods/resourcepacks/FlowFont_69.0-88.0_1.3.zip"
+hash = "51707f4735fef1ee34a81f6363285836ad1e8790b19154425581f864231cd58d"
+
+[[files]]
+file = "mods/resourcepacks/HD SHIELD.zip"
+hash = "b86c0baedfa30476a5ae687aa1de8164bfd90bfc205dcd4ce4ce2427209eb0d3"
+
+[[files]]
+file = "mods/resourcepacks/Icons v.1.13.4.zip"
+hash = "79e4c2221b85716086dac99fa9f87c0f88a5c325d870caca9e7b3ac4a4bf01c5"
+
+[[files]]
+file = "mods/resourcepacks/PvP-CrossHair 26.1.2.zip"
+hash = "e195bce46d16b61dd51607f3475ee447239fe2383751345b5d404235e26f8a5a"
+
+[[files]]
+file = "mods/resourcepacks/Realistic Sky.zip"
+hash = "c07b423fa9cca4a56785d627bcf1c52690a62e6e7bd91dade04ba87d16eecf30"
+
+[[files]]
+file = "mods/resourcepacks/SmoothFont_1.21.zip"
+hash = "f55bc6ffda76744c2afad7049b3c733fab22b12ff5a51c1d444211e93b4931da"
+
+[[files]]
+file = "mods/resourcepacks/The Lads Network - 3D-v1.0.zip"
+hash = "a34be8aad3ba7809a6df4a3d5d2f0a7531140151862541f39180029b6d26bb49"
+
+[[files]]
+file = "mods/resourcepacks/The Lads Network - Blocks v1.0.zip"
+hash = "e70646a197ee17350f788c532eb1bbe086fc004316dac966ea5e54bc2a9434d2"
+
+[[files]]
+file = "mods/resourcepacks/The Lads Network - Items v1.0.zip"
+hash = "ba088e8d0ba6cd17eb40669c6ade08005dbccbc710080c5727ff64affb099eec"
+
+[[files]]
+file = "mods/resourcepacks/The Lads Network - Misc v10.zip"
+hash = "55a80d7cb3b350906a462bb2435b1536482471bb089c81bdad5b1c78e9ea5836"
+
+[[files]]
+file = "mods/resourcepacks/The Lads Network - UI & Sounds v1.0.zip"
+hash = "60858661cca7311bc3aa54e3ecb093150fc6909a7a6d01deeadce9633fc007e5"
+
+[[files]]
+file = "mods/resourcepacks/The Lads Network UI & Sounds-v1.0.zip"
+hash = "1adac2a221e9bfb18abb74885328b2007215f79a6381892e6ee35e509b9622ff"
+
+[[files]]
+file = "mods/resourcepacks/The-Lads-UI-&-Sounds-v1.0.zip"
+hash = "677bbed7405a3a0f8acdc82404d7a4a06871af5bbbc6f3f3a6206ca5601d8f21"
+
+[[files]]
+file = "mods/resourcepacks/UD Refined - Lite - 1.20.2-26.x.zip"
+hash = "377e6622591c44a209bc1a4568b55505e65a1dcc70290594446cca25fc2524c4"
+
+[[files]]
+file = "mods/resourcepacks/Undopia_Different_Axolotl_Buckets_1.21.11_v.1.0.zip"
+hash = "440161e2ea93022925c4bb7b456e28d28ce898de591d46d4dbf9ecef86b65a12"
+
+[[files]]
+file = "mods/resourcepacks/Unique Dark - Lite - 1.20.2-26.x.zip"
+hash = "1ef180de9d8cd111af1ec2fe5a073423b7dcd217b942baf6c37813b52eeb30f9"
+
+[[files]]
+file = "mods/resourcepacks/Vanilla Heart Health Bar HUD Hotbar.zip"
+hash = "9d99a53b5a42d92c014282b5f79694a46583430776a530b982df832a7c15ef7a"
+
+[[files]]
+file = "mods/resourcepacks/twemoji.zip"
+hash = "e3dd4602a95caffc31ff6228e906ae99ee747cd6ab0fc6fa73111eda6e8c1b60"
+
+[[files]]
+file = "mods/resourcepacks/§aChests§8-§aReimagined§0_§8[v1.8.2]§0.zip"
+hash = "9801a6c3693fce130339dd2b8d26a4bcd7ee4897c5a32d36e29edd4ee7bf921c"
+
+[[files]]
+file = "mods/resourcepacks/§b☁ §3§lClear Weather§8§o §8v1.0.1.zip"
+hash = "03f99a0e452b5fde5313b4a8cc84d03031e92e47e6b573be3cb910f07560cd49"
+
+[[files]]
+file = "mods/resourcepacks/§dChicknTurtleBetterShield-v1.2.zip"
+hash = "51440baba76855a9479bb6f2f8fd3e8ab539d014b577405938211d137f5f0e30"
+
+[[files]]
 file = "mods/simple-voice-chat.pw.toml"
 hash = "e8e263c9e5b45ef826911470c4b07405012d8f43f77214f59e56690f7731e299"
 metafile = true
@@ -219,6 +391,10 @@ metafile = true
 [[files]]
 file = "mods/sodium-extra-fabric-0.8.9+mc26.2.jar"
 hash = "74c1d4e501c4c2aeebd6084d9acb9e4dc5e615b0fd5fc98262c15b556a4433b6"
+
+[[files]]
+file = "mods/sodium-fabric-0.9.0+mc26.2.jar"
+hash = "cd86d74943e21a67865250d8f4d03c03ef0438337dc27e82a6e11870a1d736a7"
 
 [[files]]
 file = "mods/sodium.pw.toml"
@@ -242,8 +418,34 @@ file = "mods/vcinteraction-fabric-1.0.8+26.2.jar"
 hash = "ca24d70a7700a59007b408da5e8a1be8a9bc81a15d09b7a947b82f2bc7b768e2"
 
 [[files]]
+file = "mods/voicechat-fabric-2.6.20+26.2.jar"
+hash = "6357a67908ab352c7b84dded72ac1a51f255028ef13f98dc109541b94fe34645"
+
+[[files]]
+file = "mods/xaeros-minimap.pw.toml"
+hash = "1cb0dc7d3e05cb05830ddd52b17ff3f52ba1b4a96455b635e1b319c2d397beea"
+metafile = true
+
+[[files]]
+file = "mods/xaeros-world-map.pw.toml"
+hash = "c000ae74180c5e32a2fba125e3ebb8d8381049064956988849222163071e1d4a"
+metafile = true
+
+[[files]]
+file = "mods/xaeroworldmap-fabric-26.2-1.41.3.jar"
+hash = "d6fda27b2e7b466c8a8c212de066e0fa61bd6ad8033f86e90d5df66b8854457f"
+
+[[files]]
 file = "mods/yet_another_config_lib_v3-3.9.5+26.2-fabric.jar"
 hash = "0aaedb63e398ab2e8d1b61439dac0ed6edf913fd10fc47a6cd56f01811db7283"
+
+[[files]]
+file = "packwiz-installer.jar"
+hash = "c9f646908d340d84773948a9a7d98bc1dae250d35e1016dc6e2b8459760b5598"
+
+[[files]]
+file = "packwiz.json"
+hash = "e0a51cb7e4116ba306c86691c499d122213f424edce388b2a27c99f328ab018a"
 
 [[files]]
 file = "resourcepacks/3D-fishing-hook-bobber-3.0-fancy-with-line.zip"
