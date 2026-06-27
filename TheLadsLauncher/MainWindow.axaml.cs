@@ -4272,20 +4272,23 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Clean up specific redundant mods that were merged into TheLadsCore
         string modsDir = Path.Combine(settings.InstancePath, "mods");
         if (Directory.Exists(modsDir))
         {
-            try 
+            string[] legacyMods = new[] {
+                "autoreconnectrf-fabric-3.2.2+26.1.2.jar", "BetterF3-18.0.2-Fabric-26.1.jar", "chatsigninghider-fabric-1.0.5+26.1.2.jar", "classic-minecraft-icon-v1.1.9-mc26.1.2.jar", "collective-26.1.2-8.22.jar", "configured-fabric-26.1.2-2.7.5.jar", "connectivity-fabric-26.1-7.6.jar", "Controlling-fabric-26.1.2-26.1.2.3.jar", "cwb-4.0.4+26.1.jar", "dynamic-fps-3.11.7+minecraft-26.1.0-fabric.jar", "fabric-api-0.150.0+26.1.2.jar", "friendlink-Fabric-26.1-26.1.2-1.0.0.jar", "Gamma-Utils-3.0.0+mc26.1.jar", "Ixeris-4.4.1+26.1.2-fabric.jar", "konkrete_fabric_1.9.12_MC_1.21.6.jar", "lithium-fabric-0.24.4+mc26.1.2.jar", "moreculling-fabric-26.1.1-1.7.0.jar", "netprodis-2.0.0+26.1.jar", "no-resource-pack-warnings-1.5.0.jar", "pingview-fabric-1.5.2.jar", "Resourcify (26.1-fabric)-1.8.2.jar", "rrls-5.2.5+mc.26.1.jar", "Searchables-fabric-26.1.2-1.0.1.jar", "SmoothScrollingRefurbished+26.1-1.6.0.jar", "soundcontrol-1.4.1-26.1.1.jar", "togglenametags-2.7.4+26.1.2.jar", "xaerominimap-fabric-26.1.2-25.3.14.jar", "XaeroPlus-2.31.5+fabric-26.1.2-WM1.40.18-MM25.3.14.jar", "xaeroworldmap-fabric-26.1.2-1.40.18.jar"
+            };
+
+            foreach (string mod in legacyMods)
             {
-                if (Directory.GetFiles(modsDir, "*.jar").Length > 80)
+                string path = Path.Combine(modsDir, mod);
+                if (File.Exists(path))
                 {
-                    Log("[Launcher] Over 80 mods detected. Purging mods directory for a clean sync...");
-                    Directory.Delete(modsDir, true);
-                    Directory.CreateDirectory(modsDir);
-                    File.Delete(Path.Combine(settings.InstancePath, ".packwiz-synced"));
+                    try { File.Delete(path); Log($"[Launcher] Removed legacy mod: {mod}"); }
+                    catch { }
                 }
-            } 
-            catch (Exception ex) { Log($"[Launcher] Mod purge failed: {ex.Message}"); }
+            }
         }
 
         try
