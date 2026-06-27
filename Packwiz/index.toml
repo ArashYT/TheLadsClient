@@ -137,12 +137,22 @@ file = "mods/fabric-api-0.153.0+26.2.jar"
 hash = "2778426182035cc9923804b24a44a4a1fba9a2c01775fe0e187ecdc92a170b40"
 
 [[files]]
+file = "mods/fabric-api.pw.toml"
+hash = "fdc6309bf3420b7e358737b05877335191021e8a2376def243deb0e521797166"
+metafile = true
+
+[[files]]
 file = "mods/fabric-language-kotlin-1.13.12+kotlin.2.4.0.jar"
 hash = "36c5dd8b728e3470d2882ae63119b93a20500fc0ea6f5c945c12bf65b5ab1832"
 
 [[files]]
 file = "mods/ferritecore-9.0.0-fabric.jar"
 hash = "213966c72ed967acc7392beb28a866fba301ff56b9976c2e7801c2db7de6bf22"
+
+[[files]]
+file = "mods/flashback.pw.toml"
+hash = "ad90386de31079f24f0969ec7bf8384b05edab7b6df96d1c260254f42eefe073"
+metafile = true
 
 [[files]]
 file = "mods/fzzy_config-0.7.6+26.2.jar"
