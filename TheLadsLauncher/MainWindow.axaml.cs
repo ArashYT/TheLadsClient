@@ -4369,46 +4369,8 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    bool needsPatch = false;
-                    using (var zip = System.IO.Compression.ZipFile.OpenRead(jarPath))
-                    {
-                        foreach (var entry in zip.Entries)
-                        {
-                            string n = entry.Name.ToLowerInvariant();
-                            if (!n.EndsWith(".accesswidener") && !n.EndsWith(".classtweaker") && !n.EndsWith(".aw"))
-                                continue;
-                            using var s = entry.Open();
-                            using var r = new System.IO.StreamReader(s);
-                            string firstLine = r.ReadLine() ?? "";
-                            if (firstLine.Contains("official")) { needsPatch = true; break; }
-                        }
-                    }
-                    if (!needsPatch) continue;
-
-                    string tmp = jarPath + ".aw_patch.tmp";
-                    File.Copy(jarPath, tmp, true);
-                    using (var zip = System.IO.Compression.ZipFile.Open(tmp, System.IO.Compression.ZipArchiveMode.Update))
-                    {
-                        var toReplace = new List<(string fullName, string patched)>();
-                        foreach (var entry in zip.Entries)
-                        {
-                            string n = entry.Name.ToLowerInvariant();
-                            if (!n.EndsWith(".accesswidener") && !n.EndsWith(".classtweaker") && !n.EndsWith(".aw"))
-                                continue;
-                            string content;
-                            using (var s = entry.Open()) using (var r = new System.IO.StreamReader(s)) content = r.ReadToEnd();
-                            if (content.Contains("official"))
-                                toReplace.Add((entry.FullName, content.Replace("official", "intermediary")));
-                        }
-                        foreach (var (fullName, patched) in toReplace)
-                        {
-                            zip.GetEntry(fullName)?.Delete();
-                            var ne = zip.CreateEntry(fullName, System.IO.Compression.CompressionLevel.Fastest);
-                            using var s = ne.Open(); using var w = new System.IO.StreamWriter(s); w.Write(patched);
-                        }
-                    }
-                    File.Move(tmp, jarPath, true);
-                    Log($"[AW-Patch] Patched access widener namespace in {Path.GetFileName(jarPath)}");
+                    if (PatchJarRecursive(jarPath))
+                        Log($"[AW-Patch] Patched {Path.GetFileName(jarPath)}");
                 }
                 catch (Exception ex)
                 {
@@ -4417,6 +4379,61 @@ public partial class MainWindow : Window
                 }
             }
         });
+    }
+
+    // Returns true if any patching was done. Handles JIJ (Jar-in-Jar) nested jars recursively.
+    private bool PatchJarRecursive(string jarPath)
+    {
+        var rootPatches = new List<(string fullName, string patched)>();
+        var jijPatches = new List<(string fullName, byte[] patchedBytes)>();
+
+        using (var zip = System.IO.Compression.ZipFile.OpenRead(jarPath))
+        {
+            foreach (var entry in zip.Entries)
+            {
+                string n = entry.Name.ToLowerInvariant();
+                if (n.EndsWith(".accesswidener") || n.EndsWith(".classtweaker") || n.EndsWith(".aw"))
+                {
+                    string content;
+                    using (var s = entry.Open()) using (var r = new System.IO.StreamReader(s)) content = r.ReadToEnd();
+                    if (content.Contains("official"))
+                        rootPatches.Add((entry.FullName, content.Replace("official", "intermediary")));
+                }
+                else if (entry.FullName.StartsWith("META-INF/jars/") && n.EndsWith(".jar"))
+                {
+                    byte[] nestedBytes;
+                    using (var s = entry.Open()) using (var ms = new System.IO.MemoryStream())
+                    { s.CopyTo(ms); nestedBytes = ms.ToArray(); }
+                    string tmpNested = jarPath + "." + entry.Name + ".jij.tmp";
+                    File.WriteAllBytes(tmpNested, nestedBytes);
+                    bool nestedPatched = PatchJarRecursive(tmpNested);
+                    if (nestedPatched) jijPatches.Add((entry.FullName, File.ReadAllBytes(tmpNested)));
+                    File.Delete(tmpNested);
+                }
+            }
+        }
+
+        if (rootPatches.Count == 0 && jijPatches.Count == 0) return false;
+
+        string tmp = jarPath + ".aw_patch.tmp";
+        File.Copy(jarPath, tmp, true);
+        using (var zip = System.IO.Compression.ZipFile.Open(tmp, System.IO.Compression.ZipArchiveMode.Update))
+        {
+            foreach (var (fullName, patched) in rootPatches)
+            {
+                zip.GetEntry(fullName)?.Delete();
+                var ne = zip.CreateEntry(fullName, System.IO.Compression.CompressionLevel.Fastest);
+                using var s = ne.Open(); using var w = new System.IO.StreamWriter(s); w.Write(patched);
+            }
+            foreach (var (fullName, bytes) in jijPatches)
+            {
+                zip.GetEntry(fullName)?.Delete();
+                var ne = zip.CreateEntry(fullName, System.IO.Compression.CompressionLevel.NoCompression);
+                using var s = ne.Open(); s.Write(bytes, 0, bytes.Length);
+            }
+        }
+        File.Move(tmp, jarPath, true);
+        return true;
     }
 
     // ═══════════════════════════════════════
