@@ -44,7 +44,7 @@ dependencies {
     implementation "club.minnced:discord-rpc-release:v3.3.0"
     include "club.minnced:discord-rpc-release:v3.3.0"
     compileOnly "com.google.code.findbugs:jsr305:3.0.2"
-    compileOnly fileTree(dir: rootProject.file("../The Lads Client Packwiz/mods"), include: "*.jar")
+    compileOnly fileTree(dir: rootProject.file("../Packwiz/mods"), include: "*.jar")
     compileOnly fileTree(dir: file("shading_libs"), include: "**/*.jar")
     compileOnly fileTree(dir: file("temp_unzip"), include: "**/*.jar")
     shadedRuntimeLibs fileTree(dir: file("shading_libs"), include: "**/*.jar")

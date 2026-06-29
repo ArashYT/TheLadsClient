@@ -94,11 +94,12 @@ hash = "4e57e4f2a1931d902b72060486f7b23eb9d69d8003efb7a333f3323f1f9f7378"
 
 [[files]]
 file = "mods/cloth-config-26.2.155.jar"
-hash = "def4be7639cd66704f7e304d658ea0f6bf490fb4a6eaa2dbf18ec2c3999d6349"
+hash = "5b09a85ba0ffa075aed7700d4e2fd7c69e4083715148d6c1c0c9860b38da8473"
 
 [[files]]
-file = "mods/collective-26.2.0-8.32.jar"
-hash = "a773dd1f2e830cc917d088950b9e5b178ccf0768e955730ba2d3b2740c81f082"
+file = "mods/cloth-config.pw.toml"
+hash = "7fa9592b9948b8809018a4e7c3ca7da4d19fc5ef8c03021414cb22ae0253f083"
+metafile = true
 
 [[files]]
 file = "mods/continuity-3.0.1+26.2.jar"

@@ -3,8 +3,8 @@ $ErrorActionPreference = "Stop"
 $workspace = "C:\Users\Arash\Desktop\Lads Client"
 $coreDir   = "C:\Users\Arash\Desktop\Lads Client\TheLadsCore"
 $launcherDir = "C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher"
-$packwizMods = "C:\Users\Arash\Desktop\Lads Client\The Lads Client Packwiz\mods"
-$IndexToml = "C:\Users\Arash\Desktop\Lads Client\The Lads Client Packwiz\index.toml"
+$packwizMods = "C:\Users\Arash\Desktop\Lads Client\Packwiz\mods"
+$IndexToml = "C:\Users\Arash\Desktop\Lads Client\Packwiz\index.toml"
 
 Write-Host ">>> Updating TheLadsCore Version..."
 Set-Location -Path $coreDir
@@ -34,7 +34,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ">>> Copying TheLadsCore to Packwiz..."
-$target = "C:\Users\Arash\Desktop\Lads Client\The Lads Client Packwiz\mods\TheLadsCore-$global:newVer.jar"
+$target = "C:\Users\Arash\Desktop\Lads Client\Packwiz\mods\TheLadsCore-$global:newVer.jar"
 Copy-Item -Path "build\libs\TheLadsCore-$global:newVer.jar" -Destination $target -Force
 
 if (Test-Path $IndexToml) {
@@ -49,7 +49,7 @@ if (Test-Path $IndexToml) {
         Write-Host "    Packwiz index updated!"
         
         # Run packwiz refresh to update pack.toml hash so the Launcher detects the change!
-        Set-Location -Path "C:\Users\Arash\Desktop\Lads Client\The Lads Client Packwiz"
+        Set-Location -Path "C:\Users\Arash\Desktop\Lads Client\Packwiz"
         packwiz refresh
         Set-Location -Path $coreDir
     }
@@ -83,3 +83,4 @@ if (-not (Test-Path $deployTargetDir2)) {
 Copy-Item -Path "$launcherDir\bin\Release\net8.0-windows\win-x64\publish\*" -Destination $deployTargetDir2 -Recurse -Force
 
 Write-Host ">>> Done."
+
