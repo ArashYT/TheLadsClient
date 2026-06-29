@@ -4392,7 +4392,7 @@ public partial class MainWindow : Window
             foreach (var entry in zip.Entries)
             {
                 string n = entry.Name.ToLowerInvariant();
-                if (n.EndsWith(".accesswidener") || n.EndsWith(".classtweaker") || n.EndsWith(".aw"))
+                if (n.EndsWith(".accesswidener") || n.EndsWith(".classtweaker") || n.EndsWith(".aw") || n.EndsWith(".ct"))
                 {
                     string content;
                     using (var s = entry.Open()) using (var r = new System.IO.StreamReader(s)) content = r.ReadToEnd();
