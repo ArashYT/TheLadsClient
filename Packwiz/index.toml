@@ -50,7 +50,7 @@ hash = "c648429280d81b2135f76e1d5db413176b745c48a163b562cc59c4c2d10033b2"
 
 [[files]]
 file = "mods/BadOptimizations-2.4.1-26.2-fabric.jar"
-hash = "06cee46d81d3a0afb8e993dfbe4b990a3be92f52abde3590cc396490cb6eb4d2"
+hash = "a272e3cba84cd31c1322e123e3cda08df66f1dcd70fe9b151fd867de9a58310d"
 
 [[files]]
 file = "mods/Clumps-fabric-26.2-26.2.1.jar"
@@ -58,7 +58,7 @@ hash = "dc9544190abfb65a3c9ddc5dad1523c9dfc5a732344f528d908b950894398e8c"
 
 [[files]]
 file = "mods/Controlling-fabric-26.2-26.2.2.jar"
-hash = "088b44cce84a7d02476a3194ac5bbe6f3ab31e921af894093c4d357ebcb25fc1"
+hash = "ca77e5ccdd9cc9bae8cf0225490a4f7537fd4a4855bd7a2bd97f8661a3c69290"
 
 [[files]]
 file = "mods/Ksyxis-1.4.3.jar"
@@ -66,7 +66,7 @@ hash = "23c8c5993004f0584eb27b19b4397b7aa8833f41b8f2d1ea201ee54a60f964b9"
 
 [[files]]
 file = "mods/Resourcify (26.2-fabric)-1.8.4.jar"
-hash = "3b0b2840a5c7593468af7e2e0d383c8abbedab375e5a38d04115841b8b9696c8"
+hash = "8cc7de0ceb84bc09777df3cb89f20f111bf8a45f4320c84d6d036c145f6eb8c7"
 
 [[files]]
 file = "mods/Searchables-fabric-26.2-1.0.1.jar"
@@ -74,19 +74,19 @@ hash = "8fd20cce10353108d0d9d512df0736d8802c1abb79c74e750d013dfa3a6760ea"
 
 [[files]]
 file = "mods/Stfu-2.9.1-26.2.jar"
-hash = "83f5b3d3a0ef19f0ac9da07c6acb4bb817f95efcda237ca91cbddcc5339d3add"
+hash = "abb41541b68925fc053021628eaed67adda179d6cf2b519d2a1bb8122986f293"
 
 [[files]]
 file = "mods/TheLadsCore-1.41.18.jar"
-hash = "bb3699cd689e1fd65722b67cf14a633cf05958bab3c4cdca7b3a49c2e5a3e743"
+hash = "9af443c1e773c2253e00af2f33e41f5ba8f1c5c02cf9eab123f69877ca2cf603"
 
 [[files]]
 file = "mods/ViaFabricPlus-4.6.0.jar"
-hash = "df7339f422b6798c9b500d0b2afe9338292bb4ade124926c2261de361cfb3cce"
+hash = "0cf85ed0163fff4b51fc741168340d4a8eef0c0f4463e8766cfd0d16070815f5"
 
 [[files]]
 file = "mods/XaeroPlus-2.32.4+fabric-26.2-WM1.41.3-MM26.1.3.jar"
-hash = "018de3036e76d8cad4dbb1d6d75272635356f919e141df0dfbe470040a14744d"
+hash = "2dab14872a36090d85c6c1e5d78eca38db08d7095296a62065f066a0a2c3f00c"
 
 [[files]]
 file = "mods/balm-fabric-26.2-26.2.0.1.jar"
@@ -94,12 +94,7 @@ hash = "4e57e4f2a1931d902b72060486f7b23eb9d69d8003efb7a333f3323f1f9f7378"
 
 [[files]]
 file = "mods/cloth-config-26.2.155.jar"
-hash = "5b09a85ba0ffa075aed7700d4e2fd7c69e4083715148d6c1c0c9860b38da8473"
-
-[[files]]
-file = "mods/cloth-config.pw.toml"
-hash = "7fa9592b9948b8809018a4e7c3ca7da4d19fc5ef8c03021414cb22ae0253f083"
-metafile = true
+hash = "122846abbcfb64777827986e2b23a28910b1a9c4d090769fdc56ecc1143076e4"
 
 [[files]]
 file = "mods/continuity-3.0.1+26.2.jar"
@@ -115,12 +110,11 @@ hash = "531a722a6a259301eee465b59a37738e45d57af693818169bedc37b8265ee666"
 
 [[files]]
 file = "mods/entity_model_features-3.2.6-26.2-fabric.jar"
-hash = "876a3e4ffda021a6266df87208f2d9980322cf86223d4fe1e313ca996631f115"
+hash = "2b53e7e634a8cd29fd86e01e61db22bb1641c3c75a004d99c5431ef5f469d048"
 
 [[files]]
-file = "mods/entitytexturefeatures.pw.toml"
-hash = "4c67dcaac16f11a5d90dfeb2d1e6bfaabca6ff5b912c566970330c005797e2ea"
-metafile = true
+file = "mods/entity_texture_features-7.1.1-26.2-fabric.jar"
+hash = "381cf4e2fcf26e833356323ed0cf147b1d7eb971b70fb589f1be91d15682ce8e"
 
 [[files]]
 file = "mods/fabric-api-0.153.0+26.2.jar"
@@ -150,15 +144,15 @@ hash = "bbd4bbab6f381e123db5031ed051a9ad2d1a5ad4fb6ccf64d983ba416745e551"
 
 [[files]]
 file = "mods/iris-fabric-1.11.1+mc26.2.jar"
-hash = "2307d0ae6d39197b00c974d353c65ce521adc9ab6e3913c28cbf8cb2b694fc86"
+hash = "8be85ec5881d0c1b829964c9f737ab1cbd207470c7559f6f4d4a65897ff34821"
 
 [[files]]
 file = "mods/lambdynamiclights-4.12.2+26.2.jar"
-hash = "d46d2ae5f1f0a97ca7ead891706759ed1d959279ebb11df45b71b6b4034a38d7"
+hash = "775bf516e5aa22ace9a7e842c3098f4d0305752132760dd511daff956a2ad4da"
 
 [[files]]
 file = "mods/language-reload-1.7.7+26.2.jar"
-hash = "2534bd600e66868c7a4ea120b3cc1b7c89c5293fe24f8e5184822d4474fc05c0"
+hash = "404c41b2e071daff2385983b81f90945bd1d285d6d4f16a0a0982cf1ad569ac1"
 
 [[files]]
 file = "mods/libjf-26.2.0.jar"
@@ -166,11 +160,11 @@ hash = "38bad93a4825497df1826edfdce04cc63b2872b26f0fc6491cdc448f50915480"
 
 [[files]]
 file = "mods/lithium-fabric-0.25.1+mc26.2.jar"
-hash = "7025a7fab00eb65d7c3ac12c696d541d0670481ee6956f0645cac382a7d0f825"
+hash = "1d78e591cc7fe361561ca5863014407dfea7d4dcd419aeeb7d29e2561e556717"
 
 [[files]]
 file = "mods/modlistmemory-fabric-1.3.0-beta.1+26.2-pre-2.jar"
-hash = "5c2dc5bac03c335e40e692030fb5f16d806ef010ed16e768494d0043ca10b84f"
+hash = "c37894c5dbc1225ef845ac31e3b64609d049573fc9f548fb07ce17486e1a0ed9"
 
 [[files]]
 file = "mods/modmenu-20.0.0-beta.4.jar"
@@ -195,12 +189,11 @@ metafile = true
 
 [[files]]
 file = "mods/sodium-extra-fabric-0.8.9+mc26.2.jar"
-hash = "74c1d4e501c4c2aeebd6084d9acb9e4dc5e615b0fd5fc98262c15b556a4433b6"
+hash = "1884a81008978de476e6468cb282db2edbea091fd4d2d9e1e2cbab53001b974d"
 
 [[files]]
-file = "mods/sodium.pw.toml"
-hash = "61b0b90fdcece885bca2ca639e5ddf696b374d51a93e3ee3deb8ecd07d57b9b0"
-metafile = true
+file = "mods/sodium-fabric-0.9.0+mc26.2.jar"
+hash = "a0e8faf8a4e93c8992d30dda2ac4f8d3324a094d00f7cb1377f319f195a7d792"
 
 [[files]]
 file = "mods/sound-physics-remastered-fabric-1.5.1+26.2.jar"

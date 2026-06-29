@@ -4353,6 +4353,70 @@ public partial class MainWindow : Window
         {
             Log($"[Packwiz ERROR] {ex.Message}");
         }
+
+        // Patch any mods that were built with 'official' AW namespace — MC 26.2 mods need 'intermediary'
+        await PatchModAccessWideners();
+    }
+
+    private async Task PatchModAccessWideners()
+    {
+        string modsDir = Path.Combine(settings.InstancePath, "mods");
+        if (!Directory.Exists(modsDir)) return;
+
+        await Task.Run(() =>
+        {
+            foreach (string jarPath in Directory.GetFiles(modsDir, "*.jar"))
+            {
+                try
+                {
+                    bool needsPatch = false;
+                    using (var zip = System.IO.Compression.ZipFile.OpenRead(jarPath))
+                    {
+                        foreach (var entry in zip.Entries)
+                        {
+                            string n = entry.Name.ToLowerInvariant();
+                            if (!n.EndsWith(".accesswidener") && !n.EndsWith(".classtweaker") && !n.EndsWith(".aw"))
+                                continue;
+                            using var s = entry.Open();
+                            using var r = new System.IO.StreamReader(s);
+                            string firstLine = r.ReadLine() ?? "";
+                            if (firstLine.Contains("official")) { needsPatch = true; break; }
+                        }
+                    }
+                    if (!needsPatch) continue;
+
+                    string tmp = jarPath + ".aw_patch.tmp";
+                    File.Copy(jarPath, tmp, true);
+                    using (var zip = System.IO.Compression.ZipFile.Open(tmp, System.IO.Compression.ZipArchiveMode.Update))
+                    {
+                        var toReplace = new List<(string fullName, string patched)>();
+                        foreach (var entry in zip.Entries)
+                        {
+                            string n = entry.Name.ToLowerInvariant();
+                            if (!n.EndsWith(".accesswidener") && !n.EndsWith(".classtweaker") && !n.EndsWith(".aw"))
+                                continue;
+                            string content;
+                            using (var s = entry.Open()) using (var r = new System.IO.StreamReader(s)) content = r.ReadToEnd();
+                            if (content.Contains("official"))
+                                toReplace.Add((entry.FullName, content.Replace("official", "intermediary")));
+                        }
+                        foreach (var (fullName, patched) in toReplace)
+                        {
+                            zip.GetEntry(fullName)?.Delete();
+                            var ne = zip.CreateEntry(fullName, System.IO.Compression.CompressionLevel.Fastest);
+                            using var s = ne.Open(); using var w = new System.IO.StreamWriter(s); w.Write(patched);
+                        }
+                    }
+                    File.Move(tmp, jarPath, true);
+                    Log($"[AW-Patch] Patched access widener namespace in {Path.GetFileName(jarPath)}");
+                }
+                catch (Exception ex)
+                {
+                    Log($"[AW-Patch] Skipped {Path.GetFileName(jarPath)}: {ex.Message}");
+                    try { File.Delete(jarPath + ".aw_patch.tmp"); } catch { }
+                }
+            }
+        });
     }
 
     // ═══════════════════════════════════════
