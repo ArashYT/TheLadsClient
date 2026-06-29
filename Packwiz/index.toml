@@ -113,8 +113,9 @@ file = "mods/entity_model_features-3.2.6-26.2-fabric.jar"
 hash = "2b53e7e634a8cd29fd86e01e61db22bb1641c3c75a004d99c5431ef5f469d048"
 
 [[files]]
-file = "mods/entity_texture_features-7.1.1-26.2-fabric.jar"
-hash = "381cf4e2fcf26e833356323ed0cf147b1d7eb971b70fb589f1be91d15682ce8e"
+file = "mods/entitytexturefeatures.pw.toml"
+hash = "4c67dcaac16f11a5d90dfeb2d1e6bfaabca6ff5b912c566970330c005797e2ea"
+metafile = true
 
 [[files]]
 file = "mods/fabric-api-0.153.0+26.2.jar"
@@ -192,8 +193,9 @@ file = "mods/sodium-extra-fabric-0.8.9+mc26.2.jar"
 hash = "1884a81008978de476e6468cb282db2edbea091fd4d2d9e1e2cbab53001b974d"
 
 [[files]]
-file = "mods/sodium-fabric-0.9.0+mc26.2.jar"
-hash = "a0e8faf8a4e93c8992d30dda2ac4f8d3324a094d00f7cb1377f319f195a7d792"
+file = "mods/sodium.pw.toml"
+hash = "61b0b90fdcece885bca2ca639e5ddf696b374d51a93e3ee3deb8ecd07d57b9b0"
+metafile = true
 
 [[files]]
 file = "mods/sound-physics-remastered-fabric-1.5.1+26.2.jar"
