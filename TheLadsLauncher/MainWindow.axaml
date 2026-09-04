@@ -12,7 +12,7 @@
         WindowStartupLocation="CenterScreen"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="36"
-        SystemDecorations="BorderOnly">
+        WindowDecorations="BorderOnly">
 
     <Window.Resources>
         <!-- Real layout template for Mod/Pack List Items -->
@@ -221,6 +221,8 @@
                     <StackPanel Grid.Row="1" Spacing="4" Margin="12,0">
                         <Button x:Name="NavHome" Classes="nav active" Content="🏠  Home" 
                                 Click="NavHome_Click" />
+                        <Button x:Name="NavProfiles" Classes="nav" Content="🎮  Profiles" 
+                                Click="NavProfiles_Click" />
                         <Button x:Name="NavAccounts" Classes="nav" Content="👤  Accounts" 
                                 Click="NavAccounts_Click" />
                         <Button x:Name="NavSettings" Classes="nav" Content="⚙️  Settings" 
@@ -358,22 +360,30 @@
                     </StackPanel>
                     
                     <!-- Bottom Launch Bar -->
-                    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto">
+                    <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+                        <!-- Profile selector: select 1.21.1, 26.2, Latest Release -->
+                        <ComboBox x:Name="LaunchProfileSelector" Grid.Column="0"
+                                  Height="52" Width="220" Margin="0,0,10,0"
+                                  FontSize="13" VerticalContentAlignment="Center"
+                                  HorizontalContentAlignment="Left"
+                                  ToolTip.Tip="Select game version profile (1.21.1, 26.2, Latest Release)"
+                                  SelectionChanged="LaunchProfileSelector_SelectionChanged" />
+
                         <!-- Alt-account selector: launch as a different account without changing your main -->
-                        <ComboBox x:Name="LaunchAccountSelector" Grid.Column="0"
-                                  Height="52" Width="180" Margin="0,0,12,0"
+                        <ComboBox x:Name="LaunchAccountSelector" Grid.Column="1"
+                                  Height="52" Width="170" Margin="0,0,10,0"
                                   FontSize="13" VerticalContentAlignment="Center"
                                   HorizontalContentAlignment="Left"
                                   ToolTip.Tip="Launch with this account (does not change your main account)"
                                   SelectionChanged="LaunchAccountSelector_SelectionChanged" />
-                        <Button x:Name="LaunchButton" Grid.Column="1" Classes="launch"
+                        <Button x:Name="LaunchButton" Grid.Column="2" Classes="launch"
                                 Content="▶  LAUNCH ({MinecraftVersion})"
                                 Height="52" FontSize="18" FontWeight="Bold"
                                 Foreground="White"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
                                 VerticalContentAlignment="Center"
-                                Margin="0,0,12,0"
+                                Margin="0,0,10,0"
                                 ToolTip.Tip="Right-click to launch with a different account"
                                 Click="LaunchButton_Click">
                             <Button.ContextMenu>
@@ -383,17 +393,17 @@
                             </Button.ContextMenu>
                         </Button>
 
-                        <Button Grid.Column="2" x:Name="OpenFolderBtn" Classes="action"
-                                Content="📂 Folder" Height="52" Width="110"
+                        <Button Grid.Column="3" x:Name="OpenFolderBtn" Classes="action"
+                                Content="📂 Folder" Height="52" Width="100"
                                 FontSize="13" FontWeight="SemiBold"
                                 HorizontalContentAlignment="Center"
                                 VerticalContentAlignment="Center"
-                                Margin="0,0,12,0"
+                                Margin="0,0,10,0"
                                 ToolTip.Tip="Open the game folder"
                                 Click="OpenFolder_Click" />
 
-                        <Button Grid.Column="3" x:Name="ManageAccountsShortcutBtn" Classes="action"
-                                Content="Accounts 👤" Height="52" Width="120"
+                        <Button Grid.Column="4" x:Name="ManageAccountsShortcutBtn" Classes="action"
+                                Content="Accounts 👤" Height="52" Width="110"
                                 FontSize="13" FontWeight="SemiBold"
                                 HorizontalContentAlignment="Center"
                                 VerticalContentAlignment="Center"
@@ -524,6 +534,26 @@
                         </ScrollViewer>
                     </Border>
                 </Grid>
+
+                <!-- ═══════ PROFILES PAGE ═══════ -->
+                <Grid x:Name="ProfilesPage" IsVisible="False" Margin="24,44,24,24" RowDefinitions="Auto,*">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="Version Profiles &amp; Isolation" Foreground="White" FontSize="22" FontWeight="Bold"/>
+                            <TextBlock Text="Manage 1.21.1, 26.2, and Latest Release profiles. By default, profiles share keybinds, options, and accounts." Foreground="#888888" FontSize="12" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="SyncSharedBtn" Classes="action" Content="🔄 Sync Shared Settings" Height="36" Padding="12,0" Click="SyncSharedSettings_Click"/>
+                            <Button x:Name="AddProfileBtn" Classes="launch" Content="➕ New Profile" Height="36" Padding="14,0" Foreground="White" FontWeight="Bold" Click="AddProfile_Click"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Grid.Row="1" Background="#0E0E18" CornerRadius="12" Padding="16" BorderBrush="#1A1A2E" BorderThickness="1">
+                        <ScrollViewer>
+                            <StackPanel x:Name="ProfilesListContainer" Spacing="10"/>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
                 
                 <!-- ═══════ SETTINGS PAGE ═══════ -->
                 <ScrollViewer x:Name="SettingsPage" IsVisible="False" Margin="24,44,24,24">
@@ -560,16 +590,23 @@
                             <StackPanel Spacing="12">
                                 <TextBlock Text="JAVA RUNTIME" Foreground="#8B0000" FontSize="12" 
                                            FontWeight="Bold" LetterSpacing="2" />
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,4">
                                     <TextBlock Text="Java Installation" Foreground="#CCCCCC" 
                                                FontSize="14" VerticalAlignment="Center" />
-                                    <Button Grid.Column="1" Classes="action" Content="Detect" 
+                                    <Button Grid.Column="1" x:Name="DownloadJavaBtn" Classes="action" Content="⚡ Download Adoptium JDK" 
+                                            Height="32" Margin="0,0,8,0" Padding="12,0" FontSize="12"
+                                            HorizontalContentAlignment="Center"
+                                            Click="DownloadJava_Click" />
+                                    <Button Grid.Column="2" Classes="action" Content="Detect" 
                                             Height="32" Width="80" FontSize="12"
                                             HorizontalContentAlignment="Center"
                                             Click="DetectJava_Click" />
                                 </Grid>
                                 <ComboBox x:Name="JavaSelector" HorizontalAlignment="Stretch" 
                                           Height="36" FontSize="12" />
+                                <ProgressBar x:Name="JavaDownloadProgress" Minimum="0" Maximum="100" Value="0"
+                                             Height="6" IsVisible="False" Foreground="#8B0000" HorizontalAlignment="Stretch"/>
+                                <TextBlock x:Name="JavaStatusText" Text="" Foreground="#888888" FontSize="11"/>
                             </StackPanel>
                         </Border>
                         

@@ -16,12 +16,12 @@ public class LauncherSettings
     public int MinRamMb { get; set; } = 512;
 
     // Java
-    public string JavaPath { get; set; } = @"C:\Program Files\Eclipse Adoptium\jdk-25.0.3.9-hotspot\bin\java.exe";
+    public string JavaPath { get; set; } = TheLadsLauncher.Services.PathService.Instance.GetJavaExecutablePath(21);
     public bool AutoDetectJava { get; set; } = true;
 
     // Paths
-    public string InstancePath { get; set; } = @"C:\The Lads Client";
-    public string PackwizPath { get; set; } = @"C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Packwiz";
+    public string InstancePath { get; set; } = TheLadsLauncher.Services.PathService.Instance.BaseDirectory;
+    public string PackwizPath { get; set; } = Path.Combine(TheLadsLauncher.Services.PathService.Instance.BaseDirectory, "packwiz");
     public string PackwizUrl { get; set; } = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/pack.toml";
     public string FabricVersion { get; set; } = "fabric-loader-0.19.3-26.2";
 
@@ -120,29 +120,7 @@ public class LauncherSettings
 
     public string[] DetectJavaInstallations()
     {
-        var paths = new System.Collections.Generic.List<string>();
-        string[] searchDirs = {
-            @"C:\Program Files\Java",
-            @"C:\Program Files\Eclipse Adoptium",
-            @"C:\Program Files\Microsoft",
-            @"C:\Program Files\AdoptOpenJDK",
-            @"C:\Program Files\Zulu"
-        };
-
-        foreach (var dir in searchDirs)
-        {
-            if (Directory.Exists(dir))
-            {
-                foreach (var subDir in Directory.GetDirectories(dir))
-                {
-                    string javaExe = Path.Combine(subDir, "bin", "java.exe");
-                    if (File.Exists(javaExe))
-                    {
-                        paths.Add(javaExe);
-                    }
-                }
-            }
-        }
-        return paths.ToArray();
+        var found = TheLadsLauncher.Services.JavaService.Instance.ScanAllSystemJavas();
+        return System.Linq.Enumerable.ToArray(found);
     }
 }

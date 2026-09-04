@@ -2,7 +2,7 @@
     "ModrinthApiUrl": "http://127.0.0.1:64985",
     "CurseForgeApiUrl": "http://127.0.0.1:64985",
     "CurseForgeApiKey": "workflow_key",
-    "InstancePath": "C:\\Users\\Arash\\Desktop\\Lads Client\\TheLadsLauncher\\test_instance",
+    "InstancePath": "test_instance",
     "MaxRamMb": 6144,
     "ShowParticles": true
 }
