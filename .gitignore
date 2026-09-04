@@ -100,6 +100,16 @@ diff.txt
 gui.txt
 displayScoreboardSidebar.txt
 CycleOptionUsages.txt
+build_output.txt
+build_out.txt
+compile_errors.txt
+compile_log.txt
+errors.txt
+packwiz_essential_search.txt
+reconstructed.txt
+scoreboard.txt
+search_results.txt
+THREADS_USED.txt
 
 # --- AI & Agent Metadata ---
 .agents/
@@ -108,9 +118,13 @@ CycleOptionUsages.txt
 .gemini/
 .claude/
 NodeAgentProgress/
+Heartbeat/
+TheLadsClient/
+TheLadsCore\ Bronze/
 ai.py
 ai_auto_*
 AI_TASK*
+
 
 # --- Release & Deployment Scripts ---
 upload.ps1

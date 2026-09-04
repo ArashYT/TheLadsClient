@@ -1,0 +1,13 @@
+name = "The Lads Network - UI & Sounds v1.0"
+filename = "The Lads Network - UI & Sounds v1.0.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/The-Lads-Network---UI-&-Sounds-v1.0.zip"
+hash-format = "sha512"
+hash = "2c4b7b6c4b3e905c2cd76fbfa15c94732e7ef626660d8176bb666b0a7892964f239688961737c06daf723a1a294f51b036e69938305e23d8f64b928682fe9c05"
+
+[update]
+[update.modrinth]
+mod-id = ""
+version = ""

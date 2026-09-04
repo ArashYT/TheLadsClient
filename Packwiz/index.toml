@@ -315,6 +315,11 @@ hash = "f8c2c64e46e7d8f485dcc879d629deb91e72e04e85f66d797df25aed223c5ba6"
 metafile = true
 
 [[files]]
+file = "resourcepacks/the-lads-network-ui-and-sounds-v1.0.pw.toml"
+hash = "cbdd13cab7903a00189737ce8c90198c94ec6f0481ddb3a4557f11c57537fce1"
+metafile = true
+
+[[files]]
 file = "resourcepacks/the-lads-network-ui-sounds-v1.0.pw.toml"
 hash = "9ee65373e3f7d5e1092cd218d332488476857ccba3b3517fe869fd1c60e28ee8"
 metafile = true
