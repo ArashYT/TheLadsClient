@@ -22,13 +22,10 @@
                                      "com.thelads.core.TheLadsCore"
                                  ],
                         "client":  [
-                                       "com.thelads.core.client.TheLadsCoreClient",
-                                       "com.thelads.core.features.signalloss.SignalLossClient"
-                                   ],
-                        "server":  [
-                                       
-                                       "xaero.minimap.XaeroMinimapFabric"
-                                   ],
+                                        "com.thelads.core.client.TheLadsCoreClient",
+                                        "com.thelads.core.features.signalloss.SignalLossClient"
+                                    ],
+                        "server":  [],
                         "modmenu":  [
                                         "com.thelads.core.client.TheLadsModMenu"
                                     ],
@@ -41,9 +38,7 @@
 		"theladscore.clientsort.mixins.json",
 		"theladscore-optimization.mixins.json",
 		
-		
-		
-		
+
 		
 		
 		"scalablelux.mixins.json",
@@ -72,9 +67,8 @@
     "jars": [],
     "accessWidener":  "scalablelux.accesswidener",
     "provides":  [
-                     "xaerominimap",
+                     "collective",
                      "scalablelux",
-                     "xaerolib",
                      "serverpingerfixer",
                      "quick-pack",
                      "passiveshield",

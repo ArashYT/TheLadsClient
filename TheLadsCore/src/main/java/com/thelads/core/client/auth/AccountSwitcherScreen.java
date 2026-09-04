@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
+import net.minecraft.resources.Identifier;
 
 public class AccountSwitcherScreen extends Screen {
     private final Screen parent;
@@ -241,21 +242,10 @@ public class AccountSwitcherScreen extends Screen {
                 activeSkin = net.minecraft.client.resources.DefaultPlayerSkin.get(u.getProfileId());
                 final UUID capturedId = u.getProfileId();
                 final String capturedName = u.getName();
-                java.util.concurrent.CompletableFuture.runAsync(() -> {
-                    try {
-                        com.mojang.authlib.GameProfile baseProfile = new com.mojang.authlib.GameProfile(capturedId, capturedName);
-                        com.mojang.authlib.yggdrasil.ProfileResult result =
-                            Minecraft.getInstance().services().sessionService().fetchProfile(capturedId, true);
-                        com.mojang.authlib.GameProfile filledProfile = (result != null) ? result.profile() : baseProfile;
-                        // Resolve skin on background thread so we don't block the main thread
-                        net.minecraft.world.entity.player.PlayerSkin skin =
-                            Minecraft.getInstance().getSkinManager().createLookup(filledProfile, false).get();
-                        if (skin == null) skin = net.minecraft.client.resources.DefaultPlayerSkin.get(capturedId);
-                        final net.minecraft.world.entity.player.PlayerSkin resolvedSkin = skin;
-                        Minecraft.getInstance().execute(() -> {
-                            if (capturedId.equals(activeProfileId)) activeSkin = resolvedSkin;
-                        });
-                    } catch (Exception ignored) {}
+                resolveSkinAsync(capturedId, capturedName, resolved -> {
+                    if (capturedId.equals(activeProfileId)) {
+                        activeSkin = resolved;
+                    }
                 });
             }
             if (activeSkin != null)
@@ -279,22 +269,13 @@ public class AccountSwitcherScreen extends Screen {
             if (accSkin == null && acc.uuid != null && !acc.uuid.isEmpty()) {
                 final String capturedUuid = acc.uuid;
                 final String capturedName = acc.username;
-                accountSkins.put(capturedUuid, net.minecraft.client.resources.DefaultPlayerSkin.get(
-                    UUID.fromString(capturedUuid.replaceFirst(
-                        "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)",
-                        "$1-$2-$3-$4-$5")))); // set default immediately so we only fetch once
-                java.util.concurrent.CompletableFuture.runAsync(() -> {
-                    try {
-                        UUID uuid = UUID.fromString(capturedUuid.replaceFirst(
-                            "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)",
-                            "$1-$2-$3-$4-$5"));
-                        com.mojang.authlib.GameProfile p = new com.mojang.authlib.GameProfile(uuid, capturedName);
-                        com.mojang.authlib.yggdrasil.ProfileResult r = Minecraft.getInstance().services().sessionService().fetchProfile(uuid, true);
-                        com.mojang.authlib.GameProfile fp = (r != null) ? r.profile() : p;
-                        net.minecraft.world.entity.player.PlayerSkin s = Minecraft.getInstance().getSkinManager().createLookup(fp, false).get();
-                        if (s != null) accountSkins.put(capturedUuid, s);
-                    } catch (Exception ignored) {}
-                });
+                UUID uuid = parseUuidSafely(capturedUuid);
+                if (uuid != null) {
+                    accountSkins.put(capturedUuid, net.minecraft.client.resources.DefaultPlayerSkin.get(uuid));
+                    resolveSkinAsync(uuid, capturedName, resolved -> {
+                        accountSkins.put(capturedUuid, resolved);
+                    });
+                }
             }
             try {
                 if (accSkin != null)
@@ -314,5 +295,84 @@ public class AccountSwitcherScreen extends Screen {
         g.centeredText(this.font, status, cx, buttonY + 36, 0xFFAAAAAA);
 
         super.extractRenderState(g, mouseX, mouseY, delta);
+    }
+
+    private UUID parseUuidSafely(String uuidStr) {
+        if (uuidStr == null || uuidStr.isEmpty()) return null;
+        try {
+            if (uuidStr.contains("-")) {
+                return UUID.fromString(uuidStr);
+            }
+            return UUID.fromString(uuidStr.replaceFirst(
+                "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)",
+                "$1-$2-$3-$4-$5"));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void resolveSkinAsync(UUID uuid, String username, java.util.function.Consumer<net.minecraft.world.entity.player.PlayerSkin> callback) {
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                boolean isActive = uuid.equals(Minecraft.getInstance().getUser().getProfileId());
+                File customSkin = new File("C:/The Lads Client/skin.png");
+                if (isActive && customSkin.exists()) {
+                    try {
+                        Identifier id = com.thelads.core.client.cosmetics.backend.CosmeticsBackend.fetchByFile(customSkin).get();
+                        if (id != null) {
+                            com.thelads.core.client.cosmetics.backend.CosmeticsBackend.setActiveSkin(uuid, id);
+                        }
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                } else {
+                    try {
+                        com.mojang.authlib.GameProfile baseProfile = new com.mojang.authlib.GameProfile(uuid, username);
+                        com.mojang.authlib.yggdrasil.ProfileResult result =
+                            Minecraft.getInstance().services().sessionService().fetchProfile(uuid, true);
+                        com.mojang.authlib.GameProfile filledProfile = (result != null) ? result.profile() : baseProfile;
+                        net.minecraft.world.entity.player.PlayerSkin skin =
+                            Minecraft.getInstance().getSkinManager().createLookup(filledProfile, false).get();
+                        if (skin != null) {
+                            net.minecraft.core.ClientAsset.Texture bodyTex = skin.body();
+                            if (bodyTex != null && bodyTex.id() != null) {
+                                com.thelads.core.client.cosmetics.backend.CosmeticsBackend.setActiveSkin(uuid, bodyTex.id());
+                            }
+                        } else {
+                            throw new RuntimeException("Skin lookup returned null");
+                        }
+                    } catch (Exception ex) {
+                        try {
+                            Identifier id = com.thelads.core.client.cosmetics.backend.CosmeticsBackend.fetchByUrl("https://minotar.net/skin/" + username).get();
+                            if (id != null) {
+                                com.thelads.core.client.cosmetics.backend.CosmeticsBackend.setActiveSkin(uuid, id);
+                            }
+                        } catch (Exception minotarEx) {
+                            // ignore
+                        }
+                    }
+                }
+
+                Identifier activeSkinId = com.thelads.core.client.cosmetics.backend.CosmeticsBackend.getActiveSkin(uuid);
+                final net.minecraft.world.entity.player.PlayerSkin resolvedSkin;
+                if (activeSkinId != null) {
+                    net.minecraft.core.ClientAsset.Texture newSkin = new net.minecraft.core.ClientAsset.Texture() {
+                        @Override public Identifier texturePath() { return activeSkinId; }
+                        @Override public Identifier id() { return activeSkinId; }
+                    };
+                    resolvedSkin = new net.minecraft.world.entity.player.PlayerSkin(
+                        newSkin,
+                        null,
+                        null,
+                        net.minecraft.world.entity.player.PlayerModelType.WIDE,
+                        true
+                    );
+                } else {
+                    resolvedSkin = net.minecraft.client.resources.DefaultPlayerSkin.get(uuid);
+                }
+                
+                Minecraft.getInstance().execute(() -> callback.accept(resolvedSkin));
+            } catch (Exception ignored) {}
+        });
     }
 }

@@ -115,7 +115,13 @@ public class GalleryEnhancementsTest {
     }
 
     private void assertLauncherContains(String phrase) throws IOException {
-        File file = new File("TheLadsLauncher_Clean/MainWindow.axaml.cs");
+        File file = new File("TheLadsLauncher/MainWindow.axaml.cs");
+        if (!file.exists()) {
+            file = new File("../TheLadsLauncher/MainWindow.axaml.cs");
+        }
+        if (!file.exists()) {
+            file = new File("TheLadsLauncher_Clean/MainWindow.axaml.cs");
+        }
         if (!file.exists()) {
             file = new File("../TheLadsLauncher_Clean/MainWindow.axaml.cs");
         }

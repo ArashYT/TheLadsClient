@@ -39,8 +39,8 @@ $AssetHeaders = @{
 }
 
 $Files = @(
-    @{ Name = "LadsClient_Installer_BETA_0.14.exe"; Path = "C:\Users\Arash\Desktop\Lads Client\LadsClient_Installer_BETA_0.14.exe" },
-    @{ Name = "TheLadsLauncher.exe"; Path = "C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher\bin\Release\net8.0-windows\win-x64\publish\TheLadsLauncher.exe" }
+    @{ Name = "LadsClient_Installer_BETA_0.14.exe"; Path = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\LadsClient_Installer_BETA_0.14.exe" },
+    @{ Name = "TheLadsLauncher.exe"; Path = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher\bin\Release\net8.0-windows\win-x64\publish\TheLadsLauncher.exe" }
 )
 
 foreach ($f in $Files) {

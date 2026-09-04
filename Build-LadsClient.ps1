@@ -1,10 +1,10 @@
 $ErrorActionPreference = "Stop"
 
-$workspace = "C:\Users\Arash\Desktop\Lads Client"
-$coreDir   = "C:\Users\Arash\Desktop\Lads Client\TheLadsCore"
-$launcherDir = "C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher"
-$packwizMods = "C:\Users\Arash\Desktop\Lads Client\Packwiz\mods"
-$IndexToml = "C:\Users\Arash\Desktop\Lads Client\Packwiz\index.toml"
+$workspace = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client"
+$coreDir   = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsCore"
+$launcherDir = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher"
+$packwizMods = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Packwiz\mods"
+$IndexToml = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Packwiz\index.toml"
 
 Write-Host ">>> Updating TheLadsCore Version..."
 Set-Location -Path $coreDir
@@ -33,27 +33,14 @@ if ($LASTEXITCODE -ne 0) {
     Write-Error "Gradle build failed."
 }
 
-Write-Host ">>> Copying TheLadsCore to Packwiz..."
-$target = "C:\Users\Arash\Desktop\Lads Client\Packwiz\mods\TheLadsCore-$global:newVer.jar"
-Copy-Item -Path "build\libs\TheLadsCore-$global:newVer.jar" -Destination $target -Force
+Write-Host ">>> Packwiz is metadata-driven (.pw.toml); skipping local jar copy."
+Set-Location -Path "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Packwiz"
+packwiz refresh
+Set-Location -Path $coreDir
 
-if (Test-Path $IndexToml) {
-    $rel     = "mods/TheLadsCore-$global:newVer.jar"
-    $newHash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLower()
-    $idx = [System.IO.File]::ReadAllText($IndexToml)
-    $jarPattern = 'file = "mods/TheLadsCore-[^"]+"\r?\nhash = "[0-9a-fA-F]{64}"'
-    if ($idx -match $jarPattern) {
-        $newStr = "file = `"$rel`"`r`nhash = `"$newHash`""
-        $idx = $idx -replace $jarPattern, $newStr
-        [System.IO.File]::WriteAllText($IndexToml, $idx)
-        Write-Host "    Packwiz index updated!"
-        
-        # Run packwiz refresh to update pack.toml hash so the Launcher detects the change!
-        Set-Location -Path "C:\Users\Arash\Desktop\Lads Client\Packwiz"
-        packwiz refresh
-        Set-Location -Path $coreDir
-    }
-}
+Write-Host ">>> Closing any running TheLadsLauncher processes..."
+Stop-Process -Name "TheLadsLauncher" -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1.5
 
 Write-Host ">>> Building TheLadsLauncher..."
 Set-Location -Path $launcherDir
@@ -64,23 +51,15 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ">>> Deploying TheLadsLauncher to AppData..."
 $deployTargetDir1 = "C:\Users\Arash\AppData\Local\The Lads Client"
-$deployTargetDir2 = "C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher_Clean\bin\NewBuild"
 
-Write-Host ">>> Closing any running TheLadsLauncher processes..."
-Stop-Process -Name "TheLadsLauncher" -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1.5
-
-Write-Host ">>> Deploying TheLadsLauncher to AppData..."
 if (-not (Test-Path $deployTargetDir1)) {
     New-Item -ItemType Directory -Path $deployTargetDir1 -Force | Out-Null
 }
-Copy-Item -Path "$launcherDir\bin\Release\net8.0-windows\win-x64\publish\*" -Destination $deployTargetDir1 -Recurse -Force
-
-Write-Host ">>> Deploying TheLadsLauncher to Clean NewBuild bin folder..."
-if (-not (Test-Path $deployTargetDir2)) {
-    New-Item -ItemType Directory -Path $deployTargetDir2 -Force | Out-Null
+if (Test-Path "$deployTargetDir1\settings.json") {
+    Get-ChildItem "$launcherDir\bin\Release\net8.0-windows\win-x64\publish\*" -Exclude "settings.json" | Copy-Item -Destination $deployTargetDir1 -Recurse -Force
+} else {
+    Copy-Item -Path "$launcherDir\bin\Release\net8.0-windows\win-x64\publish\*" -Destination $deployTargetDir1 -Recurse -Force
 }
-Copy-Item -Path "$launcherDir\bin\Release\net8.0-windows\win-x64\publish\*" -Destination $deployTargetDir2 -Recurse -Force
 
 Write-Host ">>> Done."
 

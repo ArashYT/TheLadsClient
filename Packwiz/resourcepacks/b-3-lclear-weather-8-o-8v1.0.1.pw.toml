@@ -1,0 +1,8 @@
+name = "§b☁ §3§lClear Weather§8§o §8v1.0.1"
+filename = "§b☁ §3§lClear Weather§8§o §8v1.0.1.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/%C2%A7b%E2%98%81%20%C2%A73%C2%A7lClear%20Weather%C2%A78%C2%A7o%20%C2%A78v1.0.1.zip"
+hash-format = "sha512"
+hash = "1c0c03b2c002abb415492613c78a2dd3d7f164e1f863783987436e9d86117a523712713ab4f01f78262942bc37b93635cd73f0877b46be0300d0a8c9342947a1"

@@ -1,4 +1,0 @@
-Manifest-Version: 1.0
-Automatic-Module-Name: me.decce.asynclogger.fabric
-Multi-Release: true
-

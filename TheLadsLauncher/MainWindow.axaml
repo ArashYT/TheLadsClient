@@ -203,7 +203,7 @@
                         <Border x:Name="TitleBar" Height="36" Background="Transparent" />
                         
                         <Image Source="avares://TheLadsLauncher/Assets/logo.png" 
-                               Width="180" Height="90"
+                               Width="90" Height="90" Stretch="Uniform"
                                HorizontalAlignment="Center" 
                                Margin="0,4,0,8" />
                         
@@ -337,7 +337,7 @@
                     <!-- Center Content -->
                     <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
                         <Image Source="avares://TheLadsLauncher/Assets/logo.png" 
-                               Width="350" Height="175"
+                               Width="175" Height="175" Stretch="Uniform"
                                HorizontalAlignment="Center" />
                         
                         <!-- Minecraft Version Status Pill -->

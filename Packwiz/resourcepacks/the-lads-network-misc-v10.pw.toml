@@ -1,0 +1,8 @@
+name = "The Lads Network - Misc v10"
+filename = "The Lads Network - Misc v10.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/The%20Lads%20Network%20-%20Misc%20v10.zip"
+hash-format = "sha512"
+hash = "9fb628553f846f18a3869bdd9b1b3dcc2b88b993d240ea4547c0e510ddf61b38e676e798362695e52267c9e44c81cc8b279ab65565cc3794bb0f9e1e8699a181"

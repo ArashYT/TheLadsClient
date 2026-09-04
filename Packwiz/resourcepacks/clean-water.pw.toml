@@ -1,0 +1,8 @@
+name = "CLEAN WATER"
+filename = "CLEAN WATER.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/CLEAN%20WATER.zip"
+hash-format = "sha512"
+hash = "0d7358ab0c6d2ccf75a00f7bb74f9a3867ff42482d2cb372a2614dea6d1daeb8694f78ca4f09bb377a1d0f91257beb1c181c2fcdf78d2ef288df1fdc58d85552"

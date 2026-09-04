@@ -1,0 +1,8 @@
+name = "Vanilla Heart Health Bar HUD Hotbar"
+filename = "Vanilla Heart Health Bar HUD Hotbar.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/Vanilla%20Heart%20Health%20Bar%20HUD%20Hotbar.zip"
+hash-format = "sha512"
+hash = "7b858a7e3f66799de5fad6611b09964407980f0dbe1447253a2284c02ad96a32db5b17bcb0b479372d0bbba1362783e26b3e244d379251e0a42fae51a61779c2"

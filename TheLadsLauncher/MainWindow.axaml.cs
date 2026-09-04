@@ -26,6 +26,9 @@ using XboxAuthNet.Game;
 using CmlLib.Core.Auth.Microsoft;
 using CmlLib.Core.ProcessBuilder;
 using XboxAuthNet.XboxLive;
+using XboxAuthNet.Game.Msal;
+using XboxAuthNet.Game.Msal.OAuth;
+using Microsoft.Identity.Client;
 
 namespace TheLadsLauncher;
 
@@ -132,17 +135,19 @@ public partial class MainWindow : Window
 
         InitializeComponent();
 
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
         settings = LauncherSettings.Load();
         if (settings.LauncherVersion != Program.Version)
         {
             settings.LauncherVersion = Program.Version;
             
             // Migrate to 26.2 and new Packwiz URLs if the user has legacy settings
-            if (settings.FabricVersion.Contains("26.1.2") || settings.FabricVersion.Contains("0.19.2"))
+            if (settings.FabricVersion.Contains("26.1.2") || settings.FabricVersion == "fabric-loader-0.19.2-26.1.2")
                 settings.FabricVersion = "fabric-loader-0.19.3-26.2";
             
             if (settings.PackwizPath.Contains("The Lads Client Packwiz"))
-                settings.PackwizPath = @"C:\Users\Arash\Desktop\Lads Client\Packwiz";
+                settings.PackwizPath = @"C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Packwiz";
                 
             if (settings.PackwizUrl.Contains("The%20Lads%20Client%20Packwiz"))
                 settings.PackwizUrl = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/pack.toml";
@@ -152,7 +157,19 @@ public partial class MainWindow : Window
         
         Log($"[Settings] Loaded settings from BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
         Log($"[Settings] ModrinthApiUrl: '{settings.ModrinthApiUrl}', CurseForgeApiUrl: '{settings.CurseForgeApiUrl}', OverrideVersion: '{settings.SelectedMinecraftVersionOverride}', FabricVersion: '{settings.FabricVersion}'");
-        loginHandler = JELoginHandlerBuilder.BuildDefault();
+        var customHttpClient = new System.Net.Http.HttpClient();
+        customHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+        var msalApp = MsalClientHelper.BuildApplicationWithCache("00000000402b5328").GetAwaiter().GetResult();
+
+        var oauthBuilder = new MsalOAuthBuilder(msalApp);
+
+        loginHandler = new JELoginHandlerBuilder()
+        {
+            HttpClient = customHttpClient
+        }
+        .WithOAuthProvider(new AvaloniaMsalProvider(oauthBuilder, this))
+        .Build();
         
         // Removed automation Trigger login
         
@@ -1694,6 +1711,11 @@ public partial class MainWindow : Window
             var msalCache = System.IO.Path.Combine(theLadsDir, "cmllib_msal_cache.txt");
             if (System.IO.File.Exists(msalCache))
                 System.IO.File.Delete(msalCache);
+
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var msalLocalCache = System.IO.Path.Combine(localAppData, "cmllib_msal_cache.txt");
+            if (System.IO.File.Exists(msalLocalCache))
+                System.IO.File.Delete(msalLocalCache);
                 
             _selectedAccount = "";
             LoadAccounts();
@@ -3569,307 +3591,321 @@ public partial class MainWindow : Window
         }
 
         GameLaunchOverlay.IsVisible = true;
-        GameLaunchProgressBar.Value = 0;
-        GameLaunchStatusText.Text = "Initializing...";
-
-        StatusText.Text = "Initializing...";
-        Log("[Launcher] Starting launch sequence...");
-
-        var path = new MinecraftPath(settings.InstancePath);
-        var launcher = new MinecraftLauncher(path);
-
-        _lastBytes = 0;
-        _lastDownloadTime = DateTime.UtcNow;
-
-        launcher.ByteProgressChanged += (sender, args) =>
+        try
         {
-            Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                if (args.TotalBytes > 0)
-                {
-                    long progressPercentage = (args.ProgressedBytes * 100) / args.TotalBytes;
+            GameLaunchProgressBar.Value = 0;
+            GameLaunchStatusText.Text = "Initializing...";
 
-                    var now = DateTime.UtcNow;
-                    var elapsed = (now - _lastDownloadTime).TotalSeconds;
-                    if (elapsed >= 0.5)
+            StatusText.Text = "Initializing...";
+            Log("[Launcher] Starting launch sequence...");
+
+            var path = new MinecraftPath(settings.InstancePath);
+            var launcher = new MinecraftLauncher(path);
+
+            _lastBytes = 0;
+            _lastDownloadTime = DateTime.UtcNow;
+
+            launcher.ByteProgressChanged += (sender, args) =>
+            {
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (args.TotalBytes > 0)
                     {
-                        var bytesDiff = args.ProgressedBytes - _lastBytes;
-                        double mbPerSec = (bytesDiff / elapsed) / (1024.0 * 1024.0);
-                        DownloadSpeedText.Text = $"{mbPerSec:F1} MB/s";
-                        _lastDownloadTime = now;
-                        _lastBytes = args.ProgressedBytes;
+                        long progressPercentage = (args.ProgressedBytes * 100) / args.TotalBytes;
+
+                        var now = DateTime.UtcNow;
+                        var elapsed = (now - _lastDownloadTime).TotalSeconds;
+                        if (elapsed >= 0.5)
+                        {
+                            var bytesDiff = args.ProgressedBytes - _lastBytes;
+                            double mbPerSec = (bytesDiff / elapsed) / (1024.0 * 1024.0);
+                            DownloadSpeedText.Text = $"{mbPerSec:F1} MB/s";
+                            _lastDownloadTime = now;
+                            _lastBytes = args.ProgressedBytes;
+                        }
+
+                        double currentMb = args.ProgressedBytes / (1024.0 * 1024.0);
+                        double totalMb = args.TotalBytes / (1024.0 * 1024.0);
+                        GameLaunchStatusText.Text = $"Downloading assets: {currentMb:F1}MB / {totalMb:F1}MB ({progressPercentage}%)";
+                        GameLaunchProgressBar.Value = (int)progressPercentage;
+                    }
+                });
+            };
+
+            launcher.FileProgressChanged += (sender, args) =>
+            {
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    int percentage = args.TotalTasks > 0 ? (args.ProgressedTasks * 100 / args.TotalTasks) : 0;
+                    GameLaunchStatusText.Text = $"Downloading assets... {percentage}% ({args.Name})";
+                    GameLaunchProgressBar.Maximum = args.TotalTasks;
+                    GameLaunchProgressBar.Value = args.ProgressedTasks;
+                });
+                Log($"[Launcher] Downloading: {args.Name}");
+            };
+
+            GameLaunchStatusText.Text = "Checking version...";
+
+            // Use the alt-account override if the user picked one; otherwise the main account.
+            // This launches the alt WITHOUT changing _selectedAccount (the persisted main).
+            string selectedUser = (!string.IsNullOrEmpty(_launchAccountOverride)
+                    && (settings.OfflineAccounts.Contains(_launchAccountOverride)
+                        || loginHandler.AccountManager.GetAccounts().Any(a =>
+                            (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == _launchAccountOverride)))
+                ? _launchAccountOverride
+                : _selectedAccount;
+            if (selectedUser != _selectedAccount)
+                Log($"[Launcher] Launching with alt account '{selectedUser}' (main stays '{_selectedAccount}').");
+            bool isOffline = settings.OfflineAccounts.Contains(selectedUser)
+                || selectedUser == "TestPlayer"
+                || Environment.GetCommandLineArgs().Contains("--auto-launch-offline");
+
+            MSession session;
+            if (isOffline)
+            {
+                session = MSession.CreateOfflineSession(selectedUser);
+            }
+            else
+            {
+                var msAccount = loginHandler.AccountManager.GetAccounts().FirstOrDefault(a => (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == selectedUser);
+
+                try
+                {
+                    if (msAccount == null)
+                    {
+                        // No saved account: open the embedded Microsoft sign-in window
+                        GameLaunchStatusText.Text = "Opening Microsoft sign-in...";
+                        session = await loginHandler.AuthenticateInteractively();
+                    }
+                    else
+                    {
+                        try
+                        {
+                            // Use cached refresh tokens — no UI
+                            GameLaunchStatusText.Text = "Logging in silently...";
+                            session = await loginHandler.AuthenticateSilently(msAccount);
+                        }
+                        catch (Exception silentEx)
+                        {
+                            // Tokens expired/revoked: fall back to the sign-in window
+                            Log($"[Auth] Silent login failed ({silentEx.Message}). Falling back to interactive login...");
+                            GameLaunchStatusText.Text = "Session expired — please sign in again...";
+                            session = await loginHandler.AuthenticateInteractively(msAccount);
+                        }
+                    }
+                    loginHandler.AccountManager.SaveAccounts();
+                }
+                catch (PlatformNotSupportedException ex)
+                {
+                    GameLaunchStatusText.Text = "Login failed: default browser could not be opened.";
+                    Log($"[Auth ERROR] Platform not supported: {ex.Message}");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    GameLaunchStatusText.Text = "Login failed.";
+                    Log($"[Auth ERROR] {ex.Message}");
+                    throw;
+                }
+            }
+
+            LoadAccounts();
+            // If launching an alt, make sure the game reads the alt's profile (not the main's,
+            // which LoadAccounts just wrote). Awaited so it's the last write before process start.
+            if (selectedUser != _selectedAccount)
+                await WriteLadsProfileAsync(selectedUser);
+            GameLaunchStatusText.Text = $"Welcome, {session.Username}!";
+            Log($"[Auth] Logged in as {session.Username}");
+
+            if (!isOffline)
+            {
+                GameLaunchStatusText.Text = "Checking for mod updates...";
+                await RunPackwizInstaller();
+            }
+
+            string launchVersionId = ResolveLaunchVersionId();
+            Log($"[Launcher] Building process for {launchVersionId}...");
+
+            // QuickLaunch: skip asset verification for a faster startup.
+            // If the game fails to start, the user should turn QuickLaunch off.
+            System.Diagnostics.Process process;
+            var launchOpt = new MLaunchOption
+            {
+                MaximumRamMb = settings.MaxRamMb,
+                Session = session,
+                JavaPath = settings.JavaPath
+            };
+
+            if (settings.AutoRejoinServer)
+            {
+                // Prefer a manually-picked server; fall back to the last log-detected one
+                string rejoinIp = !string.IsNullOrEmpty(settings.QuickLaunchServerIp)
+                    ? settings.QuickLaunchServerIp
+                    : settings.LastServerIp;
+
+                if (!string.IsNullOrEmpty(rejoinIp))
+                {
+                    // Parse host:port if present
+                    int colon = rejoinIp.LastIndexOf(':');
+                    if (colon > 0 && int.TryParse(rejoinIp.Substring(colon + 1), out int parsedPort))
+                    {
+                        launchOpt.ServerIp = rejoinIp.Substring(0, colon);
+                        launchOpt.ServerPort = parsedPort;
+                    }
+                    else
+                    {
+                        launchOpt.ServerIp = rejoinIp;
+                        if (settings.LastServerPort > 0 && string.IsNullOrEmpty(settings.QuickLaunchServerIp))
+                            launchOpt.ServerPort = settings.LastServerPort;
+                    }
+                    Log($"[Launcher] Auto-Rejoin: {launchOpt.ServerIp}:{launchOpt.ServerPort}");
+                }
+            }
+
+            if (settings.QuickLaunch)
+            {
+                GameLaunchStatusText.Text = "Quick launching (skipping verification)...";
+                Log("[Launcher] QuickLaunch enabled — skipping asset verification.");
+                process = await launcher.BuildProcessAsync(launchVersionId, launchOpt);
+            }
+            else
+            {
+                process = await launcher.InstallAndBuildProcessAsync(launchVersionId, launchOpt);
+            }
+
+            _runningProcesses.Add(process);
+
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.CreateNoWindow = true;
+
+            process.EnableRaisingEvents = true;
+            process.Exited += (s, ev) =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    int exitCode = 0;
+                    try { exitCode = process.ExitCode; } catch { }
+
+                    // Re-show the launcher when the game closes, unless the user opted out.
+                    if (!settings.KeepClosedOnExit)
+                    {
+                        this.Show();
+                        this.WindowState = WindowState.Normal;
+                    }
+                    DownloadSpeedText.Text = "0 MB/s";
+
+                    if (exitCode != 0)
+                    {
+                        StatusText.Text = $"Game crashed! (exit code: {exitCode})";
+                        Log($"[Launcher] Game exited with code {exitCode}");
+                        HandleCrashDetection();
+                    }
+                    else
+                    {
+                        StatusText.Text = "Game exited normally.";
+                        Log("[Launcher] Game exited normally.");
                     }
 
-                    double currentMb = args.ProgressedBytes / (1024.0 * 1024.0);
-                    double totalMb = args.TotalBytes / (1024.0 * 1024.0);
-                    GameLaunchStatusText.Text = $"Downloading assets: {currentMb:F1}MB / {totalMb:F1}MB ({progressPercentage}%)";
-                    GameLaunchProgressBar.Value = (int)progressPercentage;
+                    if (settings.SyncScreenshotsToGlobal)
+                        SyncScreenshotsToGlobal();
+                });
+            };
+
+            process.OutputDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game] {ev.Data}"); };
+            process.ErrorDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game ERROR] {ev.Data}"); };
+
+            // Sync resource packs from global .minecraft folder before launch.
+            if (settings.SyncResourcePacksFromGlobal)
+                SyncResourcePacksFromGlobal();
+
+            // Apply fullscreen setting by patching options.txt before launch.
+            if (settings.FullscreenOnLaunch)
+            {
+                try
+                {
+                    string optFile = System.IO.Path.Combine(settings.InstancePath, "options.txt");
+                    string optContent = System.IO.File.Exists(optFile) ? System.IO.File.ReadAllText(optFile) : "";
+                    var lines = new System.Collections.Generic.List<string>(optContent.Split('\n'));
+                    bool found = false;
+                    for (int li = 0; li < lines.Count; li++)
+                    {
+                        if (lines[li].StartsWith("fullscreen:"))
+                        {
+                            lines[li] = "fullscreen:true";
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) lines.Add("fullscreen:true");
+                    System.IO.File.WriteAllText(optFile, string.Join('\n', lines));
                 }
+                catch (Exception ex) { Log($"[Launch] Could not set fullscreen in options.txt: {ex.Message}"); }
+            }
+
+            // Prepend JVM performance flags. G1GC is used instead of ZGC for fast startup
+            // (ZGC + AlwaysPreTouch was causing the 10-15s freeze before the window appeared).
+            string jvmFlags =
+                "-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:+DisableExplicitGC " +
+                "-XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=50 " +
+                "-XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:G1HeapRegionSize=32M " +
+                "-XX:ReservedCodeCacheSize=256m -XX:+OptimizeStringConcat " +
+                "-Dfml.ignoreInvalidMinecraftCertificates=true " +
+                "-Dfml.ignorePatchDiscrepancies=true -Djava.net.preferIPv4Stack=true";
+            if (!string.IsNullOrWhiteSpace(process.StartInfo.Arguments))
+                process.StartInfo.Arguments = jvmFlags + " " + process.StartInfo.Arguments;
+            else if (process.StartInfo.ArgumentList.Count > 0)
+            {
+                // CmlLib uses ArgumentList — insert flags before the first arg
+                var flags = jvmFlags.Split(' ');
+                for (int fi = flags.Length - 1; fi >= 0; fi--)
+                    process.StartInfo.ArgumentList.Insert(0, flags[fi]);
+            }
+
+            GameLaunchStatusText.Text = "Launching game...";
+            Log("[Launcher] Starting game process...");
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            // Pop the startup splash immediately so there is never a dead gap
+            // between pressing Launch and the Minecraft window appearing.
+            var startupSplash = new Views.GameStartupSplash();
+            startupSplash.Show();
+            _ = WatchForGameWindowAsync(process, startupSplash);
+
+            // Boost to RealTime during game startup so loading is faster; revert after 120s.
+            _ = Task.Run(async () => {
+                try { process.PriorityClass = ProcessPriorityClass.RealTime; Log("[Launcher] Process priority set to RealTime."); }
+                catch { }
+                await Task.Delay(120_000);
+                try {
+                    if (!process.HasExited) {
+                        process.PriorityClass = ProcessPriorityClass.Normal;
+                        Log("[Launcher] Process priority reverted to Normal.");
+                    }
+                } catch { }
             });
-        };
 
-        launcher.FileProgressChanged += (sender, args) =>
-        {
-            Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                int percentage = args.TotalTasks > 0 ? (args.ProgressedTasks * 100 / args.TotalTasks) : 0;
-                GameLaunchStatusText.Text = $"Downloading assets... {percentage}% ({args.Name})";
-                GameLaunchProgressBar.Maximum = args.TotalTasks;
-                GameLaunchProgressBar.Value = args.ProgressedTasks;
-            });
-            Log($"[Launcher] Downloading: {args.Name}");
-        };
+            StatusText.Text = "Game running.";
+            GameLaunchOverlay.IsVisible = false;
 
-        GameLaunchStatusText.Text = "Checking version...";
-
-        // Use the alt-account override if the user picked one; otherwise the main account.
-        // This launches the alt WITHOUT changing _selectedAccount (the persisted main).
-        string selectedUser = (!string.IsNullOrEmpty(_launchAccountOverride)
-                && (settings.OfflineAccounts.Contains(_launchAccountOverride)
-                    || loginHandler.AccountManager.GetAccounts().Any(a =>
-                        (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == _launchAccountOverride)))
-            ? _launchAccountOverride
-            : _selectedAccount;
-        if (selectedUser != _selectedAccount)
-            Log($"[Launcher] Launching with alt account '{selectedUser}' (main stays '{_selectedAccount}').");
-        bool isOffline = settings.OfflineAccounts.Contains(selectedUser)
-            || selectedUser == "TestPlayer"
-            || Environment.GetCommandLineArgs().Contains("--auto-launch-offline");
-
-        MSession session;
-        if (isOffline)
-        {
-            session = MSession.CreateOfflineSession(selectedUser);
+            // Hide to tray after launch, unless the user wants the launcher to stay open.
+            if (settings.CloseToTray && !settings.KeepLauncherOpen)
+                this.Hide();
         }
-        else
+        catch (Exception ex)
         {
-            var msAccount = loginHandler.AccountManager.GetAccounts().FirstOrDefault(a => (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == selectedUser);
-
-            try
-            {
-                if (msAccount == null)
-                {
-                    // No saved account: open the embedded Microsoft sign-in window
-                    GameLaunchStatusText.Text = "Opening Microsoft sign-in...";
-                    session = await loginHandler.AuthenticateInteractively();
-                }
-                else
-                {
-                    try
-                    {
-                        // Use cached refresh tokens — no UI
-                        GameLaunchStatusText.Text = "Logging in silently...";
-                        session = await loginHandler.AuthenticateSilently(msAccount);
-                    }
-                    catch (Exception silentEx)
-                    {
-                        // Tokens expired/revoked: fall back to the sign-in window
-                        Log($"[Auth] Silent login failed ({silentEx.Message}). Falling back to interactive login...");
-                        GameLaunchStatusText.Text = "Session expired — please sign in again...";
-                        session = await loginHandler.AuthenticateInteractively(msAccount);
-                    }
-                }
-                loginHandler.AccountManager.SaveAccounts();
-            }
-            catch (PlatformNotSupportedException)
-            {
-                GameLaunchStatusText.Text = "Login failed: WebView2 Runtime missing.";
-                Log("[Auth ERROR] WebView2 Runtime not found. Install 'Microsoft Edge WebView2 Runtime'.");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                GameLaunchStatusText.Text = "Login failed.";
-                Log($"[Auth ERROR] {ex.Message}");
-                throw;
-            }
+            StatusText.Text = "Launch failed: " + ex.Message;
+            Log($"[Launch ERROR] {ex.Message}");
+            throw;
         }
-
-        LoadAccounts();
-        // If launching an alt, make sure the game reads the alt's profile (not the main's,
-        // which LoadAccounts just wrote). Awaited so it's the last write before process start.
-        if (selectedUser != _selectedAccount)
-            await WriteLadsProfileAsync(selectedUser);
-        GameLaunchStatusText.Text = $"Welcome, {session.Username}!";
-        Log($"[Auth] Logged in as {session.Username}");
-
-        if (!isOffline)
+        finally
         {
-            GameLaunchStatusText.Text = "Checking for mod updates...";
-            await RunPackwizInstaller();
+            GameLaunchOverlay.IsVisible = false;
+            LaunchButton.IsEnabled = true;
         }
-
-        string launchVersionId = ResolveLaunchVersionId();
-        Log($"[Launcher] Building process for {launchVersionId}...");
-
-        // QuickLaunch: skip asset verification for a faster startup.
-        // If the game fails to start, the user should turn QuickLaunch off.
-        System.Diagnostics.Process process;
-        var launchOpt = new MLaunchOption
-        {
-            MaximumRamMb = settings.MaxRamMb,
-            Session = session,
-            JavaPath = settings.JavaPath
-        };
-
-        if (settings.AutoRejoinServer)
-        {
-            // Prefer a manually-picked server; fall back to the last log-detected one
-            string rejoinIp = !string.IsNullOrEmpty(settings.QuickLaunchServerIp)
-                ? settings.QuickLaunchServerIp
-                : settings.LastServerIp;
-
-            if (!string.IsNullOrEmpty(rejoinIp))
-            {
-                // Parse host:port if present
-                int colon = rejoinIp.LastIndexOf(':');
-                if (colon > 0 && int.TryParse(rejoinIp.Substring(colon + 1), out int parsedPort))
-                {
-                    launchOpt.ServerIp = rejoinIp.Substring(0, colon);
-                    launchOpt.ServerPort = parsedPort;
-                }
-                else
-                {
-                    launchOpt.ServerIp = rejoinIp;
-                    if (settings.LastServerPort > 0 && string.IsNullOrEmpty(settings.QuickLaunchServerIp))
-                        launchOpt.ServerPort = settings.LastServerPort;
-                }
-                Log($"[Launcher] Auto-Rejoin: {launchOpt.ServerIp}:{launchOpt.ServerPort}");
-            }
-        }
-
-        if (settings.QuickLaunch)
-        {
-            GameLaunchStatusText.Text = "Quick launching (skipping verification)...";
-            Log("[Launcher] QuickLaunch enabled — skipping asset verification.");
-            process = await launcher.BuildProcessAsync(launchVersionId, launchOpt);
-        }
-        else
-        {
-            process = await launcher.InstallAndBuildProcessAsync(launchVersionId, launchOpt);
-        }
-
-        _runningProcesses.Add(process);
-
-        process.StartInfo.UseShellExecute = false;
-        process.StartInfo.RedirectStandardOutput = true;
-        process.StartInfo.RedirectStandardError = true;
-        process.StartInfo.CreateNoWindow = true;
-
-        process.EnableRaisingEvents = true;
-        process.Exited += (s, ev) =>
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                int exitCode = 0;
-                try { exitCode = process.ExitCode; } catch { }
-
-                // Re-show the launcher when the game closes, unless the user opted out.
-                if (!settings.KeepClosedOnExit)
-                {
-                    this.Show();
-                    this.WindowState = WindowState.Normal;
-                }
-                DownloadSpeedText.Text = "0 MB/s";
-
-                if (exitCode != 0)
-                {
-                    StatusText.Text = $"Game crashed! (exit code: {exitCode})";
-                    Log($"[Launcher] Game exited with code {exitCode}");
-                    HandleCrashDetection();
-                }
-                else
-                {
-                    StatusText.Text = "Game exited normally.";
-                    Log("[Launcher] Game exited normally.");
-                }
-
-                if (settings.SyncScreenshotsToGlobal)
-                    SyncScreenshotsToGlobal();
-            });
-        };
-
-        process.OutputDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game] {ev.Data}"); };
-        process.ErrorDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game ERROR] {ev.Data}"); };
-
-        // Sync resource packs from global .minecraft folder before launch.
-        if (settings.SyncResourcePacksFromGlobal)
-            SyncResourcePacksFromGlobal();
-
-        // Apply fullscreen setting by patching options.txt before launch.
-        if (settings.FullscreenOnLaunch)
-        {
-            try
-            {
-                string optFile = System.IO.Path.Combine(settings.InstancePath, "options.txt");
-                string optContent = System.IO.File.Exists(optFile) ? System.IO.File.ReadAllText(optFile) : "";
-                var lines = new System.Collections.Generic.List<string>(optContent.Split('\n'));
-                bool found = false;
-                for (int li = 0; li < lines.Count; li++)
-                {
-                    if (lines[li].StartsWith("fullscreen:"))
-                    {
-                        lines[li] = "fullscreen:true";
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) lines.Add("fullscreen:true");
-                System.IO.File.WriteAllText(optFile, string.Join('\n', lines));
-            }
-            catch (Exception ex) { Log($"[Launch] Could not set fullscreen in options.txt: {ex.Message}"); }
-        }
-
-        // Prepend JVM performance flags. G1GC is used instead of ZGC for fast startup
-        // (ZGC + AlwaysPreTouch was causing the 10-15s freeze before the window appeared).
-        string jvmFlags =
-            "-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:+DisableExplicitGC " +
-            "-XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=50 " +
-            "-XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:G1HeapRegionSize=32M " +
-            "-XX:ReservedCodeCacheSize=256m -XX:+OptimizeStringConcat " +
-            "-Dfml.ignoreInvalidMinecraftCertificates=true " +
-            "-Dfml.ignorePatchDiscrepancies=true -Djava.net.preferIPv4Stack=true";
-        if (!string.IsNullOrWhiteSpace(process.StartInfo.Arguments))
-            process.StartInfo.Arguments = jvmFlags + " " + process.StartInfo.Arguments;
-        else if (process.StartInfo.ArgumentList.Count > 0)
-        {
-            // CmlLib uses ArgumentList — insert flags before the first arg
-            var flags = jvmFlags.Split(' ');
-            for (int fi = flags.Length - 1; fi >= 0; fi--)
-                process.StartInfo.ArgumentList.Insert(0, flags[fi]);
-        }
-
-        GameLaunchStatusText.Text = "Launching game...";
-        Log("[Launcher] Starting game process...");
-        process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-
-        // Pop the startup splash immediately so there is never a dead gap
-        // between pressing Launch and the Minecraft window appearing.
-        var startupSplash = new Views.GameStartupSplash();
-        startupSplash.Show();
-        _ = WatchForGameWindowAsync(process, startupSplash);
-
-        // Boost to RealTime during game startup so loading is faster; revert after 120s.
-        _ = Task.Run(async () => {
-            try { process.PriorityClass = ProcessPriorityClass.RealTime; Log("[Launcher] Process priority set to RealTime."); }
-            catch { }
-            await Task.Delay(120_000);
-            try {
-                if (!process.HasExited) {
-                    process.PriorityClass = ProcessPriorityClass.Normal;
-                    Log("[Launcher] Process priority reverted to Normal.");
-                }
-            } catch { }
-        });
-
-        StatusText.Text = "Game running.";
-        GameLaunchOverlay.IsVisible = false;
-
-        // Hide to tray after launch, unless the user wants the launcher to stay open.
-        if (settings.CloseToTray && !settings.KeepLauncherOpen)
-            this.Hide();
     }
 
     // Keeps the startup splash visible until the game window actually exists
@@ -4247,7 +4283,19 @@ public partial class MainWindow : Window
             HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
             CornerRadius = new CornerRadius(8)
         };
-        relaunchBtn.Click += async (s, e) => { window.Close(); await LaunchGame(); };
+        relaunchBtn.Click += async (s, e) =>
+        {
+            try
+            {
+                window.Close();
+                await LaunchGame();
+            }
+            catch (Exception ex)
+            {
+                Log($"[Relaunch ERROR] {ex.Message}");
+                StatusText.Text = "Relaunch failed: " + ex.Message;
+            }
+        };
         buttonRow.Children.Add(relaunchBtn);
 
         if (crashFile != null)
@@ -4328,7 +4376,7 @@ public partial class MainWindow : Window
             string bootstrapJar = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "packwiz-installer-bootstrap.jar");
 
             if (!File.Exists(bootstrapJar))
-                bootstrapJar = @"C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher\packwiz-installer-bootstrap.jar";
+                bootstrapJar = @"C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher\packwiz-installer-bootstrap.jar";
 
             process.StartInfo.Arguments = $"-jar \"{bootstrapJar}\" --no-gui \"{packUrl}\"";
             process.StartInfo.WorkingDirectory = settings.InstancePath;
@@ -4444,7 +4492,7 @@ public partial class MainWindow : Window
     {
         _trayIcon = new TrayIcon
         {
-            Icon = new WindowIcon(@"C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher\Assets\icon.ico"),
+            Icon = new WindowIcon(@"C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher\Assets\icon.ico"),
             ToolTipText = "The Lads Client",
             IsVisible = true
         };
@@ -5253,3 +5301,29 @@ public class ModFileVersion
     public string DownloadUrl { get; set; } = "";
     public long Size { get; set; }
 }
+
+public class AvaloniaMsalProvider : IAuthenticationProvider
+{
+    private readonly MsalOAuthBuilder _builder;
+    private readonly Window _window;
+
+    public AvaloniaMsalProvider(MsalOAuthBuilder builder, Window window)
+    {
+        _builder = builder;
+        _window = window;
+    }
+
+    public XboxAuthNet.Game.Authenticators.IAuthenticator Authenticate() => _builder.CodeFlow();
+    public XboxAuthNet.Game.Authenticators.IAuthenticator AuthenticateInteractively() => _builder.Interactive(opts => 
+    {
+        opts.WithUseEmbeddedWebView(true);
+        var handle = _window.TryGetPlatformHandle();
+        if (handle != null && handle.Handle != IntPtr.Zero)
+            opts.WithParentActivityOrWindow(handle.Handle);
+    });
+    public XboxAuthNet.Game.Authenticators.IAuthenticator AuthenticateSilently() => _builder.Silent();
+    public XboxAuthNet.Game.Authenticators.ISessionValidator CreateSessionValidator() => XboxAuthNet.Game.Authenticators.StaticValidator.Invalid;
+    public XboxAuthNet.Game.Authenticators.IAuthenticator ClearSession() => _builder.ClearSession();
+    public XboxAuthNet.Game.Authenticators.IAuthenticator Signout() => _builder.ClearSession();
+}
+

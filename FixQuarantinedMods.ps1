@@ -1,4 +1,4 @@
-$base = "C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto"
+$base = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsCore\src\main\java\com\thelads\core\mixin\auto"
 $classes = @{
     "shulkerboxutils130\ClientLevelMixin.java" = "package com.thelads.core.mixin.auto.shulkerboxutils130;`n`npublic class ClientLevelMixin {}"
     "resourcify262fabric184\MixinGuiGraphics.java" = "package com.thelads.core.mixin.auto.resourcify262fabric184;`n`npublic class MixinGuiGraphics {}"

@@ -1,0 +1,8 @@
+name = "The Lads Network - Blocks v1.0"
+filename = "The Lads Network - Blocks v1.0.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/The%20Lads%20Network%20-%20Blocks%20v1.0.zip"
+hash-format = "sha512"
+hash = "2fe9cb2eba3695706175b3c44690bc1235d905e92ec87d6cda99680dec52b8758d38e2babff7279cd669b43bca1e89fd3fa6bec9603ef012b896e806cfef67fc"

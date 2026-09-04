@@ -21,7 +21,7 @@ public class LauncherSettings
 
     // Paths
     public string InstancePath { get; set; } = @"C:\The Lads Client";
-    public string PackwizPath { get; set; } = @"C:\Users\Arash\Desktop\Lads Client\Packwiz";
+    public string PackwizPath { get; set; } = @"C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Packwiz";
     public string PackwizUrl { get; set; } = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/pack.toml";
     public string FabricVersion { get; set; } = "fabric-loader-0.19.3-26.2";
 

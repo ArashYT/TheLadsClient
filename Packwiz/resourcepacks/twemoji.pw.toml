@@ -1,0 +1,8 @@
+name = "twemoji"
+filename = "twemoji.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/twemoji.zip"
+hash-format = "sha512"
+hash = "a0df13dcca2884a1af98e1bbca9956653a43210ee26d1cde0de49cce8aaf1cd0d4bac35b5aedc6d6b0793ed1d3386ebe327dffdda6e3181b384616e8f9fe31ca"

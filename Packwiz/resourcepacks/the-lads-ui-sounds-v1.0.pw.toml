@@ -1,0 +1,8 @@
+name = "The-Lads-UI-&-Sounds-v1.0"
+filename = "The-Lads-UI-&-Sounds-v1.0.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/The-Lads-UI-%26-Sounds-v1.0.zip"
+hash-format = "sha512"
+hash = "927dbaf3e76a29e0b5bea02e6de14037158e76fb90b5c53c7f87b9acb3f52b0501d1c5030361a716d98cdddfc88161b71145e394be1adf1933dc7a41dec87179"

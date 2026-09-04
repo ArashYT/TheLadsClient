@@ -1,0 +1,8 @@
+name = "AndrosDiscordEmojis"
+filename = "AndrosDiscordEmojis.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/AndrosDiscordEmojis.zip"
+hash-format = "sha512"
+hash = "2fc2e4c8c0e12777089da18b919b4c6310f1dde8f3fb2badecdc87f48ca6852e4822e01da7b8d6f484be42400e0efef7ef494f00d6bc7c54aa8cb520ad332b51"

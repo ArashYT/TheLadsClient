@@ -1,0 +1,8 @@
+name = "Crimson Forest"
+filename = "Crimson Forest.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/Crimson%20Forest.zip"
+hash-format = "sha512"
+hash = "b7301e1504aac8e02a472ef2b570a010b57c2ecdf9fa7e59285ed394eca7ab57ef128f29a7cb3d9402d3d6d03fd5e818dbd19be6362179312851a2a5537ea368"

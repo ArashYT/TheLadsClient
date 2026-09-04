@@ -1,0 +1,8 @@
+name = "FlowFont_69.0-88.0_1.3"
+filename = "FlowFont_69.0-88.0_1.3.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/FlowFont_69.0-88.0_1.3.zip"
+hash-format = "sha512"
+hash = "196ece69cd692f022d6ecb15ddddea81f06aba001c0800213821f0cb9738d0984b8320b984debbf7017f3036381782b0908e35412d0c349c7cc08380e6f1ae3b"
