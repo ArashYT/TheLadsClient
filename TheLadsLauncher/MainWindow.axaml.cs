@@ -38,6 +38,10 @@ public partial class MainWindow : Window
 {
     private JELoginHandler loginHandler;
     private LauncherSettings settings;
+    private readonly TheLadsLauncher.Services.IProfileService _profileService = TheLadsLauncher.Services.ProfileService.Instance;
+    private readonly TheLadsLauncher.Services.IJavaService _javaService = TheLadsLauncher.Services.JavaService.Instance;
+    private readonly TheLadsLauncher.Services.IPathService _pathService = TheLadsLauncher.Services.PathService.Instance;
+    private bool _populatingProfileSelector = false;
 
     private string _selectedAccountInternal = "";
     private string _selectedAccount 
@@ -146,8 +150,8 @@ public partial class MainWindow : Window
             if (settings.FabricVersion.Contains("26.1.2") || settings.FabricVersion == "fabric-loader-0.19.2-26.1.2")
                 settings.FabricVersion = "fabric-loader-0.19.3-26.2";
             
-            if (settings.PackwizPath.Contains("The Lads Client Packwiz"))
-                settings.PackwizPath = @"C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Packwiz";
+            if (settings.PackwizPath.Contains("The Lads Client Packwiz") || settings.PackwizPath.Contains("Arash"))
+                settings.PackwizPath = Path.Combine(TheLadsLauncher.Services.PathService.Instance.BaseDirectory, "packwiz");
                 
             if (settings.PackwizUrl.Contains("The%20Lads%20Client%20Packwiz"))
                 settings.PackwizUrl = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/pack.toml";
@@ -193,7 +197,7 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(async () =>
             {
                 await Task.Delay(1000);
-                AddNewAccount();
+                await AddNewAccount();
             });
         }
         else if (args.Contains("--auto-launch-offline"))
@@ -220,6 +224,8 @@ public partial class MainWindow : Window
         }
         
         LoadSettingsUI();
+        PopulateLaunchProfileSelector();
+        LoadProfilesUI();
         LoadAccounts();
         InitializeEditor();
 
@@ -536,6 +542,7 @@ public partial class MainWindow : Window
     private void NavigateTo(string page)
     {
         HomePage.IsVisible = page == "Home";
+        ProfilesPage.IsVisible = page == "Profiles";
         AccountsPage.IsVisible = page == "Accounts";
         SettingsPage.IsVisible = page == "Settings";
         ModsPage.IsVisible = page == "Mods";
@@ -545,6 +552,7 @@ public partial class MainWindow : Window
 
         // Update nav button styles
         NavHome.Classes.Set("active", page == "Home");
+        NavProfiles.Classes.Set("active", page == "Profiles");
         NavAccounts.Classes.Set("active", page == "Accounts");
         NavSettings.Classes.Set("active", page == "Settings");
         NavMods.Classes.Set("active", page == "Mods");
@@ -554,6 +562,11 @@ public partial class MainWindow : Window
     }
 
     private void NavHome_Click(object? sender, RoutedEventArgs e) => NavigateTo("Home");
+    private void NavProfiles_Click(object? sender, RoutedEventArgs e)
+    {
+        LoadProfilesUI();
+        NavigateTo("Profiles");
+    }
     private void NavAccounts_Click(object? sender, RoutedEventArgs e) => NavigateTo("Accounts");
     private void ManageAccountsShortcutBtn_Click(object? sender, RoutedEventArgs e) => NavigateTo("Accounts");
     private void NavSettings_Click(object? sender, RoutedEventArgs e) => NavigateTo("Settings");
@@ -788,13 +801,13 @@ public partial class MainWindow : Window
             var root = doc.RootElement;
             var parts = new List<string>();
             if (root.TryGetProperty("server", out var sv) && !string.IsNullOrEmpty(sv.GetString()))
-                parts.Add(sv.GetString());
+                parts.Add(sv.GetString()!);
             else if (root.TryGetProperty("world", out var wd) && !string.IsNullOrEmpty(wd.GetString()))
-                parts.Add(wd.GetString());
+                parts.Add(wd.GetString()!);
             if (root.TryGetProperty("x", out var x) && root.TryGetProperty("z", out var z))
                 parts.Add($"{x.GetInt32()}, {z.GetInt32()}");
             if (root.TryGetProperty("biome", out var bi) && !string.IsNullOrEmpty(bi.GetString()))
-                parts.Add(bi.GetString().Replace("minecraft:", ""));
+                parts.Add(bi.GetString()?.Replace("minecraft:", "") ?? "");
             if (root.TryGetProperty("seed", out var sd))
                 parts.Add("seed " + sd.GetInt64());
             return string.Join("  ·  ", parts);
@@ -833,8 +846,8 @@ public partial class MainWindow : Window
             {
                 if (settings.GalleryFavorites.Count > 0)
                 {
-                    string dir = Path.GetDirectoryName(favPath);
-                    if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                    string? dir = Path.GetDirectoryName(favPath);
+                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
                     string json = JsonSerializer.Serialize(settings.GalleryFavorites);
                     File.WriteAllText(favPath, json);
                 }
@@ -851,8 +864,8 @@ public partial class MainWindow : Window
         try
         {
             string favPath = Path.Combine(settings.InstancePath, "config", "gallery_favorites.json");
-            string dir = Path.GetDirectoryName(favPath);
-            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            string? dir = Path.GetDirectoryName(favPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
             string json = JsonSerializer.Serialize(settings.GalleryFavorites);
             File.WriteAllText(favPath, json);
         }
@@ -1304,7 +1317,14 @@ public partial class MainWindow : Window
     private void Log(string message)
     {
         lock (_logFileLock)
-            System.IO.File.AppendAllText(@"C:\Users\Arash\Desktop\launcher_debug.txt", $"[{DateTime.Now:HH:mm:ss}] {message}\n");
+        {
+            try
+            {
+                var logFile = Path.Combine(TheLadsLauncher.Services.PathService.Instance.LogsDirectory, "launcher_debug.txt");
+                System.IO.File.AppendAllText(logFile, $"[{DateTime.Now:HH:mm:ss}] {message}\n");
+            }
+            catch { }
+        }
         Dispatcher.UIThread.Post(() =>
         {
             string timestamped = $"[{DateTime.Now:HH:mm:ss}] {message}";
@@ -1752,7 +1772,7 @@ public partial class MainWindow : Window
             Height = 36
         };
         button.Click += (s, ev) => {
-            string username = textBox.Text;
+            string? username = textBox.Text;
             if (!string.IsNullOrEmpty(username))
             {
                 if (!settings.OfflineAccounts.Contains(username))
@@ -1768,7 +1788,7 @@ public partial class MainWindow : Window
         };
         panel.Children.Add(button);
         window.Content = panel;
-        window.ShowDialog(this);
+        await window.ShowDialog(this);
     }
 
     private void AddMicrosoftAccount_Click(object? sender, RoutedEventArgs e)
@@ -1800,7 +1820,7 @@ public partial class MainWindow : Window
             Log($"[Auth] New account added: {session.Username}");
 
             // Auto launch
-            Dispatcher.UIThread.Post(() => LaunchButton_Click(null, null));
+            Dispatcher.UIThread.Post(() => LaunchButton_Click(null, new RoutedEventArgs()));
         }
         catch (PlatformNotSupportedException)
         {
@@ -1821,7 +1841,7 @@ public partial class MainWindow : Window
         StatusText.Text = "Manual login cancelled.";
     }
 
-    private async void ManualLoginSubmit_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private void ManualLoginSubmit_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         string url = ManualUrlTextBox.Text ?? "";
         ManualLoginOverlay.IsVisible = false;
@@ -1983,8 +2003,15 @@ public partial class MainWindow : Window
 
             string json = System.Text.Json.JsonSerializer.Serialize(profile,
                 new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-            string path = System.IO.Path.Combine(@"C:\The Lads Client", "lads_profile.json");
+            string path = TheLadsLauncher.Services.PathService.Instance.ProfileConfigFile;
+            var pDir = System.IO.Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(pDir)) System.IO.Directory.CreateDirectory(pDir);
             await System.IO.File.WriteAllTextAsync(path, json);
+            try
+            {
+                await System.IO.File.WriteAllTextAsync(TheLadsLauncher.Services.PathService.Instance.SharedProfileConfigFile, json);
+            }
+            catch { }
             Log($"[Profile] lads_profile.json updated for {username}");
         }
         catch (Exception ex)
@@ -2108,7 +2135,7 @@ public partial class MainWindow : Window
     private void LoadPresetsList(string username)
     {
         PresetSelector.Items.Clear();
-        string presetDir = Path.Combine(@"C:\The Lads Client", "presets", username);
+        string presetDir = Path.Combine(TheLadsLauncher.Services.PathService.Instance.PresetsDirectory, username);
         if (Directory.Exists(presetDir))
         {
             var files = Directory.GetFiles(presetDir, "*.png");
@@ -2123,11 +2150,11 @@ public partial class MainWindow : Window
 
     private void SavePreset_Click(object? sender, RoutedEventArgs e)
     {
-        string username = SelectedAccountText.Text;
+        string? username = SelectedAccountText.Text;
         if (string.IsNullOrEmpty(username) || username == "No Account Selected") return;
 
         string name = "Preset_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        string presetDir = Path.Combine(@"C:\The Lads Client", "presets", username);
+        string presetDir = Path.Combine(TheLadsLauncher.Services.PathService.Instance.PresetsDirectory, username);
         Directory.CreateDirectory(presetDir);
         string dest = Path.Combine(presetDir, name + ".png");
 
@@ -2138,13 +2165,13 @@ public partial class MainWindow : Window
 
     private void ApplyPreset_Click(object? sender, RoutedEventArgs e)
     {
-        string username = SelectedAccountText.Text;
+        string? username = SelectedAccountText.Text;
         if (string.IsNullOrEmpty(username)) return;
         string? selected = PresetSelector.SelectedItem as string;
         if (string.IsNullOrEmpty(selected)) return;
 
-        string src = Path.Combine(@"C:\The Lads Client", "presets", username, selected + ".png");
-        string dest = Path.Combine(@"C:\The Lads Client", "skin.png");
+        string src = Path.Combine(TheLadsLauncher.Services.PathService.Instance.PresetsDirectory, username, selected + ".png");
+        string dest = TheLadsLauncher.Services.PathService.Instance.SkinFile;
         if (File.Exists(src))
         {
             File.Copy(src, dest, true);
@@ -2155,12 +2182,12 @@ public partial class MainWindow : Window
 
     private void DeletePreset_Click(object? sender, RoutedEventArgs e)
     {
-        string username = SelectedAccountText.Text;
+        string? username = SelectedAccountText.Text;
         if (string.IsNullOrEmpty(username)) return;
         string? selected = PresetSelector.SelectedItem as string;
         if (string.IsNullOrEmpty(selected)) return;
 
-        string path = Path.Combine(@"C:\The Lads Client", "presets", username, selected + ".png");
+        string path = Path.Combine(TheLadsLauncher.Services.PathService.Instance.PresetsDirectory, username, selected + ".png");
         if (File.Exists(path))
         {
             File.Delete(path);
@@ -2180,11 +2207,11 @@ public partial class MainWindow : Window
         if (files != null && files.Count > 0)
         {
             string src = files[0].Path.LocalPath;
-            string dest = Path.Combine(@"C:\The Lads Client", "skin.png");
+            string dest = TheLadsLauncher.Services.PathService.Instance.SkinFile;
             File.Copy(src, dest, true);
             Log($"[Skin] Imported skin from local file.");
             
-            string username = SelectedAccountText.Text;
+            string? username = SelectedAccountText.Text;
             if (!string.IsNullOrEmpty(username) && username != "No Account Selected")
                 _ = LoadPlayerSkin(username);
         }
@@ -2233,7 +2260,7 @@ public partial class MainWindow : Window
         SetEditorColor(Colors.White);
 
         // Load skin.png if exists
-        LoadPixelsFromSkinFile(Path.Combine(@"C:\The Lads Client", "skin.png"));
+        LoadPixelsFromSkinFile(TheLadsLauncher.Services.PathService.Instance.SkinFile);
     }
 
     private void UpdateColorFromSliders()
@@ -2433,19 +2460,19 @@ public partial class MainWindow : Window
 
     private void SaveEditorDrawing_Click(object? sender, RoutedEventArgs e)
     {
-        string username = SelectedAccountText.Text;
+        string? username = SelectedAccountText.Text;
         if (string.IsNullOrEmpty(username) || username == "No Account Selected")
         {
             if (_selectedEditor == "Cape")
             {
-                string path = Path.Combine(@"C:\The Lads Client", "config", "cape.png");
+                string path = TheLadsLauncher.Services.PathService.Instance.CapeFile;
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 SaveSkinPng(path, true);
                 Log("[Cape] Saved custom cape to config.");
             }
             else
             {
-                string path = Path.Combine(@"C:\The Lads Client", "skin.png");
+                string path = TheLadsLauncher.Services.PathService.Instance.SkinFile;
                 SaveSkinPng(path, false);
                 Log("[Skin] Saved custom skin.");
             }
@@ -2454,14 +2481,14 @@ public partial class MainWindow : Window
 
         if (_selectedEditor == "Cape")
         {
-            string path = Path.Combine(@"C:\The Lads Client", "config", "cape.png");
+            string path = TheLadsLauncher.Services.PathService.Instance.CapeFile;
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             SaveSkinPng(path, true);
             Log($"[Cape] Saved custom cape for {username}.");
         }
         else
         {
-            string path = Path.Combine(@"C:\The Lads Client", "skin.png");
+            string path = TheLadsLauncher.Services.PathService.Instance.SkinFile;
             SaveSkinPng(path, false);
             Log($"[Skin] Saved custom skin for {username}.");
             _ = LoadPlayerSkin(username);
@@ -2685,6 +2712,370 @@ public partial class MainWindow : Window
     {
         PopulateJavaSelector();
         Log("[Settings] Detected Java installations refreshed.");
+    }
+
+    private async void DownloadJava_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            DownloadJavaBtn.IsEnabled = false;
+            JavaDownloadProgress.IsVisible = true;
+            JavaDownloadProgress.Value = 0;
+            var active = _profileService.GetActiveProfile();
+            int verToDownload = active?.JavaMajorVersion ?? 21;
+            JavaStatusText.Text = $"Downloading Adoptium JDK {verToDownload}...";
+
+            var progress = new Progress<double>(p =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    JavaDownloadProgress.Value = p;
+                    JavaStatusText.Text = $"Downloading JDK {verToDownload}: {p:F0}%";
+                });
+            });
+
+            string javaPath = await _javaService.EnsureJavaAsync(verToDownload, progress);
+
+            JavaDownloadProgress.Value = 100;
+            JavaStatusText.Text = $"Adoptium JDK {verToDownload} ready!";
+            PopulateJavaSelector();
+            JavaSelector.SelectedItem = javaPath;
+            settings.JavaPath = javaPath;
+            settings.Save();
+            Log($"[Java] Adoptium JDK {verToDownload} ready at: {javaPath}");
+        }
+        catch (Exception ex)
+        {
+            JavaStatusText.Text = $"Download failed: {ex.Message}";
+            Log($"[Java ERROR] {ex.Message}");
+        }
+        finally
+        {
+            DownloadJavaBtn.IsEnabled = true;
+        }
+    }
+
+    // ═══════════════════════════════════════
+    //  PROFILES MANAGEMENT
+    // ═══════════════════════════════════════
+
+    private void PopulateLaunchProfileSelector()
+    {
+        _populatingProfileSelector = true;
+        try
+        {
+            LaunchProfileSelector.Items.Clear();
+            var profiles = _profileService.GetProfiles();
+            foreach (var p in profiles)
+            {
+                LaunchProfileSelector.Items.Add(p);
+            }
+
+            // Check if current settings match an existing profile without clobbering loaded settings
+            string currentMc = !string.IsNullOrEmpty(settings.SelectedMinecraftVersionOverride)
+                ? settings.SelectedMinecraftVersionOverride
+                : ResolveMinecraftVersion();
+
+            var matchingProfile = profiles.FirstOrDefault(p => p.MinecraftVersion == currentMc);
+            if (matchingProfile != null)
+            {
+                _profileService.SetActiveProfile(matchingProfile.Id);
+                LaunchProfileSelector.SelectedItem = matchingProfile;
+            }
+            else
+            {
+                var active = _profileService.GetActiveProfile();
+                LaunchProfileSelector.SelectedItem = profiles.FirstOrDefault(p => p.Id == active.Id) ?? profiles.FirstOrDefault();
+            }
+        }
+        finally
+        {
+            _populatingProfileSelector = false;
+        }
+    }
+
+    private void LaunchProfileSelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_populatingProfileSelector) return;
+        if (LaunchProfileSelector.SelectedItem is TheLadsLauncher.Models.LauncherProfile profile)
+        {
+            _profileService.SetActiveProfile(profile.Id);
+            ApplyProfile(profile, true);
+            LoadProfilesUI();
+        }
+    }
+
+    private void ApplyProfile(TheLadsLauncher.Models.LauncherProfile profile, bool saveSettings = true)
+    {
+        settings.SelectedMinecraftVersionOverride = profile.MinecraftVersion;
+        if (!string.IsNullOrEmpty(profile.FabricVersion))
+        {
+            settings.FabricVersion = profile.FabricVersion.StartsWith("fabric-loader-")
+                ? profile.FabricVersion
+                : $"fabric-loader-{profile.FabricVersion}-{profile.MinecraftVersion}";
+        }
+        if (!string.IsNullOrEmpty(profile.PackwizUrl))
+            settings.PackwizUrl = profile.PackwizUrl;
+
+        settings.InstancePath = _pathService.GetProfileDirectory(profile);
+        if (!string.IsNullOrEmpty(profile.CustomJavaPath))
+            settings.JavaPath = profile.CustomJavaPath;
+
+        if (saveSettings)
+            settings.Save();
+
+        UpdateMinecraftVersionDisplay();
+    }
+
+    private void LoadProfilesUI()
+    {
+        ProfilesListContainer.Children.Clear();
+        var profiles = _profileService.GetProfiles();
+        var active = _profileService.GetActiveProfile();
+
+        foreach (var profile in profiles)
+        {
+            bool isActive = profile.Id == active.Id;
+
+            var card = new Border
+            {
+                Background = new SolidColorBrush(Color.Parse(isActive ? "#141424" : "#0E0E18")),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(16, 12),
+                BorderBrush = new SolidColorBrush(Color.Parse(isActive ? "#8B0000" : "#1A1A2E")),
+                BorderThickness = new Thickness(isActive ? 1.5 : 1.0),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var grid = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("*,Auto")
+            };
+
+            // Left side details
+            var leftStack = new StackPanel { Spacing = 6 };
+
+            var titlePanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 10 };
+            titlePanel.Children.Add(new TextBlock
+            {
+                Text = profile.Name,
+                Foreground = Brushes.White,
+                FontSize = 15,
+                FontWeight = FontWeight.Bold
+            });
+
+            if (isActive)
+            {
+                titlePanel.Children.Add(new Border
+                {
+                    Background = new SolidColorBrush(Color.Parse("#8B0000")),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(6, 2),
+                    Child = new TextBlock
+                    {
+                        Text = "ACTIVE",
+                        Foreground = Brushes.White,
+                        FontSize = 10,
+                        FontWeight = FontWeight.Bold
+                    }
+                });
+            }
+            leftStack.Children.Add(titlePanel);
+
+            var metaPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 14 };
+            metaPanel.Children.Add(new TextBlock
+            {
+                Text = $"Minecraft: {profile.MinecraftVersion}",
+                Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")),
+                FontSize = 12
+            });
+            if (!string.IsNullOrEmpty(profile.FabricVersion))
+            {
+                metaPanel.Children.Add(new TextBlock
+                {
+                    Text = $"Fabric: {profile.FabricVersion}",
+                    Foreground = new SolidColorBrush(Color.Parse("#888888")),
+                    FontSize = 12
+                });
+            }
+            metaPanel.Children.Add(new TextBlock
+            {
+                Text = $"Java: {profile.JavaMajorVersion}",
+                Foreground = new SolidColorBrush(Color.Parse("#888888")),
+                FontSize = 12
+            });
+            leftStack.Children.Add(metaPanel);
+
+            // Isolate toggle checkbox
+            var isolateCheck = new CheckBox
+            {
+                Content = "Isolate Profile (Don't share settings, keybinds, and accounts)",
+                IsChecked = profile.IsIsolated,
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")),
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            isolateCheck.IsCheckedChanged += (s, e) =>
+            {
+                profile.IsIsolated = isolateCheck.IsChecked ?? false;
+                _profileService.SaveProfiles();
+                Log($"[Profiles] Profile '{profile.Name}' isolated set to: {profile.IsIsolated}");
+            };
+            leftStack.Children.Add(isolateCheck);
+
+            grid.Children.Add(leftStack);
+            Grid.SetColumn(leftStack, 0);
+
+            // Right side buttons
+            var rightStack = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 8,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+            };
+
+            if (!isActive)
+            {
+                var selectBtn = new Button
+                {
+                    Content = "Select Profile",
+                    Classes = { "action" },
+                    Height = 34,
+                    Padding = new Thickness(12, 0),
+                    FontSize = 12
+                };
+                selectBtn.Click += (s, e) =>
+                {
+                    _profileService.SetActiveProfile(profile.Id);
+                    PopulateLaunchProfileSelector();
+                    LoadProfilesUI();
+                };
+                rightStack.Children.Add(selectBtn);
+
+                var deleteBtn = new Button
+                {
+                    Content = "Delete",
+                    Classes = { "danger" },
+                    Height = 34,
+                    Padding = new Thickness(10, 0),
+                    FontSize = 12
+                };
+                deleteBtn.Click += (s, e) =>
+                {
+                    _profileService.DeleteProfile(profile.Id);
+                    PopulateLaunchProfileSelector();
+                    LoadProfilesUI();
+                };
+                rightStack.Children.Add(deleteBtn);
+            }
+            else
+            {
+                var activeBadge = new TextBlock
+                {
+                    Text = "Currently In Use",
+                    Foreground = new SolidColorBrush(Color.Parse("#44BB44")),
+                    FontSize = 12,
+                    FontWeight = FontWeight.SemiBold,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+                rightStack.Children.Add(activeBadge);
+            }
+
+            grid.Children.Add(rightStack);
+            Grid.SetColumn(rightStack, 1);
+
+            card.Child = grid;
+            ProfilesListContainer.Children.Add(card);
+        }
+    }
+
+    private async void AddProfile_Click(object? sender, RoutedEventArgs e)
+    {
+        var window = new Window
+        {
+            Title = "Create New Version Profile",
+            Width = 440,
+            Height = 300,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = new SolidColorBrush(Color.Parse("#0A0A0F")),
+            CanResize = false
+        };
+
+        var panel = new StackPanel { Margin = new Thickness(24), Spacing = 12 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "New Game Profile",
+            Foreground = Brushes.White,
+            FontSize = 16,
+            FontWeight = FontWeight.Bold
+        });
+
+        var nameBox = new TextBox { PlaceholderText = "Profile Name (e.g. My 1.21.1)", Text = "New Profile", Height = 36 };
+        panel.Children.Add(nameBox);
+
+        var versionBox = new TextBox { PlaceholderText = "Minecraft Version (e.g. 1.21.1, 26.2)", Text = "1.21.1", Height = 36 };
+        panel.Children.Add(versionBox);
+
+        var isolateCheck = new CheckBox
+        {
+            Content = "Isolate profile (separate settings, keybinds, and accounts)",
+            IsChecked = false,
+            Foreground = new SolidColorBrush(Color.Parse("#CCCCCC"))
+        };
+        panel.Children.Add(isolateCheck);
+
+        var createBtn = new Button
+        {
+            Content = "Create Profile",
+            Classes = { "launch" },
+            Height = 38,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            Foreground = Brushes.White,
+            FontWeight = FontWeight.Bold
+        };
+        createBtn.Click += (s, ev) =>
+        {
+            string name = nameBox.Text?.Trim() ?? "";
+            string version = versionBox.Text?.Trim() ?? "1.21.1";
+            if (string.IsNullOrEmpty(name)) name = $"Profile {version}";
+
+            int javaVer = version.StartsWith("1.21") ? 21 : (version.StartsWith("26") ? 25 : 21);
+            var newProfile = new TheLadsLauncher.Models.LauncherProfile
+            {
+                Name = name,
+                MinecraftVersion = version,
+                FabricVersion = "0.16.9",
+                JavaMajorVersion = javaVer,
+                IsIsolated = isolateCheck.IsChecked ?? false
+            };
+
+            _profileService.AddProfile(newProfile);
+            PopulateLaunchProfileSelector();
+            LoadProfilesUI();
+            Log($"[Profiles] Created new profile '{newProfile.Name}' for Minecraft {newProfile.MinecraftVersion}");
+            window.Close();
+        };
+
+        panel.Children.Add(createBtn);
+        window.Content = panel;
+        await window.ShowDialog(this);
+    }
+
+    private async void SyncSharedSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var active = _profileService.GetActiveProfile();
+            await _profileService.SyncSharedToProfileAsync(active);
+            StatusText.Text = $"Shared settings synced to '{active.Name}'!";
+            Log($"[Profiles] Manually synced shared settings to profile '{active.Name}'.");
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Sync failed: {ex.Message}";
+            Log($"[Profiles ERROR] Failed to sync shared settings: {ex.Message}");
+        }
     }
 
     private void SaveSettings_Click(object? sender, RoutedEventArgs e)
@@ -3104,21 +3495,30 @@ public partial class MainWindow : Window
             var grid = row.Child as Grid;
             if (grid == null) continue;
 
-            var iconFrame = grid.Children[0] as Border;
+            var iconFrame = grid.Children.Count > 0 ? grid.Children[0] as Border : null;
             var iconImage = iconFrame?.Child as Image;
-            var detailsPanel = grid.Children[1] as StackPanel;
-            var titleBlock = detailsPanel.Children[0] as TextBlock;
-            var descBlock = detailsPanel.Children[1] as TextBlock;
-            var metaPanel = detailsPanel.Children[2] as StackPanel;
-            var downloadsBlock = metaPanel.Children[0] as TextBlock;
-            var badgesPanel = metaPanel.Children[1] as StackPanel;
-            var actionPanel = grid.Children[2] as StackPanel;
+            var detailsPanel = grid.Children.Count > 1 ? grid.Children[1] as StackPanel : null;
+            var titleBlock = detailsPanel?.Children.Count > 0 ? detailsPanel.Children[0] as TextBlock : null;
+            var descBlock = detailsPanel?.Children.Count > 1 ? detailsPanel.Children[1] as TextBlock : null;
+            var metaPanel = detailsPanel?.Children.Count > 2 ? detailsPanel.Children[2] as StackPanel : null;
+            var downloadsBlock = metaPanel?.Children.Count > 0 ? metaPanel.Children[0] as TextBlock : null;
+            var badgesPanel = metaPanel?.Children.Count > 1 ? metaPanel.Children[1] as StackPanel : null;
+            var actionPanel = grid.Children.Count > 2 ? grid.Children[2] as StackPanel : null;
 
             // Titles & Descriptions
-            titleBlock.Text = mod.DisplayName;
-            titleBlock.Foreground = new SolidColorBrush(mod.IsEnabled ? Color.Parse("#CCCCCC") : Color.Parse("#666666"));
-            descBlock.Text = string.IsNullOrEmpty(mod.Description) ? "No description available." : mod.Description;
-            downloadsBlock.Text = string.IsNullOrEmpty(mod.ModVersion) ? "Local file" : $"v{mod.ModVersion}";
+            if (titleBlock != null)
+            {
+                titleBlock.Text = mod.DisplayName;
+                titleBlock.Foreground = new SolidColorBrush(mod.IsEnabled ? Color.Parse("#CCCCCC") : Color.Parse("#666666"));
+            }
+            if (descBlock != null)
+            {
+                descBlock.Text = string.IsNullOrEmpty(mod.Description) ? "No description available." : mod.Description;
+            }
+            if (downloadsBlock != null)
+            {
+                downloadsBlock.Text = string.IsNullOrEmpty(mod.ModVersion) ? "Local file" : $"v{mod.ModVersion}";
+            }
 
             // Render local icon if present
             if (iconImage != null)
@@ -3166,7 +3566,7 @@ public partial class MainWindow : Window
                 updateBtn.Classes.Add("action");
                 ToolTip.SetTip(updateBtn, "Check & update from Modrinth");
                 updateBtn.Click += async (s, e) => await CheckAndUpdateSingleMod(modSnap, updateBtn);
-                actionPanel.Children.Add(updateBtn);
+                actionPanel?.Children.Add(updateBtn);
             }
 
             var toggleBtn = new Button
@@ -3178,7 +3578,7 @@ public partial class MainWindow : Window
             };
             toggleBtn.Classes.Add(isEnabled ? "danger" : "action");
             toggleBtn.Click += (s, e) => ToggleMod(filePath, isEnabled);
-            actionPanel.Children.Add(toggleBtn);
+            actionPanel?.Children.Add(toggleBtn);
 
             var deleteBtn = new Button
             {
@@ -3189,7 +3589,7 @@ public partial class MainWindow : Window
             };
             deleteBtn.Classes.Add("danger");
             deleteBtn.Click += (s, e) => DeleteMod(filePath);
-            actionPanel.Children.Add(deleteBtn);
+            actionPanel?.Children.Add(deleteBtn);
 
             // Wrap in a row with a selection checkbox
             var cb = new CheckBox
@@ -3559,7 +3959,10 @@ public partial class MainWindow : Window
 
             await LaunchGame();
         } catch (Exception ex) {
-            System.IO.File.WriteAllText(@"C:\Users\Arash\Desktop\crash_launchbtn.txt", ex.ToString());
+            try {
+                var crashFile = Path.Combine(TheLadsLauncher.Services.PathService.Instance.LogsDirectory, "crash_launchbtn.txt");
+                System.IO.File.WriteAllText(crashFile, ex.ToString());
+            } catch { }
             Log($"[CRASH] {ex.Message}");
         } finally {
             LaunchButton.IsEnabled = true;
@@ -3586,7 +3989,7 @@ public partial class MainWindow : Window
             okBtn.Click += (s, e) => dialog.Close();
             panel.Children.Add(okBtn);
             dialog.Content = panel;
-            dialog.ShowDialog(this);
+            await dialog.ShowDialog(this);
             return;
         }
 
@@ -3598,6 +4001,10 @@ public partial class MainWindow : Window
 
             StatusText.Text = "Initializing...";
             Log("[Launcher] Starting launch sequence...");
+
+            var activeProfile = _profileService.GetActiveProfile();
+            await _profileService.PrepareProfileEnvironmentAsync(activeProfile);
+            settings.InstancePath = _pathService.GetProfileDirectory(activeProfile);
 
             var path = new MinecraftPath(settings.InstancePath);
             var launcher = new MinecraftLauncher(path);
@@ -3736,6 +4143,33 @@ public partial class MainWindow : Window
                 JavaPath = settings.JavaPath
             };
 
+            int requiredJava = activeProfile.JavaMajorVersion > 0 ? activeProfile.JavaMajorVersion : 21;
+            if (!string.IsNullOrEmpty(activeProfile.CustomJavaPath) && File.Exists(activeProfile.CustomJavaPath))
+            {
+                launchOpt.JavaPath = activeProfile.CustomJavaPath;
+            }
+            else
+            {
+                try
+                {
+                    GameLaunchStatusText.Text = $"Verifying Java {requiredJava}...";
+                    string resolvedJava = await _javaService.EnsureJavaAsync(requiredJava, new Progress<double>(p =>
+                    {
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            GameLaunchStatusText.Text = $"Downloading Java {requiredJava} runtime: {p:F0}%";
+                            GameLaunchProgressBar.Value = (int)p;
+                        });
+                    }));
+                    launchOpt.JavaPath = resolvedJava;
+                }
+                catch (Exception jEx)
+                {
+                    Log($"[Java WARNING] Auto Java {requiredJava} ensure failed ({jEx.Message}), falling back to '{settings.JavaPath}'");
+                    launchOpt.JavaPath = settings.JavaPath;
+                }
+            }
+
             if (settings.AutoRejoinServer)
             {
                 // Prefer a manually-picked server; fall back to the last log-detected one
@@ -3781,8 +4215,17 @@ public partial class MainWindow : Window
             process.StartInfo.CreateNoWindow = true;
 
             process.EnableRaisingEvents = true;
-            process.Exited += (s, ev) =>
+            process.Exited += async (s, ev) =>
             {
+                try
+                {
+                    await _profileService.SyncProfileToSharedAsync(activeProfile);
+                }
+                catch (Exception ex)
+                {
+                    Log($"[Profiles WARNING] Post-game shared sync failed: {ex.Message}");
+                }
+
                 Dispatcher.UIThread.Post(() =>
                 {
                     int exitCode = 0;
@@ -4330,7 +4773,7 @@ public partial class MainWindow : Window
 
         panel.Children.Add(buttonRow);
         window.Content = panel;
-        window.ShowDialog(this);
+        await window.ShowDialog(this);
     }
 
     // ═══════════════════════════════════════
@@ -4376,7 +4819,7 @@ public partial class MainWindow : Window
             string bootstrapJar = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "packwiz-installer-bootstrap.jar");
 
             if (!File.Exists(bootstrapJar))
-                bootstrapJar = @"C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher\packwiz-installer-bootstrap.jar";
+                bootstrapJar = Path.Combine(TheLadsLauncher.Services.PathService.Instance.BinDirectory, "packwiz-installer-bootstrap.jar");
 
             process.StartInfo.Arguments = $"-jar \"{bootstrapJar}\" --no-gui \"{packUrl}\"";
             process.StartInfo.WorkingDirectory = settings.InstancePath;
@@ -4490,9 +4933,10 @@ public partial class MainWindow : Window
 
     private void SetupTrayIcon()
     {
+        string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "icon.ico");
         _trayIcon = new TrayIcon
         {
-            Icon = new WindowIcon(@"C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher\Assets\icon.ico"),
+            Icon = File.Exists(iconPath) ? new WindowIcon(iconPath) : this.Icon,
             ToolTipText = "The Lads Client",
             IsVisible = true
         };
@@ -5132,23 +5576,23 @@ public partial class MainWindow : Window
             if (grid == null) continue;
 
             // Retrieve components by layout hierarchy
-            var iconFrame = grid.Children[0] as Border;
+            var iconFrame = grid.Children.Count > 0 ? grid.Children[0] as Border : null;
             var iconImage = iconFrame?.Child as Image;
-            var detailsPanel = grid.Children[1] as StackPanel;
-            var titleBlock = detailsPanel.Children[0] as TextBlock;
-            var descBlock = detailsPanel.Children[1] as TextBlock;
-            var metaPanel = detailsPanel.Children[2] as StackPanel;
-            var downloadsBlock = metaPanel.Children[0] as TextBlock;
-            var badgesPanel = metaPanel.Children[1] as StackPanel;
-            var actionPanel = grid.Children[2] as StackPanel;
+            var detailsPanel = grid.Children.Count > 1 ? grid.Children[1] as StackPanel : null;
+            var titleBlock = detailsPanel?.Children.Count > 0 ? detailsPanel.Children[0] as TextBlock : null;
+            var descBlock = detailsPanel?.Children.Count > 1 ? detailsPanel.Children[1] as TextBlock : null;
+            var metaPanel = detailsPanel?.Children.Count > 2 ? detailsPanel.Children[2] as StackPanel : null;
+            var downloadsBlock = metaPanel?.Children.Count > 0 ? metaPanel.Children[0] as TextBlock : null;
+            var badgesPanel = metaPanel?.Children.Count > 1 ? metaPanel.Children[1] as StackPanel : null;
+            var actionPanel = grid.Children.Count > 2 ? grid.Children[2] as StackPanel : null;
 
             // Set Title & Description
-            titleBlock.Text = item.Name;
-            descBlock.Text = item.Summary;
+            if (titleBlock != null) titleBlock.Text = item.Name;
+            if (descBlock != null) descBlock.Text = item.Summary;
 
             // Set Downloads and Provider info
             string authorPart = string.IsNullOrEmpty(item.Author) || item.Author == "CurseForge Creator" ? "" : $"  ·  by {item.Author}";
-            downloadsBlock.Text = $"⬇ {FormatDownloadCount(item.DownloadCount)}  ·  {item.Provider}{authorPart}";
+            if (downloadsBlock != null) downloadsBlock.Text = $"⬇ {FormatDownloadCount(item.DownloadCount)}  ·  {item.Provider}{authorPart}";
 
             // Fetch and set Icon Asynchronously
             if (iconImage != null && !string.IsNullOrEmpty(item.IconUrl))
@@ -5218,9 +5662,12 @@ public partial class MainWindow : Window
             };
             var progressBar = new ProgressBar { Minimum = 0, Maximum = 100, Value = 0, Height = 6, Width = 80, IsVisible = false, Foreground = new SolidColorBrush(Color.Parse("#8B0000")) };
             
-            actionPanel.Children.Clear();
-            actionPanel.Children.Add(installBtn);
-            actionPanel.Children.Add(progressBar);
+            if (actionPanel != null)
+            {
+                actionPanel.Children.Clear();
+                actionPanel.Children.Add(installBtn);
+                actionPanel.Children.Add(progressBar);
+            }
 
             installBtn.Click += async (s, e) =>
             {

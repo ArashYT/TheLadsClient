@@ -7,7 +7,7 @@
         Title="The Lads Client"
         Width="460" Height="280"
         CanResize="False"
-        SystemDecorations="None"
+        WindowDecorations="None"
         Topmost="True"
         ShowInTaskbar="True"
         WindowStartupLocation="CenterScreen"

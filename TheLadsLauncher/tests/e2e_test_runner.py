@@ -16,7 +16,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 AXAML_PATH = os.path.join(PROJECT_ROOT, "MainWindow.axaml")
 LAUNCHER_SETTINGS_CS = os.path.join(PROJECT_ROOT, "LauncherSettings.cs")
 TEST_INSTANCE_PATH = os.path.join(PROJECT_ROOT, "test_instance")
-LAUNCHER_LOG_FILE = r"C:\Users\Arash\Desktop\launcher_debug.txt"
+LAUNCHER_LOG_FILE = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), ".theladsclient", "logs", "launcher_debug.txt")
 
 # Ensure test instance directories exist
 os.makedirs(os.path.join(TEST_INSTANCE_PATH, "mods"), exist_ok=True)

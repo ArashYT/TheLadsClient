@@ -48,7 +48,7 @@
             <TabItem Header="Local Library (Mods &amp; Packs)">
                 <Grid RowDefinitions="Auto, *">
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12" Spacing="8">
-                        <TextBox x:Name="LocalSearchBox" Watermark="Search installed..." Width="200" KeyUp="LocalSearchBox_KeyUp" />
+                        <TextBox x:Name="LocalSearchBox" PlaceholderText="Search installed..." Width="200" KeyUp="LocalSearchBox_KeyUp" />
                         <ComboBox x:Name="LocalTypeFilter" SelectedIndex="0" SelectionChanged="LocalFilter_SelectionChanged">
                             <ComboBoxItem>Mods</ComboBoxItem>
                             <ComboBoxItem>Resource Packs</ComboBoxItem>
@@ -87,7 +87,7 @@
                         <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
                             <TextBlock Text="Discover" Foreground="White" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,16,0"/>
                             
-                            <TextBox x:Name="DiscoverSearchBox" Grid.Column="1" Watermark="Search online..." 
+                            <TextBox x:Name="DiscoverSearchBox" Grid.Column="1" PlaceholderText="Search online..." 
                                      VerticalAlignment="Center" Margin="0,0,12,0" Background="#111118" Foreground="#CCCCCC" CornerRadius="6" KeyUp="DiscoverSearchBox_KeyUp" />
                                      
                             <ComboBox x:Name="DiscoverTypeFilter" Grid.Column="2" SelectedIndex="0" VerticalAlignment="Center" Margin="0,0,12,0" SelectionChanged="DiscoverFilter_SelectionChanged">

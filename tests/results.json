@@ -1,0 +1,1180 @@
+{
+  "timestamp": "2026-09-04T15:51:16Z",
+  "total": 166,
+  "passed": 147,
+  "failed": 19,
+  "errors": 0,
+  "skipped": 0,
+  "elapsed_seconds": 5.73,
+  "tiers": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "feature_filter": null,
+  "results": [
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f01_01_repo_clone_pack_size_under_50mb",
+      "description": "F1: Cloned repository pack size must be strictly under 50 MB.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f01_02_no_monster_blobs_in_git_history",
+      "description": "F1: No individual blobs over 50 MB exist in reachable git history.",
+      "status": "PASSED",
+      "duration_sec": 0.0644,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f01_03_temp_auth_zip_blob_absent_from_git",
+      "description": "F1: Monster blob temp_auth.zip (1.868 GB) is absent from reachable git history.",
+      "status": "PASSED",
+      "duration_sec": 0.0291,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f01_04_no_large_installer_binaries_in_git",
+      "description": "F1: Heavy installer executables (.exe) are absent from reachable git tree.",
+      "status": "PASSED",
+      "duration_sec": 0.0238,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f01_05_working_tree_tracked_size_under_50mb",
+      "description": "F1: Total size of active tracked files in Git HEAD is under 50 MB.",
+      "status": "PASSED",
+      "duration_sec": 0.0825,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f02_01_pack_toml_exists_and_valid",
+      "description": "F2: Packwiz/pack.toml exists and contains valid required root metadata.",
+      "status": "PASSED",
+      "duration_sec": 0.0006,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f02_02_index_toml_exists_and_valid",
+      "description": "F2: Packwiz/index.toml exists and contains valid index metadata.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f02_03_zero_tracked_jars_in_packwiz",
+      "description": "F2: Zero physical .jar files are tracked in Packwiz/ by git.",
+      "status": "PASSED",
+      "duration_sec": 0.0236,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f02_04_mods_are_pw_toml_metadata",
+      "description": "F2: Mod descriptors in Packwiz/mods are .pw.toml files with valid metadata.",
+      "status": "PASSED",
+      "duration_sec": 0.0012,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f02_05_resourcepacks_zero_tracked_zips",
+      "description": "F2: Zero physical .zip files in Packwiz/resourcepacks are tracked in git.",
+      "status": "PASSED",
+      "duration_sec": 0.0234,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f03_01_dead_testlogin_project_absent",
+      "description": "F3: Obsolete project TestLogin is completely absent from workspace root.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f03_02_dead_launcher_clean_project_absent",
+      "description": "F3: Duplicate project TheLadsLauncher_Clean is completely absent from workspace root.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f03_03_dead_staging_projects_absent",
+      "description": "F3: Dead test projects TestCmlLib, MsalTest, and Playground are absent.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f03_04_legacy_launcher_agents_absent",
+      "description": "F3: Legacy .agents directory inside TheLadsLauncher is absent (only root .agents allowed).",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f03_05_outer_dead_staging_directories_absent",
+      "description": "F3: Outer staging and decompiled directories (temp_mc, TempJar, decompiled) are absent.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f04_01_gitignore_file_exists_and_non_empty",
+      "description": "F4: Repository root .gitignore exists and contains active rule definitions.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f04_02_gitignore_blocks_binary_executables",
+      "description": "F4: .gitignore blocks binary executables and installers (*.exe, *.dll).",
+      "status": "PASSED",
+      "duration_sec": 0.0717,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f04_03_gitignore_blocks_java_build_artifacts",
+      "description": "F4: .gitignore blocks Java build artifacts (*.jar, .gradle/, build/).",
+      "status": "PASSED",
+      "duration_sec": 0.0714,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f04_04_gitignore_blocks_dotnet_build_artifacts",
+      "description": "F4: .gitignore blocks .NET build directories (bin/, obj/).",
+      "status": "PASSED",
+      "duration_sec": 0.0532,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f04_05_gitignore_blocks_crash_dumps_and_logs",
+      "description": "F4: .gitignore blocks logs, crash dumps, and scratch disassemblies.",
+      "status": "PASSED",
+      "duration_sec": 0.076,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f05_01_launcher_csproj_targets_net8",
+      "description": "F5: TheLadsLauncher.csproj specifies net8.0-windows or net8.0 target framework.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f05_02_launcher_suppresses_msb3277_or_resolves_conflict",
+      "description": "F5: TheLadsLauncher.csproj resolves MSB3277 WindowsBase version conflict.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f05_03_avalonia_obsolete_systemdecorations_eliminated",
+      "description": "F5: Obsolete Avalonia property SystemDecorations is replaced with WindowDecorations.",
+      "status": "PASSED",
+      "duration_sec": 0.0048,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f05_04_avalonia_obsolete_watermark_eliminated",
+      "description": "F5: Obsolete TextBox.Watermark is replaced with PlaceholderText across all views.",
+      "status": "PASSED",
+      "duration_sec": 0.0044,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f05_05_launcher_builds_with_zero_errors_and_zero_warnings",
+      "description": "F5: dotnet build TheLadsLauncher.csproj completes with 0 errors and 0 warnings.",
+      "status": "FAILED",
+      "duration_sec": 2.3619,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 269, in test_f05_05_launcher_builds_with_zero_errors_and_zero_warnings\n    self.assertEqual(code, 0, f\"dotnet build failed (exit code {code}):\\n{combined}\")\nAssertionError: 1 != 0 : dotnet build failed (exit code 1):\n  Determining projects to restore...\n  Restored C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\TheLadsLauncher.csproj (in 191 ms).\nC:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\Services\\AuthService.cs(51,36): warning CS1998: This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread. [C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\TheLadsLauncher.csproj]\nC:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\Services\\LaunchService.cs(110,38): error CS7036: There is no argument given that corresponds to the required parameter 'launchOption' of 'MinecraftLauncher.CreateProcessAsync(string, MLaunchOption)' [C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\TheLadsLauncher.csproj]\nC:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\Services\\LaunchService.cs(127,16): warning CS8619: Nullability of reference types in value of type '?' doesn't match target type 'Process'. [C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\TheLadsLauncher.csproj]\n\nBuild FAILED.\n\nC:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\Services\\AuthService.cs(51,36): warning CS1998: This async method lacks 'await' operators and will run synchronously. Consider using the 'await' operator to await non-blocking API calls, or 'await Task.Run(...)' to do CPU-bound work on a background thread. [C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\TheLadsLauncher.csproj]\nC:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\Services\\LaunchService.cs(127,16): warning CS8619: Nullability of reference types in value of type '?' doesn't match target type 'Process'. [C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\TheLadsLauncher.csproj]\nC:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\Services\\LaunchService.cs(110,38): error CS7036: There is no argument given that corresponds to the required parameter 'launchOption' of 'MinecraftLauncher.CreateProcessAsync(string, MLaunchOption)' [C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\TheLadsLauncher\\TheLadsLauncher.csproj]\n    2 Warning(s)\n    1 Error(s)\n\nTime Elapsed 00:00:02.24\n\n\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f06_01_ipathservice_interface_defined",
+      "description": "F6: IPathService interface exists with BaseDirectory, SharedDirectory, ProfilesDirectory, RuntimesDirectory.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f06_02_iprofileservice_interface_defined",
+      "description": "F6: IProfileService interface exists defining profile management operations.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f06_03_ijavaservice_interface_defined",
+      "description": "F6: IJavaService interface exists defining Java detection and automated download.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f06_04_iauthservice_interface_defined",
+      "description": "F6: IAuthService interface exists defining authentication operations.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f06_05_viewmodels_defined_and_decoupled",
+      "description": "F6: ViewModels directory exists with ViewModelBase and primary ViewModels.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f07_01_profile_1_21_1_specification",
+      "description": "F7: Predefined profile for 1.21.1 exists specifying Minecraft 1.21.1 and Java 21.",
+      "status": "PASSED",
+      "duration_sec": 0.0006,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f07_02_profile_26_2_specification",
+      "description": "F7: Predefined profile for 26.2 exists specifying Minecraft 26.2 and Java 25.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f07_03_profile_latest_release_specification",
+      "description": "F7: Predefined profile for latest release exists.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f07_04_profile_model_supports_isisolated_flag",
+      "description": "F7: Profile model supports IsIsolated boolean flag defaulting to false.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f07_05_profile_selection_contract",
+      "description": "F7: Active profile selection contract updates profile state and game directory.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f08_01_shared_directory_structure_contract",
+      "description": "F8: Shared directory contract points to %APPDATA%/.theladsclient/shared/.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f08_02_shared_options_txt_keybinds_synchronization",
+      "description": "F8: Shared synchronization handles options.txt for vanilla options and keybindings.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f08_03_shared_servers_dat_synchronization",
+      "description": "F8: Shared synchronization handles servers.dat for multiplayer servers.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f08_04_shared_accounts_and_profile_synchronization",
+      "description": "F8: Shared synchronization handles lads_accounts.json and lads_profile.json.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f08_05_isolated_profile_skips_shared_synchronization",
+      "description": "F8: Isolated profiles (IsIsolated == true) skip shared directory synchronization.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_01_zero_hardcoded_user_arash_in_launcher_cs",
+      "description": "F9: Zero occurrences of hardcoded 'C:\\Users\\Arash' in TheLadsLauncher C# files.",
+      "status": "FAILED",
+      "duration_sec": 0.0042,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 467, in test_f09_01_zero_hardcoded_user_arash_in_launcher_cs\n    self.assertNotIn(\nAssertionError: 'C:\\\\Users\\\\Arash' unexpectedly found in 'using System;\\nusing System.Collections.Generic;\\nusing System.IO;\\nusing System.Text.Json;\\nusing System.Text.Json.Serialization;\\n\\nnamespace TheLadsLauncher;\\n\\npublic class LauncherSettings\\n{\\n    private static readonly string SettingsPath = Path.Combine(\\n        AppDomain.CurrentDomain.BaseDirectory, \"settings.json\");\\n\\n    // Memory\\n    public int MaxRamMb { get; set; } = 4096;\\n    public int MinRamMb { get; set; } = 512;\\n\\n    // Java\\n    public string JavaPath { get; set; } = @\"C:\\\\Program Files\\\\Eclipse Adoptium\\\\jdk-25.0.3.9-hotspot\\\\bin\\\\java.exe\";\\n    public bool AutoDetectJava { get; set; } = true;\\n\\n    // Paths\\n    public string InstancePath { get; set; } = @\"C:\\\\The Lads Client\";\\n    public string PackwizPath { get; set; } = @\"C:\\\\Users\\\\Arash\\\\Desktop\\\\The Lads Client Dev\\\\Lads Client\\\\Packwiz\";\\n    public string PackwizUrl { get; set; } = \"https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/pack.toml\";\\n    public string FabricVersion { get; set; } = \"fabric-loader-0.19.3-26.2\";\\n\\n    // Appearance\\n    public string Theme { get; set; } = \"DarkRed\";\\n    public bool ShowParticles { get; set; } = true;\\n\\n    // Behavior\\n    public bool CloseToTray { get; set; } = true;\\n    public bool AutoLaunch { get; set; } = false;\\n    public bool AutoFixCrashes { get; set; } = true;\\n    public bool AutoRelaunchOnCrash { get; set; } = false;\\n    public bool AutoRejoinServer { get; set; } = false;\\n    public string LastServerIp { get; set; } = \"\";\\n    public int LastServerPort { get; set; } = 25565;\\n    public bool MinimizeOnLaunch { get; set; } = true;\\n    public bool AllowMultiInstance { get; set; } = false;\\n    public bool KeepLauncherOpen { get; set; } = false;   // don\\'t hide/close after launching the game\\n    public bool KeepClosedOnExit { get; set; } = false;   // don\\'t re-open the launcher when the game closes\\n\\n    // Gallery\\n    public List<string> GalleryFavorites { get; set; } = new();\\n    public string ImgurClientId { get; set; } = \"\";\\n    public string UiScale { get; set; } = \"100%\";\\n    public System.Collections.Generic.List<string> OfflineAccounts { get; set; } = new();\\n    public System.Collections.Generic.List<string> AccountOrder { get; set; } = new();\\n    public string MainAccount { get; set; } = \"\";\\n\\n    // Version\\n    public string LauncherVersion { get; set; } = \"1.0.4\";\\n    public string UpdateUrl { get; set; } = \"\";\\n\\n    // API Keys\\n    public string CurseForgeApiKey { get; set; } = \"\";\\n\\n    // API URL Configurations\\n    public string ModrinthApiUrl { get; set; } = \"https://api.modrinth.com/v2\";\\n    public string CurseForgeApiUrl { get; set; } = \"https://api.curseforge.com/v1\";\\n\\n    // Version Override\\n    public string SelectedMinecraftVersionOverride { get; set; } = \"\";\\n\\n    // Window\\n    public double WindowWidth { get; set; } = 1000;\\n    public double WindowHeight { get; set; } = 650;\\n\\n    // Launch\\n    public bool FullscreenOnLaunch { get; set; } = true;\\n    public bool QuickLaunch { get; set; } = false;   // skip asset verification if already installed\\n    public string QuickLaunchServerIp { get; set; } = \"\";  // server to join on launch (\"\" = auto from logs)\\n\\n    // Sync\\n    public bool SyncResourcePacksFromGlobal { get; set; } = false;\\n    public bool SyncScreenshotsToGlobal { get; set; } = true;\\n\\n    public static LauncherSettings Load()\\n    {\\n        try\\n        {\\n            if (File.Exists(SettingsPath))\\n            {\\n                string json = File.ReadAllText(SettingsPath);\\n                return JsonSerializer.Deserialize<LauncherSettings>(json) ?? new LauncherSettings();\\n            }\\n        }\\n        catch { }\\n        return new LauncherSettings();\\n    }\\n\\n    public void Save()\\n    {\\n        try\\n        {\\n            var options = new JsonSerializerOptions { WriteIndented = true };\\n            string json = JsonSerializer.Serialize(this, options);\\n            File.WriteAllText(SettingsPath, json);\\n        }\\n        catch { }\\n    }\\n\\n    public static string[] GetAvailableThemes() => new[]\\n    {\\n        \"DarkRed\", \"DarkBlue\", \"DarkPurple\", \"Midnight\"\\n    };\\n\\n    public (string Primary, string PrimaryLight, string PrimaryDark, string Accent) GetThemeColors()\\n    {\\n        return Theme switch\\n        {\\n            \"DarkBlue\" => (\"#1A3A5C\", \"#2563EB\", \"#0F2440\", \"#3B82F6\"),\\n            \"DarkPurple\" => (\"#4C1D95\", \"#7C3AED\", \"#2E1065\", \"#8B5CF6\"),\\n            \"Midnight\" => (\"#1E1E2E\", \"#45475A\", \"#11111B\", \"#CDD6F4\"),\\n            _ => (\"#8B0000\", \"#B00000\", \"#600000\", \"#FF4444\") // DarkRed default\\n        };\\n    }\\n\\n    public string[] DetectJavaInstallations()\\n    {\\n        var paths = new System.Collections.Generic.List<string>();\\n        string[] searchDirs = {\\n            @\"C:\\\\Program Files\\\\Java\",\\n            @\"C:\\\\Program Files\\\\Eclipse Adoptium\",\\n            @\"C:\\\\Program Files\\\\Microsoft\",\\n            @\"C:\\\\Program Files\\\\AdoptOpenJDK\",\\n            @\"C:\\\\Program Files\\\\Zulu\"\\n        };\\n\\n        foreach (var dir in searchDirs)\\n        {\\n            if (Directory.Exists(dir))\\n            {\\n                foreach (var subDir in Directory.GetDirectories(dir))\\n                {\\n                    string javaExe = Path.Combine(subDir, \"bin\", \"java.exe\");\\n                    if (File.Exists(javaExe))\\n                    {\\n                        paths.Add(javaExe);\\n                    }\\n                }\\n            }\\n        }\\n        return paths.ToArray();\\n    }\\n}\\n' : Hardcoded 'C:\\Users\\Arash' found in TheLadsLauncher\\LauncherSettings.cs\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_02_zero_hardcoded_user_arash_in_launcher_axaml",
+      "description": "F9: Zero occurrences of hardcoded 'C:\\Users\\Arash' in TheLadsLauncher AXAML files.",
+      "status": "PASSED",
+      "duration_sec": 0.0043,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_03_zero_hardcoded_static_lads_client_root",
+      "description": "F9: Zero occurrences of static root 'C:\\The Lads Client' in TheLadsLauncher codebase.",
+      "status": "FAILED",
+      "duration_sec": 0.0079,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 489, in test_f09_03_zero_hardcoded_static_lads_client_root\n    self.assertNotIn(\nAssertionError: 'C:\\\\The Lads Client' unexpectedly found in 'using System;\\nusing System.Collections.Generic;\\nusing System.IO;\\nusing System.Text.Json;\\nusing System.Text.Json.Serialization;\\n\\nnamespace TheLadsLauncher;\\n\\npublic class LauncherSettings\\n{\\n    private static readonly string SettingsPath = Path.Combine(\\n        AppDomain.CurrentDomain.BaseDirectory, \"settings.json\");\\n\\n    // Memory\\n    public int MaxRamMb { get; set; } = 4096;\\n    public int MinRamMb { get; set; } = 512;\\n\\n    // Java\\n    public string JavaPath { get; set; } = @\"C:\\\\Program Files\\\\Eclipse Adoptium\\\\jdk-25.0.3.9-hotspot\\\\bin\\\\java.exe\";\\n    public bool AutoDetectJava { get; set; } = true;\\n\\n    // Paths\\n    public string InstancePath { get; set; } = @\"C:\\\\The Lads Client\";\\n    public string PackwizPath { get; set; } = @\"C:\\\\Users\\\\Arash\\\\Desktop\\\\The Lads Client Dev\\\\Lads Client\\\\Packwiz\";\\n    public string PackwizUrl { get; set; } = \"https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/pack.toml\";\\n    public string FabricVersion { get; set; } = \"fabric-loader-0.19.3-26.2\";\\n\\n    // Appearance\\n    public string Theme { get; set; } = \"DarkRed\";\\n    public bool ShowParticles { get; set; } = true;\\n\\n    // Behavior\\n    public bool CloseToTray { get; set; } = true;\\n    public bool AutoLaunch { get; set; } = false;\\n    public bool AutoFixCrashes { get; set; } = true;\\n    public bool AutoRelaunchOnCrash { get; set; } = false;\\n    public bool AutoRejoinServer { get; set; } = false;\\n    public string LastServerIp { get; set; } = \"\";\\n    public int LastServerPort { get; set; } = 25565;\\n    public bool MinimizeOnLaunch { get; set; } = true;\\n    public bool AllowMultiInstance { get; set; } = false;\\n    public bool KeepLauncherOpen { get; set; } = false;   // don\\'t hide/close after launching the game\\n    public bool KeepClosedOnExit { get; set; } = false;   // don\\'t re-open the launcher when the game closes\\n\\n    // Gallery\\n    public List<string> GalleryFavorites { get; set; } = new();\\n    public string ImgurClientId { get; set; } = \"\";\\n    public string UiScale { get; set; } = \"100%\";\\n    public System.Collections.Generic.List<string> OfflineAccounts { get; set; } = new();\\n    public System.Collections.Generic.List<string> AccountOrder { get; set; } = new();\\n    public string MainAccount { get; set; } = \"\";\\n\\n    // Version\\n    public string LauncherVersion { get; set; } = \"1.0.4\";\\n    public string UpdateUrl { get; set; } = \"\";\\n\\n    // API Keys\\n    public string CurseForgeApiKey { get; set; } = \"\";\\n\\n    // API URL Configurations\\n    public string ModrinthApiUrl { get; set; } = \"https://api.modrinth.com/v2\";\\n    public string CurseForgeApiUrl { get; set; } = \"https://api.curseforge.com/v1\";\\n\\n    // Version Override\\n    public string SelectedMinecraftVersionOverride { get; set; } = \"\";\\n\\n    // Window\\n    public double WindowWidth { get; set; } = 1000;\\n    public double WindowHeight { get; set; } = 650;\\n\\n    // Launch\\n    public bool FullscreenOnLaunch { get; set; } = true;\\n    public bool QuickLaunch { get; set; } = false;   // skip asset verification if already installed\\n    public string QuickLaunchServerIp { get; set; } = \"\";  // server to join on launch (\"\" = auto from logs)\\n\\n    // Sync\\n    public bool SyncResourcePacksFromGlobal { get; set; } = false;\\n    public bool SyncScreenshotsToGlobal { get; set; } = true;\\n\\n    public static LauncherSettings Load()\\n    {\\n        try\\n        {\\n            if (File.Exists(SettingsPath))\\n            {\\n                string json = File.ReadAllText(SettingsPath);\\n                return JsonSerializer.Deserialize<LauncherSettings>(json) ?? new LauncherSettings();\\n            }\\n        }\\n        catch { }\\n        return new LauncherSettings();\\n    }\\n\\n    public void Save()\\n    {\\n        try\\n        {\\n            var options = new JsonSerializerOptions { WriteIndented = true };\\n            string json = JsonSerializer.Serialize(this, options);\\n            File.WriteAllText(SettingsPath, json);\\n        }\\n        catch { }\\n    }\\n\\n    public static string[] GetAvailableThemes() => new[]\\n    {\\n        \"DarkRed\", \"DarkBlue\", \"DarkPurple\", \"Midnight\"\\n    };\\n\\n    public (string Primary, string PrimaryLight, string PrimaryDark, string Accent) GetThemeColors()\\n    {\\n        return Theme switch\\n        {\\n            \"DarkBlue\" => (\"#1A3A5C\", \"#2563EB\", \"#0F2440\", \"#3B82F6\"),\\n            \"DarkPurple\" => (\"#4C1D95\", \"#7C3AED\", \"#2E1065\", \"#8B5CF6\"),\\n            \"Midnight\" => (\"#1E1E2E\", \"#45475A\", \"#11111B\", \"#CDD6F4\"),\\n            _ => (\"#8B0000\", \"#B00000\", \"#600000\", \"#FF4444\") // DarkRed default\\n        };\\n    }\\n\\n    public string[] DetectJavaInstallations()\\n    {\\n        var paths = new System.Collections.Generic.List<string>();\\n        string[] searchDirs = {\\n            @\"C:\\\\Program Files\\\\Java\",\\n            @\"C:\\\\Program Files\\\\Eclipse Adoptium\",\\n            @\"C:\\\\Program Files\\\\Microsoft\",\\n            @\"C:\\\\Program Files\\\\AdoptOpenJDK\",\\n            @\"C:\\\\Program Files\\\\Zulu\"\\n        };\\n\\n        foreach (var dir in searchDirs)\\n        {\\n            if (Directory.Exists(dir))\\n            {\\n                foreach (var subDir in Directory.GetDirectories(dir))\\n                {\\n                    string javaExe = Path.Combine(subDir, \"bin\", \"java.exe\");\\n                    if (File.Exists(javaExe))\\n                    {\\n                        paths.Add(javaExe);\\n                    }\\n                }\\n            }\\n        }\\n        return paths.ToArray();\\n    }\\n}\\n' : Static root 'C:\\The Lads Client' found in TheLadsLauncher\\LauncherSettings.cs\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_04_dynamic_base_directory_resolution",
+      "description": "F9: PathService defaults dynamically to %APPDATA%/.theladsclient.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_05_custom_base_directory_override_supported",
+      "description": "F9: PathService supports custom base path override via constructor or config.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f10_01_java_21_requirement_for_mc_1_21_1",
+      "description": "F10: JavaService specifies Java 21 for Minecraft 1.21.1.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f10_02_java_25_requirement_for_mc_26_2",
+      "description": "F10: JavaService specifies Java 25 for Minecraft 26.2.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f10_03_adoptium_api_endpoint_structure_java_21",
+      "description": "F10: Adoptium REST API endpoint for Java 21 query follows official schema.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f10_04_adoptium_api_endpoint_structure_java_25",
+      "description": "F10: Adoptium REST API query parameters specify OS windows and architecture x64.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f10_05_managed_runtime_directory_structure",
+      "description": "F10: Managed runtime paths follow %APPDATA%/.theladsclient/runtime/java-{version}/bin/java.exe.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f11_01_settings_gradle_defines_three_subprojects",
+      "description": "F11: settings.gradle includes subprojects common, v1_21_1, and v26_2.",
+      "status": "FAILED",
+      "duration_sec": 0.0005,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 571, in test_f11_01_settings_gradle_defines_three_subprojects\n    self.assertIn(\nAssertionError: \"'common'\" not found in \"pluginManagement {\\n  repositories {\\n    maven { url = 'https://maven.fabricmc.net/' }\\n    mavenCentral()\\n    gradlePluginPortal()\\n  }\\n}\\nplugins {\\n    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'\\n}\\nrootProject.name = 'TheLadsCore'\" : settings.gradle must include subproject 'common'\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f11_02_common_subproject_java_21_toolchain",
+      "description": "F11: Subproject :common configures Java 21 toolchain (release = 21).",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f11_03_v1_21_1_subproject_mc_1_21_1_fabric_loom",
+      "description": "F11: Subproject :v1_21_1 configures Minecraft 1.21.1 and includes :common.",
+      "status": "FAILED",
+      "duration_sec": 0.0,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 589, in test_f11_03_v1_21_1_subproject_mc_1_21_1_fabric_loom\n    self.assertTrue(v1_build.exists(), \"TheLadsCore/v1_21_1/build.gradle must exist\")\nAssertionError: False is not true : TheLadsCore/v1_21_1/build.gradle must exist\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f11_04_v26_2_subproject_mc_26_2_fabric_loom",
+      "description": "F11: Subproject :v26_2 configures Minecraft 26.2 with Java 25 and includes :common.",
+      "status": "FAILED",
+      "duration_sec": 0.0,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 597, in test_f11_04_v26_2_subproject_mc_26_2_fabric_loom\n    self.assertTrue(v26_build.exists(), \"TheLadsCore/v26_2/build.gradle must exist\")\nAssertionError: False is not true : TheLadsCore/v26_2/build.gradle must exist\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f11_05_root_build_gradle_coordinates_subprojects",
+      "description": "F11: Root build.gradle coordinates multi-project repository and build tasks.",
+      "status": "FAILED",
+      "duration_sec": 0.0005,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 607, in test_f11_05_root_build_gradle_coordinates_subprojects\n    self.assertTrue(\nAssertionError: False is not true : Root build.gradle must configure subproject coordination\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f12_01_ladsgraphics_bridge_interface_defined",
+      "description": "F12: LadsGraphics bridge interface in :common defines universal drawing primitives.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f12_02_v1_21_1_guigraphics_adapter_implements_bridge",
+      "description": "F12: GuiGraphicsLadsAdapter in :v1_21_1 wraps GuiGraphics to implement LadsGraphics.",
+      "status": "FAILED",
+      "duration_sec": 0.0005,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 627, in test_f12_02_v1_21_1_guigraphics_adapter_implements_bridge\n    self.assertTrue(len(adapter_files) > 0, \"GuiGraphics adapter must exist in :v1_21_1\")\nAssertionError: False is not true : GuiGraphics adapter must exist in :v1_21_1\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f12_03_v26_2_guigraphicsextractor_adapter_implements_bridge",
+      "description": "F12: GuiGraphicsExtractorLadsAdapter in :v26_2 wraps GuiGraphicsExtractor to implement LadsGraphics.",
+      "status": "FAILED",
+      "duration_sec": 0.0,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 635, in test_f12_03_v26_2_guigraphicsextractor_adapter_implements_bridge\n    self.assertTrue(len(adapter_files) > 0, \"GuiGraphicsExtractor adapter must exist in :v26_2\")\nAssertionError: False is not true : GuiGraphicsExtractor adapter must exist in :v26_2\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f12_04_hud_elements_render_through_ladsgraphics",
+      "description": "F12: Universal HUD elements in :common render through LadsGraphics interface.",
+      "status": "FAILED",
+      "duration_sec": 0.0011,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 645, in test_f12_04_hud_elements_render_through_ladsgraphics\n    self.assertIn(\"LadsGraphics\", content, \"HUD elements in :common must render using LadsGraphics\")\nAssertionError: 'LadsGraphics' not found in 'package com.thelads.core.config;\\n\\nimport java.util.ArrayList;\\nimport java.util.HashMap;\\nimport java.util.HashSet;\\nimport java.util.List;\\nimport java.util.Map;\\nimport java.util.Set;\\n\\n/**\\n * Global, client-side HUD preferences shared by every HUD element:\\n *  - globalColor: the colour used by any HUD module set to \"Global\".\\n *  - textShadow:  whether HUD text is drawn with a shadow.\\n *  - positions:   saved x/y per HUD element (keyed by module name).\\n *\\n * Lives in the config package and holds no client/render imports so it can be\\n * serialized by ConfigManager without dragging in client-only classes.\\n */\\npublic class HudSettings {\\n    private static final HudSettings INSTANCE = new HudSettings();\\n\\n    private int globalColor = 0xFFFFFFFF;      // ARGB, opaque white\\n    private int globalBackground = 0x80000000; // ARGB, 50% black\\n    private boolean textShadow = true;\\n    private final Map<String, int[]> positions = new HashMap<>();\\n    private final List<Integer> fadePlaylist = new ArrayList<>();\\n    private final Set<String> locked = new HashSet<>();          // locked element names\\n    private final List<Set<String>> groups = new ArrayList<>();  // groups of element names\\n\\n    public static HudSettings getInstance() {\\n        return INSTANCE;\\n    }\\n\\n    public int getGlobalColor() { return globalColor; }\\n    public void setGlobalColor(int globalColor) { this.globalColor = globalColor; }\\n\\n    public int getGlobalBackground() { return globalBackground; }\\n    public void setGlobalBackground(int globalBackground) { this.globalBackground = globalBackground; }\\n\\n    public boolean isTextShadow() { return textShadow; }\\n    public void setTextShadow(boolean textShadow) { this.textShadow = textShadow; }\\n\\n    public Map<String, int[]> getPositions() { return positions; }\\n\\n    public void setPosition(String name, int x, int y) {\\n        positions.put(name, new int[] { x, y });\\n    }\\n\\n    public int[] getPosition(String name) {\\n        return positions.get(name);\\n    }\\n\\n    // --- Custom Fade colour playlist ---\\n\\n    public List<Integer> getFadePlaylist() {\\n        return fadePlaylist;\\n    }\\n\\n    // --- Locked elements ---\\n\\n    public boolean isLocked(String name) { return locked.contains(name); }\\n\\n    public void setLocked(String name, boolean lock) {\\n        if (lock) locked.add(name); else locked.remove(name);\\n    }\\n\\n    public Set<String> getLocked() { return locked; }\\n\\n    // --- Groups ---\\n\\n    /** Returns the group index for this element name, or -1 if not grouped. */\\n    public int getGroupIndex(String name) {\\n        for (int i = 0; i < groups.size(); i++) {\\n            if (groups.get(i).contains(name)) return i;\\n        }\\n        return -1;\\n    }\\n\\n    /** Create a new group from a set of names. Returns the new group index. */\\n    public int addGroup(Set<String> names) {\\n        // Remove these names from any existing group first\\n        for (Set<String> g : groups) g.removeAll(names);\\n        groups.removeIf(Set::isEmpty);\\n        groups.add(new HashSet<>(names));\\n        return groups.size() - 1;\\n    }\\n\\n    /** Remove a group (by index), leaving the elements ungrouped. */\\n    public void removeGroup(int idx) {\\n        if (idx >= 0 && idx < groups.size()) groups.remove(idx);\\n    }\\n\\n    /** Get all names in the same group as `name`, including `name` itself. */\\n    public Set<String> getGroupMembers(String name) {\\n        for (Set<String> g : groups) {\\n            if (g.contains(name)) return g;\\n        }\\n        return null;\\n    }\\n\\n    public List<Set<String>> getGroups() { return groups; }\\n\\n    /** Returns the playlist as an opaque-ARGB array, or null if too short to use. */\\n    public int[] getFadePalette() {\\n        if (fadePlaylist.size() < 2) {\\n            return null;\\n        }\\n        int[] a = new int[fadePlaylist.size()];\\n        for (int i = 0; i < a.length; i++) {\\n            a[i] = fadePlaylist.get(i) | 0xFF000000;\\n        }\\n        return a;\\n    }\\n}\\n' : HUD elements in :common must render using LadsGraphics\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f12_05_settings_screens_render_through_ladsgraphics",
+      "description": "F12: Settings and layout screens in :common render through LadsGraphics bridge.",
+      "status": "FAILED",
+      "duration_sec": 0.0011,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 650, in test_f12_05_settings_screens_render_through_ladsgraphics\n    self.assertTrue(len(screen_files) > 0, \"UI Screens must exist in :common\")\nAssertionError: False is not true : UI Screens must exist in :common\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f13_01_title_screen_lads_settings_button_injected",
+      "description": "F13: 'Lads Settings' button is registered in TitleScreenMixin.",
+      "status": "PASSED",
+      "duration_sec": 0.0339,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f13_02_lads_settings_positioned_above_options",
+      "description": "F13: 'Lads Settings' button is positioned directly at/above Options button Y.",
+      "status": "PASSED",
+      "duration_sec": 0.0338,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f13_03_subsequent_buttons_shifted_by_24px",
+      "description": "F13: Buttons below Options are shifted downward by 24 pixels.",
+      "status": "PASSED",
+      "duration_sec": 0.034,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f13_04_bottom_left_account_card_rendered",
+      "description": "F13: TitleScreenMixin draws bottom-left account switcher card.",
+      "status": "PASSED",
+      "duration_sec": 0.035,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f13_05_layout_parity_across_1_21_1_and_26_2",
+      "description": "F13: Title screen button injection logic exists in both v1_21_1 and v26_2 subprojects.",
+      "status": "FAILED",
+      "duration_sec": 0.0,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 696, in test_f13_05_layout_parity_across_1_21_1_and_26_2\n    self.assertTrue(len(v1_mixins) > 0, \"TitleScreen mixin must exist in v1_21_1\")\nAssertionError: False is not true : TitleScreen mixin must exist in v1_21_1\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f14_01_account_switcher_reads_dynamic_accounts_json",
+      "description": "F14: AccountSwitcherScreen reads accounts from dynamic ClientPaths.",
+      "status": "FAILED",
+      "duration_sec": 0.0338,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 712, in test_f14_01_account_switcher_reads_dynamic_accounts_json\n    self.assertNotIn(\"C:/The Lads Client/lads_accounts.json\", content, \"Must not contain hardcoded C:/ path\")\nAssertionError: 'C:/The Lads Client/lads_accounts.json' unexpectedly found in 'package com.thelads.core.client.auth;\\n\\nimport net.minecraft.client.gui.GuiGraphicsExtractor;\\nimport net.minecraft.client.gui.screens.Screen;\\nimport net.minecraft.network.chat.Component;\\nimport net.minecraft.client.Minecraft;\\nimport net.minecraft.client.User;\\nimport net.minecraft.client.input.MouseButtonEvent;\\nimport com.thelads.core.mixin.MinecraftClientAccessor;\\nimport java.util.UUID;\\nimport java.util.Optional;\\nimport java.util.List;\\nimport java.util.ArrayList;\\nimport java.io.File;\\nimport java.nio.file.Files;\\nimport com.google.gson.JsonParser;\\nimport com.google.gson.JsonObject;\\nimport com.google.gson.JsonArray;\\nimport net.minecraft.resources.Identifier;\\n\\npublic class AccountSwitcherScreen extends Screen {\\n    private final Screen parent;\\n    private String statusMessage = \"Select an option below\";\\n    private final MicrosoftAuthenticator auth = new MicrosoftAuthenticator();\\n    private final List<LadsAccount> accounts = new ArrayList<>();\\n    private net.minecraft.world.entity.player.PlayerSkin activeSkin;\\n    private UUID activeProfileId;\\n    private final java.util.Map<String, net.minecraft.world.entity.player.PlayerSkin> accountSkins = new java.util.concurrent.ConcurrentHashMap<>();\\n\\n    public static class LadsAccount {\\n        public final String username;\\n        public final String uuid;\\n        public final String type;\\n        public final String accessToken;\\n\\n        public LadsAccount(String username, String uuid, String type, String accessToken) {\\n            this.username = username;\\n            this.uuid = uuid;\\n            this.type = type;\\n            this.accessToken = accessToken;\\n        }\\n    }\\n\\n    public AccountSwitcherScreen(Screen parent) {\\n        super(Component.literal(\"Account Switcher\"));\\n        this.parent = parent;\\n    }\\n\\n    @Override\\n    protected void init() {\\n        super.init();\\n        loadAccounts();\\n    }\\n\\n    private void loadAccounts() {\\n        accounts.clear();\\n        accountSkins.clear();\\n        File f = new File(\"C:/The Lads Client/lads_accounts.json\");\\n        if (f.exists()) {\\n            try {\\n                JsonArray arr = JsonParser.parseString(Files.readString(f.toPath())).getAsJsonArray();\\n                for (int i = 0; i < arr.size(); i++) {\\n                    JsonObject obj = arr.get(i).getAsJsonObject();\\n                    String username = obj.has(\"username\") ? obj.get(\"username\").getAsString() : \"\";\\n                    String uuid = obj.has(\"uuid\") ? obj.get(\"uuid\").getAsString() : \"\";\\n                    String type = obj.has(\"type\") ? obj.get(\"type\").getAsString() : \"offline\";\\n                    String accessToken = obj.has(\"accessToken\") ? obj.get(\"accessToken\").getAsString() : \"0\";\\n                    if (!username.isEmpty()) {\\n                        accounts.add(new LadsAccount(username, uuid, type, accessToken));\\n                    }\\n                }\\n            } catch (Exception e) {\\n                // Ignore parsing errors\\n            }\\n        }\\n        \\n        // Fallbacks if list is empty\\n        if (accounts.isEmpty()) {\\n            accounts.add(new LadsAccount(\"LadsPlayer\", UUID.nameUUIDFromBytes(\"OfflinePlayer:LadsPlayer\".getBytes()).toString(), \"offline\", \"0\"));\\n            accounts.add(new LadsAccount(\"TestPlayer\", UUID.nameUUIDFromBytes(\"OfflinePlayer:TestPlayer\".getBytes()).toString(), \"offline\", \"0\"));\\n        }\\n    }\\n\\n    private void writeActiveProfile(String username, String uuid, String type, String accessToken) {\\n        try {\\n            JsonObject obj = new JsonObject();\\n            obj.addProperty(\"username\", username);\\n            obj.addProperty(\"uuid\", uuid);\\n            obj.addProperty(\"type\", type);\\n            obj.addProperty(\"accessToken\", accessToken);\\n            obj.addProperty(\"skinUrl\", \"\");\\n            obj.addProperty(\"capeUrl\", \"\");\\n            obj.addProperty(\"lastUpdated\", java.time.Instant.now().toString());\\n\\n            File profileFile = new File(\"C:/The Lads Client/lads_profile.json\");\\n            Files.writeString(profileFile.toPath(), obj.toString());\\n        } catch (Exception e) {\\n            // Ignore\\n        }\\n    }\\n\\n    private void startMicrosoftAuth() {\\n        statusMessage = \"Requesting device code\u2026\";\\n        auth.requestDeviceCode().thenAcceptAsync(info -> {\\n            statusMessage = \"Open \" + info.verificationUri + \" \u2014 code: \" + info.userCode;\\n            auth.pollForToken(info, msg -> statusMessage = msg)\\n                .thenCompose(ms  -> { statusMessage = \"Got MS token, authenticating\u2026\"; return auth.authXboxLive(ms); })\\n                .thenCompose(xbl -> auth.authXsts(xbl))\\n                .thenCompose(xsts -> {\\n                    String tok = xsts.get(\"Token\").getAsString();\\n                    String uhs = xsts.getAsJsonObject(\"DisplayClaims\")\\n                                     .getAsJsonArray(\"xui\").get(0)\\n                                     .getAsJsonObject().get(\"uhs\").getAsString();\\n                    return auth.authMinecraft(uhs, tok);\\n                })\\n                .thenCompose(mc -> {\\n                    String token = mc.get(\"access_token\").getAsString();\\n                    return auth.getMinecraftProfile(token).thenApply(profile -> {\\n                        String name = profile.get(\"name\").getAsString();\\n                        String id   = profile.get(\"id\").getAsString();\\n                        UUID uuid = UUID.fromString(id.replaceFirst(\\n                            \"(\\\\\\\\p{XDigit}{8})(\\\\\\\\p{XDigit}{4})(\\\\\\\\p{XDigit}{4})(\\\\\\\\p{XDigit}{4})(\\\\\\\\p{XDigit}+)\",\\n                            \"$1-$2-$3-$4-$5\"));\\n                        User msUser = new User(name, uuid, token, Optional.empty(), Optional.empty());\\n                        ((MinecraftClientAccessor) Minecraft.getInstance()).setUser(msUser);\\n                        statusMessage = \"Logged in as \" + name + \"!\";\\n                        \\n                        writeActiveProfile(name, uuid.toString(), \"microsoft\", token);\\n                        loadAccounts(); // Reload list\\n                        return profile;\\n                    });\\n                })\\n                .exceptionally(e -> { statusMessage = \"Error: \" + e.getMessage(); return null; });\\n        });\\n    }\\n\\n    private void switchAccount(LadsAccount acc) {\\n        try {\\n            UUID uuid;\\n            if (acc.uuid != null && !acc.uuid.isEmpty()) {\\n                String id = acc.uuid.replace(\"-\", \"\");\\n                uuid = UUID.fromString(\\n                    id.replaceFirst(\\n                        \"(\\\\\\\\p{XDigit}{8})(\\\\\\\\p{XDigit}{4})(\\\\\\\\p{XDigit}{4})(\\\\\\\\p{XDigit}{4})(\\\\\\\\p{XDigit}+)\",\\n                        \"$1-$2-$3-$4-$5\"\\n                    )\\n                );\\n            } else {\\n                uuid = UUID.nameUUIDFromBytes((\"OfflinePlayer:\" + acc.username).getBytes());\\n            }\\n            \\n            String token = (acc.accessToken != null && !acc.accessToken.isEmpty() && !acc.accessToken.equals(\"0\"))\\n                ? acc.accessToken : \"0\";\\n                \\n            User u = new User(acc.username, uuid, token, Optional.empty(), Optional.empty());\\n            ((MinecraftClientAccessor) Minecraft.getInstance()).setUser(u);\\n            statusMessage = \"Switched to: \" + acc.username;\\n            \\n            writeActiveProfile(acc.username, uuid.toString(), acc.type, token);\\n        } catch (Exception ex) {\\n            statusMessage = \"Error: \" + ex.getMessage();\\n        }\\n    }\\n\\n    private void drawLadsButton(GuiGraphicsExtractor g, String label, int x, int y, int w, int h, int mx, int my) {\\n        boolean hover = mx >= x && mx < x + w && my >= y && my < y + h;\\n        int bg = hover ? 0xCC2A1010 : 0xCC180A0A;\\n        int border = hover ? 0xFFFF5252 : 0x22FF5555;\\n        \\n        g.fill(x, y, x + w, y + h, bg);\\n        // Draw 1px border\\n        g.fill(x, y, x + w, y + 1, border);\\n        g.fill(x, y + h - 1, x + w, y + h, border);\\n        g.fill(x, y, x + 1, y + h, border);\\n        g.fill(x + w - 1, y, x + w, y + h, border);\\n        \\n        int textColor = hover ? 0xFFFFFFFF : 0xFFCCCCCC;\\n        g.centeredText(this.font, label, x + w / 2, y + h / 2 - 4, textColor);\\n    }\\n\\n    @Override\\n    public boolean mouseClicked(MouseButtonEvent event, boolean active) {\\n        double mx = event.x(), my = event.y();\\n        if (event.button() != 0) return super.mouseClicked(event, active);\\n        \\n        int cx = this.width / 2;\\n        int startY = this.height / 2 - 30;\\n        \\n        // Login with Microsoft\\n        if (mx >= cx - 100 && mx < cx + 100 && my >= startY && my < startY + 20) {\\n            startMicrosoftAuth();\\n            return true;\\n        }\\n        \\n        int buttonY = startY + 26;\\n        for (LadsAccount acc : accounts) {\\n            if (mx >= cx - 100 && mx < cx + 100 && my >= buttonY && my < buttonY + 20) {\\n                switchAccount(acc);\\n                return true;\\n            }\\n            buttonY += 26;\\n        }\\n        \\n        // Back\\n        if (mx >= cx - 100 && mx < cx + 100 && my >= buttonY + 8 && my < buttonY + 28) {\\n            Minecraft.getInstance().setScreenAndShow(parent);\\n            return true;\\n        }\\n        \\n        return super.mouseClicked(event, active);\\n    }\\n\\n    @Override\\n    public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {\\n        // No-op: background is drawn manually in extractRenderState\\n    }\\n\\n    @Override\\n    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {\\n        // Draw background\\n        g.fill(0, 0, this.width, this.height, 0xEE050508);\\n        g.fill(0, 0, this.width, 2, 0xFFD32F2F);\\n\\n        // Header Title\\n        int cx = this.width / 2;\\n        g.centeredText(this.font, \"\u21c4  Account Switcher\", cx, 22, 0xFFFF5252);\\n        g.fill(cx - 90, 36, cx + 90, 37, 0x22FF5555);\\n\\n        // Active account card\\n        User u = Minecraft.getInstance().getUser();\\n        String activeLabel = \"Active: \" + u.getName();\\n        int cardW = 200, cardH = 24;\\n        int cardX = cx - cardW / 2, cardY = this.height / 2 - 72;\\n        \\n        g.fill(cardX, cardY, cardX + cardW, cardY + cardH, 0xCC180A0A);\\n        g.fill(cardX, cardY, cardX + cardW, cardY + 1, 0xFFD32F2F);\\n\\n        // Draw Player Head\\n        try {\\n            if (activeSkin == null || !activeProfileId.equals(u.getProfileId())) {\\n                activeProfileId = u.getProfileId();\\n                activeSkin = net.minecraft.client.resources.DefaultPlayerSkin.get(u.getProfileId());\\n                final UUID capturedId = u.getProfileId();\\n                final String capturedName = u.getName();\\n                resolveSkinAsync(capturedId, capturedName, resolved -> {\\n                    if (capturedId.equals(activeProfileId)) {\\n                        activeSkin = resolved;\\n                    }\\n                });\\n            }\\n            if (activeSkin != null)\\n                net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(g, activeSkin, cardX + 6, cardY + 4, 16);\\n        } catch (Exception ex) {\\n            // Ignore\\n        }\\n\\n        g.text(this.font, activeLabel, cardX + 28, cardY + 8, 0xFF00FF88, true);\\n\\n        // Render themed buttons\\n        int startY = this.height / 2 - 30;\\n        drawLadsButton(g, \"Login with Microsoft\", cx - 100, startY, 200, 20, mouseX, mouseY);\\n\\n        int buttonY = startY + 26;\\n        for (LadsAccount acc : accounts) {\\n            String label = acc.type.equalsIgnoreCase(\"microsoft\") ? acc.username + \" (MS)\" : acc.username + \" (Offline)\";\\n            drawLadsButton(g, label, cx - 100, buttonY, 200, 20, mouseX, mouseY);\\n            // Draw per-account skin head if available\\n            net.minecraft.world.entity.player.PlayerSkin accSkin = accountSkins.get(acc.uuid);\\n            if (accSkin == null && acc.uuid != null && !acc.uuid.isEmpty()) {\\n                final String capturedUuid = acc.uuid;\\n                final String capturedName = acc.username;\\n                UUID uuid = parseUuidSafely(capturedUuid);\\n                if (uuid != null) {\\n                    accountSkins.put(capturedUuid, net.minecraft.client.resources.DefaultPlayerSkin.get(uuid));\\n                    resolveSkinAsync(uuid, capturedName, resolved -> {\\n                        accountSkins.put(capturedUuid, resolved);\\n                    });\\n                }\\n            }\\n            try {\\n                if (accSkin != null)\\n                    net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(g, accSkin, cx - 100 + 2, buttonY + 2, 16);\\n            } catch (Exception ignored) {}\\n            buttonY += 26;\\n        }\\n\\n        drawLadsButton(g, \"Back\", cx - 100, buttonY + 8, 200, 20, mouseX, mouseY);\\n\\n        // Dynamic status positioning below Back button\\n        String status = \"Status: \" + statusMessage;\\n        int sw = this.font.width(status);\\n        if (sw > this.width - 20) {\\n            status = status.substring(0, Math.max(0, (this.width - 20) * status.length() / sw - 3)) + \"...\";\\n        }\\n        g.centeredText(this.font, status, cx, buttonY + 36, 0xFFAAAAAA);\\n\\n        super.extractRenderState(g, mouseX, mouseY, delta);\\n    }\\n\\n    private UUID parseUuidSafely(String uuidStr) {\\n        if (uuidStr == null || uuidStr.isEmpty()) return null;\\n        try {\\n            if (uuidStr.contains(\"-\")) {\\n                return UUID.fromString(uuidStr);\\n            }\\n            return UUID.fromString(uuidStr.replaceFirst(\\n                \"(\\\\\\\\p{XDigit}{8})(\\\\\\\\p{XDigit}{4})(\\\\\\\\p{XDigit}{4})(\\\\\\\\p{XDigit}{4})(\\\\\\\\p{XDigit}+)\",\\n                \"$1-$2-$3-$4-$5\"));\\n        } catch (Exception e) {\\n            return null;\\n        }\\n    }\\n\\n    private void resolveSkinAsync(UUID uuid, String username, java.util.function.Consumer<net.minecraft.world.entity.player.PlayerSkin> callback) {\\n        java.util.concurrent.CompletableFuture.runAsync(() -> {\\n            try {\\n                boolean isActive = uuid.equals(Minecraft.getInstance().getUser().getProfileId());\\n                File customSkin = new File(\"C:/The Lads Client/skin.png\");\\n                if (isActive && customSkin.exists()) {\\n                    try {\\n                        Identifier id = com.thelads.core.client.cosmetics.backend.CosmeticsBackend.fetchByFile(customSkin).get();\\n                        if (id != null) {\\n                            com.thelads.core.client.cosmetics.backend.CosmeticsBackend.setActiveSkin(uuid, id);\\n                        }\\n                    } catch (Exception e) {\\n                        // ignore\\n                    }\\n                } else {\\n                    try {\\n                        com.mojang.authlib.GameProfile baseProfile = new com.mojang.authlib.GameProfile(uuid, username);\\n                        com.mojang.authlib.yggdrasil.ProfileResult result =\\n                            Minecraft.getInstance().services().sessionService().fetchProfile(uuid, true);\\n                        com.mojang.authlib.GameProfile filledProfile = (result != null) ? result.profile() : baseProfile;\\n                        net.minecraft.world.entity.player.PlayerSkin skin =\\n                            Minecraft.getInstance().getSkinManager().createLookup(filledProfile, false).get();\\n                        if (skin != null) {\\n                            net.minecraft.core.ClientAsset.Texture bodyTex = skin.body();\\n                            if (bodyTex != null && bodyTex.id() != null) {\\n                                com.thelads.core.client.cosmetics.backend.CosmeticsBackend.setActiveSkin(uuid, bodyTex.id());\\n                            }\\n                        } else {\\n                            throw new RuntimeException(\"Skin lookup returned null\");\\n                        }\\n                    } catch (Exception ex) {\\n                        try {\\n                            Identifier id = com.thelads.core.client.cosmetics.backend.CosmeticsBackend.fetchByUrl(\"https://minotar.net/skin/\" + username).get();\\n                            if (id != null) {\\n                                com.thelads.core.client.cosmetics.backend.CosmeticsBackend.setActiveSkin(uuid, id);\\n                            }\\n                        } catch (Exception minotarEx) {\\n                            // ignore\\n                        }\\n                    }\\n                }\\n\\n                Identifier activeSkinId = com.thelads.core.client.cosmetics.backend.CosmeticsBackend.getActiveSkin(uuid);\\n                final net.minecraft.world.entity.player.PlayerSkin resolvedSkin;\\n                if (activeSkinId != null) {\\n                    net.minecraft.core.ClientAsset.Texture newSkin = new net.minecraft.core.ClientAsset.Texture() {\\n                        @Override public Identifier texturePath() { return activeSkinId; }\\n                        @Override public Identifier id() { return activeSkinId; }\\n                    };\\n                    resolvedSkin = new net.minecraft.world.entity.player.PlayerSkin(\\n                        newSkin,\\n                        null,\\n                        null,\\n                        net.minecraft.world.entity.player.PlayerModelType.WIDE,\\n                        true\\n                    );\\n                } else {\\n                    resolvedSkin = net.minecraft.client.resources.DefaultPlayerSkin.get(uuid);\\n                }\\n                \\n                Minecraft.getInstance().execute(() -> callback.accept(resolvedSkin));\\n            } catch (Exception ignored) {}\\n        });\\n    }\\n}\\n' : Must not contain hardcoded C:/ path\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f14_02_account_json_schema_validation",
+      "description": "F14: Account JSON schema validator verifies required account fields.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f14_03_skin_cache_priority_local_skin_png",
+      "description": "F14: Skin fetching prioritizes local custom skin.png when present.",
+      "status": "PASSED",
+      "duration_sec": 0.0692,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f14_04_skin_fetch_mojang_and_minotar_fallback",
+      "description": "F14: Skin fetching connects to Mojang API with Minotar fallback.",
+      "status": "PASSED",
+      "duration_sec": 0.0692,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f14_05_skin_caching_to_disk_contract",
+      "description": "F14: Downloaded skins are cached to disk in .theladsclient/cache/skins/.",
+      "status": "PASSED",
+      "duration_sec": 0.0687,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f15_01_mixin_configs_specify_default_require_zero",
+      "description": "F15: Version-specific mixin configs declare injectors.defaultRequire = 0.",
+      "status": "FAILED",
+      "duration_sec": 0.0352,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 767, in test_f15_01_mixin_configs_specify_default_require_zero\n    self.assertEqual(\nAssertionError: 1 != 0 : appleskin.mixins.json must specify defaultRequire = 0 to prevent injection crashes\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f15_02_v1_21_1_mixin_targets_gui_class",
+      "description": "F15: GuiMixin in v1_21_1 targets net.minecraft.client.gui.Gui.",
+      "status": "FAILED",
+      "duration_sec": 0.0,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 777, in test_f15_02_v1_21_1_mixin_targets_gui_class\n    self.assertTrue(len(v1_mixins) > 0, \"GuiMixin must exist in v1_21_1\")\nAssertionError: False is not true : GuiMixin must exist in v1_21_1\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f15_03_v26_2_mixin_targets_hud_class",
+      "description": "F15: GuiMixin in v26_2 targets net.minecraft.client.gui.Hud.",
+      "status": "FAILED",
+      "duration_sec": 0.0,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier1_feature_coverage.py\", line 784, in test_f15_03_v26_2_mixin_targets_hud_class\n    self.assertTrue(len(v26_mixins) > 0, \"GuiMixin must exist in v26_2\")\nAssertionError: False is not true : GuiMixin must exist in v26_2\n"
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f15_04_boot_log_validator_single_resource_reload",
+      "description": "F15: Boot log validator accepts logs with exactly ONE Reloading ResourceManager entry.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f15_05_boot_log_validator_zero_mixin_injection_errors",
+      "description": "F15: Boot log validator rejects logs containing mixin injection errors.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f01_b01_repo_pack_size_boundary_margin",
+      "description": "F1: Packfile size has at least 15 MB safety margin under the 50 MB limit (size <= 35 MB).",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f01_b02_loose_object_count_boundary",
+      "description": "F1: Loose git objects count must be < 100 to ensure git garbage collection was run.",
+      "status": "PASSED",
+      "duration_sec": 0.0282,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f01_b03_git_object_pack_count_boundary",
+      "description": "F1: Pack file count is <= 4, verifying clean repacked object store.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f01_b04_git_commit_history_depth_integrity",
+      "description": "F1: Git commit history remains intact after purge (commits >= 10, HEAD valid).",
+      "status": "PASSED",
+      "duration_sec": 0.0284,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f01_b05_large_blobs_boundary_check",
+      "description": "F1: No single tracked file in active working tree exceeds 25 MB.",
+      "status": "PASSED",
+      "duration_sec": 0.0849,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f02_b01_malformed_pw_toml_syntax_detection",
+      "description": "F2: Validator detects corrupted TOML syntax with unclosed quotes or brackets.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f02_b02_empty_or_whitespace_pw_toml_detection",
+      "description": "F2: Validator rejects empty or whitespace-only .pw.toml file.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f02_b03_missing_required_fields_pw_toml",
+      "description": "F2: Validator rejects .pw.toml missing filename field.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f02_b04_invalid_side_specification_pw_toml",
+      "description": "F2: Validator rejects .pw.toml with invalid side (e.g. side = 'unknown').",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f02_b05_index_toml_files_not_empty_and_valid",
+      "description": "F2: Index.toml contains non-empty file entries and sha256 hash format.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f03_b01_root_workspace_zero_exe_installers",
+      "description": "F3: Zero loose .exe installer executables exist in repository root.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f03_b02_root_workspace_zero_crash_debug_txt",
+      "description": "F3: Zero crash dumps or debug text files exist in root workspace.",
+      "status": "PASSED",
+      "duration_sec": 0.0011,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f03_b03_root_workspace_zero_temp_dirs",
+      "description": "F3: Zero temporary staging directories (temp*, Temp*) exist at root.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f03_b04_root_workspace_zero_disassembly_dumps",
+      "description": "F3: Zero intermediate disassembly dumps (*.il, *.disasm) exist in root.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f03_b05_no_unapproved_hidden_directories",
+      "description": "F3: No obsolete tool caches (e.g. .aider*) exist in workspace root.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f04_b01_gitignore_negation_rules_precedence",
+      "description": "F4: Negation rules preserve .pw.toml files while ignoring .jar files.",
+      "status": "PASSED",
+      "duration_sec": 0.05,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f04_b02_gitignore_source_files_not_ignored",
+      "description": "F4: Essential project source files (.cs, .java, .axaml, .gradle) are NEVER ignored.",
+      "status": "PASSED",
+      "duration_sec": 0.1001,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f04_b03_gitignore_deep_nested_build_libs_ignored",
+      "description": "F4: Deeply nested Gradle build output jars are ignored.",
+      "status": "PASSED",
+      "duration_sec": 0.0482,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f04_b04_gitignore_deep_nested_bin_obj_ignored",
+      "description": "F4: Deeply nested .NET compilation binaries are ignored.",
+      "status": "PASSED",
+      "duration_sec": 0.0485,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f04_b05_gitignore_various_archive_formats_ignored",
+      "description": "F4: Archive files (.zip, .tar, .gz) are blocked by gitignore in build and root areas.",
+      "status": "PASSED",
+      "duration_sec": 0.0497,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f05_b01_csproj_treat_warnings_as_errors_or_clean_build",
+      "description": "F5: TheLadsLauncher.csproj compiles with warning count strictly 0.",
+      "status": "FAILED",
+      "duration_sec": 1.3243,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier2_boundary_corner.py\", line 253, in test_f05_b01_csproj_treat_warnings_as_errors_or_clean_build\n    self.assertIsNone(match, f\"Found compiler warnings: {match.group(0) if match else ''}\")\nAssertionError: <re.Match object; span=(2294, 2306), match='2 Warning(s)'> is not None : Found compiler warnings: 2 Warning(s)\n"
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f05_b02_cs4014_unawaited_async_calls_guarded",
+      "description": "F5: Async calls inside event handlers or lambdas are properly awaited or discarded.",
+      "status": "PASSED",
+      "duration_sec": 0.0049,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f05_b03_nullable_dereference_guards_cs8602_cs8604",
+      "description": "F5: Nullable reference types are guarded with null-conditional or pattern matching.",
+      "status": "PASSED",
+      "duration_sec": 0.0064,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f05_b04_unused_event_declarations_guarded_cs0067",
+      "description": "F5: Custom ICommand implementations provide accessors or use CanExecuteChanged safely.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f05_b05_nowarn_contains_msb3277_suppression",
+      "description": "F5: TheLadsLauncher.csproj suppresses or resolves MSB3277 conflict.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f06_b01_service_interface_nullability_contracts",
+      "description": "F6: Service interfaces declare nullable annotations properly.",
+      "status": "PASSED",
+      "duration_sec": 0.0037,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f06_b02_viewmodel_property_change_notification",
+      "description": "F6: ViewModelBase implements INotifyPropertyChanged.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f06_b03_services_directory_isolation",
+      "description": "F6: Services do not directly import Avalonia.Controls (clean UI decoupling).",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f06_b04_path_service_handles_special_characters",
+      "description": "F6: PathService contract ensures safe resolution with spaces or non-ascii characters.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f06_b05_profile_service_handles_empty_profile_list",
+      "description": "F6: ProfileService defines fallback or default profiles when profiles collection is empty.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f07_b01_profile_id_uniqueness_validation",
+      "description": "F7: Profile IDs must be unique across all profiles.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f07_b02_profile_unsupported_version_handling",
+      "description": "F7: Profile specifications map to supported Minecraft loaders.",
+      "status": "PASSED",
+      "duration_sec": 0.0006,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f07_b03_corrupt_profile_json_recovery",
+      "description": "F7: Corrupted lads_profile.json format validation.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f07_b04_profile_custom_game_dir_resolution",
+      "description": "F7: Profile model supports custom GameDir or defaults to profile-specific path.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f07_b05_profile_roundtrip_json_serialization",
+      "description": "F7: Profile object schema round-trips through JSON cleanly.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f08_b01_missing_shared_directory_auto_created",
+      "description": "F8: Shared sync protocol ensures directory exists before copying.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f08_b02_corrupt_options_txt_handling",
+      "description": "F8: options.txt sync handles lines with corrupted key-value formatting.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f08_b03_timestamp_conflict_resolution",
+      "description": "F8: Sync logic compares last modified times before copying back to shared.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f08_b04_isolated_mode_does_not_touch_shared_dir",
+      "description": "F8: When IsIsolated is true, synchronization pass is skipped.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f08_b05_shared_sync_handles_file_lock_without_crash",
+      "description": "F8: Sync operations are wrapped in try-catch to prevent file-lock crashes.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f09_b01_path_service_empty_custom_path_fallback",
+      "description": "F9: PathService constructor treats null/empty custom path as default %APPDATA%.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f09_b02_path_service_traversal_prevention",
+      "description": "F9: Profile directory resolution uses Path.Combine preventing relative path escape.",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f09_b03_zero_hardcoded_drive_roots",
+      "description": "F9: Zero hardcoded references to static backup drives (G:\\The Lads Client Backups).",
+      "status": "PASSED",
+      "duration_sec": 0.0053,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f09_b04_log_directory_auto_creation",
+      "description": "F9: PathService defines and creates LogsDirectory.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f09_b05_client_paths_java_env_var_override",
+      "description": "F9: Java ClientPaths class supports THELADS_DIR environment variable override.",
+      "status": "PASSED",
+      "duration_sec": 0.0346,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f10_b01_adoptium_api_network_failure_handling",
+      "description": "F10: JavaService handles network exceptions during Adoptium API queries without crash.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f10_b02_adoptium_response_malformed_json_handling",
+      "description": "F10: Adoptium JSON parsing is resilient to unexpected response formats.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f10_b03_jdk_corrupt_zip_cleanup",
+      "description": "F10: Zip extraction cleans up temporary files upon completion or failure.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f10_b04_java_major_version_mismatch_rejected",
+      "description": "F10: Java detection rejects incompatible versions (e.g. Java 17 for MC 26.2).",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f10_b05_jdk_release_file_fast_inspection",
+      "description": "F10: Fast inspection parses JDK release file directly.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f11_b01_common_subproject_builds_without_minecraft_loom",
+      "description": "F11: Subproject :common does NOT apply fabric-loom plugin.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f11_b02_gradle_wrapper_properties_integrity",
+      "description": "F11: gradle-wrapper.properties defines a valid Gradle 8+ distribution URL.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f11_b03_gradle_build_cache_independence",
+      "description": "F11: Multi-project build is not dependent on hardcoded external local user caches.",
+      "status": "FAILED",
+      "duration_sec": 0.0011,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier2_boundary_corner.py\", line 569, in test_f11_b03_gradle_build_cache_independence\n    self.assertNotIn(\"C:/The Lads Client/mods\", content, \"Must not contain hardcoded mod path in build script\")\nAssertionError: 'C:/The Lads Client/mods' unexpectedly found in 'plugins {\\n    id \\'net.fabricmc.fabric-loom\\' version \"${loom_version}\"\\n    id \\'maven-publish\\'\\n}\\nversion = project.mod_version\\ngroup = project.maven_group\\nrepositories {\\n    mavenCentral()\\n    maven { url \\'https://jitpack.io\\' }\\n}\\n// Merged dev-only JAR: shading libs without fabric.mod.json so Fabric Loader\\n// doesn\\'t double-register their entrypoints during runClient.\\nconfigurations {\\n    shadedRuntimeLibs\\n}\\n\\ndef devShadedJar = layout.buildDirectory.file(\"dev-shaded-all.jar\")\\n\\ntasks.register(\\'createDevShadedJar\\', Jar) {\\n    archiveFileName = \"dev-shaded-all.jar\"\\n    destinationDirectory = layout.buildDirectory.dir(\".\")\\n    duplicatesStrategy = DuplicatesStrategy.EXCLUDE\\n    configurations.shadedRuntimeLibs.each { f ->\\n        from(zipTree(f)) {\\n            exclude \"fabric.mod.json\"\\n            exclude \"META-INF/MANIFEST.MF\"\\n            exclude \"META-INF/*.SF\"\\n            exclude \"META-INF/*.DSA\"\\n            exclude \"META-INF/*.RSA\"\\n        }\\n    }\\n}\\n\\nloom {\\n    accessWidenerPath = file(\"src/main/resources/scalablelux.accesswidener\")\\n}\\n\\nsourceSets {\\n    rpo {\\n        java {\\n            srcDirs = [\\'extracted_rpo\\']\\n        }\\n    }\\n}\\n\\ndependencies {\\n    minecraft \"com.mojang:minecraft:${project.minecraft_version}\"\\n    implementation \"net.fabricmc:fabric-loader:${project.loader_version}\"\\n    implementation \"net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}\"\\n    implementation \"club.minnced:java-discord-rpc:2.0.1\"\\n    include \"club.minnced:java-discord-rpc:2.0.1\"\\n    implementation \"club.minnced:discord-rpc-release:v3.3.0\"\\n    include \"club.minnced:discord-rpc-release:v3.3.0\"\\n    compileOnly \"com.google.code.findbugs:jsr305:3.0.2\"\\n    compileOnly fileTree(dir: rootProject.file(\"../Packwiz/mods\"), include: \"*.jar\")\\n    compileOnly fileTree(dir: file(\"shading_libs\"), include: \"**/*.jar\")\\n    compileOnly fileTree(dir: file(\"temp_unzip\"), include: \"**/*.jar\")\\n    shadedRuntimeLibs fileTree(dir: file(\"shading_libs\"), include: \"**/*.jar\")\\n    shadedRuntimeLibs fileTree(dir: file(\"temp_unzip\"), include: \"**/*.jar\")\\n    localRuntime files(devShadedJar) { builtBy \\'createDevShadedJar\\' }\\n    localRuntime fileTree(\"C:/The Lads Client/mods\") {\\n        include \"*.jar\"\\n        exclude \"*.jar\"\\n    }\\n    compileOnly files(\"C:/The Lads Client/mods/sodium-fabric-0.9.0+mc26.2.jar\", \"C:/The Lads Client/mods/entity_texture_features-7.1.1-26.2-fabric.jar\")\\n    compileOnly files(layout.buildDirectory.dir(\"classes/java/rpo\"))\\n    testImplementation \"org.junit.jupiter:junit-jupiter-api:5.10.0\"\\n    testRuntimeOnly \"org.junit.jupiter:junit-jupiter-engine:5.10.0\"\\n    testRuntimeOnly \"org.junit.platform:junit-platform-launcher\"\\n    testImplementation \"org.mockito:mockito-core:5.14.2\"\\n    testImplementation \"org.mockito:mockito-junit-jupiter:5.14.2\"\\n    testImplementation \"net.bytebuddy:byte-buddy:1.15.11\"\\n    testImplementation \"net.bytebuddy:byte-buddy-agent:1.15.11\"\\n    testImplementation fileTree(dir: file(\"shading_libs\"), include: \"**/*.jar\")\\n    testImplementation fileTree(dir: file(\"temp_unzip\"), include: \"**/*.jar\")\\n}\\n\\nsourceSets.rpo.compileClasspath = sourceSets.main.compileClasspath\\ntasks.named(\\'compileJava\\') {\\n    dependsOn \\'compileRpoJava\\'\\n}\\nprocessResources {\\n    def version = project.version\\n    inputs.property \"version\", version\\n    filesMatching(\"fabric.mod.json\") { expand \"version\": version }\\n}\\ntasks.withType(JavaCompile).configureEach {\\n    it.options.release = 25\\n}\\n// Ensure the merged dev JAR exists before running the client\\ntasks.named(\\'runClient\\') {\\n    dependsOn \\'createDevShadedJar\\'\\n    if (providers.systemProperty(\"thelads.benchmark\").isPresent()) {\\n        systemProperty \"thelads.benchmark\", providers.systemProperty(\"thelads.benchmark\").get()\\n    } else if (System.getProperty(\"thelads.benchmark\") != null) {\\n        systemProperty \"thelads.benchmark\", System.getProperty(\"thelads.benchmark\")\\n    }\\n    if (project.hasProperty(\"thelads.benchmark\")) {\\n        systemProperty \"thelads.benchmark\", project.property(\"thelads.benchmark\")\\n    }\\n    systemProperty \"fabric.skipDependencyCheck\", \"true\"\\n    systemProperty \"fabric.skipDependencyChecks\", \"true\"\\n}\\njava {\\n    withSourcesJar()\\n    sourceCompatibility = JavaVersion.toVersion(25)\\n    targetCompatibility = JavaVersion.toVersion(25)\\n}\\njar {\\n    duplicatesStrategy = DuplicatesStrategy.EXCLUDE\\n    def projectName = project.name\\n    inputs.property \"projectName\", projectName\\n    from(\"LICENSE\") { rename { \"${it}_$projectName\"} }\\n    \\n\\n\\n\\n    // Shade ScalableLux (Starlight)\\n    from(zipTree(file(\"shading_libs/ScalableLux-0.2.1+fabric.2b08348-all.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade ServerPingerFixer\\n    // from(zipTree(file(\"shading_libs/serverpingerfixer+26.1-1.1.0.jar\"))) {\\n    //     exclude \"META-INF/MANIFEST.MF\"\\n    //     exclude \"META-INF/*.SF\"\\n    //     exclude \"META-INF/*.DSA\"\\n    //     exclude \"META-INF/*.RSA\"\\n    //     exclude \"fabric.mod.json\"\\n    // }\\n\\n    // Shade Quick Pack\\n    from(zipTree(file(\"shading_libs/quick-pack-fabric-1.3.1+26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade Passive Shield\\n    from(zipTree(file(\"shading_libs/passiveshield-26.2.0-3.9.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade Collective\\n    from(zipTree(file(\"shading_libs/collective-26.1.2-8.22.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade Raised (client-side hotbar lift) \u2014 use 26.1.1 classes; exclude raised.mixins.json (targets Gui.class)\\n    // Our own RaisedMixin.java in theladscore.mixins.json replaces it with correct 26.2 Hud.class targets\\n    // from(zipTree(file(\"shading_libs/raised-fabric-26.1.1-5.1.2.jar\"))) {\\n    //     exclude \"META-INF/MANIFEST.MF\"\\n    //     exclude \"META-INF/*.SF\"\\n    //     exclude \"META-INF/*.DSA\"\\n    //     exclude \"META-INF/*.RSA\"\\n    //     exclude \"fabric.mod.json\"\\n    //     exclude \"raised.mixins.json\"   // Old 26.1 mixin config targets Gui.class \u2014 crashes in 26.2\\n    //     exclude \"raised.refmap.json\"\\n    //     exclude \"raised.accesswidener\"  // Not needed, we don\\'t need its AW\\n    // }\\n    // Immersive Hotbar disabled \u2014 no 26.2 version, its Gui-targeting mixins crash with Hud rename\\n    // from(zipTree(file(\"shading_libs/immersive-hotbar-1.1.1-26.1.jar\"))) {\\n    //     exclude \"META-INF/MANIFEST.MF\"\\n    //     exclude \"META-INF/*.SF\"\\n    //     exclude \"META-INF/*.DSA\"\\n    //     exclude \"META-INF/*.RSA\"\\n    //     exclude \"fabric.mod.json\"\\n    // }\\n    // Shade ScreenFX\\n    from(zipTree(file(\"shading_libs/screenfx-1.5.1+26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade Fancy World Animations (fwa)\\n    from(zipTree(file(\"shading_libs/fwa+26.2-1.2.34.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade Fancy Door Animations (26.1 mod \u2014 door class APIs unchanged in 26.2)\\n    from(zipTree(file(\"shading_libs/fancy-door-anim-1.4.0.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade Threads\\n\\n    // from(zipTree(file(\"shading_libs/Threads-1.2.1-26.1.1.jar\"))) {\\n    //     exclude \"META-INF/MANIFEST.MF\"\\n    //     exclude \"META-INF/*.SF\"\\n    //     exclude \"META-INF/*.DSA\"\\n    //     exclude \"META-INF/*.RSA\"\\n    //     exclude \"fabric.mod.json\"\\n    // }\\n    // Shade WaveyCapes\\n    from(zipTree(file(\"shading_libs/waveycapes-fabric-1.10.2-mc26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n\\n    // Shade AppleSkin (food saturation HUD)\\n    from(zipTree(file(\"shading_libs/appleskin-fabric-mc26.2-3.0.10.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade EnhancedTooltips (26.1.2 jar \u2014 no 26.2 version; our GuiMixin.java already targets Hud.class)\\n    // Our src/main/resources/enhancedtooltips.mixins.json overrides the one in the JAR via EXCLUDE strategy\\n    // from(zipTree(file(\"shading_libs/EnhancedTooltips-1.9.1+fabric.26.1.2.jar\"))) {\\n    //     exclude \"META-INF/MANIFEST.MF\"\\n    //     exclude \"META-INF/*.SF\"\\n    //     exclude \"META-INF/*.DSA\"\\n    //     exclude \"META-INF/*.RSA\"\\n    //     exclude \"fabric.mod.json\"\\n    // }\\n\\n\\n\\n    // Shade Entity View Distance\\n    from(zipTree(file(\"shading_libs/entity-view-distance-1.9.0+26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n\\n\\n    // Shade Not Enough Animations\\n    from(zipTree(file(\"shading_libs/notenoughanimations-fabric-1.12.4-mc26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade TRansition (Not Enough Animations dependency)\\n\\n    from(zipTree(file(\"shading_libs/TRansition-1.0.21-26.2-fabric-SNAPSHOT.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade TRender (Not Enough Animations dependency)\\n    from(zipTree(file(\"shading_libs/TRender-1.0.15-26.2-fabric-SNAPSHOT.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade Client Tweaks\\n    from(zipTree(file(\"shading_libs/clienttweaks-fabric-26.2-26.2.0.1.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade Cursors Extended\\n    from(zipTree(file(\"shading_libs/cursors_extended-fabric-4.1.7+26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade Resource Pack Options (respackopts)\\n    from(zipTree(file(\"shading_libs/respackopts-26.2.0.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade LambDynamicLights JIJ dependencies\\n    from(zipTree(file(\"shading_libs/jij/yumi-mc-foundation-1.1.1+26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"; exclude \"META-INF/*.SF\"; exclude \"META-INF/*.DSA\"; exclude \"META-INF/*.RSA\"; exclude \"fabric.mod.json\"\\n    }\\n    from(zipTree(file(\"shading_libs/jij/yumi-commons-core-2.0.0.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"; exclude \"META-INF/*.SF\"; exclude \"META-INF/*.DSA\"; exclude \"META-INF/*.RSA\"; exclude \"fabric.mod.json\"\\n    }\\n    from(zipTree(file(\"shading_libs/jij/yumi-commons-collections-2.0.0.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"; exclude \"META-INF/*.SF\"; exclude \"META-INF/*.DSA\"; exclude \"META-INF/*.RSA\"; exclude \"fabric.mod.json\"\\n    }\\n    from(zipTree(file(\"shading_libs/jij/yumi-commons-event-2.0.0.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"; exclude \"META-INF/*.SF\"; exclude \"META-INF/*.DSA\"; exclude \"META-INF/*.RSA\"; exclude \"fabric.mod.json\"\\n    }\\n    from(zipTree(file(\"shading_libs/jij/lambdynamiclights-api-4.12.2+26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"; exclude \"META-INF/*.SF\"; exclude \"META-INF/*.DSA\"; exclude \"META-INF/*.RSA\"; exclude \"fabric.mod.json\"\\n    }\\n    from(zipTree(file(\"shading_libs/jij/spruceui-11.0.0+26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"; exclude \"META-INF/*.SF\"; exclude \"META-INF/*.DSA\"; exclude \"META-INF/*.RSA\"; exclude \"fabric.mod.json\"\\n    }\\n    from(zipTree(file(\"shading_libs/jij/pridelib-1.7.0+26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"; exclude \"META-INF/*.SF\"; exclude \"META-INF/*.DSA\"; exclude \"META-INF/*.RSA\"; exclude \"fabric.mod.json\"\\n    }\\n    // Shade LambDynamicLights\\n    from(zipTree(file(\"shading_libs/lambdynamiclights-4.12.2+26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Shade Ixeris\\n    from(zipTree(file(\"shading_libs/Ixeris-4.5.0+26.2-fabric.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    // Better F1 disabled \u2014 no 26.2 version, KeyboardMixin targets renamed methods\\n    // from(zipTree(file(\"shading_libs/betterf1-fabric-26.1-1.1.jar\"))) {\\n    //     exclude \"META-INF/MANIFEST.MF\"\\n    //     exclude \"META-INF/*.SF\"\\n    //     exclude \"META-INF/*.DSA\"\\n    //     exclude \"META-INF/*.RSA\"\\n    //     exclude \"fabric.mod.json\"\\n    // }\\n\\n    // Shade Extreme Sound Muffler\\n    from(zipTree(file(\"shading_libs/ExtremeSoundMuffler-3.58.1_Fabric-26.2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n\\n    // Shade JIJ dependencies (respackopts dependencies)\\n    from(zipTree(file(\"shading_libs/jij/muscript-all-2.1.0.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    from(zipTree(file(\"shading_libs/jij/muscript-json-2.1.0.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    from(zipTree(file(\"shading_libs/jij/fiber-0.23.0-2.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n    from(zipTree(file(\"shading_libs/jij/shogi-api-26.2.0.1-SNAPSHOT.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n\\n    // Shade Just Enough Items (JEI)\\n    from(zipTree(file(\"shading_libs/jei-26.2-fabric-30.1.0.10.jar\"))) {\\n        exclude \"META-INF/MANIFEST.MF\"\\n        exclude \"META-INF/*.SF\"\\n        exclude \"META-INF/*.DSA\"\\n        exclude \"META-INF/*.RSA\"\\n        exclude \"fabric.mod.json\"\\n    }\\n\\n\\n}\\npublishing {\\n    publications { create(\"mavenJava\", MavenPublication) { from components.java } }\\n    repositories {}\\n}\\ntest {\\n    useJUnitPlatform()\\n    systemProperty \\'net.bytebuddy.experimental\\', \\'true\\'\\n}\\ntasks.register(\\'deploy\\', Copy) {\\n    dependsOn jar\\n    from jar.archiveFile\\n    into \"C:/The Lads Client/mods\"\\n}\\napply from: \\'dumpInv.gradle\\'  \\ntasks.register(\\'runReflect\\', JavaExec) {\\n    mainClass = \\'com.thelads.core.ReflectionTest\\'\\n    classpath = sourceSets.test.runtimeClasspath\\n}\\n\\ntask runPayloadTest(type: JavaExec) {\\n    classpath = sourceSets.main.runtimeClasspath\\n    mainClass = \\'com.thelads.core.client.PayloadTest\\'\\n}\\n\\n\\n' : Must not contain hardcoded mod path in build script\n"
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f11_b04_gradle_properties_defines_required_versions",
+      "description": "F11: gradle.properties specifies version properties.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f11_b05_subproject_artifact_classification",
+      "description": "F11: Subprojects configure distinct archiveClassifier for 1.21.1 and 26.2 artifacts.",
+      "status": "FAILED",
+      "duration_sec": 0.0,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\Lads Client\\tests\\test_tier2_boundary_corner.py\", line 585, in test_f11_b05_subproject_artifact_classification\n    self.assertTrue(v1_build.exists(), \"TheLadsCore/v1_21_1/build.gradle must exist\")\nAssertionError: False is not true : TheLadsCore/v1_21_1/build.gradle must exist\n"
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f12_b01_ladsgraphics_null_text_drawing_safety",
+      "description": "F12: LadsGraphics implementation guards against null string drawing.",
+      "status": "PASSED",
+      "duration_sec": 0.0011,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f12_b02_ladsgraphics_scissor_inverted_coordinates",
+      "description": "F12: Scissor method declaration accepts bounding box parameters.",
+      "status": "PASSED",
+      "duration_sec": 0.0006,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f12_b03_ladsgraphics_extreme_scale_factors",
+      "description": "F12: Scale transformation accepts float factors.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f12_b04_ladsgraphics_color_alpha_extremes",
+      "description": "F12: Fill method handles 32-bit ARGB hex color values.",
+      "status": "PASSED",
+      "duration_sec": 0.001,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f12_b05_ladsgraphics_pose_stack_overflow_prevention",
+      "description": "F12: Pose stack push and pop operations are declared as paired methods.",
+      "status": "PASSED",
+      "duration_sec": 0.0006,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f13_b01_title_screen_missing_options_widget_fallback",
+      "description": "F13: TitleScreenMixin provides a fallback Y coordinate if Options button is absent.",
+      "status": "PASSED",
+      "duration_sec": 0.0441,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f13_b02_title_screen_small_window_height_clamping",
+      "description": "F13: TitleScreen account card margin prevents clipping on small heights.",
+      "status": "PASSED",
+      "duration_sec": 0.04,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f13_b03_title_screen_repeated_resize_idempotence",
+      "description": "F13: TitleScreen button injection executes in init() callback.",
+      "status": "PASSED",
+      "duration_sec": 0.0341,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f13_b04_title_screen_button_dimensions_match_vanilla",
+      "description": "F13: 'Lads Settings' button uses standard 200px width and 20px height.",
+      "status": "PASSED",
+      "duration_sec": 0.0329,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f13_b05_title_screen_button_click_action_opens_settings",
+      "description": "F13: Button click action instantiates LadsSettingsScreen.",
+      "status": "PASSED",
+      "duration_sec": 0.0482,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f14_b01_empty_accounts_file_handled_gracefully",
+      "description": "F14: Empty accounts array [] is accepted without parsing error.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f14_b02_malformed_accounts_file_recovers_cleanly",
+      "description": "F14: Validator rejects non-array accounts root object.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f14_b03_skin_fetch_timeout_and_fallback_to_default",
+      "description": "F14: Skin fetch pipeline includes fallback texture identifiers.",
+      "status": "PASSED",
+      "duration_sec": 0.0716,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f14_b04_account_switcher_selection_state_toggle",
+      "description": "F14: Account switcher verifies single active account selection.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f14_b05_skin_png_damaged_image_fallback",
+      "description": "F14: Custom skin loading verifies file existence and format before loading.",
+      "status": "PASSED",
+      "duration_sec": 0.0709,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f15_b01_boot_log_multiple_resource_reloads_rejected",
+      "description": "F15: Boot log with 2+ Reloading ResourceManager entries fails validation.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f15_b02_boot_log_zero_resource_reloads_rejected",
+      "description": "F15: Boot log with 0 Reloading ResourceManager entries fails validation.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f15_b03_boot_log_mixin_apply_error_detected",
+      "description": "F15: Boot log containing MixinApplyError fails validation.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f15_b04_boot_log_truncated_file_handling",
+      "description": "F15: 0-byte or empty boot log fails validation cleanly.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier2_boundary_corner.TestTier2BoundaryCorner.test_f15_b05_boot_log_case_insensitive_timing_match",
+      "description": "F15: Boot log benchmark matcher handles various startup formats.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier3_cross_feature.TestTier3CrossFeature.test_t3_01_profile_switching_shared_keybinds_persistence",
+      "description": "T3.1: Verifies two-way sync protocol when switching between 1.21.1 and 26.2.",
+      "status": "PASSED",
+      "duration_sec": 0.0026,
+      "error": null
+    },
+    {
+      "test_id": "test_tier3_cross_feature.TestTier3CrossFeature.test_t3_02_dynamic_path_resolution_launcher_core_parity",
+      "description": "T3.2: PathService in TheLadsLauncher and ClientPaths in TheLadsCore",
+      "status": "PASSED",
+      "duration_sec": 0.0363,
+      "error": null
+    },
+    {
+      "test_id": "test_tier3_cross_feature.TestTier3CrossFeature.test_t3_03_profile_version_to_java_runtime_mapping",
+      "description": "T3.3: Profile version mapping dynamically determines required Java major version:",
+      "status": "PASSED",
+      "duration_sec": 0.0005,
+      "error": null
+    },
+    {
+      "test_id": "test_tier3_cross_feature.TestTier3CrossFeature.test_t3_04_profile_isolation_toggle_cross_sync_behavior",
+      "description": "T3.4: Toggling IsIsolated = True disables sync with shared directory,",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier3_cross_feature.TestTier3CrossFeature.test_t3_05_packwiz_metadata_integrity_and_repo_cleanliness",
+      "description": "T3.5: Packwiz metadata architecture strictly enforces that all mod descriptors",
+      "status": "PASSED",
+      "duration_sec": 0.0238,
+      "error": null
+    },
+    {
+      "test_id": "test_tier3_cross_feature.TestTier3CrossFeature.test_t3_06_account_switcher_data_flow_launcher_to_client",
+      "description": "T3.6: Accounts created and serialized by Launcher AuthService into lads_accounts.json",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier3_cross_feature.TestTier3CrossFeature.test_t3_07_ladsgraphics_bridge_and_hud_configuration_schema",
+      "description": "T3.7: HUD elements render through LadsGraphics coordinates, and configuration",
+      "status": "PASSED",
+      "duration_sec": 0.0011,
+      "error": null
+    },
+    {
+      "test_id": "test_tier3_cross_feature.TestTier3CrossFeature.test_t3_08_subproject_gradle_and_version_specific_mixins_alignment",
+      "description": "T3.8: Mixin JSON configurations align with subproject Minecraft targets:",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier3_cross_feature.TestTier3CrossFeature.test_t3_09_title_screen_layout_parity_across_gradle_submodules",
+      "description": "T3.9: Title screen button injection in both v1_21_1 and v26_2 locates Options",
+      "status": "PASSED",
+      "duration_sec": 0.0331,
+      "error": null
+    },
+    {
+      "test_id": "test_tier3_cross_feature.TestTier3CrossFeature.test_t3_10_strict_gitignore_and_multi_project_artifacts_protection",
+      "description": "T3.10: Strict gitignore configuration ensures that compiling both Gradle subprojects",
+      "status": "PASSED",
+      "duration_sec": 0.0983,
+      "error": null
+    },
+    {
+      "test_id": "test_tier4_real_world.TestTier4RealWorld.test_t4_01_pipeline_gatekeeper_verification_script_flow",
+      "description": "T4.1: Simulates the 4-gate verification pipeline (Requirement R4):",
+      "status": "PASSED",
+      "duration_sec": 0.0257,
+      "error": null
+    },
+    {
+      "test_id": "test_tier4_real_world.TestTier4RealWorld.test_t4_02_cold_start_onboarding_and_directory_provisioning",
+      "description": "T4.2: Simulates first-time user run when %APPDATA%/.theladsclient does not exist.",
+      "status": "PASSED",
+      "duration_sec": 0.001,
+      "error": null
+    },
+    {
+      "test_id": "test_tier4_real_world.TestTier4RealWorld.test_t4_03_full_multi_profile_lifecycle_and_keybind_propagation",
+      "description": "T4.3: Simulates full game launch, control customization, exit, and switch:",
+      "status": "PASSED",
+      "duration_sec": 0.0022,
+      "error": null
+    },
+    {
+      "test_id": "test_tier4_real_world.TestTier4RealWorld.test_t4_04_boot_log_verification_for_v1_21_1_and_v26_2",
+      "description": "T4.4: Validates real-world Minecraft boot logs for both versions.",
+      "status": "PASSED",
+      "duration_sec": 0.0,
+      "error": null
+    },
+    {
+      "test_id": "test_tier4_real_world.TestTier4RealWorld.test_t4_05_packwiz_remote_modpack_metadata_resolution",
+      "description": "T4.5: Validates Packwiz modpack metadata resolution:",
+      "status": "PASSED",
+      "duration_sec": 0.0021,
+      "error": null
+    },
+    {
+      "test_id": "test_tier4_real_world.TestTier4RealWorld.test_t4_06_account_and_skin_cache_lifecycle",
+      "description": "T4.6: Simulates user account and skin lifecycle:",
+      "status": "PASSED",
+      "duration_sec": 0.0016,
+      "error": null
+    }
+  ]
+}

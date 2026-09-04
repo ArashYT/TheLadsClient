@@ -9,6 +9,7 @@ using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using TheLadsLauncher.Services;
 
 namespace TheLadsLauncher.Views
 {
@@ -48,7 +49,7 @@ namespace TheLadsLauncher.Views
             {
                 SelectedAccountText.Text = username;
 
-                string localSkinPath = Path.Combine(@"C:\The Lads Client", "skin.png");
+                string localSkinPath = PathService.Instance.SkinFile;
                 if (File.Exists(localSkinPath))
                 {
                     using (var stream = File.OpenRead(localSkinPath))
@@ -78,7 +79,7 @@ namespace TheLadsLauncher.Views
         private void LoadPresetsList(string username)
         {
             PresetSelector.Items.Clear();
-            string presetDir = Path.Combine(@"C:\The Lads Client", "presets", username);
+            string presetDir = Path.Combine(PathService.Instance.PresetsDirectory, username);
             if (Directory.Exists(presetDir))
             {
                 var files = Directory.GetFiles(presetDir, "*.png");
@@ -97,7 +98,7 @@ namespace TheLadsLauncher.Views
             if (string.IsNullOrEmpty(username) || username == "No Account Selected") return;
 
             string name = "Preset_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string presetDir = Path.Combine(@"C:\The Lads Client", "presets", username);
+            string presetDir = Path.Combine(PathService.Instance.PresetsDirectory, username);
             Directory.CreateDirectory(presetDir);
             string dest = Path.Combine(presetDir, name + ".png");
 
@@ -113,8 +114,8 @@ namespace TheLadsLauncher.Views
             string? selected = PresetSelector.SelectedItem as string;
             if (string.IsNullOrEmpty(selected)) return;
 
-            string src = Path.Combine(@"C:\The Lads Client", "presets", username, selected + ".png");
-            string dest = Path.Combine(@"C:\The Lads Client", "skin.png");
+            string src = Path.Combine(PathService.Instance.PresetsDirectory, username, selected + ".png");
+            string dest = PathService.Instance.SkinFile;
             if (File.Exists(src))
             {
                 File.Copy(src, dest, true);
@@ -135,7 +136,7 @@ namespace TheLadsLauncher.Views
             string? selected = PresetSelector.SelectedItem as string;
             if (string.IsNullOrEmpty(selected)) return;
 
-            string path = Path.Combine(@"C:\The Lads Client", "presets", username, selected + ".png");
+            string path = Path.Combine(PathService.Instance.PresetsDirectory, username, selected + ".png");
             if (File.Exists(path))
             {
                 File.Delete(path);
@@ -158,7 +159,7 @@ namespace TheLadsLauncher.Views
             if (files != null && files.Count > 0)
             {
                 string src = files[0].Path.LocalPath;
-                string dest = Path.Combine(@"C:\The Lads Client", "skin.png");
+                string dest = PathService.Instance.SkinFile;
                 File.Copy(src, dest, true);
                 Log($"[Skin] Imported skin from local file.");
                 
@@ -221,8 +222,8 @@ namespace TheLadsLauncher.Views
             PixelEditorCanvas.PointerExited += (s, e) => _isDrawing = false;
 
             // Load skin.png if exists
-            LoadPixelsFromSkinFile(Path.Combine(@"C:\The Lads Client", "skin.png"));
-            LoadPixelsFromSkinFile(Path.Combine(@"C:\The Lads Client", "config", "cape.png"), true);
+            LoadPixelsFromSkinFile(PathService.Instance.SkinFile);
+            LoadPixelsFromSkinFile(PathService.Instance.CapeFile, true);
         }
 
         private void UpdateColorFromSliders()
@@ -438,14 +439,14 @@ namespace TheLadsLauncher.Views
             {
                 if (_selectedEditor == "Cape")
                 {
-                    string path = Path.Combine(@"C:\The Lads Client", "config", "cape.png");
+                    string path = PathService.Instance.CapeFile;
                     Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                     SaveSkinPng(path, true);
                     Log("[Cape] Saved custom cape to config.");
                 }
                 else
                 {
-                    string path = Path.Combine(@"C:\The Lads Client", "skin.png");
+                    string path = PathService.Instance.SkinFile;
                     SaveSkinPng(path, false);
                     Log("[Skin] Saved custom skin.");
                 }
@@ -454,14 +455,14 @@ namespace TheLadsLauncher.Views
 
             if (_selectedEditor == "Cape")
             {
-                string path = Path.Combine(@"C:\The Lads Client", "config", "cape.png");
+                string path = PathService.Instance.CapeFile;
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 SaveSkinPng(path, true);
                 Log($"[Cape] Saved custom cape for {username}.");
             }
             else
             {
-                string path = Path.Combine(@"C:\The Lads Client", "skin.png");
+                string path = PathService.Instance.SkinFile;
                 SaveSkinPng(path, false);
                 Log($"[Skin] Saved custom skin for {username}.");
                 _ = LoadPlayerSkin(username);
