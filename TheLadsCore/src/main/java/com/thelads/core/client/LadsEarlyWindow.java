@@ -47,6 +47,16 @@ public final class LadsEarlyWindow implements PreLaunchEntrypoint {
     @Override
     public void onPreLaunch() {
         if (FabricLoader.getInstance().getEnvironmentType() != EnvType.CLIENT) return;
+        try {
+            java.net.URL renderSystemUrl = LadsEarlyWindow.class.getClassLoader().getResource("com/mojang/blaze3d/systems/RenderSystem.class");
+            java.net.URL gpuDeviceUrl = LadsEarlyWindow.class.getClassLoader().getResource("com/mojang/blaze3d/systems/GpuDevice.class");
+            java.net.URL cursorTypesUrl = LadsEarlyWindow.class.getClassLoader().getResource("com/mojang/blaze3d/platform/cursor/CursorTypes.class");
+            LOGGER.info("[EarlyDebug] RenderSystem resource location: " + renderSystemUrl);
+            LOGGER.info("[EarlyDebug] GpuDevice resource location: " + gpuDeviceUrl);
+            LOGGER.info("[EarlyDebug] CursorTypes resource location: " + cursorTypesUrl);
+        } catch (Throwable t) {
+            LOGGER.error("[EarlyDebug] Failed to locate resources", t);
+        }
         if ("false".equalsIgnoreCase(System.getProperty("thelads.earlywindow"))) return;
         try {
             create();

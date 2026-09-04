@@ -214,18 +214,59 @@ public class LadsSettingsScreen extends Screen {
     private void renderHudPresetsTab(GuiGraphicsExtractor g, int mx, int my) {
         int cx = winX + 150;
         int cy = winY + 45;
+        
+        // --- Global Settings ---
+        g.text(this.font, "Global HUD Settings", cx, cy, TEXT, false);
+        cy += 20;
+        
+        int cardW = winW - 170;
+        int cardH = 34;
+        
+        // 1) Global Color
+        boolean hColor = mx >= cx && mx < cx + cardW && my >= cy && my < cy + cardH;
+        g.fill(cx, cy, cx + cardW, cy + cardH, hColor ? CARD_HOVER : CARD);
+        g.fill(cx, cy + 3, cx + 3, cy + cardH - 3, ACCENT);
+        g.text(this.font, "Global Text Color", cx + 15, cy + 12, TEXT, false);
+        
+        int globCol = com.thelads.core.config.HudSettings.getInstance().getGlobalColor();
+        g.fill(cx + cardW - 29, cy + 8, cx + cardW - 11, cy + 26, 0xFF000000);
+        g.fill(cx + cardW - 28, cy + 9, cx + cardW - 12, cy + 25, globCol | 0xFF000000);
+        cy += cardH + 10;
+        
+        // 2) Global Background
+        boolean hBg = mx >= cx && mx < cx + cardW && my >= cy && my < cy + cardH;
+        g.fill(cx, cy, cx + cardW, cy + cardH, hBg ? CARD_HOVER : CARD);
+        g.fill(cx, cy + 3, cx + 3, cy + cardH - 3, ACCENT);
+        g.text(this.font, "Global Background Color", cx + 15, cy + 12, TEXT, false);
+        
+        int globBg = com.thelads.core.config.HudSettings.getInstance().getGlobalBackground();
+        g.fill(cx + cardW - 29, cy + 8, cx + cardW - 11, cy + 26, 0xFF000000);
+        g.fill(cx + cardW - 28, cy + 9, cx + cardW - 12, cy + 25, globBg);
+        cy += cardH + 10;
+        
+        // 3) Text Shadow
+        boolean hShadow = mx >= cx && mx < cx + cardW && my >= cy && my < cy + cardH;
+        g.fill(cx, cy, cx + cardW, cy + cardH, hShadow ? CARD_HOVER : CARD);
+        g.fill(cx, cy + 3, cx + 3, cy + cardH - 3, ACCENT);
+        g.text(this.font, "Text Shadow", cx + 15, cy + 12, TEXT, false);
+        
+        boolean shadow = com.thelads.core.config.HudSettings.getInstance().isTextShadow();
+        drawToggle(g, cx + cardW - 55, cy + 9, shadow);
+        cy += cardH + 20;
+
+        // --- HUD Presets Management ---
         g.text(this.font, "HUD Presets Management", cx, cy, TEXT, false);
-        cy += 30;
+        cy += 20;
         boolean hoverSave = mx >= cx && mx < cx + 150 && my >= cy && my < cy + 25;
         g.fill(cx, cy, cx + 150, cy + 25, hoverSave ? CARD_HOVER : CARD);
         g.text(this.font, "Save Custom Preset", cx + 10, cy + 8, TEXT, false);
         boolean hoverServer = mx >= cx + 160 && mx < cx + 310 && my >= cy && my < cy + 25;
         g.fill(cx + 160, cy, cx + 310, cy + 25, hoverServer ? CARD_HOVER : CARD);
         g.text(this.font, "Save Per Server", cx + 170, cy + 8, TEXT, false);
-        cy += 40;
+        cy += 35;
         g.text(this.font, "Your Presets:", cx, cy, TEXT, false);
-        cy += 20;
-        g.fill(cx, cy, cx + 310, cy + 100, 0x44000000);
+        cy += 15;
+        g.fill(cx, cy, cx + 310, cy + 60, 0x44000000);
         g.text(this.font, "(No presets saved yet)", cx + 10, cy + 10, 0xFFAAAAAA, false);
     }
     
@@ -366,7 +407,42 @@ public class LadsSettingsScreen extends Screen {
             }
         } else if (currentTab.equals("HUD PRESETS")) {
             int cx = winX + 150;
-            int cy = winY + 75;
+            int cy = winY + 45;
+            
+            // Global Color
+            cy += 20;
+            int cardW = winW - 170;
+            int cardH = 34;
+            if (mx >= cx && mx < cx + cardW && my >= cy && my < cy + cardH) {
+                this.minecraft.setScreenAndShow(new ColorPickerScreen(this, com.thelads.core.config.HudSettings.getInstance().getGlobalColor(), false, false, (useG, color) -> {
+                    com.thelads.core.config.HudSettings.getInstance().setGlobalColor(color);
+                    com.thelads.core.config.ConfigManager.save();
+                }));
+                return true;
+            }
+            cy += cardH + 10;
+            
+            // Global Background
+            if (mx >= cx && mx < cx + cardW && my >= cy && my < cy + cardH) {
+                this.minecraft.setScreenAndShow(new ColorPickerScreen(this, com.thelads.core.config.HudSettings.getInstance().getGlobalBackground(), false, false, (useG, color) -> {
+                    com.thelads.core.config.HudSettings.getInstance().setGlobalBackground(color);
+                    com.thelads.core.config.ConfigManager.save();
+                }));
+                return true;
+            }
+            cy += cardH + 10;
+            
+            // Text Shadow
+            if (mx >= cx && mx < cx + cardW && my >= cy && my < cy + cardH) {
+                com.thelads.core.config.HudSettings hs = com.thelads.core.config.HudSettings.getInstance();
+                hs.setTextShadow(!hs.isTextShadow());
+                com.thelads.core.config.ConfigManager.save();
+                return true;
+            }
+            cy += cardH + 20;
+            
+            // HUD Presets Management
+            cy += 20;
             if (mx >= cx && mx < cx + 150 && my >= cy && my < cy + 25) {
                 com.thelads.core.config.ConfigManager.save();
                 return true;

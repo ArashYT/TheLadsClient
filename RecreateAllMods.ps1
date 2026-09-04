@@ -1,7 +1,7 @@
 # Autonomous batch: local AI recreates every remaining mod, back-to-back, unattended.
 # Each mod is isolated: AI writes files -> compile -> keep if it builds, discard if not.
 $ErrorActionPreference = 'Continue'
-$root = 'C:\Users\Arash\Desktop\Lads Client'
+$root = 'C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client'
 $modsRoot = 'C:\Users\Arash\Desktop\Mods To Recreate In Lads'
 $env:OLLAMA_API_BASE = 'http://127.0.0.1:11434'
 # Force UTF-8 so aider's progress-bar chars don't crash with UnicodeEncodeError when redirected

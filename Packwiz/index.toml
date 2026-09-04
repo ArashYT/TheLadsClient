@@ -1,116 +1,58 @@
 hash-format = "sha256"
 
 [[files]]
-file = "config/fancymenu/assets/intros/mojang-intro.gif"
-hash = "0761c07cdb9f8cafd338cbbf1b4078b198ce9cfb33040b43822c85b8a517e5f4"
-
-[[files]]
-file = "config/fancymenu/assets/mojang_studios_loading_60fps.mp4"
-hash = "d8c2a054f366dad54b3ae9e2a640025d4b477f79bbd243a8a26faedde855878f"
-
-[[files]]
-file = "config/fancymenu/assets/rainbow.gif"
-hash = "c242188f04e671da658bfb6f40aa6db8f8a54320b924e1e532d6889609c2a3c0"
-
-[[files]]
-file = "config/fancymenu/assets/rgb.gif"
-hash = "9b32f73ebcfd1daafe45c5e5c963f5a9fda136b4338d758192e3eeeaea9a8060"
-
-[[files]]
-file = "config/fancymenu/assets/rickroll.mp4"
-hash = "4b0851062cca17ce34f57a77832ee97b92fb90eb0fc7337d18cd760346bbb4d2"
-
-[[files]]
-file = "config/fancymenu/assets/smooth-loading-unscreen.gif"
-hash = "6385ae44a24353be363b33ff1c534744af03818539df17ba330e3f16df303622"
-
-[[files]]
-file = "config/fancymenu/assets/smooth_loading.mp4"
-hash = "0cfdd6f9b14accdb69c301c074a463fe8ad487f05806eb6799dfaa8ab5365191"
-
-[[files]]
-file = "config/fancymenu/assets/source.gif"
-hash = "37030071fa54d132b3fef9dcabaf3110970ed081165c32579dc5604f3fafb8ba"
-
-[[files]]
-file = "config/fancymenu/assets/throbber_12.gif"
-hash = "4959158798bd4b5b016b36a225431c503a485140bab233c4011ec7b4203cae96"
-
-[[files]]
-file = "config/fancymenu/assets/windows_loading_screen.gif"
-hash = "274fcad499652b0d5c9a2a3da0eba8703d1245de06dc20925e5ebb11b6a9af2c"
-
-[[files]]
-file = "config/fancymenu/intros/mojang-intro.gif"
-hash = "0761c07cdb9f8cafd338cbbf1b4078b198ce9cfb33040b43822c85b8a517e5f4"
-
-[[files]]
 file = "migrate_26.2.py"
 hash = "c648429280d81b2135f76e1d5db413176b745c48a163b562cc59c4c2d10033b2"
 
 [[files]]
-file = "mods/BadOptimizations-2.4.1-26.2-fabric.jar"
-hash = "a272e3cba84cd31c1322e123e3cda08df66f1dcd70fe9b151fd867de9a58310d"
+file = "mods/badoptimizations.pw.toml"
+hash = "3635aff985b59e95eabf5ca9be77d20d25c9d4e2b20f97df42639ea794eda1f3"
+metafile = true
 
 [[files]]
-file = "mods/Clumps-fabric-26.2-26.2.1.jar"
-hash = "dc9544190abfb65a3c9ddc5dad1523c9dfc5a732344f528d908b950894398e8c"
+file = "mods/balm.pw.toml"
+hash = "b8a4a910dfc69ce756bafc2e149850f14b2216963370f903cfe0da9f6e93f097"
+metafile = true
 
 [[files]]
-file = "mods/Controlling-fabric-26.2-26.2.2.jar"
-hash = "ca77e5ccdd9cc9bae8cf0225490a4f7537fd4a4855bd7a2bd97f8661a3c69290"
+file = "mods/cloth-config.pw.toml"
+hash = "7fa9592b9948b8809018a4e7c3ca7da4d19fc5ef8c03021414cb22ae0253f083"
+metafile = true
 
 [[files]]
-file = "mods/Ksyxis-1.4.3.jar"
-hash = "23c8c5993004f0584eb27b19b4397b7aa8833f41b8f2d1ea201ee54a60f964b9"
+file = "mods/clumps.pw.toml"
+hash = "3e4d788583a36e9d145407fadce148f037e5229bff430f7dcd281d4d426c9ee6"
+metafile = true
 
 [[files]]
-file = "mods/Resourcify (26.2-fabric)-1.8.4.jar"
-hash = "8cc7de0ceb84bc09777df3cb89f20f111bf8a45f4320c84d6d036c145f6eb8c7"
+file = "mods/collective.pw.toml"
+hash = "8b3bbd261c8e3692775873b9c470cb6f7c9a21d96a3eac7a3e7ff7bc8b39ba32"
+metafile = true
 
 [[files]]
-file = "mods/Searchables-fabric-26.2-1.0.1.jar"
-hash = "8fd20cce10353108d0d9d512df0736d8802c1abb79c74e750d013dfa3a6760ea"
+file = "mods/continuity.pw.toml"
+hash = "57ec34a7f37b99e4638f5214d1de0bef916e981743d3648c57cad1e8e399982b"
+metafile = true
 
 [[files]]
-file = "mods/Stfu-2.9.1-26.2.jar"
-hash = "abb41541b68925fc053021628eaed67adda179d6cf2b519d2a1bb8122986f293"
+file = "mods/controlling.pw.toml"
+hash = "2effcd5897e9e3708e4a0c79db418fba3cae0e19f602c5a2da9c7e3882d20dae"
+metafile = true
 
 [[files]]
-file = "mods/TheLadsCore-1.41.18.jar"
-hash = "9af443c1e773c2253e00af2f33e41f5ba8f1c5c02cf9eab123f69877ca2cf603"
+file = "mods/crosshairtweaks.pw.toml"
+hash = "a2cfc2751cc30f0db2ae2964b68773ac5474007c8c2d8dd3582188fa54b441b6"
+metafile = true
 
 [[files]]
-file = "mods/ViaFabricPlus-4.6.0.jar"
-hash = "0cf85ed0163fff4b51fc741168340d4a8eef0c0f4463e8766cfd0d16070815f5"
+file = "mods/emoji-type.pw.toml"
+hash = "e3ace8d9a848a8c3ec480ea07a9b7d5d60b3452d0f616103d8f3ead843c5f7cf"
+metafile = true
 
 [[files]]
-file = "mods/XaeroPlus-2.32.4+fabric-26.2-WM1.41.3-MM26.1.3.jar"
-hash = "2dab14872a36090d85c6c1e5d78eca38db08d7095296a62065f066a0a2c3f00c"
-
-[[files]]
-file = "mods/balm-fabric-26.2-26.2.0.1.jar"
-hash = "4e57e4f2a1931d902b72060486f7b23eb9d69d8003efb7a333f3323f1f9f7378"
-
-[[files]]
-file = "mods/cloth-config-26.2.155.jar"
-hash = "122846abbcfb64777827986e2b23a28910b1a9c4d090769fdc56ecc1143076e4"
-
-[[files]]
-file = "mods/continuity-3.0.1+26.2.jar"
-hash = "2094a52b98e247f664ef2ecdbb41d7dcad7779cc7a8fb87f0ed8a4f8196c0446"
-
-[[files]]
-file = "mods/crosshairtweaks-1.5.3+26.2-fabric.jar"
-hash = "fd3fd9b45b393d5e26d85504e160778011fab8bcc4ba685bb8af2af51f0ee7d5"
-
-[[files]]
-file = "mods/emoji-type-3.1.0-26.2-fabric.jar"
-hash = "531a722a6a259301eee465b59a37738e45d57af693818169bedc37b8265ee666"
-
-[[files]]
-file = "mods/entity_model_features-3.2.6-26.2-fabric.jar"
-hash = "2b53e7e634a8cd29fd86e01e61db22bb1641c3c75a004d99c5431ef5f469d048"
+file = "mods/entity-model-features.pw.toml"
+hash = "44ee083173741300ced9075e99b4aebec1c2ab230e69500f34844b5e41b7aa27"
+metafile = true
 
 [[files]]
 file = "mods/entitytexturefeatures.pw.toml"
@@ -118,21 +60,19 @@ hash = "4c67dcaac16f11a5d90dfeb2d1e6bfaabca6ff5b912c566970330c005797e2ea"
 metafile = true
 
 [[files]]
-file = "mods/fabric-api-0.153.0+26.2.jar"
-hash = "2778426182035cc9923804b24a44a4a1fba9a2c01775fe0e187ecdc92a170b40"
-
-[[files]]
 file = "mods/fabric-api.pw.toml"
 hash = "fdc6309bf3420b7e358737b05877335191021e8a2376def243deb0e521797166"
 metafile = true
 
 [[files]]
-file = "mods/fabric-language-kotlin-1.13.12+kotlin.2.4.0.jar"
-hash = "36c5dd8b728e3470d2882ae63119b93a20500fc0ea6f5c945c12bf65b5ab1832"
+file = "mods/fabric-language-kotlin.pw.toml"
+hash = "2a760e528bf27c3eb4ae7c06200d91ee9c2849295addaa2add05495c7dee9528"
+metafile = true
 
 [[files]]
-file = "mods/ferritecore-9.0.0-fabric.jar"
-hash = "213966c72ed967acc7392beb28a866fba301ff56b9976c2e7801c2db7de6bf22"
+file = "mods/ferrite-core.pw.toml"
+hash = "069d81cab53c0141459ad4d70bcf3e10f17652f24cc62d3b4a0fc2cd2b700871"
+metafile = true
 
 [[files]]
 file = "mods/flashback.pw.toml"
@@ -140,48 +80,79 @@ hash = "ad90386de31079f24f0969ec7bf8384b05edab7b6df96d1c260254f42eefe073"
 metafile = true
 
 [[files]]
-file = "mods/fzzy_config-0.7.6+26.2.jar"
-hash = "bbd4bbab6f381e123db5031ed051a9ad2d1a5ad4fb6ccf64d983ba416745e551"
+file = "mods/fzzy-config.pw.toml"
+hash = "289599ac70b0f0a9a0055f1bd10fb7e2c38c540c3ef49db8779c5c3988a7455c"
+metafile = true
 
 [[files]]
-file = "mods/iris-fabric-1.11.1+mc26.2.jar"
-hash = "8be85ec5881d0c1b829964c9f737ab1cbd207470c7559f6f4d4a65897ff34821"
+file = "mods/iris.pw.toml"
+hash = "7262c5dea44f3ef66051c5300f498d03ad64f97cc5c920dd04ec8f0ba607bb92"
+metafile = true
 
 [[files]]
-file = "mods/lambdynamiclights-4.12.2+26.2.jar"
-hash = "775bf516e5aa22ace9a7e842c3098f4d0305752132760dd511daff956a2ad4da"
+file = "mods/ksyxis.pw.toml"
+hash = "24108936876681291323c2ba37f0a8da6ae4a779411e360d480f21ab145c396b"
+metafile = true
 
 [[files]]
-file = "mods/language-reload-1.7.7+26.2.jar"
-hash = "404c41b2e071daff2385983b81f90945bd1d285d6d4f16a0a0982cf1ad569ac1"
+file = "mods/lambdynamiclights.pw.toml"
+hash = "a5a49f16c46123806cd53726bf7f99e0a1b250293a4492f695944afc8bd32fb2"
+metafile = true
 
 [[files]]
-file = "mods/libjf-26.2.0.jar"
-hash = "38bad93a4825497df1826edfdce04cc63b2872b26f0fc6491cdc448f50915480"
+file = "mods/language-reload.pw.toml"
+hash = "807a319ce0e802960796fc6a609e7d96a8566f161ddc60424ebc1d4fae2da80a"
+metafile = true
 
 [[files]]
-file = "mods/lithium-fabric-0.25.1+mc26.2.jar"
-hash = "1d78e591cc7fe361561ca5863014407dfea7d4dcd419aeeb7d29e2561e556717"
+file = "mods/libjf.pw.toml"
+hash = "ee8a76a95aa9202ec212666985d83683d42dbff03f6e376029d33ed7648e59af"
+metafile = true
 
 [[files]]
-file = "mods/modlistmemory-fabric-1.3.0-beta.1+26.2-pre-2.jar"
-hash = "c37894c5dbc1225ef845ac31e3b64609d049573fc9f548fb07ce17486e1a0ed9"
+file = "mods/lithium.pw.toml"
+hash = "a5ee497ec151dd6e6b946091e12e2c56362e5c772c4b8ea175b2e81277cc708d"
+metafile = true
 
 [[files]]
-file = "mods/modmenu-20.0.0-beta.4.jar"
-hash = "8e370529288f3d744051604347f32d00c8ea95f2a9efe453c29fe2c4de4bd45b"
+file = "mods/modlistmemory.pw.toml"
+hash = "03270920ff58c4dd369c2ca24aaf8f877ff841791599556f1c6c085a8483b7a4"
+metafile = true
 
 [[files]]
-file = "mods/placeholder-api-3.1.0-beta.1+26.2.jar"
-hash = "c2ca2b5c397a0c198a32e7af68d2d0a011bc2c7baeae5cffd3996efd65c5069e"
+file = "mods/modmenu.pw.toml"
+hash = "9ceb72b7c586df8828ee5e9eaf096c913f8debe92805cd5ce6c4ea8922e5fe1d"
+metafile = true
 
 [[files]]
-file = "mods/polymer-qol-1.0.2+26.2.jar"
-hash = "12439f538c54ebf31b2f434e87c07b41876ee1b262b3dad4bc1bffe9c55e9095"
+file = "mods/placeholder-api.pw.toml"
+hash = "b234ade7fd54bb9d99c27769cd1635b18835752676d0cdd0a29af2b4146251a8"
+metafile = true
 
 [[files]]
-file = "mods/reeses-sodium-options-fabric-2.2.0+mc26.2.jar"
-hash = "ed99ee73feb0316f010dc66470aaa12c99e6a636409f2e6cac821ed5acc7dcf2"
+file = "mods/polymer-qol.pw.toml"
+hash = "2410e26551c79458f725c433a907de893d89f62c59ab13ea2aa10e30ac6354ad"
+metafile = true
+
+[[files]]
+file = "mods/reeses-sodium-options.pw.toml"
+hash = "a4c435e9a1f73fc2bc34b144e582c2e019d0a3eec99925ddd2aaae727370ea76"
+metafile = true
+
+[[files]]
+file = "mods/resourcify.pw.toml"
+hash = "b5b8c2fee800c5c02f5113dce6b983309edde643006383cd2c783a7a19d8ca16"
+metafile = true
+
+[[files]]
+file = "mods/searchables.pw.toml"
+hash = "18d343982316153f5b40b9d2e0e6ac3884b873774eec756ff67e891a4d3c22b9"
+metafile = true
+
+[[files]]
+file = "mods/shuttfup.pw.toml"
+hash = "1d9a6d389d1c1b1c70d676c261d0f5adc4e8ccfc503fee1db790d19bb797451f"
+metafile = true
 
 [[files]]
 file = "mods/simple-voice-chat.pw.toml"
@@ -189,8 +160,9 @@ hash = "e8e263c9e5b45ef826911470c4b07405012d8f43f77214f59e56690f7731e299"
 metafile = true
 
 [[files]]
-file = "mods/sodium-extra-fabric-0.8.9+mc26.2.jar"
-hash = "1884a81008978de476e6468cb282db2edbea091fd4d2d9e1e2cbab53001b974d"
+file = "mods/sodium-extra.pw.toml"
+hash = "23bd2f19c11a1b0b2870dafd6d5321af3549b22e84149bfd6ff3ff49af388788"
+metafile = true
 
 [[files]]
 file = "mods/sodium.pw.toml"
@@ -198,20 +170,34 @@ hash = "61b0b90fdcece885bca2ca639e5ddf696b374d51a93e3ee3deb8ecd07d57b9b0"
 metafile = true
 
 [[files]]
-file = "mods/sound-physics-remastered-fabric-1.5.1+26.2.jar"
-hash = "5bf577901123044337070fee36c1731c86e2fc12923bbb6a1c4b49c3423adcd9"
+file = "mods/sound-controller.pw.toml"
+hash = "4626c96f07cdbe25363ed80f93cd21ba808f2704f304ae33365c5a3d6f7b5dbc"
+metafile = true
 
 [[files]]
-file = "mods/soundcontroller-fabric-1.3.0-mc26.2.jar"
-hash = "dd93c37ec65c50246f3613c72f8e99f3bbd02179124672812d655ce24ee6100d"
+file = "mods/sound-physics-remastered.pw.toml"
+hash = "cfd82363b33192a90d7f0e63dc6149f9b37507d8ee428fc1cfdea48063a91720"
+metafile = true
 
 [[files]]
-file = "mods/tcdcommons-5.4.0+fn-26.2.jar"
-hash = "e96fc1f5b06875d7f7b46450e6a2b982fdbd25f5bae85c5e22918fd08e7a99ef"
+file = "mods/tcdcommons.pw.toml"
+hash = "8759afe2cad50f4ceb1f10c426c0c1a8e88e9b58333d1e98f9e9940a72955cfe"
+metafile = true
 
 [[files]]
-file = "mods/vcinteraction-fabric-1.0.8+26.2.jar"
-hash = "ca24d70a7700a59007b408da5e8a1be8a9bc81a15d09b7a947b82f2bc7b768e2"
+file = "mods/viafabricplus.pw.toml"
+hash = "835c819f6b63091cec300805cc412dfd7e5f158c73d23e6481f4a5e56d3d9147"
+metafile = true
+
+[[files]]
+file = "mods/voice-chat-interaction.pw.toml"
+hash = "48852d22be511ec9edf7073b0a04a23c0c20e0466c95191ab779e1ada8558fc2"
+metafile = true
+
+[[files]]
+file = "mods/xaeroplus.pw.toml"
+hash = "505eb8ce97020a202afc6993bda9d10c4c90138abcf12c3f64f191e64f51a0ec"
+metafile = true
 
 [[files]]
 file = "mods/xaeros-minimap.pw.toml"
@@ -224,121 +210,141 @@ hash = "c000ae74180c5e32a2fba125e3ebb8d8381049064956988849222163071e1d4a"
 metafile = true
 
 [[files]]
-file = "mods/yet_another_config_lib_v3-3.9.5+26.2-fabric.jar"
-hash = "0aaedb63e398ab2e8d1b61439dac0ed6edf913fd10fc47a6cd56f01811db7283"
+file = "mods/yacl.pw.toml"
+hash = "b08ea22923b8ccf2fbeb020cb532487be60c2dd75dd8e1c04e14deb66c118bba"
+metafile = true
 
 [[files]]
-file = "packwiz-installer.jar"
-hash = "c9f646908d340d84773948a9a7d98bc1dae250d35e1016dc6e2b8459760b5598"
+file = "resourcepacks/3d-fishing-hook-bobber-3.0-fancy-with-line.pw.toml"
+hash = "0105b74543a57028ff9d781d40391c3641ed44adc8951986a52f4b06f2569622"
+metafile = true
 
 [[files]]
-file = "resourcepacks/3D-fishing-hook-bobber-3.0-fancy-with-line.zip"
-hash = "acb4614558be0c99ee06afbfc425635f4bffae84f90a7df2d67f45f7468a3ead"
+file = "resourcepacks/achests-8-areimagined-0_-8-v1.8.2-0.pw.toml"
+hash = "a69b9113d9b2d6542a11eb7c3385f0061622f7e005d0a4876e5e7f59abd43579"
+metafile = true
 
 [[files]]
-file = "resourcepacks/AndrosDiscordEmojis.zip"
-hash = "88efd24105cfae6d855e28fcd7799ee14d7b549c12cf456f56ced01a93d71e49"
+file = "resourcepacks/androsdiscordemojis.pw.toml"
+hash = "4b1638c008a80ba8b421a92e2695de04bf9b7403d2e93c3946a77e1c13354179"
+metafile = true
 
 [[files]]
-file = "resourcepacks/Better Fire (26.1).zip"
-hash = "a04b229c19dfdd71e31f2c9d4e6a8bd972ce91ecc0cd42cadaa8264fac1b0113"
+file = "resourcepacks/b-3-lclear-weather-8-o-8v1.0.1.pw.toml"
+hash = "cdfd82d73b564d2ee821d92ec1de821d32221b81ce7f7aca2d2481ea66dacc7a"
+metafile = true
 
 [[files]]
-file = "resourcepacks/BunnyGirlSenpaiGUIPack-[1.21.11].zip"
-hash = "9e242c784823ff26df1d30d0d703691b91f21d7809f1d235149b6489ea2e8256"
+file = "resourcepacks/better-fire-26.1.pw.toml"
+hash = "b1d788ae44f1bd5b5d4752a02128cd5f551b6780a2e97ff1ab6d17de8533d6a9"
+metafile = true
 
 [[files]]
-file = "resourcepacks/CLEAN WATER.zip"
-hash = "a63911d80196a34be7b13eaacc40aec74fadca2d1cb01c1f1052be5f03fd1577"
+file = "resourcepacks/bunnygirlsenpaiguipack-1.21.11.pw.toml"
+hash = "15e2cc4800e91c2c79ec487e355596707d4c73fc2ba10a52d438bf9388e8b8d0"
+metafile = true
 
 [[files]]
-file = "resourcepacks/Chat+ v.1.3.zip"
-hash = "e02e51196429d91ca24e881e23cac6df07b6448bc69001f6265e18cf4ba35a2c"
+file = "resourcepacks/chat-v.1.3.pw.toml"
+hash = "508bc61f75e881f8699bd808abae6eaab82e20ddb0761e8ac82b3a4424bc8310"
+metafile = true
 
 [[files]]
-file = "resourcepacks/Crimson Forest.zip"
-hash = "dd6e3c09daa64d19b49c6fac29258cb47fcd02a11668ca693a7914901fce308c"
+file = "resourcepacks/clean-water.pw.toml"
+hash = "adb0cd1ac312348e0002b3cbd5e13b6848771a5b0fb07500542c14777361f632"
+metafile = true
 
 [[files]]
-file = "resourcepacks/FlowFont_69.0-88.0_1.3.zip"
-hash = "51707f4735fef1ee34a81f6363285836ad1e8790b19154425581f864231cd58d"
+file = "resourcepacks/crimson-forest.pw.toml"
+hash = "d90bd0eee78900ecd1ad4d09c7de0de387b70e98414f41687a653c67335b0c1b"
+metafile = true
 
 [[files]]
-file = "resourcepacks/HD SHIELD.zip"
-hash = "b86c0baedfa30476a5ae687aa1de8164bfd90bfc205dcd4ce4ce2427209eb0d3"
+file = "resourcepacks/dchicknturtlebettershield-v1.2.pw.toml"
+hash = "bdfc53d0aedb84490bdb53ffa958c13123cb387448da2b15a6eb1b8eeceef5e1"
+metafile = true
 
 [[files]]
-file = "resourcepacks/Icons v.1.13.4.zip"
-hash = "79e4c2221b85716086dac99fa9f87c0f88a5c325d870caca9e7b3ac4a4bf01c5"
+file = "resourcepacks/flowfont_69.0-88.0_1.3.pw.toml"
+hash = "1c33b9f0a2cd9c1e5e5cc99826b598465b3d978f0c7297a4c1a825a81b318c43"
+metafile = true
 
 [[files]]
-file = "resourcepacks/PvP-CrossHair 26.1.2.zip"
-hash = "e195bce46d16b61dd51607f3475ee447239fe2383751345b5d404235e26f8a5a"
+file = "resourcepacks/hd-shield.pw.toml"
+hash = "e6f0d46f18b8655e36d89ebacf27716ed7e6b063f89e3d7b9e7521ac3980d3d5"
+metafile = true
 
 [[files]]
-file = "resourcepacks/Realistic Sky.zip"
-hash = "c07b423fa9cca4a56785d627bcf1c52690a62e6e7bd91dade04ba87d16eecf30"
+file = "resourcepacks/icons-v.1.13.4.pw.toml"
+hash = "dfc93b25e708176d61197af61648772a9cbd8b107e4444695cf575f25b7ed9a1"
+metafile = true
 
 [[files]]
-file = "resourcepacks/SmoothFont_1.21.zip"
-hash = "f55bc6ffda76744c2afad7049b3c733fab22b12ff5a51c1d444211e93b4931da"
+file = "resourcepacks/pvp-crosshair-26.1.2.pw.toml"
+hash = "b7e42ff3e60bc6829ee68a249dc0928613f1eb86612be52444850194207775a2"
+metafile = true
 
 [[files]]
-file = "resourcepacks/The Lads Network - 3D-v1.0.zip"
-hash = "a34be8aad3ba7809a6df4a3d5d2f0a7531140151862541f39180029b6d26bb49"
+file = "resourcepacks/realistic-sky.pw.toml"
+hash = "8447ca3abdb05a93d9cd2d9ec6646584d9e8950fcc93926ab62b2bdb7fb168e8"
+metafile = true
 
 [[files]]
-file = "resourcepacks/The Lads Network - Blocks v1.0.zip"
-hash = "e70646a197ee17350f788c532eb1bbe086fc004316dac966ea5e54bc2a9434d2"
+file = "resourcepacks/smoothfont_1.21.pw.toml"
+hash = "1728fac09801e9688fee570ce2664caf10b9811c35059bbf55a2b6777c98e35a"
+metafile = true
 
 [[files]]
-file = "resourcepacks/The Lads Network - Items v1.0.zip"
-hash = "ba088e8d0ba6cd17eb40669c6ade08005dbccbc710080c5727ff64affb099eec"
+file = "resourcepacks/the-lads-network-3d-v1.0.pw.toml"
+hash = "237093f46a1d97c61f5cc2c1fc42390895745b6ea79563d9e27637bc66e83ea3"
+metafile = true
 
 [[files]]
-file = "resourcepacks/The Lads Network - Misc v10.zip"
-hash = "55a80d7cb3b350906a462bb2435b1536482471bb089c81bdad5b1c78e9ea5836"
+file = "resourcepacks/the-lads-network-blocks-v1.0.pw.toml"
+hash = "189da67cb14e44c63c58c16a9afc701ffaf76ee6ce1828c294b73fc2ec372234"
+metafile = true
 
 [[files]]
-file = "resourcepacks/The Lads Network - UI & Sounds v1.0.zip"
-hash = "60858661cca7311bc3aa54e3ecb093150fc6909a7a6d01deeadce9633fc007e5"
+file = "resourcepacks/the-lads-network-items-v1.0.pw.toml"
+hash = "a7ca5dcd80405b95806b4bc9d68724251bacfa8e0aa021a97065e5895d515e89"
+metafile = true
 
 [[files]]
-file = "resourcepacks/The Lads Network UI & Sounds-v1.0.zip"
-hash = "1adac2a221e9bfb18abb74885328b2007215f79a6381892e6ee35e509b9622ff"
+file = "resourcepacks/the-lads-network-misc-v10.pw.toml"
+hash = "f8c2c64e46e7d8f485dcc879d629deb91e72e04e85f66d797df25aed223c5ba6"
+metafile = true
 
 [[files]]
-file = "resourcepacks/The-Lads-UI-&-Sounds-v1.0.zip"
-hash = "677bbed7405a3a0f8acdc82404d7a4a06871af5bbbc6f3f3a6206ca5601d8f21"
+file = "resourcepacks/the-lads-network-ui-sounds-v1.0.pw.toml"
+hash = "9ee65373e3f7d5e1092cd218d332488476857ccba3b3517fe869fd1c60e28ee8"
+metafile = true
 
 [[files]]
-file = "resourcepacks/UD Refined - Lite - 1.20.2-26.x.zip"
-hash = "377e6622591c44a209bc1a4568b55505e65a1dcc70290594446cca25fc2524c4"
+file = "resourcepacks/the-lads-ui-sounds-v1.0.pw.toml"
+hash = "e69f489c0e1fab5e524c597944d099e349bb13a2bc6ed5060ac54336dcca95d7"
+metafile = true
 
 [[files]]
-file = "resourcepacks/Undopia_Different_Axolotl_Buckets_1.21.11_v.1.0.zip"
-hash = "440161e2ea93022925c4bb7b456e28d28ce898de591d46d4dbf9ecef86b65a12"
+file = "resourcepacks/twemoji.pw.toml"
+hash = "5e2dcb9a125286818fc8b1049f50a77f19106d66267806cf9786c4df8a344448"
+metafile = true
 
 [[files]]
-file = "resourcepacks/Unique Dark - Lite - 1.20.2-26.x.zip"
-hash = "1ef180de9d8cd111af1ec2fe5a073423b7dcd217b942baf6c37813b52eeb30f9"
+file = "resourcepacks/ud-refined-lite-1.20.2-26.x.pw.toml"
+hash = "46119e579006e1578207f2c85e3dd87196130955861504e926dfe5b7c9501f2c"
+metafile = true
 
 [[files]]
-file = "resourcepacks/Vanilla Heart Health Bar HUD Hotbar.zip"
-hash = "9d99a53b5a42d92c014282b5f79694a46583430776a530b982df832a7c15ef7a"
+file = "resourcepacks/undopia_different_axolotl_buckets_1.21.11_v.1.0.pw.toml"
+hash = "88b9671d2f9f788da542808e71e8e90eb71d79f8ba91fa569926de6f9cb37fb3"
+metafile = true
 
 [[files]]
-file = "resourcepacks/twemoji.zip"
-hash = "e3dd4602a95caffc31ff6228e906ae99ee747cd6ab0fc6fa73111eda6e8c1b60"
+file = "resourcepacks/unique-dark-lite-1.20.2-26.x.pw.toml"
+hash = "2c966316355fcdbea52e19e717c6b0e4ed4d9671e4714abc1b1f2f9ffa17abd0"
+metafile = true
 
 [[files]]
-file = "resourcepacks/§aChests§8-§aReimagined§0_§8[v1.8.2]§0.zip"
-hash = "9801a6c3693fce130339dd2b8d26a4bcd7ee4897c5a32d36e29edd4ee7bf921c"
-
-[[files]]
-file = "resourcepacks/§b☁ §3§lClear Weather§8§o §8v1.0.1.zip"
-hash = "03f99a0e452b5fde5313b4a8cc84d03031e92e47e6b573be3cb910f07560cd49"
-
-[[files]]
-file = "resourcepacks/§dChicknTurtleBetterShield-v1.2.zip"
-hash = "51440baba76855a9479bb6f2f8fd3e8ab539d014b577405938211d137f5f0e30"
+file = "resourcepacks/vanilla-heart-health-bar-hud-hotbar.pw.toml"
+hash = "78711534eb084dc8081eaee89d7a00e56250c72129f966baf54c2d5c549f2733"
+metafile = true

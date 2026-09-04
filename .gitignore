@@ -1,21 +1,34 @@
-# AI / Agent caches
-.aider*
-.agents/
-.gemini/
-ai.py
-gui.txt
-displayScoreboardSidebar.txt
+# ==========================================
+# The Lads Client - Comprehensive .gitignore
+# ==========================================
 
-# Gradle / Java Build outputs
-.gradle/
-build/
-**/build/
-*.class
-*.log
-*.log.gz
-**/logs/
+# --- Packwiz Modpack Rules ---
+# Track strictly metadata (.pw.toml, pack.toml, index.toml); ignore all binary jars/zips
+Packwiz/mods/*.jar
+Packwiz/mods/*.jar.bak
+Packwiz/mods/*.jar.removed
+Packwiz/resourcepacks/*.zip
+Packwiz/packwiz-installer*.jar
+!Packwiz/**/*.pw.toml
+!Packwiz/pack.toml
+!Packwiz/index.toml
 
-# .NET / C# Build outputs
+# --- Binary Executables & Installers ---
+*.exe
+*.msi
+*.dll
+*.iso
+*.dmg
+*.bin
+*.apphost
+Output/
+[Dd]ist/
+[Pp]ublish/
+installer_output/
+LadsClient_Installer_*.exe
+TheLadsClient-Setup-*.exe
+
+# --- .NET / C# Build Outputs ---
 [Bb]in/
 [Oo]bj/
 **/bin/
@@ -24,26 +37,105 @@ build/
 *.suo
 *.userosscache
 *.sln.docstates
+*.nuget.cache
+*.assets.cache
+project.lock.json
+project.fragment.lock.json
+artifacts/
 
-# OS / IDE
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+# --- Gradle & Java Build Outputs ---
+.gradle/
+**/build/
+build/
+out/
+target/
+*.class
+shading_libs/
+run/
+**/run/
+.fabric/
 
-# Temp / Zip folders
+# --- Decompiler Dumps & Reverse Engineering Artifacts ---
+decompiled/
+**/decompiled/
+decompiled_*/
+**/decompiled_*/
+temp_decompiled*/
+extracted/
+extracted_*/
+temp_unzip/
+*.il
+*.disasm
+gui_disasm.txt
+cfr.jar
+
+# --- Test, Staging & Scratch Directories ---
+TestLogin/
+TestCmlLib/
+MsalTest/
+Playground/
+TheLadsLauncher_Clean/
+removed-mods-backup/
+temp/
+temp3/
 temp_*/
-test_*/
-*.zip
+test_instance/
+TestResults/
+[Tt]est[Rr]esult*/
 
-# Large Assets
+# --- Logs, Dumps & Diagnostics ---
+*.log
+*.log.gz
+*.dmp
+**/logs/
+crash-reports/
+*debug*.txt
+*trace*.txt
+crash*.txt
+launcher_*.txt
+ai_*.txt
+recreate_*.log
+fix_*.log
+diff.txt
+gui.txt
+displayScoreboardSidebar.txt
+CycleOptionUsages.txt
+
+# --- AI & Agent Metadata ---
+.agents/
+[Aa]gents/
+.aider*
+.gemini/
+.claude/
+NodeAgentProgress/
+ai.py
+ai_auto_*
+AI_TASK*
+
+# --- Release & Deployment Scripts ---
+upload.ps1
+upload_release.py
+version.json
+
+# --- Python & Bytecode ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# --- Large Assets & Binaries ---
 *.jar
 *.mp4
 *.gif
 *.zip
 
-Output/
-*.exe
-
-upload.ps1
-upload_release.py
+# --- OS & IDE Metadata ---
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

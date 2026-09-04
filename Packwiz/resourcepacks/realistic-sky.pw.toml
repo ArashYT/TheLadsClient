@@ -1,0 +1,8 @@
+name = "Realistic Sky"
+filename = "Realistic Sky.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/Realistic%20Sky.zip"
+hash-format = "sha512"
+hash = "decd8d113bdf463c0f0c7929785e0d453d17286053733b2716cc366e89e3455c8f683c3aaa4ef45a09e341d4e62dab300cc737751fa954dd05b73046798ebb45"

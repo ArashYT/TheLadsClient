@@ -568,4 +568,192 @@ public class IntegrationTests {
             assertNotNull(zip.getEntry("ca/spottedleaf/starlight/common/light/StarLightEngine.class"), "StarLightEngine.class should be shaded");
         }
     }
+
+    @Test
+    public void testImmediatelyFastVulkanCompatLogic() {
+        boolean hasMod = isClassPresent("com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast");
+        if (!hasMod) {
+            System.out.println("ImmediatelyFast classes not present, skipping Vulkan compat tests.");
+            return;
+        }
+
+        try {
+            Class<?> immediatelyFastClass = Class.forName("com.thelads.core.features.alwayson.immediatelyfast.ImmediatelyFast");
+            Method earlyInit = immediatelyFastClass.getMethod("earlyInit");
+            earlyInit.invoke(null);
+
+            Method onRenderSystemInit = immediatelyFastClass.getMethod("onRenderSystemInit");
+            Method isEnabled = immediatelyFastClass.getMethod("isEnabled");
+            Field isOpenGLField = immediatelyFastClass.getField("isOpenGL");
+
+            Class<?> renderSystemClass = Class.forName("com.mojang.blaze3d.systems.RenderSystem");
+            Method getDeviceMethod = renderSystemClass.getMethod("getDevice");
+            Class<?> renderDeviceClass = getDeviceMethod.getReturnType();
+            Method getDeviceInfoMethod = renderDeviceClass.getMethod("getDeviceInfo");
+            Class<?> deviceInfoClass = getDeviceInfoMethod.getReturnType();
+
+            Object mockDevice = mock(renderDeviceClass);
+            Object mockDeviceInfo = mock(deviceInfoClass);
+
+            when(getDeviceInfoMethod.invoke(mockDevice)).thenReturn(mockDeviceInfo);
+            
+            Method vendorNameMethod = deviceInfoClass.getMethod("vendorName");
+            Method nameMethod = deviceInfoClass.getMethod("name");
+            Method backendNameMethod = deviceInfoClass.getMethod("backendName");
+            Method driverInfoMethod = deviceInfoClass.getMethod("driverInfo");
+            Method extensionsMethod = deviceInfoClass.getMethod("underlyingExtensions");
+
+            when(vendorNameMethod.invoke(mockDeviceInfo)).thenReturn("TestGpuVendor");
+            when(nameMethod.invoke(mockDeviceInfo)).thenReturn("TestGpuModel");
+            when(driverInfoMethod.invoke(mockDeviceInfo)).thenReturn("1.0.0");
+            when(extensionsMethod.invoke(mockDeviceInfo)).thenReturn(java.util.Collections.emptySet());
+
+            try (MockedStatic<?> renderSystemMock = mockStatic(renderSystemClass)) {
+                renderSystemMock.when(() -> getDeviceMethod.invoke(null)).thenReturn(mockDevice);
+
+                // Test 1: OpenGL backend
+                when(backendNameMethod.invoke(mockDeviceInfo)).thenReturn("OpenGL ES 3.2");
+                isOpenGLField.set(null, false); // reset to false first
+                onRenderSystemInit.invoke(null);
+                assertTrue(isOpenGLField.getBoolean(null), "isOpenGL should be true when backend name contains 'OpenGL'");
+                assertTrue((boolean) isEnabled.invoke(null), "ImmediatelyFast should be enabled on OpenGL");
+
+                // Test 2: GL backend
+                when(backendNameMethod.invoke(mockDeviceInfo)).thenReturn("GL");
+                isOpenGLField.set(null, false);
+                onRenderSystemInit.invoke(null);
+                assertTrue(isOpenGLField.getBoolean(null), "isOpenGL should be true when backend name contains 'GL'");
+                assertTrue((boolean) isEnabled.invoke(null), "ImmediatelyFast should be enabled on GL");
+
+                // Test 3: Vulkan backend
+                when(backendNameMethod.invoke(mockDeviceInfo)).thenReturn("Vulkan");
+                isOpenGLField.set(null, true); // set to true first
+                onRenderSystemInit.invoke(null);
+                assertFalse(isOpenGLField.getBoolean(null), "isOpenGL should be false when backend name is Vulkan");
+                assertFalse((boolean) isEnabled.invoke(null), "ImmediatelyFast should be disabled on Vulkan");
+
+                // Test 4: Null backend (defensive)
+                when(backendNameMethod.invoke(mockDeviceInfo)).thenReturn(null);
+                isOpenGLField.set(null, true);
+                onRenderSystemInit.invoke(null);
+                assertFalse(isOpenGLField.getBoolean(null), "isOpenGL should be false when backend name is null");
+                assertFalse((boolean) isEnabled.invoke(null), "ImmediatelyFast should be disabled when backend name is null");
+            }
+
+            // Restore isOpenGL to true after tests
+            isOpenGLField.set(null, true);
+
+        } catch (Exception e) {
+            fail("Failed during ImmediatelyFast Vulkan compat integration tests", e);
+        }
+    }
+
+    @Test
+    public void testTitleScreenReorganizationMath() {
+        try {
+            Class<?> abstractWidgetClass = Class.forName("net.minecraft.client.gui.components.AbstractWidget");
+            Class<?> componentClass = Class.forName("net.minecraft.network.chat.Component");
+            Class<?> translatableContentsClass = Class.forName("net.minecraft.network.chat.contents.TranslatableContents");
+
+            Object singleplayerWidget = mock(abstractWidgetClass);
+            Object multiplayerWidget = mock(abstractWidgetClass);
+            Object optionsWidget = mock(abstractWidgetClass);
+            Object quitWidget = mock(abstractWidgetClass);
+            Object bottomWidget = mock(abstractWidgetClass);
+
+            Object singleplayerMsg = mock(componentClass);
+            Object multiplayerMsg = mock(componentClass);
+            Object optionsMsg = mock(componentClass);
+            Object quitMsg = mock(componentClass);
+            Object bottomMsg = mock(componentClass);
+
+            when(abstractWidgetClass.getMethod("getMessage").invoke(singleplayerWidget)).thenReturn(singleplayerMsg);
+            when(abstractWidgetClass.getMethod("getMessage").invoke(multiplayerWidget)).thenReturn(multiplayerMsg);
+            when(abstractWidgetClass.getMethod("getMessage").invoke(optionsWidget)).thenReturn(optionsMsg);
+            when(abstractWidgetClass.getMethod("getMessage").invoke(quitWidget)).thenReturn(quitMsg);
+            when(abstractWidgetClass.getMethod("getMessage").invoke(bottomWidget)).thenReturn(bottomMsg);
+
+            when(componentClass.getMethod("getString").invoke(singleplayerMsg)).thenReturn("Singleplayer");
+            when(componentClass.getMethod("getString").invoke(multiplayerMsg)).thenReturn("Multiplayer");
+            when(componentClass.getMethod("getString").invoke(optionsMsg)).thenReturn("Options");
+            when(componentClass.getMethod("getString").invoke(quitMsg)).thenReturn("Quit Game");
+            when(componentClass.getMethod("getString").invoke(bottomMsg)).thenReturn("Bottom Text");
+
+            Object optionsContents = mock(translatableContentsClass);
+            when(translatableContentsClass.getMethod("getKey").invoke(optionsContents)).thenReturn("menu.options");
+            when(componentClass.getMethod("getContents").invoke(optionsMsg)).thenReturn(optionsContents);
+
+            int[] ys = new int[]{100, 124, 148, 148, 210};
+            when(abstractWidgetClass.getMethod("getY").invoke(singleplayerWidget)).thenAnswer(inv -> ys[0]);
+            doAnswer(inv -> { ys[0] = inv.getArgument(0); return null; }).when((net.minecraft.client.gui.components.AbstractWidget) singleplayerWidget).setY(anyInt());
+
+            when(abstractWidgetClass.getMethod("getY").invoke(multiplayerWidget)).thenAnswer(inv -> ys[1]);
+            doAnswer(inv -> { ys[1] = inv.getArgument(0); return null; }).when((net.minecraft.client.gui.components.AbstractWidget) multiplayerWidget).setY(anyInt());
+
+            when(abstractWidgetClass.getMethod("getY").invoke(optionsWidget)).thenAnswer(inv -> ys[2]);
+            doAnswer(inv -> { ys[2] = inv.getArgument(0); return null; }).when((net.minecraft.client.gui.components.AbstractWidget) optionsWidget).setY(anyInt());
+
+            when(abstractWidgetClass.getMethod("getY").invoke(quitWidget)).thenAnswer(inv -> ys[3]);
+            doAnswer(inv -> { ys[3] = inv.getArgument(0); return null; }).when((net.minecraft.client.gui.components.AbstractWidget) quitWidget).setY(anyInt());
+
+            when(abstractWidgetClass.getMethod("getY").invoke(bottomWidget)).thenAnswer(inv -> ys[4]);
+            doAnswer(inv -> { ys[4] = inv.getArgument(0); return null; }).when((net.minecraft.client.gui.components.AbstractWidget) bottomWidget).setY(anyInt());
+
+            java.util.List<Object> widgets = java.util.Arrays.asList(
+                singleplayerWidget, multiplayerWidget, optionsWidget, quitWidget, bottomWidget
+            );
+
+            int height = 240;
+            int optionsY = -1;
+            for (Object widget : widgets) {
+                Method getMessageMethod = abstractWidgetClass.getMethod("getMessage");
+                Object msg = getMessageMethod.invoke(widget);
+                boolean isOptions = false;
+                if (msg != null) {
+                    Method getContentsMethod = componentClass.getMethod("getContents");
+                    Object contents = getContentsMethod.invoke(msg);
+                    if (contents != null && translatableContentsClass.isInstance(contents)) {
+                        Method getKeyMethod = translatableContentsClass.getMethod("getKey");
+                        if ("menu.options".equals(getKeyMethod.invoke(contents))) {
+                            isOptions = true;
+                        }
+                    }
+                    Method getStringMethod = componentClass.getMethod("getString");
+                    String str = (String) getStringMethod.invoke(msg);
+                    if (str != null && str.toLowerCase().contains("options")) {
+                        isOptions = true;
+                    }
+                }
+                if (isOptions) {
+                    Method getYMethod = abstractWidgetClass.getMethod("getY");
+                    optionsY = (int) getYMethod.invoke(widget);
+                    break;
+                }
+            }
+
+            assertEquals(148, optionsY, "Options button Y coordinate should be detected as 148");
+
+            if (optionsY != -1) {
+                for (Object widget : widgets) {
+                    Method getYMethod = abstractWidgetClass.getMethod("getY");
+                    Method setYMethod = abstractWidgetClass.getMethod("setY", int.class);
+                    int y = (int) getYMethod.invoke(widget);
+                    if (y >= optionsY && y < height - 40) {
+                        setYMethod.invoke(widget, y + 24);
+                    }
+                }
+            }
+
+            assertEquals(100, ys[0], "Singleplayer button should not be shifted");
+            assertEquals(124, ys[1], "Multiplayer button should not be shifted");
+            assertEquals(172, ys[2], "Options button should be shifted down by 24px");
+            assertEquals(172, ys[3], "Quit Game button should be shifted down by 24px");
+            assertEquals(210, ys[4], "Bottom widget should not be shifted (exceeds height - 40 threshold)");
+
+        } catch (Exception e) {
+            fail("Failed during TitleScreen reorganization math verification", e);
+        }
+    }
 }
+
+

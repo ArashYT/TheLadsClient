@@ -1,0 +1,8 @@
+name = "UD Refined - Lite - 1.20.2-26.x"
+filename = "UD Refined - Lite - 1.20.2-26.x.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/UD%20Refined%20-%20Lite%20-%201.20.2-26.x.zip"
+hash-format = "sha512"
+hash = "7c91bff62a60fcbca1d329461927f70b0bd369f27761d84f32b6bcfaf8474c23f9daab5a6b5759da8afcd61d96dd43ca77b168aa9be1df07b2fa6964652b43ca"

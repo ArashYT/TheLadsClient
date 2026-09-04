@@ -1,0 +1,8 @@
+name = "Undopia_Different_Axolotl_Buckets_1.21.11_v.1.0"
+filename = "Undopia_Different_Axolotl_Buckets_1.21.11_v.1.0.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/Undopia_Different_Axolotl_Buckets_1.21.11_v.1.0.zip"
+hash-format = "sha512"
+hash = "c2ff5fa90b1f672aced7212567536bd9d90c17663bdeb66b9847e78fc204d08a9f5e942d812fa1f7c0de40654c9d5f63aec9cab632d90fc39722d31aed85ac5e"

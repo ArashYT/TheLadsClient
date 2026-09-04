@@ -178,7 +178,23 @@
                    "client.crosshair.GuiMixin",
                    "client.signalloss.ClientConnectionMixin",
                    "FarBlockEntitiesMixin",
-                   "client.BorderlessFullscreenMixin"
+                   "client.BorderlessFullscreenMixin",
+                   "alwayson.immediatelyfast.avoid_redundant_framebuffer_switching.MixinGlCommandEncoder",
+                   "alwayson.immediatelyfast.avoid_redundant_framebuffer_switching.MixinRenderSystem",
+                   "alwayson.immediatelyfast.core.MixinMinecraft",
+                   "alwayson.immediatelyfast.core.MixinRenderSystem",
+                   "alwayson.immediatelyfast.enhanced_batching.MixinRenderBuffers",
+                   "alwayson.immediatelyfast.fast_text_lookup.MixinFont_GlyphVisitor",
+                   "alwayson.immediatelyfast.fix_slow_buffer_upload_on_apple_gpu.MixinGlCommandEncoder",
+                   "alwayson.immediatelyfast.font_atlas_resizing.MixinFontTexture",
+                   "alwayson.immediatelyfast.map_atlas_generation.MixinGuiGraphicsExtractor",
+                   "alwayson.immediatelyfast.map_atlas_generation.MixinMapRenderState",
+                   "alwayson.immediatelyfast.map_atlas_generation.MixinMapRenderer",
+                   "alwayson.immediatelyfast.map_atlas_generation.MixinMapTextureManager",
+                   "alwayson.immediatelyfast.map_atlas_generation.MixinMapTextureManager_MapInstance",
+                   "alwayson.immediatelyfast.print_additional_error_information.MixinGlDebug",
+                   "alwayson.immediatelyfast.resource_pack_conflict_handling.MixinShaderManager",
+                   "alwayson.immediatelyfast.skip_text_translucency_sorting.MixinRenderTypes"
                ],
     "injectors":  {
                       "defaultRequire":  0

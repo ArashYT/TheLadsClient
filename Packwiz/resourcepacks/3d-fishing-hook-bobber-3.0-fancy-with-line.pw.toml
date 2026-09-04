@@ -1,0 +1,8 @@
+name = "3D-fishing-hook-bobber-3.0-fancy-with-line"
+filename = "3D-fishing-hook-bobber-3.0-fancy-with-line.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/3D-fishing-hook-bobber-3.0-fancy-with-line.zip"
+hash-format = "sha512"
+hash = "68a434b1d1f3b722d44c681a5625873e21efe99412c60856c9bb54bd8e9248efc07e045bc5fa7554e35db700b9f262f3bc784dbcfa08a99fa28bca91b8fc67a0"

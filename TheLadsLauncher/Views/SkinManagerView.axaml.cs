@@ -59,7 +59,7 @@ namespace TheLadsLauncher.Views
                 else
                 {
                     // Load 3D-like body render
-                    string bodyUrl = $"https://mc-heads.net/body/player/{username}/150";
+                    string bodyUrl = $"https://mc-heads.net/body/{username}/150";
                     var bodyBytes = await _httpClient.GetByteArrayAsync(bodyUrl);
                     using (var ms = new MemoryStream(bodyBytes))
                     {

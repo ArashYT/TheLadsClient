@@ -1,0 +1,8 @@
+name = "§aChests§8-§aReimagined§0_§8[v1.8.2]§0"
+filename = "§aChests§8-§aReimagined§0_§8[v1.8.2]§0.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/%C2%A7aChests%C2%A78-%C2%A7aReimagined%C2%A70_%C2%A78%5Bv1.8.2%5D%C2%A70.zip"
+hash-format = "sha512"
+hash = "80eb3f172d2a3c4ce74ce43e4885e2c29ff87e7d4ab99e603ec2ee4c2d699bedaee0b8d751a5e9a9cd676168bdb64cee1480f8cc2eaeafbb26c77aa7552dc5b8"

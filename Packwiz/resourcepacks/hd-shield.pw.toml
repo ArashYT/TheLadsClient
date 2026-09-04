@@ -1,0 +1,8 @@
+name = "HD SHIELD"
+filename = "HD SHIELD.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/HD%20SHIELD.zip"
+hash-format = "sha512"
+hash = "47e86da9bb21aa534b1b3981f5ad5636cb11048beddc04da60c3b39c4473e12201e938f3decfee3b634cd7da6ce2dcf8d347f5d7da64e4ac723c2e23c240c694"

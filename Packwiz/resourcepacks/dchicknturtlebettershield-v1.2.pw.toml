@@ -1,0 +1,8 @@
+name = "§dChicknTurtleBetterShield-v1.2"
+filename = "§dChicknTurtleBetterShield-v1.2.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/%C2%A7dChicknTurtleBetterShield-v1.2.zip"
+hash-format = "sha512"
+hash = "fe4bbfdd3a79b241d49737c888dd67017a5f400d0d5affc79e66e73347ac0e8f9a5966d8b57e9666ff8cdda5138ac9c1c00fa53e65716c56416ba125f7d61b1b"

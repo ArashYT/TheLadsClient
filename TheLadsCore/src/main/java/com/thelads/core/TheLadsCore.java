@@ -65,6 +65,25 @@ public class TheLadsCore implements ModInitializer {
 
 		// Modern Advancements — server-side networking, advancement tracking, optional HTTP API
 		new com.thelads.core.features.auto.modernadvancements.ModernAdvancements().onInitialize();
+
+		// Force early initialization of ViaFabricPlus if present
+		try {
+			Class<?> implClass = Class.forName("com.viaversion.viafabricplus.ViaFabricPlusImpl");
+			Object instance = implClass.getField("INSTANCE").get(null);
+			implClass.getMethod("init").invoke(instance);
+			LOGGER.info("Successfully forced early initialization of ViaFabricPlus!");
+		} catch (Throwable t) {
+			LOGGER.warn("Failed to initialize ViaFabricPlus early: {}", t.toString());
+		}
+	}
+
+	public static void registerVoicechatCompatibilitySafe() {
+		try {
+			Class<?> clazz = Class.forName("de.maxhenkel.voicechat.integration.ViaVersionCompatibility");
+			clazz.getMethod("register").invoke(null);
+		} catch (Throwable t) {
+			LOGGER.warn("Voicechat ViaVersionCompatibility registration failed: {}", t.toString());
+		}
 	}
 }
 

@@ -14,7 +14,7 @@ $Token = Get-Content $TokenPath -Raw
 $Token = $Token.Trim()
 
 # 2. Extract version from Program.cs and Bump it
-$ProgramCs = "C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher\Program.cs"
+$ProgramCs = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher\Program.cs"
 $Content = Get-Content $ProgramCs
 $Version = ""
 $NewContent = @()
@@ -36,7 +36,7 @@ if (-not $Version) {
 $NewContent | Set-Content $ProgramCs
 
 # Bump version in installer.iss
-$InstallerIss = "C:\Users\Arash\Desktop\Lads Client\installer.iss"
+$InstallerIss = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\installer.iss"
 $IssContent = Get-Content $InstallerIss
 $NewIssContent = @()
 foreach ($line in $IssContent) {
@@ -52,7 +52,7 @@ $TagName = "v$Version"
 Write-Host "Publishing release for $TagName..."
 
 # Backup previous build
-$OldExePath = "C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher\bin\Release\net8.0-windows\win-x64\publish\TheLadsLauncher.exe"
+$OldExePath = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher\bin\Release\net8.0-windows\win-x64\publish\TheLadsLauncher.exe"
 if (Test-Path $OldExePath) {
     $BackupDir = "C:\Users\Arash\Desktop\lads client backups\v$OldVersion"
     Write-Host "Backing up previous build to $BackupDir"
@@ -64,11 +64,11 @@ if (Test-Path $OldExePath) {
 
 # 3. Publish the app (Launcher)
 Write-Host "Building single-file executable..."
-Set-Location "C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher"
+Set-Location "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher"
 Write-Host "Cleaning previous build..."
 dotnet clean
 dotnet publish -c Release -r win-x64 --self-contained
-Set-Location "C:\Users\Arash\Desktop\Lads Client"
+Set-Location "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client"
 
 # 4. Build the Installer
 Write-Host "Building Installer..."
@@ -79,8 +79,8 @@ if (Test-Path $ISCCPath) {
     Write-Host "Warning: Inno Setup compiler not found. Installer will not be built or uploaded."
 }
 
-$ExePath = "C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher\bin\Release\net8.0-windows\win-x64\publish\TheLadsLauncher.exe"
-$InstallerExePath = "C:\Users\Arash\Desktop\Lads Client\Output\LadsClient_Installer_BETA_$Version.exe"
+$ExePath = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher\bin\Release\net8.0-windows\win-x64\publish\TheLadsLauncher.exe"
+$InstallerExePath = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Output\LadsClient_Installer_BETA_$Version.exe"
 
 if (-not (Test-Path $ExePath)) {
     Write-Host "Error: Launcher Exe not found at $ExePath"

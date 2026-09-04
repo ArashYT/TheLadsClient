@@ -1,0 +1,8 @@
+name = "Better Fire (26.1)"
+filename = "Better Fire (26.1).zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/Better%20Fire%20%2826.1%29.zip"
+hash-format = "sha512"
+hash = "de7fc02cb6feb6af951541fa87cb86c64197f015509f5a177053f53744360437f68d18b95a168e150e0040bb0792ae571623f7e2641108c91a19cabad51eb1ce"

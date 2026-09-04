@@ -52,6 +52,49 @@ public abstract class TitleScreenMixin extends Screen {
     }
 
     @Inject(method = "init", at = @At("TAIL"), require = 0)
+    private void ladsReorganizeTitleScreen(CallbackInfo ci) {
+        int optionsY = -1;
+        for (net.minecraft.client.gui.components.events.GuiEventListener listener : this.children()) {
+            if (listener instanceof net.minecraft.client.gui.components.AbstractWidget widget) {
+                net.minecraft.network.chat.Component msg = widget.getMessage();
+                boolean isOptions = false;
+                if (msg != null) {
+                    if (msg.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents tc) {
+                        if ("menu.options".equals(tc.getKey())) {
+                            isOptions = true;
+                        }
+                    }
+                    if (msg.getString().toLowerCase().contains("options")) {
+                        isOptions = true;
+                    }
+                }
+                if (isOptions) {
+                    optionsY = widget.getY();
+                    break;
+                }
+            }
+        }
+
+        if (optionsY != -1) {
+            for (net.minecraft.client.gui.components.events.GuiEventListener listener : this.children()) {
+                if (listener instanceof net.minecraft.client.gui.components.AbstractWidget widget) {
+                    int y = widget.getY();
+                    if (y >= optionsY && y < this.height - 40) {
+                        widget.setY(y + 24);
+                    }
+                }
+            }
+
+            this.addRenderableWidget(
+                Button.builder(
+                    Component.literal("Lads Settings"),
+                    btn -> Minecraft.getInstance().setScreenAndShow(new com.thelads.core.client.gui.LadsSettingsScreen((Screen)(Object)this))
+                ).bounds(this.width / 2 - 100, optionsY, 200, 20).build()
+            );
+        }
+    }
+
+    @Inject(method = "init", at = @At("TAIL"), require = 0)
     private void ladsBenchmarkTitleScreenInit(CallbackInfo ci) {
         com.thelads.core.client.benchmark.BenchmarkTracker.setTitleScreenReadyTime(System.nanoTime());
     }

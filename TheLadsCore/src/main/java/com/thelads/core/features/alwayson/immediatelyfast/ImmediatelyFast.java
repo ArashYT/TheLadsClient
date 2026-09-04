@@ -13,8 +13,12 @@ public class ImmediatelyFast {
     public static final String VERSION = "1.2.18";
     public static ImmediatelyFastConfig config;
     public static ImmediatelyFastRuntimeConfig runtimeConfig;
+    public static boolean isOpenGL = true;
 
     public static boolean isEnabled() {
+        if (!isOpenGL) {
+            return false;
+        }
         try {
             com.thelads.core.config.Module m = com.thelads.core.config.ModuleManager.getInstance().getModule("ImmediatelyFast");
             return m != null && m.isEnabled();
@@ -37,6 +41,9 @@ public class ImmediatelyFast {
         String backendName = RenderSystem.getDevice().getDeviceInfo().backendName();
         String backendVersion = RenderSystem.getDevice().getDeviceInfo().driverInfo();
         LOGGER.info("Initializing ImmediatelyFast " + VERSION + " on " + gpuModel + " (" + gpuVendor + ") with " + backendName + " " + backendVersion);
+        
+        String backendLower = backendName != null ? backendName.toLowerCase() : "";
+        isOpenGL = backendLower.contains("opengl") || backendLower.contains("gl");
         
         boolean isApple = false;
         if (gpuVendor != null) {

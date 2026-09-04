@@ -1,0 +1,8 @@
+name = "BunnyGirlSenpaiGUIPack-[1.21.11]"
+filename = "BunnyGirlSenpaiGUIPack-[1.21.11].zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/BunnyGirlSenpaiGUIPack-%5B1.21.11%5D.zip"
+hash-format = "sha512"
+hash = "f8398526b1d948fb2abf97f5e37dfbef45e462d625208fe435aad94b9724892359e9929df5e753768a0830d741a75f54b5a2e74e89a8c60f13ef07dc37366fd6"

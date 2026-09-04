@@ -1,0 +1,8 @@
+name = "PvP-CrossHair 26.1.2"
+filename = "PvP-CrossHair 26.1.2.zip"
+side = "client"
+
+[download]
+url = "https://github.com/ArashYT/TheLadsClient/releases/download/v1.0.0/PvP-CrossHair%2026.1.2.zip"
+hash-format = "sha512"
+hash = "8bd38827a802e5006d93514ce0d64c82380dc022dfa2224f13ed0c5b139274b63cafa11acef85525d8613305eb288d1f1fcbaf03a8a75383176299f15a8eede2"
