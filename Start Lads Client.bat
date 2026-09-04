@@ -17,4 +17,8 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo Launching The Lads Client...
-start "" "%~dp0TheLadsLauncher_Clean\bin\NewBuild\TheLadsLauncher.exe"
+if exist "%LOCALAPPDATA%\The Lads Client\TheLadsLauncher.exe" (
+    start "" "%LOCALAPPDATA%\The Lads Client\TheLadsLauncher.exe"
+) else (
+    start "" "%~dp0TheLadsLauncher\bin\Release\net8.0-windows\win-x64\publish\TheLadsLauncher.exe"
+)
