@@ -29,8 +29,15 @@ public partial class DeviceCodeLoginDialog : Window
         CopyTextToClipboard(result.UserCode);
     }
 
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        try { _onCancel?.Invoke(); } catch { }
+    }
+
     private void CopyTextToClipboard(string text)
     {
+
         try
         {
             var p = new Process();
@@ -41,7 +48,7 @@ public partial class DeviceCodeLoginDialog : Window
             p.Start();
             p.StandardInput.Write(text);
             p.StandardInput.Close();
-            p.WaitForExit(1000);
+            p.WaitForExit(500);
         }
         catch { }
     }

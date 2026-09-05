@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Net.Http;
 using CmlLib.Core;
 using CmlLib.Core.ProcessBuilder;
 using TheLadsLauncher.Models;
@@ -88,6 +89,26 @@ public class LaunchService : ILaunchService
 
         statusCallback?.Invoke("Resolving game version...");
         string versionId = ResolveVersionId(gameDir, profile, settings);
+
+        // Ensure Fabric JSON exists if requested
+        var vdir = Path.Combine(gameDir, "versions", versionId);
+        var vjson = Path.Combine(vdir, versionId + ".json");
+        if (!File.Exists(vjson))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(versionId, @"fabric-loader-(?<loader>[\d\.]+)-(?<mc>[\w\.\-]+)");
+            if (match.Success)
+            {
+                string loaderVer = match.Groups["loader"].Value;
+                string mcVer = match.Groups["mc"].Value;
+                try
+                {
+                    statusCallback?.Invoke($"Installing Fabric {loaderVer} for MC {mcVer}...");
+                    var fabricInstaller = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(new HttpClient());
+                    await fabricInstaller.Install(mcVer, loaderVer, path);
+                }
+                catch { }
+            }
+        }
 
         statusCallback?.Invoke($"Building launch arguments for {versionId}...");
         var launchOption = new MLaunchOption

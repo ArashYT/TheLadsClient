@@ -42,6 +42,7 @@ public partial class MainWindow : Window
     private readonly TheLadsLauncher.Services.IJavaService _javaService = TheLadsLauncher.Services.JavaService.Instance;
     private readonly TheLadsLauncher.Services.IPathService _pathService = TheLadsLauncher.Services.PathService.Instance;
     private AvaloniaMsalProvider? _msalProvider;
+    private CancellationTokenSource? _authCts;
     private bool _populatingProfileSelector = false;
 
     private string _selectedAccountInternal = "";
@@ -165,11 +166,12 @@ public partial class MainWindow : Window
         var customHttpClient = new System.Net.Http.HttpClient();
         customHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
-        var msalApp = MsalClientHelper.BuildApplicationWithCache("00000000402b5328").GetAwaiter().GetResult();
+        var msalApp = MsalClientHelper.BuildApplicationWithCache("c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb").GetAwaiter().GetResult();
 
         var oauthBuilder = new MsalOAuthBuilder(msalApp);
 
         _msalProvider = new AvaloniaMsalProvider(oauthBuilder, this);
+        _msalProvider.OnCancelRequested = () => _authCts?.Cancel();
         loginHandler = new JELoginHandlerBuilder()
         {
             HttpClient = customHttpClient
@@ -1918,10 +1920,12 @@ public partial class MainWindow : Window
     {
         try
         {
+            _authCts?.Cancel();
+            _authCts = new CancellationTokenSource();
             StatusText.Text = "Initiating Microsoft sign-in...";
             Log("[Auth] Starting Microsoft Device Code Flow (Prism Launcher style)...");
 
-            var session = await loginHandler.AuthenticateInteractively();
+            var session = await loginHandler.AuthenticateInteractively(cancellationToken: _authCts.Token);
 
             Log($"[Auth] Microsoft login successful! Username: {session.Username}, UUID: {session.UUID}");
             
@@ -4202,9 +4206,10 @@ public partial class MainWindow : Window
                 {
                     if (msAccount == null)
                     {
-                        // No saved account: open the embedded Microsoft sign-in window
                         GameLaunchStatusText.Text = "Opening Microsoft sign-in...";
-                        session = await loginHandler.AuthenticateInteractively();
+                        _authCts?.Cancel();
+                        _authCts = new CancellationTokenSource();
+                        session = await loginHandler.AuthenticateInteractively(cancellationToken: _authCts.Token);
                     }
                     else
                     {
@@ -4219,7 +4224,9 @@ public partial class MainWindow : Window
                             // Tokens expired/revoked: fall back to the sign-in window
                             Log($"[Auth] Silent login failed ({silentEx.Message}). Falling back to interactive login...");
                             GameLaunchStatusText.Text = "Session expired — please sign in again...";
-                            session = await loginHandler.AuthenticateInteractively(msAccount);
+                            _authCts?.Cancel();
+                            _authCts = new CancellationTokenSource();
+                            session = await loginHandler.AuthenticateInteractively(msAccount, cancellationToken: _authCts.Token);
                         }
                     }
                     loginHandler.AccountManager.SaveAccounts();
@@ -4315,6 +4322,31 @@ public partial class MainWindow : Window
                             launchOpt.ServerPort = settings.LastServerPort;
                     }
                     Log($"[Launcher] Auto-Rejoin: {launchOpt.ServerIp}:{launchOpt.ServerPort}");
+                }
+            }
+
+            // Ensure the Fabric version JSON exists locally; if not, automatically download & install it via FabricInstaller
+            string versionDir = Path.Combine(settings.InstancePath, "versions", launchVersionId);
+            string versionJson = Path.Combine(versionDir, launchVersionId + ".json");
+            if (!File.Exists(versionJson))
+            {
+                var fabricMatch = Regex.Match(launchVersionId, @"fabric-loader-(?<loader>[\d\.]+)-(?<mc>[\w\.\-]+)");
+                if (fabricMatch.Success)
+                {
+                    string loaderVer = fabricMatch.Groups["loader"].Value;
+                    string mcVer = fabricMatch.Groups["mc"].Value;
+                    try
+                    {
+                        GameLaunchStatusText.Text = $"Installing Fabric Loader ({loaderVer} for MC {mcVer})...";
+                        Log($"[Launcher] Auto-installing Fabric Loader {loaderVer} for Minecraft {mcVer} into '{settings.InstancePath}'...");
+                        var fabricInstaller = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(new HttpClient());
+                        await fabricInstaller.Install(mcVer, loaderVer, path);
+                        Log($"[Launcher] Fabric Loader installation complete for {launchVersionId}");
+                    }
+                    catch (Exception fEx)
+                    {
+                        Log($"[Launcher WARNING] FabricInstaller failed ({fEx.Message}), will attempt default launch...");
+                    }
                 }
             }
 
@@ -5875,6 +5907,7 @@ public class AvaloniaMsalProvider : IAuthenticationProvider
 {
     private readonly MsalOAuthBuilder _builder;
     private readonly Window _window;
+    public Action? OnCancelRequested { get; set; }
     public TheLadsLauncher.Views.DeviceCodeLoginDialog? CurrentDialog { get; set; }
 
     public AvaloniaMsalProvider(MsalOAuthBuilder builder, Window window)
@@ -5893,6 +5926,7 @@ public class AvaloniaMsalProvider : IAuthenticationProvider
             {
                 var dialog = new TheLadsLauncher.Views.DeviceCodeLoginDialog(deviceCodeResult, () =>
                 {
+                    OnCancelRequested?.Invoke();
                     CurrentDialog?.Close();
                 });
                 CurrentDialog = dialog;
