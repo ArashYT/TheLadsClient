@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private readonly TheLadsLauncher.Services.IProfileService _profileService = TheLadsLauncher.Services.ProfileService.Instance;
     private readonly TheLadsLauncher.Services.IJavaService _javaService = TheLadsLauncher.Services.JavaService.Instance;
     private readonly TheLadsLauncher.Services.IPathService _pathService = TheLadsLauncher.Services.PathService.Instance;
+    private AvaloniaMsalProvider? _msalProvider;
     private bool _populatingProfileSelector = false;
 
     private string _selectedAccountInternal = "";
@@ -168,11 +169,12 @@ public partial class MainWindow : Window
 
         var oauthBuilder = new MsalOAuthBuilder(msalApp);
 
+        _msalProvider = new AvaloniaMsalProvider(oauthBuilder, this);
         loginHandler = new JELoginHandlerBuilder()
         {
             HttpClient = customHttpClient
         }
-        .WithOAuthProvider(new AvaloniaMsalProvider(oauthBuilder, this))
+        .WithOAuthProvider(_msalProvider)
         .Build();
         
         // Removed automation Trigger login
@@ -1536,24 +1538,27 @@ public partial class MainWindow : Window
         {
             string username = allAccountNames[i];
             bool isOffline = settings.OfflineAccounts.Contains(username);
+            bool isActive = string.Equals(_selectedAccount, username, StringComparison.OrdinalIgnoreCase);
 
             var border = new Border
             {
-                Background = new SolidColorBrush(Color.Parse("#0E0E18")),
-                BorderBrush = new SolidColorBrush(Color.Parse(_selectedAccount == username ? "#8B0000" : "#1A1A2E")),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(12, 8),
-                Margin = new Thickness(0, 0, 0, 4)
+                Background = new SolidColorBrush(Color.Parse(isActive ? "#141424" : "#0E0E18")),
+                BorderBrush = new SolidColorBrush(Color.Parse(isActive ? "#8B0000" : "#1A1A2E")),
+                BorderThickness = new Thickness(isActive ? 1.5 : 1),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(12, 10),
+                Margin = new Thickness(0, 0, 0, 6)
             };
 
             var grid = new Grid { ColumnDefinitions = ColumnDefinitions.Parse("Auto,*,Auto,Auto,Auto,Auto") };
 
+            // Avatar Head
             var skinHead = new Avalonia.Controls.Shapes.Ellipse
             {
-                Width = 24, Height = 24,
+                Width = 28, Height = 28,
                 Fill = new SolidColorBrush(Color.Parse("#111118")),
-                Margin = new Thickness(0, 0, 8, 0)
+                Margin = new Thickness(0, 0, 10, 0),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
             Grid.SetColumn(skinHead, 0);
             grid.Children.Add(skinHead);
@@ -1562,7 +1567,7 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(username))}/24";
+                    string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(username))}/28";
                     var headBytes = await _httpClient.GetByteArrayAsync(headUrl);
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
@@ -1580,37 +1585,136 @@ public partial class MainWindow : Window
                 catch { }
             });
 
+            // Account Name & Badges Stack
+            var infoStack = new StackPanel
+            {
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Spacing = 3
+            };
+
             var nameText = new TextBlock
             {
-                Text = username + (isOffline ? " (Offline)" : " (MS)"),
+                Text = username,
                 Foreground = Brushes.White,
                 FontSize = 14,
+                FontWeight = FontWeight.Bold
+            };
+            infoStack.Children.Add(nameText);
+
+            var badgeRow = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                Spacing = 6
+            };
+
+            // Type Badge
+            var typeBadge = new Border
+            {
+                Background = new SolidColorBrush(Color.Parse(isOffline ? "#B8860B" : "#107C41")),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(6, 1)
+            };
+            typeBadge.Child = new TextBlock
+            {
+                Text = isOffline ? "Offline" : "Microsoft",
+                Foreground = Brushes.White,
+                FontSize = 10,
+                FontWeight = FontWeight.SemiBold
+            };
+            badgeRow.Children.Add(typeBadge);
+
+            // Active Badge
+            if (isActive)
+            {
+                var activeBadge = new Border
+                {
+                    Background = new SolidColorBrush(Color.Parse("#1A3A2A")),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#00FF88")),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(6, 1)
+                };
+                activeBadge.Child = new TextBlock
+                {
+                    Text = "✓ Active",
+                    Foreground = new SolidColorBrush(Color.Parse("#00FF88")),
+                    FontSize = 10,
+                    FontWeight = FontWeight.Bold
+                };
+                badgeRow.Children.Add(activeBadge);
+            }
+
+            infoStack.Children.Add(badgeRow);
+            Grid.SetColumn(infoStack, 1);
+            grid.Children.Add(infoStack);
+
+            // Set Active Button
+            if (!isActive)
+            {
+                var activeBtn = new Button
+                {
+                    Content = "★ Use",
+                    Classes = { "action" },
+                    Height = 28, FontSize = 11,
+                    FontWeight = FontWeight.SemiBold,
+                    Margin = new Thickness(4, 0),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+                activeBtn.Click += async (s, e) => {
+                    _selectedAccount = username;
+                    MiniAccountName.Text = username;
+                    await LoadPlayerSkin(username);
+                    _ = WriteLadsProfileAsync(username);
+                    Log($"[Auth] Switched to account: {username}");
+                    LoadAccounts();
+                };
+                Grid.SetColumn(activeBtn, 2);
+                grid.Children.Add(activeBtn);
+            }
+
+            // Refresh Button
+            var refreshBtn = new Button
+            {
+                Content = "🔄",
+                Classes = { "action" },
+                Height = 28, Width = 28,
+                FontSize = 11,
+                Margin = new Thickness(2, 0),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
-            Grid.SetColumn(nameText, 1);
-            grid.Children.Add(nameText);
-
-            // Use Button
-            var activeBtn = new Button
-            {
-                Content = "Use",
-                Classes = { "action" },
-                Height = 28, FontSize = 11,
-                Margin = new Thickness(4, 0)
+            ToolTip.SetTip(refreshBtn, "Refresh account tokens and skin");
+            refreshBtn.Click += async (s, e) => {
+                StatusText.Text = $"Refreshing {username}...";
+                try
+                {
+                    if (!isOffline)
+                    {
+                        var msAcc = loginHandler.AccountManager.GetAccounts()
+                            .FirstOrDefault(a => (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == username);
+                        if (msAcc != null)
+                        {
+                            await loginHandler.AuthenticateSilently(msAcc);
+                            loginHandler.AccountManager.SaveAccounts();
+                        }
+                    }
+                    await LoadPlayerSkin(username);
+                    await WriteLadsProfileAsync(username);
+                    StatusText.Text = $"Refreshed {username} successfully.";
+                    Log($"[Auth] Refreshed account: {username}");
+                    LoadAccounts();
+                }
+                catch (Exception ex)
+                {
+                    StatusText.Text = $"Failed to refresh {username}: {ex.Message}";
+                    Log($"[Auth ERROR] {ex.Message}");
+                }
             };
-            activeBtn.Click += async (s, e) => {
-                _selectedAccount = username;
-                MiniAccountName.Text = username;
-                await LoadPlayerSkin(username);
-                _ = WriteLadsProfileAsync(username);
-                Log($"[Auth] Switched to account: {username}");
-            };
-            Grid.SetColumn(activeBtn, 2);
-            grid.Children.Add(activeBtn);
+            Grid.SetColumn(refreshBtn, 3);
+            grid.Children.Add(refreshBtn);
 
             // Reorder buttons (Up/Down)
-            var upBtn = new Button { Content = "▲", Classes = { "action" }, Height = 28, Width = 28, FontSize = 10, Margin = new Thickness(2, 0) };
-            var downBtn = new Button { Content = "▼", Classes = { "action" }, Height = 28, Width = 28, FontSize = 10, Margin = new Thickness(2, 0) };
+            var upBtn = new Button { Content = "▲", Classes = { "action" }, Height = 28, Width = 28, FontSize = 10, Margin = new Thickness(2, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            var downBtn = new Button { Content = "▼", Classes = { "action" }, Height = 28, Width = 28, FontSize = 10, Margin = new Thickness(2, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
 
             int currentIndex = i;
             upBtn.Click += (s, e) => {
@@ -1632,45 +1736,74 @@ public partial class MainWindow : Window
                 }
             };
 
-            Grid.SetColumn(upBtn, 3);
-            grid.Children.Add(upBtn);
-
-            Grid.SetColumn(downBtn, 4);
-            grid.Children.Add(downBtn);
+            var orderPanel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+            };
+            orderPanel.Children.Add(upBtn);
+            orderPanel.Children.Add(downBtn);
+            Grid.SetColumn(orderPanel, 4);
+            grid.Children.Add(orderPanel);
 
             // Delete Button
-            var delBtn = new Button { Content = "✕", Classes = { "danger" }, Height = 28, Width = 28, FontSize = 10, Margin = new Thickness(2, 0) };
-            delBtn.Click += (s, e) => {
-                if (isOffline)
-                {
-                    settings.OfflineAccounts.Remove(username);
-                }
-                else
-                {
-                    loginHandler.AccountManager.ClearAccounts();
-                    try
-                    {
-                        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                        var authDir = System.IO.Path.Combine(appData, "The Lads Client", "auth_cache");
-                        if (System.IO.Directory.Exists(authDir))
-                            System.IO.Directory.Delete(authDir, true);
-                    } catch {}
-                }
-                settings.AccountOrder.Remove(username);
-                settings.Save();
-                LoadAccounts();
-                Log($"[Auth] Removed account: {username}");
+            var delBtn = new Button
+            {
+                Content = "✕",
+                Classes = { "danger" },
+                Height = 28, Width = 28,
+                FontSize = 10,
+                Margin = new Thickness(4, 0),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+            };
+            ToolTip.SetTip(delBtn, "Remove this account");
+            delBtn.Click += async (s, e) => {
+                await RemoveSpecificAccount(username);
             };
             Grid.SetColumn(delBtn, 5);
             grid.Children.Add(delBtn);
 
             border.Child = grid;
-            border.PointerPressed += (s, e) => {
-                _selectedAccount = username;
-                LoadAccounts();
-            };
             AccountsListContainer.Children.Add(border);
         }
+    }
+
+    private async Task RemoveSpecificAccount(string username)
+    {
+        if (string.IsNullOrWhiteSpace(username)) return;
+
+        bool isOffline = settings.OfflineAccounts.Contains(username);
+        if (isOffline)
+        {
+            settings.OfflineAccounts.Remove(username);
+        }
+        else
+        {
+            try
+            {
+                var msAcc = loginHandler.AccountManager.GetAccounts()
+                    .FirstOrDefault(a => (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == username);
+                if (msAcc != null)
+                {
+                    await loginHandler.Signout(msAcc);
+                    loginHandler.AccountManager.SaveAccounts();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"[Auth] Signout error for {username}: {ex.Message}");
+            }
+        }
+
+        settings.AccountOrder.Remove(username);
+        if (_selectedAccount == username)
+        {
+            _selectedAccount = "";
+        }
+        settings.Save();
+        LoadAccounts();
+        StatusText.Text = $"Account removed: {username}";
+        Log($"[Auth] Removed account: {username}");
     }
 
     private void OpenFolder_Click(object? sender, RoutedEventArgs e)
@@ -1686,7 +1819,6 @@ public partial class MainWindow : Window
             if (!System.IO.Directory.Exists(dir))
                 System.IO.Directory.CreateDirectory(dir);
 
-            // UseShellExecute opens the folder in the OS file explorer
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
                 FileName = dir,
@@ -1701,20 +1833,16 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RemoveAccount_Click(object? sender, RoutedEventArgs e)
+    private async void RemoveAccount_Click(object? sender, RoutedEventArgs e)
     {
-        loginHandler.AccountManager.ClearAccounts();
-        try
+        if (!string.IsNullOrEmpty(_selectedAccount))
         {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var authDir = System.IO.Path.Combine(appData, "The Lads Client", "auth_cache");
-            if (System.IO.Directory.Exists(authDir))
-                System.IO.Directory.Delete(authDir, true);
-        } catch {}
-        
-        _selectedAccount = "";
-        LoadAccounts();
-        StatusText.Text = "Account removed.";
+            await RemoveSpecificAccount(_selectedAccount);
+        }
+        else
+        {
+            StatusText.Text = "No account selected to remove.";
+        }
     }
 
     private void ClearCache_Click(object? sender, RoutedEventArgs e)
@@ -1749,46 +1877,36 @@ public partial class MainWindow : Window
 
     private async void AddOfflineAccount_Click(object? sender, RoutedEventArgs e)
     {
-        var window = new Window()
+        try
         {
-            Title = "Add Offline Account",
-            Width = 400, Height = 180,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.Parse("#0A0A0F")),
-            CanResize = false
-        };
-        var panel = new StackPanel() { Margin = new Thickness(20), Spacing = 10 };
-        panel.Children.Add(new TextBlock() { Text = "Enter offline username:", Foreground = Brushes.White, FontSize = 14 });
-        
-        var textBox = new TextBox() { Height = 36, FontSize = 14 };
-        panel.Children.Add(textBox);
-        
-        var button = new Button() { 
-            Content = "Add Account", 
-            Background = new SolidColorBrush(Color.Parse("#8B0000")),
-            Foreground = Brushes.White,
-            FontWeight = FontWeight.Bold,
-            HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-            Height = 36
-        };
-        button.Click += (s, ev) => {
-            string? username = textBox.Text;
-            if (!string.IsNullOrEmpty(username))
+            var dialog = new TheLadsLauncher.Views.AddOfflineAccountDialog();
+            await dialog.ShowDialog(this);
+            string? username = dialog.ResultUsername;
+            if (!string.IsNullOrWhiteSpace(username))
             {
                 if (!settings.OfflineAccounts.Contains(username))
                 {
                     settings.OfflineAccounts.Add(username);
-                    settings.AccountOrder.Add(username);
-                    settings.Save();
                 }
+                if (!settings.AccountOrder.Contains(username))
+                {
+                    settings.AccountOrder.Add(username);
+                }
+                settings.Save();
                 LoadAccounts();
+                _selectedAccount = username;
+                MiniAccountName.Text = username;
+                await LoadPlayerSkin(username);
+                await WriteLadsProfileAsync(username);
+                StatusText.Text = $"Offline account added: {username}!";
                 Log($"[Auth] Added offline account: {username}");
             }
-            window.Close();
-        };
-        panel.Children.Add(button);
-        window.Content = panel;
-        await window.ShowDialog(this);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Failed to add offline account: " + ex.Message;
+            Log($"[Auth ERROR] {ex.Message}");
+        }
     }
 
     private void AddMicrosoftAccount_Click(object? sender, RoutedEventArgs e)
@@ -1800,38 +1918,42 @@ public partial class MainWindow : Window
     {
         try
         {
-            StatusText.Text = "Opening Microsoft sign-in window...";
-            Log("[Auth] Starting interactive Microsoft login (embedded browser)...");
+            StatusText.Text = "Initiating Microsoft sign-in...";
+            Log("[Auth] Starting Microsoft Device Code Flow (Prism Launcher style)...");
 
-            // Opens an embedded WebView2 Microsoft sign-in window.
-            // Sign in with your Microsoft account there; tokens are cached for silent re-login later.
             var session = await loginHandler.AuthenticateInteractively();
 
-            Log($"[Auth] Interactive login completed! Session Username: {session.Username}, UUID: {session.UUID}");
+            Log($"[Auth] Microsoft login successful! Username: {session.Username}, UUID: {session.UUID}");
             
-            // Try to force add and save the account
             loginHandler.AccountManager.SaveAccounts();
-            
-            Log($"[Auth] GetAccounts() count: {loginHandler.AccountManager.GetAccounts().Count}");
-            
             LoadAccounts();
-            _selectedAccount = session.Username ?? _selectedAccount;
+            if (!string.IsNullOrEmpty(session.Username))
+            {
+                _selectedAccount = session.Username;
+                MiniAccountName.Text = session.Username;
+                await LoadPlayerSkin(session.Username);
+                await WriteLadsProfileAsync(session.Username);
+            }
             StatusText.Text = $"Account added: {session.Username}!";
-            Log($"[Auth] New account added: {session.Username}");
-
-            // Auto launch
-            Dispatcher.UIThread.Post(() => LaunchButton_Click(null, new RoutedEventArgs()));
+            Log($"[Auth] Microsoft account added: {session.Username}");
         }
-        catch (PlatformNotSupportedException)
+        catch (OperationCanceledException)
         {
-            StatusText.Text = "Microsoft login requires the WebView2 Runtime. Please install 'Microsoft Edge WebView2 Runtime' and try again.";
-            Log("[Auth ERROR] WebView2 Runtime not found.");
+            StatusText.Text = "Microsoft sign-in cancelled.";
+            Log("[Auth] Sign-in cancelled by user.");
         }
         catch (Exception ex)
         {
             StatusText.Text = "Failed to add account: " + ex.Message;
             Log($"[Auth ERROR] {ex.Message}");
-            Log($"[Auth ERROR STACK] {ex.StackTrace}");
+        }
+        finally
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _msalProvider?.CurrentDialog?.Close();
+                if (_msalProvider != null) _msalProvider.CurrentDialog = null;
+            });
         }
     }
 
@@ -5753,6 +5875,7 @@ public class AvaloniaMsalProvider : IAuthenticationProvider
 {
     private readonly MsalOAuthBuilder _builder;
     private readonly Window _window;
+    public TheLadsLauncher.Views.DeviceCodeLoginDialog? CurrentDialog { get; set; }
 
     public AvaloniaMsalProvider(MsalOAuthBuilder builder, Window window)
     {
@@ -5761,13 +5884,24 @@ public class AvaloniaMsalProvider : IAuthenticationProvider
     }
 
     public XboxAuthNet.Game.Authenticators.IAuthenticator Authenticate() => _builder.CodeFlow();
-    public XboxAuthNet.Game.Authenticators.IAuthenticator AuthenticateInteractively() => _builder.Interactive(opts => 
+
+    public XboxAuthNet.Game.Authenticators.IAuthenticator AuthenticateInteractively() => _builder.DeviceCode(async deviceCodeResult =>
     {
-        opts.WithUseEmbeddedWebView(true);
-        var handle = _window.TryGetPlatformHandle();
-        if (handle != null && handle.Handle != IntPtr.Zero)
-            opts.WithParentActivityOrWindow(handle.Handle);
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            try
+            {
+                var dialog = new TheLadsLauncher.Views.DeviceCodeLoginDialog(deviceCodeResult, () =>
+                {
+                    CurrentDialog?.Close();
+                });
+                CurrentDialog = dialog;
+                dialog.Show(_window);
+            }
+            catch { }
+        });
     });
+
     public XboxAuthNet.Game.Authenticators.IAuthenticator AuthenticateSilently() => _builder.Silent();
     public XboxAuthNet.Game.Authenticators.ISessionValidator CreateSessionValidator() => XboxAuthNet.Game.Authenticators.StaticValidator.Invalid;
     public XboxAuthNet.Game.Authenticators.IAuthenticator ClearSession() => _builder.ClearSession();

@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="230"
+        x:Class="TheLadsLauncher.Views.AddOfflineAccountDialog"
+        Title="Add Offline Account"
+        Width="420" Height="230"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="#0E0E18">
+
+    <Window.Styles>
+        <Style Selector="Button.action">
+            <Setter Property="Background" Value="#1A1A2E" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Foreground" Value="#AAAAAA" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.action:pointerover">
+            <Setter Property="Background" Value="#252545" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.launch">
+            <Setter Property="Background" Value="#8B0000" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.launch:pointerover">
+            <Setter Property="Background" Value="#B00000" />
+        </Style>
+    </Window.Styles>
+
+    <Border Padding="24" Background="#0E0E18" BorderBrush="#1A1A2E" BorderThickness="1" CornerRadius="12">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,16">
+                <TextBlock Text="Add Offline Account" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                <TextBlock Text="Create a local offline Minecraft player profile (Prism style)." Foreground="#888888" FontSize="12"/>
+            </StackPanel>
+
+            <!-- Input -->
+            <StackPanel Grid.Row="1" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="Minecraft Username:" Foreground="#CCCCCC" FontSize="13"/>
+                <TextBox x:Name="UsernameBox" Height="36" FontSize="14" 
+                         PlaceholderText="Enter player name (e.g. Steve)"
+                         KeyDown="UsernameBox_KeyDown"/>
+                <TextBlock x:Name="ErrorLabel" Text="" Foreground="#FF4444" FontSize="11" IsVisible="False"/>
+            </StackPanel>
+
+            <!-- Buttons -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,16,0,0">
+                <Button Grid.Column="1" x:Name="CancelBtn" Classes="action" Content="Cancel" Width="80" Height="34" Margin="0,0,8,0" Click="Cancel_Click"/>
+                <Button Grid.Column="2" x:Name="AddBtn" Classes="launch" Content="Add Account" Width="120" Height="34" Click="Add_Click"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

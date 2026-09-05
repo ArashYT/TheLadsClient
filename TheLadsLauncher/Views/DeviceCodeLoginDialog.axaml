@@ -1,0 +1,95 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="380"
+        x:Class="TheLadsLauncher.Views.DeviceCodeLoginDialog"
+        Title="Microsoft Account Sign-In"
+        Width="500" Height="380"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="#0E0E18">
+
+    <Window.Styles>
+        <Style Selector="Button.action">
+            <Setter Property="Background" Value="#1A1A2E" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Foreground" Value="#AAAAAA" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.action:pointerover">
+            <Setter Property="Background" Value="#252545" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.launch">
+            <Setter Property="Background" Value="#8B0000" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.launch:pointerover">
+            <Setter Property="Background" Value="#B00000" />
+        </Style>
+
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#331111" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Foreground" Value="#FF6666" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.danger:pointerover">
+            <Setter Property="Background" Value="#441111" />
+            <Setter Property="Foreground" Value="#FF4444" />
+        </Style>
+    </Window.Styles>
+
+    <Border Padding="24" Background="#0E0E18" BorderBrush="#1A1A2E" BorderThickness="1" CornerRadius="12">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,16">
+                <TextBlock Text="Microsoft Account Sign-In" Foreground="White" FontSize="20" FontWeight="Bold"/>
+                <TextBlock Text="Sign in securely via your web browser (Prism Launcher Style)" Foreground="#888888" FontSize="12"/>
+            </StackPanel>
+
+            <!-- Content Card -->
+            <Border Grid.Row="1" Background="#08080C" CornerRadius="8" Padding="16" BorderBrush="#1A1A2E" BorderThickness="1">
+                <StackPanel Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="1. Your sign-in code has been generated:" Foreground="#CCCCCC" FontSize="13"/>
+                    
+                    <!-- Code Display Box -->
+                    <Border Background="#12121E" CornerRadius="8" BorderBrush="#8B0000" BorderThickness="1" Padding="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock x:Name="UserCodeText" Grid.Column="0" Text="XXXX-XXXX" 
+                                       Foreground="#FFD700" FontSize="22" FontWeight="Bold" 
+                                       FontFamily="Consolas, monospace"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       LetterSpacing="2"/>
+                            <Button x:Name="CopyCodeOnlyBtn" Grid.Column="1" Classes="action" Content="📋 Copy" 
+                                    Height="32" Width="70" Click="CopyCodeOnly_Click"/>
+                        </Grid>
+                    </Border>
+
+                    <TextBlock Text="2. Go to the Microsoft verification link:" Foreground="#CCCCCC" FontSize="13"/>
+                    
+                    <!-- Open Browser Button -->
+                    <Button x:Name="OpenBrowserBtn" Classes="launch" Content="🌐 Open Link &amp; Copy Code to Browser" 
+                            Height="40" FontSize="13" Click="OpenBrowser_Click"/>
+
+                    <TextBlock x:Name="StatusLabel" Text="⏳ Waiting for you to complete sign-in in browser..." 
+                               Foreground="#00FF88" FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Bottom Actions -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0">
+                <TextBlock Text="This window closes automatically once signed in." Foreground="#666666" FontSize="11" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" x:Name="CancelBtn" Classes="danger" Content="Cancel" Width="90" Height="34" Click="Cancel_Click"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
