@@ -1,7 +1,0 @@
-{
-  "required": true,
-  "package": "com.thelads.core.v26_2.feature.tabtweaks.mixin",
-  "compatibilityLevel": "JAVA_25",
-  "client": ["PlayerTabOverlayMixin", "BossHealthOverlayMixin", "PlayerFaceRendererMixin", "TabProbeMixin"],
-  "injectors": { "defaultRequire": 1 }
-}

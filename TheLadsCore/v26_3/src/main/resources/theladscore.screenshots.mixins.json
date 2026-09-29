@@ -1,8 +1,0 @@
-{
-  "required": true,
-  "package": "com.thelads.core.v26_2.feature.screenshots.mixin",
-  "compatibilityLevel": "JAVA_25",
-  "plugin": "com.thelads.core.v26_2.feature.screenshots.mixin.ScreenshotsMixinPlugin",
-  "client": ["MainMixin", "ScreenMixin", "ScreenshotMixin", "ScreenshotsKeyboardMixin"],
-  "injectors": {"defaultRequire": 1}
-}
