@@ -52,4 +52,4 @@ Exordium is excluded after its own first-run warning reported that the current r
 
 ## Updating the pins
 
-Run `python tools/resolve_client_mods.py --lock` only as a deliberate developer update, review both JSON diffs and project licenses, then run the installer regression suite and actual game/world checks for both versions. Launching the client never queries for arbitrary latest mod versions.
+`tools/sync_instance_mods.py` is the only manifest generator; see [CLIENT_26_3.md](CLIENT_26_3.md) for how to run it. Use `--write` only as a deliberate developer update, review every JSON diff and project license, then run the installer regression suite and actual game/world checks for each version. Launching the client never queries for arbitrary latest mod versions. The older `tools/resolve_client_mods.py` was removed: its `--lock` overwrote the 1.21.11 and 26.2 manifests with an outdated, hard-coded mod set.
