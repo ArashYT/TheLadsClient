@@ -42,6 +42,7 @@ public abstract class RenderScaleMixin {
             // secondary GPU/uniform work masking the renderer's original exception.
             lads$restoreNativeTarget(succeeded ? delta : null);
             lads$renderScale.endFrame(mainRenderTarget, world, succeeded);
+            if (succeeded) com.thelads.core.v26_2.feature.NativeWelcomeProbe.renderedFrame(mainRenderTarget);
             if (succeeded && world) com.thelads.core.v26_2.feature.NativeWorldVerification.renderedFrame(mainRenderTarget);
         }
     }

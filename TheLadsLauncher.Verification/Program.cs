@@ -242,13 +242,15 @@ if (requestedFeaturesOnly)
 }
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
 var requiredCore = new List<string>();
+bool welcomeVerification = Env("LADS_VERIFY_WELCOME") == "1";
+if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
 if (!expectCoreDisabled) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
-    "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED",
+    "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && inventorySnapshots.ContainsKey("title"); }
 var jvmFlags = new List<string>();
@@ -310,6 +312,8 @@ try
         Console.WriteLine("Native port QA: staged pack without replaced Paper Doll, AutoReconnect, TabTweaks, Screenshot Viewer and Clumps upstream jars. Production manifest preserved.");
     }
     await ClientModInstaller.InstallAsync(packSource, directory, version, Console.WriteLine, ct);
+    foreach (string warning in await ModWelcomeSettings.PrepareAsync(directory, ct))
+        throw new InvalidOperationException(warning);
     await File.WriteAllTextAsync(Path.Combine(directory, ".lads-qa-pack-source"), packSource, ct);
     var inventoryService = new ModInventoryService();
     var inventory = await inventoryService.BuildAsync(packSource, directory, version, ct);
@@ -345,7 +349,8 @@ try
         else process.StartInfo.Arguments = argument + " " + process.StartInfo.Arguments;
     }
     // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
-    AddJvm("-Dthelads.verifyIntegrations=true");
+    if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
+    else AddJvm("-Dthelads.verifyIntegrations=true");
     if (!autoWorldVerification) AddJvm("-Dthelads.verifyInput=true");
     else
     {
@@ -535,7 +540,7 @@ finally
 {
     if (process != null && IsRunning(process))
     {
-        if (autoWorldVerification)
+        if (autoWorldVerification || welcomeVerification)
         {
             await File.WriteAllTextAsync(stopRequest, "Gracefully stop this isolated QA game.");
             using var exitTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));

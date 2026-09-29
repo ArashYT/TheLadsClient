@@ -175,6 +175,7 @@ public class ProfileService : IProfileService
             progress, cancellationToken, shareFolders: !withoutSharedFolders);
         var warnings = report.Warnings.ToList();
         if (stateFileError != null) warnings.Add(stateFileError);
+        warnings.AddRange(await ModWelcomeSettings.PrepareAsync(targetDir, cancellationToken));
         try
         {
             new WorldCatalogService(_pathService.BaseDirectory).WriteGameSources(targetDir, _sharedContent.Root,
