@@ -198,17 +198,19 @@ public final class NativeWorldVerification {
         if (failure == null && "mods".equals(captureKind)
             && !(menuScreen instanceof com.thelads.core.v26_2.gui.LadsSettingsScreen26 mods && mods.isModsViewOpen()))
             failure = new IllegalStateException("The Installed mods view was not open when its frame was captured");
-        if(failure==null && java.util.Set.of("skin","packs","controls","menu").contains(captureKind)){
+        if(failure==null && java.util.Set.of("skin","packs","controls","worlds","folders","menu").contains(captureKind)){
             if ("menu".equals(captureKind))
                 LOGGER.info("Lads menu capture END: 1 passed, 0 failed; {} completed frames; actual framebuffer at {}", menuFrames, menuOutput);
             else LOGGER.info("Lads {} capture END: actual framebuffer at {}",captureKind,menuOutput);
             menuScreen=switch(captureKind){
                 case "skin"->new net.minecraft.client.gui.screens.packs.PackSelectionScreen(mc.getResourcePackRepository(),repository->{},mc.getResourcePackDirectory(),net.minecraft.network.chat.Component.literal("Resource packs"));
                 case "packs"->new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null,mc.options);
-                case "controls"->new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);
+                case "controls"->new net.minecraft.client.gui.screens.worldselection.SelectWorldScreen(null);
+                case "worlds"->new com.thelads.core.v26_2.gui.WorldSourcesScreen(null);
+                case "folders"->new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);
                 default->{ var view=new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null); view.openMods(); yield view; }
             };
-            captureKind=switch(captureKind){case "skin"->"packs";case "packs"->"controls";case "controls"->"menu";default->"mods";};
+            captureKind=switch(captureKind){case "skin"->"packs";case "packs"->"controls";case "controls"->"worlds";case "worlds"->"folders";case "folders"->"menu";default->"mods";};
             menuOpenedAt=System.nanoTime();menuFirstFrame=0;menuFrames=0;
             menuCaptureStarted=false;menuCaptureFinished=false;menuCaptureFailure=null;menuOutput=null;
             mc.setScreenAndShow(menuScreen);menuScreen=mc.gui.screen();return;
