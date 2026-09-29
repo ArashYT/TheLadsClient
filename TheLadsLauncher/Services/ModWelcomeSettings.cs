@@ -1,0 +1,67 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace TheLadsLauncher.Services;
+
+/// <summary>Pack defaults for informational mod introductions. Never touches Essential account/consent state.</summary>
+public static class ModWelcomeSettings
+{
+    public static async Task<IReadOnlyList<string>> PrepareAsync(string gameDirectory, CancellationToken cancellationToken = default)
+    {
+        var warnings = new List<string>();
+        string config = Path.Combine(gameDirectory, "config");
+        await UpdateAsync(Path.Combine(config, "fancymenu", "options.txt"), DisableFancyMenuWelcome);
+        await UpdateAsync(Path.Combine(config, "Modpack Core Essentials", "custom_window.json"), DisableModpackWelcome);
+        return warnings;
+
+        async Task UpdateAsync(string path, Func<string, string> rewrite)
+        {
+            try
+            {
+                string before = File.Exists(path) ? await File.ReadAllTextAsync(path, cancellationToken) : "";
+                string after = rewrite(before);
+                if (after != before)
+                    await LockFiles.WriteAtomicallyAsync(path, Encoding.UTF8.GetBytes(after), cancellationToken);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
+            {
+                warnings.Add($"Could not configure mod welcome screen in '{path}': {e.Message}");
+            }
+        }
+    }
+
+    private static string DisableFancyMenuWelcome(string text)
+    {
+        // FancyMenu's FancyConfig format: keep all other settings and comments verbatim.
+        const string setting = "B:show_welcome_screen = 'false';";
+        const string pattern = @"(?m)^[\t ]*B:show_welcome_screen[\t ]*=[^\r\n]*";
+        if (Regex.IsMatch(text, pattern)) return Regex.Replace(text, pattern, setting);
+        string newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        return text + newline + "##[tutorial]" + newline + setting + newline;
+    }
+
+    private static string DisableModpackWelcome(string text)
+    {
+        var root = string.IsNullOrWhiteSpace(text) ? new JsonObject() :
+            JsonNode.Parse(text, documentOptions: new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip }) as JsonObject
+            ?? throw new JsonException("Expected a JSON object; existing file was preserved.");
+        // MCE 1.2 reads NEVER; older releases use these two booleans. Set legacy fields only
+        // when present, because newer MCE migrates and removes them itself.
+        bool changed = root["welcomeMode"]?.ToJsonString() != "\"NEVER\"";
+        root["welcomeMode"] = "NEVER";
+        foreach (string key in new[] { "showWelcomeOnStartup", "showWelcomeEveryTime" })
+        {
+            if (!root.ContainsKey(key)) continue;
+            changed |= root[key]?.ToJsonString() != "false";
+            root[key] = false;
+        }
+        return changed ? root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n" : text;
+    }
+}
