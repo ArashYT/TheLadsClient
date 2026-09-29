@@ -115,17 +115,17 @@ public class RunningGameMarkerTests
         await list.WriteAsync(Path.Combine(game, "servers.dat"));
 
         var messages = new List<string>();
+        var exitWorkDone = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var process = Process.Start(start)!;
-        GameSession.Attach(process, game, new[] { "theladscore" }, message => { lock (messages) messages.Add(message); }, shared);
+        // afterExit runs once the marker is deleted, the server list is reconciled and every message has been reported.
+        GameSession.Attach(process, game, new[] { "theladscore" }, message => { lock (messages) messages.Add(message); }, shared,
+            afterExit: () => { exitWorkDone.TrySetResult(); return Task.CompletedTask; });
         Assert.True(File.Exists(RunningGameMarker.PathFor(game)));
         await process.WaitForExitAsync();
 
-        var deadline = DateTime.UtcNow.AddSeconds(15);
-        while (File.Exists(RunningGameMarker.PathFor(game)) || !ServerListFile.Read(shared.ServersFile).Entries.Any(e => e.Ip == "new.example"))
-        {
-            Assert.True(DateTime.UtcNow < deadline, "The exit handler did not reconcile the server list.");
-            await Task.Delay(50);
-        }
+        await exitWorkDone.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        Assert.False(File.Exists(RunningGameMarker.PathFor(game)));
+        Assert.Contains(ServerListFile.Read(shared.ServersFile).Entries, e => e.Ip == "new.example");
         lock (messages) Assert.Contains(messages, m => m.Contains("Saved the server list changes"));
     }
 
