@@ -5,7 +5,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
 
 public final class NativeKeyBindings {
-    private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(
+    public static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(
         Identifier.fromNamespaceAndPath("theladscore", "controls"));
     public static final KeyMapping ZOOM = new KeyMapping("key.theladscore.zoom",
         InputConstants.Type.KEYBOARD, InputConstants.KEY_C, CATEGORY);

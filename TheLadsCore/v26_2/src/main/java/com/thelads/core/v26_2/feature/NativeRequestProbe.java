@@ -23,6 +23,7 @@ public final class NativeRequestProbe {
             for(String key:List.of("menu.sendFeedback","menu.reportBugs","menu.playerReporting")){
                 require(pause.children().stream().noneMatch(c->c instanceof AbstractWidget w&&w.getMessage().getString().equals(Component.translatable(key).getString())),"pause removes "+key);passed++;
             }
+            passed += NativeImprovementsProbe.run();
             passed+=swing();
             passed+=BorderlessProbe.run();
             Screen skin=new SkinCustomizationScreen(original,mc.options);mc.setScreenAndShow(skin);

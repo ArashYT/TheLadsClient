@@ -20,6 +20,7 @@ public final class NativeQualityOfLife {
         ModuleSupport.registerBuiltIn("LegacySwing", "BossBar", "DisableNarrator", "HideChatIndicators", "Crosshair Tweaks",
             "SmoothHotbar", "Raised", "OldDamageTilt", "EnhancedToolbars", "EnhancedTooltips",
             "ToggleNametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", "ShulkerBoxUtils", "DiscordRPC", "RenderScale");
+        NativeClientTools.register();
         NativeDiscordPresence.register();
         NativeConnectionStatus.register();
         NativeReconnect.register();
@@ -27,6 +28,7 @@ public final class NativeQualityOfLife {
     }
 
     public static void tick() {
+        NativeClientTools.tick();
         NativeNarrator.tick();
         MinimapIntegration.tick();
         com.thelads.core.v26_2.feature.raised.NativeRaisedProbe.tick();

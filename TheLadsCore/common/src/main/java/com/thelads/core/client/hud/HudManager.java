@@ -24,6 +24,8 @@ public class HudManager {
         add(new SpeedHudElement(), "Speed");
         add(new DayHudElement(), "Day");
         add(new TimeHudElement(), "Time");
+        for (String name : List.of("Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates"))
+            add(new ToolsHudElement(), name);
         add(new HealthHudElement(), "Health");
         add(new HungerHudElement(), "Hunger");
         add(new XpHudElement(), "XP");
@@ -57,6 +59,19 @@ public class HudManager {
         int screenW = g.getScaledWidth();
         int screenH = g.getScaledHeight();
 
+        // Most players do not group HUDs. Keep the same measuring/clamping/draw order
+        // without building maps, sets and stream pipelines for every rendered frame.
+        if (HudSettings.getInstance().getGroups().isEmpty()) {
+            for (var element : elements) {
+                element.restoreSavedPosition();
+                if (!element.isEnabled() || !element.isAvailable()) continue;
+                var bounds = element.measureBounds(g, false);
+                var delta = HudGroupLayout.clampDelta(bounds, 0, 0, screenW, screenH);
+                var placed = HudGroupLayout.translate(bounds, delta);
+                element.renderAt(g, placed.x(), placed.y(), false);
+            }
+            return;
+        }
         var neededNames = new HashSet<String>();
         for (var element : elements) {
             // Loaded/profile-switched positions must also reach currently disabled HUDs.

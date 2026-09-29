@@ -237,7 +237,7 @@ string[] requiredWorldProbes = ["Lads native feature probe END:", "Lads food ren
     "Lads shared content probe END:"];
 if (requestedFeaturesOnly)
 {
-    requiredWorldProbes = ["Lads native feature probe END:", "Lads world capture END:", "Lads shared content probe END:"];
+    requiredWorldProbes = ["Lads native feature probe END:", "Lads improvements probe END:", "Lads font reload probe END:", "Lads world capture END:", "Lads shared content probe END:"];
     Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
 }
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
@@ -246,7 +246,7 @@ bool welcomeVerification = Env("LADS_VERIFY_WELCOME") == "1";
 if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
 if (!expectCoreDisabled) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
-string[] failureMarkers = ["Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
+string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",

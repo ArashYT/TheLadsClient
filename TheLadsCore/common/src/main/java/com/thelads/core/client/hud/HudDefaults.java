@@ -14,6 +14,12 @@ public final class HudDefaults {
             case "Speed" -> y=136;
             case "Time" -> y=154;
             case "Day" -> y=172;
+            case "Clock" -> y=4;
+            case "Stopwatch" -> y=22;
+            case "ItemCounter" -> {x=5;y=h-eh-44;}
+            case "ReachDisplay" -> {x=5;y=h-eh-24;}
+            case "ServerAddress" -> {x=5;y=h-eh-4;}
+            case "PortalCoordinates" -> {x=w/3;y=43;}
             case "Direction" -> {x=(w-ew)/2;y=32;}
             case "Keystrokes" -> {x=w/5;y=h/4;}
             case "CPS" -> {x=w/5;y=h/4+96;}

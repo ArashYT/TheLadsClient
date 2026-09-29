@@ -36,6 +36,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="THE LADS CLIENT  /  LAUNCHER" Classes="caption" Margin="28,0" VerticalAlignment="Center" FontSize="9" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Classes="window" Content="⌕" ToolTip.Tip="Command palette (Ctrl+K)" Click="CommandPalette_Click" />
                             <Button x:Name="AspectLockBtn" Classes="window" Content="Free" ToolTip.Tip="Toggle 16:9 aspect lock" Click="AspectLockBtn_Click" />
                             <Button x:Name="ResetSizeBtn" Classes="window" Content="&#8634;" ToolTip.Tip="Reset window size" Click="ResetSizeBtn_Click" />
                             <Button x:Name="MinimizeBtn" Classes="window" Content="&#9472;" ToolTip.Tip="Minimize" Click="MinimizeBtn_Click" />
@@ -332,11 +333,16 @@
                             </StackPanel>
                             <Border x:Name="ProfilesSharedNotice" Grid.Row="2" IsVisible="False" Margin="0,12,0,0" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="4" Padding="14,10" />
                         </Grid>
-                        <Border Grid.Row="1" Background="Transparent" CornerRadius="4" Padding="0" BorderBrush="#303137" BorderThickness="0">
-                            <ScrollViewer>
+                        <Grid Grid.Row="1" RowDefinitions="Auto,*">
+                            <Grid ColumnDefinitions="*,150,Auto" Margin="0,0,0,12">
+                                <TextBox x:Name="ProfileSearch" PlaceholderText="Search profiles…" Margin="0,0,8,0" />
+                                <ComboBox x:Name="ProfileVersionFilter" Grid.Column="1" HorizontalAlignment="Stretch" />
+                                <Button Grid.Column="2" Content="Import settings…" Classes="action" Margin="8,0,0,0" Click="ImportProfilePreset_Click" />
+                            </Grid>
+                            <ScrollViewer Grid.Row="1">
                                 <StackPanel x:Name="ProfilesListContainer" Spacing="10" />
                             </ScrollViewer>
-                        </Border>
+                        </Grid>
                     </Grid>
                     <Grid x:Name="SettingsPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,*,Auto">
                         <TextBlock Text="Settings" FontSize="26" FontWeight="SemiBold" Margin="0,0,0,16" />
@@ -355,7 +361,8 @@
                                                     <TextBlock Text="UI Scale" Foreground="#CCCCCC" FontSize="14" VerticalAlignment="Center" />
                                                     <ComboBox x:Name="UiScaleSelector" Grid.Column="1" Width="160" Height="36" FontSize="13" />
                                                 </Grid>
-                                                <CheckBox x:Name="ParticleCheckbox" Content="Show background particles" IsChecked="True" />
+                                                <CheckBox x:Name="ReducedMotionCheck" Content="Reduce motion (page, button and notification animations)" Margin="0,0,0,8" />
+                                    <CheckBox x:Name="ParticleCheckbox" Content="Show background particles" IsChecked="True" />
                                             </StackPanel>
                                         </Border>
                                         <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">

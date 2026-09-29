@@ -68,6 +68,10 @@
     "SodiumInactivityMixin",
     "LegacySwingMixin",
     "GraphicsCompatibilityMixin",
-    "SkinPreviewMixin"
+    "SkinPreviewMixin",
+    "ClientToolsChatMixin",
+    "ClientToolsAttackMixin",
+    "ParticleBudgetMixin",
+    "FontMetricsMixin"
   ]
 }
