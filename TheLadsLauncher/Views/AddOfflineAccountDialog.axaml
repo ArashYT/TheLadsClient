@@ -2,46 +2,22 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="230"
+        mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="280"
         x:Class="TheLadsLauncher.Views.AddOfflineAccountDialog"
         Title="Add Offline Account"
-        Width="420" Height="230"
+        Width="420" Height="280"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
-        Background="#0E0E18">
+        Background="#1D1E22">
 
-    <Window.Styles>
-        <Style Selector="Button.action">
-            <Setter Property="Background" Value="#1A1A2E" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Foreground" Value="#AAAAAA" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-        <Style Selector="Button.action:pointerover">
-            <Setter Property="Background" Value="#252545" />
-            <Setter Property="Foreground" Value="White" />
-        </Style>
 
-        <Style Selector="Button.launch">
-            <Setter Property="Background" Value="#8B0000" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-        <Style Selector="Button.launch:pointerover">
-            <Setter Property="Background" Value="#B00000" />
-        </Style>
-    </Window.Styles>
 
-    <Border Padding="24" Background="#0E0E18" BorderBrush="#1A1A2E" BorderThickness="1" CornerRadius="12">
+    <Border Padding="24" Background="#1D1E22" BorderBrush="#303137" BorderThickness="1" CornerRadius="4">
         <Grid RowDefinitions="Auto,*,Auto">
             <!-- Header -->
             <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,16">
                 <TextBlock Text="Add Offline Account" Foreground="White" FontSize="18" FontWeight="Bold"/>
-                <TextBlock Text="Create a local offline Minecraft player profile (Prism style)." Foreground="#888888" FontSize="12"/>
+                <TextBlock Text="Create a local offline Minecraft player profile (Prism style)." Foreground="#A0A1AA" FontSize="12"/>
             </StackPanel>
 
             <!-- Input -->
@@ -50,7 +26,7 @@
                 <TextBox x:Name="UsernameBox" Height="36" FontSize="14" 
                          PlaceholderText="Enter player name (e.g. Steve)"
                          KeyDown="UsernameBox_KeyDown"/>
-                <TextBlock x:Name="ErrorLabel" Text="" Foreground="#FF4444" FontSize="11" IsVisible="False"/>
+                <TextBlock x:Name="ErrorLabel" Text="" Foreground="#E27676" FontSize="11" IsVisible="False"/>
             </StackPanel>
 
             <!-- Buttons -->

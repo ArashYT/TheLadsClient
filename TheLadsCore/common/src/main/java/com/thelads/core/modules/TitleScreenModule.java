@@ -7,5 +7,6 @@ public class TitleScreenModule extends Module {
     public TitleScreenModule() {
         super("TitleScreen", "Customize the title screen elements.");
         addOption(new SliderOption("Account Card Scale", 100, 50, 150, 5));
+        setEnabled(true);
     }
 }

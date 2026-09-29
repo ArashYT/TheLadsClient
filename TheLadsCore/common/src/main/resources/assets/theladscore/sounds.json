@@ -2,31 +2,31 @@
   "reaver_kill_1": {
     "category": "player",
     "sounds": [
-      "killbanner/reaver-kill-1"
+      "theladscore:killbanner/reaver-kill-1"
     ]
   },
   "reaver_kill_2": {
     "category": "player",
     "sounds": [
-      "killbanner/reaver-kill-2"
+      "theladscore:killbanner/reaver-kill-2"
     ]
   },
   "reaver_kill_3": {
     "category": "player",
     "sounds": [
-      "killbanner/reaver-kill-3"
+      "theladscore:killbanner/reaver-kill-3"
     ]
   },
   "reaver_kill_4": {
     "category": "player",
     "sounds": [
-      "killbanner/reaver-kill-4"
+      "theladscore:killbanner/reaver-kill-4"
     ]
   },
   "reaver_kill_5": {
     "category": "player",
     "sounds": [
-      "killbanner/reaver-kill-5"
+      "theladscore:killbanner/reaver-kill-5"
     ]
   }
 }

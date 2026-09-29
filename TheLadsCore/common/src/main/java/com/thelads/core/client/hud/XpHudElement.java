@@ -2,8 +2,9 @@ package com.thelads.core.client.hud;
 
 import com.thelads.core.client.bridge.LadsGraphics;
 
-public class XpHudElement extends HudElement {
+public class XpHudElement extends TextHudElement {
     public XpHudElement() {
+        super(45);
         this.x = 5;
         this.y = 245;
         this.width = 65;
@@ -11,8 +12,7 @@ public class XpHudElement extends HudElement {
     }
 
     @Override
-    public void render(LadsGraphics g) {
-        drawBackground(g);
+    protected String updateText(LadsGraphics g) {
         int lvl = g.getGame().getXpLevel();
         float prog = g.getGame().getXpProgress();
         int fmt = optCycle("Format", 0);
@@ -26,7 +26,6 @@ public class XpHudElement extends HudElement {
             text = "Lvl " + lvl;
         }
 
-        this.width = Math.max(45, g.textWidth(text) + 12);
-        drawCenteredText(g, text);
+        return text;
     }
 }

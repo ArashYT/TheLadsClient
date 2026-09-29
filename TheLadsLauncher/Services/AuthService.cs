@@ -50,8 +50,7 @@ public class AuthService : IAuthService
 
     public Task<AccountItem> AddOfflineAccountAsync(string username)
     {
-        if (string.IsNullOrWhiteSpace(username))
-            throw new ArgumentException("Username cannot be empty", nameof(username));
+        username = AccountIdentity.NormalizeOfflineName(username);
 
         lock (_accounts)
         {
@@ -67,7 +66,7 @@ public class AuthService : IAuthService
             {
                 Username = username,
                 Uuid = uuid,
-                AccessToken = Guid.NewGuid().ToString("N"),
+                AccessToken = "0",
                 AccountType = "offline",
                 Selected = true
             };
@@ -111,11 +110,12 @@ public class AuthService : IAuthService
             var acc = _accounts.FirstOrDefault(a => string.Equals(a.Username, username, StringComparison.OrdinalIgnoreCase));
             if (acc != null)
             {
-                return Task.FromResult(new MSession(acc.Username, acc.AccessToken, acc.Uuid));
+                if (!string.Equals(acc.AccountType, "offline", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Microsoft accounts must be refreshed through Microsoft sign-in before launching.");
+                return Task.FromResult(AccountIdentity.CreateOfflineSession(acc.Username));
             }
 
-            // Fallback to offline session
-            return Task.FromResult(MSession.CreateOfflineSession(username));
+            throw new InvalidOperationException("Select a saved account before launching. Unknown accounts cannot launch as offline players.");
         }
     }
 
@@ -124,7 +124,7 @@ public class AuthService : IAuthService
         lock (_accounts)
         {
             var acc = _accounts.FirstOrDefault(a => string.Equals(a.Username, username, StringComparison.OrdinalIgnoreCase));
-            return acc?.Uuid ?? GenerateOfflineUuid(username);
+            return acc?.Uuid;
         }
     }
 

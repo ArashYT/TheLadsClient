@@ -1,0 +1,119 @@
+{
+    "config.thelads_dynamicfps.title": "Налаштування Dynamic FPS",
+
+    "config.thelads_dynamicfps.warn_cloth_config.0": "Cloth Config потрібен для налаштування Dynamic FPS у Minecraft",
+    "config.thelads_dynamicfps.warn_cloth_config.1": "Установіть Cloth Config, відредагуйте файл налаштувань або скористайтеся налаштуваннями.",
+
+    "config.thelads_dynamicfps.category.general": "Загальні",
+    "config.thelads_dynamicfps.category.advanced": "Розширені",
+
+    "config.thelads_dynamicfps.category.hovered": "Наведений",
+    "config.thelads_dynamicfps.category.unfocused": "Неорієнтований",
+    "config.thelads_dynamicfps.category.invisible": "Невидимий",
+    "config.thelads_dynamicfps.category.unplugged": "Розряджається",
+    "config.thelads_dynamicfps.category.abandoned": "Не працює",
+
+    "config.thelads_dynamicfps.feature.misc": "Різне",
+    "config.thelads_dynamicfps.feature.volume_transition": "Перехід гучности",
+    "config.thelads_dynamicfps.feature.idle": "Очікування",
+    "config.thelads_dynamicfps.feature.battery": "Інтеграція батареї",
+
+    "config.thelads_dynamicfps.enabled": "Мод працює",
+
+    "config.thelads_dynamicfps.disabled": "ВИМК.",
+    "config.thelads_dynamicfps.minutes": "%d хвилин",
+
+    "config.thelads_dynamicfps.idle_time": "Очікування",
+    "config.thelads_dynamicfps.idle_time_tooltip": "Через кілька хвилин бездіяльності Dynamic FPS активує режим очікування, навіть якщо вікно гри активне.",
+
+    "config.thelads_dynamicfps.idle_condition": "Стан очікування",
+
+    "config.thelads_dynamicfps.idle_condition_none": "Ніколи",
+    "config.thelads_dynamicfps.idle_condition_vanilla": "Ваніла",
+    "config.thelads_dynamicfps.idle_condition_on_battery": "Під час роботи від батареї",
+
+    "config.thelads_dynamicfps.idle_condition_none_tooltip": "Завжди вмикати режим очікування, якщо він неактивний протягом тривалого часу.",
+    "config.thelads_dynamicfps.idle_condition_vanilla_tooltip": "Вимкнути режим очікування Dynamic FPS. Замість нього використовуватимуться стандартні (ванільні) налаштування.",
+    "config.thelads_dynamicfps.idle_condition_on_battery_tooltip": "Умикає стан очікування, якщо довгий час немає дій та пристрій працює від батареї.",
+
+    "config.thelads_dynamicfps.uncap_menu_frame_rate": "Безлімітна частота кадрів",
+    "config.thelads_dynamicfps.uncap_menu_frame_rate_tooltip": "Знімає обмеження у 60 FPS в головному меню",
+
+    "config.thelads_dynamicfps.ignore_initial_click": "Ігнорувати початкове натискання",
+    "config.thelads_dynamicfps.ignore_initial_click_tooltip": "Ігнорує випадкові дії під час натискання на неактивне вікно гри.",
+
+    "config.thelads_dynamicfps.ignore_initial_click_disabled": "ВИМК.",
+    "config.thelads_dynamicfps.ignore_initial_click_in_world": "У світі",
+    "config.thelads_dynamicfps.ignore_initial_click_constant": "Завжди",
+
+    "config.thelads_dynamicfps.battery_tracker": "Відстеження батареї",
+    "config.thelads_dynamicfps.battery_tracker_tooltip": "Активує всі параметри відстеження стану батареї.",
+
+    "config.thelads_dynamicfps.battery_tracker_switch_states": "Увімкнути роботу від батареї",
+    "config.thelads_dynamicfps.battery_tracker_switch_states_tooltip": "Автоматично вмикає режим роботи від батареї.",
+
+    "config.thelads_dynamicfps.battery_tracker_notifications": "Сповіщення про стан батареї",
+    "config.thelads_dynamicfps.battery_tracker_notifications_tooltip": "Активує отримання сповіщення в грі про стан заряду батареї.",
+
+    "config.thelads_dynamicfps.battery_critical_level": "Поріг критичного заряду",
+    "config.thelads_dynamicfps.battery_critical_level_tooltip": "Керує тим, який рівень заряду батареї вважається критичним.",
+
+    "config.thelads_dynamicfps.battery_indicator_condition": "Стан індикатора батареї",
+    "config.thelads_dynamicfps.battery_indicator_condition_disabled": "ВИМК.",
+    "config.thelads_dynamicfps.battery_indicator_condition_draining": "Розряджається",
+    "config.thelads_dynamicfps.battery_indicator_condition_critical": "Критичний",
+    "config.thelads_dynamicfps.battery_indicator_condition_constant": "Незмінний",
+
+    "config.thelads_dynamicfps.battery_indicator_debug": "Виводити дані в меню (F3)",
+    "config.thelads_dynamicfps.battery_indicator_debug_tooltip": "Активує показ індикатора батареї в меню налагодження (F3).",
+
+    "config.thelads_dynamicfps.battery_indicator_placement": "Розміщення індикатора",
+    "config.thelads_dynamicfps.battery_indicator_placement_top_left": "Зліва зверху",
+    "config.thelads_dynamicfps.battery_indicator_placement_top_right": "Справа зверху",
+    "config.thelads_dynamicfps.battery_indicator_placement_bottom_left": "Зліва знизу",
+    "config.thelads_dynamicfps.battery_indicator_placement_bottom_right": "Справа знизу",
+
+    "config.thelads_dynamicfps.volume_transition_speed_up": "Швидкість збільшення гучності",
+    "config.thelads_dynamicfps.volume_transition_speed_down": "Швидкість зменшення гучності",
+    "config.thelads_dynamicfps.volume_transition_speed_instant": "Негайно",
+    "config.thelads_dynamicfps.volume_transition_speed_tooltip": "Установіть швидкість, з якою буде регулюватися гучність гри в секунду.",
+
+    "config.thelads_dynamicfps.frame_rate_target": "Частота кадрів",
+    "config.thelads_dynamicfps.volume_multiplier": "Гучність звуків",
+
+    "config.thelads_dynamicfps.graphics_state": "Налаштування графіки",
+    "config.thelads_dynamicfps.graphics_state_default": "Звичайні",
+    "config.thelads_dynamicfps.graphics_state_reduced": "Спрощені",
+    "config.thelads_dynamicfps.graphics_state_minimal": "Мінімальні",
+    "config.thelads_dynamicfps.graphics_state_minimal_tooltip": "Мінімальна графіка спричиняє перезавантаження світу!",
+
+    "config.thelads_dynamicfps.show_toasts": "Показувати сповіщення",
+    "config.thelads_dynamicfps.show_toasts_tooltip": "Визначає, чи показувати спливаючі сповіщення відразу, чи затримувати їх.",
+
+    "config.thelads_dynamicfps.run_garbage_collector": "Викликати збірник сміття",
+    "config.thelads_dynamicfps.run_garbage_collector_tooltip": "Звільняє невикористану пам'ять під час переходу в цей стан.",
+
+    "config.thelads_dynamicfps.download_natives": "Завантажити бібліотеку",
+    "config.thelads_dynamicfps.download_natives_description_0": "Для використання функцій батареї потрібна додаткова бібліотека.",
+    "config.thelads_dynamicfps.download_natives_description_1": "Оберіть, чи може мод самостійно завантажувати цей компонент.",
+
+    "config.thelads_dynamicfps.mock_battery_data": "Використовувати фіктивні дані батареї",
+
+    "key.thelads_dynamicfps.toggle_forced": "Перемкнути примус. режим без фокусу",
+    "key.thelads_dynamicfps.toggle_disabled": "Перемкнути Dynamic FPS",
+    "gui.thelads_dynamicfps.hud.reducing": "Dynamic FPS: Примусове зниження частоти кадрів",
+    "gui.thelads_dynamicfps.hud.disabled": "Dynamic FPS вимкнено",
+
+    "toast.thelads_dynamicfps.error": "Помилка батареї Dynamic FPS",
+    "toast.thelads_dynamicfps.http_error": "Не вдалося завантажити бібліотеку",
+    "toast.thelads_dynamicfps.no_support": "ПК не підтримується",
+    "toast.thelads_dynamicfps.no_library": "Завантаження бібліотеки вимкнено",
+
+    "toast.thelads_dynamicfps.battery_charging": "Заряджається!",
+    "toast.thelads_dynamicfps.battery_draining": "Розряджається!",
+    "toast.thelads_dynamicfps.battery_critical": "Низький заряд!",
+
+    "toast.thelads_dynamicfps.battery_charge": "Наразі %d%%",
+
+    "modmenu.descriptionTranslation.thelads_dynamicfps": "Зменшує використання ресурсів, коли Minecraft працює у фоновому режимі або під час бездіяльності."
+}

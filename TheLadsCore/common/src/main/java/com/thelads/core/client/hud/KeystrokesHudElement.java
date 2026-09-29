@@ -4,6 +4,10 @@ import com.thelads.core.client.CpsTracker;
 import com.thelads.core.client.bridge.LadsGraphics;
 
 public class KeystrokesHudElement extends HudElement {
+    private LadsGraphics preparedGraphics;
+    private boolean showCps, showSpace;
+    private String leftLabel, rightLabel;
+    private int keyWidth, keyHeight, cpsWidth, cpsHeight, cpsY, spaceY;
     public KeystrokesHudElement() {
         this.x = 10;
         this.y = 100;
@@ -12,34 +16,49 @@ public class KeystrokesHudElement extends HudElement {
     }
 
     @Override
-    public void render(LadsGraphics g) {
-        boolean showCps = optBool("Show CPS", true);
-        boolean showSpace = optBool("Show space bar", true);
-        this.height = showSpace ? (showCps ? 70 : 60) : (showCps ? 50 : 40);
+    public void prepareRender(LadsGraphics g, boolean editor) {
+        preparedGraphics = g;
+        showCps = optBool("Show CPS", true);
+        showSpace = optBool("Show space bar", true);
+        leftLabel = "LMB " + CpsTracker.get().leftCps();
+        rightLabel = "RMB " + CpsTracker.get().rightCps();
+        cpsWidth = Math.max(31, Math.max(g.textWidth(leftLabel), g.textWidth(rightLabel)) + 4);
+        width = showCps ? Math.max(68, cpsWidth * 2 + 6) : 68;
+        keyWidth = (width - 8) / 3;
+        keyHeight = Math.max(18, g.fontHeight() + 6);
+        cpsHeight = Math.max(16, g.fontHeight() + 6);
+        cpsY = 2 + 2 * (keyHeight + 2);
+        spaceY = cpsY + (showCps ? cpsHeight + 2 : 0);
+        height = showSpace ? spaceY + 10 : showCps ? cpsY + cpsHeight + 2 : cpsY;
+    }
+
+    @Override public void render(LadsGraphics g) {
+        if (preparedGraphics != g) prepareRender(g, false);
+        preparedGraphics = null;
 
         int baseBg = resolveBackground();
         int pressedBg = 0x80FFFFFF;
         int color = resolveColor();
 
         // W key
-        drawKey(g, "W", x + 24, y + 2, 20, 18, g.getGame().isKeyDown("W"), baseBg, pressedBg, color);
+        drawKey(g, "W", x + (width - keyWidth) / 2, y + 2, keyWidth, keyHeight, g.getGame().isKeyDown("W"), baseBg, pressedBg, color);
         // A key
-        drawKey(g, "A", x + 2, y + 22, 20, 18, g.getGame().isKeyDown("A"), baseBg, pressedBg, color);
+        drawKey(g, "A", x + 2, y + keyHeight + 4, keyWidth, keyHeight, g.getGame().isKeyDown("A"), baseBg, pressedBg, color);
         // S key
-        drawKey(g, "S", x + 24, y + 22, 20, 18, g.getGame().isKeyDown("S"), baseBg, pressedBg, color);
+        drawKey(g, "S", x + (width - keyWidth) / 2, y + keyHeight + 4, keyWidth, keyHeight, g.getGame().isKeyDown("S"), baseBg, pressedBg, color);
         // D key
-        drawKey(g, "D", x + 46, y + 22, 20, 18, g.getGame().isKeyDown("D"), baseBg, pressedBg, color);
+        drawKey(g, "D", x + width - keyWidth - 2, y + keyHeight + 4, keyWidth, keyHeight, g.getGame().isKeyDown("D"), baseBg, pressedBg, color);
 
         if (showCps) {
-            String lmbText = "LMB" + (showCps ? " " + CpsTracker.get().leftCps() : "");
-            String rmbText = "RMB" + (showCps ? " " + CpsTracker.get().rightCps() : "");
-            drawKey(g, lmbText, x + 2, y + 42, 31, 16, g.getGame().isKeyDown("LMB"), baseBg, pressedBg, color);
-            drawKey(g, rmbText, x + 35, y + 42, 31, 16, g.getGame().isKeyDown("RMB"), baseBg, pressedBg, color);
+            drawKey(g, leftLabel, x + 2, y + cpsY, cpsWidth, cpsHeight, g.getGame().isKeyDown("LMB"), baseBg, pressedBg, color);
+            drawKey(g, rightLabel, x + width - cpsWidth - 2, y + cpsY, cpsWidth, cpsHeight, g.getGame().isKeyDown("RMB"), baseBg, pressedBg, color);
         }
 
         if (showSpace) {
-            int sy = showCps ? y + 60 : y + 42;
-            drawKey(g, "───", x + 2, sy, 64, 8, g.getGame().isKeyDown("Space"), baseBg, pressedBg, color);
+            int sy = y + spaceY;
+            boolean down = g.getGame().isKeyDown("Space");
+            g.fill(x + 2, sy, x + width - 2, sy + 8, down ? pressedBg : baseBg);
+            g.fill(x + width / 2 - 10, sy + 4, x + width / 2 + 10, sy + 5, down ? 0xFF000000 : color);
         }
     }
 

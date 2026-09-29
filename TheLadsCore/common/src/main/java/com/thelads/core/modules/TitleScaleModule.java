@@ -7,8 +7,8 @@ import com.thelads.core.config.Option;
 
 public class TitleScaleModule extends Module {
     public TitleScaleModule() {
-        super("Title Scale", "Change the size of the title screen text and elements.");
-        addOption(new DoubleOption("Scale", 1.0, 0.1, 5.0));
+        super("Title Scale", "Scale the title branding. It fits automatically inside your screen.");
+        addOption(new DoubleOption("Scale", 1.0, 0.6, 1.6));
     }
 
     public static float getScale() {

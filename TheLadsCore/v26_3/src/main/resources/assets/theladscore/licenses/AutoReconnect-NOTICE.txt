@@ -1,0 +1,28 @@
+Lads native AutoReconnect for Minecraft 26.2
+
+The Minecraft capture/layout hook integration is adapted from AutoReconnect
+v3.103.0+26.2-fabric, commit 2b61223824f38d8bdbef697ed28a012acf9b7409:
+https://github.com/TerminalMC/AutoReconnect
+Copyright (C) 2023 Bstn1802
+Copyright (C) 2026 TerminalMC
+License: GNU Lesser General Public License version 3 only (LGPL-3.0-only).
+
+Changes by The Lads, 2026: integrated module toggle; client-thread retry state
+machine; original native settings editors; read-only config migration; immutable
+server snapshots; correct world folder identity; cancellation on screen/account
+changes; authentication/consent exclusions; explicitly enabled action profiles;
+connection-bound delayed actions; native layout and Escape handling; isolated QA.
+
+Adapted files are under com/thelads/core/v26_2/mixin/reconnect. The original Lads
+controller, editors, common helpers and probes are included alongside them in
+META-INF/lads-sources/reconnect, so recipients can inspect, modify and rebuild
+this integration. Matching native mixin resources are included there too. Build
+with the Lads source checkout's Gradle wrapper and Java 25:
+  gradlew.bat :v26_2:build
+The common module uses Java 21. Replace the corresponding source paths with the
+bundled files to reproduce this integration; no separately compiled upstream
+AutoReconnect binary is linked by the native implementation.
+
+The license text is AutoReconnect-LGPL-3.0.txt, with its incorporated GNU GPL
+version 3 terms in GNU-GPL-3.0.txt in this same directory. This software is
+provided without warranty; see those license texts for the complete terms.

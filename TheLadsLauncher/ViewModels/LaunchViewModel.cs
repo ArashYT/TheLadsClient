@@ -69,7 +69,7 @@ public class LaunchViewModel : ViewModelBase
         try
         {
             var profile = _profileService.GetActiveProfile();
-            var account = _authService.ActiveAccount ?? "Player";
+            var account = _authService.ActiveAccount ?? throw new InvalidOperationException("Select an account before launching.");
 
             var progress = new Progress<double>(p =>
             {

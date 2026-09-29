@@ -44,7 +44,15 @@ public class JavaService : IJavaService
 
             // 2. Scan system paths
             var candidates = ScanAllSystemJavas();
-            foreach (var cand in candidates)
+            // Oracle's PATH shim forks another java.exe. Prefer a real runtime so
+            // launch monitoring, exit handling and memory reporting track the game.
+            var orderedCandidates = candidates.OrderByDescending(c =>
+            {
+                var bin = Path.GetDirectoryName(c);
+                var runtimeRoot = bin == null ? null : Path.GetDirectoryName(bin);
+                return runtimeRoot != null && File.Exists(Path.Combine(runtimeRoot, "release"));
+            });
+            foreach (var cand in orderedCandidates)
             {
                 var ver = GetJavaMajorVersion(cand);
                 if (ver == majorVersion) return cand;
@@ -291,8 +299,16 @@ public class JavaService : IJavaService
             using var process = Process.Start(psi);
             if (process != null)
             {
-                string output = process.StandardError.ReadToEnd() + " " + process.StandardOutput.ReadToEnd();
-                process.WaitForExit(3000);
+                var stderr = process.StandardError.ReadToEndAsync();
+                var stdout = process.StandardOutput.ReadToEndAsync();
+                if (!process.WaitForExit(3000))
+                {
+                    try { process.Kill(entireProcessTree: true); } catch { }
+                    return null;
+                }
+                var streams = Task.WhenAll(stderr, stdout);
+                if (!streams.Wait(3000)) return null;
+                string output = stderr.Result + " " + stdout.Result;
 
                 var match = Regex.Match(output, @"version ""(?:1\.)?(?<major>\d+)");
                 if (match.Success && int.TryParse(match.Groups["major"].Value, out int ver))

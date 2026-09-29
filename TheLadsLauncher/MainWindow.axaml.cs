@@ -29,6 +29,7 @@ using XboxAuthNet.XboxLive;
 using XboxAuthNet.Game.Msal;
 using XboxAuthNet.Game.Msal.OAuth;
 using Microsoft.Identity.Client;
+using TheLadsLauncher.Services;
 
 namespace TheLadsLauncher;
 
@@ -36,13 +37,17 @@ namespace TheLadsLauncher;
 
 public partial class MainWindow : Window
 {
-    private JELoginHandler loginHandler;
+    private MicrosoftAccountService loginHandler = null!;
     private LauncherSettings settings;
     private readonly TheLadsLauncher.Services.IProfileService _profileService = TheLadsLauncher.Services.ProfileService.Instance;
     private readonly TheLadsLauncher.Services.IJavaService _javaService = TheLadsLauncher.Services.JavaService.Instance;
     private readonly TheLadsLauncher.Services.IPathService _pathService = TheLadsLauncher.Services.PathService.Instance;
     private AvaloniaMsalProvider? _msalProvider;
     private CancellationTokenSource? _authCts;
+    private bool _addingAccount;
+    private bool _accountCacheRecoveryShown;
+    private readonly Dictionary<string, string> _accountNotices = new(StringComparer.OrdinalIgnoreCase);
+    private bool _launching;
     private bool _populatingProfileSelector = false;
 
     private string _selectedAccountInternal = "";
@@ -63,16 +68,16 @@ public partial class MainWindow : Window
     // WITHOUT changing _selectedAccount (the user's main). Set via LaunchAccountSelector.
     private string _launchAccountOverride = "";
     private bool _populatingLaunchSelector = false;
+    private bool _showingMicrosoftSetup;
     private List<Process> _runningProcesses = new();
-    private TaskCompletionSource<bool>? _installChoiceTcs;
     private DispatcherTimer? _updateCheckTimer;
 
     // ── 16:9 aspect ratio lock ───────────────────────────────────────────────
-    private bool   _lockAspect     = true;
+    private bool   _lockAspect     = false;
     private bool   _adjustingAspect = false;
     private const  double ASPECT_RATIO   = 16.0 / 9.0;
     private const  double DEFAULT_WIDTH  = 1152.0;
-    private const  double DEFAULT_HEIGHT = 648.0;
+    private const  double DEFAULT_HEIGHT = 720.0;
     private DispatcherTimer _statsTimer;
     private DispatcherTimer _statSmoothTimer;
     private double _targetCpu, _dispCpu, _targetRam, _dispRam;
@@ -102,6 +107,7 @@ public partial class MainWindow : Window
     // Logging
     private Queue<string> logLines = new();
     private List<string> allLogLines = new();
+    private bool _logDirty;
 
     // Web Client
     private System.Net.Http.HttpClient _httpClient = new();
@@ -118,27 +124,6 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        // Kill lingering launcher instances to avoid test/port conflicts —
-        // but ONLY when the user hasn't enabled "Allow launching multiple copies".
-        try
-        {
-            bool allowMulti = false;
-            try { allowMulti = LauncherSettings.Load().AllowMultiInstance; } catch { }
-            if (!allowMulti)
-            {
-                var currentProc = System.Diagnostics.Process.GetCurrentProcess();
-                foreach (var p in System.Diagnostics.Process.GetProcessesByName("TheLadsLauncher"))
-                {
-                    if (p.Id != currentProc.Id)
-                    {
-                        p.Kill();
-                        p.WaitForExit(1000);
-                    }
-                }
-            }
-        }
-        catch { }
-
         InitializeComponent();
 
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
@@ -163,22 +148,8 @@ public partial class MainWindow : Window
         
         Log($"[Settings] Loaded settings from BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
         Log($"[Settings] ModrinthApiUrl: '{settings.ModrinthApiUrl}', CurseForgeApiUrl: '{settings.CurseForgeApiUrl}', OverrideVersion: '{settings.SelectedMinecraftVersionOverride}', FabricVersion: '{settings.FabricVersion}'");
-        var customHttpClient = new System.Net.Http.HttpClient();
-        customHttpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        InitializeAuthentication();
 
-        var msalApp = MsalClientHelper.BuildApplicationWithCache("c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb").GetAwaiter().GetResult();
-
-        var oauthBuilder = new MsalOAuthBuilder(msalApp);
-
-        _msalProvider = new AvaloniaMsalProvider(oauthBuilder, this);
-        _msalProvider.OnCancelRequested = () => _authCts?.Cancel();
-        loginHandler = new JELoginHandlerBuilder()
-        {
-            HttpClient = customHttpClient
-        }
-        .WithOAuthProvider(_msalProvider)
-        .Build();
-        
         // Removed automation Trigger login
         
         // Print API reflection info for accounts
@@ -232,6 +203,7 @@ public partial class MainWindow : Window
         LoadProfilesUI();
         LoadAccounts();
         InitializeEditor();
+        if (args.Contains("--preview-accounts")) Dispatcher.UIThread.Post(() => NavigateTo("Accounts"));
 
         // Enable drag-and-drop of .jar files onto the Mods page to install them.
         if (ModsPage != null)
@@ -278,119 +250,32 @@ public partial class MainWindow : Window
 
         this.Loaded += async (s, e) =>
         {
-            bool updateApplied = false;
-            try
-            {
-                // 1. Check for installation
-                string installedDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "The Lads Client");
-                string installedExe = Path.Combine(installedDir, "TheLadsLauncher.exe");
-                string currentExe = Process.GetCurrentProcess().MainModule?.FileName ?? "";
-                
-                // \bin\NewBuild\ is the published build the user actually runs from (its own folder
-                // with the dll + runtime). Treat it like Debug/Release so it never shows the install
-                // prompt — installing it would copy only the apphost exe and leave a non-runnable copy.
-                bool isDebug = currentExe.Contains("\\bin\\Debug\\") || currentExe.Contains("\\bin\\Release\\")
-                    || currentExe.Contains("\\bin\\NewBuild\\") || System.Diagnostics.Debugger.IsAttached;
-                if (!string.IsNullOrEmpty(currentExe) && !string.Equals(currentExe, installedExe, StringComparison.OrdinalIgnoreCase) && !isDebug)
-                {
-                    InstallationOverlay.IsVisible = true;
-                    _installChoiceTcs = new TaskCompletionSource<bool>();
-                    bool install = await _installChoiceTcs.Task;
-                    InstallationOverlay.IsVisible = false;
-                    
-                    if (install)
-                    {
-                        try
-                        {
-                            Directory.CreateDirectory(installedDir);
-                            File.Copy(currentExe, installedExe, true);
-                            
-                            // Copy settings.json if exists
-                            string currentSettings = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
-                            string installedSettings = Path.Combine(installedDir, "settings.json");
-                            if (File.Exists(currentSettings))
-                            {
-                                File.Copy(currentSettings, installedSettings, true);
-                            }
-                            
-                            // Create shortcuts using PowerShell COM object call
-                            string desktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "The Lads Client.lnk");
-                            string startMenuDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs");
-                            string startMenuPath = Path.Combine(startMenuDir, "The Lads Client.lnk");
-                            
-                            string psCommand = $"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('{desktopPath}');$s.TargetPath='{installedExe}';$s.WorkingDirectory='{installedDir}';$s.Save();" +
-                                               $"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('{startMenuPath}');$s.TargetPath='{installedExe}';$s.WorkingDirectory='{installedDir}';$s.Save();";
-                                               
-                            var psStartInfo = new ProcessStartInfo
-                            {
-                                FileName = "powershell.exe",
-                                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psCommand}\"",
-                                CreateNoWindow = true,
-                                UseShellExecute = false
-                            };
-                            using var psProc = Process.Start(psStartInfo);
-                            psProc?.WaitForExit();
-                            
-                            // Launch the installed one
-                            Process.Start(new ProcessStartInfo
-                            {
-                                FileName = installedExe,
-                                WorkingDirectory = installedDir,
-                                UseShellExecute = true
-                            });
-                            
-                            Environment.Exit(0);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log($"[Installation Error] {ex.Message}");
-                        }
-                    }
-                }
+            await PollForUpdatesAsync();
+            if (_windowClosed) return;
+            startupAnimTimer.Stop();
+            if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
+            LauncherStartupOverlay.IsVisible = false;
 
-                // 2. Check for updates on startup (skippable for local/dev testing via env var)
-                if (Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") != "1")
-                {
-                    if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = "Checking for updates";
-                    var update = await AutoUpdater.CheckForUpdatesAsync(Program.Version);
-                    if (update != null)
-                    {
-                        if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = $"Downloading update v{update.LatestVersion}";
-                        bool downloaded = await AutoUpdater.DownloadUpdateAsync(update.DownloadUrl, update.LatestVersion);
-                        if (downloaded)
-                        {
-                            if (StartupLoadingSpinner != null) StartupLoadingSpinner.Text = "Applying update";
-                            updateApplied = true;
-                            AutoUpdater.ApplyUpdateAndRestart();
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
+            // Checks use a ten-minute interval; ready updates retry the idle condition
+            // every fifteen seconds, including after the game or authentication ends.
+            _updateCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+            _updateCheckTimer.Tick += async (_, _) => await PollForUpdatesAsync();
+            _updateCheckTimer.Start();
+            if (settings.LastSeenReleaseNotesVersion != Program.Version)
+                await ShowReleaseNotesAsync();
+        };
+        var logTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        logTimer.Tick += (_, _) =>
+        {
+            lock (logLines)
             {
-                Log($"[Startup Update Error] {ex.Message}");
-            }
-
-            if (!updateApplied)
-            {
-                await Task.Delay(500); // Small grace period
-                startupAnimTimer.Stop();
-                if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
-                LauncherStartupOverlay.IsVisible = false;
-                
-                // Start background update timer (every 10 minutes)
-                _updateCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(10) };
-                _updateCheckTimer.Tick += async (sender, args) => await PollForUpdatesAsync();
-                _updateCheckTimer.Start();
-                
-                // Initial check in background after startup
-                _ = Task.Run(async () => {
-                    await Task.Delay(5000);
-                    await PollForUpdatesAsync();
-                });
+                if (!_logDirty) return;
+                LogBox.Text = string.Join(Environment.NewLine, logLines);
+                _logDirty = false;
             }
         };
-        
+        logTimer.Start();
+        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); logTimer.Stop(); _authCts?.Cancel(); };
         // Stats timer (1 second)
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statsTimer.Tick += UpdateSystemStats;
@@ -493,7 +378,7 @@ public partial class MainWindow : Window
         this.PointerReleased += (s, e) => _isDrawing = false;
 
         // Version display
-        VersionText.Text = $"v{settings.LauncherVersion}";
+        VersionText.Text = $"v{Program.Version}";
         UpdateMinecraftVersionDisplay();
         InitializeSearchMcVersions();
         _ = TriggerDefaultSearchesAsync();
@@ -503,46 +388,49 @@ public partial class MainWindow : Window
     //  NAVIGATION
     // ═══════════════════════════════════════
 
-    private void InstallLauncher_Click(object? sender, RoutedEventArgs e)
+    private readonly AutoUpdater _autoUpdater = new(new VelopackUpdateBackend());
+    private bool _releaseNotesOpen;
+    private bool _windowClosed;
+
+    private Task PollForUpdatesAsync() => _autoUpdater.PollAsync(
+        () => _windowClosed || _launching || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
+            || _runningProcesses.Any(IsGameRunning),
+        message =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_windowClosed) return;
+                StartupLoadingSpinner.Text = message;
+                UpdateBannerText.Text = message;
+                UpdateBanner.IsVisible = !string.IsNullOrEmpty(message);
+            });
+            if (!string.IsNullOrEmpty(message)) Log($"[Updater] {message}");
+        },
+        Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1" || _windowClosed);
+
+    private static bool IsGameRunning(Process process)
     {
-        _installChoiceTcs?.TrySetResult(true);
+        try { return !process.HasExited; }
+        catch (InvalidOperationException) { return false; }
     }
 
-    private void SkipInstall_Click(object? sender, RoutedEventArgs e)
-    {
-        _installChoiceTcs?.TrySetResult(false);
-    }
+    private async void ReleaseNotes_Click(object? sender, RoutedEventArgs e) => await ShowReleaseNotesAsync();
 
-    private void ApplyUpdate_Click(object? sender, RoutedEventArgs e)
+    private async Task ShowReleaseNotesAsync()
     {
-        AutoUpdater.ApplyUpdateAndRestart();
-    }
-
-    private async Task PollForUpdatesAsync()
-    {
-        if (Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1") return;
+        if (_releaseNotesOpen || _windowClosed) return;
+        _releaseNotesOpen = true;
         try
         {
-            var update = await AutoUpdater.CheckForUpdatesAsync(Program.Version);
-            if (update != null && !AutoUpdater.IsUpdateReady)
-            {
-                bool downloaded = await AutoUpdater.DownloadUpdateAsync(update.DownloadUrl, update.LatestVersion);
-                if (downloaded)
-                {
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        UpdateBannerText.Text = $"Launcher Update Ready: v{update.LatestVersion} is downloaded and ready to apply.";
-                        UpdateBanner.IsVisible = true;
-                    });
-                }
-            }
+            var notes = ReleaseNotes.Read(Path.Combine(AppContext.BaseDirectory, "release-notes"));
+            var dialog = new Views.ReleaseNotesWindow(notes, Program.Version);
+            await dialog.ShowDialog(this);
+            settings.LastSeenReleaseNotesVersion = Program.Version;
+            settings.Save();
         }
-        catch (Exception ex)
-        {
-            Log($"[Update Poll Error] {ex.Message}");
-        }
+        catch (Exception ex) { Log($"[Release notes] {ex.Message}"); }
+        finally { _releaseNotesOpen = false; }
     }
-
     private void NavigateTo(string page)
     {
         HomePage.IsVisible = page == "Home";
@@ -571,8 +459,8 @@ public partial class MainWindow : Window
         LoadProfilesUI();
         NavigateTo("Profiles");
     }
-    private void NavAccounts_Click(object? sender, RoutedEventArgs e) => NavigateTo("Accounts");
-    private void ManageAccountsShortcutBtn_Click(object? sender, RoutedEventArgs e) => NavigateTo("Accounts");
+    private void NavAccounts_Click(object? sender, RoutedEventArgs e) { LoadAccounts(); NavigateTo("Accounts"); }
+    private void ManageAccountsShortcutBtn_Click(object? sender, RoutedEventArgs e) { LoadAccounts(); NavigateTo("Accounts"); }
     private void NavSettings_Click(object? sender, RoutedEventArgs e) => NavigateTo("Settings");
     private bool _modsListLoaded = false;
     private void NavMods_Click(object? sender, RoutedEventArgs e)
@@ -610,13 +498,24 @@ public partial class MainWindow : Window
 
             FilesList.Children.Clear();
 
+            if (!Directory.Exists(dir))
+            {
+                FilesList.Children.Add(new TextBlock
+                {
+                    Text = "This profile has no game files yet. Launch it to create its game folder.",
+                    Foreground = Brush.Parse("#A0A1AA"), FontSize = 13,
+                    TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4)
+                });
+                return;
+            }
+
             foreach (var d in Directory.GetDirectories(dir).OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase))
                 FilesList.Children.Add(BuildFileRow(d, true));
             foreach (var f in Directory.GetFiles(dir).OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase))
                 FilesList.Children.Add(BuildFileRow(f, false));
 
             if (FilesList.Children.Count == 0)
-                FilesList.Children.Add(new TextBlock { Text = "Empty folder.", Foreground = new SolidColorBrush(Color.Parse("#666666")), FontSize = 13, Margin = new Thickness(4) });
+                FilesList.Children.Add(new TextBlock { Text = "Empty folder.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4) });
         }
         catch (Exception ex)
         {
@@ -629,13 +528,19 @@ public partial class MainWindow : Window
         string name = Path.GetFileName(path);
         var row = new Border
         {
-            Background = new SolidColorBrush(Color.Parse("#14141F")),
-            CornerRadius = new CornerRadius(6),
+            Background = new SolidColorBrush(Color.Parse("#1D1E22")),
+            CornerRadius = new CornerRadius(4),
             Padding = new Thickness(10, 6, 8, 6)
         };
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto") };
 
-        var icon = new TextBlock { Text = isDir ? "📁" : "📄", FontSize = 14, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+        var icon = new Avalonia.Controls.Shapes.Path
+        {
+            Data = Geometry.Parse(isDir ? "M 1,5 V 3 H 7 L 9,5 H 17 V 15 H 1 Z" : "M 3,1 H 11 L 16,6 V 17 H 3 Z M 11,1 V 6 H 16"),
+            Width = 16, Height = 16, Stretch = Stretch.Uniform, Stroke = Brush.Parse("#9295A0"),
+            StrokeThickness = 1.2, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 10, 0)
+        };
         Grid.SetColumn(icon, 0);
         grid.Children.Add(icon);
 
@@ -648,7 +553,7 @@ public partial class MainWindow : Window
             try
             {
                 long bytes = new FileInfo(path).Length;
-                var sizeText = new TextBlock { Text = FormatBytes(bytes), Foreground = new SolidColorBrush(Color.Parse("#666666")), FontSize = 11, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) };
+                var sizeText = new TextBlock { Text = FormatBytes(bytes), Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 11, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) };
                 Grid.SetColumn(sizeText, 2);
                 grid.Children.Add(sizeText);
             }
@@ -732,7 +637,7 @@ public partial class MainWindow : Window
         string dir = Path.Combine(settings.InstancePath, "screenshots");
         if (!Directory.Exists(dir))
         {
-            GalleryList.Children.Add(new TextBlock { Text = "No screenshots folder yet.", Foreground = new SolidColorBrush(Color.Parse("#666666")), FontSize = 13, Margin = new Thickness(4) });
+            GalleryList.Children.Add(new TextBlock { Text = "No screenshots folder yet.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4) });
             return;
         }
 
@@ -745,7 +650,7 @@ public partial class MainWindow : Window
 
         if (files.Count == 0)
         {
-            GalleryList.Children.Add(new TextBlock { Text = "No screenshots yet.", Foreground = new SolidColorBrush(Color.Parse("#666666")), FontSize = 13, Margin = new Thickness(4) });
+            GalleryList.Children.Add(new TextBlock { Text = "No screenshots yet.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4) });
             return;
         }
         foreach (var f in files) GalleryList.Children.Add(BuildGalleryCard(f));
@@ -766,7 +671,7 @@ public partial class MainWindow : Window
         stack.Children.Add(imgBorder);
 
         stack.Children.Add(new TextBlock { Text = name, Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")), FontSize = 11, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis });
-        stack.Children.Add(new TextBlock { Text = File.GetLastWriteTime(path).ToString("g"), Foreground = new SolidColorBrush(Color.Parse("#666666")), FontSize = 10 });
+        stack.Children.Add(new TextBlock { Text = File.GetLastWriteTime(path).ToString("g"), Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 10 });
 
         // Metadata sidecar (written in-game): server/world, coords, biome
         string metaLine = ReadScreenshotMeta(path);
@@ -1127,7 +1032,7 @@ public partial class MainWindow : Window
     {
         _lockAspect = !_lockAspect;
         if (AspectLockBtn != null)
-            AspectLockBtn.Content = _lockAspect ? "16:9 🔒" : "Free 🔓";
+            AspectLockBtn.Content = _lockAspect ? "16:9" : "Free";
 
         if (_lockAspect && WindowState == WindowState.Normal)
         {
@@ -1143,7 +1048,7 @@ public partial class MainWindow : Window
             WindowState = WindowState.Normal;
         _adjustingAspect = true;
         this.Width  = DEFAULT_WIDTH;
-        this.Height = DEFAULT_HEIGHT;
+        this.Height = _lockAspect ? DEFAULT_WIDTH / ASPECT_RATIO : DEFAULT_HEIGHT;
         _adjustingAspect = false;
     }
 
@@ -1234,8 +1139,20 @@ public partial class MainWindow : Window
 
     private void ApplyTheme()
     {
-        var (primary, primaryLight, primaryDark, accent) = settings.GetThemeColors();
-        GameStateText.Foreground = new SolidColorBrush(Color.Parse(accent));
+        var (accent, hover, pressed, subtle) = settings.Theme switch
+        {
+            "DarkBlue" => ("#3869AD", "#477CC4", "#2D568F", "#1C2430"),
+            "DarkPurple" => ("#7757AA", "#8B69C0", "#624790", "#25202E"),
+            "Midnight" => ("#555F76", "#69758F", "#424B60", "#22252D"),
+            _ => ("#C44343", "#D65353", "#A53434", "#241C1D")
+        };
+        // Application scope also keeps owned dialogs consistent with the selected theme.
+        var resources = Application.Current!.Resources;
+        resources["LadsAccent"] = Brush.Parse(accent);
+        resources["LadsAccentHover"] = Brush.Parse(hover);
+        resources["LadsAccentPressed"] = Brush.Parse(pressed);
+        resources["LadsAccentSubtle"] = Brush.Parse(subtle);
+        GameStateText.Foreground = Brush.Parse("#B9BCC6");
     }
 
     private void ApplyUiScale()
@@ -1243,6 +1160,9 @@ public partial class MainWindow : Window
         if (double.TryParse(settings.UiScale.Replace("%", ""), out double pct))
         {
             double scale = pct / 100.0;
+            // Keep all controls reachable at the supported scale settings.
+            MinWidth = 960 * scale;
+            MinHeight = 600 * scale;
             if (UiScaleTransformControl?.LayoutTransform is ScaleTransform st)
             {
                 st.ScaleX = scale;
@@ -1333,11 +1253,11 @@ public partial class MainWindow : Window
         {
             string timestamped = $"[{DateTime.Now:HH:mm:ss}] {message}";
             allLogLines.Add(timestamped);
+            if (allLogLines.Count > 2000) allLogLines.RemoveRange(0, 500);
             logLines.Enqueue(timestamped);
             if (logLines.Count > 500)
                 logLines.Dequeue();
-            LogBox.Text = string.Join(Environment.NewLine, logLines);
-            LogBox.CaretIndex = LogBox.Text?.Length ?? 0;
+            _logDirty = true;
         });
     }
 
@@ -1373,9 +1293,23 @@ public partial class MainWindow : Window
     //  ACCOUNTS SYSTEM
     // ═══════════════════════════════════════
 
+    private void InitializeAuthentication()
+    {
+        var app = MsalClientHelper.BuildApplication(
+            Guid.TryParse(settings.MicrosoftClientId, out var id) ? id.ToString() : Guid.Empty.ToString());
+        _msalProvider = new AvaloniaMsalProvider(new MsalOAuthBuilder(app), this);
+        _msalProvider.OnCancelRequested = () => _authCts?.Cancel();
+        loginHandler = new MicrosoftAccountService(app, _msalProvider, _pathService.BaseDirectory, _httpClient);
+    }
+
     private void LoadAccounts()
     {
         var msAccounts = loginHandler.AccountManager.GetAccounts().ToList();
+        if (loginHandler.CacheRecoveryNotice is { } recovery && !_accountCacheRecoveryShown)
+        {
+            _accountCacheRecoveryShown = true;
+            Log("[AUTH] " + recovery);
+        }
         var allAccountNames = new List<string>();
 
         foreach (var acc in msAccounts)
@@ -1420,8 +1354,7 @@ public partial class MainWindow : Window
             PlayerSkinPreview.Source = null;
         }
 
-        _ = WriteLadsProfileAsync(_selectedAccount);
-        _ = WriteLadsAccountsJsonAsync();
+        // Listing accounts is local. Only launch or explicit refresh authenticates.
         RenderAccountsList(allAccountNames);
         PopulateLaunchSelector(allAccountNames);
 
@@ -1445,7 +1378,9 @@ public partial class MainWindow : Window
                 item.Click += async (s, e) =>
                 {
                     // Select this account first
+                    _launchAccountOverride = "";
                     _selectedAccount = accName;
+                    PopulateLaunchSelector(GetAccountSummaries().Select(a => a.username).ToList());
                     MiniAccountName.Text = accName;
                     await LoadPlayerSkin(accName);
                     await WriteLadsProfileAsync(accName);
@@ -1535,30 +1470,54 @@ public partial class MainWindow : Window
     private void RenderAccountsList(List<string> allAccountNames)
     {
         AccountsListContainer.Children.Clear();
+        bool registrationReady = Guid.TryParse(settings.MicrosoftClientId, out var clientId) && clientId != Guid.Empty;
+        AccountsSignInStatus.Text = registrationReady
+            ? "Microsoft sign-in and session refresh happen inside The Lads Client. Your default account is used at launch."
+            : "Microsoft sign-in needs this launcher's application setup. Local development accounts are ready to use.";
+        if (allAccountNames.Count == 0)
+            AccountsListContainer.Children.Add(new TextBlock
+            {
+                Text = "No accounts added yet. Add a Microsoft account, or a local account for development.",
+                Foreground = new SolidColorBrush(Color.Parse("#9AA7B8")), FontSize = 13,
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 16)
+            });
 
         for (int i = 0; i < allAccountNames.Count; i++)
         {
             string username = allAccountNames[i];
-            bool isOffline = settings.OfflineAccounts.Contains(username);
+            bool isOffline = !loginHandler.AccountManager.GetAccounts().OfType<CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount>().Any(a => string.Equals(a.Profile?.Username, username, StringComparison.OrdinalIgnoreCase)) && settings.OfflineAccounts.Contains(username, StringComparer.OrdinalIgnoreCase);
             bool isActive = string.Equals(_selectedAccount, username, StringComparison.OrdinalIgnoreCase);
 
             var border = new Border
             {
-                Background = new SolidColorBrush(Color.Parse(isActive ? "#141424" : "#0E0E18")),
-                BorderBrush = new SolidColorBrush(Color.Parse(isActive ? "#8B0000" : "#1A1A2E")),
+                Background = new SolidColorBrush(Color.Parse(isActive ? "#28262A" : "#1D1E22")),
+                BorderBrush = new SolidColorBrush(Color.Parse(isActive ? "#C44343" : "#303137")),
                 BorderThickness = new Thickness(isActive ? 1.5 : 1),
-                CornerRadius = new CornerRadius(10),
+                CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(12, 10),
                 Margin = new Thickness(0, 0, 0, 6)
             };
 
-            var grid = new Grid { ColumnDefinitions = ColumnDefinitions.Parse("Auto,*,Auto,Auto,Auto,Auto") };
+            var grid = new Grid
+            {
+                ColumnDefinitions = ColumnDefinitions.Parse("Auto,*"),
+                RowDefinitions = RowDefinitions.Parse("Auto,Auto")
+            };
+            var actions = new WrapPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+            Grid.SetRow(actions, 1);
+            Grid.SetColumnSpan(actions, 2);
+            grid.Children.Add(actions);
 
             // Avatar Head
             var skinHead = new Avalonia.Controls.Shapes.Ellipse
             {
                 Width = 28, Height = 28,
-                Fill = new SolidColorBrush(Color.Parse("#111118")),
+                Fill = new SolidColorBrush(Color.Parse("#202125")),
                 Margin = new Thickness(0, 0, 10, 0),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
@@ -1599,7 +1558,8 @@ public partial class MainWindow : Window
                 Text = username,
                 Foreground = Brushes.White,
                 FontSize = 14,
-                FontWeight = FontWeight.Bold
+                FontWeight = FontWeight.Bold,
+                TextWrapping = TextWrapping.Wrap
             };
             infoStack.Children.Add(nameText);
 
@@ -1638,7 +1598,7 @@ public partial class MainWindow : Window
                 };
                 activeBadge.Child = new TextBlock
                 {
-                    Text = "✓ Active",
+                    Text = "Default",
                     Foreground = new SolidColorBrush(Color.Parse("#00FF88")),
                     FontSize = 10,
                     FontWeight = FontWeight.Bold
@@ -1647,6 +1607,13 @@ public partial class MainWindow : Window
             }
 
             infoStack.Children.Add(badgeRow);
+            infoStack.Children.Add(new TextBlock
+            {
+                Text = _accountNotices.TryGetValue(username, out var notice) ? notice
+                    : isOffline ? "Local play only" : "Session checked at launch",
+                Foreground = new SolidColorBrush(Color.Parse("#91A0B4")), FontSize = 10,
+                TextWrapping = TextWrapping.Wrap
+            });
             Grid.SetColumn(infoStack, 1);
             grid.Children.Add(infoStack);
 
@@ -1655,7 +1622,7 @@ public partial class MainWindow : Window
             {
                 var activeBtn = new Button
                 {
-                    Content = "★ Use",
+                    Content = "Set default",
                     Classes = { "action" },
                     Height = 28, FontSize = 11,
                     FontWeight = FontWeight.SemiBold,
@@ -1663,60 +1630,46 @@ public partial class MainWindow : Window
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
                 activeBtn.Click += async (s, e) => {
+                    if (_addingAccount || _launching) return;
                     _selectedAccount = username;
+                    _launchAccountOverride = "";
                     MiniAccountName.Text = username;
                     await LoadPlayerSkin(username);
                     _ = WriteLadsProfileAsync(username);
-                    Log($"[Auth] Switched to account: {username}");
+                    Log($"[Auth] Default account set: {username}");
                     LoadAccounts();
                 };
-                Grid.SetColumn(activeBtn, 2);
-                grid.Children.Add(activeBtn);
+                actions.Children.Add(activeBtn);
             }
 
             // Refresh Button
             var refreshBtn = new Button
             {
-                Content = "🔄",
+                Content = "",
                 Classes = { "action" },
                 Height = 28, Width = 28,
                 FontSize = 11,
                 Margin = new Thickness(2, 0),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
-            ToolTip.SetTip(refreshBtn, "Refresh account tokens and skin");
-            refreshBtn.Click += async (s, e) => {
-                StatusText.Text = $"Refreshing {username}...";
-                try
-                {
-                    if (!isOffline)
-                    {
-                        var msAcc = loginHandler.AccountManager.GetAccounts()
-                            .FirstOrDefault(a => (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == username);
-                        if (msAcc != null)
-                        {
-                            await loginHandler.AuthenticateSilently(msAcc);
-                            loginHandler.AccountManager.SaveAccounts();
-                        }
-                    }
-                    await LoadPlayerSkin(username);
-                    await WriteLadsProfileAsync(username);
-                    StatusText.Text = $"Refreshed {username} successfully.";
-                    Log($"[Auth] Refreshed account: {username}");
-                    LoadAccounts();
-                }
-                catch (Exception ex)
-                {
-                    StatusText.Text = $"Failed to refresh {username}: {ex.Message}";
-                    Log($"[Auth ERROR] {ex.Message}");
-                }
-            };
-            Grid.SetColumn(refreshBtn, 3);
-            grid.Children.Add(refreshBtn);
+            ToolTip.SetTip(refreshBtn, isOffline ? "Reload skin" : "Refresh session; right-click to sign in again");
+            refreshBtn.Click += async (s, e) => await RefreshSavedAccountAsync(username);
+            if (!isOffline)
+            {
+                var signInAgain = new MenuItem { Header = "Sign in again…" };
+                signInAgain.Click += async (_, _) => await RefreshSavedAccountAsync(username, true);
+                refreshBtn.ContextMenu = new ContextMenu();
+                refreshBtn.ContextMenu.Items.Add(signInAgain);
+            }
+            actions.Children.Add(refreshBtn);
 
             // Reorder buttons (Up/Down)
             var upBtn = new Button { Content = "▲", Classes = { "action" }, Height = 28, Width = 28, FontSize = 10, Margin = new Thickness(2, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
             var downBtn = new Button { Content = "▼", Classes = { "action" }, Height = 28, Width = 28, FontSize = 10, Margin = new Thickness(2, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            ToolTip.SetTip(upBtn, "Move account up");
+            ToolTip.SetTip(downBtn, "Move account down");
+            upBtn.IsEnabled = i > 0;
+            downBtn.IsEnabled = i < allAccountNames.Count - 1;
 
             int currentIndex = i;
             upBtn.Click += (s, e) => {
@@ -1745,8 +1698,7 @@ public partial class MainWindow : Window
             };
             orderPanel.Children.Add(upBtn);
             orderPanel.Children.Add(downBtn);
-            Grid.SetColumn(orderPanel, 4);
-            grid.Children.Add(orderPanel);
+            actions.Children.Add(orderPanel);
 
             // Delete Button
             var delBtn = new Button
@@ -1762,19 +1714,75 @@ public partial class MainWindow : Window
             delBtn.Click += async (s, e) => {
                 await RemoveSpecificAccount(username);
             };
-            Grid.SetColumn(delBtn, 5);
-            grid.Children.Add(delBtn);
+            actions.Children.Add(delBtn);
 
             border.Child = grid;
             AccountsListContainer.Children.Add(border);
         }
     }
 
+    private async Task RefreshSavedAccountAsync(string username, bool signInAgain = false)
+    {
+        if (_addingAccount || _launching || _authCts != null) return;
+        var account = loginHandler.AccountManager.GetAccounts()
+            .OfType<CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount>()
+            .FirstOrDefault(a => string.Equals(a.Profile?.Username, username, StringComparison.OrdinalIgnoreCase));
+        if (account != null && (!Guid.TryParse(settings.MicrosoftClientId, out var clientId) || clientId == Guid.Empty))
+        {
+            _accountNotices[username] = "Microsoft application setup required";
+            LoadAccounts();
+            StatusText.Text = "The launcher owner must configure The Lads Client's Microsoft application ID in Settings.";
+            return;
+        }
+        if (account == null && !settings.OfflineAccounts.Contains(username, StringComparer.OrdinalIgnoreCase)) return;
+        _addingAccount = true;
+        _authCts = new CancellationTokenSource(TimeSpan.FromMinutes(16));
+        _accountNotices[username] = signInAgain ? "Waiting for Microsoft sign-in…" : "Refreshing…";
+        LoadAccounts();
+        try
+        {
+            string updatedName = username;
+            if (account != null)
+            {
+                var session = signInAgain
+                    ? await loginHandler.AuthenticateInteractively(account, _authCts.Token)
+                    : await loginHandler.RefreshOrSignInAsync(account, _authCts.Token);
+                updatedName = session.Username!;
+                // Minecraft names can change while the account UUID stays the same.
+                if (string.Equals(_selectedAccount, username, StringComparison.OrdinalIgnoreCase)) _selectedAccount = updatedName;
+                if (string.Equals(_launchAccountOverride, username, StringComparison.OrdinalIgnoreCase)) _launchAccountOverride = updatedName;
+                int index = settings.AccountOrder.FindIndex(name => string.Equals(name, username, StringComparison.OrdinalIgnoreCase));
+                if (index >= 0) settings.AccountOrder[index] = updatedName;
+                _accountNotices.Remove(username);
+                _accountNotices[updatedName] = "Minecraft session verified";
+                settings.Save();
+            }
+            else _accountNotices[username] = "Local play only";
+            await LoadPlayerSkin(updatedName);
+            StatusText.Text = account == null ? $"Skin reloaded for {updatedName}." : $"Minecraft session refreshed for {updatedName}.";
+        }
+        catch (Exception error)
+        {
+            var detail = MicrosoftAccountService.DescribeError(error);
+            _accountNotices[username] = detail;
+            StatusText.Text = detail;
+            Log("[Auth] " + detail);
+        }
+        finally
+        {
+            _msalProvider?.CompleteDialog();
+            _authCts?.Dispose();
+            _authCts = null;
+            _addingAccount = false;
+            LoadAccounts();
+        }
+    }
+
     private async Task RemoveSpecificAccount(string username)
     {
-        if (string.IsNullOrWhiteSpace(username)) return;
+        if (string.IsNullOrWhiteSpace(username) || _addingAccount || _launching) return;
 
-        bool isOffline = settings.OfflineAccounts.Contains(username);
+        bool isOffline = !loginHandler.AccountManager.GetAccounts().OfType<CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount>().Any(a => string.Equals(a.Profile?.Username, username, StringComparison.OrdinalIgnoreCase)) && settings.OfflineAccounts.Contains(username, StringComparer.OrdinalIgnoreCase);
         if (isOffline)
         {
             settings.OfflineAccounts.Remove(username);
@@ -1788,16 +1796,19 @@ public partial class MainWindow : Window
                 if (msAcc != null)
                 {
                     await loginHandler.Signout(msAcc);
-                    loginHandler.AccountManager.SaveAccounts();
                 }
             }
             catch (Exception ex)
             {
-                Log($"[Auth] Signout error for {username}: {ex.Message}");
+                StatusText.Text = "The account could not be removed. Try again.";
+                Log($"[Auth] Account removal failed: {MicrosoftAccountService.DescribeError(ex)}");
+                return;
             }
         }
 
         settings.AccountOrder.Remove(username);
+        _accountNotices.Remove(username);
+        if (string.Equals(_launchAccountOverride, username, StringComparison.OrdinalIgnoreCase)) _launchAccountOverride = "";
         if (_selectedAccount == username)
         {
             _selectedAccount = "";
@@ -1847,38 +1858,22 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ClearCache_Click(object? sender, RoutedEventArgs e)
+    private async void ClearCache_Click(object? sender, RoutedEventArgs e)
     {
-        // Clear all MSAL / login cache by deleting the directory
+        if (_addingAccount || _launching) return;
         try
         {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var theLadsDir = System.IO.Path.Combine(appData, "The Lads Client");
-            var authDir = System.IO.Path.Combine(theLadsDir, "auth_cache");
-            if (System.IO.Directory.Exists(authDir))
-                System.IO.Directory.Delete(authDir, true);
-                
-            var msalCache = System.IO.Path.Combine(theLadsDir, "cmllib_msal_cache.txt");
-            if (System.IO.File.Exists(msalCache))
-                System.IO.File.Delete(msalCache);
-
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var msalLocalCache = System.IO.Path.Combine(localAppData, "cmllib_msal_cache.txt");
-            if (System.IO.File.Exists(msalLocalCache))
-                System.IO.File.Delete(msalLocalCache);
-                
+            await loginHandler.ClearAsync();
             _selectedAccount = "";
             LoadAccounts();
-            StatusText.Text = "All authentication data cleared.";
+            StatusText.Text = "Microsoft accounts signed out. Offline accounts kept.";
         }
-        catch (Exception ex)
-        {
-            StatusText.Text = "Failed to clear cache: " + ex.Message;
-        }
+        catch (Exception ex) { StatusText.Text = MicrosoftAccountService.DescribeError(ex); }
     }
 
     private async void AddOfflineAccount_Click(object? sender, RoutedEventArgs e)
     {
+        if (_addingAccount || _launching || _authCts != null) return;
         try
         {
             var dialog = new TheLadsLauncher.Views.AddOfflineAccountDialog();
@@ -1886,7 +1881,10 @@ public partial class MainWindow : Window
             string? username = dialog.ResultUsername;
             if (!string.IsNullOrWhiteSpace(username))
             {
-                if (!settings.OfflineAccounts.Contains(username))
+                username = AccountIdentity.NormalizeOfflineName(username);
+                if (GetAccountSummaries().Any(a => a.type == "microsoft" && string.Equals(a.username, username, StringComparison.OrdinalIgnoreCase)))
+                    throw new InvalidOperationException("A Microsoft account already uses that username.");
+                if (!settings.OfflineAccounts.Contains(username, StringComparer.OrdinalIgnoreCase))
                 {
                     settings.OfflineAccounts.Add(username);
                 }
@@ -1895,19 +1893,20 @@ public partial class MainWindow : Window
                     settings.AccountOrder.Add(username);
                 }
                 settings.Save();
-                LoadAccounts();
+                _launchAccountOverride = "";
                 _selectedAccount = username;
+                LoadAccounts();
                 MiniAccountName.Text = username;
                 await LoadPlayerSkin(username);
                 await WriteLadsProfileAsync(username);
-                StatusText.Text = $"Offline account added: {username}!";
+                StatusText.Text = $"Offline account selected: {username}. Ready for local play.";
                 Log($"[Auth] Added offline account: {username}");
             }
         }
         catch (Exception ex)
         {
             StatusText.Text = "Failed to add offline account: " + ex.Message;
-            Log($"[Auth ERROR] {ex.Message}");
+            Log($"[Auth ERROR] {MicrosoftAccountService.DescribeError(ex)}");
         }
     }
 
@@ -1918,26 +1917,33 @@ public partial class MainWindow : Window
 
     private async Task AddNewAccount()
     {
+        if (_addingAccount || _authCts != null || _launching) return;
+        if (!Guid.TryParse(settings.MicrosoftClientId, out var clientId) || clientId == Guid.Empty)
+        {
+            StatusText.Text = "Configure The Lads Client's Microsoft application ID in Settings before signing in.";
+            NavigateTo("Settings");
+            return;
+        }
+        _addingAccount = true;
         try
         {
             _authCts?.Cancel();
-            _authCts = new CancellationTokenSource();
+            _authCts = new CancellationTokenSource(TimeSpan.FromMinutes(16));
             StatusText.Text = "Initiating Microsoft sign-in...";
-            Log("[Auth] Starting Microsoft Device Code Flow (Prism Launcher style)...");
+            Log("[Auth] Starting Microsoft device code sign-in...");
 
             var session = await loginHandler.AuthenticateInteractively(cancellationToken: _authCts.Token);
 
             Log($"[Auth] Microsoft login successful! Username: {session.Username}, UUID: {session.UUID}");
             
-            loginHandler.AccountManager.SaveAccounts();
-            LoadAccounts();
+            _msalProvider?.CompleteDialog();
             if (!string.IsNullOrEmpty(session.Username))
             {
                 _selectedAccount = session.Username;
                 MiniAccountName.Text = session.Username;
-                await LoadPlayerSkin(session.Username);
-                await WriteLadsProfileAsync(session.Username);
+                _ = LoadPlayerSkin(session.Username);
             }
+            LoadAccounts();
             StatusText.Text = $"Account added: {session.Username}!";
             Log($"[Auth] Microsoft account added: {session.Username}");
         }
@@ -1948,16 +1954,15 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Failed to add account: " + ex.Message;
-            Log($"[Auth ERROR] {ex.Message}");
+            StatusText.Text = MicrosoftAccountService.DescribeError(ex);
+            Log($"[Auth ERROR] {StatusText.Text}");
         }
         finally
         {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                _msalProvider?.CurrentDialog?.Close();
-                if (_msalProvider != null) _msalProvider.CurrentDialog = null;
-            });
+            _msalProvider?.CompleteDialog();
+            _authCts?.Dispose();
+            _authCts = null;
+            _addingAccount = false;
         }
     }
 
@@ -1967,29 +1972,11 @@ public partial class MainWindow : Window
         StatusText.Text = "Manual login cancelled.";
     }
 
-    private void ManualLoginSubmit_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private void ManualLoginSubmit_Click(object? sender, RoutedEventArgs e)
     {
-        string url = ManualUrlTextBox.Text ?? "";
         ManualLoginOverlay.IsVisible = false;
-        StatusText.Text = "Processing manual login...";
-        try
-        {
-            // Parse code from URL
-            var uri = new Uri(url);
-            var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
-            string code = queryParams["code"] ?? "";
-            if (string.IsNullOrEmpty(code)) throw new Exception("Code not found in URL");
-
-            // We need to use XboxAuthNet manually to exchange code for tokens
-            // Wait, does CmlLib support exchanging raw code?
-            // Since we can't easily inject a manual code into MsalApp, we will use CmlLib's native Device Code? No, MSAL is required in modern CmlLib for full session.
-            // Actually, we can use the old-school manual MSAL Auth if we instantiate it!
-            throw new Exception("Code captured: " + code);
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = "Manual login failed: " + ex.Message;
-        }
+        ManualUrlTextBox.Text = "";
+        _ = AddNewAccount();
     }
 
     // ═══════════════════════════════════════
@@ -2045,218 +2032,31 @@ public partial class MainWindow : Window
         catch
         {
             PlayerSkinPreview.Source = null;
-            MiniSkinHead.Fill = new SolidColorBrush(Color.Parse("#111118"));
+            MiniSkinHead.Fill = new SolidColorBrush(Color.Parse("#202125"));
         }
     }
 
-    private async Task WriteLadsProfileAsync(string username)
+    private IReadOnlyList<AccountSummary> GetAccountSummaries()
     {
-        if (string.IsNullOrEmpty(username)) return;
-        try
-        {
-            string type = settings.OfflineAccounts.Contains(username) || username == "TestPlayer"
-                ? "offline" : "microsoft";
-
-            string uuid = "";
-            string accessToken = "";
-
-            if (type == "microsoft")
-            {
-                var msAcc = loginHandler.AccountManager.GetAccounts()
-                    .FirstOrDefault(a =>
-                        (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == username);
-                if (msAcc != null)
-                {
-                    try
-                    {
-                        var session = await loginHandler.AuthenticateSilently(msAcc);
-                        uuid = session.UUID ?? uuid;
-                        accessToken = session.AccessToken ?? "";
-                    }
-                    catch (Exception ex)
-                    {
-                        Log($"[Profile] Silent auth failed for {username}: {ex.Message}");
-                    }
-                }
-            }
-
-            // Skin URL via Mojang texture API (best-effort, skip on failure)
-            string skinUrl = "";
-            try
-            {
-                string lookupUrl = $"https://api.mojang.com/users/profiles/minecraft/{username}";
-                var resp = await _httpClient.GetStringAsync(lookupUrl);
-                var obj = System.Text.Json.JsonDocument.Parse(resp).RootElement;
-                if (string.IsNullOrEmpty(uuid) && obj.TryGetProperty("id", out var idEl))
-                    uuid = idEl.GetString() ?? "";
-                if (!string.IsNullOrEmpty(uuid))
-                {
-                    string profUrl = $"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}";
-                    var profResp = await _httpClient.GetStringAsync(profUrl);
-                    var profObj = System.Text.Json.JsonDocument.Parse(profResp).RootElement;
-                    if (profObj.TryGetProperty("properties", out var props))
-                    {
-                        foreach (var prop in props.EnumerateArray())
-                        {
-                            if (prop.TryGetProperty("name", out var n) && n.GetString() == "textures")
-                            {
-                                var b64 = prop.GetProperty("value").GetString() ?? "";
-                                var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(b64));
-                                var tex = System.Text.Json.JsonDocument.Parse(decoded).RootElement;
-                                if (tex.TryGetProperty("textures", out var textures) &&
-                                    textures.TryGetProperty("SKIN", out var skin) &&
-                                    skin.TryGetProperty("url", out var url))
-                                {
-                                    skinUrl = url.GetString() ?? "";
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch { }
-
-            var profile = new
-            {
-                username,
-                uuid,
-                type,
-                accessToken,
-                skinUrl,
-                capeUrl = (string?)null,
-                lastUpdated = DateTime.UtcNow.ToString("o")
-            };
-
-            string json = System.Text.Json.JsonSerializer.Serialize(profile,
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-            string path = TheLadsLauncher.Services.PathService.Instance.ProfileConfigFile;
-            var pDir = System.IO.Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(pDir)) System.IO.Directory.CreateDirectory(pDir);
-            await System.IO.File.WriteAllTextAsync(path, json);
-            try
-            {
-                await System.IO.File.WriteAllTextAsync(TheLadsLauncher.Services.PathService.Instance.SharedProfileConfigFile, json);
-            }
-            catch { }
-            Log($"[Profile] lads_profile.json updated for {username}");
-        }
-        catch (Exception ex)
-        {
-            Log($"[Profile] Failed to write lads_profile.json: {ex.Message}");
-        }
+        var accounts = loginHandler.AccountManager.GetAccounts()
+            .OfType<CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount>()
+            .Where(a => !string.IsNullOrWhiteSpace(a.Profile?.Username))
+            .Select(a => new AccountSummary(a.Profile!.Username!, a.Profile.UUID ?? "", "microsoft"))
+            .ToList();
+        foreach (string name in settings.OfflineAccounts)
+            if (!accounts.Any(a => string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase)))
+                accounts.Add(new AccountSummary(name, AccountIdentity.OfflineUuid(name), "offline"));
+        return accounts;
     }
 
-    public class LadsAccountJson
+    private Task WriteLadsProfileAsync(string username)
     {
-        public string username { get; set; } = "";
-        public string uuid { get; set; } = "";
-        public string type { get; set; } = "";
-        public string accessToken { get; set; } = "";
+        // Account selection is persisted by _selectedAccount. Launch exports are awaited separately.
+        return Task.CompletedTask;
     }
 
-    private async Task WriteLadsAccountsJsonAsync()
-    {
-        try
-        {
-            var msAccounts = loginHandler.AccountManager.GetAccounts().ToList();
-            var accountsList = new System.Collections.Generic.List<LadsAccountJson>();
-
-            // 1. Add Microsoft accounts
-            foreach (var acc in msAccounts)
-            {
-                if (acc is CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount gameAcc)
-                {
-                    string? username = gameAcc.Profile?.Username;
-                    string uuid = gameAcc.Profile?.UUID ?? "";
-                    string accessToken = "";
-                    try
-                    {
-                        // Silent auth also hydrates the username/uuid for accounts whose cached
-                        // Profile metadata isn't populated yet — so we never drop a real account.
-                        var session = await loginHandler.AuthenticateSilently(acc);
-                        if (string.IsNullOrEmpty(username)) username = session.Username;
-                        uuid = session.UUID ?? uuid;
-                        accessToken = session.AccessToken ?? "";
-                    }
-                    catch { }
-
-                    // Only skip if we genuinely couldn't resolve a username from cache OR silent auth.
-                    if (string.IsNullOrEmpty(username))
-                    {
-                        Log("[Accounts] Skipped an MS account with no resolvable username.");
-                        continue;
-                    }
-                    if (accountsList.Any(a => a.username == username)) continue;
-
-                    accountsList.Add(new LadsAccountJson
-                    {
-                        username = username,
-                        uuid = uuid,
-                        type = "microsoft",
-                        accessToken = accessToken
-                    });
-                }
-            }
-
-            // 2. Add Offline accounts
-            foreach (var username in settings.OfflineAccounts)
-            {
-                if (string.IsNullOrEmpty(username)) continue;
-                if (accountsList.Any(a => a.username == username)) continue;
-
-                string uuid = "";
-                try
-                {
-                    using (var md5 = System.Security.Cryptography.MD5.Create())
-                    {
-                        byte[] hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes("OfflinePlayer:" + username));
-                        hash[6] = (byte)((hash[6] & 0x0f) | 0x30);
-                        hash[8] = (byte)((hash[8] & 0x3f) | 0x80);
-                        uuid = new Guid(hash).ToString();
-                    }
-                }
-                catch { }
-
-                accountsList.Add(new LadsAccountJson
-                {
-                    username = username,
-                    uuid = uuid,
-                    type = "offline",
-                    accessToken = "0"
-                });
-            }
-
-            // Ensure TestPlayer is there if empty
-            if (!accountsList.Any())
-            {
-                accountsList.Add(new LadsAccountJson
-                {
-                    username = "TestPlayer",
-                    uuid = Guid.NewGuid().ToString(),
-                    type = "offline",
-                    accessToken = "0"
-                });
-            }
-
-            string json = System.Text.Json.JsonSerializer.Serialize(accountsList,
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-            string path = System.IO.Path.Combine(settings.InstancePath, "lads_accounts.json");
-            
-            // Ensure directory exists
-            string dir = Path.GetDirectoryName(path) ?? "";
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
-            
-            await System.IO.File.WriteAllTextAsync(path, json);
-            Log($"[Accounts] lads_accounts.json updated with {accountsList.Count} accounts.");
-        }
-        catch (Exception ex)
-        {
-            Log($"[Accounts ERROR] Failed to write lads_accounts.json: {ex.Message}");
-        }
-    }
+    private Task WriteLaunchAccountFilesAsync(MSession session, bool offline, string gameDirectory) =>
+        AccountExportService.WriteLaunchAsync(gameDirectory, session, offline, GetAccountSummaries());
 
     private void LoadPresetsList(string username)
     {
@@ -2713,6 +2513,7 @@ public partial class MainWindow : Window
 
     private void LoadSettingsUI()
     {
+        MicrosoftClientIdTextBox.Text = settings.MicrosoftClientId;
         ulong totalRamBytes = 8UL * 1024 * 1024 * 1024;
         try { totalRamBytes = (ulong)GC.GetGCMemoryInfo().TotalAvailableMemoryBytes; } catch {}
         int maxRamGb = (int)(totalRamBytes / (1024 * 1024 * 1024));
@@ -2897,22 +2698,9 @@ public partial class MainWindow : Window
                 LaunchProfileSelector.Items.Add(p);
             }
 
-            // Check if current settings match an existing profile without clobbering loaded settings
-            string currentMc = !string.IsNullOrEmpty(settings.SelectedMinecraftVersionOverride)
-                ? settings.SelectedMinecraftVersionOverride
-                : ResolveMinecraftVersion();
-
-            var matchingProfile = profiles.FirstOrDefault(p => p.MinecraftVersion == currentMc);
-            if (matchingProfile != null)
-            {
-                _profileService.SetActiveProfile(matchingProfile.Id);
-                LaunchProfileSelector.SelectedItem = matchingProfile;
-            }
-            else
-            {
-                var active = _profileService.GetActiveProfile();
-                LaunchProfileSelector.SelectedItem = profiles.FirstOrDefault(p => p.Id == active.Id) ?? profiles.FirstOrDefault();
-            }
+            var active = _profileService.GetActiveProfile();
+            LaunchProfileSelector.SelectedItem = profiles.FirstOrDefault(p => p.Id == active.Id) ?? profiles.FirstOrDefault();
+            ApplyProfile(active, false);
         }
         finally
         {
@@ -2923,8 +2711,16 @@ public partial class MainWindow : Window
     private void LaunchProfileSelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (_populatingProfileSelector) return;
+        if (_launching) { PopulateLaunchProfileSelector(); return; }
         if (LaunchProfileSelector.SelectedItem is TheLadsLauncher.Models.LauncherProfile profile)
         {
+            try { GameVersionPolicy.ResolveVersionId(profile); }
+            catch (ArgumentException ex)
+            {
+                StatusText.Text = ex.Message;
+                PopulateLaunchProfileSelector();
+                return;
+            }
             _profileService.SetActiveProfile(profile.Id);
             ApplyProfile(profile, true);
             LoadProfilesUI();
@@ -2934,14 +2730,14 @@ public partial class MainWindow : Window
     private void ApplyProfile(TheLadsLauncher.Models.LauncherProfile profile, bool saveSettings = true)
     {
         settings.SelectedMinecraftVersionOverride = profile.MinecraftVersion;
+        settings.FabricVersion = GameVersionPolicy.ResolveVersionId(profile);
         if (!string.IsNullOrEmpty(profile.FabricVersion))
         {
             settings.FabricVersion = profile.FabricVersion.StartsWith("fabric-loader-")
                 ? profile.FabricVersion
                 : $"fabric-loader-{profile.FabricVersion}-{profile.MinecraftVersion}";
         }
-        if (!string.IsNullOrEmpty(profile.PackwizUrl))
-            settings.PackwizUrl = profile.PackwizUrl;
+        settings.PackwizUrl = profile.PackwizUrl ?? "";
 
         settings.InstancePath = _pathService.GetProfileDirectory(profile);
         if (!string.IsNullOrEmpty(profile.CustomJavaPath))
@@ -2951,6 +2747,7 @@ public partial class MainWindow : Window
             settings.Save();
 
         UpdateMinecraftVersionDisplay();
+        ApplyNextAccountRequest(settings.InstancePath);
     }
 
     private void LoadProfilesUI()
@@ -2965,11 +2762,11 @@ public partial class MainWindow : Window
 
             var card = new Border
             {
-                Background = new SolidColorBrush(Color.Parse(isActive ? "#141424" : "#0E0E18")),
-                CornerRadius = new CornerRadius(10),
+                Background = new SolidColorBrush(Color.Parse(isActive ? "#28262A" : "#1D1E22")),
+                CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(16, 12),
-                BorderBrush = new SolidColorBrush(Color.Parse(isActive ? "#8B0000" : "#1A1A2E")),
-                BorderThickness = new Thickness(isActive ? 1.5 : 1.0),
+                BorderBrush = new SolidColorBrush(Color.Parse(isActive ? "#C44343" : "#303137")),
+                BorderThickness = new Thickness(isActive ? 2 : 0, 0, 0, 1),
                 Margin = new Thickness(0, 0, 0, 8)
             };
 
@@ -2994,7 +2791,7 @@ public partial class MainWindow : Window
             {
                 titlePanel.Children.Add(new Border
                 {
-                    Background = new SolidColorBrush(Color.Parse("#8B0000")),
+                    Background = new SolidColorBrush(Color.Parse("#C44343")),
                     CornerRadius = new CornerRadius(4),
                     Padding = new Thickness(6, 2),
                     Child = new TextBlock
@@ -3020,14 +2817,14 @@ public partial class MainWindow : Window
                 metaPanel.Children.Add(new TextBlock
                 {
                     Text = $"Fabric: {profile.FabricVersion}",
-                    Foreground = new SolidColorBrush(Color.Parse("#888888")),
+                    Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")),
                     FontSize = 12
                 });
             }
             metaPanel.Children.Add(new TextBlock
             {
                 Text = $"Java: {profile.JavaMajorVersion}",
-                Foreground = new SolidColorBrush(Color.Parse("#888888")),
+                Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")),
                 FontSize = 12
             });
             leftStack.Children.Add(metaPanel);
@@ -3072,7 +2869,11 @@ public partial class MainWindow : Window
                 };
                 selectBtn.Click += (s, e) =>
                 {
+                    if (_launching) return;
+                    try { GameVersionPolicy.ResolveVersionId(profile); }
+                    catch (ArgumentException ex) { StatusText.Text = ex.Message; return; }
                     _profileService.SetActiveProfile(profile.Id);
+                    ApplyProfile(profile);
                     PopulateLaunchProfileSelector();
                     LoadProfilesUI();
                 };
@@ -3088,6 +2889,7 @@ public partial class MainWindow : Window
                 };
                 deleteBtn.Click += (s, e) =>
                 {
+                    if (_launching) return;
                     _profileService.DeleteProfile(profile.Id);
                     PopulateLaunchProfileSelector();
                     LoadProfilesUI();
@@ -3098,8 +2900,8 @@ public partial class MainWindow : Window
             {
                 var activeBadge = new TextBlock
                 {
-                    Text = "Currently In Use",
-                    Foreground = new SolidColorBrush(Color.Parse("#44BB44")),
+                    Text = "Selected",
+                    Foreground = new SolidColorBrush(Color.Parse("#BABDC6")),
                     FontSize = 12,
                     FontWeight = FontWeight.SemiBold,
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
@@ -3123,7 +2925,7 @@ public partial class MainWindow : Window
             Width = 440,
             Height = 300,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.Parse("#0A0A0F")),
+            Background = new SolidColorBrush(Color.Parse("#17181B")),
             CanResize = false
         };
 
@@ -3206,6 +3008,26 @@ public partial class MainWindow : Window
 
     private void SaveSettings_Click(object? sender, RoutedEventArgs e)
     {
+        if (_launching) { StatusText.Text = "Wait for the current launch to finish before saving settings."; return; }
+        string newClientId = MicrosoftClientIdTextBox.Text?.Trim() ?? "";
+        if (newClientId.Length == 0) newClientId = LauncherSettings.DefaultMicrosoftClientId;
+        if (!Guid.TryParse(newClientId, out var parsedId) || parsedId == Guid.Empty)
+        {
+            StatusText.Text = "Enter a valid Microsoft application ID, or leave it blank to restore The Lads Client's default.";
+            return;
+        }
+        if (newClientId != settings.MicrosoftClientId)
+        {
+            if (_addingAccount || _launching)
+            {
+                StatusText.Text = "Finish or cancel the current sign-in/launch before changing the application ID.";
+                return;
+            }
+            settings.MicrosoftClientId = newClientId;
+            InitializeAuthentication();
+        }
+        MicrosoftClientIdTextBox.Text = settings.MicrosoftClientId;
+
         settings.MaxRamMb = (int)RamSlider.Value * 1024;
         settings.CloseToTray = CloseToTrayCheckbox.IsChecked ?? true;
         settings.KeepLauncherOpen = KeepLauncherOpenCheckbox.IsChecked ?? false;
@@ -3271,6 +3093,7 @@ public partial class MainWindow : Window
         }
 
         StatusText.Text = "Settings saved!";
+        SettingsSaveStatus.Text = "Changes saved";
         Log("[Settings] Configuration saved.");
     }
 
@@ -3375,8 +3198,8 @@ public partial class MainWindow : Window
         string mcVersion = string.IsNullOrEmpty(settings.SelectedMinecraftVersionOverride)
             ? ResolveMinecraftVersion()
             : settings.SelectedMinecraftVersionOverride;
-        MinecraftVersionText.Text = $"Minecraft: {mcVersion}";
-        LaunchButton.Content = $"▶  LAUNCH ({mcVersion})";
+        MinecraftVersionText.Text = $"Minecraft {mcVersion} / Fabric";
+        LaunchButton.Content = "Play";
         GameLaunchVersionText.Text = $"Minecraft {mcVersion} · Fabric";
         ModVersionFilterBox.Text = mcVersion;
     }
@@ -3635,7 +3458,7 @@ public partial class MainWindow : Window
             if (titleBlock != null)
             {
                 titleBlock.Text = mod.DisplayName;
-                titleBlock.Foreground = new SolidColorBrush(mod.IsEnabled ? Color.Parse("#CCCCCC") : Color.Parse("#666666"));
+                titleBlock.Foreground = new SolidColorBrush(mod.IsEnabled ? Color.Parse("#CCCCCC") : Color.Parse("#90929D"));
             }
             if (descBlock != null)
             {
@@ -3665,11 +3488,11 @@ public partial class MainWindow : Window
                 {
                     badgesPanel.Children.Add(new Border
                     {
-                        Background = new SolidColorBrush(Color.Parse("#1A1A2E")),
+                        Background = new SolidColorBrush(Color.Parse("#303137")),
                         CornerRadius = new CornerRadius(4),
                         Padding = new Thickness(6, 2),
                         Margin = new Thickness(0, 0, 4, 0),
-                        Child = new TextBlock { Text = catName, Foreground = new SolidColorBrush(Color.Parse("#FF4444")), FontSize = 9, FontWeight = FontWeight.Bold }
+                        Child = new TextBlock { Text = catName, Foreground = new SolidColorBrush(Color.Parse("#E27676")), FontSize = 9, FontWeight = FontWeight.Bold }
                     });
                 }
             }
@@ -3684,7 +3507,7 @@ public partial class MainWindow : Window
                 var modSnap = mod;
                 var updateBtn = new Button
                 {
-                    Content = "⬆",
+                    Content = "",
                     Height = 30, Width = 36, FontSize = 11,
                     HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                     VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
@@ -3742,6 +3565,13 @@ public partial class MainWindow : Window
             ModsList.Children.Add(wrapper);
         }
         ModsPageCount.Text = $"({totalEnabledCount})";
+        if (matchingMods.Count == 0)
+            ModsList.Children.Add(new TextBlock
+            {
+                Text = "No mods match this view. Add a local file, browse mods, or change the filter.",
+                Foreground = Brush.Parse("#A0A1AA"), TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(4, 16), FontSize = 13
+            });
         ApplyInstalledNameFilter(); // re-apply any active name search to the freshly built rows
     }
 
@@ -3955,11 +3785,11 @@ public partial class MainWindow : Window
 
     private async void UpdateAllMods_Click(object? sender, RoutedEventArgs e)
     {
-        if (UpdateAllModsBtn != null) { UpdateAllModsBtn.IsEnabled = false; UpdateAllModsBtn.Content = "⬆ Checking..."; }
+        if (UpdateAllModsBtn != null) { UpdateAllModsBtn.IsEnabled = false; UpdateAllModsBtn.Content = "Checking..."; }
         string modsPath = Path.Combine(settings.InstancePath, "mods");
         var paths = Directory.Exists(modsPath) ? Directory.GetFiles(modsPath, "*.jar").ToList() : new List<string>();
         int updated = await RunModUpdates(paths);
-        if (UpdateAllModsBtn != null) { UpdateAllModsBtn.IsEnabled = true; UpdateAllModsBtn.Content = "⬆ Update All"; }
+        if (UpdateAllModsBtn != null) { UpdateAllModsBtn.IsEnabled = true; UpdateAllModsBtn.Content = "Update All"; }
         StatusText.Text = updated > 0 ? $"Updated {updated} mod(s)." : "All mods are up to date.";
         if (updated > 0) LoadModsList();
     }
@@ -4031,7 +3861,7 @@ public partial class MainWindow : Window
             string latestVer = latest.TryGetProperty("version_number", out var vn) ? vn.GetString() ?? "" : "";
             if (string.IsNullOrEmpty(latestVer) || latestVer == mod.ModVersion)
             {
-                btn.Content = "✓"; ToolTip.SetTip(btn, $"Up to date ({mod.ModVersion})"); return;
+                btn.Content = ""; ToolTip.SetTip(btn, $"Up to date ({mod.ModVersion})"); return;
             }
             // Update available — download immediately
             string? dlUrl = GetPrimaryDownloadUrl(latest);
@@ -4096,8 +3926,88 @@ public partial class MainWindow : Window
         }
     }
 
+    private string ResolveLaunchAccountName()
+    {
+        return !string.IsNullOrEmpty(_launchAccountOverride)
+            && GetAccountSummaries().Any(a => string.Equals(a.username, _launchAccountOverride, StringComparison.OrdinalIgnoreCase))
+                ? _launchAccountOverride : _selectedAccount;
+    }
+
+    private async Task ShowMicrosoftSetupDialogAsync()
+    {
+        _showingMicrosoftSetup = true;
+        try
+        {
+            var dialog = new Window
+            {
+                Title = "Microsoft login setup required", Width = 600, Height = 300,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner, CanResize = false,
+                Background = new SolidColorBrush(Color.Parse("#1D1E22"))
+            };
+            var panel = new StackPanel { Margin = new Thickness(24), Spacing = 16 };
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Microsoft login setup required", FontSize = 21,
+                FontWeight = FontWeight.Bold, Foreground = Brushes.White
+            });
+            panel.Children.Add(new TextBlock
+            {
+                Text = "This launcher has no Microsoft application ID configured. Its owner must register The Lads Client and obtain Minecraft API approval before Microsoft accounts can launch.",
+                TextWrapping = TextWrapping.Wrap, FontSize = 14, Foreground = Brushes.LightGray
+            });
+            panel.Children.Add(new TextBlock
+            {
+                Text = "To try the new title screen now, add a separate offline account. Offline accounts support local play, but cannot join Realms or servers requiring Microsoft authentication.",
+                TextWrapping = TextWrapping.Wrap, FontSize = 13, Foreground = Brushes.LightGray
+            });
+            var buttons = new Grid { ColumnDefinitions = ColumnDefinitions.Parse("*,*,Auto") };
+            var setup = new Button { Content = "Set up Microsoft login", Height = 38, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            var offline = new Button { Content = "Add offline account", Height = 38, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            var cancel = new Button { Content = "Cancel", Height = 38, Width = 80, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center };
+            setup.Click += (_, _) => dialog.Close("setup");
+            offline.Click += (_, _) => dialog.Close("offline");
+            cancel.Click += (_, _) => dialog.Close("cancel");
+            Grid.SetColumn(offline, 1);
+            Grid.SetColumn(cancel, 2);
+            buttons.Children.Add(setup);
+            buttons.Children.Add(offline);
+            buttons.Children.Add(cancel);
+            panel.Children.Add(buttons);
+            dialog.Content = panel;
+            string choice = await dialog.ShowDialog<string>(this);
+            if (choice == "setup")
+            {
+                NavigateTo("Settings");
+                MicrosoftClientIdTextBox.Focus();
+            }
+            else if (choice == "offline")
+            {
+                NavigateTo("Accounts");
+                AddOfflineAccount_Click(this, new RoutedEventArgs());
+            }
+        }
+        finally { _showingMicrosoftSetup = false; }
+    }
+
     private async Task LaunchGame()
     {
+        if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup) return;
+        if (string.IsNullOrWhiteSpace(_selectedAccount))
+        {
+            StatusText.Text = "Add or select an account before launching.";
+            NavigateTo("Accounts");
+            return;
+        }
+        // Resolve and validate identity before touching game files or starting downloads.
+        string selectedUser = ResolveLaunchAccountName();
+        string requestedLaunchOverride = _launchAccountOverride;
+        bool isOffline = GetAccountSummaries().Any(a => a.type == "offline" && string.Equals(a.username, selectedUser, StringComparison.OrdinalIgnoreCase));
+        if (!isOffline && (!Guid.TryParse(settings.MicrosoftClientId, out var configuredId) || configuredId == Guid.Empty))
+        {
+            StatusText.Text = "Microsoft login setup required. Add an offline account to try local play.";
+            await ShowMicrosoftSetupDialogAsync();
+            return;
+        }
         if (!settings.AllowMultiInstance && _runningProcesses.Any(p => !p.HasExited))
         {
             var dialog = new Window
@@ -4105,7 +4015,7 @@ public partial class MainWindow : Window
                 Title = "Game Already Running",
                 Width = 400, Height = 160,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Background = new SolidColorBrush(Color.Parse("#0A0A0F")),
+                Background = new SolidColorBrush(Color.Parse("#17181B")),
                 CanResize = false
             };
             var panel = new StackPanel { Margin = new Thickness(20), Spacing = 12 };
@@ -4119,6 +4029,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        _launching = true;
+        LaunchButton.IsEnabled = false;
         GameLaunchOverlay.IsVisible = true;
         try
         {
@@ -4129,17 +4041,25 @@ public partial class MainWindow : Window
             Log("[Launcher] Starting launch sequence...");
 
             var activeProfile = _profileService.GetActiveProfile();
+            string gameDirectory = _pathService.GetProfileDirectory(activeProfile);
+            string launchVersionId = GameVersionPolicy.ResolveVersionId(activeProfile);
+            if (GameVersionPolicy.RequiresBundledCore(activeProfile.MinecraftVersion) && string.IsNullOrWhiteSpace(activeProfile.FabricVersion))
+                throw new InvalidOperationException("The Lads Client profile requires a Fabric loader.");
             await _profileService.PrepareProfileEnvironmentAsync(activeProfile);
-            settings.InstancePath = _pathService.GetProfileDirectory(activeProfile);
+            settings.InstancePath = gameDirectory;
 
-            var path = new MinecraftPath(settings.InstancePath);
+            var path = new MinecraftPath(gameDirectory);
             var launcher = new MinecraftLauncher(path);
 
             _lastBytes = 0;
             _lastDownloadTime = DateTime.UtcNow;
 
+            long lastProgressTick = 0;
             launcher.ByteProgressChanged += (sender, args) =>
             {
+                long nowTick = Environment.TickCount64;
+                if (nowTick - Interlocked.Read(ref lastProgressTick) < 100 && args.ProgressedBytes < args.TotalBytes) return;
+                Interlocked.Exchange(ref lastProgressTick, nowTick);
                 Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (args.TotalBytes > 0)
@@ -4160,6 +4080,7 @@ public partial class MainWindow : Window
                         double currentMb = args.ProgressedBytes / (1024.0 * 1024.0);
                         double totalMb = args.TotalBytes / (1024.0 * 1024.0);
                         GameLaunchStatusText.Text = $"Downloading assets: {currentMb:F1}MB / {totalMb:F1}MB ({progressPercentage}%)";
+                        GameLaunchProgressBar.Maximum = 100;
                         GameLaunchProgressBar.Value = (int)progressPercentage;
                     }
                 });
@@ -4174,29 +4095,18 @@ public partial class MainWindow : Window
                     GameLaunchProgressBar.Maximum = args.TotalTasks;
                     GameLaunchProgressBar.Value = args.ProgressedTasks;
                 });
-                Log($"[Launcher] Downloading: {args.Name}");
+
             };
 
             GameLaunchStatusText.Text = "Checking version...";
 
-            // Use the alt-account override if the user picked one; otherwise the main account.
-            // This launches the alt WITHOUT changing _selectedAccount (the persisted main).
-            string selectedUser = (!string.IsNullOrEmpty(_launchAccountOverride)
-                    && (settings.OfflineAccounts.Contains(_launchAccountOverride)
-                        || loginHandler.AccountManager.GetAccounts().Any(a =>
-                            (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == _launchAccountOverride)))
-                ? _launchAccountOverride
-                : _selectedAccount;
+            // The chosen identity was captured before the first asynchronous launch step.
             if (selectedUser != _selectedAccount)
                 Log($"[Launcher] Launching with alt account '{selectedUser}' (main stays '{_selectedAccount}').");
-            bool isOffline = settings.OfflineAccounts.Contains(selectedUser)
-                || selectedUser == "TestPlayer"
-                || Environment.GetCommandLineArgs().Contains("--auto-launch-offline");
-
             MSession session;
             if (isOffline)
             {
-                session = MSession.CreateOfflineSession(selectedUser);
+                session = AccountIdentity.CreateOfflineSession(selectedUser);
             }
             else
             {
@@ -4204,12 +4114,11 @@ public partial class MainWindow : Window
 
                 try
                 {
+                    if (!Guid.TryParse(settings.MicrosoftClientId, out var registeredId) || registeredId == Guid.Empty)
+                        throw new AccountVerificationException("Configure your approved Microsoft application ID in Settings before launching a Microsoft account.");
                     if (msAccount == null)
                     {
-                        GameLaunchStatusText.Text = "Opening Microsoft sign-in...";
-                        _authCts?.Cancel();
-                        _authCts = new CancellationTokenSource();
-                        session = await loginHandler.AuthenticateInteractively(cancellationToken: _authCts.Token);
+                        throw new InvalidOperationException("The selected account is no longer saved. Add it again before launching.");
                     }
                     else
                     {
@@ -4219,17 +4128,16 @@ public partial class MainWindow : Window
                             GameLaunchStatusText.Text = "Logging in silently...";
                             session = await loginHandler.AuthenticateSilently(msAccount);
                         }
-                        catch (Exception silentEx)
+                        catch (Exception silentEx) when (MicrosoftAccountService.NeedsInteractiveLogin(silentEx))
                         {
                             // Tokens expired/revoked: fall back to the sign-in window
-                            Log($"[Auth] Silent login failed ({silentEx.Message}). Falling back to interactive login...");
+                            Log("[Auth] The selected account needs Microsoft sign-in again.");
                             GameLaunchStatusText.Text = "Session expired — please sign in again...";
                             _authCts?.Cancel();
-                            _authCts = new CancellationTokenSource();
+                            _authCts = new CancellationTokenSource(TimeSpan.FromMinutes(16));
                             session = await loginHandler.AuthenticateInteractively(msAccount, cancellationToken: _authCts.Token);
                         }
                     }
-                    loginHandler.AccountManager.SaveAccounts();
                 }
                 catch (PlatformNotSupportedException ex)
                 {
@@ -4240,26 +4148,22 @@ public partial class MainWindow : Window
                 catch (Exception ex)
                 {
                     GameLaunchStatusText.Text = "Login failed.";
-                    Log($"[Auth ERROR] {ex.Message}");
-                    throw;
+                    Log($"[Auth ERROR] {MicrosoftAccountService.DescribeError(ex)}");
+                    throw new InvalidOperationException(MicrosoftAccountService.DescribeError(ex));
+                }
+                finally
+                {
+                    _msalProvider?.CompleteDialog();
+                    _authCts?.Dispose();
+                    _authCts = null;
                 }
             }
 
             LoadAccounts();
-            // If launching an alt, make sure the game reads the alt's profile (not the main's,
-            // which LoadAccounts just wrote). Awaited so it's the last write before process start.
-            if (selectedUser != _selectedAccount)
-                await WriteLadsProfileAsync(selectedUser);
+            await WriteLaunchAccountFilesAsync(session, isOffline, gameDirectory);
             GameLaunchStatusText.Text = $"Welcome, {session.Username}!";
             Log($"[Auth] Logged in as {session.Username}");
 
-            if (!isOffline)
-            {
-                GameLaunchStatusText.Text = "Checking for mod updates...";
-                await RunPackwizInstaller();
-            }
-
-            string launchVersionId = ResolveLaunchVersionId();
             Log($"[Launcher] Building process for {launchVersionId}...");
 
             // QuickLaunch: skip asset verification for a faster startup.
@@ -4267,15 +4171,21 @@ public partial class MainWindow : Window
             System.Diagnostics.Process process;
             var launchOpt = new MLaunchOption
             {
-                MaximumRamMb = settings.MaxRamMb,
+                MaximumRamMb = Math.Max(1024, settings.MaxRamMb),
+                MinimumRamMb = Math.Clamp(settings.MinRamMb, 256, Math.Max(1024, settings.MaxRamMb)),
+                FullScreen = settings.FullscreenOnLaunch,
                 Session = session,
                 JavaPath = settings.JavaPath
             };
 
-            int requiredJava = activeProfile.JavaMajorVersion > 0 ? activeProfile.JavaMajorVersion : 21;
-            if (!string.IsNullOrEmpty(activeProfile.CustomJavaPath) && File.Exists(activeProfile.CustomJavaPath))
+            int requiredJava = GameVersionPolicy.GetRequiredJavaMajor(activeProfile.MinecraftVersion, activeProfile.JavaMajorVersion > 0 ? activeProfile.JavaMajorVersion : null);
+            if (!string.IsNullOrEmpty(activeProfile.CustomJavaPath))
             {
                 launchOpt.JavaPath = activeProfile.CustomJavaPath;
+            }
+            else if (!settings.AutoDetectJava)
+            {
+                launchOpt.JavaPath = settings.JavaPath;
             }
             else
             {
@@ -4294,10 +4204,16 @@ public partial class MainWindow : Window
                 }
                 catch (Exception jEx)
                 {
-                    Log($"[Java WARNING] Auto Java {requiredJava} ensure failed ({jEx.Message}), falling back to '{settings.JavaPath}'");
-                    launchOpt.JavaPath = settings.JavaPath;
+                    throw new InvalidOperationException($"Could not prepare Java {requiredJava} for Minecraft {activeProfile.MinecraftVersion}.", jEx);
                 }
             }
+
+            if (_javaService.GetJavaMajorVersion(launchOpt.JavaPath) != requiredJava)
+                throw new InvalidOperationException($"Select a Java {requiredJava} installation for Minecraft {activeProfile.MinecraftVersion}.");
+            await RunPackwizInstaller(activeProfile, launchOpt.JavaPath);
+            await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion);
+            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion,
+                message => Dispatcher.UIThread.Post(() => StatusText.Text = message));
 
             if (settings.AutoRejoinServer)
             {
@@ -4326,7 +4242,7 @@ public partial class MainWindow : Window
             }
 
             // Ensure the Fabric version JSON exists locally; if not, automatically download & install it via FabricInstaller
-            string versionDir = Path.Combine(settings.InstancePath, "versions", launchVersionId);
+            string versionDir = Path.Combine(gameDirectory, "versions", launchVersionId);
             string versionJson = Path.Combine(versionDir, launchVersionId + ".json");
             if (!File.Exists(versionJson))
             {
@@ -4338,19 +4254,20 @@ public partial class MainWindow : Window
                     try
                     {
                         GameLaunchStatusText.Text = $"Installing Fabric Loader ({loaderVer} for MC {mcVer})...";
-                        Log($"[Launcher] Auto-installing Fabric Loader {loaderVer} for Minecraft {mcVer} into '{settings.InstancePath}'...");
-                        var fabricInstaller = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(new HttpClient());
+                        Log($"[Launcher] Auto-installing Fabric Loader {loaderVer} for Minecraft {mcVer} into '{gameDirectory}'...");
+                        var fabricInstaller = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(_httpClient);
                         await fabricInstaller.Install(mcVer, loaderVer, path);
                         Log($"[Launcher] Fabric Loader installation complete for {launchVersionId}");
                     }
                     catch (Exception fEx)
                     {
-                        Log($"[Launcher WARNING] FabricInstaller failed ({fEx.Message}), will attempt default launch...");
+                        throw new InvalidOperationException($"Could not install Fabric {loaderVer} for Minecraft {mcVer}.", fEx);
                     }
                 }
             }
 
-            if (settings.QuickLaunch)
+            string installedMarker = Path.Combine(gameDirectory, "versions", launchVersionId, ".lads-verified");
+            if (settings.QuickLaunch && File.Exists(installedMarker))
             {
                 GameLaunchStatusText.Text = "Quick launching (skipping verification)...";
                 Log("[Launcher] QuickLaunch enabled — skipping asset verification.");
@@ -4359,14 +4276,16 @@ public partial class MainWindow : Window
             else
             {
                 process = await launcher.InstallAndBuildProcessAsync(launchVersionId, launchOpt);
+                Directory.CreateDirectory(Path.GetDirectoryName(installedMarker)!);
+                await File.WriteAllTextAsync(installedMarker, DateTimeOffset.UtcNow.ToString("O"));
             }
 
-            _runningProcesses.Add(process);
 
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.CreateNoWindow = true;
+            process.StartInfo.Environment["THELADS_DIR"] = gameDirectory;
 
             process.EnableRaisingEvents = true;
             process.Exited += async (s, ev) =>
@@ -4382,6 +4301,7 @@ public partial class MainWindow : Window
 
                 Dispatcher.UIThread.Post(() =>
                 {
+                    ApplyNextAccountRequest(_pathService.GetProfileDirectory(activeProfile));
                     int exitCode = 0;
                     try { exitCode = process.ExitCode; } catch { }
 
@@ -4406,7 +4326,7 @@ public partial class MainWindow : Window
                     }
 
                     if (settings.SyncScreenshotsToGlobal)
-                        SyncScreenshotsToGlobal();
+                        SyncScreenshotsToGlobal(gameDirectory);
                 });
             };
 
@@ -4415,14 +4335,14 @@ public partial class MainWindow : Window
 
             // Sync resource packs from global .minecraft folder before launch.
             if (settings.SyncResourcePacksFromGlobal)
-                SyncResourcePacksFromGlobal();
+                SyncResourcePacksFromGlobal(gameDirectory);
 
             // Apply fullscreen setting by patching options.txt before launch.
             if (settings.FullscreenOnLaunch)
             {
                 try
                 {
-                    string optFile = System.IO.Path.Combine(settings.InstancePath, "options.txt");
+                    string optFile = System.IO.Path.Combine(gameDirectory, "options.txt");
                     string optContent = System.IO.File.Exists(optFile) ? System.IO.File.ReadAllText(optFile) : "";
                     var lines = new System.Collections.Generic.List<string>(optContent.Split('\n'));
                     bool found = false;
@@ -4441,49 +4361,29 @@ public partial class MainWindow : Window
                 catch (Exception ex) { Log($"[Launch] Could not set fullscreen in options.txt: {ex.Message}"); }
             }
 
-            // Prepend JVM performance flags. G1GC is used instead of ZGC for fast startup
-            // (ZGC + AlwaysPreTouch was causing the 10-15s freeze before the window appeared).
-            string jvmFlags =
-                "-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:+DisableExplicitGC " +
-                "-XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=50 " +
-                "-XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:G1HeapRegionSize=32M " +
-                "-XX:ReservedCodeCacheSize=256m -XX:+OptimizeStringConcat " +
-                "-Dfml.ignoreInvalidMinecraftCertificates=true " +
-                "-Dfml.ignorePatchDiscrepancies=true -Djava.net.preferIPv4Stack=true";
-            if (!string.IsNullOrWhiteSpace(process.StartInfo.Arguments))
-                process.StartInfo.Arguments = jvmFlags + " " + process.StartInfo.Arguments;
-            else if (process.StartInfo.ArgumentList.Count > 0)
-            {
-                // CmlLib uses ArgumentList — insert flags before the first arg
-                var flags = jvmFlags.Split(' ');
-                for (int fi = flags.Length - 1; fi >= 0; fi--)
-                    process.StartInfo.ArgumentList.Insert(0, flags[fi]);
-            }
-
             GameLaunchStatusText.Text = "Launching game...";
             Log("[Launcher] Starting game process...");
             process.Start();
+            _runningProcesses.Add(process);
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
+
+            // A next-launch choice is consumed only after a process actually starts.
+            // Preserve a different choice made while this launch was preparing.
+            if (!string.IsNullOrEmpty(requestedLaunchOverride)
+                && string.Equals(_launchAccountOverride, requestedLaunchOverride, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(selectedUser, requestedLaunchOverride, StringComparison.OrdinalIgnoreCase))
+            {
+                _launchAccountOverride = "";
+                PopulateLaunchSelector(GetAccountSummaries().Select(account => account.username).ToList());
+            }
 
             // Pop the startup splash immediately so there is never a dead gap
             // between pressing Launch and the Minecraft window appearing.
             var startupSplash = new Views.GameStartupSplash();
+            startupSplash.SetGameVersion(activeProfile.MinecraftVersion);
             startupSplash.Show();
             _ = WatchForGameWindowAsync(process, startupSplash);
-
-            // Boost to RealTime during game startup so loading is faster; revert after 120s.
-            _ = Task.Run(async () => {
-                try { process.PriorityClass = ProcessPriorityClass.RealTime; Log("[Launcher] Process priority set to RealTime."); }
-                catch { }
-                await Task.Delay(120_000);
-                try {
-                    if (!process.HasExited) {
-                        process.PriorityClass = ProcessPriorityClass.Normal;
-                        Log("[Launcher] Process priority reverted to Normal.");
-                    }
-                } catch { }
-            });
 
             StatusText.Text = "Game running.";
             GameLaunchOverlay.IsVisible = false;
@@ -4500,9 +4400,40 @@ public partial class MainWindow : Window
         }
         finally
         {
+            _launching = false;
             GameLaunchOverlay.IsVisible = false;
             LaunchButton.IsEnabled = true;
         }
+    }
+
+    private void ApplyNextAccountRequest(string gameDirectory)
+    {
+        string requestFile = Path.Combine(gameDirectory, "lads_next_account.json");
+        if (!File.Exists(requestFile)) return;
+        try
+        {
+            using var request = JsonDocument.Parse(File.ReadAllText(requestFile));
+            string name = request.RootElement.GetProperty("username").GetString() ?? "";
+            string uuid = request.RootElement.GetProperty("uuid").GetString() ?? "";
+            string type = request.RootElement.GetProperty("type").GetString() ?? "";
+            var existing = GetAccountSummaries().FirstOrDefault(a =>
+                string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(a.uuid.Replace("-", ""), uuid.Replace("-", ""), StringComparison.OrdinalIgnoreCase));
+            if (existing == null && type == "offline" &&
+                string.Equals(AccountIdentity.OfflineUuid(name), uuid, StringComparison.OrdinalIgnoreCase) &&
+                !GetAccountSummaries().Any(a => string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                settings.OfflineAccounts.Add(AccountIdentity.NormalizeOfflineName(name));
+                settings.Save();
+                existing = new AccountSummary(name, uuid, "offline");
+            }
+            if (existing == null) throw new InvalidOperationException("Requested account is not saved in the launcher.");
+            _launchAccountOverride = existing.username;
+            LoadAccounts();
+            Log($"[Accounts] Next launch will use {existing.username}.");
+            File.Delete(requestFile);
+        }
+        catch (Exception) { Log("[Accounts] Could not apply the game's account selection. Select an account in the launcher."); }
     }
 
     // Keeps the startup splash visible until the game window actually exists
@@ -4517,6 +4448,7 @@ public partial class MainWindow : Window
                 if (process.HasExited)
                 {
                     Log("[Launcher] Game exited before its window appeared.");
+                    splash.SetStatus("Minecraft stopped before opening");
                     break;
                 }
                 try
@@ -4525,6 +4457,7 @@ public partial class MainWindow : Window
                     if (process.MainWindowHandle != IntPtr.Zero)
                     {
                         Log($"[Launcher] Game window detected after {sw.Elapsed.TotalSeconds:F1}s.");
+                        splash.SetStatus("Minecraft is ready to show");
                         break;
                     }
                 }
@@ -4540,46 +4473,21 @@ public partial class MainWindow : Window
         Dispatcher.UIThread.Post(() => { try { splash.Close(); } catch { } });
     }
 
-    // If the configured version doesn't exist in the instance's versions folder,
-    // fall back to the newest installed fabric-loader profile instead of failing.
-    private string ResolveLaunchVersionId()
-    {
-        string want = settings.FabricVersion;
-        string vdir = Path.Combine(settings.InstancePath, "versions");
-        if (File.Exists(Path.Combine(vdir, want, want + ".json"))) return want;
-
-        if (Directory.Exists(vdir))
-        {
-            var candidates = Directory.GetDirectories(vdir)
-                .Select(d => Path.GetFileName(d) ?? "")
-                .Where(n => !string.IsNullOrEmpty(n) && File.Exists(Path.Combine(vdir, n, n + ".json")))
-                .ToList();
-
-            var best = candidates.Where(n => n.StartsWith("fabric-loader-", StringComparison.OrdinalIgnoreCase))
-                                 .OrderByDescending(n => n, StringComparer.OrdinalIgnoreCase)
-                                 .FirstOrDefault()
-                       ?? candidates.OrderByDescending(n => n, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
-            if (best != null)
-            {
-                Log($"[Launcher] Configured version '{want}' not found in instance. Falling back to installed '{best}'.");
-                return best;
-            }
-        }
-        return want;
-    }
+    // Resolve only the explicitly selected profile's exact version.
+    private string ResolveLaunchVersionId() => GameVersionPolicy.ResolveVersionId(_profileService.GetActiveProfile());
 
     // ═══════════════════════════════════════
     //  CRASH DETECTION
     // ═══════════════════════════════════════
 
-    private void SyncResourcePacksFromGlobal()
+    private void SyncResourcePacksFromGlobal(string gameDirectory)
     {
         try
         {
             string globalPacks = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 ".minecraft", "resourcepacks");
-            string instancePacks = Path.Combine(settings.InstancePath, "resourcepacks");
+            string instancePacks = Path.Combine(gameDirectory, "resourcepacks");
 
             if (!Directory.Exists(globalPacks)) return;
             Directory.CreateDirectory(instancePacks);
@@ -4611,11 +4519,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SyncScreenshotsToGlobal()
+    private void SyncScreenshotsToGlobal(string gameDirectory)
     {
         try
         {
-            string instanceScreenshots = Path.Combine(settings.InstancePath, "screenshots");
+            string instanceScreenshots = Path.Combine(gameDirectory, "screenshots");
             string globalScreenshots = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 ".minecraft", "screenshots");
@@ -4842,7 +4750,7 @@ public partial class MainWindow : Window
             Title = "Game Crashed",
             Width = 550, Height = 300,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.Parse("#0A0A0F")),
+            Background = new SolidColorBrush(Color.Parse("#17181B")),
             CanResize = false
         };
 
@@ -4851,7 +4759,7 @@ public partial class MainWindow : Window
         panel.Children.Add(new TextBlock
         {
             Text = "💥 Game Crashed",
-            Foreground = new SolidColorBrush(Color.Parse("#FF4444")),
+            Foreground = new SolidColorBrush(Color.Parse("#E27676")),
             FontSize = 22,
             FontWeight = FontWeight.Bold
         });
@@ -4862,10 +4770,10 @@ public partial class MainWindow : Window
             IsReadOnly = true,
             TextWrapping = TextWrapping.Wrap,
             MaxHeight = 120,
-            Background = new SolidColorBrush(Color.Parse("#111118")),
+            Background = new SolidColorBrush(Color.Parse("#202125")),
             Foreground = new SolidColorBrush(Color.Parse("#CCCCCC")),
             FontSize = 13,
-            BorderBrush = new SolidColorBrush(Color.Parse("#222233"))
+            BorderBrush = new SolidColorBrush(Color.Parse("#3A3B42"))
         });
 
         var buttonRow = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
@@ -4873,7 +4781,7 @@ public partial class MainWindow : Window
         var relaunchBtn = new Button
         {
             Content = "Relaunch",
-            Background = new SolidColorBrush(Color.Parse("#8B0000")),
+            Background = new SolidColorBrush(Color.Parse("#C44343")),
             Foreground = Brushes.White,
             FontWeight = FontWeight.Bold,
             Height = 38, Width = 120,
@@ -4900,7 +4808,7 @@ public partial class MainWindow : Window
             var openBtn = new Button
             {
                 Content = "Open Report",
-                Background = new SolidColorBrush(Color.Parse("#1A1A2E")),
+                Background = new SolidColorBrush(Color.Parse("#303137")),
                 Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")),
                 Height = 38, Width = 120,
                 HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
@@ -4916,7 +4824,7 @@ public partial class MainWindow : Window
         var modsBtn = new Button
         {
             Content = "View Mods",
-            Background = new SolidColorBrush(Color.Parse("#1A1A2E")),
+            Background = new SolidColorBrush(Color.Parse("#303137")),
             Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")),
             Height = 38, Width = 120,
             HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
@@ -4934,73 +4842,30 @@ public partial class MainWindow : Window
     //  PACKWIZ
     // ═══════════════════════════════════════
 
-    private async Task RunPackwizInstaller()
+    private async Task RunPackwizInstaller(TheLadsLauncher.Models.LauncherProfile profile, string javaPath)
     {
-        if (Environment.GetCommandLineArgs().Contains("--auto-launch-offline"))
+        if (string.IsNullOrWhiteSpace(profile.PackwizUrl)) return;
+        string bootstrap = Path.Combine(AppContext.BaseDirectory, "packwiz-installer-bootstrap.jar");
+        if (!File.Exists(bootstrap)) bootstrap = Path.Combine(_pathService.BinDirectory, "packwiz-installer-bootstrap.jar");
+        if (!File.Exists(bootstrap))
+            throw new FileNotFoundException("This profile uses Packwiz, but its installer is missing. Install the bootstrap or clear this profile's Packwiz URL.");
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo(javaPath)
         {
-            Log("[Packwiz] Skipped: Offline launch requested.");
-            return;
-        }
-
-        // Clean up specific redundant mods that were merged into TheLadsCore
-        string modsDir = Path.Combine(settings.InstancePath, "mods");
-        if (Directory.Exists(modsDir))
-        {
-            string[] legacyMods = new[] {
-                "autoreconnectrf-fabric-3.2.2+26.1.2.jar", "BetterF3-18.0.2-Fabric-26.1.jar", "chatsigninghider-fabric-1.0.5+26.1.2.jar", "classic-minecraft-icon-v1.1.9-mc26.1.2.jar", "collective-26.1.2-8.22.jar", "configured-fabric-26.1.2-2.7.5.jar", "connectivity-fabric-26.1-7.6.jar", "Controlling-fabric-26.1.2-26.1.2.3.jar", "cwb-4.0.4+26.1.jar", "dynamic-fps-3.11.7+minecraft-26.1.0-fabric.jar", "fabric-api-0.150.0+26.1.2.jar", "friendlink-Fabric-26.1-26.1.2-1.0.0.jar", "Gamma-Utils-3.0.0+mc26.1.jar", "Ixeris-4.4.1+26.1.2-fabric.jar", "konkrete_fabric_1.9.12_MC_1.21.6.jar", "lithium-fabric-0.24.4+mc26.1.2.jar", "moreculling-fabric-26.1.1-1.7.0.jar", "netprodis-2.0.0+26.1.jar", "no-resource-pack-warnings-1.5.0.jar", "pingview-fabric-1.5.2.jar", "Resourcify (26.1-fabric)-1.8.2.jar", "rrls-5.2.5+mc.26.1.jar", "Searchables-fabric-26.1.2-1.0.1.jar", "SmoothScrollingRefurbished+26.1-1.6.0.jar", "soundcontrol-1.4.1-26.1.1.jar", "togglenametags-2.7.4+26.1.2.jar", "xaerominimap-fabric-26.1.2-25.3.14.jar", "XaeroPlus-2.31.5+fabric-26.1.2-WM1.40.18-MM25.3.14.jar", "xaeroworldmap-fabric-26.1.2-1.40.18.jar"
-            };
-
-            foreach (string mod in legacyMods)
-            {
-                string path = Path.Combine(modsDir, mod);
-                if (File.Exists(path))
-                {
-                    try { File.Delete(path); Log($"[Launcher] Removed legacy mod: {mod}"); }
-                    catch { }
-                }
-            }
-        }
-
-        try
-        {
-            Log("[Packwiz] Syncing mods from remote repository...");
-            var process = new Process();
-            process.StartInfo.FileName = settings.JavaPath;
-            string packUrl = string.IsNullOrWhiteSpace(settings.PackwizUrl) 
-                ? $"file:///{settings.PackwizPath.Replace("\\", "/")}/pack.toml".Replace(" ", "%20")
-                : settings.PackwizUrl;
-                
-            string bootstrapJar = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "packwiz-installer-bootstrap.jar");
-
-            if (!File.Exists(bootstrapJar))
-                bootstrapJar = Path.Combine(TheLadsLauncher.Services.PathService.Instance.BinDirectory, "packwiz-installer-bootstrap.jar");
-
-            process.StartInfo.Arguments = $"-jar \"{bootstrapJar}\" --no-gui \"{packUrl}\"";
-            process.StartInfo.WorkingDirectory = settings.InstancePath;
-            process.StartInfo.UseShellExecute = false;
-            process.StartInfo.CreateNoWindow = true;
-            process.StartInfo.RedirectStandardOutput = false;
-            process.StartInfo.RedirectStandardError = false;
-
-            process.Start();
-            await process.WaitForExitAsync();
-
-            if (process.ExitCode != 0)
-            {
-                Log($"[Packwiz ERROR] Mod sync finished with exit code {process.ExitCode}");
-            }
-            else
-            {
-                Log("[Packwiz] Mod sync completed successfully.");
-            }
-        }
-        catch (Exception ex)
-        {
-            Log($"[Packwiz ERROR] {ex.Message}");
-        }
-
-        // Patch any mods that were built with 'official' AW namespace — MC 26.2 mods need 'intermediary'
-        await PatchModAccessWideners();
+            WorkingDirectory = settings.InstancePath,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        foreach (string argument in new[] { "-jar", bootstrap, "--no-gui", profile.PackwizUrl })
+            process.StartInfo.ArgumentList.Add(argument);
+        process.Start();
+        Task output = process.StandardOutput.ReadToEndAsync();
+        Task error = process.StandardError.ReadToEndAsync();
+        await Task.WhenAll(output, error, process.WaitForExitAsync());
+        if (process.ExitCode != 0) throw new InvalidOperationException($"Packwiz could not update this profile (exit {process.ExitCode}). Check its Packwiz URL and connection.");
+        Log("[Packwiz] Profile update complete.");
     }
 
     private async Task PatchModAccessWideners()
@@ -5714,7 +5579,7 @@ public partial class MainWindow : Window
         listPanel.Children.Clear();
         if (results == null || results.Count == 0)
         {
-            listPanel.Children.Add(new TextBlock { Text = "No results found.", Foreground = new SolidColorBrush(Color.Parse("#888888")), HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0) });
+            listPanel.Children.Add(new TextBlock { Text = "No results found.", Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0) });
             return;
         }
 
@@ -5778,14 +5643,14 @@ public partial class MainWindow : Window
                 {
                     var badge = new Border
                     {
-                        Background = new SolidColorBrush(Color.Parse("#1A1A2E")),
+                        Background = new SolidColorBrush(Color.Parse("#303137")),
                         CornerRadius = new CornerRadius(4),
                         Padding = new Thickness(6, 2),
                         Margin = new Thickness(0, 0, 4, 0),
                         Child = new TextBlock
                         {
                             Text = catName,
-                            Foreground = new SolidColorBrush(Color.Parse("#FF4444")),
+                            Foreground = new SolidColorBrush(Color.Parse("#E27676")),
                             FontSize = 9,
                             FontWeight = FontWeight.Bold
                         }
@@ -5814,7 +5679,7 @@ public partial class MainWindow : Window
                 HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                 VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
-            var progressBar = new ProgressBar { Minimum = 0, Maximum = 100, Value = 0, Height = 6, Width = 80, IsVisible = false, Foreground = new SolidColorBrush(Color.Parse("#8B0000")) };
+            var progressBar = new ProgressBar { Minimum = 0, Maximum = 100, Value = 0, Height = 6, Width = 80, IsVisible = false, Foreground = new SolidColorBrush(Color.Parse("#C44343")) };
             
             if (actionPanel != null)
             {
@@ -5918,21 +5783,24 @@ public class AvaloniaMsalProvider : IAuthenticationProvider
 
     public XboxAuthNet.Game.Authenticators.IAuthenticator Authenticate() => _builder.CodeFlow();
 
+    public void CompleteDialog()
+    {
+        var dialog = CurrentDialog;
+        CurrentDialog = null;
+        dialog?.Complete();
+    }
+
     public XboxAuthNet.Game.Authenticators.IAuthenticator AuthenticateInteractively() => _builder.DeviceCode(async deviceCodeResult =>
     {
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
-            try
-            {
+            CompleteDialog();
                 var dialog = new TheLadsLauncher.Views.DeviceCodeLoginDialog(deviceCodeResult, () =>
                 {
                     OnCancelRequested?.Invoke();
-                    CurrentDialog?.Close();
                 });
                 CurrentDialog = dialog;
                 dialog.Show(_window);
-            }
-            catch { }
         });
     });
 

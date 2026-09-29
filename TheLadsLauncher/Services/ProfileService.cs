@@ -16,7 +16,7 @@ public class ProfileService : IProfileService
     private readonly IPathService _pathService;
     private readonly string _profilesConfigPath;
     private readonly List<LauncherProfile> _profiles = new();
-    private string _activeProfileId = "1.21.1";
+    private string _activeProfileId = "26.2";
 
     public ProfileService(IPathService pathService)
     {
@@ -174,25 +174,7 @@ public class ProfileService : IProfileService
             // 2. Sync servers.dat (server list)
             SyncFileToInstance(_pathService.SharedServersFile, Path.Combine(targetDir, "servers.dat"));
 
-            // 3. Sync lads_accounts.json
-            var sharedAccounts = _pathService.SharedAccountsFile;
-            var baseAccounts = _pathService.AccountsFile;
-            var instanceAccounts = Path.Combine(targetDir, "lads_accounts.json");
-            if (File.Exists(baseAccounts) && !File.Exists(sharedAccounts))
-            {
-                try { File.Copy(baseAccounts, sharedAccounts, true); } catch { }
-            }
-            SyncFileToInstance(sharedAccounts, instanceAccounts);
-
-            // 4. Sync lads_profile.json
-            var sharedProfile = _pathService.SharedProfileConfigFile;
-            var baseProfile = _pathService.ProfileConfigFile;
-            var instanceProfile = Path.Combine(targetDir, "lads_profile.json");
-            if (File.Exists(baseProfile) && !File.Exists(sharedProfile))
-            {
-                try { File.Copy(baseProfile, sharedProfile, true); } catch { }
-            }
-            SyncFileToInstance(sharedProfile, instanceProfile);
+            // Authentication snapshots belong to the auth gateway, never timestamp-based sync.
         });
     }
 
@@ -217,21 +199,7 @@ public class ProfileService : IProfileService
             // 2. Sync servers.dat back to shared
             SyncFileFromInstance(Path.Combine(targetDir, "servers.dat"), _pathService.SharedServersFile);
 
-            // 3. Sync lads_accounts.json back to shared and base
-            var instanceAccounts = Path.Combine(targetDir, "lads_accounts.json");
-            if (File.Exists(instanceAccounts))
-            {
-                SyncFileFromInstance(instanceAccounts, _pathService.SharedAccountsFile);
-                SyncFileFromInstance(instanceAccounts, _pathService.AccountsFile);
-            }
-
-            // 4. Sync lads_profile.json back to shared and base
-            var instanceProfile = Path.Combine(targetDir, "lads_profile.json");
-            if (File.Exists(instanceProfile))
-            {
-                SyncFileFromInstance(instanceProfile, _pathService.SharedProfileConfigFile);
-                SyncFileFromInstance(instanceProfile, _pathService.ProfileConfigFile);
-            }
+            // Never restore instance account/profile snapshots over newer logins or removals.
         });
     }
 
@@ -298,22 +266,137 @@ public class ProfileService : IProfileService
             {
                 var json = File.ReadAllText(_profilesConfigPath);
                 var container = JsonSerializer.Deserialize<ProfilesData>(json);
+                if (container?.Profiles == null || container.Profiles.Any(p => p == null))
+                    throw new InvalidDataException("The saved profile list is invalid.");
                 if (container != null && container.Profiles != null && container.Profiles.Count > 0)
                 {
                     _profiles.Clear();
                     _profiles.AddRange(container.Profiles);
                     _activeProfileId = container.ActiveProfileId ?? _profiles[0].Id;
+                    var changed = false;
+                    foreach (var savedProfile in _profiles)
+                        changed |= MigrateSavedProfile(savedProfile);
+                    foreach (var added in CreateDefaultProfiles())
+                    {
+                        if (_profiles.Any(p => p.MinecraftVersion == added.MinecraftVersion))
+                            continue;
+                        // A user may already use the default ID for a different profile/world.
+                        if (_profiles.Any(p => string.Equals(p.Id, added.Id, StringComparison.OrdinalIgnoreCase)))
+                            added.Id = added.MinecraftVersion + "-" + Guid.NewGuid().ToString("N");
+                        _profiles.Add(added);
+                        changed = true;
+                    }
+                    var active = _profiles.FirstOrDefault(p => string.Equals(p.Id, _activeProfileId, StringComparison.OrdinalIgnoreCase));
+                    if (active == null || !IsValidStartupProfile(active))
+                    {
+                        // Keep unresolved aliases/custom profiles for the user to repair, but
+                        // never pass one to startup's exact-version resolver as the active profile.
+                        var fallback = _profiles.FirstOrDefault(p => GameVersionPolicy.RequiresBundledCore(p.MinecraftVersion)
+                            && IsValidStartupProfile(p));
+                        if (fallback == null)
+                        {
+                            fallback = CreateDefaultProfiles().First();
+                            if (_profiles.Any(p => string.Equals(p.Id, fallback.Id, StringComparison.OrdinalIgnoreCase)))
+                                fallback.Id += "-" + Guid.NewGuid().ToString("N");
+                            _profiles.Add(fallback);
+                        }
+                        _activeProfileId = fallback.Id;
+                        changed = true;
+                    }
+                    if (changed)
+                        SaveProfilesToDisk();
                     return;
                 }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            // Do not replace an unreadable user profile file with defaults.
+            throw new InvalidDataException($"Could not load '{_profilesConfigPath}'. Existing profiles were left intact; repair or restore this file before continuing.", ex);
+        }
 
         // Populate default multi-version profiles
         _profiles.Clear();
         _profiles.AddRange(CreateDefaultProfiles());
-        _activeProfileId = "1.21.1";
+        _activeProfileId = "26.2";
         SaveProfilesToDisk();
+    }
+
+    private static bool MigrateSavedProfile(LauncherProfile profile)
+    {
+        var changed = false;
+        if (profile.MinecraftVersion == "26.2" && profile.Name == "The Lads Client 26.2 (Next-Gen)")
+        {
+            profile.Name = "The Lads Client 26.2 (Primary)";
+            changed = true;
+        }
+        if (profile.MinecraftVersion == "1.21.11" && profile.Name == "The Lads Client 1.21.11 (Stable)")
+        {
+            profile.Name = "The Lads Client 1.21.11 (Legacy)";
+            changed = true;
+        }
+        if (profile.MinecraftVersion is "latest.release" or "latest-release")
+        {
+            var oldVersion = profile.MinecraftVersion;
+            profile.MinecraftVersion = "26.2";
+            if (string.IsNullOrWhiteSpace(profile.FabricVersion))
+                profile.FabricVersion = "0.19.3";
+            else if (profile.FabricVersion.StartsWith("fabric-loader-", StringComparison.Ordinal)
+                && profile.FabricVersion.EndsWith("-" + oldVersion, StringComparison.Ordinal))
+                profile.FabricVersion = profile.FabricVersion.Substring(0, profile.FabricVersion.Length - oldVersion.Length) + "26.2";
+            changed = true;
+        }
+
+        if (GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion) && !string.IsNullOrWhiteSpace(profile.FabricVersion))
+        {
+            var loader = profile.FabricVersion;
+            var fullId = loader.StartsWith("fabric-loader-", StringComparison.Ordinal);
+            var suffix = "-" + profile.MinecraftVersion;
+            if (fullId && loader.EndsWith(suffix, StringComparison.Ordinal)
+                && loader.Length > "fabric-loader-".Length + suffix.Length)
+                loader = loader.Substring("fabric-loader-".Length, loader.Length - "fabric-loader-".Length - suffix.Length);
+            // Parse only numeric releases; retain custom builds and mismatched full IDs.
+            if (Version.TryParse(loader, out var parsed) && parsed < new Version(0, 19, 3))
+            {
+                profile.FabricVersion = fullId ? "fabric-loader-0.19.3" + suffix : "0.19.3";
+                changed = true;
+            }
+        }
+
+        // These two URLs were generated by earlier defaults and verified to return 404.
+        // Exact comparisons intentionally preserve custom hosts, paths and query strings.
+        if (profile.PackwizUrl is
+            "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/26.2/pack.toml" or
+            "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/1.21.1/pack.toml")
+        {
+            profile.PackwizUrl = null;
+            changed = true;
+        }
+
+        if (profile.MinecraftVersion is "1.21.1" or "1.21.11" or "26.2")
+        {
+            var requiredJava = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion);
+            if (profile.JavaMajorVersion < requiredJava)
+            {
+                profile.JavaMajorVersion = requiredJava;
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    private static bool IsValidStartupProfile(LauncherProfile profile)
+    {
+        try
+        {
+            GameVersionPolicy.ResolveVersionId(profile);
+            return !GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion)
+                || !string.IsNullOrWhiteSpace(profile.FabricVersion);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 
     private static List<LauncherProfile> CreateDefaultProfiles()
@@ -322,35 +405,25 @@ public class ProfileService : IProfileService
         {
             new()
             {
-                Id = "1.21.1",
-                Name = "The Lads Client 1.21.1 (Stable)",
-                MinecraftVersion = "1.21.1",
-                FabricVersion = "0.16.9",
-                JavaMajorVersion = 21,
-                IsIsolated = false,
-                PackwizUrl = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/1.21.1/pack.toml",
-                IconKey = "stable"
-            },
-            new()
-            {
                 Id = "26.2",
-                Name = "The Lads Client 26.2 (Next-Gen)",
+                Name = "The Lads Client 26.2 (Primary)",
                 MinecraftVersion = "26.2",
                 FabricVersion = "0.19.3",
                 JavaMajorVersion = 25,
                 IsIsolated = false,
-                PackwizUrl = "https://raw.githubusercontent.com/ArashYT/TheLadsClient/main/Packwiz/26.2/pack.toml",
-                IconKey = "nextgen"
+                PackwizUrl = null,
+                IconKey = "stable"
             },
             new()
             {
-                Id = "latest-release",
-                Name = "Latest Release",
-                MinecraftVersion = "latest.release",
-                FabricVersion = null,
+                Id = "1.21.11",
+                Name = "The Lads Client 1.21.11 (Legacy)",
+                MinecraftVersion = "1.21.11",
+                FabricVersion = "0.19.3",
                 JavaMajorVersion = 21,
                 IsIsolated = false,
-                IconKey = "vanilla"
+                PackwizUrl = null,
+                IconKey = "nextgen"
             }
         };
     }

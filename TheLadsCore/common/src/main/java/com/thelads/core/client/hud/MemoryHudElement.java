@@ -2,8 +2,9 @@ package com.thelads.core.client.hud;
 
 import com.thelads.core.client.bridge.LadsGraphics;
 
-public class MemoryHudElement extends HudElement {
+public class MemoryHudElement extends TextHudElement {
     public MemoryHudElement() {
+        super(70);
         this.x = 5;
         this.y = 105;
         this.width = 95;
@@ -11,8 +12,7 @@ public class MemoryHudElement extends HudElement {
     }
 
     @Override
-    public void render(LadsGraphics g) {
-        drawBackground(g);
+    protected String updateText(LadsGraphics g) {
         long used = g.getGame().getUsedMemoryMb();
         long max = g.getGame().getMaxMemoryMb();
         long pct = max > 0 ? (used * 100 / max) : 0;
@@ -27,7 +27,6 @@ public class MemoryHudElement extends HudElement {
             text = used + "/" + max + "MB (" + pct + "%)";
         }
 
-        this.width = Math.max(70, g.textWidth(text) + 12);
-        drawCenteredText(g, text);
+        return text;
     }
 }

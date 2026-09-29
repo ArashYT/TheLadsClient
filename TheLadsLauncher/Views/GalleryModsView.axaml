@@ -27,7 +27,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="views:ScreenshotItem">
-                                    <Border Background="#1A1A2E" CornerRadius="8" Padding="8" Margin="8" Width="200">
+                                    <Border Background="#303137" CornerRadius="4" Padding="8" Margin="8" Width="200">
                                         <StackPanel>
                                             <Image Source="{Binding Image}" Height="120" Stretch="UniformToFill" />
                                             <TextBlock Text="{Binding FileName}" Foreground="White" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" ToolTip.Tip="{Binding FileName}" />
@@ -60,7 +60,7 @@
                         <ItemsControl x:Name="LocalItemsList">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="views:GalleryItem">
-                                    <Border Background="#1A1A2E" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                    <Border Background="#303137" CornerRadius="4" Padding="12" Margin="0,0,0,8">
                                         <Grid ColumnDefinitions="Auto, *, Auto">
                                             <StackPanel Grid.Column="1" Margin="12,0,12,0">
                                                 <TextBlock Text="{Binding Title}" Foreground="White" FontSize="16" FontWeight="Bold"/>
@@ -83,12 +83,12 @@
             <!-- Discover -->
             <TabItem Header="Discover">
                 <Grid RowDefinitions="Auto, *">
-                    <Border Grid.Row="0" Background="#0E0E18" CornerRadius="12" BorderBrush="#1A1A2E" BorderThickness="1" Margin="0,0,0,12" Padding="12">
+                    <Border Grid.Row="0" Background="#1D1E22" CornerRadius="4" BorderBrush="#303137" BorderThickness="1" Margin="0,0,0,12" Padding="12">
                         <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
                             <TextBlock Text="Discover" Foreground="White" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,16,0"/>
                             
                             <TextBox x:Name="DiscoverSearchBox" Grid.Column="1" PlaceholderText="Search online..." 
-                                     VerticalAlignment="Center" Margin="0,0,12,0" Background="#111118" Foreground="#CCCCCC" CornerRadius="6" KeyUp="DiscoverSearchBox_KeyUp" />
+                                     VerticalAlignment="Center" Margin="0,0,12,0" Background="#202125" Foreground="#CCCCCC" CornerRadius="6" KeyUp="DiscoverSearchBox_KeyUp" />
                                      
                             <ComboBox x:Name="DiscoverTypeFilter" Grid.Column="2" SelectedIndex="0" VerticalAlignment="Center" Margin="0,0,12,0" SelectionChanged="DiscoverFilter_SelectionChanged">
                                 <ComboBoxItem>Mods</ComboBoxItem>
@@ -104,14 +104,14 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="1" Background="#0E0E18" CornerRadius="12" BorderBrush="#1A1A2E" BorderThickness="1" Padding="12">
+                    <Border Grid.Row="1" Background="#1D1E22" CornerRadius="4" BorderBrush="#303137" BorderThickness="1" Padding="12">
                         <Grid RowDefinitions="Auto, *">
                             <TextBlock x:Name="StatusText" Grid.Row="0" Text="Loading..." Foreground="#AAAAAA" Margin="0,0,0,8" IsVisible="False" />
                             <ScrollViewer Grid.Row="1">
                                 <ItemsControl x:Name="DiscoverItemsList">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="views:GalleryItem">
-                                            <Border Background="#1A1A2E" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                            <Border Background="#303137" CornerRadius="4" Padding="12" Margin="0,0,0,8">
                                                 <Grid ColumnDefinitions="64, *, Auto">
                                                     <!-- Icon -->
                                                     <Image Grid.Column="0" Source="{Binding Icon}" Width="64" Height="64" Stretch="Uniform" VerticalAlignment="Top"/>
@@ -119,7 +119,7 @@
                                                     <!-- Details -->
                                                     <StackPanel Grid.Column="1" Margin="12,0,12,0">
                                                         <TextBlock Text="{Binding Title}" Foreground="White" FontSize="16" FontWeight="Bold"/>
-                                                        <TextBlock Text="{Binding Author}" Foreground="#888888" FontSize="12" Margin="0,2,0,8"/>
+                                                        <TextBlock Text="{Binding Author}" Foreground="#A0A1AA" FontSize="12" Margin="0,2,0,8"/>
                                                         <TextBlock Text="{Binding Description}" Foreground="#CCCCCC" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
                                                     </StackPanel>
                                                     

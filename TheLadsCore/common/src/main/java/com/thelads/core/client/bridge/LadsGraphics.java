@@ -39,6 +39,9 @@ public interface LadsGraphics {
 
     void drawHead(String username, String uuid, int x, int y, int size);
 
+    /** Render the actual local player with the native entity renderer, when available. */
+    default void drawPlayerModel(int x, int y, int width, int height, boolean editor) {}
+
     int getScaledWidth();
 
     int getScaledHeight();

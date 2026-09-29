@@ -21,6 +21,7 @@ public class GuiMixin {
         if (mc.options != null) {
             CpsTracker.get().tick(mc.options.keyAttack.isDown(), mc.options.keyUse.isDown());
         }
+        if (mc.screen instanceof com.thelads.core.v1_21_1.gui.DraggableHudScreen121) return;
         GuiGraphicsLadsAdapter adapter = new GuiGraphicsLadsAdapter(guiGraphics, mc.font);
         HudManager.getInstance().render(adapter);
     }

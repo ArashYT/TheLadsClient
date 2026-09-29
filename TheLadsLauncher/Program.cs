@@ -1,11 +1,15 @@
 using Avalonia;
 using System;
+using System.Reflection;
 
 namespace TheLadsLauncher;
 
 class Program
 {
-    public const string Version = "1.0.20";
+    public static readonly string Version = typeof(Program).Assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
+        ?? typeof(Program).Assembly.GetName().Version?.ToString(3)
+        ?? "0.0.0";
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
@@ -13,6 +17,8 @@ class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        Velopack.VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
+
         if (System.Linq.Enumerable.Contains(args, "--test-services"))
         {
             int exitCode = TheLadsLauncher.Services.ServiceTestSuite.RunAllTestsAsync().GetAwaiter().GetResult();

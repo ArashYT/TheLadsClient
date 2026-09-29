@@ -1,0 +1,43 @@
+{
+    "config.thelads_dynamicfps.title": "Dynamic Anchor Code o' Conduct",
+
+    "config.thelads_dynamicfps.category.general": "Main Deck",
+    "config.thelads_dynamicfps.category.hovered": "Makin' Chase",
+    "config.thelads_dynamicfps.category.unfocused": "Abandoned Ship",
+    "config.thelads_dynamicfps.category.abandoned": "Nappin' Below Deck",
+    "config.thelads_dynamicfps.category.invisible": "Lost in Davy Jones' Locker",
+
+    "config.thelads_dynamicfps.enabled": "Merry Sailin'",
+
+    "config.thelads_dynamicfps.disabled": "Avast!",
+    "config.thelads_dynamicfps.minutes": "%d Minut'(s)",
+
+    "config.thelads_dynamicfps.idle_time": "Time Before Nappin'",
+    "config.thelads_dynamicfps.idle_time_tooltip": "Minut's without workin' on deck before Dynamic Anchor declares you are Nappin' Below Deck.",
+
+    "config.thelads_dynamicfps.uncap_menu_frame_rate": "Banish th' Menu Speed Limit?",
+    "config.thelads_dynamicfps.uncap_menu_frame_rate_tooltip": "Makes th' 60-knots Speed Limit in th' main menu walk th' plank.",
+
+    "config.thelads_dynamicfps.frame_rate_target": "Speed Limit Target",
+    "config.thelads_dynamicfps.volume_multiplier": "Noise Multiplier",
+
+    "config.thelads_dynamicfps.graphics_state": "Spyglass Lens",
+    "config.thelads_dynamicfps.graphics_state_default": "Fair Condition",
+    "config.thelads_dynamicfps.graphics_state_reduced": "Budget'd",
+    "config.thelads_dynamicfps.graphics_state_minimal": "Blurry",
+    "config.thelads_dynamicfps.graphics_state_minimal_tooltip": "A blurry lens causes th' sea to be remapped!",
+
+    "config.thelads_dynamicfps.show_toasts": "Notify th' Captain",
+    "config.thelads_dynamicfps.show_toasts_tooltip": "Notify th' Captain",
+
+    "config.thelads_dynamicfps.run_garbage_collector": "Order th' Ship Janitor to Swab th' Deck",
+    "config.thelads_dynamicfps.run_garbage_collector_tooltip": "Frees up ship resources when switching to th' state.",
+
+    "key.thelads_dynamicfps.toggle_forced": "Lower th' Anchor (Switch)",
+    "key.thelads_dynamicfps.toggle_disabled": "Dynamic Anchor, walk th' plank! (Switch)",
+    "gui.thelads_dynamicfps.hud.reducing": "Dynamic Anchor: Lowerin' th' anchor",
+    "gui.thelads_dynamicfps.hud.disabled": "Avast, be th' Dynamic Anchor! Sailing at Full Mast",
+
+    "modmenu.nameTranslation.thelads_dynamicfps": "Dynamic Anchor",
+    "modmenu.descriptionTranslation.thelads_dynamicfps": "Magically edits yer Ship's speed limit so Minecraft doesn't steal yer booty when yer not lookin'."
+}

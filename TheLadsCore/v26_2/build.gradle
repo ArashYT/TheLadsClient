@@ -8,10 +8,14 @@ java {
     }
 }
 
+loom { accessWidenerPath = file('src/main/resources/theladscore.accesswidener') }
+
 tasks.withType(JavaCompile).configureEach {
     options.release = 25
     options.encoding = 'UTF-8'
 }
+
+repositories { maven { url 'https://maven.shedaniel.me/' } }
 
 dependencies {
     minecraft "com.mojang:minecraft:26.2"
@@ -19,13 +23,76 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:0.152.1+26.2"
 
     implementation project(':common')
-    include project(':common')
+    // Retained MIT configuration libraries, extracted unchanged from the pinned 26.2 gallery.
+    implementation files('libs/catconfig-mc-26.2-0.2.1.jar', 'libs/catconfig-0.3.0.jar')
+    implementation('ca.weblite:java-objc-bridge:1.0.0') { transitive = false }
+    include 'ca.weblite:java-objc-bridge:1.0.0' 
+    // Editor API only; the pinned pack supplies Cloth Config as a retained library.
+    compileOnly('me.shedaniel.cloth:cloth-config:26.2.155') { transitive = false }
+    // Common classes are merged below. Bundle the Discord binding and its native runtime;
+    // Minecraft supplies JNA, Gson and SLF4J. Loom include dependencies are non-transitive.
+    include 'club.minnced:java-discord-rpc:2.0.1'
+    include 'club.minnced:discord-rpc-release:v3.3.0'
 }
 
 processResources {
+    // The pinned library already contains Fabric metadata and its CatConfig child jar.
+    from('libs/catconfig-mc-26.2-0.2.1.jar') { into 'META-INF/jars' }
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/feature/clumps/**'
+        into 'META-INF/lads-sources/clumps/v26_2'
+    }
+    from('src/main/resources/theladscore.clumps.mixins.json') {
+        into 'META-INF/lads-sources/clumps/resources'
+    }
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/feature/screenshots/**'
+        into 'META-INF/lads-sources/screenshots/v26_2'
+    }
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
         expand "version": project.version
+    }
+    // The complete modified MPL-covered native files are available to every binary recipient.
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/feature/paperdoll/**'
+        into 'assets/theladscore/sources/paperdoll/v26_2'
+    }
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/feature/raised/**'
+        into 'META-INF/lads-sources/raised'
+    }
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/feature/*Reconnect*.java'
+        include 'com/thelads/core/v26_2/gui/Reconnect*.java'
+        include 'com/thelads/core/v26_2/mixin/reconnect/**'
+        into 'META-INF/lads-sources/reconnect/v26_2'
+    }
+    from('../common/src/main/java') {
+        include 'com/thelads/core/client/Reconnect*.java'
+        include 'com/thelads/core/config/ActionOption.java'
+        include 'com/thelads/core/modules/AutoReconnectModule.java'
+        into 'META-INF/lads-sources/reconnect/common'
+    }
+    from('src/main/resources/theladscore.reconnect.mixins.json') {
+        into 'META-INF/lads-sources/reconnect/resources'
+    }
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/feature/tabtweaks/**'
+        into 'META-INF/lads-sources/tabtweaks/v26_2'
+    }
+    from('src/main/resources/theladscore.tabtweaks.mixins.json') {
+        into 'META-INF/lads-sources/tabtweaks/resources'
+    }
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/feature/*SignalLoss*.java'
+        include 'com/thelads/core/v26_2/feature/NativeConnectionStatus.java'
+        into 'META-INF/lads-sources/signalloss/v26_2'
+    }
+    from('../common/src/main/java') {
+        include 'com/thelads/core/client/SignalLossPolicy.java'
+        include 'com/thelads/core/modules/SignalLossModule.java'
+        into 'META-INF/lads-sources/signalloss/common'
     }
 }
 

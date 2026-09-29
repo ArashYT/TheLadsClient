@@ -2,7 +2,7 @@ package com.thelads.core.client.hud;
 
 import com.thelads.core.client.bridge.LadsGraphics;
 
-public class FPSHudElement extends HudElement {
+public class FPSHudElement extends TextHudElement {
     private static final long[] INTERVALS = { 0L, 150L, 400L, 1000L };
 
     private double displayed = 0;
@@ -10,6 +10,7 @@ public class FPSHudElement extends HudElement {
     private long lastSample = 0;
 
     public FPSHudElement() {
+        super(60);
         this.x = 5;
         this.y = 5;
         this.width = 60;
@@ -17,8 +18,7 @@ public class FPSHudElement extends HudElement {
     }
 
     @Override
-    public void render(LadsGraphics g) {
-        drawBackground(g);
+    protected String updateText(LadsGraphics g) {
         int fps = g.getGame().getFps();
 
         int rate = optCycle("Update rate", 1);
@@ -32,6 +32,6 @@ public class FPSHudElement extends HudElement {
         }
         displayed += (target - displayed) * (smooth ? 0.10 : 1.0);
 
-        drawCenteredText(g, Math.round(displayed) + " FPS");
+        return Math.round(displayed) + " FPS";
     }
 }

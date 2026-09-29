@@ -1,0 +1,23 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_11.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "GuiMixin",
+    "TitleScreenMixin",
+    "TitleWidgetMixin",
+    "PauseScreenMixin",
+    "ClientTickMixin",
+    "OptionsMixin",
+    "KeyboardHandlerMixin",
+    "KeyboardInputMixin",
+    "MouseHandlerMixin",
+    "FullbrightMixin",
+    "ZoomMixin",
+    "ScoreboardMixin"
+  ]
+}

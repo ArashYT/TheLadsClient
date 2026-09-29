@@ -1,0 +1,40 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    minecraft 'com.mojang:minecraft:1.21.11'
+    mappings loom.officialMojangMappings()
+    modImplementation 'net.fabricmc:fabric-loader:0.19.3'
+
+    implementation project(':common')
+    // Common classes are merged below. Minecraft supplies JNA, Gson and SLF4J.
+    include 'club.minnced:java-discord-rpc:2.0.1'
+    include 'club.minnced:discord-rpc-release:v3.3.0'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+jar {
+    from(project(':common').sourceSets.main.output)
+}
+
+remapJar {
+    archiveClassifier = 'mc1.21.11'
+}

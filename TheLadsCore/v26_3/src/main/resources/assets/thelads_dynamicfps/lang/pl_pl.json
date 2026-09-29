@@ -1,0 +1,40 @@
+{
+    "config.thelads_dynamicfps.title": "Skonfiguruj Dynamic FPS",
+
+    "config.thelads_dynamicfps.category.general": "Ogólne",
+    "config.thelads_dynamicfps.category.hovered": "Zawieszone",
+    "config.thelads_dynamicfps.category.unfocused": "Bez koncentracji",
+    "config.thelads_dynamicfps.category.abandoned": "Bezczynne",
+    "config.thelads_dynamicfps.category.invisible": "Niewidzialne",
+
+    "config.thelads_dynamicfps.disabled": "Wyłączony",
+    "config.thelads_dynamicfps.minutes": "%d Minut(y)",
+
+    "config.thelads_dynamicfps.idle_time": "Czas bezczynności",
+    "config.thelads_dynamicfps.idle_time_tooltip": "Minuty bez wprowadzania danych, zanim Dynamic FPS aktywuje stan bezczynności, gdy gra jest skupiona.",
+
+    "config.thelads_dynamicfps.uncap_menu_frame_rate": "Odblokuj menu FPS",
+    "config.thelads_dynamicfps.uncap_menu_frame_rate_tooltip": "Usuń limit 60 FPS w menu głównym.",
+
+    "config.thelads_dynamicfps.frame_rate_target": "Docelowa liczba klatek na sekundę",
+    "config.thelads_dynamicfps.volume_multiplier": "Mnożnik głośności",
+
+    "config.thelads_dynamicfps.graphics_state": "Opcje graficzne",
+    "config.thelads_dynamicfps.graphics_state_default": "Domyślna",
+    "config.thelads_dynamicfps.graphics_state_reduced": "Zmniejszona",
+    "config.thelads_dynamicfps.graphics_state_minimal": "Minimalna",
+    "config.thelads_dynamicfps.graphics_state_minimal_tooltip": "Minimalna grafika powoduje przeładowanie świata!",
+
+    "config.thelads_dynamicfps.show_toasts": "Pokaż toasty",
+    "config.thelads_dynamicfps.show_toasts_tooltip": "Czy wyświetlać lub opóźniać powiadomienia o toastach",
+
+    "config.thelads_dynamicfps.run_garbage_collector": "Wywołaj Garbage Collector",
+    "config.thelads_dynamicfps.run_garbage_collector_tooltip": "Zwolnienie nieużywanej pamięci podczas przełączania do tego stanu.",
+
+    "key.thelads_dynamicfps.toggle_forced": "Wymuś obniżenie FPS (przełącznik)",
+    "key.thelads_dynamicfps.toggle_disabled": "Wyłącz Dynamic FPS (przełącznik)",
+    "gui.thelads_dynamicfps.hud.reducing": "Dynamic FPS: wymuszono obniżenie FPS",
+    "gui.thelads_dynamicfps.hud.disabled": "Dynamic FPS wyłączone",
+
+    "modmenu.descriptionTranslation.thelads_dynamicfps": "Dynamicznie dostosowuje liczbę klatek na sekundę, dzięki czemu Minecraft nie blokuje zasobów w tle."
+}

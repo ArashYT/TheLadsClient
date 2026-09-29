@@ -1,0 +1,23 @@
+The native player-list engine adapts TabTweaks 1.5.11 by MicrocontrollersDev,
+under LGPL-3.0-only. Original source revision:
+https://codeberg.org/MicrocontrollersDev/TabTweaks/src/commit/faa19c704c3c967e1cf0f0355791f9d90d47a1c5
+The revision's gradle.properties declares mod.version=1.5.11 and targets 26.2.
+It matches the pinned Modrinth version qs9sqprR (published 2026-06-19).
+
+Modified files are included beside this notice under common/ and v26_2/.
+The port relocates the renderer into Lads, replaces YACL storage with Lads module
+options, yields to a separately installed upstream mod, scopes matrix transforms,
+fixes independent text-shadow targets and numeric-toggle fall-through, and resets
+boss-bar displacement after the bars disappear. The local runtime probe substitutes
+fixture profiles on a separate overlay instance and uses default offline skins.
+No upstream icon or translated UI assets are redistributed.
+
+To rebuild or relink modified native files, obtain the corresponding Lads source,
+replace files at their package paths, then run from TheLadsCore with Java 25:
+  gradlew.bat :v26_2:build
+Common module sources also compile on Java 21 for the other Lads targets. Replace
+the matching Lads Core JAR in the instance mods directory to run your modifications.
+The entire Core may be replaced; no signature or integrity restriction prevents
+installation of a modified library. Your rights to modify, relink and reverse
+engineer this library for debugging those changes are retained under the LGPL.
+COPYING and COPYING.LESSER contain the GNU GPL v3 and LGPL v3 license texts.

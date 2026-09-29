@@ -78,8 +78,6 @@ public class ModuleManager {
         cps.addOption(new DropdownOption("Show", 0, "Both", "Left only", "Right only"));
         cps.addOption(new BoolOption("Show label", true));
 
-        hud("Scoreboard", "Vanilla Scoreboard.");
-
         register(new TitleScaleModule());
         register(new ExordiumModule(), Module.Category.MECHANIC);
 
@@ -89,9 +87,7 @@ public class ModuleManager {
         tp.addOption(new DropdownOption("Color mode", 0, "Static", "Chroma", "Chroma Fast", "Fade"));
         tp.addOption(new BoolOption("Show All", false));
         tp.addOption(new DropdownOption("Max Packs", 2, "1", "2", "3", "4", "5", "6", "7", "8"));
-        tp.addOption(new BoolOption("Show Hidden", false));
-        tp.addOption(new BoolOption("Disable Hidden Overrides", false));
-        register(tp);
+        register(tp, Module.Category.HUD);
 
         HudModule pot = hud("Potion Effects", "Show your active potion effects.");
         pot.addOption(new BoolOption("Show duration", true));
@@ -99,7 +95,7 @@ public class ModuleManager {
 
         // Gameplay toggle modules
         FullbrightModule fb = new FullbrightModule();
-        fb.addOption(new SliderOption("Brightness Multiplier", 1.0, 10.0, 1.0, 0.5));
+        fb.addOption(new SliderOption("Brightness Multiplier", 1.0, 1.0, 10.0, 0.5));
         register(fb, Module.Category.MECHANIC);
 
         ToggleSprintModule ts = new ToggleSprintModule();
@@ -134,10 +130,7 @@ public class ModuleManager {
         chatInd.setEnabled(true);
         register(chatInd);
 
-        Module ar = new Module("AutoReconnect", "Automatically rejoin the server after a disconnect.");
-        ar.addOption(new DropdownOption("Delay", 1, "3s", "5s", "10s", "30s"));
-        ar.addOption(new DropdownOption("Max attempts", 3, "1", "2", "3", "Unlimited"));
-        register(ar, Module.Category.SERVER);
+        register(new AutoReconnectModule(), Module.Category.SERVER);
 
         register(new DiscordRpcModule(), Module.Category.SERVER);
 
@@ -148,14 +141,9 @@ public class ModuleManager {
         sb.addOption(new DropdownOption("Background", 0, "Default", "Dark", "Light", "Off"));
         sb.addOption(new BoolOption("Text Shadow", false));
         sb.addOption(new BoolOption("Hide Red Numbers", false));
-        register(sb);
+        register(sb, Module.Category.HUD);
 
-        Module tab = new Module("TabList", "Resize, reposition and restyle the player tab list.");
-        tab.addOption(new SliderOption("Size", 100, 50, 150, 25));
-        tab.addOption(new SliderOption("X Offset", 0, -40, 40, 20));
-        tab.addOption(new SliderOption("Y Offset", 0, -40, 40, 20));
-        tab.addOption(new DropdownOption("Background", 0, "Default", "Dark", "Light", "Off"));
-        tab.addOption(new BoolOption("Text Shadow", true));
+        Module tab = new TabListModule();
         register(tab, Module.Category.HUD);
 
         Module capes = new Module("Capes", "Configure and toggle custom cape rendering providers.");
@@ -169,13 +157,13 @@ public class ModuleManager {
         capes.setEnabled(true);
         register(capes);
 
-        Module rs = new Module("RenderScale", "Optimize performance by scaling 3D rendering resolution.");
+        Module rs = new Module("RenderScale", "Scale world rendering while the HUD and menus stay at native resolution.");
         rs.addOption(new DropdownOption("Preset", 0, "Custom", "Ultra Performance", "Balanced", "Quality", "Super Sampling"));
         rs.addOption(new SliderOption("Scale", 100, 50, 200, 25));
         rs.addOption(new DropdownOption("Algorithm", 0, "Linear", "Nearest"));
         rs.addOption(new BoolOption("Dynamic Resolution", false));
         rs.addOption(new DropdownOption("Target FPS", 1, "30", "60", "90", "120", "144", "Unlimited"));
-        rs.addOption(new SliderOption("Min Scale", 100, 50, 100, 25));
+        rs.addOption(new SliderOption("Min Scale", 50, 50, 100, 25));
         rs.setEnabled(true);
         register(rs);
 
@@ -187,11 +175,12 @@ public class ModuleManager {
         register(sl);
 
         Module farBlock = new Module("FarBlockEntities", "Render block entities further away.");
+        farBlock.addOption(new SliderOption("Distance", 128, 64, 256, 16));
         farBlock.setEnabled(true);
         register(farBlock);
 
         Module raised = new Module("Raised", "Moves the hotbar up when the chat is open.");
-        raised.addOption(new SliderOption("Distance", 0, 50, 14, 1));
+        raised.addOption(new SliderOption("Distance", 14, 0, 50, 1));
         raised.setEnabled(true);
         register(raised);
 
@@ -200,14 +189,14 @@ public class ModuleManager {
         register(new EnhancedToolbarsModule());
         register(new NotEnoughAnimationsModule());
         register(new BetterStatsModule());
+        register(new Module("ModernAdvancements", "Search advancements, track goals and customize advancement toasts."));
+        register(new Module("Resourcify", "Browse and update resource packs, data packs, shaders and worlds."));
 
         Module disableNarrator = new Module("DisableNarrator", "Disables narrator.");
         disableNarrator.setEnabled(true);
         register(disableNarrator);
 
-        Module signalLoss = new Module("SignalLoss", "Show a warning when server connection is lost.");
-        signalLoss.setEnabled(true);
-        register(signalLoss);
+        register(new SignalLossModule());
 
         Module decentScreenshot = new Module("BetterScreenshots", "Better screenshot saving and GUI.");
         decentScreenshot.setEnabled(true);
@@ -216,6 +205,11 @@ public class ModuleManager {
         register(new ClumpsModule(), Module.Category.MECHANIC);
         register(new SkinLayersModule(), Module.Category.MECHANIC);
         register(new ImmediatelyFastModule(), Module.Category.MECHANIC);
+        register(new Module("EntityCulling", "Skip rendering entities hidden behind solid objects."), Module.Category.MECHANIC);
+        register(new Module("Lithium", "Optimize game logic, physics and world ticking."), Module.Category.MECHANIC);
+        register(new Module("FerriteCore", "Reduce memory used by Minecraft's block and model data."), Module.Category.MECHANIC);
+        register(new Module("XaeroMinimap", "Minimap, waypoints and navigation controls."), Module.Category.HUD);
+        register(new ShulkerBoxUtilsModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

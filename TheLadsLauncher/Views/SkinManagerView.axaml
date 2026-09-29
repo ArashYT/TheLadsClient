@@ -8,7 +8,7 @@
     <UserControl.Styles>
         <!-- Action Button -->
         <Style Selector="Button.action">
-            <Setter Property="Background" Value="#1A1A2E" />
+            <Setter Property="Background" Value="#303137" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Foreground" Value="#AAAAAA" />
         </Style>
@@ -25,12 +25,12 @@
         </Style>
         <Style Selector="Button.danger:pointerover">
             <Setter Property="Background" Value="#441111" />
-            <Setter Property="Foreground" Value="#FF4444" />
+            <Setter Property="Foreground" Value="#E27676" />
         </Style>
 
         <!-- Launch Button -->
         <Style Selector="Button.launch">
-            <Setter Property="Background" Value="#8B0000" />
+            <Setter Property="Background" Value="#C44343" />
             <Setter Property="CornerRadius" Value="12" />
         </Style>
         <Style Selector="Button.launch:pointerover">
@@ -41,7 +41,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Border Background="#0E0E18" CornerRadius="12" Padding="20" BorderBrush="#1A1A2E" BorderThickness="1">
+    <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
         <ScrollViewer>
             <StackPanel Spacing="16">
                 <TextBlock Text="Skin &amp; Cape Customizer" Foreground="White" FontSize="18" FontWeight="Bold"/>
@@ -49,34 +49,34 @@
                 <!-- Player Skin Preview & Preset Selector -->
                 <Grid ColumnDefinitions="*,*">
                     <!-- Skin Preview -->
-                    <Border Grid.Column="0" Background="#08080C" CornerRadius="8" Height="220" BorderBrush="#1A1A2E" BorderThickness="1" Padding="12">
+                    <Border Grid.Column="0" Background="#121315" CornerRadius="4" Height="220" BorderBrush="#303137" BorderThickness="1" Padding="12">
                         <Grid RowDefinitions="*,Auto">
                             <Image x:Name="PlayerSkinPreview" Height="160" Width="80" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Row="1" x:Name="SelectedAccountText" Text="No Account Selected" Foreground="#888888" FontSize="12" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                            <TextBlock Grid.Row="1" x:Name="SelectedAccountText" Text="No Account Selected" Foreground="#A0A1AA" FontSize="12" HorizontalAlignment="Center" Margin="0,8,0,0"/>
                         </Grid>
                     </Border>
                     
                     <!-- Presets & Management -->
                     <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="8">
-                        <TextBlock Text="SKIN PRESETS" Foreground="#8B0000" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
+                        <TextBlock Text="SKIN PRESETS" Foreground="#C44343" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
                         <ComboBox x:Name="PresetSelector" HorizontalAlignment="Stretch" Height="32"/>
                         <Button Classes="action" Content="Apply Preset" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="ApplyPreset_Click"/>
                         <Button Classes="action" Content="Save as Preset" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="SavePreset_Click"/>
                         <Button Classes="danger" Content="Delete Preset" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="DeletePreset_Click"/>
-                        <Border Height="1" Background="#1A1A2E" Margin="0,4"/>
+                        <Border Height="1" Background="#303137" Margin="0,4"/>
                         <Button Classes="action" Content="Upload local Skin (.png)" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="UploadSkin_Click"/>
                     </StackPanel>
                 </Grid>
 
                 <!-- Editors Toggle & Editor Canvas -->
-                <Border Height="1" Background="#1A1A2E"/>
+                <Border Height="1" Background="#303137"/>
                 <Grid ColumnDefinitions="*,*">
-                    <Button x:Name="ToggleSkinEditorBtn" Classes="action" Content="🎨 Skin Editor" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleSkinEditor_Click"/>
-                    <Button Grid.Column="1" x:Name="ToggleCapeEditorBtn" Classes="action" Content="🧥 Cape Maker" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleCapeEditor_Click"/>
+                    <Button x:Name="ToggleSkinEditorBtn" Classes="action" Content="Skin Editor" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleSkinEditor_Click"/>
+                    <Button Grid.Column="1" x:Name="ToggleCapeEditorBtn" Classes="action" Content="Cape Maker" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleCapeEditor_Click"/>
                 </Grid>
                 
                 <!-- Editor Area Container -->
-                <Border x:Name="EditorContainer" IsVisible="False" Background="#08080C" CornerRadius="8" BorderBrush="#1A1A2E" BorderThickness="1" Padding="16">
+                <Border x:Name="EditorContainer" IsVisible="False" Background="#121315" CornerRadius="4" BorderBrush="#303137" BorderThickness="1" Padding="16">
                     <StackPanel Spacing="12">
                         <!-- Layer Selection (Skin only) -->
                         <Grid x:Name="EditorLayersRow" ColumnDefinitions="*,*">
@@ -95,7 +95,7 @@
                         </ComboBox>
 
                         <!-- Pixel Grid Canvas -->
-                        <Border Background="#040406" BorderBrush="#1A1A2E" BorderThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="8" CornerRadius="4">
+                        <Border Background="#040406" BorderBrush="#303137" BorderThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="8" CornerRadius="4">
                             <Canvas x:Name="PixelEditorCanvas" Width="192" Height="192"/>
                         </Border>
                         
@@ -104,7 +104,7 @@
                             <!-- Active Color & Hex Input -->
                             <Grid ColumnDefinitions="*,Auto,Auto">
                                 <TextBlock Text="Brush Color" Foreground="#CCCCCC" FontSize="13" VerticalAlignment="Center"/>
-                                <Border Grid.Column="1" x:Name="ActiveColorPreview" Width="40" Height="28" CornerRadius="4" Background="White" BorderBrush="#1A1A2E" BorderThickness="1" Margin="8,0"/>
+                                <Border Grid.Column="1" x:Name="ActiveColorPreview" Width="40" Height="28" CornerRadius="4" Background="White" BorderBrush="#303137" BorderThickness="1" Margin="8,0"/>
                                 <TextBox Grid.Column="2" x:Name="ColorHexInput" Text="#FFFFFFFF" Width="90" Height="28" FontSize="12" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
                             </Grid>
 
@@ -116,24 +116,24 @@
                                 <!-- Red -->
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="R" Foreground="#FF6666" FontSize="11" FontWeight="Bold" Width="15" VerticalAlignment="Center"/>
                                 <Slider Grid.Row="0" Grid.Column="1" x:Name="SliderRed" Minimum="0" Maximum="255" Value="255" TickFrequency="1" Margin="8,0"/>
-                                <TextBlock Grid.Row="0" Grid.Column="2" x:Name="TextRed" Text="255" Foreground="#888888" FontSize="11" Width="25" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" x:Name="TextRed" Text="255" Foreground="#A0A1AA" FontSize="11" Width="25" VerticalAlignment="Center" HorizontalAlignment="Right"/>
 
                                 <!-- Green -->
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="G" Foreground="#66FF66" FontSize="11" FontWeight="Bold" Width="15" VerticalAlignment="Center"/>
                                 <Slider Grid.Row="1" Grid.Column="1" x:Name="SliderGreen" Minimum="0" Maximum="255" Value="255" TickFrequency="1" Margin="8,0"/>
-                                <TextBlock Grid.Row="1" Grid.Column="2" x:Name="TextGreen" Text="255" Foreground="#888888" FontSize="11" Width="25" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" x:Name="TextGreen" Text="255" Foreground="#A0A1AA" FontSize="11" Width="25" VerticalAlignment="Center" HorizontalAlignment="Right"/>
 
                                 <!-- Blue -->
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="B" Foreground="#6666FF" FontSize="11" FontWeight="Bold" Width="15" VerticalAlignment="Center"/>
                                 <Slider Grid.Row="2" Grid.Column="1" x:Name="SliderBlue" Minimum="0" Maximum="255" Value="255" TickFrequency="1" Margin="8,0"/>
-                                <TextBlock Grid.Row="2" Grid.Column="2" x:Name="TextBlue" Text="255" Foreground="#888888" FontSize="11" Width="25" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <TextBlock Grid.Row="2" Grid.Column="2" x:Name="TextBlue" Text="255" Foreground="#A0A1AA" FontSize="11" Width="25" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                             </Grid>
                         </StackPanel>
 
                         <!-- Editor Actions -->
                         <Grid ColumnDefinitions="*,*">
                             <Button Classes="danger" Content="Clear Canvas" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="ClearEditorCanvas_Click"/>
-                            <Button Grid.Column="1" Classes="launch" Content="💾 Apply &amp; Save" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Foreground="White" FontWeight="Bold" Click="SaveEditorDrawing_Click"/>
+                            <Button Grid.Column="1" Classes="launch" Content="Apply &amp; Save" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Foreground="White" FontWeight="Bold" Click="SaveEditorDrawing_Click"/>
                         </Grid>
                     </StackPanel>
                 </Border>

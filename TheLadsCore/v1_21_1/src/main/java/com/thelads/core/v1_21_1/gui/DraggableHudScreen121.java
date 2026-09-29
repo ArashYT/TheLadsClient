@@ -19,6 +19,9 @@ public class DraggableHudScreen121 extends Screen {
     }
 
     @Override
+    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float delta) {}
+
+    @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
         ui.render(new GuiGraphicsLadsAdapter(guiGraphics, this.font), mouseX, mouseY);
         super.render(guiGraphics, mouseX, mouseY, delta);
@@ -26,7 +29,7 @@ public class DraggableHudScreen121 extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (ui.mouseClicked(mouseX, mouseY, button)) {
+        if (ui.mouseClicked(mouseX, mouseY, button, (Screen.hasShiftDown() ? 1 : 0) | (Screen.hasControlDown() ? 2 : 0))) {
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -50,7 +53,7 @@ public class DraggableHudScreen121 extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (ui.keyPressed(keyCode)) {
+        if (ui.keyPressed(keyCode, modifiers)) {
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -58,6 +61,9 @@ public class DraggableHudScreen121 extends Screen {
 
     @Override
     public void onClose() {
+        ui.close();
         Minecraft.getInstance().setScreen(parent);
     }
+
+    @Override public void removed() { ui.close(); super.removed(); }
 }

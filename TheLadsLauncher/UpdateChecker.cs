@@ -1,48 +1,22 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
-using System.Text.Json;
-using System.Threading.Tasks;
-using Avalonia.Threading;
+using System.Linq;
 
 namespace TheLadsLauncher;
 
-public class UpdateInfo
+public sealed record ReleaseNote(string Version, string Markdown);
+
+public static class ReleaseNotes
 {
-    public string LatestVersion { get; set; } = "1.0.0";
-    public string DownloadUrl { get; set; } = "";
-    public string Changelog { get; set; } = "";
-}
-
-public class UpdateChecker
-{
-    public static async Task<UpdateInfo?> CheckForUpdatesAsync(string updateUrl, string currentVersion)
+    // The complete history travels with the verified package and is readable offline.
+    public static IReadOnlyList<ReleaseNote> Read(string directory)
     {
-        if (string.IsNullOrWhiteSpace(updateUrl))
-            return null;
-
-        try
-        {
-            using var client = new HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(5);
-            var response = await client.GetStringAsync(updateUrl);
-            var info = JsonSerializer.Deserialize<UpdateInfo>(response, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            
-            if (info != null && IsNewerVersion(currentVersion, info.LatestVersion))
-            {
-                return info;
-            }
-        }
-        catch { }
-        return null;
-    }
-
-    private static bool IsNewerVersion(string current, string latest)
-    {
-        if (Version.TryParse(current, out var v1) && Version.TryParse(latest, out var v2))
-        {
-            return v2 > v1;
-        }
-        return false;
+        if (!Directory.Exists(directory)) return Array.Empty<ReleaseNote>();
+        return Directory.EnumerateFiles(directory, "*.md")
+            .Select(path => (Path: path, Version: Path.GetFileNameWithoutExtension(path)))
+            .Where(item => System.Version.TryParse(item.Version, out _))
+            .OrderByDescending(item => System.Version.Parse(item.Version))
+            .Select(item => new ReleaseNote(item.Version, File.ReadAllText(item.Path))).ToArray();
     }
 }
