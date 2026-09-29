@@ -25,6 +25,18 @@
     <Setter Property="BorderBrush" Value="#37383D"/>
     <Setter Property="BorderThickness" Value="1"/>
   </Style>
+  <Style Selector="Window.motion Button">
+    <Setter Property="Opacity" Value="0.92" />
+    <Setter Property="Transitions">
+      <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.12" /></Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Window.motion Button:pointerover, Window.motion Button:focus-visible">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Window.motion Button:pressed">
+    <Setter Property="Opacity" Value="0.72" />
+  </Style>
   <Style Selector="Button.action:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="#303136"/>
     <Setter Property="Foreground" Value="White"/>

@@ -17,5 +17,8 @@
     "signalloss.command.set.bgcolor": "Background color set to %s",
     "signalloss.command.set.singleplayer": "Singleplayer set to %s",
     "signalloss.command.set.position": "Position set to %s",
-    "signalloss.command.error.position": "Invalid position"
+    "signalloss.command.error.position": "Invalid position",
+    "key.thelads.copy_coordinates": "Copy coordinates (Lads)",
+    "key.thelads.stopwatch": "Start / pause stopwatch (Lads)",
+    "key.thelads.stopwatch_reset": "Reset stopwatch (Lads)"
 }

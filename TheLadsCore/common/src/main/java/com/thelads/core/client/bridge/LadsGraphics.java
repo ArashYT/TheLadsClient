@@ -21,6 +21,9 @@ public interface LadsGraphics {
 
     int textWidth(String text);
 
+    /** Identity changes whenever font metrics change; unknown adapters opt out of caching. */
+    default Object textMetricsKey() { return null; }
+
     int fontHeight();
 
     void pushPose();

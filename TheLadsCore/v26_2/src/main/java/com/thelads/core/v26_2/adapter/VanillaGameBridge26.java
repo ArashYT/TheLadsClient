@@ -262,29 +262,44 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         }
     }
 
-    @Override
-    public List<String> getActivePotionEffects() {
-        List<String> list = new ArrayList<>();
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) {
-            for (MobEffectInstance eff : mc.player.getActiveEffects()) {
-                list.add(eff.getEffect().value().getDescriptionId() + " (" + (eff.getDuration() / 20) + "s)");
-            }
+    private net.minecraft.client.player.LocalPlayer potionPlayer;
+    private int potionTick = Integer.MIN_VALUE;
+    private List<String> potions = List.of();
+    private java.util.Collection<net.minecraft.server.packs.repository.Pack> packSelection = List.of();
+    private List<String> packNames = List.of();
+    @Override public List<String> getActivePotionEffects() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) { potionPlayer = null; potionTick = Integer.MIN_VALUE; return potions = List.of(); }
+        if (player != potionPlayer || player.tickCount != potionTick) {
+            potionPlayer = player; potionTick = player.tickCount;
+            var snapshot = new ArrayList<String>();
+            for (var effect : player.getActiveEffects())
+                snapshot.add(net.minecraft.network.chat.Component.translatable(effect.getEffect().value().getDescriptionId()).getString()
+                    + " (" + (effect.getDuration() / 20) + "s)");
+            potions = List.copyOf(snapshot);
         }
-        return list;
+        return potions;
     }
-
-    @Override
-    public List<String> getActiveResourcePacks() {
-        List<String> list = new ArrayList<>();
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.getResourcePackRepository() != null) {
-            for (var pack : mc.getResourcePackRepository().getSelectedPacks()) {
-                list.add(pack.getId());
-            }
+    @Override public List<String> getActiveResourcePacks() {
+        var repository = Minecraft.getInstance().getResourcePackRepository();
+        if (repository == null) { packSelection = List.of(); return packNames = List.of(); }
+        var selected = repository.getSelectedPacks();
+        if (!packSelection.equals(selected)) {
+            packSelection = List.copyOf(selected);
+            packNames = selected.stream().map(net.minecraft.server.packs.repository.Pack::getId).toList();
         }
-        return list;
+        return packNames;
     }
+    @Override public String getDimensionId() {
+        var level = Minecraft.getInstance().level;
+        return level == null ? "" : level.dimension().identifier().toString();
+    }
+    @Override public String getServerAddress() {
+        var server = Minecraft.getInstance().getCurrentServer();
+        return server == null ? "Singleplayer" : server.ip;
+    }
+    @Override public String getItemCountText(int selection) { return com.thelads.core.v26_2.feature.NativeClientTools.itemCount(selection); }
+    @Override public String getRecentReachText() { return com.thelads.core.v26_2.feature.NativeClientTools.reachText(); }
 
     @Override
     public boolean isHudHidden() {

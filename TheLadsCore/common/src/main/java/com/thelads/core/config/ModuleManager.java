@@ -11,6 +11,28 @@ public class ModuleManager {
     private final Map<String, Module> modules = new LinkedHashMap<>();
 
     public ModuleManager() {
+        hud("Clock", "Your local clock, with 12 or 24 hour display.").addOption(new BoolOption("12-hour clock", false));
+        var stopwatch = hud("Stopwatch", "A local timer. Bind start/pause and reset in Controls; it continues across menus and worlds.");
+        stopwatch.addOption(new ActionOption("Start or pause", "Start / pause timer"));
+        stopwatch.addOption(new ActionOption("Reset", "Reset timer"));
+        hud("ItemCounter", "Count held items, arrows, totems or rockets in your inventory and offhand.")
+            .addOption(new DropdownOption("Item", 0, "Held item", "Arrows", "Totems", "Rockets"));
+        hud("ReachDisplay", "Show the distance to your last client-observed attack point. Does not change reach.");
+        hud("ServerAddress", "Show the connected server address, or hide it while streaming.")
+            .addOption(new BoolOption("Hide address", false));
+        hud("PortalCoordinates", "Overworld / Nether destination X and Z. Negative coordinates round down.");
+        var tools = new Module("ClientTools", "Local coordinate copying, durability warnings, inventory alerts and chat timestamps.");
+        tools.addOption(new ActionOption("Copy coordinates", "Copy coordinates"));
+        tools.addOption(new BoolOption("Low durability warning", true));
+        tools.addOption(new SliderOption("Durability percent", 10, 1, 50, 1));
+        tools.addOption(new BoolOption("Inventory full warning", true));
+        tools.addOption(new BoolOption("Chat timestamps", false));
+        register(tools, Module.Category.MECHANIC);
+        var particles = new Module("ParticleBudget", "Limit only decorative smoke, leaves and spores. Gameplay indicators remain unchanged.");
+        particles.addOption(new SliderOption("Particles per tick", 64, 8, 512, 8));
+        particles.addOption(new SliderOption("Distance", 48, 16, 128, 8));
+        register(particles, Module.Category.MECHANIC);
+
         // Behaviour modules
         register(new PingViewModule(), Module.Category.SERVER);
         register(new BetterF3Module(), Module.Category.MECHANIC);

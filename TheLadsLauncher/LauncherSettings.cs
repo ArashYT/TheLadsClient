@@ -29,6 +29,7 @@ public class LauncherSettings
     // Appearance
     public string Theme { get; set; } = "DarkRed";
     public bool ShowParticles { get; set; } = true;
+    public bool ReducedMotion { get; set; }
 
     // Behavior
     public bool CloseToTray { get; set; } = true;

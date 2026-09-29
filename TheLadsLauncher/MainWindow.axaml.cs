@@ -136,6 +136,7 @@ public partial class MainWindow : Window
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
         settings = LauncherSettings.Load();
+        InitializeProductivity();
         if (settings.LauncherVersion != Program.Version)
         {
             settings.LauncherVersion = Program.Version;
@@ -235,6 +236,7 @@ public partial class MainWindow : Window
         var startupAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         startupAnimTimer.Tick += (s, e) =>
         {
+            if (settings.ReducedMotion) return;
             double t = startupSw.Elapsed.TotalMilliseconds;
 
             // Subtle breathing pulse on the logo
@@ -269,6 +271,8 @@ public partial class MainWindow : Window
             startupAnimTimer.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
+            int productivityPreview = Array.IndexOf(args, "--preview-productivity");
+            if (productivityPreview >= 0) { await RunProductivityPreviewAsync(Path.GetFullPath(args[productivityPreview + 1])); return; }
             if (_previewWorldsOutput != null)
             {
                 Directory.CreateDirectory(_previewWorldsOutput);
@@ -365,7 +369,7 @@ public partial class MainWindow : Window
             }
         };
 
-        if (settings.ShowParticles)
+        if (settings.ShowParticles && !settings.ReducedMotion)
         {
             ParticleCanvas.Children.Add(_meshControl);
             _meshControlAdded = true;
@@ -379,7 +383,7 @@ public partial class MainWindow : Window
             settings.ShowParticles = show;
             settings.Save();
 
-            if (show)
+            if (show && !settings.ReducedMotion)
             {
                 if (!_meshControlAdded && _meshControl != null)
                 {
@@ -504,6 +508,7 @@ public partial class MainWindow : Window
         NavFiles.Classes.Set("active", page == "Files");
         NavGallery.Classes.Set("active", page == "Gallery");
         NavLogs.Classes.Set("active", page == "Logs");
+        AnimateNavigation();
     }
 
     private async void NavWorlds_Click(object? sender, RoutedEventArgs e) { NavigateTo("Worlds"); await WorldsPage.LoadAsync(); }
@@ -1268,7 +1273,7 @@ public partial class MainWindow : Window
 
     private void UpdateParticles(object? sender, EventArgs e)
     {
-        if (!settings.ShowParticles) return;
+        if (!settings.ShowParticles || settings.ReducedMotion) return;
 
         double w = ParticleCanvas.Bounds.Width > 0 ? ParticleCanvas.Bounds.Width : 800;
         double h = ParticleCanvas.Bounds.Height > 0 ? ParticleCanvas.Bounds.Height : 600;
@@ -3251,7 +3256,7 @@ public partial class MainWindow : Window
         try
         {
             LaunchProfileSelector.Items.Clear();
-            var profiles = _profileService.GetProfiles();
+            var profiles = ProfileTools.Filter(_profileService.GetProfiles(), null, null).ToList();
             foreach (var p in profiles)
             {
                 LaunchProfileSelector.Items.Add(p);
@@ -3316,8 +3321,9 @@ public partial class MainWindow : Window
     private void LoadProfilesUI()
     {
         ProfilesListContainer.Children.Clear();
-        var profiles = _profileService.GetProfiles();
+        var profiles = ProfileTools.Filter(_profileService.GetProfiles(), ProfileSearch.Text, ProfileVersionFilter.SelectedItem as string).ToList();
         var active = _profileService.GetActiveProfile();
+        if (profiles.Count == 0) ProfilesListContainer.Children.Add(new TextBlock { Text = "No profiles match. Clear the search or choose All versions.", Foreground = Brushes.Gray, TextWrapping = TextWrapping.Wrap });
 
         foreach (var profile in profiles)
         {
@@ -3341,10 +3347,11 @@ public partial class MainWindow : Window
             // Left side details
             var leftStack = new StackPanel { Spacing = 6 };
 
-            var titlePanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 10 };
+            var titlePanel = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 0, 12, 0) };
             titlePanel.Children.Add(new TextBlock
             {
-                Text = profile.Name,
+                Text = (profile.IsFavorite ? "★ " : "") + profile.Name,
+                TextTrimming = TextTrimming.CharacterEllipsis,
                 Foreground = Brushes.White,
                 FontSize = 15,
                 FontWeight = FontWeight.Bold
@@ -3365,6 +3372,8 @@ public partial class MainWindow : Window
                         FontWeight = FontWeight.Bold
                     }
                 });
+                Grid.SetColumn(titlePanel.Children[1], 1);
+                titlePanel.Children[1].Margin = new Thickness(10, 0, 0, 0);
             }
             leftStack.Children.Add(titlePanel);
 
@@ -3472,6 +3481,7 @@ public partial class MainWindow : Window
                 rightStack.Children.Add(activeBadge);
             }
 
+            rightStack.Children.Add(ProfileActions(profile));
             grid.Children.Add(rightStack);
             Grid.SetColumn(rightStack, 1);
 
@@ -3656,7 +3666,7 @@ public partial class MainWindow : Window
         UpdateMinecraftVersionDisplay();
         ApplyTheme();
 
-        if (settings.ShowParticles)
+        if (settings.ShowParticles && !settings.ReducedMotion)
         {
             if (!_meshControlAdded && _meshControl != null)
             {
@@ -5867,7 +5877,7 @@ public partial class MainWindow : Window
 {
     public void DrawParticleMesh(DrawingContext context, double width, double height)
     {
-        if (!settings.ShowParticles) return;
+        if (!settings.ShowParticles || settings.ReducedMotion) return;
 
         var (primaryHex, _, _, accentHex) = settings.GetThemeColors();
         var primaryColor = Color.Parse(primaryHex);

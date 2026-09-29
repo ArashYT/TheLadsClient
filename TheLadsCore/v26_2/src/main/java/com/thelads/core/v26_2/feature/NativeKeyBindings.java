@@ -6,7 +6,7 @@ import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 public final class NativeKeyBindings {
-    private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(
+    public static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(
         Identifier.fromNamespaceAndPath("theladscore", "controls"));
     public static final KeyMapping ZOOM = new KeyMapping("key.theladscore.zoom",
         InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, CATEGORY);

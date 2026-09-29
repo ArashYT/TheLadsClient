@@ -12,6 +12,13 @@ import net.minecraft.world.entity.player.PlayerSkin;
 public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     private final GuiGraphicsExtractor g;
     private final Font font;
+    private static volatile Object metricsEpoch = new Object();
+    private static Font metricsFont;
+    public static void invalidateMetrics() { metricsEpoch = new Object(); }
+    @Override public Object textMetricsKey() {
+        if (metricsFont != font) { metricsFont = font; invalidateMetrics(); }
+        return metricsEpoch;
+    }
 
     public GuiGraphicsExtractorLadsAdapter(GuiGraphicsExtractor g, Font font) {
         this.g = g;

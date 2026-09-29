@@ -107,6 +107,7 @@ public final class NativeWorldVerification {
                 if (mc.gui.screen() != null && mc.gui.screen().getClass() == PauseScreen.class) mc.setScreenAndShow(null);
                 if (worldReady() && !readyLogged) {
                     readyLogged = true;
+                    NativeImprovementsProbe.prepareCapture();
                     captureAfter = now + 15_000_000_000L;
                     LOGGER.info("Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted");
                 }
@@ -155,7 +156,7 @@ public final class NativeWorldVerification {
                     image.writeToFile(output);
                     LOGGER.info("Lads world capture END: 1 passed, 0 failed; actual completed game frame at {}", output);
                 } catch (Exception failure) { fail("world screenshot", failure); }
-                finally { image.close(); }
+                finally { image.close(); Minecraft.getInstance().execute(NativeImprovementsProbe::restoreCapture); }
             });
         } catch (Exception failure) { fail("world screenshot", failure); }
     }

@@ -16,6 +16,7 @@ public class LauncherProfile
     public string? PackwizUrl { get; set; }
     public DateTime? LastPlayed { get; set; }
     public string IconKey { get; set; } = "default";
+    public bool IsFavorite { get; set; }
 
-    public override string ToString() => $"{Name} ({MinecraftVersion})";
+    public override string ToString() => $"{(IsFavorite ? "★ " : "")}{Name} ({MinecraftVersion})";
 }

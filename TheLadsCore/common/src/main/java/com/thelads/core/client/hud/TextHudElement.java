@@ -8,6 +8,8 @@ abstract class TextHudElement extends HudElement {
     private LadsGraphics preparedGraphics;
     private String preparedText = "";
     private int preparedTextWidth;
+    private Object metricsKey;
+    private String measuredText;
 
     protected TextHudElement(int minimumWidth) { this.minimumWidth = minimumWidth; }
     protected abstract String updateText(LadsGraphics graphics);
@@ -15,7 +17,12 @@ abstract class TextHudElement extends HudElement {
 
     @Override public final void prepareRender(LadsGraphics graphics, boolean editor) {
         preparedText = updateText(graphics);
-        preparedTextWidth = graphics.textWidth(preparedText);
+        Object key = graphics.textMetricsKey();
+        if (key == null || key != metricsKey || !preparedText.equals(measuredText)) {
+            preparedTextWidth = graphics.textWidth(preparedText);
+            measuredText = preparedText;
+            metricsKey = key;
+        }
         width = Math.max(minimumWidth, preparedTextWidth + 12);
         height = Math.max(16, graphics.fontHeight() + 6);
         preparedGraphics = graphics;

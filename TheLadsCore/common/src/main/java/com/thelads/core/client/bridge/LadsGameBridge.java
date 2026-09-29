@@ -23,6 +23,11 @@ public interface LadsGameBridge {
         }
     }
 
+    default String getDimensionId() { return ""; }
+    default String getServerAddress() { return "Singleplayer"; }
+    default String getItemCountText(int selection) { return "Items: 0"; }
+    default String getRecentReachText() { return "Reach: --"; }
+
     boolean isIngame();
 
     int getFps();
