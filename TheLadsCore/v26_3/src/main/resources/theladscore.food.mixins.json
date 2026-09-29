@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "package": "com.thelads.core.v26_2.feature.food.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "FoodDataMixin"
+  ],
+  "client": [
+    "HudMixin",
+    "MinecraftMixin",
+    "ItemStackMixin",
+    "ClientTooltipComponentMixin",
+    "JEIRenderHelperMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1,
+    "maxShiftBy": 2
+  }
+}

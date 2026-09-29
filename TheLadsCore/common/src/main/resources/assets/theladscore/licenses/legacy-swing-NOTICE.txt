@@ -1,0 +1,6 @@
+Legacy Swing motion adapted from Legacy Console Edition Swing Animation 1.0.0 by NILLYY.
+https://modrinth.com/mod/legacy-console-edition-swing-animation
+https://www.youtube.com/watch?v=kTVpIkeOod4
+Artifact license and Fabric metadata: CC0-1.0, reproduced in legacy-swing-CC0.txt.
+Modrinth project metadata separately labels the project MIT. The distributed artifact is CC0.
+Adapted to Lads module controls and Minecraft 26.2/26.3 renderer APIs.

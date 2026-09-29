@@ -8,7 +8,7 @@ using TheLadsLauncher.Services;
 if (args.Length == 4 && args[0] == "--install-pack")
 {
     string packVersion = args[1];
-    if (packVersion is not ("1.21.11" or "26.2")) throw new ArgumentException("Unsupported pinned pack version.");
+    if (packVersion is not ("1.21.1" or "1.21.11" or "26.2" or "26.3")) throw new ArgumentException("Unsupported pinned pack version.");
     using var installTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(10));
     await BundledModInstaller.InstallAsync(Path.GetFullPath(args[2]), Path.GetFullPath(args[3]), packVersion, installTimeout.Token);
     await ClientModInstaller.InstallAsync(Path.GetFullPath(args[2]), Path.GetFullPath(args[3]), packVersion, Console.WriteLine, installTimeout.Token);
@@ -21,18 +21,20 @@ if (args.Length == 1 && args[0] == "--api")
     foreach (var property in typeof(MinecraftPath).GetProperties()) Console.WriteLine($"{property.Name}: {property.PropertyType} writable={property.CanWrite}");
     return;
 }
-if (args.Length is < 2 or > 3 || args[0] is not ("1.21.11" or "26.2") || (args.Length == 3 && args[2] is not ("--title" or "--settings")))
-    throw new ArgumentException("Usage: dotnet run --project TheLadsLauncher.Verification -- <1.21.11|26.2> <repository root> [--title|--settings]");
+if (args.Length is < 2 or > 3 || args[0] is not ("1.21.1" or "1.21.11" or "26.2" or "26.3") || (args.Length == 3 && args[2] is not ("--title" or "--settings" or "--pack-smoke")))
+    throw new ArgumentException("Usage: dotnet run --project TheLadsLauncher.Verification -- <1.21.1|1.21.11|26.2|26.3> <repository root> [--title|--settings|--pack-smoke]");
+bool packSmoke = args.Length == 3 && args[2] == "--pack-smoke";
 bool titleVerification = args.Length == 3 && args[2] == "--title";
 bool settingsVerification = args.Length == 3 && args[2] == "--settings";
-bool autoWorldVerification = titleVerification && args[0] == "26.2" && Environment.GetEnvironmentVariable("LADS_VERIFY_AUTO_WORLD") == "1";
-bool renderScaleVerification = titleVerification && (autoWorldVerification || Environment.GetEnvironmentVariable("LADS_VERIFY_RENDER_SCALE") == "1");
+bool autoWorldVerification = titleVerification && (args[0] is "26.2" or "26.3") && Environment.GetEnvironmentVariable("LADS_VERIFY_AUTO_WORLD") == "1";
+bool requestedFeaturesOnly = autoWorldVerification && Environment.GetEnvironmentVariable("LADS_VERIFY_REQUESTS_ONLY") == "1";
+bool renderScaleVerification = !requestedFeaturesOnly && titleVerification && (autoWorldVerification || Environment.GetEnvironmentVariable("LADS_VERIFY_RENDER_SCALE") == "1");
 string version = args[0];
-bool nativePortsVerification = autoWorldVerification || (version == "26.2" && Environment.GetEnvironmentVariable("LADS_VERIFY_NATIVE_PORTS") == "1");
+bool nativePortsVerification = autoWorldVerification || ((version is "26.2" or "26.3") && Environment.GetEnvironmentVariable("LADS_VERIFY_NATIVE_PORTS") == "1");
 bool menuCaptureVerification = autoWorldVerification && Environment.GetEnvironmentVariable("LADS_VERIFY_CAPTURE_MENU") == "1";
 bool hudCaptureVerification = autoWorldVerification && Environment.GetEnvironmentVariable("LADS_VERIFY_CAPTURE_HUD") == "1";
 string root = Path.GetFullPath(args[1]);
-string directory = Path.Combine(root, "artifacts", "verification", settingsVerification ? version + "-settings" : titleVerification ? version + "-title" : version);
+string directory = Path.Combine(root, "artifacts", "verification", packSmoke ? version + "-instance-pack" : settingsVerification ? version + "-settings" : titleVerification ? version + "-title" : version);
 Directory.CreateDirectory(directory);
 string stopRequest = Path.Combine(directory, ".lads-qa-stop");
 if (autoWorldVerification && File.Exists(stopRequest)) File.Delete(stopRequest);
@@ -75,8 +77,9 @@ string javaPath = await java.EnsureJavaAsync(GameVersionPolicy.GetRequiredJavaMa
 Console.WriteLine($"Java: {java.GetJavaMajorVersion(javaPath)}; Minecraft: {version}");
 using var http = new HttpClient();
 var fabric = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(http);
-string id = await fabric.Install(version, "0.19.3", path);
-if (id != $"fabric-loader-0.19.3-{version}") throw new InvalidOperationException("Fabric selected a different version.");
+string loaderVersion = "0.19.5";
+string id = await fabric.Install(version, loaderVersion, path);
+if (id != $"fabric-loader-{loaderVersion}-{version}") throw new InvalidOperationException("Fabric selected a different version.");
 var session = AccountIdentity.CreateOfflineSession("LadsQA");
 await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
 await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:144\nrenderDistance:4\nsimulationDistance:5\nguiScale:2\ntutorialStep:none\n", ct);
@@ -100,8 +103,9 @@ else
     else process.StartInfo.Arguments = "-Dthelads.verifyAutoWorld=true " + process.StartInfo.Arguments;
     if (process.StartInfo.ArgumentList.Count > 0) process.StartInfo.ArgumentList.Insert(0, "-Dthelads.verifyDurabilityTooltip=true");
     else process.StartInfo.Arguments = "-Dthelads.verifyDurabilityTooltip=true " + process.StartInfo.Arguments;
-    if (process.StartInfo.ArgumentList.Count > 0) process.StartInfo.ArgumentList.Insert(0, "-Dthelads.verifyCrosshair=true");
-    else process.StartInfo.Arguments = "-Dthelads.verifyCrosshair=true " + process.StartInfo.Arguments;
+    string featureFlag = requestedFeaturesOnly ? "-Dthelads.verifyRequestedFeaturesOnly=true" : "-Dthelads.verifyCrosshair=true";
+    if (process.StartInfo.ArgumentList.Count > 0) process.StartInfo.ArgumentList.Insert(0, featureFlag);
+    else process.StartInfo.Arguments = featureFlag + " " + process.StartInfo.Arguments;
 }
 if (titleVerification && !autoWorldVerification)
 {
@@ -145,6 +149,11 @@ string[] requiredTitleProbes = ["Lads raised title probe END:",
 string[] requiredWorldProbes = ["Lads native feature probe END:", "Lads food render probe END:", "Lads food JEI probe END:",
     "Lads paper doll probe END:", "Lads food server sync END:", "Lads render scale probe END:", "Lads world capture END:",
     "Lads durability tooltip probe END:", "Lads tab tweaks probe END:", "Lads clumps server probe END:", "Lads native screenshots probe END:", "Lads native crosshair probe END:"];
+if (requestedFeaturesOnly)
+{
+    requiredWorldProbes = ["Lads native feature probe END:", "Lads world capture END:"];
+    Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
+}
 void WriteLine(object sender, DataReceivedEventArgs e)
 {
     if (e.Data == null) return;

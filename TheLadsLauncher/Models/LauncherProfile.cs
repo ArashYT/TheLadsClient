@@ -7,8 +7,8 @@ public class LauncherProfile
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = "Default Profile";
-    public string MinecraftVersion { get; set; } = "26.2";
-    public string? FabricVersion { get; set; } = "0.19.3";
+    public string MinecraftVersion { get; set; } = "26.3";
+    public string? FabricVersion { get; set; } = "0.19.5";
     public int JavaMajorVersion { get; set; } = 25;
     public string? CustomJavaPath { get; set; }
     public bool IsIsolated { get; set; } = false;

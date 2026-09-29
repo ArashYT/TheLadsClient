@@ -47,7 +47,8 @@ public class ArmorHudElement extends HudElement {
         drawBackground(g);
         int color = resolveColor();
         for (int i = 0; i < lines.size(); i++) {
-            g.drawText(lines.get(i), x + 4, y + 2 + i * (g.fontHeight() + 3), color,
+            g.drawArmorItem(i, x + 3, y + 2 + i * Math.max(20, g.fontHeight() + 7), preview);
+            g.drawText(lines.get(i), x + 23, y + 6 + i * Math.max(20, g.fontHeight() + 7), color,
                     HudSettings.getInstance().isTextShadow());
         }
     }
@@ -69,7 +70,7 @@ public class ArmorHudElement extends HudElement {
         cachedMode = mode;
         cachedPreview = preview;
         List<String> lines = new ArrayList<>();
-        if (preview) lines.add("Armor preview (sample)");
+        
         for (ArmorPiece piece : armor) {
             if (piece == null || piece.name() == null || piece.name().isBlank()) continue;
             String line = piece.name();
@@ -90,10 +91,10 @@ public class ArmorHudElement extends HudElement {
             height = 16;
             return;
         }
-        int lineHeight = g.fontHeight() + 3;
+        int lineHeight = Math.max(20, g.fontHeight() + 7);
         width = 80;
         height = Math.max(16, lines.size() * lineHeight + 4);
-        for (String line : lines) width = Math.max(width, g.textWidth(line) + 8);
+        for (String line : lines) width = Math.max(width, g.textWidth(line) + 28);
     }
 
     @Override

@@ -17,9 +17,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ItemStack.class)
 public class ItemTooltipMixin {
-    @com.llamalad7.mixinextras.injector.ModifyReturnValue(method = "getTooltipLines", at = @At("RETURN"), require = 1)
-    private List<Component> lads$details(List<Component> original, Item.TooltipContext context, Player player, TooltipFlag flag) {
-        return NativeTooltips.append((ItemStack) (Object) this, original, flag);
+    @com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod(method = "getTooltipLines")
+    private List<Component> lads$details(Item.TooltipContext context, Player player, TooltipFlag flag, com.llamalad7.mixinextras.injector.wrapoperation.Operation<List<Component>> original) {
+        return NativeTooltips.append((ItemStack) (Object) this, original.call(context, player, flag), flag);
     }
 
     @Inject(method = "addAttributeTooltips", at = @At("HEAD"), cancellable = true, require = 1)

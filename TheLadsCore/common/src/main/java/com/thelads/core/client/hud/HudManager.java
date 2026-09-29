@@ -14,6 +14,7 @@ public class HudManager {
 
     private HudManager() {
         add(new FPSHudElement(), "FPS");
+        add(new BossBarHudElement(), "BossBar");
         add(new CoordinatesHudElement(), "Coordinates");
         add(new BiomeHudElement(), "Biome");
         add(new PingHudElement(), "PingHUD");
@@ -31,7 +32,7 @@ public class HudManager {
         add(new TexturePackHudElement(), "TexturePacks");
         add(new PotionHudElement(), "Potion Effects");
         add(new PaperdollHudElement(), "Paperdoll");
-        add(new XaeroMinimapHudElement(), "XaeroWorldmap");
+        add(new XaeroMinimapHudElement(), "Minimap");
 
         scoreboardElement = new ScoreboardHudElement();
         add(scoreboardElement, "Scoreboard");
@@ -39,6 +40,7 @@ public class HudManager {
 
     private void add(HudElement element, String moduleName) {
         element.setModuleName(moduleName);
+        element.useOrganizedDefaults();
         elements.add(element);
     }
 

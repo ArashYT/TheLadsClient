@@ -70,4 +70,30 @@ class HudGroupingTest {
         class Anchored extends Element {boolean edited;Anchored(){super("A",17,33,30,15,1);}@Override public void beginPositionEdit(){super.beginPositionEdit();edited=true;}}
         var a=new Anchored();HudManager.getInstance().getElements().add(a);render();editor.mouseClicked(18,34,0);editor.mouseDragged(18,34,0);editor.mouseReleased(18,34,0);assertFalse(a.edited);assertEquals(0,saves.get());
     }
+    @Test void settingsGearOpensCorrectModuleWithoutDragging(){
+        add("A",20,40,60,30,1);var opened=new ArrayList<String>();editor.setOnSettings(opened::add);render();
+        assertTrue(editor.mouseClicked(87,45,0));assertEquals(List.of("A"),opened);assertFalse(editor.isDragging());assertEquals(0,saves.get());
+    }
+    @Test void contextCenterMovesWholeGroupAndHonorsLocks(){
+        add("A",20,40,60,30,1);add("B",100,40,40,30,1);settings.addGroup(Set.of("A","B"));render();
+        editor.mouseClicked(22,42,1);render();editor.mouseClicked(25,42+4*21+5,0);render();
+        assertEquals(260,editor.boundsFor("A").x());assertEquals(165,editor.boundsFor("A").y());assertEquals(80,editor.boundsFor("B").x()-editor.boundsFor("A").x());
+        settings.setLocked("A",true);var before=editor.boundsFor("A");editor.mouseClicked(before.x()+2,before.y()+2,1);render();editor.mouseClicked(before.x()+5,before.y()+2+4*21+5,0);render();assertEquals(before,editor.boundsFor("A"));
+    }
+    @Test void toolbarCyclesBothVerticalSidesAndCanCollapseAndRestore(){
+        render();action("toolbar");assertTrue(editor.controls().stream().allMatch(c->c.bounds().x()<graphics.width/2));
+        action("toolbar");assertTrue(editor.controls().stream().allMatch(c->c.bounds().x()>graphics.width/2));
+        action("collapse");assertEquals(1,editor.controls().size());var button=editor.controls().getFirst().bounds();assertEquals(graphics.width/2,button.x()+button.width()/2);
+        action("collapse");assertTrue(editor.controls().size()>1);
+    }
+
+    @Test void rightEdgeStackPlacesSettingsBesideText(){
+        add("A",580,40,55,15,1);add("B",580,60,55,15,1);var opened=new ArrayList<String>();editor.setOnSettings(opened::add);render();
+        assertTrue(editor.mouseClicked(572,45,0));assertTrue(editor.mouseClicked(572,65,0));assertEquals(List.of("A","B"),opened);
+    }
+    @Test void verticalControlsFitSmallGui(){
+        graphics.width=320;graphics.height=240;render();action("toolbar");
+        assertTrue(editor.controls().stream().allMatch(c->c.bounds().y()>=0&&c.bounds().bottom()<=240));
+    }
+
 }

@@ -14,6 +14,6 @@ public class ScoreboardMixin {
     @Inject(method = "displayScoreboardSidebar(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/world/scores/Objective;)V",
         at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsSidebar(GuiGraphicsExtractor graphics, Objective objective, CallbackInfo ci) {
-        if (ScoreboardHudElement.shouldReplaceVanillaScoreboard()) ci.cancel();
+        if (net.minecraft.client.Minecraft.getInstance().gui.screen() instanceof com.thelads.core.v26_2.gui.DraggableHudScreen26 || ScoreboardHudElement.shouldReplaceVanillaScoreboard()) ci.cancel();
     }
 }

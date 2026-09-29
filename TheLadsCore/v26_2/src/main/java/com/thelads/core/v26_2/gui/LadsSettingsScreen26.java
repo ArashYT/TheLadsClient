@@ -34,6 +34,8 @@ public class LadsSettingsScreen26 extends Screen {
             minecraft.gui.setScreen(new VideoSettingsScreen(this, minecraft, minecraft.options)));
     }
 
+    public void openModule(String name) { ui.openModule(name); }
+
     @Override
     protected void init() {
         super.init();

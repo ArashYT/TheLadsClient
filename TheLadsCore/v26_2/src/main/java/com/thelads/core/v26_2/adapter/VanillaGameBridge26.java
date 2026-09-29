@@ -11,6 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VanillaGameBridge26 implements LadsGameBridge {
+    @Override public boolean hasMinimap(){return com.thelads.core.v26_2.feature.MinimapIntegration.available();}
+    @Override public int[] minimapSize(){return com.thelads.core.v26_2.feature.MinimapIntegration.size();}
+    @Override public void positionMinimap(int x,int y){com.thelads.core.v26_2.feature.MinimapIntegration.position(x,y);}
     @Override public boolean hasPaperDollRenderer() {
         return com.thelads.core.v26_2.feature.paperdoll.NativePaperDoll.active();
     }
@@ -95,6 +98,9 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         var authoritativePlayer = server.getPlayerList().getPlayer(mc.player.getUUID());
         return authoritativePlayer == null ? -1 : authoritativePlayer.getFoodData().getSaturationLevel();
     }
+
+    @Override
+    public int bossBarCount() {return ((com.thelads.core.v26_2.mixin.BossBarAccessor)Minecraft.getInstance().gui.hud.getBossOverlay()).ladsEvents().size();}
 
     @Override
     public List<ArmorPiece> getArmor() {

@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -18,7 +19,7 @@ public static class ClientModInstaller
     public sealed record Entry(string ProjectId, string ProjectSlug, string Name, string ModId,
         string VersionId, string Version, string FileName, string Url, string Sha512, long Size,
         string License, string? SourceUrl, string ProjectUrl);
-    public sealed record Manifest(string MinecraftVersion, List<Entry> Mods);
+    public sealed record Manifest(string MinecraftVersion, List<Entry> Mods, bool ResolveThroughApi = false);
     private sealed record Mod(string Id, string Name, List<string> Provides, Dictionary<string, string> Depends);
     private sealed record Package(string? Id, List<Mod> Mods);
     private sealed record LocalJar(string Path, string Hash, bool Disabled, Package Package);
@@ -52,7 +53,7 @@ public static class ClientModInstaller
         }
         var manifest = JsonSerializer.Deserialize<Manifest>(await File.ReadAllTextAsync(manifestPath, cancellationToken), Json)
             ?? throw new InvalidDataException("Empty client mod manifest.");
-        if (manifest.MinecraftVersion != minecraftVersion || manifest.Mods is null || manifest.Mods.Count > 100
+        if (manifest.MinecraftVersion != minecraftVersion || manifest.Mods is null || manifest.Mods.Count > 256
             || manifest.Mods.Any(m => m is null)
             || manifest.Mods.Select(m => m.ModId).Distinct(StringComparer.Ordinal).Count() != manifest.Mods.Count)
             throw new InvalidDataException("Client mod manifest does not match this Minecraft version or contains duplicate mod IDs.");
@@ -134,7 +135,8 @@ public static class ClientModInstaller
                 await Task.WhenAll(pending.Select(async item =>
                 {
                     await slots.WaitAsync(cancellationToken);
-                    try { await Download(game, cache, item.Entry, httpClient ?? Http, status, cancellationToken); }
+                    try { await Download(game, cache, item.Entry, httpClient ?? Http, status, cancellationToken,
+                        manifest.ResolveThroughApi, minecraftVersion); }
                     finally { slots.Release(); }
                 }));
 
@@ -203,7 +205,7 @@ public static class ClientModInstaller
     }
 
     private static async Task Download(string game, string cache, Entry entry, HttpClient client,
-        Action<string>? status, CancellationToken token)
+        Action<string>? status, CancellationToken token, bool resolveThroughApi, string minecraftVersion)
     {
         var cached = SafeChild(game, Path.Combine(cache, entry.Sha512 + ".jar"));
         if (Exists(cached))
@@ -215,6 +217,8 @@ public static class ClientModInstaller
             return;
         }
         status?.Invoke($"Downloading {entry.Name} {entry.Version}...");
+        if (resolveThroughApi)
+            await ModrinthReleaseVerifier.VerifyAsync(client, entry, minecraftVersion, token);
         var temp = SafeChild(game, cached + "." + Guid.NewGuid().ToString("N") + ".tmp");
         var created = false;
         try
@@ -343,7 +347,7 @@ public static class ClientModInstaller
         if (entries.Count != 1 || entries[0].Length > 1024 * 1024)
             throw new InvalidDataException("Ambiguous or oversized Fabric metadata.");
         using var stream = entries[0].Open();
-        using var document = JsonDocument.Parse(stream);
+        using var document = ReadFabricMetadata(stream);
         var root = document.RootElement;
         var id = Text(root, "id");
         if (!ValidId(id)) throw new InvalidDataException("Invalid Fabric mod ID.");
@@ -417,6 +421,25 @@ public static class ClientModInstaller
     private static string? Text(JsonElement value, string name) =>
         value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var text)
             && text.ValueKind == JsonValueKind.String ? text.GetString() : null;
+
+    // Fabric's Gson reader accepts literal line breaks in description strings. Normalize
+    // only string control characters for System.Text.Json; downloaded jar bytes stay intact.
+    private static JsonDocument ReadFabricMetadata(Stream stream)
+    {
+        using var reader = new StreamReader(stream, Encoding.UTF8, true, 4096, leaveOpen: true);
+        var source = reader.ReadToEnd();
+        var normalized = new StringBuilder(source.Length);
+        bool quoted = false, escaped = false;
+        foreach (char ch in source)
+        {
+            if (quoted && ch < 0x20)
+                normalized.Append("\\u").Append(((int)ch).ToString("x4"));
+            else normalized.Append(ch);
+            if (!escaped && ch == '"') quoted = !quoted;
+            escaped = quoted && !escaped && ch == '\\';
+        }
+        return JsonDocument.Parse(normalized.ToString());
+    }
     private static bool ValidId(string? value) => Regex.IsMatch(value ?? "", "^[a-z][a-z0-9_-]{1,63}$");
     private static bool ValidHash(string? value) => Regex.IsMatch(value ?? "", "^[a-fA-F0-9]{128}$");
     private static bool SameHash(string left, string right) => left.Equals(right, StringComparison.OrdinalIgnoreCase);

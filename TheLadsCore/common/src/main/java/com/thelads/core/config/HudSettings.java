@@ -42,6 +42,8 @@ public class HudSettings {
     public boolean isTextShadow() { return textShadow; }
     public void setTextShadow(boolean textShadow) { this.textShadow = textShadow; }
 
+    public void clearPositions() { positions.clear(); groups.clear(); locked.clear(); }
+
     public Map<String, int[]> getPositions() { return positions; }
 
     public void setPosition(String name, int x, int y) {

@@ -141,6 +141,7 @@ venv/
 
 # --- Large Assets & Binaries ---
 *.jar
+!TheLadsCore/gradle/wrapper/gradle-wrapper.jar
 *.mp4
 *.gif
 *.zip
@@ -157,6 +158,3 @@ desktop.ini
 # Pinned, licensed configuration libraries used by the native 26.2 gallery.
 !TheLadsCore/v26_2/libs/catconfig-mc-26.2-0.2.1.jar
 !TheLadsCore/v26_2/libs/catconfig-0.3.0.jar
-
-# The wrapper is required to build from a clean checkout.
-!TheLadsCore/gradle/wrapper/gradle-wrapper.jar

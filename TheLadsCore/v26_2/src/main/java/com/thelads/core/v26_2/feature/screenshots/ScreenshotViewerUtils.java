@@ -75,11 +75,11 @@ public class ScreenshotViewerUtils {
    }
 
    public static File getVanillaScreenshotsFolder() {
-      return new File(Minecraft.getInstance().gameDirectory, "screenshots");
+      return com.thelads.core.v26_2.feature.GlobalScreenshots.directory();
    }
 
    public static File getDefaultThumbnailFolder() {
-      return new File(Minecraft.getInstance().gameDirectory, "screenshots/thumbnails");
+      return new File(getVanillaScreenshotsFolder(), "thumbnails");
    }
 
    public static List<File> getScreenshotFiles(File screenshotsFolder) {

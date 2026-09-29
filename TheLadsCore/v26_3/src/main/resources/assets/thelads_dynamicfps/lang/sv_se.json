@@ -1,0 +1,37 @@
+{
+    "config.thelads_dynamicfps.title": "Konfigurera Dynamic FPS",
+
+    "config.thelads_dynamicfps.category.general": "Allmänt",
+    "config.thelads_dynamicfps.category.hovered": "Hovrande",
+    "config.thelads_dynamicfps.category.unfocused": "Ofokuserad",
+    "config.thelads_dynamicfps.category.abandoned": "Inaktiv",
+    "config.thelads_dynamicfps.category.invisible": "Osynlig",
+
+    "config.thelads_dynamicfps.disabled": "Inaktiverad",
+    "config.thelads_dynamicfps.minutes": "%d Minut(er)",
+
+    "config.thelads_dynamicfps.idle_time": "Inaktivitetstid",
+    "config.thelads_dynamicfps.idle_time_tooltip": "Minuter utan inmatning tills Dynamic FPS aktiverar Inaktivetesläget medans spelet är fokuserat.",
+
+    "config.thelads_dynamicfps.frame_rate_target": "Bildfrekvensmål",
+    "config.thelads_dynamicfps.volume_multiplier": "Volym Multiplikator",
+
+    "config.thelads_dynamicfps.graphics_state": "Bildskärmsinställningar",
+    "config.thelads_dynamicfps.graphics_state_default": "Standard",
+    "config.thelads_dynamicfps.graphics_state_reduced": "Reducerad",
+    "config.thelads_dynamicfps.graphics_state_minimal": "Minimalt",
+    "config.thelads_dynamicfps.graphics_state_minimal_tooltip": "Minimal grafik orsakar att världen laddar om!",
+
+    "config.thelads_dynamicfps.show_toasts": "Visa Toasts",
+    "config.thelads_dynamicfps.show_toasts_tooltip": "Om du vill fortsätta visa eller fördröja Toast aviseringar",
+
+    "config.thelads_dynamicfps.run_garbage_collector": "Starta GC",
+    "config.thelads_dynamicfps.run_garbage_collector_tooltip": "Frigör oanvänt minne när du växlar till denna status",
+
+    "key.thelads_dynamicfps.toggle_forced": "Tvinga Reducerad FPS (Växla)",
+    "key.thelads_dynamicfps.toggle_disabled": "Inaktivera Dynamic FPS (Växla)",
+    "gui.thelads_dynamicfps.hud.reducing": "Dynamic FPS: Tvingar Reducerad BPS",
+    "gui.thelads_dynamicfps.hud.disabled": "Dynamic FPS Inaktiverad",
+
+    "modmenu.descriptionTranslation.thelads_dynamicfps": "Dynamiskt justera BPS så att Minecraft inte äter upp resurser i bakgrunden."
+}

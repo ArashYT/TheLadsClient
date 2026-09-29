@@ -151,6 +151,12 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 check(bounds("CPS").x() == 44 && bounds("CPS").y() == 58, "free drag keeps pointer and saved GUI coordinates aligned");
                 check(saved("CPS", bounds("CPS")) && saved("Day", bounds("Day")), "final group positions are persisted together");
                 check(saves >= 7, "edit operations invoke the persistence owner");
+                // Capture the requested organized defaults after interaction checks, restoring the fixture on close.
+                key(71,0); // Restore the default editor grid for the capture.
+                button("reset");
+                button("previews");
+                button("collapse");
+                for(Module module:modules.keySet())module.getOptions().forEach(Option::reset);
                 readyAt = System.nanoTime() + 500_000_000L;
                 LoggerFactory.getLogger("TheLadsCore").info("Lads HUD editor probe END: {} passed, 0 failed; native mouse/key handlers and actual GUI render bounds; fixture restored after capture", passed);
             }

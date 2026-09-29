@@ -2941,7 +2941,7 @@ public partial class MainWindow : Window
         var nameBox = new TextBox { PlaceholderText = "Profile Name (e.g. My 1.21.1)", Text = "New Profile", Height = 36 };
         panel.Children.Add(nameBox);
 
-        var versionBox = new TextBox { PlaceholderText = "Minecraft Version (e.g. 1.21.1, 26.2)", Text = "1.21.1", Height = 36 };
+        var versionBox = new TextBox { PlaceholderText = "Minecraft Version (e.g. 1.21.11, 26.3)", Text = "1.21.1", Height = 36 };
         panel.Children.Add(versionBox);
 
         var isolateCheck = new CheckBox
@@ -5072,7 +5072,7 @@ public partial class MainWindow : Window
     {
         string activeVersion = ResolveMinecraftVersion();
         var versionList = new List<string> { activeVersion };
-        var commonVersions = new[] { "26.2", "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5" };
+        var commonVersions = new[] { "26.3", "26.2", "1.21.11", "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5" };
         
         foreach (var v in commonVersions)
         {

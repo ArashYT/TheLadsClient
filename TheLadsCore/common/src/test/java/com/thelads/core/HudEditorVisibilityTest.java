@@ -158,7 +158,9 @@ class HudEditorVisibilityTest {
         render();
         assertEquals(1, disabled.renders);
         assertFalse(disabled.active);
-        assertTrue(graphics.texts.contains(new Text("Disabled (disabled preview)", 0xFFB0B0B0)));
+        assertFalse(graphics.texts.stream().anyMatch(text -> text.value().contains("disabled")));
+        editor.render(graphics,110,110);
+        assertTrue(graphics.texts.stream().anyMatch(text -> text.value().contains("disabled")));
         assertTrue(graphics.fills.stream().anyMatch(fill -> fill.color() == 0x88222222));
         assertTrue(graphics.instructions.contains("All HUDs · disabled previews stay disabled"));
         assertTrue(editor.controls().stream().anyMatch(control -> control.id().equals("previews") && control.label().equals("Enabled only")));
@@ -274,7 +276,7 @@ class HudEditorVisibilityTest {
         assertTrue(bar.y() > graphics.height / 2f);
         assertTrue(bar.width() < graphics.width);
         assertTrue(editor.controls().stream().anyMatch(control -> control.id().equals("previews") && control.label().equals("All previews")));
-        assertTrue(graphics.fills.stream().anyMatch(fill -> fill.x() == 5 && fill.y() == 5 && fill.width() == 75 && fill.height() == 20));
+        assertTrue(graphics.fills.stream().anyMatch(fill -> fill.x() == 5 && fill.y() == 40 && fill.width() == 75 && fill.height() == 20));
         assertTrue(graphics.poses.isEmpty());
     }
 

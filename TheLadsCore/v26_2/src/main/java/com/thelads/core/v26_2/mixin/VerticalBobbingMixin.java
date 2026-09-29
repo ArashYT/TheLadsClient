@@ -15,6 +15,6 @@ public class VerticalBobbingMixin {
     private void lads$verticalMotion(CameraRenderState state, PoseStack pose, CallbackInfo callback) {
         // Vanilla calls bobView only when View Bobbing is enabled. Both passes
         // read the same snapshot; drawing the hand cannot advance animation again.
-        pose.translate(0, ((VerticalBobState) state).lads$verticalBob(), 0);
+        pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(((VerticalBobState) state).lads$verticalBob()));
     }
 }

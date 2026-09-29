@@ -244,7 +244,7 @@ class HudNativeDataTest {
         armor.render(graphics);
         assertTrue(graphics.drawCalls.isEmpty());
         armor.renderEditor(graphics);
-        assertEquals("Armor preview (sample)", graphics.texts.get(0));
+        assertEquals("Helmet 120/165", graphics.texts.get(0));
         assertTrue(graphics.texts.contains("Helmet 120/165"));
         graphics.drawCalls.clear();
         graphics.texts.clear();

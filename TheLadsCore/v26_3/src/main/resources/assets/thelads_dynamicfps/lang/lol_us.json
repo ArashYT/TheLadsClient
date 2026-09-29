@@ -1,0 +1,43 @@
+{
+    "config.thelads_dynamicfps.title": "Configure Dynamik MPS (meows/s)",
+
+    "config.thelads_dynamicfps.category.general": "Generlol",
+    "config.thelads_dynamicfps.category.hovered": "hoverd",
+    "config.thelads_dynamicfps.category.unfocused": "distractd",
+    "config.thelads_dynamicfps.category.abandoned": "away frum catboard",
+    "config.thelads_dynamicfps.category.invisible": "inviz",
+
+    "config.thelads_dynamicfps.enabled": "on,",
+
+    "config.thelads_dynamicfps.disabled": "off.",
+    "config.thelads_dynamicfps.minutes": "%d minit(z)",
+
+    "config.thelads_dynamicfps.idle_time": "afc time",
+    "config.thelads_dynamicfps.idle_time_tooltip": "minitz witowt playing befor Dynamik MPS activatez the away frum catboard mode while da game is focused.",
+
+    "config.thelads_dynamicfps.uncap_menu_frame_rate": "Uncat Menu MPS",
+    "config.thelads_dynamicfps.uncap_menu_frame_rate_tooltip": "No moar 60 FPS limit in the main menu!",
+
+    "config.thelads_dynamicfps.frame_rate_target": "Meow Rate Target",
+    "config.thelads_dynamicfps.volume_multiplier": "loudness",
+
+    "config.thelads_dynamicfps.graphics_state": "Grefix Opshuns",
+    "config.thelads_dynamicfps.graphics_state_default": "Regulr",
+    "config.thelads_dynamicfps.graphics_state_reduced": "Redoosed",
+    "config.thelads_dynamicfps.graphics_state_minimal": "low",
+    "config.thelads_dynamicfps.graphics_state_minimal_tooltip": "low grefix causez da worl to reload!",
+
+    "config.thelads_dynamicfps.show_toasts": "sho breadz",
+    "config.thelads_dynamicfps.show_toasts_tooltip": "shoul keep dizplay or wait to sho bread notificationz??",
+
+    "config.thelads_dynamicfps.run_garbage_collector": "Invoke Litter Collector",
+    "config.thelads_dynamicfps.run_garbage_collector_tooltip": "Free up unused memoriez when swap to le state",
+
+    "key.thelads_dynamicfps.toggle_forced": "force distractd mode (Toggle)",
+    "key.thelads_dynamicfps.toggle_disabled": "turn off Dynamik MPS (Toggle)",
+    "gui.thelads_dynamicfps.hud.reducing": "Dynamik MPS: forcin' redoosed mps",
+    "gui.thelads_dynamicfps.hud.disabled": "Dynamik MPS turnd off",
+
+    "modmenu.nameTranslation.thelads_dynamicfps": "Dynamik MPS",
+    "modmenu.descriptionTranslation.thelads_dynamicfps": "Dynamikally adjusts mps (meows/s) so Minceraft doesn't eet all da resourcez in background."
+}

@@ -26,6 +26,35 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         return g;
     }
 
+    @Override public void drawBossBars(int x,int y,int max,boolean names,boolean preview) {
+        var overlay=(com.thelads.core.v26_2.mixin.BossBarAccessor)Minecraft.getInstance().gui.hud.getBossOverlay();
+        var events=new java.util.ArrayList<net.minecraft.world.BossEvent>(overlay.ladsEvents().values());
+        if(events.isEmpty()&&preview){
+            var sample=new net.minecraft.client.gui.components.LerpingBossEvent(java.util.UUID.randomUUID(),net.minecraft.network.chat.Component.literal("Boss bar preview"),.65f,net.minecraft.world.BossEvent.BossBarColor.PURPLE,net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS,false,false,false);
+            events.add(sample);
+        }
+        int row=0;
+        for(var event:events){if(row>=max)break;int yy=y+row++*19;
+            overlay.ladsDrawBar(g,x,yy+10,event);
+            if(names)g.text(font,event.getName(),x+(182-font.width(event.getName()))/2,yy,0xFFFFFFFF);
+        }
+    }
+
+    @Override public void drawArmorItem(int index,int x,int y,boolean preview) {
+        var player=Minecraft.getInstance().player;
+        var slots=new net.minecraft.world.entity.EquipmentSlot[]{net.minecraft.world.entity.EquipmentSlot.FEET,net.minecraft.world.entity.EquipmentSlot.LEGS,net.minecraft.world.entity.EquipmentSlot.CHEST,net.minecraft.world.entity.EquipmentSlot.HEAD};
+        net.minecraft.world.item.ItemStack stack=net.minecraft.world.item.ItemStack.EMPTY;
+        if(preview){
+            var items=new net.minecraft.world.item.Item[]{net.minecraft.world.item.Items.DIAMOND_HELMET,net.minecraft.world.item.Items.DIAMOND_CHESTPLATE};
+            stack=new net.minecraft.world.item.ItemStack(items[Math.min(index,1)]);
+            stack.setDamageValue(stack.getMaxDamage()/4);
+        }else if(player!=null){
+            int visible=0;
+            for(var slot:slots){var candidate=player.getItemBySlot(slot);if(!candidate.isEmpty()&&visible++==index){stack=candidate;break;}}
+        }
+        if(!stack.isEmpty()){g.item(stack,x,y);g.itemDecorations(font,stack,x,y);}
+    }
+
     @Override public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
         com.thelads.core.v26_2.feature.paperdoll.NativePaperDoll.render(g, x, y, width, height, editor);
     }

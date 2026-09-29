@@ -65,6 +65,12 @@ public interface LadsGameBridge {
     default float getSaturation() { return -1.0f; }
 
     /** An equipped item's display name and remaining/max durability; maximum <= 0 means not damageable. */
+    default boolean hasMinimap() { return false; }
+    default int[] minimapSize() { return new int[]{100,100}; }
+    default void positionMinimap(int x,int y) {}
+
+    default int bossBarCount() { return 0; }
+
     record ArmorPiece(String name, int remaining, int maximum) {}
 
     /** Actual equipped armor only, in native slot order. Empty means no equipment data/items. */

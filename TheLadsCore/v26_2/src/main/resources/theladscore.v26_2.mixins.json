@@ -47,6 +47,21 @@
     "ShulkerInventoryMixin",
     "ShulkerBlockChangesMixin",
     "RenderScaleMixin",
-    "RenderScaleTargetsAccessorMixin"
+    "RenderScaleTargetsAccessorMixin",
+    "PrivacyMixin",
+    "GlobalScreenshotMixin",
+    "InactivityOptionMixin",
+    "BossBarAccessor",
+    "BossBarMixin",
+    "KeyEntryAccessor",
+    "KeySearchMixin",
+    "SkinScreenMixin",
+    "PackFilterMixin",
+    "BorderlessWindowMixin",
+    "SodiumOptionAccessor",
+    "SodiumInactivityMixin",
+    "LegacySwingMixin",
+    "GraphicsCompatibilityMixin",
+    "SkinPreviewMixin"
   ]
 }

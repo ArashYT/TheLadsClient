@@ -17,7 +17,7 @@ public final class NativeQualityOfLife {
     private NativeQualityOfLife() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn("DisableNarrator", "HideChatIndicators", "Crosshair Tweaks",
+        ModuleSupport.registerBuiltIn("LegacySwing", "BossBar", "DisableNarrator", "HideChatIndicators", "Crosshair Tweaks",
             "SmoothHotbar", "Raised", "OldDamageTilt", "EnhancedToolbars", "EnhancedTooltips",
             "ToggleNametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", "ShulkerBoxUtils", "DiscordRPC", "RenderScale");
         NativeDiscordPresence.register();
@@ -28,6 +28,7 @@ public final class NativeQualityOfLife {
 
     public static void tick() {
         NativeNarrator.tick();
+        MinimapIntegration.tick();
         com.thelads.core.v26_2.feature.raised.NativeRaisedProbe.tick();
         boolean disabled = enabled("DisableNarrator");
         if (disabled && !narratorWasDisabled) Minecraft.getInstance().getNarrator().clear();

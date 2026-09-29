@@ -16,14 +16,14 @@ import java.util.List;
 @Mixin(ItemStack.class)
 public class ItemStackMixin
 {
-	@com.llamalad7.mixinextras.injector.ModifyReturnValue(at = @At("RETURN"), method = "getTooltipLines")
-	private List<Component> getTooltipFromItem(List<Component> original, Item.TooltipContext context, Player player, TooltipFlag type)
+	@com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod(method = "getTooltipLines")
+	private List<Component> getTooltipFromItem(Item.TooltipContext context, Player player, TooltipFlag type, com.llamalad7.mixinextras.injector.wrapoperation.Operation<List<Component>> call)
 	{
+        List<Component> original = call.call(context, player, type);
 		if (TooltipOverlayHandler.INSTANCE == null || original.isEmpty()
 			|| !com.thelads.core.v26_2.feature.food.FoodOverlayConfig.enabled()
 			|| !com.thelads.core.v26_2.feature.food.helpers.FoodHelper.isFood((ItemStack) (Object) this)) return original;
-		// Compose with the other native tooltip return-value modifiers. A cancelled
-		// RETURN injection would skip later callbacks, hiding food overlays entirely.
+		// Wrap the completed tooltip, including upstream RETURN callbacks such as GoodMC.
 		var result = new java.util.ArrayList<Component>(original);
 		TooltipOverlayHandler.INSTANCE.onItemTooltip((ItemStack) (Object) this, player, context, type, result);
 		return result;

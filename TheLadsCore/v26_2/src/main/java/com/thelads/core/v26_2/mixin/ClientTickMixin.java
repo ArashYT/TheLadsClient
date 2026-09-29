@@ -15,4 +15,6 @@ public class ClientTickMixin {
         NativeFeatures.tick();
         com.thelads.core.v26_2.feature.NativeQualityOfLife.tick();
     }
+    @Inject(method="tick()V",at=@At("TAIL"),require=1)
+    private void ladsLegacyCameraTick(CallbackInfo ci){com.thelads.core.v26_2.feature.NativeVerticalBob.tick();}
 }

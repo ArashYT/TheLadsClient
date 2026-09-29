@@ -42,8 +42,12 @@ public final class LadsBackgroundBridge {
         if (!initialized) return;
         boolean enabled = module().isEnabled();
         int mode = NativeQualityOfLife.choice("DynamicFPS", "Mode", 0);
-        int unfocused = (int) NativeQualityOfLife.number("DynamicFPS", "Unfocused FPS", 1);
-        int hidden = (int) NativeQualityOfLife.number("DynamicFPS", "Hidden FPS", 0);
+        if(mode!=previousMode && mode!=2){
+            ((SliderOption)module().getOption("Unfocused FPS")).setValue(mode==0?15:60);
+            ((SliderOption)module().getOption("Hidden FPS")).setValue(mode==0?5:30);
+        }
+        int unfocused = (int) NativeQualityOfLife.number("DynamicFPS", "Unfocused FPS", 60);
+        int hidden = (int) NativeQualityOfLife.number("DynamicFPS", "Hidden FPS", 30);
         boolean lifecycleChange = enabled != previousEnabled || mode != previousMode;
         if (unfocused != previousUnfocused || hidden != previousHidden) {
             DynamicFPSConfig.INSTANCE.get(PowerState.UNFOCUSED).setFrameRateTarget(unfocused);
@@ -53,7 +57,9 @@ public final class LadsBackgroundBridge {
             DynamicFPSMod.refreshProfile();
         }
         if (lifecycleChange) {
+            unfocusedSince = -1;
             previousEnabled = enabled; previousMode = mode;
+            DynamicFPSMod.refreshProfile();
             DynamicFPSConfig.INSTANCE.setEnabled(enabled);
             if (disabled()) BatteryTracker.close(); else BatteryTracker.init();
             DynamicFPSMod.onStatusChanged(true);

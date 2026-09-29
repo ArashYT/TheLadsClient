@@ -36,7 +36,8 @@ final class NativeQualityProbe {
 
     static void tick() {
         if (done || !(Boolean.getBoolean("thelads.verifyNativeFeatures") || Boolean.getBoolean("thelads.verifyIntegrations"))
-            || Minecraft.getInstance().level == null || Minecraft.getInstance().player == null) return;
+            || Minecraft.getInstance().level == null || Minecraft.getInstance().player == null
+            || Minecraft.getInstance().getEntityRenderDispatcher().camera == null) return;
         if (Boolean.getBoolean("thelads.verifyInput") && !NativeFeatures.interactive()) return;
         done = true;
         Map<Module, Boolean> states = new LinkedHashMap<>();
@@ -49,6 +50,11 @@ final class NativeQualityProbe {
             for (Option option : module.getOptions()) preferences.put(option, option.save().deepCopy());
         }
         try {
+            if(Boolean.getBoolean("thelads.verifyRequestedFeaturesOnly")){
+                passed+=NativeRequestProbe.run();
+                LoggerFactory.getLogger("TheLadsCore").info("Lads native feature probe END: {} passed, 0 failed; requested features only",passed);
+                return;
+            }
             // Menu close persists configuration. Exercise it before changing any QA preferences.
             if (Boolean.getBoolean("thelads.verifyInput")) inputPipeline();
             Module bars = NativeQualityOfLife.module("EnhancedToolbars");
@@ -105,6 +111,7 @@ final class NativeQualityProbe {
             passed += NativeShulkerProbe.run();
             passed += com.thelads.core.v26_2.feature.food.NativeFoodProbe.run();
             passed += NativeShulkerParityProbe.run();
+            passed += NativeRequestProbe.run();
             LoggerFactory.getLogger("TheLadsCore").info("Lads native feature probe END: {} passed, 0 failed", passed);
         } catch (Throwable failure) {
             LoggerFactory.getLogger("TheLadsCore").error("Lads native feature probe FAILED after {} checks", passed, failure);

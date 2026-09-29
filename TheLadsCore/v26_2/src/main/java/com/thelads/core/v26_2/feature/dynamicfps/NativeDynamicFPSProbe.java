@@ -122,9 +122,9 @@ public final class NativeDynamicFPSProbe {
             require(!DynamicFPSMod.shouldShowToasts(), "hover toast policy selected");
             window(observer, false, false, true); actualIconified.setBoolean(mc.getWindow(), true);
             ((DropdownOption) module.getOption("Mode")).setIndex(2); DynamicFPSMod.onStatusChanged(false);
-            require(DynamicFPSMod.isDisabled() && tracker.getFramerateLimit() == 10, "Off restores vanilla iconified cap");
+            require(DynamicFPSMod.isDisabled() && tracker.getFramerateLimit() == vanillaFocused, "Off preserves configured FPS without vanilla idle limiter");
             module.setEnabled(false); ((DropdownOption) module.getOption("Mode")).setIndex(0);
-            require(tracker.getFramerateLimit() == 10, "disable restores vanilla cap");
+            require(tracker.getFramerateLimit() == vanillaFocused, "disabled module does not restore removed vanilla idle limiter");
             actualIconified.setBoolean(mc.getWindow(), false); module.setEnabled(true); window(observer, true, false, false);
             ((DropdownOption) module.getOption("Mode")).setIndex(1); window(observer, false, false, false);
             require(DynamicFPSMod.powerState() == PowerState.FOCUSED, "Balanced grants three seconds grace");

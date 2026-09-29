@@ -17,7 +17,7 @@ allprojects {
 }
 
 tasks.register('buildAll') {
-    dependsOn ':common:build', ':v1_21_1:build', ':v1_21_11:build', ':v26_2:build'
+    dependsOn ':common:build', ':v1_21_1:build', ':v1_21_11:build', ':v26_2:build', ':v26_3:build'
     doLast {
         println "Successfully built all TheLadsCore multi-version artifacts."
     }
@@ -31,7 +31,7 @@ tasks.named('build') {
 tasks.register('deploy', Copy) {
     group = 'distribution'
     description = 'Stage production Core jars in the launcher game-mods packages.'
-    dependsOn ':v1_21_11:remapJar', ':v26_2:jar'
+    dependsOn ':v1_21_1:remapJar', ':v1_21_11:remapJar', ':v26_2:jar', ':v26_3:jar'
     into layout.projectDirectory.dir('../TheLadsLauncher/game-mods')
     from(providers.provider {
         project(':v1_21_11').tasks.named('remapJar').get().archiveFile.get()
@@ -43,6 +43,14 @@ tasks.register('deploy', Copy) {
         project(':v26_2').tasks.named('jar').get().archiveFile.get()
     }) {
         into '26.2'
+        rename { 'theladscore.jar' }
+    }
+    from(providers.provider { project(':v26_3').tasks.named('jar').get().archiveFile.get() }) {
+        into '26.3'
+        rename { 'theladscore.jar' }
+    }
+    from(providers.provider { project(':v1_21_1').tasks.named('remapJar').get().archiveFile.get() }) {
+        into '1.21.1'
         rename { 'theladscore.jar' }
     }
 }

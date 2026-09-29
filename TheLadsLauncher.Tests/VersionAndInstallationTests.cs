@@ -11,12 +11,13 @@ public class VersionAndInstallationTests
     [Theory]
     [InlineData("1.21.11", 21)]
     [InlineData("26.2", 25)]
+    [InlineData("26.3", 25)]
     public void ExactVersionAndJavaRequirements(string version, int java)
     {
-        var profile = new LauncherProfile { MinecraftVersion = version, FabricVersion = "0.19.3" };
-        Assert.Equal($"fabric-loader-0.19.3-{version}", GameVersionPolicy.ResolveVersionId(profile));
+        var profile = new LauncherProfile { MinecraftVersion = version, FabricVersion = "0.19.5" };
+        Assert.Equal($"fabric-loader-0.19.5-{version}", GameVersionPolicy.ResolveVersionId(profile));
         Assert.Equal(java, GameVersionPolicy.GetRequiredJavaMajor(version));
-        profile.FabricVersion = "fabric-loader-0.19.3-1.21.1";
+        profile.FabricVersion = "fabric-loader-0.19.5-1.21.1";
         Assert.Throws<ArgumentException>(() => GameVersionPolicy.ResolveVersionId(profile));
     }
 
@@ -45,9 +46,9 @@ public class VersionAndInstallationTests
     }
 
     [Theory]
-    [InlineData("latest.release", null, "0.19.3")]
-    [InlineData("latest-release", "0.16.9", "0.19.3")]
-    [InlineData("latest.release", "fabric-loader-0.16.9-latest.release", "fabric-loader-0.19.3-26.2")]
+    [InlineData("latest.release", null, "0.19.5")]
+    [InlineData("latest-release", "0.16.9", "0.19.5")]
+    [InlineData("latest.release", "fabric-loader-0.16.9-latest.release", "fabric-loader-0.19.5-26.2")]
     [InlineData("latest-release", "fabric-loader-0.20.0-latest-release", "fabric-loader-0.20.0-26.2")]
     public void ReleaseAliasMigratesInPlaceToRequestedVersion(string alias, string? loader, string expectedLoader)
     {
@@ -75,15 +76,17 @@ public class VersionAndInstallationTests
     }
 
     [Theory]
-    [InlineData("1.21.11", "0.16.9", "0.19.3")]
-    [InlineData("26.2", "0.19.2", "0.19.3")]
-    [InlineData("1.21.11", "fabric-loader-0.18.0-1.21.11", "fabric-loader-0.19.3-1.21.11")]
-    [InlineData("26.2", "fabric-loader-0.19.2-26.2", "fabric-loader-0.19.3-26.2")]
-    [InlineData("26.2", "0.19.3", "0.19.3")]
+    [InlineData("1.21.11", "0.16.9", "0.19.5")]
+    [InlineData("26.2", "0.19.2", "0.19.5")]
+    [InlineData("1.21.11", "fabric-loader-0.18.0-1.21.11", "fabric-loader-0.19.5-1.21.11")]
+    [InlineData("26.2", "fabric-loader-0.19.2-26.2", "fabric-loader-0.19.5-26.2")]
+    [InlineData("26.2", "0.19.5", "0.19.5")]
     [InlineData("1.21.11", "fabric-loader-0.20.0-1.21.11", "fabric-loader-0.20.0-1.21.11")]
     [InlineData("1.21.11", "0.18.0-custom", "0.18.0-custom")]
     [InlineData("26.2", "fabric-loader-0.18.0-custom-26.2", "fabric-loader-0.18.0-custom-26.2")]
-    [InlineData("1.21.1", "0.16.9", "0.16.9")]
+    [InlineData("1.21.1", "0.16.9", "0.19.5")]
+    [InlineData("26.3", "0.19.5", "0.19.5")]
+    [InlineData("26.3", "fabric-loader-0.19.5-26.3", "fabric-loader-0.19.5-26.3")]
     public void SupportedCoreLoaderMinimumPreservesOtherLoaders(string mc, string loader, string expected)
     {
         using var dir = new TestDirectory();
@@ -123,17 +126,17 @@ public class VersionAndInstallationTests
     {
         using var dir = new TestDirectory();
         var saved = new[] {
-            new LauncherProfile { Id = "1.21.11", MinecraftVersion = "1.21.11", FabricVersion = "fabric-loader-0.19.3-26.2", CustomGameDir = "existing-world" },
+            new LauncherProfile { Id = "1.21.11", MinecraftVersion = "1.21.11", FabricVersion = "fabric-loader-0.19.5-26.2", CustomGameDir = "existing-world" },
             new LauncherProfile { Id = "26.2", MinecraftVersion = "26.2", FabricVersion = "custom-loader", CustomGameDir = "other-world" }
         };
         File.WriteAllText(Path.Combine(dir.Path, "profiles.json"),
             JsonSerializer.Serialize(new { ActiveProfileId = "1.21.11", Profiles = saved }));
         var service = new ProfileService(new PathService(dir.Path));
-        Assert.Equal(3, service.GetProfiles().Count);
+        Assert.Equal(4, service.GetProfiles().Count);
         Assert.Equal("existing-world", service.GetProfile("1.21.11")!.CustomGameDir);
         Assert.Equal(saved[0].FabricVersion, service.GetProfile("1.21.11")!.FabricVersion);
         Assert.Equal(saved[1].FabricVersion, service.GetProfile("26.2")!.FabricVersion);
-        Assert.StartsWith("26.2-", service.GetActiveProfile().Id);
+        Assert.Equal("26.3", service.GetActiveProfile().Id);
         Assert.Null(service.GetActiveProfile().CustomGameDir);
         GameVersionPolicy.ResolveVersionId(service.GetActiveProfile());
     }

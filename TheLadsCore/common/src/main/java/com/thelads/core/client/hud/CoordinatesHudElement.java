@@ -27,8 +27,8 @@ public class CoordinatesHudElement extends HudElement {
         int posY = g.getGame().getPlayerY();
         int posZ = g.getGame().getPlayerZ();
 
-        int format = optCycle("Format", 0); // 0 = X Y Z, 1 = Coords: X, Y, Z, 2 = Labeled
-        vertical = optBool("Vertical", false);
+        int format = optCycle("Format", 2); // 0 = X Y Z, 1 = Coords: X, Y, Z, 2 = Labeled
+        vertical = optBool("Vertical", true);
         px = (format == 2 ? "X: " : "") + posX;
         py = (format == 2 ? "Y: " : "") + posY;
         pz = (format == 2 ? "Z: " : "") + posZ;
@@ -60,12 +60,12 @@ public class CoordinatesHudElement extends HudElement {
         int cz = perAxis ? optColor("Z Color", base) : base;
         if (vertical) {
             int lineHeight = g.fontHeight() + 2;
-            g.drawText(px, x + 4, y + 3, cx, shadow);
-            g.drawText(py, x + 4, y + 3 + lineHeight, cy, shadow);
-            g.drawText(pz, x + 4, y + 3 + 2 * lineHeight, cz, shadow);
+            g.drawText(px, x + (width - g.textWidth(px)) / 2, y + 3, cx, shadow);
+            g.drawText(py, x + (width - g.textWidth(py)) / 2, y + 3 + lineHeight, cy, shadow);
+            g.drawText(pz, x + (width - g.textWidth(pz)) / 2, y + 3 + 2 * lineHeight, cz, shadow);
             return;
         }
-        int tx = x + 4;
+        int tx = x + (width - g.textWidth(prefix + px + separator + py + separator + pz)) / 2;
         int ty = y + (height - g.fontHeight()) / 2 + 1;
         if (!prefix.isEmpty()) tx = draw(g, prefix, tx, ty, base, shadow);
         tx = draw(g, px + separator, tx, ty, cx, shadow);

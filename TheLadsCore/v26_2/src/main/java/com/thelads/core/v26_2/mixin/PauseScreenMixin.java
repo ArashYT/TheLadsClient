@@ -22,6 +22,16 @@ public abstract class PauseScreenMixin extends Screen {
         super(Component.empty());
     }
 
+    @Inject(method="init",at=@At("TAIL"),require=1)
+    private void ladsRemoveReportButtons(CallbackInfo ci){
+        for(var child:java.util.List.copyOf(children()))if(child instanceof net.minecraft.client.gui.components.AbstractWidget widget){
+            String text=widget.getMessage().getString();
+            if(text.equals(Component.translatable("menu.sendFeedback").getString())
+                ||text.equals(Component.translatable("menu.reportBugs").getString())
+                ||text.equals(Component.translatable("menu.playerReporting").getString()))removeWidget(widget);
+        }
+    }
+
     @Redirect(method = "createPauseMenu()V",
         at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/gui/layouts/GridLayout;createRowHelper(I)Lnet/minecraft/client/gui/layouts/GridLayout$RowHelper;"),

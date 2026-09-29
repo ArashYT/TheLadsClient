@@ -20,13 +20,13 @@ public class KeystrokesHudElement extends HudElement {
         preparedGraphics = g;
         showCps = optBool("Show CPS", true);
         showSpace = optBool("Show space bar", true);
-        leftLabel = "LMB " + CpsTracker.get().leftCps();
-        rightLabel = "RMB " + CpsTracker.get().rightCps();
+        leftLabel = CpsTracker.get().leftCps() + " CPS";
+        rightLabel = CpsTracker.get().rightCps() + " CPS";
         cpsWidth = Math.max(31, Math.max(g.textWidth(leftLabel), g.textWidth(rightLabel)) + 4);
         width = showCps ? Math.max(68, cpsWidth * 2 + 6) : 68;
         keyWidth = (width - 8) / 3;
         keyHeight = Math.max(18, g.fontHeight() + 6);
-        cpsHeight = Math.max(16, g.fontHeight() + 6);
+        cpsHeight = Math.max(26, 2 * g.fontHeight() + 8);
         cpsY = 2 + 2 * (keyHeight + 2);
         spaceY = cpsY + (showCps ? cpsHeight + 2 : 0);
         height = showSpace ? spaceY + 10 : showCps ? cpsY + cpsHeight + 2 : cpsY;
@@ -50,8 +50,8 @@ public class KeystrokesHudElement extends HudElement {
         drawKey(g, "D", x + width - keyWidth - 2, y + keyHeight + 4, keyWidth, keyHeight, g.getGame().isKeyDown("D"), baseBg, pressedBg, color);
 
         if (showCps) {
-            drawKey(g, leftLabel, x + 2, y + cpsY, cpsWidth, cpsHeight, g.getGame().isKeyDown("LMB"), baseBg, pressedBg, color);
-            drawKey(g, rightLabel, x + width - cpsWidth - 2, y + cpsY, cpsWidth, cpsHeight, g.getGame().isKeyDown("RMB"), baseBg, pressedBg, color);
+            drawMouseKey(g, "LMB", leftLabel, x + 2, y + cpsY, cpsWidth, cpsHeight, g.getGame().isKeyDown("LMB"), baseBg, pressedBg, color);
+            drawMouseKey(g, "RMB", rightLabel, x + width - cpsWidth - 2, y + cpsY, cpsWidth, cpsHeight, g.getGame().isKeyDown("RMB"), baseBg, pressedBg, color);
         }
 
         if (showSpace) {
@@ -60,6 +60,13 @@ public class KeystrokesHudElement extends HudElement {
             g.fill(x + 2, sy, x + width - 2, sy + 8, down ? pressedBg : baseBg);
             g.fill(x + width / 2 - 10, sy + 4, x + width / 2 + 10, sy + 5, down ? 0xFF000000 : color);
         }
+    }
+
+    private void drawMouseKey(LadsGraphics g, String name, String cps, int kx, int ky, int kw, int kh, boolean down, int bg, int pressedBg, int textCol) {
+        g.fill(kx, ky, kx + kw, ky + kh, down ? pressedBg : bg);
+        int color = down ? 0xFF000000 : textCol;
+        g.drawCenteredText(name, kx + kw / 2, ky + 3, color);
+        g.drawCenteredText(cps, kx + kw / 2, ky + g.fontHeight() + 5, color);
     }
 
     private void drawKey(LadsGraphics g, String label, int kx, int ky, int kw, int kh, boolean down, int bg, int pressedBg, int textCol) {

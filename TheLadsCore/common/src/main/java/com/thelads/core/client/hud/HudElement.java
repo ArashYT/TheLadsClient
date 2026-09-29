@@ -18,6 +18,8 @@ public abstract class HudElement {
     private Integer restoredX;
     private Integer restoredY;
     private boolean editingPosition;
+    private boolean organizedDefaults;
+    public void useOrganizedDefaults(){organizedDefaults=true;}
 
     private static final float[] SCALES = { 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f };
 
@@ -33,7 +35,12 @@ public abstract class HudElement {
     public final HudGroupLayout.Rect measureBounds(LadsGraphics g, boolean editor) {
         restoreSavedPosition();
         prepareRender(g, editor);
-        return new HudGroupLayout.Rect(getDisplayX(g), getDisplayY(g), getRenderWidth(), getRenderHeight());
+        int dx=getDisplayX(g),dy=getDisplayY(g);
+        if (organizedDefaults && !editingPosition && HudSettings.getInstance().getPosition(moduleName)==null) {
+            int[] origin=HudDefaults.origin(moduleName,g.getScaledWidth(),g.getScaledHeight(),getRenderWidth(),getRenderHeight());
+            if(origin!=null){dx=origin[0];dy=origin[1];}
+        }
+        return new HudGroupLayout.Rect(dx,dy,getRenderWidth(),getRenderHeight());
     }
 
     /** False for catalog entries that have no implemented HUD renderer. */

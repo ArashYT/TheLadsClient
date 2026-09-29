@@ -56,6 +56,7 @@ public final class LadsSettingsScreen {
     public void setClipboardReader(Supplier<String> reader) { clipboardReader = reader; }
     public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; }
     public String getSearchQuery() { return searchQuery; }
+    public boolean isEditingText() { return editingSearch || editingOption != null; }
     public String getCurrentCategory() { return currentCategory; }
     public String getCurrentTab() { return "MODS"; }
     public List<Rect> getControlBounds() { return controls.stream().map(Control::rect).toList(); }
@@ -137,10 +138,10 @@ public final class LadsSettingsScreen {
             if (!dense) MenuGraphics.wrap(g, m.getDescription(), cx + 10, cy + 29, cardW - 20, 2, MUTED);
             button(g, "favorite:" + m.getName(), m.isFavorite() ? "*" : "+", new Rect(cx + cardW - 25, cy + 5, 20, 20), () -> { m.setFavorite(!m.isFavorite()); changed(m); }, true, mx, my, m.isFavorite());
             button(g, "detail:" + m.getName(), "Settings", new Rect(cx + 8, cy + cardH - 23, cardW - 68, 18), () -> openDetails(m), true, mx, my, false);
-            String state = m.isEnabled() ? "ON" : "OFF";
+            String state = m.getName().equals("DiscordRPC") ? "Soon" : m.isEnabled() ? "ON" : "OFF";
             button(g, "toggle:" + m.getName(), state, new Rect(cx + cardW - 53, cy + cardH - 23, 45, 18), () -> {
                 if (ModuleSupport.isBuiltIn(m.getName())) { m.toggle(); changed(m); }
-            }, true, mx, my, status.configurable() && m.isEnabled());
+            }, !m.getName().equals("DiscordRPC"), mx, my, status.configurable() && m.isEnabled());
         }
         if (modules.isEmpty()) {
             g.drawText("No matching modules", x + 12, top + 18, TEXT);
@@ -154,8 +155,8 @@ public final class LadsSettingsScreen {
         int descriptionH = height < 230 ? 0 : MenuGraphics.wrap(g, detail.getDescription(), x, 76, w, 2, MUTED);
         int stateY = height < 230 ? 68 : 81 + descriptionH;
         g.drawText("LADS MODULE", x, stateY + 6, ACCENT);
-        button(g, "toggle:detail", detail.isEnabled() ? "ON" : "OFF", new Rect(x + w - 52, stateY, 52, 22),
-            () -> { detail.toggle(); changed(detail); }, true, mx, my, detail.isEnabled());
+        button(g, "toggle:detail", detail.getName().equals("DiscordRPC") ? "Soon" : detail.isEnabled() ? "ON" : "OFF", new Rect(x + w - 52, stateY, 52, 22),
+            () -> { detail.toggle(); changed(detail); }, !detail.getName().equals("DiscordRPC"), mx, my, detail.isEnabled());
         int top = stateY + 30;
         viewport = new Rect(x, top, w, Math.max(20, height - top - 28));
         int rowH = 43;
@@ -338,9 +339,10 @@ public final class LadsSettingsScreen {
         if (m != null) m.touch(); dirty = true; filterDirty = true; persist();
     }
     private void persist() { if (dirty) { ConfigManager.save(); dirty = false; } }
-    private List<Option> activeOptions() { return detail == null ? List.of() : detail.getOptions(); }
+    private List<Option> activeOptions() { return detail == null || detail.getName().equals("DiscordRPC") ? List.of() : detail.getOptions(); }
     private Option activeOption(String name) { return activeOptions().stream().filter(o -> o.getName().equals(name)).findFirst().orElse(null); }
     private boolean finish() { if (!commitEdit()) return false; persist(); return true; }
+    public void openModule(String name) { Module m=ModuleManager.getInstance().getModule(name); if(m!=null)openDetails(m); }
     private void openDetails(Module m) { if (!ModuleSupport.isBuiltIn(m.getName())) return; detail = m; m.setLastOpenedTime(System.currentTimeMillis()); scrollOffset = 0; focusId = "back"; notice = ""; }
     private void back() { if (!finish()) return; detail = null; scrollOffset = 0; focusId = ""; }
     private void leave(Runnable action) { if (!finish()) return; action.run(); }
