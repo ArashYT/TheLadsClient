@@ -51,6 +51,7 @@ public final class NativeSharedContentProbe {
 
     private static void run(Minecraft mc, SharedContentQa qa) throws Exception {
         qa.requireSandbox(FabricLoader.getInstance().getGameDir());
+        WorldFoldersProbe.run(qa);
         Path saves = qa.requireShared("world folder", mc.getLevelSource().getBaseDir(), SharedContentPaths.savesDir());
         Path packs = qa.requireShared("resource pack folder", mc.getResourcePackDirectory(), SharedContentPaths.resourcePacksDir());
         Path shaders = qa.requireShared("shader pack folder", shaderPacks(), SharedContentPaths.shaderPacksDir());

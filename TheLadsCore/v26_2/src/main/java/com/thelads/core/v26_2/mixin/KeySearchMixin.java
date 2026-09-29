@@ -1,6 +1,9 @@
 package com.thelads.core.v26_2.mixin;
 import net.minecraft.client.Options;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.KeyMapping;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.OptionsSubScreen;
 import net.minecraft.client.gui.screens.options.controls.*;
@@ -14,23 +17,71 @@ import java.util.*;
 public abstract class KeySearchMixin extends OptionsSubScreen {
     @Shadow private KeyBindsList keyBindsList;
     @Unique private EditBox ladsSearch;
+    @Unique private Button ladsModeButton, ladsStateButton;
+    @Unique private List<KeyBindsList.Entry> ladsAll = List.of();
+    @Unique private int ladsMode, ladsState;
+    @Unique private static final String[] LADS_MODES = {"All", "Name", "Keybind", "Category", "Mod"};
+    @Unique private static final String[] LADS_STATES = {"All bindings", "Conflicts", "Unbound"};
     protected KeySearchMixin(Screen parent,Options options,Component title){super(parent,options,title);}
     @Inject(method="addContents",at=@At("TAIL"),require=1)
     private void ladsSearchControls(CallbackInfo ci){
-        var all=List.copyOf(keyBindsList.children());
-        layout.setHeaderHeight(62);
-        ladsSearch=new EditBox(font,width/2-110,33,220,20,Component.literal("Search controls"));
-        ladsSearch.setHint(Component.literal("Search controls or assigned key..."));
-        ladsSearch.setResponder(value->{
-            String query=value.toLowerCase(Locale.ROOT).trim();
-            keyBindsList.replaceEntries(query.isEmpty()?all:all.stream().filter(e->e instanceof KeyEntryAccessor).filter(e->{
-                var key=((KeyEntryAccessor)e).ladsKey();
-                return (I18n.get(key.getName())+" "+key.getTranslatedKeyMessage().getString()).toLowerCase(Locale.ROOT).contains(query);
-            }).toList());
-            keyBindsList.setScrollAmount(0);
-        });
-        addRenderableWidget(ladsSearch);
+        ladsAll=List.copyOf(keyBindsList.children());
+        layout.setHeaderHeight(86);
+        String previous=ladsSearch==null?"":ladsSearch.getValue();
+        ladsSearch=new EditBox(font,width/2-150,32,300,20,Component.literal("Search controls"));
+        ladsSearch.setHint(Component.literal("Search names, keys, categories or mods"));
+        ladsSearch.setMaxLength(128);
+        ladsSearch.setResponder(value->ladsFilter());
+        ladsModeButton=Button.builder(Component.literal("Search: "+LADS_MODES[ladsMode]),button->{
+            ladsMode=(ladsMode+1)%LADS_MODES.length;
+            button.setMessage(Component.literal("Search: "+LADS_MODES[ladsMode]));ladsFilter();
+        }).bounds(width/2-150,57,148,20).build();
+        ladsStateButton=Button.builder(Component.literal(LADS_STATES[ladsState]),button->{
+            ladsState=(ladsState+1)%LADS_STATES.length;
+            button.setMessage(Component.literal(LADS_STATES[ladsState]));ladsFilter();
+        }).bounds(width/2+2,57,148,20).build();
+        addRenderableWidget(ladsSearch);addRenderableWidget(ladsModeButton);addRenderableWidget(ladsStateButton);
+        ladsSearch.setValue(previous);ladsFilter();
     }
+    @Unique private void ladsFilter(){
+        String query=ladsSearch.getValue().strip().toLowerCase(Locale.ROOT);
+        List<KeyBindsList.Entry> filtered=new ArrayList<>();
+        KeyBindsList.Entry heading=null;boolean headingAdded=false;
+        for(var entry:ladsAll){
+            if(!(entry instanceof KeyEntryAccessor accessor)){heading=entry;headingAdded=false;continue;}
+            var key=accessor.ladsKey();
+            String name=I18n.get(key.getName()),binding=key.getTranslatedKeyMessage().getString();
+            String category=key.getCategory().label().getString(),mod=ladsModName(key);
+            String text=switch(ladsMode){case 1->name;case 2->binding;case 3->category;case 4->mod;
+                default->name+" "+binding+" "+category+" "+mod;};
+            boolean state=ladsState==0||(ladsState==2?key.isUnbound():!key.isUnbound()
+                &&Arrays.stream(options.keyMappings).anyMatch(other->other!=key&&key.same(other)));
+            if(state&&text.toLowerCase(Locale.ROOT).contains(query)){
+                if(heading!=null&&!headingAdded){filtered.add(heading);headingAdded=true;}
+                filtered.add(entry);
+            }
+        }
+        keyBindsList.replaceEntries(filtered);keyBindsList.setScrollAmount(0);
+    }
+    @Unique private static String ladsModName(KeyMapping key){
+        String namespace=key.getCategory().id().getNamespace(),raw=key.getName().toLowerCase(Locale.ROOT);
+        for(var mod:FabricLoader.getInstance().getAllMods()){
+            String id=mod.getMetadata().getId();
+            if(namespace.equals(id)||raw.startsWith("key."+id+".")||raw.startsWith("key."+id+":")
+                ||raw.startsWith(id+".")||raw.startsWith("keybind."+id+"."))
+                return mod.getMetadata().getName()+" "+id;
+        }
+        return namespace+" "+key.getCategory().label().getString();
+    }
+    @Inject(method={"mouseClicked","keyPressed"},at=@At("TAIL"),require=1)
+    private void ladsRefresh(org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> ci){if(ladsSearch!=null)ladsFilter();}
     @Inject(method="repositionElements",at=@At("TAIL"),require=1)
-    private void ladsPositionSearch(CallbackInfo ci){if(ladsSearch!=null){ladsSearch.setX(width/2-110);ladsSearch.setY(33);}}
+    private void ladsPositionSearch(CallbackInfo ci){if(ladsSearch!=null){
+        // HeaderAndFooterLayout centers its title in the taller header; keep it above our search row.
+        for(var child:children()) if(child instanceof net.minecraft.client.gui.components.StringWidget label
+            &&label.getMessage().equals(title)) label.setY(12);
+        ladsSearch.setX(width/2-150);ladsSearch.setY(32);
+        ladsModeButton.setX(width/2-150);ladsModeButton.setY(57);
+        ladsStateButton.setX(width/2+2);ladsStateButton.setY(57);
+    }}
 }

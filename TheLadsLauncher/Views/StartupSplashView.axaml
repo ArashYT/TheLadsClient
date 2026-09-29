@@ -7,7 +7,7 @@
              Background="#17181B">
     <Grid>
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
-            <Image x:Name="StartupLogoImage" Source="avares://TheLadsLauncher/Assets/logo.png" Width="280" Height="140"
+            <Image x:Name="StartupLogoImage" Source="avares://TheLadsLauncher/Assets/logo.png" Width="440" Height="100" Stretch="Uniform"
                    HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
                 <Image.RenderTransform>
                     <ScaleTransform ScaleX="1" ScaleY="1"/>

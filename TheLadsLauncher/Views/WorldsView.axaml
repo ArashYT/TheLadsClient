@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.WorldsView">
+  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="28,24">
+    <StackPanel Spacing="6">
+      <TextBlock Text="Worlds" FontSize="22" FontWeight="Bold" />
+      <TextBlock Text="Browse saves by location. Shared profile folders appear under Global .minecraft. Version is the last saved Minecraft version." Foreground="#A0A1AA" TextWrapping="Wrap" />
+    </StackPanel>
+    <WrapPanel Grid.Row="1" Margin="0,18,0,12">
+      <TextBox x:Name="Search" PlaceholderText="Search worlds or instances…" Width="230" Margin="0,0,8,8" TextChanged="FilterChanged" />
+      <ComboBox x:Name="Location" Width="170" Margin="0,0,8,8" SelectionChanged="SelectionChanged" />
+      <ComboBox x:Name="Version" Width="140" Margin="0,0,8,8" SelectionChanged="SelectionChanged" />
+      <Button Content="Add instance folder" Click="AddInstance" Margin="0,0,8,8" />
+      <Button Content="Refresh" Click="Refresh" Margin="0,0,8,8" />
+      <Button Content="Reset filters" Click="ResetFilters" Margin="0,0,0,8" />
+    </WrapPanel>
+    <TextBlock x:Name="Status" Grid.Row="2" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,0,0,12" />
+    <ScrollViewer Grid.Row="3"><StackPanel x:Name="Rows" Spacing="8" /></ScrollViewer>
+  </Grid>
+</UserControl>

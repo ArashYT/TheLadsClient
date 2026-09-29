@@ -24,17 +24,30 @@ public final class NativeRequestProbe {
                 require(pause.children().stream().noneMatch(c->c instanceof AbstractWidget w&&w.getMessage().getString().equals(Component.translatable(key).getString())),"pause removes "+key);passed++;
             }
             passed+=swing();
+            passed+=BorderlessProbe.run();
             Screen skin=new SkinCustomizationScreen(original,mc.options);mc.setScreenAndShow(skin);
             require(skin.children().stream().anyMatch(c->c instanceof PlayerSkinWidget),"custom skin contains real 3D skin widget");passed++;
             extract(skin);passed++;
             Screen keys=new KeyBindsScreen(original,mc.options);mc.setScreenAndShow(keys);
-            // Controlling may replace the active screen; initialize the native fallback explicitly as well.
-            if(mc.gui.screen()!=keys)keys.init(mc.getWindow().getGuiScaledWidth(),mc.getWindow().getGuiScaledHeight());
+            // Exercise the screen the player actually sees with the complete mod pack loaded.
+            keys=mc.gui.screen();
+            require(keys instanceof com.thelads.core.v26_2.gui.LadsKeyBindsScreen,"active controls screen uses native filters");passed++;
             var search=keys.children().stream().filter(c->c instanceof EditBox).map(c->(EditBox)c).findFirst().orElseThrow();
             var list=keys.children().stream().filter(c->c instanceof KeyBindsList).map(c->(KeyBindsList)c).findFirst().orElseThrow();
-            int total=list.children().size();search.setValue("Lads");require(!list.children().isEmpty()&&list.children().size()<total,"controls search filters real bindings");passed++;
+            int total=list.children().size();
+            keys.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(search.getX()+8,search.getY()+8,new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0)),false);
+            for(char c:"Lads".toCharArray()) keys.charTyped(new net.minecraft.client.input.CharacterEvent(c));
+            require(search.getValue().equals("Lads"),"mouse focus and typed characters reach controls search");passed++;
+            require(!list.children().isEmpty()&&list.children().size()<total,"controls search filters real bindings");passed++;
             search.setValue("no_control_should_match_this_309127");require(list.children().isEmpty(),"controls search empty state");passed++;
             search.setValue("");require(list.children().size()==total,"clearing search restores bindings");passed++;extract(keys);
+            var mode=keys.children().stream().filter(c->c instanceof Button b&&b.getMessage().getString().startsWith("Search:")).map(c->(Button)c).findFirst().orElseThrow();
+            for(String label:List.of("Name","Keybind","Category","Mod","All")){
+                mode.onPress(null);require(mode.getMessage().getString().equals("Search: "+label),"visible search mode "+label);passed++;
+            }
+            keys.init(mc.getWindow().getGuiScaledWidth(),mc.getWindow().getGuiScaledHeight());
+            require(keys.children().stream().filter(c->c instanceof EditBox).count()==1,"resize leaves exactly one search field");passed++;
+
             Screen video=new VideoSettingsScreen(original,mc,mc.options);mc.setScreenAndShow(video);
             extract(mc.gui.screen());passed++;
             Screen packs=new PackSelectionScreen(mc.getResourcePackRepository(),repository->{},mc.getResourcePackDirectory(),Component.literal("Resource packs"));mc.setScreenAndShow(packs);

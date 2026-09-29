@@ -175,6 +175,13 @@ public class ProfileService : IProfileService
             progress, cancellationToken, shareFolders: !withoutSharedFolders);
         var warnings = report.Warnings.ToList();
         if (stateFileError != null) warnings.Add(stateFileError);
+        try
+        {
+            new WorldCatalogService(_pathService.BaseDirectory).WriteGameSources(targetDir, _sharedContent.Root,
+                WorldCatalogService.ProfileSources(GetProfiles(), _pathService));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
+        { warnings.Add("World folder list could not be written: " + e.Message); }
 
         if (!profile.IsIsolated)
         {

@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui" xmlns:local="using:TheLadsLauncher.Controls" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.MainWindow" Title="The Lads Client" Width="1152" Height="720" MinWidth="960" MinHeight="600" Background="#17181B" Icon="avares://TheLadsLauncher/Assets/icon.ico" WindowStartupLocation="CenterScreen" ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="44" WindowDecorations="BorderOnly">
+<Window xmlns="https://github.com/avaloniaui" xmlns:local="using:TheLadsLauncher.Controls" xmlns:views="using:TheLadsLauncher.Views" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.MainWindow" Title="The Lads Client" Width="1152" Height="720" MinWidth="960" MinHeight="600" Background="#17181B" Icon="avares://TheLadsLauncher/Assets/icon.ico" WindowStartupLocation="CenterScreen" ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="44" WindowDecorations="BorderOnly">
     <Window.Resources>
         <DataTemplate x:Key="ModListItemTemplate">
             <Border Classes="modcard" Background="#1D1E22" CornerRadius="4" Padding="16,12" BorderBrush="#303137" BorderThickness="1" Margin="0,0,0,8">
@@ -29,8 +29,7 @@
             <Grid RowDefinitions="44,*" ColumnDefinitions="184,*">
                 <Border x:Name="TitleBar" Background="#121315" BorderBrush="#303137" BorderThickness="0,0,0,1">
                     <StackPanel Orientation="Horizontal" Margin="19,0,0,0" Spacing="9" VerticalAlignment="Center">
-                        <Image Source="avares://TheLadsLauncher/Assets/logo.png" Width="26" Height="26" />
-                        <TextBlock Text="LADS" FontWeight="Bold" LetterSpacing="1.5" FontSize="13" VerticalAlignment="Center" />
+                        <Image Source="avares://TheLadsLauncher/Assets/logo.png" Width="146" Height="30" Stretch="Uniform" />
                     </StackPanel>
                 </Border>
                 <Border x:Name="ContentTitleBar" Grid.Column="1" Background="#17181B" BorderBrush="#303137" BorderThickness="0,0,0,1">
@@ -55,6 +54,7 @@
                                         <TextBlock Text="Play" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
+                                <Button x:Name="NavWorlds" AutomationProperties.Name="Worlds" Classes="nav" Content="Worlds" Click="NavWorlds_Click" />
                                 <Button x:Name="NavProfiles" AutomationProperties.Name="Profiles" Classes="nav" Click="NavProfiles_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
                                         <Path Data="M 2,3 H 16 V 13 H 2 Z M 6,16 H 12 M 9,13 V 16" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
@@ -189,7 +189,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
                                         <Button x:Name="OpenFolderBtn" Classes="action" Content="Game folder" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open this profile's game folder" Click="OpenFolder_Click" Height="28" Padding="10,0" />
-                                        <Button Classes="action" Content="Worlds" Tag="saves" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared worlds folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
+                                        <Button Classes="action" Content="Worlds" Tag="saves" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Browse and search worlds" Click="NavWorlds_Click" Height="28" Padding="10,0" />
                                         <Button Classes="action" Content="Resource packs" Tag="resourcepacks" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared resource packs folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
                                         <Button Classes="action" Content="Shader packs" Tag="shaderpacks" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared shader packs folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
                                         <Button Classes="action" Content="Screenshots" Tag="screenshots" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared screenshots folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
@@ -318,6 +318,7 @@
                             </ScrollViewer>
                         </Border>
                     </Grid>
+                    <views:WorldsView x:Name="WorldsPage" IsVisible="False" />
                     <Grid x:Name="ProfilesPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,*">
                         <Grid Grid.Row="0" ColumnDefinitions="*" Margin="0,0,0,16" RowDefinitions="Auto,Auto,Auto">
                             <StackPanel>
@@ -640,7 +641,7 @@
             </Grid>
             <Grid x:Name="LauncherStartupOverlay" Background="#17181B" IsVisible="True" ZIndex="100">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
-                    <Image x:Name="StartupLogoImage" Source="avares://TheLadsLauncher/Assets/logo.png" Width="280" Height="140" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                    <Image x:Name="StartupLogoImage" Source="avares://TheLadsLauncher/Assets/logo.png" Width="440" Height="100" Stretch="Uniform" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5">
                         <Image.RenderTransform>
                             <ScaleTransform ScaleX="1" ScaleY="1" />
                         </Image.RenderTransform>
