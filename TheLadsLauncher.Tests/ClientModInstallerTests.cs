@@ -11,7 +11,7 @@ public sealed class ClientModInstallerTests : IDisposable
     private readonly string root = Path.Combine(Path.GetTempPath(), "lads-pack-test-" + Guid.NewGuid().ToString("N"));
     private string Game => Path.Combine(root, "game");
     private string Mods => Path.Combine(Game, "mods");
-    private string Destination => Path.Combine(Mods, "lads-testmod.jar");
+    private string Destination => Path.Combine(Mods, "testmod.jar");
     private static byte[] Jar(string id, string version = "1")
     {
         using var bytes = new MemoryStream();
@@ -22,7 +22,7 @@ public sealed class ClientModInstallerTests : IDisposable
     }
     private ClientModInstaller.Entry Manifest(byte[] bytes, string game = "26.2", string? hash = null, string id = "testmod", string? url = null)
     {
-        var entry = new ClientModInstaller.Entry("test", "test", "Test Mod", id, "v1", "1", "test.jar",
+        var entry = new ClientModInstaller.Entry("test", "test", "Test Mod", id, "v1", "1", "testmod.jar",
             url ?? "https://cdn.modrinth.com/data/test/versions/v1/test.jar", hash ?? Convert.ToHexString(SHA512.HashData(bytes)),
             bytes.Length, "MIT", null, "https://modrinth.com/mod/test");
         var dir = Path.Combine(root, "game-mods", "26.2"); Directory.CreateDirectory(dir);
@@ -75,11 +75,12 @@ public sealed class ClientModInstallerTests : IDisposable
         var handler = new Handler(bytes); using var client = new HttpClient(handler);
         await Assert.ThrowsAsync<IOException>(() => Install(client)); Assert.Equal(original,File.ReadAllBytes(personal)); Assert.Equal(0,handler.Calls);
     }
-    [Fact] public async Task DisabledManagedModStaysDisabled()
+    [Fact] public async Task DisabledManagedModStaysDisabledUnderItsOriginalName()
     {
-        var bytes = Jar("testmod"); Manifest(bytes); Directory.CreateDirectory(Mods); File.WriteAllBytes(Destination+".disabled",bytes);
+        var bytes = Jar("testmod"); Manifest(bytes); Directory.CreateDirectory(Mods); File.WriteAllBytes(Managed("lads-testmod")+".disabled",bytes);
         var handler = new Handler(bytes); using var client = new HttpClient(handler);
         await Install(client); Assert.False(File.Exists(Destination)); Assert.Equal(0,handler.Calls);
+        Assert.Equal(bytes, File.ReadAllBytes(Destination + ".disabled")); Assert.False(File.Exists(Managed("lads-testmod") + ".disabled"));
     }
     [Fact] public async Task ManagedUpgradeKeepsPreviousJar()
     {
@@ -109,12 +110,14 @@ public sealed class ClientModInstallerTests : IDisposable
         var personal=Path.Combine(Mods,"personal.jar"); var own=Jar("personal");File.WriteAllBytes(personal,own);
         File.WriteAllText(Path.Combine(root,"game-mods","26.2","client-mods.json"),JsonSerializer.Serialize(new ClientModInstaller.Manifest("26.2",new())));
         await Install(client);Assert.False(File.Exists(Destination));Assert.Equal(own,File.ReadAllBytes(personal));
-        Assert.Single(Directory.GetFiles(Path.Combine(Game,".lads-mod-cache"),"retired-testmod-*.jar"));
+        Assert.Equal(bytes, File.ReadAllBytes(Path.Combine(Cache, "retired", "testmod", "testmod.jar")));
     }
 
     private string Cache => Path.Combine(Game, ".lads-mod-cache");
     private string Receipt => Path.Combine(Cache, "installed.json");
-    private string Managed(string id) => Path.Combine(Mods, "lads-" + id + ".jar");
+    private string Managed(string id) => Path.Combine(Mods, id + ".jar");
+    private string[] RetiredFiles() => Directory.Exists(Path.Combine(Cache, "retired"))
+        ? Directory.GetFiles(Path.Combine(Cache, "retired"), "*", SearchOption.AllDirectories) : Array.Empty<string>();
     private static string Sha(byte[] bytes) => Convert.ToHexString(SHA512.HashData(bytes));
     private static ClientModInstaller.Entry Pin(string id, byte[] bytes) =>
         new(id, id, id, id, "v1", "1", id + ".jar",
@@ -169,15 +172,25 @@ public sealed class ClientModInstallerTests : IDisposable
         Assert.False(File.Exists(Destination)); Assert.Equal(0, handler.Calls);
     }
 
-    [Fact] public async Task EnabledAndDisabledCopiesAreReportedWithoutDeletingEither()
+    [Fact] public async Task EnabledAndDisabledCopiesOfYourOwnAreReportedWithoutTouchingEither()
     {
         var bytes = Jar("testmod"); Manifest(bytes); Directory.CreateDirectory(Mods);
         File.WriteAllBytes(Destination, bytes);
-        var disabled = Path.Combine(Mods, "upstream.jar.disabled"); File.WriteAllBytes(disabled, bytes);
+        var own = Jar("testmod", "user"); var disabled = Path.Combine(Mods, "upstream.jar.disabled"); File.WriteAllBytes(disabled, own);
         using var client = new HttpClient(new Handler(bytes));
         var error = await Assert.ThrowsAsync<IOException>(() => Install(client));
-        Assert.Contains("both enabled and disabled", error.Message);
-        Assert.Equal(bytes, File.ReadAllBytes(Destination)); Assert.Equal(bytes, File.ReadAllBytes(disabled));
+        Assert.Contains("Duplicate", error.Message); Assert.Contains(Destination, error.Message); Assert.Contains(disabled, error.Message);
+        Assert.Equal(bytes, File.ReadAllBytes(Destination)); Assert.Equal(own, File.ReadAllBytes(disabled));
+    }
+
+    [Fact] public async Task ManagedDisabledDuplicateGoesToBackupAndTheRequestedCopyStays()
+    {
+        var bytes = Jar("testmod"); Manifest(bytes); Directory.CreateDirectory(Mods);
+        File.WriteAllBytes(Managed("lads-testmod"), bytes);
+        var disabled = Path.Combine(Mods, "upstream.jar.disabled"); File.WriteAllBytes(disabled, bytes);
+        using var client = new HttpClient(new Handler(bytes)); await Install(client);
+        Assert.Equal(bytes, File.ReadAllBytes(Destination)); Assert.False(File.Exists(disabled));
+        Assert.Equal(bytes, File.ReadAllBytes(Assert.Single(Directory.GetFiles(Cache, "duplicate-testmod-*"))));
     }
 
     [Theory]
@@ -192,9 +205,10 @@ public sealed class ClientModInstallerTests : IDisposable
         var disabled = Path.Combine(Mods, upstreamName ? "cloth-config-26.2.155.jar.disabled" : "lads-cloth-config.jar.disabled");
         File.WriteAllBytes(disabled, dependency);
         using var client = Downloads(("betterf3", consumer), ("cloth-config", dependency));
-        var error = await Assert.ThrowsAsync<InvalidDataException>(() => Install(client));
+        var error = await Assert.ThrowsAsync<ClientModDependencyException>(() => Install(client));
         Assert.Contains("betterf3", error.Message); Assert.Contains("cloth-config >=26.2.0", error.Message);
-        Assert.Contains("disabled", error.Message); Assert.False(File.Exists(Managed("betterf3")));
+        Assert.Contains("disabled", error.Message); Assert.Contains("enable cloth-config", error.Message);
+        Assert.False(File.Exists(Managed("betterf3")));
         Assert.False(File.Exists(Receipt)); Assert.Equal(dependency, File.ReadAllBytes(disabled));
     }
 
@@ -215,7 +229,7 @@ public sealed class ClientModInstallerTests : IDisposable
         var bytes = FabricJar("testmod", nested: new[] {
             ("META-INF/jars/child.jar", FabricJar("childmod", new() { ["missinglib"] = ">=2" })) });
         Manifest(bytes); using var client = new HttpClient(new Handler(bytes));
-        var error = await Assert.ThrowsAsync<InvalidDataException>(() => Install(client));
+        var error = await Assert.ThrowsAsync<ClientModDependencyException>(() => Install(client));
         Assert.Contains("childmod", error.Message); Assert.Contains("missinglib >=2", error.Message);
         Assert.False(File.Exists(Destination)); Assert.False(File.Exists(Receipt));
     }
@@ -241,7 +255,7 @@ public sealed class ClientModInstallerTests : IDisposable
         Manifest(consumer); Directory.CreateDirectory(Mods);
         File.WriteAllBytes(Path.Combine(Mods, "provider.jar.disabled"), provider);
         using var client = new HttpClient(new Handler(consumer));
-        var error = await Assert.ThrowsAsync<InvalidDataException>(() => Install(client));
+        var error = await Assert.ThrowsAsync<ClientModDependencyException>(() => Install(client));
         Assert.Contains("nestedlib *, which is disabled", error.Message); Assert.False(File.Exists(Destination));
     }
 
@@ -258,7 +272,7 @@ public sealed class ClientModInstallerTests : IDisposable
         var bytes = FabricJar("testmod", new() { ["servermod"] = "*" }, nested: new[] {
             ("server.jar", FabricJar("servermod", environment: "server")) });
         Manifest(bytes); using var client = new HttpClient(new Handler(bytes));
-        var error = await Assert.ThrowsAsync<InvalidDataException>(() => Install(client));
+        var error = await Assert.ThrowsAsync<ClientModDependencyException>(() => Install(client));
         Assert.Contains("servermod *, which is missing", error.Message); Assert.False(File.Exists(Destination));
     }
 
@@ -288,10 +302,10 @@ public sealed class ClientModInstallerTests : IDisposable
         var consumer = FabricJar("consumer", new() { ["provider"] = "*" }); File.WriteAllBytes(personal, consumer);
         var receipt = File.ReadAllBytes(Receipt); WritePins();
         using var empty = Downloads();
-        var error = await Assert.ThrowsAsync<InvalidDataException>(() => Install(empty));
+        var error = await Assert.ThrowsAsync<ClientModDependencyException>(() => Install(empty));
         Assert.Contains("consumer", error.Message);
         Assert.Equal(provider, File.ReadAllBytes(Managed("provider"))); Assert.Equal(receipt, File.ReadAllBytes(Receipt));
-        Assert.Equal(consumer, File.ReadAllBytes(personal)); Assert.Empty(Directory.GetFiles(Cache, "retired-*"));
+        Assert.Equal(consumer, File.ReadAllBytes(personal)); Assert.Empty(RetiredFiles());
     }
 
     [Fact] public async Task FailedNewDownloadDoesNotRetireOldPack()
@@ -301,7 +315,7 @@ public sealed class ClientModInstallerTests : IDisposable
         using var failed = new HttpClient(new ScriptedHandler(_ => new(HttpStatusCode.ServiceUnavailable)));
         await Assert.ThrowsAsync<HttpRequestException>(() => Install(failed));
         Assert.Equal(old, File.ReadAllBytes(Destination)); Assert.Equal(receipt, File.ReadAllBytes(Receipt));
-        Assert.Empty(Directory.GetFiles(Cache, "retired-*")); Assert.False(File.Exists(Managed("nextmod")));
+        Assert.Empty(RetiredFiles()); Assert.False(File.Exists(Managed("nextmod")));
     }
 
     private sealed class InterruptedStream(byte[] bytes, Action interrupt) : Stream
@@ -341,7 +355,7 @@ public sealed class ClientModInstallerTests : IDisposable
         else await Assert.ThrowsAsync<IOException>(() => Install(failed));
         Assert.Equal(old, File.ReadAllBytes(Destination)); Assert.Equal(receipt, File.ReadAllBytes(Receipt));
         Assert.Equal("preserve", File.ReadAllText(foreignTemp)); Assert.Single(Directory.GetFiles(Cache, "*.tmp"));
-        Assert.Empty(Directory.GetFiles(Cache, "retired-*")); Assert.False(File.Exists(Managed("nextmod")));
+        Assert.Empty(RetiredFiles()); Assert.False(File.Exists(Managed("nextmod")));
     }
 
     [Fact] public async Task CancellationAtCommitBoundaryLeavesEverythingUnchanged()
@@ -353,7 +367,7 @@ public sealed class ClientModInstallerTests : IDisposable
             if (message == "Applying client mod changes...") source.Cancel();
         }, source.Token));
         Assert.Equal(old, File.ReadAllBytes(Destination)); Assert.Equal(receipt, File.ReadAllBytes(Receipt));
-        Assert.False(File.Exists(Managed("nextmod"))); Assert.Empty(Directory.GetFiles(Cache, "retired-*"));
+        Assert.False(File.Exists(Managed("nextmod"))); Assert.Empty(RetiredFiles());
     }
 
     [Fact] public async Task CancellationAfterReplacementCompletesReceiptAndAllowsLaterUpgrade()

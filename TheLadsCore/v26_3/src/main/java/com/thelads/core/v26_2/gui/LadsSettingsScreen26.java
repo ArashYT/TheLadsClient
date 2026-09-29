@@ -32,9 +32,13 @@ public class LadsSettingsScreen26 extends Screen {
         this.ui.setClipboardReader(() -> Minecraft.getInstance().keyboardHandler.getClipboard());
         this.ui.setOnOpenVideoSettings(() ->
             minecraft.gui.setScreen(new VideoSettingsScreen(this, minecraft, minecraft.options)));
+        this.ui.setOnOpenModSettings(modId -> ExternalModSettings.open(modId, this));
     }
 
     public void openModule(String name) { ui.openModule(name); }
+    /** Opens the Installed mods view (also used by the QA capture chain). */
+    public void openMods() { ui.openMods(); }
+    public boolean isModsViewOpen() { return ui.isModsViewOpen(); }
 
     @Override
     protected void init() {

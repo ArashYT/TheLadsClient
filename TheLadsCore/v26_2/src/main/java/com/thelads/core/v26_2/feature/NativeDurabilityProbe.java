@@ -17,6 +17,7 @@ import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -50,7 +51,8 @@ public final class NativeDurabilityProbe {
             bars.setEnabled(false);
             var sword = new ItemStack(Items.DIAMOND_SWORD); sword.setDamageValue(100);
             int maximum = sword.getMaxDamage(), remaining = maximum - 100;
-            check(durability(sword, TooltipFlag.NORMAL).isEmpty(), "disabled preserves basic tooltip");
+            // Lads lines are literal text; vanilla and third-party mods (Tooltips TXF) add the translatable item.durability line.
+            check(durability(sword, TooltipFlag.NORMAL).isEmpty(), "disabled adds no Lads durability line: " + lines(sword, TooltipFlag.NORMAL).stream().map(Component::getString).toList());
             bars.setEnabled(true);
             set(bars, "Detailed Durability", true); set(bars, "Show Max Durability", true);
             set(bars, "Colorize Durability", true); set(bars, "Show Item Attributes", true);
@@ -59,6 +61,7 @@ public final class NativeDurabilityProbe {
             ((DropdownOption) bars.getOption("Durability Style")).setIndex(0);
             ((DropdownOption) bars.getOption("Durability Color Style")).setIndex(0);
             var color = (ColorOption) bars.getOption("Durability Base Color"); color.setUseGlobal(false); color.setColor(0xff123456);
+            check(lines(sword, TooltipFlag.NORMAL).stream().noneMatch(NativeDurabilityProbe::itemDurabilityKey), "enabled Lads line replaces every item.durability line (no duplicate)");
             check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Durability: " + remaining + " / " + maximum)), "numbers show actual remaining/max");
             check(durability(sword, TooltipFlag.ADVANCED).size() == 1, "advanced tooltip has one durability line");
             set(bars, "Show Max Durability", false);
@@ -143,13 +146,14 @@ public final class NativeDurabilityProbe {
     private static List<Component> durabilityComponents(ItemStack item, TooltipFlag flag) {
         return lines(item, flag).stream().filter(line -> {
             String text = line.getString();
-            return text.startsWith("Durability:") || text.startsWith("[") && text.endsWith("]") || text.equals("Pristine") || text.equals("Slightly damaged") || text.equals("Severely damaged") || text.equals("Nearly broken");
+            return !itemDurabilityKey(line) && (text.startsWith("Durability:") || text.startsWith("[") && text.endsWith("]") || text.equals("Pristine") || text.equals("Slightly damaged") || text.equals("Severely damaged") || text.equals("Nearly broken"));
         }).toList();
     }
     private static List<String> durability(ItemStack item, TooltipFlag flag) { return durabilityComponents(item, flag).stream().map(Component::getString).toList(); }
     private static int firstColor(Component component) {
         int[] color = {-1}; component.getVisualOrderText().accept((index, style, codePoint) -> { color[0] = style.getColor() == null ? -1 : style.getColor().getValue(); return false; }); return color[0];
     }
+    private static boolean itemDurabilityKey(Component line) { return line.getContents() instanceof TranslatableContents text && "item.durability".equals(text.getKey()); }
     private static void set(Module module, String name, boolean value) { ((BoolOption) module.getOption(name)).set(value); }
     private static void check(boolean value, String message) { if (!value) throw new IllegalStateException(message); passed++; }
 }

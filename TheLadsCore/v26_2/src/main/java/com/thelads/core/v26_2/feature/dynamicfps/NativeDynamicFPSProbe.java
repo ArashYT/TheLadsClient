@@ -21,6 +21,7 @@ import com.thelads.core.v26_2.feature.dynamicfps.feature.state.OptionHolder;
 import com.thelads.core.v26_2.feature.dynamicfps.feature.state.WindowObserver;
 import com.thelads.core.v26_2.feature.dynamicfps.feature.volume.SmoothVolumeHandler;
 import com.thelads.core.v26_2.feature.dynamicfps.mixin.SoundManagerAccessor;
+import com.thelads.core.v26_2.feature.dynamicfps.service.Platform;
 import com.thelads.core.v26_2.feature.dynamicfps.util.JsonUtil;
 import com.thelads.core.v26_2.feature.dynamicfps.util.KeyMappingHandler;
 import com.thelads.core.v26_2.feature.dynamicfps.util.duck.DuckSoundEngine;
@@ -185,7 +186,10 @@ public final class NativeDynamicFPSProbe {
             config.setIgnoreInitialClick(IgnoreInitialClick.CONSTANT); require(ClickIgnoreHandler.isFeatureActive(), "focus click policy selectable");
             require(Arrays.stream(KeyMappingHandler.getHandlers()).allMatch(handler -> Arrays.asList(mc.options.keyMappings).contains(handler.keyMapping())), "key bindings installed in real options");
             require(((ActionOption) module.getOption("Background Profiles")).isAvailable(), "Lads advanced action wired");
-            require(DynamicFPSMod.getConfigScreen(mc.gui.screen()).getClass().getName().contains("clothconfig"), "complete editor constructs with shipped Cloth Config");
+            // Cloth Config ships in the pack but the user may switch it off; the editor then falls back to its own screen.
+            boolean cloth = Platform.getInstance().isModLoaded(Constants.CLOTH_CONFIG_ID);
+            require(DynamicFPSMod.getConfigScreen(mc.gui.screen()).getClass().getName().contains(cloth ? "clothconfig" : "FallbackConfigScreen"),
+                cloth ? "complete editor constructs with shipped Cloth Config" : "editor falls back without Cloth Config (switched off)");
         } finally {
             try { module.setEnabled(false); DynamicFPSMod.onStatusChanged(false); }
             finally {

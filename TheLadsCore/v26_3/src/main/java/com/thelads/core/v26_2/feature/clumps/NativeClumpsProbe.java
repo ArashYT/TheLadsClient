@@ -59,6 +59,8 @@ public final class NativeClumpsProbe {
                     && game.getParent().getParent().getFileName().toString().equals("artifacts")
                     && Files.isRegularFile(game.getParent().getParent().getParent().resolve("TheLadsCore/settings.gradle"))
                     && world.equals(game.resolve("saves/Client QA 26_3").toRealPath())
+                    && (world.startsWith(game) || com.thelads.core.shared.SharedContentPaths.redirectedInside(game.getParent())
+                        && world.getParent().equals(com.thelads.core.shared.SharedContentPaths.savesDir().toRealPath()))
                     && server.getWorldData().getLevelName().equals("Client QA 26.2")
                     && server.getPlayerList().getPlayers().size() == 1, "exact isolated Client QA 26.2 save with one local player");
             Vec3 position = player.position().add(4,12,4);

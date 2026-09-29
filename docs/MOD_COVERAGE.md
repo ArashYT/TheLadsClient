@@ -1,17 +1,19 @@
 # Instance mod coverage
 
-Source: The Lads Client Dev 26.3, audited 2026-09-28. 99 jars contain 98 unique Fabric mod IDs. The duplicate Faster Shadow Mapper jar is collapsed to one compatible release.
+Source: The Lads Client Dev 26.3, audited 2026-09-28. 99 jars contain 98 unique Fabric mod IDs. The duplicate Faster Shadow Mapper jar is collapsed to one compatible release. GoodMC was removed from the pack in 1.2.3, so the tables cover the other 97.
 
 Native means implemented inside Core. Modrinth means an unchanged upstream jar downloaded through its API. Original means an older original project supplies the feature instead of the source instance's newer fork; this is not a claim of identical fork behavior. Missing means it is not included.
 
 | Version | Native source features | Upstream source features | Missing | Total upstream pack jars (including dependencies and existing client extras) |
 |---|---:|---:|---:|---:|
-| 1.21.1 | 1 | 91 | 6 | 93 |
-| 1.21.11 | 1 | 91 | 6 | 101 |
-| 26.2 | 6 | 87 | 5 | 92 |
-| 26.3 | 6 | 87 | 5 | 87 |
+| 1.21.1 | 1 | 91 | 5 | 93 |
+| 1.21.11 | 1 | 91 | 5 | 101 |
+| 26.2 | 6 | 86 | 5 | 91 |
+| 26.3 | 6 | 86 | 5 | 86 |
 
-Connectivity, Cupboard, Fast Async World Save, GPU Memory Leak Fix, and Identify have no verified Modrinth project. GoodMC has no compatible release for either 1.21 target. These are explicit gaps, not silently substituted jars.
+Connectivity, Cupboard, Fast Async World Save, GPU Memory Leak Fix, and Identify have no verified Modrinth project. These are explicit gaps, not silently substituted jars.
+
+GoodMC: Old Combat & Blockhitting (`goodmc`) was removed from every version in 1.2.3; it previously shipped on 26.2 and 26.3. `tools/sync_instance_mods.py` excludes it through `REMOVED`, so refreshing the pack cannot add it back, and the 26.2/26.3 manifests list it under `retired` with its published hashes. The launcher moves copies it installed to `.lads-mod-cache\retired\goodmc\` (recoverable) and leaves copies you added or modified in place. LadsCore's separate LegacySwing module is unchanged.
 
 | Source mod | 1.21.1 | 1.21.11 | 26.2 | 26.3 |
 |---|---|---|---|---|
@@ -60,7 +62,6 @@ Connectivity, Cupboard, Fast Async World Save, GPU Memory Leak Fix, and Identify
 | FramePacer | Modrinth | Modrinth | Modrinth | Modrinth |
 | Fzzy Config | Modrinth | Modrinth | Modrinth | Modrinth |
 | Gamma Utils | Modrinth | Modrinth | Modrinth | Modrinth |
-| GoodMC | Missing | Missing | Modrinth | Modrinth |
 | Gpu memory leak fix mod | Missing | Missing | Missing | Missing |
 | Hovering Hotbar | Modrinth | Modrinth | Modrinth | Modrinth |
 | Identify | Missing | Missing | Missing | Missing |

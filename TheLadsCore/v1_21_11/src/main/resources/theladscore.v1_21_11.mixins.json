@@ -18,6 +18,9 @@
     "MouseHandlerMixin",
     "FullbrightMixin",
     "ZoomMixin",
-    "ScoreboardMixin"
+    "ScoreboardMixin",
+    "ServerListAccessor",
+    "ServerDataAccessor",
+    "ServerListSharedMixin"
   ]
 }

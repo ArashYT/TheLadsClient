@@ -9,10 +9,12 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
@@ -69,8 +71,13 @@ public partial class MainWindow : Window
     private string _launchAccountOverride = "";
     private bool _populatingLaunchSelector = false;
     private bool _showingMicrosoftSetup;
-    private List<Process> _runningProcesses = new();
+    // Games this launcher started, with their game folder. Touched only on the UI thread.
+    private readonly Dictionary<Process, string> _runningProcesses = new();
     private DispatcherTimer? _updateCheckTimer;
+    // --preview-shared <outputDir>: sandbox-only screenshot/JSON capture of the shared-content surfaces, then exit.
+    private string? _previewSharedOutput;
+    // --preview-mods <outputDir>: sandbox-only capture of the Mods page for every filter, then exit.
+    private string? _previewModsOutput;
 
     // ── 16:9 aspect ratio lock ───────────────────────────────────────────────
     private bool   _lockAspect     = false;
@@ -85,7 +92,6 @@ public partial class MainWindow : Window
     private ParticleMeshControl? _meshControl;
     private bool _meshControlAdded;
     private Avalonia.Controls.TrayIcon? _trayIcon;
-    private HashSet<string> _selectedModPaths = new();
 
     // CPU & Download Tracking
     private TimeSpan _lastCpuTime = TimeSpan.Zero;
@@ -204,6 +210,11 @@ public partial class MainWindow : Window
         LoadAccounts();
         InitializeEditor();
         if (args.Contains("--preview-accounts")) Dispatcher.UIThread.Post(() => NavigateTo("Accounts"));
+        // Program.Main already refused this switch unless THELADS_DIR and LADS_GLOBAL_MINECRAFT_DIR point at a sandbox.
+        int previewShared = Array.IndexOf(args, "--preview-shared");
+        if (previewShared >= 0 && previewShared + 1 < args.Length) _previewSharedOutput = Path.GetFullPath(args[previewShared + 1]);
+        int previewMods = Array.IndexOf(args, "--preview-mods");
+        if (previewMods >= 0 && previewMods + 1 < args.Length) _previewModsOutput = Path.GetFullPath(args[previewMods + 1]);
 
         // Enable drag-and-drop of .jar files onto the Mods page to install them.
         if (ModsPage != null)
@@ -255,6 +266,17 @@ public partial class MainWindow : Window
             startupAnimTimer.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
+            if (_previewModsOutput != null)
+            {
+                await RunModsPreviewAsync(_previewModsOutput);
+                return;
+            }
+            if (_previewSharedOutput != null)
+            {
+                await RunSharedPreviewAsync(_previewSharedOutput);
+                return;
+            }
+            _ = RunStartupSharedContentPassAsync();
 
             // Checks use a ten-minute interval; ready updates retry the idle condition
             // every fifteen seconds, including after the game or authentication ends.
@@ -279,6 +301,7 @@ public partial class MainWindow : Window
         // Stats timer (1 second)
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statsTimer.Tick += UpdateSystemStats;
+        _statsTimer.Tick += WatchModFiles;
         _statsTimer.Start();
 
         // Smoothly ease the CPU/RAM numbers toward their targets (like the FPS counter)
@@ -393,8 +416,9 @@ public partial class MainWindow : Window
     private bool _windowClosed;
 
     private Task PollForUpdatesAsync() => _autoUpdater.PollAsync(
-        () => _windowClosed || _launching || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
-            || _runningProcesses.Any(IsGameRunning),
+        () => _windowClosed || _launching || _modsBusy || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
+            || _runningProcesses.Keys.Any(IsGameRunning) || SharedContentService.Instance.IsBusy
+            || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p))),
         message =>
         {
             Dispatcher.UIThread.Post(() =>
@@ -413,6 +437,20 @@ public partial class MainWindow : Window
         try { return !process.HasExited; }
         catch (InvalidOperationException) { return false; }
     }
+
+    /// <summary>A game started for this folder by any launcher instance (running marker). Unreadable counts as running.</summary>
+    private bool GameRunningByMarker(string gameDirectory)
+    {
+        try { return RunningGameMarker.IsRunning(gameDirectory); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log($"[Launcher] Could not read the running-game marker in '{gameDirectory}': {ex.Message}. Treating the game as running.");
+            return true;
+        }
+    }
+
+    private bool IsGameRunningFor(string gameDirectory) =>
+        _runningProcesses.Any(p => SafeFileOps.PathsEqual(p.Value, gameDirectory) && IsGameRunning(p.Key)) || GameRunningByMarker(gameDirectory);
 
     private async void ReleaseNotes_Click(object? sender, RoutedEventArgs e) => await ShowReleaseNotesAsync();
 
@@ -462,12 +500,9 @@ public partial class MainWindow : Window
     private void NavAccounts_Click(object? sender, RoutedEventArgs e) { LoadAccounts(); NavigateTo("Accounts"); }
     private void ManageAccountsShortcutBtn_Click(object? sender, RoutedEventArgs e) { LoadAccounts(); NavigateTo("Accounts"); }
     private void NavSettings_Click(object? sender, RoutedEventArgs e) => NavigateTo("Settings");
-    private bool _modsListLoaded = false;
     private void NavMods_Click(object? sender, RoutedEventArgs e)
     {
-        // Only build the list the first time. Rebuilding on every visit reset the scroll
-        // position and replayed the row fade-in animation. Refresh/Add still rebuild explicitly.
-        if (!_modsListLoaded) { _modsListLoaded = true; LoadModsList(); }
+        ReloadModsInventory();
         NavigateTo("Mods");
     }
     private void NavFiles_Click(object? sender, RoutedEventArgs e) { LoadFiles(settings.InstancePath); NavigateTo("Files"); }
@@ -480,50 +515,72 @@ public partial class MainWindow : Window
     private string _filesCurrentDir = "";
     private string _filesRootDir = "";
 
+    /// <summary>The Files page follows the active profile: back to its game folder on every profile switch.</summary>
+    private void ResetFilesRoot()
+    {
+        _filesRootDir = settings.InstancePath;
+        _filesCurrentDir = settings.InstancePath;
+        if (FilesPage.IsVisible) LoadFiles(_filesRootDir);
+    }
+
+    private static TextBlock FilesNote(string text) => new()
+    {
+        Text = text, Foreground = Brush.Parse("#A0A1AA"), FontSize = 13, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4)
+    };
+
     private void LoadFiles(string dir)
     {
+        if (string.IsNullOrWhiteSpace(_filesRootDir))
+            _filesRootDir = settings.InstancePath;
+        if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir) || !SafeFileOps.IsSameOrInside(dir, _filesRootDir))
+            dir = _filesRootDir;
+
+        _filesCurrentDir = dir;
+        bool atRoot = SafeFileOps.PathsEqual(dir, _filesRootDir);
+        FilesUpBtn.IsEnabled = !atRoot;
+        FilesPathText.Text = dir;
+        FilesList.Children.Clear();
+
+        if (!Directory.Exists(dir))
+        {
+            FilesList.Children.Add(FilesNote("This profile has no game files yet. Launch it to create its game folder."));
+            return;
+        }
+
         try
         {
-            if (string.IsNullOrWhiteSpace(_filesRootDir))
-                _filesRootDir = settings.InstancePath;
-            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
-                dir = _filesRootDir;
-
-            _filesCurrentDir = dir;
-            FilesPathText.Text = dir;
-            FilesUpBtn.IsEnabled = !string.Equals(
-                Path.GetFullPath(dir).TrimEnd('\\', '/'),
-                Path.GetFullPath(_filesRootDir).TrimEnd('\\', '/'),
-                StringComparison.OrdinalIgnoreCase);
-
-            FilesList.Children.Clear();
-
-            if (!Directory.Exists(dir))
-            {
-                FilesList.Children.Add(new TextBlock
-                {
-                    Text = "This profile has no game files yet. Launch it to create its game folder.",
-                    Foreground = Brush.Parse("#A0A1AA"), FontSize = 13,
-                    TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4)
-                });
-                return;
-            }
+            // Worlds, resource packs and shader packs are links to the shared folders: badge them and say where their content lives.
+            var statuses = SharedContentService.Instance.GetStatus(_filesRootDir);
+            var sharedArea = statuses.FirstOrDefault(s => s.State is SharedFolderState.Shared or SharedFolderState.GlobalFolder
+                && SafeFileOps.IsSameOrInside(dir, s.ProfilePath));
+            if (sharedArea != null) FilesPathText.Text = $"{dir}   (shared with every version: {sharedArea.SharedPath})";
 
             foreach (var d in Directory.GetDirectories(dir).OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase))
-                FilesList.Children.Add(BuildFileRow(d, true));
+                FilesList.Children.Add(BuildFileRow(d, true, atRoot ? statuses.FirstOrDefault(s => SafeFileOps.PathsEqual(s.ProfilePath, d)) : null));
             foreach (var f in Directory.GetFiles(dir).OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase))
-                FilesList.Children.Add(BuildFileRow(f, false));
+                FilesList.Children.Add(BuildFileRow(f, false, null));
 
             if (FilesList.Children.Count == 0)
-                FilesList.Children.Add(new TextBlock { Text = "Empty folder.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4) });
+                FilesList.Children.Add(FilesNote("Empty folder."));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Log($"[Files] {ex.Message}");
+            Log($"[Files] Could not list '{dir}': {ex.Message}");
+            FilesList.Children.Add(FilesNote($"Could not list this folder: {ex.Message}"));
         }
     }
 
-    private Border BuildFileRow(string path, bool isDir)
+    private static (string Label, string Tip)? SharedBadge(SharedFolderStatus status) => status.State switch
+    {
+        SharedFolderState.Shared => ("SHARED", status.Detail),
+        SharedFolderState.GlobalFolder => ("GLOBAL FOLDER", status.Detail),
+        SharedFolderState.SeparateFolder => ("NOT SHARED YET", status.Detail),
+        SharedFolderState.LinkedElsewhere => ("LINKED ELSEWHERE", status.Detail),
+        SharedFolderState.BrokenLink => ("BROKEN LINK", status.Detail),
+        _ => null
+    };
+
+    private Border BuildFileRow(string path, bool isDir, SharedFolderStatus? shared)
     {
         string name = Path.GetFileName(path);
         var row = new Border
@@ -548,20 +605,31 @@ public partial class MainWindow : Window
         Grid.SetColumn(nameText, 1);
         grid.Children.Add(nameText);
 
-        if (!isDir)
+        if (shared != null && SharedBadge(shared) is { } badge)
         {
-            try
+            var badgeBorder = new Border
             {
-                long bytes = new FileInfo(path).Length;
-                var sizeText = new TextBlock { Text = FormatBytes(bytes), Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 11, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) };
-                Grid.SetColumn(sizeText, 2);
-                grid.Children.Add(sizeText);
-            }
-            catch { }
+                Background = new SolidColorBrush(Color.Parse("#303137")), CornerRadius = new CornerRadius(4), Padding = new Thickness(6, 2),
+                Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Child = new TextBlock { Text = badge.Label, Foreground = new SolidColorBrush(Color.Parse("#E27676")), FontSize = 9, FontWeight = FontWeight.Bold }
+            };
+            Avalonia.Controls.ToolTip.SetTip(badgeBorder, badge.Tip);
+            Grid.SetColumn(badgeBorder, 2);
+            grid.Children.Add(badgeBorder);
+        }
+        else if (!isDir)
+        {
+            string size;
+            try { size = FormatBytes(new FileInfo(path).Length); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { size = "size unknown"; }
+            var sizeText = new TextBlock { Text = size, Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 11, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) };
+            Grid.SetColumn(sizeText, 2);
+            grid.Children.Add(sizeText);
         }
 
         var delBtn = new Button { Content = "✕", Classes = { "danger" }, Width = 28, Height = 26, FontSize = 11, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
-        delBtn.Click += (s, e) => DeleteFileEntry(path, isDir);
+        Avalonia.Controls.ToolTip.SetTip(delBtn, "Move to the Recycle Bin");
+        delBtn.Click += async (s, e) => await DeleteFileEntryAsync(path);
         Grid.SetColumn(delBtn, 3);
         grid.Children.Add(delBtn);
 
@@ -574,19 +642,38 @@ public partial class MainWindow : Window
         return row;
     }
 
-    private void DeleteFileEntry(string path, bool isDir)
+    /// <summary>
+    /// Every delete asks first and goes to the Recycle Bin. Shared-folder links are refused (deleting them would not remove
+    /// content, and deleting through them would remove it for every version); content inside them is confirmed as shared.
+    /// </summary>
+    private async Task DeleteFileEntryAsync(string path)
     {
+        string name = Path.GetFileName(path);
         try
         {
-            if (isDir) Directory.Delete(path, true);
-            else File.Delete(path);
-            Log($"[Files] Deleted: {Path.GetFileName(path)}");
-            LoadFiles(_filesCurrentDir);
+            if (SafeFileOps.IsLink(path))
+            {
+                await ShowLadsDialogAsync("Shared folder link",
+                    $"'{name}' is a link to '{SafeFileOps.GetLinkTarget(path)}', not a folder of its own. Worlds, resource packs and shader packs are shared by every version, so this link cannot be deleted. Open the shared folder (Home: Worlds, Resource packs, Shader packs) to manage its content.");
+                return;
+            }
+            var shared = SharedContentService.Instance.GetStatus(_filesRootDir).FirstOrDefault(s =>
+                s.State is SharedFolderState.Shared or SharedFolderState.GlobalFolder && SafeFileOps.IsSameOrInside(path, s.ProfilePath));
+            bool confirmed = shared != null
+                ? await ShowLadsDialogAsync("Delete shared content",
+                    $"'{name}' is shared content used by every version (it lives in '{shared.SharedPath}'). Deleting it removes it for all versions. Move it to the Recycle Bin?",
+                    "Move to Recycle Bin", "Cancel", danger: true)
+                : await ShowLadsDialogAsync("Delete", $"Move '{name}' to the Recycle Bin?", "Move to Recycle Bin", "Cancel", danger: true);
+            if (!confirmed) return;
+            await Task.Run(() => SafeFileOps.DeleteToRecycleBin(path));
+            Log($"[Files] Moved to the Recycle Bin: {path}");
         }
         catch (Exception ex)
         {
-            Log($"[Files] Delete failed: {ex.Message}");
+            Log($"[Files] Delete failed for '{path}': {ex.Message}");
+            await ShowLadsDialogAsync("Could not delete", ex.Message);
         }
+        LoadFiles(_filesCurrentDir);
     }
 
     private static string FormatBytes(long b)
@@ -603,9 +690,10 @@ public partial class MainWindow : Window
         {
             Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            Log($"[Files] Open failed: {ex.Message}");
+            Log($"[Files] Open failed for '{path}': {ex.Message}");
+            _ = ShowLadsDialogAsync("Could not open", $"'{path}': {ex.Message}");
         }
     }
 
@@ -623,40 +711,127 @@ public partial class MainWindow : Window
     //  GALLERY
     // ═══════════════════════════════════════
 
-    private void NavGallery_Click(object? sender, RoutedEventArgs e) { LoadGallery(); NavigateTo("Gallery"); }
-    private void GallerySort_Changed(object? sender, Avalonia.Controls.SelectionChangedEventArgs e) { if (GalleryPage?.IsVisible == true) LoadGallery(); }
-    private void ImgurId_Changed(object? sender, RoutedEventArgs e) { settings.ImgurClientId = ImgurIdBox.Text ?? ""; settings.Save(); }
-    private void GalleryOpenFolder_Click(object? sender, RoutedEventArgs e) => OpenPath(Path.Combine(settings.InstancePath, "screenshots"));
+    // Screenshots live once in the shared folder: 26.x writes there directly, 1.21.x is copied there when the game closes.
+    private const int GalleryPageSize = 60;
+    private List<(string Path, DateTime Time)> _galleryFiles = new();
+    private int _galleryShown;
+    private int _galleryGeneration;
+    private Task _galleryThumbnails = Task.CompletedTask;
+    private string? _galleryFavoritesError;
 
-    private void LoadGallery()
+    private void NavGallery_Click(object? sender, RoutedEventArgs e) { _ = LoadGalleryAsync(); NavigateTo("Gallery"); }
+    private void GallerySort_Changed(object? sender, Avalonia.Controls.SelectionChangedEventArgs e) { if (GalleryPage?.IsVisible == true) _ = LoadGalleryAsync(); }
+    private void ImgurId_Changed(object? sender, RoutedEventArgs e) { settings.ImgurClientId = ImgurIdBox.Text ?? ""; settings.Save(); }
+    private void GalleryOpenFolder_Click(object? sender, RoutedEventArgs e)
     {
+        var error = OpenFolderCreatingIt(SharedContentService.Instance.ScreenshotsDirectory);
+        if (error != null) GalleryStatusText.Text = error;
+    }
+    private void GalleryLoadMore_Click(object? sender, RoutedEventArgs e) => ShowMoreScreenshots();
+
+    private async Task LoadGalleryAsync()
+    {
+        int generation = ++_galleryGeneration;
         SyncFavoritesWithGame();
         GalleryList.Children.Clear();
+        GalleryLoadMoreBtn.IsVisible = false;
         if (ImgurIdBox != null) ImgurIdBox.Text = settings.ImgurClientId;
 
-        string dir = Path.Combine(settings.InstancePath, "screenshots");
-        if (!Directory.Exists(dir))
+        string dir = SharedContentService.Instance.ScreenshotsDirectory;
+        int sort = GallerySortBox?.SelectedIndex ?? 0;
+        var favorites = new HashSet<string>(settings.GalleryFavorites);
+        GalleryStatusText.Text = "Loading screenshots...";
+        List<(string Path, DateTime Time)> files;
+        try
         {
-            GalleryList.Children.Add(new TextBlock { Text = "No screenshots folder yet.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4) });
+            files = await Task.Run(() => ListScreenshots(dir, sort, favorites));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            if (generation != _galleryGeneration) return;
+            GalleryStatusText.Text = $"Could not read '{dir}': {ex.Message}";
+            Log($"[Gallery] Could not read '{dir}': {ex.Message}");
             return;
         }
-
-        var files = Directory.GetFiles(dir, "*.png").Concat(Directory.GetFiles(dir, "*.jpg")).ToList();
-        int sort = GallerySortBox?.SelectedIndex ?? 0;
-        if (sort == 1) files = files.OrderBy(f => File.GetLastWriteTime(f)).ToList();
-        else if (sort == 2) files = files.OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase).ToList();
-        else if (sort == 3) files = files.OrderByDescending(f => settings.GalleryFavorites.Contains(Path.GetFileName(f))).ThenByDescending(f => File.GetLastWriteTime(f)).ToList();
-        else files = files.OrderByDescending(f => File.GetLastWriteTime(f)).ToList();
-
+        if (generation != _galleryGeneration) return;
+        _galleryFiles = files;
+        _galleryShown = 0;
         if (files.Count == 0)
         {
-            GalleryList.Children.Add(new TextBlock { Text = "No screenshots yet.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4) });
+            GalleryStatusText.Text = _galleryFavoritesError ?? dir;
+            GalleryList.Children.Add(new TextBlock { Text = "No screenshots yet. Every version saves them to the shared screenshots folder.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4) });
             return;
         }
-        foreach (var f in files) GalleryList.Children.Add(BuildGalleryCard(f));
+        ShowMoreScreenshots();
     }
 
-    private Border BuildGalleryCard(string path)
+    private static List<(string Path, DateTime Time)> ListScreenshots(string dir, int sort, HashSet<string> favorites)
+    {
+        if (!Directory.Exists(dir)) return new();
+        var files = new DirectoryInfo(dir).EnumerateFiles()
+            .Where(f => f.Extension.Equals(".png", StringComparison.OrdinalIgnoreCase) || f.Extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase))
+            .Select(f => (Path: f.FullName, Time: f.LastWriteTime));
+        return (sort switch
+        {
+            1 => files.OrderBy(f => f.Time),
+            2 => files.OrderBy(f => System.IO.Path.GetFileName(f.Path), StringComparer.OrdinalIgnoreCase),
+            3 => files.OrderByDescending(f => favorites.Contains(System.IO.Path.GetFileName(f.Path))).ThenByDescending(f => f.Time),
+            _ => files.OrderByDescending(f => f.Time)
+        }).ToList();
+    }
+
+    /// <summary>Adds the next page of cards; their thumbnails are decoded off the UI thread.</summary>
+    private void ShowMoreScreenshots()
+    {
+        var page = _galleryFiles.Skip(_galleryShown).Take(GalleryPageSize).ToList();
+        _galleryShown += page.Count;
+        var cards = new List<(string Path, Image Image, TextBlock Meta)>();
+        foreach (var (path, time) in page)
+        {
+            GalleryList.Children.Add(BuildGalleryCard(path, time, out var image, out var meta));
+            cards.Add((path, image, meta));
+        }
+        int left = _galleryFiles.Count - _galleryShown;
+        GalleryLoadMoreBtn.IsVisible = left > 0;
+        GalleryLoadMoreBtn.Content = $"Load more ({left} left)";
+        GalleryStatusText.Text = $"{_galleryShown} of {_galleryFiles.Count} · {SharedContentService.Instance.ScreenshotsDirectory}"
+            + (_galleryFavoritesError != null ? $" · {_galleryFavoritesError}" : "");
+        _galleryThumbnails = LoadGalleryThumbnailsAsync(cards, _galleryGeneration);
+    }
+
+    private async Task LoadGalleryThumbnailsAsync(List<(string Path, Image Image, TextBlock Meta)> cards, int generation)
+    {
+        foreach (var card in cards)
+        {
+            var (bitmap, meta, error) = await Task.Run(() => ReadGalleryThumbnail(card.Path));
+            if (generation != _galleryGeneration)
+            {
+                bitmap?.Dispose();
+                return;
+            }
+            card.Image.Source = bitmap;
+            card.Meta.Text = error ?? meta;
+            card.Meta.IsVisible = card.Meta.Text.Length > 0;
+        }
+    }
+
+    private static (Bitmap? Bitmap, string Meta, string? Error) ReadGalleryThumbnail(string path)
+    {
+        Bitmap? bitmap = null;
+        string? error = null;
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            bitmap = Bitmap.DecodeToWidth(stream, 340);
+        }
+        catch (Exception ex) // the image decoder throws plain exceptions for damaged files
+        {
+            error = $"Preview unavailable: {ex.Message}";
+        }
+        return (bitmap, ReadScreenshotMeta(path), error);
+    }
+
+    private Border BuildGalleryCard(string path, DateTime time, out Image image, out TextBlock meta)
     {
         string name = Path.GetFileName(path);
         bool fav = settings.GalleryFavorites.Contains(name);
@@ -664,47 +839,47 @@ public partial class MainWindow : Window
         var card = new Border { Background = new SolidColorBrush(Color.Parse("#14141F")), CornerRadius = new CornerRadius(8), Margin = new Thickness(6), Width = 182, Padding = new Thickness(6) };
         var stack = new StackPanel { Spacing = 4 };
 
-        var img = new Image { Width = 170, Height = 96, Stretch = Avalonia.Media.Stretch.UniformToFill };
-        try { using var fs = File.OpenRead(path); img.Source = Bitmap.DecodeToWidth(fs, 340); } catch { }
-        var imgBorder = new Border { CornerRadius = new CornerRadius(4), ClipToBounds = true, Height = 96, Child = img };
+        image = new Image { Width = 170, Height = 96, Stretch = Avalonia.Media.Stretch.UniformToFill };
+        var imgBorder = new Border { CornerRadius = new CornerRadius(4), ClipToBounds = true, Height = 96, Background = new SolidColorBrush(Color.Parse("#25262A")), Child = image };
         imgBorder.PointerPressed += (s, e) => ShowGalleryViewer(path);
         stack.Children.Add(imgBorder);
 
         stack.Children.Add(new TextBlock { Text = name, Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")), FontSize = 11, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis });
-        stack.Children.Add(new TextBlock { Text = File.GetLastWriteTime(path).ToString("g"), Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 10 });
+        stack.Children.Add(new TextBlock { Text = time.ToString("g"), Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 10 });
 
-        // Metadata sidecar (written in-game): server/world, coords, biome
-        string metaLine = ReadScreenshotMeta(path);
-        if (!string.IsNullOrEmpty(metaLine))
-        {
-            stack.Children.Add(new TextBlock { Text = metaLine, Foreground = new SolidColorBrush(Color.Parse("#7A88B0")), FontSize = 10, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis });
-        }
+        // Metadata sidecar (written in-game): server/world, coords, biome. Filled in with the thumbnail.
+        meta = new TextBlock { Foreground = new SolidColorBrush(Color.Parse("#7A88B0")), FontSize = 10, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis, IsVisible = false };
+        stack.Children.Add(meta);
 
         var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4, Margin = new Thickness(0, 2, 0, 0) };
-        actions.Children.Add(MiniGalBtn("📋", "Copy image to clipboard", () => CopyImageToClipboard(path)));
-        actions.Children.Add(MiniGalBtn("🔗", "Upload to Imgur (copies link)", () => UploadImgur(path)));
-        actions.Children.Add(MiniGalBtn("📂", "Show in folder", () => OpenFolderSelect(path)));
-        actions.Children.Add(MiniGalBtn(fav ? "★" : "☆", "Favorite", () => ToggleGalleryFav(name)));
-        actions.Children.Add(MiniGalBtn("✕", "Delete", () => DeleteScreenshot(path)));
+        actions.Children.Add(MiniGalBtn("📋", "Copy image to clipboard", _ => CopyImageToClipboard(path)));
+        actions.Children.Add(MiniGalBtn("🔗", "Upload to Imgur (copies link)", _ => UploadImgur(path)));
+        actions.Children.Add(MiniGalBtn("📂", "Show in folder", _ => OpenFolderSelect(path)));
+        actions.Children.Add(MiniGalBtn(fav ? "★" : "☆", "Favorite", button =>
+        {
+            button.Content = ToggleGalleryFav(name) ? "★" : "☆";
+            if (GallerySortBox?.SelectedIndex == 3) _ = LoadGalleryAsync();
+        }));
+        actions.Children.Add(MiniGalBtn("✕", "Move to the Recycle Bin", button => _ = DeleteScreenshotAsync(path)));
         stack.Children.Add(actions);
 
         card.Child = stack;
         return card;
     }
 
-    private Button MiniGalBtn(string content, string tip, Action onClick)
+    private Button MiniGalBtn(string content, string tip, Action<Button> onClick)
     {
         var b = new Button { Content = content, Width = 30, Height = 26, FontSize = 12, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
         Avalonia.Controls.ToolTip.SetTip(b, tip);
-        b.Click += (s, e) => onClick();
+        b.Click += (s, e) => onClick(b);
         return b;
     }
 
-    private string ReadScreenshotMeta(string pngPath)
+    private static string ReadScreenshotMeta(string pngPath)
     {
+        string metaPath = pngPath + ".json";
         try
         {
-            string metaPath = pngPath + ".json";
             if (!File.Exists(metaPath)) return "";
             using var doc = JsonDocument.Parse(File.ReadAllText(metaPath));
             var root = doc.RootElement;
@@ -721,90 +896,76 @@ public partial class MainWindow : Window
                 parts.Add("seed " + sd.GetInt64());
             return string.Join("  ·  ", parts);
         }
-        catch { return ""; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException)
+        {
+            return $"Details unreadable ({Path.GetFileName(metaPath)}: {ex.Message})";
+        }
     }
+
+    // Favorites are global (settings), like the shared screenshots folder they name. The active profile's
+    // <game>\config\gallery_favorites.json only mirrors them: nothing else writes that file, and reading it back replaced the
+    // global list with another profile's older copy on every profile switch (favorites were lost).
+    private string GalleryFavoritesMirror => Path.Combine(settings.InstancePath, "config", "gallery_favorites.json");
 
     private void SyncFavoritesWithGame()
     {
-        try
-        {
-            string favPath = Path.Combine(settings.InstancePath, "config", "gallery_favorites.json");
-            if (File.Exists(favPath))
-            {
-                string json = File.ReadAllText(favPath);
-                var gameFavs = JsonSerializer.Deserialize<List<string>>(json);
-                if (gameFavs != null)
-                {
-                    bool changed = false;
-                    foreach (var fav in gameFavs)
-                    {
-                        if (!settings.GalleryFavorites.Contains(fav))
-                        {
-                            settings.GalleryFavorites.Add(fav);
-                            changed = true;
-                        }
-                    }
-                    if (settings.GalleryFavorites.Count != gameFavs.Count || changed)
-                    {
-                        settings.GalleryFavorites = gameFavs;
-                        settings.Save();
-                    }
-                }
-            }
-            else
-            {
-                if (settings.GalleryFavorites.Count > 0)
-                {
-                    string? dir = Path.GetDirectoryName(favPath);
-                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
-                    string json = JsonSerializer.Serialize(settings.GalleryFavorites);
-                    File.WriteAllText(favPath, json);
-                }
-            }
-        }
-        catch { }
+        _galleryFavoritesError = null;
+        if (settings.GalleryFavorites.Count > 0 || File.Exists(GalleryFavoritesMirror)) WriteGalleryFavoritesMirror();
     }
 
-    private void ToggleGalleryFav(string name)
+    private void SaveGalleryFavorites()
     {
-        if (settings.GalleryFavorites.Contains(name)) settings.GalleryFavorites.Remove(name);
-        else settings.GalleryFavorites.Add(name);
         settings.Save();
-        try
-        {
-            string favPath = Path.Combine(settings.InstancePath, "config", "gallery_favorites.json");
-            string? dir = Path.GetDirectoryName(favPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
-            string json = JsonSerializer.Serialize(settings.GalleryFavorites);
-            File.WriteAllText(favPath, json);
-        }
-        catch { }
-        LoadGallery();
+        WriteGalleryFavoritesMirror();
     }
 
-    private void DeleteScreenshot(string path)
+    private void WriteGalleryFavoritesMirror()
     {
-        try {
-            File.Delete(path);
-            Log($"[Gallery] Deleted: {Path.GetFileName(path)}");
-            string jsonPath = path + ".json";
-            if (File.Exists(jsonPath)) File.Delete(jsonPath);
-            string name = Path.GetFileName(path);
-            if (settings.GalleryFavorites.Contains(name))
-            {
-                settings.GalleryFavorites.Remove(name);
-                settings.Save();
-                try
-                {
-                    string favPath = Path.Combine(settings.InstancePath, "config", "gallery_favorites.json");
-                    string json = JsonSerializer.Serialize(settings.GalleryFavorites);
-                    File.WriteAllText(favPath, json);
-                }
-                catch {}
-            }
-            LoadGallery();
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(GalleryFavoritesMirror)!);
+            File.WriteAllText(GalleryFavoritesMirror, JsonSerializer.Serialize(settings.GalleryFavorites));
         }
-        catch (Exception ex) { Log($"[Gallery] delete failed: {ex.Message}"); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _galleryFavoritesError = $"Favorites are saved, but the copy '{GalleryFavoritesMirror}' could not be written: {ex.Message}";
+            GalleryStatusText.Text = _galleryFavoritesError;
+            Log($"[Gallery] {_galleryFavoritesError}");
+        }
+    }
+
+    /// <summary>Returns whether the screenshot is a favorite now.</summary>
+    private bool ToggleGalleryFav(string name)
+    {
+        bool favorite = !settings.GalleryFavorites.Remove(name);
+        if (favorite) settings.GalleryFavorites.Add(name);
+        SaveGalleryFavorites();
+        return favorite;
+    }
+
+    private async Task DeleteScreenshotAsync(string path)
+    {
+        string name = Path.GetFileName(path);
+        if (!await ShowLadsDialogAsync("Delete screenshot",
+                $"Move '{name}' to the Recycle Bin? Screenshots are shared by every version.", "Move to Recycle Bin", "Cancel", danger: true))
+            return;
+        try
+        {
+            await Task.Run(() =>
+            {
+                SafeFileOps.DeleteToRecycleBin(path);
+                string sidecar = path + ".json";
+                if (File.Exists(sidecar)) SafeFileOps.DeleteToRecycleBin(sidecar);
+            });
+            Log($"[Gallery] Moved to the Recycle Bin: {path}");
+            if (settings.GalleryFavorites.Remove(name)) SaveGalleryFavorites();
+        }
+        catch (Exception ex)
+        {
+            Log($"[Gallery] Delete failed for '{path}': {ex.Message}");
+            await ShowLadsDialogAsync("Could not delete the screenshot", $"'{name}': {ex.Message}");
+        }
+        await LoadGalleryAsync();
     }
 
     private string _viewerPath = "";
@@ -1022,7 +1183,7 @@ public partial class MainWindow : Window
     private void MinimizeBtn_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void CloseBtn_Click(object? sender, RoutedEventArgs e)
     {
-        if (settings.CloseToTray && _runningProcesses.Any(p => !p.HasExited))
+        if (settings.CloseToTray && _runningProcesses.Keys.Any(IsGameRunning))
             this.Hide();
         else
             Environment.Exit(0);
@@ -1203,13 +1364,7 @@ public partial class MainWindow : Window
             double launcherGb = proc.WorkingSet64 / (1024.0 * 1024.0 * 1024.0);
             _targetRam = launcherGb;
 
-            if (Directory.Exists(Path.Combine(settings.InstancePath, "mods")))
-            {
-                int modCount = Directory.GetFiles(Path.Combine(settings.InstancePath, "mods"), "*.jar").Length;
-                ModCountText.Text = modCount.ToString();
-            }
-
-            var activeProcesses = _runningProcesses.Where(p => !p.HasExited).ToList();
+            var activeProcesses = _runningProcesses.Keys.Where(IsGameRunning).ToList();
             if (activeProcesses.Count > 0)
             {
                 double totalGameRam = 0;
@@ -1229,8 +1384,13 @@ public partial class MainWindow : Window
                 GameStateText.Text = "IDLE";
             }
         }
-        catch { }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            if (!_statsErrorLogged) Log($"[Launcher] Could not read process statistics: {ex.Message}");
+            _statsErrorLogged = true;
+        }
     }
+    private bool _statsErrorLogged;
 
     // ═══════════════════════════════════════
     //  LOGGING
@@ -1844,6 +2004,387 @@ public partial class MainWindow : Window
             StatusText.Text = "Failed to open folder: " + ex.Message;
             Log($"[Launcher] Open folder failed: {ex.Message}");
         }
+    }
+
+    // ═══════════════════════════════════════
+    //  SHARED CONTENT (worlds, packs, servers)
+    // ═══════════════════════════════════════
+
+    /// <summary>What the Home folder buttons open: the shared folders every version uses (also written by --preview-shared).</summary>
+    private static string SharedFolderTarget(string folder) => folder switch
+    {
+        "saves" => SharedContentService.Instance.SavesDirectory,
+        "resourcepacks" => SharedContentService.Instance.ResourcePacksDirectory,
+        "shaderpacks" => SharedContentService.Instance.ShaderPacksDirectory,
+        "screenshots" => SharedContentService.Instance.ScreenshotsDirectory,
+        _ => throw new ArgumentOutOfRangeException(nameof(folder), folder, "Not a shared folder.")
+    };
+
+    private void OpenSharedFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.Tag is not string folder) return;
+        var error = OpenFolderCreatingIt(SharedFolderTarget(folder));
+        if (error != null) StatusText.Text = error;
+    }
+
+    /// <summary>Creates the folder when missing and opens it in Explorer. Returns the error to show, or null.</summary>
+    private string? OpenFolderCreatingIt(string dir)
+    {
+        try
+        {
+            Directory.CreateDirectory(dir);
+            Process.Start(new ProcessStartInfo { FileName = dir, UseShellExecute = true });
+            Log($"[Launcher] Opened folder: {dir}");
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            Log($"[Launcher] Could not open '{dir}': {ex.Message}");
+            return $"Could not open '{dir}': {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Code-built dialog in the style of the 'Game Already Running' window. With <paramref name="confirmText"/> it asks and
+    /// returns true when that button was pressed; without it, it only informs.
+    /// </summary>
+    private async Task<bool> ShowLadsDialogAsync(string title, string message, string? confirmText = null, string cancelText = "OK",
+        bool danger = false, bool confirmEnabled = true) =>
+        await ShowLadsChoiceAsync(title, message, confirmText == null ? Array.Empty<(string, bool, bool)>()
+            : new[] { (confirmText, danger, confirmEnabled) }, cancelText) == 0;
+
+    /// <summary>
+    /// The same dialog with one button per choice (a disabled choice cannot be pressed) and a cancel button. Returns the
+    /// index of the pressed choice, or -1 for cancel, closing the window, or a hidden (tray) window.
+    /// </summary>
+    private async Task<int> ShowLadsChoiceAsync(string title, string message, IReadOnlyList<(string Text, bool Danger, bool Enabled)> choices,
+        string cancelText = "Cancel")
+    {
+        if (!IsVisible)
+        {
+            // A hidden (tray) window cannot own a dialog; the message still reaches the log and the status line.
+            Log($"[Launcher] {title}: {message}");
+            StatusText.Text = message;
+            return -1;
+        }
+        return await CreateLadsDialog(title, message, choices, cancelText).ShowDialog<int?>(this) ?? -1;
+    }
+
+    private static Window CreateLadsDialog(string title, string message, IReadOnlyList<(string Text, bool Danger, bool Enabled)> choices, string cancelText)
+    {
+        var dialog = new Window
+        {
+            Title = title,
+            Width = choices.Count > 1 ? 600 : 480, SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = new SolidColorBrush(Color.Parse("#17181B")),
+            CanResize = false
+        };
+        var panel = new StackPanel { Margin = new Thickness(20), Spacing = 12 };
+        panel.Children.Add(new TextBlock { Text = title, Foreground = Brushes.Orange, FontSize = 16, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new ScrollViewer { MaxHeight = 420, Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = Brushes.White, FontSize = 12, Margin = new Thickness(0, 0, 14, 0) } });
+        var buttons = new WrapPanel { HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
+        for (int i = 0; i < choices.Count; i++)
+        {
+            int index = i;
+            var confirm = new Button
+            {
+                Content = new TextBlock { Text = choices[i].Text, TextWrapping = TextWrapping.Wrap, MaxWidth = 300 },
+                Classes = { choices[i].Danger ? "danger" : "launch" }, MinHeight = 32, Padding = new Thickness(14, 6),
+                VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center, IsEnabled = choices[i].Enabled, Margin = new Thickness(0, 0, 8, 0)
+            };
+            confirm.Click += (_, _) => dialog.Close(index);
+            buttons.Children.Add(confirm);
+        }
+        var cancel = new Button { Content = cancelText, MinWidth = 80, Height = 32, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        cancel.Click += (_, _) => dialog.Close(-1);
+        buttons.Children.Add(cancel);
+        panel.Children.Add(buttons);
+        dialog.Content = panel;
+        return dialog;
+    }
+
+    // Per game folder: the last prepare report that needs the user's attention (renamed, waiting, warned or kept aside).
+    private readonly Dictionary<string, (string Profile, SharedContentReport Report)> _sharedNotices = new(StringComparer.OrdinalIgnoreCase);
+
+    private static bool NeedsNotice(SharedContentReport report) =>
+        report.Renamed > 0 || report.Pending > 0 || report.Warnings.Count > 0 || report.BackupPath != null;
+
+    /// <summary>Logs a prepare report and keeps the persistent notice (Home + Profiles) in step with it.</summary>
+    private void RecordSharedReport(string gameDirectory, string profileName, SharedContentReport report)
+    {
+        foreach (var message in report.Messages) Log($"[Shared] {profileName}: {message}");
+        foreach (var warning in report.Warnings) Log($"[Shared WARNING] {profileName}: {warning}");
+        var key = Path.TrimEndingDirectorySeparator(Path.GetFullPath(gameDirectory));
+        if (NeedsNotice(report)) _sharedNotices[key] = (profileName, report);
+        else if (!report.Skipped) _sharedNotices.Remove(key); // a skipped run (game running) says nothing new
+        RenderSharedNotices();
+    }
+
+    private void RecordSharedReports(IReadOnlyDictionary<string, SharedContentReport> reports)
+    {
+        var names = _profileService.GetProfiles().ToDictionary(
+            p => Path.TrimEndingDirectorySeparator(Path.GetFullPath(_pathService.GetProfileDirectory(p))), p => p.Name, StringComparer.OrdinalIgnoreCase);
+        foreach (var (gameDirectory, report) in reports)
+            RecordSharedReport(gameDirectory, names.TryGetValue(gameDirectory, out var name) ? name : gameDirectory, report);
+    }
+
+    private void RenderSharedNotices()
+    {
+        var items = _sharedNotices.Values.ToList();
+        HomeSharedNotice.IsVisible = ProfilesSharedNotice.IsVisible = items.Count > 0;
+        if (items.Count == 0)
+        {
+            HomeSharedNotice.Child = ProfilesSharedNotice.Child = null;
+            return;
+        }
+        HomeSharedNotice.Child = BuildSharedNotice(items, detailed: false);
+        ProfilesSharedNotice.Child = BuildSharedNotice(items, detailed: true);
+    }
+
+    private static string SharedNoticeCounts(IEnumerable<SharedContentReport> reports)
+    {
+        var list = reports.ToList();
+        var parts = new List<string>();
+        int renamed = list.Sum(r => r.Renamed), pending = list.Sum(r => r.Pending), warnings = list.Sum(r => r.Warnings.Count);
+        if (renamed > 0) parts.Add($"{renamed} renamed (both kept)");
+        if (pending > 0) parts.Add($"{pending} waiting to move");
+        if (warnings > 0) parts.Add($"{warnings} warning(s)");
+        if (list.Any(r => r.BackupPath != null)) parts.Add("profile copies kept as backup");
+        return string.Join(" · ", parts);
+    }
+
+    private Control BuildSharedNotice(List<(string Profile, SharedContentReport Report)> items, bool detailed)
+    {
+        var stack = new StackPanel { Spacing = 6 };
+        stack.Children.Add(new TextBlock
+        {
+            Text = $"SHARED WORLDS & PACKS · {SharedNoticeCounts(items.Select(i => i.Report))}",
+            Foreground = this.FindResource("LadsAccent") as IBrush ?? Brushes.IndianRed, FontSize = 11, FontWeight = FontWeight.Bold,
+            LetterSpacing = 1, TextWrapping = TextWrapping.Wrap
+        });
+        if (detailed)
+        {
+            foreach (var (profile, report) in items)
+            {
+                stack.Children.Add(new TextBlock { Text = $"{profile}: {SharedNoticeCounts(new[] { report })}", Foreground = Brushes.White, FontSize = 13, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 4, 0, 0), TextWrapping = TextWrapping.Wrap });
+                // Renamed items ("<name> → <new name> (both kept)"), what was kept aside, and every warning with its reason.
+                var lines = report.Messages.Where(m => m.Contains(" → ") || m.Contains(" kept in ")).Concat(report.Warnings).ToList();
+                foreach (var line in lines.Take(8))
+                    stack.Children.Add(new TextBlock { Text = "• " + line, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), FontSize = 12, TextWrapping = TextWrapping.Wrap });
+                if (lines.Count > 8)
+                    stack.Children.Add(new TextBlock { Text = $"…and {lines.Count - 8} more in the report.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 12 });
+                stack.Children.Add(SharedNoticeButtons(report, withDismiss: false));
+            }
+            var footer = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 4, 0, 0) };
+            footer.Children.Add(NoticeButton("Dismiss", () => { _sharedNotices.Clear(); RenderSharedNotices(); }));
+            stack.Children.Add(footer);
+        }
+        else
+        {
+            // One set of buttons on Home: the first report that has a report file or backup folder to open.
+            var report = items.Select(i => i.Report).FirstOrDefault(r => r.ReportPath != null || r.BackupPath != null) ?? items[0].Report;
+            stack.Children.Add(new TextBlock { Text = $"{string.Join(", ", items.Select(i => i.Profile))}. Details are on the Profiles page.", Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), FontSize = 11, TextWrapping = TextWrapping.Wrap });
+            stack.Children.Add(SharedNoticeButtons(report, withDismiss: true));
+        }
+        return stack;
+    }
+
+    private StackPanel SharedNoticeButtons(SharedContentReport report, bool withDismiss)
+    {
+        var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 6 };
+        var openReport = NoticeButton("Open report", () => OpenSharedNoticeTarget(report.ReportPath!, isFile: true));
+        openReport.IsEnabled = report.ReportPath != null;
+        row.Children.Add(openReport);
+        row.Children.Add(NoticeButton("Open shared saves", () => OpenSharedNoticeTarget(SharedContentService.Instance.SavesDirectory, isFile: false)));
+        var openBackup = NoticeButton("Open backup folder", () => OpenSharedNoticeTarget(report.BackupPath!, isFile: false));
+        openBackup.IsEnabled = report.BackupPath != null;
+        row.Children.Add(openBackup);
+        if (withDismiss) row.Children.Add(NoticeButton("Dismiss", () => { _sharedNotices.Clear(); RenderSharedNotices(); }));
+        return row;
+    }
+
+    private static Button NoticeButton(string text, Action onClick)
+    {
+        var button = new Button { Content = text, Classes = { "action" }, Height = 26, FontSize = 11, Padding = new Thickness(10, 0), HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        button.Click += (_, _) => onClick();
+        return button;
+    }
+
+    private void OpenSharedNoticeTarget(string path, bool isFile)
+    {
+        string? error;
+        if (isFile)
+        {
+            try
+            {
+                // The report is JSON Lines, which has no default program; Notepad always exists.
+                Process.Start(new ProcessStartInfo { FileName = "notepad.exe", ArgumentList = { path }, UseShellExecute = false });
+                error = null;
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+            {
+                error = $"Could not open the report '{path}': {ex.Message}";
+                Log($"[Shared] {error}");
+            }
+        }
+        else error = OpenFolderCreatingIt(path);
+        if (error != null) StatusText.Text = ProfilesStatusText.Text = error;
+    }
+
+    /// <summary>
+    /// Startup pass: links and migrates every existing profile folder in the background (profiles whose game is running are
+    /// skipped by the service and done at their next launch), then shows the notice when something needs attention.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<string, SharedContentReport>?> RunStartupSharedContentPassAsync()
+    {
+        if (_runningProcesses.Keys.Any(IsGameRunning)) return null;
+        StatusText.Text = "Checking shared worlds, packs and servers...";
+        try
+        {
+            var progress = new Progress<string>(message => { if (!_launching) StatusText.Text = message; });
+            var reports = await Task.Run(() => _profileService.PrepareAllProfilesSharedContentAsync(progress));
+            RecordSharedReports(reports);
+            // Never redirect silently: an isolated THELADS_DIR or an explicit override shares from somewhere else.
+            var redirected = SharedContentService.Instance.RedirectedRootNotice;
+            if (redirected != null) Log($"[Shared] {redirected}");
+            if (!_launching)
+                StatusText.Text = _sharedNotices.Count > 0 ? "Shared worlds & packs need a look: see the notice below." : redirected ?? "Ready to play";
+            return reports;
+        }
+        catch (Exception ex)
+        {
+            Log($"[Shared ERROR] Startup shared-content check failed: {ex}");
+            if (!_launching) StatusText.Text = $"Shared worlds/packs check failed: {ex.Message}. It runs again at launch.";
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// --preview-shared &lt;outputDir&gt; (sandbox only; Program.Main refuses it otherwise): runs the startup prepare pass,
+    /// captures Home, Profiles, Files and Gallery, writes preview-shared.json (folder-button targets, shared-folder states,
+    /// prepare reports) and exits: 0 on success, 1 on failure.
+    /// </summary>
+    private async Task RunSharedPreviewAsync(string outputDirectory)
+    {
+        int exitCode = 0;
+        var result = new JsonObject();
+        try
+        {
+            Directory.CreateDirectory(outputDirectory);
+            var reports = await RunStartupSharedContentPassAsync()
+                ?? throw new InvalidOperationException("The startup shared-content pass did not run or failed; see the log.");
+            var shots = new JsonArray();
+            async Task Capture(string page, string file)
+            {
+                NavigateTo(page);
+                await Task.Delay(700); // layout and row animations settle
+                var target = Path.Combine(outputDirectory, file);
+                SaveWindowScreenshot(target);
+                shots.Add((JsonNode)target);
+            }
+            await Capture("Home", "home.png");
+            LoadProfilesUI();
+            await Capture("Profiles", "profiles.png");
+            LoadFiles(settings.InstancePath);
+            await Capture("Files", "files.png");
+            await LoadGalleryAsync();
+            await _galleryThumbnails;
+            await Capture("Gallery", "gallery.png");
+
+            var shared = SharedContentService.Instance;
+            result["sharedRoot"] = shared.Root;
+            result["launcherBase"] = _pathService.BaseDirectory;
+            result["folderButtons"] = new JsonObject
+            {
+                ["Game folder"] = settings.InstancePath,
+                ["Worlds"] = SharedFolderTarget("saves"),
+                ["Resource packs"] = SharedFolderTarget("resourcepacks"),
+                ["Shader packs"] = SharedFolderTarget("shaderpacks"),
+                ["Screenshots"] = SharedFolderTarget("screenshots"),
+                ["Gallery: Open Folder"] = shared.ScreenshotsDirectory
+            };
+            result["homeStatus"] = StatusText.Text;
+            result["notice"] = new JsonObject
+            {
+                ["homeVisible"] = HomeSharedNotice.IsVisible,
+                ["profilesVisible"] = ProfilesSharedNotice.IsVisible,
+                ["profilesText"] = new JsonArray(ProfilesSharedNotice.GetLogicalDescendants().OfType<TextBlock>().Select(t => (JsonNode?)t.Text).ToArray())
+            };
+            result["filesRoot"] = _filesRootDir;
+            result["gallery"] = new JsonObject
+            {
+                ["folder"] = shared.ScreenshotsDirectory, ["shown"] = _galleryShown, ["total"] = _galleryFiles.Count,
+                ["loadMoreVisible"] = GalleryLoadMoreBtn.IsVisible, ["status"] = GalleryStatusText.Text
+            };
+            result["serverPicker"] = new JsonArray(QuickLaunchServerComboBox.Items
+                .Select(i => (JsonNode?)(i is ComboBoxItem c ? c.Content?.ToString() : i?.ToString())).ToArray());
+            var profiles = new JsonArray();
+            foreach (var profile in _profileService.GetProfiles())
+            {
+                var dir = _pathService.GetProfileDirectory(profile);
+                var key = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir));
+                profiles.Add(new JsonObject
+                {
+                    ["name"] = profile.Name,
+                    ["gameDirectory"] = dir,
+                    ["sharedFolders"] = JsonSerializer.SerializeToNode(shared.GetStatus(dir)
+                        .Select(st => new { st.Name, State = st.State.ToString(), st.ProfilePath, st.SharedPath, st.Detail })),
+                    ["prepareReport"] = reports.TryGetValue(key, out var report) ? JsonSerializer.SerializeToNode(report) : null
+                });
+            }
+            result["profiles"] = profiles;
+            result["screenshots"] = shots;
+        }
+        catch (Exception ex)
+        {
+            exitCode = 1;
+            result["error"] = ex.ToString();
+            Log($"[Preview] {ex}");
+        }
+        try
+        {
+            File.WriteAllText(Path.Combine(outputDirectory, "preview-shared.json"), result.ToJsonString(new JsonSerializerOptions(JsonSerializerOptions.Default) { WriteIndented = true }));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"--preview-shared could not write its report to '{outputDirectory}': {ex.Message}");
+            exitCode = 1;
+        }
+        Environment.Exit(exitCode);
+    }
+
+    /// <summary>
+    /// Pre-launch shared content for this profile. When the folders cannot be shared (e.g. a FAT32 or network game folder),
+    /// the user may launch once without sharing (WithoutSharing: that choice, for a second prepare of the same launch);
+    /// null means the user cancelled.
+    /// </summary>
+    private async Task<(SharedContentReport Report, bool WithoutSharing)?> PrepareSharedContentForLaunchAsync(
+        TheLadsLauncher.Models.LauncherProfile profile, string gameDirectory, bool withoutSharing = false)
+    {
+        var progress = new Progress<string>(message => GameLaunchStatusText.Text = message);
+        SharedContentReport report;
+        try
+        {
+            report = await _profileService.PrepareProfileEnvironmentAsync(profile, progress, withoutSharedFolders: withoutSharing);
+        }
+        catch (SharedContentUnavailableException ex) when (!withoutSharing)
+        {
+            if (ex.Report != null) RecordSharedReport(gameDirectory, profile.Name, ex.Report);
+            Log($"[Shared] {profile.Name}: {ex.Message}");
+            bool launchWithoutSharing = await ShowLadsDialogAsync("Shared worlds and packs are unavailable",
+                ex.Message + (ex.Report != null && NeedsNotice(ex.Report) ? " What was already done is listed on the Profiles page." : ""),
+                SharedContentUnavailableException.LaunchWithoutSharingChoice, "Cancel");
+            if (!launchWithoutSharing)
+            {
+                StatusText.Text = "Launch cancelled: shared worlds and packs are unavailable for this profile.";
+                return null;
+            }
+            report = await _profileService.PrepareProfileEnvironmentAsync(profile, progress, withoutSharedFolders: true);
+            withoutSharing = true;
+        }
+        RecordSharedReport(gameDirectory, profile.Name, report);
+        return (report, withoutSharing);
     }
 
     private async void RemoveAccount_Click(object? sender, RoutedEventArgs e)
@@ -2542,10 +3083,9 @@ public partial class MainWindow : Window
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
         AutoRelaunchOnCrashCheckbox.IsChecked = settings.AutoRelaunchOnCrash;
         AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
-        PopulateServerList();
         MultiInstanceCheckbox.IsChecked = settings.AllowMultiInstance;
         ParticleCheckbox.IsChecked = settings.ShowParticles;
-        SyncResourcePacksCheckbox.IsChecked = settings.SyncResourcePacksFromGlobal;
+        // settings.SyncResourcePacksFromGlobal is retired (kept only so old settings.json files load): packs are shared now.
         SyncScreenshotsCheckbox.IsChecked = settings.SyncScreenshotsToGlobal;
 
         InstancePathBox.Text = settings.InstancePath;
@@ -2558,12 +3098,6 @@ public partial class MainWindow : Window
         CurseForgeApiUrlBox_ModTab.Text = settings.CurseForgeApiUrl;
         CfApiKeyInputBox.Text = settings.CurseForgeApiKey;
         MinecraftVersionOverrideBox.Text = settings.SelectedMinecraftVersionOverride;
-
-        ModVersionFilterBox.PropertyChanged += (s, e) =>
-        {
-            if (e.Property.Name == "Text")
-                LoadModsList();
-        };
 
         PopulateJavaSelector();
 
@@ -2587,14 +3121,22 @@ public partial class MainWindow : Window
         public override string ToString() => Display;
     }
 
+    /// <summary>Fills the picker from the shared server list (every profile uses it). An unreadable list is shown, not fatal.</summary>
     private void PopulateServerList()
     {
         QuickLaunchServerComboBox.Items.Clear();
         QuickLaunchServerComboBox.Items.Add(new ServerListItem("Auto (detect from logs)", null));
 
-        var servers = MinecraftServerListReader.Read(settings.InstancePath);
-        foreach (var s in servers)
-            QuickLaunchServerComboBox.Items.Add(new ServerListItem($"{s.Name}  ({s.Ip})", s.Ip));
+        try
+        {
+            foreach (var s in MinecraftServerListReader.Read())
+                QuickLaunchServerComboBox.Items.Add(new ServerListItem($"{s.Name}  ({s.Ip})", s.Ip));
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            Log($"[Settings] The shared server list '{SharedContentService.Instance.ServersFile}' is unreadable: {ex.Message}");
+            QuickLaunchServerComboBox.Items.Add(new ComboBoxItem { Content = "Server list unreadable (details in Logs)", IsEnabled = false });
+        }
 
         // Restore saved selection
         if (!string.IsNullOrEmpty(settings.QuickLaunchServerIp))
@@ -2748,6 +3290,10 @@ public partial class MainWindow : Window
 
         UpdateMinecraftVersionDisplay();
         ApplyNextAccountRequest(settings.InstancePath);
+        // Everything bound to the previous profile follows the switch.
+        PopulateServerList();
+        ResetFilesRoot();
+        ReloadModsInventory();
     }
 
     private void LoadProfilesUI()
@@ -2832,7 +3378,7 @@ public partial class MainWindow : Window
             // Isolate toggle checkbox
             var isolateCheck = new CheckBox
             {
-                Content = "Isolate Profile (Don't share settings, keybinds, and accounts)",
+                Content = new TextBlock { Text = IsolationText, TextWrapping = TextWrapping.Wrap },
                 IsChecked = profile.IsIsolated,
                 FontSize = 12,
                 Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")),
@@ -2917,13 +3463,16 @@ public partial class MainWindow : Window
         }
     }
 
+    private const string IsolationText =
+        "Keep this profile's game settings separate (options.txt, keybinds). Worlds, resource packs, shader packs and servers are always shared from the global .minecraft folder.";
+
     private async void AddProfile_Click(object? sender, RoutedEventArgs e)
     {
         var window = new Window
         {
             Title = "Create New Version Profile",
             Width = 440,
-            Height = 300,
+            SizeToContent = SizeToContent.Height,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Background = new SolidColorBrush(Color.Parse("#17181B")),
             CanResize = false
@@ -2946,7 +3495,7 @@ public partial class MainWindow : Window
 
         var isolateCheck = new CheckBox
         {
-            Content = "Isolate profile (separate settings, keybinds, and accounts)",
+            Content = new TextBlock { Text = IsolationText, TextWrapping = TextWrapping.Wrap },
             IsChecked = false,
             Foreground = new SolidColorBrush(Color.Parse("#CCCCCC"))
         };
@@ -2990,19 +3539,37 @@ public partial class MainWindow : Window
         await window.ShowDialog(this);
     }
 
+    /// <summary>Settings sync plus shared folders/server list for the active profile; results go to the same notice as startup.</summary>
     private async void SyncSharedSettings_Click(object? sender, RoutedEventArgs e)
     {
+        var active = _profileService.GetActiveProfile();
+        string gameDirectory = _pathService.GetProfileDirectory(active);
+        SyncSharedBtn.IsEnabled = false;
+        void Status(string text) => StatusText.Text = ProfilesStatusText.Text = text;
         try
         {
-            var active = _profileService.GetActiveProfile();
-            await _profileService.SyncSharedToProfileAsync(active);
-            StatusText.Text = $"Shared settings synced to '{active.Name}'!";
-            Log($"[Profiles] Manually synced shared settings to profile '{active.Name}'.");
+            var report = await _profileService.PrepareProfileEnvironmentAsync(active, new Progress<string>(Status));
+            RecordSharedReport(gameDirectory, active.Name, report);
+            Status(report.Skipped ? $"{active.Name}: {report.Messages.FirstOrDefault()}"
+                : NeedsNotice(report) ? $"Synced '{active.Name}'. Some items need a look: see the notice."
+                : $"'{active.Name}' is up to date: settings synced, worlds, packs and servers shared.");
+            Log($"[Profiles] Synced settings and shared folders for '{active.Name}'.");
+        }
+        catch (SharedContentUnavailableException ex)
+        {
+            if (ex.Report != null) RecordSharedReport(gameDirectory, active.Name, ex.Report);
+            Status($"Shared worlds and packs are unavailable for '{active.Name}'.");
+            Log($"[Profiles ERROR] {ex.Message}");
+            await ShowLadsDialogAsync("Shared worlds and packs are unavailable", ex.Message);
         }
         catch (Exception ex)
         {
-            StatusText.Text = $"Sync failed: {ex.Message}";
-            Log($"[Profiles ERROR] Failed to sync shared settings: {ex.Message}");
+            Status($"Sync failed: {ex.Message}");
+            Log($"[Profiles ERROR] Failed to sync '{active.Name}': {ex}");
+        }
+        finally
+        {
+            SyncSharedBtn.IsEnabled = true;
         }
     }
 
@@ -3044,7 +3611,6 @@ public partial class MainWindow : Window
         settings.FullscreenOnLaunch = FullscreenOnLaunchCheckbox.IsChecked ?? true;
         settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
         settings.ShowParticles = ParticleCheckbox.IsChecked ?? true;
-        settings.SyncResourcePacksFromGlobal = SyncResourcePacksCheckbox.IsChecked ?? false;
         settings.SyncScreenshotsToGlobal = SyncScreenshotsCheckbox.IsChecked ?? true;
         settings.FabricVersion = FabricVersionBox.Text ?? settings.FabricVersion;
         settings.CurseForgeApiKey = CurseForgeApiKeyBox.Text ?? "";
@@ -3201,475 +3767,600 @@ public partial class MainWindow : Window
         MinecraftVersionText.Text = $"Minecraft {mcVersion} / Fabric";
         LaunchButton.Content = "Play";
         GameLaunchVersionText.Text = $"Minecraft {mcVersion} · Fabric";
-        ModVersionFilterBox.Text = mcVersion;
     }
 
-    public class ModFileItem
+    // ═══════════════════════════════════════
+    //  INSTALLED MODS (inventory)
+    // ═══════════════════════════════════════
+
+    // Loaded ids come from the running marker (what the game loaded at start); null while the profile's game is not running.
+    private readonly ModInventoryService _modInventoryService = new(gameDirectory => RunningGameMarker.GetRunning(gameDirectory)?.LoadedMods);
+    private readonly ModStateService _modStateService = new(RunningGameMarker.IsRunning);
+    private ModInventory? _modInventory;
+    // The profile whose list is being built while none is shown (after a profile switch), else null.
+    private string? _modsLoadingProfile;
+    private int _modsGeneration;
+    private string? _modsWatchSignature;
+    private bool _modsWatchBusy;
+    private bool _modsBusy;
+    private bool _resettingModFilters;
+    private readonly Dictionary<string, ModInventoryEntry> _selectedMods = new(StringComparer.OrdinalIgnoreCase);
+    // The rows the list shows now (filter and search applied): Select all and --preview-mods use exactly these.
+    private readonly List<ModRowView> _modRows = new();
+
+    private sealed record ModRowView(ModInventoryEntry Entry, Control Row, Button Toggle, CheckBox? Select, Panel? Children, IReadOnlyList<string> Actions);
+
+    private (string GameDirectory, string MinecraftVersion) ModsTarget()
     {
-        public string FilePath { get; set; } = "";
-        public string DisplayName { get; set; } = "";
-        public string Description { get; set; } = "";
-        public byte[]? IconBytes { get; set; }
-        public bool IsEnabled { get; set; }
-        public List<string> Categories { get; set; } = new();
-        public string ModId { get; set; } = "";
-        public string ModVersion { get; set; } = "";
+        var profile = _profileService.GetActiveProfile();
+        return (_pathService.GetProfileDirectory(profile), profile.MinecraftVersion);
     }
 
-    private async void LoadModsList()
+    /// <summary>
+    /// Rebuilds the Mods page (and the Home MODS stat) for the active profile: on page open, profile switch, after every
+    /// change, and when the 1 s timer sees a mod file change. The build runs off the UI thread; only the newest one is shown.
+    /// </summary>
+    private void ReloadModsInventory() => _ = ReloadModsInventoryAsync();
+
+    /// <summary>Returns the inventory this call built (read after any change that preceded it), even when a newer reload
+    /// is the one shown; null when it failed or was skipped.</summary>
+    private async Task<ModInventory?> ReloadModsInventoryAsync()
     {
-        string modsPath = Path.Combine(settings.InstancePath, "mods");
-        string rpPath = Path.Combine(settings.InstancePath, "resourcepacks");
-
-        string filterText = ModVersionFilterBox.Text?.Trim() ?? "";
-        string nameQuery = ""; // name search is applied live via row visibility, not a re-scan
-        string fabricVersion = settings.FabricVersion;
-        string instancePath = settings.InstancePath;
-
-        // Run metadata extraction and filtering on a background thread
-        var matchingMods = await Task.Run(() =>
+        // During a launch the installers rename and replace jars; reading them now would only race that. The 1 s watch
+        // reloads as soon as the launch is over (the Mods folder and the running marker have changed by then).
+        if (_launching) return null;
+        int generation = ++_modsGeneration;
+        string gameDirectory = "";
+        try
         {
-            var list = new List<ModFileItem>();
-
-            // Resolve equivalent versions
-            var equivalentVersions = new List<string> { filterText };
-            string resolvedMcVersion = "Unknown";
-            try
+            (gameDirectory, var version) = ModsTarget();
+            var directory = gameDirectory;
+            if (!ModInventoryView.IsFor(_modInventory, directory))
             {
-                resolvedMcVersion = ResolveMinecraftVersion();
+                // Another profile's rows must not stay on screen (and clickable) while this one's first build hashes every jar.
+                _modInventory = null;
+                _modsLoadingProfile = _profileService.GetActiveProfile().Name;
+                ShowModsNotice(null);
+                RenderModsInventory();
             }
-            catch {}
-
-            if (!string.IsNullOrEmpty(filterText) && filterText.Equals(resolvedMcVersion, StringComparison.OrdinalIgnoreCase))
+            var signature = await Task.Run(() => ModsWatchSignature(directory));
+            if (generation == _modsGeneration) _modsWatchSignature = signature;
+            var inventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, directory, version);
+            var preferencesError = await Task.Run(() => ModPreferences.Load(directory).Error);
+            if (generation == _modsGeneration)
             {
-                equivalentVersions.Add(fabricVersion);
-                var fabricLoaderMatch = Regex.Match(fabricVersion, @"fabric-loader-[\d\.]+-([\d\.]+)");
-                if (fabricLoaderMatch.Success)
-                {
-                    equivalentVersions.Add(fabricLoaderMatch.Groups[1].Value);
-                }
-                try
-                {
-                    string versionJsonPath = Path.Combine(instancePath, "versions", fabricVersion, fabricVersion + ".json");
-                    if (File.Exists(versionJsonPath))
-                    {
-                        string jsonContent = File.ReadAllText(versionJsonPath);
-                        using (JsonDocument doc = JsonDocument.Parse(jsonContent))
-                        {
-                            if (doc.RootElement.TryGetProperty("inheritsFrom", out JsonElement inheritsProp))
-                            {
-                                string inherited = inheritsProp.GetString() ?? "";
-                                if (!string.IsNullOrEmpty(inherited))
-                                {
-                                    equivalentVersions.Add(inherited);
-                                }
-                            }
-                        }
-                    }
-                }
-                catch {}
+                _modInventory = inventory;
+                _modsLoadingProfile = null;
+                ShowModsNotice(preferencesError);
+                RenderModsInventory();
             }
+            return inventory;
+        }
+        catch (Exception ex)
+        {
+            Log($"[Mods ERROR] Could not list the mods of '{gameDirectory}': {ex.Message}");
+            if (generation != _modsGeneration) return null;
+            _modInventory = null;
+            _modsLoadingProfile = null;
+            ShowModsNotice($"Could not list this profile's mods: {ex.Message}");
+            RenderModsInventory();
+            return null;
+        }
+    }
 
-            // 1. Scan Installed Mods
-            if (Directory.Exists(modsPath))
-            {
-                var jarFiles = Directory.GetFiles(modsPath, "*.jar")
-                    .Concat(Directory.GetFiles(modsPath, "*.jar.disabled"))
-                    .OrderBy(f => Path.GetFileName(f))
-                    .ToArray();
+    /// <summary>Modification times of what the Mods page shows: choices, Lads module settings and list, the Mods folder and
+    /// the running marker. No FileSystemWatcher: the 1 s stats timer compares this.</summary>
+    private static string ModsWatchSignature(string gameDirectory)
+    {
+        try
+        {
+            return string.Join("|", new[] { ModPreferences.FileName, "thelads_config.json", "lads-core-catalog.json", RunningGameMarker.FileName }
+                .Select(name => File.GetLastWriteTimeUtc(Path.Combine(gameDirectory, name)).Ticks)
+                .Append(Directory.GetLastWriteTimeUtc(Path.Combine(gameDirectory, "mods")).Ticks));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return "unreadable: " + ex.Message; // a new state still triggers the reload, which reports the problem
+        }
+    }
 
-                foreach (var file in jarFiles)
-                {
-                    string fileName = Path.GetFileName(file);
-                    bool isEnabled = !fileName.EndsWith(".disabled");
-                    string displayName = isEnabled ? fileName.Replace(".jar", "") : fileName.Replace(".jar.disabled", "");
-                    string description = "";
-                    string modId = "";
-                    string modVersion = "";
-                    byte[]? iconBytes = null;
-                    var categories = new List<string> { "Mod", "Fabric" };
+    private async void WatchModFiles(object? sender, EventArgs e)
+    {
+        if (_modsWatchBusy || _modsWatchSignature == null) return;
+        _modsWatchBusy = true;
+        try
+        {
+            var (gameDirectory, _) = ModsTarget();
+            var signature = await Task.Run(() => ModsWatchSignature(gameDirectory));
+            if (signature != _modsWatchSignature) ReloadModsInventory();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {
+            Log($"[Mods] Could not check the Mods folder for changes: {ex.Message}");
+        }
+        finally { _modsWatchBusy = false; }
+    }
 
-                    bool matchesFilter = true;
-                    if (!string.IsNullOrEmpty(filterText))
-                    {
-                        matchesFilter = false;
-                        foreach (var eqVer in equivalentVersions)
-                        {
-                            if (fileName.Contains(eqVer, StringComparison.OrdinalIgnoreCase))
-                            {
-                                matchesFilter = true;
-                                break;
-                            }
-                        }
-                    }
+    private void ShowModsNotice(string? text)
+    {
+        ModsNoticeText.Text = text ?? "";
+        ModsNoticeText.IsVisible = !string.IsNullOrEmpty(text);
+    }
 
-                    // Try to read zip content for description/icon
-                    try
-                    {
-                        using var archive = ZipFile.OpenRead(file);
-                        var entry = archive.GetEntry("fabric.mod.json");
-                        if (entry != null)
-                        {
-                            using var stream = entry.Open();
-                            using var reader = new StreamReader(stream);
-                            string json = reader.ReadToEnd();
-                            using var doc = JsonDocument.Parse(json);
-                            var root = doc.RootElement;
-                            
-                            if (root.TryGetProperty("id", out var idProp2))
-                                modId = idProp2.GetString() ?? "";
-                            if (root.TryGetProperty("version", out var verProp2))
-                                modVersion = verProp2.GetString() ?? "";
-                            if (root.TryGetProperty("name", out var nameProp))
-                            {
-                                displayName = nameProp.GetString() ?? displayName;
-                            }
-                            if (root.TryGetProperty("description", out var descProp))
-                            {
-                                description = descProp.GetString() ?? "";
-                            }
-                            if (root.TryGetProperty("icon", out var iconProp))
-                            {
-                                string iconPath = iconProp.GetString() ?? "";
-                                if (!string.IsNullOrEmpty(iconPath))
-                                {
-                                    var iconEntry = archive.GetEntry(iconPath);
-                                    if (iconEntry != null)
-                                    {
-                                        using var iconStream = iconEntry.Open();
-                                        using var ms = new MemoryStream();
-                                        iconStream.CopyTo(ms);
-                                        iconBytes = ms.ToArray();
-                                    }
-                                }
-                            }
+    /// <summary>The Mods page's own status line (Home's StatusText is not visible there).</summary>
+    private void ModsStatus(string text, bool error = false)
+    {
+        ModsStatusText.Text = text;
+        ModsStatusText.Foreground = new SolidColorBrush(Color.Parse(error ? "#E27676" : "#A0A1AA"));
+        if (!string.IsNullOrEmpty(text)) Log(error ? $"[Mods ERROR] {text}" : $"[Mods] {text}");
+    }
 
-                            if (!string.IsNullOrEmpty(filterText) && !matchesFilter)
-                            {
-                                foreach (var eqVer in equivalentVersions)
-                                {
-                                    if (json.Contains(eqVer, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        matchesFilter = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch {}
-
-                    bool matchesName = string.IsNullOrEmpty(nameQuery)
-                        || displayName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase)
-                        || fileName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase)
-                        || modId.Contains(nameQuery, StringComparison.OrdinalIgnoreCase);
-
-                    if (matchesFilter && matchesName)
-                    {
-                        list.Add(new ModFileItem
-                        {
-                            FilePath = file,
-                            DisplayName = displayName,
-                            Description = description,
-                            IconBytes = iconBytes,
-                            IsEnabled = isEnabled,
-                            Categories = categories,
-                            ModId = modId,
-                            ModVersion = modVersion
-                        });
-                    }
-                }
-            }
-
-            // 2. Scan Installed Resource Packs (only if no mod version filter is set, or if filter matches pack name)
-            if (Directory.Exists(rpPath))
-            {
-                var zipFiles = Directory.GetFiles(rpPath, "*.zip")
-                    .Concat(Directory.GetFiles(rpPath, "*.zip.disabled"))
-                    .OrderBy(f => Path.GetFileName(f))
-                    .ToArray();
-
-                foreach (var file in zipFiles)
-                {
-                    string fileName = Path.GetFileName(file);
-                    bool isEnabled = !fileName.EndsWith(".disabled");
-                    string displayName = isEnabled ? fileName.Replace(".zip", "") : fileName.Replace(".zip.disabled", "");
-                    
-                    bool matchesFilter = true;
-                    if (!string.IsNullOrEmpty(filterText))
-                    {
-                        matchesFilter = fileName.Contains(filterText, StringComparison.OrdinalIgnoreCase);
-                    }
-                    bool matchesName = string.IsNullOrEmpty(nameQuery)
-                        || displayName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase)
-                        || fileName.Contains(nameQuery, StringComparison.OrdinalIgnoreCase);
-
-                    if (matchesFilter && matchesName)
-                    {
-                        list.Add(new ModFileItem
-                        {
-                            FilePath = file,
-                            DisplayName = displayName,
-                            Description = "Local Resource Pack",
-                            IsEnabled = isEnabled,
-                            Categories = new List<string> { "Resource Pack" }
-                        });
-                    }
-                }
-            }
-
-            return list;
-        });
-
-        // Populate elements on UI Thread
-        _selectedModPaths.Clear();
+    private void RenderModsInventory()
+    {
+        if (ModsList == null || ModsFilterBox == null) return; // events raised while the page is still being loaded
+        _selectedMods.Clear();
+        _modRows.Clear();
         UpdateModsSelectionBar();
-        if (SelectAllModsCheckbox != null) SelectAllModsCheckbox.IsChecked = false;
+        SelectAllModsCheckbox.IsChecked = false;
         ModsList.Children.Clear();
-        var template = this.FindResource("ModListItemTemplate") as DataTemplate;
-        if (template == null) return;
-
-        int totalEnabledCount = 0;
-        foreach (var mod in matchingMods)
+        var inventory = _modInventory;
+        if (inventory == null)
         {
-            if (mod.IsEnabled && !mod.FilePath.Contains("resourcepacks"))
-                totalEnabledCount++;
+            ModsPageCount.Text = "";
+            ModCountText.Text = "—";
+            ToolTip.SetTip(ModCountText, null);
+            ModsList.Children.Add(FilesNote(_modsLoadingProfile != null ? $"Loading the mods of {_modsLoadingProfile}…"
+                : "The mod list is not available; the message below says why. Refresh to try again."));
+            return;
+        }
+        ModsPageCount.Text = ModInventoryView.CountsText(inventory.Counts);
+        ModCountText.Text = inventory.Counts.EnabledFiles.ToString();
+        ToolTip.SetTip(ModCountText, ModsPageCount.Text);
+        var filter = (ModListFilter)Math.Clamp(ModsFilterBox.SelectedIndex, 0, ModInventoryView.FilterLabels.Count - 1);
+        foreach (var row in ModInventoryView.Filter(inventory, filter, ModNameSearchBox.Text))
+            ModsList.Children.Add(BuildModRow(inventory, row.Entry, row.Expanded));
+        if (_modRows.Count == 0)
+            ModsList.Children.Add(FilesNote("Nothing matches this filter and search. Reset filters to see the whole inventory."));
+    }
 
-            var row = template.Build(mod) as Border;
-            if (row == null) continue;
+    private static bool IsUserJar(ModInventoryEntry e) => e.Ownership == ModOwnership.User && e.FilePath != null;
 
-            row.Opacity = mod.IsEnabled ? 1.0 : 0.5;
-            row.Margin = new Thickness(0);
+    // Updates need a real Fabric id (an unreadable jar is listed under its file name).
+    private static bool IsUpdatableJar(ModInventoryEntry e) => IsUserJar(e) && FabricModMetadata.ValidId(e.Id);
 
-            var grid = row.Child as Grid;
-            if (grid == null) continue;
+    private static bool IsSelectableMod(ModInventoryEntry e) =>
+        e.Ownership is ModOwnership.Core or ModOwnership.Pack or ModOwnership.User && e.Status != ModEntryStatus.Unavailable;
 
-            var iconFrame = grid.Children.Count > 0 ? grid.Children[0] as Border : null;
-            var iconImage = iconFrame?.Child as Image;
-            var detailsPanel = grid.Children.Count > 1 ? grid.Children[1] as StackPanel : null;
-            var titleBlock = detailsPanel?.Children.Count > 0 ? detailsPanel.Children[0] as TextBlock : null;
-            var descBlock = detailsPanel?.Children.Count > 1 ? detailsPanel.Children[1] as TextBlock : null;
-            var metaPanel = detailsPanel?.Children.Count > 2 ? detailsPanel.Children[2] as StackPanel : null;
-            var downloadsBlock = metaPanel?.Children.Count > 0 ? metaPanel.Children[0] as TextBlock : null;
-            var badgesPanel = metaPanel?.Children.Count > 1 ? metaPanel.Children[1] as StackPanel : null;
-            var actionPanel = grid.Children.Count > 2 ? grid.Children[2] as StackPanel : null;
+    private string? ModToggleBlocked(ModInventoryEntry e) =>
+        _launching ? "Wait until the launch has finished." : e.CanToggle ? null : e.ToggleBlockedReason ?? "This entry cannot be switched here.";
 
-            // Titles & Descriptions
-            if (titleBlock != null)
+    private static string ModOwnershipBadge(ModInventoryEntry e) => e.Ownership switch
+    {
+        ModOwnership.Core or ModOwnership.NativeModule => "Lads",
+        ModOwnership.Platform => "Platform",
+        ModOwnership.Retired => "Removed from pack",
+        _ when e.IsLibrary => "Library",
+        ModOwnership.User => "User",
+        _ => "Third-party"
+    };
+
+    private static string ModMetaLine(ModInventoryEntry e)
+    {
+        if (e.Ownership == ModOwnership.NativeModule)
+            return e.Id == ModInventoryService.CatalogPlaceholderId ? "Lads modules" : "Lads module · configure it in game (Lads menu)";
+        if (e.Ownership == ModOwnership.Platform) return $"id: {e.Id} · platform component";
+        var parts = new List<string?> { e.Id == e.FileName ? null : "id: " + e.Id, e.FileName };
+        if (e.UpstreamName != null && e.UpstreamName != e.DisplayName) parts.Add("upstream: " + e.UpstreamName);
+        if (e.Authors.Count > 0) parts.Add("by " + string.Join(", ", e.Authors.Take(2)) + (e.Authors.Count > 2 ? " and others" : ""));
+        return string.Join(" · ", parts.Where(p => !string.IsNullOrEmpty(p)));
+    }
+
+    // Invalid rows carry their reason in the status; other notes (e.g. "Lads integration: X") get their own line.
+    private static string? ModInvalidReason(ModInventoryEntry e) =>
+        e.Status == ModEntryStatus.Invalid ? e.ToggleBlockedReason ?? e.Note : null;
+
+    private static string? ModNoteLine(ModInventoryEntry e) => e.Note == ModInvalidReason(e) ? null : e.Note;
+
+    private static string ModStatusLine(ModInventoryEntry e, string minecraftVersion)
+    {
+        var status = e.Status switch
+        {
+            ModEntryStatus.Installed => e.Ownership == ModOwnership.NativeModule ? "Enabled" : "Installed",
+            ModEntryStatus.Disabled => "Disabled",
+            ModEntryStatus.PendingDownload => e.Ownership == ModOwnership.Core ? "Pending install" : "Pending download",
+            ModEntryStatus.NotDownloaded => e.Ownership == ModOwnership.Core ? "Not installed" : "Not downloaded",
+            ModEntryStatus.Unavailable => e.Ownership == ModOwnership.NativeModule ? "Unavailable" : $"Unavailable for {minecraftVersion}",
+            ModEntryStatus.Unsupported => "Unsupported",
+            ModEntryStatus.Embedded => "Embedded",
+            ModEntryStatus.RetiredCopy => "Removed from pack",
+            ModEntryStatus.Invalid => ModInvalidReason(e) is { } reason ? "Invalid: " + reason : "Invalid",
+            _ => e.Status.ToString()
+        };
+        var parts = new List<string> { status };
+        if (e.LoadedNow is bool loaded && loaded != e.RequestedEnabled && e.Ownership != ModOwnership.Platform)
+            parts.Add($"Loaded now: {(loaded ? "yes" : "no")} · Next launch: {(e.RequestedEnabled ? "on" : "off")}");
+        if (e.RestartRequired) parts.Add("Restart required");
+        return string.Join(" · ", parts);
+    }
+
+    private static string ModStatusColor(ModInventoryEntry e) => e.Status switch
+    {
+        ModEntryStatus.Installed when e.Ownership != ModOwnership.Platform => "#A4BAA7",
+        ModEntryStatus.PendingDownload => "#E0A458",
+        ModEntryStatus.Disabled or ModEntryStatus.NotDownloaded => "#90929D",
+        ModEntryStatus.Unsupported or ModEntryStatus.Invalid or ModEntryStatus.RetiredCopy => "#E27676",
+        _ => "#A0A1AA"
+    };
+
+    private static Border ModBadge(string text, string color = "#E27676") => new()
+    {
+        Background = new SolidColorBrush(Color.Parse("#303137")), CornerRadius = new CornerRadius(4), Padding = new Thickness(6, 2),
+        Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+        Child = new TextBlock { Text = text, Foreground = new SolidColorBrush(Color.Parse(color)), FontSize = 9, FontWeight = FontWeight.Bold }
+    };
+
+    private static Button ModActionButton(string text, string style, string? tip, Action onClick)
+    {
+        var button = new Button
+        {
+            Content = text, Classes = { style }, Height = 30, FontSize = 11, Padding = new Thickness(10, 0),
+            HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
+        };
+        if (tip != null) ToolTip.SetTip(button, tip);
+        button.Click += (_, _) => onClick();
+        return button;
+    }
+
+    // "v1.2.0"; manifest version names such as "fabric-1.5.1+26.3" or "v3.3.0" are shown as they are.
+    private static string ModVersionText(string version) => char.IsDigit(version[0]) ? "v" + version : version;
+
+    private static IEnumerable<(ModInventoryEntry Entry, int Level)> ModDescendants(ModInventoryEntry entry, int level) =>
+        entry.Children.SelectMany(child => ModDescendants(child, level + 1).Prepend((child, level)));
+
+    private static string ModExpanderText(int count, bool open) =>
+        $"{(open ? "Hide" : "Show")} {count} embedded {(count == 1 ? "library" : "libraries")}";
+
+    // The valid operation for an embedded library: switch off the jar that contains it (with the usual confirmation).
+    private string? ModChildActionLabel(ModInventoryEntry parent) =>
+        parent.Ownership is ModOwnership.Core or ModOwnership.Pack or ModOwnership.User && parent.CanToggle && parent.RequestedEnabled
+            ? $"Disable {parent.DisplayName}..." : null;
+
+    private Control BuildModRow(ModInventory inventory, ModInventoryEntry entry, bool expanded)
+    {
+        bool on = entry.RequestedEnabled;
+        var details = new StackPanel { Spacing = 3, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        var header = new WrapPanel();
+        header.Children.Add(new TextBlock
+        {
+            Text = entry.DisplayName, FontSize = 14, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 8, 0),
+            Foreground = new SolidColorBrush(Color.Parse(on || entry.Ownership == ModOwnership.Platform ? "#FFFFFF" : "#90929D")),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+        });
+        if (!string.IsNullOrEmpty(entry.Version))
+            header.Children.Add(new TextBlock { Text = ModVersionText(entry.Version), Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+        header.Children.Add(ModBadge(ModOwnershipBadge(entry)));
+        if (entry.RestartRequired) header.Children.Add(ModBadge("Restart required", "#E0A458"));
+        details.Children.Add(header);
+        details.Children.Add(new TextBlock { Text = ModMetaLine(entry), Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis });
+        details.Children.Add(new TextBlock { Text = ModStatusLine(entry, inventory.MinecraftVersion), Foreground = new SolidColorBrush(Color.Parse(ModStatusColor(entry))), FontSize = 12, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap });
+        if (ModNoteLine(entry) is { } note)
+            details.Children.Add(new TextBlock { Text = note, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), FontSize = 12, TextWrapping = TextWrapping.Wrap });
+
+        StackPanel? children = null;
+        Button? expander = null;
+        if (entry.Children.Count > 0)
+        {
+            children = new StackPanel { Spacing = 4, Margin = new Thickness(0, 8, 0, 0), IsVisible = expanded };
+            var list = children;
+            int count = ModDescendants(entry, 0).Count();
+            void Fill()
             {
-                titleBlock.Text = mod.DisplayName;
-                titleBlock.Foreground = new SolidColorBrush(mod.IsEnabled ? Color.Parse("#CCCCCC") : Color.Parse("#90929D"));
+                // Built on first open: a large jar (Fabric API) embeds dozens of libraries.
+                if (list.Children.Count > 0) return;
+                foreach (var (child, level) in ModDescendants(entry, 0)) list.Children.Add(BuildModChildRow(entry, child, level));
             }
-            if (descBlock != null)
+            if (expanded) Fill();
+            expander = new Button
             {
-                descBlock.Text = string.IsNullOrEmpty(mod.Description) ? "No description available." : mod.Description;
-            }
-            if (downloadsBlock != null)
-            {
-                downloadsBlock.Text = string.IsNullOrEmpty(mod.ModVersion) ? "Local file" : $"v{mod.ModVersion}";
-            }
-
-            // Render local icon if present
-            if (iconImage != null)
-            {
-                if (mod.IconBytes != null)
-                {
-                    try { using var ms = new MemoryStream(mod.IconBytes); iconImage.Source = new Bitmap(ms); }
-                    catch {}
-                }
-                else { iconImage.Source = null; }
-            }
-
-            // Categories Badges
-            if (badgesPanel != null)
-            {
-                badgesPanel.Children.Clear();
-                foreach (var catName in mod.Categories)
-                {
-                    badgesPanel.Children.Add(new Border
-                    {
-                        Background = new SolidColorBrush(Color.Parse("#303137")),
-                        CornerRadius = new CornerRadius(4),
-                        Padding = new Thickness(6, 2),
-                        Margin = new Thickness(0, 0, 4, 0),
-                        Child = new TextBlock { Text = catName, Foreground = new SolidColorBrush(Color.Parse("#E27676")), FontSize = 9, FontWeight = FontWeight.Bold }
-                    });
-                }
-            }
-
-            // Action buttons
-            string filePath = mod.FilePath;
-            bool isEnabled = mod.IsEnabled;
-
-            // Update button (only for mods with a Modrinth id)
-            if (!string.IsNullOrEmpty(mod.ModId) && !mod.FilePath.Contains("resourcepacks"))
-            {
-                var modSnap = mod;
-                var updateBtn = new Button
-                {
-                    Content = "",
-                    Height = 30, Width = 36, FontSize = 11,
-                    HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                    VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
-                };
-                updateBtn.Classes.Add("action");
-                ToolTip.SetTip(updateBtn, "Check & update from Modrinth");
-                updateBtn.Click += async (s, e) => await CheckAndUpdateSingleMod(modSnap, updateBtn);
-                actionPanel?.Children.Add(updateBtn);
-            }
-
-            var toggleBtn = new Button
-            {
-                Content = isEnabled ? "Disable" : "Enable",
-                Height = 30, Width = 70, FontSize = 11,
-                HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                Content = ModExpanderText(count, expanded), Classes = { "action" }, Height = 26, FontSize = 11, Padding = new Thickness(10, 0),
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 0),
                 VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
-            toggleBtn.Classes.Add(isEnabled ? "danger" : "action");
-            toggleBtn.Click += (s, e) => ToggleMod(filePath, isEnabled);
-            actionPanel?.Children.Add(toggleBtn);
-
-            var deleteBtn = new Button
+            var toggleList = expander;
+            toggleList.Click += (_, _) =>
             {
-                Content = "✕",
-                Height = 30, Width = 30, FontSize = 12,
-                HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
+                Fill();
+                list.IsVisible = !list.IsVisible;
+                toggleList.Content = ModExpanderText(count, list.IsVisible);
             };
-            deleteBtn.Classes.Add("danger");
-            deleteBtn.Click += (s, e) => DeleteMod(filePath);
-            actionPanel?.Children.Add(deleteBtn);
+        }
 
-            // Wrap in a row with a selection checkbox
-            var cb = new CheckBox
+        var actionLabels = new List<string>();
+        var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+        void Action(Button button) { actions.Children.Add(button); actionLabels.Add(button.Content?.ToString() ?? ""); }
+        if (entry.ProjectUrl is { } projectUrl) Action(ModActionButton("Project", "action", projectUrl, () => OpenPath(projectUrl)));
+        if (IsUpdatableJar(entry)) Action(ModActionButton("Update", "action", "Look for a newer release on Modrinth", () => _ = UpdateUserModsAsync(new[] { entry })));
+        var toggle = ModActionButton(on ? "Disable" : "Enable", on ? "danger" : "action", null, () => _ = ToggleModEntryAsync(entry, !on));
+        toggle.Width = 72;
+        var blocked = ModToggleBlocked(entry);
+        toggle.IsEnabled = blocked == null;
+        ToolTip.SetTip(toggle, blocked);
+        ToolTip.SetShowOnDisabled(toggle, true);
+        Action(toggle);
+        if (IsUserJar(entry)) Action(ModActionButton("Delete", "danger", "Move this jar to the Recycle Bin", () => _ = DeleteUserModsAsync(new[] { entry })));
+
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        grid.Children.Add(details);
+        Grid.SetColumn(actions, 1);
+        grid.Children.Add(actions);
+        var body = new StackPanel();
+        body.Children.Add(grid);
+        if (expander != null) body.Children.Add(expander);
+        if (children != null) body.Children.Add(children);
+        var card = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#1D1E22")), BorderBrush = new SolidColorBrush(Color.Parse("#303137")),
+            BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(16, 12), Child = body
+        };
+
+        var wrapper = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*"), Margin = new Thickness(0, 0, 0, 8) };
+        CheckBox? select = null;
+        if (IsSelectableMod(entry))
+        {
+            select = new CheckBox { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top, Margin = new Thickness(0, 14, 0, 0) };
+            string key = entry.FilePath ?? entry.Id;
+            select.IsCheckedChanged += (_, _) =>
             {
-                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 8, 0),
-                Tag = filePath
-            };
-            cb.IsCheckedChanged += (s, e) =>
-            {
-                string fp2 = (cb.Tag as string) ?? "";
-                if (cb.IsChecked == true) _selectedModPaths.Add(fp2);
-                else _selectedModPaths.Remove(fp2);
+                if (select.IsChecked == true) _selectedMods[key] = entry;
+                else _selectedMods.Remove(key);
                 UpdateModsSelectionBar();
             };
-
-            var wrapper = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(0, 0, 0, 8) };
-            // Searchable text for live (visibility) filtering by the name search box.
-            wrapper.Tag = (mod.DisplayName + " " + mod.ModId + " " + System.IO.Path.GetFileName(mod.FilePath)).ToLowerInvariant();
-            Grid.SetColumn(cb, 0);
-            Grid.SetColumn(row, 1);
-            wrapper.Children.Add(cb);
-            wrapper.Children.Add(row);
-            ModsList.Children.Add(wrapper);
+            wrapper.Children.Add(select);
         }
-        ModsPageCount.Text = $"({totalEnabledCount})";
-        if (matchingMods.Count == 0)
-            ModsList.Children.Add(new TextBlock
-            {
-                Text = "No mods match this view. Add a local file, browse mods, or change the filter.",
-                Foreground = Brush.Parse("#A0A1AA"), TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(4, 16), FontSize = 13
-            });
-        ApplyInstalledNameFilter(); // re-apply any active name search to the freshly built rows
+        Grid.SetColumn(card, 1);
+        wrapper.Children.Add(card);
+        _modRows.Add(new ModRowView(entry, wrapper, toggle, select, children, actionLabels));
+        return wrapper;
     }
 
-
-    private void ToggleMod(string filePath, bool isCurrentlyEnabled)
+    private Control BuildModChildRow(ModInventoryEntry parent, ModInventoryEntry child, int level)
     {
+        var text = new StackPanel { Spacing = 2, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        var header = new WrapPanel();
+        header.Children.Add(new TextBlock { Text = child.DisplayName, Foreground = new SolidColorBrush(Color.Parse("#CCCCCC")), FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+        if (!string.IsNullOrEmpty(child.Version))
+            header.Children.Add(new TextBlock { Text = ModVersionText(child.Version), Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+        header.Children.Add(ModBadge(ModOwnershipBadge(child)));
+        text.Children.Add(header);
+        text.Children.Add(new TextBlock { Text = ModMetaLine(child) + " · " + ModStatusLine(child, _modInventory?.MinecraftVersion ?? ""), Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11, TextWrapping = TextWrapping.Wrap });
+        var note = ModNoteLine(child) ?? child.ToggleBlockedReason;
+        if (note != null) text.Children.Add(new TextBlock { Text = note, Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 11, TextWrapping = TextWrapping.Wrap });
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        grid.Children.Add(text);
+        if (ModChildActionLabel(parent) is { } label)
+        {
+            var disableParent = ModActionButton(label, "danger", child.ToggleBlockedReason, () => _ = ToggleModEntryAsync(parent, false, alwaysConfirm: true));
+            disableParent.Height = 26;
+            disableParent.Margin = new Thickness(8, 0, 0, 0);
+            disableParent.IsEnabled = !_launching;
+            Grid.SetColumn(disableParent, 1);
+            grid.Children.Add(disableParent);
+        }
+        return new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#202125")), BorderBrush = new SolidColorBrush(Color.Parse("#3A3B42")),
+            BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(10, 6),
+            Margin = new Thickness(level * 16, 0, 0, 0), Child = grid
+        };
+    }
+
+    private Task ToggleModEntryAsync(ModInventoryEntry entry, bool enable, bool alwaysConfirm = false) =>
+        entry.Ownership == ModOwnership.NativeModule
+            ? SetNativeModuleAsync(entry, enable)
+            : ApplyModChoiceAsync(new[] { entry.Id }, enable, entry.DisplayName, alwaysConfirm);
+
+    private bool ModsCanChange()
+    {
+        // Only the active profile's list: right after a profile switch the old one must not be changed by a click.
+        bool current = ModInventoryView.IsFor(_modInventory, ModsTarget().GameDirectory);
+        if (_launching) ModsStatus("Wait until the launch has finished, then try again.", true);
+        else if (_modsBusy) ModsStatus("Another mod change is still being applied.", true);
+        else if (!current) ModsStatus(_modsLoadingProfile != null ? $"The mods of {_modsLoadingProfile} are still loading. Try again in a moment."
+            : "The mod list is not loaded. Refresh and try again.", true);
+        return !_launching && !_modsBusy && current;
+    }
+
+    /// <summary>The profile whose game folder the inventory lists (what a confirmation must name).</summary>
+    private string ModsProfileName(ModInventory inventory) =>
+        _profileService.GetProfiles().FirstOrDefault(p => SafeFileOps.PathsEqual(_pathService.GetProfileDirectory(p), inventory.GameDirectory))?.Name
+            ?? inventory.GameDirectory;
+
+    /// <summary>
+    /// Enable/disable through the dependency planner: the plan (other mods switched with it, warnings, blockers) is confirmed
+    /// in a dialog when it reaches beyond the chosen mods, then applied. The list is always re-read from disk afterwards, so
+    /// a failed change shows the real state.
+    /// </summary>
+    private async Task ApplyModChoiceAsync(IReadOnlyCollection<string> ids, bool enable, string what, bool alwaysConfirm = false)
+    {
+        if (ids.Count == 0 || !ModsCanChange()) return;
+        var inventory = _modInventory!;
+        string verb = enable ? "Enable" : "Disable";
+        _modsBusy = true;
         try
         {
-            if (isCurrentlyEnabled)
+            var plan = _modStateService.Plan(inventory, ids, enable);
+            if ((alwaysConfirm || plan.AlsoDisable.Count + plan.AlsoEnable.Count + plan.Warnings.Count + plan.Blockers.Count > 0)
+                && !await ShowLadsDialogAsync($"{verb} {what}", DescribeModPlan(inventory, plan, $"{verb} {what}?"), verb, "Cancel",
+                    danger: !enable, confirmEnabled: plan.Blockers.Count == 0))
             {
-                File.Move(filePath, filePath + ".disabled");
-                Log($"[Mods] Disabled: {Path.GetFileName(filePath)}");
+                ModsStatus(plan.Blockers.Count > 0 ? "Not changed: " + string.Join(" ", plan.Blockers) : "Nothing was changed.", plan.Blockers.Count > 0);
+                return;
             }
-            else
-            {
-                string enabledPath = filePath.Replace(".jar.disabled", ".jar");
-                File.Move(filePath, enabledPath);
-                Log($"[Mods] Enabled: {Path.GetFileName(enabledPath)}");
-            }
-            LoadModsList();
+            ModsStatus($"{verb} {what}...");
+            var result = await _modStateService.ApplyAsync(inventory.GameDirectory, inventory, plan);
+            ModsStatus(result.Message, !result.Success);
         }
         catch (Exception ex)
         {
-            Log($"[Mods ERROR] {ex.Message}");
+            ModsStatus($"Could not {verb.ToLowerInvariant()} {what}: {ex.Message}", true);
         }
+        finally { _modsBusy = false; }
+        await AfterModsChangedAsync();
     }
 
-    private void DeleteMod(string filePath)
+    /// <summary>A Lads module (thelads_config.json); the inventory already blocks this while the game runs.</summary>
+    private async Task SetNativeModuleAsync(ModInventoryEntry module, bool enable)
     {
+        if (!ModsCanChange()) return;
+        _modsBusy = true;
         try
         {
-            File.Delete(filePath);
-            Log($"[Mods] Deleted: {Path.GetFileName(filePath)}");
-            LoadModsList();
+            var result = await _modStateService.SetNativeModuleAsync(_modInventory!.GameDirectory, module.Id, enable);
+            ModsStatus(result.Message, !result.Success);
         }
         catch (Exception ex)
         {
-            Log($"[Mods ERROR] {ex.Message}");
+            ModsStatus($"Could not switch {module.DisplayName}: {ex.Message}", true);
+        }
+        finally { _modsBusy = false; }
+        await AfterModsChangedAsync();
+    }
+
+    /// <summary>Re-reads the disk state and refreshes the in-game Mods view's snapshot (.lads-mod-cache\inventory.json).</summary>
+    private async Task AfterModsChangedAsync()
+    {
+        // The inventory this reload read, not _modInventory: a newer reload may still be running, and the one shown until
+        // then can predate the change.
+        if (await ReloadModsInventoryAsync() is not { } inventory) return;
+        try { await _modInventoryService.WriteSnapshotAsync(inventory); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ModsStatus($"{ModsStatusText.Text} The in-game mod list could not be updated: {ex.Message}", true);
         }
     }
 
-    private void RefreshMods_Click(object? sender, RoutedEventArgs e) => LoadModsList();
-
-    // ─── Add / search / drag-drop for installed mods ───────────────
-
-    // Live name search: just toggle row visibility (no jar re-scan), so it updates as you type.
-    private void ApplyInstalledNameFilter()
+    private static string ModNames(ModInventory inventory, IEnumerable<string> ids, int max = 3)
     {
-        if (ModsList == null) return;
-        string q = ModNameSearchBox?.Text?.Trim().ToLowerInvariant() ?? "";
-        foreach (var child in ModsList.Children)
-            if (child is Control c)
-                c.IsVisible = q.Length == 0 || ((c.Tag as string) ?? "").Contains(q);
+        var names = ids.Distinct().Select(id => inventory.Entries.SelectMany(ModInventoryView.Flatten).FirstOrDefault(e => e.Id == id)?.DisplayName ?? id).ToList();
+        return string.Join(", ", names.Take(max)) + (names.Count > max ? $" and {names.Count - max} more" : "");
     }
 
-    private void ModNameSearch_TextChanged(object? sender, TextChangedEventArgs e) => ApplyInstalledNameFilter();
+    private static string DescribeModPlan(ModInventory inventory, ModTogglePlan plan, string question)
+    {
+        string Name(string id) => inventory.Entries.SelectMany(ModInventoryView.Flatten).FirstOrDefault(e => e.Id == id) is { } e && e.DisplayName != id
+            ? $"{e.DisplayName} ({id})" : id;
+        var lines = new List<string> { question };
+        void Section(string title, IEnumerable<string> items)
+        {
+            var list = items.ToList();
+            if (list.Count == 0) return;
+            lines.Add("");
+            lines.Add(title);
+            lines.AddRange(list.Select(item => "• " + item));
+        }
+        if (plan.TargetIds.Count > 1) Section("Selected:", plan.TargetIds.Select(Name));
+        Section("Also switched off, because they need it:", plan.AlsoDisable.Select(Name));
+        Section("Also switched on, because it needs them:", plan.AlsoEnable.Select(Name));
+        Section("Please note:", plan.Warnings);
+        Section("This cannot be applied:", plan.Blockers);
+        return string.Join("\n", lines);
+    }
 
-    // The version "Filter" box does change which mods are scanned, so it rebuilds the list.
-    private void ModVersionFilter_TextChanged(object? sender, TextChangedEventArgs e) => LoadModsList();
+    private void RefreshMods_Click(object? sender, RoutedEventArgs e) => ReloadModsInventory();
+
+    private void ModNameSearch_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (!_resettingModFilters) RenderModsInventory();
+    }
+
+    private void ModsFilter_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_resettingModFilters) RenderModsInventory();
+    }
+
+    private void SetModFilters(int filter, string search)
+    {
+        _resettingModFilters = true;
+        try
+        {
+            ModsFilterBox.SelectedIndex = filter;
+            ModNameSearchBox.Text = search;
+        }
+        finally { _resettingModFilters = false; }
+        RenderModsInventory();
+    }
+
+    private void ResetModFilters_Click(object? sender, RoutedEventArgs e) => SetModFilters(0, "");
+
+    private void OpenModsResourcePacks_Click(object? sender, RoutedEventArgs e)
+    {
+        var folder = SharedFolderTarget("resourcepacks");
+        var error = OpenFolderCreatingIt(folder);
+        ModsStatus(error ?? $"Opened the shared resource packs folder ({folder}). Every version uses it; switch packs in game.", error != null);
+    }
+
+    private async void RestoreDefaultMods_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!ModsCanChange()) return;
+        var inventory = _modInventory!;
+        // Busy from the question on: a launch (e.g. a crash auto-relaunch) cannot start its installers while it is open.
+        _modsBusy = true;
+        try
+        {
+            if (!await ShowLadsDialogAsync("Restore default mod set",
+                    $"Clear every saved enable/disable choice for '{ModsProfileName(inventory)}'? The Lads pack mods and LadsCore are switched back on " +
+                    "(missing ones are downloaded at the next launch). Mods you added yourself keep their current state.",
+                    "Restore defaults", "Cancel", danger: true))
+                return;
+            var result = await _modStateService.RestoreDefaultsAsync(inventory.GameDirectory, inventory);
+            ModsStatus(result.Success ? "Default mod set restored. " + result.Message : result.Message, !result.Success);
+        }
+        catch (Exception ex)
+        {
+            ModsStatus($"Could not restore the default mod set: {ex.Message}", true);
+        }
+        finally { _modsBusy = false; }
+        await AfterModsChangedAsync();
+    }
+
+    // ─── Add / delete / update your own mods ───────────────
 
     private async void AddModFromFile_Click(object? sender, RoutedEventArgs e)
     {
+        IReadOnlyList<IStorageFile> files;
         try
         {
-            var files = await this.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Add mod .jar file(s)",
                 AllowMultiple = true,
-                FileTypeFilter = new[]
-                {
-                    new FilePickerFileType("Fabric mod (*.jar)") { Patterns = new[] { "*.jar" } }
-                }
+                FileTypeFilter = new[] { new FilePickerFileType("Fabric mod (*.jar)") { Patterns = new[] { "*.jar" } } }
             });
-            if (files == null || files.Count == 0) return;
-            int added = InstallModFiles(files.Select(f => f.Path.LocalPath));
-            StatusText.Text = $"Added {added} mod(s).";
-            LoadModsList();
         }
-        catch (Exception ex) { Log($"[Mods] Add from file failed: {ex.Message}"); }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            ModsStatus($"Could not open the file picker: {ex.Message}", true);
+            return;
+        }
+        await AddUserModsAsync(files.Select(f => f.Path.LocalPath));
     }
 
     private async void AddModFromFolder_Click(object? sender, RoutedEventArgs e)
     {
+        string[] jars;
         try
         {
-            var folders = await this.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title = "Add all .jar files from a folder",
-                AllowMultiple = false
-            });
-            if (folders == null || folders.Count == 0) return;
-            string dir = folders[0].Path.LocalPath;
-            if (!Directory.Exists(dir)) return;
-            int added = InstallModFiles(Directory.GetFiles(dir, "*.jar"));
-            StatusText.Text = $"Added {added} mod(s) from folder.";
-            LoadModsList();
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Add all .jar files from a folder", AllowMultiple = false });
+            if (folders.Count == 0) return;
+            jars = Directory.GetFiles(folders[0].Path.LocalPath, "*.jar");
         }
-        catch (Exception ex) { Log($"[Mods] Add from folder failed: {ex.Message}"); }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            ModsStatus($"Could not read that folder: {ex.Message}", true);
+            return;
+        }
+        if (jars.Length == 0) { ModsStatus("That folder has no .jar files.", true); return; }
+        await AddUserModsAsync(jars);
     }
 
     private void ModsPage_DragOver(object? sender, DragEventArgs e)
@@ -3681,218 +4372,399 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void ModsPage_Drop(object? sender, DragEventArgs e)
+    private async void ModsPage_Drop(object? sender, DragEventArgs e)
     {
+        e.Handled = true;
+        var files = e.DataTransfer.TryGetFiles();
+        if (files == null) return;
+        await AddUserModsAsync(files.Select(f => f.Path.LocalPath).ToList());
+    }
+
+    /// <summary>Add from file, folder or drag-and-drop: each jar is copied into Mods by UserModFiles, which never
+    /// overwrites and refuses pack/LadsCore mods and a second copy of a mod. Every refusal is listed.</summary>
+    private async Task AddUserModsAsync(IEnumerable<string> paths)
+    {
+        var list = paths.Where(p => !string.IsNullOrEmpty(p)).ToList();
+        if (list.Count == 0 || !ModsCanChange()) return;
+        var (gameDirectory, version) = ModsTarget();
+        var added = new List<string>();
+        var refused = new List<string>();
+        _modsBusy = true;
         try
         {
-            var files = e.DataTransfer.TryGetFiles();
-            if (files != null)
+            foreach (var path in list)
             {
-                int added = InstallModFiles(files.Select(f => f.Path.LocalPath));
-                if (added > 0)
+                try
                 {
-                    StatusText.Text = $"Added {added} mod(s) via drag-and-drop.";
-                    LoadModsList();
+                    // Rebuilt for every jar, so two dropped copies of one mod are caught (the scan cache keeps this cheap).
+                    var inventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, version);
+                    var destination = await Task.Run(() => UserModFiles.Add(inventory, path));
+                    added.Add(Path.GetFileName(destination));
+                }
+                catch (Exception ex)
+                {
+                    refused.Add($"{Path.GetFileName(path)}: {ex.Message}");
                 }
             }
         }
-        catch (Exception ex) { Log($"[Mods] Drop failed: {ex.Message}"); }
-        e.Handled = true;
+        finally { _modsBusy = false; }
+        var text = added.Count > 0 ? $"Added {string.Join(", ", added)}." : "";
+        if (refused.Count > 0) text += (text.Length > 0 ? " " : "") + "Not added: " + string.Join(" ", refused);
+        ModsStatus(text, refused.Count > 0);
+        await AfterModsChangedAsync();
     }
 
-    // Copies the given .jar paths into the instance mods folder. Returns the number installed.
-    private int InstallModFiles(IEnumerable<string> paths)
+    /// <summary>Only jars you added yourself are deleted here (to the Recycle Bin, after confirmation); pack mods and
+    /// LadsCore are switched off instead, so the launcher does not download them again.</summary>
+    private async Task DeleteUserModsAsync(IReadOnlyList<ModInventoryEntry> entries)
     {
-        string modsDir = Path.Combine(settings.InstancePath, "mods");
-        Directory.CreateDirectory(modsDir);
-        int count = 0;
-        foreach (var src in paths)
+        var jars = entries.Where(IsUserJar).ToList();
+        if (jars.Count == 0)
         {
-            try
-            {
-                if (string.IsNullOrEmpty(src) || !src.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)) continue;
-                if (!File.Exists(src)) continue;
-                string dest = Path.Combine(modsDir, Path.GetFileName(src));
-                File.Copy(src, dest, overwrite: true);
-                Log($"[Mods] Installed {Path.GetFileName(src)}");
-                count++;
-            }
-            catch (Exception ex) { Log($"[Mods] Failed to copy {src}: {ex.Message}"); }
+            ModsStatus("Only mods you added yourself can be deleted. Switch pack mods and LadsCore off instead.", true);
+            return;
         }
-        return count;
+        if (!ModsCanChange()) return;
+        int skipped = entries.Count - jars.Count;
+        var message = $"Move {(jars.Count == 1 ? "this mod" : $"these {jars.Count} mods")} of '{ModsProfileName(_modInventory!)}' to the Recycle Bin?\n\n"
+            + string.Join("\n", jars.Take(12).Select(j => $"• {j.DisplayName} ({j.FileName})"))
+            + (jars.Count > 12 ? $"\n…and {jars.Count - 12} more" : "")
+            + (skipped > 0 ? $"\n\n{skipped} selected pack or Lads entries are not deleted; switch them off instead." : "");
+        var failures = new List<string>();
+        // Busy from the question on: a launch cannot start its installers while it is open.
+        _modsBusy = true;
+        try
+        {
+            if (!await ShowLadsDialogAsync("Delete mods", message, "Move to Recycle Bin", "Cancel", danger: true)) return;
+            foreach (var jar in jars)
+            {
+                try { await Task.Run(() => SafeFileOps.DeleteToRecycleBin(jar.FilePath!)); }
+                catch (Exception ex) { failures.Add($"{jar.FileName}: {ex.Message}"); }
+            }
+        }
+        finally { _modsBusy = false; }
+        ModsStatus(failures.Count == 0
+            ? $"Moved {string.Join(", ", jars.Select(j => j.FileName))} to the Recycle Bin."
+            : $"Moved {jars.Count - failures.Count} of {jars.Count} to the Recycle Bin. Not deleted: {string.Join("; ", failures)}", failures.Count > 0);
+        await AfterModsChangedAsync();
     }
 
-    // ─── Multi-select helpers ───────────────
+    private async void DeleteSelectedMods_Click(object? sender, RoutedEventArgs e) => await DeleteUserModsAsync(_selectedMods.Values.ToList());
 
     private void UpdateModsSelectionBar()
     {
-        int count = _selectedModPaths.Count;
+        int count = _selectedMods.Count;
         if (ModsMassActionBar != null) ModsMassActionBar.IsVisible = count > 0;
         if (ModsSelectionCount != null) ModsSelectionCount.Text = $"{count} selected";
     }
 
+    // Selects only the rows the filter and search show: a mass action never reaches a mod you cannot see.
     private void SelectAllMods_Click(object? sender, RoutedEventArgs e)
     {
         bool selectAll = SelectAllModsCheckbox?.IsChecked == true;
-        _selectedModPaths.Clear();
-        foreach (var child in ModsList.Children)
-        {
-            if (child is Grid wrapper && wrapper.Children.Count > 0 && wrapper.Children[0] is CheckBox cb)
-            {
-                cb.IsChecked = selectAll;
-                if (selectAll && cb.Tag is string fp && !string.IsNullOrEmpty(fp))
-                    _selectedModPaths.Add(fp);
-            }
-        }
+        foreach (var row in _modRows)
+            if (row.Select != null) row.Select.IsChecked = selectAll;
         UpdateModsSelectionBar();
     }
 
-    private void EnableSelectedMods_Click(object? sender, RoutedEventArgs e)
-    {
-        foreach (var fp in _selectedModPaths.ToList())
-            if (fp.EndsWith(".disabled")) ToggleMod(fp, false);
-        _selectedModPaths.Clear();
-        LoadModsList();
-    }
+    private string SelectionName() =>
+        _selectedMods.Count == 1 ? _selectedMods.Values.First().DisplayName : $"{_selectedMods.Count} selected mods";
 
-    private void DisableSelectedMods_Click(object? sender, RoutedEventArgs e)
-    {
-        foreach (var fp in _selectedModPaths.ToList())
-            if (!fp.EndsWith(".disabled")) ToggleMod(fp, true);
-        _selectedModPaths.Clear();
-        LoadModsList();
-    }
+    private async void EnableSelectedMods_Click(object? sender, RoutedEventArgs e) =>
+        await ApplyModChoiceAsync(_selectedMods.Values.Select(m => m.Id).Distinct().ToList(), true, SelectionName());
 
-    private void DeleteSelectedMods_Click(object? sender, RoutedEventArgs e)
+    private async void DisableSelectedMods_Click(object? sender, RoutedEventArgs e) =>
+        await ApplyModChoiceAsync(_selectedMods.Values.Select(m => m.Id).Distinct().ToList(), false, SelectionName());
+
+    private async void UpdateSelectedMods_Click(object? sender, RoutedEventArgs e) => await UpdateUserModsAsync(_selectedMods.Values.ToList());
+
+    private async void UpdateAllMods_Click(object? sender, RoutedEventArgs e) =>
+        await UpdateUserModsAsync(_modInventory?.Entries.Where(IsUpdatableJar).ToList() ?? new List<ModInventoryEntry>());
+
+    /// <summary>
+    /// Updates mods you added yourself from Modrinth (mod id as the project slug). Pack mods and LadsCore come only from the
+    /// launcher's pinned pack. The download must be the same Fabric mod; it replaces the old jar (kept in
+    /// .lads-mod-cache\user-mod-backups) and keeps its disabled state.
+    /// </summary>
+    private async Task UpdateUserModsAsync(IReadOnlyList<ModInventoryEntry> entries)
     {
-        foreach (var fp in _selectedModPaths.ToList())
+        var jars = entries.Where(IsUpdatableJar).ToList();
+        if (jars.Count == 0)
         {
-            try { File.Delete(fp); Log($"[Mods] Deleted: {Path.GetFileName(fp)}"); }
-            catch (Exception ex) { Log($"[Mods] Delete failed: {ex.Message}"); }
+            ModsStatus("Only mods you added yourself are updated here; the launcher keeps the pack mods and LadsCore up to date.", entries.Count > 0);
+            return;
         }
-        _selectedModPaths.Clear();
-        LoadModsList();
-    }
-
-    private async void UpdateSelectedMods_Click(object? sender, RoutedEventArgs e)
-    {
-        var paths = _selectedModPaths.ToList();
-        if (paths.Count == 0) return;
-        int updated = await RunModUpdates(paths);
-        StatusText.Text = updated > 0 ? $"Updated {updated} mod(s)." : "Selected mods are up to date.";
-        if (updated > 0) LoadModsList();
-    }
-
-    private async void UpdateAllMods_Click(object? sender, RoutedEventArgs e)
-    {
-        if (UpdateAllModsBtn != null) { UpdateAllModsBtn.IsEnabled = false; UpdateAllModsBtn.Content = "Checking..."; }
-        string modsPath = Path.Combine(settings.InstancePath, "mods");
-        var paths = Directory.Exists(modsPath) ? Directory.GetFiles(modsPath, "*.jar").ToList() : new List<string>();
-        int updated = await RunModUpdates(paths);
-        if (UpdateAllModsBtn != null) { UpdateAllModsBtn.IsEnabled = true; UpdateAllModsBtn.Content = "Update All"; }
-        StatusText.Text = updated > 0 ? $"Updated {updated} mod(s)." : "All mods are up to date.";
-        if (updated > 0) LoadModsList();
-    }
-
-    private async Task<int> RunModUpdates(List<string> jarPaths)
-    {
-        string mcVersion = ResolveMinecraftVersion();
-        int updated = 0;
-        foreach (var file in jarPaths)
-        {
-            try
-            {
-                string modId = "", modVersion = "";
-                using (var archive = ZipFile.OpenRead(file))
-                {
-                    var entry = archive.GetEntry("fabric.mod.json");
-                    if (entry == null) continue;
-                    using var stream = entry.Open();
-                    using var reader = new StreamReader(stream);
-                    using var doc = JsonDocument.Parse(reader.ReadToEnd());
-                    var root = doc.RootElement;
-                    if (root.TryGetProperty("id", out var idEl)) modId = idEl.GetString() ?? "";
-                    if (root.TryGetProperty("version", out var verEl)) modVersion = verEl.GetString() ?? "";
-                }
-                if (string.IsNullOrEmpty(modId)) continue;
-
-                string apiUrl = $"{settings.ModrinthApiUrl}/project/{modId}/version?loaders=[\"fabric\"]&game_versions=[\"{mcVersion}\"]";
-                var resp = await _httpClient.GetStringAsync(apiUrl);
-                using var vDoc = JsonDocument.Parse(resp);
-                var arr = vDoc.RootElement;
-                if (arr.ValueKind != JsonValueKind.Array || arr.GetArrayLength() == 0) continue;
-
-                var latest = arr[0];
-                string latestVer = latest.TryGetProperty("version_number", out var vn) ? vn.GetString() ?? "" : "";
-                if (string.IsNullOrEmpty(latestVer) || latestVer == modVersion) continue;
-
-                string? dlUrl = GetPrimaryDownloadUrl(latest);
-                if (string.IsNullOrEmpty(dlUrl)) continue;
-
-                var bytes = await _httpClient.GetByteArrayAsync(dlUrl);
-                string dir = Path.GetDirectoryName(file)!;
-                string newName = Uri.UnescapeDataString(Path.GetFileName(new Uri(dlUrl).AbsolutePath));
-                File.Delete(file);
-                File.WriteAllBytes(Path.Combine(dir, newName), bytes);
-                Log($"[Mods] Updated {modId}: {modVersion} → {latestVer}");
-                updated++;
-            }
-            catch (Exception ex) { Log($"[Mods] Update skipped ({Path.GetFileName(file)}): {ex.Message}"); }
-        }
-        return updated;
-    }
-
-    private async Task CheckAndUpdateSingleMod(ModFileItem mod, Button btn)
-    {
-        btn.Content = "...";
-        btn.IsEnabled = false;
+        if (!ModsCanChange()) return;
+        var inventory = _modInventory!;
+        var lines = new List<string>();
+        int updated = 0, failed = 0;
+        _modsBusy = true;
+        UpdateAllModsBtn.IsEnabled = false;
         try
         {
-            string mcVersion = ResolveMinecraftVersion();
-            string apiUrl = $"{settings.ModrinthApiUrl}/project/{mod.ModId}/version?loaders=[\"fabric\"]&game_versions=[\"{mcVersion}\"]";
-            var resp = await _httpClient.GetStringAsync(apiUrl);
-            using var doc = JsonDocument.Parse(resp);
-            var arr = doc.RootElement;
-            if (arr.ValueKind != JsonValueKind.Array || arr.GetArrayLength() == 0)
+            foreach (var jar in jars)
             {
-                btn.Content = "—"; ToolTip.SetTip(btn, "Not on Modrinth for this version"); return;
+                ModsStatus($"Checking {jar.DisplayName}...");
+                try
+                {
+                    var (changed, message) = await UpdateUserModAsync(inventory, jar);
+                    if (changed) updated++;
+                    lines.Add(message);
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    lines.Add($"{jar.DisplayName}: {ex.Message}");
+                }
             }
-            var latest = arr[0];
-            string latestVer = latest.TryGetProperty("version_number", out var vn) ? vn.GetString() ?? "" : "";
-            if (string.IsNullOrEmpty(latestVer) || latestVer == mod.ModVersion)
+        }
+        finally
+        {
+            _modsBusy = false;
+            UpdateAllModsBtn.IsEnabled = true;
+        }
+        ModsStatus($"Updated {updated} of {jars.Count}. " + string.Join(" ", lines), failed > 0);
+        if (updated > 0) await AfterModsChangedAsync();
+    }
+
+    private async Task<(bool Updated, string Message)> UpdateUserModAsync(ModInventory inventory, ModInventoryEntry jar)
+    {
+        string url = $"{settings.ModrinthApiUrl}/project/{Uri.EscapeDataString(jar.Id)}/version?loaders=[\"fabric\"]&game_versions=[\"{inventory.MinecraftVersion}\"]";
+        using var response = await _httpClient.GetAsync(url);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return (false, $"{jar.DisplayName}: Modrinth has no project '{jar.Id}'.");
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        if (document.RootElement.ValueKind != JsonValueKind.Array || document.RootElement.GetArrayLength() == 0)
+            return (false, $"{jar.DisplayName}: no Modrinth release for Minecraft {inventory.MinecraftVersion}.");
+        var latest = document.RootElement[0];
+        string latestVersion = latest.TryGetProperty("version_number", out var number) ? number.GetString() ?? "?" : "?";
+        var file = PrimaryModrinthFile(latest) ?? throw new InvalidDataException($"Modrinth lists no file for {jar.DisplayName} {latestVersion}.");
+        string? sha512 = file.TryGetProperty("hashes", out var hashes) && hashes.TryGetProperty("sha512", out var hash) ? hash.GetString() : null;
+        string installed = await Task.Run(() => FileSha512(jar.FilePath!));
+        if (sha512 != null ? sha512.Equals(installed, StringComparison.OrdinalIgnoreCase) : latestVersion == jar.Version)
+            return (false, $"{jar.DisplayName} is up to date ({latestVersion}).");
+        string downloadUrl = file.TryGetProperty("url", out var link) ? link.GetString() ?? "" : "";
+        if (downloadUrl.Length == 0) throw new InvalidDataException($"Modrinth lists no download for {jar.DisplayName} {latestVersion}.");
+        string fileName = file.TryGetProperty("filename", out var name) ? name.GetString() ?? "" : "";
+        var temp = await DownloadToModCacheAsync(downloadUrl, inventory.GameDirectory, sha512, null);
+        try
+        {
+            await Task.Run(() => UserModFiles.Install(inventory, temp, fileName, expectedId: jar.Id));
+        }
+        finally
+        {
+            if (File.Exists(temp)) File.Delete(temp);
+        }
+        return (true, $"{jar.DisplayName}: {jar.Version} → {latestVersion}.");
+    }
+
+    private static JsonElement? PrimaryModrinthFile(JsonElement version)
+    {
+        if (!version.TryGetProperty("files", out var files) || files.ValueKind != JsonValueKind.Array || files.GetArrayLength() == 0) return null;
+        foreach (var file in files.EnumerateArray())
+            if (file.TryGetProperty("primary", out var primary) && primary.ValueKind == JsonValueKind.True) return file;
+        return files[0];
+    }
+
+    private static string FileSha512(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        return Convert.ToHexString(System.Security.Cryptography.SHA512.HashData(stream)).ToLowerInvariant();
+    }
+
+    /// <summary>Downloads into the profile's .lads-mod-cache (the same drive as Mods, so placing it is a rename). A failed or
+    /// mismatching download is deleted; Mods is not touched here.</summary>
+    private async Task<string> DownloadToModCacheAsync(string url, string gameDirectory, string? sha512, IProgress<double>? progress)
+    {
+        var cache = Path.Combine(gameDirectory, ".lads-mod-cache");
+        Directory.CreateDirectory(cache);
+        var temp = Path.Combine(cache, "download-" + Guid.NewGuid().ToString("N") + ".tmp");
+        try
+        {
+            using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead))
             {
-                btn.Content = ""; ToolTip.SetTip(btn, $"Up to date ({mod.ModVersion})"); return;
+                response.EnsureSuccessStatusCode();
+                long? total = response.Content.Headers.ContentLength;
+                await using var input = await response.Content.ReadAsStreamAsync();
+                await using var output = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true);
+                var buffer = new byte[81920];
+                long done = 0;
+                int read;
+                while ((read = await input.ReadAsync(buffer)) > 0)
+                {
+                    await output.WriteAsync(buffer.AsMemory(0, read));
+                    done += read;
+                    if (total > 0) progress?.Report(done * 100.0 / total.Value);
+                }
             }
-            // Update available — download immediately
-            string? dlUrl = GetPrimaryDownloadUrl(latest);
-            if (string.IsNullOrEmpty(dlUrl)) { btn.Content = "?"; return; }
-            btn.Content = $"↓ {latestVer}";
-            var bytes = await _httpClient.GetByteArrayAsync(dlUrl);
-            string dir = Path.GetDirectoryName(mod.FilePath)!;
-            string newName = Uri.UnescapeDataString(Path.GetFileName(new Uri(dlUrl).AbsolutePath));
-            File.Delete(mod.FilePath);
-            File.WriteAllBytes(Path.Combine(dir, newName), bytes);
-            Log($"[Mods] Updated {mod.ModId}: {mod.ModVersion} → {latestVer}");
-            StatusText.Text = $"Updated: {mod.DisplayName} → {latestVer}";
-            LoadModsList();
+            if (sha512 != null && !(await Task.Run(() => FileSha512(temp))).Equals(sha512, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The download does not match the checksum Modrinth published. Nothing was changed.");
+            return temp;
+        }
+        catch
+        {
+            if (File.Exists(temp)) File.Delete(temp);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// --preview-mods &lt;outputDir&gt; (sandbox only; Program.Main refuses it otherwise): builds the active profile's inventory,
+    /// opens the Mods page and, for every filter, one search for an embedded library id and a Reset, saves a screenshot and
+    /// the visible rows (texts, statuses, badges, toggle state, children) with the counts to mods-preview.json; then exits.
+    /// </summary>
+    private async Task RunModsPreviewAsync(string outputDirectory)
+    {
+        int exitCode = 0;
+        var result = new JsonObject();
+        try
+        {
+            Directory.CreateDirectory(outputDirectory);
+            NavigateTo("Mods");
+            ModsSubTabControl.SelectedIndex = 0;
+            await ReloadModsInventoryAsync();
+            var inventory = _modInventory ?? throw new InvalidOperationException("The mod list could not be built: " + ModsNoticeText.Text);
+            result["profile"] = _profileService.GetActiveProfile().Name;
+            result["gameDirectory"] = inventory.GameDirectory;
+            result["minecraftVersion"] = inventory.MinecraftVersion;
+            result["gameRunning"] = inventory.GameRunning;
+            result["counts"] = JsonSerializer.SerializeToNode(inventory.Counts);
+            result["countsLabel"] = ModsPageCount.Text;
+            result["homeModsStat"] = ModCountText.Text;
+            result["notice"] = ModsNoticeText.IsVisible ? ModsNoticeText.Text : null;
+            result["entriesTotal"] = inventory.Entries.Count;
+            var views = new JsonArray();
+            async Task Capture(string name)
+            {
+                await Task.Delay(600); // layout settles
+                var shot = Path.Combine(outputDirectory, $"mods-{name}.png");
+                SaveWindowScreenshot(shot);
+                views.Add(new JsonObject
+                {
+                    ["name"] = name,
+                    ["filter"] = ModInventoryView.FilterLabels[ModsFilterBox.SelectedIndex],
+                    ["search"] = ModNameSearchBox.Text ?? "",
+                    ["screenshot"] = shot,
+                    ["visibleRows"] = _modRows.Count,
+                    ["rows"] = new JsonArray(_modRows.Select(r => (JsonNode?)DescribeModRow(inventory, r)).ToArray())
+                });
+            }
+            for (int i = 0; i < ModInventoryView.FilterLabels.Count; i++)
+            {
+                SetModFilters(i, "");
+                await Capture("filter-" + Regex.Replace(ModInventoryView.FilterLabels[i].ToLowerInvariant(), "[^a-z0-9]+", "-"));
+            }
+            // An embedded library whose parent's own name/id does not contain its id: found only through the children.
+            var nested = inventory.Entries.SelectMany(parent => ModInventoryView.Flatten(parent).Skip(1).Select(child => (Parent: parent, Child: child)))
+                .FirstOrDefault(p => FabricModMetadata.ValidId(p.Child.Id) && !p.Parent.Id.Contains(p.Child.Id, StringComparison.OrdinalIgnoreCase)
+                    && !p.Parent.DisplayName.Contains(p.Child.Id, StringComparison.OrdinalIgnoreCase));
+            if (nested.Child == null) throw new InvalidOperationException("This profile has no embedded library to search for.");
+            SetModFilters(0, nested.Child.Id);
+            await Capture("search-nested-library");
+            ResetModFilters_Click(this, new RoutedEventArgs());
+            await Capture("reset");
+            result["views"] = views;
+            // Layout check of every kind of row: the list scrolled to the first row of each status (screenshots only).
+            var statusShots = new JsonObject();
+            foreach (var group in _modRows.GroupBy(r => r.Entry.Status).ToList())
+            {
+                group.First().Row.BringIntoView();
+                await Task.Delay(600);
+                var shot = Path.Combine(outputDirectory, $"mods-status-{group.Key.ToString().ToLowerInvariant()}.png");
+                SaveWindowScreenshot(shot);
+                statusShots[group.Key.ToString()] = new JsonObject { ["firstRow"] = group.First().Entry.Id, ["rows"] = group.Count(), ["screenshot"] = shot };
+            }
+            result["statusScreenshots"] = statusShots;
+            // The confirmation a toggle shows: the library whose disabling reaches the most mods, and LadsCore (warning).
+            var dialogs = new JsonArray();
+            var library = inventory.Entries.Where(e => e.CanToggle && e.RequestedEnabled && e.Ownership is ModOwnership.Pack or ModOwnership.User)
+                .Select(e => (Entry: e, Plan: _modStateService.Plan(inventory, new[] { e.Id }, false)))
+                .OrderByDescending(p => p.Plan.AlsoDisable.Count).FirstOrDefault();
+            var core = inventory.Entries.FirstOrDefault(e => e.Ownership == ModOwnership.Core);
+            foreach (var (name, entry) in new[] { ("disable-library", library.Entry), ("disable-core", core) })
+            {
+                if (entry == null) continue;
+                var plan = _modStateService.Plan(inventory, new[] { entry.Id }, false);
+                var text = DescribeModPlan(inventory, plan, $"Disable {entry.DisplayName}?");
+                var dialog = CreateLadsDialog($"Disable {entry.DisplayName}", text, new[] { ("Disable", true, plan.Blockers.Count == 0) }, "Cancel");
+                dialog.Show(this);
+                await Task.Delay(600);
+                var shot = Path.Combine(outputDirectory, $"mods-dialog-{name}.png");
+                using (var bitmap = new RenderTargetBitmap(new PixelSize(Math.Max(1, (int)dialog.Bounds.Width), Math.Max(1, (int)dialog.Bounds.Height)), new Vector(96, 96)))
+                {
+                    bitmap.Render(dialog);
+                    bitmap.Save(shot);
+                }
+                dialog.Close();
+                dialogs.Add(new JsonObject { ["name"] = name, ["plan"] = JsonSerializer.SerializeToNode(plan), ["text"] = text, ["screenshot"] = shot });
+            }
+            result["dialogs"] = dialogs;
         }
         catch (Exception ex)
         {
-            btn.Content = "✕"; btn.IsEnabled = false;
-            ToolTip.SetTip(btn, $"Failed: {ex.Message}");
-            Log($"[Mods] Update check failed for {mod.ModId}: {ex.Message}");
+            exitCode = 1;
+            result["error"] = ex.ToString();
+            Log($"[Preview] {ex}");
         }
+        try
+        {
+            File.WriteAllText(Path.Combine(outputDirectory, "mods-preview.json"), result.ToJsonString(new JsonSerializerOptions(JsonSerializerOptions.Default) { WriteIndented = true }));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"--preview-mods could not write its report to '{outputDirectory}': {ex.Message}");
+            exitCode = 1;
+        }
+        Environment.Exit(exitCode);
     }
 
-    private static string? GetPrimaryDownloadUrl(JsonElement versionElement)
+    private JsonObject DescribeModRow(ModInventory inventory, ModRowView row)
     {
-        if (!versionElement.TryGetProperty("files", out var files) || files.GetArrayLength() == 0) return null;
-        foreach (var f in files.EnumerateArray())
+        var e = row.Entry;
+        return new JsonObject
         {
-            if (f.TryGetProperty("primary", out var p) && p.GetBoolean() && f.TryGetProperty("url", out var u))
-                return u.GetString();
-        }
-        return files[0].TryGetProperty("url", out var fallback) ? fallback.GetString() : null;
+            ["id"] = e.Id,
+            ["displayName"] = e.DisplayName,
+            ["upstreamName"] = e.UpstreamName,
+            ["version"] = e.Version,
+            ["fileName"] = e.FileName,
+            ["badge"] = ModOwnershipBadge(e),
+            ["meta"] = ModMetaLine(e),
+            ["status"] = ModStatusLine(e, inventory.MinecraftVersion),
+            ["note"] = ModNoteLine(e),
+            ["restartRequired"] = e.RestartRequired,
+            ["loadedNow"] = e.LoadedNow,
+            ["nextLaunch"] = e.RequestedEnabled,
+            ["toggle"] = new JsonObject
+            {
+                ["label"] = row.Toggle.Content?.ToString(),
+                ["enabled"] = row.Toggle.IsEnabled,
+                ["blockedReason"] = ToolTip.GetTip(row.Toggle)?.ToString()
+            },
+            ["selectable"] = row.Select != null,
+            ["actions"] = new JsonArray(row.Actions.Select(a => (JsonNode?)a).ToArray()),
+            ["expanded"] = row.Children?.IsVisible ?? false,
+            ["children"] = new JsonArray(ModDescendants(e, 0).Select(c => (JsonNode?)new JsonObject
+            {
+                ["level"] = c.Level,
+                ["id"] = c.Entry.Id,
+                ["displayName"] = c.Entry.DisplayName,
+                ["version"] = c.Entry.Version,
+                ["badge"] = ModOwnershipBadge(c.Entry),
+                ["status"] = ModStatusLine(c.Entry, inventory.MinecraftVersion),
+                ["note"] = ModNoteLine(c.Entry) ?? c.Entry.ToggleBlockedReason,
+                ["action"] = ModChildActionLabel(e)
+            }).ToArray())
+        };
+    }
+
+    private void SaveWindowScreenshot(string target)
+    {
+        var size = new PixelSize(Math.Max(1, (int)Bounds.Width), Math.Max(1, (int)Bounds.Height));
+        using var bitmap = new RenderTargetBitmap(size, new Vector(96, 96));
+        bitmap.Render(this);
+        bitmap.Save(target);
     }
 
     // ═══════════════════════════════════════
@@ -3992,6 +4864,12 @@ public partial class MainWindow : Window
     private async Task LaunchGame()
     {
         if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup) return;
+        if (_modsBusy)
+        {
+            // An add/update/delete on the Mods page is writing to Mods; the installers must not run next to it.
+            StatusText.Text = "A mod change on the Mods page is still being applied. Launch again when it has finished.";
+            return;
+        }
         if (string.IsNullOrWhiteSpace(_selectedAccount))
         {
             StatusText.Text = "Add or select an account before launching.";
@@ -4008,30 +4886,18 @@ public partial class MainWindow : Window
             await ShowMicrosoftSetupDialogAsync();
             return;
         }
-        if (!settings.AllowMultiInstance && _runningProcesses.Any(p => !p.HasExited))
+        var guardProfile = _profileService.GetActiveProfile();
+        if (!settings.AllowMultiInstance && IsGameRunningFor(_pathService.GetProfileDirectory(guardProfile)))
         {
-            var dialog = new Window
-            {
-                Title = "Game Already Running",
-                Width = 400, Height = 160,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Background = new SolidColorBrush(Color.Parse("#17181B")),
-                CanResize = false
-            };
-            var panel = new StackPanel { Margin = new Thickness(20), Spacing = 12 };
-            panel.Children.Add(new TextBlock { Text = "⚠️ Game Already Running", Foreground = Brushes.Orange, FontSize = 16, FontWeight = FontWeight.Bold });
-            panel.Children.Add(new TextBlock { Text = "The game is already running! Please turn on 'Allow launching multiple copies' in settings if you want to open another instance.", TextWrapping = TextWrapping.Wrap, Foreground = Brushes.White, FontSize = 12 });
-            var okBtn = new Button { Content = "OK", Width = 80, Height = 32, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
-            okBtn.Click += (s, e) => dialog.Close();
-            panel.Children.Add(okBtn);
-            dialog.Content = panel;
-            await dialog.ShowDialog(this);
+            await ShowLadsDialogAsync("⚠️ Game Already Running",
+                $"Minecraft is already running for '{guardProfile.Name}'. Please turn on 'Allow launching multiple copies' in settings if you want to open another instance.");
             return;
         }
 
         _launching = true;
         LaunchButton.IsEnabled = false;
         GameLaunchOverlay.IsVisible = true;
+        RenderModsInventory(); // toggles are off while launching
         try
         {
             GameLaunchProgressBar.Value = 0;
@@ -4045,7 +4911,10 @@ public partial class MainWindow : Window
             string launchVersionId = GameVersionPolicy.ResolveVersionId(activeProfile);
             if (GameVersionPolicy.RequiresBundledCore(activeProfile.MinecraftVersion) && string.IsNullOrWhiteSpace(activeProfile.FabricVersion))
                 throw new InvalidOperationException("The Lads Client profile requires a Fabric loader.");
-            await _profileService.PrepareProfileEnvironmentAsync(activeProfile);
+            // Shared worlds/packs/server list (and options.txt unless isolated). Null: the user cancelled at the sharing prompt.
+            if (await PrepareSharedContentForLaunchAsync(activeProfile, gameDirectory) is not { } prepared) return;
+            // The server list was prepared for this LadsCore state (Core reads the shared list, a profile without it gets a copy).
+            bool coreRequested = SharedContentService.IsCoreRequested(gameDirectory, out _);
             settings.InstancePath = gameDirectory;
 
             var path = new MinecraftPath(gameDirectory);
@@ -4212,8 +5081,16 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException($"Select a Java {requiredJava} installation for Minecraft {activeProfile.MinecraftVersion}.");
             await RunPackwizInstaller(activeProfile, launchOpt.JavaPath);
             await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion);
-            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion,
-                message => Dispatcher.UIThread.Post(() => StatusText.Text = message));
+            // Without Fabric nothing in Mods loads (as in LaunchService): no choices to apply, no dependencies to check.
+            if (!string.IsNullOrWhiteSpace(activeProfile.FabricVersion) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion)) return;
+            // A dependency fix chosen at the prompt above can switch LadsCore: prepare the server list again for the new state.
+            if (SharedContentService.IsCoreRequested(gameDirectory, out _) != coreRequested
+                && await PrepareSharedContentForLaunchAsync(activeProfile, gameDirectory, prepared.WithoutSharing) == null) return;
+            // The final mod set: the in-game Mods view reads this snapshot, and the running marker records its enabled ids.
+            GameLaunchStatusText.Text = "Checking mods...";
+            var launchInventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion);
+            await _modInventoryService.WriteSnapshotAsync(launchInventory);
+            var loadedMods = ModInventoryView.EnabledJarIds(launchInventory);
 
             if (settings.AutoRejoinServer)
             {
@@ -4285,57 +5162,10 @@ public partial class MainWindow : Window
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.CreateNoWindow = true;
-            process.StartInfo.Environment["THELADS_DIR"] = gameDirectory;
-
-            process.EnableRaisingEvents = true;
-            process.Exited += async (s, ev) =>
-            {
-                try
-                {
-                    await _profileService.SyncProfileToSharedAsync(activeProfile);
-                }
-                catch (Exception ex)
-                {
-                    Log($"[Profiles WARNING] Post-game shared sync failed: {ex.Message}");
-                }
-
-                Dispatcher.UIThread.Post(() =>
-                {
-                    ApplyNextAccountRequest(_pathService.GetProfileDirectory(activeProfile));
-                    int exitCode = 0;
-                    try { exitCode = process.ExitCode; } catch { }
-
-                    // Re-show the launcher when the game closes, unless the user opted out.
-                    if (!settings.KeepClosedOnExit)
-                    {
-                        this.Show();
-                        this.WindowState = WindowState.Normal;
-                    }
-                    DownloadSpeedText.Text = "0 MB/s";
-
-                    if (exitCode != 0)
-                    {
-                        StatusText.Text = $"Game crashed! (exit code: {exitCode})";
-                        Log($"[Launcher] Game exited with code {exitCode}");
-                        HandleCrashDetection();
-                    }
-                    else
-                    {
-                        StatusText.Text = "Game exited normally.";
-                        Log("[Launcher] Game exited normally.");
-                    }
-
-                    if (settings.SyncScreenshotsToGlobal)
-                        SyncScreenshotsToGlobal(gameDirectory);
-                });
-            };
+            GameSession.Configure(process.StartInfo, gameDirectory, SharedContentService.Instance.Root);
 
             process.OutputDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game] {ev.Data}"); };
             process.ErrorDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game ERROR] {ev.Data}"); };
-
-            // Sync resource packs from global .minecraft folder before launch.
-            if (settings.SyncResourcePacksFromGlobal)
-                SyncResourcePacksFromGlobal(gameDirectory);
 
             // Apply fullscreen setting by patching options.txt before launch.
             if (settings.FullscreenOnLaunch)
@@ -4364,7 +5194,15 @@ public partial class MainWindow : Window
             GameLaunchStatusText.Text = "Launching game...";
             Log("[Launcher] Starting game process...");
             process.Start();
-            _runningProcesses.Add(process);
+            _runningProcesses[process] = gameDirectory;
+            // Running marker now; on exit (once): marker removed, server list reconciled, then OnGameExitedAsync.
+            var sessionMessages = new List<string>();
+            GameSession.Attach(process, gameDirectory, loadedMods, message =>
+                {
+                    lock (sessionMessages) sessionMessages.Add(message);
+                    Log($"[Shared] {message}");
+                },
+                afterExit: () => OnGameExitedAsync(process, activeProfile, gameDirectory, sessionMessages));
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
@@ -4385,7 +5223,7 @@ public partial class MainWindow : Window
             startupSplash.Show();
             _ = WatchForGameWindowAsync(process, startupSplash);
 
-            StatusText.Text = "Game running.";
+            lock (sessionMessages) StatusText.Text = sessionMessages.Count > 0 ? "Game running. " + string.Join(" ", sessionMessages) : "Game running.";
             GameLaunchOverlay.IsVisible = false;
 
             // Hide to tray after launch, unless the user wants the launcher to stay open.
@@ -4403,7 +5241,132 @@ public partial class MainWindow : Window
             _launching = false;
             GameLaunchOverlay.IsVisible = false;
             LaunchButton.IsEnabled = true;
+            RenderModsInventory();
         }
+    }
+
+    /// <summary>
+    /// Installs the pinned pack. When the requested mods cannot load together (typically a library switched off while a mod
+    /// that needs it stays on), it offers the coherent fixes from the dependency planner: disable the mods that need it, or
+    /// switch the library back on. The choice is saved and the install tried once more. False: cancelled (status says why).
+    /// </summary>
+    private async Task<bool> InstallClientModsAsync(string gameDirectory, string minecraftVersion)
+    {
+        Action<string> status = message => Dispatcher.UIThread.Post(() => StatusText.Text = message);
+        try
+        {
+            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status);
+            return true;
+        }
+        catch (ClientModDependencyException problem)
+        {
+            Log($"[Mods] {problem.Message}");
+            var inventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion);
+            var (disable, enable) = _modStateService.DependencyFixes(inventory, problem);
+            var fixes = new List<(string Text, ModTogglePlan Plan, bool Danger)>();
+            if (disable != null) fixes.Add(("Disable " + ModNames(inventory, disable.TargetIds.Concat(disable.AlsoDisable)), disable, true));
+            if (enable != null) fixes.Add(("Re-enable " + ModNames(inventory, enable.TargetIds.Concat(enable.AlsoEnable)), enable, false));
+            if (fixes.Count == 0) throw; // nothing coherent to offer: the message names each problem and its fix
+            var message = problem.Message + "\n\nChoose a fix; it is saved for this profile and the launch continues."
+                + string.Concat(fixes.Where(f => f.Plan.Warnings.Count > 0).Select(f => $"\n\n{f.Text}: {string.Join(" ", f.Plan.Warnings)}"));
+            int picked = await ShowLadsChoiceAsync("Mods cannot load together", message, fixes.Select(f => (f.Text, f.Danger, true)).ToList());
+            if (picked < 0)
+            {
+                StatusText.Text = "Launch cancelled. " + problem.Message;
+                Log("[Launcher] Launch cancelled at the mod dependency prompt.");
+                return false;
+            }
+            var result = await _modStateService.ApplyAsync(gameDirectory, inventory, fixes[picked].Plan);
+            if (!result.Success) throw new InvalidOperationException(result.Message);
+            Log($"[Mods] {fixes[picked].Text}: {result.Message}");
+            // Once: a second failure ends the launch with its own message. (The Mods page reloads when the launch is over.)
+            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status);
+            return true;
+        }
+    }
+
+    /// <summary>Browse install/update of a mod: downloaded next to Mods, then placed by UserModFiles, which replaces only
+    /// your own copy of the same Fabric id (read from the download), refuses pack/LadsCore mods and never overwrites.</summary>
+    private async Task<string?> InstallBrowsedModAsync(ModSearchItem item, string downloadUrl, string fileName, IProgress<double> progress)
+    {
+        var (gameDirectory, version) = ModsTarget();
+        var temp = await DownloadToModCacheAsync(downloadUrl, gameDirectory, null, progress);
+        try
+        {
+            // A launch or another Mods change that started during the download is writing to Mods right now.
+            if (_launching || _modsBusy)
+                throw new InvalidOperationException("A launch or another mod change started during the download, so nothing was installed. Install it again when it has finished.");
+            // Held until the jar is placed, so a launch cannot start its installers in between (LaunchGame checks it).
+            _modsBusy = true;
+            try
+            {
+                var inventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, version);
+                var path = await Task.Run(() => UserModFiles.Install(inventory, temp, fileName));
+                Log($"[Installer] Installed {item.Name} as '{path}'");
+                ModsStatus($"Installed {item.Name} as {Path.GetFileName(path)}.");
+            }
+            finally { _modsBusy = false; }
+        }
+        finally
+        {
+            if (File.Exists(temp)) File.Delete(temp);
+        }
+        await AfterModsChangedAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// After a game exits (GameSession already removed its marker and reconciled the server list): settings back to the
+    /// shared copy and the 1.21.x screenshot copy off the UI thread, then the account request, window and crash handling.
+    /// Every failure ends up in the status line and the log.
+    /// </summary>
+    private async Task OnGameExitedAsync(Process process, TheLadsLauncher.Models.LauncherProfile profile, string gameDirectory, List<string> sessionMessages)
+    {
+        var notes = new List<string>();
+        lock (sessionMessages) notes.AddRange(sessionMessages);
+        try
+        {
+            await _profileService.SyncProfileToSharedAsync(profile, reconcileServerList: false);
+        }
+        catch (Exception ex)
+        {
+            notes.Add($"Game settings (options.txt) were not synced back: {ex.Message}");
+        }
+        if (settings.SyncScreenshotsToGlobal)
+        {
+            var error = await Task.Run(() => SyncScreenshotsToGlobal(gameDirectory));
+            if (error != null) notes.Add(error);
+        }
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            _runningProcesses.Remove(process);
+            ApplyNextAccountRequest(gameDirectory);
+            int exitCode = 0;
+            try { exitCode = process.ExitCode; }
+            catch (InvalidOperationException ex) { Log($"[Launcher] Could not read the game's exit code: {ex.Message}"); }
+
+            // Re-show the launcher when the game closes, unless the user opted out.
+            if (!settings.KeepClosedOnExit)
+            {
+                this.Show();
+                this.WindowState = WindowState.Normal;
+            }
+            DownloadSpeedText.Text = "0 MB/s";
+            foreach (var note in notes) Log($"[Launcher] {note}");
+            string suffix = notes.Count > 0 ? " " + string.Join(" ", notes) : "";
+
+            if (exitCode != 0)
+            {
+                StatusText.Text = $"Game crashed! (exit code: {exitCode}){suffix}";
+                Log($"[Launcher] Game exited with code {exitCode}");
+                HandleCrashDetection(gameDirectory);
+            }
+            else
+            {
+                StatusText.Text = "Game exited normally." + suffix;
+                Log("[Launcher] Game exited normally.");
+            }
+        });
     }
 
     private void ApplyNextAccountRequest(string gameDirectory)
@@ -4480,55 +5443,18 @@ public partial class MainWindow : Window
     //  CRASH DETECTION
     // ═══════════════════════════════════════
 
-    private void SyncResourcePacksFromGlobal(string gameDirectory)
-    {
-        try
-        {
-            string globalPacks = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                ".minecraft", "resourcepacks");
-            string instancePacks = Path.Combine(gameDirectory, "resourcepacks");
-
-            if (!Directory.Exists(globalPacks)) return;
-            Directory.CreateDirectory(instancePacks);
-
-            int count = 0;
-            foreach (string src in Directory.GetFileSystemEntries(globalPacks))
-            {
-                string name = Path.GetFileName(src);
-                string dst = Path.Combine(instancePacks, name);
-                if (File.Exists(src))
-                {
-                    if (!File.Exists(dst) || File.GetLastWriteTime(src) > File.GetLastWriteTime(dst))
-                    {
-                        File.Copy(src, dst, overwrite: true);
-                        count++;
-                    }
-                }
-                else if (Directory.Exists(src) && !Directory.Exists(dst))
-                {
-                    CopyDirectoryRecursive(src, dst);
-                    count++;
-                }
-            }
-            Log($"[Sync] Synced {count} resource pack(s) from global .minecraft.");
-        }
-        catch (Exception ex)
-        {
-            Log($"[Sync] Resource packs sync failed: {ex.Message}");
-        }
-    }
-
-    private void SyncScreenshotsToGlobal(string gameDirectory)
+    /// <summary>
+    /// 1.21.x saves screenshots in the profile; copy them to the shared screenshots folder (26.x writes there directly).
+    /// Runs off the UI thread; returns the error to show, or null.
+    /// </summary>
+    private string? SyncScreenshotsToGlobal(string gameDirectory)
     {
         try
         {
             string instanceScreenshots = Path.Combine(gameDirectory, "screenshots");
-            string globalScreenshots = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                ".minecraft", "screenshots");
+            string globalScreenshots = SharedContentService.Instance.ScreenshotsDirectory;
 
-            if (!Directory.Exists(instanceScreenshots)) return;
+            if (!Directory.Exists(instanceScreenshots)) return null;
             Directory.CreateDirectory(globalScreenshots);
 
             int count = 0;
@@ -4542,29 +5468,22 @@ public partial class MainWindow : Window
                 }
             }
             if (count > 0)
-                Log($"[Sync] Synced {count} screenshot(s) to global .minecraft.");
+                Log($"[Sync] Copied {count} screenshot(s) to the shared screenshots folder '{globalScreenshots}'.");
+            return null;
         }
         catch (Exception ex)
         {
-            Log($"[Sync] Screenshots sync failed: {ex.Message}");
+            Log($"[Sync] Screenshots copy failed: {ex.Message}");
+            return $"Screenshots were not copied to the shared screenshots folder: {ex.Message}";
         }
     }
 
-    private static void CopyDirectoryRecursive(string src, string dst)
-    {
-        Directory.CreateDirectory(dst);
-        foreach (string file in Directory.GetFiles(src))
-            File.Copy(file, Path.Combine(dst, Path.GetFileName(file)), overwrite: true);
-        foreach (string dir in Directory.GetDirectories(src))
-            CopyDirectoryRecursive(dir, Path.Combine(dst, Path.GetFileName(dir)));
-    }
-
-    private void HandleCrashDetection()
+    private void HandleCrashDetection(string gameDirectory)
     {
         try
         {
-            string crashDir = Path.Combine(settings.InstancePath, "crash-reports");
-            string latestLog = Path.Combine(settings.InstancePath, "logs", "latest.log");
+            string crashDir = Path.Combine(gameDirectory, "crash-reports");
+            string latestLog = Path.Combine(gameDirectory, "logs", "latest.log");
 
             if (File.Exists(latestLog))
             {
@@ -4661,88 +5580,6 @@ public partial class MainWindow : Window
         }
     }
 
-    // Extracts the failing mod id (or mixin config name) from a Mixin crash dump.
-    // Returns a mod id like "examplemod", or a mixin config like "examplemod.mixins.json".
-    private string? FindMixinCulpritMod(string content)
-    {
-        // 1. "Mixin apply for mod examplemod failed examplemod.mixins.json:SomeMixin ..."
-        var m = Regex.Match(content, @"Mixin apply(?:\s+for mod)\s+([a-zA-Z0-9_\-]+)\s+failed");
-        if (m.Success) return m.Groups[1].Value;
-
-        // 2. "... from mod examplemod" (typical mixin stack trace annotation)
-        m = Regex.Match(content, @"from mod ([a-zA-Z0-9_\-]+)");
-        if (m.Success) return m.Groups[1].Value;
-
-        // 3. "in config [examplemod.mixins.json]" or "config examplemod.mixins.json"
-        m = Regex.Match(content, @"([a-zA-Z0-9_\-\.]+\.mixins?\.json)");
-        if (m.Success) return m.Groups[1].Value;
-
-        // 4. "Error loading class: ... (java.lang.ClassNotFoundException)" preceded by mixin transformer — try mixin package name
-        m = Regex.Match(content, @"Critical injection failure.*?([a-zA-Z0-9_\-]+)\.mixins", RegexOptions.Singleline);
-        if (m.Success) return m.Groups[1].Value;
-
-        return null;
-    }
-
-    // Disables the mod jar that contains the given mixin config file (e.g. "examplemod.mixins.json").
-    private string? DisableModByMixinConfig(string mixinConfigName)
-    {
-        if (!mixinConfigName.EndsWith(".json")) mixinConfigName += ".mixins.json";
-
-        string modsPath = Path.Combine(settings.InstancePath, "mods");
-        if (!Directory.Exists(modsPath)) return null;
-
-        foreach (var file in Directory.GetFiles(modsPath, "*.jar"))
-        {
-            try
-            {
-                using var archive = ZipFile.OpenRead(file);
-                if (archive.GetEntry(mixinConfigName) != null)
-                {
-                    archive.Dispose();
-                    // File.Move(file, file + ".disabled");
-                    LoadModsList();
-                    return Path.GetFileName(file);
-                }
-            }
-            catch { }
-        }
-        return null;
-    }
-
-    private string? DisableModById(string targetModId)
-    {
-        string modsPath = Path.Combine(settings.InstancePath, "mods");
-        if (!Directory.Exists(modsPath)) return null;
-
-        var jarFiles = Directory.GetFiles(modsPath, "*.jar");
-        foreach (var file in jarFiles)
-        {
-            try
-            {
-                using var archive = ZipFile.OpenRead(file);
-                var entry = archive.GetEntry("fabric.mod.json");
-                if (entry != null)
-                {
-                    using var stream = entry.Open();
-                    using var reader = new StreamReader(stream);
-                    string json = reader.ReadToEnd();
-                    var match = Regex.Match(json, @"""id""\s*:\s*""([^""]+)""");
-                    if (match.Success && match.Groups[1].Value == targetModId)
-                    {
-                        archive.Dispose();
-                        // string dest = file + ".disabled";
-                        // File.Move(file, dest);
-                        LoadModsList();
-                        return Path.GetFileName(file);
-                    }
-                }
-            }
-            catch { }
-        }
-        return null;
-    }
-
     private async void ShowCrashDialog(string crashInfo, string? crashFile)
     {
         var window = new Window
@@ -4830,7 +5667,7 @@ public partial class MainWindow : Window
             HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
             CornerRadius = new CornerRadius(8)
         };
-        modsBtn.Click += (s, e) => { window.Close(); NavigateTo("Mods"); };
+        modsBtn.Click += (s, e) => { window.Close(); ReloadModsInventory(); NavigateTo("Mods"); };
         buttonRow.Children.Add(modsBtn);
 
         panel.Children.Add(buttonRow);
@@ -4849,6 +5686,23 @@ public partial class MainWindow : Window
         if (!File.Exists(bootstrap)) bootstrap = Path.Combine(_pathService.BinDirectory, "packwiz-installer-bootstrap.jar");
         if (!File.Exists(bootstrap))
             throw new FileNotFoundException("This profile uses Packwiz, but its installer is missing. Install the bootstrap or clear this profile's Packwiz URL.");
+        // packwiz-installer writes, replaces and deletes its files through the shared-folder links, i.e. in the worlds and packs
+        // every version uses. A pack that manages files there is not run.
+        var linked = SharedContentService.Instance.GetStatus(_pathService.GetProfileDirectory(profile))
+            .Where(s => s.State is not (SharedFolderState.SeparateFolder or SharedFolderState.NotCreated)).Select(s => s.Name).ToList();
+        if (linked.Count > 0)
+        {
+            IReadOnlyList<string> shared;
+            try { shared = await PackwizIndex.FilesInFoldersAsync(profile.PackwizUrl, linked, _httpClient); }
+            catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or UriFormatException or TaskCanceledException)
+            {
+                throw new InvalidOperationException($"Could not read this profile's Packwiz pack '{profile.PackwizUrl}' ({ex.Message}). Check its Packwiz URL and connection.", ex);
+            }
+            if (shared.Count > 0)
+                throw new InvalidOperationException($"This profile's Packwiz pack manages files in the folders every version shares " +
+                    $"({string.Join(", ", shared.Take(5))}{(shared.Count > 5 ? $" and {shared.Count - 5} more" : "")}). Packwiz would replace or delete " +
+                    "them for every version, so it was not run. Remove those files from the pack, or clear this profile's Packwiz URL in Profiles.");
+        }
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo(javaPath)
         {
@@ -5367,7 +6221,10 @@ public partial class MainWindow : Window
 
     private string GetInstalledVersion(string itemName, bool isResourcePack)
     {
-        string targetFolder = Path.Combine(settings.InstancePath, isResourcePack ? "resourcepacks" : "mods");
+        // Resource packs are shared by every version: look in the shared folder, not the profile.
+        string targetFolder = isResourcePack
+            ? SharedContentService.Instance.ResourcePacksDirectory
+            : Path.Combine(settings.InstancePath, "mods");
         if (!Directory.Exists(targetFolder)) return "";
 
         string cleanName = Regex.Replace(itemName, @"\s+", "").ToLower();
@@ -5399,30 +6256,19 @@ public partial class MainWindow : Window
                             }
                         }
                     }
-                    catch {}
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException)
+                    {
+                        // Only the Browse "Installed/Update" label depends on this; the Mods page lists the jar as Invalid.
+                        Log($"[Mods] Could not read the version of '{Path.GetFileName(file)}': {ex.Message}");
+                    }
                 }
             }
         }
         return "";
     }
 
-    private bool CheckIfInstalled(string itemName, bool isResourcePack)
-    {
-        string targetFolder = Path.Combine(settings.InstancePath, isResourcePack ? "resourcepacks" : "mods");
-        if (!Directory.Exists(targetFolder)) return false;
-
-        string cleanName = Regex.Replace(itemName, @"\s+", "").ToLower();
-        var files = Directory.GetFiles(targetFolder);
-        foreach (var file in files)
-        {
-            string cleanFile = Path.GetFileNameWithoutExtension(file).Replace(".disabled", "").Replace(" ", "").ToLower();
-            if (cleanFile.Contains(cleanName) || cleanName.Contains(cleanFile))
-                return true;
-        }
-        return false;
-    }
-
-    private async Task<bool> DownloadModOrPackAsync(ModSearchItem item, string mcVersion, bool isResourcePack, IProgress<double> progress)
+    /// <summary>Downloads the newest matching file. Returns null on success, otherwise the reason it failed.</summary>
+    private async Task<string?> DownloadModOrPackAsync(ModSearchItem item, string mcVersion, bool isResourcePack, IProgress<double> progress)
     {
         try
         {
@@ -5439,53 +6285,59 @@ public partial class MainWindow : Window
             if (fileVersion == null || string.IsNullOrEmpty(fileVersion.DownloadUrl))
             {
                 Log($"[Installer] Could not find version file for {item.Name} on version {mcVersion}");
-                return false;
+                return $"No file of {item.Name} for Minecraft {mcVersion} was found.";
             }
-
-            string targetFolder = Path.Combine(settings.InstancePath, isResourcePack ? "resourcepacks" : "mods");
-            Directory.CreateDirectory(targetFolder);
 
             string safeFileName = Path.GetFileName(fileVersion.FileName);
             if (string.IsNullOrEmpty(safeFileName))
             {
-                safeFileName = fileVersion.Name + (isResourcePack ? ".zip" : ".jar");
+                // The version name is the project author's text: only its last path part may become a file name.
+                safeFileName = Path.GetFileName(fileVersion.Name + (isResourcePack ? ".zip" : ".jar"));
             }
-            string targetPath = Path.Combine(targetFolder, safeFileName);
+            if (isResourcePack) return await DownloadResourcePackAsync(item, fileVersion.DownloadUrl, safeFileName, progress);
 
-            Log($"[Installer] Downloading {item.Name} to {targetPath} from {fileVersion.DownloadUrl}");
-
-            using (var response = await _httpClient.GetAsync(fileVersion.DownloadUrl, HttpCompletionOption.ResponseHeadersRead))
-            {
-                response.EnsureSuccessStatusCode();
-                long? totalBytes = response.Content.Headers.ContentLength;
-
-                using (var contentStream = await response.Content.ReadAsStreamAsync())
-                using (var fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
-                {
-                    var buffer = new byte[8192];
-                    long totalRead = 0;
-                    int read;
-                    while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                    {
-                        await fileStream.WriteAsync(buffer, 0, read);
-                        totalRead += read;
-                        if (totalBytes.HasValue)
-                        {
-                            double pct = (double)totalRead * 100 / totalBytes.Value;
-                            progress?.Report(pct);
-                        }
-                    }
-                }
-            }
-
-            Log($"[Installer] Successfully installed {item.Name}");
-            return true;
+            return await InstallBrowsedModAsync(item, fileVersion.DownloadUrl, safeFileName, progress);
         }
         catch (Exception ex)
         {
             Log($"[Installer Error] Failed to download {item.Name}: {ex.Message}");
-            return false;
+            return ex.Message;
         }
+    }
+
+    /// <summary>
+    /// Resource packs go to the shared folder every version uses: downloaded into a staging folder inside it, then renamed
+    /// into place. An existing pack is never replaced; a taken name gets " (2)" before the extension.
+    /// </summary>
+    private async Task<string?> DownloadResourcePackAsync(ModSearchItem item, string downloadUrl, string fileName, IProgress<double> progress)
+    {
+        // The name also places the download in the staging folder: never "..", a folder part or an invalid character.
+        if (!SafeFileOps.IsPlainFileName(fileName))
+            throw new InvalidDataException($"The download of {item.Name} has no usable file name ('{fileName}'). Nothing was downloaded.");
+        var shared = SharedContentService.Instance;
+        Directory.CreateDirectory(shared.ResourcePacksDirectory);
+        using var incoming = shared.CreateIncomingFolder(shared.ResourcePacksDirectory);
+        string temp = Path.Combine(incoming.Path, fileName);
+        Log($"[Installer] Downloading {item.Name} to {shared.ResourcePacksDirectory} from {downloadUrl}");
+        using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
+        {
+            response.EnsureSuccessStatusCode();
+            long? totalBytes = response.Content.Headers.ContentLength;
+            await using var contentStream = await response.Content.ReadAsStreamAsync();
+            await using var fileStream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true);
+            var buffer = new byte[81920];
+            long totalRead = 0;
+            int read;
+            while ((read = await contentStream.ReadAsync(buffer)) > 0)
+            {
+                await fileStream.WriteAsync(buffer.AsMemory(0, read));
+                totalRead += read;
+                if (totalBytes > 0) progress.Report((double)totalRead * 100 / totalBytes.Value);
+            }
+        }
+        string final = await Task.Run(() => SafeFileOps.MoveToFreeName(temp, shared.ResourcePacksDirectory, fileName));
+        Log($"[Installer] Installed {item.Name} as '{final}'");
+        return null;
     }
 
     private async void SearchMods_Click(object? sender, RoutedEventArgs e)
@@ -5694,32 +6546,15 @@ public partial class MainWindow : Window
                 installBtn.Content = needsUpdate ? "Updating..." : "Installing...";
                 progressBar.IsVisible = true;
 
-                // For update, delete the old file first
-                if (needsUpdate)
-                {
-                    string targetFolder = Path.Combine(settings.InstancePath, isResourcePack ? "resourcepacks" : "mods");
-                    string cleanName = Regex.Replace(item.Name, @"\s+", "").ToLower();
-                    if (Directory.Exists(targetFolder))
-                    {
-                        var files = Directory.GetFiles(targetFolder);
-                        foreach (var file in files)
-                        {
-                            string cleanFile = Path.GetFileNameWithoutExtension(file).Replace(".disabled", "").Replace(" ", "").ToLower();
-                            if (cleanFile.Contains(cleanName) || cleanName.Contains(cleanFile))
-                            {
-                                try { File.Delete(file); } catch {}
-                            }
-                        }
-                    }
-                }
-
+                // Nothing is deleted first: a mod update replaces only your own copy of the same Fabric id (UserModFiles).
                 var progress = new Progress<double>(val =>
                 {
                     progressBar.Value = val;
                 });
 
-                bool success = await DownloadModOrPackAsync(item, mcVersion, isResourcePack, progress);
-                if (success)
+                string? failure = await DownloadModOrPackAsync(item, mcVersion, isResourcePack, progress);
+                Avalonia.Controls.ToolTip.SetTip(installBtn, failure);
+                if (failure == null)
                 {
                     installBtn.Content = "Installed";
                     installBtn.Classes.Remove("launch");
@@ -5727,16 +6562,13 @@ public partial class MainWindow : Window
                     installBtn.IsEnabled = false;
                     progressBar.IsVisible = false;
                     needsUpdate = false;
-                    if (!isResourcePack)
-                    {
-                        LoadModsList();
-                    }
                 }
                 else
                 {
                     installBtn.IsEnabled = true;
                     installBtn.Content = needsUpdate ? "Update Failed" : "Failed";
                     progressBar.IsVisible = false;
+                    ModsStatus($"{item.Name}: {failure}", true);
                 }
             };
 

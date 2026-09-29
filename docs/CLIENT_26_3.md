@@ -14,7 +14,7 @@ From the source instance, 26.2/26.3 use native replacements for AppleSkin, AutoR
 
 Each missing jar is resolved against Modrinth's version API. The installer verifies game version, Fabric loader type, project/version identity, file URL/name, size and SHA-512 before downloading. Verified cached jars work without another API request. API failures fail the installation rather than silently choosing another game version. Installs retain the existing staging, dependency checking, receipt and rollback behavior.
 
-`tools/sync_instance_mods.py` inventories the source instance, identifies hashes through Modrinth, closes required dependencies, applies tested compatibility pins, and writes all four manifests and `docs/mod-coverage.json`. API cache entries expire after 24 hours. No source-instance jar is redistributed by this script.
+`tools/sync_instance_mods.py` inventories the source instance, identifies hashes through Modrinth, closes required dependencies, applies tested compatibility pins, and writes all four manifests and `docs/mod-coverage.json`. API cache entries expire after 24 hours. No source-instance jar is redistributed by this script. Mods in its `REMOVED` map (GoodMC since 1.2.3) are never surveyed or re-added, and stay listed under `retired` in the manifests; `python tools/test_sync_removed.py` checks this offline.
 
 Run from the repository root:
 
@@ -27,7 +27,7 @@ The generated pack must be launched after changing versions: Modrinth's game lab
 
 ## Coverage and limitations
 
-See [MOD_COVERAGE.md](MOD_COVERAGE.md) for every source mod on every version. 26.3 covers 93 of 98 source mods: six native features and 87 original Modrinth jars. Five remain unavailable from verified Modrinth projects: Connectivity, Cupboard, Fast Async World Save, GPU Memory Leak Fix and Identify. GoodMC is additionally missing on the two 1.21 targets. Official non-Modrinth fallback downloads have not been implemented while the user's source preference is pending.
+See [MOD_COVERAGE.md](MOD_COVERAGE.md) for every source mod on every version. 26.3 covers 92 of the 97 remaining source mods: six native features and 86 original Modrinth jars. Five remain unavailable from verified Modrinth projects: Connectivity, Cupboard, Fast Async World Save, GPU Memory Leak Fix and Identify. GoodMC was removed from every version in 1.2.3 (it shipped on 26.2 and 26.3 before); LadsCore's LegacySwing module is unaffected. Official non-Modrinth fallback downloads have not been implemented while the user's source preference is pending.
 
 The source CurseForge instance and its worlds were not modified. Isolated QA worlds, accounts, caches and captures are under `artifacts/verification`; upstream GUI additions remain visible where their mods provide them.
 

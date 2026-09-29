@@ -283,4 +283,33 @@ public class VanillaGameBridge12111 implements LadsGameBridge {
         Minecraft mc = Minecraft.getInstance();
         return mc.options != null && mc.options.hideGui;
     }
+
+    @Override
+    public List<com.thelads.core.mods.LoadedMod> loadedMods() {
+        List<com.thelads.core.mods.LoadedMod> mods = new ArrayList<>();
+        for (net.fabricmc.loader.api.ModContainer container : net.fabricmc.loader.api.FabricLoader.getInstance().getAllMods()) {
+            var meta = container.getMetadata();
+            List<String> depends = new ArrayList<>();
+            for (var dependency : meta.getDependencies())
+                if (dependency.getKind() == net.fabricmc.loader.api.metadata.ModDependency.Kind.DEPENDS) depends.add(dependency.getModId());
+            List<String> authors = new ArrayList<>();
+            for (var person : meta.getAuthors()) authors.add(person.getName());
+            // The containing mod, never ModOrigin.getParentModId(): that throws for builtin mods such as minecraft and java.
+            String parent = container.getContainingMod().map(containing -> containing.getMetadata().getId()).orElse(null);
+            mods.add(new com.thelads.core.mods.LoadedMod(meta.getId(), meta.getName(), meta.getVersion().getFriendlyString(), parent,
+                authors, String.join(", ", meta.getLicense()), depends, List.copyOf(meta.getProvides()), libraryBadge(meta), meta.getType()));
+        }
+        return mods;
+    }
+
+    /** Mod Menu's custom "badges" may hold anything; only a string "library" entry in an array counts. */
+    private static boolean libraryBadge(net.fabricmc.loader.api.metadata.ModMetadata meta) {
+        var modmenu = meta.getCustomValue("modmenu");
+        if (modmenu == null || modmenu.getType() != net.fabricmc.loader.api.metadata.CustomValue.CvType.OBJECT) return false;
+        var badges = modmenu.getAsObject().get("badges");
+        if (badges == null || badges.getType() != net.fabricmc.loader.api.metadata.CustomValue.CvType.ARRAY) return false;
+        for (var badge : badges.getAsArray())
+            if (badge.getType() == net.fabricmc.loader.api.metadata.CustomValue.CvType.STRING && "library".equals(badge.getAsString())) return true;
+        return false;
+    }
 }

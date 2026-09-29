@@ -25,6 +25,10 @@ public static class BundledModInstaller
         var source = SafeChild(bundle, Path.Combine(bundle, "game-mods", minecraftVersion, "theladscore.jar"));
         var mods = SafeChild(game, Path.Combine(game, "mods"));
         var destination = SafeChild(game, Path.Combine(mods, "theladscore.jar"));
+        // Only an explicit choice disables Core: a v1.2.2 leftover .disabled copy next to a reinstalled jar is ambiguous.
+        var preferencesPath = SafeChild(game, Path.Combine(game, ModPreferences.FileName));
+        if (ModPreferences.Parse(ModPreferences.ReadShared(preferencesPath), preferencesPath).GetEnabled(CoreModId, null) == false)
+            return Disable(game, mods, destination, cancellationToken);
         if (!File.Exists(source))
         {
             if (GameVersionPolicy.RequiresBundledCore(minecraftVersion))
@@ -52,19 +56,12 @@ public static class BundledModInstaller
         var destinationIsCore = false;
         if (Directory.Exists(mods))
         {
-            foreach (var jar in Directory.EnumerateFiles(mods).Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)))
+            // Disabled Core copies count too, so enabling never leaves a second (disabled) Core behind.
+            foreach (var jar in Directory.EnumerateFiles(mods).Where(IsJar))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var safeJar = SafeChild(game, jar);
-                bool isCore;
-                try
-                {
-                    using var stream = File.OpenRead(safeJar);
-                    using var metadata = ReadMetadata(stream);
-                    isCore = metadata != null && GetModId(metadata.RootElement) == CoreModId;
-                }
-                catch (InvalidDataException) { isCore = false; }
-                catch (JsonException) { isCore = false; }
+                var isCore = IsCore(safeJar);
 
                 if (SamePath(safeJar, destination))
                 {
@@ -144,6 +141,59 @@ public static class BundledModInstaller
             if (staged != null && File.Exists(staged))
                 File.Delete(SafeChild(game, staged));
         }
+    }
+
+    /// <summary>Explicitly disabled: keep exactly one disabled Core and install nothing. The bundled jar is not needed.</summary>
+    private static bool Disable(string game, string mods, string destination, CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(mods)) return false;
+        var enabled = Directory.EnumerateFiles(mods).Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
+            .Select(p => SafeChild(game, p)).Where(IsCore).OrderBy(p => SamePath(p, destination) ? 0 : 1).ToList();
+        if (enabled.Count == 0) return false;
+        cancellationToken.ThrowIfCancellationRequested();
+        var disabledPath = SafeChild(game, destination + ".disabled");
+        // An existing theladscore.jar.disabled (for example next to a copy v1.2.2 reinstalled) is kept as the disabled copy.
+        var rename = File.Exists(disabledPath) || Directory.Exists(disabledPath) ? null : enabled[0];
+        var moved = new List<(string Original, string Backup)>();
+        try
+        {
+            var backups = enabled.Where(p => p != rename).ToList();
+            if (backups.Count > 0)
+            {
+                var folder = SafeChild(game, Path.Combine(game, "mods-disabled", $"{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}-{Guid.NewGuid():N}"));
+                Directory.CreateDirectory(folder);
+                foreach (var core in backups)
+                {
+                    var backup = SafeChild(game, Path.Combine(folder, Path.GetFileName(core)));
+                    File.Move(core, backup);
+                    moved.Add((core, backup));
+                }
+            }
+            if (rename != null) File.Move(rename, disabledPath);
+            return true;
+        }
+        catch
+        {
+            for (var i = moved.Count - 1; i >= 0; i--)
+                File.Move(SafeChild(game, moved[i].Backup), SafeChild(game, moved[i].Original));
+            throw;
+        }
+    }
+
+    private static bool IsJar(string path) =>
+        path.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Core is identified by its Fabric id; unreadable jars are simply not Core.</summary>
+    private static bool IsCore(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            using var metadata = ReadMetadata(stream);
+            return metadata != null && GetModId(metadata.RootElement) == CoreModId;
+        }
+        catch (InvalidDataException) { return false; }
+        catch (JsonException) { return false; }
     }
 
     private static JsonDocument? ReadMetadata(Stream stream)

@@ -47,6 +47,8 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Inject(method = "init()V", at = @At("TAIL"), require = 1)
     private void ladsArrangeTitle(CallbackInfo ci) {
+        com.thelads.core.mods.ModInventoryModel.requestAtFirstTitleScreen();
+        com.thelads.core.mods.ModInventoryModel.logAtFirstTitleScreen();
         for (AbstractWidget widget : ladsTitleWidgets) TitleWidgetRegistry.unregister(widget);
         ladsTitleWidgets = new ArrayList<>();
         ladsTitleLayout = null;
@@ -188,7 +190,7 @@ public abstract class TitleScreenMixin extends Screen {
         if (!reducedMotion) ladsAnimationSeconds += elapsed * panoramaSpeed;
         var adapter = new GuiGraphicsExtractorLadsAdapter(graphics, font);
         TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(),
-            "26.2" + (minecraft.isDemo() ? " Demo" : ""), false, ladsAnimationSeconds);
+            net.minecraft.SharedConstants.getCurrentVersion().name() + (minecraft.isDemo() ? " Demo" : ""), false, ladsAnimationSeconds);
         TitleWidgetRegistry.beginFrame(this, adapter, elapsed, reducedMotion);
         try {
             // Calls Screen, not TitleScreen: only native widgets and extra renderables, never vanilla artwork.

@@ -23,7 +23,7 @@ public class ItemStackMixin
 		if (TooltipOverlayHandler.INSTANCE == null || original.isEmpty()
 			|| !com.thelads.core.v26_2.feature.food.FoodOverlayConfig.enabled()
 			|| !com.thelads.core.v26_2.feature.food.helpers.FoodHelper.isFood((ItemStack) (Object) this)) return original;
-		// Wrap the completed tooltip, including upstream RETURN callbacks such as GoodMC.
+		// Wrap the completed tooltip, including lines added by other mods' upstream RETURN callbacks.
 		var result = new java.util.ArrayList<Component>(original);
 		TooltipOverlayHandler.INSTANCE.onItemTooltip((ItemStack) (Object) this, player, context, type, result);
 		return result;

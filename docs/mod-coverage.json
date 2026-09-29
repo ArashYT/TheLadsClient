@@ -360,14 +360,6 @@
     },
     {
       "game": "1.21.1",
-      "modId": "goodmc",
-      "name": "GoodMC",
-      "projectId": "hwir46QE",
-      "status": "unavailable",
-      "reason": "No Fabric release declares compatibility with 1.21.1"
-    },
-    {
-      "game": "1.21.1",
       "modId": "gpumemleakfix",
       "name": "Gpu memory leak fix mod",
       "projectId": null,
@@ -686,7 +678,7 @@
       "name": "Sodium Extra",
       "projectId": "PtjYWJkn",
       "status": "modrinth",
-      "versionId": "ncwGSklo"
+      "versionId": "taFAlSOP"
     },
     {
       "game": "1.21.1",
@@ -1144,14 +1136,6 @@
       "projectId": "wdLuzzEP",
       "status": "modrinth",
       "versionId": "aVJkWMQl"
-    },
-    {
-      "game": "1.21.11",
-      "modId": "goodmc",
-      "name": "GoodMC",
-      "projectId": "hwir46QE",
-      "status": "unavailable",
-      "reason": "No Fabric release declares compatibility with 1.21.11"
     },
     {
       "game": "1.21.11",
@@ -1931,14 +1915,6 @@
     },
     {
       "game": "26.2",
-      "modId": "goodmc",
-      "name": "GoodMC",
-      "projectId": "hwir46QE",
-      "status": "modrinth",
-      "versionId": "SLRSi7WU"
-    },
-    {
-      "game": "26.2",
       "modId": "gpumemleakfix",
       "name": "Gpu memory leak fix mod",
       "projectId": null,
@@ -2712,14 +2688,6 @@
       "projectId": "wdLuzzEP",
       "status": "modrinth",
       "versionId": "b4sCL1Qe"
-    },
-    {
-      "game": "26.3",
-      "modId": "goodmc",
-      "name": "GoodMC",
-      "projectId": "hwir46QE",
-      "status": "modrinth",
-      "versionId": "id4n4Y0j"
     },
     {
       "game": "26.3",

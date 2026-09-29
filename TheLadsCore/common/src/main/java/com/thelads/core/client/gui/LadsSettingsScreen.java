@@ -1,11 +1,17 @@
 package com.thelads.core.client.gui;
 
 import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.client.util.ClientPaths;
 import com.thelads.core.config.*;
 import com.thelads.core.config.Module;
+import com.thelads.core.mods.ModDependencyPlanner;
+import com.thelads.core.mods.ModInventoryModel;
+import com.thelads.core.mods.ModStateStore;
+import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import org.slf4j.LoggerFactory;
 import static com.thelads.core.client.gui.MenuGraphics.*;
 
 /** Shared settings: one set of bounds drives drawing, mouse input and keyboard focus. */
@@ -36,8 +42,27 @@ public final class LadsSettingsScreen {
     private Supplier<String> clipboardReader = () -> "";
     private static final String[] CATEGORIES = {"All", "HUD", "Gameplay", "Performance", "Server"};
     private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "ImmediatelyFast", "Exordium", "RenderScale", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore");
+    // Installed mods view: its own state, search and "mods:" row ids, so the native catalog above stays native-only.
+    private record ModLine(ModInventoryModel.Row row, int depth) {}
+    private boolean modsView, detailFromMods;
+    private String modsSearch = "", modsStamp = "", modsCounts = "";
+    private ModInventoryModel.Filter modsFilter = ModInventoryModel.Filter.ALL;
+    private ModInventoryModel modsModel;
+    private ModDependencyPlanner.Plan modsPlan;
+    private final Set<String> modsToggled = new HashSet<>();
+    private long modsCheckedNanos;
+    private Consumer<String> onOpenModSettings;
+
+    /** Menu category of a Lads module, shared with the launcher catalog. */
+    public static String categoryOf(Module m) {
+        return m.getCategory() == Module.Category.HUD ? "HUD" : m.getCategory() == Module.Category.SERVER ? "Server"
+            : PERFORMANCE.contains(m.getName()) ? "Performance" : "Gameplay";
+    }
 
     public void setOnOpenHudEditor(Runnable action) { onOpenHudEditor = action; }
+    /** Opens an upstream mod's own settings; without it (1.21.1) third-party rows show no settings link. */
+    public void setOnOpenModSettings(Consumer<String> action) { onOpenModSettings = action; }
+    public boolean isModsViewOpen() { return modsView; }
     public void setReducedMotion(boolean value) { reducedMotion = value; }
     public void setOnClose(Runnable action) { onClose = action; }
     public void setOnOpenResourcePacks(Runnable action) { onOpenResourcePacks = action; }
@@ -46,6 +71,7 @@ public final class LadsSettingsScreen {
     public void refreshCapabilities() {
         if (ownershipRevision != ModuleSupport.revision()) {
             ownershipRevision = ModuleSupport.revision(); filterDirty = true; controls.clear();
+            if (modsView) reloadMods();
         }
         if (detail != null && !ModuleSupport.isBuiltIn(detail.getName())) {
             detail = null; editingOption = null; dragging = null; editingSearch = false;
@@ -75,20 +101,22 @@ public final class LadsSettingsScreen {
         int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 340 ? 118 : 0;
         g.fill(0, 0, width, 2, ACCENT);
         g.drawText("THE LADS", pad, 15, ACCENT);
-        if (width >= 400) g.drawText(detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", pad + 68, 15, MUTED);
+        if (width >= 400) g.drawText(modsView ? "INSTALLED MODS" : detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", pad + 68, 15, MUTED);
         button(g, "close", "Done", new Rect(width - pad - 52, 8, 52, 23), this::close, true, mouseX, mouseY, false);
         int x = side == 0 ? pad : side + 16, w = width - x - pad;
         if (side > 0) {
             g.fill(0, 40, side, height, PANEL);
             for (int i = 0; i < CATEGORIES.length; i++) {
                 String category = CATEGORIES[i];
-                button(g, "category:" + category, category, new Rect(8, 53 + i * 29, side - 16, 24), () -> category(category), true, mouseX, mouseY, category.equals(currentCategory));
+                button(g, "category:" + category, category, new Rect(8, 53 + i * 29, side - 16, 24), () -> category(category), true, mouseX, mouseY, !modsView && category.equals(currentCategory));
             }
+            button(g, "installed-mods", "Installed mods", new Rect(8, 59 + CATEGORIES.length * 29, side - 16, 24), this::openMods, true, mouseX, mouseY, modsView);
             button(g, "hud", "Edit HUD", new Rect(8, height - 93, side - 16, 23), () -> leave(onOpenHudEditor), true, mouseX, mouseY, false);
             button(g, "packs", "Resource packs", new Rect(8, height - 65, side - 16, 23), () -> leave(onOpenResourcePacks), true, mouseX, mouseY, false);
             button(g, "video", "Video settings", new Rect(8, height - 37, side - 16, 23), () -> leave(onOpenVideoSettings), true, mouseX, mouseY, false);
         }
-        if (detail == null) renderCatalog(g, x, w, side == 0, mouseX, mouseY);
+        if (modsView) renderMods(g, x, w, mouseX, mouseY);
+        else if (detail == null) renderCatalog(g, x, w, side == 0, mouseX, mouseY);
         else renderDetails(g, x, w, mouseX, mouseY);
         g.drawText(fit(g, notice.isEmpty() ? "Ctrl+F search / Tab navigate / Esc back" : notice, w), x, height - 15, MUTED);
     }
@@ -112,6 +140,7 @@ public final class LadsSettingsScreen {
         List<Module> modules = getFilteredModules();
         g.drawText(modules.size() + " MODULES", x, top, MUTED);
         if (compact) {
+            button(g, "installed-mods", "Installed mods", new Rect(x + w - 219, top - 4, 84, 18), this::openMods, true, mx, my, false);
             button(g, "hud", "HUD", new Rect(x + w - 131, top - 4, 39, 18), () -> leave(onOpenHudEditor), true, mx, my, false);
             button(g, "packs", "Packs", new Rect(x + w - 87, top - 4, 39, 18), () -> leave(onOpenResourcePacks), true, mx, my, false);
             button(g, "video", "Video", new Rect(x + w - 43, top - 4, 43, 18), () -> leave(onOpenVideoSettings), true, mx, my, false);
@@ -175,6 +204,185 @@ public final class LadsSettingsScreen {
                 () -> { detail.getOptions().forEach(Option::reset); changed(detail); notice = "Options reset"; }, true, mx, my, false);
         g.disableScissor(); scrollbar(g);
     }
+    private void renderMods(LadsGraphics g, int x, int w, int mx, int my) {
+        pollModState();
+        int top = 42, resetW = 56;
+        button(g, "mods-back", "< Modules", new Rect(x, top, 86, 22), this::closeMods, true, mx, my, false);
+        button(g, "mods-search", editingSearch ? inputDisplay() : modsSearch.isEmpty() ? "Search name or mod id..." : modsSearch,
+            new Rect(x + 92, top, w - 98 - resetW, 22), this::startSearch, true, mx, my, editingSearch);
+        button(g, "mods-reset", "Reset", new Rect(x + w - resetW, top, resetW, 22), this::resetModsFilters, true, mx, my, false);
+        boolean dense = height < 230;
+        top += dense ? 25 : 28;
+        var filters = ModInventoryModel.Filter.values();
+        int widest = java.util.Arrays.stream(filters).mapToInt(filter -> g.textWidth(filter.label())).max().orElse(0) + 10;
+        int perRow = dense || (w - (filters.length - 1) * 4) / filters.length >= widest ? filters.length : 3, cell = (w - (perRow - 1) * 4) / perRow;
+        for (int i = 0; i < filters.length; i++) {
+            var filter = filters[i];
+            button(g, "mods-filter:" + filter.name(), filter.label(), new Rect(x + i % perRow * (cell + 4), top + i / perRow * 22, cell, 18),
+                () -> { modsFilter = filter; scrollOffset = 0; }, true, mx, my, filter == modsFilter);
+        }
+        top += (filters.length + perRow - 1) / perRow * 22 + 2;
+        if (!dense) { g.drawText(fit(g, modsCounts, w), x, top, MUTED); top += 12; }
+        if (modsModel.notice() != null) { g.drawText(fit(g, modsModel.notice(), w), x, top, ACCENT); top += 12; }
+        top += 4;
+        viewport = new Rect(x, top, w, Math.max(20, height - top - 28));
+        if (modsPlan != null) { renderModsPlan(g, x, top, w, mx, my); return; }
+        List<ModLine> lines = new ArrayList<>();
+        for (var row : modsModel.visible(modsFilter, modsSearch)) addModLines(row, 0, lines);
+        int gap = 4, total = 0;
+        for (ModLine line : lines) total += modRowHeight(line.row()) + gap;
+        maxScroll = Math.max(0, total - gap - viewport.height);
+        scrollOffset = Math.min(scrollOffset, maxScroll);
+        g.enableScissor(x, top, x + w, top + viewport.height);
+        int y = top - scrollOffset;
+        for (ModLine line : lines) {
+            int h = modRowHeight(line.row());
+            if (y + h > top && y < top + viewport.height) modRow(g, line, x, y, w - 8, h, mx, my);
+            y += h + gap;
+        }
+        if (lines.isEmpty()) {
+            g.drawText("No matching entries", x + 12, top + 18, TEXT);
+            g.drawText("Reset shows the full inventory.", x + 12, top + 34, MUTED);
+        }
+        g.disableScissor(); scrollbar(g);
+    }
+    private void addModLines(ModInventoryModel.Row row, int depth, List<ModLine> lines) {
+        lines.add(new ModLine(row, depth));
+        if (modExpanded(row)) for (var child : row.children()) addModLines(child, depth + 1, lines);
+    }
+    /** Parents shown only for a matching child open automatically; the +/- button flips either state. */
+    private boolean modExpanded(ModInventoryModel.Row row) {
+        return modsModel.autoExpanded(row, modsFilter, modsSearch) != modsToggled.contains(row.key());
+    }
+    private static String modExtraLine(ModInventoryModel.Row row) {
+        String reason = row.canToggle() ? null : row.blockedReason();
+        if (row.note() == null) return reason;
+        return reason == null || row.note().contains(reason) ? row.note() : row.note() + " " + reason;
+    }
+    private static int modRowHeight(ModInventoryModel.Row row) { return modExtraLine(row) == null ? 34 : 45; }
+    private void modRow(LadsGraphics g, ModLine line, int x, int y, int w, int h, int mx, int my) {
+        var row = line.row();
+        int rx = x + line.depth() * 14, rw = w - line.depth() * 14, textX = rx + 8, right = rx + rw - 6;
+        round(g, rx, y, rw, h, line.depth() == 0 ? CARD : PANEL);
+        if (!row.children().isEmpty()) {
+            boolean open = modExpanded(row);
+            button(g, "mods:expand:" + row.key(), open ? "-" : "+", new Rect(rx + 5, y + 5, 16, 16),
+                () -> { if (!modsToggled.remove(row.key())) modsToggled.add(row.key()); }, true, mx, my, open);
+            textX = rx + 26;
+        }
+        if (row.embedded()) {
+            var root = modsModel.find("mod/" + row.rootId());
+            String label = "Disable " + (root == null ? row.rootId() : root.displayName()) + "...";
+            int bw = Math.min(rw / 2, g.textWidth(label) + 14);
+            right -= bw;
+            button(g, "mods:parent:" + row.key(), label, new Rect(right, y + 6, bw, 18),
+                () -> modsPlan = modsModel.plan(List.of(row.rootId()), false), root != null && root.requested() && root.canToggle(), mx, my, false);
+            right -= 6;
+        } else if (!"platform".equals(row.ownership())) {
+            String state = row.nativeModule() && row.id().equals("DiscordRPC") ? "Soon" : row.requested() ? "ON" : "OFF";
+            right -= 45;
+            button(g, "mods:toggle:" + row.key(), state, new Rect(right, y + 6, 45, 18), () -> toggleModRow(row), row.canToggle(), mx, my, row.requested());
+            right -= 6;
+        }
+        Runnable settings = modSettingsAction(row);
+        if (settings != null) {
+            right -= 58;
+            button(g, "mods:settings:" + row.key(), "Settings", new Rect(right, y + 6, 58, 18), settings, true, mx, my, false);
+            right -= 6;
+        }
+        g.drawText(fit(g, row.displayName() + (row.version() == null ? "" : "  " + row.version()), right - textX - 4), textX, y + 8, TEXT);
+        int stateX = textX;
+        if (row.restartRequired()) {
+            g.drawText("Restart required", stateX, y + 21, ACCENT);
+            stateX += g.textWidth("Restart required  ");
+        }
+        String state = ModInventoryModel.ownershipLabel(row) + " · " + (row.nativeModule() ? "" : row.id() + " · ") + modsModel.statusLabel(row)
+            + (row.nativeModule() ? row.available() ? row.requested() ? " · On" : " · Off" : ""
+                : (row.loaded() ? " · Loaded" : " · Not loaded") + (row.available() ? " · Next launch: " + (row.requested() ? "On" : "Off")
+                    : " · Not available for " + java.util.Objects.requireNonNullElse(modsModel.minecraftVersion(), "this version")));
+        g.drawText(fit(g, state, rx + rw - 8 - stateX), stateX, y + 21, MUTED);
+        String extra = modExtraLine(row);
+        if (extra != null) g.drawText(fit(g, extra, rw - 16), rx + 8, y + 33, MUTED);
+    }
+    private Runnable modSettingsAction(ModInventoryModel.Row row) {
+        if (row.nativeModule()) {
+            Module module = ModuleManager.getInstance().getModule(row.id());
+            return module == null || !ModuleSupport.isBuiltIn(row.id()) ? null
+                : () -> { openDetails(module); if (detail == module) { modsView = false; detailFromMods = true; } };
+        }
+        if (onOpenModSettings == null || !row.loaded() || row.embedded() || "platform".equals(row.ownership())
+            || ModDependencyPlanner.CORE_ID.equals(row.id())) return null;
+        return () -> leave(() -> onOpenModSettings.accept(row.id()));
+    }
+    private void renderModsPlan(LadsGraphics g, int x, int top, int w, int mx, int my) {
+        var plan = modsPlan;
+        maxScroll = 0; scrollOffset = 0;
+        round(g, x, top, w, viewport.height, PANEL);
+        int y = top + 10, textW = w - 20;
+        g.drawText(fit(g, (plan.enable() ? "Enable " : "Disable ") + modNames(plan.targetIds()) + " at the next launch?", textW), x + 10, y, TEXT);
+        y += 16;
+        if (!plan.alsoDisable().isEmpty()) y += MenuGraphics.wrap(g, "Also disable (they need it): " + modNames(plan.alsoDisable()), x + 10, y, textW, 4, MUTED) + 4;
+        if (!plan.alsoEnable().isEmpty()) y += MenuGraphics.wrap(g, "Also enable (required): " + modNames(plan.alsoEnable()), x + 10, y, textW, 4, MUTED) + 4;
+        for (String blocker : plan.blockers()) y += MenuGraphics.wrap(g, blocker, x + 10, y, textW, 3, ACCENT) + 4;
+        for (String warning : plan.warnings()) y += MenuGraphics.wrap(g, warning, x + 10, y, textW, 3, MUTED) + 4;
+        boolean allowed = plan.blockers().isEmpty();
+        if (allowed) button(g, "mods-confirm", "Confirm", new Rect(x + 10, y + 6, 90, 22), () -> applyModsPlan(plan), true, mx, my, true);
+        button(g, "mods-cancel", allowed ? "Cancel" : "Close", new Rect(x + (allowed ? 106 : 10), y + 6, 80, 22), () -> modsPlan = null, true, mx, my, false);
+    }
+    private String modNames(List<String> ids) {
+        return ids.stream().map(id -> { var row = modsModel.find("mod/" + id); return row == null ? id : row.displayName(); })
+            .collect(java.util.stream.Collectors.joining(", "));
+    }
+    private void toggleModRow(ModInventoryModel.Row row) {
+        if (row.nativeModule()) {
+            // Lads modules apply immediately through the same path as their catalog card.
+            Module module = ModuleManager.getInstance().getModule(row.id());
+            if (module == null || !ModuleSupport.isToggleable(row.id())) return;
+            module.toggle(); changed(module); reloadMods();
+            return;
+        }
+        var plan = modsModel.plan(List.of(row.id()), !row.requested());
+        if (plan.needsConfirmation()) modsPlan = plan; else applyModsPlan(plan);
+    }
+    /** Records the whole plan as next-launch requests in one locked write; jars are renamed by the launcher before the next start. */
+    private void applyModsPlan(ModDependencyPlanner.Plan plan) {
+        modsPlan = null;
+        if (!plan.blockers().isEmpty()) return;
+        var store = new ModStateStore(ClientPaths.getBaseDir());
+        try {
+            store.setRequested(plan.requests(), modsModel.projectIds());
+            notice = "Saved for the next launch. Restart the game to apply it.";
+        } catch (IOException e) {
+            LoggerFactory.getLogger("TheLadsCore").warn("Could not save mod requests to {}", store.file(), e);
+            notice = "Could not save the mod request (" + e.getClass().getSimpleName() + ": " + e.getMessage() + "). Showing the saved state.";
+        }
+        reloadMods();
+    }
+    public void openMods() {
+        if (!finish()) return;
+        modsView = true; detail = null; detailFromMods = false; modsPlan = null;
+        scrollOffset = 0; focusId = ""; notice = "";
+        reloadMods();
+    }
+    private void closeMods() { if (!finish()) return; modsView = false; modsPlan = null; scrollOffset = 0; focusId = ""; notice = ""; }
+    private void resetModsFilters() {
+        modsFilter = ModInventoryModel.Filter.ALL; modsSearch = ""; modsToggled.clear();
+        editingSearch = false; editBuffer = ""; cursor = 0; scrollOffset = 0;
+    }
+    private void reloadMods() {
+        var store = new ModStateStore(ClientPaths.getBaseDir());
+        modsStamp = store.stamp(); modsCheckedNanos = System.nanoTime();
+        modsModel = ModInventoryModel.load();
+        modsCounts = modsModel.fileCounts().text();
+        modsModel.logFirstViewForQa();
+    }
+    /** The launcher may change requests while the game runs; re-read at most every 2 s while the view is open. */
+    private void pollModState() {
+        long now = System.nanoTime();
+        if (now - modsCheckedNanos < 2_000_000_000L) return;
+        modsCheckedNanos = now;
+        if (!new ModStateStore(ClientPaths.getBaseDir()).stamp().equals(modsStamp)) reloadMods();
+    }
     private void optionRow(LadsGraphics g, Option option, int x, int y, int w, int mx, int my) {
         round(g, x, y, w, 37, CARD);
         int controlW = Math.min(155, w / 2);
@@ -222,7 +430,7 @@ public final class LadsSettingsScreen {
     }
     private boolean contentControl(String id) {
         return id.startsWith("option:") || id.startsWith("detail:") || id.startsWith("favorite:")
-            || id.startsWith("toggle:") && !id.equals("toggle:detail") || id.equals("reset");
+            || id.startsWith("toggle:") && !id.equals("toggle:detail") || id.equals("reset") || id.startsWith("mods:");
     }
     private void scrollbar(LadsGraphics g) {
         if (maxScroll == 0) return;
@@ -263,9 +471,11 @@ public final class LadsSettingsScreen {
     public boolean keyPressed(int key, int modifiers) {
         refreshCapabilities();
         boolean ctrl = (modifiers & 2) != 0;
-        if (ctrl && key == 70) { if (!finish()) return true; detail = null; startSearch(); return true; }
+        if (ctrl && key == 70) { if (!finish()) return true; if (!modsView) detail = null; startSearch(); return true; }
         if (key == 256) {
             if (editingSearch || editingOption != null) { editingSearch = false; editingOption = null; notice = ""; }
+            else if (modsPlan != null) modsPlan = null;
+            else if (modsView) closeMods();
             else if (detail != null) back(); else close();
             return true;
         }
@@ -285,7 +495,7 @@ public final class LadsSettingsScreen {
                 if (selectAll) { editBuffer = ""; cursor = 0; selectAll = false; }
                 else if (key == 259 && cursor > 0) { int previous = editBuffer.offsetByCodePoints(cursor, -1); editBuffer = editBuffer.substring(0, previous) + editBuffer.substring(cursor); cursor = previous; }
                 else if (key == 261 && cursor < editBuffer.length()) editBuffer = editBuffer.substring(0, cursor) + editBuffer.substring(editBuffer.offsetByCodePoints(cursor, 1));
-                if (editingSearch) setSearchQuery(editBuffer);
+                if (editingSearch) applySearch();
                 return true;
             }
             if (key != 258) return true;
@@ -318,12 +528,13 @@ public final class LadsSettingsScreen {
         if (selectAll) { editBuffer = ""; cursor = 0; selectAll = false; }
         if (editBuffer.length() + text.length() <= (editingSearch ? 64 : editingOption instanceof ColorOption ? 8 : 160)) {
             editBuffer = editBuffer.substring(0, cursor) + text + editBuffer.substring(cursor); cursor += text.length();
-            if (editingSearch) setSearchQuery(editBuffer);
+            if (editingSearch) applySearch();
         }
         return true;
     }
     private String inputDisplay() { return editBuffer.substring(0, cursor) + "|" + editBuffer.substring(cursor); }
-    private void startSearch() { editingSearch = true; editingOption = null; editBuffer = searchQuery; cursor = editBuffer.length(); selectAll = false; focusId = "search"; }
+    private void startSearch() { editingSearch = true; editingOption = null; editBuffer = modsView ? modsSearch : searchQuery; cursor = editBuffer.length(); selectAll = false; focusId = modsView ? "mods-search" : "search"; }
+    private void applySearch() { if (modsView) { modsSearch = editBuffer; scrollOffset = 0; } else setSearchQuery(editBuffer); }
     private void startEdit(Option o) { editingSearch = false; editingOption = o; editBuffer = o instanceof TextOption t ? t.getValue() : String.format("%08X", ((ColorOption)o).getColor()); cursor = editBuffer.length(); selectAll = true; }
     private boolean commitEdit() {
         if (editingOption instanceof ColorOption c) {
@@ -333,7 +544,7 @@ public final class LadsSettingsScreen {
         if (editingOption != null) changed(detail);
         editingOption = null; editingSearch = false; selectAll = false; notice = ""; return true;
     }
-    private void category(String cat) { if (!finish()) return; currentCategory = cat; detail = null; invalidate(); }
+    private void category(String cat) { if (!finish()) return; currentCategory = cat; detail = null; modsView = detailFromMods = false; modsPlan = null; invalidate(); }
     private void invalidate() { filterDirty = true; scrollOffset = 0; focusId = ""; }
     private void changed(Module m) {
         if (m != null) m.touch(); dirty = true; filterDirty = true; persist();
@@ -343,8 +554,12 @@ public final class LadsSettingsScreen {
     private Option activeOption(String name) { return activeOptions().stream().filter(o -> o.getName().equals(name)).findFirst().orElse(null); }
     private boolean finish() { if (!commitEdit()) return false; persist(); return true; }
     public void openModule(String name) { Module m=ModuleManager.getInstance().getModule(name); if(m!=null)openDetails(m); }
-    private void openDetails(Module m) { if (!ModuleSupport.isBuiltIn(m.getName())) return; detail = m; m.setLastOpenedTime(System.currentTimeMillis()); scrollOffset = 0; focusId = "back"; notice = ""; }
-    private void back() { if (!finish()) return; detail = null; scrollOffset = 0; focusId = ""; }
+    private void openDetails(Module m) { if (!ModuleSupport.isBuiltIn(m.getName())) return; detail = m; detailFromMods = false; m.setLastOpenedTime(System.currentTimeMillis()); scrollOffset = 0; focusId = "back"; notice = ""; }
+    private void back() {
+        if (!finish()) return;
+        detail = null; scrollOffset = 0; focusId = "";
+        if (detailFromMods) { detailFromMods = false; modsView = true; reloadMods(); }
+    }
     private void leave(Runnable action) { if (!finish()) return; action.run(); }
     public void close() { refreshCapabilities(); leave(onClose); }
     public List<Module> getFilteredModules() {

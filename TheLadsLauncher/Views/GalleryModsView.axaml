@@ -54,6 +54,7 @@
                             <ComboBoxItem>Resource Packs</ComboBoxItem>
                         </ComboBox>
                         <Button Content="Refresh" Click="RefreshLocal_Click" />
+                        <TextBlock x:Name="LocalStatusText" IsVisible="False" Foreground="#E27676" TextWrapping="Wrap" MaxWidth="480" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="1">
