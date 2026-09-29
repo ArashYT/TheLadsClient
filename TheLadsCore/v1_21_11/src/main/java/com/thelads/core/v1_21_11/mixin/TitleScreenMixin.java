@@ -44,9 +44,12 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Inject(method = "init()V", at = @At("TAIL"), require = 1)
     private void ladsArrangeTitle(CallbackInfo ci) {
+        com.thelads.core.v1_21_11.feature.SharedContentProbe.runOnce();
         for (AbstractWidget widget : ladsTitleWidgets) TitleWidgetRegistry.unregister(widget);
         ladsTitleWidgets = new ArrayList<>();
         ladsTitleLayout = null;
+        com.thelads.core.mods.ModInventoryModel.requestAtFirstTitleScreen();
+        com.thelads.core.mods.ModInventoryModel.logAtFirstTitleScreen();
         ladsCustomTitle = com.thelads.core.v1_21_11.feature.NativeFeatures.enabled("TitleScreen");
         if (!ladsCustomTitle) return;
         ladsSettingsButton = addRenderableWidget(Button.builder(Component.literal("Lads Settings"),

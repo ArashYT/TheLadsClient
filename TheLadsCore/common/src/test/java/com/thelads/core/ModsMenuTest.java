@@ -33,7 +33,7 @@ class ModsMenuTest {
     static final class OwnershipFixture implements AutoCloseable {
         private final Map<Field,Object> values = new LinkedHashMap<>();
         OwnershipFixture() throws Exception {
-            for (String name : List.of("STATUS", "EXTERNAL_IDS", "BUILT_IN", "revision")) {
+            for (String name : List.of("STATUS", "EXTERNAL_IDS", "EXTERNAL_MOD_IDS", "BUILT_IN", "revision")) {
                 Field field = ModuleSupport.class.getDeclaredField(name); field.setAccessible(true);
                 Object value = field.get(null);
                 values.put(field, value instanceof Map<?,?> map ? new HashMap<>(map) : value instanceof Set<?> set ? new HashSet<>(set) : value);

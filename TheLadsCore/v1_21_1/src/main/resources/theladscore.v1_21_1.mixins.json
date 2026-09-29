@@ -8,6 +8,8 @@
   },
   "client": [
     "GuiMixin",
-    "TitleScreenMixin"
+    "TitleScreenMixin",
+    "ServerListAccessor",
+    "ServerListSharedMixin"
   ]
 }

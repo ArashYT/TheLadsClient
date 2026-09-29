@@ -8,6 +8,8 @@ public final class ModuleSupport {
     public record Status(boolean configurable, String label, String description) {}
     private static final Map<String, Status> STATUS = new HashMap<>();
     private static final Map<String, String> EXTERNAL_IDS = new HashMap<>();
+    /** Upstream mod id each module wraps or replaces, kept whether or not that mod is installed (launcher catalog). */
+    private static final Map<String, String> EXTERNAL_MOD_IDS = new HashMap<>();
     private static final java.util.Set<String> BUILT_IN = new java.util.HashSet<>();
     private static long revision;
     private static final Status PENDING = new Status(false, "Unavailable", "This feature is not connected to this game version yet.");
@@ -31,9 +33,20 @@ public final class ModuleSupport {
     public static void registerExternal(String name, String modName, String modId, boolean installed) {
         registerExternal(name, modName, installed);
         if (installed) EXTERNAL_IDS.put(name, modId); else EXTERNAL_IDS.remove(name);
+        EXTERNAL_MOD_IDS.put(name, modId);
     }
+    public static String externalModId(String name) { return EXTERNAL_MOD_IDS.get(name); }
     public static String getExternalId(String name) { return EXTERNAL_IDS.get(name); }
     public static boolean isBuiltIn(String name) { return BUILT_IN.contains(name); }
+    /** Same rule as the in-game card toggle: only built-in modules, and Discord RPC stays "Soon". */
+    public static boolean isToggleable(String name) { return isBuiltIn(name) && !"DiscordRPC".equals(name); }
+    /** Catalog support kind: builtIn, external (wraps an upstream mod), unavailable, or pending (never registered here). */
+    public static String support(String name) {
+        if (BUILT_IN.contains(name)) return "builtIn";
+        Status status = STATUS.get(name);
+        if (status == null) return "pending";
+        return status.label().equals("Unavailable") ? "unavailable" : "external";
+    }
     public static long revision() { return revision; }
     public static java.util.Set<String> externalIds() { return java.util.Set.copyOf(EXTERNAL_IDS.values()); }
     public static void registerUnavailable(String name, String reason) {

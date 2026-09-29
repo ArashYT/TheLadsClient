@@ -83,6 +83,7 @@ public class LauncherSettings
     public string QuickLaunchServerIp { get; set; } = "";  // server to join on launch ("" = auto from logs)
 
     // Sync
+    // Retired in 1.2.3 and ignored: resource packs are shared through the global folder. Kept so older settings.json files load.
     public bool SyncResourcePacksFromGlobal { get; set; } = false;
     public bool SyncScreenshotsToGlobal { get; set; } = true;
 

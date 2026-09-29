@@ -123,4 +123,9 @@ public interface LadsGameBridge {
     }
 
     boolean isHudHidden();
+
+    /** Every mod container Fabric loaded in this process, nested jars included; empty without a loader. */
+    default List<com.thelads.core.mods.LoadedMod> loadedMods() {
+        return List.of();
+    }
 }

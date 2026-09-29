@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using TheLadsLauncher.Models;
 
@@ -11,16 +12,19 @@ namespace TheLadsLauncher.Services;
 public class ProfileService : IProfileService
 {
     private static ProfileService? _instance;
-    public static ProfileService Instance => _instance ??= new ProfileService(PathService.Instance);
+    public static ProfileService Instance => _instance ??= new ProfileService(PathService.Instance, SharedContentService.Instance);
 
     private readonly IPathService _pathService;
+    private readonly SharedContentService _sharedContent;
     private readonly string _profilesConfigPath;
     private readonly List<LauncherProfile> _profiles = new();
     private string _activeProfileId = "26.3";
 
-    public ProfileService(IPathService pathService)
+    // There is deliberately no constructor without the shared-content root: tests must pass a sandbox root.
+    public ProfileService(IPathService pathService, SharedContentService sharedContent)
     {
         _pathService = pathService;
+        _sharedContent = sharedContent;
         _profilesConfigPath = Path.Combine(_pathService.BaseDirectory, "profiles.json");
         LoadProfiles();
     }
@@ -153,109 +157,140 @@ public class ProfileService : IProfileService
         return PrepareProfileEnvironmentAsync(profile);
     }
 
-    public Task PrepareProfileEnvironmentAsync(LauncherProfile profile)
+    public Task PrepareProfileEnvironmentAsync(LauncherProfile profile) => PrepareProfileEnvironmentAsync(profile, null);
+
+    /// <summary>
+    /// Every profile, isolated or not, gets shared worlds, resource packs, shader packs and server list. IsIsolated only keeps
+    /// the profile's own game settings (options.txt, keybinds) instead of syncing them through the launcher's shared folder.
+    /// </summary>
+    /// <param name="withoutSharedFolders">Only after the user chose to launch without shared worlds/packs this time
+    /// (see <see cref="SharedContentUnavailableException"/>); not saved.</param>
+    public async Task<SharedContentReport> PrepareProfileEnvironmentAsync(LauncherProfile profile, IProgress<string>? progress,
+        CancellationToken cancellationToken = default, bool withoutSharedFolders = false)
     {
-        return Task.Run(() =>
+        var targetDir = _pathService.GetProfileDirectory(profile);
+        Directory.CreateDirectory(targetDir);
+        var coreEnabled = UsesCore(profile, targetDir, out var stateFileError);
+        var report = await _sharedContent.PrepareProfileAsync(targetDir, profile.Name, LegacySharedServersFile, coreEnabled,
+            progress, cancellationToken, shareFolders: !withoutSharedFolders);
+        var warnings = report.Warnings.ToList();
+        if (stateFileError != null) warnings.Add(stateFileError);
+
+        if (!profile.IsIsolated)
         {
-            var targetDir = _pathService.GetProfileDirectory(profile);
-            Directory.CreateDirectory(targetDir);
-
-            if (profile.IsIsolated)
+            try
             {
-                // In isolated mode, no shared settings synchronization is performed
-                return;
+                await Task.Run(() =>
+                {
+                    _pathService.EnsureDirectories();
+                    // Game settings (options.txt, keybinds) follow the launcher's shared copy unless the profile keeps its own.
+                    SyncFileToInstance(_pathService.SharedOptionsFile, Path.Combine(targetDir, "options.txt"));
+                }, cancellationToken);
             }
-
-            _pathService.EnsureDirectories();
-
-            // 1. Sync options.txt (keybinds, video settings, etc.)
-            SyncFileToInstance(_pathService.SharedOptionsFile, Path.Combine(targetDir, "options.txt"));
-
-            // 2. Sync servers.dat (server list)
-            SyncFileToInstance(_pathService.SharedServersFile, Path.Combine(targetDir, "servers.dat"));
-
-            // Authentication snapshots belong to the auth gateway, never timestamp-based sync.
-        });
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                warnings.Add($"Game settings (options.txt) were not synced: {e.Message}");
+            }
+        }
+        // Authentication snapshots belong to the auth gateway, never timestamp-based sync.
+        return report with { Warnings = warnings };
     }
 
-    public Task SyncProfileToSharedAsync(LauncherProfile profile)
+    /// <summary>Startup pass over every profile folder whose game is not running (see SharedContentService.PrepareAllAsync).</summary>
+    public Task<IReadOnlyDictionary<string, SharedContentReport>> PrepareAllProfilesSharedContentAsync(IProgress<string>? progress = null,
+        CancellationToken cancellationToken = default)
     {
-        return Task.Run(() =>
+        var targets = GetProfiles().Select(p =>
         {
-            if (profile.IsIsolated)
+            var dir = _pathService.GetProfileDirectory(p);
+            return (dir, p.Name, UsesCore(p, dir, out _));
+        }).ToList();
+        return _sharedContent.PrepareAllAsync(targets, LegacySharedServersFile, progress, cancellationToken);
+    }
+
+    /// <summary>Profiles whose game folder, links resolved, is not inside <paramref name="root"/>. The QA preview modes refuse to
+    /// run while there are any: they migrate and link every profile folder, and a sandbox must never reach a real one.</summary>
+    public IReadOnlyList<LauncherProfile> ProfilesOutside(string root)
+    {
+        var finalRoot = SafeFileOps.GetFinalPath(root);
+        return GetProfiles().Where(p => !SafeFileOps.IsSameOrInside(SafeFileOps.GetFinalPath(_pathService.GetProfileDirectory(p)), finalRoot)).ToList();
+    }
+
+    /// <summary>After the game exits: options.txt back to the launcher's shared copy (unless isolated), then the fallback server-list reconcile.</summary>
+    /// <param name="reconcileServerList">False when <see cref="GameSession.Attach"/> already reconciled the server list for this exit.</param>
+    public async Task<SharedContentReport> SyncProfileToSharedAsync(LauncherProfile profile, bool reconcileServerList = true)
+    {
+        var targetDir = _pathService.GetProfileDirectory(profile);
+        if (!Directory.Exists(targetDir)) return SharedContentReport.Empty;
+
+        if (!profile.IsIsolated)
+        {
+            await Task.Run(() =>
             {
-                // In isolated mode, no shared synchronization is performed
-                return;
-            }
+                _pathService.EnsureDirectories();
+                SyncFileFromInstance(Path.Combine(targetDir, "options.txt"), _pathService.SharedOptionsFile);
+            });
+        }
+        // Never restore instance account/profile snapshots over newer logins or removals.
+        return reconcileServerList ? await _sharedContent.ReconcileFallbackServersAsync(targetDir) : SharedContentReport.Empty;
+    }
 
-            var targetDir = _pathService.GetProfileDirectory(profile);
-            if (!Directory.Exists(targetDir)) return;
+    // Kept only as the old launcher's list: it is merged into the shared servers.dat once, never written again.
+    private string LegacySharedServersFile => Path.Combine(_pathService.SharedDirectory, "servers.dat");
 
-            _pathService.EnsureDirectories();
-
-            // 1. Sync options.txt back to shared
-            SyncFileFromInstance(Path.Combine(targetDir, "options.txt"), _pathService.SharedOptionsFile);
-
-            // 2. Sync servers.dat back to shared
-            SyncFileFromInstance(Path.Combine(targetDir, "servers.dat"), _pathService.SharedServersFile);
-
-            // Never restore instance account/profile snapshots over newer logins or removals.
-        });
+    /// <summary>LadsCore (which reads the shared server list itself) runs only for bundled-Core Fabric versions it is enabled for.</summary>
+    private static bool UsesCore(LauncherProfile profile, string gameDirectory, out string? stateFileError)
+    {
+        stateFileError = null;
+        return GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion) && !string.IsNullOrWhiteSpace(profile.FabricVersion)
+            && SharedContentService.IsCoreRequested(gameDirectory, out stateFileError);
     }
 
     private static void SyncFileToInstance(string sharedFile, string instanceFile)
     {
-        try
+        if (!File.Exists(sharedFile))
         {
-            if (!File.Exists(sharedFile))
-            {
-                if (File.Exists(instanceFile))
-                {
-                    File.Copy(instanceFile, sharedFile, true);
-                }
-                return;
-            }
-
-            if (!File.Exists(instanceFile))
-            {
-                File.Copy(sharedFile, instanceFile, true);
-                return;
-            }
-
-            var sharedTime = File.GetLastWriteTimeUtc(sharedFile);
-            var instanceTime = File.GetLastWriteTimeUtc(instanceFile);
-            if (sharedTime > instanceTime)
-            {
-                File.Copy(sharedFile, instanceFile, true);
-            }
-            else if (instanceTime > sharedTime)
+            if (File.Exists(instanceFile))
             {
                 File.Copy(instanceFile, sharedFile, true);
             }
+            return;
         }
-        catch { }
+
+        if (!File.Exists(instanceFile))
+        {
+            File.Copy(sharedFile, instanceFile, true);
+            return;
+        }
+
+        var sharedTime = File.GetLastWriteTimeUtc(sharedFile);
+        var instanceTime = File.GetLastWriteTimeUtc(instanceFile);
+        if (sharedTime > instanceTime)
+        {
+            File.Copy(sharedFile, instanceFile, true);
+        }
+        else if (instanceTime > sharedTime)
+        {
+            File.Copy(instanceFile, sharedFile, true);
+        }
     }
 
     private static void SyncFileFromInstance(string instanceFile, string sharedFile)
     {
-        try
+        if (!File.Exists(instanceFile)) return;
+
+        if (!File.Exists(sharedFile))
         {
-            if (!File.Exists(instanceFile)) return;
-
-            if (!File.Exists(sharedFile))
-            {
-                File.Copy(instanceFile, sharedFile, true);
-                return;
-            }
-
-            var instanceTime = File.GetLastWriteTimeUtc(instanceFile);
-            var sharedTime = File.GetLastWriteTimeUtc(sharedFile);
-            if (instanceTime >= sharedTime)
-            {
-                File.Copy(instanceFile, sharedFile, true);
-            }
+            File.Copy(instanceFile, sharedFile, true);
+            return;
         }
-        catch { }
+
+        var instanceTime = File.GetLastWriteTimeUtc(instanceFile);
+        var sharedTime = File.GetLastWriteTimeUtc(sharedFile);
+        if (instanceTime >= sharedTime)
+        {
+            File.Copy(instanceFile, sharedFile, true);
+        }
     }
 
     private void LoadProfiles()

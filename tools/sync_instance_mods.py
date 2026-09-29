@@ -38,12 +38,22 @@ COMPATIBLE_PROJECTS = {('1.21.1', 'modernfix'): 'nmDcB62a',
 # Iris's last stable 1.21.1 release requires Sodium 0.6; this beta supports 0.8.
 COMPATIBLE_RELEASES = {('1.21.1', 'iris'): 'bAo1Qhte',
                        ('1.21.1', 'reeses-sodium-options'): '3sJ9XmcU',
-                       ('1.21.1', 'sodium-extra'): 'ncwGSklo',
+                       # 0.9.0 crashes fresh configs (Map.replaceAll on a fastutil 8.5.12 map);
+                       # 0.9.2+ require Sodium >=0.8.12, which rejects 0.8.12-beta.1.
+                       ('1.21.1', 'sodium-extra'): 'taFAlSOP',
                        # 2.2.0 applies an Amendments mixin even when Amendments is absent.
                        ('1.21.1', 'fixbookgui'): '7S8E0FG3', ('1.21.11', 'reeses-sodium-options'): 'yIgAFMna',
                        ('1.21.11', 'sodium-extra'): 'yqY1efrC'}
 KNOWN = {'autoreconnectrf': 'PRy8Khga', 'clientsort': 'K0AkAin6',
          'cloth-config': '9s6osm5g', 'fastershadowmapper': 'nSRLvOHG'}
+# Removed from the pack (modId -> Modrinth project), matched by either key. They are never surveyed, preserved or
+# shipped; lock() lists them under "retired" with their known hashes so launchers retire managed copies.
+# GoodMC left in 1.2.3; it is not a native replacement, so it must not go into NATIVE.
+REMOVED = {'goodmc': 'hwir46QE'}
+
+
+def removed(mod_id, project_id):
+    return mod_id in REMOVED or project_id in REMOVED.values()
 
 
 def api(path, body=None):
@@ -149,17 +159,28 @@ def entry(version, game):
             'projectUrl': 'https://modrinth.com/mod/' + project['slug']}
 
 
+def retired(old):
+    """Keep the old manifest's retired entries and add removed mods it still shipped, with their hashes."""
+    entries = {r['modId']: r for r in old.get('retired', [])}
+    for mod in old['mods']:
+        if removed(mod['modId'], mod['projectId']):
+            item = entries.setdefault(mod['modId'], {'modId': mod['modId'], 'projectId': mod['projectId'], 'name': mod['name'],
+                                                     'sha512': [], 'reason': 'Removed from The Lads Client pack.'})
+            if mod['sha512'] not in item['sha512']:
+                item['sha512'].append(mod['sha512'])
+    return sorted(entries.values(), key=lambda r: r['modId'])
+
+
 def lock(game, rows):
     selected = {r['selected']['project_id']: r['selected'] for r in rows if r['game'] == game and 'selected' in r}
     target = ROOT / 'TheLadsLauncher/game-mods' / game / 'client-mods.json'
+    old = json.loads(target.read_text(encoding='utf8')) if target.exists() else {'mods': []}
     # Preserve previous client features outside the instance's inventory.
-    if target.exists():
-        old = json.loads(target.read_text(encoding='utf8'))
-        for mod in old['mods']:
-            if mod['modId'] not in NATIVE[game] and mod['projectId'] not in selected:
-                version = api('version/' + mod['versionId'])
-                if version and game in version['game_versions']:
-                    selected[mod['projectId']] = version
+    for mod in old['mods']:
+        if mod['modId'] not in NATIVE[game] and not removed(mod['modId'], mod['projectId']) and mod['projectId'] not in selected:
+            version = api('version/' + mod['versionId'])
+            if version and game in version['game_versions']:
+                selected[mod['projectId']] = version
     checked = set()
     constraints = {}
     while set(selected) - checked:
@@ -194,9 +215,19 @@ def lock(game, rows):
         entries = list(pool.map(lambda v: entry(v, game), selected.values()))
     if len({e['modId'] for e in entries}) != len(entries):
         raise ValueError('Duplicate Fabric mod IDs for ' + game)
+    retire = retired(old)
+    # A dependency or a fork can reintroduce a removed mod; fail before writing instead of shipping it again.
+    shipped = [e['modId'] for e in entries if removed(e['modId'], e['projectId'])
+               or any(e['modId'] == r['modId'] or e['projectId'] == r['projectId'] for r in retire)]
+    if shipped:
+        raise ValueError('Retired mods would ship again for ' + game + ': ' + ', '.join(shipped)
+                         + ' (drop the requiring mod, or remove the id from REMOVED and the manifest\'s retired list)')
     entries.sort(key=lambda e: e['modId'])
+    manifest = {'minecraftVersion': game, 'resolveThroughApi': True, 'mods': entries}
+    if retire:
+        manifest['retired'] = retire
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps({'minecraftVersion': game, 'resolveThroughApi': True, 'mods': entries}, indent=2) + '\n', encoding='utf8')
+    target.write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf8')
     for row in rows:
         if row['game'] == game and row['status'] == 'modrinth':
             row['selected'] = selected[row['projectId']]
@@ -221,8 +252,10 @@ def main():
     for row in inventory_rows:
         if row['id'] not in unique or row['modrinth']:
             unique[row['id']] = row
+    # Removed mods get no coverage rows even while the source instance still contains them.
+    surveyed = [row for row in unique.values() if not removed(row['id'], row['project'])]
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        rows = list(pool.map(survey, [(row, game) for game in GAMES for row in unique.values()]))
+        rows = list(pool.map(survey, [(row, game) for game in GAMES for row in surveyed]))
     for game in GAMES:
         print(game, {status: sum(r['game'] == game and r['status'] == status for r in rows) for status in ['native', 'modrinth', 'unavailable']}, flush=True)
         for r in rows:

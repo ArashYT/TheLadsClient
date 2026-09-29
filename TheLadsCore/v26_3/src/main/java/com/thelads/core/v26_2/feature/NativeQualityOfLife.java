@@ -37,6 +37,7 @@ public final class NativeQualityOfLife {
         ShulkerContents.tick();
         NativeDiscordPresence.tick();
         NativeQualityProbe.tick();
+        NativeSharedContentProbe.tick();
     }
 
     public static Module module(String name) { return ModuleManager.getInstance().getModule(name); }

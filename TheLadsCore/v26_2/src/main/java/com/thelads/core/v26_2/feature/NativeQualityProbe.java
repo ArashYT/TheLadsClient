@@ -64,7 +64,8 @@ final class NativeQualityProbe {
             ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
             sword.setDamageValue(100);
             int expected = sword.getMaxDamage() - 100;
-            require(!lines(sword, TooltipFlag.NORMAL).contains("Durability:"), "disabled durability preserves vanilla basic tooltip");
+            LoggerFactory.getLogger("TheLadsCore").info("Lads tooltip QA: damaged sword, Lads tooltips off: {}", lines(sword, TooltipFlag.NORMAL).replace("\n", " | "));
+            require(!ladsLines(sword).contains("Durability:"), "disabled durability adds no Lads line (vanilla/third-party item.durability lines are theirs)");
             bars.setEnabled(true);
             set(bars, "Detailed Durability", true);
             set(bars, "Show Max Durability", true);
@@ -72,12 +73,12 @@ final class NativeQualityProbe {
             List<Component> advanced = sword.getTooltipLines(Item.TooltipContext.of(Minecraft.getInstance().level), Minecraft.getInstance().player, TooltipFlag.ADVANCED);
             require(advanced.stream().filter(line -> line.getString().contains("Durability:")).count() == 1, "advanced durability has no duplicate line");
             sword.set(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT.withHidden(DataComponents.DAMAGE, true));
-            require(!lines(sword, TooltipFlag.NORMAL).contains("Durability:"), "hidden durability component stays hidden");
+            require(!ladsLines(sword).contains("Durability:"), "hidden durability component gets no Lads line");
             sword.remove(DataComponents.TOOLTIP_DISPLAY);
             set(bars, "Show Max Durability", false);
             require(lines(sword, TooltipFlag.NORMAL).contains("Durability: " + expected) && !lines(sword, TooltipFlag.NORMAL).contains("Durability: " + expected + " /"), "maximum toggle");
             set(bars, "Detailed Durability", false);
-            require(!lines(sword, TooltipFlag.NORMAL).contains("Durability:"), "detail toggle");
+            require(!ladsLines(sword).contains("Durability:"), "detail toggle");
             set(bars, "Show Item Attributes", true);
             int attributes = sword.getTooltipLines(Item.TooltipContext.of(Minecraft.getInstance().level), Minecraft.getInstance().player, TooltipFlag.NORMAL).size();
             set(bars, "Show Item Attributes", false);
@@ -89,6 +90,7 @@ final class NativeQualityProbe {
             require(lines(sword, TooltipFlag.NORMAL).contains("minecraft:diamond_sword"), "item identifier");
             require(lines(sword, TooltipFlag.NORMAL).contains("Components: "), "real component count");
             require(lines(new ItemStack(Items.APPLE), TooltipFlag.NORMAL).contains("Food: +4 hunger"), "real food values");
+            LoggerFactory.getLogger("TheLadsCore").info("Lads tooltip QA: apple, Lads food values on: {}", lines(new ItemStack(Items.APPLE), TooltipFlag.NORMAL).replace("\n", " | "));
             sword.set(DataComponents.TOOLTIP_DISPLAY, new TooltipDisplay(true, new java.util.LinkedHashSet<>()));
             require(sword.getTooltipLines(Item.TooltipContext.of(Minecraft.getInstance().level), Minecraft.getInstance().player, TooltipFlag.NORMAL).isEmpty(), "hidden tooltip remains empty");
             sword.remove(DataComponents.TOOLTIP_DISPLAY);
@@ -166,6 +168,12 @@ final class NativeQualityProbe {
     private static String lines(ItemStack item, TooltipFlag flag) {
         return item.getTooltipLines(Item.TooltipContext.of(Minecraft.getInstance().level), Minecraft.getInstance().player, flag)
             .stream().map(Component::getString).reduce("", (left, right) -> left + "\n" + right);
+    }
+    // Tooltip text without the translatable item.durability lines that vanilla and third-party mods (Tooltips TXF) add.
+    private static String ladsLines(ItemStack item) {
+        return item.getTooltipLines(Item.TooltipContext.of(Minecraft.getInstance().level), Minecraft.getInstance().player, TooltipFlag.NORMAL).stream()
+            .filter(line -> !(line.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents text && "item.durability".equals(text.getKey())))
+            .map(Component::getString).reduce("", (left, right) -> left + "\n" + right);
     }
     private static void set(Module module, String name, boolean enabled) { ((BoolOption) module.getOption(name)).set(enabled); }
     private static void require(boolean result, String name) {

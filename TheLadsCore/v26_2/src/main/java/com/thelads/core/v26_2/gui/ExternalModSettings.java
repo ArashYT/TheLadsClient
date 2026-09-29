@@ -27,8 +27,11 @@ public final class ExternalModSettings {
         if (FabricLoader.getInstance().isModLoaded("exordium")) {
             external("Exordium", "Exordium", "exordium");
         } else {
+            // One source tree serves several Minecraft versions: name the one that is running.
+            String minecraft = FabricLoader.getInstance().getModContainer("minecraft")
+                .map(container -> "Minecraft " + container.getMetadata().getVersion().getFriendlyString()).orElse("this Minecraft version");
             ModuleSupport.registerUnavailable("Exordium",
-                "No upstream Fabric release for Minecraft 26.2 is available. "
+                "No upstream Fabric release for " + minecraft + " is available. "
                 + "Its HUD caching engine needs a compatibility port before it can be enabled.");
         }
         external("AppleSkin", "AppleSkin", "appleskin");

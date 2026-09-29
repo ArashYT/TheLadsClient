@@ -33,6 +33,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Inject(method = "init", at = @At("TAIL"), require = 0)
     private void ladsInjectTitleScreenButtons(CallbackInfo ci) {
+        com.thelads.core.v1_21_1.feature.SharedContentProbe.runOnce();
         // Inject "Lads Settings" directly above "Options" in primary vertical list
         int optionsY = -1;
         for (GuiEventListener listener : this.children()) {
@@ -82,6 +83,8 @@ public abstract class TitleScreenMixin extends Screen {
                 btn -> Minecraft.getInstance().setScreen(new AccountSwitcherScreen121((Screen)(Object)this))
             ).bounds(CARD_MARGIN, cardY, CARD_W, 20).build()
         );
+        com.thelads.core.mods.ModInventoryModel.requestAtFirstTitleScreen();
+        com.thelads.core.mods.ModInventoryModel.logAtFirstTitleScreen();
     }
 
     @Inject(method = "render", at = @At("HEAD"), require = 0)

@@ -45,7 +45,6 @@ public class PathService : IPathService
     public string CapeFile => Path.Combine(BaseDirectory, "config", "cape.png");
 
     public string SharedOptionsFile => Path.Combine(SharedDirectory, "options.txt");
-    public string SharedServersFile => Path.Combine(SharedDirectory, "servers.dat");
     public string SharedAccountsFile => Path.Combine(SharedDirectory, "lads_accounts.json");
     public string SharedProfileConfigFile => Path.Combine(SharedDirectory, "lads_profile.json");
 

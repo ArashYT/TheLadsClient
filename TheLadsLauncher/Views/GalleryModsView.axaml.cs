@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
@@ -10,6 +11,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Linq;
+using TheLadsLauncher.Services;
 
 namespace TheLadsLauncher.Views;
 
@@ -105,6 +107,13 @@ public partial class GalleryModsView : UserControl
     }
 
     // --- Local Library ---
+    // Mods come from the same inventory and toggle workflow as the launcher's Mods page; resource packs from the shared
+    // folder every version uses. Failures are shown in LocalStatusText and the list is re-read from disk.
+    private readonly ModInventoryService _inventoryService = new(gameDirectory => RunningGameMarker.GetRunning(gameDirectory)?.LoadedMods);
+    private readonly ModStateService _stateService = new(RunningGameMarker.IsRunning);
+    private readonly Dictionary<GalleryItem, ModInventoryEntry> _localEntries = new();
+    private ModInventory? _localInventory;
+
     private void RefreshLocal_Click(object? sender, RoutedEventArgs e)
     {
         LoadLocalContent();
@@ -121,83 +130,145 @@ public partial class GalleryModsView : UserControl
         LoadLocalContent();
     }
 
-    private void LoadLocalContent()
+    private void LocalStatus(string text)
     {
+        LocalStatusText.Text = text;
+        LocalStatusText.IsVisible = text.Length > 0;
+    }
+
+    private int _localGeneration;
+
+    private async void LoadLocalContent()
+    {
+        int generation = ++_localGeneration;
         foreach (var item in LocalItems)
         {
             item.Icon?.Dispose();
         }
         LocalItems.Clear();
+        _localEntries.Clear();
         string query = LocalSearchBox?.Text ?? "";
-        string typeFilter = ((ComboBoxItem)LocalTypeFilter.SelectedItem!).Content!.ToString()!;
-        
-        string targetDir = Path.Combine(_settings.InstancePath, typeFilter == "Mods" ? "mods" : "resourcepacks");
-        if (!Directory.Exists(targetDir)) return;
-
-        foreach (var file in Directory.GetFileSystemEntries(targetDir))
+        try
         {
-            string fileName = Path.GetFileName(file);
-            if (!string.IsNullOrEmpty(query) && !fileName.Contains(query, StringComparison.OrdinalIgnoreCase))
-                continue;
+            if (LocalTypeFilter.SelectedIndex == 1) LoadResourcePacks(query);
+            else await LoadModsAsync(query, generation);
+        }
+        catch (Exception ex)
+        {
+            if (generation == _localGeneration) LocalStatus($"Could not list the local library: {ex.Message}");
+        }
+    }
 
-            bool isEnabled = !fileName.EndsWith(".disabled");
-            string displayName = isEnabled ? fileName : fileName.Substring(0, fileName.Length - 9);
-
+    private async Task LoadModsAsync(string query, int generation)
+    {
+        var profile = ProfileService.Instance.GetActiveProfile();
+        var inventory = await _inventoryService.BuildAsync(AppContext.BaseDirectory, PathService.Instance.GetProfileDirectory(profile), profile.MinecraftVersion);
+        if (generation != _localGeneration) return; // a newer refresh owns the list
+        _localInventory = inventory;
+        foreach (var row in ModInventoryView.Filter(inventory, ModListFilter.All, query))
+        {
+            var entry = row.Entry;
             var item = new GalleryItem
             {
-                Title = displayName,
-                Author = "Local File",
-                Description = file,
-                ActionButtonText = "Update",
-                IsInstalled = true,
-                IsEnabled = isEnabled,
-                ProjectId = file 
+                Title = entry.DisplayName,
+                Author = entry.Ownership.ToString(),
+                Description = string.Join(" · ", new[] { entry.Id, entry.Status.ToString(), entry.FileName, entry.Note }.Where(t => !string.IsNullOrEmpty(t))),
+                IsInstalled = entry.FilePath != null,
+                IsEnabled = entry.RequestedEnabled,
+                ProjectId = entry.ProjectId
             };
-
             item.ToggleStateCommand = new RelayCommand(_ => ToggleModState(item));
-            item.DeleteCommand = new RelayCommand(_ => DeleteMod(item, LocalItems));
-
+            item.DeleteCommand = new RelayCommand(_ => DeleteMod(item));
+            _localEntries[item] = entry;
             LocalItems.Add(item);
         }
     }
 
-    private void ToggleModState(GalleryItem item)
+    private void LoadResourcePacks(string query)
     {
-        string path = item.Description; 
-        try
+        var folder = SharedContentService.Instance.ResourcePacksDirectory;
+        if (!Directory.Exists(folder))
         {
-            if (File.Exists(path) || Directory.Exists(path))
-            {
-                string newPath = item.IsEnabled ? (path.EndsWith(".disabled") ? path.Substring(0, path.Length - 9) : path) : path + ".disabled";
-                if (Directory.Exists(path))
-                    Directory.Move(path, newPath);
-                else
-                    File.Move(path, newPath);
-                item.Description = newPath;
-            }
+            LocalStatus($"The shared resource packs folder '{folder}' does not exist yet.");
+            return;
         }
-        catch { }
+        foreach (var path in Directory.GetFileSystemEntries(folder))
+        {
+            var name = Path.GetFileName(path);
+            if (name.StartsWith(".lads-incoming-", StringComparison.Ordinal)
+                || (query.Length > 0 && !name.Contains(query, StringComparison.OrdinalIgnoreCase))) continue;
+            var item = new GalleryItem { Title = name, Author = "Shared resource pack", Description = path, IsInstalled = true, IsEnabled = true };
+            item.ToggleStateCommand = new RelayCommand(_ =>
+            {
+                item.IsEnabled = true;
+                LocalStatus("Resource packs are switched in game (Options, Resource Packs); every version shares this folder.");
+            });
+            item.DeleteCommand = new RelayCommand(_ => DeleteResourcePack(item));
+            LocalItems.Add(item);
+        }
     }
 
-    private void DeleteMod(GalleryItem item, ObservableCollection<GalleryItem> collection)
+    // The CheckBox has already flipped IsEnabled: that is the requested state.
+    private async void ToggleModState(GalleryItem item)
     {
-        string path = item.Description;
+        if (_localInventory is not { } inventory || !_localEntries.TryGetValue(item, out var entry)) return;
         try
         {
-            if (File.Exists(path))
+            ModToggleResult result;
+            if (entry.Ownership == ModOwnership.NativeModule)
+                result = await _stateService.SetNativeModuleAsync(inventory.GameDirectory, entry.Id, item.IsEnabled);
+            else
             {
-                File.Delete(path);
-                collection.Remove(item);
+                var plan = _stateService.Plan(inventory, new[] { entry.Id }, item.IsEnabled);
+                // This view has no confirmation dialog: a change that reaches other mods or warns is left to the Mods page.
+                var others = plan.AlsoDisable.Concat(plan.AlsoEnable).ToList();
+                result = plan.Blockers.Count + plan.Warnings.Count + others.Count == 0
+                    ? await _stateService.ApplyAsync(inventory.GameDirectory, inventory, plan)
+                    : new ModToggleResult(false, false, false, string.Join(" ", plan.Blockers.Concat(plan.Warnings))
+                        + (others.Count > 0 ? $" This also switches {string.Join(", ", others)}; confirm it on the Mods page." : ""));
             }
-            else if (Directory.Exists(path))
-            {
-                Directory.Delete(path, true);
-                collection.Remove(item);
-            }
+            LocalStatus(result.Message);
         }
-        catch (IOException)
+        catch (Exception ex)
         {
+            LocalStatus($"Could not switch {entry.DisplayName}: {ex.Message}");
         }
+        LoadLocalContent(); // the real state, also after a failure
+    }
+
+    // Only jars you added yourself; pack mods and LadsCore are switched off instead (they would be downloaded again).
+    private async void DeleteMod(GalleryItem item)
+    {
+        if (!_localEntries.TryGetValue(item, out var entry)) return;
+        if (entry.Ownership != ModOwnership.User || entry.FilePath == null)
+        {
+            LocalStatus($"{entry.DisplayName} is not a mod you added; switch it off instead.");
+            return;
+        }
+        try
+        {
+            await Task.Run(() => SafeFileOps.DeleteToRecycleBin(entry.FilePath));
+            LocalStatus($"Moved {entry.FileName} to the Recycle Bin.");
+        }
+        catch (Exception ex)
+        {
+            LocalStatus($"Could not delete {entry.FileName}: {ex.Message}");
+        }
+        LoadLocalContent();
+    }
+
+    private async void DeleteResourcePack(GalleryItem item)
+    {
+        try
+        {
+            await Task.Run(() => SafeFileOps.DeleteToRecycleBin(item.Description));
+            LocalStatus($"Moved {item.Title} to the Recycle Bin (shared by every version).");
+        }
+        catch (Exception ex)
+        {
+            LocalStatus($"Could not delete {item.Title}: {ex.Message}");
+        }
+        LoadLocalContent();
     }
 
     // --- Discover ---

@@ -81,14 +81,17 @@ public class ProfilesViewModel : ViewModelBase
         profile.IsIsolated = !profile.IsIsolated;
         _profileService.SaveProfile(profile);
         OnPropertyChanged(nameof(SelectedProfile));
-        StatusMessage = $"{profile.Name} is now {(profile.IsIsolated ? "Isolated (.minecraft isolated)" : "Shared (options/keybinds synced)")}";
+        StatusMessage = $"{profile.Name} now {(profile.IsIsolated ? "keeps its own game settings (options.txt, keybinds)" : "shares game settings (options.txt, keybinds) with other profiles")}. "
+            + "Worlds, resource packs, shader packs and the server list are always shared.";
     }
 
     public async Task SyncProfileSettingsAsync(LauncherProfile? profile)
     {
         if (profile == null) return;
         StatusMessage = $"Syncing settings for {profile.Name}...";
-        await _profileService.PrepareProfileEnvironmentAsync(profile);
-        StatusMessage = $"Settings synced for {profile.Name} via {_pathService.SharedDirectory}";
+        var report = await _profileService.PrepareProfileEnvironmentAsync(profile, null);
+        StatusMessage = report.Warnings.Count > 0
+            ? $"Synced {profile.Name} with {report.Warnings.Count} warning(s): {report.Warnings[0]}"
+            : $"Settings synced for {profile.Name} via {_pathService.SharedDirectory}";
     }
 }

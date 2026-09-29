@@ -19,6 +19,17 @@ public static class ServiceTestSuite
         int passed = 0;
         int failed = 0;
 
+        // Everything runs in a throw-away sandbox: never the user's real launcher data or real .minecraft.
+        var sandbox = Path.Combine(Path.GetTempPath(), "LadsServiceTests", Guid.NewGuid().ToString("N"));
+        var baseDir = Path.Combine(sandbox, ".theladsclient");
+        var globalDir = Path.Combine(sandbox, "global-minecraft");
+        // Static helpers (LauncherSettings, the *.Instance singletons) resolve their folders from these variables.
+        Environment.SetEnvironmentVariable("THELADS_DIR", baseDir);
+        Environment.SetEnvironmentVariable(SharedContentService.RootEnvironmentVariable, globalDir);
+        var sandboxPaths = new PathService(baseDir);
+        var sandboxShared = new SharedContentService(globalDir, Path.Combine(baseDir, "backups", "servers"));
+        var sandboxProfiles = new ProfileService(sandboxPaths, sandboxShared);
+
         async Task AssertAsync(string testName, Func<Task> testFunc)
         {
             try
@@ -38,7 +49,7 @@ public static class ServiceTestSuite
         // Test 1: PathService dynamic base and subdirectories
         await AssertAsync("PathService Base & Subdirectories", async () =>
         {
-            var pathService = PathService.Instance;
+            var pathService = sandboxPaths;
             if (!pathService.BaseDirectory.EndsWith(".theladsclient"))
                 throw new Exception($"BaseDirectory does not end with .theladsclient: {pathService.BaseDirectory}");
 
@@ -62,7 +73,7 @@ public static class ServiceTestSuite
         // Test 2: ProfileService CRUD & Default Profiles
         await AssertAsync("ProfileService Default Profiles & CRUD", async () =>
         {
-            var profileService = ProfileService.Instance;
+            var profileService = sandboxProfiles;
             var profiles = profileService.GetProfiles();
             if (profiles.Count == 0)
                 throw new Exception("No profiles returned by ProfileService");
@@ -99,10 +110,10 @@ public static class ServiceTestSuite
         });
 
         // Test 3: Shared Synchronization Protocol
-        await AssertAsync("ProfileService Shared Sync (options.txt & servers.dat)", async () =>
+        await AssertAsync("ProfileService Shared Sync (options.txt & shared worlds)", async () =>
         {
-            var pathService = PathService.Instance;
-            var profileService = ProfileService.Instance;
+            var pathService = sandboxPaths;
+            var profileService = sandboxProfiles;
 
             // Ensure shared directory exists
             Directory.CreateDirectory(pathService.SharedDirectory);
@@ -123,6 +134,9 @@ public static class ServiceTestSuite
             string syncedContent = File.ReadAllText(profileOptions);
             if (syncedContent != testContent)
                 throw new Exception("options.txt content mismatch after shared -> profile sync");
+            if (SafeFileOps.GetLinkTarget(Path.Combine(profileDir, "saves")) is not { } savesTarget
+                || !SafeFileOps.PathsEqual(savesTarget, sandboxShared.SavesDirectory))
+                throw new Exception("saves was not linked to the shared saves folder");
 
             // Now update profile options (simulate game updating keybinds)
             await Task.Delay(50);
@@ -137,15 +151,14 @@ public static class ServiceTestSuite
 
             // Clean up
             profileService.DeleteProfile(testProfile.Id);
-            if (Directory.Exists(profileDir))
-                Directory.Delete(profileDir, true);
+            SafeFileOps.DeleteTree(profileDir);
         });
 
         // Test 4: Isolated Profile Protocol
         await AssertAsync("ProfileService Isolated Profile Protection", async () =>
         {
-            var pathService = PathService.Instance;
-            var profileService = ProfileService.Instance;
+            var pathService = sandboxPaths;
+            var profileService = sandboxProfiles;
 
             string sharedOptions = Path.Combine(pathService.SharedDirectory, "options.txt");
             string originalShared = File.Exists(sharedOptions) ? File.ReadAllText(sharedOptions) : "original_shared";
@@ -163,6 +176,8 @@ public static class ServiceTestSuite
             await profileService.PrepareProfileEnvironmentAsync(isolatedProfile);
             if (File.ReadAllText(isoOptions) != isoContent)
                 throw new Exception("Isolated profile options were unexpectedly overwritten by shared sync");
+            if (!SafeFileOps.IsLink(Path.Combine(isoDir, "resourcepacks")))
+                throw new Exception("Isolated profiles must still share resource packs");
 
             // Post-game sync should not write back to shared
             await profileService.SyncProfileToSharedAsync(isolatedProfile);
@@ -171,14 +186,13 @@ public static class ServiceTestSuite
 
             // Clean up
             profileService.DeleteProfile(isolatedProfile.Id);
-            if (Directory.Exists(isoDir))
-                Directory.Delete(isoDir, true);
+            SafeFileOps.DeleteTree(isoDir);
         });
 
         // Test 5: JavaService Scan & Verification
         await AssertAsync("JavaService System Scan & Detection", async () =>
         {
-            var javaService = JavaService.Instance;
+            var javaService = new JavaService(sandboxPaths);
             var javas = javaService.ScanAllSystemJavas();
             Console.WriteLine($"  Found {javas.Count} Java installations on system.");
 
@@ -192,7 +206,7 @@ public static class ServiceTestSuite
         // Test 6: AuthService Offline Persistence
         await AssertAsync("AuthService Offline Account & Persistence", async () =>
         {
-            var authService = AuthService.Instance;
+            var authService = new AuthService(sandboxPaths);
 
             var createdAccount = await authService.AddOfflineAccountAsync("TestRunnerPilot");
             if (createdAccount.Username != "TestRunnerPilot")
@@ -215,11 +229,11 @@ public static class ServiceTestSuite
         // Test 7: ViewModels Instantiation & Commands
         await AssertAsync("MVVM ViewModels Execution", async () =>
         {
-            var pathService = PathService.Instance;
-            var profileService = ProfileService.Instance;
-            var javaService = JavaService.Instance;
-            var authService = AuthService.Instance;
-            var launchService = LaunchService.Instance;
+            var pathService = sandboxPaths;
+            var profileService = sandboxProfiles;
+            var javaService = new JavaService(sandboxPaths);
+            var authService = new AuthService(sandboxPaths);
+            var launchService = new LaunchService(pathService, profileService, javaService, authService, sharedContent: sandboxShared);
             var settings = LauncherSettings.Load();
 
             var mainVm = new MainWindowViewModel(pathService, profileService, javaService, authService, launchService, settings);
@@ -239,6 +253,9 @@ public static class ServiceTestSuite
 
             await Task.CompletedTask;
         });
+
+        // Every test catches its own failures, so this always runs; links are removed first so nothing outside is touched.
+        SafeFileOps.DeleteTree(sandbox);
 
         Console.WriteLine("========================================");
         Console.WriteLine($" TESTS COMPLETE: {passed} PASSED, {failed} FAILED");

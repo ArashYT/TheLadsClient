@@ -13,7 +13,6 @@ public interface IPathService
     string AccountsFile { get; }
     string ProfileConfigFile { get; }
     string SharedOptionsFile { get; }
-    string SharedServersFile { get; }
     string SharedAccountsFile { get; }
     string SharedProfileConfigFile { get; }
     string SkinFile { get; }

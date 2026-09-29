@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +26,7 @@ public class LaunchService : ILaunchService
     private readonly IProfileService _profileService;
     private readonly IJavaService _javaService;
     private readonly IAuthService _authService;
+    private readonly SharedContentService _sharedContent;
     private readonly string _bundleRoot;
 
     public LaunchService(
@@ -31,12 +34,14 @@ public class LaunchService : ILaunchService
         IProfileService profileService,
         IJavaService javaService,
         IAuthService authService,
-        string? bundleRoot = null)
+        string? bundleRoot = null,
+        SharedContentService? sharedContent = null)
     {
         _pathService = pathService;
         _profileService = profileService;
         _javaService = javaService;
         _authService = authService;
+        _sharedContent = sharedContent ?? SharedContentService.Instance;
         _bundleRoot = bundleRoot ?? AppContext.BaseDirectory;
     }
 
@@ -54,18 +59,31 @@ public class LaunchService : ILaunchService
         if (GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion) && !usesFabric)
             throw new InvalidOperationException($"The Lads Core for Minecraft {profile.MinecraftVersion} requires Fabric. Select a Fabric loader in this profile.");
 
+        Action<string> report = message =>
+        {
+            if (statusCallback != null) statusCallback(message);
+            else Trace.TraceWarning(message);
+        };
         statusCallback?.Invoke("Preparing profile environment...");
-        await _profileService.PrepareProfileEnvironmentAsync(profile);
+        var prepared = await _profileService.PrepareProfileEnvironmentAsync(profile,
+            statusCallback == null ? null : new Progress<string>(statusCallback), cancellationToken);
+        foreach (var warning in prepared.Warnings) report(warning);
         cancellationToken.ThrowIfCancellationRequested();
 
         var gameDir = _pathService.GetProfileDirectory(profile);
         Directory.CreateDirectory(gameDir);
 
+        IReadOnlyList<string> loadedMods = Array.Empty<string>();
         if (usesFabric)
         {
             statusCallback?.Invoke($"Installing bundled core for Minecraft {profile.MinecraftVersion}...");
             await BundledModInstaller.InstallAsync(_bundleRoot, gameDir, profile.MinecraftVersion, cancellationToken);
             await ClientModInstaller.InstallAsync(_bundleRoot, gameDir, profile.MinecraftVersion, statusCallback, cancellationToken);
+            // As in MainWindow.LaunchGame: the in-game Mods view's snapshot, and the ids the running marker records as loaded.
+            var inventoryService = new ModInventoryService();
+            var inventory = await inventoryService.BuildAsync(_bundleRoot, gameDir, profile.MinecraftVersion, cancellationToken);
+            await inventoryService.WriteSnapshotAsync(inventory, cancellationToken);
+            loadedMods = ModInventoryView.EnabledJarIds(inventory);
         }
 
         statusCallback?.Invoke("Initializing Minecraft launcher...");
@@ -178,14 +196,20 @@ public class LaunchService : ILaunchService
             process = await launcher.InstallAndBuildProcessAsync(versionId, launchOption, cancellationToken);
         }
 
+        GameSession.Configure(process.StartInfo, gameDir, _sharedContent.Root);
         process.EnableRaisingEvents = true;
         process.Exited += async (s, e) =>
         {
             try
             {
-                await _profileService.SyncProfileToSharedAsync(profile);
+                // GameSession.Attach reconciles the server list on exit; only the settings sync is left here.
+                var result = await _profileService.SyncProfileToSharedAsync(profile, reconcileServerList: false);
+                foreach (var message in result.Messages.Concat(result.Warnings)) report(message);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                report($"Post-game shared sync failed for '{profile.Name}': {ex.Message}");
+            }
         };
 
         try
@@ -198,6 +222,7 @@ public class LaunchService : ILaunchService
             process.Dispose();
             throw;
         }
+        GameSession.Attach(process, gameDir, loadedMods, report, _sharedContent);
         statusCallback?.Invoke($"Minecraft started with PID {process.Id}");
 
         return process;

@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -13,23 +11,32 @@ using System.Threading.Tasks;
 
 namespace TheLadsLauncher.Services;
 
-/// <summary>Installs a reviewed, pinned Fabric pack. Upstream jars are downloaded directly, never repackaged.</summary>
+/// <summary>Installs a reviewed, pinned Fabric pack. Upstream jars are downloaded directly, never repackaged,
+/// and keep their original file names. Explicit choices in lads-mod-state.json decide enabled/disabled; without one
+/// the current disk state is kept.</summary>
 public static class ClientModInstaller
 {
     public sealed record Entry(string ProjectId, string ProjectSlug, string Name, string ModId,
         string VersionId, string Version, string FileName, string Url, string Sha512, long Size,
         string License, string? SourceUrl, string ProjectUrl);
-    public sealed record Manifest(string MinecraftVersion, List<Entry> Mods, bool ResolveThroughApi = false);
-    private sealed record Mod(string Id, string Name, List<string> Provides, Dictionary<string, string> Depends);
-    private sealed record Package(string? Id, List<Mod> Mods);
-    private sealed record LocalJar(string Path, string Hash, bool Disabled, Package Package);
-    private sealed record Change(string Destination, string? Staged, string? PreviousHash, string? NewHash, string BackupName, string Status);
+    /// <summary>A mod removed from the pack; its published hashes identify managed copies to retire.</summary>
+    public sealed record RetiredEntry(string ModId, string? ProjectId, string? Name, List<string>? Sha512, string? Reason);
+    public sealed record Manifest(string MinecraftVersion, List<Entry> Mods, bool ResolveThroughApi = false, List<RetiredEntry>? Retired = null);
+    private sealed record LocalJar(string Path, string Hash, bool Disabled, FabricModInfo? Info)
+    {
+        public string? Id => Info?.Id;
+    }
+    private sealed record Change(string Destination, string? Staged, string? PreviousHash, string? NewHash, string BackupName, string Status,
+        string? BackupPath = null);
     private sealed record Move(string From, string To, string Hash);
-    private const long MaximumJarSize = 128 * 1024 * 1024;
+    private const long MaximumJarSize = FabricModMetadata.MaximumJarSize;
+    private const string DisabledSuffix = ".disabled";
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
     private static readonly HttpClient Http = CreateClient();
     private static readonly SemaphoreSlim InstallLock = new(1, 1);
     private static readonly StringComparer Paths = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+    private static readonly string[] ReservedNames = { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
+        "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9" };
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(3) };
@@ -45,19 +52,26 @@ public static class ClientModInstaller
         var bundle = Path.GetFullPath(bundleRoot);
         var game = Path.GetFullPath(gameDir);
         var manifestPath = SafeChild(bundle, Path.Combine(bundle, "game-mods", minecraftVersion, "client-mods.json"));
-        if (!File.Exists(manifestPath))
+        // No Lads pack for this version: an empty pack, so saved choices still rename the jars in Mods and dependencies are
+        // checked. Nothing is retired: without a manifest the receipt says nothing about what left the pack.
+        var packShipped = File.Exists(manifestPath);
+        if (!packShipped)
         {
             if (GameVersionPolicy.RequiresBundledCore(minecraftVersion))
                 throw new FileNotFoundException($"Client mod manifest for {minecraftVersion} is missing. Reinstall the complete launcher folder.", manifestPath);
-            return;
+            if (!Directory.Exists(Path.Combine(game, "mods"))) return;
         }
-        var manifest = JsonSerializer.Deserialize<Manifest>(await File.ReadAllTextAsync(manifestPath, cancellationToken), Json)
-            ?? throw new InvalidDataException("Empty client mod manifest.");
+        var manifest = packShipped ? ReadManifest(await File.ReadAllTextAsync(manifestPath, cancellationToken))
+            : new Manifest(minecraftVersion, new List<Entry>());
         if (manifest.MinecraftVersion != minecraftVersion || manifest.Mods is null || manifest.Mods.Count > 256
             || manifest.Mods.Any(m => m is null)
             || manifest.Mods.Select(m => m.ModId).Distinct(StringComparer.Ordinal).Count() != manifest.Mods.Count)
             throw new InvalidDataException("Client mod manifest does not match this Minecraft version or contains duplicate mod IDs.");
         foreach (var entry in manifest.Mods) Validate(entry);
+        if (manifest.Mods.Select(m => m.FileName).Distinct(StringComparer.OrdinalIgnoreCase).Count() != manifest.Mods.Count)
+            throw new InvalidDataException("Client mod manifest contains duplicate file names.");
+        var retiredHashes = RetiredHashes(manifest);
+        var client = httpClient ?? Http;
 
         await InstallLock.WaitAsync(cancellationToken);
         // Only unique files created by this invocation may be cleaned up.
@@ -70,82 +84,150 @@ public static class ClientModInstaller
             Directory.CreateDirectory(cache);
             var receiptPath = SafeChild(game, Path.Combine(cache, "installed.json"));
             var receiptBytes = File.Exists(receiptPath) ? await File.ReadAllBytesAsync(receiptPath, cancellationToken) : null;
-            var originalReceipt = receiptBytes is null ? new Dictionary<string, string>()
-                : JsonSerializer.Deserialize<Dictionary<string, string>>(receiptBytes, Json)
-                    ?? throw new InvalidDataException("Empty installed-mod receipt.");
-            if (originalReceipt.Any(p => !ValidId(p.Key) || !ValidHash(p.Value)))
-                throw new InvalidDataException("Invalid installed-mod receipt.");
+            var originalReceipt = ReadReceipt(receiptBytes);
             var receipt = new Dictionary<string, string>(originalReceipt, StringComparer.Ordinal);
             var receiptHash = receiptBytes is null ? null : Hash(receiptBytes);
+            var preferencesPath = SafeChild(game, Path.Combine(game, ModPreferences.FileName));
+            var preferencesBytes = ModPreferences.ReadShared(preferencesPath);
+            var preferencesHash = preferencesBytes is null ? null : Hash(preferencesBytes);
+            var preferences = ModPreferences.Parse(preferencesBytes, preferencesPath);
+            if (preferences.Error != null) status?.Invoke(preferences.Error);
             var inventory = await ReadInventory(game, mods, cancellationToken);
-            var active = inventory.Where(j => !j.Disabled).ToList();
-            var disabledIds = inventory.Where(j => j.Disabled && j.Package.Id != null)
-                .Select(j => j.Package.Id!).ToHashSet(StringComparer.Ordinal);
+            // The planned final Mods folder. Every change updates it in commit order, so later checks see earlier moves.
+            var final = inventory.ToDictionary(j => j.Path, Paths);
             var changes = new List<Change>();
             var desired = manifest.Mods.Select(m => m.ModId).ToHashSet(StringComparer.Ordinal);
+            var reservedBackups = new HashSet<string>(Paths);
+            var retiredDirectories = new HashSet<string>(Paths);
 
             // Plan retirements now, but do not move anything until every download and dependency verifies.
-            foreach (var oldId in receipt.Keys.Where(id => !desired.Contains(id)).ToList())
+            // Only copies with Lads-ownership evidence are retired; anything else is the user's and stays.
+            var retireIds = receipt.Keys.Where(id => packShipped && !desired.Contains(id)).Concat(retiredHashes.Keys).ToHashSet(StringComparer.Ordinal);
+            // Disabled copies whose file name was the only record of the choice (v1.2.2, or renamed by hand): id -> project id.
+            var keepDisabled = new Dictionary<string, string?>(StringComparer.Ordinal);
+            foreach (var jar in inventory.Where(j => j.Id != null && retireIds.Contains(j.Id)))
             {
-                var old = SafeChild(game, Path.Combine(mods, "lads-" + oldId + ".jar"));
-                var existing = active.SingleOrDefault(j => Paths.Equals(j.Path, old));
-                if (existing != null)
+                var id = jar.Id!;
+                var published = retiredHashes.TryGetValue(id, out var hashes) && hashes.Contains(jar.Hash);
+                var owned = receipt.TryGetValue(id, out var ownedHash) && (SameHash(jar.Hash, ownedHash) || published);
+                if (!owned && !(published && IsLegacyName(Path.GetFileName(jar.Path), id)))
                 {
-                    if (!SameHash(existing.Hash, receipt[oldId]))
-                        throw new IOException($"Retired mod '{old}' has been modified. Move it out of Mods before launching the updated pack; your file was preserved.");
-                    changes.Add(new(old, null, existing.Hash, null, "retired-" + oldId + "-" + existing.Hash, $"Retired {oldId}."));
+                    status?.Invoke($"Kept '{jar.Path}': {id} is no longer part of the Lads pack and this copy was added or modified by you.");
+                    continue;
                 }
-                receipt.Remove(oldId);
+                var project = manifest.Retired?.FirstOrDefault(r => r?.ModId == id)?.ProjectId;
+                if (jar.Disabled && preferences.GetEnabled(id, project) == null && inventory.Where(j => j.Id == id).All(j => j.Disabled))
+                    keepDisabled[id] = project;
+                var directory = SafeChild(game, Path.Combine(cache, "retired", id));
+                changes.Add(new(jar.Path, null, jar.Hash, null, "retired-" + id, $"Retired {id}.",
+                    UniquePath(directory, Path.GetFileName(jar.Path), reservedBackups)));
+                final.Remove(jar.Path);
+                retiredDirectories.Add(directory);
             }
+            foreach (var id in retireIds) receipt.Remove(id);
 
-            var pending = new List<(Entry Entry, LocalJar? Previous)>();
+            var pending = new List<(Entry Entry, string Destination, string? PreviousHash)>();
+            var disabledByChoice = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var entry in manifest.Mods)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var destination = SafeChild(game, Path.Combine(mods, "lads-" + entry.ModId + ".jar"));
-                var existing = active.Where(j => j.Package.Id == entry.ModId).ToList();
-                if (disabledIds.Contains(entry.ModId))
+                var target = SafeChild(game, Path.Combine(mods, entry.FileName));
+                var copies = final.Values.Where(j => j.Id == entry.ModId).OrderBy(j => j.Path, Paths).ToList();
+                originalReceipt.TryGetValue(entry.ModId, out var receiptPin);
+                bool Managed(LocalJar jar) => SameHash(jar.Hash, entry.Sha512) || (receiptPin != null && SameHash(jar.Hash, receiptPin));
+                int NameRank(LocalJar jar) => BaseName(jar.Path).Equals(entry.FileName, StringComparison.OrdinalIgnoreCase) ? 0
+                    : IsLegacyName(Path.GetFileName(jar.Path), entry.ModId) ? 1 : 2;
+                var wantEnabled = preferences.GetEnabled(entry.ModId, entry.ProjectId)
+                    ?? !(copies.Any(j => j.Disabled) && copies.All(j => j.Disabled));
+                // Keep one copy: enabling prefers an enabled copy, then Lads-managed bytes; disabling prefers the managed copy (it is
+                // renamed; your own extra disabled copy may stay), then a disabled one. Then the original, legacy and other names.
+                var primary = (wantEnabled ? copies.OrderBy(j => j.Disabled ? 1 : 0).ThenBy(j => Managed(j) ? 0 : 1)
+                        : copies.OrderBy(j => Managed(j) ? 0 : 1).ThenBy(j => j.Disabled ? 0 : 1))
+                    .ThenBy(NameRank).FirstOrDefault();
+                foreach (var other in copies.Where(j => j != primary))
                 {
-                    if (existing.Count > 0)
-                        throw new IOException($"{entry.Name} has both enabled and disabled jars in '{mods}'. Keep one copy; your files were preserved.");
+                    var bothManaged = Managed(other) && Managed(primary!);
+                    // Fabric never loads a disabled copy, so your extra one may stay while the mod stays disabled (as in v1.2.2).
+                    if (!bothManaged && !wantEnabled && other.Disabled) continue;
+                    if (!bothManaged)
+                        throw new IOException($"Duplicate {entry.Name} mods: '{primary!.Path}' and '{other.Path}'. Fabric cannot load two copies; " +
+                            "move one of them out of Mods, then retry. Your files were preserved.");
+                    changes.Add(new(other.Path, null, other.Hash, null, "duplicate-" + entry.ModId, $"Moved a duplicate {entry.Name} to backup."));
+                    final.Remove(other.Path);
+                }
+
+                if (primary == null)
+                {
+                    if (!wantEnabled)
+                    {
+                        disabledByChoice[entry.ModId] = entry.Name;
+                        continue; // Disabled by choice: not downloaded.
+                    }
+                    if (Occupied(target, final, inventory))
+                        throw new IOException($"Cannot replace unrecognized file '{target}'. Move it aside and retry.");
+                    pending.Add((entry, target, null));
                     continue;
                 }
-                if (existing.Count > 1)
-                    throw new IOException($"Duplicate {entry.Name} mods in '{mods}'. Keep one compatible version before launching.");
-                var previous = existing.SingleOrDefault();
-                if (previous != null)
+                if (!Managed(primary))
                 {
-                    if (SameHash(previous.Hash, entry.Sha512))
+                    if (wantEnabled)
+                        throw new IOException($"Your {entry.Name} jar '{primary.Path}' differs from the tested {minecraftVersion} pack. " +
+                            $"Delete your copy (Mods page) or disable {entry.Name}, then retry; your file has been preserved.");
+                    if (!primary.Disabled) Rename(primary, primary.Path + DisabledSuffix, entry.ModId, false);
+                    continue;
+                }
+
+                var pinned = SameHash(primary.Hash, entry.Sha512);
+                // Verified pinned bytes are Lads-managed under any name.
+                if (pinned) receipt[entry.ModId] = entry.Sha512;
+                var legacyName = NameRank(primary) == 1;
+                if (wantEnabled && !pinned)
+                {
+                    // Upgrade, also when re-enabling a disabled older pin; the old copy goes to backup.
+                    if (Paths.Equals(primary.Path, target))
                     {
-                        // Repair legacy interrupted installs only at the reserved, hash-verified managed path.
-                        if (Paths.Equals(previous.Path, destination)) receipt[entry.ModId] = entry.Sha512;
-                        else receipt.Remove(entry.ModId);
+                        final.Remove(target);
+                        pending.Add((entry, target, primary.Hash));
                         continue;
                     }
-                    if (!Paths.Equals(previous.Path, destination)
-                        || !receipt.TryGetValue(entry.ModId, out var priorHash) || !SameHash(previous.Hash, priorHash))
-                        throw new IOException($"Your existing {entry.Name} jar differs from the tested {minecraftVersion} pack. Move '{previous.Path}' out of Mods, then retry; your file has been preserved.");
+                    changes.Add(new(primary.Path, null, primary.Hash, null, "previous-" + entry.ModId, $"Replaced {entry.Name}."));
+                    final.Remove(primary.Path);
+                    if (Occupied(target, final, inventory))
+                        throw new IOException($"Cannot replace unrecognized file '{target}'. Move it aside and retry.");
+                    pending.Add((entry, target, null));
+                    continue;
                 }
-                else if (Exists(destination))
-                    throw new IOException($"Cannot replace unrecognized file '{destination}'. Move it aside and retry.");
-                pending.Add((entry, previous));
+                // User-chosen names are kept; legacy lads-<id>.jar names get the release's original name.
+                var name = legacyName ? entry.FileName : BaseName(primary.Path);
+                if (legacyName && !pinned && !wantEnabled)
+                    name = await OriginalFileName(client, primary.Hash, entry, status, cancellationToken) ?? Path.GetFileName(primary.Path)[..^(primary.Disabled ? DisabledSuffix.Length : 0)];
+                var destination = SafeChild(game, Path.Combine(mods, wantEnabled ? name : name + DisabledSuffix));
+                if (!Paths.Equals(destination, primary.Path))
+                    Rename(primary, destination, entry.ModId, legacyName && wantEnabled != primary.Disabled);
+            }
+
+            // Jars outside the pack follow explicit choices by rename only; LadsCore is handled by BundledModInstaller.
+            foreach (var jar in final.Values.Where(j => j.Id != null && !desired.Contains(j.Id) && j.Id != BundledModInstaller.CoreModId).ToList())
+            {
+                var want = preferences.GetEnabled(jar.Id!, null);
+                if (want == null || want == !jar.Disabled) continue;
+                if (want == true && final.Values.Any(j => j.Id == jar.Id && !j.Disabled)) continue; // Never a second enabled copy.
+                Rename(jar, want == true ? jar.Path[..^DisabledSuffix.Length] : jar.Path + DisabledSuffix, jar.Id!, false);
             }
 
             using (var slots = new SemaphoreSlim(4))
                 await Task.WhenAll(pending.Select(async item =>
                 {
                     await slots.WaitAsync(cancellationToken);
-                    try { await Download(game, cache, item.Entry, httpClient ?? Http, status, cancellationToken,
+                    try { await Download(game, cache, item.Entry, client, status, cancellationToken,
                         manifest.ResolveThroughApi, minecraftVersion); }
                     finally { slots.Release(); }
                 }));
 
-            var resulting = active.Where(j => !changes.Any(c => Paths.Equals(c.Destination, j.Path))
-                && !pending.Any(p => p.Previous != null && Paths.Equals(p.Previous.Path, j.Path)))
-                .SelectMany(j => j.Package.Mods).ToList();
-            foreach (var (entry, previous) in pending)
+            foreach (var (entry, destination, previousHash) in pending)
             {
-                var destination = SafeChild(game, Path.Combine(mods, "lads-" + entry.ModId + ".jar"));
+                if (Occupied(destination, final, inventory))
+                    throw new IOException($"Cannot replace unrecognized file '{destination}'. Move it aside and retry.");
                 var temp = SafeChild(game, destination + "." + Guid.NewGuid().ToString("N") + ".tmp");
                 var cached = SafeChild(game, Path.Combine(cache, entry.Sha512 + ".jar"));
                 await using (var input = new FileStream(cached, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true))
@@ -159,14 +241,32 @@ public static class ClientModInstaller
                 staged[temp] = actual;
                 if (!SameHash(actual, entry.Sha512))
                     throw new InvalidDataException($"Cached download changed for {entry.Name}. Retry the launch.");
-                var package = ReadPackage(temp, cancellationToken);
-                if (package.Id != entry.ModId) throw new InvalidDataException($"Wrong Fabric mod downloaded for {entry.Name}.");
-                resulting.AddRange(package.Mods);
+                var info = FabricModMetadata.ReadJar(temp, token: cancellationToken);
+                if (info?.Id != entry.ModId) throw new InvalidDataException($"Wrong Fabric mod downloaded for {entry.Name}.");
                 receipt[entry.ModId] = entry.Sha512;
-                changes.Add(new(destination, temp, previous?.Hash, actual, "previous-" + entry.ModId, $"Installed {entry.Name}."));
+                changes.Add(new(destination, temp, previousHash, actual, "previous-" + entry.ModId, $"Installed {entry.Name}."));
+                final[destination] = new(destination, actual, false, info);
             }
 
-            ValidateDependencies(resulting, inventory.Where(j => j.Disabled).SelectMany(j => j.Package.Mods), minecraftVersion);
+            ValidateDependencies(final.Values, disabledByChoice);
+            if (keepDisabled.Count > 0)
+            {
+                // Retiring moves away the file that held the choice: record it in the same commit, or a later pack that ships
+                // the mod again would download it enabled. An unreadable state file is kept as .corrupt-<time>, as a normal write does.
+                var temp = SafeChild(game, Path.Combine(cache, "mod-state-" + Guid.NewGuid().ToString("N") + ".tmp"));
+                var bytes = ModPreferences.Rewrite(preferencesBytes, preferencesPath,
+                    root => { foreach (var (id, project) in keepDisabled) ModPreferences.SetMod(root, id, false, project); });
+                await using (var output = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
+                {
+                    staged.Add(temp, null);
+                    await output.WriteAsync(bytes, cancellationToken);
+                    await output.FlushAsync(cancellationToken);
+                }
+                staged[temp] = Hash(bytes);
+                var corrupt = preferencesBytes != null && preferences.Error != null ? ModPreferences.CorruptPath(preferencesPath) : null;
+                changes.Add(new(preferencesPath, temp, preferencesHash, staged[temp], "previous-mod-state",
+                    $"Saved {string.Join(", ", keepDisabled.Keys)} as disabled: the retired copy was the only record of that choice.", corrupt));
+            }
             if (receipt.Count != originalReceipt.Count
                 || receipt.Any(p => !originalReceipt.TryGetValue(p.Key, out var hash) || !SameHash(hash, p.Value)))
             {
@@ -188,20 +288,136 @@ public static class ClientModInstaller
             if (current.Count != inventory.Count || current.Any(j => !inventory.Any(old =>
                 Paths.Equals(old.Path, j.Path) && SameHash(old.Hash, j.Hash))))
                 throw new IOException("The Mods folder changed during installation. Retry the launch; your changes were preserved.");
+            // Writing the choices file: hold its writers' lock (the launcher's Mods page and LadsCore) until the commit is done.
+            await using var preferencesLock = keepDisabled.Count > 0
+                ? await LockFiles.AcquireAsync(preferencesPath + ".lock", TimeSpan.FromSeconds(3), cancellationToken) : null;
             await Expect(game, receiptPath, receiptHash, cancellationToken);
+            await Expect(game, preferencesPath, preferencesHash, cancellationToken);
             status?.Invoke("Applying client mod changes...");
             cancellationToken.ThrowIfCancellationRequested();
 
+            foreach (var directory in retiredDirectories) Directory.CreateDirectory(directory);
             // There is no portable atomic rename of multiple files. Finish or roll back this bounded
             // commit before observing cancellation; never leave a cancelled install with a stale receipt.
             await Commit(game, cache, changes, status);
             status?.Invoke($"Client mods ready for Minecraft {minecraftVersion}.");
+
+            // A rename is a Change whose staged side is the existing jar; that path is never registered for cleanup.
+            void Rename(LocalJar jar, string destination, string id, bool keepOnCollision)
+            {
+                destination = SafeChild(game, destination);
+                if (Occupied(destination, final, inventory))
+                {
+                    if (keepOnCollision)
+                    {
+                        status?.Invoke($"Kept '{jar.Path}' under its old name because '{destination}' belongs to another mod.");
+                        return;
+                    }
+                    throw new IOException($"Cannot rename '{jar.Path}' to '{destination}' because that file already exists. " +
+                        "Move one of them out of Mods, then retry; your files were preserved.");
+                }
+                changes.Add(new(destination, jar.Path, null, jar.Hash, "renamed-" + id,
+                    $"Renamed '{Path.GetFileName(jar.Path)}' to '{Path.GetFileName(destination)}'."));
+                final.Remove(jar.Path);
+                final[destination] = jar with { Path = destination, Disabled = destination.EndsWith(DisabledSuffix, StringComparison.OrdinalIgnoreCase) };
+            }
         }
         finally
         {
             foreach (var temp in staged) Cleanup(game, temp.Key, temp.Value);
             InstallLock.Release();
         }
+    }
+
+    internal static Manifest ReadManifest(string json) =>
+        JsonSerializer.Deserialize<Manifest>(json, Json) ?? throw new InvalidDataException("Empty client mod manifest.");
+
+    /// <summary>installed.json stays a flat modId → SHA-512 map so older launchers can still read it.</summary>
+    internal static Dictionary<string, string> ReadReceipt(byte[]? bytes)
+    {
+        var receipt = bytes is null ? new Dictionary<string, string>()
+            : JsonSerializer.Deserialize<Dictionary<string, string>>(bytes, Json) ?? throw new InvalidDataException("Empty installed-mod receipt.");
+        if (receipt.Any(p => !ValidId(p.Key) || !ValidHash(p.Value)))
+            throw new InvalidDataException("Invalid installed-mod receipt.");
+        return receipt;
+    }
+
+    internal static Dictionary<string, HashSet<string>> RetiredHashes(Manifest manifest)
+    {
+        var result = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var retired in manifest.Retired ?? new())
+        {
+            if (retired is null || !ValidId(retired.ModId) || retired.Sha512 is null || retired.Sha512.Any(h => !ValidHash(h))
+                || result.ContainsKey(retired.ModId) || manifest.Mods.Any(m => m.ModId == retired.ModId))
+                throw new InvalidDataException("Client mod manifest has an invalid retired entry.");
+            result[retired.ModId] = retired.Sha512.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        return result;
+    }
+
+    internal static bool IsLegacyName(string fileName, string id) =>
+        fileName.Equals("lads-" + id + ".jar", StringComparison.OrdinalIgnoreCase)
+        || fileName.Equals("lads-" + id + ".jar" + DisabledSuffix, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>A plain jar file name for Mods: no paths, reserved names, LadsCore or legacy lads- names.</summary>
+    internal static bool ValidFileName(string? name) =>
+        !string.IsNullOrEmpty(name) && name.Length <= 200 && name == name.Trim()
+        && name.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)
+        && !name.Equals("theladscore.jar", StringComparison.OrdinalIgnoreCase)
+        && !name.StartsWith("lads-", StringComparison.OrdinalIgnoreCase)
+        && !name.Contains("..", StringComparison.Ordinal) && name.IndexOfAny(new[] { '/', '\\', ':' }) < 0
+        && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 && !name.Any(char.IsControl)
+        && !ReservedNames.Contains(name.Split('.')[0].TrimEnd(), StringComparer.OrdinalIgnoreCase);
+
+    // The Modrinth hash lookup returns metadata only. Offline or on any API problem the jar keeps its name until a later launch.
+    private static async Task<string?> OriginalFileName(HttpClient client, string hash, Entry entry, Action<string>? status, CancellationToken token)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(TimeSpan.FromSeconds(5)); // Metadata only; never hold up a launch for long.
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.modrinth.com/v2/version_file/{hash}?algorithm=sha512");
+            request.Headers.UserAgent.ParseAdd("TheLadsClient/1.2.3");
+            using var response = await client.SendAsync(request, timeout.Token);
+            response.EnsureSuccessStatusCode();
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+            var files = document.RootElement.GetProperty("files").EnumerateArray().ToList();
+            var file = files.Where(f => SameHash(f.GetProperty("hashes").GetProperty("sha512").GetString() ?? "", hash))
+                .Concat(files.Where(f => f.TryGetProperty("primary", out var primary) && primary.ValueKind == JsonValueKind.True)).FirstOrDefault();
+            var name = file.ValueKind == JsonValueKind.Object ? file.GetProperty("filename").GetString() : null;
+            if (ValidFileName(name)) return name;
+            status?.Invoke($"Modrinth returned no usable file name for the disabled older {entry.Name}; it keeps its current name.");
+            return null;
+        }
+        catch (Exception e) when (!token.IsCancellationRequested && e is HttpRequestException or JsonException or OperationCanceledException
+            or InvalidOperationException or KeyNotFoundException)
+        {
+            status?.Invoke($"Could not look up the original file name of the disabled older {entry.Name} ({e.Message}); " +
+                "it keeps its current name until a later launch.");
+            return null;
+        }
+    }
+
+    private static bool Occupied(string path, Dictionary<string, LocalJar> final, List<LocalJar> inventory) =>
+        final.ContainsKey(path) || (Exists(path) && !inventory.Any(j => Paths.Equals(j.Path, path)));
+
+    private static string BaseName(string path)
+    {
+        var name = Path.GetFileName(path);
+        return name.EndsWith(DisabledSuffix, StringComparison.OrdinalIgnoreCase) ? name[..^DisabledSuffix.Length] : name;
+    }
+
+    // Keeps the name (and its .disabled suffix) and adds " (2)", " (3)"... before ".jar" when it is taken.
+    private static string UniquePath(string directory, string fileName, HashSet<string> reserved)
+    {
+        var suffix = fileName.EndsWith(".jar" + DisabledSuffix, StringComparison.OrdinalIgnoreCase) ? ".jar" + DisabledSuffix
+            : fileName.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) ? ".jar" : "";
+        var stem = fileName[..^suffix.Length];
+        var candidate = Path.Combine(directory, fileName);
+        for (var number = 2; Exists(candidate) || reserved.Contains(candidate); number++)
+            candidate = Path.Combine(directory, $"{stem} ({number}){suffix}");
+        reserved.Add(candidate);
+        return candidate;
     }
 
     private static async Task Download(string game, string cache, Entry entry, HttpClient client,
@@ -212,7 +428,7 @@ public static class ClientModInstaller
         {
             if (!SameHash(await HashAsync(game, cached, token), entry.Sha512))
                 throw new InvalidDataException($"Cached file '{cached}' is damaged. Move it aside and retry; it was preserved.");
-            if (ReadPackage(cached, token).Id != entry.ModId)
+            if (FabricModMetadata.ReadJar(cached, token: token)?.Id != entry.ModId)
                 throw new InvalidDataException($"Wrong Fabric mod cached for {entry.Name}.");
             return;
         }
@@ -246,7 +462,7 @@ public static class ClientModInstaller
             }
             if (!SameHash(await HashAsync(game, temp, downloadToken), entry.Sha512))
                 throw new InvalidDataException($"Download verification failed for {entry.Name}. Retry the launch.");
-            if (ReadPackage(temp, downloadToken).Id != entry.ModId)
+            if (FabricModMetadata.ReadJar(temp, token: downloadToken)?.Id != entry.ModId)
                 throw new InvalidDataException($"Wrong Fabric mod downloaded for {entry.Name}.");
             // Never overwrite even an unexpected cache file created during the download.
             File.Move(SafeChild(game, temp), SafeChild(game, cached));
@@ -268,7 +484,8 @@ public static class ClientModInstaller
                 if (change.PreviousHash != null)
                 {
                     var extension = Path.GetExtension(change.Destination);
-                    var backup = SafeChild(game, Path.Combine(cache, change.BackupName + "-" + Guid.NewGuid().ToString("N") + extension));
+                    var backup = SafeChild(game, change.BackupPath
+                        ?? Path.Combine(cache, change.BackupName + "-" + Guid.NewGuid().ToString("N") + extension));
                     File.Move(SafeChild(game, change.Destination), backup);
                     moves.Add(new(change.Destination, backup, change.PreviousHash));
                 }
@@ -310,139 +527,60 @@ public static class ClientModInstaller
             || !Uri.TryCreate(entry.Url, UriKind.Absolute, out var url) || url.Scheme != "https"
             || url.Host != "cdn.modrinth.com" || !string.IsNullOrEmpty(url.UserInfo))
             throw new InvalidDataException("Invalid client mod download metadata.");
+        if (!ValidFileName(entry.FileName))
+            throw new InvalidDataException($"Invalid client mod file name '{entry.FileName}' for {entry.ModId}.");
     }
 
     private static async Task<List<LocalJar>> ReadInventory(string game, string mods, CancellationToken token)
     {
         var result = new List<LocalJar>();
         foreach (var file in Directory.EnumerateFiles(SafeChild(game, mods)).Where(p =>
-            p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase)))
+            p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".jar" + DisabledSuffix, StringComparison.OrdinalIgnoreCase)))
         {
             token.ThrowIfCancellationRequested();
             var path = SafeChild(game, file);
             var hash = await HashAsync(game, path, token);
-            result.Add(new(path, hash, path.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase), ReadPackage(path, token)));
+            FabricModInfo? info;
+            try { info = FabricModMetadata.ReadJar(path, token: token); }
+            catch (Exception e) when (e is InvalidDataException or InvalidOperationException)
+            {
+                throw new InvalidDataException($"'{path}' is not a readable Fabric mod ({e.Message}). Move it out of Mods, then retry.", e);
+            }
+            result.Add(new(path, hash, path.EndsWith(DisabledSuffix, StringComparison.OrdinalIgnoreCase), info));
         }
         return result;
     }
 
-    private static Package ReadPackage(string path, CancellationToken token)
+    private static void ValidateDependencies(IEnumerable<LocalJar> jars, Dictionary<string, string> disabledByChoice)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        var mods = new List<Mod>();
-        long remainingBytes = MaximumJarSize;
-        var remainingJars = 1024;
-        using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
-        var id = ReadPackage(zip, mods, token, 0, ref remainingBytes, ref remainingJars);
-        return new(id, mods);
-    }
-
-    private static string? ReadPackage(ZipArchive zip, List<Mod> mods, CancellationToken token,
-        int depth, ref long remainingBytes, ref int remainingJars)
-    {
-        token.ThrowIfCancellationRequested();
-        if (depth > 8 || --remainingJars < 0) throw new InvalidDataException("Fabric nested-jar limit exceeded.");
-        var entries = zip.Entries.Where(e => e.FullName == "fabric.mod.json").ToList();
-        if (entries.Count == 0) return null; // Ordinary libraries embedded by some Fabric mods.
-        if (entries.Count != 1 || entries[0].Length > 1024 * 1024)
-            throw new InvalidDataException("Ambiguous or oversized Fabric metadata.");
-        using var stream = entries[0].Open();
-        using var document = ReadFabricMetadata(stream);
-        var root = document.RootElement;
-        var id = Text(root, "id");
-        if (!ValidId(id)) throw new InvalidDataException("Invalid Fabric mod ID.");
-        var environment = Text(root, "environment");
-        if (environment == "server") return id;
-        var provides = new List<string>();
-        if (root.TryGetProperty("provides", out var aliases))
-            foreach (var alias in aliases.EnumerateArray())
-            {
-                var value = alias.GetString();
-                if (!ValidId(value)) throw new InvalidDataException($"Invalid provided mod ID in {id}.");
-                provides.Add(value!);
-            }
-        var depends = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (root.TryGetProperty("depends", out var dependencies))
-            foreach (var dependency in dependencies.EnumerateObject())
-            {
-                if (!ValidId(dependency.Name)) throw new InvalidDataException($"Invalid dependency in {id}.");
-                depends.Add(dependency.Name, dependency.Value.ValueKind == JsonValueKind.String
-                    ? dependency.Value.GetString()! : dependency.Value.GetRawText());
-            }
-        mods.Add(new(id!, Text(root, "name") ?? id!, provides, depends));
-        if (root.TryGetProperty("jars", out var nestedJars))
-            foreach (var nested in nestedJars.EnumerateArray())
-            {
-                token.ThrowIfCancellationRequested();
-                var name = Text(nested, "file") ?? throw new InvalidDataException($"Missing nested jar path in {id}.");
-                // Entries stay in memory; their names are never used as filesystem paths.
-                var matches = zip.Entries.Where(e => e.FullName == name).ToList();
-                if (matches.Count != 1 || matches[0].Length > remainingBytes)
-                    throw new InvalidDataException($"Missing, ambiguous or oversized nested jar '{name}' in {id}.");
-                remainingBytes -= matches[0].Length;
-                using var input = matches[0].Open();
-                using var bytes = new MemoryStream();
-                var buffer = new byte[81920];
-                int count;
-                while ((count = input.Read(buffer, 0, buffer.Length)) != 0)
-                {
-                    token.ThrowIfCancellationRequested();
-                    if (bytes.Length + count > matches[0].Length)
-                        throw new InvalidDataException($"Oversized nested jar '{name}' in {id}.");
-                    bytes.Write(buffer, 0, count);
-                }
-                bytes.Position = 0;
-                using var nestedZip = new ZipArchive(bytes, ZipArchiveMode.Read);
-                ReadPackage(nestedZip, mods, token, depth + 1, ref remainingBytes, ref remainingJars);
-            }
-        return id;
-    }
-
-    private static void ValidateDependencies(IEnumerable<Mod> enabled, IEnumerable<Mod> disabled, string minecraftVersion)
-    {
-        var mods = enabled.ToList();
-        var available = mods.SelectMany(m => m.Provides.Append(m.Id)).ToHashSet(StringComparer.Ordinal);
+        var all = jars.Where(j => j.Info != null).ToList();
+        var mods = all.Where(j => !j.Disabled).SelectMany(j => FabricModMetadata.ClientModules(j.Info!).Select(m => (Mod: m, Top: j.Info!))).ToList();
+        var available = mods.SelectMany(m => m.Mod.Provides.Append(m.Mod.Id)).ToHashSet(StringComparer.Ordinal);
         // These are supplied by the selected launch runtime, not by jars in Mods.
         available.UnionWith(new[] { "minecraft", "java", "fabricloader" });
-        // The modern Fabric loaders required by the supported core profiles bundle MixinExtras
-        // inside fabric-loader.jar (0.19.3 ships META-INF/jars/mixinextras-fabric-0.5.4.jar).
-        // It is intentionally absent from the pinned Mods directory.
-        if (GameVersionPolicy.RequiresBundledCore(minecraftVersion)) available.Add("mixinextras");
-        var disabledIds = disabled.SelectMany(m => m.Provides.Append(m.Id)).ToHashSet(StringComparer.Ordinal);
-        var missing = mods.SelectMany(m => m.Depends.Where(d => !available.Contains(d.Key))
-            .Select(d => $"{m.Name} ({m.Id}) requires {d.Key} {d.Value}, which is " +
-                (disabledIds.Contains(d.Key) ? "disabled" : "missing"))).Distinct().ToList();
-        if (missing.Count > 0)
-            throw new InvalidDataException("Client mod dependencies are not satisfied: " + string.Join("; ", missing) +
-                ". Enable/install the required dependency or disable its dependent mod in Mods, then retry. Your files were preserved.");
+        // Fabric Loader bundles MixinExtras inside fabric-loader.jar since 0.15 (0.19.3 ships META-INF/jars/mixinextras-fabric-0.5.4.jar);
+        // the core profiles use 0.19.x and Create Profile 0.16.9. It is intentionally absent from the pinned Mods directory.
+        available.Add("mixinextras");
+        // Disabled provider id -> the top-level mod the user can enable.
+        var disabled = new Dictionary<string, string>(disabledByChoice, StringComparer.Ordinal);
+        foreach (var jar in all.Where(j => j.Disabled))
+            foreach (var mod in FabricModMetadata.ClientModules(jar.Info!))
+                foreach (var id in mod.Provides.Append(mod.Id)) disabled.TryAdd(id, jar.Info!.Name ?? jar.Info.Id);
+        var unsatisfied = mods.SelectMany(m => m.Mod.Depends.Where(d => !available.Contains(d.Key)).Select(d => (Top: m.Top.Id, Missing: d.Key,
+            Text: $"{m.Mod.Name} ({m.Mod.Id}) requires {d.Key} {d.Value}, which is " + (disabled.TryGetValue(d.Key, out var provider)
+                ? $"disabled: enable {provider} or disable {m.Top.Name} in Mods"
+                : $"missing: disable {m.Top.Name} in Mods or add a mod that provides {d.Key}")))).ToList();
+        if (unsatisfied.Count > 0)
+            throw new ClientModDependencyException("Client mod dependencies are not satisfied: " +
+                string.Join("; ", unsatisfied.Select(u => u.Text).Distinct()) + ". Your files were preserved.",
+                unsatisfied.Select(u => u.Top).Distinct().Order(StringComparer.Ordinal).ToList(),
+                unsatisfied.Select(u => u.Missing).Distinct().Order(StringComparer.Ordinal).ToList());
         // Fabric itself resolves version predicates, alternative nested versions and incompatibilities.
     }
 
-    private static string? Text(JsonElement value, string name) =>
-        value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var text)
-            && text.ValueKind == JsonValueKind.String ? text.GetString() : null;
-
-    // Fabric's Gson reader accepts literal line breaks in description strings. Normalize
-    // only string control characters for System.Text.Json; downloaded jar bytes stay intact.
-    private static JsonDocument ReadFabricMetadata(Stream stream)
-    {
-        using var reader = new StreamReader(stream, Encoding.UTF8, true, 4096, leaveOpen: true);
-        var source = reader.ReadToEnd();
-        var normalized = new StringBuilder(source.Length);
-        bool quoted = false, escaped = false;
-        foreach (char ch in source)
-        {
-            if (quoted && ch < 0x20)
-                normalized.Append("\\u").Append(((int)ch).ToString("x4"));
-            else normalized.Append(ch);
-            if (!escaped && ch == '"') quoted = !quoted;
-            escaped = quoted && !escaped && ch == '\\';
-        }
-        return JsonDocument.Parse(normalized.ToString());
-    }
-    private static bool ValidId(string? value) => Regex.IsMatch(value ?? "", "^[a-z][a-z0-9_-]{1,63}$");
+    private static bool ValidId(string? value) => FabricModMetadata.ValidId(value);
     private static bool ValidHash(string? value) => Regex.IsMatch(value ?? "", "^[a-fA-F0-9]{128}$");
-    private static bool SameHash(string left, string right) => left.Equals(right, StringComparison.OrdinalIgnoreCase);
+    internal static bool SameHash(string left, string right) => left.Equals(right, StringComparison.OrdinalIgnoreCase);
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA512.HashData(bytes)).ToLowerInvariant();
 
     private static async Task<string> HashAsync(string game, string path, CancellationToken token)
@@ -500,4 +638,20 @@ public static class ClientModInstaller
         catch (IOException) { } // Preserve inaccessible or externally changed staging files.
         catch (UnauthorizedAccessException) { }
     }
+}
+
+/// <summary>The requested mods cannot load together: <see cref="DependentModIds"/> (top-level mods in Mods) need
+/// <see cref="MissingModIds"/>, which no enabled jar provides. The launcher offers disabling the dependents or switching
+/// a disabled provider back on. (InvalidDataException, the installer's other validation error, is sealed.)</summary>
+public sealed class ClientModDependencyException : InvalidOperationException
+{
+    public ClientModDependencyException(string message, IReadOnlyList<string> dependentModIds, IReadOnlyList<string> missingModIds)
+        : base(message)
+    {
+        DependentModIds = dependentModIds;
+        MissingModIds = missingModIds;
+    }
+
+    public IReadOnlyList<string> DependentModIds { get; }
+    public IReadOnlyList<string> MissingModIds { get; }
 }

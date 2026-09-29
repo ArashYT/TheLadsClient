@@ -543,21 +543,6 @@
       "projectUrl": "https://modrinth.com/mod/gamma-utils"
     },
     {
-      "projectId": "hwir46QE",
-      "projectSlug": "goodmc-old-combat",
-      "name": "GoodMC: Old Combat & Blockhitting",
-      "modId": "goodmc",
-      "versionId": "id4n4Y0j",
-      "version": "6.0.1f",
-      "fileName": "GoodMC-Fabric-26.3-6.0.1f.jar",
-      "url": "https://cdn.modrinth.com/data/hwir46QE/versions/id4n4Y0j/GoodMC-Fabric-26.3-6.0.1f.jar",
-      "sha512": "c537debdabe5ccf719447e0dd599c1c5ec5d9ea4d89ac20ef3ad5290242626f80639c8b71575d0332465a98225e6ca0d84fdd7633c5da78a54c0c69382e5d32b",
-      "size": 267889,
-      "license": "LicenseRef-All-Rights-Reserved",
-      "sourceUrl": null,
-      "projectUrl": "https://modrinth.com/mod/goodmc-old-combat"
-    },
-    {
       "projectId": "IJ4PIJR2",
       "projectSlug": "hovering-hotbar",
       "name": "Hovering Hotbar",
@@ -1306,6 +1291,18 @@
       "license": "LGPL-3.0-or-later",
       "sourceUrl": "https://github.com/isXander/YetAnotherConfigLib",
       "projectUrl": "https://modrinth.com/mod/yacl"
+    }
+  ],
+  "retired": [
+    {
+      "modId": "goodmc",
+      "projectId": "hwir46QE",
+      "name": "GoodMC: Old Combat & Blockhitting",
+      "sha512": [
+        "c537debdabe5ccf719447e0dd599c1c5ec5d9ea4d89ac20ef3ad5290242626f80639c8b71575d0332465a98225e6ca0d84fdd7633c5da78a54c0c69382e5d32b",
+        "ac6760757ab34b61007b10c895449b382db58f4994593b93396768b374067385aa74617975de7798ccd64c641de8a719b79bdc40b2c9bee8a4a50c44f07eab82"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.2.3."
     }
   ]
 }

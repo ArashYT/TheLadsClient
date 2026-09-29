@@ -38,7 +38,7 @@ public class VersionAndInstallationTests
             new LauncherProfile { Id = "custom", Name = "My world", MinecraftVersion = "1.21.1", FabricVersion = "0.16.9", JavaMajorVersion = 21, CustomGameDir = oldGame }
         }};
         File.WriteAllText(Path.Combine(dir.Path, "profiles.json"), JsonSerializer.Serialize(saved));
-        var service = new ProfileService(new PathService(dir.Path));
+        var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
         Assert.Equal("custom", service.GetActiveProfile().Id);
         Assert.Equal(oldGame, service.GetProfile("custom")!.CustomGameDir);
         Assert.Contains(service.GetProfiles(), p => p.MinecraftVersion == "1.21.11" && p.JavaMajorVersion == 21);
@@ -59,7 +59,7 @@ public class VersionAndInstallationTests
         string file = Path.Combine(dir.Path, "profiles.json");
         File.WriteAllText(file, JsonSerializer.Serialize(new { ActiveProfileId = profile.Id, Profiles = new[] { profile } }));
 
-        var service = new ProfileService(new PathService(dir.Path));
+        var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
         var active = service.GetActiveProfile();
         Assert.Equal(profile.Id, active.Id);
         Assert.Equal(profile.Name, active.Name);
@@ -70,7 +70,7 @@ public class VersionAndInstallationTests
         Assert.Equal(expectedLoader, active.FabricVersion);
         Assert.EndsWith("-26.2", GameVersionPolicy.ResolveVersionId(active));
         string migrated = File.ReadAllText(file);
-        var reloaded = new ProfileService(new PathService(dir.Path));
+        var reloaded = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
         Assert.Equal(profile.Id, reloaded.GetActiveProfile().Id);
         Assert.Equal(migrated, File.ReadAllText(file));
     }
@@ -94,7 +94,7 @@ public class VersionAndInstallationTests
             CustomGameDir = Path.Combine(dir.Path, "worlds") };
         File.WriteAllText(Path.Combine(dir.Path, "profiles.json"),
             JsonSerializer.Serialize(new { ActiveProfileId = profile.Id, Profiles = new[] { profile } }));
-        var service = new ProfileService(new PathService(dir.Path));
+        var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
         Assert.Equal(expected, service.GetProfile(profile.Id)!.FabricVersion);
         Assert.Equal(profile.Id, service.GetActiveProfile().Id);
         Assert.Equal(profile.CustomGameDir, service.GetActiveProfile().CustomGameDir);
@@ -110,7 +110,7 @@ public class VersionAndInstallationTests
             CustomGameDir = Path.Combine(dir.Path, "snapshot-worlds") };
         File.WriteAllText(Path.Combine(dir.Path, "profiles.json"),
             JsonSerializer.Serialize(new { ActiveProfileId = profile.Id, Profiles = new[] { profile } }));
-        var service = new ProfileService(new PathService(dir.Path));
+        var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
         var preserved = service.GetProfile(profile.Id)!;
         Assert.Equal(alias, preserved.MinecraftVersion);
         Assert.Null(preserved.FabricVersion);
@@ -118,7 +118,7 @@ public class VersionAndInstallationTests
         Assert.NotEqual(profile.Id, service.GetActiveProfile().Id);
         Assert.True(GameVersionPolicy.RequiresBundledCore(service.GetActiveProfile().MinecraftVersion));
         GameVersionPolicy.ResolveVersionId(service.GetActiveProfile());
-        Assert.Equal(service.GetActiveProfile().Id, new ProfileService(new PathService(dir.Path)).GetActiveProfile().Id);
+        Assert.Equal(service.GetActiveProfile().Id, new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global"))).GetActiveProfile().Id);
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class VersionAndInstallationTests
         };
         File.WriteAllText(Path.Combine(dir.Path, "profiles.json"),
             JsonSerializer.Serialize(new { ActiveProfileId = "1.21.11", Profiles = saved }));
-        var service = new ProfileService(new PathService(dir.Path));
+        var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
         Assert.Equal(4, service.GetProfiles().Count);
         Assert.Equal("existing-world", service.GetProfile("1.21.11")!.CustomGameDir);
         Assert.Equal(saved[0].FabricVersion, service.GetProfile("1.21.11")!.FabricVersion);
@@ -146,7 +146,7 @@ public class VersionAndInstallationTests
     {
         using var dir = new TestDirectory();
         var paths = new PathService(dir.Path);
-        var profiles = new ProfileService(paths);
+        var profiles = new ProfileService(paths, new SharedContentService(Path.Combine(dir.Path, "global")));
         var profile = profiles.GetActiveProfile();
         string game = paths.GetProfileDirectory(profile);
         Directory.CreateDirectory(game);

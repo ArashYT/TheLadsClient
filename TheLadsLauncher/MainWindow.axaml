@@ -168,7 +168,7 @@
                             </Button>
                         </Grid>
                         <Border Grid.Row="3" BorderBrush="#303137" BorderThickness="0,1,0,1" Padding="0,16,0,14">
-                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*,172">
+                            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*,172">
                                 <TextBlock Text="PROFILE" Classes="caption" Margin="0,0,0,7" />
                                 <TextBlock Grid.Column="1" Text="PLAYING AS" Classes="caption" Margin="0,0,0,7" />
                                 <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,*,172">
@@ -187,9 +187,16 @@
                                         <TextBlock x:Name="StatusText" Text="Ready to play" Foreground="#9C9EA8" FontSize="11" TextWrapping="Wrap" />
                                         <ProgressBar x:Name="ProgressBar" Height="2" Minimum="0" Maximum="100" Value="0" />
                                     </StackPanel>
-                                    <Button x:Name="OpenFolderBtn" Classes="action" Content="Game folder" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the game folder" Click="OpenFolder_Click" Height="28" Padding="10,0" Grid.Column="1" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                        <Button x:Name="OpenFolderBtn" Classes="action" Content="Game folder" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open this profile's game folder" Click="OpenFolder_Click" Height="28" Padding="10,0" />
+                                        <Button Classes="action" Content="Worlds" Tag="saves" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared worlds folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
+                                        <Button Classes="action" Content="Resource packs" Tag="resourcepacks" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared resource packs folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
+                                        <Button Classes="action" Content="Shader packs" Tag="shaderpacks" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared shader packs folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
+                                        <Button Classes="action" Content="Screenshots" Tag="screenshots" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared screenshots folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
+                                    </StackPanel>
                                     <Button x:Name="ManageAccountsShortcutBtn" Classes="action" Content="Manage accounts" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="ManageAccountsShortcutBtn_Click" Height="28" Padding="10,0" Grid.Column="2" Margin="8,0,0,0" />
                                 </Grid>
+                                <Border x:Name="HomeSharedNotice" Grid.Row="3" Grid.ColumnSpan="3" IsVisible="False" Margin="0,10,0,0" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="4" Padding="12,8" />
                             </Grid>
                         </Border>
                         <Grid Grid.Row="4" ColumnDefinitions="*,*,*,*,Auto" Margin="0,16,0,0">
@@ -312,15 +319,17 @@
                         </Border>
                     </Grid>
                     <Grid x:Name="ProfilesPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,*">
-                        <Grid Grid.Row="0" ColumnDefinitions="*" Margin="0,0,0,16" RowDefinitions="Auto,Auto">
+                        <Grid Grid.Row="0" ColumnDefinitions="*" Margin="0,0,0,16" RowDefinitions="Auto,Auto,Auto">
                             <StackPanel>
                                 <TextBlock Text="Profiles" Foreground="White" FontSize="22" FontWeight="Bold" />
-                                <TextBlock Text="Separate versions and mod collections. Share settings, or keep a profile isolated." Foreground="#A0A1AA" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                <TextBlock Text="Separate versions and mod collections. Worlds, resource packs, shader packs and servers are always shared from the global .minecraft folder; isolating a profile keeps only its game settings (options.txt, keybinds) separate." Foreground="#A0A1AA" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Spacing="8" Grid.Row="1" Margin="0,16,0,0">
-                                <Button x:Name="SyncSharedBtn" Classes="action" Content="Sync Shared Settings" Height="36" Padding="12,0" Click="SyncSharedSettings_Click" />
+                                <Button x:Name="SyncSharedBtn" Classes="action" Content="Sync settings &amp; shared folders" ToolTip.Tip="Syncs game settings (unless the profile is isolated) and links worlds, resource packs, shader packs and the server list to the global .minecraft folder" Height="36" Padding="12,0" Click="SyncSharedSettings_Click" />
                                 <Button x:Name="AddProfileBtn" Classes="launch" Content="New Profile" Height="36" Padding="14,0" Foreground="White" FontWeight="Bold" Click="AddProfile_Click" />
+                                <TextBlock x:Name="ProfilesStatusText" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420" Margin="8,0,0,0" />
                             </StackPanel>
+                            <Border x:Name="ProfilesSharedNotice" Grid.Row="2" IsVisible="False" Margin="0,12,0,0" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="4" Padding="14,10" />
                         </Grid>
                         <Border Grid.Row="1" Background="Transparent" CornerRadius="4" Padding="0" BorderBrush="#303137" BorderThickness="0">
                             <ScrollViewer>
@@ -360,13 +369,12 @@
                                                 <CheckBox x:Name="AutoRejoinServerCheckbox" Content="Auto-rejoin server on launch" IsChecked="False" />
                                                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="20,0,0,0">
                                                     <TextBlock Text="Server:" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" />
-                                                    <ComboBox x:Name="QuickLaunchServerComboBox" Width="260" Height="28" FontSize="12" ToolTip.Tip="Pick a server from your Minecraft server list, or use Auto to detect from game logs" />
-                                                    <Button x:Name="RefreshServerListBtn" Content="&#8635;" Width="28" Height="28" FontSize="14" ToolTip.Tip="Reload server list from servers.dat" Click="RefreshServerList_Click" />
+                                                    <ComboBox x:Name="QuickLaunchServerComboBox" Width="260" Height="28" FontSize="12" ToolTip.Tip="Pick a server from the shared Minecraft server list, or use Auto to detect from game logs" />
+                                                    <Button x:Name="RefreshServerListBtn" Content="&#8635;" Width="28" Height="28" FontSize="14" ToolTip.Tip="Reload the shared server list (servers.dat in the global .minecraft folder)" Click="RefreshServerList_Click" />
                                                 </StackPanel>
                                                 <CheckBox x:Name="MultiInstanceCheckbox" Content="Allow launching multiple copies of the same instance" IsChecked="False" />
                                                 <CheckBox x:Name="FullscreenOnLaunchCheckbox" Content="Launch game in fullscreen" IsChecked="True" />
                                                 <CheckBox x:Name="QuickLaunchCheckbox" Content="Quick Launch &#8212; skip file verification (faster, disable if game is broken)" IsChecked="False" />
-                                                <CheckBox x:Name="SyncResourcePacksCheckbox" Content="Sync resource packs from global .minecraft folder on launch" IsChecked="False" />
                                                 <CheckBox x:Name="SyncScreenshotsCheckbox" Content="Sync screenshots to global .minecraft folder on game close" IsChecked="True" />
                                             </StackPanel>
                                         </Border>
@@ -463,7 +471,7 @@
                         <TextBlock x:Name="SettingsSaveStatus" Grid.Row="2" VerticalAlignment="Center" Foreground="#A4BAA7" FontSize="12" />
                         <Button x:Name="SaveSettingsBtn" Classes="launch" Content="Save changes" Height="44" FontSize="15" FontWeight="Bold" Foreground="White" HorizontalAlignment="Right" HorizontalContentAlignment="Center" Click="SaveSettings_Click" Margin="0" Grid.Row="2" Width="160" />
                     </Grid>
-                    <Grid x:Name="ModsPage" IsVisible="False" Margin="28,24,28,24" DragDrop.AllowDrop="True">
+                    <Grid x:Name="ModsPage" IsVisible="False" Margin="28,24,28,24" DragDrop.AllowDrop="True" RowDefinitions="*,Auto">
                         <TabControl x:Name="ModsSubTabControl">
                             <TabControl.Styles>
                                 <Style Selector="TabItem">
@@ -481,15 +489,24 @@
                                 </Style>
                             </TabControl.Styles>
                             <TabItem Header="Installed Mods">
-                                <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
-                                    <WrapPanel Grid.Row="0" Margin="0,0,0,8">
-                                        <CheckBox x:Name="SelectAllModsCheckbox" VerticalAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Select / Deselect All" Click="SelectAllMods_Click" />
-                                        <TextBlock Text="Installed Mods" Foreground="White" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,8" />
-                                        <TextBlock x:Name="ModsPageCount" Text="(0)" Foreground="#868994" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,8" />
-                                        <TextBox x:Name="ModNameSearchBox" Height="36" FontSize="13" VerticalContentAlignment="Center" Margin="0,0,8,8" PlaceholderText="Search installed mods&#8230;" TextChanged="ModNameSearch_TextChanged" Width="170" />
-                                        <TextBlock Text="Filter:" Foreground="#A0A1AA" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,8" />
-                                        <TextBox x:Name="ModVersionFilterBox" Width="100" Height="36" FontSize="13" VerticalContentAlignment="Center" Margin="0,0,8,8" TextChanged="ModVersionFilter_TextChanged" />
-                                        <Button x:Name="AddModBtn" Classes="action" Content="Add &#9662;" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Add a mod from a .jar file or a folder of jars">
+                                <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="0,12,0,0">
+                                    <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,10">
+                                        <CheckBox x:Name="SelectAllModsCheckbox" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip.Tip="Select / deselect every row shown (hidden rows are never selected)" Click="SelectAllMods_Click" />
+                                        <TextBlock Grid.Column="1" Text="Installed Mods" Foreground="White" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                        <TextBlock Grid.Column="2" x:Name="ModsPageCount" Text="" Foreground="#868994" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="Jars in this profile's Mods folder · pack mods waiting to be downloaded · pack mods shipped only for other Minecraft versions" />
+                                    </Grid>
+                                    <WrapPanel Grid.Row="1" Margin="0,0,0,2">
+                                        <TextBox x:Name="ModNameSearchBox" Height="36" FontSize="13" VerticalContentAlignment="Center" Margin="0,0,8,8" PlaceholderText="Search name, mod id or file&#8230;" TextChanged="ModNameSearch_TextChanged" Width="210" />
+                                        <ComboBox x:Name="ModsFilterBox" Width="200" Height="36" SelectedIndex="0" Margin="0,0,8,8" SelectionChanged="ModsFilter_Changed" ToolTip.Tip="Show one kind of entry">
+                                            <ComboBoxItem>All</ComboBoxItem>
+                                            <ComboBoxItem>Lads modules</ComboBoxItem>
+                                            <ComboBoxItem>Third-party</ComboBoxItem>
+                                            <ComboBoxItem>Enabled</ComboBoxItem>
+                                            <ComboBoxItem>Disabled</ComboBoxItem>
+                                            <ComboBoxItem>Libraries &amp; dependencies</ComboBoxItem>
+                                        </ComboBox>
+                                        <Button Classes="action" Content="Reset filters" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,16,8" ToolTip.Tip="Show the whole inventory (All, no search)" Click="ResetModFilters_Click" />
+                                        <Button x:Name="AddModBtn" Classes="action" Content="Add &#9662;" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Add a mod from a .jar file or a folder of jars (existing files are never overwritten)">
                                             <Button.Flyout>
                                                 <MenuFlyout>
                                                     <MenuItem Header="Add from file&#8230;" Click="AddModFromFile_Click" />
@@ -497,20 +514,22 @@
                                                 </MenuFlyout>
                                             </Button.Flyout>
                                         </Button>
-                                        <Button x:Name="UpdateAllModsBtn" Classes="action" Content="Update All" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" Margin="0,0,8,8" Click="UpdateAllMods_Click" />
-                                        <Button Classes="action" Content="Refresh" Height="36" FontSize="13" Padding="16,0" HorizontalContentAlignment="Center" Click="RefreshMods_Click" Margin="0,0,8,8" />
+                                        <Button x:Name="UpdateAllModsBtn" Classes="action" Content="Update my mods" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Update the mods you added yourself from Modrinth; the launcher keeps the pack mods and LadsCore up to date" Click="UpdateAllMods_Click" />
+                                        <Button Classes="action" Content="Open resource packs" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Resource packs are shared by every version; switch them in game" Click="OpenModsResourcePacks_Click" />
+                                        <Button Classes="danger" Content="Restore default mod set" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Clear this profile's saved enable/disable choices and switch the pack mods and LadsCore back on" Click="RestoreDefaultMods_Click" />
+                                        <Button Classes="action" Content="Refresh" Height="36" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="RefreshMods_Click" Margin="0,0,8,8" />
                                     </WrapPanel>
-                                    <Border Grid.Row="1" x:Name="ModsMassActionBar" IsVisible="False" Background="#202125" CornerRadius="4" Padding="12,7" Margin="0,0,0,8" BorderBrush="#3A3B42" BorderThickness="1">
+                                    <Border Grid.Row="2" x:Name="ModsMassActionBar" IsVisible="False" Background="#202125" CornerRadius="4" Padding="12,7" Margin="0,0,0,8" BorderBrush="#3A3B42" BorderThickness="1">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <TextBlock x:Name="ModsSelectionCount" Text="0 selected" Foreground="#A0A1AA" FontSize="13" VerticalAlignment="Center" Margin="0,0,4,0" />
                                             <Button Classes="action" Content="Enable" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="EnableSelectedMods_Click" />
                                             <Button Classes="danger" Content="Disable" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="DisableSelectedMods_Click" />
-                                            <Button Classes="danger" Content="Delete" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="DeleteSelectedMods_Click" />
-                                            <Button Classes="action" Content="Update" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="UpdateSelectedMods_Click" />
+                                            <Button Classes="danger" Content="Delete" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" ToolTip.Tip="Only mods you added yourself (to the Recycle Bin)" Click="DeleteSelectedMods_Click" />
+                                            <Button Classes="action" Content="Update" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" ToolTip.Tip="Only mods you added yourself" Click="UpdateSelectedMods_Click" />
                                         </StackPanel>
                                     </Border>
-                                    <ScrollViewer Grid.Row="2">
-                                        <StackPanel x:Name="ModsList" Spacing="6" />
+                                    <ScrollViewer Grid.Row="3">
+                                        <StackPanel x:Name="ModsList" />
                                     </ScrollViewer>
                                 </Grid>
                             </TabItem>
@@ -569,6 +588,10 @@
                                 </ScrollViewer>
                             </TabItem>
                         </TabControl>
+                        <StackPanel Grid.Row="1" Spacing="4" Margin="0,8,0,0">
+                            <TextBlock x:Name="ModsNoticeText" IsVisible="False" Foreground="#E27676" FontSize="12" TextWrapping="Wrap" />
+                            <TextBlock x:Name="ModsStatusText" Text="" Foreground="#A0A1AA" FontSize="12" TextWrapping="Wrap" MaxHeight="72" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
                     </Grid>
                     <Grid x:Name="LogsPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,*">
                         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,12">
@@ -603,10 +626,14 @@
                                 <ComboBoxItem>Favorites</ComboBoxItem>
                             </ComboBox>
                             <TextBox x:Name="ImgurIdBox" Grid.Column="2" Width="160" Height="34" FontSize="12" PlaceholderText="Imgur Client ID" VerticalContentAlignment="Center" LostFocus="ImgurId_Changed" />
-                            <Button Grid.Column="4" Classes="launch" Content="Open Folder" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="GalleryOpenFolder_Click" />
+                            <TextBlock x:Name="GalleryStatusText" Grid.Column="3" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" Margin="8,0,12,0" TextTrimming="CharacterEllipsis" />
+                            <Button Grid.Column="4" Classes="launch" Content="Open Folder" ToolTip.Tip="Open the shared screenshots folder (every version)" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="GalleryOpenFolder_Click" />
                         </Grid>
                         <ScrollViewer Grid.Row="1">
-                            <WrapPanel x:Name="GalleryList" />
+                            <StackPanel>
+                                <WrapPanel x:Name="GalleryList" />
+                                <Button x:Name="GalleryLoadMoreBtn" Classes="action" Content="Load more" IsVisible="False" Height="34" FontSize="13" Padding="14,0" Margin="6,8,6,6" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Click="GalleryLoadMore_Click" />
+                            </StackPanel>
                         </ScrollViewer>
                     </Grid>
                 </Grid>

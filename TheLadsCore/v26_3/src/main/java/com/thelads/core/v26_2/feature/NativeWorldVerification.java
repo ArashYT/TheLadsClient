@@ -1,5 +1,6 @@
 package com.thelads.core.v26_2.feature;
 
+import com.thelads.core.shared.SharedContentPaths;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -94,7 +95,7 @@ public final class NativeWorldVerification {
                 if (now - titleSince < 5_000_000_000L) return;
                 Path saves = gameDirectory.resolve("saves").toRealPath();
                 Path world = saves.resolve(SAVE).toRealPath();
-                if (!saves.startsWith(gameDirectory) || !world.getParent().equals(saves)
+                if (!(saves.startsWith(gameDirectory) || sandboxSaves(saves)) || !world.getParent().equals(saves)
                     || !Files.isRegularFile(world.resolve("level.dat"), LinkOption.NOFOLLOW_LINKS)) {
                     throw new IOException("Existing isolated QA save is missing or resolves outside the QA saves directory");
                 }
@@ -133,6 +134,11 @@ public final class NativeWorldVerification {
         } catch (Exception failure) { fail("world startup", failure); }
     }
 
+    /** Saves linked by the launcher to the shared folder count only when that folder is a sandbox under artifacts/verification. */
+    private static boolean sandboxSaves(Path saves) throws IOException {
+        return SharedContentPaths.redirectedInside(gameDirectory.getParent()) && Files.isDirectory(SharedContentPaths.savesDir())
+            && saves.equals(SharedContentPaths.savesDir().toRealPath());
+    }
     public static boolean active() { return verified && !closing; }
     /** Capture a completed game frame, including GUI, through Minecraft's own GPU readback. */
     public static void renderedFrame(com.mojang.blaze3d.pipeline.RenderTarget target) {
@@ -189,14 +195,20 @@ public final class NativeWorldVerification {
     }
     private static void finishMenuCapture(Minecraft mc, Throwable failure) {
         if (menuScreen == null) return;
-        if(failure==null && java.util.Set.of("skin","packs","controls").contains(captureKind)){
-            LOGGER.info("Lads {} capture END: actual framebuffer at {}",captureKind,menuOutput);
+        if (failure == null && "mods".equals(captureKind)
+            && !(menuScreen instanceof com.thelads.core.v26_2.gui.LadsSettingsScreen26 mods && mods.isModsViewOpen()))
+            failure = new IllegalStateException("The Installed mods view was not open when its frame was captured");
+        if(failure==null && java.util.Set.of("skin","packs","controls","menu").contains(captureKind)){
+            if ("menu".equals(captureKind))
+                LOGGER.info("Lads menu capture END: 1 passed, 0 failed; {} completed frames; actual framebuffer at {}", menuFrames, menuOutput);
+            else LOGGER.info("Lads {} capture END: actual framebuffer at {}",captureKind,menuOutput);
             menuScreen=switch(captureKind){
                 case "skin"->new net.minecraft.client.gui.screens.packs.PackSelectionScreen(mc.getResourcePackRepository(),repository->{},mc.getResourcePackDirectory(),net.minecraft.network.chat.Component.literal("Resource packs"));
                 case "packs"->new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null,mc.options);
-                default->new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);
+                case "controls"->new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);
+                default->{ var view=new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null); view.openMods(); yield view; }
             };
-            captureKind=switch(captureKind){case "skin"->"packs";case "packs"->"controls";default->"menu";};
+            captureKind=switch(captureKind){case "skin"->"packs";case "packs"->"controls";case "controls"->"menu";default->"mods";};
             menuOpenedAt=System.nanoTime();menuFirstFrame=0;menuFrames=0;
             menuCaptureStarted=false;menuCaptureFinished=false;menuCaptureFailure=null;menuOutput=null;
             mc.setScreenAndShow(menuScreen);menuScreen=mc.gui.screen();return;
@@ -209,7 +221,8 @@ public final class NativeWorldVerification {
             finally { hudProbe = null; }
         }
         if (failure == null) {
-            LOGGER.info("Lads {} capture END: 1 passed, 0 failed; {} completed frames; actual framebuffer at {}", captureKind, menuFrames, menuOutput);
+            LOGGER.info("Lads {} capture END: 1 passed, 0 failed; {} completed frames; actual framebuffer at {}",
+                "mods".equals(captureKind) ? "mods view" : captureKind, menuFrames, menuOutput);
         } else {
             LOGGER.error("Lads " + captureKind + " capture FAILED", failure);
             fail("menu screenshot", failure);
