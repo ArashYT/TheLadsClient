@@ -22,12 +22,18 @@ public class DraggableHudScreen {
     public record Control(String id,String label,Rect bounds,boolean enabled) {}
     private final Runnable saveConfig;
     private Runnable onClose=()->{};
+    private java.util.function.Consumer<String> onSettings=name->{};
+    private final Map<HudElement,Rect> gears=new LinkedHashMap<>();
+    private final List<Control> contextControls=new ArrayList<>();
+    private int dock=0,contextX,contextY;
+    private boolean collapsed,contextOpen;
+    public void setOnSettings(java.util.function.Consumer<String> action){onSettings=action;}
     private final Set<HudElement> selected=new LinkedHashSet<>();
     private final Map<HudElement,Rect> measuredBounds=new IdentityHashMap<>();
     private final Map<HudElement,Rect> renderedBounds=new IdentityHashMap<>();
     private final Map<HudElement,Rect> dragStart=new LinkedHashMap<>();
     private final List<Control> controls=new ArrayList<>();
-    private boolean showGrid=true,showAll,multiSelect,toolbarTop,toolbarPinned;
+    private boolean showGrid=true,showAll,multiSelect,toolbarPinned;
     private boolean marquee,marqueeAdditive;
     private boolean dragMoved;
     private double downX,downY,marqueeX,marqueeY;
@@ -49,7 +55,7 @@ public class DraggableHudScreen {
         int width=graphics.getScaledWidth(),height=graphics.getScaledHeight();
         if(viewportWidth>0&&(width!=viewportWidth||height!=viewportHeight)){finishDrag();marquee=false;}
         viewportWidth=width;viewportHeight=height;
-        measuredBounds.clear();renderedBounds.clear();
+        measuredBounds.clear();renderedBounds.clear();gears.clear();
         graphics.fill(0,0,width,height,0x44000000);
         if(showGrid){
             for(int x=0;x<width;x+=GRID)graphics.fill(x,0,x+1,height,0x15FFFFFF);
@@ -68,17 +74,45 @@ public class DraggableHudScreen {
             if(!element.isEnabled())graphics.fill(bounds.x(),bounds.y(),bounds.right(),bounds.bottom(),0x88222222);
             int color=chosen?LadsPalette.ACCENT:locked?LadsPalette.MUTED:hover?LadsPalette.PRIMARY_HOVER:0x66FFFFFF;
             border(graphics,bounds,color);
-            if(chosen||hover||!element.isEnabled()){
-                String name=element.getModuleName()==null?"HUD":element.getModuleName();
-                String label=name+(!element.isEnabled()?" (disabled preview)":"")+(locked?" [locked]":"");
-                int lx=Math.max(0,Math.min(bounds.x(),width-graphics.textWidth(label)));
-                int ly=bounds.y()>=graphics.fontHeight()+2?bounds.y()-graphics.fontHeight()-2:Math.min(height-graphics.fontHeight(),bounds.bottom()+2);
-                graphics.drawText(label,lx,ly,!element.isEnabled()?0xFFB0B0B0:LadsPalette.TEXT,true);
+            // Only the hovered widget gets a label; disabled previews use a muted body.
+            // Reserve an exterior hit target, keeping the icon off the widget's text.
+            Rect gear=placeGear(bounds);
+            gears.put(element,gear);
+            graphics.fill(gear.x(),gear.y(),gear.right(),gear.bottom(),LadsPalette.CARD);
+            int gx=gear.x()+5,gy=gear.y()+5;
+            graphics.fill(gx-3,gy-3,gx+4,gy+4,LadsPalette.TEXT);
+            graphics.fill(gx-1,gy-4,gx+2,gy+5,LadsPalette.TEXT);
+            graphics.fill(gx-4,gy-1,gx+5,gy+2,LadsPalette.TEXT);
+            graphics.fill(gx-1,gy-1,gx+2,gy+2,LadsPalette.CARD);
+            if(hover&&!contextOpen){
+                String label=element.getModuleName()+(!element.isEnabled()?" · disabled":"")+(locked?" · locked":"");
+                int lx=Math.max(0,Math.min(mouseX+12,width-graphics.textWidth(label)-8));
+                int ly=Math.max(0,Math.min(mouseY+14,height-graphics.fontHeight()-8));
+                graphics.fill(lx,ly,lx+graphics.textWidth(label)+6,ly+graphics.fontHeight()+6,LadsPalette.PANEL);
+                graphics.drawText(label,lx+3,ly+3,LadsPalette.TEXT,false);
             }
         }
         drawGroupOutlines(graphics);
         if(marquee){Rect box=marqueeBounds();graphics.fill(box.x(),box.y(),box.right(),box.bottom(),0x226F1624);border(graphics,box,LadsPalette.ACCENT);}
         if(!isDragging()&&!marquee)drawToolbar(graphics,mouseX,mouseY);else controls.clear();
+        if(contextOpen)drawContext(graphics,mouseX,mouseY);
+    }
+
+    private Rect placeGear(Rect bounds){
+        Rect best=new Rect(Math.max(0,Math.min(bounds.right()+2,viewportWidth-11)),Math.max(0,Math.min(bounds.y(),viewportHeight-11)),11,11);
+        long bestOverlap=Long.MAX_VALUE;
+        for(Rect candidate:List.of(new Rect(bounds.right()+2,bounds.y(),11,11),new Rect(bounds.x()-13,bounds.y(),11,11),
+                new Rect(bounds.right()-11,bounds.y()-12,11,11),new Rect(bounds.right()-11,bounds.bottom()+2,11,11))){
+            if(candidate.x()<0||candidate.y()<0||candidate.right()>viewportWidth||candidate.bottom()>viewportHeight)continue;
+            long overlap=0;
+            for(var entry:measuredBounds.entrySet())if(isVisible(entry.getKey()))overlap+=intersectionArea(candidate,entry.getValue());
+            for(Rect gear:gears.values())overlap+=intersectionArea(candidate,gear);
+            if(overlap<bestOverlap){best=candidate;bestOverlap=overlap;if(overlap==0)break;}
+        }
+        return best;
+    }
+    private static long intersectionArea(Rect a,Rect b){
+        return (long)Math.max(0,Math.min(a.right(),b.right())-Math.max(a.x(),b.x()))*Math.max(0,Math.min(a.bottom(),b.bottom())-Math.max(a.y(),b.y()));
     }
 
     private void clampGroups(List<HudElement> elements){
@@ -103,38 +137,52 @@ public class DraggableHudScreen {
         graphics.fill(bounds.x(),bounds.y(),bounds.x()+1,bounds.bottom(),color);graphics.fill(bounds.right()-1,bounds.y(),bounds.right(),bounds.bottom(),color);
     }
 
-    private void drawToolbar(LadsGraphics graphics,int mouseX,int mouseY){
+    private void drawToolbar(LadsGraphics g,int mx,int my){
         controls.clear();
-        boolean hasSelection=!selected.isEmpty(),hasLocked=selected.stream().anyMatch(this::isLocked),hasUnlocked=selected.stream().anyMatch(element->!isLocked(element));
-        boolean grouped=selected.stream().anyMatch(element->HudSettings.getInstance().getGroupIndex(element.getModuleName())>=0);
-        String[][] buttons={{"select",multiSelect?"Multi-select: on":"Select multiple"},{"group","Group"},{"ungroup","Ungroup"},{"lock","Lock position"},{"unlock","Unlock"},{"snap",showGrid?"Snap: on":"Snap: off"},{"previews",showAll?"Enabled only":"All previews"},{"toolbar",toolbarTop?"Controls: bottom":"Controls: top"},{"done","Done"}};
-        int widest=0;for(var button:buttons)widest=Math.max(widest,graphics.textWidth(button[1]));
-        int buttonWidth=Math.max(78,widest+12),gap=4,padding=8,columns=Math.max(1,Math.min(5,(viewportWidth-24)/(buttonWidth+gap)));
-        int panelWidth=Math.min(viewportWidth-8,columns*(buttonWidth+gap)-gap+padding*2);
-        buttonWidth=Math.max(1,(panelWidth-padding*2-gap*(columns-1))/columns);
-        int rows=(buttons.length+columns-1)/columns,buttonHeight=Math.max(18,graphics.fontHeight()+10),header=graphics.fontHeight()*2+12;
-        int panelHeight=header+rows*(buttonHeight+gap)+padding;
-        int panelX=(viewportWidth-panelWidth)/2,bottomY=Math.max(4,viewportHeight-panelHeight-4);
-        if(!toolbarPinned){
-            long topOverlap=overlapArea(new Rect(panelX,4,panelWidth,panelHeight));
-            long bottomOverlap=overlapArea(new Rect(panelX,bottomY,panelWidth,panelHeight));
-            if(topOverlap!=bottomOverlap)toolbarTop=topOverlap<bottomOverlap;
+        if(collapsed){
+            toolbarBounds=new Rect(viewportWidth/2-28,viewportHeight/2-10,56,20);
+            drawControl(g,new Control("collapse","Controls",toolbarBounds,true),mx,my,controls);return;
         }
-        buttons[7][1]=toolbarTop?"Controls: bottom":"Controls: top";
-        int panelY=toolbarTop?4:bottomY;
-        toolbarBounds=new Rect(panelX,panelY,panelWidth,panelHeight);
-        graphics.fill(panelX,panelY,panelX+panelWidth,panelY+panelHeight,LadsPalette.PANEL);border(graphics,toolbarBounds,LadsPalette.BORDER);
-        String status=notice.isEmpty()?selectionStatus():notice;
-        graphics.drawCenteredText(clip(graphics,status,panelWidth-12),viewportWidth/2,panelY+5,LadsPalette.TEXT,false);
-        graphics.drawCenteredText(clip(graphics,"Click or drag a box to select. Ctrl/Shift-click adds.",panelWidth-12),viewportWidth/2,panelY+graphics.fontHeight()+8,LadsPalette.MUTED,false);
+        boolean locked=selected.stream().anyMatch(this::isLocked);
+        String[] docks={"bottom","left","right","top"};
+        String[][] buttons={{"select",multiSelect?"Multi-select: on":"Select multiple"},{"group","Group"},{"ungroup","Ungroup"},{"lock","Lock position"},{"unlock","Unlock"},{"snap",showGrid?"Snap: on":"Snap: off"},{"previews",showAll?"Enabled only":"All previews"},{"toolbar","Dock: "+docks[dock]},{"collapse","Hide controls"},{"reset","Reset layout"},{"done","Done"}};
+        boolean vertical=dock==1||dock==2;
+        int cols=vertical?1:Math.max(1,Math.min(5,(viewportWidth-24)/90));
+        int bw=vertical?Math.min(116,viewportWidth-16):Math.min(100,(viewportWidth-24)/cols-4);
+        int bh=Math.max(12,Math.min(21,(viewportHeight-38)/(vertical?buttons.length:3)-3));
+        int rows=(buttons.length+cols-1)/cols,pw=cols*(bw+4)+12,ph=rows*(bh+3)+30;
+        int px=dock==1?4:dock==2?viewportWidth-pw-4:(viewportWidth-pw)/2;
+        if(!toolbarPinned&&!vertical){
+            long top=overlapArea(new Rect(px,4,pw,ph)),bottom=overlapArea(new Rect(px,Math.max(4,viewportHeight-ph-4),pw,ph));
+            dock=top<bottom?3:0;
+        }
+        int py=dock==3?4:vertical?Math.max(4,(viewportHeight-ph)/2):Math.max(4,viewportHeight-ph-4);
+        toolbarBounds=new Rect(px,py,pw,ph);
+        g.fill(px,py,px+pw,py+ph,LadsPalette.PANEL);border(g,toolbarBounds,LadsPalette.BORDER);
+        g.drawCenteredText(clip(g,selectionStatus(),pw-12),px+pw/2,py+6,LadsPalette.TEXT,false);
         for(int i=0;i<buttons.length;i++){
-            String id=buttons[i][0];boolean enabled=switch(id){case "group"->selectedNames().size()>=2;case "ungroup"->grouped;case "lock"->hasSelection&&hasUnlocked;case "unlock"->hasSelection&&hasLocked;default->true;};
-            Rect bounds=new Rect(panelX+padding+(i%columns)*(buttonWidth+gap),panelY+header+(i/columns)*(buttonHeight+gap),buttonWidth,buttonHeight);
-            Control control=new Control(id,buttons[i][1],bounds,enabled);controls.add(control);
-            int background=!enabled?LadsPalette.CARD:bounds.contains(mouseX,mouseY)?LadsPalette.HOVER:id.equals("done")?LadsPalette.PRIMARY:LadsPalette.CARD;
-            graphics.fill(bounds.x(),bounds.y(),bounds.right(),bounds.bottom(),background);border(graphics,bounds,focusedControl==i?LadsPalette.ACCENT:LadsPalette.BORDER);
-            graphics.drawCenteredText(clip(graphics,control.label(),buttonWidth-6),bounds.x()+buttonWidth/2,bounds.y()+(buttonHeight-graphics.fontHeight())/2,enabled?LadsPalette.TEXT:LadsPalette.DISABLED,false);
+            String id=buttons[i][0];boolean enabled=switch(id){case "group"->selectedNames().size()>=2;case "ungroup"->selected.stream().anyMatch(e->HudSettings.getInstance().getGroupIndex(e.getModuleName())>=0);case "lock"->!selected.isEmpty()&&!locked;case "unlock"->locked;default->true;};
+            drawControl(g,new Control(id,buttons[i][1],new Rect(px+8+(i%cols)*(bw+4),py+23+(i/cols)*(bh+3),bw,bh),enabled),mx,my,controls);
         }
+    }
+    private void drawControl(LadsGraphics g,Control c,int mx,int my,List<Control> target){
+        target.add(c);Rect b=c.bounds();
+        g.fill(b.x(),b.y(),b.right(),b.bottom(),b.contains(mx,my)?LadsPalette.HOVER:LadsPalette.CARD);
+        border(g,b,LadsPalette.BORDER);
+        g.drawCenteredText(clip(g,c.label(),b.width()-6),b.x()+b.width()/2,b.y()+(b.height()-g.fontHeight())/2,c.enabled()?LadsPalette.TEXT:LadsPalette.DISABLED,false);
+    }
+    private void drawContext(LadsGraphics g,int mx,int my){
+        contextControls.clear();
+        String[][] items={{"settings","Module settings"},{selected.stream().anyMatch(this::isLocked)?"unlock":"lock",selected.stream().anyMatch(this::isLocked)?"Unlock":"Lock"},{"centerX","Center horizontally"},{"centerY","Center vertically"},{"centerBoth","Center both"}};
+        int x=Math.max(0,Math.min(contextX,viewportWidth-132)),y=Math.max(0,Math.min(contextY,viewportHeight-105));
+        for(int i=0;i<items.length;i++)drawControl(g,new Control(items[i][0],items[i][1],new Rect(x,y+i*21,132,21),true),mx,my,contextControls);
+    }
+    private void center(boolean horizontal,boolean vertical){
+        if(selected.isEmpty()||selected.stream().anyMatch(this::isLocked))return;
+        Rect union=HudGroupLayout.union(selected.stream().filter(measuredBounds::containsKey).map(measuredBounds::get).toList());
+        int dx=horizontal?(viewportWidth-union.width())/2-union.x():0;
+        int dy=vertical?(viewportHeight-union.height())/2-union.y():0;
+        startDrag(0,0);boolean snap=showGrid;showGrid=false;mouseDragged(dx,dy,0);showGrid=snap;finishDrag();
     }
     private long overlapArea(Rect panel){long area=0;for(var bounds:renderedBounds.values())area+=(long)Math.max(0,Math.min(panel.right(),bounds.right())-Math.max(panel.x(),bounds.x()))*Math.max(0,Math.min(panel.bottom(),bounds.bottom())-Math.max(panel.y(),bounds.y()));return area;}
     private static String clip(LadsGraphics graphics,String text,int width){if(graphics.textWidth(text)<=width)return text;int end=text.length();while(end>0&&graphics.textWidth(text.substring(0,end)+"…")>width)end--;return text.substring(0,end)+"…";}
@@ -146,9 +194,21 @@ public class DraggableHudScreen {
 
     public boolean mouseClicked(double x,double y,int button){return mouseClicked(x,y,button,0);}
     public boolean mouseClicked(double x,double y,int button,int modifiers){
-        finishHiddenDrag();if(button!=0)return false;marquee=false;
+        finishHiddenDrag();
+        if(contextOpen){
+            if(button==0)for(var c:contextControls)if(c.bounds().contains(x,y)){contextOpen=false;perform(c.id());return true;}
+            contextOpen=false;return true;
+        }
+        if(button==1){
+            for(var entry:renderedBounds.entrySet())if(entry.getValue().contains(x,y)){
+                selected.clear();selected.addAll(groupElements(entry.getKey()));contextOpen=true;contextX=(int)x;contextY=(int)y;return true;
+            }
+            return false;
+        }
+        if(button!=0)return false;marquee=false;
         for(var control:controls)if(control.bounds.contains(x,y)){if(control.enabled)perform(control.id);return true;}
         if(!controls.isEmpty()&&toolbarBounds.contains(x,y))return true;
+        for(var entry:gears.entrySet())if(entry.getValue().contains(x,y)){finishDrag();onSettings.accept(entry.getKey().getModuleName());return true;}
         notice="";focusedControl=-1;boolean additive=multiSelect||(modifiers&3)!=0;
         var elements=HudManager.getInstance().getElements();
         for(int i=elements.size()-1;i>=0;i--){var element=elements.get(i);Rect bounds=renderedBounds.get(element);
@@ -192,6 +252,7 @@ public class DraggableHudScreen {
 
     public boolean keyPressed(int key){return keyPressed(key,0);}
     public boolean keyPressed(int key,int modifiers){
+        if(key==256&&contextOpen){contextOpen=false;return true;}
         if(key==256){close();if(onClose!=null)onClose.run();return true;}
         if(key==65&&(modifiers&2)==0){perform("previews");return true;}
         if(key==65&&(modifiers&2)!=0){for(var element:renderedBounds.keySet())selected.addAll(groupElements(element));return true;}
@@ -220,7 +281,13 @@ public class DraggableHudScreen {
             case "lock","unlock"->{for(String name:selectedNames())HudSettings.getInstance().setLocked(name,id.equals("lock"));saveConfig.run();notice=id.equals("lock")?"Position locked. Select this HUD and use Unlock to move it.":"Position unlocked. Drag to move.";}
             case "snap"->showGrid=!showGrid;
             case "previews"->{showAll=!showAll;finishHiddenDrag();selected.removeIf(element->!isVisible(element)&&HudSettings.getInstance().getGroupIndex(element.getModuleName())<0);renderedBounds.clear();}
-            case "toolbar"->{toolbarTop=!toolbarTop;toolbarPinned=true;}
+            case "toolbar"->{dock=switch(dock){case 3->0;case 0->1;case 1->2;default->3;};toolbarPinned=true;}
+            case "collapse"->collapsed=!collapsed;
+            case "settings"->{if(!selected.isEmpty())onSettings.accept(selected.iterator().next().getModuleName());}
+            case "centerX"->center(true,false);
+            case "centerY"->center(false,true);
+            case "centerBoth"->center(true,true);
+            case "reset"->{HudSettings.getInstance().clearPositions();selected.clear();saveConfig.run();}
             case "done"->{close();if(onClose!=null)onClose.run();}
             default->{}
         }

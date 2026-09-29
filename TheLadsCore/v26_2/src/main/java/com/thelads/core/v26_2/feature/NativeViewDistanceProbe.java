@@ -45,7 +45,7 @@ final class NativeViewDistanceProbe {
             bob.lads$verticalBob(.025f);
             PoseStack world = new PoseStack();
             transform.invoke(minecraft.gameRenderer, camera, world);
-            require(Math.abs(world.last().pose().m31() - .025) < .000001, "real game-renderer pose contains vertical displacement"); passed++;
+            require(Math.abs(world.last().pose().m12() - Math.sin(Math.toRadians(.025))) < .000001 && Math.abs(world.last().pose().m31()) < .000001, "real game-renderer pose contains legacy pitch without vertical translation"); passed++;
             PoseStack hand = new PoseStack();
             transform.invoke(minecraft.gameRenderer, camera, hand);
             require(world.last().pose().equals(hand.last().pose()), "world and held-item passes consume the same motion snapshot"); passed++;

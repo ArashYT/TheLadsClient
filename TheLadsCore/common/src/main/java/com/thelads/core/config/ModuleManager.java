@@ -15,15 +15,29 @@ public class ModuleManager {
         register(new PingViewModule(), Module.Category.SERVER);
         register(new BetterF3Module(), Module.Category.MECHANIC);
         register(new PerformanceManagerModule(), Module.Category.MECHANIC);
+        register(new ThreadPriorityModule(), Module.Category.MECHANIC);
 
         // HUD overlay modules (rendered by HudManager)
         HudModule fps = hud("FPS", "Show your current FPS on screen.");
         fps.addOption(new DropdownOption("Update rate", 1, "Instant", "Fast", "Normal", "Slow"));
         fps.addOption(new BoolOption("Smooth", true));
 
+        Module minimap = new Module("Minimap", "Lads controls for the bundled Xaero engine. Uses your existing maps, waypoints and server rules.");
+        minimap.setEnabled(true);
+        minimap.addOption(new ActionOption("Map and waypoint settings", "Open Xaero settings"));
+        register(minimap, Module.Category.HUD);
+
+        HudModule boss = hud("BossBar", "Move, resize or hide boss bars and control their world effects.");
+        boss.addOption(new BoolOption("Show bars", true));
+        boss.addOption(new BoolOption("Show names", true));
+        boss.addOption(new SliderOption("Maximum bars", 5, 1, 10, 1));
+        boss.addOption(new BoolOption("Darken sky", true));
+        boss.addOption(new BoolOption("Boss fog", true));
+        boss.addOption(new BoolOption("Boss music", true));
+
         HudModule coords = hud("Coordinates", "Show your XYZ coordinates.");
-        coords.addOption(new DropdownOption("Format", 0, "X Y Z", "Coords: X, Y, Z", "Labeled X/Y/Z"));
-        coords.addOption(new BoolOption("Vertical", false));
+        coords.addOption(new DropdownOption("Format", 2, "X Y Z", "Coords: X, Y, Z", "Labeled X/Y/Z"));
+        coords.addOption(new BoolOption("Vertical", true));
         coords.addOption(new BoolOption("Per-axis colors", false));
         coords.addOption(new ColorOption("X Color", false, 0xFFFF5555));
         coords.addOption(new ColorOption("Y Color", false, 0xFF55FF55));
@@ -114,6 +128,9 @@ public class ModuleManager {
         Module odt = new Module("OldDamageTilt", "Old-style screen tilt when you take damage.");
         odt.addOption(new DropdownOption("Intensity", 1, "Subtle", "Normal", "Strong"));
         register(odt, Module.Category.MECHANIC);
+
+        Module swing = new Module("LegacySwing", "Xbox 360 mining and hand swing matching the supplied Legacy Console showcase.");
+        register(swing, Module.Category.MECHANIC);
 
         Module vb = new Module("VerticalBobbing", "Adds vertical view bob (incl. jumping/falling).");
         vb.addOption(new DropdownOption("Intensity", 1, "Low", "Normal", "High"));

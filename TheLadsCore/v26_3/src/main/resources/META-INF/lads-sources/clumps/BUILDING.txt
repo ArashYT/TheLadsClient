@@ -1,0 +1,23 @@
+Native Lads Clumps for Minecraft 26.2
+
+Adapted from Clumps 26.2.1, Copyright (c) 2021 Jaredlll08.
+License: MIT; the complete original license is in LICENSE.txt beside this file.
+Source: https://github.com/jaredlll08/Clumps
+Revision: 6c4d4e4bee4c0d9f7cff5de802508e27914aadca (26.2 branch).
+The source declares mod_version=26.2; the pinned release build is 26.2.1:
+https://modrinth.com/mod/clumps/version/dEMopoOJ
+
+The corresponding modified Java files and Mixin configuration are bundled here.
+Lads relocates the Fabric events and XP orb mixin, adds integrated-server ownership,
+a live master switch and existing-stack/persistence safeguards. Remote servers and
+separately installed upstream Clumps retain their own behavior. No upstream assets
+or Fabric mod identity are repackaged.
+
+Build in the complete Lads source tree with Java 25:
+  cd TheLadsCore
+  gradlew.bat :v26_2:build -x test
+The Gradle wrapper pins Loom and the Minecraft/Fabric libraries in v26_2/build.gradle.
+To run the opt-in entity probe, artifacts/verification/26.2-title must open the
+existing saves/Client QA 26_2 folder (LevelName: Client QA 26.2), with one local
+player and no external Clumps jar;
+pass -Dthelads.verifyIntegrations=true. The probe refuses other world paths.

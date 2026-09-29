@@ -15,6 +15,7 @@ public class TheLadsCoreClient121 implements ClientModInitializer {
         LOGGER.info("Initializing TheLadsCore for Minecraft 1.21.1...");
         LadsGameBridge.set(new VanillaGameBridge121());
         ConfigManager.load();
+        com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
         LOGGER.info("TheLadsCore 1.21.1 initialized successfully.");
     }
 }

@@ -1,0 +1,161 @@
+// Adapted from Raised 6.0.0 source by yurisuika, LGPL-3.0-or-later.
+// Pinned source 4b6a3b8718316d681c3ae6832cdd19c3174a29a4; see META-INF/lads-sources/raised.
+package com.thelads.core.v26_2.feature.raised.mixin.minecraft.client.gui;
+
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+import com.thelads.core.v26_2.feature.raised.Raised;
+import com.thelads.core.v26_2.feature.raised.client.gui.layer.Layer;
+import com.thelads.core.v26_2.feature.raised.client.gui.layer.Layers;
+import com.thelads.core.v26_2.feature.raised.config.Config;
+import com.thelads.core.v26_2.feature.raised.option.AdditionalSettings;
+import com.thelads.core.v26_2.feature.raised.util.Pack;
+import com.thelads.core.v26_2.feature.raised.util.Translate;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.Hud;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(value = Hud.class, priority = -999999999)
+public abstract class HudMixin {
+
+    /**
+     * Moves the {@code hotbar}, {@code health bar}, {@code armor bar}, {@code food bar}, {@code air bar},
+     * {@code mount health bar}, {@code mount jump bar}, {@code experience bar}, {@code experience level}, and {@code held item tooltip}
+     * for {@link Layer} key "minecraft:hotbar".
+     */
+    @Inject(method = "extractHotbarAndDecorations", at = @At("HEAD"))
+    private void startMainHudTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.start(guiGraphics.pose(), Layers.HOTBAR);
+    }
+
+    @Inject(method = "extractHotbarAndDecorations", at = @At("TAIL"))
+    private void endMainHudTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.end(guiGraphics.pose(), Layers.HOTBAR);
+    }
+
+    /**
+     * Moves the {@code overlay message} for {@link Layer} key "minecraft:action_bar".
+     */
+    @Inject(method = "extractOverlayMessage", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiling/ProfilerFiller;push(Ljava/lang/String;)V"))
+    private void startOverlayMessageTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.start(guiGraphics.pose(), Layers.ACTION_BAR);
+    }
+
+    @Inject(method = "extractOverlayMessage", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiling/ProfilerFiller;pop()V", shift = At.Shift.AFTER))
+    private void endOverlayMessageTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.end(guiGraphics.pose(), Layers.ACTION_BAR);
+    }
+
+    /**
+     * Moves the {@code chat} for {@link Layer} key "minecraft:chat".
+     */
+    @Inject(method = "extractChat", at = @At("HEAD"))
+    private void startChatTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.start(guiGraphics.pose(), Layers.CHAT);
+    }
+
+    @Inject(method = "extractChat", at = @At("TAIL"))
+    private void endChatTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.end(guiGraphics.pose(), Layers.CHAT);
+    }
+
+    /**
+     * Moves the {@code sidebar} for {@link Layer} key "minecraft:scoreboard".
+     */
+    @Inject(method = "extractScoreboardSidebar(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V", at = @At("HEAD"))
+    private void startSidebarTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.start(guiGraphics.pose(), Layers.SCOREBOARD);
+    }
+
+    @Inject(method = "extractScoreboardSidebar(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V", at = @At("TAIL"))
+    private void endSidebarTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.end(guiGraphics.pose(), Layers.SCOREBOARD);
+    }
+
+    /**
+     * Moves the {@code effects} for {@link Layer} key "minecraft:effects".
+     */
+    @Inject(method = "extractEffects", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/effect/MobEffectInstance;isAmbient()Z"))
+    private void startEffectsTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.start(guiGraphics.pose(), Layers.EFFECTS);
+    }
+
+    @Inject(method = "extractEffects", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIIII)V", shift = At.Shift.AFTER))
+    private void endEffectsTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.end(guiGraphics.pose(), Layers.EFFECTS);
+    }
+
+    /**
+     * Moves the {@code players} for {@link Layer} key "minecraft:player_list".
+     */
+    @Inject(method = "extractTabList", at = @At("HEAD"))
+    private void startPlayersTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.start(guiGraphics.pose(), Layers.PLAYER_LIST);
+    }
+
+    @Inject(method = "extractTabList", at = @At("TAIL"))
+    private void endPlayersTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.end(guiGraphics.pose(), Layers.PLAYER_LIST);
+    }
+
+    /**
+     * Moves the {@code titles} for {@link Layer} key "minecraft:titles".
+     */
+    @Inject(method = "extractTitle", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiling/ProfilerFiller;push(Ljava/lang/String;)V"))
+    private void startTitlesTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.start(guiGraphics.pose(), Layers.TITLES);
+    }
+
+    @Inject(method = "extractTitle", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiling/ProfilerFiller;pop()V", shift = At.Shift.AFTER))
+    private void endTitlesTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.end(guiGraphics.pose(), Layers.TITLES);
+    }
+
+    /**
+     * Moves layers injected at the head of the main render method for {@link Layer} key "minecraft:unknown".
+     */
+    @Inject(method = "extractRenderState", at = @At("HEAD"))
+    private void startRenderHeadTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.start(guiGraphics.pose(), Layers.UNKNOWN);
+    }
+
+    /**
+     * Moves layers injected at the tail of the main render method for {@link Layer} key "minecraft:unknown".
+     */
+    @Inject(method = "extractRenderState", at = @At("TAIL"))
+    private void startRenderTailTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        Translate.start(guiGraphics.pose(), Layers.UNKNOWN);
+    }
+
+    @Mixin(value = Hud.class, priority = 999999999)
+    public abstract static class Last {
+
+        /**
+         * Moves layers injected at the head of the main render method for {@link Layer} key "minecraft:unknown".
+         */
+        @Inject(method = "extractRenderState", at = @At("HEAD"))
+        private void endRenderHeadTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+            Translate.end(guiGraphics.pose(), Layers.UNKNOWN);
+        }
+
+        /**
+         * Moves layers injected at the tail of the main render method for {@link Layer} key "minecraft:unknown".
+         */
+        @Inject(method = "extractRenderState", at = @At("TAIL"))
+        private void endRenderTailTranslate(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+            Translate.end(guiGraphics.pose(), Layers.UNKNOWN);
+        }
+
+    }
+
+}

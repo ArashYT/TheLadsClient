@@ -42,6 +42,10 @@ public interface LadsGraphics {
     /** Render the actual local player with the native entity renderer, when available. */
     default void drawPlayerModel(int x, int y, int width, int height, boolean editor) {}
 
+    default void drawArmorItem(int index, int x, int y, boolean preview) {}
+
+    default void drawBossBars(int x,int y,int max,boolean names,boolean preview) {}
+
     int getScaledWidth();
 
     int getScaledHeight();

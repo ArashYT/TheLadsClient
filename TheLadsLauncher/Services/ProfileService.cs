@@ -16,7 +16,7 @@ public class ProfileService : IProfileService
     private readonly IPathService _pathService;
     private readonly string _profilesConfigPath;
     private readonly List<LauncherProfile> _profiles = new();
-    private string _activeProfileId = "26.2";
+    private string _activeProfileId = "26.3";
 
     public ProfileService(IPathService pathService)
     {
@@ -318,16 +318,16 @@ public class ProfileService : IProfileService
         // Populate default multi-version profiles
         _profiles.Clear();
         _profiles.AddRange(CreateDefaultProfiles());
-        _activeProfileId = "26.2";
+        _activeProfileId = "26.3";
         SaveProfilesToDisk();
     }
 
     private static bool MigrateSavedProfile(LauncherProfile profile)
     {
         var changed = false;
-        if (profile.MinecraftVersion == "26.2" && profile.Name == "The Lads Client 26.2 (Next-Gen)")
+        if (profile.MinecraftVersion == "26.2" && profile.Name is "The Lads Client 26.2 (Next-Gen)" or "The Lads Client 26.2 (Primary)")
         {
-            profile.Name = "The Lads Client 26.2 (Primary)";
+            profile.Name = "The Lads Client 26.2";
             changed = true;
         }
         if (profile.MinecraftVersion == "1.21.11" && profile.Name == "The Lads Client 1.21.11 (Stable)")
@@ -340,7 +340,7 @@ public class ProfileService : IProfileService
             var oldVersion = profile.MinecraftVersion;
             profile.MinecraftVersion = "26.2";
             if (string.IsNullOrWhiteSpace(profile.FabricVersion))
-                profile.FabricVersion = "0.19.3";
+                profile.FabricVersion = "0.19.5";
             else if (profile.FabricVersion.StartsWith("fabric-loader-", StringComparison.Ordinal)
                 && profile.FabricVersion.EndsWith("-" + oldVersion, StringComparison.Ordinal))
                 profile.FabricVersion = profile.FabricVersion.Substring(0, profile.FabricVersion.Length - oldVersion.Length) + "26.2";
@@ -356,9 +356,10 @@ public class ProfileService : IProfileService
                 && loader.Length > "fabric-loader-".Length + suffix.Length)
                 loader = loader.Substring("fabric-loader-".Length, loader.Length - "fabric-loader-".Length - suffix.Length);
             // Parse only numeric releases; retain custom builds and mismatched full IDs.
-            if (Version.TryParse(loader, out var parsed) && parsed < new Version(0, 19, 3))
+            var minimumLoader = "0.19.5";
+            if (Version.TryParse(loader, out var parsed) && parsed < Version.Parse(minimumLoader))
             {
-                profile.FabricVersion = fullId ? "fabric-loader-0.19.3" + suffix : "0.19.3";
+                profile.FabricVersion = fullId ? "fabric-loader-" + minimumLoader + suffix : minimumLoader;
                 changed = true;
             }
         }
@@ -373,7 +374,7 @@ public class ProfileService : IProfileService
             changed = true;
         }
 
-        if (profile.MinecraftVersion is "1.21.1" or "1.21.11" or "26.2")
+        if (profile.MinecraftVersion is "1.21.1" or "1.21.11" or "26.2" or "26.3")
         {
             var requiredJava = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion);
             if (profile.JavaMajorVersion < requiredJava)
@@ -405,10 +406,16 @@ public class ProfileService : IProfileService
         {
             new()
             {
+                Id = "26.3", Name = "The Lads Client 26.3 (Primary)", MinecraftVersion = "26.3",
+                FabricVersion = "0.19.5", JavaMajorVersion = 25, IsIsolated = false,
+                PackwizUrl = null, IconKey = "stable"
+            },
+            new()
+            {
                 Id = "26.2",
-                Name = "The Lads Client 26.2 (Primary)",
+                Name = "The Lads Client 26.2",
                 MinecraftVersion = "26.2",
-                FabricVersion = "0.19.3",
+                FabricVersion = "0.19.5",
                 JavaMajorVersion = 25,
                 IsIsolated = false,
                 PackwizUrl = null,
@@ -419,11 +426,17 @@ public class ProfileService : IProfileService
                 Id = "1.21.11",
                 Name = "The Lads Client 1.21.11 (Legacy)",
                 MinecraftVersion = "1.21.11",
-                FabricVersion = "0.19.3",
+                FabricVersion = "0.19.5",
                 JavaMajorVersion = 21,
                 IsIsolated = false,
                 PackwizUrl = null,
                 IconKey = "nextgen"
+            },
+            new()
+            {
+                Id = "1.21.1", Name = "The Lads Client 1.21.1 (Legacy)", MinecraftVersion = "1.21.1",
+                FabricVersion = "0.19.5", JavaMajorVersion = 21, IsIsolated = false,
+                PackwizUrl = null, IconKey = "nextgen"
             }
         };
     }

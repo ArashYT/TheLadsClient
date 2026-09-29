@@ -22,6 +22,11 @@ public class DraggableHudScreen26 extends Screen {
         this.parent = parent;
         this.ui = java.util.Objects.requireNonNull(controller);
         this.ui.setOnClose(this::onClose);
+        this.ui.setOnSettings(name -> {
+            var settings = new LadsSettingsScreen26(this);
+            settings.openModule(name);
+            Minecraft.getInstance().setScreenAndShow(settings);
+        });
     }
 
     @Override

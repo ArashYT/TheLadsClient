@@ -24,7 +24,7 @@ public partial class App : Application
                 int reportOption = Array.FindIndex(desktop.Args, value => value.Equals("--splash-frame-report", StringComparison.OrdinalIgnoreCase));
                 if (reportOption >= 0 && reportOption + 1 < desktop.Args.Length)
                     splash.CapturePreviewFrameCadence(desktop.Args[reportOption + 1]);
-                splash.SetGameVersion("26.2");
+                splash.SetGameVersion("26.3");
                 splash.SetStatus("Starting Minecraft");
                 splash.KeyDown += (_, e) =>
                 {

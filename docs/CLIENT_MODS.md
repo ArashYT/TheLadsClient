@@ -1,5 +1,7 @@
 # Bundled client mod pack
 
+Current 26.3 development build: see [CLIENT_26_3.md](CLIENT_26_3.md) and [MOD_COVERAGE.md](MOD_COVERAGE.md) for all four version packs, native replacements, and missing upstream releases. The version table below is a historical attribution snapshot, not the current lockfile.
+
 The 10 September 2026 development build pins 33 upstream Fabric jars for Minecraft 26.2 and 35 for 1.21.11. Dynamic FPS, Raised, Custom Crosshair and Durability Tooltip have been replaced by native Lads features on 26.2; Modern Advancements and Resourcify are added as retained engines. See [NATIVE_MODULES_26_2.md](NATIVE_MODULES_26_2.md) and [REFERENCE_ENGINES_26_2.md](REFERENCE_ENGINES_26_2.md). The version table below retains the original upstream attribution for both packs. Nested library mods may make the in-game Mod Menu count higher. The launcher downloads original artifacts from Modrinth and verifies their SHA-512, size, and Fabric mod ID; it does not repackage them. Each upstream project retains its own license and authorship. The JSON manifests include exact version IDs, original filenames, source repositories, sizes and hashes.
 
 | Project | Minecraft 1.21.11 | Minecraft 26.2 | License |

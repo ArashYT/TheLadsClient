@@ -13,10 +13,10 @@ public class DiscordRpcModule extends Module {
     public final BoolOption showDimension = addOption(new BoolOption("Show dimension", false));
     public final BoolOption showElapsed = addOption(new BoolOption("Show elapsed time", true));
     public final DropdownOption detailLevel = addOption(new DropdownOption("Detail Level", 1, "Full", "Simple", "Minimal"));
-    private volatile String status = "Off. Activity sharing requires your opt-in.";
+    private volatile String status = "Coming soon - Discord presence will be available in a future update.";
     public DiscordRpcModule() {
-        super("DiscordRPC", "Optional Discord presence with private defaults.");
+        super("DiscordRPC", "Coming soon");
     }
-    public void setStatus(String status) { this.status = status; }
+    public void setStatus(String status) { /* Deferred until the Lads application is configured. */ }
     @Override public String getDescription() { return status; }
 }

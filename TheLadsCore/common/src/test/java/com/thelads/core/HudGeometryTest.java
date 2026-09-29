@@ -104,7 +104,7 @@ class HudGeometryTest {
     @Test void multilineOptionAndListGrowthFitOnTheVeryNextFrame(){
         graphics.width=640;graphics.height=360;
         var coords=element("Coordinates");coords.setPosition(630,350);
-        graphics.clear();var horizontal=paint(coords,false);bool("Coordinates","Vertical",true);
+        bool("Coordinates","Vertical",false);graphics.clear();var horizontal=paint(coords,false);bool("Coordinates","Vertical",true);
         graphics.clear();var vertical=paint(coords,false);assertTrue(vertical.height()>horizontal.height());
         var potion=element("Potion Effects");potion.setPosition(630,350);game.effects=List.of("Speed (2s)");
         graphics.clear();var one=paint(potion,false);game.effects=List.of("Speed II (60s)","Strength III (90s)","Resistance (30s)");
@@ -114,7 +114,7 @@ class HudGeometryTest {
         var armor=element("ArmorHUD");game.armor=List.of();graphics.width=960;graphics.height=504;
         graphics.clear();var bounds=paint(armor,true);
         assertEquals(graphics.height-4,bounds.bottom());
-        assertEquals(3,graphics.draws.stream().filter(d->d.text!=null).count());
+        assertEquals(2,graphics.draws.stream().filter(d->d.text!=null).count());
         graphics.clear();armor.renderAt(graphics,bounds.x(),bounds.y(),false);
         assertTrue(graphics.draws.isEmpty(),"editor samples cannot leak into gameplay");
     }

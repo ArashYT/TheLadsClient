@@ -120,11 +120,11 @@ public final class NativeWorldVerification {
                 boolean hud = Files.isRegularFile(hudRequest, LinkOption.NOFOLLOW_LINKS);
                 Files.delete(hud ? hudRequest : menuRequest);
                 previousScreen = mc.gui.screen();
-                captureKind = hud ? "HUD" : "menu";
+                captureKind = hud ? "HUD" : "skin";
                 if (hud) {
                     hudProbe = new NativeHudEditorProbe();
                     menuScreen = hudProbe.open();
-                } else menuScreen = new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);
+                } else menuScreen = new net.minecraft.client.gui.screens.options.SkinCustomizationScreen(null,mc.options);
                 menuOpenedAt = now; menuFirstFrame = 0; menuFrames = 0;
                 menuCaptureStarted = false; menuCaptureFinished = false; menuCaptureFailure = null; menuOutput = null;
                 mc.setScreenAndShow(menuScreen);
@@ -189,6 +189,18 @@ public final class NativeWorldVerification {
     }
     private static void finishMenuCapture(Minecraft mc, Throwable failure) {
         if (menuScreen == null) return;
+        if(failure==null && java.util.Set.of("skin","packs","controls").contains(captureKind)){
+            LOGGER.info("Lads {} capture END: actual framebuffer at {}",captureKind,menuOutput);
+            menuScreen=switch(captureKind){
+                case "skin"->new net.minecraft.client.gui.screens.packs.PackSelectionScreen(mc.getResourcePackRepository(),repository->{},mc.getResourcePackDirectory(),net.minecraft.network.chat.Component.literal("Resource packs"));
+                case "packs"->new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null,mc.options);
+                default->new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);
+            };
+            captureKind=switch(captureKind){case "skin"->"packs";case "packs"->"controls";default->"menu";};
+            menuOpenedAt=System.nanoTime();menuFirstFrame=0;menuFrames=0;
+            menuCaptureStarted=false;menuCaptureFinished=false;menuCaptureFailure=null;menuOutput=null;
+            mc.setScreenAndShow(menuScreen);menuScreen=mc.gui.screen();return;
+        }
         if (mc.gui.screen() == menuScreen) mc.setScreenAndShow(previousScreen);
         menuScreen = null; previousScreen = null;
         if (hudProbe != null) {

@@ -46,6 +46,17 @@ public sealed class ClientModInstallerTests : IDisposable
         await Install(client); Assert.Equal(bytes, File.ReadAllBytes(Destination));
         await Install(client); Assert.Equal(1, handler.Calls);
     }
+    [Fact] public async Task UpstreamLiteralNewlineInDescriptionDoesNotChangeDownloadedJar()
+    {
+        using var buffer = new MemoryStream();
+        using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, true))
+        using (var writer = new StreamWriter(zip.CreateEntry("fabric.mod.json").Open()))
+            writer.Write("{\"schemaVersion\":1,\"id\":\"testmod\",\"version\":\"1\",\"description\":\"first\nsecond\"}");
+        var bytes = buffer.ToArray(); Manifest(bytes);
+        using var client = new HttpClient(new Handler(bytes));
+        await Install(client);
+        Assert.Equal(bytes, File.ReadAllBytes(Destination));
+    }
     [Fact] public async Task BadHashNeverInstallsAnything()
     {
         var bytes = Jar("testmod"); Manifest(bytes, hash:new string('0',128)); using var client = new HttpClient(new Handler(bytes));

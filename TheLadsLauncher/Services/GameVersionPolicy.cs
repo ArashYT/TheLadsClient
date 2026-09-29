@@ -10,7 +10,7 @@ public static class GameVersionPolicy
     private static readonly Regex LoaderVersion = new(@"\A[0-9]+(?:\.[0-9]+)+(?:[-+][A-Za-z0-9.-]+)?\z");
 
     public static bool RequiresBundledCore(string minecraftVersion) =>
-        minecraftVersion is "1.21.11" or "26.2";
+        minecraftVersion is "1.21.1" or "1.21.11" or "26.2" or "26.3";
 
     public static string ResolveVersionId(LauncherProfile profile)
     {
@@ -44,7 +44,7 @@ public static class GameVersionPolicy
             throw new ArgumentOutOfRangeException(nameof(manifestJavaMajor));
         var minimum = minecraftVersion switch
         {
-            "26.2" => 25,
+            "26.2" or "26.3" => 25,
             "1.21.11" or "1.21.1" => 21,
             _ => 0
         };
