@@ -1,0 +1,43 @@
+{
+    "config.thelads_dynamicfps.title": "Changing Wishes for Changing FPS",
+
+    "config.thelads_dynamicfps.category.general": "Humblest Wishes",
+    "config.thelads_dynamicfps.category.hovered": "A Call'd Upon Mood",
+    "config.thelads_dynamicfps.category.unfocused": "Busied Mood",
+    "config.thelads_dynamicfps.category.abandoned": "Absent of Mind",
+    "config.thelads_dynamicfps.category.invisible": "A Mood Yet Unseen",
+
+    "config.thelads_dynamicfps.enabled": "Beest Active",
+
+    "config.thelads_dynamicfps.disabled": "Unactive",
+    "config.thelads_dynamicfps.minutes": "%d Minute(s)",
+
+    "config.thelads_dynamicfps.idle_time": "Absent time",
+    "config.thelads_dynamicfps.idle_time_tooltip": "There is a special mood, / If you be away; / Thou present in all but mind.",
+
+    "config.thelads_dynamicfps.uncap_menu_frame_rate": "No Limit to Menu FPS",
+    "config.thelads_dynamicfps.uncap_menu_frame_rate_tooltip": "I prithee, give no limits to my FPS. I am a menu, and privileged to render.",
+
+    "config.thelads_dynamicfps.frame_rate_target": "Frame Rate's Aim",
+    "config.thelads_dynamicfps.volume_multiplier": "Volume Multiplying Factors",
+
+    "config.thelads_dynamicfps.graphics_state": "Thy Wishes of Visages",
+    "config.thelads_dynamicfps.graphics_state_default": "Exquisite",
+    "config.thelads_dynamicfps.graphics_state_reduced": "Dull",
+    "config.thelads_dynamicfps.graphics_state_minimal": "Quite degraded",
+    "config.thelads_dynamicfps.graphics_state_minimal_tooltip": "Then I degraded from normal graphics, / And come now to reload the lands!",
+
+    "config.thelads_dynamicfps.show_toasts": "See Letters",
+    "config.thelads_dynamicfps.show_toasts_tooltip": "Shall thy messenger send toasty letters or await your return?",
+
+    "config.thelads_dynamicfps.run_garbage_collector": "Give Call to Garbage Collector",
+    "config.thelads_dynamicfps.run_garbage_collector_tooltip": "Degrade unused words into nothing when gaining a mood thus.",
+
+    "key.thelads_dynamicfps.toggle_forced": "Order Busied Mood (Change)",
+    "key.thelads_dynamicfps.toggle_disabled": "Stop Changing FPS (Change)",
+    "gui.thelads_dynamicfps.hud.reducing": "Changing FPS: Diminishing thy FPS",
+    "gui.thelads_dynamicfps.hud.disabled": "Changing FPS Unactive",
+
+    "modmenu.nameTranslation.thelads_dynamicfps": "Changing FPS",
+    "modmenu.descriptionTranslation.thelads_dynamicfps": "The seasons alter: Machination-usage and FPS / Fall in the fresh mind of the calmed user;"
+}

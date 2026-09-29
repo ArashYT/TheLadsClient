@@ -1,0 +1,7 @@
+# Native narrator control — Minecraft 26.2
+
+DisableNarrator now defers construction of the operating system speech engine while the module is enabled. It also suppresses speech, Ctrl+B switching and narrator toasts. Existing Minecraft narration preferences remain intact. Turning the module off restores access to Minecraft's normal engine; it is initialized on first use and reused thereafter. Turning suppression back on clears queued speech once. Shutdown releases an initialized engine without constructing an unused one.
+
+This is original Lads code implementing the supplied DisableNarrator reference's library-loading optimization through the shared 26.2 `GameNarrator` factory. It does not copy platform-specific reference mixins or permanently substitute an empty narrator. An intentionally disabled narrator also bypasses the library-required warning.
+
+The isolated title probe uses a fake speech transport to check lazy construction, silence, repeated enable/disable, queue clearing and idempotent shutdown without speaking. It additionally verifies that the actual transformed `GameNarrator` contains the lazy wrapper and, while suppression is enabled, has never initialized its platform delegate. The final 26.2 world checkpoint recorded `Lads narrator probe END: 13 checks passed, 0 failed`; the exact JAR and log are retained in `artifacts/verification/native-final-checkpoint`. Mocked lifecycle behavior is not evidence of audible narration on every operating system.

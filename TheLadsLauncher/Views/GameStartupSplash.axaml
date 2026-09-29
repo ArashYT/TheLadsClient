@@ -1,45 +1,61 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d"
-        x:Class="TheLadsLauncher.Views.GameStartupSplash"
-        Title="The Lads Client"
-        Width="460" Height="280"
-        CanResize="False"
-        WindowDecorations="None"
-        Topmost="True"
-        ShowInTaskbar="True"
-        WindowStartupLocation="CenterScreen"
-        Background="#0A0A0F">
-    <Border BorderBrush="#22FFFFFF" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14">
-            <Image Source="avares://TheLadsLauncher/Assets/logo.png" Width="200" Height="100"
-                   HorizontalAlignment="Center"/>
-            <TextBlock Text="THE LADS CLIENT" HorizontalAlignment="Center" Foreground="White"
-                       FontSize="16" FontWeight="Bold" LetterSpacing="3"/>
-
-            <!-- Indeterminate sweep bar -->
-            <Border Width="300" Height="5" CornerRadius="3" Background="#161622"
-                    HorizontalAlignment="Center" ClipToBounds="True" Margin="0,4,0,0">
-                <Border x:Name="SweepFill" Width="90" Height="5" CornerRadius="3" HorizontalAlignment="Left">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                            <GradientStop Color="#8B0000" Offset="0"/>
-                            <GradientStop Color="#FF5555" Offset="0.5"/>
-                            <GradientStop Color="#8B0000" Offset="1"/>
-                        </LinearGradientBrush>
-                    </Border.Background>
-                    <Border.RenderTransform>
-                        <TranslateTransform X="-90"/>
-                    </Border.RenderTransform>
-                </Border>
-            </Border>
-
-            <TextBlock x:Name="SplashStatusText" Text="Starting Java..." HorizontalAlignment="Center"
-                       Foreground="#FF5555" FontSize="13" FontWeight="SemiBold"/>
-            <TextBlock Text="The game window will appear in a moment" HorizontalAlignment="Center"
-                       Foreground="#66FFFFFF" FontSize="11"/>
-        </StackPanel>
+<Window xmlns="https://github.com/avaloniaui" xmlns:local="using:TheLadsLauncher.Controls" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.GameStartupSplash" Title="The Lads Client — Starting Minecraft" Width="600" Height="364" CanResize="False" WindowDecorations="None" Topmost="True" ShowInTaskbar="True" WindowStartupLocation="CenterScreen" Background="#17181B">
+    <Border BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="5" ClipToBounds="True">
+        <Grid Background="#17181B">
+            <Grid x:Name="SplashContent" Margin="32,26,32,24" RowDefinitions="Auto,*,Auto,Auto" Opacity="0">
+                <Grid.RenderTransform>
+                    <TranslateTransform Y="8" />
+                </Grid.RenderTransform>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Border Width="4" Height="19" Background="{DynamicResource LadsAccent}" CornerRadius="2" />
+                        <TextBlock Text="THE LADS CLIENT" Foreground="#F4F6FB" FontSize="12" FontWeight="Bold" LetterSpacing="2.2" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Border Grid.Column="1" BorderBrush="#303543" BorderThickness="1" CornerRadius="6" Padding="9,5">
+                        <TextBlock x:Name="GameVersionText" Text="MINECRAFT" Foreground="#A0A7B9" FontSize="9" FontWeight="SemiBold" LetterSpacing="1" />
+                    </Border>
+                </Grid>
+                <Grid Grid.Row="1" ColumnDefinitions="*,204" Margin="0,20,0,22">
+                    <StackPanel VerticalAlignment="Center" Spacing="10">
+                        <TextBlock Text="Starting&#10;Minecraft." Foreground="#F4F6FB" FontSize="34" FontWeight="SemiBold" LineHeight="39" />
+                        <TextBlock Text="Getting your game ready." Foreground="#858DA1" FontSize="11" />
+                    </StackPanel>
+                    <Border Grid.Column="1" x:Name="ArtworkCard" Height="136" CornerRadius="4" BorderBrush="#303137" BorderThickness="1" ClipToBounds="True" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" Background="#1D1E22">
+                        <Border.RenderTransform>
+                            <TranslateTransform Y="0" />
+                        </Border.RenderTransform>
+                        <local:BlockLandscape IsHitTestVisible="False" />
+                    </Border>
+                </Grid>
+                <StackPanel Grid.Row="2" Spacing="12">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border x:Name="ActivityDot" Width="6" Height="6" CornerRadius="3" Background="{DynamicResource LadsAccent}" VerticalAlignment="Center" Margin="0,0,9,0" />
+                        <TextBlock Grid.Column="1" x:Name="SplashStatusText" Text="Starting Minecraft" Foreground="#D6DCE8" FontSize="12" FontWeight="Medium" />
+                        <TextBlock Grid.Column="2" x:Name="ElapsedText" Text="0:00" Foreground="#737D92" FontSize="11" VerticalAlignment="Center" />
+                    </Grid>
+                    <Border x:Name="ProgressTrack" Height="4" CornerRadius="2" Background="#252A37" ClipToBounds="True">
+                        <Border x:Name="SweepFill" Width="164" Height="4" CornerRadius="2" HorizontalAlignment="Left">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                    <GradientStop Color="#00FF6577" Offset="0" />
+                                    <GradientStop Color="#FF6577" Offset="0.48" />
+                                    <GradientStop Color="#FFC0C8" Offset="0.82" />
+                                    <GradientStop Color="#00FF6577" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.RenderTransform>
+                                <TranslateTransform X="-164" />
+                            </Border.RenderTransform>
+                        </Border>
+                    </Border>
+                </StackPanel>
+                <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,18,0,0">
+                    <Border BorderBrush="#353B4B" BorderThickness="1" Background="#171C27" CornerRadius="4" Padding="6,3" VerticalAlignment="Center">
+                        <TextBlock Text="RSHIFT" FontSize="9" FontWeight="SemiBold" Foreground="#B6BED0" LetterSpacing="0.5" />
+                    </Border>
+                    <TextBlock Grid.Column="1" Text="Your mods, one menu" Foreground="#8E98AD" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <TextBlock Grid.Column="2" Text="The game opens automatically" Foreground="#657086" FontSize="10" VerticalAlignment="Center" />
+                </Grid>
+            </Grid>
+        </Grid>
     </Border>
 </Window>

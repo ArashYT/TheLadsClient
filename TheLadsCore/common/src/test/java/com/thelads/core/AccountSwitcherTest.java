@@ -26,6 +26,7 @@ public class AccountSwitcherTest {
         assertTrue(selected.isSelected());
 
         assertTrue(ClientPaths.getAccountsFile().exists(), "Accounts file should be saved");
-        assertTrue(ClientPaths.getProfileFile().exists(), "Profile file should be saved");
+        assertTrue(tempDir.resolve("lads_next_account.json").toFile().exists(), "Next-launch request should be saved");
+        assertFalse(ClientPaths.getProfileFile().exists(), "Selecting an account must not impersonate a changed live Minecraft session");
     }
 }

@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
@@ -24,17 +24,20 @@ public class LaunchService : ILaunchService
     private readonly IProfileService _profileService;
     private readonly IJavaService _javaService;
     private readonly IAuthService _authService;
+    private readonly string _bundleRoot;
 
     public LaunchService(
         IPathService pathService,
         IProfileService profileService,
         IJavaService javaService,
-        IAuthService authService)
+        IAuthService authService,
+        string? bundleRoot = null)
     {
         _pathService = pathService;
         _profileService = profileService;
         _javaService = javaService;
         _authService = authService;
+        _bundleRoot = bundleRoot ?? AppContext.BaseDirectory;
     }
 
     public async Task<Process?> LaunchAsync(
@@ -45,33 +48,25 @@ public class LaunchService : ILaunchService
         Action<string>? statusCallback = null,
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        var versionId = GameVersionPolicy.ResolveVersionId(profile);
+        var usesFabric = !string.IsNullOrWhiteSpace(profile.FabricVersion);
+        if (GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion) && !usesFabric)
+            throw new InvalidOperationException($"The Lads Core for Minecraft {profile.MinecraftVersion} requires Fabric. Select a Fabric loader in this profile.");
+
         statusCallback?.Invoke("Preparing profile environment...");
         await _profileService.PrepareProfileEnvironmentAsync(profile);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var gameDir = _pathService.GetProfileDirectory(profile);
         Directory.CreateDirectory(gameDir);
 
-        statusCallback?.Invoke("Verifying Java runtime...");
-        string javaPath;
-        if (!string.IsNullOrWhiteSpace(profile.CustomJavaPath) && File.Exists(profile.CustomJavaPath))
+        if (usesFabric)
         {
-            javaPath = profile.CustomJavaPath;
+            statusCallback?.Invoke($"Installing bundled core for Minecraft {profile.MinecraftVersion}...");
+            await BundledModInstaller.InstallAsync(_bundleRoot, gameDir, profile.MinecraftVersion, cancellationToken);
+            await ClientModInstaller.InstallAsync(_bundleRoot, gameDir, profile.MinecraftVersion, statusCallback, cancellationToken);
         }
-        else if (!string.IsNullOrWhiteSpace(settings.JavaPath) && File.Exists(settings.JavaPath) && !settings.AutoDetectJava)
-        {
-            javaPath = settings.JavaPath;
-        }
-        else
-        {
-            javaPath = await _javaService.EnsureJavaAsync(
-                profile.JavaMajorVersion,
-                progress,
-                statusCallback,
-                cancellationToken);
-        }
-
-        statusCallback?.Invoke("Authenticating player session...");
-        var session = await _authService.ResolveSessionAsync(username);
 
         statusCallback?.Invoke("Initializing Minecraft launcher...");
         var path = new MinecraftPath(gameDir);
@@ -88,33 +83,78 @@ public class LaunchService : ILaunchService
         };
 
         statusCallback?.Invoke("Resolving game version...");
-        string versionId = ResolveVersionId(gameDir, profile, settings);
 
-        // Ensure Fabric JSON exists if requested
+        // Install only the selected loader/version; never substitute an installed candidate.
         var vdir = Path.Combine(gameDir, "versions", versionId);
         var vjson = Path.Combine(vdir, versionId + ".json");
-        if (!File.Exists(vjson))
+        if (usesFabric)
         {
-            var match = System.Text.RegularExpressions.Regex.Match(versionId, @"fabric-loader-(?<loader>[\d\.]+)-(?<mc>[\w\.\-]+)");
-            if (match.Success)
+            if (!File.Exists(vjson))
             {
-                string loaderVer = match.Groups["loader"].Value;
-                string mcVer = match.Groups["mc"].Value;
+                var loaderVer = versionId.Substring("fabric-loader-".Length,
+                    versionId.Length - "fabric-loader-".Length - profile.MinecraftVersion.Length - 1);
+                using var fabricHttp = new HttpClient(new LaunchCancellationHandler(cancellationToken));
                 try
                 {
-                    statusCallback?.Invoke($"Installing Fabric {loaderVer} for MC {mcVer}...");
-                    var fabricInstaller = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(new HttpClient());
-                    await fabricInstaller.Install(mcVer, loaderVer, path);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    statusCallback?.Invoke($"Installing Fabric {loaderVer} for MC {profile.MinecraftVersion}...");
+                    var fabricInstaller = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(fabricHttp);
+                    var installedId = await fabricInstaller.Install(profile.MinecraftVersion, loaderVer, path);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (installedId != versionId)
+                        throw new InvalidOperationException($"Fabric installer returned '{installedId}' instead of '{versionId}'.");
                 }
-                catch { }
+                catch (Exception) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"Could not install Fabric {loaderVer} for Minecraft {profile.MinecraftVersion}. Retry after checking connectivity and the selected loader version.", ex);
+                }
             }
+            using var fabricJson = JsonDocument.Parse(await File.ReadAllTextAsync(vjson, cancellationToken));
+            var root = fabricJson.RootElement;
+            if (!root.TryGetProperty("id", out var id) || id.GetString() != versionId
+                || !root.TryGetProperty("inheritsFrom", out var parent) || parent.GetString() != profile.MinecraftVersion)
+                throw new InvalidDataException($"Fabric manifest '{vjson}' does not match the selected version '{versionId}'. Repair this version before launching.");
         }
+
+        var selectedVersion = await launcher.GetVersionAsync(versionId, cancellationToken);
+        if (selectedVersion.Id != versionId)
+            throw new InvalidDataException($"Resolved version '{selectedVersion.Id}' does not match selected version '{versionId}'.");
+        var baseVersion = usesFabric
+            ? await launcher.GetVersionAsync(profile.MinecraftVersion, cancellationToken)
+            : selectedVersion;
+        int? manifestJava = int.TryParse(baseVersion.JavaVersion?.MajorVersion, out var major) ? major : null;
+        var requiredJava = Math.Max(profile.JavaMajorVersion,
+            GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion, manifestJava));
+
+        statusCallback?.Invoke($"Verifying Java {requiredJava} runtime...");
+        string javaPath;
+        if (!string.IsNullOrWhiteSpace(profile.CustomJavaPath))
+            javaPath = profile.CustomJavaPath;
+        else if (!string.IsNullOrWhiteSpace(settings.JavaPath) && !settings.AutoDetectJava)
+            javaPath = settings.JavaPath;
+        else
+            javaPath = await _javaService.EnsureJavaAsync(requiredJava, progress, statusCallback, cancellationToken);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!File.Exists(javaPath))
+            throw new FileNotFoundException($"Selected Java runtime '{javaPath}' does not exist. Minecraft {profile.MinecraftVersion} requires Java {requiredJava} or newer.", javaPath);
+        var actualJava = _javaService.GetJavaMajorVersion(javaPath);
+        if (actualJava == null || actualJava < requiredJava)
+            throw new InvalidOperationException($"Selected Java runtime '{javaPath}' reports {actualJava?.ToString() ?? "an unknown version"}. Minecraft {profile.MinecraftVersion} requires Java {requiredJava} or newer.");
+
+        statusCallback?.Invoke("Authenticating player session...");
+        var session = await _authService.ResolveSessionAsync(username).WaitAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
 
         statusCallback?.Invoke($"Building launch arguments for {versionId}...");
         var launchOption = new MLaunchOption
         {
             Path = path,
-            StartVersion = await launcher.GetVersionAsync(versionId),
+            StartVersion = selectedVersion,
             Session = session,
             JavaPath = javaPath,
             MaximumRamMb = settings.MaxRamMb > 0 ? settings.MaxRamMb : 4096,
@@ -131,11 +171,11 @@ public class LaunchService : ILaunchService
         Process process;
         if (settings.QuickLaunch)
         {
-            process = await launcher.BuildProcessAsync(versionId, launchOption);
+            process = await launcher.BuildProcessAsync(versionId, launchOption, cancellationToken);
         }
         else
         {
-            process = await launcher.InstallAndBuildProcessAsync(versionId, launchOption);
+            process = await launcher.InstallAndBuildProcessAsync(versionId, launchOption, cancellationToken);
         }
 
         process.EnableRaisingEvents = true;
@@ -148,41 +188,34 @@ public class LaunchService : ILaunchService
             catch { }
         };
 
-        process.Start();
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            process.Start();
+        }
+        catch
+        {
+            process.Dispose();
+            throw;
+        }
         statusCallback?.Invoke($"Minecraft started with PID {process.Id}");
 
         return process;
     }
 
-    private static string ResolveVersionId(string gameDir, LauncherProfile profile, LauncherSettings settings)
+    private sealed class LaunchCancellationHandler : DelegatingHandler
     {
-        // 1. If profile has specific fabric version
-        if (!string.IsNullOrEmpty(profile.FabricVersion))
+        private readonly CancellationToken _launchCancellation;
+
+        public LaunchCancellationHandler(CancellationToken cancellationToken) : base(new HttpClientHandler()) =>
+            _launchCancellation = cancellationToken;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            string wantedFabric = profile.FabricVersion.StartsWith("fabric-loader-")
-                ? profile.FabricVersion
-                : $"fabric-loader-{profile.FabricVersion}-{profile.MinecraftVersion}";
-
-            var vdir = Path.Combine(gameDir, "versions");
-            if (File.Exists(Path.Combine(vdir, wantedFabric, wantedFabric + ".json")))
-                return wantedFabric;
-
-            if (Directory.Exists(vdir))
-            {
-                var candidates = Directory.GetDirectories(vdir)
-                    .Select(d => Path.GetFileName(d) ?? "")
-                    .Where(n => !string.IsNullOrEmpty(n) && File.Exists(Path.Combine(vdir, n, n + ".json")))
-                    .ToList();
-
-                var best = candidates.FirstOrDefault(n => n.Contains(profile.MinecraftVersion, StringComparison.OrdinalIgnoreCase) && n.StartsWith("fabric-loader-", StringComparison.OrdinalIgnoreCase))
-                           ?? candidates.FirstOrDefault(n => n.StartsWith("fabric-loader-", StringComparison.OrdinalIgnoreCase));
-                if (best != null) return best;
-            }
-
-            return wantedFabric;
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(_launchCancellation, cancellationToken);
+            linked.Token.ThrowIfCancellationRequested();
+            return await base.SendAsync(request, linked.Token);
         }
-
-        // 2. Otherwise use Minecraft version
-        return profile.MinecraftVersion;
     }
+
 }

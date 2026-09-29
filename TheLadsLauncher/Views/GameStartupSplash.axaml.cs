@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -6,50 +7,94 @@ using Avalonia.Threading;
 namespace TheLadsLauncher.Views;
 
 /// <summary>
-/// Borderless black splash shown the instant the game process starts, so
-/// there is never a 5-10 second stretch of "nothing happening" before the
-/// Minecraft window appears. Closed by MainWindow once the game window exists.
+/// Remains visible from process launch until the launcher detects the game window.
+/// Motion follows Avalonia's display animation clock, without a 30 FPS UI timer.
 /// </summary>
 public partial class GameStartupSplash : Window
 {
-    private readonly DispatcherTimer _timer;
-    private readonly DateTime _opened = DateTime.UtcNow;
-
-    private static readonly (double Seconds, string Text)[] Stages =
-    {
-        (0,  "Starting Java..."),
-        (3,  "Loading mods..."),
-        (9,  "Building the game..."),
-        (16, "Almost there..."),
-        (30, "Still loading (big modpack)..."),
-    };
+    private readonly Stopwatch _elapsed = new();
+    private readonly Action<TimeSpan> _animateFrame;
+    private bool _animating;
+    private int _lastSecond = -1;
+    private SplashFrameCadence? _previewCadence;
 
     public GameStartupSplash()
     {
         InitializeComponent();
-
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
-        _timer.Tick += (_, _) => Animate();
-        _timer.Start();
-        Closed += (_, _) => _timer.Stop();
+        _animateFrame = Animate;
+        Opened += (_, _) =>
+        {
+            _animating = true;
+            _elapsed.Restart();
+            RequestAnimationFrame(_animateFrame);
+        };
+        Closed += (_, _) =>
+        {
+            _animating = false;
+            _elapsed.Stop();
+            _previewCadence?.WriteReport();
+        };
+        PointerPressed += (_, e) =>
+        {
+            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                BeginMoveDrag(e);
+        };
     }
 
-    private void Animate()
+    // Enabled only by the explicit preview command; production animation has no sampling allocations.
+    public void CapturePreviewFrameCadence(string outputPath)
+        => _previewCadence = new SplashFrameCadence(outputPath);
+
+    public void SetGameVersion(string gameVersion)
     {
-        double elapsed = (DateTime.UtcNow - _opened).TotalSeconds;
-
-        // Sweeping indeterminate bar: -90 .. 300 px, 1.4s cycle.
-        // (x:Name on a Transform doesn't generate a field — go through the Border.)
-        double t = elapsed % 1.4 / 1.4;
-        if (SweepFill.RenderTransform is TranslateTransform sweep)
-            sweep.X = -90 + t * 390;
-
-        // Status text by elapsed time.
-        string text = Stages[0].Text;
-        foreach (var stage in Stages)
+        if (!Dispatcher.UIThread.CheckAccess())
         {
-            if (elapsed >= stage.Seconds) text = stage.Text;
+            Dispatcher.UIThread.Post(() => SetGameVersion(gameVersion));
+            return;
         }
-        if (SplashStatusText.Text != text) SplashStatusText.Text = text;
+        GameVersionText.Text = $"MINECRAFT {gameVersion}";
+    }
+
+    /// <summary>Allows launch progress events to report an observed stage.</summary>
+    public void SetStatus(string status)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => SetStatus(status));
+            return;
+        }
+        SplashStatusText.Text = status;
+    }
+
+    private void Animate(TimeSpan frameTime)
+    {
+        if (!_animating) return;
+        double seconds = _elapsed.Elapsed.TotalSeconds;
+        _previewCadence?.Sample(seconds);
+
+        // Animate only render transforms and opacity; no per-frame layout/Width changes.
+        double entrance = 1 - Math.Pow(1 - Math.Min(1, seconds / 0.42), 3);
+        SplashContent.Opacity = entrance;
+        if (SplashContent.RenderTransform is TranslateTransform content)
+            content.Y = 8 * (1 - entrance);
+
+        if (SweepFill.RenderTransform is TranslateTransform sweep)
+        {
+            double phase = (seconds % 1.8) / 1.8;
+            double eased = phase * phase * (3 - 2 * phase);
+            sweep.X = -SweepFill.Width + eased * (ProgressTrack.Bounds.Width + SweepFill.Width);
+        }
+
+        if (ArtworkCard.RenderTransform is TranslateTransform artwork)
+            artwork.Y = Math.Sin(seconds * Math.PI / 2.4) * 2;
+        ActivityDot.Opacity = 0.6 + 0.4 * (0.5 + 0.5 * Math.Sin(seconds * Math.PI));
+
+        int second = (int)seconds;
+        if (second != _lastSecond)
+        {
+            _lastSecond = second;
+            ElapsedText.Text = $"{second / 60}:{second % 60:00}";
+        }
+        RequestAnimationFrame(_animateFrame);
     }
 }

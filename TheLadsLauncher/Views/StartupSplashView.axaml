@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="1152" d:DesignHeight="648"
              x:Class="TheLadsLauncher.Views.StartupSplashView"
-             Background="#0A0A0F">
+             Background="#17181B">
     <Grid>
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
             <Image x:Name="StartupLogoImage" Source="avares://TheLadsLauncher/Assets/logo.png" Width="280" Height="140"
@@ -13,7 +13,7 @@
                     <ScaleTransform ScaleX="1" ScaleY="1"/>
                 </Image.RenderTransform>
             </Image>
-            <TextBlock Text="THE LADS CLIENT" HorizontalAlignment="Center" Foreground="White" FontSize="20" FontWeight="Bold" LetterSpacing="3"/>
+            <TextBlock Text="THE LADS CLIENT" HorizontalAlignment="Center" Foreground="White" FontSize="20" FontWeight="Bold" LetterSpacing="1.5"/>
 
             <!-- Smooth gradient progress bar -->
             <Border Width="320" Height="6" CornerRadius="3" Background="#161622"
@@ -22,17 +22,17 @@
                         HorizontalAlignment="Left">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                            <GradientStop Color="#8B0000" Offset="0"/>
-                            <GradientStop Color="#FF5555" Offset="0.5"/>
-                            <GradientStop Color="#8B0000" Offset="1"/>
+                            <GradientStop Color="#C44343" Offset="0"/>
+                            <GradientStop Color="#E27676" Offset="0.5"/>
+                            <GradientStop Color="#C44343" Offset="1"/>
                         </LinearGradientBrush>
                     </Border.Background>
                 </Border>
             </Border>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6" Margin="0,2,0,0">
-                <TextBlock x:Name="StartupLoadingSpinner" Text="Loading resources" Foreground="#8B0000" FontSize="14" FontWeight="SemiBold"/>
-                <TextBlock x:Name="LoadingDots" Text="..." Foreground="#8B0000" FontSize="14" FontWeight="SemiBold"/>
+                <TextBlock x:Name="StartupLoadingSpinner" Text="Loading resources" Foreground="#C44343" FontSize="14" FontWeight="SemiBold"/>
+                <TextBlock x:Name="LoadingDots" Text="..." Foreground="#C44343" FontSize="14" FontWeight="SemiBold"/>
             </StackPanel>
         </StackPanel>
     </Grid>

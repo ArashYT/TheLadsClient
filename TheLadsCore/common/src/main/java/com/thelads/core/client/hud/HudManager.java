@@ -1,7 +1,10 @@
 package com.thelads.core.client.hud;
 
 import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.config.HudSettings;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 
 public class HudManager {
@@ -52,27 +55,38 @@ public class HudManager {
         int screenW = g.getScaledWidth();
         int screenH = g.getScaledHeight();
 
+        var neededNames = new HashSet<String>();
+        for (var element : elements) {
+            // Loaded/profile-switched positions must also reach currently disabled HUDs.
+            element.restoreSavedPosition();
+            if (!element.isEnabled() || !element.isAvailable()) continue;
+            neededNames.add(element.getModuleName());
+            var group = HudSettings.getInstance().getGroupMembers(element.getModuleName());
+            if (group != null) neededNames.addAll(group);
+        }
+        var measured = new LinkedHashMap<HudElement, HudGroupLayout.Rect>();
         for (HudElement element : elements) {
+            if (!element.isAvailable() || !neededNames.contains(element.getModuleName())) continue;
+            // Hidden members keep the same group geometry in gameplay and the editor. Preview
+            // measurement reserves optional empty content; renderAt(false) never draws samples.
+            boolean grouped = HudSettings.getInstance().getGroupMembers(element.getModuleName()) != null;
+            measured.put(element, element.measureBounds(g, grouped));
+        }
+        var placed = new LinkedHashMap<HudElement, HudGroupLayout.Rect>();
+        for (var entry : measured.entrySet()) {
+            if (placed.containsKey(entry.getKey())) continue;
+            var names = HudSettings.getInstance().getGroupMembers(entry.getKey().getModuleName());
+            var members = names == null ? List.of(entry.getKey()) : measured.keySet().stream()
+                .filter(element -> names.contains(element.getModuleName())).toList();
+            var group = HudGroupLayout.union(members.stream().map(measured::get).toList());
+            var delta = HudGroupLayout.clampDelta(group, 0, 0, screenW, screenH);
+            for (var member : members) placed.put(member, HudGroupLayout.translate(measured.get(member), delta));
+        }
+        // Keep original draw order even when nonadjacent elements belong to one rigid group.
+        for (var element : measured.keySet()) {
             if (!element.isEnabled()) continue;
-
-            int ex = Math.max(0, Math.min(element.getX(), Math.max(0, screenW - element.getRenderWidth())));
-            int ey = Math.max(0, Math.min(element.getY(), Math.max(0, screenH - element.getRenderHeight())));
-
-            float s = element.getScale();
-            if (s != 1.0f || ex != element.getX() || ey != element.getY()) {
-                g.pushPose();
-                g.translate((float) ex, (float) ey);
-                if (s != 1.0f) {
-                    g.scale(s, s);
-                    g.translate((float) -element.getX(), (float) -element.getY());
-                } else {
-                    g.translate((float) -element.getX(), (float) -element.getY());
-                }
-                element.render(g);
-                g.popPose();
-            } else {
-                element.render(g);
-            }
+            var bounds = placed.get(element);
+            element.renderAt(g, bounds.x(), bounds.y(), false);
         }
     }
 

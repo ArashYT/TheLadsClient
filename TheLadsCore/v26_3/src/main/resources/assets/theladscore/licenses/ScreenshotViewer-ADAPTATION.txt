@@ -1,0 +1,16 @@
+Lads native Screenshot Viewer adaptation
+
+Original: Screenshot Viewer 1.3.6-fabric-mc26.2, Copyright (c) 2026 LGatodu47, MIT.
+Project: https://github.com/LGatodu47/ScreenshotViewer
+Pinned binary SHA256: 759BEDDF3BF3AFAD22997F247A21F639B057D17338A1414C67F313DD35CE9958
+Public 26.1 source comparison: 75de5e2b1921ca61ec9cb1e063f668d6f31f9c5a.
+26.2 source recovered from the licensed pinned binary using Vineflower1.11.1.
+Modified files are relocated into com.thelads.core.v26_2.feature.screenshots.
+Changes include Lads registry/actions, F10, external ownership gating, native config
+path/read-only import, lazy bounded decoding, cache file ownership, texture cleanup,
+correct JPEG renaming, elapsed-time animation, viewer zoom/pan, and QA probes.
+
+Unmodified retained libraries: CatConfig-MC26.2-0.2.1 (MIT), CatConfig0.3.0 (MIT),
+Java Objective-C Bridge1.0.0 (Apache-2.0, Web Lite Solutions / Steve Hannah).
+The separate comp500 ScreenshotToClipboard MIT notice is also supplied.
+Complete adapted gallery source accompanies this binary under META-INF/lads-sources/screenshots.

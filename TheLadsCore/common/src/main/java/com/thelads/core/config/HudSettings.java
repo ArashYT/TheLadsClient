@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 
 /**
  * Global, client-side HUD preferences shared by every HUD element:
@@ -61,6 +63,7 @@ public class HudSettings {
     public boolean isLocked(String name) { return locked.contains(name); }
 
     public void setLocked(String name, boolean lock) {
+        if (!validName(name)) return;
         if (lock) locked.add(name); else locked.remove(name);
     }
 
@@ -76,12 +79,15 @@ public class HudSettings {
         return -1;
     }
 
-    /** Create a new group from a set of names. Returns the new group index. */
+    /** Merge complete existing groups. Grouping never silently disconnects an unselected member. */
     public int addGroup(Set<String> names) {
-        // Remove these names from any existing group first
-        for (Set<String> g : groups) g.removeAll(names);
-        groups.removeIf(Set::isEmpty);
-        groups.add(new HashSet<>(names));
+        Set<String> merged = new LinkedHashSet<>();
+        if(names!=null)names.stream().filter(HudSettings::validName).forEach(merged::add);
+        boolean changed;
+        do { changed=false; for(Set<String> group:groups)if(group.stream().anyMatch(merged::contains))changed|=merged.addAll(group); } while(changed);
+        if(merged.size()<2)return -1;
+        groups.removeIf(group->group.stream().anyMatch(merged::contains));
+        groups.add(merged);
         return groups.size() - 1;
     }
 
@@ -93,12 +99,24 @@ public class HudSettings {
     /** Get all names in the same group as `name`, including `name` itself. */
     public Set<String> getGroupMembers(String name) {
         for (Set<String> g : groups) {
-            if (g.contains(name)) return g;
+            if (g.contains(name)) return Set.copyOf(g);
         }
         return null;
     }
 
     public List<Set<String>> getGroups() { return groups; }
+
+    public void replaceGroups(Collection<? extends Collection<String>> values) {
+        groups.clear();
+        if(values!=null)for(Collection<String> value:values)if(value!=null)addGroup(new LinkedHashSet<>(value));
+    }
+    public void replaceLocked(Collection<String> values) {
+        locked.clear();if(values!=null)values.stream().filter(HudSettings::validName).forEach(locked::add);
+    }
+    public void ungroup(Collection<String> names) {
+        if(names!=null)groups.removeIf(group->group.stream().anyMatch(names::contains));
+    }
+    private static boolean validName(String name){return name!=null&&!name.isBlank()&&name.length()<=128;}
 
     /** Returns the playlist as an opaque-ARGB array, or null if too short to use. */
     public int[] getFadePalette() {

@@ -5,17 +5,27 @@
   "name": "The Lads Core",
   "description": "The Lads Core multi-version client mod (26.2)",
   "authors": ["The Lads"],
-  "license": "CC0-1.0",
+  "license": ["CC0-1.0", "MPL-2.0", "MIT", "Unlicense", "LGPL-3.0-or-later", "LGPL-3.0-only", "Apache-2.0"],
   "icon": "assets/modid/icon.png",
   "environment": "*",
+  "accessWidener": "theladscore.accesswidener",
   "entrypoints": {
     "client": [
       "com.thelads.core.v26_2.TheLadsCoreClient26"
     ]
   },
   "mixins": [
-    "theladscore.v26_2.mixins.json"
+    "theladscore.v26_2.mixins.json",
+    "theladscore.food.mixins.json",
+    "theladscore.paperdoll.mixins.json",
+    "theladscore.raised.mixins.json",
+    "theladscore.dynamicfps.mixins.json",
+    "theladscore.reconnect.mixins.json",
+    "theladscore.tabtweaks.mixins.json",
+    "theladscore.screenshots.mixins.json",
+    "theladscore.clumps.mixins.json"
   ],
+  "jars": [{"file": "META-INF/jars/catconfig-mc-26.2-0.2.1.jar"}],
   "depends": {
     "fabricloader": ">=0.19.0",
     "minecraft": "26.2",

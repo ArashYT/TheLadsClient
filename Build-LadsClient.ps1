@@ -1,65 +1,41 @@
-$ErrorActionPreference = "Stop"
+[CmdletBinding()]
+param(
+    [switch]$Launcher,
+    [switch]$Install,
+    [string]$OutputDirectory = (Join-Path $PSScriptRoot 'artifacts/client')
+)
+$ErrorActionPreference = 'Stop'
+$coreDirectory = Join-Path $PSScriptRoot 'TheLadsCore'
+$launcherProject = Join-Path $PSScriptRoot 'TheLadsLauncher/TheLadsLauncher.csproj'
+$publishDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 
-$workspace = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client"
-$coreDir   = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsCore"
-$launcherDir = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher"
-$packwizMods = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Packwiz\mods"
-$IndexToml = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Packwiz\index.toml"
+Push-Location -LiteralPath $coreDirectory
+try {
+    & .\gradlew.bat build deploy -x test --console=plain
+    if ($LASTEXITCODE -ne 0) { throw 'Core build/deploy failed. The previous release was not launched.' }
+}
+finally { Pop-Location }
 
-Write-Host ">>> Updating TheLadsCore Version..."
-Set-Location -Path $coreDir
-$propsFile = "gradle.properties"
-$content = Get-Content $propsFile
-$newVer = "1.0.0"
-
-for ($i = 0; $i -lt $content.Length; $i++) {
-    if ($content[$i] -match '^mod_version=(.*)') {
-        $oldVer = $matches[1]
-        $parts = $oldVer.Split('.')
-        $last = [int]$parts[-1] + 1
-        $parts[-1] = $last.ToString()
-        $global:newVer = $parts -join '.'
-        $content[$i] = "mod_version=$global:newVer"
-        Write-Host "    Bumped mod_version from $oldVer to $global:newVer"
-        break
+if ($Launcher -or $Install) {
+    & dotnet publish $launcherProject -c Release -r win-x64 --self-contained true -o $publishDirectory
+    if ($LASTEXITCODE -ne 0) { throw 'Launcher publication failed.' }
+    foreach ($version in @('1.21.11', '26.2')) {
+        $artifact = Join-Path $publishDirectory "game-mods/$version/theladscore.jar"
+        if (-not (Test-Path -LiteralPath $artifact -PathType Leaf)) { throw "Missing production core for $version." }
+        $manifestPath = Join-Path $publishDirectory "game-mods/$version/client-mods.json"
+        if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Missing client mod manifest for $version." }
     }
-}
-Set-Content -Path $propsFile -Value $content
-
-Write-Host ">>> Building TheLadsCore..."
-$gradlew = ".\gradlew.bat"
-cmd.exe /c "$gradlew build -x test"
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Gradle build failed."
-}
-
-Write-Host ">>> Packwiz is metadata-driven (.pw.toml); skipping local jar copy."
-Set-Location -Path "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\Packwiz"
-packwiz refresh
-Set-Location -Path $coreDir
-
-Write-Host ">>> Closing any running TheLadsLauncher processes..."
-Stop-Process -Name "TheLadsLauncher" -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1.5
-
-Write-Host ">>> Building TheLadsLauncher..."
-Set-Location -Path $launcherDir
-dotnet publish -c Release -r win-x64 --self-contained
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Dotnet build failed."
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'docs/MICROSOFT_LOGIN_SETUP.md') -Destination $publishDirectory -Force
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'docs/REPAIR_STATUS.md') -Destination $publishDirectory -Force
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'docs/CLIENT_MODS.md') -Destination $publishDirectory -Force
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'docs/INTEGRATED_MODULES.md') -Destination $publishDirectory -Force
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'docs/HUD_PERFORMANCE.md') -Destination $publishDirectory -Force
+    foreach ($document in @('NATIVE_MODULES_26_2.md', 'STANDALONE_ACCOUNTS.md', 'DEVELOPMENT_BUILD_26_2.md', 'REFERENCE_ENGINES_26_2.md', 'SHULKER_BOX_UTILS_26_2.md', 'RENDER_SCALE_26_2.md', 'DISCORD_RPC_SETUP.md', 'NATIVE_FOOD_26_2.md', 'NATIVE_RAISED_26_2.md', 'NATIVE_PAPER_DOLL_26_2.md', 'AUTO_RECONNECT_26_2.md', 'DYNAMIC_FPS_26_2.md', 'NATIVE_PARITY_AUDIT_26_2.md', 'AUTO_WORLD_QA_26_2.md', 'NATIVE_RUNTIME_CHECKPOINT_26_2.md', 'SIGNAL_LOSS_26_2.md', 'DURABILITY_TOOLTIP_26_2.md', 'NATIVE_TAB_TWEAKS_26_2.md', 'NATIVE_CROSSHAIR_26_2.md', 'NATIVE_SCREENSHOTS_26_2.md', 'NATIVE_CLUMPS_26_2.md', 'NATIVE_NARRATOR_26_2.md')) {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot "docs/$document") -Destination $publishDirectory -Force
+    }
+    Write-Host "Launcher ready: $(Join-Path $publishDirectory 'TheLadsLauncher.exe')"
 }
 
-Write-Host ">>> Deploying TheLadsLauncher to AppData..."
-$deployTargetDir1 = "C:\Users\Arash\AppData\Local\The Lads Client"
-
-if (-not (Test-Path $deployTargetDir1)) {
-    New-Item -ItemType Directory -Path $deployTargetDir1 -Force | Out-Null
+if ($Install) {
+    & (Join-Path $PSScriptRoot 'tools/Install-LadsRelease.ps1') -SourceDirectory $publishDirectory
 }
-if (Test-Path "$deployTargetDir1\settings.json") {
-    Get-ChildItem "$launcherDir\bin\Release\net8.0-windows\win-x64\publish\*" -Exclude "settings.json" | Copy-Item -Destination $deployTargetDir1 -Recurse -Force
-} else {
-    Copy-Item -Path "$launcherDir\bin\Release\net8.0-windows\win-x64\publish\*" -Destination $deployTargetDir1 -Recurse -Force
-}
-
-Write-Host ">>> Done."
-

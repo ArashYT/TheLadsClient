@@ -1,6 +1,7 @@
 package com.thelads.core.v26_2.adapter;
 
 import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.v26_2.feature.GameTimeText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.core.BlockPos;
@@ -10,6 +11,114 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VanillaGameBridge26 implements LadsGameBridge {
+    @Override public boolean hasPaperDollRenderer() {
+        return com.thelads.core.v26_2.feature.paperdoll.NativePaperDoll.active();
+    }
+    private final GameTimeText gameTimeText = new GameTimeText();
+    private static final net.minecraft.world.entity.EquipmentSlot[] ARMOR_SLOTS = {
+        net.minecraft.world.entity.EquipmentSlot.FEET, net.minecraft.world.entity.EquipmentSlot.LEGS,
+        net.minecraft.world.entity.EquipmentSlot.CHEST, net.minecraft.world.entity.EquipmentSlot.HEAD
+    };
+    private Object armorPlayer;
+    private int armorTick = Integer.MIN_VALUE;
+    private List<ArmorPiece> armor = List.of();
+    private Object scoreboardPlayer;
+    private int scoreboardTick = Integer.MIN_VALUE;
+    private ScoreboardSnapshot scoreboardSnapshot;
+    private static final java.util.Comparator<net.minecraft.world.scores.PlayerScoreEntry> SCORE_ORDER =
+        java.util.Comparator.comparingInt(net.minecraft.world.scores.PlayerScoreEntry::value).reversed()
+            .thenComparing(net.minecraft.world.scores.PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER);
+
+    @Override
+    public ScoreboardSnapshot getScoreboard() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) {
+            scoreboardPlayer = null;
+            scoreboardSnapshot = null;
+            return null;
+        }
+        if (scoreboardPlayer == mc.player && scoreboardTick == mc.player.tickCount) return scoreboardSnapshot;
+        scoreboardPlayer = mc.player;
+        scoreboardTick = mc.player.tickCount;
+        var board = mc.level.getScoreboard();
+        var team = board.getPlayersTeam(mc.player.getScoreboardName());
+        net.minecraft.world.scores.Objective objective = null;
+        if (team != null && team.getColor().isPresent()) {
+            objective = board.getDisplayObjective(team.getColor().get().displaySlot());
+        }
+        if (objective == null) objective = board.getDisplayObjective(net.minecraft.world.scores.DisplaySlot.SIDEBAR);
+        if (objective == null) {
+            scoreboardSnapshot = null;
+            return null;
+        }
+        var format = objective.numberFormatOrDefault(net.minecraft.network.chat.numbers.StyledFormat.SIDEBAR_DEFAULT);
+        List<ScoreLine> lines = board.listPlayerScores(objective).stream()
+            .filter(score -> !score.isHidden()).sorted(SCORE_ORDER).limit(15)
+            .map(score -> new ScoreLine(net.minecraft.world.scores.PlayerTeam.formatNameForTeam(
+                board.getPlayersTeam(score.owner()), score.ownerName()).getString(),
+                score.formatValue(format).getString())).toList();
+        // Keep blank/custom number-format display text; never substitute the raw integer score.
+        scoreboardSnapshot = new ScoreboardSnapshot(objective.getDisplayName().getString(), lines);
+        return scoreboardSnapshot;
+    }
+
+    @Override
+    public String getBiomeId() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level == null || mc.player == null ? null
+            : mc.level.getBiome(mc.player.blockPosition()).unwrapKey()
+                .map(key -> key.identifier().toString()).orElse(null);
+    }
+
+    @Override
+    public float getYaw() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return -1;
+        float yaw = player.getYRot() % 360;
+        return yaw < 0 ? yaw + 360 : yaw;
+    }
+
+    @Override
+    public float getAbsorption() {
+        var player = Minecraft.getInstance().player;
+        return player == null ? -1 : player.getAbsorptionAmount();
+    }
+
+    @Override
+    public float getSaturation() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return -1;
+        // Vanilla health packets do not keep saturation exact between hunger/health changes.
+        // The integrated server owns exact values; no invented multiplayer value.
+        var server = mc.getSingleplayerServer();
+        if (server == null) return -1;
+        var authoritativePlayer = server.getPlayerList().getPlayer(mc.player.getUUID());
+        return authoritativePlayer == null ? -1 : authoritativePlayer.getFoodData().getSaturationLevel();
+    }
+
+    @Override
+    public List<ArmorPiece> getArmor() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) {
+            armorPlayer = null;
+            armor = List.of();
+            return armor;
+        }
+        if (armorPlayer == player && armorTick == player.tickCount) return armor;
+        armorPlayer = player;
+        armorTick = player.tickCount;
+        List<ArmorPiece> result = new ArrayList<>(4);
+        for (var slot : ARMOR_SLOTS) {
+            var stack = player.getItemBySlot(slot);
+            if (stack.isEmpty()) continue;
+            int maximum = stack.isDamageableItem() ? stack.getMaxDamage() : 0;
+            result.add(new ArmorPiece(stack.getHoverName().getString(),
+                maximum <= 0 ? 0 : Math.max(0, maximum - stack.getDamageValue()), maximum));
+        }
+        armor = List.copyOf(result);
+        return armor;
+    }
+
     @Override
     public boolean isIngame() {
         Minecraft mc = Minecraft.getInstance();
@@ -76,10 +185,7 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     public String getGameTime() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return "12:00";
-        long time = (mc.level.getOverworldClockTime() + 6000L) % 24000L;
-        long hours = time / 1000L;
-        long minutes = (time % 1000L) * 60L / 1000L;
-        return String.format("%02d:%02d", hours, minutes);
+        return gameTimeText.get(mc.level.getOverworldClockTime());
     }
 
     @Override

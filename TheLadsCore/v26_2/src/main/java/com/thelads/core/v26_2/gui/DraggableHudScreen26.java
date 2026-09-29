@@ -14,11 +14,18 @@ public class DraggableHudScreen26 extends Screen {
     private final DraggableHudScreen ui;
 
     public DraggableHudScreen26(Screen parent) {
+        this(parent, new DraggableHudScreen());
+    }
+
+    public DraggableHudScreen26(Screen parent, DraggableHudScreen controller) {
         super(Component.literal("Edit HUD"));
         this.parent = parent;
-        this.ui = new DraggableHudScreen();
+        this.ui = java.util.Objects.requireNonNull(controller);
         this.ui.setOnClose(this::onClose);
     }
+
+    @Override
+    public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {}
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
@@ -28,7 +35,7 @@ public class DraggableHudScreen26 extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean isDouble) {
-        if (ui.mouseClicked(event.x(), event.y(), event.button())) {
+        if (ui.mouseClicked(event.x(), event.y(), event.button(), event.modifiers())) {
             return true;
         }
         return super.mouseClicked(event, isDouble);
@@ -52,7 +59,7 @@ public class DraggableHudScreen26 extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (ui.keyPressed(event.key())) {
+        if (ui.keyPressed(event.key(), event.modifiers())) {
             return true;
         }
         return super.keyPressed(event);
@@ -60,6 +67,9 @@ public class DraggableHudScreen26 extends Screen {
 
     @Override
     public void onClose() {
+        ui.close();
         Minecraft.getInstance().setScreenAndShow(parent);
     }
+
+    @Override public void removed() { ui.close(); super.removed(); }
 }

@@ -1,0 +1,116 @@
+{
+    "config.thelads_dynamicfps.title": "Ajustes do Dynamic FPS",
+
+    "config.thelads_dynamicfps.warn_cloth_config.0": "É necessário instalar o Cloth Config para configurar o Dynamic FPS dentro do Minecraft.",
+    "config.thelads_dynamicfps.warn_cloth_config.1": "Você pode instalá-lo, editar o arquivo de configuração ou utilizar as configurações padrões.",
+
+    "config.thelads_dynamicfps.category.general": "Geral",
+    "config.thelads_dynamicfps.category.advanced": "Avançado",
+
+    "config.thelads_dynamicfps.category.hovered": "Pairado",
+    "config.thelads_dynamicfps.category.unfocused": "Fora de foco",
+    "config.thelads_dynamicfps.category.invisible": "Invisível",
+    "config.thelads_dynamicfps.category.unplugged": "Na bateria",
+    "config.thelads_dynamicfps.category.abandoned": "Inativo",
+
+    "config.thelads_dynamicfps.feature.misc": "Diversos",
+    "config.thelads_dynamicfps.feature.volume_transition": "Transição de volume",
+    "config.thelads_dynamicfps.feature.idle": "Inatividade",
+    "config.thelads_dynamicfps.feature.battery": "Integração com a bateria",
+
+    "config.thelads_dynamicfps.enabled": "Habilitado",
+
+    "config.thelads_dynamicfps.disabled": "Desabilitado",
+    "config.thelads_dynamicfps.minutes": "%d minuto(s)",
+
+    "config.thelads_dynamicfps.idle_time": "Tempo limite de inatividade",
+    "config.thelads_dynamicfps.idle_time_tooltip": "A quantidade, em minutos, até que o Dynamic FPS\native o estado de inatividade devido a falta de\nentrada enquanto o jogo está em foco.",
+
+
+    "config.thelads_dynamicfps.idle_condition": "Condição de inatividade",
+
+    "config.thelads_dynamicfps.idle_condition_none": "Nenhuma",
+    "config.thelads_dynamicfps.idle_condition_vanilla": "Padrão",
+    "config.thelads_dynamicfps.idle_condition_on_battery": "Enquanto na bateria",
+
+    "config.thelads_dynamicfps.idle_condition_none_tooltip": "Mantém o estado de inatividade sempre ativo\nquando inativo por um longo período de tempo.",
+    "config.thelads_dynamicfps.idle_condition_vanilla_tooltip": "Desabilita a inatividade do Dynamic FPS,\nvoltando a utilizar a configuração padrão.",
+    "config.thelads_dynamicfps.idle_condition_on_battery_tooltip": "Habilita o estado de inatividade quando inativo\npor um longo período de tempo e na bateria.",
+
+    "config.thelads_dynamicfps.uncap_menu_frame_rate": "Liberar FPS do menu",
+    "config.thelads_dynamicfps.uncap_menu_frame_rate_tooltip": "Remove o limite de 60 FPS no menu principal.",
+
+    "config.thelads_dynamicfps.ignore_initial_click": "Ignorar clique inicial",
+    "config.thelads_dynamicfps.ignore_initial_click_tooltip": "Ignora a entrada acidental ao clicar\nnuma janela de jogo fora de foco.",
+
+    "config.thelads_dynamicfps.ignore_initial_click_disabled": "Desabilitado",
+    "config.thelads_dynamicfps.ignore_initial_click_in_world": "No mundo",
+    "config.thelads_dynamicfps.ignore_initial_click_constant": "Constante",
+
+    "config.thelads_dynamicfps.battery_tracker": "Monitoramento de bateria",
+    "config.thelads_dynamicfps.battery_tracker_tooltip": "Define se todos os recursos relacionados\nà bateria estão habilitados ou não.",
+
+    "config.thelads_dynamicfps.battery_tracker_switch_states": "Habilitar o estado \"Na bateria\"",
+    "config.thelads_dynamicfps.battery_tracker_switch_states_tooltip": "Habilita automaticamente o estado\n\"Na bateria\" enquanto na bateria.",
+
+    "config.thelads_dynamicfps.battery_tracker_notifications": "Notificações de bateria",
+    "config.thelads_dynamicfps.battery_tracker_notifications_tooltip": "Receba notificações sobre o status\nde sua bateria dentro do jogo.",
+
+    "config.thelads_dynamicfps.battery_critical_level": "Limite de carga crítico",
+    "config.thelads_dynamicfps.battery_critical_level_tooltip": "Define o nível de carga da bateria\na ser considerado crítico.",
+
+    "config.thelads_dynamicfps.battery_indicator_condition": "Indicador de condição da bateria",
+    "config.thelads_dynamicfps.battery_indicator_condition_disabled": "Desabilitado",
+    "config.thelads_dynamicfps.battery_indicator_condition_draining": "Enquanto descarregando",
+    "config.thelads_dynamicfps.battery_indicator_condition_critical": "Crítico",
+    "config.thelads_dynamicfps.battery_indicator_condition_constant": "Constante",
+
+    "config.thelads_dynamicfps.battery_indicator_placement": "Posição do indicador",
+    "config.thelads_dynamicfps.battery_indicator_placement_top_left": "Superior esquerdo",
+    "config.thelads_dynamicfps.battery_indicator_placement_top_right": "Superior direito",
+    "config.thelads_dynamicfps.battery_indicator_placement_bottom_left": "Inferior esquerdo",
+    "config.thelads_dynamicfps.battery_indicator_placement_bottom_right": "Inferior direito",
+
+    "config.thelads_dynamicfps.volume_transition_speed_up": "Velocidade de aumento de volume",
+    "config.thelads_dynamicfps.volume_transition_speed_down": "Velocidade de redução de volume",
+    "config.thelads_dynamicfps.volume_transition_speed_instant": "Imediato",
+    "config.thelads_dynamicfps.volume_transition_speed_tooltip": "Define a velocidade na qual o volume\ndo jogo será ajustado por segundo.",
+
+    "config.thelads_dynamicfps.frame_rate_target": "Taxa de quadros alvo",
+    "config.thelads_dynamicfps.volume_multiplier": "Multiplicador de volume",
+
+    "config.thelads_dynamicfps.graphics_state": "Opções gráficas",
+    "config.thelads_dynamicfps.graphics_state_default": "Padrão",
+    "config.thelads_dynamicfps.graphics_state_reduced": "Reduzido",
+    "config.thelads_dynamicfps.graphics_state_minimal": "Mínimo",
+    "config.thelads_dynamicfps.graphics_state_minimal_tooltip": "Gráficos mínimos fazem o mundo recarregar!",
+
+    "config.thelads_dynamicfps.show_toasts": "Exibir notificações",
+    "config.thelads_dynamicfps.show_toasts_tooltip": "Define se as notificações na tela\ndevem continuar exibindo ou atrasando.",
+
+    "config.thelads_dynamicfps.run_garbage_collector": "Invocar §oGarbage Collector§r",
+    "config.thelads_dynamicfps.run_garbage_collector_tooltip": "Habilite-o se deseja liberar espaço na memória.",
+
+    "config.thelads_dynamicfps.download_natives": "Baixar bibliotecas nativas",
+    "config.thelads_dynamicfps.download_natives_description_0": "É necessário uma biblioteca adicional\npara utilizar os recursos de bateria.",
+    "config.thelads_dynamicfps.download_natives_description_1": "Define se o mod pode baixar este\ncomponente para você.",
+
+    "config.thelads_dynamicfps.mock_battery_data": "Utilizar dados de bateria simulados",
+
+    "key.thelads_dynamicfps.toggle_forced": "Forçar modo \"Fora de foco\" (altern.)",
+    "key.thelads_dynamicfps.toggle_disabled": "Desabilitar Dynamic FPS (alternável)",
+    "gui.thelads_dynamicfps.hud.reducing": "Dynamic FPS: Forçando a redução de FPS",
+    "gui.thelads_dynamicfps.hud.disabled": "Dynamic FPS desabilitado",
+
+    "toast.thelads_dynamicfps.error": "Erro de bateria do Dynamic FPS",
+    "toast.thelads_dynamicfps.no_support": "Computador não suportado",
+    "toast.thelads_dynamicfps.no_library": "Transferência de biblioteca desabilitada",
+
+    "toast.thelads_dynamicfps.battery_charging": "Carregando!",
+    "toast.thelads_dynamicfps.battery_draining": "Descarregando!",
+    "toast.thelads_dynamicfps.battery_critical": "Bateria baixa!",
+
+    "toast.thelads_dynamicfps.battery_charge": "Atualmente em: %d%%",
+
+    "modmenu.descriptionTranslation.thelads_dynamicfps": "Reduz o uso de recursos enquanto o Minecraft está em segundo plano ou inativo."
+}

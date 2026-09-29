@@ -20,7 +20,10 @@ dependencies {
     compileOnly "net.fabricmc:sponge-mixin:0.15.4+mixin.0.8.7"
 
     implementation project(':common')
-    include project(':common')
+    // Common classes are merged below. Bundle the Discord binding and its native runtime;
+    // Minecraft supplies JNA, Gson and SLF4J. Loom include dependencies are non-transitive.
+    include 'club.minnced:java-discord-rpc:2.0.1'
+    include 'club.minnced:discord-rpc-release:v3.3.0'
 }
 
 processResources {

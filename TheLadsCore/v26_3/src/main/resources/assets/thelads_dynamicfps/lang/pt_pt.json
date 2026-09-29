@@ -1,0 +1,10 @@
+{
+    "config.thelads_dynamicfps.title": "Definições do Dynamic FPS",
+
+    "config.thelads_dynamicfps.category.general": "Geral",
+
+    "key.thelads_dynamicfps.toggle_forced": "Forçar redução da taxa de quadros (alternável)",
+    "key.thelads_dynamicfps.toggle_disabled": "Desativar o Disable Dynamic (alternável)",
+    "gui.thelads_dynamicfps.hud.reducing": "Dynamic FPS: forçando a redução da taxa de quadros",
+    "gui.thelads_dynamicfps.hud.disabled": "Dynamic FPS desativado"
+}

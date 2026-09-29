@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.PlayerFaceExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.PlayerSkin;
 
@@ -23,6 +24,10 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
 
     public GuiGraphicsExtractor getVanilla() {
         return g;
+    }
+
+    @Override public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
+        com.thelads.core.v26_2.feature.paperdoll.NativePaperDoll.render(g, x, y, width, height, editor);
     }
 
     @Override
@@ -87,8 +92,12 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
 
     @Override
     public void blit(String texture, int x, int y, int u, int v, int width, int height) {
-        // Fallback fill or blit if pipeline texture is bound
-        fill(x, y, x + width, y + height, 0x446C63FF);
+        Identifier loc = Identifier.tryParse(texture != null ? texture : "minecraft:textures/gui/icons.png");
+        if (loc != null) {
+            var gpuTexture = Minecraft.getInstance().getTextureManager().getTexture(loc).getTexture();
+            g.blit(RenderPipelines.GUI_TEXTURED, loc, x, y, u, v, width, height,
+                gpuTexture.getWidth(0), gpuTexture.getHeight(0));
+        }
     }
 
     @Override
@@ -112,13 +121,11 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
 
     @Override
     public int getScaledWidth() {
-        Minecraft mc = Minecraft.getInstance();
-        return (mc.getWindow() != null) ? mc.getWindow().getGuiScaledWidth() : 800;
+        return g.guiWidth();
     }
 
     @Override
     public int getScaledHeight() {
-        Minecraft mc = Minecraft.getInstance();
-        return (mc.getWindow() != null) ? mc.getWindow().getGuiScaledHeight() : 600;
+        return g.guiHeight();
     }
 }

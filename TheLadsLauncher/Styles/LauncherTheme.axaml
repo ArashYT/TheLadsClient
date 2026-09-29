@@ -1,0 +1,142 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <SolidColorBrush x:Key="LadsAccent">#C44343</SolidColorBrush>
+    <SolidColorBrush x:Key="LadsAccentHover">#D65353</SolidColorBrush>
+    <SolidColorBrush x:Key="LadsAccentPressed">#A53434</SolidColorBrush>
+    <SolidColorBrush x:Key="LadsAccentText">#FFFFFF</SolidColorBrush>
+    <SolidColorBrush x:Key="LadsAccentSubtle">#241C1D</SolidColorBrush>
+  </Styles.Resources>
+  <Style Selector="Window">
+    <Setter Property="RequestedThemeVariant" Value="Dark"/>
+    <Setter Property="FontFamily" Value="avares://Avalonia.Fonts.Inter/Assets#Inter"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="#E9E9EA"/>
+    <Setter Property="Background" Value="#17181B"/>
+  </Style>
+  <Style Selector="Button">
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="12,8"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Button.action">
+    <Setter Property="Background" Value="#25262A"/>
+    <Setter Property="Foreground" Value="#D6D6D9"/>
+    <Setter Property="BorderBrush" Value="#37383D"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="Button.action:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#303136"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="BorderBrush" Value="#55565D"/>
+  </Style>
+  <Style Selector="Button.launch">
+    <Setter Property="Background" Value="{DynamicResource LadsAccent}"/>
+    <Setter Property="Foreground" Value="{DynamicResource LadsAccentText}"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="BorderThickness" Value="0"/>
+  </Style>
+  <Style Selector="Button.launch:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource LadsAccentHover}"/>
+    <Setter Property="Foreground" Value="{DynamicResource LadsAccentText}"/>
+  </Style>
+  <Style Selector="Button.launch:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource LadsAccentPressed}"/>
+  </Style>
+  <Style Selector="Button.danger">
+    <Setter Property="Background" Value="#2B2022"/>
+    <Setter Property="Foreground" Value="#ED9393"/>
+    <Setter Property="BorderBrush" Value="#573438"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#443033"/>
+    <Setter Property="Foreground" Value="#FFBBBB"/>
+  </Style>
+  <Style Selector="Button.nav">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="#999BA3"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    <Setter Property="Height" Value="40"/>
+    <Setter Property="Padding" Value="13,0"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="BorderThickness" Value="2,0,0,0"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+  </Style>
+  <Style Selector="Button.nav.active">
+    <Setter Property="Background" Value="{DynamicResource LadsAccentSubtle}"/>
+    <Setter Property="Foreground" Value="#FFFFFF"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#25262A"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Button.window">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="#9B9CA3"/>
+    <Setter Property="Height" Value="36"/>
+    <Setter Property="MinWidth" Value="36"/>
+    <Setter Property="Padding" Value="10,0"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="CornerRadius" Value="0"/>
+  </Style>
+  <Style Selector="Button.shortcut">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="Padding" Value="0,14"/>
+  </Style>
+  <Style Selector="Button.shortcut:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#202125"/>
+  </Style>
+  <Style Selector="TextBlock.caption">
+    <Setter Property="Foreground" Value="#8F919B"/>
+    <Setter Property="FontSize" Value="10"/>
+    <Setter Property="LetterSpacing" Value="1.5"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style Selector="TextBox">
+    <Setter Property="Background" Value="#121315"/>
+    <Setter Property="Foreground" Value="#E0E0E4"/>
+    <Setter Property="BorderBrush" Value="#3A3B42"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="MinHeight" Value="30"/>
+  </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="Background" Value="#202125"/>
+    <Setter Property="Foreground" Value="#E0E0E4"/>
+    <Setter Property="BorderBrush" Value="#3A3B42"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="CheckBox">
+    <Setter Property="Foreground" Value="#B9BAC2"/>
+  </Style>
+  <Style Selector="Slider">
+    <Setter Property="Foreground" Value="{DynamicResource LadsAccent}"/>
+  </Style>
+  <Style Selector="ProgressBar">
+    <Setter Property="Foreground" Value="{DynamicResource LadsAccent}"/>
+    <Setter Property="Background" Value="#303137"/>
+  </Style>
+  <Style Selector="ScrollViewer">
+    <Setter Property="AllowAutoHide" Value="True"/>
+  </Style>
+  <Style Selector="TabItem">
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+    <Setter Property="Padding" Value="12,10"/>
+    <Setter Property="Foreground" Value="#A0A1AA"/>
+  </Style>
+  <Style Selector="TabItem:selected">
+    <Setter Property="Foreground" Value="#FFFFFF"/>
+  </Style>
+  <Style Selector="Button.nav.active:pointerover /template/ ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}"/>
+  </Style>
+</Styles>

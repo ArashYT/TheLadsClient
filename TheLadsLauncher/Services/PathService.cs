@@ -15,7 +15,9 @@ public class PathService : IPathService
     {
         _baseDirectory = !string.IsNullOrWhiteSpace(customBasePath)
             ? customBasePath
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".theladsclient");
+            : Environment.GetEnvironmentVariable("THELADS_DIR") is { Length: > 0 } overridePath
+                ? Path.GetFullPath(overridePath)
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".theladsclient");
         
         EnsureDirectories();
     }

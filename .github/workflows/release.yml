@@ -1,0 +1,45 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+      - name: Check tag version
+        shell: pwsh
+        run: |
+          [xml]$p = Get-Content TheLadsLauncher/TheLadsLauncher.csproj
+          if ($env:GITHUB_REF_NAME -ne "v$($p.Project.PropertyGroup.Version)") { throw 'Tag and launcher version differ.' }
+      - name: Verify automatic update and restart
+        shell: pwsh
+        run: ./tools/Test-AutomaticUpdate.ps1
+      - name: Build, test, package, and create draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./Publish-Release.ps1
+      - name: Retain build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: artifacts/releases/**/packages/*
+          if-no-files-found: ignore

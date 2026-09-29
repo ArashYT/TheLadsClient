@@ -12,6 +12,7 @@ public class SliderOption extends Option {
 
     public SliderOption(String name, double defaultValue, double min, double max, double step) {
         super(name);
+        if (!Double.isFinite(min) || !Double.isFinite(max) || min > max || !Double.isFinite(step) || step < 0) throw new IllegalArgumentException("Invalid slider bounds");
         this.min = min;
         this.max = max;
         this.step = step;
@@ -25,6 +26,7 @@ public class SliderOption extends Option {
     }
 
     private double clamp(double v) {
+        if (!Double.isFinite(v)) return min;
         if (v < min) return min;
         if (v > max) return max;
         if (step > 0) {

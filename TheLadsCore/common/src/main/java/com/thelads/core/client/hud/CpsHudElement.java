@@ -3,8 +3,9 @@ package com.thelads.core.client.hud;
 import com.thelads.core.client.CpsTracker;
 import com.thelads.core.client.bridge.LadsGraphics;
 
-public class CpsHudElement extends HudElement {
+public class CpsHudElement extends TextHudElement {
     public CpsHudElement() {
+        super(50);
         this.x = 10;
         this.y = 180;
         this.width = 65;
@@ -12,8 +13,7 @@ public class CpsHudElement extends HudElement {
     }
 
     @Override
-    public void render(LadsGraphics g) {
-        drawBackground(g);
+    protected String updateText(LadsGraphics g) {
         int show = optCycle("Show", 0); // 0 = Both, 1 = Left, 2 = Right
         boolean label = optBool("Show label", true);
 
@@ -29,7 +29,6 @@ public class CpsHudElement extends HudElement {
             text = (label ? "CPS: " : "") + left + " | " + right;
         }
 
-        this.width = Math.max(50, g.textWidth(text) + 12);
-        drawCenteredText(g, text);
+        return text;
     }
 }

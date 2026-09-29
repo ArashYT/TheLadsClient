@@ -8,15 +8,16 @@ namespace TheLadsLauncher;
 
 public class LauncherSettings
 {
-    private static readonly string SettingsPath = Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+    private static string SettingsPath => Path.Combine(Services.PathService.Instance.BaseDirectory, "settings.json");
+    // Public ID owned by The Lads Client. Registration does not imply Minecraft API approval.
+    public const string DefaultMicrosoftClientId = "c8ca54dc-01e3-4bb3-824a-35e09bb3aa13";
 
     // Memory
     public int MaxRamMb { get; set; } = 4096;
     public int MinRamMb { get; set; } = 512;
 
     // Java
-    public string JavaPath { get; set; } = TheLadsLauncher.Services.PathService.Instance.GetJavaExecutablePath(21);
+    public string JavaPath { get; set; } = TheLadsLauncher.Services.PathService.Instance.GetJavaExecutablePath(25);
     public bool AutoDetectJava { get; set; } = true;
 
     // Paths
@@ -49,10 +50,18 @@ public class LauncherSettings
     public System.Collections.Generic.List<string> OfflineAccounts { get; set; } = new();
     public System.Collections.Generic.List<string> AccountOrder { get; set; } = new();
     public string MainAccount { get; set; } = "";
+    private string _microsoftClientId = DefaultMicrosoftClientId;
+    public string MicrosoftClientId
+    {
+        get => _microsoftClientId;
+        // Migrate older unset settings; retain explicit IDs for the existing validation paths.
+        set => _microsoftClientId = string.IsNullOrWhiteSpace(value) ? DefaultMicrosoftClientId : value.Trim();
+    }
 
     // Version
     public string LauncherVersion { get; set; } = "1.0.4";
     public string UpdateUrl { get; set; } = "";
+    public string LastSeenReleaseNotesVersion { get; set; } = "";
 
     // API Keys
     public string CurseForgeApiKey { get; set; } = "";
@@ -81,6 +90,13 @@ public class LauncherSettings
     {
         try
         {
+            string legacyPath = Path.Combine(AppContext.BaseDirectory, "settings.json");
+            // The new installer uses a different application directory. Preserve settings
+            // from the previous EXE-only installation on its first managed launch.
+            if (!File.Exists(legacyPath))
+                legacyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "The Lads Client", "settings.json");
+            if (!File.Exists(SettingsPath) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THELADS_DIR"))
+                && File.Exists(legacyPath)) File.Copy(legacyPath, SettingsPath);
             if (File.Exists(SettingsPath))
             {
                 string json = File.ReadAllText(SettingsPath);
@@ -97,7 +113,10 @@ public class LauncherSettings
         {
             var options = new JsonSerializerOptions { WriteIndented = true };
             string json = JsonSerializer.Serialize(this, options);
-            File.WriteAllText(SettingsPath, json);
+            Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
+            string temp = SettingsPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try { File.WriteAllText(temp, json); File.Move(temp, SettingsPath, true); }
+            finally { if (File.Exists(temp)) File.Delete(temp); }
         }
         catch { }
     }

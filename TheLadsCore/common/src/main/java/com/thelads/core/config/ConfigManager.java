@@ -17,6 +17,10 @@ import java.io.OutputStreamWriter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.AtomicMoveNotSupportedException;
 
 public class ConfigManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -105,9 +109,6 @@ public class ConfigManager {
                         continue;
                     }
                     JsonObject moduleJson = modulesJson.getAsJsonObject(module.getName());
-                    if (moduleJson.has("enabled")) {
-                        module.setEnabled(moduleJson.get("enabled").getAsBoolean());
-                    }
                     if (module instanceof HudModule) {
                         HudModule hm = (HudModule) module;
                         if (moduleJson.has("useGlobalColor")) {
@@ -124,6 +125,9 @@ public class ConfigManager {
                                 o.load(opts.get(o.getName()));
                             }
                         }
+                    }
+                    if (moduleJson.has("enabled")) {
+                        module.setEnabled(moduleJson.get("enabled").getAsBoolean());
                     }
                     if (moduleJson.has("favorite")) {
                         module.setFavorite(moduleJson.get("favorite").getAsBoolean());
@@ -166,21 +170,26 @@ public class ConfigManager {
                 }
             }
             if (hud.has("locked")) {
-                HudSettings.getInstance().getLocked().clear();
-                JsonArray la = hud.getAsJsonArray("locked");
-                for (int i = 0; i < la.size(); i++) HudSettings.getInstance().getLocked().add(la.get(i).getAsString());
+                HudSettings.getInstance().replaceLocked(readHudNames(hud.get("locked")));
             }
             if (hud.has("groups")) {
-                HudSettings.getInstance().getGroups().clear();
-                JsonArray ga = hud.getAsJsonArray("groups");
-                for (int i = 0; i < ga.size(); i++) {
-                    JsonArray grp = ga.get(i).getAsJsonArray();
-                    Set<String> s = new HashSet<>();
-                    for (int j = 0; j < grp.size(); j++) s.add(grp.get(j).getAsString());
-                    if (!s.isEmpty()) HudSettings.getInstance().getGroups().add(s);
+                java.util.List<Set<String>> groups = new java.util.ArrayList<>();
+                if(hud.get("groups").isJsonArray())for(var group:hud.getAsJsonArray("groups")){
+                    if(groups.size()>=256)break;
+                    groups.add(readHudNames(group));
                 }
+                HudSettings.getInstance().replaceGroups(groups);
             }
         }
+    }
+
+    private static Set<String> readHudNames(com.google.gson.JsonElement value) {
+        Set<String> names=new java.util.LinkedHashSet<>();
+        if(value!=null&&value.isJsonArray())for(var name:value.getAsJsonArray()){
+            if(names.size()>=256)break;
+            if(name.isJsonPrimitive()&&name.getAsJsonPrimitive().isString())names.add(name.getAsString());
+        }
+        return names;
     }
 
     public static void load() {
@@ -197,16 +206,25 @@ public class ConfigManager {
         }
     }
 
-    public static void save() {
+    public static synchronized void save() {
         File configFile = getConfigFile();
         if (configFile.getParentFile() != null) {
             configFile.getParentFile().mkdirs();
         }
-        try (OutputStreamWriter writer = new OutputStreamWriter(
-                new FileOutputStream(configFile), StandardCharsets.UTF_8)) {
-            GSON.toJson(toJson(), writer);
+        Path temporary = null;
+        try {
+            Path destination = configFile.toPath().toAbsolutePath();
+            temporary = Files.createTempFile(destination.getParent(), ".lads-config-", ".tmp");
+            Files.writeString(temporary, GSON.toJson(toJson()), StandardCharsets.UTF_8);
+            try {
+                Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (temporary != null) try { Files.deleteIfExists(temporary); } catch (IOException ignored) {}
         }
     }
 }

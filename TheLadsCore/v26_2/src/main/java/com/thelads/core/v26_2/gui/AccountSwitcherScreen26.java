@@ -20,6 +20,9 @@ public class AccountSwitcherScreen26 extends Screen {
     }
 
     @Override
+    public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {}
+
+    @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
         ui.render(new GuiGraphicsExtractorLadsAdapter(g, this.font), mouseX, mouseY);
         super.extractRenderState(g, mouseX, mouseY, delta);

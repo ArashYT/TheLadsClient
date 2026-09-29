@@ -2,6 +2,7 @@ plugins {
     id 'base'
     id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
     id 'fabric-loom' version "${loom_version}" apply false
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}" apply false
 }
 
 allprojects {
@@ -16,8 +17,32 @@ allprojects {
 }
 
 tasks.register('buildAll') {
-    dependsOn ':common:build', ':v1_21_1:build', ':v26_2:build'
+    dependsOn ':common:build', ':v1_21_1:build', ':v1_21_11:build', ':v26_2:build'
     doLast {
         println "Successfully built all TheLadsCore multi-version artifacts."
+    }
+}
+
+tasks.named('build') {
+    dependsOn 'buildAll'
+}
+
+// Package only production jars, isolated by game version. The launcher installs them.
+tasks.register('deploy', Copy) {
+    group = 'distribution'
+    description = 'Stage production Core jars in the launcher game-mods packages.'
+    dependsOn ':v1_21_11:remapJar', ':v26_2:jar'
+    into layout.projectDirectory.dir('../TheLadsLauncher/game-mods')
+    from(providers.provider {
+        project(':v1_21_11').tasks.named('remapJar').get().archiveFile.get()
+    }) {
+        into '1.21.11'
+        rename { 'theladscore.jar' }
+    }
+    from(providers.provider {
+        project(':v26_2').tasks.named('jar').get().archiveFile.get()
+    }) {
+        into '26.2'
+        rename { 'theladscore.jar' }
     }
 }

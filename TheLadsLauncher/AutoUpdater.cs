@@ -1,156 +1,76 @@
 using System;
-using System.IO;
-using System.Net.Http;
-using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics;
+using Velopack;
+using Velopack.Sources;
 
 namespace TheLadsLauncher;
 
-public static class AutoUpdater
+public interface ILauncherUpdateBackend
 {
-    public static string GithubRepo { get; set; } = "ArashYT/TheLadsClient";
-    public static bool IsUpdateReady { get; private set; } = false;
-    public static string UpdateExePath { get; private set; } = "";
-    public static string LatestVersionString { get; private set; } = "";
+    bool IsInstalled { get; }
+    string? PendingVersion { get; }
+    Task<bool> DownloadLatestAsync(Action<string> report);
+    void ApplyAndRestart();
+}
 
-    public static async Task<UpdateInfo?> CheckForUpdatesAsync(string currentVersion, string customUpdateUrl = "")
+public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
+{
+    public const string RepositoryUrl = "https://github.com/ArashYT/TheLadsClient";
+    private readonly UpdateManager _manager;
+    public VelopackUpdateBackend() : this(new UpdateManager(new GithubSource(RepositoryUrl, null, false))) { }
+    public VelopackUpdateBackend(UpdateManager manager) => _manager = manager;
+    public bool IsInstalled => _manager.IsInstalled;
+    public string? PendingVersion => _manager.UpdatePendingRestart?.Version.ToString();
+
+    public async Task<bool> DownloadLatestAsync(Action<string> report)
     {
-        string url = !string.IsNullOrWhiteSpace(customUpdateUrl)
-            ? customUpdateUrl
-            : $"https://api.github.com/repos/{GithubRepo}/releases/latest";
-
-        try
-        {
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("User-Agent", "TheLadsLauncher");
-            client.Timeout = TimeSpan.FromSeconds(8);
-            var response = await client.GetStringAsync(url);
-
-            using var doc = JsonDocument.Parse(response);
-            var root = doc.RootElement;
-
-            string latestVer = "";
-            string downloadUrl = "";
-            string changelog = "";
-
-            if (url.Contains("api.github.com"))
-            {
-                // Parse GitHub API format
-                if (root.TryGetProperty("tag_name", out var tagEl))
-                {
-                    latestVer = tagEl.GetString()?.TrimStart('v') ?? "";
-                }
-                if (root.TryGetProperty("body", out var bodyEl))
-                {
-                    changelog = bodyEl.GetString() ?? "";
-                }
-                if (root.TryGetProperty("assets", out var assetsEl) && assetsEl.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var asset in assetsEl.EnumerateArray())
-                    {
-                        if (asset.TryGetProperty("name", out var nameEl) && nameEl.GetString() == "TheLadsLauncher.exe")
-                        {
-                            if (asset.TryGetProperty("browser_download_url", out var dlEl))
-                            {
-                                downloadUrl = dlEl.GetString() ?? "";
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Fallback to custom update URL format
-                if (root.TryGetProperty("latestVersion", out var lv)) latestVer = lv.GetString() ?? "";
-                if (root.TryGetProperty("downloadUrl", out var du)) downloadUrl = du.GetString() ?? "";
-                if (root.TryGetProperty("changelog", out var cl)) changelog = cl.GetString() ?? "";
-            }
-
-            if (!string.IsNullOrEmpty(latestVer) && IsNewerVersion(currentVersion, latestVer))
-            {
-                return new UpdateInfo
-                {
-                    LatestVersion = latestVer,
-                    DownloadUrl = downloadUrl,
-                    Changelog = changelog
-                };
-            }
-        }
-        catch { }
-        return null;
+        var update = await _manager.CheckForUpdatesAsync();
+        if (update == null) return false;
+        var version = update.TargetFullRelease.Version;
+        await _manager.DownloadUpdatesAsync(update, percent => report($"Downloading v{version}: {percent}%"));
+        return true;
     }
 
-    private static bool IsNewerVersion(string current, string latest)
-    {
-        if (Version.TryParse(current, out var v1) && Version.TryParse(latest, out var v2))
-        {
-            return v2 > v1;
-        }
-        return false;
-    }
+    public void ApplyAndRestart() => _manager.ApplyUpdatesAndRestart(_manager.UpdatePendingRestart
+        ?? throw new InvalidOperationException("No verified update is ready."));
+}
 
-    public static async Task<bool> DownloadUpdateAsync(string downloadUrl, string targetVersion)
+// Startup and the timer share this coordinator. Only verified packages are applied.
+public sealed class AutoUpdater
+{
+    private readonly ILauncherUpdateBackend _backend;
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private DateTimeOffset _nextCheck;
+    private DateTimeOffset _retryAfter;
+    public AutoUpdater(ILauncherUpdateBackend backend) => _backend = backend;
+
+    public async Task PollAsync(Func<bool> isBusy, Action<string> report, bool disabled = false)
     {
-        if (string.IsNullOrEmpty(downloadUrl)) return false;
+        if (disabled || !_backend.IsInstalled || DateTimeOffset.UtcNow < _retryAfter || !await _gate.WaitAsync(0)) return;
         try
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), "TheLadsLauncherUpdates");
-            if (!Directory.Exists(tempDir)) Directory.CreateDirectory(tempDir);
-
-            string targetFile = Path.Combine(tempDir, "update.exe");
-            using var client = new HttpClient();
-            client.Timeout = TimeSpan.FromMinutes(5);
-            var bytes = await client.GetByteArrayAsync(downloadUrl);
-            await File.WriteAllBytesAsync(targetFile, bytes);
-
-            UpdateExePath = targetFile;
-            LatestVersionString = targetVersion;
-            IsUpdateReady = true;
-            return true;
-        }
-        catch { }
-        return false;
-    }
-
-    public static void ApplyUpdateAndRestart()
-    {
-        if (!IsUpdateReady || string.IsNullOrEmpty(UpdateExePath) || !File.Exists(UpdateExePath)) return;
-
-        try
-        {
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string currentExe = Process.GetCurrentProcess().MainModule?.FileName ?? Path.Combine(baseDir, "TheLadsLauncher.exe");
-            string updateExe = Path.Combine(baseDir, "update.exe");
-
-            // Copy temp file to app dir as update.exe
-            File.Copy(UpdateExePath, updateExe, true);
-
-            // Write update.bat
-            string batPath = Path.Combine(baseDir, "update.bat");
-            string batContent = $@"@echo off
-timeout /t 1 /nobreak > nul
-copy /y ""{updateExe}"" ""{currentExe}""
-del ""{updateExe}""
-start """" ""{currentExe}""
-del ""%~f0""
-";
-            File.WriteAllText(batPath, batContent);
-
-            // Run update.bat in background
-            var startInfo = new ProcessStartInfo
+            if (_backend.PendingVersion == null)
             {
-                FileName = batPath,
-                CreateNoWindow = true,
-                UseShellExecute = false,
-                WorkingDirectory = baseDir
-            };
-            Process.Start(startInfo);
-
-            // Exit launcher
-            Environment.Exit(0);
+                if (DateTimeOffset.UtcNow < _nextCheck) return;
+                _nextCheck = DateTimeOffset.UtcNow.AddMinutes(10);
+                report("Checking for launcher updates…");
+                if (!await _backend.DownloadLatestAsync(report)) { report(""); return; }
+            }
+            if (isBusy())
+            {
+                report($"v{_backend.PendingVersion} ready — installs automatically when Minecraft and sign-in finish.");
+                return;
+            }
+            report($"Installing v{_backend.PendingVersion} and restarting…");
+            _backend.ApplyAndRestart();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            report($"Automatic update failed; will retry. {ex.Message}");
+            _nextCheck = DateTimeOffset.UtcNow.AddMinutes(2);
+            _retryAfter = _nextCheck;
+        }
+        finally { _gate.Release(); }
     }
 }
