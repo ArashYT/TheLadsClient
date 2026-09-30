@@ -18,7 +18,7 @@ public class TheLadsCoreClient121 implements ClientModInitializer {
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
         // GuiMixin draws these through HudManager with VanillaGameBridge121 data, so settings and the HUD editor can switch them.
         com.thelads.core.config.ModuleSupport.registerBuiltIn("FPS", "Coordinates", "PingHUD", "Memory", "Speed", "Day", "Time", "XP",
-            "Potion Effects", "CPS", "Keystrokes", "Biome", "Direction", "Health", "Hunger", "TexturePacks");
+            "Potion Effects", "CPS", "Keystrokes", "Biome", "Direction", "Health", "Hunger", "TexturePacks", "Scoreboard", "ArmorHUD");
         com.thelads.core.v1_21_1.gui.ExternalModSettings.register();
         com.thelads.core.v1_21_1.feature.NativeQualityOfLife.register();
         // ClientTickMixin writes the launcher catalog on the first tick and again after any later registration.

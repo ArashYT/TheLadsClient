@@ -17,10 +17,7 @@ public class GuiMixin {
 
     @Inject(method = "render(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/DeltaTracker;)V", at = @At("TAIL"), require = 1)
     private void onRender(GuiGraphics guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.screen instanceof com.thelads.core.v1_21_11.gui.DraggableHudScreen12111) return;
-
-        GuiGraphicsLadsAdapter adapter = new GuiGraphicsLadsAdapter(guiGraphics, mc.font);
-        HudManager.getInstance().render(adapter);
+        // Skips the editor's duplicate pass and fades every Lads widget with Autohide.
+        com.thelads.core.v1_21_11.feature.NativeAutohide.renderLadsHud(guiGraphics);
     }
 }

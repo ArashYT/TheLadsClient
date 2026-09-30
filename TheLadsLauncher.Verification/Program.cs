@@ -263,6 +263,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
+    "Lads HUD pipeline probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && inventorySnapshots.ContainsKey("title"); }
 var jvmFlags = new List<string>();
@@ -833,9 +834,9 @@ sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, 
                 "Lads paper doll probe END:", "Lads food server sync END:", "Lads render scale probe END:", "Lads world capture END:",
                 "Lads durability tooltip probe END:", "Lads tab tweaks probe END:", "Lads clumps server probe END:", "Lads native screenshots probe END:", "Lads native crosshair probe END:",
                 "Lads shared content probe END:"])
-        // 1.21.x: NativeWorldVerification on its own QA save, the native feature probe and the U1 menu access probe.
+        // 1.21.x: NativeWorldVerification on its own QA save, the native feature probe, the U1 menu access probe and the U3 HUD pipeline probe.
         : new(false, false, false, false, false, false, false, [],
-            ["Lads native feature probe END:", "Lads menu access probe END:", "Lads world capture END:", "Lads shared content probe END:"]);
+            ["Lads native feature probe END:", "Lads menu access probe END:", "Lads HUD pipeline probe END:", "Lads world capture END:", "Lads shared content probe END:"]);
 }
 
 /// <summary>Fabric's "Loading N mods:" block: top-level jars and the jar-in-jar mods under them. N counts distinct ids

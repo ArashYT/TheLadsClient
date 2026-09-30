@@ -48,21 +48,6 @@
       "projectUrl": "https://modrinth.com/mod/asynclogger"
     },
     {
-      "projectId": "WfEV6RRi",
-      "projectSlug": "auto-hide-hud",
-      "name": "Auto Hide HUD",
-      "modId": "autohidehud",
-      "versionId": "xA0ObEfV",
-      "version": "1.21.1-1.3.2",
-      "fileName": "autohidehud-1.21.1-1.3.2.jar",
-      "url": "https://cdn.modrinth.com/data/WfEV6RRi/versions/xA0ObEfV/autohidehud-1.21.1-1.3.2.jar",
-      "sha512": "5deb0dd47111ec9340bcefe1600e541dabf6403cba9e584700aee278abcd09647065e22e87007b8919b90d605fc1dbbdb3e6906a4f7d2e031fd6aa864f714d87",
-      "size": 477771,
-      "license": "LicenseRef-All-Rights-Reserved",
-      "sourceUrl": null,
-      "projectUrl": "https://modrinth.com/mod/auto-hide-hud"
-    },
-    {
       "projectId": "PRy8Khga",
       "projectSlug": "autoreconnectrf",
       "name": "Auto Reconnect Reforged",
@@ -1406,7 +1391,16 @@
       "sha512": [
         "480bd5af116dbae3b67f41ccf274f6e5f62625cb133b8394893c31d9e5351086b47c03048c706f966e03406325961bf692a880f09d7126169b212ecc77aeeaf3"
       ],
-      "reason": "Replaced by native Lads Core functionality in 1.3.6."
+      "reason": "Replaced by native Lads Core functionality in 1.4.0."
+    },
+    {
+      "modId": "autohidehud",
+      "projectId": "WfEV6RRi",
+      "name": "Auto Hide HUD",
+      "sha512": [
+        "5deb0dd47111ec9340bcefe1600e541dabf6403cba9e584700aee278abcd09647065e22e87007b8919b90d605fc1dbbdb3e6906a4f7d2e031fd6aa864f714d87"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.0."
     }
   ]
 }

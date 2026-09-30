@@ -165,6 +165,7 @@ public final class NativeWorldVerification {
         if (!verified) return;
         frames++;
         renderMenuCapture(target);
+        NativeHudProbe.frame(target);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
         captureStarted = true;
         try {
@@ -173,6 +174,8 @@ public final class NativeWorldVerification {
             LOGGER.info("Lads world capture END: 1 passed, 0 failed; actual completed game frame at {}", output);
         } catch (Exception failure) { fail("world screenshot", failure); }
     }
+    /** A new PNG path in the checked QA screenshots folder (the U3 HUD probe's frames). */
+    static Path qaScreenshot(String prefix) throws IOException { return screenshot(prefix); }
     private static Path screenshot(String prefix) throws IOException {
         Path folder = gameDirectory.resolve("screenshots");
         Files.createDirectories(folder);

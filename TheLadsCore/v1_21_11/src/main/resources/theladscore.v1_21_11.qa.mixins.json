@@ -9,6 +9,7 @@
   "client": [
     "GameRendererQaInvoker",
     "GameRendererQaMixin",
+    "GuiQaInvoker",
     "KeyboardHandlerQaInvoker",
     "OptionsQaMixin"
   ]

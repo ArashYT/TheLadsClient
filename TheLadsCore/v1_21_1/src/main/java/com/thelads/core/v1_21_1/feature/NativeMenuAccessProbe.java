@@ -75,6 +75,9 @@ final class NativeMenuAccessProbe {
         }
     }
 
+    /** Done (passed or failed); the U3 HUD probe starts after it so the two never change the same modules at once. */
+    static boolean finished() { return finished; }
+
     /** Every client tick; runs after the native feature probe, one step at a time in the verified QA world. */
     static void tick() {
         ticks++;

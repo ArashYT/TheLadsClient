@@ -9,8 +9,11 @@
   "client": [
     "GameRendererQaInvoker",
     "GameRendererQaMixin",
+    "GuiGraphicsQaMixin",
+    "GuiQaInvoker",
     "KeyboardHandlerQaInvoker",
     "LightTextureQaAccessor",
+    "MouseHandlerQaInvoker",
     "OptionsQaMixin"
   ]
 }

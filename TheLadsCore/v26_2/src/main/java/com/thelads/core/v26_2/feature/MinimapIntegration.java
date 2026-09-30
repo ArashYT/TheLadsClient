@@ -12,6 +12,9 @@ public final class MinimapIntegration {
     private static Boolean lastEnabled;
     private static int lastX=Integer.MIN_VALUE,lastY=Integer.MIN_VALUE;
     private static boolean attempted;
+    /** Xaero's HUD element inside the Autohide scope, so the map fades and hides with the Lads HUD (1.4.0). Fabric resolves
+     *  replacements when the HUD renders, so both stay null until the first in-world HUD frame; the wrapper is made once per element. */
+    static net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement xaero,faded;
     private static Object call(Object object,String method)throws ReflectiveOperationException{return object.getClass().getMethod(method).invoke(object);}
     public static boolean available(){return map!=null;}
     public static void tick(){
@@ -31,6 +34,12 @@ public final class MinimapIntegration {
                 });
                 ModuleSupport.registerBuiltIn("Minimap");
             }catch(ReflectiveOperationException|RuntimeException failure){map=null;LoggerFactory.getLogger("TheLadsCore").warn("Xaero integration unavailable",failure);}
+            try{
+                if(map!=null)net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.replaceElement(net.minecraft.resources.Identifier.fromNamespaceAndPath("xaerohud","hud"),element->{
+                    if(element!=xaero){xaero=element;faded=(graphics,delta)->{float previous=NativeAutohide.scopeOpacity;
+                        try{NativeAutohide.scopeOpacity=NativeAutohide.update();if(NativeAutohide.scopeOpacity>0)element.extractRenderState(graphics,delta);}finally{NativeAutohide.scopeOpacity=previous;}};}
+                    return faded;});
+            }catch(IllegalArgumentException missing){LoggerFactory.getLogger("TheLadsCore").warn("Xaero's HUD element is not registered; the minimap does not fade with Autohide",missing);}
         }
         if(map==null)return;
         try{

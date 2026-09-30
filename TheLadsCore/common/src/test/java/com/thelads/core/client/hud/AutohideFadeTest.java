@@ -26,4 +26,13 @@ class AutohideFadeTest {
         assertEquals(1, AutohideFade.step(0, 1, 0, 0));
         assertEquals(.1f / .35f, AutohideFade.step(0, 1, 5, .35), 1e-6f);
     }
+    @Test void tintsScaleAlphaOrEveryPremultipliedChannel() {
+        assertEquals(0x80FF2040, AutohideFade.tint(0xFFFF2040, .5f));
+        assertEquals(0x00FF2040, AutohideFade.tint(0xFFFF2040, 0));
+        assertEquals(0xAA123456, AutohideFade.tint(0xAA123456, 1));
+        // A white premultiplied blit at half opacity is half-strength grey, not full white over a half-cleared background.
+        assertEquals(0x80808080, AutohideFade.tintPremultiplied(-1, .5f));
+        assertEquals(0, AutohideFade.tintPremultiplied(-1, 0));
+        assertEquals(0x40201008, AutohideFade.tintPremultiplied(0x80402010, .5f));
+    }
 }
