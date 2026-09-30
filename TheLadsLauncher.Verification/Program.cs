@@ -92,12 +92,24 @@ if (SafeFileOps.IsSameOrInside(sharedRoot, directory) || SafeFileOps.IsSameOrIns
     throw new ArgumentException($"The QA game folder '{directory}' and the shared sandbox '{sharedRoot}' must not contain each other.");
 
 // Game-run options, validated before anything is written (the --set-mods/--show-mods modes ignore them).
-bool autoWorldRequested = titleVerification && (version is "26.2" or "26.3") && Env("LADS_VERIFY_AUTO_WORLD") == "1";
+var capabilities = QaCapabilities.For(version);
+foreach (var (flag, available, feature) in new[] {
+    ("LADS_VERIFY_V133", capabilities.Version133, "the 1.3.3 native Jade/API probe and its Jade QA addon"),
+    ("LADS_VERIFY_V134", capabilities.Version134, "Vulkan (Minecraft " + version + " renders with OpenGL only) and the 1.3.4 renderer, gallery and Flashback probes"),
+    ("LADS_VERIFY_REPLAY", capabilities.Replay, "the Flashback record/replay/export probe"),
+    ("LADS_VERIFY_REQUESTS_ONLY", capabilities.RequestedFeatures, "the requested-feature probe suite"),
+    ("LADS_VERIFY_RENDER_SCALE", capabilities.RenderScale, "the render scale probe"),
+    ("LADS_VERIFY_WELCOME", capabilities.Welcome, "the welcome-screen probe") })
+    if (!(setMods || showMods) && Env(flag) == "1" && !available)
+        throw new ArgumentException($"{flag}=1 needs {feature}, which LadsCore does not have on {version}. Unset it for {version} runs.");
+bool autoWorldRequested = titleVerification && Env("LADS_VERIFY_AUTO_WORLD") == "1";
 bool autoWorldVerification = autoWorldRequested && !expectCoreDisabled;
 bool requestedFeaturesOnly = autoWorldVerification && Env("LADS_VERIFY_REQUESTS_ONLY") == "1";
-bool renderScaleVerification = !expectCoreDisabled && !requestedFeaturesOnly && titleVerification && (autoWorldVerification || Env("LADS_VERIFY_RENDER_SCALE") == "1");
+bool renderScaleVerification = capabilities.RenderScale && !expectCoreDisabled && !requestedFeaturesOnly && titleVerification && (autoWorldVerification || Env("LADS_VERIFY_RENDER_SCALE") == "1");
+// QA only: upstream mods left out of the staged pack, to get past a pack defect under diagnosis. Never the production manifest.
+var excludedMods = Ids(Env("LADS_VERIFY_EXCLUDE_MODS"));
 // The staged pack (which jars are installed) follows the env alone, so a Core-disabled run keeps the same mods folder.
-bool nativePack = autoWorldRequested || ((version is "26.2" or "26.3") && Env("LADS_VERIFY_NATIVE_PORTS") == "1");
+bool nativePack = autoWorldRequested || Env("LADS_VERIFY_NATIVE_PORTS") == "1" || excludedMods.Count > 0;
 bool nativePortsVerification = nativePack && !expectCoreDisabled;
 bool menuCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_MENU") == "1";
 bool hudCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_HUD") == "1";
@@ -108,14 +120,15 @@ if (sharedRole is not (null or "create" or "observe")) throw new ArgumentExcepti
 if (runId != null && !Regex.IsMatch(runId, @"\A[A-Za-z0-9_-]{1,40}\z")) throw new ArgumentException("LADS_VERIFY_RUN_ID must be 1-40 letters, digits, '-' or '_'.");
 if (sharedRole != null && runId == null) throw new ArgumentException("LADS_VERIFY_SHARED_ROLE needs LADS_VERIFY_RUN_ID.");
 if (sharedRole != null && expectCoreDisabled) throw new ArgumentException("LADS_VERIFY_SHARED_ROLE needs LadsCore; it cannot run with --expect-core-disabled.");
-// Core's create role waits for a loaded integrated world, which only the 26.x auto-world run opens (1.21.x refuses create).
-if (sharedRole == "create" && !autoWorldVerification && !(setMods || showMods))
+// Core's create role waits for a loaded integrated world from an auto-world run; 1.21.x Core refuses create.
+if (sharedRole == "create" && !(autoWorldVerification && capabilities.SharedCreate) && !(setMods || showMods))
     throw new ArgumentException("LADS_VERIFY_SHARED_ROLE=create needs a 26.x --title run with LADS_VERIFY_AUTO_WORLD=1.");
 if (modRequest != null && !Regex.IsMatch(modRequest, @"\A[a-z][a-z0-9_-]{0,63}:(true|false)\z")) throw new ArgumentException("LADS_VERIFY_MOD_REQUEST must be <mod id>:<true|false>.");
 if (modRequest != null && expectCoreDisabled) throw new ArgumentException("LADS_VERIFY_MOD_REQUEST needs LadsCore; it cannot run with --expect-core-disabled.");
 var expectAbsent = Ids(Env("LADS_VERIFY_EXPECT_ABSENT"));
 var expectPresent = Ids(Env("LADS_VERIFY_EXPECT_PRESENT"));
 if (expectCoreDisabled && !expectAbsent.Contains(BundledModInstaller.CoreModId)) expectAbsent.Add(BundledModInstaller.CoreModId);
+expectAbsent.AddRange(excludedMods.Where(id => !expectAbsent.Contains(id)));
 if (setMods || showMods)
 {
     if (!Directory.Exists(directory)) throw new DirectoryNotFoundException($"QA game folder '{directory}' does not exist; run the game once first.");
@@ -232,12 +245,8 @@ var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<strin
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
 var modList = new FabricModList();
-string[] requiredTitleProbes = ["Lads raised title probe END:",
-    "Lads native reconnect probe END:", "Lads background policy probe END:", "Lads native SignalLoss probe END:", "Lads narrator probe END:"];
-string[] requiredWorldProbes = ["Lads native feature probe END:", "Lads food render probe END:", "Lads food JEI probe END:",
-    "Lads paper doll probe END:", "Lads food server sync END:", "Lads render scale probe END:", "Lads world capture END:",
-    "Lads durability tooltip probe END:", "Lads tab tweaks probe END:", "Lads clumps server probe END:", "Lads native screenshots probe END:", "Lads native crosshair probe END:",
-    "Lads shared content probe END:"];
+string[] requiredTitleProbes = capabilities.TitleProbes;
+string[] requiredWorldProbes = capabilities.WorldProbes;
 if (requestedFeaturesOnly)
 {
     requiredWorldProbes = ["Lads native feature probe END:", "Lads improvements probe END:", "Lads font reload probe END:", "Lads world capture END:", "Lads shared content probe END:"];
@@ -253,7 +262,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
-    "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED",
+    "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && inventorySnapshots.ContainsKey("title"); }
 var jvmFlags = new List<string>();
@@ -298,8 +307,12 @@ try
     {
         var manifest = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(packSource, "game-mods", version, "client-mods.json"), ct))!.AsObject();
         var mods = manifest["mods"]!.AsArray();
+        // Upstream mods the Core replaces: this manifest's retired entries "Replaced by native Lads Core functionality".
+        var nativePorts = (manifest["retired"]?.AsArray() ?? []).Select(entry => entry!.AsObject())
+            .Where(entry => entry["reason"]?.GetValue<string>().Contains("Replaced by native Lads Core functionality", StringComparison.Ordinal) == true)
+            .Select(entry => entry["modId"]!.GetValue<string>()).ToList();
         for (int index = mods.Count - 1; index >= 0; index--)
-            if (mods[index]?["modId"]?.GetValue<string>() is "paperdoll" or "autoreconnectrf" or "tabtweaks" or "screenshot_viewer" or "clumps") mods.RemoveAt(index);
+            if (mods[index]?["modId"]?.GetValue<string>() is { } modId && (nativePorts.Contains(modId) || excludedMods.Contains(modId))) mods.RemoveAt(index);
         packSource = Path.Combine(root, "artifacts", "verification", "native-ports-pack");
         string stagedManifest = Path.Combine(packSource, "game-mods", version, "client-mods.json");
         Directory.CreateDirectory(Path.GetDirectoryName(stagedManifest)!);
@@ -312,7 +325,9 @@ try
             Directory.CreateDirectory(Path.GetDirectoryName(staged)!);
             if (File.Exists(production)) File.Copy(production, staged, overwrite: true);
         }
-        Console.WriteLine("Native port QA: staged pack without replaced Paper Doll, AutoReconnect, TabTweaks, Screenshot Viewer and Clumps upstream jars. Production manifest preserved.");
+        Console.WriteLine(nativePorts.Count > 0 ? $"Native port QA: staged pack without replaced {string.Join(", ", nativePorts)} upstream jars. Production manifest preserved."
+            : $"Native port QA: the {version} manifest retires no upstream jar for native Lads Core functionality yet; staged it unchanged. Production manifest preserved.");
+        if (excludedMods.Count > 0) Console.WriteLine($"QA pack: left out {string.Join(", ", excludedMods)} (LADS_VERIFY_EXCLUDE_MODS). This run does not test the production pack.");
     }
     if (Env("LADS_VERIFY_V134") == "1")
     {
@@ -625,6 +640,32 @@ if (process != null && HasStarted(process))
 }
 lock (logGate) { log?.Dispose(); log = null; }
 if (File.Exists(logPath)) File.Copy(logPath, Path.Combine(evidence, $"production-smoke-{scenario}.log"), overwrite: true);
+// Catalog parity with 26.2, the 1.3.5 target: informational, or a failure with LADS_VERIFY_PARITY=1 (the release gate).
+if (!expectCoreDisabled && process != null && HasStarted(process))
+{
+    var parityLines = new List<string>();
+    try
+    {
+        var reference = CatalogSupport(Path.Combine(verificationRoot, "26.2-title", "lads-core-catalog.json"));
+        var current = CatalogSupport(Path.Combine(directory, "lads-core-catalog.json"));
+        var builtIn = reference.Where(module => module.Value.Support == "builtIn").Select(module => module.Key).ToList();
+        // Equivalent: built in, or an upstream mod this pack installs behind the module's Lads card.
+        var missing = builtIn.Where(name => !current.TryGetValue(name, out var here) || !(here.Support == "builtIn" || here.Support == "external" && here.Label == "Installed mod"))
+            .Select(name => current.TryGetValue(name, out var here) ? $"{name} ({here.Support}{(here.Support == "external" ? ": " + here.Label : "")})" : $"{name} (absent)").ToList();
+        parityLines.Add($"Lads catalog parity END: {builtIn.Count} checks, {missing.Count} missing");
+        if (missing.Count > 0)
+        {
+            parityLines.Add($"Lads catalog parity: built in on 26.2 but neither built in nor an installed external mod on {version}: {string.Join(", ", missing)}");
+            if (Env("LADS_VERIFY_PARITY") == "1") failures.Add($"LADS_VERIFY_PARITY=1: {missing.Count} of {builtIn.Count} modules built in on 26.2 are missing on {version}.");
+        }
+    }
+    catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or KeyNotFoundException or NullReferenceException)
+    {
+        parityLines.Add($"Lads catalog parity FAILED: {e.GetType().Name}: {e.Message}");
+        if (Env("LADS_VERIFY_PARITY") == "1") failures.Add(parityLines[^1]);
+    }
+    foreach (var line in parityLines) { Console.WriteLine(line); keyLines.Add(line); }
+}
 // Readable evidence: versions keep their "+" instead of +.
 var evidenceJson = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 if (modList.Top.Count > 0)
@@ -655,6 +696,7 @@ string passLine = expectCoreDisabled
     : requestedFeaturesOnly
         ? $"PRODUCTION SMOKE PASS (requested-features only; the broader 26.x suites were not run): correct version, {coreText}, native window observed, {loadedText}. Online sign-in is not exercised."
         : $"PRODUCTION SMOKE PASS: correct version, {coreText}, native window observed, {loadedText}. Online sign-in is not exercised.";
+if (excludedMods.Count > 0) passLine = passLine.Replace("PRODUCTION SMOKE PASS", $"PRODUCTION SMOKE PASS (QA pack without {string.Join(", ", excludedMods)}, not the production pack)");
 return await FinishAsync(passLine, keyLines);
 
 async Task<int> FinishAsync(string passLine, IReadOnlyList<string> logLines)
@@ -751,6 +793,11 @@ static string Snapshot(string folder)
     return string.Join("\n", lines) + "\n";
 }
 
+// Each module's catalog support ("builtIn", "external", "pending", "unavailable") and label, by module name.
+static Dictionary<string, (string Support, string Label)> CatalogSupport(string file) =>
+    JsonNode.Parse(File.ReadAllText(file))!["modules"]!.AsArray().Select(module => module!.AsObject())
+        .ToDictionary(module => module["name"]!.GetValue<string>(), module => (module["support"]!.GetValue<string>(), module["label"]?.GetValue<string>() ?? ""), StringComparer.Ordinal);
+
 static string ModsListing(string gameDirectory)
 {
     var mods = new DirectoryInfo(Path.Combine(gameDirectory, "mods"));
@@ -772,6 +819,23 @@ static string InventoryTable(ModInventory inventory)
     }
     foreach (var entry in inventory.Entries) Row(entry, 0);
     return text.ToString();
+}
+
+/// <summary>What LadsCore can verify on each version: the markers each run requires and the probes an env flag may ask for.
+/// 1.21.x gains entries as the 1.3.5 units port features; the 26.x lists are the ones every 26.x run already required.</summary>
+sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, bool Version133, bool Version134, bool Replay,
+    bool RequestedFeatures, string[] TitleProbes, string[] WorldProbes)
+{
+    public static QaCapabilities For(string version) => version is "26.2" or "26.3"
+        ? new(true, true, true, true, GraphicsRenderer.SupportsVulkan(version), true, true,
+            ["Lads raised title probe END:", "Lads native reconnect probe END:", "Lads background policy probe END:", "Lads native SignalLoss probe END:", "Lads narrator probe END:"],
+            ["Lads native feature probe END:", "Lads food render probe END:", "Lads food JEI probe END:",
+                "Lads paper doll probe END:", "Lads food server sync END:", "Lads render scale probe END:", "Lads world capture END:",
+                "Lads durability tooltip probe END:", "Lads tab tweaks probe END:", "Lads clumps server probe END:", "Lads native screenshots probe END:", "Lads native crosshair probe END:",
+                "Lads shared content probe END:"])
+        // 1.21.x: NativeWorldVerification on its own QA save, the native feature probe and the U1 menu access probe.
+        : new(false, false, false, false, false, false, false, [],
+            ["Lads native feature probe END:", "Lads menu access probe END:", "Lads world capture END:", "Lads shared content probe END:"]);
 }
 
 /// <summary>Fabric's "Loading N mods:" block: top-level jars and the jar-in-jar mods under them. N counts distinct ids

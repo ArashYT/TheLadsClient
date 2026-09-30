@@ -36,7 +36,7 @@ public final class NativeFeatures {
     public static boolean interactive() {
         Minecraft mc = Minecraft.getInstance();
         return mc.player != null && mc.level != null && !mc.player.isDeadOrDying()
-            && mc.screen == null && mc.isWindowActive() && !mc.isPaused();
+            && mc.screen == null && NativeWorldVerification.windowActive() && !mc.isPaused();
     }
     public static void reset() {
         stopOwnedSprint();
@@ -144,13 +144,15 @@ public final class NativeFeatures {
         return zoomPrevious + delta * (zoomCurrent - zoomPrevious);
     }
     public static float gamma(float vanilla) {
-        if (module("Fullbright") instanceof FullbrightModule fullbright && fullbright.isEnabled()
-            && Minecraft.getInstance().level != null) {
-            double multiplier = fullbright.getOption("Brightness Multiplier") instanceof SliderOption value
-                ? value.getValue() : 1;
-            // Replace only the lightmap gamma input; effects and the saved vanilla option remain native.
-            return (float) Math.max(vanilla, fullbright.getGamma() * multiplier);
-        }
-        return vanilla;
+        // Replace only the lightmap gamma input; effects and the saved vanilla option remain native.
+        double fullbright = fullbrightGamma();
+        return fullbright < 0 ? vanilla : (float) Math.max(vanilla, fullbright);
+    }
+    /** The gamma Fullbright gives the lightmap, or -1 while it is off; FullbrightLightmapHook watches it for BadOptimizations. */
+    public static double fullbrightGamma() {
+        if (!(module("Fullbright") instanceof FullbrightModule fullbright) || !fullbright.isEnabled()
+            || Minecraft.getInstance().level == null) return -1;
+        double multiplier = fullbright.getOption("Brightness Multiplier") instanceof SliderOption value ? value.getValue() : 1;
+        return fullbright.getGamma() * multiplier;
     }
 }

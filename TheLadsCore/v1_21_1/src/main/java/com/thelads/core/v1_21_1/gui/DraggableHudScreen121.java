@@ -12,9 +12,14 @@ public class DraggableHudScreen121 extends Screen {
     private final DraggableHudScreen ui;
 
     public DraggableHudScreen121(Screen parent) {
+        this(parent, new DraggableHudScreen());
+    }
+
+    /** As on 26.x: QA passes an editor whose persistence it owns. */
+    public DraggableHudScreen121(Screen parent, DraggableHudScreen controller) {
         super(Component.literal("Edit HUD"));
         this.parent = parent;
-        this.ui = new DraggableHudScreen();
+        this.ui = java.util.Objects.requireNonNull(controller);
         this.ui.setOnClose(this::onClose);
         this.ui.setOnSettings(name -> {
             var settings = new LadsSettingsScreen121(this);
@@ -34,7 +39,12 @@ public class DraggableHudScreen121 extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (ui.mouseClicked(mouseX, mouseY, button, (Screen.hasShiftDown() ? 1 : 0) | (Screen.hasControlDown() ? 2 : 0))) {
+        return mouseClicked(mouseX, mouseY, button, (Screen.hasShiftDown() ? 1 : 0) | (Screen.hasControlDown() ? 2 : 0));
+    }
+
+    /** The click with GLFW modifiers (1.21.1 gives screens none; the override above reads the keyboard, QA passes them). */
+    public boolean mouseClicked(double mouseX, double mouseY, int button, int modifiers) {
+        if (ui.mouseClicked(mouseX, mouseY, button, modifiers)) {
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);

@@ -90,6 +90,8 @@ public final class LadsSettingsScreen {
     public String getCurrentCategory() { return currentCategory; }
     public String getCurrentTab() { return "MODS"; }
     public List<Rect> getControlBounds() { return controls.stream().map(Control::rect).toList(); }
+    /** Bounds of a control drawn by the last render (e.g. "search", "option:Size"), or null; QA drives real input at them. */
+    public Rect controlBounds(String id) { return controls.stream().filter(c -> c.id.equals(id)).map(Control::rect).findFirst().orElse(null); }
     public int getScrollOffset() { return scrollOffset; }
     public List<String> visibleModuleNames() { return getFilteredModules().stream().map(Module::getName).toList(); }
 

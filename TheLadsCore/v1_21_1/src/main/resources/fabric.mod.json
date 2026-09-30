@@ -15,8 +15,12 @@
     ]
   },
   "mixins": [
-    "theladscore.v1_21_1.mixins.json"
+    "theladscore.v1_21_1.mixins.json",
+    "theladscore.v1_21_1.qa.mixins.json"
   ],
+  "custom": {
+    "badoptimizations:cache_hooks": { "lightmap": "com.thelads.core.v1_21_1.feature.FullbrightLightmapHook" }
+  },
   "depends": {
     "fabricloader": ">=0.16.9",
     "fabric-api": "*",

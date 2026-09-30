@@ -19,7 +19,7 @@ public final class NativeMenuKey {
     public static void tick() {
         Minecraft mc = Minecraft.getInstance();
         // A focus/world change can lose the release callback. The next real press must work.
-        if (!mc.isWindowActive() || player != mc.player) CONTROLLER.reset();
+        if (!NativeWorldVerification.windowActive() || player != mc.player) CONTROLLER.reset();
         player = mc.player;
     }
 
@@ -37,7 +37,7 @@ public final class NativeMenuKey {
 
     public static boolean key(int key, int scancode, int action, int modifiers) {
         Minecraft mc = Minecraft.getInstance();
-        if (!mc.isWindowActive()) { CONTROLLER.reset(); return false; }
+        if (!NativeWorldVerification.windowActive()) { CONTROLLER.reset(); return false; }
         Screen screen = mc.screen;
         var decision = CONTROLLER.key(key, scancode, action(action),
             NativeKeyBindings.MODULES.matches(key, scancode), canOpen(screen),
@@ -64,7 +64,7 @@ public final class NativeMenuKey {
 
     public static boolean mouse(int button, int action) {
         Minecraft mc = Minecraft.getInstance();
-        if (!mc.isWindowActive()) { CONTROLLER.reset(); return false; }
+        if (!NativeWorldVerification.windowActive()) { CONTROLLER.reset(); return false; }
         Screen screen = mc.screen;
         int physicalKey = -1000 - button; // Separate mouse and keyboard/scancode identities.
         var decision = CONTROLLER.key(physicalKey, 0, action(action),

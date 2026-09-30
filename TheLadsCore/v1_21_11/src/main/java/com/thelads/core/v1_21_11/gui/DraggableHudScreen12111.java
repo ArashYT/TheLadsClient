@@ -14,9 +14,14 @@ public class DraggableHudScreen12111 extends Screen {
     private final DraggableHudScreen ui;
 
     public DraggableHudScreen12111(Screen parent) {
+        this(parent, new DraggableHudScreen());
+    }
+
+    /** As on 26.x: QA passes an editor whose persistence it owns. */
+    public DraggableHudScreen12111(Screen parent, DraggableHudScreen controller) {
         super(Component.literal("Edit HUD"));
         this.parent = parent;
-        this.ui = new DraggableHudScreen();
+        this.ui = java.util.Objects.requireNonNull(controller);
         this.ui.setOnClose(this::onClose);
         this.ui.setOnSettings(name -> {
             var settings = new LadsSettingsScreen12111(this);

@@ -33,6 +33,8 @@ public class LadsSettingsScreen121 extends Screen {
     }
 
     public void openModule(String name) { ui.openModule(name); }
+    /** The shared menu this screen draws and routes input to (QA reads its state and control bounds). */
+    public LadsSettingsScreen ui() { return ui; }
 
     @Override
     protected void init() {

@@ -18,10 +18,14 @@ public final class NativeQualityOfLife {
         NativeKeyBindings.register();
         // "Soon" card as on 26.x, whose presence tick sends nothing yet; no Discord connection is made.
         ModuleSupport.registerBuiltIn("DiscordRPC");
+        // QA only (-Dthelads.verifyAutoWorld): the isolated auto-world runtime; registers nothing in normal launches.
+        NativeWorldVerification.register();
     }
 
     /** Every client tick, from ClientTickMixin (Minecraft.tick HEAD). */
     public static void tick() {
+        NativeQualityProbe.tick();
+        NativeMenuAccessProbe.tick();
     }
 
     public static Module module(String name) { return ModuleManager.getInstance().getModule(name); }
