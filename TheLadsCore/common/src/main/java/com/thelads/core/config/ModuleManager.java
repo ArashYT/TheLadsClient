@@ -166,6 +166,7 @@ public class ModuleManager {
         Module vb = new Module("VerticalBobbing", "Adds vertical view bob (incl. jumping/falling).");
         vb.addOption(new DropdownOption("Intensity", 1, "Low", "Normal", "High"));
         register(vb, Module.Category.MECHANIC);
+        register(new OldAnimationsModule(), Module.Category.MECHANIC);
 
         register(new DynamicFPSModule(), Module.Category.MECHANIC);
         register(new ToggleNametagsModule(), Module.Category.MECHANIC);
