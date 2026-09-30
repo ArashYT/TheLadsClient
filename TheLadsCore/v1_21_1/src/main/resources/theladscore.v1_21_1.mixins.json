@@ -4,11 +4,12 @@
   "package": "com.thelads.core.v1_21_1.mixin",
   "compatibilityLevel": "JAVA_21",
   "injectors": {
-    "defaultRequire": 0
+    "defaultRequire": 1
   },
   "client": [
     "GuiMixin",
     "TitleScreenMixin",
+    "ClientTickMixin",
     "ServerListAccessor",
     "ServerListSharedMixin"
   ]

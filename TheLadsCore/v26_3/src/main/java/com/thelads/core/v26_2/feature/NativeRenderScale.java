@@ -7,6 +7,7 @@ import com.mojang.renderpearl.api.textures.FilterMode;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
+import com.thelads.core.client.RenderScalePolicy;
 import com.thelads.core.v26_2.mixin.RenderScaleTargetsAccessorMixin;
 
 /** A render-thread-owned world attachment. The vanilla presentation/GUI target is never resized here. */

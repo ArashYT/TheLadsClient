@@ -9,6 +9,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.telemetry.*;
+import com.thelads.core.client.LegacyVerticalBob;
 import com.thelads.core.v26_2.mixin.BossBarAccessor;
 import java.util.*;
 public final class NativeRequestProbe {

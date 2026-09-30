@@ -1,4 +1,4 @@
-package com.thelads.core.v26_2.feature;
+package com.thelads.core.client;
 
 /** A short cosmetic sequence, not a claimed server round or lifetime kill streak. */
 public final class KillBannerTimeline {

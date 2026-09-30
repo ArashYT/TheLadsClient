@@ -1,7 +1,7 @@
 package com.thelads.core.v26_2.mixin;
 
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
-import com.thelads.core.v26_2.feature.FrameAnimation;
+import com.thelads.core.client.FrameAnimation;
 import com.thelads.core.v26_2.feature.NativeQualityOfLife;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;

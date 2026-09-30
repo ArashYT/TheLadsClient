@@ -1,6 +1,7 @@
 package com.thelads.core.v1_21_11.feature;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.thelads.core.client.MenuKeyController;
 import com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;

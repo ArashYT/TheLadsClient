@@ -1,4 +1,4 @@
-package com.thelads.core.v26_2.feature;
+package com.thelads.core.client;
 
 /** Exponential animation measured in seconds, independent of game tick and frame rate. */
 public final class FrameAnimation {

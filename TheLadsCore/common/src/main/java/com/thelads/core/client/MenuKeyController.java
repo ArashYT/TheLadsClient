@@ -1,4 +1,4 @@
-package com.thelads.core.v26_2.feature;
+package com.thelads.core.client;
 
 /** Press-edge routing, independent of Minecraft so repeat/release behavior is testable. */
 public final class MenuKeyController {

@@ -1,4 +1,4 @@
-package com.thelads.core.v1_21_11.feature;
+package com.thelads.core.client;
 
 import java.util.Locale;
 

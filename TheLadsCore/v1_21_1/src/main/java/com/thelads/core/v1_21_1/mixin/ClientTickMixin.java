@@ -1,6 +1,5 @@
-package com.thelads.core.v1_21_11.mixin;
-import com.thelads.core.v1_21_11.feature.NativeFeatures;
-import com.thelads.core.v1_21_11.feature.NativeMenuKey;
+package com.thelads.core.v1_21_1.mixin;
+import com.thelads.core.v1_21_1.feature.NativeQualityOfLife;
 import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -11,9 +10,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class ClientTickMixin {
     @Inject(method = "tick()V", at = @At("HEAD"), require = 1)
     private void ladsTickFeatures(CallbackInfo ci) {
-        NativeMenuKey.tick();
-        NativeFeatures.tick();
-        com.thelads.core.v1_21_11.feature.NativeQualityOfLife.tick();
+        NativeQualityOfLife.tick();
+        // The launcher lists Lads modules from this catalog; a later registration bumps the revision and rewrites it.
         com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
     }
 }

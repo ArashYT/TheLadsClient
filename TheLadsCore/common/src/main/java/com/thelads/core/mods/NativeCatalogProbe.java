@@ -1,4 +1,4 @@
-package com.thelads.core.v26_2.feature;
+package com.thelads.core.mods;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;

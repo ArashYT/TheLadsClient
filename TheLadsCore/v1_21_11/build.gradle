@@ -8,6 +8,8 @@ java {
     }
 }
 
+loom { accessWidenerPath = file('src/main/resources/theladscore.accesswidener') }
+
 tasks.withType(JavaCompile).configureEach {
     options.release = 21
     options.encoding = 'UTF-8'
@@ -17,6 +19,8 @@ dependencies {
     minecraft 'com.mojang:minecraft:1.21.11'
     mappings loom.officialMojangMappings()
     modImplementation 'net.fabricmc:fabric-loader:0.19.3'
+    // The version the 1.21.11 launcher pack ships (game-mods/1.21.11/client-mods.json).
+    modImplementation 'net.fabricmc.fabric-api:fabric-api:0.141.6+1.21.11'
 
     implementation project(':common')
     // Common classes are merged below. Minecraft supplies JNA, Gson and SLF4J.

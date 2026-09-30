@@ -5,6 +5,7 @@ import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.thelads.core.client.RenderScalePolicy;
 import java.nio.file.Files;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;

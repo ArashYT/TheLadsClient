@@ -27,7 +27,7 @@ Exordium remains separate and unavailable: correctly caching GUI layers requires
 ## Verification
 
 - Required multi-version `gradlew.bat build deploy -x test` passes.
-- `RenderScalePolicyChecks` passes 22 sizing and adaptive-policy checks. These do not establish working graphics.
+- `RenderScalePolicyTest` (common, run by `:common:test`) passes the same 22 sizing and adaptive-policy checks. These do not establish working graphics.
 - Actual GPU/world verification is opt-in with `-Dthelads.verifyRenderScale=true` in `artifacts/verification/26.2-title` only. It does not change module settings or save temporary preferences.
 - The probe waits for an unpaused world with no screen, then runs six short stages: 50% linear, 50% nearest, 150% supersampling, disabled, 100%, and bounded dynamic scaling. Interactive runs require focus. The strictly isolated [automatic world harness](AUTO_WORLD_QA_26_2.md) can also verify the GPU behind a locked desktop. Opening a screen during an active probe reports failure and ends the temporary override.
 - Checks inspect actual color/depth/outline dimensions, native GUI/presentation restoration, repeated world composites, target disposal and dynamic bounds. A separate GPU readback checks red/blue pixels to prove full-target coverage and distinct linear/nearest sampling.
