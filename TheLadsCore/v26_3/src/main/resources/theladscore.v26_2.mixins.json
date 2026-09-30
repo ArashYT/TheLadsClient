@@ -82,6 +82,7 @@
     "AutohideItemMixin",
     "AutohideItemRenderMixin",
     "LegacyEquipMixin",
-    "BorderlessWindowMixin"
+    "BorderlessWindowMixin",
+    "WindowIconMixin"
   ]
 }

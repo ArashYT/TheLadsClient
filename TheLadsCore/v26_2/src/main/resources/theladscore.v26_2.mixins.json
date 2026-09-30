@@ -81,6 +81,7 @@
     "AutohideElementsMixin",
     "AutohideTextMixin",
     "AutohideItemMixin",
-    "AutohideItemRenderMixin"
+    "AutohideItemRenderMixin",
+    "WindowIconMixin"
   ]
 }

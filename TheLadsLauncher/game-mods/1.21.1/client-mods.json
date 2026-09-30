@@ -198,21 +198,6 @@
       "projectUrl": "https://modrinth.com/mod/chat-signing-hider"
     },
     {
-      "projectId": "NTUQ8Yoi",
-      "projectSlug": "classic-minecraft-icon",
-      "name": "Classic Minecraft Icon",
-      "modId": "classic_minecraft_icon",
-      "versionId": "D7R2YEf6",
-      "version": "v1.1.10-mc1.21.11-fabric",
-      "fileName": "classic-minecraft-icon-v1.1.10-mc1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/NTUQ8Yoi/versions/D7R2YEf6/classic-minecraft-icon-v1.1.10-mc1.21.11-fabric.jar",
-      "sha512": "480bd5af116dbae3b67f41ccf274f6e5f62625cb133b8394893c31d9e5351086b47c03048c706f966e03406325961bf692a880f09d7126169b212ecc77aeeaf3",
-      "size": 262058,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/Fallen-Breath/classic-minecraft-icon",
-      "projectUrl": "https://modrinth.com/mod/classic-minecraft-icon"
-    },
-    {
       "projectId": "K0AkAin6",
       "projectSlug": "clientsort",
       "name": "Client Sort",
@@ -1411,6 +1396,17 @@
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/Moulberry/Flashback",
       "projectUrl": "https://modrinth.com/mod/flashback"
+    }
+  ],
+  "retired": [
+    {
+      "modId": "classic_minecraft_icon",
+      "projectId": "NTUQ8Yoi",
+      "name": "Classic Minecraft Icon",
+      "sha512": [
+        "480bd5af116dbae3b67f41ccf274f6e5f62625cb133b8394893c31d9e5351086b47c03048c706f966e03406325961bf692a880f09d7126169b212ecc77aeeaf3"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.3.6."
     }
   ]
 }

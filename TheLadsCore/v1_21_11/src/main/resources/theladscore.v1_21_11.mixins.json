@@ -21,6 +21,7 @@
     "ScoreboardMixin",
     "ServerListAccessor",
     "ServerDataAccessor",
-    "ServerListSharedMixin"
+    "ServerListSharedMixin",
+    "WindowIconMixin"
   ]
 }

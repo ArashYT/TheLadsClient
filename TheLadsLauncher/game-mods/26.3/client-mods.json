@@ -138,21 +138,6 @@
       "projectUrl": "https://modrinth.com/mod/chat-heads"
     },
     {
-      "projectId": "NTUQ8Yoi",
-      "projectSlug": "classic-minecraft-icon",
-      "name": "Classic Minecraft Icon",
-      "modId": "classic_minecraft_icon",
-      "versionId": "anhxCtFZ",
-      "version": "v1.1.10-mc26.3",
-      "fileName": "classic-minecraft-icon-v1.1.10-mc26.3.jar",
-      "url": "https://cdn.modrinth.com/data/NTUQ8Yoi/versions/anhxCtFZ/classic-minecraft-icon-v1.1.10-mc26.3.jar",
-      "sha512": "d2f8c392299dd6f75e03daad4160d5cfb91e9eec9b650b72505968d654b25a9cb6b1f209d5ea46554671f964e2f24d10834c2ba9c71d473f07ee7be4e335db1b",
-      "size": 263077,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/Fallen-Breath/classic-minecraft-icon",
-      "projectUrl": "https://modrinth.com/mod/classic-minecraft-icon"
-    },
-    {
       "projectId": "K0AkAin6",
       "projectSlug": "clientsort",
       "name": "Client Sort",
@@ -1306,6 +1291,15 @@
         "1359d6576214fffadcb7bd4202bfd1606c827ab6c75143cbc7747269ed7d4131f5db226a914b9a924cac92e596c7994e6fe3303671ff8d5a2dcd41caf613e7ae"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.3.3."
+    },
+    {
+      "modId": "classic_minecraft_icon",
+      "projectId": "NTUQ8Yoi",
+      "name": "Classic Minecraft Icon",
+      "sha512": [
+        "d2f8c392299dd6f75e03daad4160d5cfb91e9eec9b650b72505968d654b25a9cb6b1f209d5ea46554671f964e2f24d10834c2ba9c71d473f07ee7be4e335db1b"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.3.6."
     }
   ]
 }
