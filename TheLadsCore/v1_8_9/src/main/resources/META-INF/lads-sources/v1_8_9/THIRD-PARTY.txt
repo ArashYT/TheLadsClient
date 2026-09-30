@@ -1,0 +1,30 @@
+The Lads Core for Minecraft 1.8.9 (Forge) bundles these libraries in its jar:
+
+- SpongePowered Mixin 0.7.11-SNAPSHOT (org/spongepowered/**), MIT License.
+  Source: https://github.com/SpongePowered/Mixin
+  Copyright (c) SpongePowered and contributors.
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+  documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+  persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice
+  and this permission notice shall be included in all copies or substantial portions of the Software.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+- Gson 2.11.0 (relocated to com/thelads/core/shadow/gson/**), Apache License 2.0.
+  Source: https://github.com/google/gson/tree/gson-parent-2.11.0
+  The Apache License 2.0 text is in this jar at assets/theladscore/licenses/SignalLoss-common-LICENSE.txt.
+
+- SLF4J API 2.0.16 (relocated to com/thelads/core/shadow/slf4j/**), MIT License; its notice is META-INF/LICENSE.txt.
+  Source: https://github.com/qos-ch/slf4j/tree/v_2.0.16
+
+- JvmDowngrader 2.0.1 API stubs (com/thelads/core/jvmdg/**), GNU LGPL 2.1 (JvmDowngrader-LICENSE.md, LGPLv2.1.md).
+  Source: https://github.com/unimined/JvmDowngrader/tree/2.0.1
+  The Lads Core classes shared with the other game versions are compiled for Java 21 and converted to Java 8 bytecode
+  by JvmDowngrader at build time; the stubs it references are copied into the jar. To relink with a modified
+  JvmDowngrader, obtain the corresponding Lads source and run from TheLadsCore:
+    gradlew.bat build189
+  with the modified JvmDowngrader version in TheLadsCore/v1_8_9/build.gradle, then replace mods/theladscore.jar.
+  No signature or integrity check prevents installing a modified jar.
