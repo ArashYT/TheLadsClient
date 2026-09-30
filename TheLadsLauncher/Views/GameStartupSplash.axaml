@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui" xmlns:local="using:TheLadsLauncher.Controls" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.GameStartupSplash" Title="The Lads Client — Starting Minecraft" Width="600" Height="364" CanResize="False" WindowDecorations="None" Topmost="True" ShowInTaskbar="True" WindowStartupLocation="CenterScreen" Background="#17181B">
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.GameStartupSplash" Title="The Lads Client — Starting Minecraft" Width="600" Height="364" CanResize="False" WindowDecorations="None" Topmost="True" ShowInTaskbar="True" WindowStartupLocation="CenterScreen" Background="#17181B">
     <Border BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="5" ClipToBounds="True">
         <Grid Background="#17181B">
             <Grid x:Name="SplashContent" Margin="32,26,32,24" RowDefinitions="Auto,*,Auto,Auto" Opacity="0">
@@ -23,7 +23,11 @@
                         <Border.RenderTransform>
                             <TranslateTransform Y="0" />
                         </Border.RenderTransform>
-                        <local:BlockLandscape IsHitTestVisible="False" />
+                        <Border IsHitTestVisible="False">
+                            <Border.Background>
+                                <ImageBrush Source="avares://TheLadsLauncher/Assets/artwork.jpg" Stretch="UniformToFill" />
+                            </Border.Background>
+                        </Border>
                     </Border>
                 </Grid>
                 <StackPanel Grid.Row="2" Spacing="12">

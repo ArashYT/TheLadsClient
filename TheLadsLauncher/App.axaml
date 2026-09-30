@@ -7,5 +7,9 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://TheLadsLauncher/Styles/LauncherTheme.axaml" />
+        <!-- Every window (Minecraft start splash, dialogs, notes) shows the Lads icon in its title bar and on the taskbar. -->
+        <Style Selector=":is(Window)">
+            <Setter Property="Icon" Value="avares://TheLadsLauncher/Assets/icon.ico" />
+        </Style>
     </Application.Styles>
 </Application>

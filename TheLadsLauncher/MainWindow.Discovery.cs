@@ -48,6 +48,21 @@ public partial class MainWindow
             bitmap.Render(StartupMining);
             bitmap.Save(Path.Combine(output, "cycle", $"{i:000}.png"));
         }
+        // The Home page behind the update screen and the Minecraft start splash, both showing the Lads artwork.
+        StartupMining.Stop();
+        LauncherStartupOverlay.IsVisible = false;
+        await Task.Delay(500);
+        SaveWindowScreenshot(Path.Combine(output, "home.png"));
+        var splash = new Views.GameStartupSplash();
+        splash.SetGameVersion("26.3");
+        splash.Show();
+        await Task.Delay(900);
+        using (var shot = new RenderTargetBitmap(new PixelSize((int)splash.Bounds.Width, (int)splash.Bounds.Height), new Vector(96, 96)))
+        {
+            shot.Render(splash);
+            shot.Save(Path.Combine(output, "game-splash.png"));
+        }
+        splash.Close();
         Close();
     }
 
