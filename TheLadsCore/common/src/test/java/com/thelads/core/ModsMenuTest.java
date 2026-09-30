@@ -117,6 +117,9 @@ class ModsMenuTest {
             assertTrue(g.drawCalls.stream().anyMatch(s->s.contains("FPS")));
             assertTrue(g.buttons.containsKey("ON")||g.buttons.containsKey("OFF"));
             assertTrue(g.buttons.containsKey("100"),"Size slider is reachable at "+Arrays.toString(size));
+            var slider=menu.controlBounds("option:Size"); int[] label=g.buttons.get("100");
+            assertTrue(slider!=null&&slider.contains(label[0],label[1]),"QA finds the drawn Size slider by id at "+Arrays.toString(size));
+            assertNull(menu.controlBounds("option:Missing"));
         }
     }
     @Test void favoritesEnabledCategoriesAndSearchCannotExposeExternalModsOrAlterTheirPreferences() {

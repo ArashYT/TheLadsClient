@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_11.feature.qa.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "GameRendererQaInvoker",
+    "GameRendererQaMixin",
+    "KeyboardHandlerQaInvoker",
+    "OptionsQaMixin"
+  ]
+}
