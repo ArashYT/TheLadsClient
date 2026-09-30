@@ -304,6 +304,9 @@ public partial class MainWindow : Window
 
             // Checks use a ten-minute interval; ready updates retry the idle condition
             // every fifteen seconds, including after the game or authentication ends.
+            // From here on the launcher is open: updates are offered by the title-bar button instead of restarting on their own.
+            _autoUpdater.AskBeforeInstall = true;
+            _autoUpdater.Ready += version => Dispatcher.UIThread.Post(() => ShowUpdateButton(version));
             _updateCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
             _updateCheckTimer.Tick += async (_, _) => await PollForUpdatesAsync();
             _updateCheckTimer.Start();
@@ -321,7 +324,7 @@ public partial class MainWindow : Window
             }
         };
         logTimer.Start();
-        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
+        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _updateNowPulse?.Stop(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
         // Stats timer (1 second)
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statsTimer.Tick += UpdateSystemStats;
@@ -456,22 +459,59 @@ public partial class MainWindow : Window
         StartupLoadingSpinner.Text = string.IsNullOrEmpty(message) ? "Loading resources" : message.TrimEnd('…', '.');
     }
 
-    private Task PollForUpdatesAsync() => _autoUpdater.PollAsync(
-        () => _windowClosed || _launching || _modsBusy || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
-            || _runningProcesses.Keys.Any(IsGameRunning) || SharedContentService.Instance.IsBusy
-            || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p))),
-        message =>
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (_windowClosed) return;
-                ShowStartupStatus(message);
-                UpdateBannerText.Text = message;
-                UpdateBanner.IsVisible = !string.IsNullOrEmpty(message);
-            });
-            if (!string.IsNullOrEmpty(message)) Log($"[Updater] {message}");
-        },
+    private Task PollForUpdatesAsync() => _autoUpdater.PollAsync(UpdateBlocked, ReportUpdate,
         Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1" || _windowClosed);
+
+    /// <summary>Installing restarts the launcher, so it waits for Minecraft, sign-in, mod work and open dialogs.</summary>
+    private bool UpdateBlocked() => _windowClosed || _launching || _modsBusy || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
+        || _runningProcesses.Keys.Any(IsGameRunning) || SharedContentService.Instance.IsBusy
+        || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)));
+
+    private void ReportUpdate(string message)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_windowClosed) return;
+            ShowStartupStatus(message);
+            UpdateBannerText.Text = message;
+            UpdateBanner.IsVisible = !string.IsNullOrEmpty(message);
+        });
+        if (!string.IsNullOrEmpty(message)) Log($"[Updater] {message}");
+    }
+
+    private DispatcherTimer? _updateNowPulse;
+
+    /// <summary>A verified update found while the launcher is open waits for the user behind the glowing title-bar button.</summary>
+    private void ShowUpdateButton(string version)
+    {
+        if (_windowClosed) return;
+        ToolTip.SetTip(UpdateNowBtn, $"Version {version} is ready. Click to install it and restart the launcher.");
+        if (UpdateNowHost.IsVisible) return;
+        UpdateNowHost.IsVisible = true;
+        Log($"[Updater] v{version} is ready; waiting for the Update button.");
+        if (settings.ReducedMotion) return;
+        var clock = Stopwatch.StartNew();
+        _updateNowPulse = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _updateNowPulse.Tick += (_, _) =>
+        {
+            double t = clock.Elapsed.TotalSeconds;
+            UpdateNowGlow.Opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.Sin(t * Math.PI / 0.9)); // slow breathing glow
+            if (UpdateNowShine.RenderTransform is Avalonia.Media.TransformGroup group && group.Children[1] is Avalonia.Media.TranslateTransform shine)
+            {
+                double phase = t % 2.6, width = UpdateNowBtn.Bounds.Width + 60; // one sweep, then a pause
+                shine.X = phase < 0.9 ? -40 + width * (phase / 0.9) : -40;
+            }
+        };
+        _updateNowPulse.Start();
+    }
+
+    private void UpdateNow_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_autoUpdater.InstallNow(UpdateBlocked, ReportUpdate)) return;
+        ReportUpdate(UpdateBlocked()
+            ? "Close Minecraft and finish signing in or mod changes, then click Update again."
+            : "The update is not ready yet; the launcher will offer it again shortly.");
+    }
 
     private static bool IsGameRunning(Process process)
     {

@@ -35,6 +35,36 @@ public class AutoUpdaterTests
     }
 
     [Fact]
+    public async Task OnceOpenItDownloadsThenAsksInsteadOfRestarting()
+    {
+        var backend = new Backend();
+        var updater = new AutoUpdater(backend) { AskBeforeInstall = true };
+        var offered = new List<string>();
+        updater.Ready += offered.Add;
+        await updater.PollAsync(() => false, _ => { });
+        await updater.PollAsync(() => false, _ => { });
+        Assert.Equal(1, backend.Downloads);
+        Assert.Equal(0, backend.Applies);
+        Assert.Equal(new[] { "1.2.2", "1.2.2" }, offered);
+        Assert.False(updater.InstallNow(() => true, _ => { }));   // Minecraft or sign-in still running
+        Assert.Equal(0, backend.Applies);
+        Assert.True(updater.InstallNow(() => false, _ => { }));
+        Assert.Equal(1, backend.Applies);
+    }
+
+    [Fact]
+    public void InstallNowNeedsAVerifiedUpdateAndReportsAFailedInstall()
+    {
+        var backend = new Backend();
+        var messages = new List<string>();
+        Assert.False(new AutoUpdater(backend).InstallNow(() => false, messages.Add));
+        backend.PendingVersion = "1.2.2";
+        backend.FailApply = true;
+        Assert.False(new AutoUpdater(backend).InstallNow(() => false, messages.Add));
+        Assert.Contains(messages, message => message.Contains("Install locked"));
+    }
+
+    [Fact]
     public async Task WaitsForGameOrLoginThenAppliesWithoutRedownloading()
     {
         var backend = new Backend();

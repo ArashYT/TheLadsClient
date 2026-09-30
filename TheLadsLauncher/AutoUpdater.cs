@@ -45,6 +45,30 @@ public sealed class AutoUpdater
     private DateTimeOffset _retryAfter;
     public AutoUpdater(ILauncherUpdateBackend backend) => _backend = backend;
 
+    /// <summary>Once the launcher is open, a verified update is offered through <see cref="Ready"/> instead of restarting on its own.</summary>
+    public bool AskBeforeInstall { get; set; }
+    /// <summary>Raised with the version whenever a verified update waits for the user's click.</summary>
+    public event Action<string>? Ready;
+
+    /// <summary>The user asked to update: installs and restarts unless Minecraft or a sign-in is still running.</summary>
+    public bool InstallNow(Func<bool> isBusy, Action<string> report)
+    {
+        string? version = _backend.PendingVersion;
+        if (version == null || isBusy() || !_gate.Wait(0)) return false;
+        try
+        {
+            report($"Installing v{version} and restarting…");
+            _backend.ApplyAndRestart();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            report($"Update could not be installed; try again. {ex.Message}");
+            return false;
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task PollAsync(Func<bool> isBusy, Action<string> report, bool disabled = false)
     {
         if (disabled || !_backend.IsInstalled || DateTimeOffset.UtcNow < _retryAfter || !await _gate.WaitAsync(0)) return;
@@ -56,6 +80,12 @@ public sealed class AutoUpdater
                 _nextCheck = DateTimeOffset.UtcNow.AddMinutes(10);
                 report("Checking for launcher updates…");
                 if (!await _backend.DownloadLatestAsync(report)) { report(""); return; }
+            }
+            if (AskBeforeInstall)
+            {
+                report("");
+                Ready?.Invoke(_backend.PendingVersion!);
+                return;
             }
             if (isBusy())
             {

@@ -36,6 +36,28 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="THE LADS CLIENT  /  LAUNCHER" Classes="caption" Margin="28,0" VerticalAlignment="Center" FontSize="9" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Shown when a verified update is ready while the launcher is open: glow behind, glossy pill, shine sweep on top. -->
+                            <Grid x:Name="UpdateNowHost" IsVisible="False" VerticalAlignment="Center" Margin="0,0,12,0">
+                                <Border x:Name="UpdateNowGlow" CornerRadius="15" Background="#E0525B" BoxShadow="0 0 18 3 #E0525B" Opacity="0.6" IsHitTestVisible="False" />
+                                <Button x:Name="UpdateNowBtn" Classes="updateNow" Content="&#8679;  Update" Click="UpdateNow_Click" />
+                                <Border CornerRadius="15" ClipToBounds="True" IsHitTestVisible="False">
+                                    <Border x:Name="UpdateNowShine" Width="18" HorizontalAlignment="Left">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                                <GradientStop Color="#00FFFFFF" Offset="0" />
+                                                <GradientStop Color="#B3FFFFFF" Offset="0.5" />
+                                                <GradientStop Color="#00FFFFFF" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <Border.RenderTransform>
+                                            <TransformGroup>
+                                                <SkewTransform AngleX="-22" />
+                                                <TranslateTransform X="-40" />
+                                            </TransformGroup>
+                                        </Border.RenderTransform>
+                                    </Border>
+                                </Border>
+                            </Grid>
                             <Button Classes="window" Content="⌕" ToolTip.Tip="Command palette (Ctrl+K)" Click="CommandPalette_Click" />
                             <Button x:Name="AspectLockBtn" Classes="window" Content="Free" ToolTip.Tip="Toggle 16:9 aspect lock" Click="AspectLockBtn_Click" />
                             <Button x:Name="ResetSizeBtn" Classes="window" Content="&#8634;" ToolTip.Tip="Reset window size" Click="ResetSizeBtn_Click" />

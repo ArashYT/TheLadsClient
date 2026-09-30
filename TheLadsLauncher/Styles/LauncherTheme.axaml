@@ -96,6 +96,42 @@
     <Setter Property="FontSize" Value="12"/>
     <Setter Property="CornerRadius" Value="0"/>
   </Style>
+  <!-- Title-bar "Update" pill: glossy red, a little larger than the window buttons, with the glow and shine drawn around it. -->
+  <Style Selector="Button.updateNow">
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="Padding" Value="16,0"/>
+    <Setter Property="CornerRadius" Value="15"/>
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="BorderBrush" Value="#FF8A91"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="Background">
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#FF7F87" Offset="0"/>
+        <GradientStop Color="#E0525B" Offset="0.48"/>
+        <GradientStop Color="#B9303C" Offset="0.52"/>
+        <GradientStop Color="#9E2330" Offset="1"/>
+      </LinearGradientBrush>
+    </Setter>
+  </Style>
+  <Style Selector="Button.updateNow:pointerover /template/ ContentPresenter">
+    <Setter Property="Background">
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#FF979E" Offset="0"/>
+        <GradientStop Color="#EE6169" Offset="0.48"/>
+        <GradientStop Color="#C93A46" Offset="0.52"/>
+        <GradientStop Color="#AE2A37" Offset="1"/>
+      </LinearGradientBrush>
+    </Setter>
+    <Setter Property="BorderBrush" Value="#FFB0B5"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Button.updateNow:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#9E2330"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
   <Style Selector="Button.shortcut">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="HorizontalAlignment" Value="Stretch"/>
