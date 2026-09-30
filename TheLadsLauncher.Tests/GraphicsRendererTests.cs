@@ -33,6 +33,62 @@ public sealed class GraphicsRendererTests : IDisposable
         File.WriteAllText(Options, "fov:0.1\n");
         Assert.Empty(await GraphicsRenderer.PrepareAsync(Game, version, "Vulkan"));
         Assert.Equal("fov:0.1\n", File.ReadAllText(Options));
+        Assert.False(File.Exists(Path.Combine(Game, GraphicsRenderer.StateFile)));
+        Assert.False(File.Exists(Path.Combine(Game, GraphicsRenderer.OptionsStateFile)));
+    }
+
+    [Theory] [InlineData("\"default\"")] [InlineData("\"opengl\"")]
+    public async Task GameSavedBackendSurvivesALegacySaveOfTheSharedOptions(string gameValue)
+    {
+        await GraphicsRenderer.PrepareAsync(Game, "26.3", "Vulkan");
+        File.WriteAllText(Options, "fov:0.6\npreferredGraphicsBackend:" + gameValue + "\n"); // crash fallback or in-game choice
+        await GraphicsRenderer.PrepareAsync(Game, "1.21.11", "Vulkan"); // a 1.21.x launch still sees the key...
+        File.WriteAllText(Options, "fov:0.6\n");                        // ...and its save drops it
+        Assert.Empty(await GraphicsRenderer.PrepareAsync(Game, "26.3", "Vulkan"));
+        Assert.Equal("fov:0.6" + Environment.NewLine + "preferredGraphicsBackend:" + gameValue, File.ReadAllText(Options).TrimEnd());
+    }
+
+    [Fact] public async Task LauncherChangeAppliedThroughOneProfileReachesAnotherSharingItsOptions()
+    {
+        using var dir = new TheLadsLauncher.Tests.TestDirectory(); // deletes the shared-folder links it creates
+        var paths = new PathService(Path.Combine(dir.Path, "launcher"));
+        var profiles = new ProfileService(paths, new SharedContentService(Path.Combine(dir.Path, "global")));
+        var first = profiles.CreateProfile("First", "26.2", 25, false, "0.19.5");
+        var second = profiles.CreateProfile("Second", "26.3", 25, false, "0.19.5");
+        async Task Launch(TheLadsLauncher.Models.LauncherProfile profile, string choice)
+        {
+            await profiles.PrepareProfileEnvironmentAsync(profile, null);
+            await GraphicsRenderer.PrepareAsync(paths.GetProfileDirectory(profile), profile.MinecraftVersion, choice);
+            await profiles.SyncProfileToSharedAsync(profile, reconcileServerList: false);
+        }
+        await Launch(first, "Vulkan"); await Launch(second, "Vulkan");
+        await Launch(first, "OpenGL"); // the shared options now say OpenGL
+        await Launch(second, "Vulkan"); // Vulkan chosen again: this profile must not keep the OpenGL value
+        Assert.Contains("preferredGraphicsBackend:\"vulkan\"", File.ReadAllText(Path.Combine(paths.GetProfileDirectory(second), "options.txt")));
+    }
+
+    [Fact] public async Task RunningCopyOfTheProfileOnlyBlocksARendererChange()
+    {
+        await GraphicsRenderer.PrepareAsync(Game, "26.3", "Vulkan");
+        using var java = TheLadsLauncher.Tests.RunningJava.Start(root);
+        if (java == null) return; // no Java on this machine
+        RunningGameMarker.Write(Game, java.Process.Id, java.Process.StartTime.ToUniversalTime(), new[] { "theladscore" });
+        Assert.Contains("iris", await GraphicsRenderer.PrepareAsync(Game, "26.3", "Vulkan")); // another copy: nothing changes
+        await Assert.ThrowsAsync<IOException>(() => GraphicsRenderer.PrepareAsync(Game, "26.3", "OpenGL"));
+        Assert.Contains("preferredGraphicsBackend:\"vulkan\"", File.ReadAllText(Options));
+    }
+
+    [Fact] public async Task ModsPageLockFollowsTheSavedSelectionBeforeTheNextLaunch()
+    {
+        WriteIrisManifest(FabricJar("iris", "1"));
+        await GraphicsRenderer.PrepareAsync(Game, "26.3", "Vulkan");
+        string selection = GraphicsRenderer.OpenGl;
+        async Task<bool> IrisLocked(ModInventoryService service) =>
+            !Assert.Single((await service.BuildAsync(root, Game, "26.3")).Entries.Where(e => e.Id == "iris")).CanToggle;
+        Assert.False(await IrisLocked(new ModInventoryService(rendererSelection: () => selection)));
+        Assert.True(await IrisLocked(new ModInventoryService())); // without a selection: what the last launch applied
+        selection = GraphicsRenderer.Vulkan;
+        Assert.True(await IrisLocked(new ModInventoryService(rendererSelection: () => selection)));
     }
 
     [Fact] public async Task NativeUserChangeToOpenGlIsRespectedUntilLauncherChoiceChanges()
@@ -52,8 +108,6 @@ public sealed class GraphicsRendererTests : IDisposable
         File.WriteAllText(Options, "fov:0.6\nkey_key.attack:key.mouse.left\n");
         await GraphicsRenderer.PrepareAsync(Game, "1.21.11", choice);
         Assert.DoesNotContain("preferredGraphicsBackend:", File.ReadAllText(Options));
-        // The legacy game uses its own renderer state file; restore this profile's unchanged state.
-        File.WriteAllText(Path.Combine(Game, GraphicsRenderer.StateFile), JsonSerializer.Serialize(new GraphicsRenderer.State(choice, Array.Empty<string>())));
         var suspended = await GraphicsRenderer.PrepareAsync(Game, "26.3", choice);
         string saved = File.ReadAllText(Options);
         Assert.Contains($"preferredGraphicsBackend:\"{backend}\"", saved);
@@ -72,7 +126,7 @@ public sealed class GraphicsRendererTests : IDisposable
         var blocked = await GraphicsRenderer.PrepareAsync(Game, "26.3", "OpenGL", messages.Add);
         Assert.Contains("iris", blocked);
         Assert.Equal(nativeOptions, File.ReadAllText(Options));
-        Assert.Equal("OpenGL", GraphicsRenderer.ReadState(Game)!.Preference);
+        Assert.True(GraphicsRenderer.ReadState(Game)!.Vulkan);
         Assert.Contains(messages, message => message.StartsWith("Graphics: Vulkan preferred;", StringComparison.Ordinal));
     }
 

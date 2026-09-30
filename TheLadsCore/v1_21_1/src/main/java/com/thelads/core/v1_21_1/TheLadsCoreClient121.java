@@ -16,6 +16,9 @@ public class TheLadsCoreClient121 implements ClientModInitializer {
         LadsGameBridge.set(new VanillaGameBridge121());
         ConfigManager.load();
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
+        // GuiMixin draws these through HudManager with VanillaGameBridge121 data, so settings and the HUD editor can switch them.
+        com.thelads.core.config.ModuleSupport.registerBuiltIn("FPS", "Coordinates", "PingHUD", "Memory", "Speed", "Day", "Time", "XP",
+            "Potion Effects", "CPS", "Keystrokes", "Biome", "Direction", "Health", "Hunger", "TexturePacks");
         // Nothing registers later on 1.21.1 (no tick hook), so the launcher catalog is written once here.
         com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
         LOGGER.info("TheLadsCore 1.21.1 initialized successfully.");

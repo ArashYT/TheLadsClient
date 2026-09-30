@@ -11,25 +11,31 @@ public final class HudGroupLayout {
     }
     public record Delta(int x,int y) {}
     private HudGroupLayout() {}
-    /** Match only vertically connected members; unrelated rows in a rigid group retain their widths. */
+    /**
+     * Enabled members of one saved group that share horizontal extent form a column: one axis, one width.
+     * Membership decides this, not the 4px dock, so taller or wider content cannot split a stack.
+     * Side-by-side rows of older rigid groups keep their own widths; hidden members never set the width.
+     */
     public static void matchDockedWidths(java.util.Map<HudElement,Rect> bounds) {
         var seen=new java.util.HashSet<HudElement>();
         for(var element:java.util.List.copyOf(bounds.keySet())) {
-            if(!seen.add(element))continue;
-            var connected=new java.util.ArrayList<HudElement>();connected.add(element);
+            if(!element.isEnabled()||!seen.add(element))continue;
+            var column=new java.util.ArrayList<HudElement>();column.add(element);
             var group=com.thelads.core.config.HudSettings.getInstance().getGroupMembers(element.getModuleName());
             if(group==null)continue;
-            for(int i=0;i<connected.size();i++) {
-                Rect a=bounds.get(connected.get(i));
-                for(var other:bounds.keySet())if(!seen.contains(other)&&group.contains(other.getModuleName())&&docked(a,bounds.get(other))) {
-                    seen.add(other);connected.add(other);
+            for(int i=0;i<column.size();i++) {
+                Rect a=bounds.get(column.get(i));
+                for(var other:bounds.keySet())if(other.isEnabled()&&!seen.contains(other)&&group.contains(other.getModuleName())&&overlapX(a,bounds.get(other))) {
+                    seen.add(other);column.add(other);
                 }
             }
-            if(connected.size()<2)continue;
-            Rect widest=connected.stream().map(bounds::get).max(java.util.Comparator.comparingInt(Rect::width)).orElseThrow();
-            for(var member:connected){Rect r=bounds.get(member);member.matchLayoutWidth(widest.width);bounds.put(member,new Rect(widest.x,r.y,member.getRenderWidth(),r.height));}
+            if(column.size()<2||column.stream().anyMatch(a->column.stream().anyMatch(b->!overlapX(bounds.get(a),bounds.get(b))&&overlapY(bounds.get(a),bounds.get(b)))))continue;
+            Rect widest=column.stream().map(bounds::get).max(java.util.Comparator.comparingInt(Rect::width)).orElseThrow();
+            for(var member:column){Rect r=bounds.get(member);member.matchLayoutWidth(widest.width);bounds.put(member,new Rect(widest.x,r.y,member.getRenderWidth(),r.height));}
         }
     }
+    private static boolean overlapX(Rect a,Rect b){return a.x<b.right()&&b.x<a.right();}
+    private static boolean overlapY(Rect a,Rect b){return a.y<b.bottom()&&b.y<a.bottom();}
     public static boolean docked(Rect a,Rect b){
         boolean aligned=Math.abs(a.x-b.x)<=4||Math.abs(a.right()-b.right())<=4||Math.abs((a.x+a.width/2)-(b.x+b.width/2))<=4;
         return aligned&&(Math.abs(a.bottom()-b.y)<=4||Math.abs(b.bottom()-a.y)<=4);
@@ -74,10 +80,15 @@ public final class HudGroupLayout {
         return clampDelta(bounds,sx,sy,viewportWidth,viewportHeight);
     }
     private static int snapAxis(int origin,int size,int delta,int grid,int threshold,Collection<Rect> targets,boolean horizontal,int viewport){
-        long moved=(long)origin+delta;long best=Long.MAX_VALUE;
-        // Center guides take priority over nearby grid lines and unrelated left/right edges.
+        long moved=(long)origin+delta;long best=Long.MAX_VALUE,dock=Long.MAX_VALUE;
         long center=moved+size/2,centerSnap=viewport/2-center;
         for(Rect other:targets){int p=horizontal?other.x:other.y,n=horizontal?other.width:other.height;long candidate=(long)p+n/2-center;if(Math.abs(candidate)<Math.abs(centerSnap))centerSnap=candidate;}
+        for(long edge:new long[]{moved,moved+size})for(long target:new long[]{0,viewport})if(Math.abs(target-edge)<Math.abs(dock))dock=target-edge;
+        for(Rect other:targets){int p=horizontal?other.x:other.y,n=horizontal?other.width:other.height;
+            for(long edge:new long[]{moved,moved+size})for(long target:new long[]{p,(long)p+n})if(Math.abs(target-edge)<Math.abs(dock))dock=target-edge;
+        }
+        // The nearer of an edge dock and a center guide wins (ties dock, so stacks still form); both beat grid lines.
+        if(Math.abs(dock)<=threshold&&Math.abs(dock)<=Math.abs(centerSnap))return add(delta,(int)dock);
         if(Math.abs(centerSnap)<=threshold)return add(delta,(int)centerSnap);
         for(long edge:new long[]{moved,moved+size/2,moved+size}){
             for(long target:new long[]{0,viewport/2,viewport})if(Math.abs(target-edge)<Math.abs(best))best=target-edge;

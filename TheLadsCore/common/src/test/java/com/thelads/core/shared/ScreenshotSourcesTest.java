@@ -87,6 +87,55 @@ class ScreenshotSourcesTest {
         assertTrue(found.size()<100,"cancel is checked between directory entries");
         assertTrue(polls.get()>5);
     }
+    @Test void ladsProfileCopiesOfSharedScreenshotsAreListedOnce() throws Exception {
+        Path shared=temp.resolve("shared"),game=temp.resolve("game");Files.createDirectories(game);
+        Path original=image("shared/screenshots/a.png");
+        image("profiles/old/screenshots/a.png");image("profiles/listed/screenshots/a.png");                  // synced copies: same name and size
+        Path unsynced=image("profiles/old/screenshots/b.png"),edited=image("profiles/old/screenshots/c.png");
+        image("shared/screenshots/c.png");Files.writeString(edited,"a different, longer screenshot");      // same name, other size
+        Path modrinth=image("modrinth/profiles/Pack/screenshots/a.png"),custom=image("worlds/Imported/screenshots/a.png");
+        JsonObject discovered=new JsonObject();JsonArray roots=new JsonArray();
+        for(String[] root:new String[][]{{"profiles/listed","Lads · Listed"},{"modrinth","Modrinth"}}){JsonObject item=new JsonObject();item.addProperty("path",temp.resolve(root[0]).toString());item.addProperty("label",root[1]);roots.add(item);}
+        discovered.add("roots",roots);Files.writeString(game.resolve("lads-screenshot-discovered.json"),discovered.toString());
+        JsonArray worlds=new JsonArray();
+        for(String[] world:new String[][]{{"profiles/old","Old","1.21.1"},{"worlds/Imported","Imported",""}}){JsonObject item=new JsonObject();item.addProperty("Name",world[1]);item.addProperty("GameDirectory",temp.resolve(world[0]).toString());item.addProperty("Version",world[2]);worlds.add(item);}
+        Files.writeString(game.resolve("lads-world-sources.json"),worlds.toString());
+        var sources=ScreenshotSources.discover(shared,game,Map.of(),temp.resolve("home"));
+        var found=ScreenshotSources.scan(sources).stream().map(ScreenshotSources.Image::path).collect(java.util.stream.Collectors.toSet());
+        assertEquals(Set.of(original,shared.resolve("screenshots/c.png").toRealPath(),unsynced,edited,modrinth,custom),found);
+        // Deleting the shared a.png must also take exactly the profile copies it hid; never other launchers' or user folders' files.
+        assertEquals(Set.of(temp.resolve("profiles/old/screenshots/a.png").toRealPath(),temp.resolve("profiles/listed/screenshots/a.png").toRealPath()),
+            Set.copyOf(ScreenshotSources.syncedCopies(sources,original,Files.size(original))));
+        Path sharedC=shared.resolve("screenshots/c.png");
+        assertEquals(List.of(),ScreenshotSources.syncedCopies(sources,sharedC,Files.size(sharedC)),"a same-name file with another size is a different screenshot");
+    }
+    @Test void curseForgeMovedRootComesFromStorageJsonString() throws Exception {
+        Path image=image("moved/Instances/Pack/screenshots/a.png"),storage=temp.resolve("roaming/CurseForge/storage.json");Files.createDirectories(storage.getParent());
+        JsonObject settings=new JsonObject();settings.addProperty("minecraftRoot",temp.resolve("moved").toString());
+        JsonObject json=new JsonObject();json.addProperty("session-tokens","not read");json.addProperty("minecraft-settings",settings.toString());Files.writeString(storage,json.toString());
+        var env=Map.of("APPDATA",temp.resolve("roaming").toString());
+        assertEquals(List.of(image),ScreenshotSources.scan(ScreenshotSources.discover(temp.resolve("shared"),temp.resolve("game"),env,temp.resolve("home"))).stream().map(ScreenshotSources.Image::path).toList());
+        for(String unchanged:List.of("{\"minecraft-settings\":\"{\\\"minecraftRoot\\\":null}\"}","{\"minecraft-settings\":null}","{\"minecraft-settings\":\"not json\"}","{\"minecraft-settings\":\"{\\\"minecraftRoot\\\":\\\"relative\\\"}\"}","[]")) {
+            Files.writeString(storage,unchanged);assertNull(ScreenshotSources.curseForgeInstances(storage),unchanged);
+        }
+    }
+    @Test void everyRootGetsItsOwnFolderBudget() throws Exception {
+        for(int i=0;i<10;i++)image("huge/f"+i+"/screenshots/"+i+".png");
+        Path small=image("small/screenshots/a.png");
+        var roots=List.of(new ScreenshotSources.Root(temp.resolve("huge"),"Huge"),new ScreenshotSources.Root(temp.resolve("small"),"Small"));
+        assertEquals(List.of(small),ScreenshotSources.scan(roots,()->false,null,5).stream().map(ScreenshotSources.Image::path).toList());
+    }
+    @Test void progressReportsGrowingResultsAfterEachProductiveRoot() throws Exception {
+        Path a=image("one/screenshots/a.png"),b=image("two/screenshots/b.png");Files.createDirectories(temp.resolve("empty/screenshots"));
+        List<List<Path>> reports=new ArrayList<>();
+        var roots=List.of(new ScreenshotSources.Root(temp.resolve("one"),"One"),new ScreenshotSources.Root(temp.resolve("empty"),"Empty"),new ScreenshotSources.Root(temp.resolve("two"),"Two"));
+        ScreenshotSources.scan(roots,()->false,images->reports.add(images.stream().map(ScreenshotSources.Image::path).toList()));
+        assertEquals(List.of(List.of(a),List.of(a,b)),reports);
+    }
+    @Test void discoveryNeverThrowsOnUnusableEnvironmentPaths() {
+        var roots=assertDoesNotThrow(()->ScreenshotSources.discover(temp.resolve("shared"),temp.resolve("game"),Map.of("APPDATA","bad\0path","LOCALAPPDATA","also\0bad"),temp.resolve("home")));
+        assertEquals(temp.resolve("shared/screenshots"),roots.getFirst().path());
+    }
     @Test void addingFolderPreservesMalformedExistingConfig() throws Exception {
         Path shared=temp.resolve("shared"),folder=temp.resolve("captures");Files.createDirectories(folder);Files.createDirectories(shared.resolve("config"));
         Path config=ScreenshotSources.configFile(shared);

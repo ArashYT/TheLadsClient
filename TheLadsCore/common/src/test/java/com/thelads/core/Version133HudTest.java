@@ -37,6 +37,7 @@ class Version133HudTest {
     }
     private static final class Box extends HudElement {
         Box(String name,int y,int width){setModuleName(name);setPosition(10,y);this.width=width;height=20;}
+        @Override public boolean isEnabled(){return true;} // Only switched-on members share a column width.
         public void render(LadsGraphics g){drawBackground(g);}
     }
     @Test void connectedWidthsMatchAndUngroupingRestoresNaturalGeometry(){

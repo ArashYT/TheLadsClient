@@ -40,6 +40,14 @@ final class Version134HudProbe {
             NativeAutohide.renderLadsHud(graphics);
             check(count(state)==0,"idle Lads text, backgrounds, armor and paper doll all disappear");
             check(NativeAutohide.scopeOpacity==1,"Lads fade restores the GUI scope");
+            // Fade back in from fully hidden with calls microseconds apart (far above 143 FPS, where 1.3.4 snapped every step back to 0).
+            ((SliderOption)NativeQualityOfLife.module("Autohide").getOption("Fade milliseconds")).setValue(350);
+            var level=NativeAutohide.class.getDeclaredField("opacity");level.setAccessible(true);
+            check(level.getFloat(null)==0,"idle Autohide reaches fully hidden");
+            set("activity",System.nanoTime());set("frame",System.nanoTime());
+            long until=System.nanoTime()+2_000_000_000L;int calls=0;float shown=0;
+            while(shown<1&&System.nanoTime()<until){shown=NativeAutohide.update();calls++;}
+            check(shown==1&&calls>1000,"fade-in from hidden completes with back-to-back frames ("+calls+" calls)");
 
             ((SliderOption)NativeQualityOfLife.module("Autohide").getOption("Fade milliseconds")).setValue(1000);
             var opacity=NativeAutohide.class.getDeclaredField("opacity");opacity.setAccessible(true);opacity.setFloat(null,.5f);set("frame",System.nanoTime());

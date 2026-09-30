@@ -61,6 +61,11 @@ final class ScreenshotList
    private java.util.concurrent.Future<?> scanTask;
    private volatile int scanRevision;
    private boolean scanning;
+   /** scanned: the last scan finished (re-init only re-lays out); fresh: the next result starts a new scan and replaces the list. */
+   private boolean scanned,fresh;
+   /** User deletes and renames since this scan started; partial and final results are corrected with them. */
+   private final java.util.Set<File> deletedDuringScan=new java.util.HashSet<>();
+   private final java.util.Map<File,File> renamedDuringScan=new java.util.HashMap<>();
 
    ScreenshotList(ManageScreenshotsScreen mainScreen, int x, int y, int width, int height) {
       this.mainScreen = mainScreen;
@@ -111,55 +116,71 @@ final class ScreenshotList
       }
    }
 
+   /** Scans (or lists) again. Only first open, Refresh/F5, Add folder and a changed folder setting call this; see relayout. */
    void init() {
       cancelScan();
-      int revision=scanRevision;
+      int revision=scanRevision;fresh=true;scanned=false;deletedDuringScan.clear();renamedDuringScan.clear();
       if (com.thelads.core.v26_2.feature.GlobalScreenshots.sharedGallery(screenshotsFolder)) {
          scanning=true;
          scanTask=SCANNER.submit(()->{
+            java.util.Map<File,Long> times=new java.util.HashMap<>();
             try {
-               List<File> files=com.thelads.core.v26_2.feature.GlobalScreenshots.scan(()->revision!=scanRevision);
+               List<File> files=byTime(com.thelads.core.v26_2.feature.GlobalScreenshots.scan(()->revision!=scanRevision,partial->{
+                  List<File> sorted=byTime(partial,times);
+                  client.execute(()->{if(revision==scanRevision&&client.gui.screen()==mainScreen){install(sorted);mainScreen.openRequestedScreenshot();}});
+               }),times);
                if(revision!=scanRevision)return;
                client.execute(()->{
                   if(revision!=scanRevision||client.gui.screen()!=mainScreen)return;
-                  scanning=false;install(files);mainScreen.openRequestedScreenshot();
+                  scanning=false;scanned=true;install(files);mainScreen.openRequestedScreenshot();
                });
             }catch(Throwable error){client.execute(()->{
                if(revision!=scanRevision)return;
-               scanning=false;ScreenshotViewerUtils.fileError("Scan screenshots",screenshotsFolder,error);
+               // A failed scan counts as done: re-init must not retry it on every resize; Refresh/F5 still does.
+               scanning=false;scanned=true;ScreenshotViewerUtils.fileError("Scan screenshots",screenshotsFolder,error);
             });}
          });
-      } else install(ScreenshotViewerUtils.getScreenshotFiles(this.screenshotsFolder));
+      } else {scanned=true;install(byTime(ScreenshotViewerUtils.getScreenshotFiles(this.screenshotsFolder),new java.util.HashMap<>()));}
    }
 
+   /** Screen re-init (resize, F11, GUI scale, back from settings) re-lays out the same widgets; it rescans only if a scan was cut short. */
+   void relayout() {
+      if (!scanned && !scanning) this.init(); else this.updateChildren(false);
+   }
+
+   /** Oldest first, reading each timestamp once: a lastModified comparator stats every file about 2 log n times. */
+   static List<File> byTime(List<File> files, java.util.Map<File,Long> times) {
+      for (File file : files) times.computeIfAbsent(file, File::lastModified);
+      List<File> sorted = new ArrayList<>(files);
+      sorted.sort(Comparator.comparingLong((File file) -> times.get(file)).thenComparing(File::getAbsolutePath));
+      return sorted;
+   }
+
+   /** files: oldest first. A scan's first result replaces the list; its later partial results only add, keeping loaded images and scroll. */
    private void install(List<File> files) {
-      this.clearChildren();
-      this.scrollY=0;
-      if (!files.isEmpty()) {
-         Comparator<File> order=Comparator.comparingLong(File::lastModified).thenComparing(File::getAbsolutePath);
-         files.sort(this.invertedOrder ? order.reversed() : order);
-         this.updateVariables();
-         int maxXOff = this.screenshotsPerRow - 1;
-         int childX = this.x + this.spacing;
-         int childY = this.y + this.spacing;
-         int xOff = 0;
-
-         for (File file : files) {
-            ScreenshotWidget widget = new ScreenshotWidget(this.mainScreen, childX, childY, this.childWidth, this.childHeight, this, file);
-            this.screenshotWidgets.add(widget);
-            this.elements.add(widget);
-            if (xOff == maxXOff) {
-               xOff = 0;
-               childX = this.x + this.spacing;
-               childY += this.childHeight + this.spacing;
-            } else {
-               xOff++;
-               childX += this.childWidth + this.spacing;
-            }
-         }
+      if (!deletedDuringScan.isEmpty() || !renamedDuringScan.isEmpty()) { // results found before a delete or rename must not revive the old path
+         List<File> adjusted=new ArrayList<>(files.size());java.util.Set<File> seen=new java.util.HashSet<>();
+         for (File file : files) {if (deletedDuringScan.contains(file)) continue;File now=renamedDuringScan.getOrDefault(file,file);if (seen.add(now)) adjusted.add(now);}
+         files=adjusted;
       }
-
-      this.scrollbar.repositionScrollbar(this.x, this.y, this.width, this.height, this.spacing, this.getTotalHeightOfChildren());
+      java.util.Map<File,ScreenshotWidget> kept=new java.util.HashMap<>();
+      if (this.fresh) this.clearChildren(); else for (ScreenshotWidget widget : this.screenshotWidgets) kept.put(widget.getScreenshotFile(), widget);
+      int scroll=this.fresh ? 0 : this.scrollY;
+      this.screenshotWidgets.clear();
+      this.elements.clear();
+      for (int i = 0; i < files.size(); i++) {
+         File file = files.get(this.invertedOrder ? files.size() - 1 - i : i);
+         ScreenshotWidget widget = kept.remove(file);
+         if (widget == null) widget = new ScreenshotWidget(this.mainScreen, this.x, this.y, this.childWidth, this.childHeight, this, file);
+         this.screenshotWidgets.add(widget);
+         this.elements.add(widget);
+      }
+      boolean replaced = this.fresh || !kept.isEmpty();
+      kept.values().forEach(ScreenshotWidget::close);
+      this.fresh = false;
+      this.updateChildren(false);
+      this.scrollY = Math.max(0, Math.min(scroll, this.getTotalHeightOfChildren() - (this.height - 2 * this.spacing)));
+      if (replaced) this.mainScreen.widgetsReplaced();
    }
 
    void updateScreenshotsPerRow(double scrollAmount) {
@@ -236,7 +257,7 @@ final class ScreenshotList
       if(scanTask!=null){scanTask.cancel(true);scanTask=null;SCANNER.purge();}
    }
    boolean scanning(){return scanning;}
-   String status(){return scanning?"Scanning instance screenshots...":size()+" screenshots | external originals are read-only";}
+   String status(){return scanning?"Scanning instance screenshots... "+size()+" found":size()+" screenshots | external originals are read-only";}
 
    public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
    }
@@ -297,9 +318,16 @@ final class ScreenshotList
 
    @Override
    public void removeEntry(ScreenshotWidget widget) {
+      this.deletedDuringScan.add(widget.getScreenshotFile());
       this.screenshotWidgets.remove(widget);
       this.elements.remove(widget);
       this.updateChildren(false);
+   }
+
+   @Override
+   public void renamed(File from, File to) {
+      this.renamedDuringScan.replaceAll((original,current)->current.equals(from)?to:current);
+      this.renamedDuringScan.putIfAbsent(from,to);
    }
 
    void invertOrder() {

@@ -76,8 +76,9 @@ final class ScreenshotWidget extends AbstractWidget implements AutoCloseable, Sc
    void deleteScreenshot() {
       if(com.thelads.core.v26_2.feature.GlobalScreenshots.readOnly(screenshotFile))return;
       try {
+         var copies=com.thelads.core.v26_2.feature.GlobalScreenshots.syncedCopies(screenshotFile);
          if (com.thelads.core.v26_2.feature.screenshots.ScreenshotFileIO.delete(screenshotFile.toPath())) {
-            close(); ManageScreenshotsScreen.THUMBNAILS.removeThumbnail(screenshotFile); ctx.removeEntry(this);
+            com.thelads.core.v26_2.feature.GlobalScreenshots.deleteCopies(copies);close(); ManageScreenshotsScreen.THUMBNAILS.removeThumbnail(screenshotFile); ctx.removeEntry(this);
          }
       } catch (IOException failure) { ScreenshotViewerUtils.fileError("Delete", screenshotFile, failure); }
    }
@@ -280,6 +281,7 @@ final class ScreenshotWidget extends AbstractWidget implements AutoCloseable, Sc
                s -> {
                   try {
                      Path moved = com.thelads.core.v26_2.feature.screenshots.ScreenshotFileIO.rename(this.screenshotFile.toPath(), s);
+                     this.ctx.renamed(this.screenshotFile, moved.toFile());
                      this.updateScreenshotFile(moved.toFile());
                   } catch (IOException failure) {
                      ScreenshotViewerUtils.fileError("Rename", screenshotFile, failure);
@@ -356,6 +358,9 @@ final class ScreenshotWidget extends AbstractWidget implements AutoCloseable, Sc
       int currentIndex(ScreenshotWidget var1);
 
       void removeEntry(ScreenshotWidget var1);
+
+      /** A scan still running must list the new name, not bring back the old one. */
+      void renamed(File from, File to);
    }
 
    class ImageLoader implements AutoCloseable {

@@ -62,6 +62,12 @@ public final class Version134ScreenshotsProbe {
                 originalProvenance=(Map<?,?>)provenance.get(null);provenance.set(null,Map.of());
                 check(widgets.stream().allMatch(widget->GlobalScreenshots.readOnly(widget.getScreenshotFile())),"stale or empty scan metadata cannot enable destructive actions");
                 var first=widgets.getFirst();check(gallery.isShowing(first),"chat image opens after asynchronous scan completes");
+                // F11/resize re-inits the screen: it must re-lay out the same widgets, not rescan and orphan the enlarged one (1.3.4 audit).
+                Integer revision=field(list,"scanRevision");
+                gallery.resize(mc.getWindow().getGuiScaledWidth(),mc.getWindow().getGuiScaledHeight());
+                ScreenshotList resized=field(gallery,"list");Integer after=field(resized,"scanRevision");
+                check(resized==list&&!resized.scanning()&&after.equals(revision),"window resize re-lays out the gallery without rescanning");
+                check(gallery.isShowing(first)&&resized.findByFileName(images.getFirst().toFile()).orElse(null)==first&&first.textureId()!=null,"enlarged screenshot survives a window resize");
                 first.requestFileDeletion();first.renameFile();first.deleteScreenshot();
                 check(field(gallery,"dialogScreen")==null&&Files.isRegularFile(images.getFirst()),"external delete/rename cannot mutate originals");
                 gallery.showScreenshotProperties(20,40,first);ScreenshotPropertiesMenu properties=field(gallery,"screenshotProperties");

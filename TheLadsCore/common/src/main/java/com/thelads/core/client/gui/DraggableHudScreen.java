@@ -7,6 +7,7 @@ import com.thelads.core.client.hud.HudGroupLayout.Rect;
 import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.HudSettings;
+import com.thelads.core.config.ModuleSupport;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.IdentityHashMap;
@@ -25,7 +26,6 @@ public class DraggableHudScreen {
     private java.util.function.Consumer<String> onSettings=name->{};
     private final Map<HudElement,Rect> gears=new LinkedHashMap<>();
     private final Map<HudElement,Rect> toggles=new LinkedHashMap<>();
-    private final Set<HudElement> toggledPreviews=new LinkedHashSet<>();
     private final List<Control> contextControls=new ArrayList<>();
     private int dock=0,contextX,contextY;
     private boolean collapsed,contextOpen,autoHideDock;
@@ -73,7 +73,7 @@ public class DraggableHudScreen {
         for(var element:elements)if(element.isAvailable())measuredBounds.put(element,element.measureBounds(graphics,true));
         HudGroupLayout.matchDockedWidths(measuredBounds);
         clampGroups(elements);
-        for(var element:elements){
+        for(var element:paintOrder()){
             if(!isVisible(element))continue;
             Rect bounds=measuredBounds.get(element);if(bounds==null)continue;
             element.renderAt(graphics,bounds.x(),bounds.y(),true);
@@ -93,10 +93,11 @@ public class DraggableHudScreen {
             graphics.fill(gx-1,gy-4,gx+2,gy+5,LadsPalette.TEXT);
             graphics.fill(gx-4,gy-1,gx+5,gy+2,LadsPalette.TEXT);
             graphics.fill(gx-1,gy-1,gx+2,gy+2,LadsPalette.CARD);
-            Rect toggle=placeToggle(bounds,gear);toggles.put(element,toggle);
+            // Same rule as the settings card: only modules this game version runs can be switched.
+            if(canToggle(element)){Rect toggle=placeToggle(element,bounds,gear);toggles.put(element,toggle);
             graphics.fill(toggle.x(),toggle.y(),toggle.right(),toggle.bottom(),element.isEnabled()?LadsPalette.PRIMARY:LadsPalette.CARD);
             border(graphics,toggle,LadsPalette.BORDER);
-            graphics.drawCenteredText(element.isEnabled()?"ON":"OFF",toggle.x()+toggle.width()/2,toggle.y()+(toggle.height()-graphics.fontHeight())/2,LadsPalette.TEXT,false);
+            graphics.drawCenteredText(element.isEnabled()?"ON":"OFF",toggle.x()+toggle.width()/2,toggle.y()+(toggle.height()-graphics.fontHeight())/2,LadsPalette.TEXT,false);}
             }
             if(hover&&!contextOpen){
                 String label=element.getModuleName()+(!element.isEnabled()?" · disabled":"")+(locked?" · locked":"");
@@ -134,19 +135,20 @@ public class DraggableHudScreen {
     private static long intersectionArea(Rect a,Rect b){
         return (long)Math.max(0,Math.min(a.right(),b.right())-Math.max(a.x(),b.x()))*Math.max(0,Math.min(a.bottom(),b.bottom())-Math.max(a.y(),b.y()));
     }
-    private Rect placeToggle(Rect bounds,Rect gear){
-        Rect best=new Rect(Math.max(0,Math.min(gear.right()+2,viewportWidth-27)),Math.max(0,Math.min(gear.y(),viewportHeight-11)),27,11);
-        long bestOverlap=Long.MAX_VALUE;
+    private Rect placeToggle(HudElement owner,Rect bounds,Rect gear){
+        Rect best=null;long bestOverlap=Long.MAX_VALUE;
         for(Rect candidate:List.of(new Rect(gear.right()+2,gear.y(),27,11),new Rect(gear.x()-29,gear.y(),27,11),
                 new Rect(bounds.x(),bounds.y()-13,27,11),new Rect(bounds.x(),bounds.bottom()+2,27,11))){
             if(candidate.x()<0||candidate.y()<0||candidate.right()>viewportWidth||candidate.bottom()>viewportHeight)continue;
-            long overlap=0;
-            for(var entry:measuredBounds.entrySet())if(isVisible(entry.getKey()))overlap+=intersectionArea(candidate,entry.getValue());
+            // Never over another HUD: clicking that HUD must select it, not switch this module off.
+            if(measuredBounds.entrySet().stream().anyMatch(entry->entry.getKey()!=owner&&isVisible(entry.getKey())&&entry.getValue().intersects(candidate)))continue;
+            long overlap=intersectionArea(candidate,bounds);
             for(Rect occupied:gears.values())overlap+=intersectionArea(candidate,occupied);
             for(Rect occupied:toggles.values())overlap+=intersectionArea(candidate,occupied);
             if(overlap<bestOverlap){best=candidate;bestOverlap=overlap;if(overlap==0)break;}
         }
-        return best;
+        // Crowded layouts keep the switch on its own module, leaving the rest of the body to select and drag.
+        return best!=null?best:new Rect(bounds.x(),bounds.y(),Math.min(27,Math.max(1,bounds.width()/2)),Math.min(11,bounds.height()));
     }
 
     private void clampGroups(List<HudElement> elements){
@@ -192,7 +194,7 @@ public class DraggableHudScreen {
         }
         boolean locked=selected.stream().anyMatch(this::isLocked);
         String[] docks={"bottom","left","right","top"};
-        String[][] buttons={{"select",multiSelect?"Multi-select: on":"Select multiple"},{"group","Group"},{"ungroup","Ungroup"},{"lock","Lock position"},{"unlock","Unlock"},{"snap",showGrid?"Snap: on":"Snap: off"},{"previews",showAll?"Enabled only":"All previews"},{"toolbar","Dock: "+docks[dock]},{"collapse","Hide controls"},{"colors","Global colors"},{"reset","Reset layout"},{"done","Done"}};
+        String[][] buttons={{"select",multiSelect?"Multi-select: on":"Select multiple"},{"group","Group"},{"ungroup","Ungroup"},{"lock","Lock position"},{"unlock","Unlock"},{"snap",showGrid?"Snap: on":"Snap: off"},{"previews",showAll?"Supported only":"All previews"},{"toolbar","Dock: "+docks[dock]},{"collapse","Hide controls"},{"colors","Global colors"},{"reset","Reset layout"},{"done","Done"}};
         boolean vertical=dock==1||dock==2;
         int cols=vertical?1:Math.max(1,Math.min(5,(viewportWidth-24)/90));
         int bw=vertical?Math.min(116,viewportWidth-16):Math.min(100,(viewportWidth-24)/cols-4);
@@ -221,11 +223,11 @@ public class DraggableHudScreen {
     private void drawContext(LadsGraphics g,int mx,int my){
         contextControls.clear();
         boolean locked=selected.stream().anyMatch(this::isLocked);
-        String[][] items={{"settings","Module settings"},{locked?"unlock":"lock",locked?"Unlock":"Lock"},{"centerX","Center horizontally"},{"centerY","Center vertically"},{"centerBoth","Center both"},{"group","Group"},{"ungroup","Ungroup"},{"stack","Center stack"},{"toggle",selected.stream().allMatch(HudElement::isEnabled)?"Turn off":"Turn on"}};
+        String[][] items={{"settings","Module settings"},{locked?"unlock":"lock",locked?"Unlock":"Lock"},{"centerX","Center horizontally"},{"centerY","Center vertically"},{"centerBoth","Center both"},{"group","Group"},{"ungroup","Ungroup"},{"stack","Center stack"},{"toggle",selected.stream().filter(DraggableHudScreen::canToggle).allMatch(HudElement::isEnabled)?"Turn off":"Turn on"}};
         int rowHeight=Math.max(12,Math.min(21,viewportHeight/items.length));
         int x=Math.max(0,Math.min(contextX,viewportWidth-132)),y=Math.max(0,Math.min(contextY,viewportHeight-rowHeight*items.length));
         for(int i=0;i<items.length;i++){
-            String id=items[i][0];boolean enabled=switch(id){case "group","stack"->selectedNames().size()>=2&&!locked;case "ungroup"->selected.stream().anyMatch(e->HudSettings.getInstance().getGroupIndex(e.getModuleName())>=0);case "centerX","centerY","centerBoth"->!locked;default->!selected.isEmpty();};
+            String id=items[i][0];boolean enabled=switch(id){case "group"->selectedNames().size()>=2&&!locked;case "stack"->selectedNames().size()>=2&&!locked&&Objects.requireNonNullElse(HudSettings.getInstance().getGroupMembers(selectedNames().iterator().next()),Set.of()).containsAll(selectedNames());case "ungroup"->selected.stream().anyMatch(e->HudSettings.getInstance().getGroupIndex(e.getModuleName())>=0);case "centerX","centerY","centerBoth"->!locked;case "toggle"->selected.stream().anyMatch(DraggableHudScreen::canToggle);default->!selected.isEmpty();};
             drawControl(g,new Control(id,items[i][1],new Rect(x,y+i*rowHeight,132,rowHeight),enabled),mx,my,contextControls);
         }
     }
@@ -253,20 +255,26 @@ public class DraggableHudScreen {
             contextOpen=false;return true;
         }
         if(button==1){
-            for(var entry:renderedBounds.entrySet())if(entry.getValue().contains(x,y)){
-                finishDrag();if(!selected.contains(entry.getKey())){selected.clear();selected.addAll(groupElements(entry.getKey()));}contextOpen=true;contextX=(int)x;contextY=(int)y;return true;
-            }
+            // Right-clicking any part of the selection keeps it for Group; otherwise the topmost HUD becomes the selection.
+            boolean onSelection=selected.stream().map(renderedBounds::get).anyMatch(bounds->bounds!=null&&bounds.contains(x,y));
+            HudElement hit=null;var order=paintOrder();
+            for(int i=order.size()-1;i>=0&&hit==null;i--){Rect bounds=renderedBounds.get(order.get(i));if(bounds!=null&&bounds.contains(x,y))hit=order.get(i);}
+            if(onSelection||hit!=null){finishDrag();if(!onSelection){selected.clear();selected.addAll(groupElements(hit));}contextOpen=true;contextX=(int)x;contextY=(int)y;return true;}
             if(!selected.isEmpty()){contextOpen=true;contextX=(int)x;contextY=(int)y;return true;}
             return false;
         }
         if(button!=0)return false;marquee=false;
         for(var control:controls)if(control.bounds.contains(x,y)){if(control.enabled)perform(control.id);return true;}
         if(!controls.isEmpty()&&toolbarBounds.contains(x,y))return true;
-        for(var entry:toggles.entrySet())if(entry.getValue().contains(x,y)&&isVisible(entry.getKey())){finishDrag();setEnabled(entry.getKey(),!entry.getKey().isEnabled());saveConfig.run();return true;}
-        for(var entry:gears.entrySet())if(entry.getValue().contains(x,y)){finishDrag();onSettings.accept(entry.getKey().getModuleName());return true;}
         notice="";focusedControl=-1;boolean additive=multiSelect||(modifiers&3)!=0;
-        var elements=HudManager.getInstance().getElements();
-        for(int i=elements.size()-1;i>=0;i--){var element=elements.get(i);Rect bounds=renderedBounds.get(element);
+        // Topmost first, mirroring render(): each HUD draws its body, then its gear, then its switch, so later HUDs cover earlier controls.
+        var order=paintOrder();
+        for(int i=order.size()-1;i>=0;i--){var element=order.get(i);
+            Rect toggle=toggles.get(element);
+            if(toggle!=null&&toggle.contains(x,y)){finishDrag();setEnabled(element,!element.isEnabled());saveConfig.run();return true;}
+            Rect gear=gears.get(element);
+            if(gear!=null&&gear.contains(x,y)){finishDrag();onSettings.accept(element.getModuleName());return true;}
+            Rect bounds=renderedBounds.get(element);
             if(!isVisible(element)||bounds==null||!bounds.contains(x,y))continue;
             Set<HudElement> group=groupElements(element);
             if(additive){if(selected.containsAll(group))selected.removeAll(group);else selected.addAll(group);return true;}
@@ -290,7 +298,7 @@ public class DraggableHudScreen {
         if(!isDragging())return false;
         Rect union=HudGroupLayout.union(dragStart.values());int dx=(int)Math.round(x-downX),dy=(int)Math.round(y-downY);
         if(!dragMoved&&dx==0&&dy==0)return true;
-        var targets=renderedBounds.entrySet().stream().filter(entry->!dragStart.containsKey(entry.getKey())).map(Map.Entry::getValue).toList();
+        var targets=renderedBounds.entrySet().stream().filter(entry->!dragStart.containsKey(entry.getKey())&&attracts(entry.getKey())).map(Map.Entry::getValue).toList();
         var delta=showGrid?HudGroupLayout.snapDelta(union,dx,dy,GRID,SNAP,targets,viewportWidth,viewportHeight):HudGroupLayout.clampDelta(union,dx,dy,viewportWidth,viewportHeight);
         Rect movedSelection=HudGroupLayout.translate(union,delta);int cx=movedSelection.x()+movedSelection.width()/2,cy=movedSelection.y()+movedSelection.height()/2;
         guideX=cx==viewportWidth/2||targets.stream().anyMatch(target->target.x()+target.width()/2==cx)?cx:null;
@@ -339,12 +347,13 @@ public class DraggableHudScreen {
                 for(var element:selected){Rect bounds=measuredBounds.get(element);if(bounds==null)continue;element.beginPositionEdit();try{element.setDisplayPosition(bounds.x(),bounds.y());HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());}finally{element.endPositionEdit();}}
                 saveConfig.run();notice=selected.stream().anyMatch(this::isLocked)?"Group created. Unlock its position to move together.":"Group created. Drag any member to move together.";
             }}
-            case "stack"->{if(selected.size()>=2&&selected.stream().noneMatch(this::isLocked)){HudSettings.getInstance().addGroup(selectedNames());stackSelection();savePositions(selected);saveConfig.run();}}
-            case "toggle"->{boolean enabled=selected.stream().anyMatch(element->!element.isEnabled());for(var element:selected)setEnabled(element,enabled);saveConfig.run();}
+            // Re-stacks one existing group (e.g. after a member grew taller) without changing membership; Group joins HUDs.
+            case "stack"->{if(selected.size()>=2&&selected.stream().noneMatch(this::isLocked)){stackSelection();savePositions(selected);saveConfig.run();}}
+            case "toggle"->{var modules=selected.stream().filter(DraggableHudScreen::canToggle).toList();boolean enabled=modules.stream().anyMatch(element->!element.isEnabled());for(var element:modules)setEnabled(element,enabled);saveConfig.run();}
             case "ungroup"->{HudSettings.getInstance().ungroup(selectedNames());saveConfig.run();notice="Ungrouped. Each HUD can now be selected separately.";selected.clear();}
             case "lock","unlock"->{for(String name:selectedNames())HudSettings.getInstance().setLocked(name,id.equals("lock"));saveConfig.run();notice=id.equals("lock")?"Position locked. Select this HUD and use Unlock to move it.":"Position unlocked. Drag to move.";}
             case "snap"->showGrid=!showGrid;
-            case "previews"->{showAll=!showAll;if(!showAll)toggledPreviews.clear();finishHiddenDrag();selected.removeIf(element->!isVisible(element)&&HudSettings.getInstance().getGroupIndex(element.getModuleName())<0);renderedBounds.clear();toggles.clear();gears.clear();}
+            case "previews"->{showAll=!showAll;finishHiddenDrag();selected.removeIf(element->!isVisible(element)&&HudSettings.getInstance().getGroupIndex(element.getModuleName())<0);renderedBounds.clear();toggles.clear();gears.clear();}
             case "toolbar"->{dock=switch(dock){case 3->0;case 0->1;case 1->2;default->3;};toolbarPinned=true;}
             case "collapse"->{collapsed=!collapsed;autoHideDock=true;toolbarPinned=true;dockExitNanos=0;}
             case "colors"->colorPicker.openGlobal();
@@ -360,11 +369,10 @@ public class DraggableHudScreen {
     private void setEnabled(HudElement element,boolean enabled){
         var module=com.thelads.core.config.ModuleManager.getInstance().getModule(element.getModuleName());
         if(module!=null)module.setEnabled(enabled);else element.setEnabled(enabled);
-        // A widget switched off stays as an editor preview, with its ON button in the same place.
-        toggledPreviews.add(element);
     }
     private void stackSelection(){
-        var bounds=new LinkedHashMap<HudElement,Rect>();for(var element:selected)if(measuredBounds.containsKey(element))bounds.put(element,measuredBounds.get(element));
+        // Switched-off members are not drawn in game, so they neither reserve a row nor set the shared width.
+        var bounds=new LinkedHashMap<HudElement,Rect>();for(var element:selected)if(element.isEnabled()&&measuredBounds.containsKey(element))bounds.put(element,measuredBounds.get(element));
         var layout=HudGroupLayout.centeredStack(bounds,viewportWidth,viewportHeight);
         for(var entry:layout.entrySet()){
             var element=entry.getKey();Rect position=entry.getValue();element.beginPositionEdit();
@@ -373,7 +381,18 @@ public class DraggableHudScreen {
         }
     }
     private void savePositions(Collection<HudElement> elements){for(var element:elements)if(element.getModuleName()!=null)HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());}
-    private boolean isVisible(HudElement element){return element.isAvailable()&&(showAll||element.isEnabled()||toggledPreviews.contains(element));}
+    /** Switched-off modules this version can run stay as dimmed previews with their ON button; the rest need All previews. */
+    private boolean isVisible(HudElement element){return element.isAvailable()&&(showAll||element.isEnabled()||canToggle(element));}
+    private static boolean canToggle(HudElement element){return ModuleSupport.isToggleable(element.getModuleName());}
+    /** Dimmed switched-off previews are not drawn in game, so they only snap or auto-join while All previews is on. */
+    private boolean attracts(HudElement element){return showAll||element.isEnabled();}
+    /** Draw and hit-test order: dimmed switched-off previews first, so live HUDs always sit on top of them and win the click. */
+    private List<HudElement> paintOrder(){
+        var elements=HudManager.getInstance().getElements();var order=new ArrayList<HudElement>(elements.size());
+        for(var element:elements)if(!element.isEnabled())order.add(element);
+        for(var element:elements)if(element.isEnabled())order.add(element);
+        return order;
+    }
     private boolean isLocked(HudElement element){return HudSettings.getInstance().isLocked(element.getModuleName());}
     private Set<HudElement> groupElements(HudElement element){
         Set<HudElement> members=new LinkedHashSet<>();members.add(element);Set<String> names=HudSettings.getInstance().getGroupMembers(element.getModuleName());
@@ -394,7 +413,7 @@ public class DraggableHudScreen {
             var names=new LinkedHashSet<String>();for(var member:members)names.add(member.getModuleName());
             var joined=new LinkedHashSet<HudElement>();
             var moving=members.stream().map(measuredBounds::get).filter(Objects::nonNull).toList();
-            for(var entry:renderedBounds.entrySet())if(!members.contains(entry.getKey())&&!joined.contains(entry.getKey())){
+            for(var entry:renderedBounds.entrySet())if(!members.contains(entry.getKey())&&!joined.contains(entry.getKey())&&attracts(entry.getKey())){
                 var candidate=groupElements(entry.getKey());
                 if(candidate.stream().anyMatch(this::isLocked))continue;
                 // A near edge inside a stack is an overlap, not a dock. Consider the whole candidate group.

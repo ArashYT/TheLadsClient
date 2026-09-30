@@ -479,36 +479,62 @@ public static class ClientModInstaller
         var created = false;
         try
         {
-            // ResponseHeadersRead does not apply HttpClient.Timeout to the body.
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
-            timeout.CancelAfter(TimeSpan.FromMinutes(3));
-            var downloadToken = timeout.Token;
-            using var response = await client.GetAsync(entry.Url, HttpCompletionOption.ResponseHeadersRead, downloadToken);
-            response.EnsureSuccessStatusCode();
-            if (response.Content.Headers.ContentLength is long length && length != entry.Size)
-                throw new InvalidDataException($"Unexpected download size for {entry.Name}.");
-            await using (var input = await response.Content.ReadAsStreamAsync(downloadToken))
-            await using (var output = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
+            // ResponseHeadersRead does not apply HttpClient.Timeout to the body. Jars reach hundreds of MB (Flashback), so the
+            // body only fails when it stalls, or past a ceiling any working connection meets; hashing is outside both.
+            using var transfer = CancellationTokenSource.CreateLinkedTokenSource(token);
+            transfer.CancelAfter(TimeSpan.FromMinutes(1));
+            try
             {
+                using var response = await client.GetAsync(entry.Url, HttpCompletionOption.ResponseHeadersRead, transfer.Token);
+                response.EnsureSuccessStatusCode();
+                if (response.Content.Headers.ContentLength is long length && length != entry.Size)
+                    throw new InvalidDataException($"Unexpected download size for {entry.Name}.");
+                transfer.CancelAfter(TimeSpan.FromMinutes(45));
+                await using var input = await response.Content.ReadAsStreamAsync(transfer.Token);
+                await using var output = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true);
                 created = true;
-                var buffer = new byte[81920]; long total = 0; int count;
-                while ((count = await input.ReadAsync(buffer, downloadToken)) > 0)
-                {
-                    total += count;
-                    if (total > entry.Size) throw new InvalidDataException($"Oversized download for {entry.Name}.");
-                    await output.WriteAsync(buffer.AsMemory(0, count), downloadToken);
-                }
-                if (total != entry.Size) throw new InvalidDataException($"Incomplete download for {entry.Name}.");
+                if (await CopyWithStallTimeoutAsync(input, output, entry.Size, TimeSpan.FromSeconds(60), entry.Name, transfer.Token) != entry.Size)
+                    throw new InvalidDataException($"Incomplete download for {entry.Name}.");
             }
-            if (!SameHash(await HashAsync(game, temp, downloadToken), entry.Sha512))
+            catch (OperationCanceledException) when (!token.IsCancellationRequested)
+            {
+                throw new TimeoutException($"Downloading {entry.Name} timed out. Check your connection and retry the launch.");
+            }
+            if (!SameHash(await HashAsync(game, temp, token), entry.Sha512))
                 throw new InvalidDataException($"Download verification failed for {entry.Name}. Retry the launch.");
-            if (FabricModMetadata.ReadJar(temp, token: downloadToken)?.Id != entry.ModId)
+            if (FabricModMetadata.ReadJar(temp, token: token)?.Id != entry.ModId)
                 throw new InvalidDataException($"Wrong Fabric mod downloaded for {entry.Name}.");
             // Never overwrite even an unexpected cache file created during the download.
             File.Move(SafeChild(game, temp), SafeChild(game, cached));
             created = false;
         }
         finally { if (created) Cleanup(game, temp, null); }
+    }
+
+    /// <summary>Copies at most <paramref name="limit"/> bytes and returns the count. A slow transfer never times out here;
+    /// only <paramref name="idle"/> without a single byte does (TimeoutException).</summary>
+    public static async Task<long> CopyWithStallTimeoutAsync(Stream input, Stream output, long limit, TimeSpan idle, string name,
+        CancellationToken token)
+    {
+        using var stall = CancellationTokenSource.CreateLinkedTokenSource(token);
+        var buffer = new byte[81920]; long total = 0; int count;
+        try
+        {
+            while (true)
+            {
+                stall.CancelAfter(idle);
+                count = await input.ReadAsync(buffer, stall.Token);
+                stall.CancelAfter(Timeout.InfiniteTimeSpan); // a slow disk write is not a network stall
+                if (count == 0) return total;
+                total += count;
+                if (total > limit) throw new InvalidDataException($"Oversized download for {name}.");
+                await output.WriteAsync(buffer.AsMemory(0, count), token);
+            }
+        }
+        catch (OperationCanceledException) when (!token.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Downloading {name} stalled: no data for {idle.TotalSeconds:0} seconds. Check your connection and retry the launch.");
+        }
     }
 
     private static async Task Commit(string game, string cache, List<Change> changes, Action<string>? status)
