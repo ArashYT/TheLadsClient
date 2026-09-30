@@ -476,6 +476,13 @@ public class Minecraft189Tests
         Assert.Equal(new[] { box.Mod(OptiFineInstaller.M5.FileName) }, Directory.GetFiles(box.Mods));
         Assert.Equal(2, site.Requests.Count);
 
+        // Forge also loads mods/1.8.9/: your own OptiFine there is used the same way.
+        var versionFolder = Directory.CreateDirectory(Path.Combine(box.Mods, "1.8.9")).FullName;
+        File.WriteAllBytes(Path.Combine(versionFolder, "OptiFine_1.8.9_HD_U_L5.jar"), OptiFineJar("OptiFine 1.8.9_HD_U_L5"));
+        Assert.Null(await Install());
+        Assert.Empty(Directory.GetFiles(box.Mods));
+        Assert.Equal(2, site.Requests.Count);
+
         // A Fabric profile never lists OptiFine.
         Assert.DoesNotContain((await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "26.3")).Entries, e => e.Id == OptiFineInstaller.ModId);
     }

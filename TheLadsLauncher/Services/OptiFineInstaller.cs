@@ -57,7 +57,10 @@ public static class OptiFineInstaller
             var mods = ClientModInstaller.SafeChild(game, Path.Combine(game, "mods"));
             target = ClientModInstaller.SafeChild(game, Path.Combine(mods, pin.FileName));
             Directory.CreateDirectory(mods);
-            var copies = Directory.EnumerateFiles(mods).Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)
+            // Forge also loads mods/1.8.9/, so an OptiFine kept there counts as your own.
+            var versionMods = ClientModInstaller.SafeChild(game, Path.Combine(mods, GameVersionPolicy.ForgeMinecraftVersion));
+            var copies = new[] { mods, versionMods }.Where(Directory.Exists).SelectMany(Directory.EnumerateFiles)
+                .Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)
                     || p.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
                 .Where(p => ModInventoryService.ScanFor(p, GameVersionPolicy.ForgeMinecraftVersion, cancellationToken).Info?.Id == ModId).ToList();
             var enabled = copies.Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)).ToList();
