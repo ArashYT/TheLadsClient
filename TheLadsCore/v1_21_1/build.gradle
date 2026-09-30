@@ -8,6 +8,8 @@ java {
     }
 }
 
+loom { accessWidenerPath = file('src/main/resources/theladscore.accesswidener') }
+
 tasks.withType(JavaCompile).configureEach {
     options.release = 21
     options.encoding = 'UTF-8'
@@ -17,6 +19,8 @@ dependencies {
     minecraft "com.mojang:minecraft:1.21.1"
     mappings loom.officialMojangMappings()
     implementation "net.fabricmc:fabric-loader:0.16.9"
+    // The version the 1.21.1 launcher pack ships (game-mods/1.21.1/client-mods.json).
+    modImplementation "net.fabricmc.fabric-api:fabric-api:0.116.17+1.21.1"
     compileOnly "net.fabricmc:sponge-mixin:0.15.4+mixin.0.8.7"
     // Bundled by Fabric Loader 0.16.9+ at runtime (@WrapMethod needs MixinExtras 0.4).
     compileOnly 'io.github.llamalad7:mixinextras-fabric:0.4.1'

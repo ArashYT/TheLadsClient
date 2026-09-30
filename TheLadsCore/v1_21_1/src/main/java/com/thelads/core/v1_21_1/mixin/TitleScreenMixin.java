@@ -31,7 +31,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private static final int CARD_MARGIN = 10;
     @Unique private static final int ACCENT      = 0xFF6C63FF;
 
-    @Inject(method = "init", at = @At("TAIL"), require = 0)
+    @Inject(method = "init", at = @At("TAIL"), require = 1)
     private void ladsInjectTitleScreenButtons(CallbackInfo ci) {
         com.thelads.core.v1_21_1.feature.SharedContentProbe.runOnce();
         // Inject "Lads Settings" directly above "Options" in primary vertical list
@@ -87,7 +87,7 @@ public abstract class TitleScreenMixin extends Screen {
         com.thelads.core.mods.ModInventoryModel.logAtFirstTitleScreen();
     }
 
-    @Inject(method = "render", at = @At("HEAD"), require = 0)
+    @Inject(method = "render", at = @At("HEAD"), require = 1)
     private void ladsRenderAccountCard(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         int cardX = CARD_MARGIN;
         int cardY = this.height - CARD_H - CARD_MARGIN;

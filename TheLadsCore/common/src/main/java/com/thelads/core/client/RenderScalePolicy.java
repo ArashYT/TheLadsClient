@@ -1,4 +1,4 @@
-package com.thelads.core.v26_2.feature;
+package com.thelads.core.client;
 
 /** Pure sizing and cadence policy; never changes a window, GUI scale, or frame limiter. */
 public final class RenderScalePolicy {

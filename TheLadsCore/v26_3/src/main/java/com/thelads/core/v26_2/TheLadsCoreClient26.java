@@ -38,7 +38,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.clumps.NativeClumps.initialize();
         com.thelads.core.v26_2.feature.GoodMcAttackSpeedReset.register();
         LOGGER.info("TheLadsCore 26.3 initialized successfully.");
-        com.thelads.core.v26_2.feature.NativeCatalogProbe.log();
+        com.thelads.core.mods.NativeCatalogProbe.log();
         // The launcher lists Lads modules from this catalog; late registrations (Minimap) bump the revision on a later tick.
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
             client -> com.thelads.core.mods.CoreCatalogExporter.exportIfChanged());

@@ -24,6 +24,7 @@ public class TheLadsCoreClient12111 implements ClientModInitializer {
             "Fullbright", "TitleScreen", "Title Scale", "CPS", "Keystrokes",
             "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks");
         com.thelads.core.v1_21_11.gui.ExternalModSettings.register();
+        com.thelads.core.v1_21_11.feature.NativeQualityOfLife.register();
         LOGGER.info("TheLadsCore 1.21.11 initialized successfully.");
     }
 }

@@ -1,5 +1,7 @@
 package com.thelads.core.v26_2.feature;
 
+import com.thelads.core.client.KillBannerTimeline;
+import com.thelads.core.client.ServerKillTracker;
 import com.thelads.core.config.HudSettings;
 import com.thelads.core.modules.KillBannerModule;
 import net.minecraft.client.Minecraft;

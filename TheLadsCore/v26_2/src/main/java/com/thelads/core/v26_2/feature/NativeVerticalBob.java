@@ -1,4 +1,5 @@
 package com.thelads.core.v26_2.feature;
+import com.thelads.core.client.LegacyVerticalBob;
 import net.minecraft.client.Minecraft;
 /** Update on every completed game tick, including ticks between low-FPS rendered frames. */
 public final class NativeVerticalBob {

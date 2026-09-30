@@ -13,6 +13,7 @@ public class ClientTickMixin {
     private void ladsTickFeatures(CallbackInfo ci) {
         NativeMenuKey.tick();
         NativeFeatures.tick();
+        com.thelads.core.v1_21_11.feature.NativeQualityOfLife.tick();
         com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
     }
 }

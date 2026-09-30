@@ -1,7 +1,7 @@
 package com.thelads.core.v1_21_11.adapter;
 
 import com.thelads.core.client.bridge.LadsGameBridge;
-import com.thelads.core.v1_21_11.feature.GameTimeText;
+import com.thelads.core.client.GameTimeText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.core.BlockPos;

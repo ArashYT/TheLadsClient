@@ -1,4 +1,4 @@
-package com.thelads.core.v26_2.feature;
+package com.thelads.core.client;
 
 /** Tracks cumulative server-reported player kills; initial history and resets never emit kills. */
 public final class ServerKillTracker {
