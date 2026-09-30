@@ -53,6 +53,12 @@ public partial class MainWindow
         LauncherStartupOverlay.IsVisible = false;
         await Task.Delay(500);
         SaveWindowScreenshot(Path.Combine(output, "home.png"));
+        // The glowing title-bar Update button, at two points of its shine sweep.
+        ShowUpdateButton("1.4.1");
+        await Task.Delay(1300);
+        SaveWindowScreenshot(Path.Combine(output, "update-button.png"));
+        await Task.Delay(1750); // mid-sweep of the next shine cycle
+        SaveWindowScreenshot(Path.Combine(output, "update-button-shine.png"));
         var splash = new Views.GameStartupSplash();
         splash.SetGameVersion("26.3");
         splash.Show();
