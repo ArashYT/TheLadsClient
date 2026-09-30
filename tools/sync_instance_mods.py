@@ -22,8 +22,8 @@ UPDATE = False
 GAMES = ['1.21.1', '1.21.11', '26.2', '26.3']
 # Only replacements implemented by these version adapters may suppress upstream jars.
 NATIVE = {
-    '1.21.1': {'threads': 'ThreadPriorityModule', 'classic_minecraft_icon': 'WindowIconMixin'},
-    '1.21.11': {'threads': 'ThreadPriorityModule', 'classic_minecraft_icon': 'WindowIconMixin'},
+    '1.21.1': {'threads': 'ThreadPriorityModule', 'classic_minecraft_icon': 'WindowIconMixin', 'autohidehud': 'NativeAutohide'},
+    '1.21.11': {'threads': 'ThreadPriorityModule', 'classic_minecraft_icon': 'WindowIconMixin', 'autohidehud': 'NativeAutohide'},
     '26.2': {'threads': 'ThreadPriorityModule', 'appleskin': 'NativeFoodOverlay', 'clumps': 'NativeClumps',
              'dynamic_fps': 'NativeDynamicFps', 'autoreconnectrf': 'NativeReconnect',
              'chatsigninghider': 'ChatIndicatorMixin', 'classic_minecraft_icon': 'WindowIconMixin'},

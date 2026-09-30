@@ -7,7 +7,14 @@ public final class NativeAutohide {
     private static float health,opacity=1;
     private static int food,air,slot,xp;
     public static float scopeOpacity=1;
+    /** Picture-in-picture states (Xaero's minimap) submitted while faded, with their opacity for the blit; weak, so skipped blits never pile up. */
+    public static final java.util.Map<Object,Float> PICTURES=new java.util.WeakHashMap<>();
     private NativeAutohide(){}
+    /** A blit at the given opacity; premultiplied-alpha blits (item atlas, picture-in-picture) scale every channel instead of brightening. */
+    public static net.minecraft.client.renderer.state.gui.BlitRenderState fade(net.minecraft.client.renderer.state.gui.BlitRenderState b,float alpha){
+        int color=b.pipeline()==net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED_PREMULTIPLIED_ALPHA?com.thelads.core.client.hud.AutohideFade.tintPremultiplied(b.color(),alpha):tint(b.color(),alpha);
+        return new net.minecraft.client.renderer.state.gui.BlitRenderState(b.pipeline(),b.textureSetup(),b.pose(),b.x0(),b.y0(),b.x1(),b.y1(),b.u0(),b.u1(),b.v0(),b.v1(),color,b.scissorArea(),b.bounds());
+    }
     /** Share the hotbar fade with every native Lads draw, including deferred text/items. */
     public static void renderLadsHud(net.minecraft.client.gui.GuiGraphicsExtractor graphics){
         var mc=Minecraft.getInstance();

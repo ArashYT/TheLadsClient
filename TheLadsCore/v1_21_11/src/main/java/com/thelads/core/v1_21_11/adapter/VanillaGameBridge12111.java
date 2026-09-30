@@ -11,6 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VanillaGameBridge12111 implements LadsGameBridge {
+    @Override public boolean hasMinimap() { return com.thelads.core.v1_21_11.feature.MinimapIntegration.available(); }
+    @Override public int[] minimapSize() { return com.thelads.core.v1_21_11.feature.MinimapIntegration.size(); }
+    @Override public void positionMinimap(int x, int y) { com.thelads.core.v1_21_11.feature.MinimapIntegration.position(x, y); }
+    @Override public int bossBarCount() { return ((com.thelads.core.v1_21_11.mixin.hud.BossBarAccessor) Minecraft.getInstance().gui.getBossOverlay()).ladsEvents().size(); }
     private final GameTimeText gameTimeText = new GameTimeText();
     private static final net.minecraft.world.entity.EquipmentSlot[] ARMOR_SLOTS = {
         net.minecraft.world.entity.EquipmentSlot.FEET, net.minecraft.world.entity.EquipmentSlot.LEGS,
@@ -254,28 +258,38 @@ public class VanillaGameBridge12111 implements LadsGameBridge {
         }
     }
 
+    private net.minecraft.client.player.LocalPlayer potionPlayer;
+    private int potionTick = Integer.MIN_VALUE;
+    private List<String> potions = List.of();
+    private java.util.Collection<net.minecraft.server.packs.repository.Pack> packSelection = List.of();
+    private List<String> packNames = List.of();
+
+    /** Localized effect names ("Speed (30s)"), rebuilt once per player tick as on 26.x. */
     @Override
     public List<String> getActivePotionEffects() {
-        List<String> list = new ArrayList<>();
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) {
-            for (MobEffectInstance eff : mc.player.getActiveEffects()) {
-                list.add(eff.getEffect().value().getDescriptionId() + " (" + (eff.getDuration() / 20) + "s)");
-            }
+        var player = Minecraft.getInstance().player;
+        if (player == null) { potionPlayer = null; potionTick = Integer.MIN_VALUE; return potions = List.of(); }
+        if (player != potionPlayer || player.tickCount != potionTick) {
+            potionPlayer = player; potionTick = player.tickCount;
+            var snapshot = new ArrayList<String>();
+            for (MobEffectInstance effect : player.getActiveEffects())
+                snapshot.add(net.minecraft.network.chat.Component.translatable(effect.getEffect().value().getDescriptionId()).getString()
+                    + " (" + (effect.getDuration() / 20) + "s)");
+            potions = List.copyOf(snapshot);
         }
-        return list;
+        return potions;
     }
 
     @Override
     public List<String> getActiveResourcePacks() {
-        List<String> list = new ArrayList<>();
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.getResourcePackRepository() != null) {
-            for (var pack : mc.getResourcePackRepository().getSelectedPacks()) {
-                list.add(pack.getId());
-            }
+        var repository = Minecraft.getInstance().getResourcePackRepository();
+        if (repository == null) { packSelection = List.of(); return packNames = List.of(); }
+        var selected = repository.getSelectedPacks();
+        if (!packSelection.equals(selected)) {
+            packSelection = List.copyOf(selected);
+            packNames = selected.stream().map(net.minecraft.server.packs.repository.Pack::getId).toList();
         }
-        return list;
+        return packNames;
     }
 
     @Override

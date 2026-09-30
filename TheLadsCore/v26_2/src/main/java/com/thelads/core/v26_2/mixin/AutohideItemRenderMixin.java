@@ -11,5 +11,6 @@ public class AutohideItemRenderMixin {
     @Inject(method="submitBlitFromItemAtlas",at=@At("HEAD"),require=1)
     private void ladsItem(GuiItemRenderState item,GuiItemAtlas.SlotView slot,CallbackInfo ci){ladsItemAlpha=((FadedItem)(Object)item).ladsOpacity();}
     @Redirect(method="submitBlitFromItemAtlas",at=@At(value="INVOKE",target="Lnet/minecraft/client/renderer/state/gui/GuiRenderState;addBlitToCurrentLayer(Lnet/minecraft/client/renderer/state/gui/BlitRenderState;)V"),require=1)
-    private void ladsFadeItem(GuiRenderState state,BlitRenderState b){state.addBlitToCurrentLayer(new BlitRenderState(b.pipeline(),b.textureSetup(),b.pose(),b.x0(),b.y0(),b.x1(),b.y1(),b.u0(),b.u1(),b.v0(),b.v1(),NativeAutohide.tint(b.color(),ladsItemAlpha),b.scissorArea(),b.bounds()));}
+    // The item atlas is premultiplied: scaling only alpha brightened fading items (1.4.0 fix, as on 1.21.x).
+    private void ladsFadeItem(GuiRenderState state,BlitRenderState b){state.addBlitToCurrentLayer(ladsItemAlpha<1?NativeAutohide.fade(b,ladsItemAlpha):b);}
 }

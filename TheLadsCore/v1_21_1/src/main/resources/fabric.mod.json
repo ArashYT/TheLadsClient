@@ -16,6 +16,7 @@
   },
   "mixins": [
     "theladscore.v1_21_1.mixins.json",
+    "theladscore.v1_21_1.hud.mixins.json",
     "theladscore.v1_21_1.qa.mixins.json"
   ],
   "custom": {

@@ -1,0 +1,20 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_11.mixin.hud",
+  "compatibilityLevel": "JAVA_21",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "AutohideElementsMixin",
+    "AutohideItemMixin",
+    "AutohideItemRenderMixin",
+    "AutohideTextMixin",
+    "AutohidePictureMixin",
+    "NativeHudMixin",
+    "BossBarMixin",
+    "BossBarAccessor",
+    "FontMetricsMixin"
+  ]
+}

@@ -15,14 +15,20 @@ public final class NativeQualityOfLife {
     public static void register() {
         // "Soon" card as on 26.x, whose presence tick sends nothing yet; no Discord connection is made.
         ModuleSupport.registerBuiltIn("DiscordRPC");
+        // U3 HUD pipeline: the hud mixins (Autohide scope and faded GUI states, SmoothHotbar, BossBar overlay).
+        ModuleSupport.registerBuiltIn("Autohide", "SmoothHotbar", "BossBar");
+        NativeAutohide.register();
         // QA only (-Dthelads.verifyAutoWorld): the isolated auto-world runtime; registers nothing in normal launches.
         NativeWorldVerification.register();
     }
 
     /** Every client tick, from ClientTickMixin (Minecraft.tick HEAD). */
     public static void tick() {
+        // Registers "Minimap" on the first tick once Xaero is found (the catalog export follows the revision).
+        MinimapIntegration.tick();
         NativeQualityProbe.tick();
         NativeMenuAccessProbe.tick();
+        NativeHudProbe.tick();
     }
 
     public static Module module(String name) { return ModuleManager.getInstance().getModule(name); }

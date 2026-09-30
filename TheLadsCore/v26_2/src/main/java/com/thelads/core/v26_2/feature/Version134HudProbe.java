@@ -62,6 +62,34 @@ final class Version134HudProbe {
             check(faded[1],"Lads text carries partial alpha into deferred text state");
             check(faded[2],"Lads armor carries partial alpha into deferred item state");
             check(faded[3],"Lads paper doll carries partial alpha into its entity state");
+            // 1.4.0: Xaero's minimap fades and hides with the HUD; its HUD element runs in the Autohide scope and its picture blits at that opacity.
+            if(MinimapIntegration.available()){
+                // Fabric resolves HUD element replacements while the HUD renders; this probe can run before the first in-world HUD frame.
+                if(MinimapIntegration.faded==null){mc.gui.hud.extractRenderState(graphics,mc.getDeltaTracker());state.reset();}
+                check(MinimapIntegration.faded!=null,"Xaero's HUD element runs inside the Autohide scope");
+                state.reset();set("activity",System.nanoTime()-60_000_000_000L);opacity.setFloat(null,0);set("frame",System.nanoTime());
+                MinimapIntegration.faded.extractRenderState(graphics,mc.getDeltaTracker());
+                check(count(state)==0,"a hidden HUD hides Xaero's minimap");
+                opacity.setFloat(null,.5f);set("frame",System.nanoTime());NativeAutohide.PICTURES.clear();
+                MinimapIntegration.faded.extractRenderState(graphics,mc.getDeltaTracker());
+                net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState[] map={null};
+                state.forEachPictureInPicture(picture->{if(picture.getClass().getName().startsWith("xaero."))map[0]=picture;});
+                check(map[0]!=null,"Xaero submits its minimap picture");
+                Float alpha=NativeAutohide.PICTURES.get(map[0]);
+                check(alpha!=null&&alpha>0&&alpha<1,"the minimap picture keeps the partial HUD opacity for its blit ("+alpha+")");
+                state.reset();
+                var renderer=new net.minecraft.client.gui.render.pip.PictureInPictureRenderer<net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState>(){
+                    public Class<net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState> getRenderStateClass(){return net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState.class;}
+                    protected void renderToTexture(net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState picture,com.mojang.blaze3d.vertex.PoseStack pose,net.minecraft.client.renderer.SubmitNodeCollector nodes){}
+                    protected String getTextureLabel(){return "lads qa";}
+                    void blit(net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState picture,GuiRenderState target){blitTexture(picture,target);}
+                };
+                try{renderer.blit(map[0],state);}finally{renderer.close();}
+                int premultiplied=com.thelads.core.client.hud.AutohideFade.tintPremultiplied(-1,alpha);
+                boolean[] blit={false};state.forEachElement(element->blit[0]|=element instanceof BlitRenderState b&&b.color()==premultiplied,GuiRenderState.TraverseRange.ALL);
+                check(blit[0],"the minimap blit fades every premultiplied channel");
+                state.reset();
+            }
 
             var controller=new DraggableHudScreen(()->{});mc.setScreenAndShow(new DraggableHudScreen26(null,controller));state.reset();
             NativeAutohide.renderLadsHud(graphics);check(count(state)==0,"editor suppresses duplicate live HUD pass");

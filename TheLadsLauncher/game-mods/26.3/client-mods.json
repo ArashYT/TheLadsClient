@@ -1299,7 +1299,7 @@
       "sha512": [
         "d2f8c392299dd6f75e03daad4160d5cfb91e9eec9b650b72505968d654b25a9cb6b1f209d5ea46554671f964e2f24d10834c2ba9c71d473f07ee7be4e335db1b"
       ],
-      "reason": "Replaced by native Lads Core functionality in 1.3.6."
+      "reason": "Replaced by native Lads Core functionality in 1.4.0."
     }
   ]
 }

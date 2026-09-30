@@ -13,4 +13,12 @@ public final class AutohideFade {
         float next = target > opacity ? Math.min(target, opacity + step) : Math.max(target, opacity - step);
         return target == 0 && next < .02f ? 0 : next;
     }
+    /** ARGB with only its alpha scaled: fills, text and straight-alpha sprites. */
+    public static int tint(int color, float alpha) { return (color & 0xFFFFFF) | Math.round((color >>> 24) * alpha) << 24; }
+    /** Every channel scaled: premultiplied-alpha blits (the GUI item atlas, picture-in-picture textures) then fade instead of brightening. */
+    public static int tintPremultiplied(int color, float alpha) {
+        int result = 0;
+        for (int shift = 0; shift < 32; shift += 8) result |= Math.round((color >>> shift & 255) * alpha) << shift;
+        return result;
+    }
 }

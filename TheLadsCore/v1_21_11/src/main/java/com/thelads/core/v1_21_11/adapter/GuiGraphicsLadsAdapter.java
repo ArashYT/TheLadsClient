@@ -12,6 +12,14 @@ import net.minecraft.client.renderer.RenderPipelines;
 public class GuiGraphicsLadsAdapter implements LadsGraphics {
     private final GuiGraphics guiGraphics;
     private final Font font;
+    private static volatile Object metricsEpoch = new Object();
+    private static Font metricsFont;
+    /** FontMetricsMixin: a font or resource-pack reload changes text widths. */
+    public static void invalidateMetrics() { metricsEpoch = new Object(); }
+    @Override public Object textMetricsKey() {
+        if (metricsFont != font) { metricsFont = font; invalidateMetrics(); }
+        return metricsEpoch;
+    }
 
     public GuiGraphicsLadsAdapter(GuiGraphics guiGraphics, Font font) {
         this.guiGraphics = guiGraphics;
@@ -24,6 +32,48 @@ public class GuiGraphicsLadsAdapter implements LadsGraphics {
 
     public GuiGraphics getVanilla() {
         return guiGraphics;
+    }
+
+    @Override public void drawModIcon(String id, int x, int y, int size) {
+        if (!com.thelads.core.v1_21_11.gui.ModIcons.draw(guiGraphics, id, x, y, size)) LadsGraphics.super.drawModIcon(id, x, y, size);
+    }
+
+    @Override public void drawBossBars(int x, int y, int max, boolean names, boolean preview) {
+        var overlay = (com.thelads.core.v1_21_11.mixin.hud.BossBarAccessor) Minecraft.getInstance().gui.getBossOverlay();
+        var events = new java.util.ArrayList<net.minecraft.world.BossEvent>(overlay.ladsEvents().values());
+        if (events.isEmpty() && preview) events.add(new net.minecraft.client.gui.components.LerpingBossEvent(java.util.UUID.randomUUID(),
+            net.minecraft.network.chat.Component.literal("Boss bar preview"), .65f, net.minecraft.world.BossEvent.BossBarColor.PURPLE,
+            net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS, false, false, false));
+        int row = 0;
+        for (var event : events) {
+            if (row >= max) break;
+            int yy = y + row++ * 19;
+            overlay.ladsDrawBar(guiGraphics, x, yy + 10, event);
+            if (names) guiGraphics.drawString(font, event.getName(), x + (182 - font.width(event.getName())) / 2, yy, 0xFFFFFFFF);
+        }
+    }
+
+    @Override public void drawArmorItem(int index, int x, int y, boolean preview) {
+        var stack = armorStack(index, preview);
+        if (!stack.isEmpty()) { guiGraphics.renderItem(stack, x, y); guiGraphics.renderItemDecorations(font, stack, x, y); }
+    }
+
+    /** The index-th equipped armor piece (feet first, as the bridge lists them), or a damaged diamond sample for previews. */
+    static net.minecraft.world.item.ItemStack armorStack(int index, boolean preview) {
+        if (preview) {
+            var stack = new net.minecraft.world.item.ItemStack(index == 0 ? net.minecraft.world.item.Items.DIAMOND_HELMET : net.minecraft.world.item.Items.DIAMOND_CHESTPLATE);
+            stack.setDamageValue(stack.getMaxDamage() / 4);
+            return stack;
+        }
+        var player = Minecraft.getInstance().player;
+        if (player == null) return net.minecraft.world.item.ItemStack.EMPTY;
+        int visible = 0;
+        for (var slot : new net.minecraft.world.entity.EquipmentSlot[] {net.minecraft.world.entity.EquipmentSlot.FEET, net.minecraft.world.entity.EquipmentSlot.LEGS,
+            net.minecraft.world.entity.EquipmentSlot.CHEST, net.minecraft.world.entity.EquipmentSlot.HEAD}) {
+            var candidate = player.getItemBySlot(slot);
+            if (!candidate.isEmpty() && visible++ == index) return candidate;
+        }
+        return net.minecraft.world.item.ItemStack.EMPTY;
     }
 
     @Override
@@ -41,7 +91,8 @@ public class GuiGraphicsLadsAdapter implements LadsGraphics {
     @Override
     public void drawCenteredText(String text, int centerX, int y, int color, boolean shadow) {
         if (text != null && font != null) {
-            guiGraphics.drawCenteredString(font, text, centerX, y, color);
+            // drawCenteredString always draws a shadow; the HUD's Shadow OFF must reach centered text too.
+            guiGraphics.drawString(font, text, centerX - font.width(text) / 2, y, color, shadow);
         }
     }
 
