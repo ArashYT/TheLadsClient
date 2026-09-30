@@ -213,6 +213,9 @@ string menuCaptureRequest = Path.Combine(directory, ".lads-qa-capture-menu");
 if (autoWorldVerification && File.Exists(menuCaptureRequest)) File.Delete(menuCaptureRequest);
 string hudCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hud");
 if (autoWorldVerification && File.Exists(hudCaptureRequest)) File.Delete(hudCaptureRequest);
+if (autoWorldVerification)
+    foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
+        File.Delete(Path.Combine(directory, flag));
 using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(10));
 var ct = timeout.Token;
 
@@ -223,7 +226,7 @@ var runStartUtc = DateTime.UtcNow;
 string logPath = Path.Combine(directory, "production-smoke.log");
 StreamWriter? log = null;
 var logGate = new object();
-bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false;
+bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false;
 bool menuCaptureRequested = false, hudCaptureRequested = false, windowFound = false, snapshotInvalid = false;
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
@@ -311,6 +314,12 @@ try
         }
         Console.WriteLine("Native port QA: staged pack without replaced Paper Doll, AutoReconnect, TabTweaks, Screenshot Viewer and Clumps upstream jars. Production manifest preserved.");
     }
+    if (Env("LADS_VERIFY_V134") == "1")
+    {
+        var renderer = Env("LADS_VERIFY_RENDERER") == "OpenGL" ? GraphicsRenderer.OpenGl : GraphicsRenderer.Vulkan;
+        await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "preferredGraphicsBackend:\"" + (renderer == GraphicsRenderer.Vulkan ? "vulkan" : "opengl") + "\"\n", ct);
+        await GraphicsRenderer.PrepareAsync(directory, version, renderer, Console.WriteLine, ct);
+    }
     await ClientModInstaller.InstallAsync(packSource, directory, version, Console.WriteLine, ct);
     if (Env("LADS_VERIFY_V133") == "1")
     {
@@ -340,7 +349,7 @@ try
     if (id != $"fabric-loader-{loaderVersion}-{version}") throw new InvalidOperationException("Fabric selected a different version.");
     var session = AccountIdentity.CreateOfflineSession("LadsQA");
     await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
-    await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:144\nrenderDistance:4\nsimulationDistance:5\nguiScale:2\ntutorialStep:none\n", ct);
+    await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:144\nrenderDistance:4\nsimulationDistance:5\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
     Console.WriteLine("Installing production dependencies...");
     process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
     {
@@ -371,6 +380,7 @@ try
     }
     if (renderScaleVerification) AddJvm("-Dthelads.verifyRenderScale=true");
     if (Env("LADS_VERIFY_V133") == "1") AddJvm("-Dthelads.verify133=true");
+    if (Env("LADS_VERIFY_V134") == "1") { AddJvm("-Dthelads.verify134=true"); AddJvm("-Dthelads.verifyRenderer=" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan")); }
     if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
     if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
     AddJvm("-Dthelads.verifySharedContent=true");
@@ -398,6 +408,9 @@ try
             if (line.Contains($"TheLadsCore {version} initialized successfully")) initialized = true;
             if (line.Contains("Lads integration write probe END:") && Passed(line)) settingsProbePassed = true;
             if (failureMarkers.Any(line.Contains)) nativeProbeFailed = true;
+            if (line.Contains("Lads 1.3.4 screenshots probe END:") && Passed(line)) screenshots134Passed = true;
+            if (line.Contains("Lads 1.3.4 replay probe END:") && Passed(line)) replay134Passed = true;
+            if (line.Contains("Lads 1.3.4 renderer probe END:") && Passed(line)) renderer134Passed = true;
             if (line.Contains("Lads 1.3.3 probe END:") && Passed(line)) version133ProbePassed = true;
             foreach (string marker in requiredTitleProbes.Concat(requiredCore))
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
@@ -465,16 +478,37 @@ try
         {
             bool menuDone = !menuCaptureVerification || (passedMarkers.ContainsKey("Lads menu capture END:") && passedMarkers.ContainsKey("Lads mods view capture END:"));
             bool hudDone = !hudCaptureVerification || (passedMarkers.ContainsKey("Lads HUD capture END:") && passedMarkers.ContainsKey("Lads HUD editor probe END:"));
-            if (menuDone && hudDone) break;
+            if (menuDone && hudDone)
+            {
+                if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
+                {
+                    if (!screenshots134Requested)
+                    {
+                        await LockFiles.WriteAtomicallyAsync(Path.Combine(directory, ".lads-qa-screenshots134"), Encoding.UTF8.GetBytes("Verify the external gallery in this sandbox."), ct);
+                        screenshots134Requested = true;
+                        Console.WriteLine("Requesting 1.3.4 external screenshot gallery verification.");
+                    }
+                }
+                else if (Env("LADS_VERIFY_REPLAY") == "1" && !replay134Passed)
+                {
+                    if (!replay134Requested)
+                    {
+                        await LockFiles.WriteAtomicallyAsync(Path.Combine(directory, ".lads-qa-replay"), Encoding.UTF8.GetBytes("Record, reopen and export this isolated QA world."), ct);
+                        replay134Requested = true;
+                        Console.WriteLine("Requesting real Flashback recording, replay and PNG export.");
+                    }
+                }
+                else break;
+            }
             if (!menuDone && !menuCaptureRequested)
             {
-                await File.WriteAllTextAsync(menuCaptureRequest, "Capture the native Lads mods menu after all world probes pass.", ct);
+                await LockFiles.WriteAtomicallyAsync(menuCaptureRequest, Encoding.UTF8.GetBytes("Capture the native Lads mods menu after all world probes pass."), ct);
                 menuCaptureRequested = true;
                 Console.WriteLine("World probes passed; requesting actual Lads menu and Installed mods frames from the QA game.");
             }
             if (menuDone && !hudDone && !hudCaptureRequested)
             {
-                await File.WriteAllTextAsync(hudCaptureRequest, "Verify the native HUD editor and capture its completed framebuffer.", ct);
+                await LockFiles.WriteAtomicallyAsync(hudCaptureRequest, Encoding.UTF8.GetBytes("Verify the native HUD editor and capture its completed framebuffer."), ct);
                 hudCaptureRequested = true;
                 Console.WriteLine("Requesting native HUD editor interaction checks and actual frame capture.");
             }
@@ -496,6 +530,9 @@ try
         void Require(bool ok, string message) { if (!ok) failures.Add(message); }
         Require(windowFound, "No game window was observed. Inspect production-smoke.log.");
         Require(!exitedOnItsOwn || process.ExitCode == 0, "Game exited with an error.");
+        Require(Env("LADS_VERIFY_V134") != "1" || screenshots134Passed, "1.3.4 external screenshot gallery probe did not finish.");
+        Require(Env("LADS_VERIFY_REPLAY") != "1" || replay134Passed, "Flashback record/replay/export probe did not finish.");
+        Require(Env("LADS_VERIFY_V134") != "1" || renderer134Passed, "1.3.4 actual renderer/Flashback probe did not finish.");
         Require(Env("LADS_VERIFY_V133") != "1" || version133ProbePassed, "1.3.3 native/API probe did not finish.");
         Require(!nativeProbeFailed, "A runtime probe or Fabric reported a failure (see the FAILED lines). Inspect production-smoke.log.");
         if (expectCoreDisabled)
@@ -551,7 +588,7 @@ finally
     {
         if (autoWorldVerification || welcomeVerification)
         {
-            await File.WriteAllTextAsync(stopRequest, "Gracefully stop this isolated QA game.");
+            await LockFiles.WriteAtomicallyAsync(stopRequest, Encoding.UTF8.GetBytes("Gracefully stop this isolated QA game."));
             using var exitTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
             try { await process.WaitForExitAsync(exitTimeout.Token); }
             catch (OperationCanceledException) { Console.WriteLine("QA graceful shutdown timed out; stopping only the QA process."); }

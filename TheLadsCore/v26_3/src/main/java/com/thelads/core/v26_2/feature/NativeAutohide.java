@@ -8,6 +8,16 @@ public final class NativeAutohide {
     private static int food,air,slot,xp;
     public static float scopeOpacity=1;
     private NativeAutohide(){}
+    /** Share the hotbar fade with every native Lads draw, including deferred text/items. */
+    public static void renderLadsHud(net.minecraft.client.gui.GuiGraphicsExtractor graphics){
+        var mc=Minecraft.getInstance();
+        if(mc.gui.screen() instanceof com.thelads.core.v26_2.gui.DraggableHudScreen26)return;
+        float previous=scopeOpacity;
+        try{
+            scopeOpacity=update();
+            if(scopeOpacity>0)com.thelads.core.client.hud.HudManager.getInstance().render(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics,mc.font));
+        }finally{scopeOpacity=previous;}
+    }
     public static float update(){
         var mc=Minecraft.getInstance();long now=System.nanoTime();
         if(mc.player==null||!NativeQualityOfLife.enabled("Autohide")){player=null;activity=frame=now;return opacity=1;}

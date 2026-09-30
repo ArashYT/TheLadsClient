@@ -26,7 +26,8 @@ public sealed record FabricModInfo(string Id, string? Name, string? Version, str
 
 public static class FabricModMetadata
 {
-    public const long MaximumJarSize = 128 * 1024 * 1024;
+    // Flashback includes native encoders and exceeds 200 MB. Keep downloads bounded.
+    public const long MaximumJarSize = 512L * 1024 * 1024;
     private const int MaximumDepth = 8, MaximumNestedJars = 1024, MaximumMetadataSize = 1024 * 1024;
 
     /// <summary>Returns null for a jar without fabric.mod.json; throws InvalidDataException for invalid metadata or zips.</summary>
@@ -54,7 +55,7 @@ public static class FabricModMetadata
 
     public static bool ValidId(string? value) => Regex.IsMatch(value ?? "", "^[a-z][a-z0-9_-]{1,63}$");
 
-    private sealed class Budget { public long Bytes = MaximumJarSize; public int Jars = MaximumNestedJars; }
+    private sealed class Budget { public long Bytes = 128L * 1024 * 1024; public int Jars = MaximumNestedJars; }
 
     private static FabricModInfo? Read(ZipArchive zip, string? nestedPath, int depth, Budget budget, bool includeIcon, CancellationToken token)
     {

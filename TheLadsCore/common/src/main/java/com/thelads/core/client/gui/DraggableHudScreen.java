@@ -24,6 +24,8 @@ public class DraggableHudScreen {
     private Runnable onClose=()->{};
     private java.util.function.Consumer<String> onSettings=name->{};
     private final Map<HudElement,Rect> gears=new LinkedHashMap<>();
+    private final Map<HudElement,Rect> toggles=new LinkedHashMap<>();
+    private final Set<HudElement> toggledPreviews=new LinkedHashSet<>();
     private final List<Control> contextControls=new ArrayList<>();
     private int dock=0,contextX,contextY;
     private boolean collapsed,contextOpen,autoHideDock;
@@ -41,6 +43,7 @@ public class DraggableHudScreen {
     private double downX,downY,marqueeX,marqueeY;
     private int viewportWidth,viewportHeight,focusedControl=-1;
     private Rect toolbarBounds=new Rect(0,0,0,0);
+    private Integer guideX,guideY;
     private String notice="";
     private static final int GRID=10,SNAP=4;
 
@@ -50,6 +53,8 @@ public class DraggableHudScreen {
     public Set<String> selectedNames(){var names=new LinkedHashSet<String>();for(var element:selected)if(element.getModuleName()!=null)names.add(element.getModuleName());return Set.copyOf(names);}
     public Rect boundsFor(String name){for(var entry:renderedBounds.entrySet())if(Objects.equals(name,entry.getKey().getModuleName()))return entry.getValue();return null;}
     public List<Control> controls(){return List.copyOf(controls);}
+    public List<Control> contextControls(){return List.copyOf(contextControls);}
+    public Rect toggleBoundsFor(String name){for(var entry:toggles.entrySet())if(Objects.equals(name,entry.getKey().getModuleName()))return entry.getValue();return null;}
     public boolean isDragging(){return !dragStart.isEmpty();}
 
     public void render(LadsGraphics graphics,int mouseX,int mouseY){
@@ -57,7 +62,7 @@ public class DraggableHudScreen {
         int width=graphics.getScaledWidth(),height=graphics.getScaledHeight();
         if(viewportWidth>0&&(width!=viewportWidth||height!=viewportHeight)){finishDrag();marquee=false;}
         viewportWidth=width;viewportHeight=height;
-        measuredBounds.clear();renderedBounds.clear();gears.clear();
+        measuredBounds.clear();renderedBounds.clear();gears.clear();toggles.clear();
         graphics.fill(0,0,width,height,0x44000000);
         if(showGrid){
             for(int x=0;x<width;x+=GRID)graphics.fill(x,0,x+1,height,0x15FFFFFF);
@@ -79,6 +84,7 @@ public class DraggableHudScreen {
             border(graphics,bounds,color);
             // Only the hovered widget gets a label; disabled previews use a muted body.
             // Reserve an exterior hit target, keeping the icon off the widget's text.
+            if(!isDragging()&&!marquee){
             Rect gear=placeGear(bounds);
             gears.put(element,gear);
             graphics.fill(gear.x(),gear.y(),gear.right(),gear.bottom(),LadsPalette.CARD);
@@ -87,6 +93,11 @@ public class DraggableHudScreen {
             graphics.fill(gx-1,gy-4,gx+2,gy+5,LadsPalette.TEXT);
             graphics.fill(gx-4,gy-1,gx+5,gy+2,LadsPalette.TEXT);
             graphics.fill(gx-1,gy-1,gx+2,gy+2,LadsPalette.CARD);
+            Rect toggle=placeToggle(bounds,gear);toggles.put(element,toggle);
+            graphics.fill(toggle.x(),toggle.y(),toggle.right(),toggle.bottom(),element.isEnabled()?LadsPalette.PRIMARY:LadsPalette.CARD);
+            border(graphics,toggle,LadsPalette.BORDER);
+            graphics.drawCenteredText(element.isEnabled()?"ON":"OFF",toggle.x()+toggle.width()/2,toggle.y()+(toggle.height()-graphics.fontHeight())/2,LadsPalette.TEXT,false);
+            }
             if(hover&&!contextOpen){
                 String label=element.getModuleName()+(!element.isEnabled()?" · disabled":"")+(locked?" · locked":"");
                 int lx=Math.max(0,Math.min(mouseX+12,width-graphics.textWidth(label)-8));
@@ -96,6 +107,10 @@ public class DraggableHudScreen {
             }
         }
         drawGroupOutlines(graphics);
+        if(isDragging()&&showGrid){
+            if(guideX!=null)graphics.fill(guideX,0,guideX+1,height,LadsPalette.ACCENT);
+            if(guideY!=null)graphics.fill(0,guideY,width,guideY+1,LadsPalette.ACCENT);
+        }
         if(marquee){Rect box=marqueeBounds();graphics.fill(box.x(),box.y(),box.right(),box.bottom(),0x226F1624);border(graphics,box,LadsPalette.ACCENT);}
         if(!isDragging()&&!marquee)drawToolbar(graphics,mouseX,mouseY);else controls.clear();
         if(contextOpen)drawContext(graphics,mouseX,mouseY);
@@ -111,12 +126,27 @@ public class DraggableHudScreen {
             long overlap=0;
             for(var entry:measuredBounds.entrySet())if(isVisible(entry.getKey()))overlap+=intersectionArea(candidate,entry.getValue());
             for(Rect gear:gears.values())overlap+=intersectionArea(candidate,gear);
+            for(Rect toggle:toggles.values())overlap+=intersectionArea(candidate,toggle);
             if(overlap<bestOverlap){best=candidate;bestOverlap=overlap;if(overlap==0)break;}
         }
         return best;
     }
     private static long intersectionArea(Rect a,Rect b){
         return (long)Math.max(0,Math.min(a.right(),b.right())-Math.max(a.x(),b.x()))*Math.max(0,Math.min(a.bottom(),b.bottom())-Math.max(a.y(),b.y()));
+    }
+    private Rect placeToggle(Rect bounds,Rect gear){
+        Rect best=new Rect(Math.max(0,Math.min(gear.right()+2,viewportWidth-27)),Math.max(0,Math.min(gear.y(),viewportHeight-11)),27,11);
+        long bestOverlap=Long.MAX_VALUE;
+        for(Rect candidate:List.of(new Rect(gear.right()+2,gear.y(),27,11),new Rect(gear.x()-29,gear.y(),27,11),
+                new Rect(bounds.x(),bounds.y()-13,27,11),new Rect(bounds.x(),bounds.bottom()+2,27,11))){
+            if(candidate.x()<0||candidate.y()<0||candidate.right()>viewportWidth||candidate.bottom()>viewportHeight)continue;
+            long overlap=0;
+            for(var entry:measuredBounds.entrySet())if(isVisible(entry.getKey()))overlap+=intersectionArea(candidate,entry.getValue());
+            for(Rect occupied:gears.values())overlap+=intersectionArea(candidate,occupied);
+            for(Rect occupied:toggles.values())overlap+=intersectionArea(candidate,occupied);
+            if(overlap<bestOverlap){best=candidate;bestOverlap=overlap;if(overlap==0)break;}
+        }
+        return best;
     }
 
     private void clampGroups(List<HudElement> elements){
@@ -190,9 +220,14 @@ public class DraggableHudScreen {
     }
     private void drawContext(LadsGraphics g,int mx,int my){
         contextControls.clear();
-        String[][] items={{"settings","Module settings"},{selected.stream().anyMatch(this::isLocked)?"unlock":"lock",selected.stream().anyMatch(this::isLocked)?"Unlock":"Lock"},{"centerX","Center horizontally"},{"centerY","Center vertically"},{"centerBoth","Center both"}};
-        int x=Math.max(0,Math.min(contextX,viewportWidth-132)),y=Math.max(0,Math.min(contextY,viewportHeight-105));
-        for(int i=0;i<items.length;i++)drawControl(g,new Control(items[i][0],items[i][1],new Rect(x,y+i*21,132,21),true),mx,my,contextControls);
+        boolean locked=selected.stream().anyMatch(this::isLocked);
+        String[][] items={{"settings","Module settings"},{locked?"unlock":"lock",locked?"Unlock":"Lock"},{"centerX","Center horizontally"},{"centerY","Center vertically"},{"centerBoth","Center both"},{"group","Group"},{"ungroup","Ungroup"},{"stack","Center stack"},{"toggle",selected.stream().allMatch(HudElement::isEnabled)?"Turn off":"Turn on"}};
+        int rowHeight=Math.max(12,Math.min(21,viewportHeight/items.length));
+        int x=Math.max(0,Math.min(contextX,viewportWidth-132)),y=Math.max(0,Math.min(contextY,viewportHeight-rowHeight*items.length));
+        for(int i=0;i<items.length;i++){
+            String id=items[i][0];boolean enabled=switch(id){case "group","stack"->selectedNames().size()>=2&&!locked;case "ungroup"->selected.stream().anyMatch(e->HudSettings.getInstance().getGroupIndex(e.getModuleName())>=0);case "centerX","centerY","centerBoth"->!locked;default->!selected.isEmpty();};
+            drawControl(g,new Control(id,items[i][1],new Rect(x,y+i*rowHeight,132,rowHeight),enabled),mx,my,contextControls);
+        }
     }
     private void center(boolean horizontal,boolean vertical){
         if(selected.isEmpty()||selected.stream().anyMatch(this::isLocked))return;
@@ -214,18 +249,20 @@ public class DraggableHudScreen {
         if(colorPicker.click(x,y,button))return true;
         finishHiddenDrag();
         if(contextOpen){
-            if(button==0)for(var c:contextControls)if(c.bounds().contains(x,y)){contextOpen=false;perform(c.id());return true;}
+            if(button==0)for(var c:contextControls)if(c.bounds().contains(x,y)){contextOpen=false;if(c.enabled())perform(c.id());return true;}
             contextOpen=false;return true;
         }
         if(button==1){
             for(var entry:renderedBounds.entrySet())if(entry.getValue().contains(x,y)){
-                selected.clear();selected.addAll(groupElements(entry.getKey()));contextOpen=true;contextX=(int)x;contextY=(int)y;return true;
+                finishDrag();if(!selected.contains(entry.getKey())){selected.clear();selected.addAll(groupElements(entry.getKey()));}contextOpen=true;contextX=(int)x;contextY=(int)y;return true;
             }
+            if(!selected.isEmpty()){contextOpen=true;contextX=(int)x;contextY=(int)y;return true;}
             return false;
         }
         if(button!=0)return false;marquee=false;
         for(var control:controls)if(control.bounds.contains(x,y)){if(control.enabled)perform(control.id);return true;}
         if(!controls.isEmpty()&&toolbarBounds.contains(x,y))return true;
+        for(var entry:toggles.entrySet())if(entry.getValue().contains(x,y)&&isVisible(entry.getKey())){finishDrag();setEnabled(entry.getKey(),!entry.getKey().isEnabled());saveConfig.run();return true;}
         for(var entry:gears.entrySet())if(entry.getValue().contains(x,y)){finishDrag();onSettings.accept(entry.getKey().getModuleName());return true;}
         notice="";focusedControl=-1;boolean additive=multiSelect||(modifiers&3)!=0;
         var elements=HudManager.getInstance().getElements();
@@ -255,6 +292,9 @@ public class DraggableHudScreen {
         if(!dragMoved&&dx==0&&dy==0)return true;
         var targets=renderedBounds.entrySet().stream().filter(entry->!dragStart.containsKey(entry.getKey())).map(Map.Entry::getValue).toList();
         var delta=showGrid?HudGroupLayout.snapDelta(union,dx,dy,GRID,SNAP,targets,viewportWidth,viewportHeight):HudGroupLayout.clampDelta(union,dx,dy,viewportWidth,viewportHeight);
+        Rect movedSelection=HudGroupLayout.translate(union,delta);int cx=movedSelection.x()+movedSelection.width()/2,cy=movedSelection.y()+movedSelection.height()/2;
+        guideX=cx==viewportWidth/2||targets.stream().anyMatch(target->target.x()+target.width()/2==cx)?cx:null;
+        guideY=cy==viewportHeight/2||targets.stream().anyMatch(target->target.y()+target.height()/2==cy)?cy:null;
         if(!dragMoved){
             if(delta.x()==0&&delta.y()==0)return true;
             dragMoved=true;for(var element:dragStart.keySet())element.beginPositionEdit();
@@ -294,14 +334,17 @@ public class DraggableHudScreen {
             case "select"->multiSelect=!multiSelect;
             case "group"->{if(selectedNames().size()>=2){
                 HudSettings.getInstance().addGroup(selectedNames());multiSelect=false;
+                if(selected.stream().noneMatch(this::isLocked))stackSelection();
                 // Capture displayed origins now, including auto-anchored HUDs, so resizing before the first drag cannot change the group offsets.
                 for(var element:selected){Rect bounds=measuredBounds.get(element);if(bounds==null)continue;element.beginPositionEdit();try{element.setDisplayPosition(bounds.x(),bounds.y());HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());}finally{element.endPositionEdit();}}
                 saveConfig.run();notice=selected.stream().anyMatch(this::isLocked)?"Group created. Unlock its position to move together.":"Group created. Drag any member to move together.";
             }}
+            case "stack"->{if(selected.size()>=2&&selected.stream().noneMatch(this::isLocked)){HudSettings.getInstance().addGroup(selectedNames());stackSelection();savePositions(selected);saveConfig.run();}}
+            case "toggle"->{boolean enabled=selected.stream().anyMatch(element->!element.isEnabled());for(var element:selected)setEnabled(element,enabled);saveConfig.run();}
             case "ungroup"->{HudSettings.getInstance().ungroup(selectedNames());saveConfig.run();notice="Ungrouped. Each HUD can now be selected separately.";selected.clear();}
             case "lock","unlock"->{for(String name:selectedNames())HudSettings.getInstance().setLocked(name,id.equals("lock"));saveConfig.run();notice=id.equals("lock")?"Position locked. Select this HUD and use Unlock to move it.":"Position unlocked. Drag to move.";}
             case "snap"->showGrid=!showGrid;
-            case "previews"->{showAll=!showAll;finishHiddenDrag();selected.removeIf(element->!isVisible(element)&&HudSettings.getInstance().getGroupIndex(element.getModuleName())<0);renderedBounds.clear();}
+            case "previews"->{showAll=!showAll;if(!showAll)toggledPreviews.clear();finishHiddenDrag();selected.removeIf(element->!isVisible(element)&&HudSettings.getInstance().getGroupIndex(element.getModuleName())<0);renderedBounds.clear();toggles.clear();gears.clear();}
             case "toolbar"->{dock=switch(dock){case 3->0;case 0->1;case 1->2;default->3;};toolbarPinned=true;}
             case "collapse"->{collapsed=!collapsed;autoHideDock=true;toolbarPinned=true;dockExitNanos=0;}
             case "colors"->colorPicker.openGlobal();
@@ -314,7 +357,23 @@ public class DraggableHudScreen {
             default->{}
         }
     }
-    private boolean isVisible(HudElement element){return element.isAvailable()&&(showAll||element.isEnabled());}
+    private void setEnabled(HudElement element,boolean enabled){
+        var module=com.thelads.core.config.ModuleManager.getInstance().getModule(element.getModuleName());
+        if(module!=null)module.setEnabled(enabled);else element.setEnabled(enabled);
+        // A widget switched off stays as an editor preview, with its ON button in the same place.
+        toggledPreviews.add(element);
+    }
+    private void stackSelection(){
+        var bounds=new LinkedHashMap<HudElement,Rect>();for(var element:selected)if(measuredBounds.containsKey(element))bounds.put(element,measuredBounds.get(element));
+        var layout=HudGroupLayout.centeredStack(bounds,viewportWidth,viewportHeight);
+        for(var entry:layout.entrySet()){
+            var element=entry.getKey();Rect position=entry.getValue();element.beginPositionEdit();
+            try{element.setDisplayPosition(position.x(),position.y());}finally{element.endPositionEdit();}
+            measuredBounds.put(element,position);if(renderedBounds.containsKey(element))renderedBounds.put(element,position);
+        }
+    }
+    private void savePositions(Collection<HudElement> elements){for(var element:elements)if(element.getModuleName()!=null)HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());}
+    private boolean isVisible(HudElement element){return element.isAvailable()&&(showAll||element.isEnabled()||toggledPreviews.contains(element));}
     private boolean isLocked(HudElement element){return HudSettings.getInstance().isLocked(element.getModuleName());}
     private Set<HudElement> groupElements(HudElement element){
         Set<HudElement> members=new LinkedHashSet<>();members.add(element);Set<String> names=HudSettings.getInstance().getGroupMembers(element.getModuleName());
@@ -333,10 +392,25 @@ public class DraggableHudScreen {
         if(!isDragging())return;var members=new ArrayList<>(dragStart.keySet());dragStart.clear();boolean moved=dragMoved;dragMoved=false;if(!moved)return;
         if(showGrid){
             var names=new LinkedHashSet<String>();for(var member:members)names.add(member.getModuleName());
-            for(var member:members)for(var entry:renderedBounds.entrySet())if(!members.contains(entry.getKey())&&!isLocked(entry.getKey())){
-                Rect current=measuredBounds.get(member);
-                if(current==null)continue;
-                if(HudGroupLayout.docked(current,entry.getValue()))names.add(entry.getKey().getModuleName());
+            var joined=new LinkedHashSet<HudElement>();
+            var moving=members.stream().map(measuredBounds::get).filter(Objects::nonNull).toList();
+            for(var entry:renderedBounds.entrySet())if(!members.contains(entry.getKey())&&!joined.contains(entry.getKey())){
+                var candidate=groupElements(entry.getKey());
+                if(candidate.stream().anyMatch(this::isLocked))continue;
+                // A near edge inside a stack is an overlap, not a dock. Consider the whole candidate group.
+                boolean overlaps=candidate.stream().map(measuredBounds::get).filter(Objects::nonNull)
+                    .anyMatch(box->moving.stream().anyMatch(box::intersects));
+                if(overlaps||moving.stream().noneMatch(box->HudGroupLayout.docked(box,entry.getValue())))continue;
+                joined.addAll(candidate);
+            }
+            // Stationary widgets may be auto-anchored or viewport-clamped. Capture the displayed
+            // origins before merging, otherwise their old stored coordinates can stretch the new group.
+            for(var element:joined){
+                Rect bounds=measuredBounds.get(element);if(bounds==null)continue;
+                element.beginPositionEdit();
+                try{element.setDisplayPosition(bounds.x(),bounds.y());HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());}
+                finally{element.endPositionEdit();}
+                names.add(element.getModuleName());
             }
             if(names.size()>members.size())HudSettings.getInstance().addGroup(names);
         }

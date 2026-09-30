@@ -68,6 +68,8 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
    private long animationClock = System.nanoTime();
    boolean isShowing(ScreenshotImageHolder image) { return enlargedScreenshot.isShowing(image); }
    private boolean isCtrlDown;
+   private int extractedFrames;
+   int extractedFrames(){return extractedFrames;}
 
    public ManageScreenshotsScreen(Screen parent) {
       super(ScreenshotViewerTexts.MANAGE_SCREENSHOTS);
@@ -97,17 +99,35 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
    }
 
    protected void init() {
+      var addFolder=net.minecraft.client.gui.components.Button.builder(Component.literal("Add folder"), button->{
+         button.active=false;
+         com.thelads.core.v26_2.gui.NativeFileDialogs.choose(true).whenComplete((folder,error)->minecraft.execute(()->{
+            button.active=true;
+            if(error!=null){ScreenshotViewerUtils.fileError("Choose folder",new File("screenshots"),error);return;}
+            if(folder==null)return;
+            java.util.concurrent.CompletableFuture.runAsync(()->{
+               try{com.thelads.core.shared.ScreenshotSources.addCustomRoot(com.thelads.core.shared.SharedContentPaths.root(),folder);}
+               catch(java.io.IOException failure){throw new java.util.concurrent.CompletionException(failure);}
+            },com.thelads.core.v26_2.feature.screenshots.ScreenshotFileIO.IMAGE_EXECUTOR).whenComplete((done,failure)->minecraft.execute(()->{
+               if(failure!=null){ScreenshotViewerUtils.fileError("Add screenshot folder",folder.toFile(),failure);return;}
+               CONFIG.put(ScreenshotViewerOptions.SCREENSHOTS_FOLDER,ScreenshotViewerUtils.getVanillaScreenshotsFolder());
+               if(minecraft.gui.screen()==this){list.onConfigUpdate();list.init();}
+            }));
+         }));
+      }).bounds(width-90,2,88,20).build();
+      addFolder.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal("Scan a screenshot folder, instance, or launcher folder. Originals stay in place.")));
+      addRenderableWidget(addFolder);
       int spacing = 8;
       int btnHeight = 20;
       this.enlargedScreenshot.init(this.width, this.height);
       int contentWidth = this.width - 24;
-      int contentHeight = this.height - 40 - 20;
+      int contentHeight = this.height - 76;
       if (this.list == null) {
-         this.list = new ScreenshotList(this, 12, 24, this.width - 24, this.height - 40 - 20);
+         this.list = new ScreenshotList(this, 12, 24, this.width - 24, this.height - 76);
          this.list.init();
       } else {
          this.list.updateSize(contentWidth, contentHeight);
-         this.list.updateChildren(false);
+         this.list.init();
       }
 
       this.addWidget(this.list);
@@ -240,7 +260,11 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
             this.width - 8 - 20, btnY, 20, 20, REFRESH_ICON, button -> this.list.init(), ScreenshotViewerTexts.REFRESH, ScreenshotViewerTexts.REFRESH
          )
       );
-      if (this.enlargedScreenshotFile != null) {
+      openRequestedScreenshot();
+   }
+
+   void openRequestedScreenshot() {
+      if (this.enlargedScreenshotFile != null && !this.list.scanning()) {
          this.list
             .findByFileName(this.enlargedScreenshotFile)
             .ifPresentOrElse(
@@ -265,6 +289,7 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
    }
 
    public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
+      extractedFrames++;
       long now = System.nanoTime();
       float elapsed = Math.clamp((now - animationClock) / 1_000_000_000f, 0, .1f);
       animationClock = now;
@@ -274,6 +299,7 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
       }
 
       context.centeredText(this.font, this.title, this.width / 2, 8, 16777215);
+      if(list!=null&&!fastDelete&&!isCtrlDown)context.centeredText(this.font,list.status(),this.width/2,this.height-43,0xffc5b7bf);
       this.renderActionText(context);
       ScreenshotViewerUtils.forEachDrawable(this, drawable -> drawable.extractRenderState(context, mouseX, mouseY, delta));
       Matrix3x2fStack matrices = context.pose();
@@ -312,8 +338,9 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
    }
 
    private void renderActionText(GuiGraphicsExtractor context) {
+      if(!fastDelete&&!isCtrlDown)return;
       Component text = this.fastDelete ? ScreenshotViewerTexts.FAST_DELETE_MODE : ScreenshotViewerTexts.ZOOM_MODE;
-      context.text(this.font, text, this.width - this.font.width(text) - 8, 8, this.fastDelete ? -1359820 : (this.isCtrlDown ? -15147463 : -996830));
+      context.centeredText(this.font,text,this.width/2,this.height-43,this.fastDelete?-1359820:-15147463);
    }
 
    void enlargeScreenshot(@Nullable ScreenshotImageHolder showing) {
@@ -450,7 +477,7 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
    }
 
    public void removed() {
-      if (this.list != null) this.list.close();
+      if (this.list != null) {this.list.cancelScan();this.list.close();}
    }
 
    public void configUpdated() {

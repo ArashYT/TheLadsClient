@@ -15,13 +15,28 @@ public final class NativeRequestProbe {
     public static int run() throws Exception {
         var mc=Minecraft.getInstance();var original=mc.gui.screen();int passed=0;
         try{
-            require(mc.options.preferredGraphicsBackend().get()==GraphicsCompatibility.firstLaunchApi(),"first launch respects renderer compatibility after option migrations");passed++;
+            var expectedRenderer=Boolean.getBoolean("thelads.verify134")?switch(System.getProperty("thelads.verifyRenderer","vulkan").toLowerCase(Locale.ROOT)){
+                case "opengl" -> net.minecraft.client.PreferredGraphicsApi.OPENGL;
+                case "default" -> net.minecraft.client.PreferredGraphicsApi.DEFAULT;
+                default -> net.minecraft.client.PreferredGraphicsApi.VULKAN;
+            }:GraphicsCompatibility.firstLaunchApi();
+            require(mc.options.preferredGraphicsBackend().get()==expectedRenderer,"launch respects the requested renderer after option migrations");passed++;
+            if(Boolean.getBoolean("thelads.verify134"))passed+=rendererMigration();
             require(mc.getTelemetryManager().getOutsideSessionSender()==TelemetryEventSender.DISABLED,"telemetry event sender disabled");passed++;
             var logs=ClientTelemetryManager.class.getDeclaredField("logManager");logs.setAccessible(true);
             require(((java.util.concurrent.CompletableFuture<java.util.Optional<?>>)logs.get(mc.getTelemetryManager())).join().isEmpty(),"telemetry log creation disabled");passed++;
             Screen pause=new PauseScreen(true);mc.setScreenAndShow(pause);
             for(String key:List.of("menu.sendFeedback","menu.reportBugs","menu.playerReporting")){
                 require(pause.children().stream().noneMatch(c->c instanceof AbstractWidget w&&w.getMessage().getString().equals(Component.translatable(key).getString())),"pause removes "+key);passed++;
+            }
+            var multiplayer=pause.children().stream().filter(c->c instanceof Button b&&b.getMessage().getString().equals(Component.translatable("menu.multiplayer").getString())).map(c->(Button)c).findFirst().orElseThrow();
+            require(multiplayer.active,"pause exposes Multiplayer action");passed++;
+            if(mc.allowsMultiplayer()&&mc.level!=null) {
+                var levelBefore=mc.level;multiplayer.onPress(null);
+                require(mc.gui.screen() instanceof ConfirmScreen,"Multiplayer asks before leaving the world");passed++;
+                require(mc.level==levelBefore,"opening Multiplayer confirmation preserves the loaded world");passed++;
+                var stay=mc.gui.screen().children().stream().filter(c->c instanceof Button b&&b.getMessage().getString().equals("Stay in game")).map(c->(Button)c).findFirst().orElseThrow();
+                stay.onPress(null);require(mc.level==levelBefore&&mc.gui.screen()==pause,"cancel returns to pause without disconnecting");passed++;
             }
             passed += NativeImprovementsProbe.run();
             if(Boolean.getBoolean("thelads.verify133"))passed+=Version133Probe.run();
@@ -47,6 +62,21 @@ public final class NativeRequestProbe {
             for(String label:List.of("Name","Keybind","Category","Mod","All")){
                 mode.onPress(null);require(mode.getMessage().getString().equals("Search: "+label),"visible search mode "+label);passed++;
             }
+            list.setScrollAmount(Math.min(260,list.maxScrollAmount()));double scrollBefore=list.scrollAmount();
+            require(scrollBefore>0,"controls regression fixture is scrolled down");passed++;
+            extract(keys);
+            keys.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(1,1,new net.minecraft.client.input.MouseButtonInfo(0,0)),false);
+            require(list.scrollAmount()==scrollBefore,"ordinary controls click keeps scroll position");passed++;
+            var entry=list.children().stream().filter(c->c instanceof KeyBindsList.KeyEntry).findFirst().orElseThrow();
+            var key=((com.thelads.core.v26_2.mixin.KeyEntryAccessor)entry).ladsKey();
+            var keyField=net.minecraft.client.KeyMapping.class.getDeclaredField("key");keyField.setAccessible(true);
+            var oldKey=(com.mojang.blaze3d.platform.InputConstants.Key)keyField.get(key);
+            var changeField=KeyBindsList.KeyEntry.class.getDeclaredField("changeButton");changeField.setAccessible(true);
+            try {
+                ((Button)changeField.get(entry)).onPress(null);
+                keys.keyPressed(new net.minecraft.client.input.KeyEvent(290,0,0));
+                require(list.scrollAmount()==scrollBefore,"assigning a key keeps controls scroll position");passed++;
+            }finally{key.setKey(oldKey);net.minecraft.client.KeyMapping.resetMapping();list.resetMappingAndUpdateButtons();mc.options.save();}
             keys.init(mc.getWindow().getGuiScaledWidth(),mc.getWindow().getGuiScaledHeight());
             require(keys.children().stream().filter(c->c instanceof EditBox).count()==1,"resize leaves exactly one search field");passed++;
 
@@ -67,6 +97,45 @@ public final class NativeRequestProbe {
             org.slf4j.LoggerFactory.getLogger("TheLadsCore").info("Lads requested features probe END: {} passed, 0 failed",passed);
             return passed;
         }finally{mc.setScreenAndShow(original);}
+    }
+    private static int rendererMigration()throws Exception{
+        var mc=Minecraft.getInstance();
+        NativeWorldVerification.checkedGameDirectory(mc.gameDirectory.toPath());
+        var options=mc.options;
+        var fileField=net.minecraft.client.Options.class.getDeclaredField("optionsFile");fileField.setAccessible(true);
+        var path=((java.io.File)fileField.get(options)).toPath();
+        var startupField=net.minecraft.client.Options.class.getDeclaredField("preferredGraphicsBackendFromStartup");startupField.setAccessible(true);
+        var preference=options.preferredGraphicsBackend().get();var startup=startupField.get(options);
+        byte[] disk=java.nio.file.Files.exists(path)?java.nio.file.Files.readAllBytes(path):null;
+        byte[] memory=null;int passed=0;
+        try{
+            // Save the live values before loading versionless fixtures; finally restores both
+            // the live settings and exact original file bytes, including a saved crash fallback.
+            options.save();memory=java.nio.file.Files.readAllBytes(path);
+            String fixture=new String(memory,java.nio.charset.StandardCharsets.UTF_8).lines()
+                .filter(line->!line.startsWith("version:")&&!line.startsWith("preferredGraphicsBackend:"))
+                .collect(java.util.stream.Collectors.joining("\n","","\n"));
+            for(String name:List.of("vulkan","opengl","default","missing")){
+                var expected=switch(name){
+                    case "vulkan" -> net.minecraft.client.PreferredGraphicsApi.VULKAN;
+                    case "opengl" -> net.minecraft.client.PreferredGraphicsApi.OPENGL;
+                    case "default" -> net.minecraft.client.PreferredGraphicsApi.DEFAULT;
+                    default -> GraphicsCompatibility.firstLaunchApi();
+                };
+                java.nio.file.Files.writeString(path,fixture+(name.equals("missing")?"":"preferredGraphicsBackend:\""+name+"\"\n"));
+                options.load();
+                require(options.preferredGraphicsBackend().get()==expected,"versionless migration preserves "+name+" renderer preference");passed++;
+                require(startupField.get(options)==expected,"versionless migration preserves "+name+" startup renderer");passed++;
+            }
+        }finally{
+            try{if(memory!=null){java.nio.file.Files.write(path,memory);options.load();}}
+            finally{
+                options.preferredGraphicsBackend().set(preference);startupField.set(options,startup);
+                if(disk==null)java.nio.file.Files.deleteIfExists(path);else java.nio.file.Files.write(path,disk);
+            }
+        }
+        org.slf4j.LoggerFactory.getLogger("TheLadsCore").info("Lads 1.3.4 renderer options migration END: {} passed, 0 failed",passed);
+        return passed;
     }
     private static int swing()throws Exception{
         var module=NativeQualityOfLife.module("LegacySwing");boolean enabled=module.isEnabled();long modified=module.getLastModified();

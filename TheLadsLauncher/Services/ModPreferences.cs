@@ -51,6 +51,27 @@ public sealed class ModPreferences
         return null;
     }
 
+    internal sealed record RendererJar(string FileName, string Sha512);
+
+    internal RendererJar? GetRendererSuspendedJar(string id)
+    {
+        if (mods[id] is JsonObject entry && entry["rendererSuspendedJar"] is JsonObject jar
+            && jar["fileName"] is JsonValue file && file.TryGetValue<string>(out var name)
+            && jar["sha512"] is JsonValue hash && hash.TryGetValue<string>(out var sha512)
+            && !string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(sha512))
+            return new(name, sha512);
+        return null;
+    }
+
+    // Stored with the choice transaction so a failed install cannot lose which physical jar was active.
+    internal static void SetRendererSuspendedJar(JsonObject root, string id, RendererJar? jar)
+    {
+        var all = root["mods"] as JsonObject ?? (JsonObject)(root["mods"] = new JsonObject())!;
+        if (jar == null) { if (all[id] is JsonObject old) old.Remove("rendererSuspendedJar"); return; }
+        var entry = all[id] as JsonObject ?? (JsonObject)(all[id] = new JsonObject())!;
+        entry["rendererSuspendedJar"] = new JsonObject { ["fileName"] = jar.FileName, ["sha512"] = jar.Sha512 };
+    }
+
     /// <summary>
     /// The single writer: a locked read-modify-write of the whole JSON tree. <paramref name="mutate"/> receives the root with
     /// "schema" and a "mods" object present. An unreadable file is renamed to lads-mod-state.json.corrupt-&lt;stamp&gt; first.

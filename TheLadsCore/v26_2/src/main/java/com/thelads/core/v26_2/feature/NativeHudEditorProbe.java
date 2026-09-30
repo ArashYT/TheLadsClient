@@ -105,11 +105,14 @@ final class NativeHudEditorProbe implements AutoCloseable {
                     .containsAll(List.of("group", "ungroup", "lock", "unlock", "snap", "done")), "visible editing controls");
                 click(cps, 0); click(bounds("Day"), 2);
                 check(controller.selectedNames().equals(PAIR), "native Ctrl-click selects two HUDs");
+                check(controller.toggleBoundsFor("CPS")!=null,"per-module toggle has a rendered hit target");
                 key(71, 2);
                 check(PAIR.equals(settings.getGroupMembers("CPS")), "native Ctrl-G creates a persistent group");
             }
             case 1 -> {
                 beforeCps = bounds("CPS"); beforeDay = bounds("Day");
+                check(Math.abs((beforeCps.x()+beforeCps.width()/2)-(beforeDay.x()+beforeDay.width()/2))<=1, "group centers align with mixed module scales");
+                check(beforeDay.y()==beforeCps.bottom()+2,"group stack packs rows without overlap");
                 drag(beforeCps, 10000, -10000);
                 check(relative(bounds("CPS"), bounds("Day"), beforeCps, beforeDay), "group border drag preserves both offsets");
             }
@@ -117,7 +120,7 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 Rect cps = bounds("CPS"), day = bounds("Day");
                 check(relative(cps, day, beforeCps, beforeDay), "next completed render preserves grouped offsets");
                 check(cps.x() >= 0 && day.x() >= 0 && Math.max(cps.right(), day.right()) == screen.width
-                    && Math.min(cps.y(), day.y()) == 0, "whole group clamps to viewport edges");
+                    && Math.min(cps.y(), day.y()) == 0, "whole group clamps to viewport edges: CPS="+cps+", Day="+day+", viewport="+screen.width+"x"+screen.height+", members="+settings.getGroupMembers("CPS"));
                 check(saved("CPS", cps) && saved("Day", day), "all grouped positions match rendered coordinates after save");
                 button("lock");
                 check(settings.isLocked("CPS") && settings.isLocked("Day"), "Lock position applies to the group");
@@ -141,16 +144,24 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 click(bounds("CPS"), 0);
                 check(controller.selectedNames().equals(Set.of("CPS")), "ungrouped HUD selects independently");
                 click(bounds("Day"), 2);
+                var b=bounds("CPS");
+                screen.mouseClicked(new MouseButtonEvent(b.x()+1,b.y()+1,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT,0)),false);
+                check(controller.selectedNames().equals(PAIR),"right-click preserves multi-selection for grouping");
             }
             case 4 -> {
-                button("group");
-                check(PAIR.equals(settings.getGroupMembers("Day")), "visible Group button also creates the group");
+                var group=controller.contextControls().stream().filter(c->c.id().equals("group")).findFirst().orElseThrow();
+                check(group.enabled(),"context Group is enabled for two selected modules");click(group.bounds(),0);
+                check(PAIR.equals(settings.getGroupMembers("Day")), "right-click Group creates the centered stack");
                 key(71, 0); // Disable snapping for an exact final fixture position.
                 Rect cps = bounds("CPS");
                 drag(cps, 44 - cps.x(), 58 - cps.y());
                 check(bounds("CPS").x() == 44 && bounds("CPS").y() == 58, "free drag keeps pointer and saved GUI coordinates aligned");
                 check(saved("CPS", bounds("CPS")) && saved("Day", bounds("Day")), "final group positions are persisted together");
                 check(saves >= 7, "edit operations invoke the persistence owner");
+                var toggle=controller.toggleBoundsFor("FPS");check(toggle!=null,"FPS toggle is visible");click(toggle,0);
+                check(!ModuleManager.getInstance().getModule("FPS").isEnabled(),"native editor OFF disables the module");
+                check(controller.boundsFor("FPS")!=null,"disabled preview stays available to re-enable");click(toggle,0);
+                check(ModuleManager.getInstance().getModule("FPS").isEnabled(),"native editor ON restores the module");
                 // Capture the requested organized defaults after interaction checks, restoring the fixture on close.
                 key(71,0); // Restore the default editor grid for the capture.
                 button("reset");

@@ -271,6 +271,8 @@ public partial class MainWindow : Window
             startupAnimTimer.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
+            int discoveryPreview = Array.IndexOf(args, "--preview-discovery");
+            if (discoveryPreview >= 0) { await RunDiscoveryPreviewAsync(Path.GetFullPath(args[discoveryPreview + 1])); return; }
             int productivityPreview = Array.IndexOf(args, "--preview-productivity");
             if (productivityPreview >= 0) { await RunProductivityPreviewAsync(Path.GetFullPath(args[productivityPreview + 1])); return; }
             if (_previewWorldsOutput != null)
@@ -314,7 +316,7 @@ public partial class MainWindow : Window
             }
         };
         logTimer.Start();
-        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); logTimer.Stop(); _authCts?.Cancel(); };
+        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
         // Stats timer (1 second)
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statsTimer.Tick += UpdateSystemStats;
@@ -733,9 +735,12 @@ public partial class MainWindow : Window
     //  GALLERY
     // ═══════════════════════════════════════
 
-    // Screenshots live once in the shared folder: 26.x writes there directly, 1.21.x is copied there when the game closes.
+    // Screenshots are inventoried in place across Lads and other launcher instances.
     private const int GalleryPageSize = 60;
     private List<(string Path, DateTime Time)> _galleryFiles = new();
+    private Dictionary<string, ScreenshotEntry> _gallerySources = new(StringComparer.OrdinalIgnoreCase);
+    private CancellationTokenSource? _galleryScanCancellation;
+    private string _galleryScanSummary = "";
     private int _galleryShown;
     private int _galleryGeneration;
     private Task _galleryThumbnails = Task.CompletedTask;
@@ -754,52 +759,76 @@ public partial class MainWindow : Window
     private async Task LoadGalleryAsync()
     {
         int generation = ++_galleryGeneration;
+        _galleryScanCancellation?.Cancel();
+        var cancellation = new CancellationTokenSource();
+        _galleryScanCancellation = cancellation;
         SyncFavoritesWithGame();
+        foreach (var old in GalleryList.GetLogicalDescendants().OfType<Image>()) (old.Source as Bitmap)?.Dispose();
         GalleryList.Children.Clear();
         GalleryLoadMoreBtn.IsVisible = false;
         if (ImgurIdBox != null) ImgurIdBox.Text = settings.ImgurClientId;
-
-        string dir = SharedContentService.Instance.ScreenshotsDirectory;
         int sort = GallerySortBox?.SelectedIndex ?? 0;
-        var favorites = new HashSet<string>(settings.GalleryFavorites);
-        GalleryStatusText.Text = "Loading screenshots...";
-        List<(string Path, DateTime Time)> files;
+        var favorites = new HashSet<string>(settings.GalleryFavorites, StringComparer.OrdinalIgnoreCase);
+        GalleryStatusText.Text = "Scanning launcher instances…";
+        var profiles = _profileService.GetProfiles().Select(p => new ScreenshotRoot(_pathService.GetProfileDirectory(p), "Lads · " + p.Name)).ToArray();
         try
         {
-            files = await Task.Run(() => ListScreenshots(dir, sort, favorites));
+            var catalog = await Task.Run(() => CreateScreenshotCatalog().Scan(profiles, cancellation.Token), cancellation.Token);
+            if (generation != _galleryGeneration || _windowClosed) return;
+            _gallerySources = catalog.Entries.ToDictionary(e => e.Path, StringComparer.OrdinalIgnoreCase);
+            IEnumerable<ScreenshotEntry> files = catalog.Entries;
+            files = sort switch
+            {
+                1 => files.OrderBy(f => f.Time),
+                2 => files.OrderBy(f => Path.GetFileName(f.Path), StringComparer.OrdinalIgnoreCase),
+                3 => files.OrderByDescending(f => favorites.Contains(GalleryFavoriteKey(f.Path))).ThenByDescending(f => f.Time),
+                _ => files.OrderByDescending(f => f.Time)
+            };
+            _galleryFiles = files.Select(f => (f.Path, f.Time)).ToList();
+            _galleryScanSummary = $"{catalog.Folders} folders" + (catalog.Warnings.Count > 0 ? $" · {catalog.Warnings.Count} scan notices" : "");
+            ToolTip.SetTip(GalleryStatusText, catalog.Warnings.Count > 0 ? string.Join("\n", catalog.Warnings) : "Lads, Modrinth, CurseForge, Prism and your added folders. Originals stay in their instance.");
+            foreach (var warning in catalog.Warnings) Log("[Gallery] " + warning);
+            _galleryShown = 0;
+            if (_galleryFiles.Count == 0)
+            {
+                GalleryStatusText.Text = _galleryFavoritesError ?? _galleryScanSummary;
+                GalleryList.Children.Add(new TextBlock { Text = "No screenshots found. Add a folder for a portable launcher or a custom instance location.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4), TextWrapping = TextWrapping.Wrap });
+                return;
+            }
+            ShowMoreScreenshots();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (OperationCanceledException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
             if (generation != _galleryGeneration) return;
-            GalleryStatusText.Text = $"Could not read '{dir}': {ex.Message}";
-            Log($"[Gallery] Could not read '{dir}': {ex.Message}");
-            return;
+            GalleryStatusText.Text = "Screenshot scan failed: " + ex.Message;
+            Log("[Gallery] " + ex.Message);
         }
-        if (generation != _galleryGeneration) return;
-        _galleryFiles = files;
-        _galleryShown = 0;
-        if (files.Count == 0)
+        finally
         {
-            GalleryStatusText.Text = _galleryFavoritesError ?? dir;
-            GalleryList.Children.Add(new TextBlock { Text = "No screenshots yet. Every version saves them to the shared screenshots folder.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4) });
-            return;
+            if (ReferenceEquals(_galleryScanCancellation, cancellation)) _galleryScanCancellation = null;
+            cancellation.Dispose();
         }
-        ShowMoreScreenshots();
     }
 
-    private static List<(string Path, DateTime Time)> ListScreenshots(string dir, int sort, HashSet<string> favorites)
+    private ScreenshotCatalogService CreateScreenshotCatalog() => new(SharedContentService.Instance.Root,
+        discoverLaunchers: !Environment.GetCommandLineArgs().Any(a => a.StartsWith("--preview-", StringComparison.Ordinal)));
+
+    private string GalleryFavoriteKey(string path) => _gallerySources.TryGetValue(path, out var entry) && entry.IsExternal ? path : Path.GetFileName(path);
+
+    private void GalleryRescan_Click(object? sender, RoutedEventArgs e) => _ = LoadGalleryAsync();
+
+    private async void GalleryAddFolder_Click(object? sender, RoutedEventArgs e)
     {
-        if (!Directory.Exists(dir)) return new();
-        var files = new DirectoryInfo(dir).EnumerateFiles()
-            .Where(f => f.Extension.Equals(".png", StringComparison.OrdinalIgnoreCase) || f.Extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase))
-            .Select(f => (Path: f.FullName, Time: f.LastWriteTime));
-        return (sort switch
+        try
         {
-            1 => files.OrderBy(f => f.Time),
-            2 => files.OrderBy(f => System.IO.Path.GetFileName(f.Path), StringComparer.OrdinalIgnoreCase),
-            3 => files.OrderByDescending(f => favorites.Contains(System.IO.Path.GetFileName(f.Path))).ThenByDescending(f => f.Time),
-            _ => files.OrderByDescending(f => f.Time)
-        }).ToList();
+            var chosen = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose a screenshots, instance or launcher folder", AllowMultiple = false });
+            if (chosen.FirstOrDefault()?.TryGetLocalPath() is not { } folder) return;
+            CreateScreenshotCatalog().AddRoot(folder);
+            await LoadGalleryAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
+        { await ShowLadsDialogAsync("Could not add screenshot folder", ex.Message); }
     }
 
     /// <summary>Adds the next page of cards; their thumbnails are decoded off the UI thread.</summary>
@@ -816,7 +845,7 @@ public partial class MainWindow : Window
         int left = _galleryFiles.Count - _galleryShown;
         GalleryLoadMoreBtn.IsVisible = left > 0;
         GalleryLoadMoreBtn.Content = $"Load more ({left} left)";
-        GalleryStatusText.Text = $"{_galleryShown} of {_galleryFiles.Count} · {SharedContentService.Instance.ScreenshotsDirectory}"
+        GalleryStatusText.Text = $"{_galleryShown} of {_galleryFiles.Count} · {_galleryScanSummary}"
             + (_galleryFavoritesError != null ? $" · {_galleryFavoritesError}" : "");
         _galleryThumbnails = LoadGalleryThumbnailsAsync(cards, _galleryGeneration);
     }
@@ -856,7 +885,8 @@ public partial class MainWindow : Window
     private Border BuildGalleryCard(string path, DateTime time, out Image image, out TextBlock meta)
     {
         string name = Path.GetFileName(path);
-        bool fav = settings.GalleryFavorites.Contains(name);
+        string favoriteKey = GalleryFavoriteKey(path);
+        bool fav = settings.GalleryFavorites.Contains(favoriteKey);
 
         var card = new Border { Background = new SolidColorBrush(Color.Parse("#14141F")), CornerRadius = new CornerRadius(8), Margin = new Thickness(6), Width = 182, Padding = new Thickness(6) };
         var stack = new StackPanel { Spacing = 4 };
@@ -867,6 +897,8 @@ public partial class MainWindow : Window
         stack.Children.Add(imgBorder);
 
         stack.Children.Add(new TextBlock { Text = name, Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")), FontSize = 11, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis });
+        if (_gallerySources.TryGetValue(path, out var source))
+            stack.Children.Add(new TextBlock { Text = source.Source, Foreground = new SolidColorBrush(Color.Parse("#CF8D8D")), FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis });
         stack.Children.Add(new TextBlock { Text = time.ToString("g"), Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 10 });
 
         // Metadata sidecar (written in-game): server/world, coords, biome. Filled in with the thumbnail.
@@ -879,10 +911,11 @@ public partial class MainWindow : Window
         actions.Children.Add(MiniGalBtn("📂", "Show in folder", _ => OpenFolderSelect(path)));
         actions.Children.Add(MiniGalBtn(fav ? "★" : "☆", "Favorite", button =>
         {
-            button.Content = ToggleGalleryFav(name) ? "★" : "☆";
+            button.Content = ToggleGalleryFav(favoriteKey) ? "★" : "☆";
             if (GallerySortBox?.SelectedIndex == 3) _ = LoadGalleryAsync();
         }));
-        actions.Children.Add(MiniGalBtn("✕", "Move to the Recycle Bin", button => _ = DeleteScreenshotAsync(path)));
+        if (source?.IsExternal != true)
+            actions.Children.Add(MiniGalBtn("✕", "Move to the Recycle Bin", button => _ = DeleteScreenshotAsync(path)));
         stack.Children.Add(actions);
 
         card.Child = stack;
@@ -891,7 +924,7 @@ public partial class MainWindow : Window
 
     private Button MiniGalBtn(string content, string tip, Action<Button> onClick)
     {
-        var b = new Button { Content = content, Width = 30, Height = 26, FontSize = 12, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        var b = new Button { Content = content, Width = 30, Height = 26, FontSize = 12, Padding = new Thickness(0), HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
         Avalonia.Controls.ToolTip.SetTip(b, tip);
         b.Click += (s, e) => onClick(b);
         return b;
@@ -967,6 +1000,7 @@ public partial class MainWindow : Window
 
     private async Task DeleteScreenshotAsync(string path)
     {
+        if (_gallerySources.TryGetValue(path, out var source) && source.IsExternal) return;
         string name = Path.GetFileName(path);
         if (!await ShowLadsDialogAsync("Delete screenshot",
                 $"Move '{name}' to the Recycle Bin? Screenshots are shared by every version.", "Move to Recycle Bin", "Cancel", danger: true))
@@ -3100,6 +3134,7 @@ public partial class MainWindow : Window
         KeepLauncherOpenCheckbox.IsChecked = settings.KeepLauncherOpen;
         KeepClosedOnExitCheckbox.IsChecked = settings.KeepClosedOnExit;
         FullscreenOnLaunchCheckbox.IsChecked = settings.FullscreenOnLaunch;
+        GraphicsRendererSelector.SelectedIndex = GraphicsRenderer.Normalize(settings.GraphicsRenderer) == GraphicsRenderer.OpenGl ? 1 : 0;
         QuickLaunchCheckbox.IsChecked = settings.QuickLaunch;
         AutoLaunchCheckbox.IsChecked = settings.AutoLaunch;
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
@@ -3636,6 +3671,7 @@ public partial class MainWindow : Window
             settings.QuickLaunchServerIp = "";
         settings.AllowMultiInstance = MultiInstanceCheckbox.IsChecked ?? false;
         settings.FullscreenOnLaunch = FullscreenOnLaunchCheckbox.IsChecked ?? true;
+        settings.GraphicsRenderer = GraphicsRendererSelector.SelectedIndex == 1 ? GraphicsRenderer.OpenGl : GraphicsRenderer.Vulkan;
         settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
         settings.ShowParticles = ParticleCheckbox.IsChecked ?? true;
         settings.SyncScreenshotsToGlobal = SyncScreenshotsCheckbox.IsChecked ?? true;
@@ -5107,6 +5143,7 @@ public partial class MainWindow : Window
             if (_javaService.GetJavaMajorVersion(launchOpt.JavaPath) != requiredJava)
                 throw new InvalidOperationException($"Select a Java {requiredJava} installation for Minecraft {activeProfile.MinecraftVersion}.");
             await RunPackwizInstaller(activeProfile, launchOpt.JavaPath);
+            await GraphicsRenderer.PrepareAsync(gameDirectory, activeProfile.MinecraftVersion, settings.GraphicsRenderer, message => Dispatcher.UIThread.Post(() => StatusText.Text = message));
             await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion);
             // Without Fabric nothing in Mods loads (as in LaunchService): no choices to apply, no dependencies to check.
             if (!string.IsNullOrWhiteSpace(activeProfile.FabricVersion) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion)) return;

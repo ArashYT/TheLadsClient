@@ -46,6 +46,7 @@ public abstract class PauseScreenMixin extends Screen {
         String text=button.getMessage().getString();
         String[] keys={"menu.returnToGame","gui.advancements","gui.stats","menu.options","menu.worldOptions","menu.returnToMenu","menu.disconnect"};
         for(int i=0;i<keys.length;i++)if(text.equals(Component.translatable(keys[i]).getString()))return i;
+        if(text.equals(Component.translatable("menu.multiplayer").getString()))return 3;
         if(text.equals("Lads Client"))return 7;return 8;
     }
     @Inject(method="extractRenderState",at=@At("HEAD"),cancellable=true,require=1)
@@ -95,6 +96,11 @@ public abstract class PauseScreenMixin extends Screen {
         // This method is not called by PauseScreen(false), which intentionally has no menu.
         ladsPauseRows.addChild(Button.builder(Component.literal("Lads Client"),
             button -> minecraft.gui.setScreen(new LadsSettingsScreen26(this))).width(204).build(), 2);
+        ladsPauseRows.addChild(Button.builder(Component.translatable("menu.multiplayer"),
+            button -> com.thelads.core.v26_2.gui.PauseMultiplayer.open(this)).width(204).build(), 2);
+        if(com.thelads.core.v26_2.gui.FlashbackScreens.available())
+            ladsPauseRows.addChild(Button.builder(Component.literal("Replays"),
+                button -> com.thelads.core.v26_2.gui.FlashbackScreens.open(this)).width(204).build(),2);
         ladsPauseRows = null;
         LoggerFactory.getLogger("TheLadsCore").info("Lads Client pause-menu button initialized");
     }

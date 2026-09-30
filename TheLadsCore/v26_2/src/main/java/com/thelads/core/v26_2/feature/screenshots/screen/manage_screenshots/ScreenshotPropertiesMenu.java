@@ -64,6 +64,8 @@ class ScreenshotPropertiesMenu extends AbstractContainerEventHandler implements 
 
    void show(int x, int y, int parentWidth, int parentHeight, ScreenshotImageHolder targetScreenshot) {
       this.targetScreenshot = targetScreenshot;
+      boolean readOnly=com.thelads.core.v26_2.feature.GlobalScreenshots.readOnly(targetScreenshot.getScreenshotFile());
+      this.buttons.get(2).active=!readOnly;this.buttons.get(3).active=!readOnly;
       int spacing = 2;
       Font font = this.mcSupplier.get().font;
       int largestTextWidth = this.buttons.stream().map(AbstractWidget::getMessage).mapToInt(font::width).max().orElse(0);

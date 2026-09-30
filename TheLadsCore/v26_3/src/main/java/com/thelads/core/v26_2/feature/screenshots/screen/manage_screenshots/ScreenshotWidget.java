@@ -74,6 +74,7 @@ final class ScreenshotWidget extends AbstractWidget implements AutoCloseable, Sc
    }
 
    void deleteScreenshot() {
+      if(com.thelads.core.v26_2.feature.GlobalScreenshots.readOnly(screenshotFile))return;
       try {
          if (com.thelads.core.v26_2.feature.screenshots.ScreenshotFileIO.delete(screenshotFile.toPath())) {
             close(); ManageScreenshotsScreen.THUMBNAILS.removeThumbnail(screenshotFile); ctx.removeEntry(this);
@@ -92,6 +93,9 @@ final class ScreenshotWidget extends AbstractWidget implements AutoCloseable, Sc
       this.hintTooltip = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.DISPLAY_HINT_TOOLTIP, false)
          ? ScreenshotViewerUtils.toColoredComponents(this.client, ScreenshotViewerTexts.translatable("tooltip", "menu_hint").withStyle(ChatFormatting.GRAY))
          : List.of();
+      if(com.thelads.core.v26_2.feature.GlobalScreenshots.readOnly(screenshotFile))
+         this.hintTooltip=ScreenshotViewerUtils.toColoredComponents(this.client, Component.literal(
+            com.thelads.core.v26_2.feature.GlobalScreenshots.source(screenshotFile)+"\nExternal original | read-only").withStyle(ChatFormatting.GRAY));
    }
 
    void updateHoverState(int mouseX, int mouseY, int viewportY, int viewportBottom, boolean updateHoverState) {
@@ -197,7 +201,7 @@ final class ScreenshotWidget extends AbstractWidget implements AutoCloseable, Sc
 
    private void onClick() {
       if (this.mainScreen.isFastDeleteToggled()) {
-         this.selectedForDeletion = !this.selectedForDeletion;
+         this.selectedForDeletion = !com.thelads.core.v26_2.feature.GlobalScreenshots.readOnly(screenshotFile) && !this.selectedForDeletion;
       } else {
          this.mainScreen.enlargeScreenshot(this);
       }
@@ -242,6 +246,7 @@ final class ScreenshotWidget extends AbstractWidget implements AutoCloseable, Sc
 
    @Override
    public void requestFileDeletion() {
+      if(com.thelads.core.v26_2.feature.GlobalScreenshots.readOnly(screenshotFile))return;
       BooleanConsumer deleteAction = value -> {
          if (value) {
             this.deleteScreenshot();
@@ -266,6 +271,7 @@ final class ScreenshotWidget extends AbstractWidget implements AutoCloseable, Sc
 
    @Override
    public void renameFile() {
+      if(com.thelads.core.v26_2.feature.GlobalScreenshots.readOnly(screenshotFile))return;
       String fileName = this.screenshotFile.getName();
       this.mainScreen
          .setDialogScreen(

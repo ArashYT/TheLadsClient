@@ -91,6 +91,9 @@ public static class ClientModInstaller
             var preferencesBytes = ModPreferences.ReadShared(preferencesPath);
             var preferencesHash = preferencesBytes is null ? null : Hash(preferencesBytes);
             var preferences = ModPreferences.Parse(preferencesBytes, preferencesPath);
+            var rendererBlocked = GraphicsRenderer.Suspended(game);
+            var rendererChoices = new Dictionary<string, (bool Enabled, string? Project)>();
+            var rendererJars = new Dictionary<string, ModPreferences.RendererJar?>();
             if (preferences.Error != null) status?.Invoke(preferences.Error);
             var inventory = await ReadInventory(game, mods, cancellationToken);
             // The planned final Mods folder. Every change updates it in commit order, so later checks see earlier moves.
@@ -139,6 +142,13 @@ public static class ClientModInstaller
                     : IsLegacyName(Path.GetFileName(jar.Path), entry.ModId) ? 1 : 2;
                 var wantEnabled = preferences.GetEnabled(entry.ModId, entry.ProjectId)
                     ?? !(copies.Any(j => j.Disabled) && copies.All(j => j.Disabled));
+                if (rendererBlocked.Contains(entry.ModId))
+                {
+                    if (preferences.GetEnabled(entry.ModId, entry.ProjectId) == null)
+                        rendererChoices[entry.ModId] = (wantEnabled, entry.ProjectId);
+                    wantEnabled = false;
+                    status?.Invoke(entry.Name + ": suspended for Vulkan; available with OpenGL.");
+                }
                 // Keep one copy: enabling prefers an enabled copy, then Lads-managed bytes; disabling prefers the managed copy (it is
                 // renamed; your own extra disabled copy may stay), then a disabled one. Then the original, legacy and other names.
                 var primary = (wantEnabled ? copies.OrderBy(j => j.Disabled ? 1 : 0).ThenBy(j => Managed(j) ? 0 : 1)
@@ -210,6 +220,31 @@ public static class ClientModInstaller
             foreach (var jar in final.Values.Where(j => j.Id != null && !desired.Contains(j.Id) && j.Id != BundledModInstaller.CoreModId).ToList())
             {
                 var want = preferences.GetEnabled(jar.Id!, null);
+                if (rendererBlocked.Contains(jar.Id!))
+                {
+                    // A disabled older copy must not overwrite the id's active choice. Read the
+                    // original inventory because earlier renames have already changed final.
+                    if (want == null) rendererChoices.TryAdd(jar.Id!, (inventory.Any(copy => copy.Id == jar.Id && !copy.Disabled), null));
+                    if (!jar.Disabled) rendererJars[jar.Id!] = new(BaseName(jar.Path), jar.Hash);
+                    want = false;
+                }
+                else if (preferences.GetRendererSuspendedJar(jar.Id!) is { } suspended)
+                {
+                    if (want == true)
+                    {
+                        if (!final.Values.Any(copy => copy.Id == jar.Id && !copy.Disabled))
+                        {
+                            var restore = final.Values.FirstOrDefault(copy => copy.Id == jar.Id
+                                && Paths.Equals(BaseName(copy.Path), suspended.FileName) && SameHash(copy.Hash, suspended.Sha512));
+                            if (restore == null)
+                                throw new IOException($"Cannot restore {jar.Id}: the previously active '{suspended.FileName}' was changed or removed. " +
+                                    "Restore that copy, disable this mod in Mods, or manually enable your chosen jar file, then retry. Your files were preserved.");
+                            if (!Paths.Equals(jar.Path, restore.Path)) continue;
+                        }
+                        rendererJars[jar.Id!] = null;
+                    }
+                    else if (want == false) rendererJars[jar.Id!] = null;
+                }
                 if (want == null || want == !jar.Disabled) continue;
                 if (want == true && final.Values.Any(j => j.Id == jar.Id && !j.Disabled)) continue; // Never a second enabled copy.
                 Rename(jar, want == true ? jar.Path[..^DisabledSuffix.Length] : jar.Path + DisabledSuffix, jar.Id!, false);
@@ -249,13 +284,18 @@ public static class ClientModInstaller
             }
 
             ValidateDependencies(final.Values, disabledByChoice);
-            if (keepDisabled.Count > 0)
+            bool updatePreferences = keepDisabled.Count > 0 || rendererChoices.Count > 0 || rendererJars.Count > 0;
+            if (updatePreferences)
             {
                 // Retiring moves away the file that held the choice: record it in the same commit, or a later pack that ships
                 // the mod again would download it enabled. An unreadable state file is kept as .corrupt-<time>, as a normal write does.
                 var temp = SafeChild(game, Path.Combine(cache, "mod-state-" + Guid.NewGuid().ToString("N") + ".tmp"));
                 var bytes = ModPreferences.Rewrite(preferencesBytes, preferencesPath,
-                    root => { foreach (var (id, project) in keepDisabled) ModPreferences.SetMod(root, id, false, project); });
+                    root => {
+                        foreach (var (id, project) in keepDisabled) ModPreferences.SetMod(root, id, false, project);
+                        foreach (var (id, choice) in rendererChoices) ModPreferences.SetMod(root, id, choice.Enabled, choice.Project, "renderer");
+                        foreach (var (id, jar) in rendererJars) ModPreferences.SetRendererSuspendedJar(root, id, jar);
+                    });
                 await using (var output = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
                 {
                     staged.Add(temp, null);
@@ -265,7 +305,7 @@ public static class ClientModInstaller
                 staged[temp] = Hash(bytes);
                 var corrupt = preferencesBytes != null && preferences.Error != null ? ModPreferences.CorruptPath(preferencesPath) : null;
                 changes.Add(new(preferencesPath, temp, preferencesHash, staged[temp], "previous-mod-state",
-                    $"Saved {string.Join(", ", keepDisabled.Keys)} as disabled: the retired copy was the only record of that choice.", corrupt));
+                    "Preserved mod choices while retiring or suspending renderer-specific mods.", corrupt));
             }
             if (receipt.Count != originalReceipt.Count
                 || receipt.Any(p => !originalReceipt.TryGetValue(p.Key, out var hash) || !SameHash(hash, p.Value)))
@@ -289,7 +329,7 @@ public static class ClientModInstaller
                 Paths.Equals(old.Path, j.Path) && SameHash(old.Hash, j.Hash))))
                 throw new IOException("The Mods folder changed during installation. Retry the launch; your changes were preserved.");
             // Writing the choices file: hold its writers' lock (the launcher's Mods page and LadsCore) until the commit is done.
-            await using var preferencesLock = keepDisabled.Count > 0
+            await using var preferencesLock = updatePreferences
                 ? await LockFiles.AcquireAsync(preferencesPath + ".lock", TimeSpan.FromSeconds(3), cancellationToken) : null;
             await Expect(game, receiptPath, receiptHash, cancellationToken);
             await Expect(game, preferencesPath, preferencesHash, cancellationToken);
