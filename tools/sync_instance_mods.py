@@ -22,13 +22,14 @@ UPDATE = False
 GAMES = ['1.21.1', '1.21.11', '26.2', '26.3']
 # Only replacements implemented by these version adapters may suppress upstream jars.
 NATIVE = {
-    '1.21.1': {'threads': 'ThreadPriorityModule'}, '1.21.11': {'threads': 'ThreadPriorityModule'},
+    '1.21.1': {'threads': 'ThreadPriorityModule', 'classic_minecraft_icon': 'WindowIconMixin'},
+    '1.21.11': {'threads': 'ThreadPriorityModule', 'classic_minecraft_icon': 'WindowIconMixin'},
     '26.2': {'threads': 'ThreadPriorityModule', 'appleskin': 'NativeFoodOverlay', 'clumps': 'NativeClumps',
              'dynamic_fps': 'NativeDynamicFps', 'autoreconnectrf': 'NativeReconnect',
-             'chatsigninghider': 'ChatIndicatorMixin'},
+             'chatsigninghider': 'ChatIndicatorMixin', 'classic_minecraft_icon': 'WindowIconMixin'},
     '26.3': {'threads': 'ThreadPriorityModule', 'appleskin': 'NativeFoodOverlay', 'clumps': 'NativeClumps',
              'dynamic_fps': 'NativeDynamicFps', 'autoreconnectrf': 'NativeReconnect',
-             'chatsigninghider': 'ChatIndicatorMixin'},
+             'chatsigninghider': 'ChatIndicatorMixin', 'classic_minecraft_icon': 'WindowIconMixin'},
 }
 # Iris 1.10.7 pins Sodium 0.8.7; newer add-ons require Sodium 0.8.14.
 # Original projects supply these features on 1.21.1, before the source-instance forks.
@@ -37,6 +38,12 @@ COMPATIBLE_PROJECTS = {('1.21.1', 'modernfix'): 'nmDcB62a',
                        ('1.21.1', 'motionblurplus'): 'fWundlde'}
 # Iris's last stable 1.21.1 release requires Sodium 0.6; this beta supports 0.8.
 COMPATIBLE_RELEASES = {('1.21.1', 'iris'): 'bAo1Qhte',
+                       # 1.2.0's Sodium occlusion mixin breaks on Sodium 0.8.12 (every 1.21.1 world join crashed);
+                       # 1.2.1-beta supports it. A 'release' preference would silently pick 1.2.0 again.
+                       ('1.21.1', 'betterrenderdistance'): 'ZI7FceDv',
+                       # Flashback needs voicechat_api >= 2.6.24, which only ships as 'beta' uploads.
+                       ('1.21.1', 'voicechat'): '6PKCVne5', ('1.21.11', 'voicechat'): 'MLNG868g',
+                       ('26.2', 'voicechat'): 'Ls232EsW', ('26.3', 'voicechat'): 'OLnMVWXy',
                        ('1.21.1', 'reeses-sodium-options'): '3sJ9XmcU',
                        # 0.9.0 crashes fresh configs (Map.replaceAll on a fastutil 8.5.12 map);
                        # 0.9.2+ require Sodium >=0.8.12, which rejects 0.8.12-beta.1.

@@ -19,6 +19,7 @@
     "FullbrightMixin",
     "ZoomMixin",
     "ServerListAccessor",
-    "ServerListSharedMixin"
+    "ServerListSharedMixin",
+    "WindowIconMixin"
   ]
 }
