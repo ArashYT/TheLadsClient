@@ -243,7 +243,7 @@ public sealed class ModStateService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 // The inventory may be stale: rename only a file that still holds the same mod.
-                if (ModInventoryService.Scan(from, cancellationToken).Info?.Id != id)
+                if (ModInventoryService.ScanFor(from, inventory.MinecraftVersion, cancellationToken).Info?.Id != id)
                     throw new IOException($"'{from}' changed since the mod list was loaded. Reload the Mods page and try again.");
                 var to = planned.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase) ? DisabledDestination(game, from, id, notes) : planned;
                 try { File.Move(from, to); }

@@ -9,13 +9,27 @@ public static class GameVersionPolicy
     private static readonly Regex VersionComponent = new(@"\A[A-Za-z0-9][A-Za-z0-9._+-]*\z");
     private static readonly Regex LoaderVersion = new(@"\A[0-9]+(?:\.[0-9]+)+(?:[-+][A-Za-z0-9.-]+)?\z");
 
+    /// <summary>Minecraft 1.8.9 runs on this Forge build only (installed by CmlLib.Core.Installer.Forge from the build number).</summary>
+    public const string ForgeMinecraftVersion = "1.8.9", ForgeBuild = "11.15.1.2318";
+    public const string ForgeVersionId = "1.8.9-forge1.8.9-11.15.1.2318-1.8.9";
+
     public static bool RequiresBundledCore(string minecraftVersion) =>
         minecraftVersion is "1.21.1" or "1.21.11" or "26.2" or "26.3";
+
+    /// <summary>The loader is Forge, never Fabric: only 1.8.9.</summary>
+    public static bool UsesForge(string minecraftVersion) => minecraftVersion == ForgeMinecraftVersion;
+
+    /// <summary>World safety: a world from a newer version opened in 1.8.9 is corrupted, so 1.8.9 never gets the shared saves,
+    /// resource packs (pack_format 1), shader packs or options.txt. Its servers.dat and screenshots may be shared.</summary>
+    public static bool KeepsOwnWorlds(string minecraftVersion) => minecraftVersion == ForgeMinecraftVersion;
 
     public static string ResolveVersionId(LauncherProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ValidateMinecraftVersion(profile.MinecraftVersion);
+        if (UsesForge(profile.MinecraftVersion))
+            return string.IsNullOrWhiteSpace(profile.FabricVersion) ? ForgeVersionId
+                : throw new ArgumentException($"Minecraft {profile.MinecraftVersion} runs on Forge. Remove the Fabric loader '{profile.FabricVersion}' from this profile.", nameof(profile));
         if (string.IsNullOrWhiteSpace(profile.FabricVersion))
             return profile.MinecraftVersion;
 
@@ -46,12 +60,32 @@ public static class GameVersionPolicy
         {
             "26.2" or "26.3" => 25,
             "1.21.11" or "1.21.1" => 21,
+            ForgeMinecraftVersion => 8,
             _ => 0
         };
         if (minimum == 0 && manifestJavaMajor == null)
             throw new InvalidOperationException($"Java requirement for Minecraft {minecraftVersion} must come from its version manifest.");
-        return Math.Max(minimum, manifestJavaMajor ?? 0);
+        var required = Math.Max(minimum, manifestJavaMajor ?? 0);
+        // A stale profile value (e.g. 21 on a 1.8.9 profile) must never pick a runtime the game cannot start on.
+        return GetMaximumJavaMajor(minecraftVersion) is int maximum ? Math.Min(required, maximum) : required;
     }
+
+    /// <summary>The newest Java the version starts on, or null for no limit. Forge 1.8.9's LaunchWrapper casts the system class
+    /// loader to URLClassLoader, which it is not since Java 9: Java 9 and newer crash before the game starts.</summary>
+    public static int? GetMaximumJavaMajor(string minecraftVersion) => UsesForge(minecraftVersion) ? 8 : null;
+
+    /// <summary>Whether a runtime reporting <paramref name="actualJava"/> (null: unknown) can run the version: at least the
+    /// required Java and, for 1.8.9, not newer than its maximum.</summary>
+    public static bool AcceptsJava(string minecraftVersion, int requiredJava, int? actualJava) =>
+        actualJava >= requiredJava && !(actualJava > GetMaximumJavaMajor(minecraftVersion));
+
+    /// <summary>"Java 21 or newer", or "Java 8 exactly" for a version with a maximum.</summary>
+    public static string DescribeJava(string minecraftVersion, int requiredJava) => GetMaximumJavaMajor(minecraftVersion) switch
+    {
+        null => $"Java {requiredJava} or newer",
+        int maximum when maximum == requiredJava => $"Java {requiredJava} exactly",
+        int maximum => $"Java {requiredJava} to {maximum}"
+    };
 
     internal static void ValidateMinecraftVersion(string minecraftVersion)
     {

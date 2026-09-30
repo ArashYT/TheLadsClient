@@ -105,10 +105,11 @@ public sealed class ModInventoryService
         var retireIds = receipt.Keys.Where(id => manifest != null && !pack.ContainsKey(id)).Concat(retiredHashes.Keys).ToHashSet(StringComparer.Ordinal);
 
         var mods = Path.Combine(game, "mods");
+        var forge = GameVersionPolicy.UsesForge(version);
         var files = (Directory.Exists(mods) ? Directory.EnumerateFiles(mods) : Enumerable.Empty<string>())
             .Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-            .Select(p => (Path: p, Disabled: p.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase), Scan: Scan(p, token))).ToList();
+            .Select(p => (Path: p, Disabled: p.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase), Scan: ForLoader(Scan(p, token), p, forge))).ToList();
         var copies = files.Where(f => f.Scan.Info != null).ToLookup(f => f.Scan.Info!.Id, StringComparer.Ordinal);
         // Without an explicit choice an id keeps its disk state; LadsCore defaults to enabled (BundledModInstaller installs it).
         bool Requested(string id, string? projectId) => preferences.GetEnabled(id, projectId)
@@ -130,7 +131,7 @@ public sealed class ModInventoryService
             var info = file.Scan.Info;
             if (info == null)
             {
-                var problem = "Not a loadable Fabric mod: " + (file.Scan.Error?.TrimEnd('.') ?? "it has no fabric.mod.json") + ". Delete or replace it.";
+                var problem = $"Not a loadable {(forge ? "Forge" : "Fabric")} mod: " + (file.Scan.Error?.TrimEnd('.') ?? "it has no fabric.mod.json") + ". Delete or replace it.";
                 entries.Add(new(name, name, null, null, name, file.Path, ModOwnership.User, ModEntryStatus.Invalid, !file.Disabled,
                     !file.Disabled, running ? false : null, false, false, problem, null, null, null, Array.Empty<string>(),
                     Array.Empty<string>(), Array.Empty<string>(), false, problem, null, Array.Empty<ModInventoryEntry>()));
@@ -243,8 +244,10 @@ public sealed class ModInventoryService
         }
 
         const string platformReason = "Platform component; it is not a mod toggle";
-        var java = GameVersionPolicy.RequiresBundledCore(version) ? GameVersionPolicy.GetRequiredJavaMajor(version) + "+" : null;
-        foreach (var (id, name, platformVersion) in new[] { ("minecraft", "Minecraft", (string?)version), ("fabricloader", "Fabric Loader", null), ("java", "Java", java) })
+        var java = forge ? GameVersionPolicy.GetRequiredJavaMajor(version).ToString(CultureInfo.InvariantCulture) // exactly
+            : GameVersionPolicy.RequiresBundledCore(version) ? GameVersionPolicy.GetRequiredJavaMajor(version) + "+" : null;
+        var loader = forge ? ("forge", "Forge", (string?)GameVersionPolicy.ForgeBuild) : ("fabricloader", "Fabric Loader", (string?)null);
+        foreach (var (id, name, platformVersion) in new[] { ("minecraft", "Minecraft", (string?)version), loader, ("java", "Java", java) })
             entries.Add(new(id, name, null, platformVersion, null, null, ModOwnership.Platform, ModEntryStatus.Installed, true, true,
                 running ? true : null, false, false, platformReason, null, null, null, Array.Empty<string>(), Array.Empty<string>(),
                 Array.Empty<string>(), false, null, null, Array.Empty<ModInventoryEntry>()));
@@ -369,12 +372,30 @@ public sealed class ModInventoryService
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return new(null, null, e.Message); } // Not cached: may be transient.
         ScannedJar result;
-        try { result = new(hash, FabricModMetadata.ReadJar(path, token: token), null); }
+        try { result = new(hash, FabricModMetadata.ReadJar(path, token: token) ?? FabricModMetadata.ReadForgeJar(path), null); }
         catch (Exception e) when (e is InvalidDataException or InvalidOperationException) { result = new(hash, null, e.Message); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return new(hash, null, e.Message); }
         if (Scans.Count >= CacheLimit) Scans.Clear();
         Scans[key] = result;
         return result;
+    }
+
+    /// <summary><see cref="Scan(string, CancellationToken)"/> as the loader of <paramref name="minecraftVersion"/> sees the jar.</summary>
+    internal static ScannedJar ScanFor(string path, string minecraftVersion, CancellationToken token = default) =>
+        ForLoader(Scan(path, token), path, GameVersionPolicy.UsesForge(minecraftVersion));
+
+    /// <summary>A jar as the profile's loader sees it: the other loader's mod does not load (on Fabric it reads as before, "no
+    /// fabric.mod.json"); on Forge a jar without mcmod.info (OptiFine, coremods) still loads and is named after its file.</summary>
+    private static ScannedJar ForLoader(ScannedJar scan, string path, bool forge)
+    {
+        if (scan.Info is { } info && info.Forge != forge)
+            return scan with { Info = null, Error = forge ? "it is a Fabric mod" : null };
+        if (scan.Info != null || scan.Error != null || !forge) return scan;
+        var id = Path.GetFileName(path);
+        if (id.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)) id = id[..^".disabled".Length];
+        id = Path.GetFileNameWithoutExtension(id);
+        return scan with { Info = new FabricModInfo(id, id, null, null, Array.Empty<string>(), null, null, Array.Empty<string>(),
+            new Dictionary<string, string>(), false, Array.Empty<FabricModInfo>(), null) { Forge = true } };
     }
 
     private static IReadOnlyList<string> Depends(FabricModInfo info) => info.Depends.Select(d => d.Key + " " + d.Value).ToList();

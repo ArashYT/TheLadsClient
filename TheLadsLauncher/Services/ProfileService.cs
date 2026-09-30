@@ -162,6 +162,8 @@ public class ProfileService : IProfileService
     /// <summary>
     /// Every profile, isolated or not, gets shared worlds, resource packs, shader packs and server list. IsIsolated only keeps
     /// the profile's own game settings (options.txt, keybinds) instead of syncing them through the launcher's shared folder.
+    /// Minecraft 1.8.9 (<see cref="GameVersionPolicy.KeepsOwnWorlds"/>) is the exception: it shares only the server list and
+    /// screenshots, and always keeps its own worlds, packs and options.txt.
     /// </summary>
     /// <param name="withoutSharedFolders">Only after the user chose to launch without shared worlds/packs this time
     /// (see <see cref="SharedContentUnavailableException"/>); not saved.</param>
@@ -169,17 +171,22 @@ public class ProfileService : IProfileService
         CancellationToken cancellationToken = default, bool withoutSharedFolders = false)
     {
         var targetDir = _pathService.GetProfileDirectory(profile);
+        var ownWorlds = GameVersionPolicy.KeepsOwnWorlds(profile.MinecraftVersion);
+        if (ownWorlds) RefuseSharedGameFolder(profile, targetDir);
         Directory.CreateDirectory(targetDir);
         var coreEnabled = UsesCore(profile, targetDir, out var stateFileError);
         var report = await _sharedContent.PrepareProfileAsync(targetDir, profile.Name, LegacySharedServersFile, coreEnabled,
-            progress, cancellationToken, shareFolders: !withoutSharedFolders);
+            progress, cancellationToken, shareFolders: !withoutSharedFolders, keepOwnFolders: ownWorlds);
         var warnings = report.Warnings.ToList();
         if (stateFileError != null) warnings.Add(stateFileError);
         warnings.AddRange(await ModWelcomeSettings.PrepareAsync(targetDir, cancellationToken));
         try
         {
-            new WorldCatalogService(_pathService.BaseDirectory).WriteGameSources(targetDir, _sharedContent.Root,
-                WorldCatalogService.ProfileSources(GetProfiles(), _pathService));
+            // An in-game world picker must never offer a world across the 1.8.9 line: a newer world opened in 1.8.9 is
+            // corrupted, and so is a 1.8.9 world that a newer version upgraded and 1.8.9 opens again.
+            if (ownWorlds) File.Delete(Path.Combine(targetDir, WorldCatalogService.GameSourcesFile));
+            else new WorldCatalogService(_pathService.BaseDirectory).WriteGameSources(targetDir, _sharedContent.Root,
+                WorldCatalogService.ProfileSources(GetProfiles().Where(p => !GameVersionPolicy.KeepsOwnWorlds(p.MinecraftVersion)), _pathService));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         { warnings.Add("World folder list could not be written: " + e.Message); }
@@ -193,7 +200,8 @@ public class ProfileService : IProfileService
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         { warnings.Add("Screenshot folder list could not be written: " + e.Message); }
 
-        if (!profile.IsIsolated)
+        // 1.8.9 always keeps its own options.txt: its keys and values differ from the newer versions' shared copy.
+        if (!profile.IsIsolated && !ownWorlds)
         {
             try
             {
@@ -219,7 +227,8 @@ public class ProfileService : IProfileService
     public Task<IReadOnlyDictionary<string, SharedContentReport>> PrepareAllProfilesSharedContentAsync(IProgress<string>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var targets = GetProfiles().Select(p =>
+        // 1.8.9 folders are never linked; each is separated and checked when it is prepared for a launch.
+        var targets = GetProfiles().Where(p => !GameVersionPolicy.KeepsOwnWorlds(p.MinecraftVersion)).Select(p =>
         {
             var dir = _pathService.GetProfileDirectory(p);
             return (dir, p.Name, UsesCore(p, dir, out _));
@@ -242,7 +251,7 @@ public class ProfileService : IProfileService
         var targetDir = _pathService.GetProfileDirectory(profile);
         if (!Directory.Exists(targetDir)) return SharedContentReport.Empty;
 
-        if (!profile.IsIsolated)
+        if (!profile.IsIsolated && !GameVersionPolicy.KeepsOwnWorlds(profile.MinecraftVersion))
         {
             await Task.Run(() =>
             {
@@ -253,6 +262,17 @@ public class ProfileService : IProfileService
         }
         // Never restore instance account/profile snapshots over newer logins or removals.
         return reconcileServerList ? await _sharedContent.ReconcileFallbackServersAsync(targetDir) : SharedContentReport.Empty;
+    }
+
+    /// <summary>A 1.8.9 profile must not share its game folder with a newer version's profile: that profile links or keeps newer
+    /// worlds and packs in it. (The global folder itself is refused by SharedContentService.)</summary>
+    private void RefuseSharedGameFolder(LauncherProfile profile, string gameDirectory)
+    {
+        var folder = SafeFileOps.GetFinalPath(gameDirectory);
+        var other = GetProfiles().FirstOrDefault(p => !GameVersionPolicy.KeepsOwnWorlds(p.MinecraftVersion)
+            && SafeFileOps.PathsEqual(SafeFileOps.GetFinalPath(_pathService.GetProfileDirectory(p)), folder));
+        if (other != null)
+            throw new InvalidOperationException($"'{profile.Name}' uses the same game folder as '{other.Name}' ('{gameDirectory}'). Minecraft {profile.MinecraftVersion} corrupts newer worlds, so it needs a game folder of its own. Nothing was changed.");
     }
 
     private string SharedRendererOptionsState => Path.Combine(Path.GetDirectoryName(_pathService.SharedOptionsFile)!, GraphicsRenderer.OptionsStateFile);
@@ -440,6 +460,15 @@ public class ProfileService : IProfileService
                 changed = true;
             }
         }
+
+        // 1.8.9 runs on Forge and exactly Java 8.
+        if (GameVersionPolicy.UsesForge(profile.MinecraftVersion)
+            && (profile.FabricVersion != null || profile.JavaMajorVersion != GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion)))
+        {
+            profile.FabricVersion = null;
+            profile.JavaMajorVersion = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion);
+            changed = true;
+        }
         return changed;
     }
 
@@ -494,6 +523,12 @@ public class ProfileService : IProfileService
                 Id = "1.21.1", Name = "The Lads Client 1.21.1 (Legacy)", MinecraftVersion = "1.21.1",
                 FabricVersion = "0.19.5", JavaMajorVersion = 21, IsIsolated = false,
                 PackwizUrl = null, IconKey = "nextgen"
+            },
+            // Forge, Java 8, and its own worlds, packs and settings (GameVersionPolicy.KeepsOwnWorlds).
+            new()
+            {
+                Id = "1.8.9", Name = "The Lads Client 1.8.9", MinecraftVersion = "1.8.9",
+                FabricVersion = null, JavaMajorVersion = 8, IsIsolated = true, PackwizUrl = null
             }
         };
     }

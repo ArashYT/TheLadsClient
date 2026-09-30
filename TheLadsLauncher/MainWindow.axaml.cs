@@ -636,7 +636,9 @@ public partial class MainWindow : Window
         try
         {
             // Worlds, resource packs and shader packs are links to the shared folders: badge them and say where their content lives.
-            var statuses = SharedContentService.Instance.GetStatus(_filesRootDir);
+            // A 1.8.9 profile's folders are its own, never shared, so they get no badge.
+            IReadOnlyList<SharedFolderStatus> statuses = GameVersionPolicy.KeepsOwnWorlds(_profileService.GetActiveProfile().MinecraftVersion)
+                ? Array.Empty<SharedFolderStatus>() : SharedContentService.Instance.GetStatus(_filesRootDir);
             var sharedArea = statuses.FirstOrDefault(s => s.State is SharedFolderState.Shared or SharedFolderState.GlobalFolder
                 && SafeFileOps.IsSameOrInside(dir, s.ProfilePath));
             if (sharedArea != null) FilesPathText.Text = $"{dir}   (shared with every version: {sharedArea.SharedPath})";
@@ -3549,11 +3551,13 @@ public partial class MainWindow : Window
             });
             leftStack.Children.Add(metaPanel);
 
-            // Isolate toggle checkbox
+            // Isolate toggle checkbox (1.8.9 always keeps its own settings, worlds and packs: nothing to choose)
+            bool ownWorlds = GameVersionPolicy.KeepsOwnWorlds(profile.MinecraftVersion);
             var isolateCheck = new CheckBox
             {
-                Content = new TextBlock { Text = IsolationText, TextWrapping = TextWrapping.Wrap },
-                IsChecked = profile.IsIsolated,
+                Content = new TextBlock { Text = ownWorlds ? OwnWorldsText : IsolationText, TextWrapping = TextWrapping.Wrap },
+                IsChecked = profile.IsIsolated || ownWorlds,
+                IsEnabled = !ownWorlds,
                 FontSize = 12,
                 Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")),
                 Margin = new Thickness(0, 4, 0, 0)
@@ -3640,6 +3644,8 @@ public partial class MainWindow : Window
 
     private const string IsolationText =
         "Keep this profile's game settings separate (options.txt, keybinds). Worlds, resource packs, shader packs and servers are always shared from the global .minecraft folder.";
+    private const string OwnWorldsText =
+        "Minecraft 1.8.9 always keeps its own worlds, resource packs, shader packs and game settings: a world from a newer version would be corrupted in 1.8.9. Servers and screenshots are shared.";
 
     private async void AddProfile_Click(object? sender, RoutedEventArgs e)
     {
@@ -3692,12 +3698,13 @@ public partial class MainWindow : Window
             string version = versionBox.Text?.Trim() ?? "1.21.1";
             if (string.IsNullOrEmpty(name)) name = $"Profile {version}";
 
-            int javaVer = version.StartsWith("1.21") ? 21 : (version.StartsWith("26") ? 25 : 21);
+            bool forge = GameVersionPolicy.UsesForge(version); // 1.8.9: Forge and Java 8, never Fabric
+            int javaVer = forge ? GameVersionPolicy.GetRequiredJavaMajor(version) : version.StartsWith("1.21") ? 21 : (version.StartsWith("26") ? 25 : 21);
             var newProfile = new TheLadsLauncher.Models.LauncherProfile
             {
                 Name = name,
                 MinecraftVersion = version,
-                FabricVersion = "0.16.9",
+                FabricVersion = forge ? null : "0.16.9",
                 JavaMajorVersion = javaVer,
                 IsIsolated = isolateCheck.IsChecked ?? false
             };
@@ -5324,6 +5331,9 @@ public partial class MainWindow : Window
                     }
                 }
             }
+            if (GameVersionPolicy.UsesForge(activeProfile.MinecraftVersion))
+                await LaunchService.InstallForgeAsync(launcher, gameDirectory, _httpClient,
+                    message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message), CancellationToken.None);
 
             string installedMarker = Path.Combine(gameDirectory, "versions", launchVersionId, ".lads-verified");
             if (settings.QuickLaunch && File.Exists(installedMarker))
@@ -5346,8 +5356,8 @@ public partial class MainWindow : Window
             process.StartInfo.CreateNoWindow = true;
             GameSession.Configure(process.StartInfo, gameDirectory, SharedContentService.Instance.Root);
 
-            process.OutputDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game] {ev.Data}"); };
-            process.ErrorDataReceived += (s, ev) => { if (!string.IsNullOrEmpty(ev.Data)) Log($"[Game ERROR] {ev.Data}"); };
+            process.OutputDataReceived += (s, ev) => { if (GameSession.ReadableOutput(ev.Data) is { } line) Log($"[Game] {line}"); };
+            process.ErrorDataReceived += (s, ev) => { if (GameSession.ReadableOutput(ev.Data) is { } line) Log($"[Game ERROR] {line}"); };
 
             // Apply fullscreen setting by patching options.txt before launch.
             if (settings.FullscreenOnLaunch)
@@ -6111,7 +6121,7 @@ public partial class MainWindow : Window
     {
         string activeVersion = ResolveMinecraftVersion();
         var versionList = new List<string> { activeVersion };
-        var commonVersions = new[] { "26.3", "26.2", "1.21.11", "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5" };
+        var commonVersions = new[] { "26.3", "26.2", "1.21.11", "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5", "1.8.9" };
         
         foreach (var v in commonVersions)
         {

@@ -132,7 +132,7 @@ public class VersionAndInstallationTests
         File.WriteAllText(Path.Combine(dir.Path, "profiles.json"),
             JsonSerializer.Serialize(new { ActiveProfileId = "1.21.11", Profiles = saved }));
         var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
-        Assert.Equal(4, service.GetProfiles().Count);
+        Assert.Equal(5, service.GetProfiles().Count); // the two saved ones plus the 26.3, 1.21.1 and 1.8.9 defaults
         Assert.Equal("existing-world", service.GetProfile("1.21.11")!.CustomGameDir);
         Assert.Equal(saved[0].FabricVersion, service.GetProfile("1.21.11")!.FabricVersion);
         Assert.Equal(saved[1].FabricVersion, service.GetProfile("26.2")!.FabricVersion);
