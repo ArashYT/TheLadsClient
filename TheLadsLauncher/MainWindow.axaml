@@ -135,7 +135,20 @@
                                     <TextBlock Text="THE LADS&#10;CLIENT." FontFamily="Bahnschrift SemiCondensed,Inter" FontSize="44" LineHeight="50" FontWeight="Bold" LetterSpacing="-1" />
                                     <TextBlock Text="Your worlds. Your mods. Your people." Foreground="#999BA5" FontSize="12" Margin="0,4,0,0" />
                                 </StackPanel>
-                                <local:BlockLandscape Grid.Column="1" IsHitTestVisible="False" Margin="0,4,12,0" />
+                                <!-- The Lads artwork fills the right half and fades into the card behind the title. -->
+                                <Border Grid.Column="1" IsHitTestVisible="False">
+                                    <Border.Background>
+                                        <ImageBrush Source="avares://TheLadsLauncher/Assets/artwork.jpg" Stretch="UniformToFill" />
+                                    </Border.Background>
+                                </Border>
+                                <Border Grid.Column="1" IsHitTestVisible="False">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                            <GradientStop Color="#FF1D1E22" Offset="0" />
+                                            <GradientStop Color="#001D1E22" Offset="0.42" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
                                 <Canvas x:Name="ParticleCanvas" Grid.ColumnSpan="2" IsHitTestVisible="False" Opacity="0.10" />
                             </Grid>
                         </Border>
