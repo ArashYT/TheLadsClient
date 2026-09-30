@@ -227,17 +227,23 @@ public partial class MainWindow : Window
             ModsPage.AddHandler(DragDrop.DropEvent, ModsPage_Drop);
         }
 
-        // === Fancy startup animation: breathing logo + smooth eased progress bar ===
+        // === Startup/update screen: breathing logo, progress bar with a sweeping shine, mining animation ===
         const double startupDurationMs = 2200.0;
-        const double startupBarWidth = 320.0;
+        const double startupBarWidth = 560.0;
         var startupSw = System.Diagnostics.Stopwatch.StartNew();
         int dots = 0;
-        double dotAccumulatorMs = 0;
+        double dotAccumulatorMs = 0, shownProgress = 0, lastTickMs = 0;
+        if (settings.ReducedMotion) StartupMining.Freeze(0.81);
         var startupAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         startupAnimTimer.Tick += (s, e) =>
         {
+            double t = startupSw.Elapsed.TotalMilliseconds, dt = t - lastTickMs;
+            lastTickMs = t;
+            // A reported download drives the bar; until then it eases toward 90% so it never claims to be done early.
+            double target = _startupDownload ?? 0.9 * (1.0 - Math.Pow(1.0 - Math.Min(1.0, t / startupDurationMs), 3));
+            shownProgress += (target - shownProgress) * (1 - Math.Exp(-dt / 110.0));
+            StartupProgressFill.Width = startupBarWidth * shownProgress;
             if (settings.ReducedMotion) return;
-            double t = startupSw.Elapsed.TotalMilliseconds;
 
             // Subtle breathing pulse on the logo
             double pulse = 1.0 + 0.04 * Math.Sin(t / 300.0);
@@ -246,12 +252,8 @@ public partial class MainWindow : Window
                 logoScale.ScaleX = pulse;
                 logoScale.ScaleY = pulse;
             }
-
-            // Eased progress fill (easeOutCubic)
-            double p = Math.Min(1.0, t / startupDurationMs);
-            double eased = 1.0 - Math.Pow(1.0 - p, 3);
-            if (StartupProgressFill != null)
-                StartupProgressFill.Width = startupBarWidth * eased;
+            if (StartupProgressShine.RenderTransform is Avalonia.Media.TranslateTransform shine)
+                shine.X = -110 + (t % 1600.0) / 1600.0 * (startupBarWidth + 110);
 
             // Animated trailing dots
             dotAccumulatorMs += 16;
@@ -266,9 +268,12 @@ public partial class MainWindow : Window
 
         this.Loaded += async (s, e) =>
         {
+            int startupPreview = Array.IndexOf(args, "--preview-startup");
+            if (startupPreview >= 0) { await RunStartupPreviewAsync(Path.GetFullPath(args[startupPreview + 1])); return; }
             await PollForUpdatesAsync();
             if (_windowClosed) return;
             startupAnimTimer.Stop();
+            StartupMining.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
             int discoveryPreview = Array.IndexOf(args, "--preview-discovery");
@@ -433,6 +438,23 @@ public partial class MainWindow : Window
     private readonly AutoUpdater _autoUpdater = new(new VelopackUpdateBackend());
     private bool _releaseNotesOpen;
     private bool _windowClosed;
+    private double? _startupDownload; // 0..1 once the updater reports a download; drives the startup progress bar
+
+    /// <summary>The startup screen splits "Downloading v1.3.5: 42%" (VelopackUpdateBackend's wording) into a status line and a large percentage.</summary>
+    private void ShowStartupStatus(string message)
+    {
+        var download = System.Text.RegularExpressions.Regex.Match(message, @"^Downloading (v\S+): (\d+)%$");
+        if (download.Success)
+        {
+            _startupDownload = Math.Clamp(int.Parse(download.Groups[2].Value) / 100.0, 0, 1);
+            StartupLoadingSpinner.Text = "Downloading update " + download.Groups[1].Value;
+            StartupPercentText.Text = download.Groups[2].Value + "%";
+            return;
+        }
+        if (message.StartsWith("Installing", StringComparison.Ordinal)) { _startupDownload = 1; StartupPercentText.Text = "100%"; }
+        // The trailing dots are animated separately.
+        StartupLoadingSpinner.Text = string.IsNullOrEmpty(message) ? "Loading resources" : message.TrimEnd('…', '.');
+    }
 
     private Task PollForUpdatesAsync() => _autoUpdater.PollAsync(
         () => _windowClosed || _launching || _modsBusy || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
@@ -443,7 +465,7 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(() =>
             {
                 if (_windowClosed) return;
-                StartupLoadingSpinner.Text = message;
+                ShowStartupStatus(message);
                 UpdateBannerText.Text = message;
                 UpdateBanner.IsVisible = !string.IsNullOrEmpty(message);
             });

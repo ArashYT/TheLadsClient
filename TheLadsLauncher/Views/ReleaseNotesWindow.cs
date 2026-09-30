@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Layout;
 using Avalonia.Media;
 
@@ -47,7 +50,7 @@ public sealed class ReleaseNotesWindow : Window
         if (VisibleHighlights.Count == 0)
             content.Children.Add(new TextBlock { Text = selected == null ? "You're up to date. Release notes will appear here with your next update." : "This update includes improvements across the client. Read the full notes below.", TextWrapping = TextWrapping.Wrap, Foreground = Brush("#B5B8C1"), Margin = new Thickness(0, 10) });
         Details = new Expander { Header = "Full release notes", IsExpanded = false, HorizontalAlignment = HorizontalAlignment.Stretch, Foreground = Brush("#ADB0BB"), Margin = new Thickness(0, 10, 0, 0),
-            Content = FullText(selected?.Markdown ?? "No bundled notes for this release.") };
+            Content = FullText(selected?.Markdown ?? "No bundled notes for this release.", skipHighlights: VisibleHighlights.Count > 0) };
         content.Children.Add(Details);
         var previous = new StackPanel { Spacing = 8 };
         foreach (var note in notes.Where(n => n != selected))
@@ -68,8 +71,52 @@ public sealed class ReleaseNotesWindow : Window
     }
 
     private static SolidColorBrush Brush(string color) => new(Color.Parse(color));
-    private static SelectableTextBlock FullText(string text) => new()
+
+    /// <summary>
+    /// Renders the notes' Markdown subset: "# title" (the version is already shown), "## sections", "- bullets", **bold**, `code`
+    /// and [links](url). skipHighlights drops the Highlights section already shown as cards above.
+    /// </summary>
+    private static StackPanel FullText(string markdown, bool skipHighlights = false)
     {
-        Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 13, LineHeight = 21, Foreground = Brush("#C3C5CD"), Margin = new Thickness(0, 12, 0, 12)
-    };
+        var panel = new StackPanel { Spacing = 4, Margin = new Thickness(0, 10, 0, 12) };
+        bool skipping = false;
+        foreach (string raw in markdown.Replace("\r", "").Split('\n'))
+        {
+            string line = raw.Trim();
+            if (line.StartsWith("## ", StringComparison.Ordinal))
+            {
+                string heading = line[3..].Trim();
+                skipping = skipHighlights && heading.Equals("Highlights", StringComparison.OrdinalIgnoreCase);
+                if (!skipping)
+                    panel.Children.Add(new TextBlock { Text = heading, FontSize = 14, FontWeight = FontWeight.Bold, Foreground = Brush("#F5B8BE"), Margin = new Thickness(0, panel.Children.Count == 0 ? 0 : 12, 0, 2) });
+                continue;
+            }
+            if (skipping || line.Length == 0 || line.StartsWith("# ", StringComparison.Ordinal)) continue;
+            bool bullet = line.StartsWith("- ", StringComparison.Ordinal) || line.StartsWith("* ", StringComparison.Ordinal);
+            var text = Formatted(bullet ? line[2..] : line);
+            if (!bullet) { panel.Children.Add(text); continue; }
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("16,*") };
+            row.Children.Add(new TextBlock { Text = "•", Foreground = Brush("#F17C85"), FontSize = 13, LineHeight = 21 });
+            Grid.SetColumn(text, 1);
+            row.Children.Add(text);
+            panel.Children.Add(row);
+        }
+        if (panel.Children.Count == 0)
+            panel.Children.Add(new TextBlock { Text = "Everything new in this update is listed above.", Foreground = Brush("#9B9EA9"), FontSize = 13 });
+        return panel;
+    }
+
+    private static SelectableTextBlock Formatted(string text)
+    {
+        var block = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 13, LineHeight = 21, Foreground = Brush("#C3C5CD") };
+        var inlines = block.Inlines ??= new InlineCollection();
+        foreach (Match part in Regex.Matches(text, @"\*\*(.+?)\*\*|`(.+?)`|\[(.+?)\]\((.+?)\)|[^*`\[]+|."))
+        {
+            if (part.Groups[1].Success) inlines.Add(new Run(part.Groups[1].Value) { FontWeight = FontWeight.SemiBold, Foreground = Brush("#F1F2F5") });
+            else if (part.Groups[2].Success) inlines.Add(new Run(part.Groups[2].Value) { FontFamily = new FontFamily("Cascadia Mono, Consolas, monospace"), Foreground = Brush("#E6C07B") });
+            else if (part.Groups[3].Success) inlines.Add(new Run(part.Groups[3].Value) { TextDecorations = TextDecorations.Underline });
+            else inlines.Add(new Run(part.Value));
+        }
+        return block;
+    }
 }
