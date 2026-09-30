@@ -4,6 +4,7 @@ import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
+import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.config.SliderOption;
 
 /** Features owned by Lads, with no upstream mod configuration or runtime dependency. Same role and helpers as 26.x. */
@@ -12,6 +13,8 @@ public final class NativeQualityOfLife {
 
     /** Ported features register here (registerBuiltIn plus their own register()) once their hooks work on 1.21.11. */
     public static void register() {
+        // "Soon" card as on 26.x, whose presence tick sends nothing yet; no Discord connection is made.
+        ModuleSupport.registerBuiltIn("DiscordRPC");
     }
 
     /** Every client tick, from ClientTickMixin (Minecraft.tick HEAD). */

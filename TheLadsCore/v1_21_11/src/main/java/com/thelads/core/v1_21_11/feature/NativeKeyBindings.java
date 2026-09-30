@@ -9,7 +9,7 @@ public final class NativeKeyBindings {
     private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(
         Identifier.fromNamespaceAndPath("theladscore", "controls"));
     public static final KeyMapping ZOOM = new KeyMapping("key.theladscore.zoom",
-        InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY);
+        InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, CATEGORY);
     public static final KeyMapping MODULES = new KeyMapping("key.theladscore.modules",
         InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY);
     private NativeKeyBindings() {}

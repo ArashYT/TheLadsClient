@@ -1,18 +1,16 @@
-package com.thelads.core.v1_21_11.feature;
+package com.thelads.core.v1_21_1.feature;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.thelads.core.client.MenuKeyController;
-import com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111;
+import com.thelads.core.v1_21_1.gui.LadsSettingsScreen121;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.gui.screens.PauseScreen;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import org.lwjgl.glfw.GLFW;
 
-/** Gameplay, title and pause menus participate; text fields and inventories keep their input. */
+/** Gameplay, title and pause menus participate; text fields and inventories keep their input. 26.x routing, 1.21.1 raw input. */
 public final class NativeMenuKey {
     private static final MenuKeyController CONTROLLER = new MenuKeyController();
     private static Object player;
@@ -37,55 +35,59 @@ public final class NativeMenuKey {
         return NativeFeatures.interactive() || screen instanceof TitleScreen || screen instanceof PauseScreen;
     }
 
-    public static boolean key(KeyEvent event, int action) {
+    public static boolean key(int key, int scancode, int action, int modifiers) {
         Minecraft mc = Minecraft.getInstance();
         if (!mc.isWindowActive()) { CONTROLLER.reset(); return false; }
         Screen screen = mc.screen;
-        var decision = CONTROLLER.key(event.key(), event.scancode(), action(action),
-            NativeKeyBindings.MODULES.matches(event), canOpen(screen),
-            screen instanceof LadsSettingsScreen12111);
+        var decision = CONTROLLER.key(key, scancode, action(action),
+            NativeKeyBindings.MODULES.matches(key, scancode), canOpen(screen),
+            screen instanceof LadsSettingsScreen121);
         if (decision == MenuKeyController.Decision.PASS) return false;
         if (decision == MenuKeyController.Decision.OPEN) {
             NativeFeatures.reset();
             player = mc.player;
-            mc.setScreen(new LadsSettingsScreen12111(screen));
+            mc.setScreen(new LadsSettingsScreen121(screen));
         } else if (decision == MenuKeyController.Decision.TRY_CLOSE) {
             // Common editing/navigation consumes its keys first, including Shift while typing.
-            LadsSettingsScreen12111 menu = (LadsSettingsScreen12111) screen;
-            if (!menu.keyPressed(event)) menu.closeFromMenuKey();
+            LadsSettingsScreen121 menu = (LadsSettingsScreen121) screen;
+            if (!menu.keyPressed(key, scancode, modifiers)) menu.closeFromMenuKey();
             menu.afterKeyboardAction();
             if (mc.screen == screen) return true;
-            CONTROLLER.capture(event.key(), event.scancode());
+            CONTROLLER.capture(key, scancode);
             NativeFeatures.reset();
         }
         // Grabbing the mouse on close polls physically held keys. Do not let the consumed
         // menu key become crouch/zoom/another gameplay action. Vanilla toggle preferences stay native.
-        KeyMapping.set(InputConstants.getKey(event), false);
+        KeyMapping.set(InputConstants.getKey(key, scancode), false);
         return true;
     }
 
-    public static boolean mouse(MouseButtonEvent event, int action) {
+    public static boolean mouse(int button, int action) {
         Minecraft mc = Minecraft.getInstance();
         if (!mc.isWindowActive()) { CONTROLLER.reset(); return false; }
         Screen screen = mc.screen;
-        int physicalKey = -1000 - event.button(); // Separate mouse and keyboard/scancode identities.
+        int physicalKey = -1000 - button; // Separate mouse and keyboard/scancode identities.
         var decision = CONTROLLER.key(physicalKey, 0, action(action),
-            NativeKeyBindings.MODULES.matchesMouse(event), canOpen(screen),
-            screen instanceof LadsSettingsScreen12111);
+            NativeKeyBindings.MODULES.matchesMouse(button), canOpen(screen),
+            screen instanceof LadsSettingsScreen121);
         if (decision == MenuKeyController.Decision.PASS) return false;
         if (decision == MenuKeyController.Decision.OPEN) {
             NativeFeatures.reset();
             player = mc.player;
-            mc.setScreen(new LadsSettingsScreen12111(screen));
+            mc.setScreen(new LadsSettingsScreen121(screen));
         } else if (decision == MenuKeyController.Decision.TRY_CLOSE) {
-            LadsSettingsScreen12111 menu = (LadsSettingsScreen12111) screen;
-            if (!menu.mouseClicked(event, false)) menu.closeFromMenuKey();
+            LadsSettingsScreen121 menu = (LadsSettingsScreen121) screen;
+            // Same GUI-scaled position MouseHandler.onPress gives screens on 1.21.1.
+            var window = mc.getWindow();
+            double x = mc.mouseHandler.xpos() * window.getGuiScaledWidth() / window.getScreenWidth();
+            double y = mc.mouseHandler.ypos() * window.getGuiScaledHeight() / window.getScreenHeight();
+            if (!menu.mouseClicked(x, y, button)) menu.closeFromMenuKey();
             menu.afterMouseAction();
             if (mc.screen == screen) return true;
             CONTROLLER.capture(physicalKey, 0);
             NativeFeatures.reset();
         }
-        KeyMapping.set(InputConstants.Type.MOUSE.getOrCreate(event.button()), false);
+        KeyMapping.set(InputConstants.Type.MOUSE.getOrCreate(button), false);
         return true;
     }
 }

@@ -9,7 +9,15 @@
   "client": [
     "GuiMixin",
     "TitleScreenMixin",
+    "PauseScreenMixin",
+    "PauseScreenAccessor",
     "ClientTickMixin",
+    "KeyboardHandlerMixin",
+    "KeyboardInputMixin",
+    "SprintInputMixin",
+    "MouseHandlerMixin",
+    "FullbrightMixin",
+    "ZoomMixin",
     "ServerListAccessor",
     "ServerListSharedMixin"
   ]

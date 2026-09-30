@@ -35,6 +35,8 @@ public class LadsSettingsScreen12111 extends Screen {
         this.ui.setOnOpenModSettings(modId -> ExternalModSettings.open(modId, this));
     }
 
+    public void openModule(String name) { ui.openModule(name); }
+
     @Override
     protected void init() {
         super.init();
@@ -56,6 +58,7 @@ public class LadsSettingsScreen12111 extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
+        ui.setReducedMotion(minecraft.options.screenEffectScale().get() <= 0);
         ui.render(new GuiGraphicsLadsAdapter(g, this.font), mouseX, mouseY);
         super.render(g, mouseX, mouseY, delta);
     }
