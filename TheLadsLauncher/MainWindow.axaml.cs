@@ -747,7 +747,8 @@ public partial class MainWindow : Window
     private string? _galleryFavoritesError;
 
     private void NavGallery_Click(object? sender, RoutedEventArgs e) { _ = LoadGalleryAsync(); NavigateTo("Gallery"); }
-    private void GallerySort_Changed(object? sender, Avalonia.Controls.SelectionChangedEventArgs e) { if (GalleryPage?.IsVisible == true) _ = LoadGalleryAsync(); }
+    // Reorders the last scan; a scan still running applies the new order when it finishes.
+    private void GallerySort_Changed(object? sender, Avalonia.Controls.SelectionChangedEventArgs e) { if (GalleryPage?.IsVisible == true && _galleryScanCancellation == null) ShowGallerySorted(); }
     private void ImgurId_Changed(object? sender, RoutedEventArgs e) { settings.ImgurClientId = ImgurIdBox.Text ?? ""; settings.Save(); }
     private void GalleryOpenFolder_Click(object? sender, RoutedEventArgs e)
     {
@@ -763,12 +764,8 @@ public partial class MainWindow : Window
         var cancellation = new CancellationTokenSource();
         _galleryScanCancellation = cancellation;
         SyncFavoritesWithGame();
-        foreach (var old in GalleryList.GetLogicalDescendants().OfType<Image>()) (old.Source as Bitmap)?.Dispose();
-        GalleryList.Children.Clear();
-        GalleryLoadMoreBtn.IsVisible = false;
+        ClearGalleryCards();
         if (ImgurIdBox != null) ImgurIdBox.Text = settings.ImgurClientId;
-        int sort = GallerySortBox?.SelectedIndex ?? 0;
-        var favorites = new HashSet<string>(settings.GalleryFavorites, StringComparer.OrdinalIgnoreCase);
         GalleryStatusText.Text = "Scanning launcher instances…";
         var profiles = _profileService.GetProfiles().Select(p => new ScreenshotRoot(_pathService.GetProfileDirectory(p), "Lads · " + p.Name)).ToArray();
         try
@@ -776,32 +773,17 @@ public partial class MainWindow : Window
             var catalog = await Task.Run(() => CreateScreenshotCatalog().Scan(profiles, cancellation.Token), cancellation.Token);
             if (generation != _galleryGeneration || _windowClosed) return;
             _gallerySources = catalog.Entries.ToDictionary(e => e.Path, StringComparer.OrdinalIgnoreCase);
-            IEnumerable<ScreenshotEntry> files = catalog.Entries;
-            files = sort switch
-            {
-                1 => files.OrderBy(f => f.Time),
-                2 => files.OrderBy(f => Path.GetFileName(f.Path), StringComparer.OrdinalIgnoreCase),
-                3 => files.OrderByDescending(f => favorites.Contains(GalleryFavoriteKey(f.Path))).ThenByDescending(f => f.Time),
-                _ => files.OrderByDescending(f => f.Time)
-            };
-            _galleryFiles = files.Select(f => (f.Path, f.Time)).ToList();
             _galleryScanSummary = $"{catalog.Folders} folders" + (catalog.Warnings.Count > 0 ? $" · {catalog.Warnings.Count} scan notices" : "");
             ToolTip.SetTip(GalleryStatusText, catalog.Warnings.Count > 0 ? string.Join("\n", catalog.Warnings) : "Lads, Modrinth, CurseForge, Prism and your added folders. Originals stay in their instance.");
             foreach (var warning in catalog.Warnings) Log("[Gallery] " + warning);
-            _galleryShown = 0;
-            if (_galleryFiles.Count == 0)
-            {
-                GalleryStatusText.Text = _galleryFavoritesError ?? _galleryScanSummary;
-                GalleryList.Children.Add(new TextBlock { Text = "No screenshots found. Add a folder for a portable launcher or a custom instance location.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4), TextWrapping = TextWrapping.Wrap });
-                return;
-            }
-            ShowMoreScreenshots();
+            ShowGallerySorted();
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
             if (generation != _galleryGeneration) return;
-            GalleryStatusText.Text = "Screenshot scan failed: " + ex.Message;
+            _gallerySources = new(StringComparer.OrdinalIgnoreCase); // a later re-sort must not bring back the previous scan
+            GalleryStatusText.Text = _galleryScanSummary = "Screenshot scan failed: " + ex.Message;
             Log("[Gallery] " + ex.Message);
         }
         finally
@@ -809,6 +791,39 @@ public partial class MainWindow : Window
             if (ReferenceEquals(_galleryScanCancellation, cancellation)) _galleryScanCancellation = null;
             cancellation.Dispose();
         }
+    }
+
+    /// <summary>Shows the last scan in the chosen order. Sorting and favorites never rescan the disk.</summary>
+    private void ShowGallerySorted()
+    {
+        ++_galleryGeneration; // stops thumbnail loading for the cards being replaced
+        ClearGalleryCards();
+        int sort = GallerySortBox?.SelectedIndex ?? 0;
+        var favorites = new HashSet<string>(settings.GalleryFavorites, StringComparer.OrdinalIgnoreCase);
+        IEnumerable<ScreenshotEntry> files = _gallerySources.Values;
+        files = sort switch
+        {
+            1 => files.OrderBy(f => f.Time),
+            2 => files.OrderBy(f => Path.GetFileName(f.Path), StringComparer.OrdinalIgnoreCase),
+            3 => files.OrderByDescending(f => favorites.Contains(GalleryFavoriteKey(f.Path))).ThenByDescending(f => f.Time),
+            _ => files.OrderByDescending(f => f.Time)
+        };
+        _galleryFiles = files.Select(f => (f.Path, f.Time)).ToList();
+        _galleryShown = 0;
+        if (_galleryFiles.Count == 0)
+        {
+            GalleryStatusText.Text = _galleryFavoritesError ?? _galleryScanSummary;
+            GalleryList.Children.Add(new TextBlock { Text = "No screenshots found. Add a folder for a portable launcher or a custom instance location.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4), TextWrapping = TextWrapping.Wrap });
+            return;
+        }
+        ShowMoreScreenshots();
+    }
+
+    private void ClearGalleryCards()
+    {
+        foreach (var old in GalleryList.GetLogicalDescendants().OfType<Image>()) (old.Source as Bitmap)?.Dispose();
+        GalleryList.Children.Clear();
+        GalleryLoadMoreBtn.IsVisible = false;
     }
 
     private ScreenshotCatalogService CreateScreenshotCatalog() => new(SharedContentService.Instance.Root,
@@ -829,6 +844,35 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
         { await ShowLadsDialogAsync("Could not add screenshot folder", ex.Message); }
+    }
+
+    // Lists the folders added with "Add folder"; choosing one stops listing it. Its files stay where they are.
+    private async void GalleryRemoveFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button) return;
+        try
+        {
+            var items = CreateScreenshotCatalog().LoadCustomRoots().Select(root =>
+            {
+                var item = new MenuItem { Header = root.Path };
+                item.Click += async (_, _) =>
+                {
+                    try
+                    {
+                        CreateScreenshotCatalog().RemoveRoot(root.Path);
+                        await LoadGalleryAsync();
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
+                    { await ShowLadsDialogAsync("Could not remove screenshot folder", ex.Message); }
+                };
+                return item;
+            }).ToList();
+            if (items.Count == 0) items.Add(new MenuItem { Header = "No added folders", IsEnabled = false });
+            button.ContextMenu = new ContextMenu { ItemsSource = items };
+            button.ContextMenu.Open(button);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        { await ShowLadsDialogAsync("Could not read the added screenshot folders", ex.Message); }
     }
 
     /// <summary>Adds the next page of cards; their thumbnails are decoded off the UI thread.</summary>
@@ -912,7 +956,7 @@ public partial class MainWindow : Window
         actions.Children.Add(MiniGalBtn(fav ? "★" : "☆", "Favorite", button =>
         {
             button.Content = ToggleGalleryFav(favoriteKey) ? "★" : "☆";
-            if (GallerySortBox?.SelectedIndex == 3) _ = LoadGalleryAsync();
+            if (GallerySortBox?.SelectedIndex == 3) ShowGallerySorted();
         }));
         if (source?.IsExternal != true)
             actions.Children.Add(MiniGalBtn("✕", "Move to the Recycle Bin", button => _ = DeleteScreenshotAsync(path)));
@@ -1005,15 +1049,22 @@ public partial class MainWindow : Window
         if (!await ShowLadsDialogAsync("Delete screenshot",
                 $"Move '{name}' to the Recycle Bin? Screenshots are shared by every version.", "Move to Recycle Bin", "Cancel", danger: true))
             return;
+        var profiles = _profileService.GetProfiles().Select(p => _pathService.GetProfileDirectory(p)).ToList();
         try
         {
-            await Task.Run(() =>
+            var deleted = await Task.Run(() =>
             {
-                SafeFileOps.DeleteToRecycleBin(path);
-                string sidecar = path + ".json";
-                if (File.Exists(sidecar)) SafeFileOps.DeleteToRecycleBin(sidecar);
+                // Lads profiles' copies too (found while the shared file still exists), or the next game exit copies it back.
+                var files = ScreenshotCatalogService.ProfileCopies(path, SharedContentService.Instance.ScreenshotsDirectory, profiles).Append(path).ToList();
+                foreach (string file in files)
+                {
+                    SafeFileOps.DeleteToRecycleBin(file);
+                    string sidecar = file + ".json";
+                    if (File.Exists(sidecar)) SafeFileOps.DeleteToRecycleBin(sidecar);
+                }
+                return files;
             });
-            Log($"[Gallery] Moved to the Recycle Bin: {path}");
+            Log($"[Gallery] Moved to the Recycle Bin: {string.Join(", ", deleted)}");
             if (settings.GalleryFavorites.Remove(name)) SaveGalleryFavorites();
         }
         catch (Exception ex)
@@ -3671,7 +3722,9 @@ public partial class MainWindow : Window
             settings.QuickLaunchServerIp = "";
         settings.AllowMultiInstance = MultiInstanceCheckbox.IsChecked ?? false;
         settings.FullscreenOnLaunch = FullscreenOnLaunchCheckbox.IsChecked ?? true;
-        settings.GraphicsRenderer = GraphicsRendererSelector.SelectedIndex == 1 ? GraphicsRenderer.OpenGl : GraphicsRenderer.Vulkan;
+        var renderer = GraphicsRendererSelector.SelectedIndex == 1 ? GraphicsRenderer.OpenGl : GraphicsRenderer.Vulkan;
+        bool rendererChanged = renderer != GraphicsRenderer.Normalize(settings.GraphicsRenderer);
+        settings.GraphicsRenderer = renderer;
         settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
         settings.ShowParticles = ParticleCheckbox.IsChecked ?? true;
         settings.SyncScreenshotsToGlobal = SyncScreenshotsCheckbox.IsChecked ?? true;
@@ -3699,6 +3752,7 @@ public partial class MainWindow : Window
         }
 
         settings.Save();
+        if (rendererChanged) ReloadModsInventory(); // Iris's "Requires OpenGL" lock follows the saved renderer
         UpdateMinecraftVersionDisplay();
         ApplyTheme();
 
@@ -3837,7 +3891,9 @@ public partial class MainWindow : Window
     // ═══════════════════════════════════════
 
     // Loaded ids come from the running marker (what the game loaded at start); null while the profile's game is not running.
-    private readonly ModInventoryService _modInventoryService = new(gameDirectory => RunningGameMarker.GetRunning(gameDirectory)?.LoadedMods);
+    // Renderer locks follow the saved Settings → Graphics choice (what the next launch applies), not only the last launch.
+    private readonly ModInventoryService _modInventoryService = new(gameDirectory => RunningGameMarker.GetRunning(gameDirectory)?.LoadedMods,
+        () => LauncherSettings.Load().GraphicsRenderer);
     private readonly ModStateService _modStateService = new(RunningGameMarker.IsRunning);
     private ModInventory? _modInventory;
     // The profile whose list is being built while none is shown (after a profile switch), else null.
@@ -5611,6 +5667,9 @@ public partial class MainWindow : Window
                 }
             }
 
+            // The launch that crashed ran on Vulkan: suggest OpenGL, never switch for the user.
+            string rendererHint = GraphicsRenderer.ReadState(gameDirectory)?.Vulkan == true ? GraphicsRenderer.VulkanCrashHint : "";
+            if (rendererHint.Length > 0) crashInfo += "\n" + rendererHint;
             Log($"[Crash] {crashInfo}");
 
             if (settings.AutoFixCrashes)
@@ -5631,7 +5690,7 @@ public partial class MainWindow : Window
             if (settings.AutoRelaunchOnCrash)
             {
                 Log("[Crash Detection] Auto-relaunching due to AutoRelaunchOnCrash setting.");
-                StatusText.Text = "Auto-relaunching after crash...";
+                StatusText.Text = ("Auto-relaunching after crash... " + rendererHint).TrimEnd();
                 _ = LaunchGame();
                 return;
             }

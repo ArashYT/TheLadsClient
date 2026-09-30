@@ -13,6 +13,7 @@ public sealed record ScreenshotRoot(
     [property: JsonPropertyName("label")] string Label)
 {
     [JsonIgnore] public bool IncludeDirectImages { get; init; }
+    [JsonIgnore] public bool LadsProfile { get; init; }
 }
 public sealed record ScreenshotEntry(string Path, DateTime Time, string Source, bool IsExternal);
 public sealed record ScreenshotCatalog(IReadOnlyList<ScreenshotEntry> Entries, IReadOnlyList<string> Warnings, int Folders);
@@ -31,6 +32,8 @@ public sealed class ScreenshotCatalogService
         { "mods", "assets", "libraries", "runtime", "runtimes", "logs", "cache", "caches", "saves", "resourcepacks", "shaderpacks", ".git", "natives" };
     private sealed record Sources([property: JsonPropertyName("version")] int Version,
         [property: JsonPropertyName("roots")] List<ScreenshotRoot> Roots);
+    /// <summary>Folders scanned per root, so one huge launcher cannot hide the roots after it.</summary>
+    public int FolderLimit { get; init; } = 20000;
 
     // Explicit environment paths make the scanner fully sandboxable, including config discovery.
     public ScreenshotCatalogService(string sharedRoot, string? home = null, string? roaming = null,
@@ -47,7 +50,8 @@ public sealed class ScreenshotCatalogService
     public IReadOnlyList<ScreenshotRoot> LoadCustomRoots()
     {
         if (!File.Exists(SourcesFile)) return Array.Empty<ScreenshotRoot>();
-        if (new FileInfo(SourcesFile).Length > 1024 * 1024) throw new InvalidDataException("Screenshot sources file is too large.");
+        // An unreadable file like any other: scans and launches skip it with a notice, edits refuse and keep it.
+        if (new FileInfo(SourcesFile).Length > 1024 * 1024) throw new IOException("Screenshot sources file is too large.");
         var source = JsonSerializer.Deserialize<Sources>(File.ReadAllText(SourcesFile));
         return source?.Roots?.Where(r => r != null && !string.IsNullOrWhiteSpace(r.Path)).Select(r => r with { IncludeDirectImages = true }).ToList() ?? new();
     }
@@ -59,6 +63,18 @@ public sealed class ScreenshotCatalogService
         var roots = LoadCustomRoots().ToList();
         if (roots.Any(r => SafeFileOps.PathsEqual(SafeFileOps.GetFinalPath(r.Path), full))) return;
         roots.Add(new(full, System.IO.Path.GetFileName(full)));
+        SaveRoots(roots);
+    }
+
+    /// <summary>Stops listing a folder added with <see cref="AddRoot"/>; its files are not touched.</summary>
+    public void RemoveRoot(string path)
+    {
+        var roots = LoadCustomRoots().ToList();
+        if (roots.RemoveAll(r => SafeFileOps.PathsEqual(r.Path, path)) > 0) SaveRoots(roots);
+    }
+
+    private void SaveRoots(List<ScreenshotRoot> roots)
+    {
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(SourcesFile)!);
         string staging = SourcesFile + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
@@ -95,8 +111,10 @@ public sealed class ScreenshotCatalogService
                 ReadPrismConfig(app, roots, warnings, token);
             }
             roots.Add(new(System.IO.Path.Combine(_home, "curseforge", "minecraft", "Instances"), "CurseForge"));
+            roots.Add(new(System.IO.Path.Combine(_documents, "CurseForge", "Minecraft", "Instances"), "CurseForge"));
             roots.Add(new(System.IO.Path.Combine(_documents, "Curse", "Minecraft", "Instances"), "CurseForge"));
-            foreach (string data in new[] { _roaming, _local })
+            ReadCurseForgeStorage(System.IO.Path.Combine(_roaming, "CurseForge", "storage.json"), roots, warnings);
+            foreach (string data in new[] { _roaming, _local }) // older guesses, kept for existing setups
                 foreach (string name in new[] { "CurseForge", "CurseForge App", "Overwolf/CurseForge" })
                     foreach (string config in new[] { "settings.json", "Settings.json", "minecraft.settings.json" })
                         ReadJsonPaths(System.IO.Path.Combine(data, name, config), new[] { "minecraftFolder", "minecraftModdingFolder", "minecraftGamePath", "installPath", "instancesPath" }, "CurseForge", roots, warnings, token);
@@ -104,24 +122,25 @@ public sealed class ScreenshotCatalogService
         return roots;
     }
 
-    public ScreenshotCatalog Scan(IEnumerable<ScreenshotRoot>? additional = null, CancellationToken token = default)
+    public ScreenshotCatalog Scan(IEnumerable<ScreenshotRoot>? ladsProfiles = null, CancellationToken token = default)
     {
         var warnings = new List<string>();
-        var roots = DiscoverRoots(warnings, token).Concat(additional ?? Array.Empty<ScreenshotRoot>());
+        var roots = DiscoverRoots(warnings, token).Concat((ladsProfiles ?? Array.Empty<ScreenshotRoot>()).Select(r => r with { LadsProfile = true }));
         var entries = new List<ScreenshotEntry>();
         var visited = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         string shared = SafeFileOps.GetFinalPath(System.IO.Path.Combine(_sharedRoot, "screenshots"));
-        int folders = 0, directories = 0;
+        int folders = 0;
         foreach (var root in roots)
         {
             token.ThrowIfCancellationRequested();
             var pending = new Queue<(string Path, int Depth)>();
             pending.Enqueue((root.Path, 0));
+            int directories = 0;
             while (pending.TryDequeue(out var item))
             {
                 token.ThrowIfCancellationRequested();
-                if (++directories > 20000) { warnings.Add("Folder scan limit reached. Add a more specific folder to include remaining instances."); return new(entries, warnings, folders); }
+                if (++directories > FolderLimit) { warnings.Add(root.Label + ": folder scan limit reached. Add a more specific folder to include its remaining instances."); break; }
                 try
                 {
                     if (!Directory.Exists(item.Path)) continue;
@@ -142,6 +161,8 @@ public sealed class ScreenshotCatalogService
                             if (!extension.Equals(".png", StringComparison.OrdinalIgnoreCase) && !extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) && !extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase)) continue;
                             string image = SafeFileOps.GetFinalPath(file);
                             if (!seen.Add(image)) continue;
+                            // 1.21.x profiles copy their screenshots into the shared folder (SyncScreenshotsToGlobal): list that copy only.
+                            if (root.LadsProfile && IsSharedCopy(image, shared)) continue;
                             if (!counted) { folders++; counted = true; }
                             string instance = System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(final)) ?? "Instance";
                             if (instance is ".minecraft" or "minecraft") instance = System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(final))) ?? "Instance";
@@ -160,6 +181,25 @@ public sealed class ScreenshotCatalogService
             }
         }
         return new(entries.OrderByDescending(e => e.Time).ToList(), warnings, folders);
+    }
+
+    private static bool IsSharedCopy(string image, string sharedScreenshots)
+    {
+        var copy = new FileInfo(System.IO.Path.Combine(sharedScreenshots, System.IO.Path.GetFileName(image)));
+        return copy.Exists && copy.Length == new FileInfo(image).Length;
+    }
+
+    /// <summary>
+    /// Lads profiles' own copies of a shared screenshot (same name and size in their screenshots folder). Deleting only the shared
+    /// file would let the next game exit copy it back. Looks only in the given Lads profile folders, never in other launchers'.
+    /// </summary>
+    public static IReadOnlyList<string> ProfileCopies(string sharedImage, string sharedScreenshots, IEnumerable<string> profileDirectories)
+    {
+        string image = SafeFileOps.GetFinalPath(sharedImage), shared = SafeFileOps.GetFinalPath(sharedScreenshots);
+        if (!SafeFileOps.PathsEqual(System.IO.Path.GetDirectoryName(image)!, shared)) return Array.Empty<string>();
+        return profileDirectories.Select(d => System.IO.Path.Combine(d, "screenshots", System.IO.Path.GetFileName(image))).Where(File.Exists)
+            .Select(SafeFileOps.GetFinalPath).Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(copy => !SafeFileOps.PathsEqual(copy, image) && IsSharedCopy(copy, shared)).ToList();
     }
 
     public void WriteGameSources(string gameDirectory, IEnumerable<ScreenshotRoot> profiles, CancellationToken token = default)
@@ -192,6 +232,25 @@ public sealed class ScreenshotCatalogService
             }
         }
         catch (Exception e) when (IsReadFailure(e)) { warnings?.Add("Prism settings: " + e.Message); }
+    }
+
+    // The CurseForge app keeps a custom folder in storage.json: "minecraft-settings" holds a JSON document as a string, whose
+    // "minecraftRoot" (null when unchanged) contains the Instances folder.
+    private static void ReadCurseForgeStorage(string file, List<ScreenshotRoot> roots, ICollection<string>? warnings)
+    {
+        try
+        {
+            if (!File.Exists(file)) return;
+            if (new FileInfo(file).Length > 4 * 1024 * 1024) throw new IOException("storage.json is too large to read. Add its instance folder manually.");
+            using var storage = JsonDocument.Parse(File.ReadAllText(file));
+            if (storage.RootElement.ValueKind != JsonValueKind.Object || !storage.RootElement.TryGetProperty("minecraft-settings", out var text)
+                || text.ValueKind != JsonValueKind.String) return;
+            using var settings = JsonDocument.Parse(text.GetString()!);
+            if (settings.RootElement.ValueKind == JsonValueKind.Object && settings.RootElement.TryGetProperty("minecraftRoot", out var root)
+                && root.ValueKind == JsonValueKind.String && root.GetString() is { Length: > 0 } path && System.IO.Path.IsPathFullyQualified(path))
+                roots.Add(new(System.IO.Path.Combine(path, "Instances"), "CurseForge"));
+        }
+        catch (Exception e) when (IsReadFailure(e)) { warnings?.Add("CurseForge settings: " + e.Message); }
     }
 
     private static void ReadJsonPaths(string file, string[] keys, string label, List<ScreenshotRoot> roots, ICollection<string>? warnings, CancellationToken token)

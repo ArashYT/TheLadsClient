@@ -101,7 +101,7 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
    protected void init() {
       var addFolder=net.minecraft.client.gui.components.Button.builder(Component.literal("Add folder"), button->{
          button.active=false;
-         com.thelads.core.v26_2.gui.NativeFileDialogs.choose(true).whenComplete((folder,error)->minecraft.execute(()->{
+         com.thelads.core.v26_2.gui.NativeFileDialogs.choose(true,"Add screenshot folder").whenComplete((folder,error)->minecraft.execute(()->{
             button.active=true;
             if(error!=null){ScreenshotViewerUtils.fileError("Choose folder",new File("screenshots"),error);return;}
             if(folder==null)return;
@@ -127,7 +127,7 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
          this.list.init();
       } else {
          this.list.updateSize(contentWidth, contentHeight);
-         this.list.init();
+         this.list.relayout();
       }
 
       this.addWidget(this.list);
@@ -263,10 +263,10 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
    }
 
    void openRequestedScreenshot() {
-      if (this.enlargedScreenshotFile != null && !this.list.scanning()) {
-         this.list
-            .findByFileName(this.enlargedScreenshotFile)
-            .ifPresentOrElse(
+      if (this.enlargedScreenshotFile != null) {
+         Optional<ScreenshotImageHolder> requested = this.list.findByFileName(this.enlargedScreenshotFile);
+         if (requested.isEmpty() && this.list.scanning()) return; // a later partial result may still contain it
+         requested.ifPresentOrElse(
                this::enlargeScreenshot,
                () -> LOGGER.warn(
                   "Tried to enlarge screenshot with a path '{}' that could not be located in the screenshots folder!",
@@ -275,6 +275,13 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
             );
          this.enlargedScreenshotFile = null;
       }
+   }
+
+   /** A rescan closed widgets: move the viewer to the live widget for its file (or close it) so a closed widget is never drawn or reloaded. */
+   void widgetsReplaced() {
+      this.screenshotProperties.hide();
+      ScreenshotImageHolder shown = this.enlargedScreenshot.showing();
+      if (shown != null && shown.indexInList() < 0) this.enlargeScreenshot(this.list.findByFileName(shown.getScreenshotFile()).orElse(null));
    }
 
    public void resize(int width, int height) {

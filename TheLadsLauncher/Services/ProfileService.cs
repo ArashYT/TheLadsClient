@@ -202,6 +202,8 @@ public class ProfileService : IProfileService
                     _pathService.EnsureDirectories();
                     // Game settings (options.txt, keybinds) follow the launcher's shared copy unless the profile keeps its own.
                     SyncFileToInstance(_pathService.SharedOptionsFile, Path.Combine(targetDir, "options.txt"));
+                    // What the launcher last wrote into options.txt (its renderer choice) travels with it.
+                    SyncFileToInstance(SharedRendererOptionsState, Path.Combine(targetDir, GraphicsRenderer.OptionsStateFile));
                 }, cancellationToken);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -246,11 +248,14 @@ public class ProfileService : IProfileService
             {
                 _pathService.EnsureDirectories();
                 SyncFileFromInstance(Path.Combine(targetDir, "options.txt"), _pathService.SharedOptionsFile);
+                SyncFileFromInstance(Path.Combine(targetDir, GraphicsRenderer.OptionsStateFile), SharedRendererOptionsState);
             });
         }
         // Never restore instance account/profile snapshots over newer logins or removals.
         return reconcileServerList ? await _sharedContent.ReconcileFallbackServersAsync(targetDir) : SharedContentReport.Empty;
     }
+
+    private string SharedRendererOptionsState => Path.Combine(Path.GetDirectoryName(_pathService.SharedOptionsFile)!, GraphicsRenderer.OptionsStateFile);
 
     // Kept only as the old launcher's list: it is merged into the shared servers.dat once, never written again.
     private string LegacySharedServersFile => Path.Combine(_pathService.SharedDirectory, "servers.dat");

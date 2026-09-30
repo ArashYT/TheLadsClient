@@ -163,7 +163,7 @@ class HudEditorVisibilityTest {
         assertTrue(graphics.texts.stream().anyMatch(text -> text.value().contains("disabled")));
         assertTrue(graphics.fills.stream().anyMatch(fill -> fill.color() == 0x88222222));
         assertTrue(graphics.instructions.contains("All HUDs · disabled previews stay disabled"));
-        assertTrue(editor.controls().stream().anyMatch(control -> control.id().equals("previews") && control.label().equals("Enabled only")));
+        assertTrue(editor.controls().stream().anyMatch(control -> control.id().equals("previews") && control.label().equals("Supported only")));
         assertTrue(editor.mouseClicked(110, 110, 0));
         editor.mouseReleased(110, 110, 0);
         assertFalse(disabled.active);

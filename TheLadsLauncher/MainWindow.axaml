@@ -646,6 +646,7 @@
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
                             <Button Classes="action" Content="Rescan" Click="GalleryRescan_Click" Padding="14,7" />
                             <Button Classes="action" Content="Add folder" Click="GalleryAddFolder_Click" Padding="14,7" />
+                            <Button Classes="action" Content="Remove folder" ToolTip.Tip="Stop listing a folder you added. Its files are not touched." Click="GalleryRemoveFolder_Click" Padding="14,7" />
                             <TextBlock Text="Modrinth · CurseForge · Prism · Lads" Foreground="#90929D" FontSize="12" VerticalAlignment="Center" Margin="4,0,0,0" />
                         </StackPanel>
                         <ScrollViewer Grid.Row="2">

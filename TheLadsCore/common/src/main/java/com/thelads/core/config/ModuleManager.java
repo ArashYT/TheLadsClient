@@ -11,7 +11,7 @@ public class ModuleManager {
     private final Map<String, Module> modules = new LinkedHashMap<>();
 
     public ModuleManager() {
-        Module autohide=new Module("Autohide", "Fade the hotbar and status bars while idle; restore them on gameplay changes.");
+        Module autohide=new Module("Autohide", "Fade the hotbar, status bars and Lads HUD widgets while idle; restore them on gameplay changes.");
         autohide.addOption(new SliderOption("Hide after seconds", 4, 1, 30, 1));
         autohide.addOption(new SliderOption("Fade milliseconds", 350, 0, 1500, 50));
         autohide.addOption(new BoolOption("Show while moving", false));

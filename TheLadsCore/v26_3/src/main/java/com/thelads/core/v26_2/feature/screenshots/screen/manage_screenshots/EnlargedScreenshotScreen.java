@@ -109,6 +109,7 @@ class EnlargedScreenshotScreen extends Screen {
    }
 
    boolean isShowing(ScreenshotImageHolder image) { return showing == image; }
+   @Nullable ScreenshotImageHolder showing() { return showing; }
    private float zoom = 1f, panX, panY;
    private boolean hasInfo() {
       return this.showing != null && this.imageList != null;

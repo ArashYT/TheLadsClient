@@ -53,7 +53,7 @@ public sealed class ScreenshotCatalogTests : IDisposable
         var modrinth = P("custom-mr");
         var curse = P("custom-cf");
         string mr = Write("roaming/ModrinthApp/settings.json", JsonSerializer.Serialize(new { custom_dir = modrinth }));
-        string cf = Write("local/CurseForge/settings.json", JsonSerializer.Serialize(new { minecraft = new { minecraftModdingFolder = curse } }));
+        string cf = Write("roaming/CurseForge/storage.json", CurseForgeStorage(curse));
         string prism = Write("roaming/PrismLauncher/prismlauncher.cfg", "[General]\nInstanceDir=../../custom-prism\n");
         Write("custom-mr/profiles/A/screenshots/a.png");
         Write("custom-cf/Instances/B/screenshots/b.png");
@@ -188,6 +188,89 @@ public sealed class ScreenshotCatalogTests : IDisposable
         Assert.Equal(2, entries.Count);
         Assert.Contains(entries, e => e.Path == chosen);
         Assert.Contains(entries, e => e.Path == nested);
+    }
+
+    // The CurseForge app's %APPDATA%\CurseForge\storage.json: every value is a string; "minecraft-settings" is itself JSON.
+    private static string CurseForgeStorage(string? minecraftRoot) => JsonSerializer.Serialize(new Dictionary<string, string>
+    {
+        ["is-first-launch-done"] = "true",
+        ["minecraft-settings"] = JsonSerializer.Serialize(new { minecraftRoot, preferredRelease = 2, launcherType = 0, javaVersionsPaths = new { java8 = "" } }),
+    });
+
+    [Fact]
+    public void CurseForgeDocumentsDefaultIsFoundAndUnsetCustomRootIsNoNotice()
+    {
+        string image = Write("documents/CurseForge/Minecraft/Instances/Pack/screenshots/a.png");
+        Write("roaming/CurseForge/storage.json", CurseForgeStorage(null));
+        var scan = Catalog.Scan();
+        Assert.Equal(image, Assert.Single(scan.Entries).Path);
+        Assert.Empty(scan.Warnings);
+    }
+
+    [Fact]
+    public void LadsProfileScreenshotsAlreadyCopiedToSharedAreListedOnce()
+    {
+        string shared = Write("shared/screenshots/a.png", "same");
+        Write("lads/1.21.1/screenshots/a.png", "same");
+        string sharedB = Write("shared/screenshots/b.png", "b");
+        string changed = Write("lads/1.21.1/screenshots/b.png", "other size");
+        string profileOnly = Write("lads/1.21.1/screenshots/c.png");
+        string prism = Write("roaming/PrismLauncher/instances/Pack/.minecraft/screenshots/a.png", "same");
+        var paths = Catalog.Scan(new[] { new ScreenshotRoot(P("lads/1.21.1"), "Lads · 1.21.1") }).Entries.Select(e => e.Path);
+        Assert.Equal(new[] { shared, sharedB, changed, profileOnly, prism }.Order(), paths.Order());
+    }
+
+    [Fact]
+    public void DeletingASharedScreenshotFindsOnlyLadsProfileCopies()
+    {
+        string shared = Write("shared/screenshots/a.png", "same");
+        string copy = Write("lads/one/screenshots/a.png", "same");
+        Write("lads/two/screenshots/a.png", "other size");
+        Directory.CreateDirectory(P("lads/linked"));
+        SafeFileOps.CreateJunction(P("lads/linked/screenshots"), P("shared/screenshots"));
+        var profiles = new[] { P("lads/one"), P("lads/one"), P("lads/two"), P("lads/linked"), P("lads/missing") };
+        Assert.Equal(copy, Assert.Single(ScreenshotCatalogService.ProfileCopies(shared, P("shared/screenshots"), profiles)));
+        string nested = Write("shared/screenshots/old/a.png", "same"); // not what the game-exit sync copies
+        Assert.Empty(ScreenshotCatalogService.ProfileCopies(nested, P("shared/screenshots"), profiles));
+    }
+
+    [Fact]
+    public void FolderLimitIsPerRootSoAHugeLauncherCannotHideLaterRoots()
+    {
+        for (int i = 0; i < 5; i++) Directory.CreateDirectory(P("roaming/PrismLauncher/instances/Empty" + i));
+        string lads = Write("lads/1.21.1/screenshots/a.png");
+        var catalog = new ScreenshotCatalogService(P("shared"), P("home"), P("roaming"), P("local"), P("documents")) { FolderLimit = 3 };
+        var scan = catalog.Scan(new[] { new ScreenshotRoot(P("lads/1.21.1"), "Lads · 1.21.1") });
+        Assert.Equal(lads, Assert.Single(scan.Entries).Path);
+        Assert.StartsWith("Prism: folder scan limit reached", Assert.Single(scan.Warnings));
+    }
+
+    [Fact]
+    public void OversizedCustomConfigIsSkippedWithNoticeAndKeptUntouched()
+    {
+        string sources = Write("shared/config/lads-screenshot-sources.json", new string(' ', 1024 * 1024 + 1));
+        string image = Write("shared/screenshots/one.png");
+        var scan = Catalog.Scan();
+        Assert.Equal(image, Assert.Single(scan.Entries).Path);
+        Assert.Single(scan.Warnings);
+        Directory.CreateDirectory(P("game"));
+        Catalog.WriteGameSources(P("game"), Array.Empty<ScreenshotRoot>()); // the launch path does not throw
+        Assert.Throws<IOException>(() => Catalog.AddRoot(P("shared")));
+        Assert.Throws<IOException>(() => Catalog.RemoveRoot(P("shared")));
+        Assert.Equal(1024 * 1024 + 1, new FileInfo(sources).Length);
+    }
+
+    [Fact]
+    public void RemovedFolderIsNoLongerListedAndItsFilesStay()
+    {
+        string kept = Write("kept/screenshots/a.png");
+        string removed = Write("removed/screenshots/b.png");
+        Catalog.AddRoot(P("kept"));
+        Catalog.AddRoot(P("removed"));
+        Catalog.RemoveRoot(P("removed") + Path.DirectorySeparatorChar);
+        Assert.Equal(P("kept"), Assert.Single(Catalog.LoadCustomRoots()).Path);
+        Assert.Equal(kept, Assert.Single(Catalog.Scan().Entries).Path);
+        Assert.True(File.Exists(removed));
     }
 
     public void Dispose() => _sandbox.Dispose();

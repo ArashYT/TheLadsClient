@@ -40,6 +40,8 @@ try {
     if (-not $SkipCoreBuild) {
         Push-Location 'TheLadsCore'
         try {
+            & .\gradlew.bat :common:test --console=plain
+            if ($LASTEXITCODE -ne 0) { throw 'Core common tests failed.' }
             & .\gradlew.bat build deploy -x test --console=plain
             if ($LASTEXITCODE -ne 0) { throw 'Core build/deploy failed.' }
         } finally { Pop-Location }

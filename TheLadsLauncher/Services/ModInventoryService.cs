@@ -51,6 +51,7 @@ public sealed class ModInventoryService
     // ponytail: whole-cache reset when full; switch to LRU only if a profile ever holds more than CacheLimit jars.
     private static readonly ConcurrentDictionary<(string Path, long Length, DateTime Modified), ScannedJar> Scans = new();
     private readonly Func<string, IReadOnlyCollection<string>?>? loadedModsProvider;
+    private readonly Func<string?>? rendererSelection;
 
     internal sealed record ScannedJar(string? Hash, FabricModInfo? Info, string? Error);
     private sealed record CatalogModule(string Name, string? Description, string? Category, string? Support, string? Label,
@@ -58,8 +59,13 @@ public sealed class ModInventoryService
     private sealed record CoreCatalog(int Schema, string? CoreVersion, string? MinecraftVersion, List<CatalogModule>? Modules);
 
     /// <param name="loadedModsProvider">Returns the mod ids loaded by the profile's running game, or null when it is not running.</param>
-    public ModInventoryService(Func<string, IReadOnlyCollection<string>?>? loadedModsProvider = null) =>
+    /// <param name="rendererSelection">The launcher's saved renderer choice: renderer locks then show what the next launch does.
+    /// Without it they show what the last launch applied.</param>
+    public ModInventoryService(Func<string, IReadOnlyCollection<string>?>? loadedModsProvider = null, Func<string?>? rendererSelection = null)
+    {
         this.loadedModsProvider = loadedModsProvider;
+        this.rendererSelection = rendererSelection;
+    }
 
     public Task<ModInventory> BuildAsync(string bundleRoot, string gameDirectory, string minecraftVersion,
         CancellationToken cancellationToken = default) =>
@@ -243,7 +249,8 @@ public sealed class ModInventoryService
                 running ? true : null, false, false, platformReason, null, null, null, Array.Empty<string>(), Array.Empty<string>(),
                 Array.Empty<string>(), false, null, null, Array.Empty<ModInventoryEntry>()));
 
-        var rendererBlocked = GraphicsRenderer.Suspended(game);
+        var rendererBlocked = rendererSelection == null ? GraphicsRenderer.Suspended(game)
+            : GraphicsRenderer.Suspended(game, version, rendererSelection(), files.Select(f => f.Scan.Info));
         entries = entries.Select(e => rendererBlocked.Contains(e.Id)
             ? e with { RequestedEnabled = false, CanToggle = false, ToggleBlockedReason = GraphicsRenderer.OpenGlRequired,
                 Status = e.Status == ModEntryStatus.PendingDownload ? ModEntryStatus.NotDownloaded : e.Status,

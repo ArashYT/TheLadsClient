@@ -34,12 +34,13 @@ class HudOptimizationTest {
             assertEquals(5, graphics.measurements, "unknown adapters must not retain stale widths");
         } finally { LadsGameBridge.set(previous); }
     }
-    @Test void fastPathMatchesGeneralPlacementAndDrawingAtViewportEdges() {
+    @Test void fastPathMatchesGeneralPlacementAndDrawingAtViewportEdges() throws Exception {
         var manager = HudManager.getInstance(); var elements = new ArrayList<>(manager.getElements());
         var settings = HudSettings.getInstance(); var groups = new ArrayList<>(settings.getGroups());
         var module = ModuleManager.getInstance().getModule("ServerAddress"); boolean enabled = module.isEnabled();
         var saved = settings.getPosition("ServerAddress");
         var graphics = new Graphics(); var element = new ToolsHudElement(); element.setModuleName("ServerAddress");
+        var ownership = new ModsMenuTest.OwnershipFixture(); // The editor shows switchable HUDs; do not leak this one.
         try {
             ModuleSupport.registerBuiltIn("ServerAddress"); module.setEnabled(true);
             settings.getPositions().put("ServerAddress", new int[]{790, 599});
@@ -50,6 +51,7 @@ class HudOptimizationTest {
         } finally {
             manager.getElements().clear(); manager.getElements().addAll(elements); settings.replaceGroups(groups); module.setEnabled(enabled);
             if (saved == null) settings.getPositions().remove("ServerAddress"); else settings.getPositions().put("ServerAddress", saved);
+            ownership.close();
         }
     }
 }

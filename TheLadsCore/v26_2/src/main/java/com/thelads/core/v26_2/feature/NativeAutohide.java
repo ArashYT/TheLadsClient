@@ -31,9 +31,8 @@ public final class NativeAutohide {
         if(changed||action||activity==0)activity=now;
         float target=(now-activity)/1e9<NativeQualityOfLife.number("Autohide","Hide after seconds",4)?1:0;
         double duration=NativeQualityOfLife.number("Autohide","Fade milliseconds",350)/1000;
-        float step=duration<=0?1:(float)(Math.min(.1,(now-frame)/1e9)/duration);frame=now;
-        opacity=target>opacity?Math.min(target,opacity+step):Math.max(target,opacity-step);
-        if(opacity<.02)opacity=0;
+        // Called by the hotbar and again by the Lads HUD each frame; each call steps by its own elapsed time, so a frame steps once.
+        opacity=com.thelads.core.client.hud.AutohideFade.step(opacity,target,(now-frame)/1e9,duration);frame=now;
         return opacity;
     }
     public static int tint(int color,float alpha){return (color&0xFFFFFF)|(Math.round((color>>>24)*alpha)<<24);}
