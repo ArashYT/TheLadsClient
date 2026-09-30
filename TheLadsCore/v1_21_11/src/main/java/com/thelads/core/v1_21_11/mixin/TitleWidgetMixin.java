@@ -6,10 +6,18 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(AbstractWidget.class)
 public abstract class TitleWidgetMixin {
+    /** Smooth scrolling: a scroll area eases toward its wheel target once per rendered frame (26.x). */
+    @Inject(method = "render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V", at = @At("HEAD"), require = 1)
+    private void ladsAdvanceScroll(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        if ((Object) this instanceof com.thelads.core.v1_21_11.gui.SmoothScrollTarget target) target.ladsAdvanceScroll();
+    }
+
     @Shadow protected abstract void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick);
     @Shadow protected abstract void handleCursor(GuiGraphics graphics);
 

@@ -23,7 +23,7 @@ public final class TitleWidgetRegistry {
     private TitleWidgetRegistry() {}
 
     public static void register(Screen owner, AbstractWidget widget, String icon, boolean primary) {
-        WIDGETS.put(widget, new Entry(owner, icon, primary, renderLabel(widget)));
+        WIDGETS.put(widget, new Entry(owner, icon, primary, renderLabel(widget), widget.getMessage()));
     }
 
     private static String renderLabel(AbstractWidget widget) {
@@ -65,6 +65,10 @@ public final class TitleWidgetRegistry {
         if (frameGraphics == null) return false;
         Entry entry = WIDGETS.get(widget);
         if (entry == null || entry.owner.get() != frameOwner) return false;
+        if (!java.util.Objects.equals(entry.message, widget.getMessage())) {
+            entry.label = renderLabel(widget);
+            entry.message = widget.getMessage() == null ? null : widget.getMessage().copy();
+        }
         float target = widget.active && widget.isHoveredOrFocused() ? 1 : 0;
         float step = frameDelta * 8;
         entry.hover = reducedMotion ? target : entry.hover < target
@@ -79,14 +83,16 @@ public final class TitleWidgetRegistry {
         private final WeakReference<Screen> owner;
         private final String icon;
         private final boolean primary;
-        private final String label;
+        private String label;
+        private Component message;
         private float hover;
 
-        private Entry(Screen owner, String icon, boolean primary, String label) {
+        private Entry(Screen owner, String icon, boolean primary, String label, Component message) {
             this.owner = new WeakReference<>(owner);
             this.icon = icon;
             this.primary = primary;
             this.label = label;
+            this.message = message == null ? null : message.copy();
         }
     }
 }
