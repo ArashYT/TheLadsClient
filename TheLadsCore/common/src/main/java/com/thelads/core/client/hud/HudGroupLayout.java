@@ -26,11 +26,31 @@ public final class HudGroupLayout {
                 }
             }
             if(connected.size()<2)continue;
-            int width=connected.stream().mapToInt(e->bounds.get(e).width).max().orElse(1);
-            for(var member:connected){Rect r=bounds.get(member);member.matchLayoutWidth(width);bounds.put(member,new Rect(r.x,r.y,member.getRenderWidth(),r.height));}
+            Rect widest=connected.stream().map(bounds::get).max(java.util.Comparator.comparingInt(Rect::width)).orElseThrow();
+            for(var member:connected){Rect r=bounds.get(member);member.matchLayoutWidth(widest.width);bounds.put(member,new Rect(widest.x,r.y,member.getRenderWidth(),r.height));}
         }
     }
-    public static boolean docked(Rect a,Rect b){return Math.abs(a.x-b.x)<=4&&(Math.abs(a.bottom()-b.y)<=4||Math.abs(b.bottom()-a.y)<=4);}
+    public static boolean docked(Rect a,Rect b){
+        boolean aligned=Math.abs(a.x-b.x)<=4||Math.abs(a.right()-b.right())<=4||Math.abs((a.x+a.width/2)-(b.x+b.width/2))<=4;
+        return aligned&&(Math.abs(a.bottom()-b.y)<=4||Math.abs(b.bottom()-a.y)<=4);
+    }
+
+    /** Arrange a new group as one centered column, preserving reading order and scale. */
+    public static java.util.Map<HudElement,Rect> centeredStack(java.util.Map<HudElement,Rect> bounds,int viewportWidth,int viewportHeight){
+        var result=new java.util.LinkedHashMap<HudElement,Rect>();
+        if(bounds.isEmpty())return result;
+        Rect union=union(bounds.values());
+        int width=bounds.values().stream().mapToInt(Rect::width).max().orElse(1),center=union.x+union.width/2,y=union.y;
+        var order=new java.util.ArrayList<>(bounds.entrySet());
+        order.sort(java.util.Comparator.<java.util.Map.Entry<HudElement,Rect>>comparingInt(e->e.getValue().y).thenComparingInt(e->e.getValue().x));
+        for(var entry:order){
+            var element=entry.getKey();element.matchLayoutWidth(width);int actualWidth=element.getRenderWidth();
+            result.put(element,new Rect(center-width/2,y,actualWidth,entry.getValue().height));y+=entry.getValue().height+2;
+        }
+        Delta delta=clampDelta(union(result.values()),0,0,viewportWidth,viewportHeight);
+        result.replaceAll((element,rect)->translate(rect,delta));
+        return result;
+    }
 
     private static int add(int a,int b){return (int)Math.max(Integer.MIN_VALUE,Math.min(Integer.MAX_VALUE,(long)a+b));}
     public static Rect union(Collection<Rect> bounds){
@@ -55,6 +75,10 @@ public final class HudGroupLayout {
     }
     private static int snapAxis(int origin,int size,int delta,int grid,int threshold,Collection<Rect> targets,boolean horizontal,int viewport){
         long moved=(long)origin+delta;long best=Long.MAX_VALUE;
+        // Center guides take priority over nearby grid lines and unrelated left/right edges.
+        long center=moved+size/2,centerSnap=viewport/2-center;
+        for(Rect other:targets){int p=horizontal?other.x:other.y,n=horizontal?other.width:other.height;long candidate=(long)p+n/2-center;if(Math.abs(candidate)<Math.abs(centerSnap))centerSnap=candidate;}
+        if(Math.abs(centerSnap)<=threshold)return add(delta,(int)centerSnap);
         for(long edge:new long[]{moved,moved+size/2,moved+size}){
             for(long target:new long[]{0,viewport/2,viewport})if(Math.abs(target-edge)<Math.abs(best))best=target-edge;
             for(Rect other:targets){int p=horizontal?other.x:other.y,n=horizontal?other.width:other.height;

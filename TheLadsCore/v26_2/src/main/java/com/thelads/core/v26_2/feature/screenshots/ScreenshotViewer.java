@@ -51,6 +51,7 @@ public final class ScreenshotViewer {
         module.addOption(settings);
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.NativeScreenshotsProbe.tick();
+            com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.Version134ScreenshotsProbe.tick();
             while (instance.openScreenshotsScreenKey.consumeClick()) {
                 Screen screen = client.gui.screen();
                 if (active() && (screen == null || screen instanceof TitleScreen || screen instanceof PauseScreen)) open(screen);

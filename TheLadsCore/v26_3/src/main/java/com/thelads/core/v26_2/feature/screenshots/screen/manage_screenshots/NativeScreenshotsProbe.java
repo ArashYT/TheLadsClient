@@ -71,7 +71,8 @@ public final class NativeScreenshotsProbe {
         var module = NativeQualityOfLife.module("BetterScreenshots"); enabled = module.isEnabled(); modified = module.getLastModified(); captured = true; module.setEnabled(true);
         var config = ScreenshotViewer.getInstance().getConfig();
         for (var option : ScreenshotViewerOptions.OPTIONS.options(MinecraftConfigSides.CLIENT)) saved.put(option, config.get((ConfigOption)option).orElse(null));
-        fixtures = Files.createTempDirectory(game.getParent(), "screenshots-native-"); png = fixtures.resolve("a.PNG"); jpeg = fixtures.resolve("b.jpeg");
+        Files.createDirectories(game.resolve("screenshots"));
+        fixtures = Files.createTempDirectory(game.resolve("screenshots"), "screenshots-native-"); png = fixtures.resolve("a.PNG"); jpeg = fixtures.resolve("b.jpeg");
         LoggerFactory.getLogger("TheLadsCore").info("Lads native screenshots fixture directory: {} (generated test files only)", fixtures);
         BufferedImage image = new BufferedImage(64, 36, BufferedImage.TYPE_INT_RGB); image.setRGB(3, 3, 0xffaabbcc);
         ImageIO.write(image, "png", png.toFile()); ImageIO.write(image, "jpg", jpeg.toFile()); image.flush();

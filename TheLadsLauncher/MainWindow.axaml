@@ -381,6 +381,12 @@
                                                     <Button x:Name="RefreshServerListBtn" Content="&#8635;" Width="28" Height="28" FontSize="14" ToolTip.Tip="Reload the shared server list (servers.dat in the global .minecraft folder)" Click="RefreshServerList_Click" />
                                                 </StackPanel>
                                                 <CheckBox x:Name="MultiInstanceCheckbox" Content="Allow launching multiple copies of the same instance" IsChecked="False" />
+                                                <TextBlock Text="GRAPHICS" Foreground="{DynamicResource LadsAccent}" FontWeight="Bold" Margin="0,8,0,0" />
+                                                <ComboBox x:Name="GraphicsRendererSelector" HorizontalAlignment="Stretch" SelectedIndex="0">
+                                                    <ComboBoxItem Content="Vulkan — primary (26.2+)" />
+                                                    <ComboBoxItem Content="OpenGL — compatibility and Iris shaders" />
+                                                </ComboBox>
+                                                <TextBlock Text="Applies on next launch. Vulkan uses OpenGL if unavailable; Iris shader mods stay off in Vulkan mode. Older Minecraft versions use OpenGL." TextWrapping="Wrap" Foreground="#A0A1AA" FontSize="12" />
                                                 <CheckBox x:Name="FullscreenOnLaunchCheckbox" Content="Launch game in fullscreen" IsChecked="True" />
                                                 <CheckBox x:Name="QuickLaunchCheckbox" Content="Quick Launch &#8212; skip file verification (faster, disable if game is broken)" IsChecked="False" />
                                                 <CheckBox x:Name="SyncScreenshotsCheckbox" Content="Sync screenshots to global .minecraft folder on game close" IsChecked="True" />
@@ -624,7 +630,7 @@
                             <StackPanel x:Name="FilesList" Spacing="3" />
                         </ScrollViewer>
                     </Grid>
-                    <Grid x:Name="GalleryPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,*">
+                    <Grid x:Name="GalleryPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,Auto,*">
                         <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto" Margin="0,0,0,12">
                             <TextBlock Text="Gallery" Foreground="White" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
                             <ComboBox x:Name="GallerySortBox" Grid.Column="1" Width="120" Height="34" SelectedIndex="0" Margin="16,0,8,0" SelectionChanged="GallerySort_Changed">
@@ -637,7 +643,12 @@
                             <TextBlock x:Name="GalleryStatusText" Grid.Column="3" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" Margin="8,0,12,0" TextTrimming="CharacterEllipsis" />
                             <Button Grid.Column="4" Classes="launch" Content="Open Folder" ToolTip.Tip="Open the shared screenshots folder (every version)" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="GalleryOpenFolder_Click" />
                         </Grid>
-                        <ScrollViewer Grid.Row="1">
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+                            <Button Classes="action" Content="Rescan" Click="GalleryRescan_Click" Padding="14,7" />
+                            <Button Classes="action" Content="Add folder" Click="GalleryAddFolder_Click" Padding="14,7" />
+                            <TextBlock Text="Modrinth · CurseForge · Prism · Lads" Foreground="#90929D" FontSize="12" VerticalAlignment="Center" Margin="4,0,0,0" />
+                        </StackPanel>
+                        <ScrollViewer Grid.Row="2">
                             <StackPanel>
                                 <WrapPanel x:Name="GalleryList" />
                                 <Button x:Name="GalleryLoadMoreBtn" Classes="action" Content="Load more" IsVisible="False" Height="34" FontSize="13" Padding="14,0" Margin="6,8,6,6" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Click="GalleryLoadMore_Click" />

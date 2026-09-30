@@ -54,6 +54,13 @@ final class ScreenshotList
    private boolean namesHidden;
    private File screenshotsFolder;
    private boolean scrollbarClicked;
+   private static final java.util.concurrent.ThreadPoolExecutor SCANNER=new java.util.concurrent.ThreadPoolExecutor(
+      1,1,0L,java.util.concurrent.TimeUnit.MILLISECONDS,new java.util.concurrent.LinkedBlockingQueue<>(),task->{
+         Thread thread=new Thread(task,"Lads screenshot scan");thread.setDaemon(true);return thread;
+      });
+   private java.util.concurrent.Future<?> scanTask;
+   private volatile int scanRevision;
+   private boolean scanning;
 
    ScreenshotList(ManageScreenshotsScreen mainScreen, int x, int y, int width, int height) {
       this.mainScreen = mainScreen;
@@ -105,10 +112,32 @@ final class ScreenshotList
    }
 
    void init() {
+      cancelScan();
+      int revision=scanRevision;
+      if (com.thelads.core.v26_2.feature.GlobalScreenshots.sharedGallery(screenshotsFolder)) {
+         scanning=true;
+         scanTask=SCANNER.submit(()->{
+            try {
+               List<File> files=com.thelads.core.v26_2.feature.GlobalScreenshots.scan(()->revision!=scanRevision);
+               if(revision!=scanRevision)return;
+               client.execute(()->{
+                  if(revision!=scanRevision||client.gui.screen()!=mainScreen)return;
+                  scanning=false;install(files);mainScreen.openRequestedScreenshot();
+               });
+            }catch(Throwable error){client.execute(()->{
+               if(revision!=scanRevision)return;
+               scanning=false;ScreenshotViewerUtils.fileError("Scan screenshots",screenshotsFolder,error);
+            });}
+         });
+      } else install(ScreenshotViewerUtils.getScreenshotFiles(this.screenshotsFolder));
+   }
+
+   private void install(List<File> files) {
       this.clearChildren();
-      List<File> files = ScreenshotViewerUtils.getScreenshotFiles(this.screenshotsFolder);
+      this.scrollY=0;
       if (!files.isEmpty()) {
-         files.sort(this.invertedOrder ? Comparator.reverseOrder() : Comparator.naturalOrder());
+         Comparator<File> order=Comparator.comparingLong(File::lastModified).thenComparing(File::getAbsolutePath);
+         files.sort(this.invertedOrder ? order.reversed() : order);
          this.updateVariables();
          int maxXOff = this.screenshotsPerRow - 1;
          int childX = this.x + this.spacing;
@@ -202,6 +231,12 @@ final class ScreenshotList
    public void close() {
       this.screenshotWidgets.forEach(ScreenshotWidget::close);
    }
+   void cancelScan(){
+      scanRevision++;scanning=false;
+      if(scanTask!=null){scanTask.cancel(true);scanTask=null;SCANNER.purge();}
+   }
+   boolean scanning(){return scanning;}
+   String status(){return scanning?"Scanning instance screenshots...":size()+" screenshots | external originals are read-only";}
 
    public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
    }
@@ -209,7 +244,7 @@ final class ScreenshotList
    void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta, boolean updateHoverState) {
       context.fill(this.x, this.y, this.x + this.width, this.y + this.height, ARGB.color(178, 0, 0, 0));
       if (this.screenshotWidgets.isEmpty()) {
-         context.centeredText(this.client.font, ScreenshotViewerTexts.NO_SCREENSHOTS, (this.x + this.width) / 2, (this.y + this.height + 8) / 2, 16777215);
+         context.centeredText(this.client.font, scanning ? net.minecraft.network.chat.Component.literal("Scanning instance screenshots...") : ScreenshotViewerTexts.NO_SCREENSHOTS, (this.x + this.width) / 2, (this.y + this.height + 8) / 2, 16777215);
       }
 
       for (ScreenshotWidget screenshotWidget : this.screenshotWidgets) {
@@ -380,7 +415,7 @@ final class ScreenshotList
          this.trackHeight = listHeight - 2 * listSpacing;
          int scrollbarSpacedTrackHeight = this.trackHeight + 4;
          this.scrollbarYGetter = scrollOffset -> Mth.ceil((float)(scrollOffset * scrollbarSpacedTrackHeight) / totalHeightOfTheChildrens) + listY + 2;
-         this.height = this.trackHeight * scrollbarSpacedTrackHeight / totalHeightOfTheChildrens;
+         this.height = totalHeightOfTheChildrens<=0 ? this.trackHeight : this.trackHeight * scrollbarSpacedTrackHeight / totalHeightOfTheChildrens;
       }
 
       void render(GuiGraphicsExtractor context, double mouseX, double mouseY, int scrollOffset, boolean updateHoverState, boolean clicked) {

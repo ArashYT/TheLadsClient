@@ -18,10 +18,6 @@ public class GuiMixin {
     @Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V",
         at = @At("TAIL"), require = 1)
     private void onExtractRenderState(GuiGraphicsExtractor g, DeltaTracker tickDelta, CallbackInfo ci) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.gui.screen() instanceof com.thelads.core.v26_2.gui.DraggableHudScreen26) return;
-
-        GuiGraphicsExtractorLadsAdapter adapter = new GuiGraphicsExtractorLadsAdapter(g, mc.font);
-        HudManager.getInstance().render(adapter);
+        com.thelads.core.v26_2.feature.NativeAutohide.renderLadsHud(g);
     }
 }

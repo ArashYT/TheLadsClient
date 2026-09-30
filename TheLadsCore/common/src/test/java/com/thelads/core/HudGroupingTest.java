@@ -43,7 +43,7 @@ class HudGroupingTest {
     private void action(String id){render();var button=editor.controls().stream().filter(control->control.id().equals(id)).findFirst().orElseThrow();assertTrue(button.enabled(),id+" is enabled");assertTrue(editor.mouseClicked(button.bounds().x()+2,button.bounds().y()+2,0));render();}
     private void drag(String name,int dx,int dy){render();var b=editor.boundsFor(name);assertTrue(editor.mouseClicked(b.x()+1,b.y()+1,0));editor.mouseDragged(b.x()+1+dx,b.y()+1+dy,0);editor.mouseReleased(b.x()+1+dx,b.y()+1+dy,0);render();}
 
-    @Test void visibleControlsCreateAndMoveARigidGroup(){Element a=add("A",10,30,40,15,1),b=add("B",80,60,30,20,1);render();select("A");select("B");action("group");assertEquals(Set.of("A","B"),settings.getGroupMembers("A"));editor.keyPressed(71);drag("B",35,27);assertEquals(45,a.getX());assertEquals(115,b.getX());assertEquals(57,a.getY());assertEquals(87,b.getY());assertArrayEquals(new int[]{45,57},settings.getPosition("A"));assertArrayEquals(new int[]{115,87},settings.getPosition("B"));}
+    @Test void visibleControlsCreateAndMoveARigidGroup(){Element a=add("A",10,30,40,15,1),b=add("B",80,60,30,20,1);render();select("A");select("B");action("group");assertEquals(Set.of("A","B"),settings.getGroupMembers("A"));editor.keyPressed(71);drag("B",35,27);assertEquals(75,a.getX());assertEquals(75,b.getX());assertEquals(57,a.getY());assertEquals(74,b.getY());assertArrayEquals(new int[]{75,57},settings.getPosition("A"));assertArrayEquals(new int[]{75,74},settings.getPosition("B"));}
     @Test void lockedHudRemainsSelectableAndUnlockWorks(){Element a=add("A",30,40,40,15,1);settings.setLocked("A",true);render();assertTrue(editor.mouseClicked(31,41,0));assertEquals(Set.of("A"),editor.selectedNames());assertFalse(editor.mouseDragged(100,100,0));assertEquals(30,a.getX());action("unlock");assertFalse(settings.isLocked("A"));editor.keyPressed(71);drag("A",20,10);assertEquals(50,a.getX());}
     @Test void oneLockedGroupMemberBlocksWholeGroupUntilUnlock(){Element a=add("A",10,30,40,15,1),b=add("B",70,30,40,15,1);settings.addGroup(Set.of("A","B"));settings.setLocked("B",true);render();assertTrue(editor.mouseClicked(11,31,0));assertEquals(Set.of("A","B"),editor.selectedNames());assertFalse(editor.isDragging());action("unlock");editor.keyPressed(71);drag("A",20,0);assertEquals(30,a.getX());assertEquals(90,b.getX());}
     @Test void scaledGroupClampsOnceAtRightAndBottomBorders(){graphics.width=200;graphics.height=260;Element a=add("A",10,20,40,20,2),b=add("B",100,75,20,20,1.5f);settings.addGroup(Set.of("A","B"));render();editor.keyPressed(71);drag("A",1000,1000);assertEquals(90,b.getX()-a.getX());assertEquals(55,b.getY()-a.getY());assertEquals(200,editor.boundsFor("B").right());assertEquals(260,editor.boundsFor("B").bottom());}
@@ -59,7 +59,7 @@ class HudGroupingTest {
     @Test void closingMidDragPersistsAllMembersAndEndsEditing(){Element a=add("A",20,30,30,15,1),b=add("B",70,30,30,15,1);settings.addGroup(Set.of("A","B"));render();editor.keyPressed(71);editor.mouseClicked(21,31,0);editor.mouseDragged(41,51,0);editor.close();assertFalse(editor.isDragging());assertArrayEquals(new int[]{40,50},settings.getPosition("A"));assertArrayEquals(new int[]{90,50},settings.getPosition("B"));assertEquals(1,saves.get());}
     @Test void groupCreationDetachesAutomaticAnchorsBeforeAnyResize(){
         class Anchored extends Element {boolean attached=true;Anchored(){super("Anchored",0,30,40,15,1);}@Override public int getDisplayX(LadsGraphics g){return attached?g.getScaledWidth()-60:super.getDisplayX(g);}@Override public void beginPositionEdit(){super.beginPositionEdit();attached=false;}}
-        var anchored=new Anchored();HudManager.getInstance().getElements().add(anchored);add("A",500,60,30,15,1);render();select("Anchored");select("A");action("group");assertFalse(anchored.attached);int gap=editor.boundsFor("Anchored").x()-editor.boundsFor("A").x();graphics.width=320;render();assertEquals(gap,editor.boundsFor("Anchored").x()-editor.boundsFor("A").x());assertArrayEquals(new int[]{580,30},settings.getPosition("Anchored"));
+        var anchored=new Anchored();HudManager.getInstance().getElements().add(anchored);add("A",500,60,30,15,1);render();select("Anchored");select("A");action("group");assertFalse(anchored.attached);int gap=editor.boundsFor("Anchored").x()-editor.boundsFor("A").x();graphics.width=320;render();assertEquals(gap,editor.boundsFor("Anchored").x()-editor.boundsFor("A").x());assertArrayEquals(new int[]{540,30},settings.getPosition("Anchored"));
     }
     @Test void toolbarAvoidsBottomHudAndCanBeMovedExplicitly(){add("Armor",470,330,70,20,1);render();var bottomHud=editor.boundsFor("Armor");assertTrue(editor.controls().stream().noneMatch(control->control.bounds().intersects(bottomHud)));var before=editor.controls().getFirst().bounds().y();action("toolbar");assertTrue(editor.controls().getFirst().bounds().y()>before);}
     @Test void selectAllExpandsHiddenLockedGroupMembers(){add("A",20,30,30,15,1);var b=add("B",70,30,30,15,1);b.active=false;settings.addGroup(Set.of("A","B"));settings.setLocked("B",true);render();assertTrue(editor.keyPressed(65,2));assertEquals(Set.of("A","B"),editor.selectedNames());action("unlock");assertFalse(settings.isLocked("B"));}
@@ -94,6 +94,30 @@ class HudGroupingTest {
     @Test void verticalControlsFitSmallGui(){
         graphics.width=320;graphics.height=240;render();action("toolbar");
         assertTrue(editor.controls().stream().allMatch(c->c.bounds().y()>=0&&c.bounds().bottom()<=240));
+    }
+
+    @Test void stackedGroupDoesNotDockToAnOverlappingClampedWidget(){
+        add("A",12,42,62,14,1.5f);add("B",12,78,30,14,1.25f);add("Edge",10000,10,50,15,1);
+        settings.setPosition("Edge",10000,10);render();select("A");select("B");action("group");
+        drag("A",10000,-10000);
+        assertEquals(Set.of("A","B"),settings.getGroupMembers("A"));
+        assertEquals(graphics.width,Math.max(editor.boundsFor("A").right(),editor.boundsFor("B").right()));
+        assertEquals(0,editor.boundsFor("A").y());assertArrayEquals(new int[]{10000,10},settings.getPosition("Edge"));
+    }
+    @Test void dockingCapturesTheStationaryWidgetsClampedOrigin(){
+        add("A",400,100,50,15,1);add("Edge",10000,10,50,15,1);settings.setPosition("Edge",10000,10);
+        render();drag("A",190,-73);
+        assertEquals(Set.of("A","Edge"),settings.getGroupMembers("A"));
+        assertEquals(590,editor.boundsFor("A").x());assertEquals(590,editor.boundsFor("Edge").x());
+        assertArrayEquals(new int[]{590,10},settings.getPosition("Edge"));assertEquals(graphics.width,editor.boundsFor("A").right());
+    }
+    @Test void dockingCapturesEveryMemberOfTheStationaryGroup(){
+        add("A",400,100,50,15,1);add("B",10000,10,50,15,1);add("C",10000,27,50,15,1);
+        settings.setPosition("B",10000,10);settings.setPosition("C",10000,27);settings.addGroup(Set.of("B","C"));
+        render();drag("A",190,-56);
+        assertEquals(Set.of("A","B","C"),settings.getGroupMembers("A"));
+        assertArrayEquals(new int[]{590,10},settings.getPosition("B"));assertArrayEquals(new int[]{590,27},settings.getPosition("C"));
+        assertEquals(590,editor.boundsFor("A").x());assertEquals(590,editor.boundsFor("B").x());assertEquals(590,editor.boundsFor("C").x());
     }
 
 }

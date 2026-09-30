@@ -74,6 +74,7 @@ public final class NativePaperDoll {
         float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         boolean right = choice("Anchor", 0) != 0 ? (choice("Anchor", 0) - 1) % 3 == 2 : x1 + (x2 - x1) / 2 > graphics.guiWidth() / 2;
         var state = extractState(partial, right);
+        if(!editor){var doll=(PaperDollRenderState)state;doll.ladsSetPaperDollAlpha(Math.round(doll.ladsPaperDollAlpha()*com.thelads.core.v26_2.feature.NativeAutohide.scopeOpacity));}
         var camera = new Quaternionf().rotateX((float) Math.toRadians(15));
         var rotation = new Quaternionf().rotateZ((float) Math.PI).mul(camera);
         float pixelScale = number("Model Scale", 4) * 5 * Math.min((x2 - x1) / (float) width, (y2 - y1) / (float) height);

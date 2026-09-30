@@ -31,19 +31,19 @@ public abstract class KeySearchMixin extends OptionsSubScreen {
         ladsSearch=new EditBox(font,width/2-150,32,300,20,Component.literal("Search controls"));
         ladsSearch.setHint(Component.literal("Search names, keys, categories or mods"));
         ladsSearch.setMaxLength(128);
-        ladsSearch.setResponder(value->ladsFilter());
+        ladsSearch.setResponder(value->ladsFilter(true));
         ladsModeButton=Button.builder(Component.literal("Search: "+LADS_MODES[ladsMode]),button->{
             ladsMode=(ladsMode+1)%LADS_MODES.length;
-            button.setMessage(Component.literal("Search: "+LADS_MODES[ladsMode]));ladsFilter();
+            button.setMessage(Component.literal("Search: "+LADS_MODES[ladsMode]));ladsFilter(true);
         }).bounds(width/2-150,57,148,20).build();
         ladsStateButton=Button.builder(Component.literal(LADS_STATES[ladsState]),button->{
             ladsState=(ladsState+1)%LADS_STATES.length;
-            button.setMessage(Component.literal(LADS_STATES[ladsState]));ladsFilter();
+            button.setMessage(Component.literal(LADS_STATES[ladsState]));ladsFilter(true);
         }).bounds(width/2+2,57,148,20).build();
         addRenderableWidget(ladsSearch);addRenderableWidget(ladsModeButton);addRenderableWidget(ladsStateButton);
-        ladsSearch.setValue(previous);ladsFilter();
+        ladsSearch.setValue(previous);ladsFilter(true);
     }
-    @Unique private void ladsFilter(){
+    @Unique private void ladsFilter(boolean resetScroll){
         String query=ladsSearch.getValue().strip().toLowerCase(Locale.ROOT);
         List<KeyBindsList.Entry> filtered=new ArrayList<>();
         KeyBindsList.Entry heading=null;boolean headingAdded=false;
@@ -61,7 +61,12 @@ public abstract class KeySearchMixin extends OptionsSubScreen {
                 filtered.add(entry);
             }
         }
-        keyBindsList.replaceEntries(filtered);keyBindsList.setScrollAmount(0);
+        // Key assignment and ordinary clicks update labels, not the viewport. Replacing
+        // identical entries also clears the focused row, so only rebuild on a real filter change.
+        double scroll=keyBindsList.scrollAmount();
+        if(!keyBindsList.children().equals(filtered))keyBindsList.replaceEntries(filtered);
+        if(resetScroll)keyBindsList.setScrollAmount(0);
+        else if(keyBindsList.scrollAmount()!=scroll)keyBindsList.setScrollAmount(scroll);
     }
     @Unique private static String ladsModName(KeyMapping key){
         String namespace=key.getCategory().id().getNamespace(),raw=key.getName().toLowerCase(Locale.ROOT);
@@ -74,7 +79,7 @@ public abstract class KeySearchMixin extends OptionsSubScreen {
         return namespace+" "+key.getCategory().label().getString();
     }
     @Inject(method={"mouseClicked","keyPressed"},at=@At("TAIL"),require=1)
-    private void ladsRefresh(org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> ci){if(ladsSearch!=null)ladsFilter();}
+    private void ladsRefresh(org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> ci){if(ladsSearch!=null)ladsFilter(false);}
     @Inject(method="repositionElements",at=@At("TAIL"),require=1)
     private void ladsPositionSearch(CallbackInfo ci){if(ladsSearch!=null){
         // HeaderAndFooterLayout centers its title in the taller header; keep it above our search row.

@@ -1261,6 +1261,21 @@
       "license": "LGPL-3.0-or-later",
       "sourceUrl": "https://github.com/isXander/YetAnotherConfigLib",
       "projectUrl": "https://modrinth.com/mod/yacl"
+    },
+    {
+      "projectId": "4das1Fjq",
+      "projectSlug": "flashback",
+      "name": "Flashback",
+      "modId": "flashback",
+      "versionId": "cV1pa0YV",
+      "version": "0.43.6",
+      "fileName": "Flashback-0.43.6-for-MC26.3.jar",
+      "url": "https://cdn.modrinth.com/data/4das1Fjq/versions/cV1pa0YV/Flashback-0.43.6-for-MC26.3.jar",
+      "sha512": "80d194d117352942ebf2bc96914e5f0f550ab857204cda5b362459110ea22a38332825ecebf5ee3fc54d4f01c72279c0a06e45f26e26b62c49015e208167242e",
+      "size": 201008177,
+      "license": "LicenseRef-All-Rights-Reserved",
+      "sourceUrl": "https://github.com/Moulberry/Flashback",
+      "projectUrl": "https://modrinth.com/mod/flashback"
     }
   ],
   "retired": [

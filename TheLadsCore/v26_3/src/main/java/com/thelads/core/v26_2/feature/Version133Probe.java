@@ -61,6 +61,7 @@ final class Version133Probe {
             check(count(state)==0,"fully hidden native hotbar includes its selected-slot highlight");
             check(NativeAutohide.scopeOpacity==1,"opacity scope restored for unrelated HUD elements");
             graphics.fill(1,1,3,3,-1);check(count(state)>0,"later GUI content remains visible");
+            passed+=Version134HudProbe.run();
             var pause=new PauseScreen(true);mc.setScreenAndShow(pause);pause.extractRenderState(graphics,0,0,0);
             var buttons=pause.children().stream().filter(c->c instanceof Button b&&b.visible).map(c->(Button)c).toList();
             check(buttons.stream().anyMatch(b->b.getMessage().getString().equals("Lads Client")),"pause retains Lads settings action");

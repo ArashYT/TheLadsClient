@@ -184,6 +184,15 @@ public class ProfileService : IProfileService
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         { warnings.Add("World folder list could not be written: " + e.Message); }
 
+        try
+        {
+            var screenshots = new ScreenshotCatalogService(_sharedContent.Root,
+                discoverLaunchers: !Environment.GetCommandLineArgs().Any(a => a.StartsWith("--preview-", StringComparison.Ordinal)));
+            screenshots.WriteGameSources(targetDir, GetProfiles().Select(p => new ScreenshotRoot(_pathService.GetProfileDirectory(p), "Lads · " + p.Name)), cancellationToken);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
+        { warnings.Add("Screenshot folder list could not be written: " + e.Message); }
+
         if (!profile.IsIsolated)
         {
             try

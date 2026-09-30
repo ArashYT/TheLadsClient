@@ -100,6 +100,8 @@ class EnlargedScreenshotScreen extends Screen {
    private void updateButtonsState() {
       zoom = 1; panX = panY = 0;
       if (this.hasInfo()) {
+         boolean readOnly=com.thelads.core.v26_2.feature.GlobalScreenshots.readOnly(this.showing.getScreenshotFile());
+         this.deleteBtn.active=!readOnly;this.renameBtn.active=!readOnly;
          int i = this.showing.indexInList();
          this.prevBtn.active = i > 0;
          this.nextBtn.active = i < this.imageList.size() - 1;
