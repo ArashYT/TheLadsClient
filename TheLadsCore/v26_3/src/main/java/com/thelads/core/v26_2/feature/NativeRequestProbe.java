@@ -24,6 +24,7 @@ public final class NativeRequestProbe {
                 require(pause.children().stream().noneMatch(c->c instanceof AbstractWidget w&&w.getMessage().getString().equals(Component.translatable(key).getString())),"pause removes "+key);passed++;
             }
             passed += NativeImprovementsProbe.run();
+            if(Boolean.getBoolean("thelads.verify133"))passed+=Version133Probe.run();
             passed+=swing();
             passed+=BorderlessProbe.run();
             Screen skin=new SkinCustomizationScreen(original,mc.options);mc.setScreenAndShow(skin);

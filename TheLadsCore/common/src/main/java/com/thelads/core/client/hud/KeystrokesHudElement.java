@@ -22,7 +22,7 @@ public class KeystrokesHudElement extends HudElement {
         showSpace = optBool("Show space bar", true);
         leftLabel = CpsTracker.get().leftCps() + " CPS";
         rightLabel = CpsTracker.get().rightCps() + " CPS";
-        cpsWidth = Math.max(31, Math.max(g.textWidth(leftLabel), g.textWidth(rightLabel)) + 4);
+        cpsWidth = Math.max(31, (int)Math.ceil(Math.max(g.textWidth(leftLabel), g.textWidth(rightLabel)) * .65) + 4);
         width = showCps ? Math.max(68, cpsWidth * 2 + 6) : 68;
         keyWidth = (width - 8) / 3;
         keyHeight = Math.max(18, g.fontHeight() + 6);
@@ -37,7 +37,7 @@ public class KeystrokesHudElement extends HudElement {
         preparedGraphics = null;
 
         int baseBg = resolveBackground();
-        int pressedBg = 0x80FFFFFF;
+        int pressedBg = com.thelads.core.config.HudSettings.getInstance().isBackgrounds() ? 0x80FFFFFF : 0;
         int color = resolveColor();
 
         // W key
@@ -58,15 +58,19 @@ public class KeystrokesHudElement extends HudElement {
             int sy = y + spaceY;
             boolean down = g.getGame().isKeyDown("Space");
             g.fill(x + 2, sy, x + width - 2, sy + 8, down ? pressedBg : baseBg);
-            g.fill(x + width / 2 - 10, sy + 4, x + width / 2 + 10, sy + 5, down ? 0xFF000000 : color);
+            g.fill(x + width / 2 - 10, sy + 4, x + width / 2 + 10, sy + 5, down && (pressedBg >>> 24) != 0 ? 0xFF000000 : color);
         }
     }
 
     private void drawMouseKey(LadsGraphics g, String name, String cps, int kx, int ky, int kw, int kh, boolean down, int bg, int pressedBg, int textCol) {
         g.fill(kx, ky, kx + kw, ky + kh, down ? pressedBg : bg);
-        int color = down ? 0xFF000000 : textCol;
+        int color = down && (pressedBg >>> 24) != 0 ? 0xFF000000 : textCol;
         g.drawCenteredText(name, kx + kw / 2, ky + 3, color);
-        g.drawCenteredText(cps, kx + kw / 2, ky + g.fontHeight() + 5, color);
+        g.pushPose();
+        g.translate(kx + kw / 2f, ky + g.fontHeight() + 5);
+        g.scale(.65f, .65f);
+        g.drawCenteredText(cps, 0, 0, color);
+        g.popPose();
     }
 
     private void drawKey(LadsGraphics g, String label, int kx, int ky, int kw, int kh, boolean down, int bg, int pressedBg, int textCol) {
@@ -74,6 +78,6 @@ public class KeystrokesHudElement extends HudElement {
         int tw = g.textWidth(label);
         int tx = kx + (kw - tw) / 2;
         int ty = ky + (kh - g.fontHeight()) / 2 + 1;
-        g.drawText(label, tx, ty, down ? 0xFF000000 : textCol);
+        g.drawText(label, tx, ty, down && (pressedBg >>> 24) != 0 ? 0xFF000000 : textCol);
     }
 }

@@ -13,8 +13,11 @@ public abstract class SkinScreenMixin extends OptionsSubScreen {
     protected SkinScreenMixin(Screen parent,Options options,Component title){super(parent,options,title);}
     @Override protected void init(){
         int left=Math.max(12,width/2-180),top=55,previewWidth=Math.min(150,width/3);
-        var preview=new PlayerSkinWidget(previewWidth,Math.max(80,height-100),minecraft.getEntityModels(),minecraft.getSkinManager().createLookup(minecraft.getGameProfile(),false));
+        com.thelads.core.v26_2.feature.LocalSkins.initialize();
+        var lookup=minecraft.getSkinManager().createLookup(minecraft.getGameProfile(),false);
+        var preview=new PlayerSkinWidget(previewWidth,Math.max(50,Math.min(height-150,(int)(previewWidth*1.6))),minecraft.getEntityModels(),()->com.thelads.core.v26_2.feature.LocalSkins.current()==null?lookup.get():com.thelads.core.v26_2.feature.LocalSkins.current());
         preview.setX(left);preview.setY(top);addRenderableWidget(preview);
+        addRenderableWidget(new LadsButton(left,height-60,previewWidth,20,Component.literal("Change skin"),b->minecraft.setScreenAndShow(new com.thelads.core.v26_2.gui.SkinChangerScreen(this))));
         int x=left+previewWidth+20,w=Math.max(90,Math.min(195,width-x-12));
         int row=0,step=Math.max(20,Math.min(27,(height-100)/8));
         for(var part:PlayerModelPart.values()){
@@ -27,6 +30,7 @@ public abstract class SkinScreenMixin extends OptionsSubScreen {
             options.mainHand().set(options.mainHand().get()==net.minecraft.world.entity.HumanoidArm.RIGHT?net.minecraft.world.entity.HumanoidArm.LEFT:net.minecraft.world.entity.HumanoidArm.RIGHT);
             button.setMessage(Component.literal("Main hand: "+options.mainHand().get().getSerializedName()));
         }));
+        addRenderableWidget(new LadsButton(left,height-85,previewWidth,20,Component.literal("3D layers: "+(com.thelads.core.v26_2.feature.PreviewSkinLayers.enabled()?"ON":"OFF")),b->{com.thelads.core.v26_2.feature.PreviewSkinLayers.toggle();b.setMessage(Component.literal("3D layers: "+(com.thelads.core.v26_2.feature.PreviewSkinLayers.enabled()?"ON":"OFF")));}));
         addRenderableWidget(new LadsButton(width/2-55,height-29,110,20,Component.literal("Done"),button->{options.save();onClose();}));
     }
     @Override public void extractBackground(GuiGraphicsExtractor g,int mx,int my,float delta){

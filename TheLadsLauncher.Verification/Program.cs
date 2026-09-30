@@ -223,7 +223,7 @@ var runStartUtc = DateTime.UtcNow;
 string logPath = Path.Combine(directory, "production-smoke.log");
 StreamWriter? log = null;
 var logGate = new object();
-bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false;
+bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false;
 bool menuCaptureRequested = false, hudCaptureRequested = false, windowFound = false, snapshotInvalid = false;
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
@@ -312,6 +312,11 @@ try
         Console.WriteLine("Native port QA: staged pack without replaced Paper Doll, AutoReconnect, TabTweaks, Screenshot Viewer and Clumps upstream jars. Production manifest preserved.");
     }
     await ClientModInstaller.InstallAsync(packSource, directory, version, Console.WriteLine, ct);
+    if (Env("LADS_VERIFY_V133") == "1")
+    {
+        string addon = Path.Combine(root,"TheLadsCore",version=="26.3"?"v26_3":"v26_2","build","verification","lads-jade-addon-qa.jar");
+        File.Copy(addon,Path.Combine(directory,"mods","lads-jade-addon-qa.jar"),true);
+    }
     foreach (string warning in await ModWelcomeSettings.PrepareAsync(directory, ct))
         throw new InvalidOperationException(warning);
     await File.WriteAllTextAsync(Path.Combine(directory, ".lads-qa-pack-source"), packSource, ct);
@@ -365,6 +370,8 @@ try
         AddJvm("-Dthelads.verifyIntegrationWrites=true");
     }
     if (renderScaleVerification) AddJvm("-Dthelads.verifyRenderScale=true");
+    if (Env("LADS_VERIFY_V133") == "1") AddJvm("-Dthelads.verify133=true");
+    if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
     if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
     AddJvm("-Dthelads.verifySharedContent=true");
     if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
@@ -391,6 +398,7 @@ try
             if (line.Contains($"TheLadsCore {version} initialized successfully")) initialized = true;
             if (line.Contains("Lads integration write probe END:") && Passed(line)) settingsProbePassed = true;
             if (failureMarkers.Any(line.Contains)) nativeProbeFailed = true;
+            if (line.Contains("Lads 1.3.3 probe END:") && Passed(line)) version133ProbePassed = true;
             foreach (string marker in requiredTitleProbes.Concat(requiredCore))
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in requiredWorldProbes)
@@ -488,6 +496,7 @@ try
         void Require(bool ok, string message) { if (!ok) failures.Add(message); }
         Require(windowFound, "No game window was observed. Inspect production-smoke.log.");
         Require(!exitedOnItsOwn || process.ExitCode == 0, "Game exited with an error.");
+        Require(Env("LADS_VERIFY_V133") != "1" || version133ProbePassed, "1.3.3 native/API probe did not finish.");
         Require(!nativeProbeFailed, "A runtime probe or Fabric reported a failure (see the FAILED lines). Inspect production-smoke.log.");
         if (expectCoreDisabled)
         {
@@ -557,6 +566,10 @@ finally
     // After Kill too: the parameterless wait drains the redirected output before the log closes (bounded first, in case Kill failed).
     if (process != null && HasStarted(process) && process.WaitForExit(60_000)) process.WaitForExit();
 }
+
+// This independent addon belongs only to the opt-in compatibility probe.
+if (Env("LADS_VERIFY_V133") == "1" && (process == null || !IsRunning(process)))
+    File.Delete(Path.Combine(directory,"mods","lads-jade-addon-qa.jar"));
 
 // Exit path: GameSession removes the running marker and reconciles the fallback server list, then signals here.
 if (process != null && HasStarted(process))

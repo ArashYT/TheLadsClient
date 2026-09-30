@@ -89,6 +89,7 @@ public class HudManager {
             boolean grouped = HudSettings.getInstance().getGroupMembers(element.getModuleName()) != null;
             measured.put(element, element.measureBounds(g, grouped));
         }
+        HudGroupLayout.matchDockedWidths(measured);
         var placed = new LinkedHashMap<HudElement, HudGroupLayout.Rect>();
         for (var entry : measured.entrySet()) {
             if (placed.containsKey(entry.getKey())) continue;

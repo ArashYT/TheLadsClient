@@ -96,7 +96,7 @@ public class ScoreboardHudElement extends HudElement {
         preparedSnapshot = null;
         if (!hasObjective(snapshot)) return;
         drawBackground(g);
-        boolean shadow = optBool("Text Shadow", false);
+        boolean shadow = com.thelads.core.config.HudSettings.getInstance().isTextShadow() && optBool("Text Shadow", true);
         boolean hideValues = optBool("Hide Red Numbers", false);
         boolean light = optCycle("Background", 0) == 2;
         int textColor = light ? 0xFF202020 : resolveColor();
@@ -116,6 +116,7 @@ public class ScoreboardHudElement extends HudElement {
 
     @Override
     protected int resolveBackground() {
+        if (!com.thelads.core.config.HudSettings.getInstance().isBackgrounds()) return 0;
         return switch (optCycle("Background", 0)) {
             case 1 -> 0xC0000000;
             case 2 -> 0xC0FFFFFF;

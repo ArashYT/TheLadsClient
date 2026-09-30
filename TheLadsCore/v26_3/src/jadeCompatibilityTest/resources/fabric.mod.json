@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "lads_jade_qa",
+  "version": "1.0.0",
+  "name": "Isolated Jade API verification",
+  "environment": "*",
+  "entrypoints": {
+    "jade": [
+      "qa.JadeAddon"
+    ]
+  },
+  "depends": {
+    "jade": ">=26.2.0"
+  }
+}

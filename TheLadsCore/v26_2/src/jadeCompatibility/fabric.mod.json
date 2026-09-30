@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "jade",
+  "version": "26.2.11+lads.1.3.3",
+  "name": "Jade API (Lads Core native source port)",
+  "environment": "*",
+  "license": "CC-BY-NC-SA-4.0",
+  "depends": {
+    "theladscore": ">=1.3.3"
+  },
+  "custom": {
+    "modmenu": {
+      "badges": [
+        "library"
+      ],
+      "parent": "theladscore"
+    }
+  },
+  "entrypoints": {
+    "client": [
+      "snownee.jade.util.ClientProxy"
+    ],
+    "main": [
+      "snownee.jade.util.CommonProxy"
+    ],
+    "jade": [
+      "snownee.jade.addon.core.CorePlugin",
+      "snownee.jade.addon.vanilla.VanillaPlugin",
+      "snownee.jade.addon.universal.UniversalPlugin",
+      "snownee.jade.addon.access.AccessibilityPlugin",
+      "snownee.jade.addon.debug.DebugPlugin"
+    ],
+    "modmenu": [
+      "snownee.jade.compat.ModMenuCompat"
+    ],
+    "jei_mod_plugin": [
+      "snownee.jade.compat.JEICompat"
+    ]
+  }
+}

@@ -10,13 +10,13 @@ public interface LadsGraphics {
     void drawText(String text, int x, int y, int color, boolean shadow);
 
     default void drawText(String text, int x, int y, int color) {
-        drawText(text, x, y, color, false);
+        drawText(text, x, y, color, com.thelads.core.config.HudSettings.getInstance().isTextShadow());
     }
 
     void drawCenteredText(String text, int centerX, int y, int color, boolean shadow);
 
     default void drawCenteredText(String text, int centerX, int y, int color) {
-        drawCenteredText(text, centerX, y, color, false);
+        drawCenteredText(text, centerX, y, color, com.thelads.core.config.HudSettings.getInstance().isTextShadow());
     }
 
     int textWidth(String text);
@@ -39,6 +39,11 @@ public interface LadsGraphics {
     void disableScissor();
 
     void blit(String texture, int x, int y, int u, int v, int width, int height);
+
+    default void drawModIcon(String id, int x, int y, int size) {
+        fill(x, y, x + size, y + size, 0xFF532131);
+        drawCenteredText(id.isEmpty() ? "?" : id.substring(0, 1).toUpperCase(java.util.Locale.ROOT), x + size / 2, y + (size - fontHeight()) / 2, -1);
+    }
 
     void drawHead(String username, String uuid, int x, int y, int size);
 

@@ -83,7 +83,7 @@ class HudGroupingTest {
     @Test void toolbarCyclesBothVerticalSidesAndCanCollapseAndRestore(){
         render();action("toolbar");assertTrue(editor.controls().stream().allMatch(c->c.bounds().x()<graphics.width/2));
         action("toolbar");assertTrue(editor.controls().stream().allMatch(c->c.bounds().x()>graphics.width/2));
-        action("collapse");assertEquals(1,editor.controls().size());var button=editor.controls().getFirst().bounds();assertEquals(graphics.width/2,button.x()+button.width()/2);
+        action("collapse");assertEquals(1,editor.controls().size());var button=editor.controls().getFirst().bounds();assertEquals(graphics.width,button.right(),"Collapsed tab remains on the selected right edge");
         action("collapse");assertTrue(editor.controls().size()>1);
     }
 

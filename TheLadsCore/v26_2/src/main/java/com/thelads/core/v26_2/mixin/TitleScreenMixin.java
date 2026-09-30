@@ -100,6 +100,7 @@ public abstract class TitleScreenMixin extends Screen {
             if (!main) {
                 if (!ladsExtraWidgets.contains(widget)) ladsExtraWidgets.add(widget);
                 ladsTitleWidgets.remove(widget);
+                if(widget.getClass().getName().startsWith("gg.essential."))widget.visible=false;
                 removeWidget(widget);
             }
         }
@@ -181,6 +182,7 @@ public abstract class TitleScreenMixin extends Screen {
         at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsRenderTitle(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (!ladsCustomTitle) return;
+        com.thelads.core.v26_2.gui.EssentialActions.suppressOverlay(this);
         ladsEnsureTitleLayout();
         long now = System.nanoTime();
         float elapsed = ladsLastFrameNanos == 0 ? 0 : (float) Math.clamp((now - ladsLastFrameNanos) / 1.0e9, 0.0, 0.1);

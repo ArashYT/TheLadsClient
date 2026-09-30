@@ -19,8 +19,8 @@ public class OwnNametagMixin {
         Entity camera = minecraft.getCameraEntity();
         if (entity == minecraft.player && camera == minecraft.player
             && !minecraft.options.getCameraType().isFirstPerson()
-            && NativeQualityOfLife.enabled("ToggleNametags")
-            && NativeQualityOfLife.bool("ToggleNametags", "Show Own Nametag in Third Person", false))
+            && NativeQualityOfLife.enabled("Nametags")
+            && NativeQualityOfLife.bool("Nametags", "Show Own Nametag in Third Person", false))
             return null;
         return camera;
     }

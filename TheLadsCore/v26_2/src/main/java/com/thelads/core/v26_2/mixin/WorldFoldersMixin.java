@@ -18,7 +18,7 @@ public abstract class WorldFoldersMixin extends Screen {
     @Inject(method="init",at=@At("TAIL"),require=1)
     private void ladsFolders(CallbackInfo ci){
         layout.setHeaderHeight(94);
-        ladsFolders=addRenderableWidget(Button.builder(Component.literal("World folders: Global / Version / Instances"),
+        ladsFolders=addRenderableWidget(Button.builder(Component.literal("World folders: Global / This Instance / Other Instance"),
             b->minecraft.setScreenAndShow(new WorldSourcesScreen(lastScreen))).bounds(width/2-155,67,310,20).build());
         repositionElements();
     }

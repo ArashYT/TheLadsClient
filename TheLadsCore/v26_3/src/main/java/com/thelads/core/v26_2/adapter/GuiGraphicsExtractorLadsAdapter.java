@@ -33,6 +33,8 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         return g;
     }
 
+    @Override public void drawModIcon(String id,int x,int y,int size){if(!com.thelads.core.v26_2.gui.ModIcons.draw(g,id,x,y,size))LadsGraphics.super.drawModIcon(id,x,y,size);}
+
     @Override public void drawBossBars(int x,int y,int max,boolean names,boolean preview) {
         var overlay=(com.thelads.core.v26_2.mixin.BossBarAccessor)Minecraft.getInstance().gui.hud.getBossOverlay();
         var events=new java.util.ArrayList<net.minecraft.world.BossEvent>(overlay.ladsEvents().values());

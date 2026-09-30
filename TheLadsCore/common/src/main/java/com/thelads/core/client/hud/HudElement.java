@@ -11,6 +11,7 @@ public abstract class HudElement {
     protected int y = 10;
     protected int width = 50;
     protected int height = 15;
+    private int naturalWidth = -1;
     protected boolean enabled = true;
     protected String moduleName = null;
     private int defaultX;
@@ -34,6 +35,7 @@ public abstract class HudElement {
     /** Current-frame geometry in GUI coordinates, before viewport or rigid-group clamping. */
     public final HudGroupLayout.Rect measureBounds(LadsGraphics g, boolean editor) {
         restoreSavedPosition();
+        if(naturalWidth>=0){width=naturalWidth;naturalWidth=-1;}
         prepareRender(g, editor);
         int dx=getDisplayX(g),dy=getDisplayY(g);
         if (organizedDefaults && !editingPosition && HudSettings.getInstance().getPosition(moduleName)==null) {
@@ -94,6 +96,7 @@ public abstract class HudElement {
     }
 
     protected int resolveBackground() {
+        if (!HudSettings.getInstance().isBackgrounds()) return 0;
         int c = HudSettings.getInstance().getGlobalBackground();
         if (moduleName != null) {
             Module m = ModuleManager.getInstance().getModule(moduleName);
@@ -122,6 +125,8 @@ public abstract class HudElement {
         }
         return SCALES[idx];
     }
+
+    public void matchLayoutWidth(int pixels) { if(naturalWidth<0)naturalWidth=width; width = Math.max(width, (int)Math.ceil(pixels / getScale())); }
 
     public int getRenderWidth() { return Math.max(1, (int) Math.ceil(width * (double) getScale())); }
     public int getRenderHeight() { return Math.max(1, (int) Math.ceil(height * (double) getScale())); }

@@ -10,6 +10,11 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(AbstractWidget.class)
 public abstract class TitleWidgetMixin {
+    @org.spongepowered.asm.mixin.injection.Inject(method="extractRenderState",at=@At("HEAD"),require=1)
+    private void ladsAdvanceScroll(GuiGraphicsExtractor g,int mx,int my,float dt,org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci){
+        if((Object)this instanceof com.thelads.core.v26_2.gui.SmoothScrollTarget target)target.ladsAdvanceScroll();
+    }
+
     @Shadow protected abstract void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick);
     @Shadow protected abstract void handleCursor(GuiGraphicsExtractor graphics);
 

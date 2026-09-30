@@ -130,6 +130,20 @@ public final class TitleScreenTheme {
         g.drawText(build, w - 18 - g.textWidth(build), h - 21, MUTED);
     }
 
+    public static void renderButtonSurface(LadsGraphics g,int x,int y,int width,int height,boolean hovered,boolean focused,boolean active,float opacity) {
+        int a=Math.round(Math.max(0,Math.min(1,opacity))*255);
+        if(focused&&active)roundRect(g,x-1,y-1,width+2,height+2,5,(ACCENT&0xFFFFFF)|a<<24);
+        roundRect(g,x,y+2,width,height,5,(a/3)<<24);
+        roundRect(g,x,y,width,height,5,((active?(hovered?LadsPalette.HOVER:LadsPalette.CARD):LadsPalette.PANEL)&0xFFFFFF)|a<<24);
+        if(width>10)g.fill(x+5,y,x+width-5,y+1,(0x00FF6666)|((hovered?a/2:a/6)<<24));
+    }
+    public static void renderLogo(LadsGraphics g,int centerX,int top,int height) {
+        float scale=Math.max(.5f,height/42f);
+        g.pushPose();g.translate(centerX,top);g.scale(scale,scale);
+        g.drawCenteredText("THE",0,0,LadsPalette.TEXT);
+        g.pushPose();g.translate(0,10);g.scale(2,2);g.drawCenteredText("LADS",0,0,LadsPalette.TEXT);g.popPose();
+        g.drawCenteredText("C L I E N T",0,32,LadsPalette.ACCENT);g.popPose();
+    }
     public static void renderButton(LadsGraphics g, int x, int y, int width, int height,
                                      String label, String icon, boolean primary, boolean hovered,
                                      boolean focused, boolean active, float hoverProgress) {

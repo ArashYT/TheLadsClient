@@ -279,6 +279,6 @@ public class M3ChallengerTest {
         Path v26TitleMixin = root.resolve("v26_2/src/main/java/com/thelads/core/v26_2/mixin/TitleScreenMixin.java");
 
         assertTrue(Files.readString(v121TitleMixin).contains("require = 0"), "v1_21_1 TitleScreenMixin must specify require = 0");
-        assertTrue(Files.readString(v26TitleMixin).contains("require = 0"), "v26_2 TitleScreenMixin must specify require = 0");
+        assertTrue(Files.readString(v26TitleMixin).contains("require = 1"), "26.x title replacement must fail visibly if its required hook no longer matches");
     }
 }

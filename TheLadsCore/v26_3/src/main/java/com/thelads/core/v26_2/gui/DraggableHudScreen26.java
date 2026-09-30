@@ -76,5 +76,7 @@ public class DraggableHudScreen26 extends Screen {
         Minecraft.getInstance().setScreenAndShow(parent);
     }
 
+    @Override public boolean charTyped(net.minecraft.client.input.CharacterEvent event){return ui.charTyped(event.codepoint())||super.charTyped(event);}
+
     @Override public void removed() { ui.close(); super.removed(); }
 }

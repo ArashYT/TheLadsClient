@@ -72,6 +72,15 @@
     "ClientToolsChatMixin",
     "ClientToolsAttackMixin",
     "ParticleBudgetMixin",
-    "FontMetricsMixin"
+    "FontMetricsMixin",
+    "SmoothScrollMixin",
+    "GlobalButtonMixin",
+    "SkinTextureAccessor",
+    "LocalSkinMixin",
+    "ModelPartAccessor",
+    "AutohideElementsMixin",
+    "AutohideTextMixin",
+    "AutohideItemMixin",
+    "AutohideItemRenderMixin"
   ]
 }

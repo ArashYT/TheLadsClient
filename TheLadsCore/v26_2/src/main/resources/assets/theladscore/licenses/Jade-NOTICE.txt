@@ -1,0 +1,6 @@
+Jade by Snownee, TehNut, ProfMobius and contributors.
+Source: https://github.com/Snownee/Jade/tree/747effeddcea3094b940772c7963c272bb2a07df
+License: CC-BY-NC-SA-4.0. Adapted Jade sources remain under the same license.
+Lads 1.3.3 source integration: compiled into Core; Core-owned enable/disable control; metadata-only API identity.
+Public snownee.jade API, plugin discovery, data providers, packet identifiers and protocol retained.
+Complete adapted Java sources are included under META-INF/lads-sources/jade.

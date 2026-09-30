@@ -27,7 +27,7 @@ dependencies {
     // Retained MIT configuration libraries, extracted unchanged from the pinned 26.2 gallery.
     implementation files('../v26_2/libs/catconfig-mc-26.2-0.2.1.jar', '../v26_2/libs/catconfig-0.3.0.jar')
     implementation('ca.weblite:java-objc-bridge:1.0.0') { transitive = false }
-    include 'ca.weblite:java-objc-bridge:1.0.0' 
+    include 'ca.weblite:java-objc-bridge:1.0.0'
     // Editor API only; the pinned pack supplies Cloth Config as a retained library.
     compileOnly('me.shedaniel.cloth:cloth-config:26.3.158') { transitive = false }
     // Common classes are merged below. Bundle the Discord binding and its native runtime;
@@ -101,3 +101,64 @@ jar {
     archiveClassifier = "mc26.3"
     from(project(':common').sourceSets.main.output)
 }
+
+// Jade is source-integrated. Public API and addon registries deliberately retain their package names.
+repositories {
+    maven { url 'https://maven.blamejared.com/' }
+    maven { url 'https://maven.shedaniel.me/' }
+}
+dependencies {
+    compileOnly 'mezz.jei:jei-26.2-common-api:30.0.0.3'
+    compileOnly 'teamreborn:energy:5.0.0'
+    compileOnly 'me.shedaniel:RoughlyEnoughItems-fabric:26.2.820'
+}
+tasks.register('jadeCompatibilityIdentity', Jar) {
+    archiveFileName = 'lads-jade-api-identity.jar'
+    destinationDirectory = layout.buildDirectory.dir('jade-compatibility')
+    from 'src/jadeCompatibility'
+}
+processResources {
+    dependsOn tasks.named('jadeCompatibilityIdentity')
+    from(tasks.named('jadeCompatibilityIdentity').flatMap { it.archiveFile }) { into 'META-INF/jars' }
+    from('src/main/java/snownee/jade') { into 'META-INF/lads-sources/jade/snownee/jade' }
+}
+jar {
+    exclude 'snownee/jade/test/**', 'com/terraformersmc/**', 'dummy/**', 'cc/cassian/**', 'me/shedaniel/rei/**'
+}
+
+// Built only on explicit request and never shipped inside the production Core artifact.
+sourceSets {
+    jadeCompatibilityTest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+tasks.register('jadeAddonProbeJar', Jar) {
+    dependsOn tasks.named('jadeCompatibilityTestClasses')
+    archiveFileName = 'lads-jade-addon-qa.jar'
+    destinationDirectory = layout.buildDirectory.dir('verification')
+    from sourceSets.jadeCompatibilityTest.output
+}
+
+// Optional-mod compile stubs must never shadow a user's real addon classes.
+tasks.register('verifyJadePackaging') {
+    dependsOn tasks.named('jar')
+    doLast {
+        def archive = new java.util.zip.ZipFile(tasks.named('jar').get().archiveFile.get().asFile)
+        try {
+            def entries = archive.entries().collect { it.name }
+            ['snownee/jade/Jade.class', 'snownee/jade/api/IWailaPlugin.class', 'META-INF/jars/lads-jade-api-identity.jar'].each {
+                if (!entries.contains(it)) throw new GradleException("Missing native Jade artifact: " + it)
+            }
+            def forbidden = ['com/terraformersmc/', 'cc/cassian/', 'me/shedaniel/rei/', 'dummy/', 'qa/', 'snownee/jade/test/']
+            if (entries.any { entry -> entry.endsWith('.class') && forbidden.any { entry.startsWith(it) } })
+                throw new GradleException('A compile-only stub or QA addon leaked into the production Core jar')
+            def identity = new java.util.zip.ZipInputStream(archive.getInputStream(archive.getEntry('META-INF/jars/lads-jade-api-identity.jar')))
+            try {
+                for (def entry = identity.nextEntry; entry != null; entry = identity.nextEntry)
+                    if (entry.name.endsWith('.class')) throw new GradleException('Jade identity must contain metadata only; implementation belongs in Core')
+            } finally { identity.close() }
+        } finally { archive.close() }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('verifyJadePackaging') }

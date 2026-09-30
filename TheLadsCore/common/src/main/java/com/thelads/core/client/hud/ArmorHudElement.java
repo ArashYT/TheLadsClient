@@ -70,10 +70,10 @@ public class ArmorHudElement extends HudElement {
         cachedMode = mode;
         cachedPreview = preview;
         List<String> lines = new ArrayList<>();
-        
+
         for (ArmorPiece piece : armor) {
             if (piece == null || piece.name() == null || piece.name().isBlank()) continue;
-            String line = piece.name();
+            String line = piece.name() + (preview ? " (sample)" : "");
             if (mode != 0 && piece.maximum() > 0 && piece.remaining() >= 0) {
                 int remaining = Math.min(piece.remaining(), piece.maximum());
                 line += mode == 2 ? " " + (remaining * 100L / piece.maximum()) + "%"

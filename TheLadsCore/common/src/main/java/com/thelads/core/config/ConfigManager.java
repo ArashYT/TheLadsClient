@@ -66,6 +66,10 @@ public class ConfigManager {
         hud.addProperty("globalColor", HudSettings.getInstance().getGlobalColor());
         hud.addProperty("globalBackground", HudSettings.getInstance().getGlobalBackground());
         hud.addProperty("textShadow", HudSettings.getInstance().isTextShadow());
+        hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
+        JsonArray favorites = new JsonArray();
+        HudSettings.getInstance().getFavoriteColors().forEach(favorites::add);
+        hud.add("favoriteColors", favorites);
         JsonObject positions = new JsonObject();
         for (Map.Entry<String, int[]> e : HudSettings.getInstance().getPositions().entrySet()) {
             JsonArray xy = new JsonArray();
@@ -105,6 +109,8 @@ public class ConfigManager {
             JsonObject modulesJson = json.getAsJsonObject("modules");
             for (Module module : ModuleManager.getInstance().getModules()) {
                 try {
+                    if (module.getName().equals("Nametags") && !modulesJson.has("Nametags") && modulesJson.has("ToggleNametags"))
+                        modulesJson.add("Nametags", modulesJson.get("ToggleNametags"));
                     if (!modulesJson.has(module.getName())) {
                         continue;
                     }
@@ -151,6 +157,14 @@ public class ConfigManager {
             }
             if (hud.has("textShadow")) {
                 HudSettings.getInstance().setTextShadow(hud.get("textShadow").getAsBoolean());
+            }
+            if (hud.has("backgrounds")) HudSettings.getInstance().setBackgrounds(hud.get("backgrounds").getAsBoolean());
+            if (hud.has("favoriteColors")) {
+                var favorites = HudSettings.getInstance().getFavoriteColors(); favorites.clear();
+                for (var color : hud.getAsJsonArray("favoriteColors")) {
+                    if (favorites.size() >= 24) break;
+                    try { favorites.add(color.getAsInt()); } catch (RuntimeException ignored) {}
+                }
             }
             if (hud.has("positions")) {
                 JsonObject pos = hud.getAsJsonObject("positions");
