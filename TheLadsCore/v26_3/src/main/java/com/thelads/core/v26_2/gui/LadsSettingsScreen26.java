@@ -35,6 +35,8 @@ public class LadsSettingsScreen26 extends Screen {
         this.ui.setOnOpenModSettings(modId -> ExternalModSettings.open(modId, this));
     }
 
+    public void openGlobalColors(){ui.openGlobalColors();}
+    public void openDisplayActions(){ui.openDisplayActions();}
     public void openModule(String name) { ui.openModule(name); }
     /** Opens the Installed mods view (also used by the QA capture chain). */
     public void openMods() { ui.openMods(); }

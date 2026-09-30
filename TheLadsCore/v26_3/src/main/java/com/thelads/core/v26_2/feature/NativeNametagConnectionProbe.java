@@ -20,7 +20,7 @@ final class NativeNametagConnectionProbe {
 
     static int run() throws ReflectiveOperationException {
         Minecraft minecraft = Minecraft.getInstance();
-        Module tags = NativeQualityOfLife.module("ToggleNametags");
+        Module tags = NativeQualityOfLife.module("Nametags");
         Module signal = NativeQualityOfLife.module("SignalLoss");
         BoolOption own = (BoolOption) tags.getOption("Show Own Nametag in Third Person");
         BoolOption background = (BoolOption) tags.getOption("Render Background");

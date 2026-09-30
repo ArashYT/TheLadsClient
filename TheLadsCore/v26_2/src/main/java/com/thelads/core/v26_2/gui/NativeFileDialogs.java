@@ -1,0 +1,20 @@
+package com.thelads.core.v26_2.gui;
+import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.lwjgl.util.tinyfd.TinyFileDialogs;
+/** TinyFD uses Windows Explorer dialogs on Windows. No render-thread blocking. */
+public final class NativeFileDialogs {
+    private static final AtomicBoolean OPEN=new AtomicBoolean();
+    private NativeFileDialogs(){}
+    public static CompletableFuture<Path> choose(boolean folder){
+        if(!OPEN.compareAndSet(false,true))return CompletableFuture.failedFuture(new IllegalStateException("A file dialog is already open"));
+        return CompletableFuture.supplyAsync(()->{
+            try{
+                String selected=folder?TinyFileDialogs.tinyfd_selectFolderDialog("Add world save folder",null)
+                    :TinyFileDialogs.tinyfd_openFileDialog("Add skin PNG",null,(org.lwjgl.PointerBuffer)null,"PNG skin",false);
+                return selected==null?null:Path.of(selected);
+            }finally{OPEN.set(false);}
+        });
+    }
+}

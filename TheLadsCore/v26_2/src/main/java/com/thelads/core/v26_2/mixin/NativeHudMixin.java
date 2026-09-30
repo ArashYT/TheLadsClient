@@ -37,12 +37,14 @@ public class NativeHudMixin {
 
     @Inject(method = "extractHotbarAndDecorations", at = @At("HEAD"), require = 1)
     private void lads$raise(GuiGraphicsExtractor graphics, DeltaTracker delta, CallbackInfo callback) {
+        com.thelads.core.v26_2.feature.NativeAutohide.scopeOpacity=com.thelads.core.v26_2.feature.NativeAutohide.update();
         graphics.pose().pushMatrix();
         graphics.pose().translate(0, -NativeQualityOfLife.raisedDistance());
     }
 
     @Inject(method = "extractHotbarAndDecorations", at = @At("RETURN"), require = 1)
     private void lads$restore(GuiGraphicsExtractor graphics, DeltaTracker delta, CallbackInfo callback) {
+        com.thelads.core.v26_2.feature.NativeAutohide.scopeOpacity=1;
         graphics.pose().popMatrix();
     }
 }

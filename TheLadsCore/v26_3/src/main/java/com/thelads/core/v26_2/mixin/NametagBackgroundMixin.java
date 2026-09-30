@@ -8,6 +8,6 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 public class NametagBackgroundMixin {
     @ModifyArg(method = "submitNameTag", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/SubmitNodeCollection;nameTag(Lorg/joml/Matrix4f;FFLnet/minecraft/util/FormattedCharSequence;IIILnet/minecraft/client/gui/Font$DisplayMode;)Lnet/minecraft/client/renderer/feature/TextFeatureRenderer$Submit;"), index = 6, require = 1)
     private int lads$background(int vanillaColor) {
-        return NativeQualityOfLife.enabled("ToggleNametags") && !NativeQualityOfLife.bool("ToggleNametags", "Render Background", true) ? 0 : vanillaColor;
+        return NativeQualityOfLife.enabled("Nametags") && !NativeQualityOfLife.bool("Nametags", "Render Background", true) ? 0 : vanillaColor;
     }
 }

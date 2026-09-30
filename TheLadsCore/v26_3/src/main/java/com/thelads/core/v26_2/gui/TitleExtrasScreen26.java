@@ -14,12 +14,17 @@ public final class TitleExtrasScreen26 extends Screen {
     private final Screen parent;
     private final List<AbstractWidget> actions;
     private int page;
+    private final java.util.Map<AbstractWidget,EssentialActions.Action> essential=new java.util.IdentityHashMap<>();
     private long previousFrame;
 
     public TitleExtrasScreen26(Screen parent, List<AbstractWidget> actions) {
         super(Component.literal("More"));
         this.parent = parent;
-        this.actions = List.copyOf(actions);
+        var essentialLabels=new java.util.HashSet<String>();
+        this.actions = actions.stream().filter(widget->{
+            if(!widget.getClass().getName().startsWith("gg.essential."))return true;
+            var action=EssentialActions.capture(parent,widget);if(action==null||!essentialLabels.add(action.label()))return false;essential.put(widget,action);return true;
+        }).toList();
     }
 
     @Override protected void init() {
@@ -32,7 +37,15 @@ public final class TitleExtrasScreen26 extends Screen {
         int cellWidth = (totalWidth - (columns - 1) * 10) / columns;
         int startX = (width - totalWidth) / 2;
         for (int i = page * count; i < Math.min(actions.size(), (page + 1) * count); i++) {
-            AbstractWidget widget = actions.get(i);
+            AbstractWidget original = actions.get(i);
+            AbstractWidget widget = original;
+            var action=essential.get(original);
+            if(action!=null){widget=Button.builder(Component.literal(action.label()),b->action.press().run()).bounds(0,0,1,1).build();widget.active=action.active();}
+            if(action==null && original instanceof Button button){
+                String label=original.getMessage().getString();
+                if(label.isBlank())label="Extra settings";
+                widget=Button.builder(Component.literal(label),b->button.onPress(null)).bounds(0,0,1,1).build();widget.active=original.active;
+            }
             int slot = i - page * count;
             widget.setX(startX + slot % columns * (cellWidth + 10));
             widget.setY(60 + slot / columns * 34);

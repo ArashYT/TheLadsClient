@@ -17,9 +17,12 @@ public final class NativeQualityOfLife {
     private NativeQualityOfLife() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn("LegacySwing", "BossBar", "DisableNarrator", "HideChatIndicators", "Crosshair Tweaks",
+        ModuleSupport.registerBuiltIn("Autohide", "Jade", "LegacySwing", "BossBar", "DisableNarrator", "HideChatIndicators", "Crosshair Tweaks",
             "SmoothHotbar", "Raised", "OldDamageTilt", "EnhancedToolbars", "EnhancedTooltips",
-            "ToggleNametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", "ShulkerBoxUtils", "DiscordRPC", "RenderScale");
+            "Nametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", "ShulkerBoxUtils", "DiscordRPC", "RenderScale");
+        ((com.thelads.core.config.ActionOption)module("Jade").getOption("Settings and addons")).setAction(()->{
+            var mc=Minecraft.getInstance();mc.setScreenAndShow(new snownee.jade.gui.HomeConfigScreen(mc.gui.screen()));
+        });
         NativeClientTools.register();
         NativeDiscordPresence.register();
         NativeConnectionStatus.register();

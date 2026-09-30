@@ -6,5 +6,6 @@ public class SkinLayersModule extends Module {
     public SkinLayersModule() {
         super("SkinLayers", "Provides basic 3D extrusion of the player's outer skin layer.");
         setEnabled(true);
+        addOption(new com.thelads.core.config.BoolOption("3D Preview",true));
     }
 }

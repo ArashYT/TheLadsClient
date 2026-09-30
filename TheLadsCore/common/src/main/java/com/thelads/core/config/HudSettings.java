@@ -24,6 +24,11 @@ public class HudSettings {
     private int globalColor = 0xFFFFFFFF;      // ARGB, opaque white
     private int globalBackground = 0x80000000; // ARGB, 50% black
     private boolean textShadow = true;
+    private boolean backgrounds = true;
+    private final List<Integer> favoriteColors = new ArrayList<>();
+    public boolean isBackgrounds() { return backgrounds; }
+    public void setBackgrounds(boolean value) { backgrounds = value; }
+    public List<Integer> getFavoriteColors() { return favoriteColors; }
     private final Map<String, int[]> positions = new HashMap<>();
     private final List<Integer> fadePlaylist = new ArrayList<>();
     private final Set<String> locked = new HashSet<>();          // locked element names

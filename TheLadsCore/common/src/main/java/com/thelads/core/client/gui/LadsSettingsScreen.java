@@ -30,6 +30,10 @@ public final class LadsSettingsScreen {
     private long previousFrameNanos;
     private float frameBlend = 1;
     private boolean reducedMotion;
+    private final ColorPicker colorPicker = new ColorPicker();
+    private final ActionDropdown actions = new ActionDropdown();
+    private double displayedScroll;
+    private int renderScroll;
     private List<Module> filtered = List.of();
     private Module detail;
     private Option editingOption, dragging;
@@ -80,9 +84,9 @@ public final class LadsSettingsScreen {
     }
     public void refreshCatalog() { filterDirty = true; refreshCapabilities(); }
     public void setClipboardReader(Supplier<String> reader) { clipboardReader = reader; }
-    public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; }
+    public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; }
     public String getSearchQuery() { return searchQuery; }
-    public boolean isEditingText() { return editingSearch || editingOption != null; }
+    public boolean isEditingText() { return editingSearch || editingOption != null || actions.isOpen() || colorPicker.isOpen(); }
     public String getCurrentCategory() { return currentCategory; }
     public String getCurrentTab() { return "MODS"; }
     public List<Rect> getControlBounds() { return controls.stream().map(Control::rect).toList(); }
@@ -95,6 +99,9 @@ public final class LadsSettingsScreen {
         double elapsed = previousFrameNanos == 0 ? 0 : Math.min(.1, (now - previousFrameNanos) / 1e9);
         previousFrameNanos = now;
         frameBlend = reducedMotion ? 1 : (float)(1 - Math.exp(-elapsed * 18));
+        displayedScroll += (scrollOffset - displayedScroll) * frameBlend;
+        if (Math.abs(scrollOffset - displayedScroll) < .2) displayedScroll = scrollOffset;
+        renderScroll = (int)Math.round(displayedScroll);
         if (hoverStates.size() > 1024) hoverStates.clear();
         width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear();
         g.fill(0, 0, width, height, BG);
@@ -102,6 +109,7 @@ public final class LadsSettingsScreen {
         g.fill(0, 0, width, 2, ACCENT);
         g.drawText("THE LADS", pad, 15, ACCENT);
         if (width >= 400) g.drawText(modsView ? "INSTALLED MODS" : detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", pad + 68, 15, MUTED);
+        button(g, "global-colors", "Colors", new Rect(width - pad - 110, 8, 52, 23), colorPicker::openGlobal, true, mouseX, mouseY, false);
         button(g, "close", "Done", new Rect(width - pad - 52, 8, 52, 23), this::close, true, mouseX, mouseY, false);
         int x = side == 0 ? pad : side + 16, w = width - x - pad;
         if (side > 0) {
@@ -119,6 +127,8 @@ public final class LadsSettingsScreen {
         else if (detail == null) renderCatalog(g, x, w, side == 0, mouseX, mouseY);
         else renderDetails(g, x, w, mouseX, mouseY);
         g.drawText(fit(g, notice.isEmpty() ? "Ctrl+F search / Tab navigate / Esc back" : notice, w), x, height - 15, MUTED);
+        colorPicker.render(g, mouseX, mouseY);
+        actions.render(g, mouseX, mouseY);
     }
     private void renderCatalog(LadsGraphics g, int x, int w, boolean compact, int mx, int my) {
         boolean dense = height < 230;
@@ -154,7 +164,7 @@ public final class LadsSettingsScreen {
         g.enableScissor(x, top, x + w, top + viewport.height);
         for (int i = 0; i < modules.size(); i++) {
             Module m = modules.get(i);
-            int cx = x + (i % cols) * (cardW + gap), cy = top + (i / cols) * (cardH + gap) - scrollOffset;
+            int cx = x + (i % cols) * (cardW + gap), cy = top + (i / cols) * (cardH + gap) - renderScroll;
             if (cy + cardH <= top || cy >= top + viewport.height) continue;
             var status = ModuleSupport.get(m.getName());
             boolean cardHovered = new Rect(cx, cy, cardW, cardH).contains(mx, my) && viewport.contains(mx, my);
@@ -187,6 +197,11 @@ public final class LadsSettingsScreen {
         button(g, "toggle:detail", detail.getName().equals("DiscordRPC") ? "Soon" : detail.isEnabled() ? "ON" : "OFF", new Rect(x + w - 52, stateY, 52, 22),
             () -> { detail.toggle(); changed(detail); }, !detail.getName().equals("DiscordRPC"), mx, my, detail.isEnabled());
         int top = stateY + 30;
+        if(detail.getOptions().stream().anyMatch(o -> o instanceof PlayerActionOption)) {
+            button(g,"display-actions","Display actions...",new Rect(x,top,w,25),
+                () -> actions.open(detail.getOptions().stream().filter(o -> o instanceof PlayerActionOption).map(o -> (PlayerActionOption)o).toList(), () -> changed(detail)),true,mx,my,false);
+            top += 32;
+        }
         viewport = new Rect(x, top, w, Math.max(20, height - top - 28));
         int rowH = 43;
         List<Option> options = activeOptions();
@@ -194,11 +209,11 @@ public final class LadsSettingsScreen {
         scrollOffset = Math.min(scrollOffset, maxScroll);
         g.enableScissor(x, top, x + w, top + viewport.height);
         for (int i = 0; i < options.size(); i++) {
-            int y = top + i * rowH - scrollOffset;
+            int y = top + i * rowH - renderScroll;
             if (y + rowH <= top || y >= top + viewport.height) continue;
             optionRow(g, options.get(i), x, y, w - 8, mx, my);
         }
-        int resetY = top + options.size() * rowH - scrollOffset;
+        int resetY = top + options.size() * rowH - renderScroll;
         if (resetY < top + viewport.height && resetY + 24 > top)
             button(g, "reset", "Reset options", new Rect(x, resetY + 4, Math.min(140, w - 8), 24),
                 () -> { detail.getOptions().forEach(Option::reset); changed(detail); notice = "Options reset"; }, true, mx, my, false);
@@ -219,7 +234,7 @@ public final class LadsSettingsScreen {
         for (int i = 0; i < filters.length; i++) {
             var filter = filters[i];
             button(g, "mods-filter:" + filter.name(), filter.label(), new Rect(x + i % perRow * (cell + 4), top + i / perRow * 22, cell, 18),
-                () -> { modsFilter = filter; scrollOffset = 0; }, true, mx, my, filter == modsFilter);
+                () -> { modsFilter = filter; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; }, true, mx, my, filter == modsFilter);
         }
         top += (filters.length + perRow - 1) / perRow * 22 + 2;
         if (!dense) { g.drawText(fit(g, modsCounts, w), x, top, MUTED); top += 12; }
@@ -234,7 +249,7 @@ public final class LadsSettingsScreen {
         maxScroll = Math.max(0, total - gap - viewport.height);
         scrollOffset = Math.min(scrollOffset, maxScroll);
         g.enableScissor(x, top, x + w, top + viewport.height);
-        int y = top - scrollOffset;
+        int y = top - renderScroll;
         for (ModLine line : lines) {
             int h = modRowHeight(line.row());
             if (y + h > top && y < top + viewport.height) modRow(g, line, x, y, w - 8, h, mx, my);
@@ -262,14 +277,15 @@ public final class LadsSettingsScreen {
     private static int modRowHeight(ModInventoryModel.Row row) { return modExtraLine(row) == null ? 34 : 45; }
     private void modRow(LadsGraphics g, ModLine line, int x, int y, int w, int h, int mx, int my) {
         var row = line.row();
-        int rx = x + line.depth() * 14, rw = w - line.depth() * 14, textX = rx + 8, right = rx + rw - 6;
+        int rx = x + line.depth() * 14, rw = w - line.depth() * 14, textX = rx + 38, right = rx + rw - 6;
         round(g, rx, y, rw, h, line.depth() == 0 ? CARD : PANEL);
         if (!row.children().isEmpty()) {
             boolean open = modExpanded(row);
             button(g, "mods:expand:" + row.key(), open ? "-" : "+", new Rect(rx + 5, y + 5, 16, 16),
                 () -> { if (!modsToggled.remove(row.key())) modsToggled.add(row.key()); }, true, mx, my, open);
-            textX = rx + 26;
+            textX = rx + 54;
         }
+        g.drawModIcon(row.nativeModule() ? "theladscore" : row.id(), textX - 28, y + 6, 24);
         if (row.embedded()) {
             var root = modsModel.find("mod/" + row.rootId());
             String label = "Disable " + (root == null ? row.rootId() : root.displayName()) + "...";
@@ -316,7 +332,7 @@ public final class LadsSettingsScreen {
     }
     private void renderModsPlan(LadsGraphics g, int x, int top, int w, int mx, int my) {
         var plan = modsPlan;
-        maxScroll = 0; scrollOffset = 0;
+        maxScroll = 0; scrollOffset = 0; displayedScroll = 0; renderScroll = 0;
         round(g, x, top, w, viewport.height, PANEL);
         int y = top + 10, textW = w - 20;
         g.drawText(fit(g, (plan.enable() ? "Enable " : "Disable ") + modNames(plan.targetIds()) + " at the next launch?", textW), x + 10, y, TEXT);
@@ -361,13 +377,13 @@ public final class LadsSettingsScreen {
     public void openMods() {
         if (!finish()) return;
         modsView = true; detail = null; detailFromMods = false; modsPlan = null;
-        scrollOffset = 0; focusId = ""; notice = "";
+        scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = ""; notice = "";
         reloadMods();
     }
-    private void closeMods() { if (!finish()) return; modsView = false; modsPlan = null; scrollOffset = 0; focusId = ""; notice = ""; }
+    private void closeMods() { if (!finish()) return; modsView = false; modsPlan = null; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = ""; notice = ""; }
     private void resetModsFilters() {
         modsFilter = ModInventoryModel.Filter.ALL; modsSearch = ""; modsToggled.clear();
-        editingSearch = false; editBuffer = ""; cursor = 0; scrollOffset = 0;
+        editingSearch = false; editBuffer = ""; cursor = 0; scrollOffset = 0; displayedScroll = 0; renderScroll = 0;
     }
     private void reloadMods() {
         var store = new ModStateStore(ClientPaths.getBaseDir());
@@ -403,8 +419,8 @@ public final class LadsSettingsScreen {
             int fillW = (int)((controlW - 8) * (value - min) / Math.max(.001, max - min));
             g.fill(r.x + 4, r.y + 20, r.x + 4 + fillW, r.y + 22, ACCENT);
         } else if (option instanceof ColorOption c) {
-            button(g, id, editingOption == option ? inputDisplay() : String.format("%08X", c.getColor()), new Rect(r.x, r.y, r.width - 29, r.height), () -> startEdit(option), true, mx, my, editingOption == option);
-            button(g, id + ":global", c.isUseGlobal() ? "G" : "C", new Rect(r.x + r.width - 25, r.y, 25, r.height), () -> { c.setUseGlobal(!c.isUseGlobal()); changed(detail); }, true, mx, my, c.isUseGlobal());
+            button(g, id, editingOption == option ? inputDisplay() : String.format("%08X", c.getColor()), new Rect(r.x, r.y, r.width - 58, r.height), () -> colorPicker.open(option.getName(), c.getColor(), value -> { c.setColor(value); c.setUseGlobal(false); changed(detail); }), true, mx, my, false);
+            button(g, id + ":global", c.isUseGlobal() ? "Global" : "Own", new Rect(r.x + r.width - 54, r.y, 54, r.height), () -> { c.setUseGlobal(!c.isUseGlobal()); changed(detail); }, true, mx, my, c.isUseGlobal());
         } else if (option instanceof TextOption t) {
             button(g, id, editingOption == option ? inputDisplay() : t.getValue(), r, () -> startEdit(option), true, mx, my, editingOption == option);
         }
@@ -440,6 +456,8 @@ public final class LadsSettingsScreen {
         g.fill(viewport.x + viewport.width - 3, y, viewport.x + viewport.width, y + thumb, MUTED);
     }
     public boolean mouseClicked(double x, double y, int button) {
+        if (actions.click(x,y,button)) return true;
+        if (colorPicker.click(x, y, button)) return true;
         refreshCapabilities();
         if (button != 0 && button != 1) return false;
         for (Control c : List.copyOf(controls)) {
@@ -456,8 +474,8 @@ public final class LadsSettingsScreen {
         }
         commitEdit(); return true;
     }
-    public boolean mouseDragged(double x, double y, int button, double dx, double dy) { refreshCapabilities(); if (dragging == null) return false; updateDrag(x); return true; }
-    public boolean mouseReleased(double x, double y, int button) { refreshCapabilities(); if (dragging == null) return false; updateDrag(x); dragging = null; persist(); return true; }
+    public boolean mouseDragged(double x, double y, int button, double dx, double dy) { if (colorPicker.move(x, y)) return true; refreshCapabilities(); if (dragging == null) return false; updateDrag(x); return true; }
+    public boolean mouseReleased(double x, double y, int button) { if (colorPicker.release()) return true; refreshCapabilities(); if (dragging == null) return false; updateDrag(x); dragging = null; persist(); return true; }
     private void updateDrag(double x) {
         double t = Math.max(0, Math.min(1, (x - dragTrack.x - 4) / Math.max(1, dragTrack.width - 8)));
         if (dragging instanceof SliderOption s) s.setValue(s.getMin() + (s.getMax() - s.getMin()) * t);
@@ -465,10 +483,14 @@ public final class LadsSettingsScreen {
         dirty = true; detail.touch();
     }
     public boolean mouseScrolled(double x, double y, double amount) {
+        if (actions.wheel(amount)) return true;
+        if (colorPicker.isOpen()) return true;
         if (!viewport.contains(x, y)) return false;
         scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int)(amount * 28))); return true;
     }
     public boolean keyPressed(int key, int modifiers) {
+        if (actions.key(key,modifiers)) return true;
+        if (colorPicker.key(key)) return true;
         refreshCapabilities();
         boolean ctrl = (modifiers & 2) != 0;
         if (ctrl && key == 70) { if (!finish()) return true; if (!modsView) detail = null; startSearch(); return true; }
@@ -523,6 +545,8 @@ public final class LadsSettingsScreen {
         return false;
     }
     public boolean charTyped(int codePoint) {
+        if (actions.type(codePoint)) return true;
+        if (colorPicker.type(codePoint)) return true;
         if (!editingSearch && editingOption == null || Character.isISOControl(codePoint) || !Character.isValidCodePoint(codePoint)) return false;
         String text = new String(Character.toChars(codePoint));
         if (selectAll) { editBuffer = ""; cursor = 0; selectAll = false; }
@@ -534,7 +558,7 @@ public final class LadsSettingsScreen {
     }
     private String inputDisplay() { return editBuffer.substring(0, cursor) + "|" + editBuffer.substring(cursor); }
     private void startSearch() { editingSearch = true; editingOption = null; editBuffer = modsView ? modsSearch : searchQuery; cursor = editBuffer.length(); selectAll = false; focusId = modsView ? "mods-search" : "search"; }
-    private void applySearch() { if (modsView) { modsSearch = editBuffer; scrollOffset = 0; } else setSearchQuery(editBuffer); }
+    private void applySearch() { if (modsView) { modsSearch = editBuffer; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; } else setSearchQuery(editBuffer); }
     private void startEdit(Option o) { editingSearch = false; editingOption = o; editBuffer = o instanceof TextOption t ? t.getValue() : String.format("%08X", ((ColorOption)o).getColor()); cursor = editBuffer.length(); selectAll = true; }
     private boolean commitEdit() {
         if (editingOption instanceof ColorOption c) {
@@ -545,19 +569,21 @@ public final class LadsSettingsScreen {
         editingOption = null; editingSearch = false; selectAll = false; notice = ""; return true;
     }
     private void category(String cat) { if (!finish()) return; currentCategory = cat; detail = null; modsView = detailFromMods = false; modsPlan = null; invalidate(); }
-    private void invalidate() { filterDirty = true; scrollOffset = 0; focusId = ""; }
+    private void invalidate() { filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = ""; }
     private void changed(Module m) {
         if (m != null) m.touch(); dirty = true; filterDirty = true; persist();
     }
     private void persist() { if (dirty) { ConfigManager.save(); dirty = false; } }
-    private List<Option> activeOptions() { return detail == null || detail.getName().equals("DiscordRPC") ? List.of() : detail.getOptions(); }
+    private List<Option> activeOptions() { return detail == null || detail.getName().equals("DiscordRPC") ? List.of() : detail.getOptions().stream().filter(o -> !(o instanceof PlayerActionOption)).toList(); }
     private Option activeOption(String name) { return activeOptions().stream().filter(o -> o.getName().equals(name)).findFirst().orElse(null); }
     private boolean finish() { if (!commitEdit()) return false; persist(); return true; }
+    public void openGlobalColors(){colorPicker.openGlobal();}
+    public void openDisplayActions(){if(detail!=null)actions.open(detail.getOptions().stream().filter(o->o instanceof PlayerActionOption).map(o->(PlayerActionOption)o).toList(),()->changed(detail));}
     public void openModule(String name) { Module m=ModuleManager.getInstance().getModule(name); if(m!=null)openDetails(m); }
-    private void openDetails(Module m) { if (!ModuleSupport.isBuiltIn(m.getName())) return; detail = m; detailFromMods = false; m.setLastOpenedTime(System.currentTimeMillis()); scrollOffset = 0; focusId = "back"; notice = ""; }
+    private void openDetails(Module m) { if (!ModuleSupport.isBuiltIn(m.getName())) return; detail = m; detailFromMods = false; m.setLastOpenedTime(System.currentTimeMillis()); scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = "back"; notice = ""; }
     private void back() {
         if (!finish()) return;
-        detail = null; scrollOffset = 0; focusId = "";
+        detail = null; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = "";
         if (detailFromMods) { detailFromMods = false; modsView = true; reloadMods(); }
     }
     private void leave(Runnable action) { if (!finish()) return; action.run(); }

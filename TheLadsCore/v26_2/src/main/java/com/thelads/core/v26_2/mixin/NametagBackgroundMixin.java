@@ -12,7 +12,7 @@ public class NametagBackgroundMixin {
     @ModifyArg(method = "prepareText", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/gui/Font;prepareText(Lnet/minecraft/util/FormattedCharSequence;FFIZZI)Lnet/minecraft/client/gui/Font$PreparedText;"), index = 6, require = 1)
     private static int lads$background(int vanillaColor) {
-        return NativeQualityOfLife.enabled("ToggleNametags")
-            && !NativeQualityOfLife.bool("ToggleNametags", "Render Background", true) ? 0 : vanillaColor;
+        return NativeQualityOfLife.enabled("Nametags")
+            && !NativeQualityOfLife.bool("Nametags", "Render Background", true) ? 0 : vanillaColor;
     }
 }

@@ -11,6 +11,15 @@ public class ModuleManager {
     private final Map<String, Module> modules = new LinkedHashMap<>();
 
     public ModuleManager() {
+        Module autohide=new Module("Autohide", "Fade the hotbar and status bars while idle; restore them on gameplay changes.");
+        autohide.addOption(new SliderOption("Hide after seconds", 4, 1, 30, 1));
+        autohide.addOption(new SliderOption("Fade milliseconds", 350, 0, 1500, 50));
+        autohide.addOption(new BoolOption("Show while moving", false));
+        autohide.addOption(new BoolOption("Show when hurt or hungry", true));
+        autohide.setEnabled(true);register(autohide,Module.Category.HUD);
+        Module jade=new Module("Jade", "Identify blocks and entities using the source-integrated Jade API and addon providers.");
+        jade.addOption(new ActionOption("Settings and addons", "Open Jade settings"));jade.setEnabled(true);register(jade,Module.Category.HUD);
+
         hud("Clock", "Your local clock, with 12 or 24 hour display.").addOption(new BoolOption("12-hour clock", false));
         var stopwatch = hud("Stopwatch", "A local timer. Bind start/pause and reset in Controls; it continues across menus and worlds.");
         stopwatch.addOption(new ActionOption("Start or pause", "Start / pause timer"));
@@ -178,7 +187,7 @@ public class ModuleManager {
         sb.addOption(new SliderOption("X Offset", 0, -40, 40, 20));
         sb.addOption(new SliderOption("Y Offset", 0, -40, 40, 20));
         sb.addOption(new DropdownOption("Background", 0, "Default", "Dark", "Light", "Off"));
-        sb.addOption(new BoolOption("Text Shadow", false));
+        sb.addOption(new BoolOption("Text Shadow", true));
         sb.addOption(new BoolOption("Hide Red Numbers", false));
         register(sb, Module.Category.HUD);
 

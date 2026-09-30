@@ -20,6 +20,12 @@ public final class BorderlessProbe {
                 window.setFullscreen(true);window.updateFullscreenIfChanged();
                 require(borderless.getBoolean(window),"native borderless path is active");passed++;
                 require((SDLVideo.SDL_GetWindowFlags(window.handle())&SDLVideo.SDL_WINDOW_BORDERLESS)!=0,"native window has no decorations");passed++;
+                try(var stack=org.lwjgl.system.MemoryStack.stackPush()){
+                    var rect=org.lwjgl.sdl.SDL_Rect.malloc(stack);int display=SDLVideo.SDL_GetDisplayForWindow(window.handle());
+                    require(SDLVideo.SDL_GetDisplayBounds(display,rect),"monitor bounds available");
+                    var actualW=stack.mallocInt(1);var actualH=stack.mallocInt(1);SDLVideo.SDL_GetWindowSize(window.handle(),actualW,actualH);
+                    require(actualW.get(0)==rect.w()&&actualH.get(0)==rect.h(),"borderless exactly matches full display bounds: got "+actualW.get(0)+"x"+actualH.get(0)+", expected "+rect.w()+"x"+rect.h());passed++;
+                }
                 require(!window.isExclusiveFullscreen(),"fullscreen does not take exclusive display ownership");passed++;
                 window.setFullscreen(false);window.updateFullscreenIfChanged();
                 require(!borderless.getBoolean(window),"leaving fullscreen clears borderless state");passed++;

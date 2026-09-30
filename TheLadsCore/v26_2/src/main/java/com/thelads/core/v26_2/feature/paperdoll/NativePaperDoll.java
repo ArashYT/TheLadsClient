@@ -42,31 +42,23 @@ public final class NativePaperDoll {
         if (mc.player != lastPlayer) { MOTION.reset(); lastPlayer = mc.player; }
         if (mc.player == null) return;
         int duration = (int) number("Display Time (ticks)", 40);
-        MOTION.tick(NativeQualityOfLife.enabled("Paperdoll"), mc.isPaused(), option("Always Display", true), duration,
+        MOTION.tick(NativeQualityOfLife.enabled("Paperdoll"), mc.isPaused(), option("Always Display", false), duration,
                 performingAction(mc.player, MOTION.recentlyRiding(duration)), mc.player.isPassenger(),
                 mc.player.yHeadRot - mc.player.yHeadRotO, number("Maximum Yaw", 30));
         NativePaperDollProbe.tick();
     }
 
     static boolean performingAction(Player player, boolean recentlyRiding) {
-        return option("Sprinting", true) && player.canSpawnSprintParticle()
-                || option("Swimming", true) && !player.isVisuallyCrawling() && player.isVisuallySwimming() && player.getSwimAmount(1) > 0
-                || option("Crawling", true) && player.isVisuallyCrawling()
-                || option("Crouching", true) && !recentlyRiding && player.isCrouching()
-                || option("Creative Flying", true) && player.getAbilities().flying
-                || option("Elytra Gliding", true) && player.isFallFlying()
-                || option("Riding", false) && player.isPassenger()
-                || option("Spin Attacking", false) && player.isAutoSpinAttack()
-                || option("Using Items", false) && player.isUsingItem();
+        return PlayerActions.active(player, recentlyRiding);
     }
 
     static boolean visible(Minecraft mc, boolean editor) {
         if (!active || mc.player == null) return false;
         if (editor) return true;
-        return NativeQualityOfLife.enabled("Paperdoll") && !mc.gui.hud.isHidden() && !mc.player.isInvisible()
-                && !mc.player.isSpectator() && (mc.options.getCameraType().isFirstPerson()
-                ? option("Show in First Person", false) : option("Show in Third Person", true))
-                && MOTION.visible(option("Always Display", true), (int) number("Display Time (ticks)", 40));
+        return NativeQualityOfLife.enabled("Paperdoll") && !mc.gui.hud.isHidden()
+                && (mc.options.getCameraType().isFirstPerson()
+                ? option("Show in First Person", true) : option("Show in Third Person", true))
+                && MOTION.visible(option("Always Display", false), (int) number("Display Time (ticks)", 40));
     }
 
     public static void render(GuiGraphicsExtractor graphics, int x, int y, int width, int height, boolean editor) {
@@ -96,10 +88,10 @@ public final class NativePaperDoll {
         state.outlineColor = 0;
         state.lightCoords = LightCoordsUtil.FULL_BRIGHT;
         state.bodyRot = 180 + number("Default Rotation", 15) * (right ? 1 : -1);
-        int axis = choice("Head Movement", 0);
+        int axis = choice("Head Movement", 1);
         boolean pitch = axis == 0 || axis == 3;
         float maximumPitch = number("Maximum Pitch", 30);
-        state.xRot = !pitch || state.pose == Pose.FALL_FLYING ? 7.5f : Math.clamp(state.xRot, -maximumPitch, maximumPitch);
+        state.xRot = !pitch || state.pose == Pose.FALL_FLYING ? 0f : Math.clamp(state.xRot, -maximumPitch, maximumPitch);
         state.yRot = axis == 0 || axis == 1 ? MOTION.yaw(partial) : 0;
         float scale = Float.isFinite(state.scale) && state.scale > 0 ? state.scale : 1;
         state.boundingBoxWidth /= scale;

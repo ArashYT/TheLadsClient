@@ -11,6 +11,27 @@ public final class HudGroupLayout {
     }
     public record Delta(int x,int y) {}
     private HudGroupLayout() {}
+    /** Match only vertically connected members; unrelated rows in a rigid group retain their widths. */
+    public static void matchDockedWidths(java.util.Map<HudElement,Rect> bounds) {
+        var seen=new java.util.HashSet<HudElement>();
+        for(var element:java.util.List.copyOf(bounds.keySet())) {
+            if(!seen.add(element))continue;
+            var connected=new java.util.ArrayList<HudElement>();connected.add(element);
+            var group=com.thelads.core.config.HudSettings.getInstance().getGroupMembers(element.getModuleName());
+            if(group==null)continue;
+            for(int i=0;i<connected.size();i++) {
+                Rect a=bounds.get(connected.get(i));
+                for(var other:bounds.keySet())if(!seen.contains(other)&&group.contains(other.getModuleName())&&docked(a,bounds.get(other))) {
+                    seen.add(other);connected.add(other);
+                }
+            }
+            if(connected.size()<2)continue;
+            int width=connected.stream().mapToInt(e->bounds.get(e).width).max().orElse(1);
+            for(var member:connected){Rect r=bounds.get(member);member.matchLayoutWidth(width);bounds.put(member,new Rect(r.x,r.y,member.getRenderWidth(),r.height));}
+        }
+    }
+    public static boolean docked(Rect a,Rect b){return Math.abs(a.x-b.x)<=4&&(Math.abs(a.bottom()-b.y)<=4||Math.abs(b.bottom()-a.y)<=4);}
+
     private static int add(int a,int b){return (int)Math.max(Integer.MIN_VALUE,Math.min(Integer.MAX_VALUE,(long)a+b));}
     public static Rect union(Collection<Rect> bounds){
         if(bounds.isEmpty())return new Rect(0,0,0,0);

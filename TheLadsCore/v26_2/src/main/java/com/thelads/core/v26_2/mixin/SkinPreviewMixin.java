@@ -11,11 +11,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class SkinPreviewMixin {
     @Shadow @Final private Model.Simple wideModel;
     @Shadow @Final private Model.Simple slimModel;
+    @Shadow @Final private java.util.function.Supplier<net.minecraft.world.entity.player.PlayerSkin> skin;
+    @ModifyArg(method="extractWidgetRenderState",at=@At(value="INVOKE",target="Lnet/minecraft/client/gui/GuiGraphicsExtractor;skin(Lnet/minecraft/client/model/Model$Simple;Lnet/minecraft/resources/Identifier;FFFFIIII)V"),index=2,require=1)
+    private float ladsFitPreview(float scale){return Math.min(scale,((PlayerSkinWidget)(Object)this).getWidth()/1.8f);}
     @Inject(method="extractWidgetRenderState",at=@At("HEAD"),require=1)
     private void ladsPreviewLayers(CallbackInfo ci){
         var mc=Minecraft.getInstance();
-        if(!(mc.gui.screen() instanceof SkinCustomizationScreen))return;
+        if(!(mc.gui.screen() instanceof SkinCustomizationScreen)&&!(mc.gui.screen() instanceof com.thelads.core.v26_2.gui.SkinChangerScreen))return;
         for(var model:new Model.Simple[]{wideModel,slimModel}){
+            com.thelads.core.v26_2.feature.PreviewSkinLayers.apply(model,skin.get());
             var root=model.root();
             root.getChild("head").getChild("hat").visible=mc.options.isModelPartEnabled(PlayerModelPart.HAT);
             root.getChild("body").getChild("jacket").visible=mc.options.isModelPartEnabled(PlayerModelPart.JACKET);

@@ -33,21 +33,6 @@
       "projectUrl": "https://modrinth.com/mod/asynclogger"
     },
     {
-      "projectId": "WfEV6RRi",
-      "projectSlug": "auto-hide-hud",
-      "name": "Auto Hide HUD",
-      "modId": "autohidehud",
-      "versionId": "8krRloyD",
-      "version": "26.3-1.3.2",
-      "fileName": "autohidehud-26.3-1.3.2.jar",
-      "url": "https://cdn.modrinth.com/data/WfEV6RRi/versions/8krRloyD/autohidehud-26.3-1.3.2.jar",
-      "sha512": "39ce0c39e7f2896de69b5c25fc20b31588c7cde60ae4af59ecbaff4360a1606bbb4a91436093e47b6541ffb534417fb70bf145611134f15603777e05054970fd",
-      "size": 480376,
-      "license": "LicenseRef-All-Rights-Reserved",
-      "sourceUrl": null,
-      "projectUrl": "https://modrinth.com/mod/auto-hide-hud"
-    },
-    {
       "projectId": "g96Z4WVZ",
       "projectSlug": "badoptimizations",
       "name": "BadOptimizations",
@@ -601,21 +586,6 @@
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/decce6/Ixeris",
       "projectUrl": "https://modrinth.com/mod/ixeris"
-    },
-    {
-      "projectId": "nvQzSEkH",
-      "projectSlug": "jade",
-      "name": "Jade \ud83d\udd0d",
-      "modId": "jade",
-      "versionId": "lt43vWtF",
-      "version": "26.3.1+fabric",
-      "fileName": "Jade-mc26.3-Fabric-26.3.1.jar",
-      "url": "https://cdn.modrinth.com/data/nvQzSEkH/versions/lt43vWtF/Jade-mc26.3-Fabric-26.3.1.jar",
-      "sha512": "1359d6576214fffadcb7bd4202bfd1606c827ab6c75143cbc7747269ed7d4131f5db226a914b9a924cac92e596c7994e6fe3303671ff8d5a2dcd41caf613e7ae",
-      "size": 1038435,
-      "license": "CC-BY-NC-SA-4.0",
-      "sourceUrl": "https://github.com/Snownee/Jade",
-      "projectUrl": "https://modrinth.com/mod/jade"
     },
     {
       "projectId": "qlDkBPij",
@@ -1303,6 +1273,24 @@
         "ac6760757ab34b61007b10c895449b382db58f4994593b93396768b374067385aa74617975de7798ccd64c641de8a719b79bdc40b2c9bee8a4a50c44f07eab82"
       ],
       "reason": "Removed from The Lads Client pack in 1.2.3."
+    },
+    {
+      "modId": "autohidehud",
+      "projectId": "WfEV6RRi",
+      "name": "Auto Hide HUD",
+      "sha512": [
+        "39ce0c39e7f2896de69b5c25fc20b31588c7cde60ae4af59ecbaff4360a1606bbb4a91436093e47b6541ffb534417fb70bf145611134f15603777e05054970fd"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.3.3."
+    },
+    {
+      "modId": "jade",
+      "projectId": "nvQzSEkH",
+      "name": "Jade \ud83d\udd0d",
+      "sha512": [
+        "1359d6576214fffadcb7bd4202bfd1606c827ab6c75143cbc7747269ed7d4131f5db226a914b9a924cac92e596c7994e6fe3303671ff8d5a2dcd41caf613e7ae"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.3.3."
     }
   ]
 }

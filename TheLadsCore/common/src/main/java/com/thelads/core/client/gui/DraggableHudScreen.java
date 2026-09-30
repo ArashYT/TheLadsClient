@@ -26,7 +26,9 @@ public class DraggableHudScreen {
     private final Map<HudElement,Rect> gears=new LinkedHashMap<>();
     private final List<Control> contextControls=new ArrayList<>();
     private int dock=0,contextX,contextY;
-    private boolean collapsed,contextOpen;
+    private boolean collapsed,contextOpen,autoHideDock;
+    private long dockExitNanos;
+    private final ColorPicker colorPicker = new ColorPicker();
     public void setOnSettings(java.util.function.Consumer<String> action){onSettings=action;}
     private final Set<HudElement> selected=new LinkedHashSet<>();
     private final Map<HudElement,Rect> measuredBounds=new IdentityHashMap<>();
@@ -64,6 +66,7 @@ public class DraggableHudScreen {
         List<HudElement> elements=HudManager.getInstance().getElements();
         // Hidden members are measured too: enabling a grouped HUD later must not reveal a split group.
         for(var element:elements)if(element.isAvailable())measuredBounds.put(element,element.measureBounds(graphics,true));
+        HudGroupLayout.matchDockedWidths(measuredBounds);
         clampGroups(elements);
         for(var element:elements){
             if(!isVisible(element))continue;
@@ -96,6 +99,7 @@ public class DraggableHudScreen {
         if(marquee){Rect box=marqueeBounds();graphics.fill(box.x(),box.y(),box.right(),box.bottom(),0x226F1624);border(graphics,box,LadsPalette.ACCENT);}
         if(!isDragging()&&!marquee)drawToolbar(graphics,mouseX,mouseY);else controls.clear();
         if(contextOpen)drawContext(graphics,mouseX,mouseY);
+        colorPicker.render(graphics,mouseX,mouseY);
     }
 
     private Rect placeGear(Rect bounds){
@@ -139,13 +143,26 @@ public class DraggableHudScreen {
 
     private void drawToolbar(LadsGraphics g,int mx,int my){
         controls.clear();
+        if (autoHideDock && !collapsed && !colorPicker.isOpen()) {
+            if (toolbarBounds.contains(mx,my)) dockExitNanos=0;
+            else if (dockExitNanos==0) dockExitNanos=System.nanoTime();
+            else if (System.nanoTime()-dockExitNanos>=1_500_000_000L) collapsed=true;
+        }
         if(collapsed){
-            toolbarBounds=new Rect(viewportWidth/2-28,viewportHeight/2-10,56,20);
-            drawControl(g,new Control("collapse","Controls",toolbarBounds,true),mx,my,controls);return;
+            toolbarBounds=switch(dock){
+                case 1 -> new Rect(0,viewportHeight/2-22,16,44);
+                case 2 -> new Rect(viewportWidth-16,viewportHeight/2-22,16,44);
+                case 3 -> new Rect(viewportWidth/2-22,0,44,16);
+                default -> new Rect(viewportWidth/2-22,viewportHeight-16,44,16);
+            };
+            if (!toolbarBounds.contains(mx,my)) {
+                drawControl(g,new Control("collapse",switch(dock){case 1 -> ">"; case 2 -> "<"; case 3 -> "v"; default -> "^";},toolbarBounds,true),mx,my,controls);return;
+            }
+            collapsed=false;dockExitNanos=0;
         }
         boolean locked=selected.stream().anyMatch(this::isLocked);
         String[] docks={"bottom","left","right","top"};
-        String[][] buttons={{"select",multiSelect?"Multi-select: on":"Select multiple"},{"group","Group"},{"ungroup","Ungroup"},{"lock","Lock position"},{"unlock","Unlock"},{"snap",showGrid?"Snap: on":"Snap: off"},{"previews",showAll?"Enabled only":"All previews"},{"toolbar","Dock: "+docks[dock]},{"collapse","Hide controls"},{"reset","Reset layout"},{"done","Done"}};
+        String[][] buttons={{"select",multiSelect?"Multi-select: on":"Select multiple"},{"group","Group"},{"ungroup","Ungroup"},{"lock","Lock position"},{"unlock","Unlock"},{"snap",showGrid?"Snap: on":"Snap: off"},{"previews",showAll?"Enabled only":"All previews"},{"toolbar","Dock: "+docks[dock]},{"collapse","Hide controls"},{"colors","Global colors"},{"reset","Reset layout"},{"done","Done"}};
         boolean vertical=dock==1||dock==2;
         int cols=vertical?1:Math.max(1,Math.min(5,(viewportWidth-24)/90));
         int bw=vertical?Math.min(116,viewportWidth-16):Math.min(100,(viewportWidth-24)/cols-4);
@@ -194,6 +211,7 @@ public class DraggableHudScreen {
 
     public boolean mouseClicked(double x,double y,int button){return mouseClicked(x,y,button,0);}
     public boolean mouseClicked(double x,double y,int button,int modifiers){
+        if(colorPicker.click(x,y,button))return true;
         finishHiddenDrag();
         if(contextOpen){
             if(button==0)for(var c:contextControls)if(c.bounds().contains(x,y)){contextOpen=false;perform(c.id());return true;}
@@ -229,6 +247,7 @@ public class DraggableHudScreen {
         for(var element:members){Rect bounds=measuredBounds.get(element);if(bounds!=null)dragStart.put(element,bounds);}
     }
     public boolean mouseDragged(double x,double y,int button){
+        if(colorPicker.move(x,y))return true;
         finishHiddenDrag();if(button!=0)return false;
         if(marquee){marqueeX=x;marqueeY=y;return true;}
         if(!isDragging())return false;
@@ -244,6 +263,7 @@ public class DraggableHudScreen {
         return true;
     }
     public boolean mouseReleased(double x,double y,int button){
+        if(colorPicker.release())return true;
         finishHiddenDrag();if(button!=0)return false;
         if(marquee){marqueeX=x;marqueeY=y;Rect box=marqueeBounds();marquee=false;if(box.width()>3||box.height()>3){if(!marqueeAdditive)selected.clear();for(var entry:renderedBounds.entrySet())if(box.intersects(entry.getValue()))selected.addAll(groupElements(entry.getKey()));}return true;}
         if(isDragging()){finishDrag();return true;}return false;
@@ -252,6 +272,7 @@ public class DraggableHudScreen {
 
     public boolean keyPressed(int key){return keyPressed(key,0);}
     public boolean keyPressed(int key,int modifiers){
+        if(colorPicker.key(key))return true;
         if(key==256&&contextOpen){contextOpen=false;return true;}
         if(key==256){close();if(onClose!=null)onClose.run();return true;}
         if(key==65&&(modifiers&2)==0){perform("previews");return true;}
@@ -282,7 +303,8 @@ public class DraggableHudScreen {
             case "snap"->showGrid=!showGrid;
             case "previews"->{showAll=!showAll;finishHiddenDrag();selected.removeIf(element->!isVisible(element)&&HudSettings.getInstance().getGroupIndex(element.getModuleName())<0);renderedBounds.clear();}
             case "toolbar"->{dock=switch(dock){case 3->0;case 0->1;case 1->2;default->3;};toolbarPinned=true;}
-            case "collapse"->collapsed=!collapsed;
+            case "collapse"->{collapsed=!collapsed;autoHideDock=true;toolbarPinned=true;dockExitNanos=0;}
+            case "colors"->colorPicker.openGlobal();
             case "settings"->{if(!selected.isEmpty())onSettings.accept(selected.iterator().next().getModuleName());}
             case "centerX"->center(true,false);
             case "centerY"->center(false,true);
@@ -305,9 +327,19 @@ public class DraggableHudScreen {
         if(isDragging()&&dragStart.keySet().stream().noneMatch(this::isVisible))finishDrag();
         selected.removeIf(element->!elements.contains(element)||!element.isAvailable());
     }
+    public boolean charTyped(int codePoint){return colorPicker.type(codePoint);}
     public void close(){finishDrag();marquee=false;}
     private void finishDrag(){
         if(!isDragging())return;var members=new ArrayList<>(dragStart.keySet());dragStart.clear();boolean moved=dragMoved;dragMoved=false;if(!moved)return;
+        if(showGrid){
+            var names=new LinkedHashSet<String>();for(var member:members)names.add(member.getModuleName());
+            for(var member:members)for(var entry:renderedBounds.entrySet())if(!members.contains(entry.getKey())&&!isLocked(entry.getKey())){
+                Rect current=measuredBounds.get(member);
+                if(current==null)continue;
+                if(HudGroupLayout.docked(current,entry.getValue()))names.add(entry.getKey().getModuleName());
+            }
+            if(names.size()>members.size())HudSettings.getInstance().addGroup(names);
+        }
         try{for(var element:members)if(element.getModuleName()!=null)HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());saveConfig.run();}
         finally{for(var element:members)element.endPositionEdit();}
     }
