@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -55,7 +56,7 @@ public class JavaService : IJavaService
             foreach (var cand in orderedCandidates)
             {
                 var ver = GetJavaMajorVersion(cand);
-                if (ver == majorVersion) return cand;
+                if (ver == majorVersion && Is64Bit(cand)) return cand;
             }
 
             return null;
@@ -94,8 +95,11 @@ public class JavaService : IJavaService
             _pathService.EnsureDirectories();
             statusCallback?.Invoke($"Connecting to Adoptium REST API for Java {majorVersion}...");
 
-            var apiUrl = $"https://api.adoptium.net/v3/assets/latest/{majorVersion}/hotspot?os=windows&architecture=x64&image_type=jdk";
+            // Java 8 only runs Minecraft 1.8.9, for which the JRE is enough (40 MB instead of 100 MB).
+            var imageType = majorVersion == 8 ? "jre" : "jdk";
+            var apiUrl = $"https://api.adoptium.net/v3/assets/latest/{majorVersion}/hotspot?os=windows&architecture=x64&image_type={imageType}";
             string downloadUrl = "";
+            string? sha256 = null;
 
             try
             {
@@ -110,6 +114,7 @@ public class JavaService : IJavaService
                         pkg.TryGetProperty("link", out var linkElem))
                     {
                         downloadUrl = linkElem.GetString() ?? "";
+                        sha256 = pkg.TryGetProperty("checksum", out var checksum) ? checksum.GetString() : null;
                     }
                 }
             }
@@ -120,10 +125,13 @@ public class JavaService : IJavaService
 
             if (string.IsNullOrEmpty(downloadUrl))
             {
-                downloadUrl = majorVersion switch
+                // ponytail: only the Java 8 fallback has a pinned hash; pin 21/25 when their fallback URLs are next updated.
+                (downloadUrl, sha256) = majorVersion switch
                 {
-                    21 => "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_windows_hotspot_21.0.12.1_1.zip",
-                    25 => "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_x64_windows_hotspot_25.0.4.1_1.zip",
+                    8 => ("https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u504-b01/OpenJDK8U-jre_x64_windows_hotspot_8u504b01.zip",
+                        "82e2cdc6693737c5998445b31f69668fa0da77c7705121053f6508ac84961123"),
+                    21 => ("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_windows_hotspot_21.0.12.1_1.zip", null),
+                    25 => ("https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_x64_windows_hotspot_25.0.4.1_1.zip", null),
                     _ => throw new InvalidOperationException($"Unsupported Java version {majorVersion} for automatic download.")
                 };
             }
@@ -156,6 +164,15 @@ public class JavaService : IJavaService
                         }
                     }
                 }
+            }
+
+            if (sha256 != null)
+            {
+                string actual;
+                await using (var zip = File.OpenRead(tempZip))
+                    actual = Convert.ToHexString(await SHA256.HashDataAsync(zip, cancellationToken));
+                if (!actual.Equals(sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException($"The Java {majorVersion} download does not match its published SHA-256 checksum, so it was not installed. Try again.");
             }
 
             statusCallback?.Invoke($"Extracting Java {majorVersion} into managed directory...");
@@ -222,6 +239,8 @@ public class JavaService : IJavaService
         var searchRoots = new List<string>
         {
             Path.Combine(programFiles, "Eclipse Adoptium"),
+            Path.Combine(programFiles, "AdoptOpenJDK"),
+            Path.Combine(programFiles, "Amazon Corretto"),
             Path.Combine(programFiles, "Java"),
             Path.Combine(programFiles, "Microsoft"),
             Path.Combine(programFiles, "Zulu"),
@@ -320,6 +339,23 @@ public class JavaService : IJavaService
         catch { }
 
         return null;
+    }
+
+    /// <summary>False for a 32-bit java.exe (PE machine x86). Java 8 is often installed as 32-bit, and a 32-bit JVM cannot
+    /// reserve the game's heap. Unreadable counts as 64-bit: the version check still applies.</summary>
+    public static bool Is64Bit(string javaExecutablePath)
+    {
+        try
+        {
+            using var reader = new BinaryReader(File.OpenRead(javaExecutablePath));
+            reader.BaseStream.Position = 0x3C;
+            reader.BaseStream.Position = reader.ReadInt32() + 4; // skip "PE\0\0"; IMAGE_FILE_HEADER.Machine follows
+            return reader.ReadUInt16() != 0x014C;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return true;
+        }
     }
 
     private static string? FindJavaExeInDir(string dir)

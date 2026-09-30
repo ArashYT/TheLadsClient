@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
 using CmlLib.Core;
+using CmlLib.Core.Installer.Forge;
 using CmlLib.Core.ProcessBuilder;
 using TheLadsLauncher.Models;
 
@@ -56,6 +57,7 @@ public class LaunchService : ILaunchService
         cancellationToken.ThrowIfCancellationRequested();
         var versionId = GameVersionPolicy.ResolveVersionId(profile);
         var usesFabric = !string.IsNullOrWhiteSpace(profile.FabricVersion);
+        var usesForge = GameVersionPolicy.UsesForge(profile.MinecraftVersion); // ResolveVersionId refuses Fabric on these
         if (GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion) && !usesFabric)
             throw new InvalidOperationException($"The Lads Core for Minecraft {profile.MinecraftVersion} requires Fabric. Select a Fabric loader in this profile.");
 
@@ -132,22 +134,25 @@ public class LaunchService : ILaunchService
                     throw new InvalidOperationException($"Could not install Fabric {loaderVer} for Minecraft {profile.MinecraftVersion}. Retry after checking connectivity and the selected loader version.", ex);
                 }
             }
-            using var fabricJson = JsonDocument.Parse(await File.ReadAllTextAsync(vjson, cancellationToken));
-            var root = fabricJson.RootElement;
-            if (!root.TryGetProperty("id", out var id) || id.GetString() != versionId
-                || !root.TryGetProperty("inheritsFrom", out var parent) || parent.GetString() != profile.MinecraftVersion)
-                throw new InvalidDataException($"Fabric manifest '{vjson}' does not match the selected version '{versionId}'. Repair this version before launching.");
+            await CheckManifestAsync(vjson, versionId, profile.MinecraftVersion, "Fabric", cancellationToken);
+        }
+        else if (usesForge)
+        {
+            using var forgeHttp = new HttpClient(new LaunchCancellationHandler(cancellationToken));
+            await InstallForgeAsync(launcher, gameDir, forgeHttp, statusCallback, cancellationToken);
         }
 
         var selectedVersion = await launcher.GetVersionAsync(versionId, cancellationToken);
         if (selectedVersion.Id != versionId)
             throw new InvalidDataException($"Resolved version '{selectedVersion.Id}' does not match selected version '{versionId}'.");
-        var baseVersion = usesFabric
+        var baseVersion = usesFabric || usesForge
             ? await launcher.GetVersionAsync(profile.MinecraftVersion, cancellationToken)
             : selectedVersion;
         int? manifestJava = int.TryParse(baseVersion.JavaVersion?.MajorVersion, out var major) ? major : null;
-        var requiredJava = Math.Max(profile.JavaMajorVersion,
-            GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion, manifestJava));
+        // The profile's own value counts like the manifest's, then the policy applies its minimum and (1.8.9) maximum.
+        var declaredJava = Math.Max(profile.JavaMajorVersion, manifestJava ?? 0);
+        var requiredJava = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion, declaredJava > 0 ? declaredJava : null);
+        var javaRule = GameVersionPolicy.DescribeJava(profile.MinecraftVersion, requiredJava);
 
         statusCallback?.Invoke($"Verifying Java {requiredJava} runtime...");
         string javaPath;
@@ -160,10 +165,10 @@ public class LaunchService : ILaunchService
 
         cancellationToken.ThrowIfCancellationRequested();
         if (!File.Exists(javaPath))
-            throw new FileNotFoundException($"Selected Java runtime '{javaPath}' does not exist. Minecraft {profile.MinecraftVersion} requires Java {requiredJava} or newer.", javaPath);
+            throw new FileNotFoundException($"Selected Java runtime '{javaPath}' does not exist. Minecraft {profile.MinecraftVersion} requires {javaRule}.", javaPath);
         var actualJava = _javaService.GetJavaMajorVersion(javaPath);
-        if (actualJava == null || actualJava < requiredJava)
-            throw new InvalidOperationException($"Selected Java runtime '{javaPath}' reports {actualJava?.ToString() ?? "an unknown version"}. Minecraft {profile.MinecraftVersion} requires Java {requiredJava} or newer.");
+        if (!GameVersionPolicy.AcceptsJava(profile.MinecraftVersion, requiredJava, actualJava))
+            throw new InvalidOperationException($"Selected Java runtime '{javaPath}' reports {actualJava?.ToString() ?? "an unknown version"}. Minecraft {profile.MinecraftVersion} requires {javaRule}.");
 
         statusCallback?.Invoke("Authenticating player session...");
         var session = await _authService.ResolveSessionAsync(username).WaitAsync(cancellationToken);
@@ -227,6 +232,52 @@ public class LaunchService : ILaunchService
         statusCallback?.Invoke($"Minecraft started with PID {process.Id}");
 
         return process;
+    }
+
+    /// <summary>
+    /// Installs Forge <see cref="GameVersionPolicy.ForgeBuild"/> for Minecraft 1.8.9 with CmlLib's Forge installer (which also
+    /// installs vanilla 1.8.9) unless its version manifest is there, then checks that manifest. MainWindow's launch uses it too.
+    /// The installer writes the Forge libraries with maven.minecraftforge.net URLs, so none point at the retired
+    /// files.minecraftforge.net/maven.
+    /// </summary>
+    public static async Task InstallForgeAsync(MinecraftLauncher launcher, string gameDir, HttpClient http,
+        Action<string>? statusCallback, CancellationToken cancellationToken)
+    {
+        const string versionId = GameVersionPolicy.ForgeVersionId;
+        var manifest = Path.Combine(gameDir, "versions", versionId, versionId + ".json");
+        if (!File.Exists(manifest))
+        {
+            statusCallback?.Invoke($"Installing Forge {GameVersionPolicy.ForgeBuild} for Minecraft {GameVersionPolicy.ForgeMinecraftVersion}...");
+            string installed;
+            try
+            {
+                // The build number alone: the installer finds no version named "11.15.1.2318-1.8.9".
+                installed = await new ForgeInstaller(launcher, http).Install(GameVersionPolicy.ForgeMinecraftVersion, GameVersionPolicy.ForgeBuild,
+                    new ForgeInstallOptions { CancellationToken = cancellationToken });
+            }
+            catch (Exception) when (cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Could not install Forge {GameVersionPolicy.ForgeBuild} for Minecraft {GameVersionPolicy.ForgeMinecraftVersion}. Retry after checking your connection.", ex);
+            }
+            if (installed != versionId)
+                throw new InvalidOperationException($"The Forge installer returned '{installed}' instead of '{versionId}'.");
+        }
+        await CheckManifestAsync(manifest, versionId, GameVersionPolicy.ForgeMinecraftVersion, "Forge", cancellationToken);
+    }
+
+    /// <summary>A loader's version manifest must be exactly the selected version, on top of the selected Minecraft version.</summary>
+    private static async Task CheckManifestAsync(string manifest, string versionId, string minecraftVersion, string loader,
+        CancellationToken cancellationToken)
+    {
+        using var json = JsonDocument.Parse(await File.ReadAllTextAsync(manifest, cancellationToken));
+        var root = json.RootElement;
+        if (!root.TryGetProperty("id", out var id) || id.GetString() != versionId
+            || !root.TryGetProperty("inheritsFrom", out var parent) || parent.GetString() != minecraftVersion)
+            throw new InvalidDataException($"{loader} manifest '{manifest}' does not match the selected version '{versionId}'. Repair this version before launching.");
     }
 
     private sealed class LaunchCancellationHandler : DelegatingHandler

@@ -14,6 +14,8 @@ public sealed record WorldCatalog(IReadOnlyList<WorldEntry> Worlds, IReadOnlyLis
 /// <summary>Read-only world inventory. Resolves shared junctions so a save appears once; never opens or migrates worlds.</summary>
 public sealed class WorldCatalogService
 {
+    /// <summary>Written into each game folder: the world folders LadsCore's in-game picker offers.</summary>
+    public const string GameSourcesFile = "lads-world-sources.json";
     private readonly string _sourcesFile;
     public WorldCatalogService(string launcherRoot) => _sourcesFile = Path.Combine(launcherRoot, "world-sources.json");
 
@@ -44,7 +46,7 @@ public sealed class WorldCatalogService
     {
         var sources = new[] { new WorldSource("Global .minecraft", "Global .minecraft", globalRoot) }
             .Concat(profiles).Concat(LoadCustomSources()).ToList();
-        File.WriteAllText(Path.Combine(gameDirectory, "lads-world-sources.json"),
+        File.WriteAllText(Path.Combine(gameDirectory, GameSourcesFile),
             JsonSerializer.Serialize(sources, new JsonSerializerOptions { WriteIndented = true }));
     }
 

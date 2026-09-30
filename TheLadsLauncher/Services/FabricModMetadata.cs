@@ -20,6 +20,8 @@ public sealed record FabricModInfo(string Id, string? Name, string? Version, str
     public IReadOnlyDictionary<string, string> Breaks { get; init; } = new Dictionary<string, string>();
     /// <summary>Icon bytes of a top-level jar, only when requested.</summary>
     public byte[]? Icon { get; init; }
+    /// <summary>Read from Forge's mcmod.info (see <see cref="FabricModMetadata.ReadForgeJar"/>), not fabric.mod.json.</summary>
+    public bool Forge { get; init; }
     public bool HasMetadata => Name != null;
     public bool IsServerOnly => Environment == "server";
 }
@@ -42,6 +44,26 @@ public static class FabricModMetadata
     {
         using var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
         return Read(zip, null, 0, new Budget(), includeIcon, token);
+    }
+
+    /// <summary>Forge's mcmod.info (legacy Forge such as 1.8.9's): a JSON array of mods, or {"modList": [...]}. The first mod
+    /// names the jar. Null for a jar without one (OptiFine, coremods); InvalidDataException when unreadable.</summary>
+    public static FabricModInfo? ReadForgeJar(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
+        var entry = zip.GetEntry("mcmod.info");
+        if (entry == null) return null;
+        if (entry.Length > MaximumMetadataSize) throw new InvalidDataException("Oversized mcmod.info.");
+        using var document = ReadFabricMetadata(entry.Open(), "mcmod.info");
+        var root = document.RootElement;
+        var mods = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("modList", out var list) ? list : root;
+        var mod = mods.ValueKind == JsonValueKind.Array ? mods.EnumerateArray().FirstOrDefault(m => Text(m, "modid") != null) : default;
+        var id = Text(mod, "modid") ?? throw new InvalidDataException("mcmod.info names no mod.");
+        var authors = mod.TryGetProperty("authorList", out var names) && names.ValueKind == JsonValueKind.Array
+            ? names.EnumerateArray().Where(n => n.ValueKind == JsonValueKind.String).Select(n => n.GetString()!).ToList() : new List<string>();
+        return new FabricModInfo(id, Text(mod, "name") ?? id, Text(mod, "version"), Text(mod, "description"), authors, null, null,
+            Array.Empty<string>(), new Dictionary<string, string>(), false, Array.Empty<FabricModInfo>(), null) { Forge = true };
     }
 
     /// <summary>The mod and its nested Fabric modules that load on the client, depth first.</summary>
@@ -186,7 +208,7 @@ public static class FabricModMetadata
 
     // Fabric's Gson reader accepts literal line breaks in description strings. Normalize
     // only string control characters for System.Text.Json; downloaded jar bytes stay intact.
-    private static JsonDocument ReadFabricMetadata(Stream stream)
+    private static JsonDocument ReadFabricMetadata(Stream stream, string file = "fabric.mod.json")
     {
         using (stream)
         using (var reader = new StreamReader(stream, Encoding.UTF8, true, 4096))
@@ -202,8 +224,10 @@ public static class FabricModMetadata
                 if (!escaped && ch == '"') quoted = !quoted;
                 escaped = quoted && !escaped && ch == '\\';
             }
-            try { return JsonDocument.Parse(normalized.ToString()); }
-            catch (JsonException e) { throw new InvalidDataException("Unreadable fabric.mod.json: " + e.Message, e); }
+            // mcmod.info files are hand-written: trailing commas and comments are common and Forge accepts them.
+            var options = file == "mcmod.info" ? new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip } : default;
+            try { return JsonDocument.Parse(normalized.ToString(), options); }
+            catch (JsonException e) { throw new InvalidDataException($"Unreadable {file}: " + e.Message, e); }
         }
     }
 }

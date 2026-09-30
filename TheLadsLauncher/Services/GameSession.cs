@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace TheLadsLauncher.Services;
@@ -13,6 +14,18 @@ namespace TheLadsLauncher.Services;
 /// </summary>
 public static class GameSession
 {
+    private static readonly Regex Log4jMarkup = new(@"</?log4j:[^>]*>|<!\[CDATA\[|\]\]>", RegexOptions.Compiled);
+
+    /// <summary>A game output line as the launcher log shows it, or null when nothing is left. Forge 1.8.9 prints log4j XML
+    /// events on stdout (client-1.7.xml's console appender): only their text is kept. Its logs\latest.log is plain text, and
+    /// that is what crash detection reads.</summary>
+    public static string? ReadableOutput(string? line)
+    {
+        if (string.IsNullOrEmpty(line) || !line.Contains("log4j:", StringComparison.Ordinal)) return string.IsNullOrEmpty(line) ? null : line;
+        var text = Log4jMarkup.Replace(line, "").Trim();
+        return text.Length == 0 ? null : text;
+    }
+
     /// <summary>Call before Start: Core reads its profile folder from THELADS_DIR and the shared root from LADS_GLOBAL_MINECRAFT_DIR.</summary>
     public static void Configure(ProcessStartInfo startInfo, string gameDirectory, string sharedRoot)
     {

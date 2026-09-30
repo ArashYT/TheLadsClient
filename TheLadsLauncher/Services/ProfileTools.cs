@@ -82,10 +82,11 @@ public static class ProfileTools
         try { checks.Add(new("Game version", GameVersionPolicy.ResolveVersionId(profile), true)); }
         catch (ArgumentException e) { checks.Add(new("Game version", e.Message, false)); }
         int required = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion);
-        if (!File.Exists(javaPath)) checks.Add(new("Java", $"Java {required} is required. No runtime found at {javaPath}; use Settings → Download Java.", false));
+        string rule = GameVersionPolicy.DescribeJava(profile.MinecraftVersion, required);
+        if (!File.Exists(javaPath)) checks.Add(new("Java", $"{rule} is required. No runtime found at {javaPath}; use Settings → Download Java.", false));
         else
         {
-            try { int? major = new JavaService(paths).GetJavaMajorVersion(javaPath); checks.Add(new("Java", $"Java {major?.ToString() ?? "unknown"}; requires {required} or newer", major >= required)); }
+            try { int? major = new JavaService(paths).GetJavaMajorVersion(javaPath); checks.Add(new("Java", $"Java {major?.ToString() ?? "unknown"}; requires {rule}", GameVersionPolicy.AcceptsJava(profile.MinecraftVersion, required, major))); }
             catch (Exception e) when (e is IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
             { checks.Add(new("Java", e.Message, false)); }
         }
@@ -99,7 +100,9 @@ public static class ProfileTools
             checks.Add(new("Game state", running ? "This profile is running." : "This profile is ready to launch.", !running));
         }
         catch (IOException e) { checks.Add(new("Game folder", e.Message, false)); }
-        checks.Add(new("Settings location", profile.IsIsolated ? $"Separate settings: {game}" : "Shared options.txt; worlds and packs retain global sharing.", true));
+        checks.Add(new("Settings location", GameVersionPolicy.KeepsOwnWorlds(profile.MinecraftVersion)
+            ? $"Separate settings, worlds and packs (Minecraft {profile.MinecraftVersion} never uses the shared ones): {game}"
+            : profile.IsIsolated ? $"Separate settings: {game}" : "Shared options.txt; worlds and packs retain global sharing.", true));
         return checks;
     }
 }

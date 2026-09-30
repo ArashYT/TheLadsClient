@@ -30,6 +30,7 @@
     </PackageReference>
     <PackageReference Include="CmlLib.Core" Version="4.0.6" />
     <PackageReference Include="CmlLib.Core.Auth.Microsoft" Version="3.3.1" />
+    <PackageReference Include="CmlLib.Core.Installer.Forge" Version="1.1.1" />
     <PackageReference Include="Microsoft.Identity.Client.Desktop" Version="4.84.2" />
     <PackageReference Include="Velopack" Version="1.2.158" />
     <PackageReference Include="XboxAuthNet.Game.Msal" Version="0.1.3" />
