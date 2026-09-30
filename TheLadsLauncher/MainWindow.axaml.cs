@@ -5270,8 +5270,13 @@ public partial class MainWindow : Window
             await RunPackwizInstaller(activeProfile, launchOpt.JavaPath);
             await GraphicsRenderer.PrepareAsync(gameDirectory, activeProfile.MinecraftVersion, settings.GraphicsRenderer, message => Dispatcher.UIThread.Post(() => StatusText.Text = message));
             await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion);
-            // Without Fabric nothing in Mods loads (as in LaunchService): no choices to apply, no dependencies to check.
-            if (!string.IsNullOrWhiteSpace(activeProfile.FabricVersion) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion)) return;
+            // Without a loader (Fabric, or Forge on 1.8.9) nothing in Mods loads, as in LaunchService: no choices to apply.
+            bool forge = GameVersionPolicy.UsesForge(activeProfile.MinecraftVersion);
+            if ((forge || !string.IsNullOrWhiteSpace(activeProfile.FabricVersion)) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion)) return;
+            // OptiFine is downloaded from optifine.net and verified; if that fails the game starts without it (warned below).
+            string? optiFineWarning = forge ? await Task.Run(() => OptiFineInstaller.InstallAsync(_pathService.BaseDirectory, gameDirectory,
+                status: message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message))) : null;
+            if (optiFineWarning != null) Log($"[OptiFine] {optiFineWarning}");
             // A dependency fix chosen at the prompt above can switch LadsCore: prepare the server list again for the new state.
             if (SharedContentService.IsCoreRequested(gameDirectory, out _) != coreRequested
                 && await PrepareSharedContentForLaunchAsync(activeProfile, gameDirectory, prepared.WithoutSharing) == null) return;
@@ -5388,7 +5393,7 @@ public partial class MainWindow : Window
             process.Start();
             _runningProcesses[process] = gameDirectory;
             // Running marker now; on exit (once): marker removed, server list reconciled, then OnGameExitedAsync.
-            var sessionMessages = new List<string>();
+            var sessionMessages = optiFineWarning == null ? new List<string>() : new List<string> { optiFineWarning };
             GameSession.Attach(process, gameDirectory, loadedMods, message =>
                 {
                     lock (sessionMessages) sessionMessages.Add(message);

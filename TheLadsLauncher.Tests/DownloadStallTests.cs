@@ -26,6 +26,27 @@ public sealed class DownloadStallTests
             ClientModInstaller.CopyWithStallTimeoutAsync(waiting, Stream.Null, 30, Idle, "Cancelled", cancel.Token));
     }
 
+    // The client's own timeout ends the wait here; the installer's 30 s limits follow the same path.
+    [Fact] public async Task AHungOptiFineServerEndsInAWarningNotAFailedLaunch()
+    {
+        using var dir = new TheLadsLauncher.Tests.TestDirectory();
+        using var client = new HttpClient(new Hanging()) { Timeout = Idle };
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var warning = await OptiFineInstaller.InstallAsync(Path.Combine(dir.Path, "launcher"), Path.Combine(dir.Path, "game"), httpClient: client);
+        Assert.Contains("did not answer in time", warning);
+        Assert.Contains("Minecraft starts without it", warning);
+        Assert.InRange(clock.Elapsed, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+    }
+
+    private sealed class Hanging : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            throw new InvalidOperationException("unreachable");
+        }
+    }
+
     /// <summary>Returns one byte per read after <c>delay</c>; from byte <c>stallAt</c> on it never answers (until cancelled).</summary>
     private sealed class TrickleStream(byte[] data, int stallAt, TimeSpan delay) : MemoryStream(data)
     {

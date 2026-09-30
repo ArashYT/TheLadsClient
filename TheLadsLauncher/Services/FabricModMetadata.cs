@@ -47,13 +47,14 @@ public static class FabricModMetadata
     }
 
     /// <summary>Forge's mcmod.info (legacy Forge such as 1.8.9's): a JSON array of mods, or {"modList": [...]}. The first mod
-    /// names the jar. Null for a jar without one (OptiFine, coremods); InvalidDataException when unreadable.</summary>
+    /// names the jar. OptiFine has none and is recognised by its Forge tweaker (id "optifine"). Null for other jars without
+    /// one (coremods); InvalidDataException when unreadable.</summary>
     public static FabricModInfo? ReadForgeJar(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
         using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
         var entry = zip.GetEntry("mcmod.info");
-        if (entry == null) return null;
+        if (entry == null) return ReadOptiFine(zip);
         if (entry.Length > MaximumMetadataSize) throw new InvalidDataException("Oversized mcmod.info.");
         using var document = ReadFabricMetadata(entry.Open(), "mcmod.info");
         var root = document.RootElement;
@@ -64,6 +65,20 @@ public static class FabricModMetadata
             ? names.EnumerateArray().Where(n => n.ValueKind == JsonValueKind.String).Select(n => n.GetString()!).ToList() : new List<string>();
         return new FabricModInfo(id, Text(mod, "name") ?? id, Text(mod, "version"), Text(mod, "description"), authors, null, null,
             Array.Empty<string>(), new Dictionary<string, string>(), false, Array.Empty<FabricModInfo>(), null) { Forge = true };
+    }
+
+    // Forge loads OptiFine through the TweakClass in its manifest. Its changelog.txt opens with "OptiFine <version>".
+    private static FabricModInfo? ReadOptiFine(ZipArchive zip)
+    {
+        if (zip.GetEntry("optifine/OptiFineForgeTweaker.class") == null) return null;
+        string? version = null;
+        if (zip.GetEntry("changelog.txt") is { Length: <= MaximumMetadataSize } changelog)
+        {
+            using var reader = new StreamReader(changelog.Open());
+            if (reader.ReadLine() is { } first && first.StartsWith("OptiFine ", StringComparison.Ordinal)) version = first["OptiFine ".Length..].Trim();
+        }
+        return new FabricModInfo(OptiFineInstaller.ModId, "OptiFine", version, null, new[] { "sp614x" }, null, null, Array.Empty<string>(),
+            new Dictionary<string, string>(), false, Array.Empty<FabricModInfo>(), null) { Forge = true };
     }
 
     /// <summary>The mod and its nested Fabric modules that load on the client, depth first.</summary>

@@ -39,6 +39,7 @@ public sealed class ModInventoryService
     public const string CatalogPlaceholderId = "lads-modules";
     public const string NativeRunningReason = "Change it in the in-game Lads menu (applies immediately)";
     internal const string ServerOnlyNote = "Server-only module; not loaded on the client";
+    internal const string OptiFineNote = "Downloaded from optifine.net by the launcher (OptiFine may not be redistributed)";
     private const string CoreId = BundledModInstaller.CoreModId;
     private const int CacheLimit = 4096;
     private static readonly JsonSerializerOptions ReadJson = new() { PropertyNameCaseInsensitive = true };
@@ -172,6 +173,11 @@ public sealed class ModInventoryService
                 }
                 else notes.Add("Removed from the Lads pack — this copy was added or modified by you");
             }
+            else if (forge && id == OptiFineInstaller.ModId && OptiFineInstaller.IsLaunchersFile(name))
+            {
+                ownership = ModOwnership.Pack; // checked and replaced when damaged at every launch (OptiFineInstaller)
+                notes.Add(OptiFineNote);
+            }
             if (status is ModEntryStatus.Installed or ModEntryStatus.Disabled && info.Depends.TryGetValue("minecraft", out var minecraft)
                 && !FabricVersionPredicate.Matches(minecraft, version))
             {
@@ -207,6 +213,17 @@ public sealed class ModInventoryService
                 info == null ? Array.Empty<string>() : Depends(info), info?.Provides ?? Array.Empty<string>(), info?.IsLibraryBadge ?? false,
                 Join(notes), null, info == null ? Array.Empty<ModInventoryEntry>() : Children(info, entry.Name, false, requested, running ? false : null, running && requested),
                 DependenciesKnown: info != null));
+        }
+
+        // OptiFine may not be redistributed, so no manifest lists it: the launcher downloads it at launch (OptiFineInstaller).
+        if (forge && !entries.Any(e => e.Id == OptiFineInstaller.ModId))
+        {
+            var requested = Requested(OptiFineInstaller.ModId, null);
+            var note = requested ? "Downloaded from optifine.net at the next launch" : "Disabled — not downloaded";
+            entries.Add(new(OptiFineInstaller.ModId, "OptiFine", null, OptiFineInstaller.Version, OptiFineInstaller.M5.FileName, null,
+                ModOwnership.Pack, requested ? ModEntryStatus.PendingDownload : ModEntryStatus.NotDownloaded, false, requested,
+                running ? false : null, running && requested, true, null, null, null, null, new[] { "sp614x" }, Array.Empty<string>(),
+                Array.Empty<string>(), false, note, null, Array.Empty<ModInventoryEntry>()));
         }
 
         // The bundled LadsCore when it is not in Mods (installed at the next launch unless disabled).
@@ -385,7 +402,7 @@ public sealed class ModInventoryService
         ForLoader(Scan(path, token), path, GameVersionPolicy.UsesForge(minecraftVersion));
 
     /// <summary>A jar as the profile's loader sees it: the other loader's mod does not load (on Fabric it reads as before, "no
-    /// fabric.mod.json"); on Forge a jar without mcmod.info (OptiFine, coremods) still loads and is named after its file.</summary>
+    /// fabric.mod.json"); on Forge a jar without mcmod.info (a coremod) still loads and is named after its file.</summary>
     private static ScannedJar ForLoader(ScannedJar scan, string path, bool forge)
     {
         if (scan.Info is { } info && info.Forge != forge)

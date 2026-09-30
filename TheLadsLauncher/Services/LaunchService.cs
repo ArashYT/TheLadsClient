@@ -29,6 +29,7 @@ public class LaunchService : ILaunchService
     private readonly IAuthService _authService;
     private readonly SharedContentService _sharedContent;
     private readonly string _bundleRoot;
+    private readonly OptiFineInstaller.Pin _optiFine;
 
     public LaunchService(
         IPathService pathService,
@@ -36,7 +37,8 @@ public class LaunchService : ILaunchService
         IJavaService javaService,
         IAuthService authService,
         string? bundleRoot = null,
-        SharedContentService? sharedContent = null)
+        SharedContentService? sharedContent = null,
+        OptiFineInstaller.Pin? optiFine = null)
     {
         _pathService = pathService;
         _profileService = profileService;
@@ -44,6 +46,7 @@ public class LaunchService : ILaunchService
         _authService = authService;
         _sharedContent = sharedContent ?? SharedContentService.Instance;
         _bundleRoot = bundleRoot ?? AppContext.BaseDirectory;
+        _optiFine = optiFine ?? OptiFineInstaller.M5;
     }
 
     public async Task<Process?> LaunchAsync(
@@ -77,11 +80,15 @@ public class LaunchService : ILaunchService
         await GraphicsRenderer.PrepareAsync(gameDir, profile.MinecraftVersion, settings.GraphicsRenderer, report, cancellationToken);
 
         IReadOnlyList<string> loadedMods = Array.Empty<string>();
-        if (usesFabric)
+        if (usesFabric || usesForge)
         {
             statusCallback?.Invoke($"Installing bundled core for Minecraft {profile.MinecraftVersion}...");
             await BundledModInstaller.InstallAsync(_bundleRoot, gameDir, profile.MinecraftVersion, cancellationToken);
             await ClientModInstaller.InstallAsync(_bundleRoot, gameDir, profile.MinecraftVersion, statusCallback, cancellationToken);
+            // Downloaded from optifine.net and verified; any failure only means the game starts without it.
+            if (usesForge && await OptiFineInstaller.InstallAsync(_pathService.BaseDirectory, gameDir, _optiFine, statusCallback,
+                    cancellationToken) is { } optiFineWarning)
+                report(optiFineWarning);
             // As in MainWindow.LaunchGame: the in-game Mods view's snapshot, and the ids the running marker records as loaded.
             var inventoryService = new ModInventoryService();
             var inventory = await inventoryService.BuildAsync(_bundleRoot, gameDir, profile.MinecraftVersion, cancellationToken);
