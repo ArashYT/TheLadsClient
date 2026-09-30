@@ -95,7 +95,7 @@ public static class ClientModInstaller
             var rendererChoices = new Dictionary<string, (bool Enabled, string? Project)>();
             var rendererJars = new Dictionary<string, ModPreferences.RendererJar?>();
             if (preferences.Error != null) status?.Invoke(preferences.Error);
-            var inventory = await ReadInventory(game, mods, cancellationToken);
+            var inventory = await ReadInventory(game, mods, minecraftVersion, cancellationToken);
             // The planned final Mods folder. Every change updates it in commit order, so later checks see earlier moves.
             var final = inventory.ToDictionary(j => j.Path, Paths);
             var changes = new List<Change>();
@@ -276,7 +276,7 @@ public static class ClientModInstaller
                 staged[temp] = actual;
                 if (!SameHash(actual, entry.Sha512))
                     throw new InvalidDataException($"Cached download changed for {entry.Name}. Retry the launch.");
-                var info = FabricModMetadata.ReadJar(temp, token: cancellationToken);
+                var info = ReadMod(temp, minecraftVersion, cancellationToken);
                 if (info?.Id != entry.ModId) throw new InvalidDataException($"Wrong Fabric mod downloaded for {entry.Name}.");
                 receipt[entry.ModId] = entry.Sha512;
                 changes.Add(new(destination, temp, previousHash, actual, "previous-" + entry.ModId, $"Installed {entry.Name}."));
@@ -324,7 +324,7 @@ public static class ClientModInstaller
 
             status?.Invoke("Preparing client mod changes...");
             // Detect changes made in the Mods page or by another process while downloads were in flight.
-            var current = await ReadInventory(game, mods, cancellationToken);
+            var current = await ReadInventory(game, mods, minecraftVersion, cancellationToken);
             if (current.Count != inventory.Count || current.Any(j => !inventory.Any(old =>
                 Paths.Equals(old.Path, j.Path) && SameHash(old.Hash, j.Hash))))
                 throw new IOException("The Mods folder changed during installation. Retry the launch; your changes were preserved.");
@@ -468,7 +468,7 @@ public static class ClientModInstaller
         {
             if (!SameHash(await HashAsync(game, cached, token), entry.Sha512))
                 throw new InvalidDataException($"Cached file '{cached}' is damaged. Move it aside and retry; it was preserved.");
-            if (FabricModMetadata.ReadJar(cached, token: token)?.Id != entry.ModId)
+            if (ReadMod(cached, minecraftVersion, token)?.Id != entry.ModId)
                 throw new InvalidDataException($"Wrong Fabric mod cached for {entry.Name}.");
             return;
         }
@@ -502,7 +502,7 @@ public static class ClientModInstaller
             }
             if (!SameHash(await HashAsync(game, temp, token), entry.Sha512))
                 throw new InvalidDataException($"Download verification failed for {entry.Name}. Retry the launch.");
-            if (FabricModMetadata.ReadJar(temp, token: token)?.Id != entry.ModId)
+            if (ReadMod(temp, minecraftVersion, token)?.Id != entry.ModId)
                 throw new InvalidDataException($"Wrong Fabric mod downloaded for {entry.Name}.");
             // Never overwrite even an unexpected cache file created during the download.
             File.Move(SafeChild(game, temp), SafeChild(game, cached));
@@ -597,7 +597,7 @@ public static class ClientModInstaller
             throw new InvalidDataException($"Invalid client mod file name '{entry.FileName}' for {entry.ModId}.");
     }
 
-    private static async Task<List<LocalJar>> ReadInventory(string game, string mods, CancellationToken token)
+    private static async Task<List<LocalJar>> ReadInventory(string game, string mods, string minecraftVersion, CancellationToken token)
     {
         var result = new List<LocalJar>();
         foreach (var file in Directory.EnumerateFiles(SafeChild(game, mods)).Where(p =>
@@ -607,7 +607,7 @@ public static class ClientModInstaller
             var path = SafeChild(game, file);
             var hash = await HashAsync(game, path, token);
             FabricModInfo? info;
-            try { info = FabricModMetadata.ReadJar(path, token: token); }
+            try { info = ReadMod(path, minecraftVersion, token); }
             catch (Exception e) when (e is InvalidDataException or InvalidOperationException)
             {
                 throw new InvalidDataException($"'{path}' is not a readable Fabric mod ({e.Message}). Move it out of Mods, then retry.", e);
@@ -644,6 +644,12 @@ public static class ClientModInstaller
         // Fabric itself resolves version predicates, alternative nested versions and incompatibilities.
     }
 
+    // The jar as the version's loader sees it: fabric.mod.json, or on Forge (1.8.9) mcmod.info, OptiFine or the file name. Forge
+    // skips what it cannot read and never loads a Fabric jar, so those have no metadata there and never fail an install.
+    private static FabricModInfo? ReadMod(string path, string minecraftVersion, CancellationToken token) =>
+        GameVersionPolicy.UsesForge(minecraftVersion) ? ModInventoryService.ScanFor(path, minecraftVersion, token).Info
+            : FabricModMetadata.ReadJar(path, token: token);
+
     private static bool ValidId(string? value) => FabricModMetadata.ValidId(value);
     private static bool ValidHash(string? value) => Regex.IsMatch(value ?? "", "^[a-fA-F0-9]{128}$");
     internal static bool SameHash(string left, string right) => left.Equals(right, StringComparison.OrdinalIgnoreCase);
@@ -669,7 +675,7 @@ public static class ClientModInstaller
         catch (DirectoryNotFoundException) { return false; }
     }
 
-    private static string SafeChild(string root, string path)
+    internal static string SafeChild(string root, string path)
     {
         var full = Path.GetFullPath(path);
         var relative = Path.GetRelativePath(root, full);
