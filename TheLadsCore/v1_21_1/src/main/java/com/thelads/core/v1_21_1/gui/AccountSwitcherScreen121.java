@@ -18,6 +18,10 @@ public class AccountSwitcherScreen121 extends Screen {
         this.ui.setOnClose(this::onClose);
     }
 
+    // Opaque common UI; 1.21.1 Screen.render would otherwise blur and cover it (as 1.21.11 and 26.x skip it).
+    @Override
+    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float delta) {}
+
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
         ui.render(new GuiGraphicsLadsAdapter(guiGraphics, this.font), mouseX, mouseY);

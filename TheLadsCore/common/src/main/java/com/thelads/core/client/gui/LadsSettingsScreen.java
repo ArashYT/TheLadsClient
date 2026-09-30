@@ -64,7 +64,7 @@ public final class LadsSettingsScreen {
     }
 
     public void setOnOpenHudEditor(Runnable action) { onOpenHudEditor = action; }
-    /** Opens an upstream mod's own settings; without it (1.21.1) third-party rows show no settings link. */
+    /** Opens an upstream mod's own settings; without it third-party rows show no settings link. */
     public void setOnOpenModSettings(Consumer<String> action) { onOpenModSettings = action; }
     public boolean isModsViewOpen() { return modsView; }
     public void setReducedMotion(boolean value) { reducedMotion = value; }

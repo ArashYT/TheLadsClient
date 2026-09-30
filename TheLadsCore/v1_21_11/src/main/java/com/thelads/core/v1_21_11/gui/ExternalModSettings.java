@@ -17,6 +17,8 @@ public final class ExternalModSettings {
         external("NotEnoughAnimations", "Not Enough Animations", "notenoughanimations");
         external("BetterF3", "BetterF3", "betterf3");
         external("BetterStats", "Better Statistics Screen", "betterstats");
+        // Modern Advancements has no 1.21.x build in the pack (game-mods/1.21.11), so it stays unregistered here.
+        external("Resourcify", "Resourcify", "resourcify");
         external("JEI (Just Enough Items)", "Just Enough Items", "jei");
         external("XaeroWorldmap", "Xaero's World Map", "xaeroworldmap");
         external("Clumps", "Clumps", "clumps");

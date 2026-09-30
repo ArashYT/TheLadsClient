@@ -39,6 +39,8 @@ public abstract class PauseScreenMixin extends Screen {
         // This method is not called by PauseScreen(false), which intentionally has no menu.
         ladsPauseRows.addChild(Button.builder(Component.literal("Lads Client"),
             button -> minecraft.setScreen(new LadsSettingsScreen12111(this))).width(204).build(), 2);
+        ladsPauseRows.addChild(Button.builder(Component.translatable("menu.multiplayer"),
+            button -> com.thelads.core.v1_21_11.gui.PauseMultiplayer.open(this)).width(204).build(), 2);
         ladsPauseRows = null;
         LoggerFactory.getLogger("TheLadsCore").info("Lads Client pause-menu button initialized");
     }

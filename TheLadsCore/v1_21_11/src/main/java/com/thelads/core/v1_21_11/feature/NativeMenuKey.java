@@ -6,11 +6,13 @@ import com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import org.lwjgl.glfw.GLFW;
 
-/** Only gameplay and the Lads menu participate; chat, Controls and other screens keep their input. */
+/** Gameplay, title and pause menus participate; text fields and inventories keep their input. */
 public final class NativeMenuKey {
     private static final MenuKeyController CONTROLLER = new MenuKeyController();
     private static Object player;
@@ -31,18 +33,22 @@ public final class NativeMenuKey {
         };
     }
 
+    private static boolean canOpen(Screen screen) {
+        return NativeFeatures.interactive() || screen instanceof TitleScreen || screen instanceof PauseScreen;
+    }
+
     public static boolean key(KeyEvent event, int action) {
         Minecraft mc = Minecraft.getInstance();
         if (!mc.isWindowActive()) { CONTROLLER.reset(); return false; }
         Screen screen = mc.screen;
         var decision = CONTROLLER.key(event.key(), event.scancode(), action(action),
-            NativeKeyBindings.MODULES.matches(event), NativeFeatures.interactive(),
+            NativeKeyBindings.MODULES.matches(event), canOpen(screen),
             screen instanceof LadsSettingsScreen12111);
         if (decision == MenuKeyController.Decision.PASS) return false;
         if (decision == MenuKeyController.Decision.OPEN) {
             NativeFeatures.reset();
             player = mc.player;
-            mc.setScreen(new LadsSettingsScreen12111(null));
+            mc.setScreen(new LadsSettingsScreen12111(screen));
         } else if (decision == MenuKeyController.Decision.TRY_CLOSE) {
             // Common editing/navigation consumes its keys first, including Shift while typing.
             LadsSettingsScreen12111 menu = (LadsSettingsScreen12111) screen;
@@ -64,13 +70,13 @@ public final class NativeMenuKey {
         Screen screen = mc.screen;
         int physicalKey = -1000 - event.button(); // Separate mouse and keyboard/scancode identities.
         var decision = CONTROLLER.key(physicalKey, 0, action(action),
-            NativeKeyBindings.MODULES.matchesMouse(event), NativeFeatures.interactive(),
+            NativeKeyBindings.MODULES.matchesMouse(event), canOpen(screen),
             screen instanceof LadsSettingsScreen12111);
         if (decision == MenuKeyController.Decision.PASS) return false;
         if (decision == MenuKeyController.Decision.OPEN) {
             NativeFeatures.reset();
             player = mc.player;
-            mc.setScreen(new LadsSettingsScreen12111(null));
+            mc.setScreen(new LadsSettingsScreen12111(screen));
         } else if (decision == MenuKeyController.Decision.TRY_CLOSE) {
             LadsSettingsScreen12111 menu = (LadsSettingsScreen12111) screen;
             if (!menu.mouseClicked(event, false)) menu.closeFromMenuKey();
