@@ -142,6 +142,7 @@ venv/
 # --- Large Assets & Binaries ---
 *.jar
 !TheLadsCore/gradle/wrapper/gradle-wrapper.jar
+!TheLadsCore/v1_8_9/gradle/wrapper/gradle-wrapper.jar
 *.mp4
 *.gif
 *.zip

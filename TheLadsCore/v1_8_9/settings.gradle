@@ -1,0 +1,27 @@
+// Minecraft 1.8.9 (Forge) Core: a separate Gradle 8.8 build. Essential's Loom fork fails on the Gradle 9.6 root and cannot
+// share its plugin classpath with fabric-loom. The root build runs it (build189) with -PcommonJar; see artifacts/1.4.0 S1.
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+        maven { url = 'https://maven.architectury.dev/' }
+        maven { url = 'https://maven.fabricmc.net' }
+        maven { url = 'https://maven.minecraftforge.net/' }
+        maven { url = 'https://repo.spongepowered.org/maven/' }
+        maven { url = 'https://repo.essential.gg/repository/maven-releases/' }
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == 'gg.essential.loom') {
+                useModule("gg.essential:architectury-loom:${requested.version}")
+            }
+        }
+    }
+}
+
+plugins {
+    // Downloads the Java 8 toolchain when the machine has none.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = 'v1_8_9'

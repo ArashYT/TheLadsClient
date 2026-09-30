@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.mixin",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "GuiIngameMenuMixin"
+  ]
+}

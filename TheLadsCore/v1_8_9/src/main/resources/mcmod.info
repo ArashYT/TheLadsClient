@@ -1,0 +1,9 @@
+[{
+  "modid": "theladscore",
+  "name": "The Lads Core",
+  "description": "The Lads Core multi-version client mod (1.8.9)",
+  "version": "${version}",
+  "mcversion": "1.8.9",
+  "authorList": ["The Lads"],
+  "logoFile": "assets/modid/icon.png"
+}]

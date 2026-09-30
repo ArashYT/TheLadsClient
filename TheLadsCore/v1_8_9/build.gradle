@@ -1,0 +1,129 @@
+import xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar
+import xyz.wagyourtail.jvmdg.gradle.task.ShadeJar
+
+// Minecraft 1.8.9 on Forge 11.15.1.2318 with Java 8, toolchain from spike S1 (artifacts/1.4.0/spikes/s1/REPORT.md).
+plugins {
+    id 'java'
+    id 'gg.essential.loom' version '0.10.0.5'
+    id 'dev.architectury.architectury-pack200' version '0.1.3'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'xyz.wagyourtail.jvmdowngrader' version '2.0.1'
+}
+
+// One version for every Core jar: TheLadsCore/gradle.properties.
+def coreProperties = new Properties()
+file('../gradle.properties').withInputStream { coreProperties.load(it) }
+group = coreProperties.getProperty('maven_group')
+version = coreProperties.getProperty('mod_version')
+base.archivesName = modid
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(8)
+}
+
+loom {
+    forge {
+        pack200Provider = new dev.architectury.pack200.java.Pack200Adapter()
+        mixinConfig("theladscore.v1_8_9.mixins.json")
+    }
+    mixin {
+        defaultRefmapName = "theladscore.v1_8_9.refmap.json"
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.spongepowered.org/maven/' }
+}
+
+configurations {
+    shadowImpl                        // bundled into the mod jar
+    implementation.extendsFrom shadowImpl
+    commonLibs                        // common's runtime libraries, bundled and relocated
+    commonDowngradeCp                 // only for JvmDowngrader's class hierarchy lookups
+}
+
+// The Java 21 common jar built by the root build (build189 passes its path); the default fits a root :common:jar.
+def commonJar = file(findProperty('commonJar') ?: "../common/build/libs/common-${version}.jar")
+
+// 1. common (Java 21) -> Java 8 bytecode. The API stubs it references are shaded in step 3.
+tasks.register('downgradeCommon', DowngradeJar) {
+    inputFile = commonJar
+    downgradeTo = JavaVersion.VERSION_1_8
+    classpath = configurations.commonLibs + configurations.commonDowngradeCp
+    archiveClassifier = 'common-downgraded'
+    destinationDirectory = layout.buildDirectory.dir('intermediates')
+}
+
+dependencies {
+    minecraft 'com.mojang:minecraft:1.8.9'
+    mappings 'de.oceanlabs.mcp:mcp_stable:22-1.8.9'
+    forge 'net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9'
+
+    shadowImpl('org.spongepowered:mixin:0.7.11-SNAPSHOT') { transitive = false }
+    annotationProcessor 'org.spongepowered:mixin:0.8.5-SNAPSHOT'
+
+    // Minecraft 1.8.9 ships Gson 2.2.4 and no SLF4J: bundle both, relocated (Log4jServiceProvider routes SLF4J to Minecraft's log4j).
+    commonLibs('com.google.code.gson:gson:2.11.0') { transitive = false }
+    commonLibs 'org.slf4j:slf4j-api:2.0.16'
+    compileOnly 'org.slf4j:slf4j-api:2.0.16'
+    // Not bundled: Discord presence on 1.8.9 needs the pure-Java IPC (JNA 5 does not run on 1.8.9's JNA 3.4).
+    commonDowngradeCp 'club.minnced:java-discord-rpc:2.0.1'
+
+    // Mod code compiles against the downgraded common, whose records extend JvmDowngrader's stubs.
+    compileOnly files(tasks.named('downgradeCommon').flatMap { it.archiveFile })
+    compileOnly files({ jvmdg.getDowngradedApi(JavaVersion.VERSION_1_8) })
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+tasks.withType(Jar).configureEach {
+    manifest.attributes(
+        'FMLCorePluginContainsFMLMod': 'true',
+        'ForceLoadAsMod': 'true',
+        'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
+        'MixinConfigs': 'theladscore.v1_8_9.mixins.json',
+    )
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching(['mcmod.info', 'version.properties']) { expand version: project.version }
+}
+
+jar {
+    archiveClassifier = 'without-deps'
+    destinationDirectory = layout.buildDirectory.dir('intermediates')
+}
+
+// 2. Merge mod + downgraded common + libraries; relocate Gson and SLF4J away from Minecraft's.
+shadowJar {
+    destinationDirectory = layout.buildDirectory.dir('intermediates')
+    archiveClassifier = 'non-obfuscated-with-deps'
+    configurations = [project.configurations.shadowImpl, project.configurations.commonLibs]
+    dependsOn 'downgradeCommon'
+    from(zipTree(tasks.named('downgradeCommon').flatMap { it.archiveFile }))
+    relocate 'com.google.gson', 'com.thelads.core.shadow.gson'
+    relocate 'org.slf4j', 'com.thelads.core.shadow.slf4j'
+    mergeServiceFiles()
+    exclude 'module-info.class', 'META-INF/versions/**', 'META-INF/maven/**',
+            'META-INF/services/javax.annotation.processing.Processor'
+}
+
+// 3. Shade only the JvmDowngrader API stubs actually used, under Core's own package.
+tasks.register('shadeJvmdgApi', ShadeJar) {
+    inputFile = shadowJar.archiveFile
+    downgradeTo = JavaVersion.VERSION_1_8
+    shadePath = 'com/thelads/core/jvmdg/'
+    archiveClassifier = 'non-obfuscated-shaded'
+    destinationDirectory = layout.buildDirectory.dir('intermediates')
+}
+
+// 4. Reobfuscate (named -> SRG) the merged jar: build/libs/theladscore-<version>.jar.
+remapJar {
+    archiveClassifier = ''
+    input = tasks.named('shadeJvmdgApi').flatMap { it.archiveFile }
+    dependsOn 'shadeJvmdgApi'
+}
+
+assemble.dependsOn remapJar
