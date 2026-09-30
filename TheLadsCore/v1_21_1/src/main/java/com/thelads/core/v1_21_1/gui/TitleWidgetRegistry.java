@@ -1,4 +1,4 @@
-package com.thelads.core.v1_21_11.gui;
+package com.thelads.core.v1_21_1.gui;
 
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.title.TitleScreenTheme;

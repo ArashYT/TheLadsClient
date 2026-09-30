@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_11.mixin.chrome",
+  "compatibilityLevel": "JAVA_21",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "GlobalButtonMixin",
+    "SmoothScrollMixin",
+    "KeyEntryAccessor",
+    "KeySearchMixin",
+    "ControlsScreenMixin",
+    "PackFilterMixin"
+  ]
+}
