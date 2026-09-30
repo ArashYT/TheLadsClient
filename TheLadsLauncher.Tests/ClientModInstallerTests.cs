@@ -573,7 +573,8 @@ public sealed class ClientModInstallerTests : IDisposable
         start.ArgumentList.Add("-NoProfile"); start.ArgumentList.Add("-NonInteractive");
         start.ArgumentList.Add("-EncodedCommand"); start.ArgumentList.Add(Convert.ToBase64String(Encoding.Unicode.GetBytes(script)));
         using var process = System.Diagnostics.Process.Start(start)!;
-        Assert.True(process.WaitForExit(10000), "Timed out creating fixture junction.");
+        // Fixture setup only: a cold PowerShell start on a busy CI runner can take well over 10 s.
+        Assert.True(process.WaitForExit(60000), "Timed out creating fixture junction.");
         Assert.True(process.ExitCode == 0, process.StandardError.ReadToEnd());
     }
 

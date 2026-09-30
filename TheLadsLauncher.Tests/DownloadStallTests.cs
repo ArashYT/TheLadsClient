@@ -1,17 +1,18 @@
 using TheLadsLauncher.Services;
 using Xunit;
 
+[Collection(TimingSensitive.Name)]
 public sealed class DownloadStallTests
 {
-    private static readonly TimeSpan Idle = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan Idle = TimeSpan.FromSeconds(3);
 
     [Fact] public async Task SlowDownloadCompletesButAStalledOneTimesOut()
     {
-        // 30 bytes 40 ms apart: longer in total than the idle limit, but never idle for it.
-        using var slow = new TrickleStream(new byte[30], stallAt: 30, TimeSpan.FromMilliseconds(40));
+        // 40 bytes 100 ms apart: 4 s in total, longer than the idle limit, but never idle for more than a fraction of it.
+        using var slow = new TrickleStream(new byte[40], stallAt: 40, TimeSpan.FromMilliseconds(100));
         using var output = new MemoryStream();
-        Assert.Equal(30, await ClientModInstaller.CopyWithStallTimeoutAsync(slow, output, 30, Idle, "Slow", default));
-        Assert.Equal(30, output.Length);
+        Assert.Equal(40, await ClientModInstaller.CopyWithStallTimeoutAsync(slow, output, 40, Idle, "Slow", default));
+        Assert.Equal(40, output.Length);
 
         using var stalled = new TrickleStream(new byte[30], stallAt: 5, TimeSpan.FromMilliseconds(10));
         var failure = await Assert.ThrowsAsync<TimeoutException>(() =>

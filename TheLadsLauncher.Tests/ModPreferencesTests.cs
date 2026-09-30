@@ -4,6 +4,7 @@ using Xunit;
 
 namespace TheLadsLauncher.Tests;
 
+[Collection(TimingSensitive.Name)] // 16 writers share one 3 s lock wait
 public sealed class ModPreferencesTests : IDisposable
 {
     private readonly ModSandbox box = new();
