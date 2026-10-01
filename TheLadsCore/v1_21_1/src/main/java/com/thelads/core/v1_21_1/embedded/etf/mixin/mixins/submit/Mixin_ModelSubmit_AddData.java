@@ -1,0 +1,7 @@
+package com.thelads.core.v1_21_1.embedded.etf.mixin.mixins.submit;
+
+import org.jetbrains.annotations.Nullable;
+import org.spongepowered.asm.mixin.Mixin;
+
+@Mixin(com.thelads.core.v1_21_1.embedded.etf.mixin.CancelTarget.class)
+public interface Mixin_ModelSubmit_AddData { }

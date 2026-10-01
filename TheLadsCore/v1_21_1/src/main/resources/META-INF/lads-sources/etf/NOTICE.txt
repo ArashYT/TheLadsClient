@@ -1,0 +1,13 @@
+Entity Texture Features 7.2.4 for Minecraft 1.21.1 (Fabric), by Traben.
+Licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0-only), see LICENSE beside this file. The GNU GPL v3 that it incorporates is reproduced in META-INF/lads-sources/emf/LICENSE.
+Source: https://github.com/Traben-0/Entity_Texture_Features (tag v7.2.4, commit b2755bf63e676a01456eab29c87fc0fc14a174ba).
+
+Modified by The Lads: repackaged into Lads Core.
+- The upstream multi-version preprocessor was resolved for this Minecraft version and the packages were
+  relocated to com.thelads.core.v1_21_1.embedded.etf (traben.tconfig to com.thelads.core.v1_21_1.embedded.etf.tconfig).
+- It runs hidden (no Mod Menu entry, no resource-pack screen button) and stays off while the original
+  entity_texture_features jar is installed.
+- The embedded EMF counts as installed for ETF's mod checks.
+- Config files, resource-pack paths and asset namespaces are unchanged.
+
+The complete modified source is in META-INF/lads-sources/etf/v1_21_1 in this jar.

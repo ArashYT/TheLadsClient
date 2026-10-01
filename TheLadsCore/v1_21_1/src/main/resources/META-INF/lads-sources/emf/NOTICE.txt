@@ -1,0 +1,12 @@
+Entity Model Features 3.3.9 for Minecraft 1.21.1 (Fabric), by Traben.
+Licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0-only), see LICENSE beside this file.
+Source: https://github.com/Traben-0/Entity_Model_Features (tag v3.3.9, commit 84df532f70fc58f998795899904826a065cafff2).
+
+Modified by The Lads: repackaged into Lads Core.
+- The upstream multi-version preprocessor was resolved for this Minecraft version and the packages were
+  relocated to com.thelads.core.v1_21_1.embedded.emf.
+- It runs hidden (no Mod Menu entry) and stays off while the original
+  entity_model_features jar is installed; the embedded EMF also needs the embedded ETF.
+- Config files, resource-pack paths and asset namespaces are unchanged.
+
+The complete modified source is in META-INF/lads-sources/emf/v1_21_1 in this jar.
