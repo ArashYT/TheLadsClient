@@ -1,0 +1,7 @@
+Ksyxis 1.4.5 by VidTu
+https://github.com/VidTu/Ksyxis (tag 1.4.5, commit a0c448c908e10ba6daf55bf9a3eaa90319499f34)
+Copyright (c) 2021-2026 VidTu. MIT License, see LICENSE beside this file.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v26_2.embedded.ksyxis). Only the injections
+that apply to Minecraft 26.2 are kept, with their targets resolved for that version; the legacy-version
+mixins and loader shims are left out. The embedded copy stays inactive while the original Ksyxis jar is installed.
