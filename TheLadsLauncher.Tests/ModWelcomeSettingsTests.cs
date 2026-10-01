@@ -14,6 +14,7 @@ public sealed class ModWelcomeSettingsTests
         string fancy = Path.Combine(dir.Path, "config", "fancymenu", "options.txt");
         string mce = Path.Combine(dir.Path, "config", "Modpack Core Essentials", "custom_window.json");
         Assert.Contains("##[tutorial]\nB:show_welcome_screen = 'false';", File.ReadAllText(fancy));
+        Assert.Contains("##[customization]\nB:modpack_mode = 'true';", File.ReadAllText(fancy));
         Assert.Equal("NEVER", JsonNode.Parse(File.ReadAllText(mce))!["welcomeMode"]!.GetValue<string>());
         var paths = new[] { fancy, mce };
         var bytes = paths.Select(File.ReadAllBytes).ToArray();
@@ -40,7 +41,8 @@ public sealed class ModWelcomeSettingsTests
         Write(mce, "{\"windowTitle\":\"My pack\",\"welcomeMode\":\"EVERY_LAUNCH\",\"showWelcomeOnStartup\":true,\"showWelcomeEveryTime\":true,\"custom\":{\"keep\":42}}");
         Write(consent, "{\"accepted_tos\":false}");
         Assert.Empty(await ModWelcomeSettings.PrepareAsync(dir.Path));
-        Assert.Equal(original.Replace("show_welcome_screen = 'true'", "show_welcome_screen = 'false'"), File.ReadAllText(fancy));
+        Assert.Equal(original.Replace("show_welcome_screen = 'true'", "show_welcome_screen = 'false'")
+            + "\r\n##[customization]\r\nB:modpack_mode = 'true';\r\n", File.ReadAllText(fancy));
         var json = JsonNode.Parse(File.ReadAllText(mce))!;
         Assert.Equal("NEVER", json["welcomeMode"]!.GetValue<string>());
         Assert.False(json["showWelcomeOnStartup"]!.GetValue<bool>());
@@ -48,6 +50,17 @@ public sealed class ModWelcomeSettingsTests
         Assert.Equal("My pack", json["windowTitle"]!.GetValue<string>());
         Assert.Equal(42, json["custom"]!["keep"]!.GetValue<int>());
         Assert.Equal("{\"accepted_tos\":false}", File.ReadAllText(consent));
+    }
+
+    [Fact]
+    public async Task FancyMenuModpackModeIsTurnedOnInPlace()
+    {
+        using var dir = new TestDirectory();
+        string fancy = Path.Combine(dir.Path, "config", "fancymenu", "options.txt");
+        const string original = "##[customization]\nB:modpack_mode = 'false';\nB:show_customization_overlay = 'true';\n##[tutorial]\nB:show_welcome_screen = 'false';\n";
+        Write(fancy, original);
+        Assert.Empty(await ModWelcomeSettings.PrepareAsync(dir.Path));
+        Assert.Equal(original.Replace("modpack_mode = 'false'", "modpack_mode = 'true'"), File.ReadAllText(fancy));
     }
 
     [Theory]
