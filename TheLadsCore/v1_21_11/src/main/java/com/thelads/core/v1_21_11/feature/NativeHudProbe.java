@@ -97,6 +97,8 @@ final class NativeHudProbe {
         boolean hadSpeed = mc.player.hasEffect(MobEffects.SPEED);
         try {
             LadsGameBridge.set(new VanillaGameBridge12111());
+            // These checks call the HUD microseconds apart; under the HUD FPS cap they would all see one replayed build.
+            com.thelads.core.config.HudSettings.getInstance().setHudFpsCapEnabled(false);
             for (String name : List.of("Autohide", "SmoothHotbar", "BossBar", "Scoreboard", "ArmorHUD")) check(ModuleSupport.isBuiltIn(name), name + " is a built-in module");
             check(!FabricLoader.getInstance().isModLoaded("autohidehud"), "the retired Auto Hide HUD jar is not loaded");
             check(FabricLoader.getInstance().isModLoaded("xaerominimap") == ModuleSupport.isBuiltIn("Minimap"), "Minimap is built in exactly when Xaero's minimap is loaded");

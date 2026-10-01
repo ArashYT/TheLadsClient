@@ -1,0 +1,38 @@
+package com.thelads.core.client.hud;
+
+import com.thelads.core.config.HudSettings;
+
+/**
+ * The HUD FPS cap's schedule. A capped HUD is rebuilt only on due frames and its last build is drawn on every frame in between,
+ * so it stays on screen. Versions that capture the whole HUD (vanilla, mods and the Lads HUD) set {@link #wholeHud} while
+ * rebuilding, and the Lads HUD inside then draws directly; elsewhere {@link HudManager} caches the Lads HUD itself.
+ */
+public final class HudFrameCap {
+    private static long last;
+    private static int width, height;
+    /** True while a version rebuilds the whole HUD under this cap. */
+    public static boolean wholeHud;
+
+    private HudFrameCap() {}
+
+    public static boolean enabled() {
+        HudSettings settings = HudSettings.getInstance();
+        return !settings.isHudFpsUnlimited() && settings.getHudFpsLimit() > 0;
+    }
+
+    /** Whether this frame rebuilds the HUD: at the cap rate, and at once after a resize or {@link #reset()}. */
+    public static boolean due(long now, int scaledWidth, int scaledHeight) {
+        long interval = 1_000_000_000L / Math.max(1, HudSettings.getInstance().getHudFpsLimit()), since = now - last;
+        if (last != 0 && since < interval && scaledWidth == width && scaledHeight == height) return false;
+        // Keep the cadence on schedule (vsync frames rarely land exactly on it) unless a whole interval was missed.
+        last = last != 0 && since >= interval && since < 2 * interval ? last + interval : now;
+        width = scaledWidth;
+        height = scaledHeight;
+        return true;
+    }
+
+    /** The next frame rebuilds: the cap was off, or a build failed part-way. */
+    public static void reset() {
+        last = 0;
+    }
+}

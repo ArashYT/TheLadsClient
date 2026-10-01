@@ -8,6 +8,8 @@
   },
   "client": [
     "GuiMixin",
+    "GuiHudCapMixin",
+    "GuiRenderStateCaptureMixin",
     "TitleScreenMixin",
     "TitleWidgetMixin",
     "PauseScreenMixin",
