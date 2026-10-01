@@ -12,6 +12,9 @@ public class HudManager {
     private final List<HudElement> elements = new ArrayList<>();
     private ScoreboardHudElement scoreboardElement;
     private long lastHudRenderNanos = 0;
+    /** The last capped HUD build, replayed on the frames between builds. */
+    private final List<java.util.function.Consumer<LadsGraphics>> cachedHud = new ArrayList<>();
+    private int cachedWidth, cachedHeight;
     private int hudFrameCount = 0;
     private int measuredHudFps = 60;
     private long lastFpsMeasureTime = 0;
@@ -75,20 +78,29 @@ public class HudManager {
 
     public void render(LadsGraphics g) {
         if (g == null || (g.getGame() != null && g.getGame().isHudHidden())) return;
-        if (g.getGame() != null && g.getGame().isIngame()
-                && HudSettings.getInstance().isHudFpsCapEnabled() && !HudSettings.getInstance().isHudFpsUnlimited()) {
-            int cap = HudSettings.getInstance().getHudFpsLimit();
-            if (cap > 0) {
-                long now = System.nanoTime();
-                long intervalNanos = 1_000_000_000L / cap;
-                if (lastHudRenderNanos != 0 && (now - lastHudRenderNanos) < intervalNanos) {
-                    return;
-                }
-                lastHudRenderNanos = now;
+        int cap = HudSettings.getInstance().getHudFpsLimit();
+        if (g.getGame() != null && g.getGame().isIngame() && !HudSettings.getInstance().isHudFpsUnlimited() && cap > 0) {
+            // Capped: rebuild the HUD at the cap rate and draw the last build on every frame, so it never blinks out.
+            long now = System.nanoTime(), interval = 1_000_000_000L / cap, since = now - lastHudRenderNanos;
+            if (lastHudRenderNanos == 0 || since >= interval || g.getScaledWidth() != cachedWidth || g.getScaledHeight() != cachedHeight) {
+                // Keep the cadence on schedule (vsync frames rarely land exactly on it) unless a whole interval was missed.
+                lastHudRenderNanos = lastHudRenderNanos != 0 && since >= interval && since < 2 * interval ? lastHudRenderNanos + interval : now;
+                cachedHud.clear();
+                cachedWidth = g.getScaledWidth();
+                cachedHeight = g.getScaledHeight();
+                recordHudFrame();
+                renderElements(new RecordingGraphics(g, cachedHud));
             }
+            for (var op : cachedHud) op.accept(g);
+            return;
         }
+        lastHudRenderNanos = 0;
+        cachedHud.clear();
         recordHudFrame();
+        renderElements(g);
+    }
 
+    private void renderElements(LadsGraphics g) {
         int screenW = g.getScaledWidth();
         int screenH = g.getScaledHeight();
 
