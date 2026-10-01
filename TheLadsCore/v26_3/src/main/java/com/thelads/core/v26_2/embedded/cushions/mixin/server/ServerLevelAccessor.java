@@ -1,0 +1,16 @@
+// Derived from Optimized Cushions 1.0.0 (tag 1.0.0) by NikitaCartes (MIT); see META-INF/lads-sources/cushions/LICENSE.
+package com.thelads.core.v26_2.embedded.cushions.mixin.server;
+
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.entity.EntityTickList;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.gen.Accessor;
+
+@Mixin(ServerLevel.class)
+public interface ServerLevelAccessor {
+    @Accessor("entityTickList")
+    EntityTickList optimizedcushions$getEntityTickList();
+
+    @Accessor("emptyTime")
+    int optimizedcushions$getEmptyTime();
+}

@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.embedded.cushions.mixin",
+  "plugin": "com.thelads.core.v26_2.embedded.cushions.CushionsMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["server.ChunkMapMixin", "server.CushionMixin", "server.EntityCallbacksMixin", "server.EntityMixin", "server.ServerEntityAccessor", "server.ServerLevelAccessor", "server.ServerLevelMixin", "server.ServerPlayerMixin", "server.TrackedEntityAccessor", "server.TrackedEntityMixin"],
+  "client": ["CushionMixin", "EntityMixin", "CushionRenderStateMixin", "CushionRendererMixin", "LevelExtractorMixin", "SectionCompilerMixin", "RenderSectionMixin", "LevelRendererMixin", "SodiumChunkMeshMixin"],
+  "injectors": { "defaultRequire": 1 }
+}
