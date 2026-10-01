@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 public class QuickPack {
     public static final String MOD_ID = "quick-pack";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    private static final boolean QA = Boolean.getBoolean("thelads.verifyAutoWorld");
 
     public static void initializeFileTrees(FilePackResources.SharedZipFileAccess zipFileAccess, List<PackResources> packList) {
         ZipFile zipFile = ((SharedZipFileAccessAccessor) zipFileAccess).invokeGetOrCreateZipFile();
@@ -70,6 +71,7 @@ public class QuickPack {
             treeSetByPrefix.computeIfAbsent(prefix, s -> new TreeSet<>()).add(path);
         }
 
+        if (QA) LOGGER.info("quick-pack: indexed {} files of {}", treeSetByPrefix.values().stream().mapToInt(Set::size).sum(), zipFile.getName());
         packsByPrefix.forEach((prefix, packResource) ->
             ((IFilePackResources) packResource).quick_pack$initializeFileTree(
                 treeSetByPrefix.getOrDefault(prefix, new TreeSet<>()),

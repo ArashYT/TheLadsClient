@@ -16,7 +16,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Mob.class)
 public abstract class MobMixin implements LazyMob {
     @Unique private int lads$lazyInterval = LazyAi.VANILLA_INTERVAL;
-    @Unique private int lads$lazyRecheckAt;
 
     @Override
     public int lads$lazyInterval() {
@@ -26,10 +25,7 @@ public abstract class MobMixin implements LazyMob {
     @Inject(method = "serverAiStep", at = @At("HEAD"))
     private void lads$updateLazyInterval(CallbackInfo ci) {
         Mob mob = (Mob) (Object) this;
-        if (mob.tickCount >= lads$lazyRecheckAt) {
-            lads$lazyRecheckAt = mob.tickCount + LazyAi.recheckTicks() + Math.floorMod(mob.getId(), 5);
-            lads$lazyInterval = LazyAi.distanceInterval(mob);
-        }
+        lads$lazyInterval = LazyAi.distanceInterval(mob);
         LazyAi.report(mob.level().getGameTime());
     }
 
