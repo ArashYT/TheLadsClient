@@ -17,6 +17,9 @@ public final class TabListModule extends Module {
         addOption(new SliderOption("Players Per Column", 20, 1, 100, 1));
         addOption(new BoolOption("Hide Header", false));
         addOption(new BoolOption("Hide Footer", false));
+        addOption(new BoolOption("Player Skins", true));
+        addOption(new BoolOption("Show Player Count", false));
+        addOption(new StringOption("Player Count Format", "Players: {count}"));
         addOption(new BoolOption("Hide Heads", false));
         addOption(new BoolOption("Hide NPC Heads", false));
         addOption(new BoolOption("Improved Hats", true));
@@ -27,6 +30,7 @@ public final class TabListModule extends Module {
         addOption(new BoolOption("Below Boss Bars", true));
         addOption(new ColorOption("Header Color", false, 0x80000000));
         addOption(new ColorOption("Body Color", false, 0x80000000));
+        addOption(new ColorOption("Global Tab Background", false, 0x80000000));
         addOption(new ColorOption("Footer Color", false, 0x80000000));
         addOption(new ColorOption("Player Row Color", false, 0x20ffffff));
     }

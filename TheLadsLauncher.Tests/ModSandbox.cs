@@ -21,6 +21,7 @@ internal sealed class ModSandbox : IDisposable
     /// <summary>Answers api.modrinth.com/v2/version_file lookups; null means offline (503).</summary>
     public Func<string, string?>? VersionFile { get; set; }
     private readonly Dictionary<string, byte[]> downloads = new();
+    public void MockDownload(string url, byte[] bytes) => downloads[url] = bytes;
 
     public ModSandbox() => Directory.CreateDirectory(Mods);
 

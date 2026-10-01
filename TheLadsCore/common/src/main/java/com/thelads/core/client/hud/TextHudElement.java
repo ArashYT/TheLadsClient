@@ -31,6 +31,7 @@ abstract class TextHudElement extends HudElement {
     @Override public final void render(LadsGraphics graphics) {
         if (preparedGraphics != graphics) prepareRender(graphics, false);
         preparedGraphics = null;
+        if (preparedText == null || preparedText.isEmpty()) return;
         drawBackground(graphics);
         drawCenteredText(graphics, preparedText, textColor(), preparedTextWidth);
     }

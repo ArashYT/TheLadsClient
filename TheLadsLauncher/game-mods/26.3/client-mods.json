@@ -1038,21 +1038,6 @@
       "projectUrl": "https://modrinth.com/mod/serverpingerfixer"
     },
     {
-      "projectId": "zV5r3pPn",
-      "projectSlug": "3dskinlayers",
-      "name": "3D Skin Layers",
-      "modId": "skinlayers3d",
-      "versionId": "G8BCRxv5",
-      "version": "1.11.3",
-      "fileName": "skinlayers3d-fabric-1.11.3-mc26.3.jar",
-      "url": "https://cdn.modrinth.com/data/zV5r3pPn/versions/G8BCRxv5/skinlayers3d-fabric-1.11.3-mc26.3.jar",
-      "sha512": "5217aac8fc55952d5837932fbad3eb2d8a2211a57ff602db9be7a0e2678ea90f11cc5c37d4e44abee835f7831508af770c1ba6334dd2933290fe6699978f4118",
-      "size": 1890220,
-      "license": "LicenseRef-tr7zw-Protective-License",
-      "sourceUrl": "https://github.com/tr7zw/3d-skin-layers",
-      "projectUrl": "https://modrinth.com/mod/3dskinlayers"
-    },
-    {
       "projectId": "AANobbMI",
       "projectSlug": "sodium",
       "name": "Sodium",
@@ -1300,6 +1285,15 @@
         "d2f8c392299dd6f75e03daad4160d5cfb91e9eec9b650b72505968d654b25a9cb6b1f209d5ea46554671f964e2f24d10834c2ba9c71d473f07ee7be4e335db1b"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.0."
+    },
+    {
+      "modId": "skinlayers3d",
+      "projectId": "zV5r3pPn",
+      "name": "3D Skin Layers",
+      "sha512": [
+        "5217aac8fc55952d5837932fbad3eb2d8a2211a57ff602db9be7a0e2678ea90f11cc5c37d4e44abee835f7831508af770c1ba6334dd2933290fe6699978f4118"
+      ],
+      "reason": "Replaced by internal native 3D skin layer module in 1.4.2."
     }
   ]
 }

@@ -38,6 +38,8 @@ public final class HudDefaults {
             case "Hunger" -> {x=w-ew-5;y=h-eh-42;}
             case "XP" -> {x=w-ew-5;y=h-eh-22;}
             case "TexturePacks" -> {x=w-ew-5;y=h-eh-5;}
+            case "ToggleSprint" -> {x=5;y=h-eh-64;}
+            case "ToggleSneak" -> {x=5;y=h-eh-84;}
             default -> {return null;}
         }
         return new int[]{Math.max(0,Math.min(x,w-ew)),Math.max(0,Math.min(y,h-eh))};

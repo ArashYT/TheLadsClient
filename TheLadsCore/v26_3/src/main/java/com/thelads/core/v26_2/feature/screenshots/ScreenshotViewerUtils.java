@@ -297,4 +297,59 @@ public class ScreenshotViewerUtils {
          }
       }
    }
+
+   public static void uploadToImgur(File screenshotFile) {
+      Minecraft client = Minecraft.getInstance();
+      CompletableFuture.runAsync(() -> {
+         try {
+            byte[] bytes = java.nio.file.Files.readAllBytes(screenshotFile.toPath());
+            java.net.URL url = new java.net.URI("https://api.imgur.com/3/image").toURL();
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Authorization", "Client-ID 546c25a59c58ad7");
+            conn.setDoOutput(true);
+            conn.getOutputStream().write(bytes);
+            conn.getOutputStream().flush();
+            int code = conn.getResponseCode();
+            if (code == 200) {
+               try (var reader = new java.io.InputStreamReader(conn.getInputStream())) {
+                  com.google.gson.JsonObject json = com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();
+                  String link = json.getAsJsonObject("data").get("link").getAsString();
+                  client.execute(() -> {
+                     client.keyboardHandler.setClipboard(link);
+                     client.gui.hud.setOverlayMessage(Component.literal("Imgur link copied: " + link), false);
+                  });
+               }
+            } else {
+               client.execute(() -> client.gui.hud.setOverlayMessage(Component.literal("Imgur upload failed: HTTP " + code), false));
+            }
+         } catch (Throwable t) {
+            client.execute(() -> client.gui.hud.setOverlayMessage(Component.literal("Imgur upload failed: " + t.getMessage()), false));
+         }
+      }, ScreenshotFileIO.IMAGE_EXECUTOR);
+   }
+
+   public static MutableComponent appendScreenshotButtons(MutableComponent base, File file) {
+      var copyBtn = Component.literal(" [Copy]")
+         .withStyle(s -> s.withColor(net.minecraft.ChatFormatting.GOLD)
+            .withClickEvent(new com.thelads.core.v26_2.feature.screenshots.screen.ScreenshotChatActionClickEvent(file, com.thelads.core.v26_2.feature.screenshots.screen.ScreenshotChatActionClickEvent.ActionType.COPY))
+            .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal("Copy image to clipboard"))));
+
+      var openFileBtn = Component.literal(" [Open File]")
+         .withStyle(s -> s.withColor(net.minecraft.ChatFormatting.GREEN)
+            .withClickEvent(new com.thelads.core.v26_2.feature.screenshots.screen.ScreenshotChatActionClickEvent(file, com.thelads.core.v26_2.feature.screenshots.screen.ScreenshotChatActionClickEvent.ActionType.OPEN_FILE))
+            .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal("Open screenshot file"))));
+
+      var openFolderBtn = Component.literal(" [Open Folder]")
+         .withStyle(s -> s.withColor(net.minecraft.ChatFormatting.AQUA)
+            .withClickEvent(new com.thelads.core.v26_2.feature.screenshots.screen.ScreenshotChatActionClickEvent(file, com.thelads.core.v26_2.feature.screenshots.screen.ScreenshotChatActionClickEvent.ActionType.OPEN_FOLDER))
+            .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal("Open screenshots folder"))));
+
+      var imgurBtn = Component.literal(" [Upload to Imgur]")
+         .withStyle(s -> s.withColor(net.minecraft.ChatFormatting.LIGHT_PURPLE)
+            .withClickEvent(new com.thelads.core.v26_2.feature.screenshots.screen.ScreenshotChatActionClickEvent(file, com.thelads.core.v26_2.feature.screenshots.screen.ScreenshotChatActionClickEvent.ActionType.UPLOAD_IMGUR))
+            .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal("Upload to Imgur and copy link"))));
+
+      return base.append(copyBtn).append(openFileBtn).append(openFolderBtn).append(imgurBtn);
+   }
 }

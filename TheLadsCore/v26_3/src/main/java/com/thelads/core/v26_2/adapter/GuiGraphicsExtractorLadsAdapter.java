@@ -36,17 +36,27 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     @Override public void drawModIcon(String id,int x,int y,int size){if(!com.thelads.core.v26_2.gui.ModIcons.draw(g,id,x,y,size))LadsGraphics.super.drawModIcon(id,x,y,size);}
 
     @Override public void drawBossBars(int x,int y,int max,boolean names,boolean preview) {
-        var overlay=(com.thelads.core.v26_2.mixin.BossBarAccessor)Minecraft.getInstance().gui.hud.getBossOverlay();
-        var events=new java.util.ArrayList<net.minecraft.world.BossEvent>(overlay.ladsEvents().values());
-        if(events.isEmpty()&&preview){
-            var sample=new net.minecraft.client.gui.components.LerpingBossEvent(java.util.UUID.randomUUID(),net.minecraft.network.chat.Component.literal("Boss bar preview"),.65f,net.minecraft.world.BossEvent.BossBarColor.PURPLE,net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS,false,false,false);
-            events.add(sample);
-        }
-        int row=0;
-        for(var event:events){if(row>=max)break;int yy=y+row++*19;
-            overlay.ladsDrawBar(g,x,yy+10,event);
-            if(names)g.text(font,event.getName(),x+(182-font.width(event.getName()))/2,yy,0xFFFFFFFF);
-        }
+        var mc = Minecraft.getInstance();
+        if (mc.gui == null || mc.gui.hud == null || mc.gui.hud.getBossOverlay() == null) return;
+        try {
+            var overlay=(com.thelads.core.v26_2.mixin.BossBarAccessor)mc.gui.hud.getBossOverlay();
+            var map = overlay.ladsEvents();
+            var events=new java.util.ArrayList<net.minecraft.world.BossEvent>();
+            if (map != null) {
+                synchronized (map) {
+                    events.addAll(map.values());
+                }
+            }
+            if(events.isEmpty()&&preview){
+                var sample=new net.minecraft.client.gui.components.LerpingBossEvent(java.util.UUID.randomUUID(),net.minecraft.network.chat.Component.literal("Boss bar preview"),.65f,net.minecraft.world.BossEvent.BossBarColor.PURPLE,net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS,false,false,false);
+                events.add(sample);
+            }
+            int row=0;
+            for(var event:events){if(row>=max)break;int yy=y+row++*19;
+                overlay.ladsDrawBar(g,x,yy+10,event);
+                if(names)g.text(font,event.getName(),x+(182-font.width(event.getName()))/2,yy,0xFFFFFFFF);
+            }
+        } catch (Throwable ignored) {}
     }
 
     @Override public void drawArmorItem(int index,int x,int y,boolean preview) {

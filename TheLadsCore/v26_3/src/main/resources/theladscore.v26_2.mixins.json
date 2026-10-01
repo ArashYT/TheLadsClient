@@ -74,6 +74,8 @@
     "FontMetricsMixin",
     "SmoothScrollMixin",
     "GlobalButtonMixin",
+    "GlobalSliderMixin",
+    "LowFireMixin",
     "SkinTextureAccessor",
     "LocalSkinMixin",
     "ModelPartAccessor",

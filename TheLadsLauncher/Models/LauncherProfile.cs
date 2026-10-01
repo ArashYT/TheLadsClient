@@ -17,6 +17,7 @@ public class LauncherProfile
     public DateTime? LastPlayed { get; set; }
     public string IconKey { get; set; } = "default";
     public bool IsFavorite { get; set; }
+    public bool LocalResourcePacks { get; set; } = false;
 
     public override string ToString() => $"{(IsFavorite ? "★ " : "")}{Name} ({MinecraftVersion})";
 }

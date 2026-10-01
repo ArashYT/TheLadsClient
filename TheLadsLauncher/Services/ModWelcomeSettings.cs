@@ -19,6 +19,7 @@ public static class ModWelcomeSettings
         string config = Path.Combine(gameDirectory, "config");
         await UpdateAsync(Path.Combine(config, "fancymenu", "options.txt"), DisableFancyMenuWelcome);
         await UpdateAsync(Path.Combine(config, "Modpack Core Essentials", "custom_window.json"), DisableModpackWelcome);
+        await UpdateAsync(Path.Combine(config, "forge.cfg"), DisableForgeVersionCheck);
         return warnings;
 
         async Task UpdateAsync(string path, Func<string, string> rewrite)
@@ -63,5 +64,13 @@ public static class ModWelcomeSettings
             root[key] = false;
         }
         return changed ? root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n" : text;
+    }
+
+    private static string DisableForgeVersionCheck(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+        var modified = Regex.Replace(text, @"(?m)^[\t ]*B:disableVersionCheck[\t ]*=.*$", "    B:disableVersionCheck=true");
+        modified = Regex.Replace(modified, @"(?ms)version_checking\s*\{\s*B:Global\s*=\s*true", "version_checking {\n    B:Global=false");
+        return modified;
     }
 }

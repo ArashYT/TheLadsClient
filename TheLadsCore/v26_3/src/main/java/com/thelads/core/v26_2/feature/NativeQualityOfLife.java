@@ -62,6 +62,10 @@ public final class NativeQualityOfLife {
         Module value = module(module);
         return value != null && value.getOption(option) instanceof SliderOption setting ? setting.getValue() : fallback;
     }
+    public static String string(String module, String option, String fallback) {
+        Module value = module(module);
+        return value != null && value.getOption(option) instanceof com.thelads.core.config.StringOption setting ? setting.get() : fallback;
+    }
     public static int raisedDistance() {
         return com.thelads.core.v26_2.feature.raised.NativeRaised.active() && enabled("Raised") && Minecraft.getInstance().gui.screen() instanceof ChatScreen
             ? (int) number("Raised", "Distance", 14) : 0;
