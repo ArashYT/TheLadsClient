@@ -42,3 +42,11 @@ jar {
 remapJar {
     archiveClassifier = 'mc1.21.11'
 }
+
+// Embedded upstream mods (1.4.6): the modified LGPL/MPL sources ship in the jar.
+processResources {
+    from('src/main/java') {
+        include 'com/thelads/core/v1_21_11/embedded/fixbookgui/**'
+        into 'META-INF/lads-sources/fixbookgui/v1_21_11'
+    }
+}

@@ -1,0 +1,17 @@
+FixBookGUI (Fix Book Gui), 2.0.0 for Minecraft 1.21.1
+Copyright KosmoMoustache; contributors mworzala, YoungSoulluoS and diskree.
+License: LGPL-3.0-only. The license text is in LICENSE beside this file; it incorporates the
+GNU GPL version 3, whose text is in GPL-3.0.txt beside it.
+Project: https://github.com/KosmoMoustache/FixBookGUI
+Source used: upstream multi-version source, tag 2.1.0 (commit 17d936810ed67c510bb4cc8c0b9274cbc1a2dfc3); its Minecraft 1.21.1 branches match the classes of the pinned 2.0.0+mc1.21.1 release.
+
+Modified by The Lads: repackaged into Lads Core as com.thelads.core.v1_21_1.embedded.fixbookgui
+(mixin config theladscore.embedded.fixbookgui.mixins.json), the multi-version preprocessor
+branches resolved for Minecraft 1.21.1, and the mixins skipped while the original fixbookgui
+mod is installed. There is no other change in behavior.
+
+The complete modified source is in META-INF/lads-sources/fixbookgui/v1_21_1 in this jar.
+To use a modified version, change those files in the Lads source tree
+(TheLadsCore/v1_21_1/src/main/java/com/thelads/core/v1_21_1/embedded/fixbookgui) and rebuild Core
+with TheLadsCore/gradlew.bat :v1_21_1:build, or compile them against this jar, Minecraft 1.21.1 and
+Fabric Loader and replace the classes of that package in a copy of this jar.
