@@ -102,6 +102,22 @@ jar {
     from(project(':common').sourceSets.main.output)
 }
 
+// Embedded Entity Texture/Model Features (LGPL-3.0-only): upstream's compile-only APIs, and the modified sources in the jar.
+repositories {
+    maven { url 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
+    maven { url 'https://repo.redlance.org/public'; content { includeGroup 'com.zigythebird.playeranim' } }
+}
+dependencies {
+    compileOnly 'com.demonwav.mcdev:annotations:2.1.0'
+    compileOnly('maven.modrinth:iris:3uIIps8q') { transitive = false }
+    compileOnly('com.zigythebird.playeranim:PlayerAnimationLibCommon:1.1.0+alpha.1+mc.1.21.9') { transitive = false }
+    compileOnly('com.zigythebird.playeranim:PlayerAnimationLibCore:1.1.0+alpha.1+mc.1.21.9') { transitive = false }
+}
+processResources {
+    from('src/main/java') { include 'com/thelads/core/v26_2/embedded/etf/**'; into 'META-INF/lads-sources/etf/v26_3' }
+    from('src/main/java') { include 'com/thelads/core/v26_2/embedded/emf/**'; into 'META-INF/lads-sources/emf/v26_3' }
+}
+
 // Jade is source-integrated. Public API and addon registries deliberately retain their package names.
 repositories {
     maven { url 'https://maven.blamejared.com/' }

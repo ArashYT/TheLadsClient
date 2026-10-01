@@ -1,0 +1,56 @@
+package com.thelads.core.v26_2.embedded.emf.models.animation.math.variables.factories;
+
+import org.jetbrains.annotations.Nullable;
+import com.thelads.core.v26_2.embedded.emf.EMF;
+import com.thelads.core.v26_2.embedded.emf.models.animation.AnimSetupContext;
+import com.thelads.core.v26_2.embedded.emf.models.animation.math.expression_tree.MathValue;
+
+import java.util.function.BooleanSupplier;
+
+/**
+ * A factory for creating unique math animation variables.
+ */
+public abstract class UniqueVariableFactory {
+
+    @Override
+    public boolean equals(final Object obj) {
+        return obj != null && obj.getClass().equals(this.getClass());
+    }
+
+    /**
+     * Gets the supplier for the variable with the given key.
+     * @return The supplier for the variable with the given key.
+     */
+    @Nullable
+    abstract public MathValue.ResultSupplier getSupplierOrNull(String variableKey, AnimSetupContext context);
+
+    public @Nullable BooleanSupplier getASMBoolSupplierOrNull(String variableKey, AnimSetupContext context) {
+        var x = getSupplierOrNull(variableKey, context);
+        return x == null ? null : ()-> x.get() > 0;
+    }
+
+    public @Nullable MathValue.ResultSupplier getASMFloatSupplierOrNull(String variableKey, AnimSetupContext context) {
+        return getSupplierOrNull(variableKey, context);
+    }
+
+    /**
+     * Checks if this factory creates the variable with the given key.
+     * <p>
+     * e.g. if the key is "time" and this factory creates the time variable, then this method should return true.
+     * <p>
+     * e.g. if this factory creates any variable with "timmy" at the start of the key, then this method should return
+     * true for "timmy" and "timmy2" etc.
+     *
+     * @param variableKey The key of the variable.
+     * @return True if this factory creates the variable with the given key, otherwise false.
+     */
+    abstract public boolean createsThisVariable(String variableKey);
+
+    abstract public @Nullable String getExplanationTranslationKey();
+
+    abstract public @Nullable String getTitleTranslationKey();
+
+    protected boolean printing() {
+        return EMF.config().getConfig().logModelCreationData;
+    }
+}

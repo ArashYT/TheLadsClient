@@ -1,0 +1,220 @@
+package com.thelads.core.v26_2.embedded.emf.models.animation.math.expression_tree;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.MethodVisitor;
+import com.thelads.core.v26_2.embedded.emf.models.animation.AnimSetupContext;
+import com.thelads.core.v26_2.embedded.emf.models.animation.math.EMFMathException;
+import com.thelads.core.v26_2.embedded.emf.models.animation.math.asm.ASMVariableHandler;
+import com.thelads.core.v26_2.embedded.emf.models.animation.math.methods.MethodRegistry;
+import com.thelads.core.v26_2.embedded.emf.models.animation.math.methods.SimpleMethod;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * This class is the base class for all methods that can be used in the animation math parser.
+ * It provides a way to parse the arguments and create an executable MathMethod from them.
+ * <p>
+ * It also provides a way to optimize the method if it only contains constants, allowing the result of the method to
+ * be sent instead of calculating every time. e.g.  torad(90) will be optimized to teh constant 1.5707964 to be more efficient
+ * <p>
+ * Examples:
+ * <p>
+ * {@link com.thelads.core.v26_2.embedded.emf.models.animation.math.methods.optifine.RandomMethod} is a method
+ * that returns a random number between 0 and 1. It can be used in the animation math parser.
+ * it is also an example of a method that can have 0 or 1 input arguments.
+ * <p>
+ * {@link com.thelads.core.v26_2.embedded.emf.models.animation.math.methods.optifine.MaxMethod} is a method
+ * that can take any number of arguments and returns the maximum value from them.
+ * <p>
+ * {@link com.thelads.core.v26_2.embedded.emf.models.animation.math.methods.optifine.PrintMethod} is a method
+ * that takes a string argument and 2 number arguments and prints the string and 1 number to the log.
+ * with a frequency set by the other number argument.
+ */
+public abstract class MathMethod extends MathValue implements MathComponent {
+
+    protected @Nullable MathComponent optimizedAlternativeToThis = null;
+    protected @Nullable ResultSupplier supplier = null;
+    protected final @NotNull List<String> rawArgs;
+    protected final @NotNull List<MathComponent> parsedArgs;
+    protected final @NotNull List<Integer> stringArgs;
+
+    protected MathMethod(boolean isNegative, AnimSetupContext context, @NotNull List<String> args) throws EMFMathException {
+        this(isNegative, context, args, -1);
+    }
+
+    protected MathMethod(boolean isNegative, AnimSetupContext context, @NotNull List<String> args, int customArgCount) throws EMFMathException {
+        this(isNegative, context, args, customArgCount, List.of());
+    }
+
+    protected MathMethod(boolean isNegative, AnimSetupContext context, @NotNull List<String> args, int customArgCount, List<Integer> stringArgs) throws EMFMathException {
+        super(isNegative);
+        rawArgs = args;
+        this.stringArgs = stringArgs;
+        boolean correctArgCount = customArgCount != -1
+                ? customArgCount == args.size()
+                : hasCorrectArgCount(args.size());
+        if (!correctArgCount) {
+            throw new EMFMathException("ERROR: wrong number of arguments [" + args.size() + "] in [" + this.getClass().getSimpleName() + "] for [" + context.animKey + "] in [" + context.modelName + "].");
+        }
+        this.parsedArgs = parseAllArgs(args, context);
+    }
+
+    private @Nullable MathComponent parseArg(int index, String arg, AnimSetupContext context) throws EMFMathException {
+        if (isRawStringArg(index)) return null;
+
+        if (arg == null || arg.isBlank())
+            throw new EMFMathException("Method argument parsing error [" + arg + "] in [" + context.animKey + "] in [" + context.modelName + "].");
+        var ret = MathExpressionParser.getOptimizedExpression(arg, false, context);
+
+        if (ret == MathExpressionParser.NULL_EXPRESSION) {
+            throw new EMFMathException("Method argument parsing null [" + arg + "] in [" + context.animKey + "] in [" + context.modelName + "].");
+        }
+        return ret;
+    }
+
+    private List<@Nullable MathComponent> parseAllArgs(List<String> args, AnimSetupContext context) throws EMFMathException {
+        if (args == null)
+            throw new EMFMathException("Method argument parsing error [" + args + "] in [" + context.animKey + "] in [" + context.modelName + "].");
+        List<@Nullable MathComponent> expressionList = new ArrayList<>();
+        for (int i = 0; i < args.size(); i++) {
+            expressionList.add(parseArg(i, args.get(i), context));
+        }
+        return expressionList;
+    }
+
+    private static MathMethod of(String methodNameIn, String args, boolean isNegative, AnimSetupContext context) throws EMFMathException {
+        boolean booleanInvert = methodNameIn.startsWith("!");
+        String methodName = booleanInvert ? methodNameIn.substring(1) : methodNameIn;
+
+        if (!MethodRegistry.getInstance().containsMethod(methodName)) {
+            throw new EMFMathException("ERROR: Unknown method [" + methodName + "], rejecting animation expression for [" + context.animKey + "].");
+        }
+
+        List<String> argsList = getArgsList(args);
+        MathMethod method = MethodRegistry.getInstance().getMethodFactory(methodName).getMethod(argsList, isNegative, context);
+        if (booleanInvert) {
+            method.invertSupplierBoolean();
+        }
+        return method;
+    }
+
+    @NotNull
+    private static List<String> getArgsList(final String args) {
+        List<String> argsList = new ArrayList<>();
+        int openBracketCount = 0;
+        StringBuilder builder = new StringBuilder();
+
+        Iterator<Character> charIterator = args.chars().mapToObj(c -> (char) c).iterator();
+        char lastChar = '\0';
+
+        while (charIterator.hasNext()) {
+            char ch = charIterator.next();
+            if (lastChar == '\\') {
+                builder.append(ch);
+                lastChar = '\0'; // reset lastChar to avoid double escaping
+                continue;
+            }
+            if (ch == '(') {
+                openBracketCount++;
+            } else if (ch == ')') {
+                openBracketCount--;
+            } else if (ch == ',' && openBracketCount == 0) {
+                argsList.add(builder.toString().trim());
+                builder.setLength(0);
+                continue;
+            }
+            builder.append(ch);
+            lastChar = ch;
+        }
+        if (!builder.isEmpty()) {
+            argsList.add(builder.toString().trim());
+        }
+        return argsList;
+    }
+
+    static MathComponent getOptimizedExpression(String methodName, String args, boolean isNegative, AnimSetupContext context) throws EMFMathException {
+        //double check just incase it was missed
+        if (methodName.startsWith("-")) {
+            isNegative = true;
+            methodName = methodName.substring(1);
+        }
+        MathMethod method = of(methodName, args, isNegative, context);
+        return Objects.requireNonNullElse(method.optimizedAlternativeToThis, method);
+    }
+
+    protected void setOptimizedAlternativeToThis(final MathComponent optimizedAlternativeToThis) {
+        this.optimizedAlternativeToThis = optimizedAlternativeToThis;
+    }
+
+    protected boolean canOptimizeForConstantArgs() {
+        return true;
+    }
+
+    protected void setSupplierAndOptimize(ResultSupplier supplier) {
+        this.supplier = supplier;
+        // setOptimizedIfPossible(supplier, List.of());
+    }
+
+    protected void setSupplierAndOptimize(ResultSupplier supplier, MathComponent arg) {
+        this.supplier = supplier;
+        setOptimizedIfPossible(supplier, List.of(arg));
+    }
+
+    protected void setSupplierAndOptimize(ResultSupplier supplier, List<MathComponent> allArgs) {
+        this.supplier = supplier;
+        setOptimizedIfPossible(supplier, allArgs);
+    }
+
+    protected boolean isInvertedBoolean = false;
+
+    private void invertSupplierBoolean() {
+        isInvertedBoolean = true;
+        if (optimizedAlternativeToThis == null) {
+            var currentSupplier = supplier;
+            supplier = () -> MathValue.invertBoolean(currentSupplier);
+        } else {
+            optimizedAlternativeToThis = new MathConstant(MathValue.invertBoolean(optimizedAlternativeToThis.getResult()), isNegative);
+        }
+    }
+
+    protected void setOptimizedIfPossible(ResultSupplier supplier, List<MathComponent> allComponents) {
+        //check if method only contains constants, if so precalculate the result and replace this with a constant
+        if (!canOptimizeForConstantArgs() || allComponents.isEmpty()) return;
+
+        boolean foundNonConstant = allComponents.stream().anyMatch(comp -> comp != null && !comp.isConstant());
+        if (!foundNonConstant) {
+            float constantResult = supplier.get();
+            if (!Float.isNaN(constantResult)) {
+                optimizedAlternativeToThis = new MathConstant(constantResult, isNegative);
+            }
+        }
+    }
+
+
+    @Override
+    ResultSupplier getResultSupplier() {
+        return supplier;
+    }
+
+    @Override
+    public final void asmVisit(MethodVisitor mv, ASMVariableHandler vars) throws EMFMathException {
+        asmVisitInner(mv, vars);
+        if (isInvertedBoolean) vars.asmInvertBoolean(mv);
+        if (isNegative) vars.asmNegateFloat(mv);
+    }
+
+    /**
+     * @see SimpleMethod for a simple example of how to implement this method.
+     */
+    public abstract void asmVisitInner(MethodVisitor mv, ASMVariableHandler varNames) throws EMFMathException;
+
+    protected boolean isRawStringArg(int index) {
+        return stringArgs.contains(index);
+    }
+
+    protected abstract boolean hasCorrectArgCount(int argCount);
+}
