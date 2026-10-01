@@ -167,4 +167,9 @@ public class GuiGraphicsLadsAdapter implements LadsGraphics {
     public int getScaledHeight() {
         return guiGraphics.guiHeight();
     }
+
+    @Override
+    public int hotbarLift() {
+        return com.thelads.core.v1_21_1.embedded.hoveringhotbar.HoveringHotbar.hotbarLift();
+    }
 }

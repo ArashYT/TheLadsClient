@@ -50,4 +50,8 @@ processResources {
         include 'com/thelads/core/v1_21_1/embedded/fixbookgui/**'
         into 'META-INF/lads-sources/fixbookgui/v1_21_1'
     }
+    from('src/main/java') {
+        include 'com/thelads/core/v1_21_1/embedded/hoveringhotbar/**'
+        into 'META-INF/lads-sources/hoveringhotbar/v1_21_1'
+    }
 }
