@@ -173,6 +173,56 @@ public class GuiLadsAdapter implements LadsGraphics {
     }
 
     @Override
+    public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer == null && !editor) return;
+        try {
+            GlStateManager.enableColorMaterial();
+            GlStateManager.pushMatrix();
+            int scale = (int)(Math.min(width, height) * 0.45f);
+            int posX = x + width / 2;
+            int posY = y + height - 4;
+            if (mc.thePlayer != null) {
+                net.minecraft.client.gui.inventory.GuiInventory.drawEntityOnScreen(posX, posY, scale, 0, 0, mc.thePlayer);
+            }
+            GlStateManager.popMatrix();
+            RenderHelper.disableStandardItemLighting();
+            GlStateManager.disableRescaleNormal();
+            GlStateManager.setActiveTexture(net.minecraft.client.renderer.OpenGlHelper.lightmapTexUnit);
+            GlStateManager.disableTexture2D();
+            GlStateManager.setActiveTexture(net.minecraft.client.renderer.OpenGlHelper.defaultTexUnit);
+            GlStateManager.disableDepth();
+            GlStateManager.enableAlpha();
+            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public void drawBossBars(int x, int y, int max, boolean names, boolean preview) {
+        Minecraft mc = Minecraft.getMinecraft();
+        boolean hasBoss = net.minecraft.entity.boss.BossStatus.bossName != null && net.minecraft.entity.boss.BossStatus.statusBarTime > 0;
+        if (!hasBoss && !preview) return;
+
+        String name = hasBoss ? net.minecraft.entity.boss.BossStatus.bossName : "Ender Dragon";
+        float health = hasBoss ? net.minecraft.entity.boss.BossStatus.healthScale : 0.85f;
+
+        mc.getTextureManager().bindTexture(Gui.icons);
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        int barW = 182;
+        int barH = 5;
+
+        Gui.drawModalRectWithCustomSizedTexture(x, y + 10, 0, 74, barW, barH, 256.0f, 256.0f);
+        int filled = (int)(health * (barW + 1));
+        if (filled > 0) {
+            Gui.drawModalRectWithCustomSizedTexture(x, y + 10, 0, 79, filled, barH, 256.0f, 256.0f);
+        }
+        if (names && name != null) {
+            int textX = x + (barW - font.getStringWidth(name)) / 2;
+            font.drawStringWithShadow(name, textX, y, 0xFFFFFFFF);
+        }
+    }
+
+    @Override
     public int getScaledWidth() {
         return width;
     }

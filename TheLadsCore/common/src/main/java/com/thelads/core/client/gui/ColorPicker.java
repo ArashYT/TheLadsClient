@@ -43,10 +43,13 @@ public final class ColorPicker {
         g.fill(x, y, x + w, y + 2, LadsPalette.ACCENT);
         g.drawText(title, x + 12, y + 10, LadsPalette.TEXT);
         if (global) {
-            int cell=(w-32)/3;
+            int cell=(w-36)/4;
             button(g,x+12,y+28,cell,background?"Background":"Text color");
             button(g,x+16+cell,y+28,cell,"Plates: "+(HudSettings.getInstance().isBackgrounds()?"ON":"OFF"));
-            button(g,x+20+cell*2,y+28,cell,"Shadow: "+(HudSettings.getInstance().isTextShadow()?"ON":"OFF"));
+            String shadowLabel = !HudSettings.getInstance().isTextShadow() ? "Shadow: OFF" : (HudSettings.getInstance().isSoftShadow() ? "Shadow: Soft" : "Shadow: ON");
+            button(g,x+20+cell*2,y+28,cell,shadowLabel);
+            String fpsLabel = "FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
+            button(g,x+24+cell*3,y+28,cell,fpsLabel);
         }
         int py = y + 56;
         for (int px = 0; px < planeW; px += 4) for (int yy = 0; yy < planeH; yy += 4)
@@ -91,9 +94,23 @@ public final class ColorPicker {
             apply = null; return true;
         }
         if (global && my >= y + 28 && my < y + 48) {
-            if (mx < x + 14 + (w-32)/3) { background = !background; set(background ? HudSettings.getInstance().getGlobalBackground() : HudSettings.getInstance().getGlobalColor()); }
-            else if (mx < x + 18 + 2*((w-32)/3)) HudSettings.getInstance().setBackgrounds(!HudSettings.getInstance().isBackgrounds());
-            else HudSettings.getInstance().setTextShadow(!HudSettings.getInstance().isTextShadow());
+            int cell=(w-36)/4;
+            if (mx < x + 12 + cell) { background = !background; set(background ? HudSettings.getInstance().getGlobalBackground() : HudSettings.getInstance().getGlobalColor()); }
+            else if (mx < x + 16 + 2*cell) HudSettings.getInstance().setBackgrounds(!HudSettings.getInstance().isBackgrounds());
+            else if (mx < x + 20 + 3*cell) {
+                var s = HudSettings.getInstance();
+                if (!s.isTextShadow()) { s.setTextShadow(true); s.setSoftShadow(true); }
+                else if (s.isSoftShadow()) { s.setSoftShadow(false); }
+                else { s.setTextShadow(false); }
+            } else {
+                var s = HudSettings.getInstance();
+                if (!s.isHudFpsCapEnabled()) { s.setHudFpsCapEnabled(true); s.setHudFpsLimit(60); }
+                else {
+                    int next = HudSettings.nextFpsLevel(s.getHudFpsLimit(), 1);
+                    if (next == 0 && s.getHudFpsLimit() == 0) s.setHudFpsCapEnabled(false);
+                    else s.setHudFpsLimit(next);
+                }
+            }
             ConfigManager.save(); return true;
         }
         int fy = y + 56 + planeH + 9;

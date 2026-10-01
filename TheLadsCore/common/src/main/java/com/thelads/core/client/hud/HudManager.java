@@ -11,6 +11,24 @@ public class HudManager {
     private static HudManager instance;
     private final List<HudElement> elements = new ArrayList<>();
     private ScoreboardHudElement scoreboardElement;
+    private long lastHudRenderNanos = 0;
+    private int hudFrameCount = 0;
+    private int measuredHudFps = 60;
+    private long lastFpsMeasureTime = 0;
+
+    public int getMeasuredHudFps() {
+        return measuredHudFps > 0 ? measuredHudFps : HudSettings.getInstance().getHudFpsLimit();
+    }
+
+    public void recordHudFrame() {
+        hudFrameCount++;
+        long now = System.currentTimeMillis();
+        if (now - lastFpsMeasureTime >= 1000) {
+            measuredHudFps = hudFrameCount;
+            hudFrameCount = 0;
+            lastFpsMeasureTime = now;
+        }
+    }
 
     private HudManager() {
         add(new FPSHudElement(), "FPS");
@@ -55,6 +73,7 @@ public class HudManager {
 
     public void render(LadsGraphics g) {
         if (g == null || (g.getGame() != null && g.getGame().isHudHidden())) return;
+        recordHudFrame();
 
         int screenW = g.getScaledWidth();
         int screenH = g.getScaledHeight();

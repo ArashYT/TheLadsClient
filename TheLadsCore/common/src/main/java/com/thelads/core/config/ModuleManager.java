@@ -52,6 +52,7 @@ public class ModuleManager {
         HudModule fps = hud("FPS", "Show your current FPS on screen.");
         fps.addOption(new DropdownOption("Update rate", 1, "Instant", "Fast", "Normal", "Slow"));
         fps.addOption(new BoolOption("Smooth", true));
+        fps.addOption(new DropdownOption("Display", 0, "Game FPS", "HUD FPS", "Both"));
 
         Module minimap = new Module("Minimap", "Lads controls for the bundled Xaero engine. Uses your existing maps, waypoints and server rules.");
         minimap.setEnabled(true);
