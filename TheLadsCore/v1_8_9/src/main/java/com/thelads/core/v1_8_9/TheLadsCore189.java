@@ -10,6 +10,7 @@ import com.thelads.core.v1_8_9.feature.CoreProbe;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
 import com.thelads.core.v1_8_9.feature.RawMouse189;
+import com.thelads.core.v1_8_9.gui.LadsTitleScreen189;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
@@ -71,6 +72,7 @@ public class TheLadsCore189 {
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
+        MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(this);
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
