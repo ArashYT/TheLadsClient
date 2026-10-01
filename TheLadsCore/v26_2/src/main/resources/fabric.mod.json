@@ -45,7 +45,8 @@
     "theladscore.embedded.ksyxis.mixins.json",
     "theladscore.embedded.serverpingerfixer.mixins.json",
     "theladscore.embedded.fastipping.mixins.json",
-    "theladscore.embedded.quickpack.mixins.json"
+    "theladscore.embedded.quickpack.mixins.json",
+    "theladscore.embedded.lazyai.mixins.json"
   ],
   "jars": [
     {
