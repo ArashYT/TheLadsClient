@@ -1,8 +1,12 @@
 package com.thelads.core.v1_8_9.feature;
 
 import com.thelads.core.client.CpsTracker;
+import com.thelads.core.client.FrameAnimation;
 import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.client.hud.ScoreboardHudElement;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.Module;
+import com.thelads.core.config.ModuleManager;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import com.thelads.core.v1_8_9.gui.DraggableHudScreen189;
 import net.minecraft.client.Minecraft;
@@ -26,7 +30,18 @@ public final class NativeHud {
         "Paperdoll", "BossBar", "Autohide", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates"};
     /** QA only (CoreProbe): frames in which HudManager drew the Lads HUD. */
     public static long frames;
+    /** QA only: SmoothHotbar's last offset of the selected-slot frame from its slot, in GUI pixels. */
+    public static float selectionOffset;
+    private static final FrameAnimation SELECTION = new FrameAnimation();
     private static boolean hidSidebar;
+
+    /** SmoothHotbar (GuiIngameMixin): where the selected-slot frame drawn at x is shown, relative to x; speeds as on 1.21.x. */
+    public static float selectionOffset(int x) {
+        Module module = ModuleManager.getInstance().getModule("SmoothHotbar");
+        int speed = module != null && module.getOption("Speed") instanceof DropdownOption ? ((DropdownOption) module.getOption("Speed")).getIndex() : 1;
+        selectionOffset = (float) (SELECTION.update(x, speed == 0 ? 10 : speed == 2 ? 28 : 18, System.nanoTime(), module != null && module.isEnabled()) - x);
+        return selectionOffset;
+    }
 
     /** The Lads Scoreboard replaces vanilla's sidebar and Edit HUD hides it, as ScoreboardMixin does on 1.21.x; otherwise other mods' choice stands. */
     @SubscribeEvent

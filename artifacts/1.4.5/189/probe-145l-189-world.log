@@ -1,0 +1,116 @@
+[13:27:21] [Client thread/INFO]: Lads 1.8.9 core probe PASS 1: the TitleScreen module put the Lads layout on the title screen
+[13:27:21] [Client thread/INFO]: Lads 1.8.9 core probe PASS 2: the main title actions, laid out by TitleScreenTheme [Singleplayer, Multiplayer, Lads Mods, Options..., More..., Quit Game]
+[13:27:21] [Client thread/INFO]: Lads 1.8.9 core probe PASS 3: a click on More opens the secondary actions: Forge's Mods, Language, Realms, Accounts [Realms, Mods, Language, Accounts]
+[13:27:22] [Client thread/INFO]: Lads 1.8.9 core probe PASS 4: Language on More pressed the title screen's own Language button
+[13:27:23] [Client thread/INFO]: Lads 1.8.9 core probe PASS 5: back on the title screen, language unchanged
+[13:27:23] [Client thread/INFO]: Lads 1.8.9 core probe PASS 6: shared saves, resource packs and shader packs are refused on 1.8.9 (SharedContentPaths)
+[13:27:23] [Client thread/INFO]: Lads 1.8.9 core probe PASS 7: common's SLF4J logging goes to Minecraft's log4j
+[13:27:23] [Client thread/INFO]: Lads 1.8.9 core probe: this line came through the bundled SLF4J
+[13:27:23] [Client thread/INFO]: Lads 1.8.9 core probe PASS 8: the 1.8.9 game bridge is active, no world yet
+[13:27:23] [Client thread/INFO]: Lads 1.8.9 core probe PASS 9: Right Shift through GuiScreen.handleInput opens the Lads menu over the title screen
+[13:27:24] [Client thread/INFO]: Lads 1.8.9 core probe PASS 10: the Lads menu rendered its controls through the 1.8.9 graphics adapter
+[13:27:24] [Client thread/INFO]: Lads 1.8.9 core probe PASS 11: the menu lists only modules built in on 1.8.9 (41)
+[13:27:24] [Client thread/INFO]: Lads 1.8.9 core probe PASS 12: a mouse click through GuiScreen.handleMouseInput focuses the search field
+[13:27:24] [Client thread/INFO]: Lads 1.8.9 core probe PASS 13: typed characters reach the search field (zoom)
+[13:27:24] [Client thread/INFO]: Lads 1.8.9 core probe PASS 14: Backspace (LWJGL 14 -> GLFW 259) edits the search
+[13:27:24] [Client thread/INFO]: Lads 1.8.9 core probe PASS 15: Escape leaves the search field and keeps the menu open
+[13:27:25] [Client thread/INFO]: Lads 1.8.9 core probe PASS 16: a second Right Shift closes the Lads menu back to its title-screen parent
+[13:27:25] [Client thread/INFO]: Lads 1.8.9 core probe PASS 17: the QA world goes into the sandbox game folder's own saves (C:\Users\Arash\AppData\Local\Temp\w145l\artifacts\verification\1.8.9-title\saves)
+[13:27:25] [Client thread/INFO]: Lads 1.8.9 core probe: opening the QA world 'Client QA 1_8_9' in C:\Users\Arash\AppData\Local\Temp\w145l\artifacts\verification\1.8.9-title\saves
+[13:27:28] [Client thread/INFO]: Lads 1.8.9 core probe PASS 18: the bridge sees the QA world and its player
+[13:27:28] [Client thread/INFO]: Lads 1.8.9 core probe PASS 19: bridge coordinates are the player's block position
+[13:27:28] [Client thread/INFO]: Lads 1.8.9 core probe PASS 20: dimension and biome (Plains, no namespaced id on 1.8.9)
+[13:27:28] [Client thread/INFO]: Lads 1.8.9 core probe PASS 21: health, food, saturation (integrated server) and XP
+[13:27:28] [Client thread/INFO]: Lads 1.8.9 core probe PASS 22: direction, yaw, time, FPS, ping and speed
+[13:27:28] [Client thread/INFO]: Lads 1.8.9 core probe PASS 23: server address, armor and resource packs
+[13:27:28] [Client thread/INFO]: Lads 1.8.9 core probe: bridge in the QA world: xyz 508 4 -1, biome Plains, minecraft:overworld, facing south (yaw 0.0), time 07:15, day 0, health 20.0/20.0, food 20, saturation 5.0, fps 1110, ping 0, speed 0.0, effects [], packs [], scoreboard null
+[13:27:28] [Client thread/INFO]: Lads 1.8.9 core probe PASS 24: Right Shift in gameplay (runTick's keyboard loop) opens the Lads menu over the world
+[13:27:29] [Client thread/INFO]: Lads 1.8.9 core probe PASS 25: Right Shift closes it back to gameplay
+[13:27:29] [Client thread/INFO]: Lads 1.8.9 core probe PASS 26: Escape in the QA world opens the pause menu
+[13:27:29] [Client thread/INFO]: Lads 1.8.9 core probe PASS 27: GuiIngameMenuMixin added the Lads Client button to the pause menu
+[13:27:30] [Client thread/INFO]: Lads 1.8.9 core probe PASS 28: the pause menu's buttons are in the Lads grid, Multiplayer above Lads Client
+[13:27:30] [Client thread/INFO]: Lads 1.8.9 core probe PASS 29: Multiplayer on the pause menu asks before saving and leaving the QA world
+[13:27:31] [Client thread/INFO]: Lads 1.8.9 core probe PASS 30: Stay in game returns to the pause menu, still in the world
+[13:27:31] [Client thread/INFO]: Lads 1.8.9 core probe PASS 31: the pause menu is still open
+[13:27:31] [Client thread/INFO]: Lads 1.8.9 core probe PASS 32: a click on Lads Client (GuiScreen.mouseClicked -> actionPerformed) opens the Lads menu over the pause menu
+[13:27:32] [Client thread/INFO]: Lads 1.8.9 core probe PASS 33: Right Shift closes it back to its pause-menu parent
+[13:27:32] [Client thread/INFO]: Lads 1.8.9 core probe PASS 34: Right Shift on the pause menu opens the Lads menu over it
+[13:27:32] [Client thread/INFO]: Lads 1.8.9 core probe PASS 35: and closes it back to the pause menu
+[13:27:32] [Client thread/INFO]: Lads 1.8.9 core probe PASS 36: the launcher catalog was written to C:\Users\Arash\AppData\Local\Temp\w145l\artifacts\verification\1.8.9-title\lads-core-catalog.json
+[13:27:32] [Client thread/INFO]: Lads 1.8.9 core probe PASS 37: the catalog names Minecraft 1.8.9 and Core 1.4.4
+[13:27:32] [Client thread/INFO]: Lads 1.8.9 core probe PASS 38: every catalog row matches this game's registrations and switchability []
+[13:27:32] [Client thread/INFO]: Lads 1.8.9 core probe PASS 39: exactly the HUD modules NativeHud draws and the native gameplay modules are built in [Autohide, Clock, Stopwatch, ItemCounter, ReachDisplay, ServerAddress, PortalCoordinates, ClientTools, ParticleBudget, FPS, BossBar, Coordinates, Biome, PingHUD, ArmorHUD, Memory, Direction, Speed, Day, Time, Health, Hunger, XP, Keystrokes, CPS, Title Scale, TexturePacks, Potion Effects, Fullbright, ToggleSprint, ToggleSneak, Zoom, SmoothHotbar, OldDamageTilt, LegacySwing, VerticalBobbing, TitleScreen, Paperdoll, Scoreboard, RawInput, BorderlessFullscreen]
+[13:27:32] [Client thread/INFO]: Lads 1.8.9 core probe PASS 40: catalog statuses: 41 built in, 24 unavailable, 1 external, 18 pending
+[13:27:33] [Client thread/INFO]: Lads 1.8.9 core probe PASS 41: the 28 built-in HUD modules are switched on for the in-world check
+[13:27:34] [Client thread/INFO]: Lads 1.8.9 core probe PASS 42: the Lads HUD drew in 804 real frames through Forge's RenderGameOverlayEvent.Post(ALL)
+[13:27:34] [Client thread/INFO]: Lads 1.8.9 core probe PASS 43: each of the 18 built-in HUD modules drew its live 1.8.9 data (texts, and armour items through RenderItem) [] of 30552 draws
+[13:27:34] [Client thread/INFO]: Lads 1.8.9 core probe PASS 44: the Lads Scoreboard replaces vanilla's sidebar (GuiIngameForge.renderObjective off)
+[13:27:34] [Client thread/INFO]: Lads 1.8.9 core probe PASS 45: GL state after the Lads HUD equals the state before it in 804 frames (enables, blend and alpha functions, depth mask, colour, matrix depth): enabled 11100001010 blend 770/771/1/0 alpha 516/0.1 depth 515/true shade 7424 matrix 2 colour 1.0,1.0,1.0,1.0
+[13:27:34] [Client thread/INFO]: Lads 1.8.9 core probe PASS 46: F1 through runTick's keyboard loop hides the GUI
+[13:27:35] [Client thread/INFO]: Lads 1.8.9 core probe PASS 47: nothing of the Lads HUD draws while F1 hides the GUI
+[13:27:35] [Client thread/INFO]: Lads 1.8.9 core probe PASS 48: F1 again brings the Lads HUD back
+[13:27:35] [Client thread/INFO]: Lads 1.8.9 core probe PASS 49: three right clicks in one tick count 3 CPS (InputEvent.MouseInputEvent)
+[13:27:36] [Client thread/INFO]: Lads 1.8.9 core probe PASS 50: Right Shift opens the Lads menu over the QA world
+[13:27:36] [Client thread/INFO]: Lads 1.8.9 core probe PASS 51: the Lads menu draws its Edit HUD button
+[13:27:36] [Client thread/INFO]: Lads 1.8.9 core probe PASS 52: a click on Edit HUD opens the HUD editor over the Lads menu
+[13:27:37] [Client thread/INFO]: Lads 1.8.9 core probe PASS 53: the in-game Lads HUD pauses while the editor draws its previews
+[13:27:37] [Client thread/INFO]: Lads 1.8.9 core probe PASS 54: vanilla's sidebar is hidden while editing
+[13:27:37] [Client thread/INFO]: Lads 1.8.9 core probe PASS 55: the editor toolbar is drawn [select, group, ungroup, lock, unlock, snap, previews, toolbar, collapse, colors, reset, done]
+[13:27:37] [Client thread/INFO]: Lads 1.8.9 core probe PASS 56: every built-in HUD module has a preview (switched-off ones dimmed), pending ones none [FPS, BossBar, Coordinates, Biome, PingHUD, ArmorHUD, Memory, Direction, Speed, Day, Time, Clock, Stopwatch, ItemCounter, ReachDisplay, ServerAddress, PortalCoordinates, Health, Hunger, XP, Keystrokes, CPS, TexturePacks, Potion Effects, Paperdoll, Scoreboard, ToggleSprint, ToggleSneak]
+[13:27:37] [Client thread/INFO]: Lads 1.8.9 core probe PASS 57: saved positions place the previews, FPS clamped to the right edge
+[13:27:37] [Client thread/INFO]: Lads 1.8.9 core probe PASS 58: CPS's settings gear and ON/OFF switch sit right of it
+[13:27:37] [Client thread/INFO]: Lads 1.8.9 core probe PASS 59: a click on CPS's gear opens the Lads menu over the editor
+[13:27:37] [Client thread/INFO]: Lads 1.8.9 core probe PASS 60: at CPS's module settings
+[13:27:37] [Client thread/INFO]: Lads 1.8.9 core probe PASS 61: Done returns from the module settings to the editor
+[13:27:37] [Client thread/INFO]: Lads 1.8.9 core probe PASS 62: a click selects CPS [CPS]
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 63: a drag (press, mouseClickMove, release) moved CPS and centre snapping pulled it onto the screen centre HudGroupLayout$Rect[x=291, y=40, width=58, height=16]
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 64: the drag saved CPS's position to the config file
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 65: G turns snapping off
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 66: without snapping CPS moves by the exact pointer delta, saved HudGroupLayout$Rect[x=304, y=47, width=58, height=16]
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 67: G turns snapping back on
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 68: Select multiple adds Day to the CPS selection [CPS, Day]
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 69: a right click opens the context menu [settings, lock, centerX, centerY, centerBoth, group, ungroup, stack, toggle]
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 70: the right click keeps the two-HUD selection
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 71: Group is offered for two ungrouped HUDs
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 72: context Group creates the CPS + Day group and saves it
+[13:27:38] [Client thread/INFO]: Lads 1.8.9 core probe PASS 73: the new group is a centred stack HudGroupLayout$Rect[x=156, y=47, width=63, height=16] / HudGroupLayout$Rect[x=156, y=65, width=64, height=20]
+[13:27:39] [Client thread/INFO]: Lads 1.8.9 core probe PASS 74: CPS at 150% overlaps Day
+[13:27:39] [Client thread/INFO]: Lads 1.8.9 core probe PASS 75: Center stack is offered for the grouped selection
+[13:27:39] [Client thread/INFO]: Lads 1.8.9 core probe PASS 76: context Center stack re-stacks the group
+[13:27:39] [Client thread/INFO]: Lads 1.8.9 core probe PASS 77: and saves both positions
+[13:27:39] [Client thread/INFO]: Lads 1.8.9 core probe PASS 78: a right click on the other member offers Ungroup
+[13:27:39] [Client thread/INFO]: Lads 1.8.9 core probe PASS 79: context Ungroup splits the group and saves it
+[13:27:39] [Client thread/INFO]: Lads 1.8.9 core probe PASS 80: FPS has an ON/OFF switch
+[13:27:40] [Client thread/INFO]: Lads 1.8.9 core probe PASS 81: FPS's editor switch turns the module off and saves it
+[13:27:40] [Client thread/INFO]: Lads 1.8.9 core probe PASS 82: the switched-off module stays as a dimmed preview
+[13:27:40] [Client thread/INFO]: Lads 1.8.9 core probe PASS 83: and back on (switch HudGroupLayout$Rect[x=275, y=150, width=27, height=11], HUDs under it [])
+[13:27:40] [Client thread/INFO]: Lads 1.8.9 core probe PASS 84: snapping is off for the unfinished drag
+[13:27:40] [Client thread/INFO]: Lads 1.8.9 core probe PASS 85: Day follows an unfinished drag, not saved yet (from HudGroupLayout$Rect[x=156, y=73, width=63, height=20] to HudGroupLayout$Rect[x=181, y=73, width=63, height=20], dragging true)
+[13:27:40] [Client thread/INFO]: Lads 1.8.9 core probe PASS 86: Escape closes the editor back to the Lads menu
+[13:27:40] [Client thread/INFO]: Lads 1.8.9 core probe PASS 87: Escape finished the drag and saved Day where it was dropped (181, 73)
+[13:27:40] [Client thread/INFO]: Lads 1.8.9 core probe PASS 88: the config file holds the edited layout and switches
+[13:27:41] [Client thread/INFO]: Lads 1.8.9 core probe PASS 89: the Lads HUD draws again in gameplay
+[13:27:41] [Client thread/INFO]: Lads 1.8.9 core probe PASS 90: vanilla's sidebar returns with the Lads Scoreboard off
+[13:27:41] [Client thread/INFO]: Lads 1.8.9 core probe PASS 91: GL state around the Lads HUD stayed unchanged in all 4706 frames
+[13:27:44] [Client thread/INFO]: Lads 1.8.9 core probe: HUD rate: drawn in 1437.1841 frames/s, rebuilt 1440 times/s, game 1450 FPS (debug), cap false at 60, vsync true, limit 260
+[13:27:44] [Client thread/INFO]: Lads 1.8.9 core probe PASS 92: the HUD FPS cap is off by default (the sandbox config was saved by 1.4.4 with its default on at 60) and the Lads HUD is rebuilt in every frame: 1440 of 1437.1841 frames/s
+[13:27:44] [Client thread/INFO]: Lads 1.8.9 core probe PASS 93: the Lads mouse helper reads the camera's mouse input (com.thelads.core.v1_8_9.feature.RawMouse189)
+[13:27:44] [Client thread/INFO]: Lads 1.8.9 core probe: mouse: RawInput true, 5 JInput mice, raw live false, frame pacing true
+[13:27:44] [Client thread/INFO]: Lads 1.8.9 core probe PASS 94: with Raw Input on and no JInput mouse moving, the camera turns by LWJGL's deltas (37, -11): 37, -11
+[13:27:44] [Client thread/INFO]: Lads 1.8.9 core probe PASS 95: frame pacing is on (GL 3.2 fences)
+[13:27:50] [Client thread/INFO]: Lads 1.8.9 core probe: frame pacing: 1483.8656 FPS paced, 1590.9357 FPS unpaced (no VSync, no limit)
+[13:27:50] [Client thread/INFO]: Lads 1.8.9 core probe PASS 96: frame pacing keeps the frame rate: 1483.8656 FPS paced, 1590.9357 unpaced
+[13:27:51] [Client thread/INFO]: Lads 1.8.9 core probe PASS 97: SmoothHotbar: the frame rests on slot 1
+[13:27:51] [Client thread/INFO]: Lads 1.8.9 core probe PASS 98: SmoothHotbar: a tick later the selection frame is still on its way to slot 9 (-26.267159 GUI px from it)
+[13:27:52] [Client thread/INFO]: Lads 1.8.9 core probe PASS 99: SmoothHotbar: the frame settles on slot 9
+[13:27:52] [Client thread/INFO]: Lads 1.8.9 core probe PASS 100: LegacySwing: the sword swings with the legacy motion in 68 frames
+[13:27:52] [Client thread/INFO]: Lads 1.8.9 core probe PASS 101: LegacySwing off: the vanilla 1.8.9 swing
+[13:27:53] [Client thread/INFO]: Lads 1.8.9 core probe PASS 102: borderless: Minecraft is fullscreen, LWJGL's window is not exclusive
+[13:27:53] [Client thread/INFO]: Lads 1.8.9 core probe PASS 103: borderless: the window covers the 1920x1080 monitor at 0,0 (0,0 1920x1080, game 1920x1080)
+[13:27:53] [Client thread/INFO]: Lads 1.8.9 core probe PASS 104: borderless: no title bar or resize frame (style 0x96000000)
+[13:27:54] [Client thread/INFO]: Lads 1.8.9 core probe PASS 105: F11 again: back to the 1280x720 window (1280x720)
+[13:27:54] [Client thread/INFO]: Lads 1.8.9 core probe PASS 106: the window has its title bar and resize frame again (style 0x16cf0000)
+[13:27:54] [Client thread/INFO]: Lads 1.8.9 core probe PASS 107: an odd window size (701x397 outside): the game follows at 685x358
+[13:27:55] [Client thread/INFO]: Lads 1.8.9 core probe PASS 108: and back at 1280x720
+[13:27:56] [Client thread/INFO]: Lads 1.8.9 core probe PASS 109: the QA world closed back to the title screen
+[13:27:56] [Client thread/INFO]: Lads 1.8.9 core probe END: 109 passed, 0 failed; menu key through GuiScreen.handleInput and runTick, pause-menu button, 1.8.9 bridge in a QA world, launcher catalog, HUD through RenderGameOverlayEvent and the HUD editor
