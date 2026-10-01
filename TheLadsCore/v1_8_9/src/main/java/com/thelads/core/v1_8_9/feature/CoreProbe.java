@@ -14,6 +14,8 @@ import com.thelads.core.shared.SharedContentPaths;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.gui.LadsPauseButton;
 import com.thelads.core.v1_8_9.gui.LadsSettingsScreen189;
+import com.thelads.core.v1_8_9.gui.LadsTitleScreen189;
+import com.thelads.core.v1_8_9.gui.TitleExtrasScreen189;
 import com.thelads.core.v1_8_9.log.Log4jServiceProvider;
 import java.io.File;
 import java.lang.reflect.Field;
@@ -26,8 +28,11 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiIngameMenu;
+import net.minecraft.client.gui.GuiLanguage;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.GuiYesNo;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ScreenShotHelper;
 import net.minecraft.world.WorldSettings;
@@ -49,10 +54,11 @@ public final class CoreProbe {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final String WORLD = "Client QA 1_8_9";
     interface Step { boolean run(Minecraft mc) throws Exception; }
-    private static final List<Step> STEPS = new java.util.ArrayList<>(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::title,
+    private static final List<Step> STEPS = new java.util.ArrayList<>(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::ladsTitle,
+        CoreProbe::titleMore, CoreProbe::title,
         CoreProbe::menuAtTitle, CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
         CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::closedToGame,
-        CoreProbe::pauseMenu, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
+        CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     static {
         STEPS.addAll(HudProbe.STEPS);
@@ -93,6 +99,47 @@ public final class CoreProbe {
 
     private static boolean titleShown(Minecraft mc) {
         return mc.currentScreen instanceof GuiMainMenu && after(40);
+    }
+
+    /** The Lads title screen (LadsTitleScreen189): its main buttons laid out by TitleScreenTheme, and a click on More. */
+    private static boolean ladsTitle(Minecraft mc) throws Exception {
+        LadsTitleScreen189 lads = LadsTitleScreen189.INSTANCE;
+        check(lads.screen() != null && lads.screen() == mc.currentScreen, "the TitleScreen module put the Lads layout on the title screen");
+        List<String> labels = new java.util.ArrayList<>();
+        boolean laidOut = true;
+        for (GuiButton button : lads.mainButtons()) {
+            labels.add(button.displayString);
+            laidOut &= button.visible && button.width > 20 && button.xPosition >= 0 && button.xPosition + button.width <= mc.currentScreen.width
+                && button.yPosition + button.height <= mc.currentScreen.height;
+        }
+        check(laidOut && labels.equals(Arrays.asList(I18n.format("menu.singleplayer"), I18n.format("menu.multiplayer"), "Lads Mods",
+            I18n.format("menu.options"), "More...", I18n.format("menu.quit"))), "the main title actions, laid out by TitleScreenTheme " + labels);
+        screenshot(mc, "c1-title");
+        GuiButton more = lads.moreButton();
+        click(more.xPosition + more.width / 2, more.yPosition + more.height / 2);
+        return after(10);
+    }
+
+    /** More, then its Language: the title screen's own Language button pressed from More (GuiLanguage, a list on the Lads backdrop). */
+    private static boolean titleMore(Minecraft mc) throws Exception {
+        if (mc.currentScreen instanceof TitleExtrasScreen189) {
+            TitleExtrasScreen189 more = (TitleExtrasScreen189) mc.currentScreen;
+            check(more.labels().containsAll(Arrays.asList("Mods", "Language", "Realms", "Accounts")),
+                "a click on More opens the secondary actions: Forge's Mods, Language, Realms, Accounts " + more.labels());
+            screenshot(mc, "c1-title-more");
+            GuiButton language = more.button("Language");
+            click(language.xPosition + language.width / 2, language.yPosition + language.height / 2);
+            return retry(10);
+        }
+        if (mc.currentScreen instanceof GuiLanguage) {
+            check(LadsTitleScreen189.INSTANCE.screen() != null, "Language on More pressed the title screen's own Language button");
+            screenshot(mc, "c1-title-language");
+            // Not a synthetic click: GuiSlot selects the entry under the real cursor on any click (a language switch).
+            mc.displayGuiScreen(LadsTitleScreen189.INSTANCE.screen());
+            return retry(10);
+        }
+        check(mc.currentScreen instanceof GuiMainMenu && "en_US".equals(mc.gameSettings.language), "back on the title screen, language unchanged");
+        return after(10);
     }
 
     private static boolean title(Minecraft mc) throws Exception {
@@ -224,6 +271,26 @@ public final class CoreProbe {
         check(button != null && "Lads Client".equals(button.displayString) && button.visible && button.enabled,
             "GuiIngameMenuMixin added the Lads Client button to the pause menu");
         return after(10);
+    }
+
+    /** The redesigned pause menu's grid and its Multiplayer row, which asks before leaving the world (Stay in game here). */
+    private static boolean pauseMultiplayer(Minecraft mc) throws Exception {
+        GuiButton lads = ((LadsPauseButton) pause).ladsButton(), multiplayer = ((LadsPauseButton) pause).ladsMultiplayerButton();
+        check(mc.currentScreen == pause && multiplayer != null && multiplayer.visible && multiplayer.width == lads.width
+            && multiplayer.yPosition < lads.yPosition && lads.yPosition + lads.height <= pause.height, "the pause menu's buttons are in the Lads grid, Multiplayer above Lads Client");
+        click(multiplayer.xPosition + multiplayer.width / 2, multiplayer.yPosition + multiplayer.height / 2);
+        return after(10);
+    }
+
+    private static boolean multiplayerConfirm(Minecraft mc) throws Exception {
+        if (mc.currentScreen instanceof GuiYesNo) {
+            check(mc.theWorld != null, "Multiplayer on the pause menu asks before saving and leaving the QA world");
+            screenshot(mc, "c1-pause-multiplayer");
+            click(mc.currentScreen.width / 2 + 80, mc.currentScreen.height / 6 + 106); // GuiYesNo's second button: Stay in game
+            return retry(10);
+        }
+        check(mc.currentScreen == pause && mc.theWorld != null, "Stay in game returns to the pause menu, still in the world");
+        return after(2);
     }
 
     private static boolean pauseClicked(Minecraft mc) throws Exception {
