@@ -37,16 +37,22 @@ final class NativeNametagConnectionProbe {
             nameVisible.setAccessible(true);
             var renderer = minecraft.getEntityRenderDispatcher().getRenderer(minecraft.player);
             minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            // As on 26.3: other pack mods may already show the own name tag; the module must leave their choice alone.
             tags.setEnabled(false);
             own.set(true);
-            require(!(boolean) nameVisible.invoke(renderer, minecraft.player, 4.0), "disabled own nametag keeps vanilla visibility"); passed++;
+            boolean baseline = (boolean) nameVisible.invoke(renderer, minecraft.player, 4.0);
+            own.set(false);
+            require((boolean) nameVisible.invoke(renderer, minecraft.player, 4.0) == baseline, "disabled module preserves upstream nametag visibility"); passed++;
             tags.setEnabled(true);
             own.set(false);
-            require(!(boolean) nameVisible.invoke(renderer, minecraft.player, 4.0), "own nametag option off"); passed++;
+            require((boolean) nameVisible.invoke(renderer, minecraft.player, 4.0) == baseline, "own nametag option off preserves upstream visibility"); passed++;
             own.set(true);
             require((boolean) nameVisible.invoke(renderer, minecraft.player, 4.0), "own nametag appears in third person through real renderer"); passed++;
             minecraft.options.setCameraType(CameraType.FIRST_PERSON);
-            require(!(boolean) nameVisible.invoke(renderer, minecraft.player, 4.0), "own nametag stays hidden in first person"); passed++;
+            tags.setEnabled(false);
+            boolean firstPersonBaseline = (boolean) nameVisible.invoke(renderer, minecraft.player, 4.0);
+            tags.setEnabled(true);
+            require((boolean) nameVisible.invoke(renderer, minecraft.player, 4.0) == firstPersonBaseline, "own nametag option preserves upstream first-person visibility"); passed++;
             minecraft.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
             require((boolean) nameVisible.invoke(renderer, minecraft.player, 4.0), "own nametag appears in front third person"); passed++;
 
