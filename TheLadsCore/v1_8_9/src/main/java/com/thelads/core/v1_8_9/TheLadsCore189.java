@@ -6,6 +6,7 @@ import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.mods.CoreCatalogExporter;
 import com.thelads.core.shared.SharedContentPaths;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
+import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
@@ -34,7 +35,6 @@ public class TheLadsCore189 {
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
         {"EnhancedToolbars", "Durability Tooltip"}, {"Capes", "Capes"}, {"Raised", "Raised"}};
 
-    private static boolean borderlessApplied = false;
     private static String windowTitle = "The Lads Client";
 
     public TheLadsCore189() {
@@ -109,28 +109,10 @@ public class TheLadsCore189 {
 
         RawMouse189.install(mc);
 
-        com.thelads.core.config.Module borderless = com.thelads.core.config.ModuleManager.getInstance().getModule("BorderlessFullscreen");
-        if (borderless != null && borderless.isEnabled()) {
-            applyBorderlessFullscreen(mc);
-        }
+        Borderless189.tick(mc);
 
         CoreCatalogExporter.exportIfChanged();
         if (Boolean.getBoolean("thelads.verify189Core")) CoreProbe.tick();
-    }
-
-    private static void applyBorderlessFullscreen(Minecraft mc) {
-        try {
-            if (mc.gameSettings.fullScreen && !borderlessApplied) {
-                System.setProperty("org.lwjgl.opengl.Window.undecorated", "true");
-                org.lwjgl.opengl.Display.setDisplayMode(org.lwjgl.opengl.Display.getDesktopDisplayMode());
-                org.lwjgl.opengl.Display.setLocation(0, 0);
-                org.lwjgl.opengl.Display.setFullscreen(false);
-                borderlessApplied = true;
-            } else if (!mc.gameSettings.fullScreen && borderlessApplied) {
-                System.setProperty("org.lwjgl.opengl.Window.undecorated", "false");
-                borderlessApplied = false;
-            }
-        } catch (Throwable ignored) {}
     }
 
     @SubscribeEvent
