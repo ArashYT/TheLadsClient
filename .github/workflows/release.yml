@@ -47,7 +47,7 @@ jobs:
       - name: Verify automatic update and restart
         shell: pwsh
         run: ./tools/Test-AutomaticUpdate.ps1
-      - name: Build, test, package, and create draft
+      - name: Build, test, package, and publish release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
