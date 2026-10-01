@@ -24,7 +24,7 @@
     "client": [
       "com.thelads.core.v26_2.TheLadsCoreClient26"
     ],
-    "main": [],
+    "main": ["com.thelads.core.v26_2.embedded.EmbeddedModsMain"],
     "jade": [],
     "modmenu": [],
     "jei_mod_plugin": []
@@ -42,7 +42,8 @@
     "jade.mixins.json",
     "theladscore.embedded.fixbookgui.mixins.json",
     "theladscore.embedded.playtime.mixins.json",
-    "theladscore.embedded.hoveringhotbar.mixins.json"
+    "theladscore.embedded.hoveringhotbar.mixins.json",
+    "theladscore.embedded.nbtac.mixins.json"
   ],
   "jars": [
     {

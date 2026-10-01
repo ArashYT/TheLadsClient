@@ -54,4 +54,8 @@ processResources {
         include 'com/thelads/core/v1_21_1/embedded/hoveringhotbar/**'
         into 'META-INF/lads-sources/hoveringhotbar/v1_21_1'
     }
+    from('src/main/java') {
+        include 'com/thelads/core/v1_21_1/embedded/nbtac/**'
+        into 'META-INF/lads-sources/nbtac/v1_21_1'
+    }
 }

@@ -1,0 +1,19 @@
+NBT Autocomplete (mod id nbtac), 2.1 for Minecraft 26.2
+Copyright (C) 2023-2026, Damian Mazur ("mt1006") and Contributors. License: LGPL-3.0-only;
+the upstream license notice is in LICENSE beside this file (GNU GPL/LGPL texts:
+https://www.gnu.org/licenses/gpl-3.0.html and https://www.gnu.org/licenses/lgpl-3.0.html).
+Project: https://github.com/mt1006/mc-nbtac-mod
+Source used: tag v2.1+mc26.2 (commit 42d28947397ce505185368f4c5ccc4d5c3bafc2b).
+
+Modified by The Lads: repackaged into Lads Core as com.thelads.core.v26_2.embedded.nbtac (common and
+Fabric code; mixin config theladscore.embedded.nbtac.mixins.json); the built-in suggestion data moved
+from /suggestions_v3 to /com/thelads/core/v26_2/embedded/nbtac/suggestions_v3 so it never shadows an
+installed original; the Mod Menu entry, the debug hook that opened the settings screen from the Realms
+button, and the game tests are not included. The settings file config/nbtac.txt is unchanged.
+Everything stands down while the original nbtac mod is installed.
+
+The complete modified source is in META-INF/lads-sources/nbtac/v26_2 in this jar.
+To use a modified version, change those files in the Lads source tree
+(TheLadsCore/v26_2/src/main/java/com/thelads/core/v26_2/embedded/nbtac) and rebuild Core
+with TheLadsCore/gradlew.bat :v26_2:build, or compile them against this jar, Minecraft 26.2 and
+Fabric Loader/API and replace the classes of that package in a copy of this jar.

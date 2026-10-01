@@ -1,0 +1,86 @@
+// Adapted from NBT Autocomplete 2.1 for Minecraft 26.2 by mt1006 (LGPL-3.0-only); modified by The Lads: repackaged into Lads Core.
+package com.thelads.core.v26_2.embedded.nbtac.mixin.suggestions.selectors;
+
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import net.minecraft.commands.arguments.selector.EntitySelectorParser;
+import net.minecraft.commands.arguments.selector.options.EntitySelectorOptions;
+import net.minecraft.world.entity.EntityType;
+import com.thelads.core.v26_2.embedded.nbtac.autocomplete.SuggestionManager;
+import com.thelads.core.v26_2.embedded.nbtac.utils.Utils;
+import org.jetbrains.annotations.Nullable;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+
+@Mixin(EntitySelectorParser.class)
+public class EntitySelectorParserMixin
+{
+	@Shadow @Final private StringReader reader;
+	@Shadow private BiFunction<SuggestionsBuilder, Consumer<SuggestionsBuilder>, CompletableFuture<Suggestions>> suggestions;
+	@Shadow @Nullable private EntityType<?> type;
+	@Shadow @Nullable private UUID entityUUID;
+	@Shadow @Nullable private String playerName;
+	@Unique private int startPos = 0;
+	@Unique private String lastTag = null;
+
+	@Inject(method = "<init>", at = @At("RETURN"))
+	private void atInit(StringReader reader, boolean allowSelectors, CallbackInfo ci)
+	{
+		startPos = reader.getCursor();
+	}
+
+	@ModifyVariable(method = "parseOptions", at = @At("STORE"), ordinal = 0)
+	public String parseOptionsModifyString(String str)
+	{
+		lastTag = str;
+		return str;
+	}
+
+	@Redirect(method = "parseOptions", at = @At(value = "INVOKE", target = "Lnet/minecraft/commands/arguments/selector/options/EntitySelectorOptions$Modifier;handle(Lnet/minecraft/commands/arguments/selector/EntitySelectorParser;)V"))
+	private void atParseOptions(EntitySelectorOptions.Modifier modifier, EntitySelectorParser parser) throws CommandSyntaxException
+	{
+		if (lastTag != null && lastTag.equalsIgnoreCase("nbt"))
+		{
+			int cursor = reader.getCursor();
+
+			try
+			{
+				modifier.handle(parser);
+			}
+			catch (CommandSyntaxException e)
+			{
+				reader.setCursor(cursor);
+				suggestions = this::suggestNbt;
+				throw e;
+			}
+		}
+		else
+		{
+			modifier.handle(parser);
+		}
+	}
+
+	@Unique private CompletableFuture<Suggestions> suggestNbt(SuggestionsBuilder builder, Consumer<SuggestionsBuilder> consumer)
+	{
+		String outerCommand = reader.getString().substring(0, startPos);
+		if (outerCommand.endsWith(" as ")) { outerCommand = outerCommand.substring(0, outerCommand.length() - 4); }
+
+		String str = builder.getRemaining();
+		String name = Utils.entityFromSelectorData(type, entityUUID, playerName, Utils.findExecuteAs(outerCommand));
+		return SuggestionManager.get(str, name, builder, false);
+	}
+}

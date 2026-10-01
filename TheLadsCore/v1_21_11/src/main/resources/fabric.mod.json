@@ -12,7 +12,8 @@
   "entrypoints": {
     "client": [
       "com.thelads.core.v1_21_11.TheLadsCoreClient12111"
-    ]
+    ],
+    "main": ["com.thelads.core.v1_21_11.embedded.EmbeddedModsMain"]
   },
   "mixins": [
     "theladscore.v1_21_11.mixins.json",
@@ -21,7 +22,8 @@
     "theladscore.v1_21_11.chrome.mixins.json",
     "theladscore.embedded.fixbookgui.mixins.json",
     "theladscore.embedded.playtime.mixins.json",
-    "theladscore.embedded.hoveringhotbar.mixins.json"
+    "theladscore.embedded.hoveringhotbar.mixins.json",
+    "theladscore.embedded.nbtac.mixins.json"
   ],
   "custom": {
     "badoptimizations:cache_hooks": { "lightmap": "com.thelads.core.v1_21_11.feature.FullbrightLightmapHook" }
