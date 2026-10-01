@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.embedded.quickpack.mixin",
+  "plugin": "com.thelads.core.v26_2.embedded.quickpack.QuickPackMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": ["FilePackResourcesAccessor", "FilePackResourcesMixin", "FileResourcesSupplierMixin", "SharedZipFileAccessAccessor"],
+  "client": ["GuiMixin", "LoadingOverlayMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

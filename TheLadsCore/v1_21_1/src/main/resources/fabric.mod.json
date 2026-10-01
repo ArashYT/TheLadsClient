@@ -24,7 +24,8 @@
     "theladscore.v1_21_1.chrome.mixins.json",
     "theladscore.embedded.ksyxis.mixins.json",
     "theladscore.embedded.serverpingerfixer.mixins.json",
-    "theladscore.embedded.fastipping.mixins.json"
+    "theladscore.embedded.fastipping.mixins.json",
+    "theladscore.embedded.quickpack.mixins.json"
   ],
   "custom": {
     "badoptimizations:cache_hooks": { "lightmap": "com.thelads.core.v1_21_1.feature.FullbrightLightmapHook" }
