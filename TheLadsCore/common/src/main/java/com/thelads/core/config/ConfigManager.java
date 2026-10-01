@@ -2,6 +2,7 @@ package com.thelads.core.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
 import com.thelads.core.modules.HudModule;
@@ -110,6 +111,7 @@ public class ConfigManager {
         }
         if (json.has("modules")) {
             JsonObject modulesJson = json.getAsJsonObject("modules");
+            migrateChat(modulesJson);
             for (Module module : ModuleManager.getInstance().getModules()) {
                 try {
                     if (module.getName().equals("Nametags") && !modulesJson.has("Nametags") && modulesJson.has("ToggleNametags"))
@@ -207,6 +209,28 @@ public class ConfigManager {
                 HudSettings.getInstance().replaceGroups(groups);
             }
         }
+    }
+
+    /** 1.4.5 moved ClientTools "Chat timestamps" and the HideChatIndicators module into Chat options; keeps whatever the user had. */
+    static void migrateChat(JsonObject modules) {
+        JsonElement stamps = legacy(modules, "ClientTools", "options", "Chat timestamps");
+        JsonElement indicators = legacy(modules, "HideChatIndicators", "enabled");
+        if (stamps == null && indicators == null) return;
+        if (!(modules.get("Chat") instanceof JsonObject)) modules.add("Chat", new JsonObject());
+        JsonObject chat = modules.getAsJsonObject("Chat");
+        if (!(chat.get("options") instanceof JsonObject)) chat.add("options", new JsonObject());
+        JsonObject options = chat.getAsJsonObject("options");
+        if (stamps != null && !options.has("Timestamps")) options.add("Timestamps", stamps);
+        if (indicators != null && !options.has("Hide Signing Indicators")) options.add("Hide Signing Indicators", indicators);
+    }
+
+    private static JsonElement legacy(JsonObject root, String... path) {
+        JsonElement value = root;
+        for (String key : path) {
+            if (!(value instanceof JsonObject) || !((JsonObject) value).has(key)) return null;
+            value = ((JsonObject) value).get(key);
+        }
+        return value;
     }
 
     private static Set<String> readHudNames(com.google.gson.JsonElement value) {

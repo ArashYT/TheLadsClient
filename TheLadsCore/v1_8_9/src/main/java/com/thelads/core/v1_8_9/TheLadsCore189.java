@@ -88,7 +88,6 @@ public class TheLadsCore189 {
         ModuleSupport.registerBuiltIn(GAMEPLAY_MODULES);
         for (String[] module : MOD_BACKED)
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
-        ModuleSupport.registerUnavailable("HideChatIndicators", "Minecraft 1.8.9 has no chat signing, so there are no indicators to hide.");
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
         // The launcher's 1.8.9 pack includes Resourcify (its own in-game browser, no Lads settings page).
         ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));
