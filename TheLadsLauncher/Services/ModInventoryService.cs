@@ -230,7 +230,8 @@ public sealed class ModInventoryService
         if (hasCore && !copies[CoreId].Any())
         {
             var bundled = Path.Combine(bundle, "game-mods", version, "theladscore.jar");
-            var info = File.Exists(bundled) ? Scan(bundled, token).Info : null;
+            // Read as this version's loader reads it (1.8.9: mcmod.info): the other loader's Core is no Core here.
+            var info = File.Exists(bundled) && Scan(bundled, token).Info is { } scanned && scanned.Forge == forge && scanned.Id == CoreId ? scanned : null;
             var missing = info == null ? $"The Lads Core bundle for Minecraft {version} is missing or unreadable ('{bundled}'). Reinstall the launcher." : null;
             entries.Add(new(CoreId, info?.Name ?? "The Lads Core", null, info?.Version, "theladscore.jar", null, ModOwnership.Core,
                 missing != null ? ModEntryStatus.Invalid : coreRequested ? ModEntryStatus.PendingDownload : ModEntryStatus.NotDownloaded,

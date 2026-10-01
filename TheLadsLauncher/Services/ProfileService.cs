@@ -280,11 +280,12 @@ public class ProfileService : IProfileService
     // Kept only as the old launcher's list: it is merged into the shared servers.dat once, never written again.
     private string LegacySharedServersFile => Path.Combine(_pathService.SharedDirectory, "servers.dat");
 
-    /// <summary>LadsCore (which reads the shared server list itself) runs only for bundled-Core Fabric versions it is enabled for.</summary>
+    /// <summary>LadsCore reads the shared server list itself only on the Fabric versions it is enabled for; the 1.8.9 Core does not,
+    /// so a 1.8.9 profile gets the launcher's synced copy.</summary>
     private static bool UsesCore(LauncherProfile profile, string gameDirectory, out string? stateFileError)
     {
         stateFileError = null;
-        return GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion) && !string.IsNullOrWhiteSpace(profile.FabricVersion)
+        return GameVersionPolicy.RequiresFabric(profile.MinecraftVersion) && !string.IsNullOrWhiteSpace(profile.FabricVersion)
             && SharedContentService.IsCoreRequested(gameDirectory, out stateFileError);
     }
 
@@ -368,7 +369,8 @@ public class ProfileService : IProfileService
                     {
                         // Keep unresolved aliases/custom profiles for the user to repair, but
                         // never pass one to startup's exact-version resolver as the active profile.
-                        var fallback = _profiles.FirstOrDefault(p => GameVersionPolicy.RequiresBundledCore(p.MinecraftVersion)
+                        // A Fabric profile, as before 1.8.9 had a bundled Core: never switch a player to 1.8.9 by surprise.
+                        var fallback = _profiles.FirstOrDefault(p => GameVersionPolicy.RequiresFabric(p.MinecraftVersion)
                             && IsValidStartupProfile(p));
                         if (fallback == null)
                         {
@@ -424,7 +426,7 @@ public class ProfileService : IProfileService
             changed = true;
         }
 
-        if (GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion) && !string.IsNullOrWhiteSpace(profile.FabricVersion))
+        if (GameVersionPolicy.RequiresFabric(profile.MinecraftVersion) && !string.IsNullOrWhiteSpace(profile.FabricVersion))
         {
             var loader = profile.FabricVersion;
             var fullId = loader.StartsWith("fabric-loader-", StringComparison.Ordinal);
@@ -477,7 +479,7 @@ public class ProfileService : IProfileService
         try
         {
             GameVersionPolicy.ResolveVersionId(profile);
-            return !GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion)
+            return !GameVersionPolicy.RequiresFabric(profile.MinecraftVersion)
                 || !string.IsNullOrWhiteSpace(profile.FabricVersion);
         }
         catch (ArgumentException)

@@ -3,6 +3,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using TheLadsLauncher.Models;
 using TheLadsLauncher.Services;
 using Xunit;
@@ -144,6 +145,13 @@ public class Minecraft189Tests
             new LauncherProfile { Id = "mine", Name = "Mine", MinecraftVersion = "1.8.9", FabricVersion = "0.19.5", JavaMajorVersion = 25 } } }));
         var repaired = new ProfileService(new PathService(handMade), global);
         Assert.Equal(("mine", (string?)null, 8), (repaired.GetActiveProfile().Id, repaired.GetActiveProfile().FabricVersion, repaired.GetActiveProfile().JavaMajorVersion));
+
+        // An unusable active profile falls back to a Fabric profile, never to 1.8.9, even when 1.8.9 comes first.
+        var broken = Path.Combine(dir.Path, "broken");
+        Write(Path.Combine(broken, "profiles.json"), JsonSerializer.Serialize(new { ActiveProfileId = "broken", Profiles = new[] {
+            new LauncherProfile { Id = "old-189", Name = "Old 1.8.9", MinecraftVersion = "1.8.9", FabricVersion = null, JavaMajorVersion = 8 },
+            new LauncherProfile { Id = "broken", Name = "Broken", MinecraftVersion = "26.3", FabricVersion = "custom-loader", JavaMajorVersion = 25 } } }));
+        Assert.Equal("26.2", new ProfileService(new PathService(broken), global).GetActiveProfile().Id);
     }
 
     // ------------------------------------------------------------------ world safety
@@ -317,10 +325,174 @@ public class Minecraft189Tests
         await ClientModInstaller.InstallAsync(bundle, box.Game, "1.8.9", httpClient: box.Client());
         Assert.Empty(box.Requests);
         var inventory = await new ModInventoryService().BuildAsync(bundle, box.Game, "1.8.9");
-        var pending = Assert.Single(inventory.Entries, e => e.Status == ModEntryStatus.PendingDownload);
+        var pending = Assert.Single(inventory.Entries, e => e.Status == ModEntryStatus.PendingDownload && e.Ownership != ModOwnership.Core);
         Assert.Equal((OptiFineInstaller.ModId, "OptiFine", ModOwnership.Pack, true), (pending.Id, pending.DisplayName, pending.Ownership, pending.CanToggle));
         Assert.Equal(OptiFineInstaller.M5.FileName, pending.FileName);
-        Assert.DoesNotContain(inventory.Entries, e => e.Status == ModEntryStatus.PendingDownload && e.Id != OptiFineInstaller.ModId);
+
+        // The Core that TheLadsCore's deploy staged, when it did: the Forge mod, installed the way a 1.8.9 launch installs it.
+        var staged = Path.Combine(bundle, "game-mods", "1.8.9", "theladscore.jar");
+        var core = inventory.Entries.Single(e => e.Id == BundledModInstaller.CoreModId);
+        if (!File.Exists(staged))
+        {
+            Assert.Equal(ModEntryStatus.Invalid, core.Status); // a 1.8.9 launch then fails: never Forge without the Core
+            return;
+        }
+        var info = FabricModMetadata.ReadForgeJar(staged)!;
+        Assert.Equal((BundledModInstaller.CoreModId, "1.8.9", true), (info.Id, info.McVersion, info.Forge));
+        Assert.Equal((ModOwnership.Core, ModEntryStatus.PendingDownload, info.Version), (core.Ownership, core.Status, core.Version));
+        Assert.True(await BundledModInstaller.InstallAsync(bundle, box.Game, "1.8.9"));
+        Assert.Equal(File.ReadAllBytes(staged), File.ReadAllBytes(box.Mod("theladscore.jar")));
+    }
+
+    // ------------------------------------------------------------------ the Lads Core on Forge
+
+    [Fact]
+    public async Task ForgeCoreIsInstalledInto189AndOlderCopiesAreMovedAside()
+    {
+        using var box = new ModSandbox();
+        var core = ForgeCore();
+        box.WriteCore("1.8.9", core);
+        var older = ForgeCore("1.3.9");
+        File.WriteAllBytes(box.Mod("theladscore-1.3.9.jar"), older);
+        File.WriteAllBytes(box.Mod("theladscore.jar.disabled"), ForgeCore("1.3.8"));
+        File.WriteAllBytes(box.Mod("examplemod.jar"), ForgeJar("[{\"modid\": \"examplemod\", \"mcversion\": \"1.8.9\"}]"));
+        File.WriteAllBytes(box.Mod(OptiFineInstaller.M5.FileName), OptiFineJar());
+
+        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9"));
+
+        Assert.Equal(core, File.ReadAllBytes(box.Mod("theladscore.jar")));
+        Assert.Equal(new[] { OptiFineInstaller.M5.FileName, "examplemod.jar", "theladscore.jar" }, Names(box.Mods));
+        var backups = Directory.GetFiles(Path.Combine(box.Game, "mods-disabled"), "*", SearchOption.AllDirectories);
+        Assert.Equal(new[] { "theladscore-1.3.9.jar", "theladscore.jar.disabled" }, backups.Select(Path.GetFileName).Order(StringComparer.Ordinal));
+        Assert.Equal(older, File.ReadAllBytes(backups.Single(b => b.EndsWith("1.3.9.jar", StringComparison.Ordinal))));
+        Assert.False(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9")); // installed and verified: nothing to do
+
+        var row = (await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "1.8.9")).Entries.Single(e => e.Id == BundledModInstaller.CoreModId);
+        Assert.Equal((ModOwnership.Core, ModEntryStatus.Installed, "The Lads Core", "1.4.0"), (row.Ownership, row.Status, row.DisplayName, row.Version));
+    }
+
+    [Fact]
+    public async Task TheOtherLoadersCoreIsNeverInstalledEitherWay()
+    {
+        using var box = new ModSandbox();
+        box.WriteCore("1.8.9", ModSandbox.Core("1.8.9"));
+        box.WriteCore("26.3", ForgeCore());
+        foreach (var (version, reason) in new[] { ("1.8.9", "is the Fabric Lads Core, but Minecraft 1.8.9 runs on Forge"),
+                     ("26.3", "is the Forge Lads Core, but Minecraft 26.3 runs on Fabric") })
+            Assert.Contains(reason, (await Assert.ThrowsAsync<InvalidDataException>(() => BundledModInstaller.InstallAsync(box.Bundle, box.Game, version))).Message);
+        Assert.Empty(Directory.GetFiles(box.Mods));
+        // Neither is taken for the version's Core on the Mods page.
+        foreach (var version in new[] { "1.8.9", "26.3" })
+            Assert.Equal(ModEntryStatus.Invalid, (await new ModInventoryService().BuildAsync(box.Bundle, box.Game, version)).Entries
+                .Single(e => e.Id == BundledModInstaller.CoreModId && e.Ownership == ModOwnership.Core).Status);
+
+        // The 1.8.9 Core names 1.8.9 in mcmod.info.
+        box.WriteCore("1.8.9", ForgeCore(mcversion: "1.8.8"));
+        Assert.Contains("mcversion '1.8.9'", (await Assert.ThrowsAsync<InvalidDataException>(() => BundledModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9"))).Message);
+
+        // A Fabric Core in a 1.8.9 profile under the Core's file name is never overwritten, and the message says why.
+        box.WriteCore("1.8.9", ForgeCore());
+        var fabricCore = ModSandbox.Core("26.3");
+        File.WriteAllBytes(box.Mod("theladscore.jar"), fabricCore);
+        var kept = await Assert.ThrowsAsync<IOException>(() => BundledModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9"));
+        Assert.Contains("is the Fabric Lads Core, but Minecraft 1.8.9 runs on Forge. Move it aside manually", kept.Message);
+        Assert.Equal(fabricCore, File.ReadAllBytes(box.Mod("theladscore.jar")));
+    }
+
+    [Fact]
+    public async Task ForgeCoreCopiesAreSwitchedOffAndBackOnLikeTheFabricCore()
+    {
+        using var box = new ModSandbox();
+        var core = ForgeCore();
+        box.WriteCore("1.8.9", core);
+        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9"));
+        File.WriteAllBytes(box.Mod("lads-core-copy.jar"), ForgeCore("1.3.9"));
+
+        // Switched off (a choice saved while the game ran): the next launch keeps one disabled Core and sets the copy aside.
+        box.Choose((BundledModInstaller.CoreModId, false));
+        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9"));
+        Assert.Equal(new[] { "theladscore.jar.disabled" }, Names(box.Mods));
+        Assert.Equal(core, File.ReadAllBytes(box.Mod("theladscore.jar.disabled")));
+        Assert.Single(Directory.GetFiles(Path.Combine(box.Game, "mods-disabled"), "lads-core-copy.jar", SearchOption.AllDirectories));
+        Assert.False(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9"));
+
+        // Back on, then off again, from the Mods page: the jar is renamed now and the next launch agrees.
+        var state = new ModStateService(_ => false);
+        foreach (var on in new[] { true, false })
+        {
+            var inventory = await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "1.8.9");
+            Assert.Equal((ModOwnership.Core, on ? ModEntryStatus.Disabled : ModEntryStatus.Installed),
+                (inventory.Entries.Single(e => e.Id == BundledModInstaller.CoreModId).Ownership, inventory.Entries.Single(e => e.Id == BundledModInstaller.CoreModId).Status));
+            var plan = state.Plan(inventory, new[] { BundledModInstaller.CoreModId }, on);
+            Assert.Equal(!on, plan.Warnings.Contains(ModStateService.CoreDisableWarning));
+            Assert.True((await state.ApplyAsync(box.Game, inventory, plan)).Success);
+            Assert.False(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9"));
+            Assert.Equal(new[] { on ? "theladscore.jar" : "theladscore.jar.disabled" }, Names(box.Mods));
+            Assert.Equal(core, File.ReadAllBytes(box.Mod(on ? "theladscore.jar" : "theladscore.jar.disabled")));
+        }
+    }
+
+    [Fact]
+    public async Task The189ModsPageListsTheForgeCoreAndItsLadsModules()
+    {
+        using var box = new ModSandbox();
+        box.WriteCore("1.8.9", ForgeCore());
+        box.WriteManifest("1.8.9", Array.Empty<ClientModInstaller.Entry>());
+        Task<ModInventory> Inventory() => new ModInventoryService().BuildAsync(box.Bundle, box.Game, "1.8.9");
+        static ModInventoryEntry Row(ModInventory inventory, string id) => inventory.Entries.Single(e => e.Id == id);
+
+        // Before the first launch: the bundled Core, read from its mcmod.info, and the placeholder for the module list.
+        var fresh = await Inventory();
+        var core = Row(fresh, BundledModInstaller.CoreModId);
+        Assert.Equal((ModOwnership.Core, ModEntryStatus.PendingDownload, "The Lads Core", "1.4.0", "Installed at the next launch"),
+            (core.Ownership, core.Status, core.DisplayName, core.Version, core.Note));
+        Assert.Equal("Launch this profile once to list Lads modules", Row(fresh, ModInventoryService.CatalogPlaceholderId).ToggleBlockedReason);
+
+        // After a launch, from the catalog the 1.8.9 Core writes: its modules, as on every other version.
+        Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9"));
+        File.WriteAllText(Path.Combine(box.Game, "lads-core-catalog.json"), JsonSerializer.Serialize(new
+        {
+            schema = 1, coreVersion = "1.4.0", minecraftVersion = "1.8.9", writtenAt = "2026-09-30T21:25:31Z",
+            modules = new object[]
+            {
+                new { name = "FPS", description = "Frame counter", category = "HUD", support = "builtIn", label = "Built in", detail = "", externalModId = (string?)null, enabled = true, toggleable = true },
+                new { name = "Zoom", description = "Zoom key", category = "General", support = "pending", label = "Coming soon", detail = "Not connected to this game version yet", externalModId = (string?)null, enabled = false, toggleable = false },
+                new { name = "Performance", description = "", category = "Performance", support = "unavailable", label = "Unavailable", detail = "Built on Sodium, which The Lads Client does not include for Minecraft 1.8.9.", externalModId = (string?)null, enabled = false, toggleable = false }
+            }
+        }));
+        var listed = await Inventory();
+        Assert.DoesNotContain(listed.Entries, e => e.Id == ModInventoryService.CatalogPlaceholderId);
+        Assert.Equal(ModEntryStatus.Installed, Row(listed, BundledModInstaller.CoreModId).Status);
+        var fps = Row(listed, "FPS");
+        Assert.Equal((ModOwnership.NativeModule, ModEntryStatus.Installed, true), (fps.Ownership, fps.Status, fps.CanToggle));
+        Assert.Equal((ModEntryStatus.Unavailable, false), (Row(listed, "Zoom").Status, Row(listed, "Zoom").CanToggle));
+        Assert.Contains("Sodium", Row(listed, "Performance").Note);
+        Assert.Equal(new[] { "FPS", "Performance", "Zoom", BundledModInstaller.CoreModId },
+            ModInventoryView.Filter(listed, ModListFilter.LadsModules, null).Select(r => r.Entry.Id).Order(StringComparer.Ordinal));
+
+        // Switched on the Mods page as on any version: saved in the profile's thelads_config.json for the Core.
+        var result = await new ModStateService(_ => false).SetNativeModuleAsync(box.Game, "FPS", false);
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(ModEntryStatus.Disabled, Row(await Inventory(), "FPS").Status);
+    }
+
+    [Fact]
+    public async Task LaunchOf189PassesTheFabricGuardAndInstallsTheForgeCore()
+    {
+        using var l = new Launcher();
+        var bundle = Path.Combine(l.Root, "bundle");
+        var core = ForgeCore();
+        Directory.CreateDirectory(Path.Combine(bundle, "game-mods", "1.8.9"));
+        File.WriteAllBytes(Path.Combine(bundle, "game-mods", "1.8.9", "theladscore.jar"), core);
+        var service = new LaunchService(l.Paths, l.Profiles, new JavaService(l.Paths), new AuthService(l.Paths), bundle, l.Shared);
+
+        // No client-mods.json in this bundle: the launch stops at the pack, after the Core step and before any download.
+        var stopped = await Assert.ThrowsAsync<FileNotFoundException>(() => service.LaunchAsync(l.Profiles.GetProfile("1.8.9")!, "LadsQA", new LauncherSettings()));
+        Assert.EndsWith("client-mods.json", stopped.FileName);
+        Assert.Equal(core, File.ReadAllBytes(Path.Combine(l.Game189, "mods", "theladscore.jar")));
+        // A Fabric version without a Fabric loader is still refused.
+        var noLoader = new LauncherProfile { Id = "no-loader", Name = "No loader", MinecraftVersion = "26.3", FabricVersion = null, JavaMajorVersion = 25 };
+        Assert.Contains("requires Fabric", (await Assert.ThrowsAsync<InvalidOperationException>(() => service.LaunchAsync(noLoader, "LadsQA", new LauncherSettings()))).Message);
     }
 
     // ------------------------------------------------------------------ OptiFine
@@ -487,6 +659,29 @@ public class Minecraft189Tests
         Assert.DoesNotContain((await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "26.3")).Entries, e => e.Id == OptiFineInstaller.ModId);
     }
 
+    // ------------------------------------------------------------------ release
+
+    /// <summary>Every script that checks a published launcher for each version's Core (Publish-Release, Build-LadsClient,
+    /// Install-LadsRelease) lists exactly the versions the launcher ships a pack for, 1.8.9 included.</summary>
+    [Fact]
+    public void ReleaseScriptsCheckEveryShippedVersionIncluding189()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root != null && !File.Exists(Path.Combine(root.FullName, "Publish-Release.ps1"))) root = root.Parent;
+        Assert.True(root != null, "No Publish-Release.ps1 above the test folder: run the tests from the repository.");
+        var shipped = Directory.GetDirectories(Path.Combine(root!.FullName, "TheLadsLauncher", "game-mods"))
+            .Where(folder => File.Exists(Path.Combine(folder, "client-mods.json"))).Select(folder => Path.GetFileName(folder)).Order(StringComparer.Ordinal).ToList();
+        Assert.Contains("1.8.9", shipped);
+        foreach (var script in new[] { "Publish-Release.ps1", "Build-LadsClient.ps1", Path.Combine("tools", "Install-LadsRelease.ps1") })
+        {
+            // foreach ($gameVersion in @('1.21.1', ...)): the one list of Minecraft versions in the script.
+            var lists = Regex.Matches(File.ReadAllText(Path.Combine(root.FullName, script)), @"foreach \(\$\w+ in @\(([^)]*)\)\)")
+                .Select(loop => Regex.Matches(loop.Groups[1].Value, "'([^']*)'").Select(item => item.Groups[1].Value).ToList())
+                .Where(items => items.Count > 0 && items.All(item => Regex.IsMatch(item, @"\A\d+(\.\d+)+\z"))).ToList();
+            Assert.Equal(shipped, Assert.Single(lists).Order(StringComparer.Ordinal));
+        }
+    }
+
     // ------------------------------------------------------------------ helpers
 
     /// <summary>A sandboxed launcher whose shared folder holds newer-version content: a 26.3 world, packs, a server list,
@@ -582,6 +777,13 @@ public class Minecraft189Tests
     /// <summary>The launcher's OptiFine file name, pinned to a stand-in jar.</summary>
     internal static OptiFineInstaller.Pin Pin(byte[] jar) =>
         OptiFineInstaller.M5 with { Sha256 = Convert.ToHexString(SHA256.HashData(jar)), Size = jar.Length };
+
+    /// <summary>A stand-in for the 1.8.9 Lads Core: mcmod.info as TheLadsCore/v1_8_9 writes it.</summary>
+    private static byte[] ForgeCore(string version = "1.4.0", string mcversion = "1.8.9") => ForgeJar(
+        $"[{{\"modid\": \"theladscore\", \"name\": \"The Lads Core\", \"version\": \"{version}\", \"mcversion\": \"{mcversion}\", \"authorList\": [\"The Lads\"]}}]");
+
+    private static string[] Names(string directory) =>
+        Directory.GetFiles(directory).Select(file => Path.GetFileName(file)).Order(StringComparer.Ordinal).ToArray();
 
     private static byte[] ForgeJar(string mcmodInfo)
     {

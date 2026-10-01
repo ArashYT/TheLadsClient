@@ -19,7 +19,7 @@ finally { Pop-Location }
 if ($Launcher -or $Install) {
     & dotnet publish $launcherProject -c Release -r win-x64 --self-contained true -o $publishDirectory
     if ($LASTEXITCODE -ne 0) { throw 'Launcher publication failed.' }
-    foreach ($version in @('1.21.1', '1.21.11', '26.2', '26.3')) {
+    foreach ($version in @('1.8.9', '1.21.1', '1.21.11', '26.2', '26.3')) {
         $artifact = Join-Path $publishDirectory "game-mods/$version/theladscore.jar"
         if (-not (Test-Path -LiteralPath $artifact -PathType Leaf)) { throw "Missing production core for $version." }
         $manifestPath = Join-Path $publishDirectory "game-mods/$version/client-mods.json"

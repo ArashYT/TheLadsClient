@@ -11,7 +11,7 @@ using TheLadsLauncher.Services;
 if (args.Length == 4 && args[0] == "--install-pack")
 {
     string packVersion = args[1];
-    if (packVersion is not ("1.21.1" or "1.21.11" or "26.2" or "26.3")) throw new ArgumentException("Unsupported pinned pack version.");
+    if (!QaCapabilities.Supported.Contains(packVersion)) throw new ArgumentException("Unsupported pinned pack version.");
     using var installTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(10));
     await BundledModInstaller.InstallAsync(Path.GetFullPath(args[2]), Path.GetFullPath(args[3]), packVersion, installTimeout.Token);
     await ClientModInstaller.InstallAsync(Path.GetFullPath(args[2]), Path.GetFullPath(args[3]), packVersion, Console.WriteLine, installTimeout.Token);
@@ -19,16 +19,19 @@ if (args.Length == 4 && args[0] == "--install-pack")
     return 0;
 }
 
-// Offline check of the Fabric loaded-list parser against saved game logs (no game, no files written).
+// Offline check of the loaded-list parsers against saved game logs (no game, no files written): Fabric's stdout block, or
+// a Forge 1.8.9 logs\latest.log (recognised by FML's own lines).
 if (args.Length >= 2 && args[0] == "--parse-log")
 {
     int bad = 0;
     foreach (var file in args.Skip(1))
     {
-        var list = new FabricModList();
-        foreach (var line in File.ReadLines(file)) list.Feed(line);
+        var lines = File.ReadAllLines(file);
+        LoadedModList list = lines.Any(l => l.Contains("Forge Mod Loader", StringComparison.Ordinal)) ? new ForgeModList() : new FabricModList();
+        foreach (var line in lines) list.Feed(line);
         bool ok = list.Parsed && list.Declared == list.Distinct;
-        Console.WriteLine($"{(ok ? "OK " : "BAD")} {file}: declared {list.Declared}, {list.Top.Count} top-level, {list.Nested.Count} nested entries, {list.Distinct} distinct ids");
+        Console.WriteLine($"{(ok ? "OK " : "BAD")} {file}: {list.Name} declared {list.Declared}, {list.Top.Count} top-level, {list.Nested.Count} nested entries, {list.Distinct} distinct ids"
+            + (list is ForgeModList forge ? $"; loaded {forge.LoadedMods?.ToString() ?? "-"}, OptiFine {(forge.OptiFineTweaker ? forge.OptiFine ?? "tweaker only" : "absent")}, {forge.Errors.Count} mixin/coremod errors" : ""));
         if (!ok) bad++;
     }
     return bad == 0 ? 0 : 1;
@@ -40,10 +43,10 @@ if (args.Length == 1 && args[0] == "--api")
     return 0;
 }
 
-const string Usage = "Usage: dotnet run --project TheLadsLauncher.Verification -- <1.21.1|1.21.11|26.2|26.3> <repository root> [--title|--settings|--pack-smoke] [--dir <qaDirName>] [--expect-core-disabled]\n"
+string[] supportedVersions = QaCapabilities.Supported;
+string Usage = $"Usage: dotnet run --project TheLadsLauncher.Verification -- <{string.Join('|', supportedVersions)}> <repository root> [--title|--settings|--pack-smoke] [--dir <qaDirName>] [--expect-core-disabled]\n"
     + "   or: ... -- --show-mods <version> <repository root> [--dir <qaDirName>]\n"
     + "   or: ... -- --set-mods <version> <repository root> <enable|disable> <id,id,...> [--dir <qaDirName>]";
-string[] supportedVersions = ["1.21.1", "1.21.11", "26.2", "26.3"];
 var rest = args.ToList();
 string? dirOption = null;
 int dirIndex = rest.IndexOf("--dir");
@@ -125,9 +128,17 @@ if (sharedRole == "create" && !(autoWorldVerification && capabilities.SharedCrea
     throw new ArgumentException("LADS_VERIFY_SHARED_ROLE=create needs a 26.x --title run with LADS_VERIFY_AUTO_WORLD=1.");
 if (modRequest != null && !Regex.IsMatch(modRequest, @"\A[a-z][a-z0-9_-]{0,63}:(true|false)\z")) throw new ArgumentException("LADS_VERIFY_MOD_REQUEST must be <mod id>:<true|false>.");
 if (modRequest != null && expectCoreDisabled) throw new ArgumentException("LADS_VERIFY_MOD_REQUEST needs LadsCore; it cannot run with --expect-core-disabled.");
+// The 1.8.9 Core has none of the Fabric Core's QA hooks: only the --title smoke and its own self-test (LADS_VERIFY_AUTO_WORLD=1) run.
+if (capabilities.Forge && !(setMods || showMods))
+    foreach (var (asked, what) in new[] { (!titleVerification, "A run without --title"), (sharedRole != null, "LADS_VERIFY_SHARED_ROLE"),
+        (modRequest != null, "LADS_VERIFY_MOD_REQUEST"), (Env("LADS_VERIFY_SKIN_NETWORK") == "1", "LADS_VERIFY_SKIN_NETWORK"),
+        (Env("LADS_VERIFY_CAPTURE_MENU") == "1" || Env("LADS_VERIFY_CAPTURE_HUD") == "1", "LADS_VERIFY_CAPTURE_MENU/HUD") })
+        if (asked) throw new ArgumentException($"{what} needs the Fabric Core's QA hooks, which LadsCore does not have on {version}. Run {version} with --title (and LADS_VERIFY_AUTO_WORLD=1 for its self-test).");
 var expectAbsent = Ids(Env("LADS_VERIFY_EXPECT_ABSENT"));
 var expectPresent = Ids(Env("LADS_VERIFY_EXPECT_PRESENT"));
 if (expectCoreDisabled && !expectAbsent.Contains(BundledModInstaller.CoreModId)) expectAbsent.Add(BundledModInstaller.CoreModId);
+// On 1.8.9 Forge's own mod list must name the Core (no Fabric Core report proves it was loaded there).
+if (capabilities.Forge && !expectCoreDisabled && !expectPresent.Contains(BundledModInstaller.CoreModId)) expectPresent.Add(BundledModInstaller.CoreModId);
 expectAbsent.AddRange(excludedMods.Where(id => !expectAbsent.Contains(id)));
 if (setMods || showMods)
 {
@@ -136,7 +147,8 @@ if (setMods || showMods)
 else Directory.CreateDirectory(directory);
 RequireInside(directory, verificationRoot, "QA game folder");
 // Anything that still resolves the launcher's default folders lands in the sandbox, never in %APPDATA%.
-Environment.SetEnvironmentVariable("THELADS_DIR", Path.Combine(verificationRoot, "harness-launcher-data"));
+string launcherData = Path.Combine(verificationRoot, "harness-launcher-data");
+Environment.SetEnvironmentVariable("THELADS_DIR", launcherData);
 Environment.SetEnvironmentVariable(SharedContentService.RootEnvironmentVariable, sharedRoot);
 var shared = new SharedContentService(sharedRoot);
 
@@ -244,7 +256,14 @@ bool menuCaptureRequested = false, hudCaptureRequested = false, windowFound = fa
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
-var modList = new FabricModList();
+LoadedModList modList = capabilities.Forge ? new ForgeModList() : new FabricModList();
+var forgeList = modList as ForgeModList;
+// 1.8.9 prints log4j XML on stdout, so its plain-text logs\latest.log is read instead (deleted before the start: only this run's).
+string gameLog = Path.Combine(directory, "logs", "latest.log");
+long gameLogRead = 0;
+string catalogFile = Path.Combine(directory, "lads-core-catalog.json");
+TimeSpan? forgeTitleAt = null; // 1.8.9: when FML had loaded every mod and the Core ticked at the title screen
+string? optiFineWarning = null, sandboxBefore = null;
 string[] requiredTitleProbes = capabilities.TitleProbes;
 string[] requiredWorldProbes = capabilities.WorldProbes;
 if (requestedFeaturesOnly)
@@ -253,24 +272,27 @@ if (requestedFeaturesOnly)
     Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
 }
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
+// The 1.8.9 Core has neither report: its runs are checked from logs\latest.log (Forge's mod list, OptiFine, the title screen).
 var requiredCore = new List<string>();
 bool welcomeVerification = Env("LADS_VERIFY_WELCOME") == "1";
 if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
-if (!expectCoreDisabled) requiredCore.Add("Lads shared content probe END:");
+if (!expectCoreDisabled && !capabilities.Forge) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
-    "Lads HUD pipeline probe FAILED",
+    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
-bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && inventorySnapshots.ContainsKey("title"); }
+bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
+// The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
+bool CatalogWritten() => File.Exists(catalogFile) && File.GetLastWriteTimeUtc(catalogFile) >= runStartUtc;
 var jvmFlags = new List<string>();
 
 try
 {
-    string sandboxBefore = Snapshot(sharedRoot);
+    sandboxBefore = Snapshot(sharedRoot);
     await File.WriteAllTextAsync(Path.Combine(evidence, "sandbox-before.txt"), sandboxBefore, ct);
     bool coreRequested = SharedContentService.IsCoreRequested(directory, out var stateFileError);
     if (stateFileError != null) Console.WriteLine("Mod choices: " + stateFileError);
@@ -280,8 +302,14 @@ try
         throw new InvalidOperationException($"LadsCore is disabled for {dirName}; pass --expect-core-disabled or run --set-mods {version} <root> enable theladscore --dir {dirName}.");
 
     // The same pre-launch order as the launcher: shared content, installers (which honour lads-mod-state.json), inventory snapshot.
-    var prepared = await shared.PrepareProfileAsync(directory, "QA " + dirName, null, coreRequested, null, ct);
-    string preparedText = $"Shared content prepare (coreEnabled={coreRequested}): skipped={prepared.Skipped} renamed={prepared.Renamed} pending={prepared.Pending} "
+    // As ProfileService prepares 1.8.9: its own worlds and packs, never linked or copied; the server list is a synced copy,
+    // because the 1.8.9 Core does not read the shared one.
+    bool coreReadsServers = coreRequested && !capabilities.Forge;
+    var prepared = await shared.PrepareProfileAsync(directory, "QA " + dirName, null, coreReadsServers, null, ct,
+        keepOwnFolders: GameVersionPolicy.KeepsOwnWorlds(version));
+    if (GameVersionPolicy.KeepsOwnWorlds(version) && LinkedFolder(directory) is { } linked)
+        throw new InvalidOperationException($"WORLD SAFETY: {linked}; Minecraft {version} keeps its own worlds and packs. Nothing was started.");
+    string preparedText = $"Shared content prepare (coreEnabled={coreReadsServers}): skipped={prepared.Skipped} renamed={prepared.Renamed} pending={prepared.Pending} "
         + $"report={prepared.ReportPath ?? "-"} backup={prepared.BackupPath ?? "-"}\n"
         + string.Concat(prepared.Messages.Select(m => "  message: " + m + "\n")) + string.Concat(prepared.Warnings.Select(w => "  warning: " + w + "\n"))
         + string.Concat(shared.GetStatus(directory).Select(s => $"  {s.Name}: {s.State} ({s.ProfilePath} -> {s.SharedPath}) {s.Detail}\n"));
@@ -342,6 +370,13 @@ try
         string addon = Path.Combine(root,"TheLadsCore",version=="26.3"?"v26_3":"v26_2","build","verification","lads-jade-addon-qa.jar");
         File.Copy(addon,Path.Combine(directory,"mods","lads-jade-addon-qa.jar"),true);
     }
+    // As LaunchService: OptiFine from optifine.net, checked against the pinned SHA-256 and cached in the sandbox launcher folder.
+    // It fails open (the game starts without it); the verdict then says why OptiFine is missing.
+    if (capabilities.Forge && (optiFineWarning = await OptiFineInstaller.InstallAsync(launcherData, directory, OptiFineInstaller.M5, Console.WriteLine, ct)) != null)
+    {
+        Console.WriteLine("OptiFine: " + optiFineWarning);
+        summary.Add("OptiFine: " + optiFineWarning);
+    }
     foreach (string warning in await ModWelcomeSettings.PrepareAsync(directory, ct))
         throw new InvalidOperationException(warning);
     await File.WriteAllTextAsync(Path.Combine(directory, ".lads-qa-pack-source"), packSource, ct);
@@ -356,13 +391,28 @@ try
     Console.WriteLine($"Launcher inventory: {ModInventoryView.CountsText(inventory.Counts)}; {loadedMods.Count} enabled jar ids recorded for the running marker.");
 
     var java = new JavaService(new PathService(Path.Combine(root, "artifacts", "verification", "runtime-data")));
-    string javaPath = await java.EnsureJavaAsync(GameVersionPolicy.GetRequiredJavaMajor(version), cancellationToken: ct);
-    Console.WriteLine($"Java: {java.GetJavaMajorVersion(javaPath)}; Minecraft: {version}");
+    int requiredJava = GameVersionPolicy.GetRequiredJavaMajor(version);
+    string javaPath = await java.EnsureJavaAsync(requiredJava, cancellationToken: ct);
+    int? javaMajor = java.GetJavaMajorVersion(javaPath);
+    Console.WriteLine($"Java: {javaMajor}; Minecraft: {version}");
+    // As LaunchService: 1.8.9 needs Java 8 exactly (Forge's LaunchWrapper crashes on Java 9 and newer).
+    if (!GameVersionPolicy.AcceptsJava(version, requiredJava, javaMajor))
+        throw new InvalidOperationException($"'{javaPath}' reports Java {javaMajor}; Minecraft {version} needs {GameVersionPolicy.DescribeJava(version, requiredJava)}.");
     using var http = new HttpClient();
-    var fabric = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(http);
-    string loaderVersion = "0.19.5";
-    string id = await fabric.Install(version, loaderVersion, path);
-    if (id != $"fabric-loader-{loaderVersion}-{version}") throw new InvalidOperationException("Fabric selected a different version.");
+    string id;
+    if (capabilities.Forge)
+    {
+        // The launcher's own Forge path: Forge 11.15.1.2318 through CmlLib's Forge installer, then its manifest check.
+        await LaunchService.InstallForgeAsync(launcher, directory, http, Console.WriteLine, ct);
+        id = GameVersionPolicy.ForgeVersionId;
+    }
+    else
+    {
+        var fabric = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(http);
+        string loaderVersion = "0.19.5";
+        id = await fabric.Install(version, loaderVersion, path);
+        if (id != $"fabric-loader-{loaderVersion}-{version}") throw new InvalidOperationException("Fabric selected a different version.");
+    }
     var session = AccountIdentity.CreateOfflineSession("LadsQA");
     await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
     await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:144\nrenderDistance:4\nsimulationDistance:5\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
@@ -378,32 +428,41 @@ try
         if (process.StartInfo.ArgumentList.Count > 0) process.StartInfo.ArgumentList.Insert(0, argument);
         else process.StartInfo.Arguments = argument + " " + process.StartInfo.Arguments;
     }
-    // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
-    if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
-    else AddJvm("-Dthelads.verifyIntegrations=true");
-    if (!autoWorldVerification) AddJvm("-Dthelads.verifyInput=true");
+    if (capabilities.Forge)
+    {
+        // The 1.8.9 Core's one QA switch: its self-test (Lads menu on the title screen, in its own QA world and from the
+        // pause-menu button, the 1.8.9 bridge, the launcher catalog). Every flag below is the Fabric Core's.
+        if (autoWorldVerification) AddJvm("-Dthelads.verify189Core=true");
+    }
     else
     {
-        AddJvm("-Dthelads.verifyAutoWorld=true");
-        AddJvm("-Dthelads.verifyDurabilityTooltip=true");
-        AddJvm(requestedFeaturesOnly ? "-Dthelads.verifyRequestedFeaturesOnly=true" : "-Dthelads.verifyCrosshair=true");
+        // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
+        if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
+        else AddJvm("-Dthelads.verifyIntegrations=true");
+        if (!autoWorldVerification) AddJvm("-Dthelads.verifyInput=true");
+        else
+        {
+            AddJvm("-Dthelads.verifyAutoWorld=true");
+            AddJvm("-Dthelads.verifyDurabilityTooltip=true");
+            AddJvm(requestedFeaturesOnly ? "-Dthelads.verifyRequestedFeaturesOnly=true" : "-Dthelads.verifyCrosshair=true");
+        }
+        if (titleVerification && !autoWorldVerification) AddJvm("-Dthelads.verifyKillBannerPreview=true");
+        if (settingsVerification)
+        {
+            AddJvm("-Dthelads.verifyAllIntegrationWrites=true");
+            AddJvm("-Dthelads.verifyIntegrationWrites=true");
+        }
+        if (renderScaleVerification) AddJvm("-Dthelads.verifyRenderScale=true");
+        if (Env("LADS_VERIFY_V133") == "1") AddJvm("-Dthelads.verify133=true");
+        if (Env("LADS_VERIFY_V134") == "1") { AddJvm("-Dthelads.verify134=true"); AddJvm("-Dthelads.verifyRenderer=" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan")); }
+        if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
+        if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
+        AddJvm("-Dthelads.verifySharedContent=true");
+        if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
+        if (runId != null) AddJvm("-Dthelads.sharedContentRunId=" + runId);
+        AddJvm("-Dthelads.verifyModInventory=true");
+        if (modRequest != null) AddJvm("-Dthelads.verifyModRequest=" + modRequest);
     }
-    if (titleVerification && !autoWorldVerification) AddJvm("-Dthelads.verifyKillBannerPreview=true");
-    if (settingsVerification)
-    {
-        AddJvm("-Dthelads.verifyAllIntegrationWrites=true");
-        AddJvm("-Dthelads.verifyIntegrationWrites=true");
-    }
-    if (renderScaleVerification) AddJvm("-Dthelads.verifyRenderScale=true");
-    if (Env("LADS_VERIFY_V133") == "1") AddJvm("-Dthelads.verify133=true");
-    if (Env("LADS_VERIFY_V134") == "1") { AddJvm("-Dthelads.verify134=true"); AddJvm("-Dthelads.verifyRenderer=" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan")); }
-    if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
-    if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
-    AddJvm("-Dthelads.verifySharedContent=true");
-    if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
-    if (runId != null) AddJvm("-Dthelads.sharedContentRunId=" + runId);
-    AddJvm("-Dthelads.verifyModInventory=true");
-    if (modRequest != null) AddJvm("-Dthelads.verifyModRequest=" + modRequest);
     process.StartInfo.UseShellExecute = false;
     process.StartInfo.CreateNoWindow = true;
     process.StartInfo.RedirectStandardOutput = true;
@@ -415,11 +474,36 @@ try
     void WriteLine(object sender, DataReceivedEventArgs e)
     {
         if (e.Data == null) return;
-        string line = e.Data;
         lock (logGate)
         {
             if (log == null) return;
-            log.WriteLine(line);
+            log.WriteLine(e.Data);
+            // 1.8.9's stdout is log4j XML: its lines are read from logs\latest.log instead (ReadGameLog).
+            if (!capabilities.Forge) ReadLine(e.Data);
+        }
+    }
+    // 1.8.9: the lines logs\latest.log gained since the last read, up to its last complete line.
+    void ReadGameLog()
+    {
+        if (!capabilities.Forge || !File.Exists(gameLog)) return;
+        using var added = new MemoryStream();
+        using (var stream = new FileStream(gameLog, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+        {
+            if (stream.Length < gameLogRead) gameLogRead = 0; // a new file
+            stream.Position = gameLogRead;
+            stream.CopyTo(added);
+        }
+        byte[] bytes = added.ToArray();
+        int end = Array.LastIndexOf(bytes, (byte)'\n');
+        if (end < 0) return;
+        gameLogRead += end + 1;
+        foreach (string line in Encoding.UTF8.GetString(bytes, 0, end).Split('\n')) ReadLine(line.TrimEnd('\r'));
+    }
+    // One game log line: the loaded-mods list, then init, probe, capture and snapshot markers (lock is re-entrant).
+    void ReadLine(string line)
+    {
+        lock (logGate)
+        {
             if (modList.Feed(line)) return;
             if (line.Contains($"TheLadsCore {version} initialized successfully")) initialized = true;
             if (line.Contains("Lads integration write probe END:") && Passed(line)) settingsProbePassed = true;
@@ -455,7 +539,8 @@ try
             }
             bool key = line.Contains("probe END:") || line.Contains("probe FAILED") || line.Contains("capture END:") || line.Contains("capture FAILED")
                 || line.Contains("Lads auto-world QA") || line.Contains("Lads shared content") || line.Contains("Lads mod request probe")
-                || line.Contains("initialized successfully") || failureMarkers.Any(line.Contains);
+                || line.Contains("initialized successfully") || failureMarkers.Any(line.Contains)
+                || (forgeList != null && (line.Contains("Forge Mod Loader has") || line.Contains("Loading tweaker ") || line.Contains("MIXIN Subsystem")));
             if (key && snapshotAt < 0) keyLines.Add(Clean(line));
             if (line.Contains("Lads integration write") || (key && snapshotAt < 0)) Console.WriteLine(Clean(line));
             else if (line.Contains("ERROR") || line.Contains("Exception") || line.Contains("Initializing TheLadsCore")) Console.WriteLine(line);
@@ -463,6 +548,7 @@ try
     }
     process.OutputDataReceived += WriteLine;
     process.ErrorDataReceived += WriteLine;
+    if (capabilities.Forge && File.Exists(gameLog)) File.Delete(gameLog); // only this run's lines are read
     var stopwatch = Stopwatch.StartNew();
     process.Start();
     GameSession.Attach(process, directory, loadedMods, message => { lock (sessionMessages) sessionMessages.Add(message); }, shared,
@@ -481,13 +567,21 @@ try
         {
             windowFound = true;
             windowAt = stopwatch.Elapsed;
-            Console.WriteLine($"Game window detected at {stopwatch.Elapsed.TotalSeconds:F1}s; waiting for {(expectCoreDisabled ? "Fabric's loaded mod list" : "UI verification")}.");
+            Console.WriteLine($"Game window detected at {stopwatch.Elapsed.TotalSeconds:F1}s; waiting for {(expectCoreDisabled ? modList.Name + "'s loaded mod list" : "UI verification")}.");
         }
         await Task.Delay(500, ct);
+        ReadGameLog();
+        // 1.8.9's title screen: FML loaded every mod and the Core ticked (its catalog export on the first client tick).
+        if (forgeList != null && forgeTitleAt == null && forgeList.LoadedMods != null && (expectCoreDisabled || CatalogWritten()))
+        {
+            forgeTitleAt = stopwatch.Elapsed;
+            Console.WriteLine($"Title screen at {stopwatch.Elapsed.TotalSeconds:F1}s: FML loaded {forgeList.LoadedMods} mods{(expectCoreDisabled ? "" : " and the Core ticked")}; watching it 10 s for errors.");
+        }
         if (expectCoreDisabled)
         {
             // No LadsCore hooks exist in this process: the window and Fabric's loaded list are the whole signal.
-            if (nativeProbeFailed || (windowFound && modList.Parsed && stopwatch.Elapsed - windowAt > TimeSpan.FromSeconds(15))) break;
+            if (nativeProbeFailed || (windowFound && modList.Parsed && stopwatch.Elapsed - windowAt > TimeSpan.FromSeconds(15)
+                && (forgeList == null || forgeTitleAt != null))) break;
             continue;
         }
         if (autoWorldVerification && requiredTitleProbes.Concat(requiredWorldProbes).All(passedMarkers.ContainsKey) && CoreChecksDone())
@@ -531,14 +625,16 @@ try
         }
         // Allow independent world/GPU probes to finish after a restored-state assertion fails.
         // The run still fails below; collecting their evidence avoids hiding subsequent defects.
-        if (nativeProbeFailed && (!autoWorldVerification || passedMarkers.ContainsKey("Lads native screenshots probe END:")
+        if (nativeProbeFailed && (!autoWorldVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads native screenshots probe END:")
             || stopwatch.Elapsed > TimeSpan.FromSeconds(90))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed
-            && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))) break;
+            && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
+            && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;
         if (!titleVerification && windowFound && initialized && (!settingsVerification || settingsProbePassed)
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey)) && CoreChecksDone()
             && stopwatch.Elapsed > TimeSpan.FromSeconds(20)) break;
     }
+    ReadGameLog();
     bool exitedOnItsOwn = process.HasExited;
     if (exitedOnItsOwn) Console.WriteLine($"Game exit: {process.ExitCode}");
     lock (logGate)
@@ -550,7 +646,7 @@ try
         Require(Env("LADS_VERIFY_REPLAY") != "1" || replay134Passed, "Flashback record/replay/export probe did not finish.");
         Require(Env("LADS_VERIFY_V134") != "1" || renderer134Passed, "1.3.4 actual renderer/Flashback probe did not finish.");
         Require(Env("LADS_VERIFY_V133") != "1" || version133ProbePassed, "1.3.3 native/API probe did not finish.");
-        Require(!nativeProbeFailed, "A runtime probe or Fabric reported a failure (see the FAILED lines). Inspect production-smoke.log.");
+        Require(!nativeProbeFailed, $"A runtime probe or {modList.Name} reported a failure (see the FAILED lines). Inspect {(capabilities.Forge ? @"logs\latest.log" : "production-smoke.log")}.");
         if (expectCoreDisabled)
         {
             Require(!initialized, "LadsCore initialized although it is disabled for this folder.");
@@ -560,22 +656,36 @@ try
         {
             Require(initialized, $"LadsCore did not log 'TheLadsCore {version} initialized successfully'.");
             Require(requiredCore.All(passedMarkers.ContainsKey), "Missing passing END markers: " + string.Join(", ", requiredCore.Where(m => !passedMarkers.ContainsKey(m))));
-            Require(inventorySnapshots.ContainsKey("title") && !snapshotInvalid, "The title-screen 'Lads mods inventory snapshot:' line was missing or not valid JSON.");
+            Require(capabilities.Forge || (inventorySnapshots.ContainsKey("title") && !snapshotInvalid), "The title-screen 'Lads mods inventory snapshot:' line was missing or not valid JSON.");
         }
-        Require(modList.Parsed, "Fabric's 'Loading N mods:' list was not found in the game output.");
+        if (forgeList != null)
+        {
+            // 1.8.9, from logs\latest.log: the title screen, OptiFine and no mixin or coremod error. Nothing stops the game but the harness.
+            Require(forgeList.LoadedMods != null, @"FML did not finish loading ('Forge Mod Loader has successfully loaded N mods' is not in logs\latest.log).");
+            Require(expectCoreDisabled || CatalogWritten(), "The Core never ticked at the title screen: it did not write lads-core-catalog.json during this run.");
+            Require(forgeList.OptiFineTweaker && forgeList.OptiFine != null,
+                @"OptiFine was not loaded (no OptiFine tweaker and FML detection in logs\latest.log)" + (optiFineWarning != null ? ": " + optiFineWarning : "."));
+            Require(forgeList.Errors.Count == 0, @"Mixin or coremod errors in logs\latest.log: " + string.Join(" | ", forgeList.Errors.Take(3)));
+            if (!expectCoreDisabled) Require(!exitedOnItsOwn, @"The game exited on its own before the harness stopped it (see logs\latest.log).");
+            string forgeText = $"Forge (logs\\latest.log): FML loaded {forgeList.LoadedMods?.ToString() ?? "no"} mods, title screen {(forgeTitleAt is { } at ? $"at {at.TotalSeconds:F1}s" : "not reached")}, "
+                + $"OptiFine {(forgeList.OptiFineTweaker ? forgeList.OptiFine ?? "tweaker without FML detection" : "not loaded")}, {forgeList.Errors.Count} mixin or coremod errors";
+            Console.WriteLine(forgeText);
+            keyLines.Add(forgeText);
+        }
+        Require(modList.Parsed, modList.NotFound);
         // Fabric's N counts distinct ids (a library nested in several jars is listed under each).
         Require(!modList.Parsed || modList.Declared == modList.Distinct,
-            $"Fabric declared {modList.Declared} mods but the harness parsed {modList.Distinct} distinct ids; the loaded-mods parse is incomplete.");
+            $"{modList.Name} declared {modList.Declared} mods but the harness parsed {modList.Distinct} distinct ids; the loaded-mods parse is incomplete.");
         foreach (var absent in expectAbsent)
         {
-            if (modList.Top.ContainsKey(absent)) failures.Add($"Expected absent, but Fabric loaded {absent} as a top-level mod.");
-            foreach (var nested in modList.Nested.Where(n => n.Id == absent)) failures.Add($"Expected absent, but Fabric loaded {absent} nested in {nested.Parent}.");
+            if (modList.Top.ContainsKey(absent)) failures.Add($"Expected absent, but {modList.Name} loaded {absent} as a top-level mod.");
+            foreach (var nested in modList.Nested.Where(n => n.Id == absent)) failures.Add($"Expected absent, but {modList.Name} loaded {absent} nested in {nested.Parent}.");
         }
         foreach (var present in expectPresent)
-            Require(modList.Top.ContainsKey(present), $"Expected present, but Fabric did not load {present} as a top-level mod.");
+            Require(modList.Top.ContainsKey(present), $"Expected present, but {modList.Name} did not load {present} as a top-level mod.");
         if (modList.Parsed)
         {
-            string listText = $"Fabric loaded list: declared {modList.Declared}, {modList.Top.Count} top-level, {modList.Nested.Count} nested entries, {modList.Distinct} distinct ids; "
+            string listText = $"{modList.Name} loaded list: declared {modList.Declared}, {modList.Top.Count} top-level, {modList.Nested.Count} nested entries, {modList.Distinct} distinct ids; "
                 + $"absent as expected: [{string.Join(", ", expectAbsent.Where(i => !modList.Top.ContainsKey(i) && modList.Nested.All(n => n.Id != i)))}]; "
                 + $"present as expected: [{string.Join(", ", expectPresent.Where(modList.Top.ContainsKey))}]";
             Console.WriteLine(listText);
@@ -602,7 +712,7 @@ finally
 {
     if (process != null && IsRunning(process))
     {
-        if (autoWorldVerification || welcomeVerification)
+        if ((autoWorldVerification || welcomeVerification) && !capabilities.Forge)
         {
             await LockFiles.WriteAtomicallyAsync(stopRequest, Encoding.UTF8.GetBytes("Gracefully stop this isolated QA game."));
             using var exitTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
@@ -612,6 +722,7 @@ finally
         if (!process.HasExited)
         {
             Console.WriteLine(expectCoreDisabled ? "Stopping the QA game with Kill: LadsCore is disabled, so this process has no graceful-stop hook."
+                : capabilities.Forge ? "Stopping the QA game with Kill: the 1.8.9 Core has no graceful-stop hook (its self-test saves and leaves its QA world first)."
                 : "Stopping only the QA process (Kill).");
             process.Kill(entireProcessTree: true);
         }
@@ -633,7 +744,7 @@ if (process != null && HasStarted(process))
     if (!markerGone) failures.Add("The running marker was not removed after the game exited.");
     bool fallback = File.Exists(Path.Combine(directory, SharedContentService.ServersBaseFileName));
     string exitText = $"Exit path: handler {(handled ? "finished" : "TIMED OUT")}; running marker {(markerGone ? "removed" : "STILL PRESENT")}; "
-        + (fallback ? $"fallback server-list copy (LadsCore disabled) {(handled ? "passed to GameSession's reconcile into the shared servers.dat" : "NOT reconciled")}"
+        + (fallback ? $"fallback server-list copy ({(capabilities.Forge ? "the 1.8.9 Core does not read the shared list" : "LadsCore disabled")}) {(handled ? "passed to GameSession's reconcile into the shared servers.dat" : "NOT reconciled")}"
             : "no fallback server-list copy (LadsCore reads the shared servers.dat)")
         + string.Concat(sessionMessages.Select(m => "\n  session: " + m));
     Console.WriteLine(exitText);
@@ -641,10 +752,15 @@ if (process != null && HasStarted(process))
 }
 lock (logGate) { log?.Dispose(); log = null; }
 if (File.Exists(logPath)) File.Copy(logPath, Path.Combine(evidence, $"production-smoke-{scenario}.log"), overwrite: true);
+if (capabilities.Forge) CopyIfExists(gameLog, Path.Combine(evidence, $"latest-{scenario}.log"));
 // Catalog parity with 26.2, the 1.3.5 target: informational, or a failure with LADS_VERIFY_PARITY=1 (the release gate).
+// 1.8.9's first-release scope is deliberately smaller (artifacts\1.4.0\PLAN-1.4.0.md): there it is only reported.
+bool parityGate = Env("LADS_VERIFY_PARITY") == "1" && !capabilities.Forge;
 if (!expectCoreDisabled && process != null && HasStarted(process))
 {
     var parityLines = new List<string>();
+    if (capabilities.Forge)
+        parityLines.Add($"Lads catalog parity: report only on {version}, whose first-release scope is deliberately smaller than 26.2's; LADS_VERIFY_PARITY does not apply.");
     try
     {
         var reference = CatalogSupport(Path.Combine(verificationRoot, "26.2-title", "lads-core-catalog.json"));
@@ -657,13 +773,13 @@ if (!expectCoreDisabled && process != null && HasStarted(process))
         if (missing.Count > 0)
         {
             parityLines.Add($"Lads catalog parity: built in on 26.2 but neither built in nor an installed external mod on {version}: {string.Join(", ", missing)}");
-            if (Env("LADS_VERIFY_PARITY") == "1") failures.Add($"LADS_VERIFY_PARITY=1: {missing.Count} of {builtIn.Count} modules built in on 26.2 are missing on {version}.");
+            if (parityGate) failures.Add($"LADS_VERIFY_PARITY=1: {missing.Count} of {builtIn.Count} modules built in on 26.2 are missing on {version}.");
         }
     }
     catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or KeyNotFoundException or NullReferenceException)
     {
         parityLines.Add($"Lads catalog parity FAILED: {e.GetType().Name}: {e.Message}");
-        if (Env("LADS_VERIFY_PARITY") == "1") failures.Add(parityLines[^1]);
+        if (parityGate) failures.Add(parityLines[^1]);
     }
     foreach (var line in parityLines) { Console.WriteLine(line); keyLines.Add(line); }
 }
@@ -687,11 +803,30 @@ if (Directory.Exists(screenshots))
         png.CopyTo(Path.Combine(evidence, "screenshots", png.Name), overwrite: true);
     }
 CopyIfExists(Path.Combine(directory, ModPreferences.FileName), Path.Combine(evidence, "lads-mod-state.after.json"));
-await File.WriteAllTextAsync(Path.Combine(evidence, "sandbox-after.txt"), Snapshot(sharedRoot));
-string loadedText = $"Fabric loaded {modList.Top.Count} top-level mods (declared {modList.Declared})"
+string sandboxAfter = Snapshot(sharedRoot);
+await File.WriteAllTextAsync(Path.Combine(evidence, "sandbox-after.txt"), sandboxAfter);
+// World-safety trip-wire (1.8.9 keeps its own worlds and packs): after the run its game folder still has no link to any shared
+// folder, none of the shared sandbox's worlds or packs was copied in, and the shared sandbox gained or lost no world or pack.
+if (GameVersionPolicy.KeepsOwnWorlds(version) && sandboxBefore != null)
+{
+    var safety = new List<string>();
+    if (LinkedFolder(directory) is { } linked) safety.Add(linked);
+    var sharedEntries = WorldEntries(sandboxAfter).Union(WorldEntries(sandboxBefore)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var copied = WorldEntries(Snapshot(directory)).Where(sharedEntries.Contains).ToList();
+    if (copied.Count > 0) safety.Add($"the QA game folder holds shared content: {string.Join(", ", copied)}");
+    var moved = WorldEntries(sandboxBefore).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    moved.SymmetricExceptWith(WorldEntries(sandboxAfter));
+    if (moved.Count > 0) safety.Add($"the shared sandbox's worlds or packs changed during the run (another version's QA run at the same time also does this): {string.Join(", ", moved)}");
+    if (safety.Count > 0) failures.Add($"WORLD SAFETY: Minecraft {version} must never see the shared saves, resource packs or shader packs, but " + string.Join("; ", safety));
+    else Console.WriteLine($"World safety: the {version} QA folder links nowhere and holds no shared world or pack; the shared sandbox's worlds and packs are as before.");
+}
+string loadedText = $"{modList.Name} loaded {modList.Top.Count} top-level mods (declared {modList.Declared})"
     + (expectAbsent.Count > 0 ? $", none of [{string.Join(", ", expectAbsent)}]" : "")
     + (expectPresent.Count > 0 ? $", including [{string.Join(", ", expectPresent)}]" : "");
-string coreText = $"core initialized, {string.Join(", ", requiredCore.Select(m => m.TrimEnd(':')))} and the title inventory snapshot passed";
+string coreText = forgeList != null
+    ? $"core initialized, OptiFine {forgeList.OptiFine ?? "(missing)"} loaded next to it, no mixin or coremod errors in logs\\latest.log"
+        + (autoWorldVerification ? " and the Core's 1.8.9 self-test ended with 0 failed" : "")
+    : $"core initialized, {string.Join(", ", requiredCore.Select(m => m.TrimEnd(':')))} and the title inventory snapshot passed";
 string passLine = expectCoreDisabled
     ? $"PRODUCTION SMOKE PASS (LadsCore disabled): correct version, native window observed, {loadedText}; stopped with Kill because no LadsCore hooks exist. Online sign-in is not exercised."
     : requestedFeaturesOnly
@@ -773,6 +908,19 @@ static void CopyIfExists(string source, string destination)
     if (File.Exists(source)) File.Copy(source, destination, overwrite: true);
 }
 
+// "saves\tName", "resourcepacks\tName", "shaderpacks\tName" of a Snapshot: the worlds and packs by name (mtimes left out).
+static IEnumerable<string> WorldEntries(string snapshot) => snapshot.Split('\n')
+    .Select(line => line.Split('\t')).Where(parts => parts.Length >= 3 && parts[0] is "saves" or "resourcepacks" or "shaderpacks")
+    .Select(parts => parts[0] + "\\" + parts[1]);
+
+// A shared folder of the game folder that is a link (to anywhere): "saves -> <target>", or null when none is.
+static string? LinkedFolder(string gameDirectory)
+{
+    var links = SharedContentService.SharedFolders.Select(folder => Path.Combine(gameDirectory, folder)).Where(SafeFileOps.IsLink)
+        .Select(link => $"{Path.GetFileName(link)} -> {SafeFileOps.GetLinkTarget(link) ?? "?"}").ToList();
+    return links.Count == 0 ? null : $"the QA game folder links {string.Join(", ", links)}";
+}
+
 // Read-only listing: top-level names, sizes and mtimes; servers.dat SHA-256; saves/resourcepacks/shaderpacks entry names and mtimes.
 static string Snapshot(string folder)
 {
@@ -823,10 +971,15 @@ static string InventoryTable(ModInventory inventory)
 }
 
 /// <summary>What LadsCore can verify on each version: the markers each run requires and the probes an env flag may ask for.
-/// 1.21.x gains entries as the 1.3.5 units port features; the 26.x lists are the ones every 26.x run already required.</summary>
+/// 1.21.x gains entries as the 1.3.5 units port features; the 26.x lists are the ones every 26.x run already required.
+/// <see cref="Forge"/>: 1.8.9, whose Core is a Forge mod read from logs\latest.log with only its own self-test as a world probe.</summary>
 sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, bool Version133, bool Version134, bool Replay,
     bool RequestedFeatures, string[] TitleProbes, string[] WorldProbes)
 {
+    public static readonly string[] Supported = ["1.8.9", "1.21.1", "1.21.11", "26.2", "26.3"];
+
+    public bool Forge { get; init; }
+
     public static QaCapabilities For(string version) => version is "26.2" or "26.3"
         ? new(true, true, true, true, GraphicsRenderer.SupportsVulkan(version), true, true,
             ["Lads raised title probe END:", "Lads native reconnect probe END:", "Lads background policy probe END:", "Lads native SignalLoss probe END:", "Lads narrator probe END:"],
@@ -834,28 +987,85 @@ sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, 
                 "Lads paper doll probe END:", "Lads food server sync END:", "Lads render scale probe END:", "Lads world capture END:",
                 "Lads durability tooltip probe END:", "Lads tab tweaks probe END:", "Lads clumps server probe END:", "Lads native screenshots probe END:", "Lads native crosshair probe END:",
                 "Lads shared content probe END:"])
+        // 1.8.9 (Forge): the C1 Core self-test (menu key, pause-menu button, bridge in its own QA world, launcher catalog) is its one probe.
+        : GameVersionPolicy.UsesForge(version)
+            ? new(false, false, false, false, false, false, false, [], ["Lads 1.8.9 core probe END:"]) { Forge = true }
         // 1.21.x: NativeWorldVerification on its own QA save, the native feature probe, the U1 menu access probe and the U3 HUD pipeline probe.
         : new(false, false, false, false, false, false, false, [],
             ["Lads native feature probe END:", "Lads menu access probe END:", "Lads HUD pipeline probe END:", "Lads world capture END:", "Lads shared content probe END:"]);
 }
 
+/// <summary>The mods a loader reported loading, from the game's log lines.</summary>
+abstract class LoadedModList
+{
+    public abstract string Name { get; }
+    /// <summary>The failure when the list never appeared.</summary>
+    public abstract string NotFound { get; }
+    public int? Declared { get; protected set; }
+    public bool Parsed { get; protected set; }
+    public Dictionary<string, string> Top { get; } = new(StringComparer.Ordinal);
+    public List<(string Id, string Version, string Parent)> Nested { get; } = new();
+    public int Distinct => Top.Keys.Union(Nested.Select(n => n.Id)).Count();
+
+    /// <summary>True when the line was part of the list (its first line or an entry) and needs no other reading.</summary>
+    public abstract bool Feed(string line);
+}
+
+/// <summary>Forge 1.8.9's FML lines in logs\latest.log: "has identified N mods to load", the mod ids in "Attempting connection
+/// with missing mods [mcp, FML, Forge, theladscore] at CLIENT" (every loaded mod, FML's wording), "has successfully loaded N
+/// mods" (the title screen is next), OptiFine's tweaker and FML's detection of it, and mixin or coremod errors. Versions come
+/// from the integrated server's "Client attempting to join with N mods : id@version,..." when a world is opened.</summary>
+sealed class ForgeModList : LoadedModList
+{
+    private static readonly Regex Identified = new(@"Forge Mod Loader has identified (\d+) mods to load");
+    private static readonly Regex Loaded = new(@"Forge Mod Loader has successfully loaded (\d+) mods");
+    private static readonly Regex List = new(@"Attempting connection with missing mods \[([^\]]*)\] at CLIENT");
+    private static readonly Regex Versions = new(@"attempting to join with \d+ mods : (.*)$");
+    private static readonly Regex Tweaker = new(@"Loading tweaker optifine\.OptiFineForgeTweaker from (\S+)");
+    private static readonly Regex Detected = new(@"Forge Mod Loader has detected optifine (\S+),");
+    private static readonly Regex Error = new(@"InvalidMixinException|MixinApplyError|MixinTransformerError|Mixin apply failed|Critical injection failure|InjectionError|MixinPrepareError"
+        + @"|/(?:ERROR|FATAL)\]: .*(?:[Mm]ixin|[Cc]oremod|TheLadsCore|theladscore|Lads )|Failed to load coremod|has failed to load correctly");
+
+    public override string Name => "Forge";
+    public override string NotFound => @"FML's mod list ('Attempting connection with missing mods [...] at CLIENT') was not found in logs\latest.log.";
+    /// <summary>N of "has successfully loaded N mods": FML finished and the title screen follows.</summary>
+    public int? LoadedMods { get; private set; }
+    public bool OptiFineTweaker { get; private set; }
+    /// <summary>The OptiFine FML detected ("OptiFine_1.8.9_HD_U_M5"), or null.</summary>
+    public string? OptiFine { get; private set; }
+    public List<string> Errors { get; } = new();
+
+    public override bool Feed(string line)
+    {
+        if (Identified.Match(line) is { Success: true } identified) Declared = int.Parse(identified.Groups[1].Value);
+        else if (Loaded.Match(line) is { Success: true } loaded) LoadedMods = int.Parse(loaded.Groups[1].Value);
+        else if (Tweaker.IsMatch(line)) OptiFineTweaker = true;
+        else if (Detected.Match(line) is { Success: true } detected) OptiFine = detected.Groups[1].Value;
+        else if (Error.IsMatch(line)) Errors.Add(line.Trim());
+        else if (Versions.Match(line) is { Success: true } versions)
+            foreach (var part in versions.Groups[1].Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                if (part.Split('@') is [var id, var version] && Top.ContainsKey(id)) Top[id] = version;
+        if (Parsed || List.Match(line) is not { Success: true } list) return false;
+        foreach (var id in list.Groups[1].Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) Top.TryAdd(id, "");
+        Parsed = Top.Count > 0;
+        return Parsed;
+    }
+}
+
 /// <summary>Fabric's "Loading N mods:" block: top-level jars and the jar-in-jar mods under them. N counts distinct ids
 /// (a library nested in several jars is listed under each). Nesting is 3 characters for the first level, then 5 per level.</summary>
-sealed class FabricModList
+sealed class FabricModList : LoadedModList
 {
     private static readonly Regex Start = new(@"Loading (\d+) mods:\s*$");
     private static readonly Regex Entry = new(@"^\t(?<indent>[ |]*)(?:- |[|\\]-- )(?<id>[^\s\]]+)(?: (?<version>.*?))?(?:\]\]>.*)?$");
     private readonly List<string> stack = new();
     private bool inList;
 
-    public int? Declared { get; private set; }
-    public bool Parsed { get; private set; }
-    public Dictionary<string, string> Top { get; } = new(StringComparer.Ordinal);
-    public List<(string Id, string Version, string Parent)> Nested { get; } = new();
-    public int Distinct => Top.Keys.Union(Nested.Select(n => n.Id)).Count();
+    public override string Name => "Fabric";
+    public override string NotFound => "Fabric's 'Loading N mods:' list was not found in the game output.";
 
     /// <summary>True when the line was part of the block (its first line or an entry).</summary>
-    public bool Feed(string line)
+    public override bool Feed(string line)
     {
         if (inList)
         {

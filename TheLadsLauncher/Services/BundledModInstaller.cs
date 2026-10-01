@@ -20,6 +20,8 @@ public static class BundledModInstaller
     {
         GameVersionPolicy.ValidateMinecraftVersion(minecraftVersion);
         cancellationToken.ThrowIfCancellationRequested();
+        // 1.8.9's Core is a Forge mod (mcmod.info); every other version's is the Fabric one. Neither is ever used for the other.
+        var forge = GameVersionPolicy.UsesForge(minecraftVersion);
         var bundle = Path.GetFullPath(bundleRoot);
         var game = Path.GetFullPath(gameDir);
         var source = SafeChild(bundle, Path.Combine(bundle, "game-mods", minecraftVersion, "theladscore.jar"));
@@ -28,7 +30,7 @@ public static class BundledModInstaller
         // Only an explicit choice disables Core: a v1.2.2 leftover .disabled copy next to a reinstalled jar is ambiguous.
         var preferencesPath = SafeChild(game, Path.Combine(game, ModPreferences.FileName));
         if (ModPreferences.Parse(ModPreferences.ReadShared(preferencesPath), preferencesPath).GetEnabled(CoreModId, null) == false)
-            return Disable(game, mods, destination, cancellationToken);
+            return Disable(game, mods, destination, forge, cancellationToken);
         if (!File.Exists(source))
         {
             if (GameVersionPolicy.RequiresBundledCore(minecraftVersion))
@@ -40,11 +42,22 @@ public static class BundledModInstaller
         // Keep the validated source open against writes while hashing/copying it.
         await using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read,
             81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        using (var metadata = ReadMetadata(input))
+        if (forge)
+        {
+            var core = FabricModMetadata.ReadForgeJar(input);
+            if (core?.Id != CoreModId)
+                throw new InvalidDataException(OtherLoadersCore(source, forge, minecraftVersion) is { } wrong ? $"Bundled jar {wrong}. Rebuild/deploy the {minecraftVersion} core."
+                    : $"Bundled jar '{source}' must declare Forge mod id '{CoreModId}' in mcmod.info. Rebuild/deploy the correct core.");
+            if (core.McVersion != minecraftVersion)
+                throw new InvalidDataException($"Bundled core '{source}' must declare mcversion '{minecraftVersion}' in mcmod.info. Rebuild/deploy this version's core.");
+        }
+        else using (var metadata = ReadMetadata(input))
         {
             var root = metadata?.RootElement;
             if (root == null || GetModId(root.Value) != CoreModId)
-                throw new InvalidDataException($"Bundled jar '{source}' must declare Fabric mod id '{CoreModId}'. Rebuild/deploy the correct core.");
+                throw new InvalidDataException(root == null && OtherLoadersCore(source, forge, minecraftVersion) is { } wrong
+                    ? $"Bundled jar {wrong}. Rebuild/deploy the {minecraftVersion} core."
+                    : $"Bundled jar '{source}' must declare Fabric mod id '{CoreModId}'. Rebuild/deploy the correct core.");
             if (!root.Value.TryGetProperty("depends", out var depends) || depends.ValueKind != JsonValueKind.Object
                 || !depends.TryGetProperty("minecraft", out var mc) || !MatchesExactVersion(mc, minecraftVersion))
                 throw new InvalidDataException($"Bundled core '{source}' must declare the exact Minecraft dependency '{minecraftVersion}'. Rebuild/deploy this version's core.");
@@ -61,12 +74,12 @@ public static class BundledModInstaller
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var safeJar = SafeChild(game, jar);
-                var isCore = IsCore(safeJar);
+                var isCore = IsCore(safeJar, forge);
 
                 if (SamePath(safeJar, destination))
                 {
                     if (!isCore)
-                        throw new IOException($"'{destination}' is not a verified {CoreModId} jar. Move it aside manually; other mods will not be overwritten.");
+                        throw new IOException($"{OtherLoadersCore(destination, forge, minecraftVersion) ?? $"'{destination}' is not a verified {CoreModId} jar"}. Move it aside manually; other mods will not be overwritten.");
                     destinationIsCore = true;
                 }
                 else if (isCore)
@@ -144,11 +157,11 @@ public static class BundledModInstaller
     }
 
     /// <summary>Explicitly disabled: keep exactly one disabled Core and install nothing. The bundled jar is not needed.</summary>
-    private static bool Disable(string game, string mods, string destination, CancellationToken cancellationToken)
+    private static bool Disable(string game, string mods, string destination, bool forge, CancellationToken cancellationToken)
     {
         if (!Directory.Exists(mods)) return false;
         var enabled = Directory.EnumerateFiles(mods).Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
-            .Select(p => SafeChild(game, p)).Where(IsCore).OrderBy(p => SamePath(p, destination) ? 0 : 1).ToList();
+            .Select(p => SafeChild(game, p)).Where(p => IsCore(p, forge)).OrderBy(p => SamePath(p, destination) ? 0 : 1).ToList();
         if (enabled.Count == 0) return false;
         cancellationToken.ThrowIfCancellationRequested();
         var disabledPath = SafeChild(game, destination + ".disabled");
@@ -183,18 +196,25 @@ public static class BundledModInstaller
     private static bool IsJar(string path) =>
         path.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Core is identified by its Fabric id; unreadable jars are simply not Core.</summary>
-    private static bool IsCore(string path)
+    /// <summary>Core is identified by its id for the profile's loader: fabric.mod.json, or mcmod.info on Forge (1.8.9). Unreadable
+    /// jars, and the other loader's Core, are simply not Core.</summary>
+    private static bool IsCore(string path, bool forge)
     {
         try
         {
             using var stream = File.OpenRead(path);
+            if (forge) return FabricModMetadata.ReadForgeJar(stream)?.Id == CoreModId;
             using var metadata = ReadMetadata(stream);
             return metadata != null && GetModId(metadata.RootElement) == CoreModId;
         }
         catch (InvalidDataException) { return false; }
         catch (JsonException) { return false; }
     }
+
+    /// <summary>"'path' is the Fabric Lads Core, but Minecraft 1.8.9 runs on Forge" (or the reverse), else null.</summary>
+    private static string? OtherLoadersCore(string path, bool forge, string minecraftVersion) => IsCore(path, !forge)
+        ? $"'{path}' is the {(forge ? "Fabric" : "Forge")} Lads Core, but Minecraft {minecraftVersion} runs on {(forge ? "Forge" : "Fabric")}"
+        : null;
 
     private static JsonDocument? ReadMetadata(Stream stream)
     {
