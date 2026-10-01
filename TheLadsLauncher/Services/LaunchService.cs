@@ -257,7 +257,7 @@ public class LaunchService : ILaunchService
             statusCallback?.Invoke($"Installing Forge {GameVersionPolicy.ForgeBuild} for Minecraft {GameVersionPolicy.ForgeMinecraftVersion}...");
             try
             {
-                await InstallForgeFilesAsync(gameDir, http, cancellationToken);
+                await InstallForgeFilesAsync(gameDir, launcher.MinecraftPath.Library, http, cancellationToken);
                 await launcher.GetAllVersionsAsync(cancellationToken); // pick up the new manifest
                 await launcher.InstallAsync(versionId, cancellationToken);
             }
@@ -276,7 +276,7 @@ public class LaunchService : ILaunchService
     private const string ForgeInstallerUrl = "https://maven.minecraftforge.net/net/minecraftforge/forge/1.8.9-11.15.1.2318-1.8.9/forge-1.8.9-11.15.1.2318-1.8.9-installer.jar";
     private const string ForgeInstallerSha256 = "f9fdf4945ca02d73ec6cc46300942f4e199e4add068877d517157b3677563656";
 
-    private static async Task InstallForgeFilesAsync(string gameDir, HttpClient http, CancellationToken cancellationToken)
+    private static async Task InstallForgeFilesAsync(string gameDir, string libraries, HttpClient http, CancellationToken cancellationToken)
     {
         const string versionId = GameVersionPolicy.ForgeVersionId;
         var bytes = await http.GetByteArrayAsync(ForgeInstallerUrl, cancellationToken);
@@ -286,7 +286,8 @@ public class LaunchService : ILaunchService
         using var profile = JsonDocument.Parse(zip.GetEntry("install_profile.json")!.Open());
         var install = profile.RootElement.GetProperty("install");
         var manifest = profile.RootElement.GetProperty("versionInfo").GetRawText().Replace("http://files.minecraftforge.net/maven/", "https://maven.minecraftforge.net/");
-        var library = Path.Combine(gameDir, "libraries", "net", "minecraftforge", "forge", "1.8.9-11.15.1.2318-1.8.9", "forge-1.8.9-11.15.1.2318-1.8.9.jar");
+        // Into the launcher's library folder (the harness shares one): there CmlLib finds it, never downloading the jar Forge's maven lacks.
+        var library = Path.Combine(libraries, "net", "minecraftforge", "forge", "1.8.9-11.15.1.2318-1.8.9", "forge-1.8.9-11.15.1.2318-1.8.9.jar");
         if (install.GetProperty("target").GetString() != versionId || install.GetProperty("path").GetString() != "net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9")
             throw new InvalidDataException("The Forge installer describes a different version.");
         Directory.CreateDirectory(Path.GetDirectoryName(library)!);
