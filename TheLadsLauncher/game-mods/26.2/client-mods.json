@@ -153,21 +153,6 @@
       "projectUrl": "https://modrinth.com/mod/chat-heads"
     },
     {
-      "projectId": "K0AkAin6",
-      "projectSlug": "clientsort",
-      "name": "Client Sort",
-      "modId": "clientsort",
-      "versionId": "AYoACMch",
-      "version": "3.103.4+26.2",
-      "fileName": "clientsort-fabric-3.103.4+26.2.jar",
-      "url": "https://cdn.modrinth.com/data/K0AkAin6/versions/AYoACMch/clientsort-fabric-3.103.4%2B26.2.jar",
-      "sha512": "ecd3613d03230bd63b188c4e8045da45b99bbebd760f3389d34c8ee3a766dff6dd16556c64bd6655394f920e2fa26320ed396fd3098de030a6b89f376170d9f9",
-      "size": 357006,
-      "license": "Apache-2.0",
-      "sourceUrl": "https://github.com/TerminalMC/ClientSort",
-      "projectUrl": "https://modrinth.com/mod/clientsort"
-    },
-    {
       "projectId": "9s6osm5g",
       "projectSlug": "cloth-config",
       "name": "Cloth Config API",
@@ -528,21 +513,6 @@
       "projectUrl": "https://modrinth.com/mod/fzzy-config"
     },
     {
-      "projectId": "wdLuzzEP",
-      "projectSlug": "gamma-utils",
-      "name": "Gamma Utils (Fullbright)",
-      "modId": "gammautils",
-      "versionId": "bR4tEPFq",
-      "version": "3.1.1+Fabric",
-      "fileName": "Gamma-Utils-Fabric-3.1.1+mc26.2.jar",
-      "url": "https://cdn.modrinth.com/data/wdLuzzEP/versions/bR4tEPFq/Gamma-Utils-Fabric-3.1.1%2Bmc26.2.jar",
-      "sha512": "5bca981ba885e7662ab5a400d8bb585b62215c10ed4fe09922578d767241a63c5e22dbd31ff562f770f94c13e87eb968b3a669a8c305acee8b43687f83fa0ec9",
-      "size": 103815,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/Sjouwer/gamma-utils",
-      "projectUrl": "https://modrinth.com/mod/gamma-utils"
-    },
-    {
       "projectId": "IJ4PIJR2",
       "projectSlug": "hovering-hotbar",
       "name": "Hovering Hotbar",
@@ -826,21 +796,6 @@
       "license": "GPL-3.0-only",
       "sourceUrl": "https://github.com/fxmorin/moreculling",
       "projectUrl": "https://modrinth.com/mod/moreculling"
-    },
-    {
-      "projectId": "Qbkde6rq",
-      "projectSlug": "motionblur-plus",
-      "name": "Motion Blur Plus",
-      "modId": "motionblurplus",
-      "versionId": "2nS9oAv4",
-      "version": "26.2",
-      "fileName": "motionblurplus-26.2.jar",
-      "url": "https://cdn.modrinth.com/data/Qbkde6rq/versions/2nS9oAv4/motionblurplus-26.2.jar",
-      "sha512": "29a0cafdec637de04c2e3a1a67729f3b1219b792250edfa670b98a21e0bf139e9afb566054d1f8499fabc88f8ab02bd8ae622a1b646c4df65268af6d7b21a625",
-      "size": 45126,
-      "license": "MIT",
-      "sourceUrl": null,
-      "projectUrl": "https://modrinth.com/mod/motionblur-plus"
     },
     {
       "projectId": "aC3cM3Vq",
@@ -1128,21 +1083,6 @@
       "projectUrl": "https://modrinth.com/mod/sodium-extra"
     },
     {
-      "projectId": "qyVF9oeo",
-      "projectSlug": "sound-physics-remastered",
-      "name": "Sound Physics Remastered",
-      "modId": "sound_physics_remastered",
-      "versionId": "d8iioMMp",
-      "version": "fabric-1.5.1+26.2",
-      "fileName": "sound-physics-remastered-fabric-1.5.1+26.2.jar",
-      "url": "https://cdn.modrinth.com/data/qyVF9oeo/versions/d8iioMMp/sound-physics-remastered-fabric-1.5.1%2B26.2.jar",
-      "sha512": "5c3d11462848c15ddfd4b854c998ed55c13e4bcd033a9f01acbea56d55079f4795c67321af803cc1b1b0e0d81dfd6750532294c932e921288858c0d9ea06f97e",
-      "size": 201669,
-      "license": "GPL-3.0-only",
-      "sourceUrl": "https://github.com/henkelmax/sound-physics-remastered",
-      "projectUrl": "https://modrinth.com/mod/sound-physics-remastered"
-    },
-    {
       "projectId": "LN9BxssP",
       "projectSlug": "supermartijn642s-config-lib",
       "name": "SuperMartijn642's Config Lib",
@@ -1325,30 +1265,11 @@
   ],
   "retired": [
     {
-      "modId": "goodmc",
-      "projectId": "hwir46QE",
-      "name": "GoodMC: Old Combat & Blockhitting",
-      "sha512": [
-        "c537debdabe5ccf719447e0dd599c1c5ec5d9ea4d89ac20ef3ad5290242626f80639c8b71575d0332465a98225e6ca0d84fdd7633c5da78a54c0c69382e5d32b",
-        "ac6760757ab34b61007b10c895449b382db58f4994593b93396768b374067385aa74617975de7798ccd64c641de8a719b79bdc40b2c9bee8a4a50c44f07eab82"
-      ],
-      "reason": "Removed from The Lads Client pack in 1.2.3."
-    },
-    {
       "modId": "autohidehud",
       "projectId": "WfEV6RRi",
       "name": "Auto Hide HUD",
       "sha512": [
         "0943718b4a0e6a9cee8520ef36d9a2107af74a98978111e4041a59751c1ac0d0e13096154e7ac92d43de97ea786f12b61b49f6714f25aee96e089396e47ff6ad"
-      ],
-      "reason": "Replaced by native Lads Core functionality in 1.3.3."
-    },
-    {
-      "modId": "jade",
-      "projectId": "nvQzSEkH",
-      "name": "Jade \ud83d\udd0d",
-      "sha512": [
-        "730e07dd5cbbf850ba0e7fd4852b528867d3e2fc2de63b156c89eee9ee6dd92d882b744f97fe724f2aa0afc5b468577486d9558f80d3e46cc5fa133ba241b9c9"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.3.3."
     },
@@ -1362,6 +1283,52 @@
       "reason": "Replaced by native Lads Core functionality in 1.4.0."
     },
     {
+      "modId": "clientsort",
+      "projectId": "K0AkAin6",
+      "name": "Client Sort",
+      "sha512": [
+        "ecd3613d03230bd63b188c4e8045da45b99bbebd760f3389d34c8ee3a766dff6dd16556c64bd6655394f920e2fa26320ed396fd3098de030a6b89f376170d9f9"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.4.6."
+    },
+    {
+      "modId": "gammautils",
+      "projectId": "wdLuzzEP",
+      "name": "Gamma Utils (Fullbright)",
+      "sha512": [
+        "5bca981ba885e7662ab5a400d8bb585b62215c10ed4fe09922578d767241a63c5e22dbd31ff562f770f94c13e87eb968b3a669a8c305acee8b43687f83fa0ec9"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.4.6."
+    },
+    {
+      "modId": "goodmc",
+      "projectId": "hwir46QE",
+      "name": "GoodMC: Old Combat & Blockhitting",
+      "sha512": [
+        "c537debdabe5ccf719447e0dd599c1c5ec5d9ea4d89ac20ef3ad5290242626f80639c8b71575d0332465a98225e6ca0d84fdd7633c5da78a54c0c69382e5d32b",
+        "ac6760757ab34b61007b10c895449b382db58f4994593b93396768b374067385aa74617975de7798ccd64c641de8a719b79bdc40b2c9bee8a4a50c44f07eab82"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.2.3."
+    },
+    {
+      "modId": "jade",
+      "projectId": "nvQzSEkH",
+      "name": "Jade \ud83d\udd0d",
+      "sha512": [
+        "730e07dd5cbbf850ba0e7fd4852b528867d3e2fc2de63b156c89eee9ee6dd92d882b744f97fe724f2aa0afc5b468577486d9558f80d3e46cc5fa133ba241b9c9"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.3.3."
+    },
+    {
+      "modId": "motionblurplus",
+      "projectId": "Qbkde6rq",
+      "name": "Motion Blur Plus",
+      "sha512": [
+        "29a0cafdec637de04c2e3a1a67729f3b1219b792250edfa670b98a21e0bf139e9afb566054d1f8499fabc88f8ab02bd8ae622a1b646c4df65268af6d7b21a625"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.4.6."
+    },
+    {
       "modId": "skinlayers3d",
       "projectId": "zV5r3pPn",
       "name": "3D Skin Layers",
@@ -1369,6 +1336,15 @@
         "552bafff617fec708739faeb0a94001f5180aced60dc298710b9217893c3b7448c5acfed926f31d162978b4532e7d85a4887e8128bc6579c48a7e7a55aab79c2"
       ],
       "reason": "Replaced by internal native 3D skin layer module in 1.4.2."
+    },
+    {
+      "modId": "sound_physics_remastered",
+      "projectId": "qyVF9oeo",
+      "name": "Sound Physics Remastered",
+      "sha512": [
+        "5c3d11462848c15ddfd4b854c998ed55c13e4bcd033a9f01acbea56d55079f4795c67321af803cc1b1b0e0d81dfd6750532294c932e921288858c0d9ea06f97e"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.4.6."
     }
   ]
 }
