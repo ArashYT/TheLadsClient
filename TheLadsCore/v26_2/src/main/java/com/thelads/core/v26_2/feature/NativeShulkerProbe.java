@@ -51,12 +51,13 @@ final class NativeShulkerProbe {
             for (int x = -2; x <= 2 && position == null; x++) {
                 for (int z = -2; z <= 2 && position == null; z++) {
                     BlockPos candidate = minecraft.player.blockPosition().offset(x, y, z);
-                    if (level.hasChunkAt(candidate) && level.getBlockState(candidate).isAir()
+                    // Air or water (a QA world may spawn underwater): the state is restored after the fixture.
+                    if (level.hasChunkAt(candidate) && level.getBlockState(candidate).canBeReplaced()
                         && level.getBlockEntity(candidate) == null) position = candidate;
                 }
             }
         }
-        require(position != null, "a nearby loaded air block is available for the reversible client-only fixture");
+        require(position != null, "a nearby loaded replaceable block is available for the reversible client-only fixture");
         var stateBefore = level.getBlockState(position);
         int passed = 0;
         try {
