@@ -26,6 +26,30 @@ public static class GameSession
         return text.Length == 0 ? null : text;
     }
 
+    /// <summary>The game log line every supported version prints once its startup resources are loaded.</summary>
+    public static bool StartupFinished(string? line) => line != null && line.Contains("Sound engine started", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Startup runs at Realtime priority (Windows grants High unless the launcher is elevated), back to Normal once
+    /// <see cref="StartupFinished"/> appears on stdout or after 3 minutes: Realtime during play could starve input and audio.
+    /// </summary>
+    private static void BoostStartup(Process process)
+    {
+        try { process.PriorityClass = ProcessPriorityClass.RealTime; }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return; }
+        var restored = 0;
+        void Restore()
+        {
+            if (System.Threading.Interlocked.Exchange(ref restored, 1) != 0) return;
+            try { if (!process.HasExited) process.PriorityClass = ProcessPriorityClass.Normal; }
+            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+        }
+        DataReceivedEventHandler? watch = null;
+        watch = (_, e) => { if (StartupFinished(e.Data)) { process.OutputDataReceived -= watch; Restore(); } };
+        process.OutputDataReceived += watch;
+        _ = Task.Delay(TimeSpan.FromMinutes(3)).ContinueWith(_ => Restore(), TaskScheduler.Default);
+    }
+
     /// <summary>Call before Start: Core reads its profile folder from THELADS_DIR and the shared root from LADS_GLOBAL_MINECRAFT_DIR.</summary>
     public static void Configure(ProcessStartInfo startInfo, string gameDirectory, string sharedRoot)
     {
@@ -44,6 +68,7 @@ public static class GameSession
     {
         var shared = sharedContent ?? SharedContentService.Instance;
         var pid = process.Id;
+        BoostStartup(process);
         try
         {
             RunningGameMarker.Write(gameDirectory, pid, process.StartTime.ToUniversalTime(), loadedMods);
