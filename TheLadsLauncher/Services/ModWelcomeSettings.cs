@@ -17,7 +17,7 @@ public static class ModWelcomeSettings
     {
         var warnings = new List<string>();
         string config = Path.Combine(gameDirectory, "config");
-        await UpdateAsync(Path.Combine(config, "fancymenu", "options.txt"), DisableFancyMenuWelcome);
+        await UpdateAsync(Path.Combine(config, "fancymenu", "options.txt"), ConfigureFancyMenu);
         await UpdateAsync(Path.Combine(config, "Modpack Core Essentials", "custom_window.json"), DisableModpackWelcome);
         await UpdateAsync(Path.Combine(config, "forge.cfg"), DisableForgeVersionCheck);
         return warnings;
@@ -38,14 +38,21 @@ public static class ModWelcomeSettings
         }
     }
 
-    private static string DisableFancyMenuWelcome(string text)
+    private static string ConfigureFancyMenu(string text)
     {
-        // FancyMenu's FancyConfig format: keep all other settings and comments verbatim.
-        const string setting = "B:show_welcome_screen = 'false';";
-        const string pattern = @"(?m)^[\t ]*B:show_welcome_screen[\t ]*=[^\r\n]*";
+        // FancyMenu's FancyConfig format: keep all other settings and comments verbatim. Modpack mode hides FancyMenu's
+        // customization overlay and its shortcuts everywhere, and with them Drippy Loading Screen's title-screen edit button.
+        text = SetFancyOption(text, "tutorial", "B:show_welcome_screen", "false");
+        return SetFancyOption(text, "customization", "B:modpack_mode", "true");
+    }
+
+    private static string SetFancyOption(string text, string section, string key, string value)
+    {
+        string setting = $"{key} = '{value}';";
+        string pattern = $@"(?m)^[\t ]*{Regex.Escape(key)}[\t ]*=[^\r\n]*";
         if (Regex.IsMatch(text, pattern)) return Regex.Replace(text, pattern, setting);
         string newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
-        return text + newline + "##[tutorial]" + newline + setting + newline;
+        return text + newline + "##[" + section + "]" + newline + setting + newline;
     }
 
     private static string DisableModpackWelcome(string text)
