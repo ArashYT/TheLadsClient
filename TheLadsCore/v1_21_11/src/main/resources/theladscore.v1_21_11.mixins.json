@@ -24,6 +24,7 @@
     "ServerListAccessor",
     "ServerDataAccessor",
     "ServerListSharedMixin",
-    "WindowIconMixin"
+    "WindowIconMixin",
+    "LoadingOverlayMixin"
   ]
 }

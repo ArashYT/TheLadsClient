@@ -428,6 +428,8 @@ try
         if (process.StartInfo.ArgumentList.Count > 0) process.StartInfo.ArgumentList.Insert(0, argument);
         else process.StartInfo.Arguments = argument + " " + process.StartInfo.Arguments;
     }
+    // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
+    if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
     if (capabilities.Forge)
     {
         // The 1.8.9 Core's one QA switch: its self-test (Lads menu on the title screen, in its own QA world and from the

@@ -88,6 +88,7 @@
     "AutohidePictureMixin",
     "LegacyEquipMixin",
     "BorderlessWindowMixin",
-    "WindowIconMixin"
+    "WindowIconMixin",
+    "LoadingOverlayMixin"
   ]
 }

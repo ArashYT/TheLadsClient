@@ -15,5 +15,6 @@ public class GameRendererQaMixin {
     @Inject(method = "render(Lnet/minecraft/client/DeltaTracker;Z)V", at = @At("TAIL"), require = 1)
     private void ladsQaFrame(DeltaTracker delta, boolean renderLevel, CallbackInfo ci) {
         NativeWorldVerification.renderedFrame(Minecraft.getInstance().getMainRenderTarget());
+        com.thelads.core.v1_21_1.feature.qa.LoadingScreenCapture.frame(Minecraft.getInstance().getMainRenderTarget());
     }
 }
