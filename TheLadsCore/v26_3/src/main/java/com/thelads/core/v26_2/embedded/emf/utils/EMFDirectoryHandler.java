@@ -1,0 +1,230 @@
+package com.thelads.core.v26_2.embedded.emf.utils;
+
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import com.thelads.core.v26_2.embedded.emf.EMFManager;
+
+import java.util.List;
+
+import static com.thelads.core.v26_2.embedded.emf.utils.EMFDirectoryHandler.EMFDirectory.*;
+
+public class EMFDirectoryHandler {
+
+    public final String namespace;
+    public final String rawFileName;
+    public final boolean isSubFolder;
+    private final int packIndex;
+    private final EMFDirectory actualDirectory;
+    private final String suffixAndFileType;
+    private EMFDirectoryHandler(String namespace, String modelFileName, String suffixAndFileType, boolean printing) {
+        this.namespace = namespace;
+        this.rawFileName = modelFileName;
+        this.suffixAndFileType = suffixAndFileType;
+
+        //find the actual directory for this model file
+        //we have to check all to ascertain the resource pack with highest priority
+
+        var resources = Minecraft.getInstance().getResourceManager();
+
+        var emfDirResource = getResourceOrNull(resources, EMF, printing);
+        var emfSubDirResource = getResourceOrNull(resources, EMF_SUB, printing);
+        var optifineDirResource = getResourceOrNull(resources, OPTIFINE, printing);
+        var optifineSubDirResource = getResourceOrNull(resources, OPTIFINE_SUB, printing);
+
+
+        if (emfDirResource == null && emfSubDirResource == null && optifineDirResource == null && optifineSubDirResource == null) {
+            actualDirectory = null;
+            packIndex = -1;
+            isSubFolder = false;
+            return;//quick exit as no models were found
+        }
+
+        var emfPack = getPackId(emfDirResource);
+        var emfSubPack = getPackId(emfSubDirResource);
+        var optifinePack = getPackId(optifineDirResource);
+        var optifineSubPack = getPackId(optifineSubDirResource);
+
+        var packOrder = EMFManager.getInstance().getResourcePackList();
+
+        int emfDirIndex = getPackIndex(emfPack, packOrder);
+        int emfSubDirIndex = getPackIndex(emfSubPack, packOrder);
+        int optifineDirIndex = getPackIndex(optifinePack, packOrder);
+        int optifineSubDirIndex = getPackIndex(optifineSubPack, packOrder);
+
+        int emfHighest = Math.max(emfDirIndex, emfSubDirIndex);
+        int optifineHighest = Math.max(optifineDirIndex, optifineSubDirIndex);
+
+        if (printing)
+            EMFUtils.log(" >>>> pack order indices: " + emfDirIndex + ", " + emfSubDirIndex + ", " + optifineDirIndex + ", " + optifineSubDirIndex);
+
+        //prioritise emf if same pack priority
+        if (emfHighest >= optifineHighest) {
+            //prioritise the subfolders directory first if same pack priority
+            if (emfDirIndex <= emfSubDirIndex) {
+                actualDirectory = EMF_SUB;
+                packIndex = emfSubDirIndex;
+                isSubFolder = true;
+            } else {
+                actualDirectory = EMF;
+                packIndex = emfDirIndex;
+                isSubFolder = false;
+            }
+        } else {
+            //prioritise the subfolders directory first if same pack priority
+            if (optifineDirIndex <= optifineSubDirIndex) {
+                actualDirectory = OPTIFINE_SUB;
+                packIndex = optifineSubDirIndex;
+                isSubFolder = true;
+            } else {
+                actualDirectory = OPTIFINE;
+                packIndex = optifineDirIndex;
+                isSubFolder = false;
+            }
+        }
+        if (printing)
+            EMFUtils.log(" >> Final valid directory after checking: " + actualDirectory.getAsDirectory(namespace, modelFileName) + suffixAndFileType);
+    }
+
+    public static EMFDirectoryHandler basic(String filename) {
+        return new EMFDirectoryHandler("minecraft", filename, ".jem", false);
+    }
+
+    public static @Nullable EMFDirectoryHandler getDirectoryManagerOrNull(boolean printing, @NotNull String namespace, @NotNull String modelFileName, @NotNull String suffixAndFileType) {
+        try {
+            EMFDirectoryHandler directoryManager = new EMFDirectoryHandler(namespace, modelFileName, suffixAndFileType, printing);
+            if (directoryManager.foundModel()) {
+                return directoryManager;
+            }
+        } catch (Exception e) {
+            if (printing)
+                EMFUtils.log(" >> Exception when searching for: " + OPTIFINE.getAsDirectory(namespace, modelFileName) + suffixAndFileType + ". " + e.getMessage());
+        }
+        if (printing)
+            EMFUtils.log(" >> Failed to find any files for: " + OPTIFINE.getAsDirectory(namespace, modelFileName) + suffixAndFileType);
+
+        return null;
+    }
+
+    public String getFileNameWithType() {
+        return rawFileName + suffixAndFileType;
+    }
+
+    public String getRelativeDirectoryLocationNoValidation(String fileName) {
+        return actualDirectory.getAsDirectory(namespace, rawFileName).replaceFirst(rawFileName + "$", fileName);
+    }
+
+    public int packIndex() {
+        return packIndex;
+    }
+
+    public boolean validForThisBase(EMFDirectoryHandler propertiesOrSecond) {
+        if (propertiesOrSecond == null) return false;
+        return isSubFolder == propertiesOrSecond.isSubFolder && packIndex <= propertiesOrSecond.packIndex;
+    }
+
+    boolean foundModel() {
+        return actualDirectory != null && packIndex != -1;
+    }
+
+    private Resource getResourceOrNull(ResourceManager resources, EMFDirectoryHandler.EMFDirectory directory, boolean printing) {
+        try {
+            var loc = EMFUtils.res(directory.getAsDirectory(namespace, rawFileName) + suffixAndFileType);
+            if (printing) {
+                boolean exists = EMFResourceCaching.resourceExists(resources, loc);
+                EMFUtils.log(" >>> Checking directory: " + loc + ", exists = " + exists);
+                return exists ? resources.getResource(loc).orElse(null) : null;
+            }
+            if (!EMFResourceCaching.resourceExists(resources, loc)) return null;
+            var res = resources.getResource(loc);
+            return res.orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String getPackId(@Nullable Resource resource) {
+        return resource == null ? null : resource.sourcePackId();
+    }
+
+    private int getPackIndex(@Nullable String pack, List<String> packOrder) {
+        return pack == null ? -1 : packOrder.indexOf(pack);
+    }
+
+    public String getFinalFileLocation() {
+        //should not be null if ever called but, expect null to be safe
+        return actualDirectory.getAsDirectory(namespace, rawFileName) + suffixAndFileType;
+    }
+
+    public Identifier getRelativeFilePossiblyEMFOverridden(String jpmOrVariantFileNameWithSuffixAndFileType) {
+        var over = actualDirectory.override();
+        var fall = actualDirectory.fallback();
+
+        var first = over == null ? actualDirectory : over;
+        var second = fall == null ? actualDirectory : fall;
+
+        //return emf dir if file exists
+        var sameDir = EMFUtils.res(first.getAsDirectory(namespace, rawFileName).replaceFirst(rawFileName + "$", jpmOrVariantFileNameWithSuffixAndFileType));
+        var resources = Minecraft.getInstance().getResourceManager();
+        if (EMFResourceCaching.resourceExists(resources, sameDir)) {
+            return sameDir;
+        }
+        //else return optifine
+        return EMFUtils.res(second.getAsDirectory(namespace, rawFileName).replaceFirst(rawFileName + "$", jpmOrVariantFileNameWithSuffixAndFileType));
+    }
+
+    @Override
+    public String toString() {
+        return "EMF model, ID = " + OPTIFINE.getAsDirectory(namespace, rawFileName) +
+                ", actual = " + actualDirectory.getAsDirectory(namespace, rawFileName);
+    }
+
+    enum EMFDirectory {
+        EMF {
+            @Override
+            public String getAsDirectory(final String namespace, final String fileName) {
+                return namespace + ":emf/cem/" + fileName;
+            }
+        },
+        EMF_SUB {
+            @Override
+            public String getAsDirectory(final String namespace, final String fileName) {
+                return namespace + ":emf/cem/" + fileName + "/" + fileName;
+            }
+        },
+        OPTIFINE {
+            @Override
+            public String getAsDirectory(final String namespace, final String fileName) {
+                return namespace + ":optifine/cem/" + fileName;
+            }
+        },
+        OPTIFINE_SUB {
+            @Override
+            public String getAsDirectory(final String namespace, final String fileName) {
+                return namespace + ":optifine/cem/" + fileName + "/" + fileName;
+            }
+        };
+
+        public abstract String getAsDirectory(String namespace, String fileName);
+
+        public @Nullable EMFDirectory fallback() {
+            return switch (this) {
+                case EMF -> OPTIFINE;
+                case EMF_SUB -> OPTIFINE_SUB;
+                default -> null;
+            };
+        }
+
+        public @Nullable EMFDirectory override() {
+            return switch (this) {
+                case OPTIFINE -> EMF;
+                case OPTIFINE_SUB -> EMF_SUB;
+                default -> null;
+            };
+        }
+    }
+}
