@@ -14,6 +14,8 @@
     "KeyboardHandlerQaInvoker",
     "LightTextureQaAccessor",
     "MouseHandlerQaInvoker",
-    "OptionsQaMixin"
+    "OptionsQaMixin",
+    "ChatQaAccessor",
+    "WindowQaInvoker"
   ]
 }

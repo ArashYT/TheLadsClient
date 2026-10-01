@@ -30,12 +30,11 @@ public class ModuleManager {
         hud("ServerAddress", "Show the connected server address, or hide it while streaming.")
             .addOption(new BoolOption("Hide address", false));
         hud("PortalCoordinates", "Overworld / Nether destination X and Z. Negative coordinates round down.");
-        var tools = new Module("ClientTools", "Local coordinate copying, durability warnings, inventory alerts and chat timestamps.");
+        var tools = new Module("ClientTools", "Local coordinate copying, durability warnings and inventory alerts.");
         tools.addOption(new ActionOption("Copy coordinates", "Copy coordinates"));
         tools.addOption(new BoolOption("Low durability warning", true));
         tools.addOption(new SliderOption("Durability percent", 10, 1, 50, 1));
         tools.addOption(new BoolOption("Inventory full warning", true));
-        tools.addOption(new BoolOption("Chat timestamps", false));
         register(tools, Module.Category.MECHANIC);
         var particles = new Module("ParticleBudget", "Limit only decorative smoke, leaves and spores. Gameplay indicators remain unchanged.");
         particles.addOption(new SliderOption("Particles per tick", 64, 8, 512, 8));
@@ -177,15 +176,14 @@ public class ModuleManager {
         register(new KillBannerModule(), Module.Category.MECHANIC);
         register(new CrosshairModule(), Module.Category.MECHANIC);
 
-        Module chatInd = new Module("HideChatIndicators", "Hide chat signing/'modified' indicator bars.");
-        chatInd.setEnabled(true);
-        register(chatInd);
-
-        Module chatMod = new Module("Chat", "Customize chat appearance, size, animations, and screenshot links.");
+        // Every chat feature lives here; ConfigManager migrates the old ClientTools timestamps and HideChatIndicators.
+        Module chatMod = new Module("Chat", "Chat size, background, message animations, timestamps, signing indicators and screenshot links.");
         chatMod.addOption(new BoolOption("Chat Background", true));
         chatMod.addOption(new SliderOption("Chat Width", 320, 100, 600, 10));
         chatMod.addOption(new SliderOption("Chat Height", 180, 50, 400, 10));
         chatMod.addOption(new BoolOption("Message Animations", true));
+        chatMod.addOption(new BoolOption("Timestamps", false));
+        chatMod.addOption(new BoolOption("Hide Signing Indicators", true));
         chatMod.addOption(new BoolOption("Screenshot Link Buttons", true));
         chatMod.setEnabled(true);
         register(chatMod, Module.Category.HUD);

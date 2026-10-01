@@ -11,6 +11,8 @@
     "GameRendererQaMixin",
     "GuiQaInvoker",
     "KeyboardHandlerQaInvoker",
-    "OptionsQaMixin"
+    "OptionsQaMixin",
+    "ChatQaAccessor",
+    "WindowQaInvoker"
   ]
 }

@@ -1,0 +1,6 @@
+26.3 hotbar (470,668)-(810,712): changed pixels by horizontal shift of the arriving frame {-16: 9550, -12: 9320, -8: 8425, -4: 6035, 0: 1346, 4: 6295, 8: 8741, 12: 9478, 16: 9608} -> best shift 0 (residual = animated world behind translucent slots)
+26.3 scoreboard (1160, 325, 1280, 370) changed pixels: 0
+26.3 minimap (1070, 95, 1262, 315) changed pixels: 0
+1.21.1 hotbar (470,668)-(810,712): changed pixels by horizontal shift of the arriving frame {-16: 8031, -12: 7560, -8: 6625, -4: 4499, 0: 0, 4: 4486, 8: 6556, 12: 7512, 16: 7965} -> best shift 0 (residual = animated world behind translucent slots)
+1.21.1 scoreboard (1160, 325, 1280, 370) changed pixels: 0
+1.21.1 minimap (1070, 95, 1262, 315) changed pixels: 0

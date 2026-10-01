@@ -16,6 +16,8 @@ public final class NativeQualityOfLife {
         // NativeFeatures through KeyboardHandler/MouseHandler/KeyboardInput/SprintInput/Zoom/Fullbright mixins.
         ModuleSupport.registerBuiltIn("Zoom", "ToggleSprint", "ToggleSneak", "Fullbright");
         NativeKeyBindings.register();
+        // ChatMixin / ChatIndicatorMixin / ScreenshotChatMixin and BorderlessWindowMixin, as on 26.x.
+        ModuleSupport.registerBuiltIn("Chat", "BorderlessFullscreen");
         // "Soon" card as on 26.x, whose presence tick sends nothing yet; no Discord connection is made.
         ModuleSupport.registerBuiltIn("DiscordRPC");
         // U3 HUD pipeline: the hud mixins (Autohide scope, SmoothHotbar, BossBar overlay).
