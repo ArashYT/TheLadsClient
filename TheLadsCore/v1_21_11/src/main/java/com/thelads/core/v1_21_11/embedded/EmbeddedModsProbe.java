@@ -70,11 +70,31 @@ public final class EmbeddedModsProbe {
             check(summaries.stream().anyMatch(s -> ((com.thelads.core.v1_21_11.embedded.playtime.util.IWithPlayTime) s).getWorldSizeBytes() > 0),
                 "World Play Time Reborn adds play time/size to the world list summaries");
         }
+        if (EmbeddedMods.active("capes")) {
+            var skins = new net.minecraft.client.gui.screens.options.SkinCustomizationScreen(null, mc.options);
+            int w = mc.getWindow().getGuiScaledWidth(), h = mc.getWindow().getGuiScaledHeight();
+            skins.init(w, h);
+            check(capesHooked() && skins.children().stream().anyMatch(c -> c instanceof net.minecraft.client.gui.components.SpriteIconButton b
+                    && b.getMessage().getString().isEmpty() && b.getWidth() == 20),
+                "Capes loads capes.json5, hooks the player cape lookup and adds its cape options button to Skin Customization");
+        }
         if (EmbeddedMods.active("nbtac")) {
             var suggestions = com.thelads.core.v1_21_11.embedded.nbtac.api.NBTacAPI.getNbtSuggestions("{", "entity/minecraft:zombie", null, false, null)
                 .get(30, TimeUnit.SECONDS).getList().stream().map(s -> s.getText()).toList();
             check(suggestions.contains("CanBreakDoors"), "NBT Autocomplete suggests zombie tags (" + suggestions.size() + " suggestions)");
         }
+    }
+
+    /** Capes' config file exists and its mixins are merged into PlayerInfo (cape lookup) and SkinCustomizationScreen. */
+    private static boolean capesHooked() {
+        try {
+            net.minecraft.client.gui.screens.options.SkinCustomizationScreen.class.getDeclaredField("capes$selectorMenu");
+        } catch (NoSuchFieldException missing) {
+            return false;
+        }
+        return com.thelads.core.v1_21_11.embedded.capes.Capes.getConfig() != null
+            && java.nio.file.Files.isRegularFile(net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("capes.json5"))
+            && java.util.Arrays.stream(net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethods()).anyMatch(m -> m.getName().endsWith("getCapeTexture"));
     }
 
     /** Tooltip lines of sample items as the game builds them, with the colour of each line: shows whichever tooltip mod runs. */

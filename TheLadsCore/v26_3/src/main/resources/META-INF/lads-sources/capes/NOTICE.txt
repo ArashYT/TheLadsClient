@@ -1,0 +1,9 @@
+Capes (mod id capes), version 1.5.10+26.3, for Minecraft 26.3
+Project: https://github.com/CaelTheColher/Capes
+Source used: tag fabric-1.5.10+26.3 (commit b0c304a3bb3b2f11af2a019acd6957f1ea2062ce)
+Copyright (c) Cael and contributors
+License: LGPL-2.1-only (text in LICENSE beside this file)
+
+Modified by The Lads: ported from Kotlin to Java and repackaged into Lads Core as com.thelads.core.v26_2.embedded.capes (mixin config theladscore.embedded.capes.mixins.json); the Fabric entrypoint became a Core-called init; everything stands down while the original capes mod is installed.
+
+The complete modified source is in META-INF/lads-sources/capes/v26_3 in this jar.
