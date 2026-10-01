@@ -13,6 +13,7 @@
     "GuiIngameMenuMixin",
     "GuiScreenMixin",
     "GuiSlotMixin",
+    "ItemRendererAccessor",
     "ItemRendererMixin",
     "MinecraftMixin",
     "SplashProgressMixin"

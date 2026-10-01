@@ -38,11 +38,21 @@ final class Version133Probe {
             var saved=new LinkedHashMap<java.lang.reflect.Field,Object>();
             for(var field:equip.getClass().getDeclaredFields())if(!java.lang.reflect.Modifier.isStatic(field.getModifiers())&&(field.getType()==float.class||field.getType()==net.minecraft.world.item.ItemStack.class)){field.setAccessible(true);saved.put(field,field.get(equip));}
             try {
-                float attack=mc.player.getAttackStrengthScale(0);
-                equip.tick(mc.player);
-                equip.itemUsed(net.minecraft.world.InteractionHand.MAIN_HAND);
-                for(String fieldName:List.of("mainHandHeight","oMainHandHeight","offHandHeight","oOffHandHeight")){var f=equip.getClass().getDeclaredField(fieldName);f.setAccessible(true);check(f.getFloat(equip)==1,"legacy held height "+fieldName);}
-                check(mc.player.getAttackStrengthScale(0)==attack,"visual equip suppression preserves gameplay/crosshair cooldown");
+                var ticker=net.minecraft.world.entity.LivingEntity.class.getDeclaredField("attackStrengthTicker");ticker.setAccessible(true);int ticks=ticker.getInt(mc.player);
+                var item=equip.getClass().getDeclaredField("mainHandItem");item.setAccessible(true);
+                var height=equip.getClass().getDeclaredField("mainHandHeight");height.setAccessible(true);
+                try {
+                    item.set(equip,mc.player.getMainHandItem());height.setFloat(equip,1);
+                    mc.player.resetAttackStrengthTicker();
+                    float cooldown=mc.player.getAttackStrengthScale(0);
+                    equip.tick(mc.player);
+                    equip.itemUsed(net.minecraft.world.InteractionHand.MAIN_HAND);
+                    check(height.getFloat(equip)==1,"legacy hand stays up through the attack cooldown and after using an item");
+                    check(cooldown<1&&mc.player.getAttackStrengthScale(0)==cooldown,"visual equip suppression preserves gameplay/crosshair cooldown");
+                    item.set(equip,new net.minecraft.world.item.ItemStack(mc.player.getMainHandItem().is(net.minecraft.world.item.Items.STONE)?net.minecraft.world.item.Items.DIRT:net.minecraft.world.item.Items.STONE));
+                    equip.tick(mc.player);
+                    check(height.getFloat(equip)<1,"legacy: switching items still lowers the hand to pull the next one out");
+                }finally{ticker.setInt(mc.player,ticks);}
             }finally{for(var entry:saved.entrySet())entry.getKey().set(equip,entry.getValue());}
             var state=new GuiRenderState();var graphics=new GuiGraphicsExtractor(mc,state,0,0);
             NativeAutohide.scopeOpacity=0;
