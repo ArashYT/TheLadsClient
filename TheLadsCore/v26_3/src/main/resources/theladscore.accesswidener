@@ -96,3 +96,15 @@ accessible class net/minecraft/core/component/Removed
 accessible field net/minecraft/core/component/DataComponentPatch map Lit/unimi/dsi/fastutil/objects/Reference2ObjectMap;
 accessible field net/minecraft/client/gui/components/AbstractScrollArea scrolling Z
 accessible class net/minecraft/server/packs/FilePackResources$SharedZipFileAccess
+# ImmediatelyFast (embedded)
+accessible field net/minecraft/client/gui/render/GuiItemAtlas texture Lcom/mojang/renderpearl/api/textures/GpuTexture;
+accessible field net/minecraft/client/gui/render/GuiItemAtlas depthTexture Lcom/mojang/renderpearl/api/textures/GpuTexture;
+accessible field net/minecraft/client/gui/render/GuiItemAtlas allocator Lnet/minecraft/client/gui/render/DynamicAtlasAllocator;
+accessible field net/minecraft/client/gui/render/DynamicAtlasAllocator usedSlotByKey Ljava/util/Map;
+accessible field net/minecraft/client/gui/render/DynamicAtlasAllocator$Slot fresh Z
+accessible field net/minecraft/client/renderer/GameRenderer guiRenderer Lnet/minecraft/client/gui/render/GuiRenderer;
+accessible field net/minecraft/client/renderer/rendertype/RenderType state Lnet/minecraft/client/renderer/rendertype/RenderSetup;
+accessible field net/minecraft/client/renderer/rendertype/RenderSetup textures Ljava/util/Map;
+accessible class net/minecraft/client/renderer/rendertype/RenderSetup$TextureBinding
+accessible method net/minecraft/client/renderer/feature/RenderTypeFeatureRenderer getVertexBuilder (Lnet/minecraft/client/renderer/rendertype/RenderType;)Lcom/mojang/blaze3d/vertex/VertexConsumer;
+accessible field net/minecraft/client/renderer/GameRenderer fogRenderer Lnet/minecraft/client/renderer/fog/FogRenderer;

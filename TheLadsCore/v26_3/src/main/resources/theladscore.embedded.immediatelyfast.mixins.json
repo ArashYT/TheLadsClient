@@ -1,0 +1,37 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.embedded.immediatelyfast.injection.mixins",
+  "plugin": "com.thelads.core.v26_2.embedded.immediatelyfast.injection.ImmediatelyFastMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "avoid_redundant_framebuffer_switching.MixinGlCommandEncoder",
+    "avoid_redundant_framebuffer_switching.MixinGlSurface",
+    "batch_animated_item_updates.MixinGuiRenderer",
+    "core.MixinDebugScreenEntries",
+    "core.MixinMinecraft",
+    "enhanced_batching.MixinRenderTypeFeatureRenderer_Group",
+    "enhanced_batching.MixinScissorState",
+    "enhanced_batching.compat.iris.MixinIris_OuterWrappedRenderType",
+    "enhanced_batching.compat.iris.MixinRenderTypeFeatureRenderer_Group",
+    "fast_text_lookup.MixinTextFeatureRenderer_GlyphRenderer",
+    "fix_slow_buffer_upload_on_apple_gpu.MixinGlCommandEncoder",
+    "font_atlas_resizing.MixinFontTexture",
+    "map_atlas_generation.MixinGuiGraphicsExtractor",
+    "map_atlas_generation.MixinMapRenderer",
+    "map_atlas_generation.MixinMapRenderState",
+    "map_atlas_generation.MixinMapTextureManager",
+    "map_atlas_generation.MixinMapTextureManager_MapInstance",
+    "print_additional_error_information.MixinGlDebug",
+    "resource_pack_conflict_handling.MixinMinecraft",
+    "sign_text_buffering.MixinAbstractSignRenderer",
+    "sign_text_buffering.MixinSignText",
+    "skip_text_translucency_sorting.MixinRenderTypes"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

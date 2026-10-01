@@ -1,0 +1,61 @@
+/*
+ * This file is part of ImmediatelyFast - https://github.com/RaphiMC/ImmediatelyFast
+ * Copyright (C) 2023-2026 RK_01/RaphiMC and contributors
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+// Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_21_1.embedded.immediatelyfast).
+package com.thelads.core.v1_21_1.embedded.immediatelyfast.injection.mixins.fast_buffer_upload;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexBuffer;
+import com.thelads.core.v1_21_1.embedded.immediatelyfast.ImmediatelyFast;
+import org.lwjgl.opengl.GL15C;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
+
+import java.nio.ByteBuffer;
+
+@Mixin(value = VertexBuffer.class, priority = 500)
+public abstract class MixinVertexBuffer {
+
+    @Unique
+    private int immediatelyFast$vertexBufferSize;
+
+    @Unique
+    private int immediatelyFast$indexBufferSize;
+
+    @Redirect(method = "uploadVertexBuffer", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/RenderSystem;glBufferData(ILjava/nio/ByteBuffer;I)V"))
+    private void optimizeVertexDataUploading(int target, ByteBuffer data, int usage) {
+        if (!ImmediatelyFast.runtimeConfig.fast_buffer_upload || usage == GL15C.GL_STATIC_DRAW || data.remaining() > this.immediatelyFast$vertexBufferSize) {
+            this.immediatelyFast$vertexBufferSize = data.remaining();
+            RenderSystem.glBufferData(target, data, usage);
+        } else {
+            GL15C.glBufferSubData(target, 0, data);
+        }
+    }
+
+    @Redirect(method = {"uploadIndexBuffer(Lcom/mojang/blaze3d/vertex/ByteBufferBuilder$Result;)V", "uploadIndexBuffer(Lcom/mojang/blaze3d/vertex/MeshData$DrawState;Ljava/nio/ByteBuffer;)Lcom/mojang/blaze3d/systems/RenderSystem$AutoStorageIndexBuffer;"}, at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/RenderSystem;glBufferData(ILjava/nio/ByteBuffer;I)V"))
+    private void optimizeIndexDataUploading(int target, ByteBuffer data, int usage) {
+        if (!ImmediatelyFast.runtimeConfig.fast_buffer_upload || usage == GL15C.GL_STATIC_DRAW || data.remaining() > this.immediatelyFast$indexBufferSize) {
+            this.immediatelyFast$indexBufferSize = data.remaining();
+            RenderSystem.glBufferData(target, data, usage);
+        } else {
+            GL15C.glBufferSubData(target, 0, data);
+        }
+    }
+
+}

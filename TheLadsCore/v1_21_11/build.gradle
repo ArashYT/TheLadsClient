@@ -45,7 +45,7 @@ remapJar {
 
 // Embedded LGPL mods (1.4.6): the complete modified sources ship in the jar beside their notices.
 processResources {
-    ['fastipping'].each { key ->
+    ['fastipping', 'immediatelyfast'].each { key ->
         from('src/main/java') {
             include "com/thelads/core/v1_21_11/embedded/${key}/**"
             into "META-INF/lads-sources/${key}/v1_21_11"
@@ -53,3 +53,11 @@ processResources {
         from("src/main/resources/theladscore.embedded.${key}.mixins.json") { into "META-INF/lads-sources/${key}/v1_21_11" }
     }
 }
+
+// ImmediatelyFast (embedded) uses the Reflect library, bundled nested like upstream does.
+dependencies {
+    implementation 'net.lenni0451:Reflect:1.6.2'
+    include 'net.lenni0451:Reflect:1.6.2'
+}
+// Compile-time stubs of Xaero's Minimap API for the ImmediatelyFast compat mixin; the real classes come from the pack.
+jar { exclude 'xaero/**' }

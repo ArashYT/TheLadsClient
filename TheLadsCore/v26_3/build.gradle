@@ -165,7 +165,7 @@ tasks.named('check') { dependsOn tasks.named('verifyJadePackaging') }
 
 // Embedded LGPL mods (1.4.6): the complete modified sources ship in the jar beside their notices.
 processResources {
-    ['fastipping'].each { key ->
+    ['fastipping', 'immediatelyfast'].each { key ->
         from('src/main/java') {
             include "com/thelads/core/v26_2/embedded/${key}/**"
             into "META-INF/lads-sources/${key}/v26_3"
