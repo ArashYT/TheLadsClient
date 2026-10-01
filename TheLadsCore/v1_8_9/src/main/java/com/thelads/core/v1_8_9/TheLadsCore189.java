@@ -6,6 +6,7 @@ import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.mods.CoreCatalogExporter;
 import com.thelads.core.shared.SharedContentPaths;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
+import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
@@ -21,8 +22,6 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.lang.reflect.Field;
-
 @Mod(modid = "theladscore", name = "The Lads Core", clientSideOnly = true, acceptedMinecraftVersions = "[1.8.9]")
 public class TheLadsCore189 {
     private static final Logger LOGGER = LogManager.getLogger("TheLadsCore-1.8.9");
@@ -36,19 +35,7 @@ public class TheLadsCore189 {
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
         {"EnhancedToolbars", "Durability Tooltip"}, {"Capes", "Capes"}, {"Raised", "Raised"}};
 
-    private static Field equippedProgressField;
-    private static Field prevEquippedProgressField;
-    private static boolean borderlessApplied = false;
     private static String windowTitle = "The Lads Client";
-
-    static {
-        try {
-            equippedProgressField = net.minecraftforge.fml.relauncher.ReflectionHelper.findField(
-                net.minecraft.client.renderer.ItemRenderer.class, "equippedProgress", "field_78454_c");
-            prevEquippedProgressField = net.minecraftforge.fml.relauncher.ReflectionHelper.findField(
-                net.minecraft.client.renderer.ItemRenderer.class, "prevEquippedProgress", "field_78451_d");
-        } catch (Throwable ignored) {}
-    }
 
     public TheLadsCore189() {
         // Before any Core code runs: 1.8.9 corrupts a newer world, so shared worlds and packs must never be used here.
@@ -111,15 +98,6 @@ public class TheLadsCore189 {
                     mc.thePlayer.setSprinting(true);
                 }
             }
-            com.thelads.core.config.Module legacySwing = com.thelads.core.config.ModuleManager.getInstance().getModule("LegacySwing");
-            if (legacySwing != null && legacySwing.isEnabled() && mc.getItemRenderer() != null) {
-                try {
-                    if (mc.thePlayer.isSwingInProgress) {
-                        if (equippedProgressField != null) equippedProgressField.setFloat(mc.getItemRenderer(), 1.0f);
-                        if (prevEquippedProgressField != null) prevEquippedProgressField.setFloat(mc.getItemRenderer(), 1.0f);
-                    }
-                } catch (Throwable ignored) {}
-            }
         }
 
         try {
@@ -129,33 +107,17 @@ public class TheLadsCore189 {
             }
         } catch (Throwable ignored) {}
 
-        com.thelads.core.config.Module rawInput = com.thelads.core.config.ModuleManager.getInstance().getModule("RawInput");
-        if (rawInput != null && rawInput.isEnabled()) {
-            RawMouse189.ensureInstalled(mc);
-        }
+        RawMouse189.install(mc);
 
-        com.thelads.core.config.Module borderless = com.thelads.core.config.ModuleManager.getInstance().getModule("BorderlessFullscreen");
-        if (borderless != null && borderless.isEnabled()) {
-            applyBorderlessFullscreen(mc);
-        }
+        Borderless189.tick(mc);
 
         CoreCatalogExporter.exportIfChanged();
         if (Boolean.getBoolean("thelads.verify189Core")) CoreProbe.tick();
     }
 
-    private static void applyBorderlessFullscreen(Minecraft mc) {
-        try {
-            if (mc.gameSettings.fullScreen && !borderlessApplied) {
-                System.setProperty("org.lwjgl.opengl.Window.undecorated", "true");
-                org.lwjgl.opengl.Display.setDisplayMode(org.lwjgl.opengl.Display.getDesktopDisplayMode());
-                org.lwjgl.opengl.Display.setLocation(0, 0);
-                org.lwjgl.opengl.Display.setFullscreen(false);
-                borderlessApplied = true;
-            } else if (!mc.gameSettings.fullScreen && borderlessApplied) {
-                System.setProperty("org.lwjgl.opengl.Window.undecorated", "false");
-                borderlessApplied = false;
-            }
-        } catch (Throwable ignored) {}
+    @SubscribeEvent
+    public void frame(TickEvent.RenderTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) RawMouse189.paceFrame();
     }
 
     @SubscribeEvent

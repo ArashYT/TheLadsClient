@@ -62,6 +62,7 @@ public final class CoreProbe {
         CoreProbe::catalog));
     static {
         STEPS.addAll(HudProbe.STEPS);
+        STEPS.addAll(Probe145.STEPS);
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
     }

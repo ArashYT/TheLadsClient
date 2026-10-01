@@ -9,9 +9,12 @@
   },
   "client": [
     "GuiButtonMixin",
+    "GuiIngameMixin",
     "GuiIngameMenuMixin",
     "GuiScreenMixin",
     "GuiSlotMixin",
+    "ItemRendererMixin",
+    "MinecraftMixin",
     "SplashProgressMixin"
   ]
 }
