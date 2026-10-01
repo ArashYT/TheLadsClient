@@ -44,6 +44,7 @@ public abstract class RenderScaleMixin {
             lads$renderScale.endFrame(mainRenderTarget, world, succeeded);
             if (succeeded) com.thelads.core.v26_2.feature.NativeWelcomeProbe.renderedFrame(mainRenderTarget);
             if (succeeded) com.thelads.core.v26_2.feature.NativeWorldVerification.renderedFrame(mainRenderTarget);
+            if (succeeded) com.thelads.core.v26_2.feature.qa.LoadingScreenCapture.frame(mainRenderTarget);
         }
     }
 
