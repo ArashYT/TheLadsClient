@@ -43,7 +43,7 @@ final class NativeQualityProbe {
         Map<Module, Boolean> states = new LinkedHashMap<>();
         Map<Module, Long> modified = new LinkedHashMap<>();
         Map<Option, JsonElement> preferences = new LinkedHashMap<>();
-        for (String name : List.of("EnhancedToolbars", "EnhancedTooltips", "HideChatIndicators")) {
+        for (String name : List.of("EnhancedToolbars", "EnhancedTooltips", "Chat")) {
             Module module = ModuleManager.getInstance().getModule(name);
             states.put(module, module.isEnabled());
             modified.put(module, module.getLastModified());
@@ -94,17 +94,18 @@ final class NativeQualityProbe {
             sword.set(DataComponents.TOOLTIP_DISPLAY, new TooltipDisplay(true, new java.util.LinkedHashSet<>()));
             require(sword.getTooltipLines(Item.TooltipContext.of(Minecraft.getInstance().level), Minecraft.getInstance().player, TooltipFlag.NORMAL).isEmpty(), "hidden tooltip remains empty");
             sword.remove(DataComponents.TOOLTIP_DISPLAY);
-            Module chat = NativeQualityOfLife.module("HideChatIndicators");
+            Module chat = NativeQualityOfLife.module("Chat"); chat.setEnabled(true);
+            BoolOption hideIndicators = (BoolOption) chat.getOption("Hide Signing Indicators");
             GuiMessageTag tag = GuiMessageTag.system();
             MessageSignature signature = new MessageSignature(new byte[256]);
             GuiMessage message = new GuiMessage(1, Component.literal("QA"), signature, GuiMessageSource.SYSTEM_SERVER, tag);
             GuiMessage.Line line = new GuiMessage.Line(message, Component.literal("QA").getVisualOrderText(), true);
-            chat.setEnabled(false);
+            hideIndicators.set(false);
             require(line.tag() == tag, "chat tag available with feature disabled");
-            chat.setEnabled(true);
+            hideIndicators.set(true);
             require(line.tag() == null, "chat line indicator hidden immediately");
             require(message.tag() == tag && message.signature() == signature, "chat parent tag and signature retained");
-            chat.setEnabled(false);
+            hideIndicators.set(false);
             require(line.tag() == tag, "existing chat indicator restored immediately");
             passed += NativeNametagConnectionProbe.run();
             passed += NativeBackgroundFrameProbe.run();

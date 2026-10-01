@@ -21,6 +21,10 @@
     "ServerListAccessor",
     "ServerListSharedMixin",
     "WindowIconMixin",
-    "LoadingOverlayMixin"
+    "LoadingOverlayMixin",
+    "ChatMixin",
+    "ChatIndicatorMixin",
+    "ScreenshotChatMixin",
+    "BorderlessWindowMixin"
   ]
 }

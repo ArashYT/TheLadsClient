@@ -13,6 +13,8 @@ public final class NativeQualityOfLife {
 
     /** Ported features register here (registerBuiltIn plus their own register()) once their hooks work on 1.21.11. */
     public static void register() {
+        // ChatMixin / ChatIndicatorMixin / ScreenshotChatMixin and BorderlessWindowMixin, as on 26.x.
+        ModuleSupport.registerBuiltIn("Chat", "BorderlessFullscreen");
         // "Soon" card as on 26.x, whose presence tick sends nothing yet; no Discord connection is made.
         ModuleSupport.registerBuiltIn("DiscordRPC");
         // U3 HUD pipeline: the hud mixins (Autohide scope and faded GUI states, SmoothHotbar, BossBar overlay).
