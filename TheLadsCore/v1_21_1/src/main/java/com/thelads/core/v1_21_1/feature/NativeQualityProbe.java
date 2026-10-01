@@ -1,6 +1,23 @@
 package com.thelads.core.v1_21_1.feature;
 
 import com.thelads.core.v1_21_1.gui.LadsSettingsScreen121;
+import com.thelads.core.client.BorderlessWindow;
+import com.thelads.core.config.BoolOption;
+import com.thelads.core.config.ConfigManager;
+import com.thelads.core.config.ModuleSupport;
+import com.thelads.core.v1_21_1.feature.qa.mixin.ChatQaAccessor;
+import com.thelads.core.v1_21_1.feature.qa.mixin.WindowQaInvoker;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.GuiMessage;
+import net.minecraft.client.GuiMessageTag;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import java.util.LinkedHashMap;
+import org.joml.Matrix4f;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
@@ -27,6 +44,8 @@ final class NativeQualityProbe {
         done = true;
         try {
             inputPipeline();
+            chatModule();
+            borderless();
             LoggerFactory.getLogger("TheLadsCore").info("Lads native feature probe END: {} passed, 0 failed", passed);
         } catch (Throwable failure) {
             LoggerFactory.getLogger("TheLadsCore").error("Lads native feature probe FAILED after {} checks", passed, failure);
@@ -74,6 +93,101 @@ final class NativeQualityProbe {
             mc.setScreen(previousScreen);
             NativeKeyBindings.MODULES.setDown(wasDown);
             NativeWorldVerification.syntheticInput(false);
+        }
+    }
+    /** The Chat module: timestamps, signing indicators, and an animated newest message that leaves the rest of the HUD in place. */
+    private static void chatModule() {
+        Minecraft mc = Minecraft.getInstance();
+        var chat = mc.gui.getChat();
+        var module = NativeQualityOfLife.module("Chat");
+        var settings = ConfigManager.toJson();
+        var buffer = new ByteBufferBuilder(256);
+        int before = passed;
+        try {
+            require(ModuleSupport.isBuiltIn("Chat") && ModuleSupport.isBuiltIn("BorderlessFullscreen"), "Chat and BorderlessFullscreen are connected");
+            module.setEnabled(true);
+            ((BoolOption) module.getOption("Timestamps")).set(true);
+            ((BoolOption) module.getOption("Message Animations")).set(true);
+            var original = Component.literal("Styled QA").withStyle(ChatFormatting.AQUA);
+            chat.addMessage(original);
+            GuiMessage message = ((ChatQaAccessor) chat).ladsQaMessages().get(0);
+            require(message.content().getString().matches("\\[\\d{2}:\\d{2}\\] Styled QA"), "chat entry gets a timestamp");
+            require(message.content().getSiblings().get(1).getStyle().equals(original.getStyle()), "original chat styling retained");
+            var tag = GuiMessageTag.system();
+            var line = new GuiMessage.Line(0, original.getVisualOrderText(), tag, true);
+            var hide = (BoolOption) module.getOption("Hide Signing Indicators");
+            hide.set(false);
+            require(line.tag() == tag, "signing indicator shown with the option off");
+            hide.set(true);
+            require(line.tag() == null, "signing indicator hidden immediately");
+            var source = new MultiBufferSource.BufferSource(buffer, new LinkedHashMap<>()) {
+                private final VertexConsumer consumer = new VertexConsumer() {
+                    public VertexConsumer addVertex(float x, float y, float z) { return this; }
+                    public VertexConsumer setColor(int r, int g, int b, int a) { return this; }
+                    public VertexConsumer setUv(float u, float v) { return this; }
+                    public VertexConsumer setUv1(int u, int v) { return this; }
+                    public VertexConsumer setUv2(int u, int v) { return this; }
+                    public VertexConsumer setNormal(float x, float y, float z) { return this; }
+                };
+                @Override public VertexConsumer getBuffer(RenderType type) { return consumer; }
+                @Override public void endLastBatch() {}
+                @Override public void endBatch() {}
+                @Override public void endBatch(RenderType type) {}
+            };
+            var graphics = new GuiGraphics(mc, source);
+            var pose = new Matrix4f(graphics.pose().last().pose());
+            chat.addMessage(Component.literal("Lads chat animation QA"));
+            chat.render(graphics, mc.gui.getGuiTicks(), 0, 0, false);
+            require(graphics.pose().last().pose().equals(pose), "animating chat leaves the HUD pose unchanged for everything drawn after it");
+            LoggerFactory.getLogger("TheLadsCore").info("Lads chat probe END: {} passed, 0 failed; pose after animated chat {} == before {}", passed - before, graphics.pose().last().pose(), pose);
+        } finally {
+            buffer.close();
+            ConfigManager.applyJson(settings);
+        }
+    }
+
+    /** BorderlessFullscreen through the real window: toggleFullScreen, then setMode as the next frame's updateDisplay would. */
+    private static void borderless() {
+        Minecraft mc = Minecraft.getInstance();
+        var window = mc.getWindow();
+        var mode = (WindowQaInvoker) (Object) window;
+        var module = NativeQualityOfLife.module("BorderlessFullscreen");
+        boolean wasEnabled = module.isEnabled(), wasFullscreen = window.isFullscreen();
+        Runnable toggle = () -> { window.toggleFullScreen(); mode.ladsQaSetMode(); };
+        int before = passed;
+        try {
+            module.setEnabled(true);
+            if (wasFullscreen) toggle.run();
+            int width = window.getScreenWidth(), height = window.getScreenHeight();
+            toggle.run();
+            long handle = window.getWindow(), owner = GLFW.glfwGetWindowMonitor(handle);
+            int[] px = {0}, py = {0}, pw = {0}, ph = {0}, mx = {0}, my = {0};
+            GLFW.glfwGetWindowPos(handle, px, py);
+            GLFW.glfwGetWindowSize(handle, pw, ph);
+            long monitor = GLFW.glfwGetPrimaryMonitor();
+            var monitors = GLFW.glfwGetMonitors();
+            if (monitors != null) for (int i = 0; i < monitors.remaining(); i++) {
+                int[] x = {0}, y = {0};
+                GLFW.glfwGetMonitorPos(monitors.get(i), x, y);
+                if (x[0] == px[0] && y[0] == py[0]) monitor = monitors.get(i);
+            }
+            var video = GLFW.glfwGetVideoMode(monitor);
+            GLFW.glfwGetMonitorPos(monitor, mx, my);
+            LoggerFactory.getLogger("TheLadsCore").info("Lads borderless window: glfwGetWindowMonitor == {}, decorated={}, window rect x={} y={} w={} h={}, monitor rect x={} y={} w={} h={}, framebuffer {}x{}",
+                owner, GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_DECORATED), px[0], py[0], pw[0], ph[0], mx[0], my[0], video.width(), video.height(), window.getWidth(), window.getHeight());
+            require(window.isFullscreen(), "fullscreen requested");
+            require(owner == 0, "borderless is a desktop window, not monitor-owned fullscreen");
+            require(GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_DECORATED) == GLFW.GLFW_FALSE, "native window has no decorations");
+            require(px[0] == mx[0] && py[0] == my[0] && pw[0] == video.width() && ph[0] == video.height() + BorderlessWindow.EXTRA_HEIGHT,
+                "borderless covers the monitor plus the capture-safe extra row");
+            toggle.run();
+            require(GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_DECORATED) == GLFW.GLFW_TRUE, "window decorations restored");
+            require(window.getScreenWidth() == width && window.getScreenHeight() == height, "windowed dimensions restored");
+            LoggerFactory.getLogger("TheLadsCore").info("Lads borderless probe END: {} passed, 0 failed", passed - before);
+        } finally {
+            if (window.isFullscreen() != wasFullscreen) toggle.run();
+            module.setEnabled(wasEnabled);
+            mc.resizeDisplay();
         }
     }
     private static void require(boolean result, String name) {
