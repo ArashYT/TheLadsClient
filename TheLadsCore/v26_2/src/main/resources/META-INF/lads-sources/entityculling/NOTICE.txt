@@ -1,0 +1,10 @@
+Entity culling in Lads Core (com.thelads.core.v26_2.embedded.entityculling)
+
+An independent implementation written for The Lads Client 1.4.6. It recreates the behaviour of the Entity Culling
+mod (entityculling, by tr7zw) from its public description only: asynchronous occlusion culling of entities and
+block entities hidden behind opaque blocks. No Entity Culling code was read, copied or paraphrased. It stays
+inactive while the original Entity Culling jar is installed.
+
+The ray caster in the occlusion package is the OcclusionCulling library by LogisticsCraft
+(https://github.com/LogisticsCraft/OcclusionCulling, commit 7a346eabc5edcfdef31df3c21202c3c1473fb506), Copyright (c) 2021 LogisticsCraft,
+MIT License (LICENSE beside this file). Modified by The Lads: relocated into this package; otherwise unchanged.
