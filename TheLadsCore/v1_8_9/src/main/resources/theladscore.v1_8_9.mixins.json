@@ -9,6 +9,7 @@
   },
   "client": [
     "GuiButtonMixin",
+    "GuiIngameMixin",
     "GuiIngameMenuMixin",
     "GuiScreenMixin",
     "GuiSlotMixin",
