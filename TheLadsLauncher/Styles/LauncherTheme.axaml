@@ -43,17 +43,60 @@
     <Setter Property="BorderBrush" Value="#55565D"/>
   </Style>
   <Style Selector="Button.launch">
-    <Setter Property="Background" Value="{DynamicResource LadsAccent}"/>
-    <Setter Property="Foreground" Value="{DynamicResource LadsAccentText}"/>
-    <Setter Property="FontWeight" Value="SemiBold"/>
-    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Background">
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#FFEE4452" Offset="0"/>
+        <GradientStop Color="#FFC82333" Offset="0.5"/>
+        <GradientStop Color="#FFA71826" Offset="1"/>
+      </LinearGradientBrush>
+    </Setter>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="BorderBrush" Value="#FFAE323D"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="RenderTransform" Value="scale(1)"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.launch /template/ ContentPresenter">
+    <Setter Property="BoxShadow" Value="0 2 10 0 #50D42B38"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.25" Easing="CubicEaseOut"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.launch:pointerover">
+    <Setter Property="RenderTransform" Value="scale(1.04)"/>
   </Style>
   <Style Selector="Button.launch:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource LadsAccentHover}"/>
-    <Setter Property="Foreground" Value="{DynamicResource LadsAccentText}"/>
+    <Setter Property="Background">
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#FFFF6674" Offset="0"/>
+        <GradientStop Color="#FFE83344" Offset="0.5"/>
+        <GradientStop Color="#FFC21D2C" Offset="1"/>
+      </LinearGradientBrush>
+    </Setter>
+    <Setter Property="BorderBrush" Value="#FFFF8A96"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="BoxShadow" Value="0 0 22 4 #CCEE3B48, 0 4 12 0 #80FF6B78"/>
+  </Style>
+  <Style Selector="Button.launch:pressed">
+    <Setter Property="RenderTransform" Value="scale(0.98)"/>
   </Style>
   <Style Selector="Button.launch:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource LadsAccentPressed}"/>
+    <Setter Property="Background">
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#FFB51826" Offset="0"/>
+        <GradientStop Color="#FF8E101C" Offset="1"/>
+      </LinearGradientBrush>
+    </Setter>
+    <Setter Property="BorderBrush" Value="#FF9E1624"/>
+    <Setter Property="BoxShadow" Value="0 0 10 2 #88EE3B48"/>
   </Style>
   <Style Selector="Button.danger">
     <Setter Property="Background" Value="#2B2022"/>

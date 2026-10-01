@@ -32,6 +32,11 @@ public class FPSHudElement extends TextHudElement {
         }
         displayed += (target - displayed) * (smooth ? 0.10 : 1.0);
 
-        return Math.round(displayed) + " FPS";
+        int mode = optCycle("Display", 0);
+        int gameVal = (int) Math.round(displayed);
+        int hudVal = HudManager.getInstance().getMeasuredHudFps();
+        if (mode == 1) return hudVal + " HUD FPS";
+        if (mode == 2) return gameVal + " FPS · " + hudVal + " HUD";
+        return gameVal + " FPS";
     }
 }

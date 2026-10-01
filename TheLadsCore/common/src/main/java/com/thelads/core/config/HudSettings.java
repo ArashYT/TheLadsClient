@@ -26,6 +26,35 @@ public class HudSettings {
     private boolean textShadow = true;
     private boolean backgrounds = true;
     private final List<Integer> favoriteColors = new ArrayList<>();
+    private boolean softShadow = true;
+    private boolean hudFpsCapEnabled = true;
+    private int hudFpsLimit = 60; // 60 by default; 0 means Unlimited
+    public static final int[] HUD_FPS_LEVELS = { 25, 30, 60, 75, 120, 144, 165, 180, 240, 0 };
+
+    public boolean isHudFpsCapEnabled() { return hudFpsCapEnabled; }
+    public void setHudFpsCapEnabled(boolean value) { hudFpsCapEnabled = value; }
+    public int getHudFpsLimit() { return hudFpsLimit; }
+    public void setHudFpsLimit(int limit) { hudFpsLimit = Math.max(0, limit); }
+    public boolean isHudFpsUnlimited() { return !hudFpsCapEnabled || hudFpsLimit <= 0 || hudFpsLimit > 240; }
+    public static String formatFpsLimit(int limit) {
+        if (limit <= 0 || limit > 240) return "Unlimited";
+        if (limit == 60) return "60 (Recommended)";
+        return String.valueOf(limit);
+    }
+    public static int nextFpsLevel(int currentLimit, int direction) {
+        int currentIdx = -1;
+        for (int i = 0; i < HUD_FPS_LEVELS.length; i++) {
+            if (HUD_FPS_LEVELS[i] == currentLimit || (HUD_FPS_LEVELS[i] == 0 && (currentLimit <= 0 || currentLimit > 240))) {
+                currentIdx = i;
+                break;
+            }
+        }
+        if (currentIdx == -1) currentIdx = 2;
+        int next = Math.max(0, Math.min(HUD_FPS_LEVELS.length - 1, currentIdx + direction));
+        return HUD_FPS_LEVELS[next];
+    }
+    public boolean isSoftShadow() { return softShadow; }
+    public void setSoftShadow(boolean value) { softShadow = value; }
     public boolean isBackgrounds() { return backgrounds; }
     public void setBackgrounds(boolean value) { backgrounds = value; }
     public List<Integer> getFavoriteColors() { return favoriteColors; }

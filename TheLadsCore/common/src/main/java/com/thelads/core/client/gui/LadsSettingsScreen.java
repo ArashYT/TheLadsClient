@@ -1,6 +1,8 @@
 package com.thelads.core.client.gui;
 
 import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.client.hud.HudElement;
+import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.client.util.ClientPaths;
 import com.thelads.core.config.*;
 import com.thelads.core.config.Module;
@@ -22,6 +24,9 @@ public final class LadsSettingsScreen {
     private record Control(String id, String label, Rect rect, Runnable action, boolean enabled) {}
     private String currentCategory = "All", searchQuery = "", focusId = "", notice = "";
     private boolean enabledOnly, favoritesOnly, filterDirty = true, dirty;
+    private boolean fpsDialogOpen, editingFps, draggingFpsSlider;
+    private Rect fpsSliderTrack;
+    private String fpsBuffer = "";
     private long ownershipRevision = -1;
     private int scrollOffset, maxScroll, width = 640, height = 360;
     private Rect viewport = new Rect(0, 0, 640, 360);
@@ -86,7 +91,7 @@ public final class LadsSettingsScreen {
     public void setClipboardReader(Supplier<String> reader) { clipboardReader = reader; }
     public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; }
     public String getSearchQuery() { return searchQuery; }
-    public boolean isEditingText() { return editingSearch || editingOption != null || actions.isOpen() || colorPicker.isOpen(); }
+    public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || colorPicker.isOpen() || fpsDialogOpen; }
     public String getCurrentCategory() { return currentCategory; }
     public String getCurrentTab() { return "MODS"; }
     public List<Rect> getControlBounds() { return controls.stream().map(Control::rect).toList(); }
@@ -111,6 +116,9 @@ public final class LadsSettingsScreen {
         g.fill(0, 0, width, 2, ACCENT);
         g.drawText("THE LADS", pad, 15, ACCENT);
         if (width >= 400) g.drawText(modsView ? "INSTALLED MODS" : detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", pad + 68, 15, MUTED);
+        String fpsBtnLabel = "HUD FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
+        int fpsBtnW = Math.max(78, g.textWidth(fpsBtnLabel) + 14);
+        button(g, "global-hud-fps", fpsBtnLabel, new Rect(width - pad - 116 - fpsBtnW, 8, fpsBtnW, 23), this::openHudFpsDialog, true, mouseX, mouseY, fpsDialogOpen);
         button(g, "global-colors", "Colors", new Rect(width - pad - 110, 8, 52, 23), colorPicker::openGlobal, true, mouseX, mouseY, false);
         button(g, "close", "Done", new Rect(width - pad - 52, 8, 52, 23), this::close, true, mouseX, mouseY, false);
         int x = side == 0 ? pad : side + 16, w = width - x - pad;
@@ -131,6 +139,7 @@ public final class LadsSettingsScreen {
         g.drawText(fit(g, notice.isEmpty() ? "Ctrl+F search / Tab navigate / Esc back" : notice, w), x, height - 15, MUTED);
         colorPicker.render(g, mouseX, mouseY);
         actions.render(g, mouseX, mouseY);
+        renderHudFpsDialog(g, mouseX, mouseY);
     }
     private void renderCatalog(LadsGraphics g, int x, int w, boolean compact, int mx, int my) {
         boolean dense = height < 230;
@@ -157,6 +166,10 @@ public final class LadsSettingsScreen {
             button(g, "packs", "Packs", new Rect(x + w - 87, top - 4, 39, 18), () -> leave(onOpenResourcePacks), true, mx, my, false);
             button(g, "video", "Video", new Rect(x + w - 43, top - 4, 43, 18), () -> leave(onOpenVideoSettings), true, mx, my, false);
         }
+        if (currentCategory.equals("HUD") && !modsView && w >= 280) {
+            String fpsStatus = "HUD FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
+            button(g, "cat-hud-fps", fpsStatus, new Rect(x + w - 160, top - 4, 158, 18), this::openHudFpsDialog, true, mx, my, HudSettings.getInstance().isHudFpsCapEnabled());
+        }
         top += dense ? 17 : 22;
         viewport = new Rect(x, top, w, Math.max(20, height - top - 28));
         int cols = w >= 450 ? 3 : w >= 305 ? 2 : 1, gap = 8;
@@ -171,7 +184,9 @@ public final class LadsSettingsScreen {
             var status = ModuleSupport.get(m.getName());
             boolean cardHovered = new Rect(cx, cy, cardW, cardH).contains(mx, my) && viewport.contains(mx, my);
             float cardHover = animate("card:" + m.getName(), cardHovered);
-            round(g, cx, cy + 2, cardW, cardH, 0x68060003);
+            // Refined soft ambient drop shadow - much easier on the eyes
+            round(g, cx - 1, cy + 2, cardW + 2, cardH + 2, 0x14000000);
+            round(g, cx, cy + 1, cardW, cardH + 1, 0x24000000);
             round(g, cx, cy, cardW, cardH, mix(LadsPalette.BORDER, LadsPalette.PRIMARY_HOVER, cardHover));
             round(g, cx + 1, cy + 1, cardW - 2, cardH - 2, mix(CARD, LadsPalette.HOVER, cardHover));
             g.fill(cx + 8, cy + 10, cx + 10, cy + 21, status.configurable() && m.isEnabled() ? ACCENT : MUTED);
@@ -191,35 +206,265 @@ public final class LadsSettingsScreen {
         g.disableScissor(); scrollbar(g);
     }
     private void renderDetails(LadsGraphics g, int x, int w, int mx, int my) {
+        boolean wide = w >= 360;
+        int leftW = wide ? Math.min(270, (w - 14) / 2) : w;
+        int previewX = x + leftW + 12;
+        int previewW = w - leftW - 12;
+
         button(g, "back", "< Modules", new Rect(x, 43, 86, 22), this::back, true, mx, my, false);
-        g.drawText(fit(g, detail.getName(), w - 102), x + 100, 51, TEXT);
-        int descriptionH = height < 230 ? 0 : MenuGraphics.wrap(g, detail.getDescription(), x, 76, w, 2, MUTED);
+        g.drawText(fit(g, detail.getName(), leftW - 102), x + 96, 51, TEXT);
+        int descriptionH = height < 230 ? 0 : MenuGraphics.wrap(g, detail.getDescription(), x, 76, leftW, 2, MUTED);
         int stateY = height < 230 ? 68 : 81 + descriptionH;
         g.drawText("LADS MODULE", x, stateY + 6, ACCENT);
-        button(g, "toggle:detail", detail.getName().equals("DiscordRPC") ? "Soon" : detail.isEnabled() ? "ON" : "OFF", new Rect(x + w - 52, stateY, 52, 22),
+        button(g, "toggle:detail", detail.getName().equals("DiscordRPC") ? "Soon" : detail.isEnabled() ? "ON" : "OFF", new Rect(x + leftW - 52, stateY, 52, 22),
             () -> { detail.toggle(); changed(detail); }, !detail.getName().equals("DiscordRPC"), mx, my, detail.isEnabled());
         int top = stateY + 30;
         if(detail.getOptions().stream().anyMatch(o -> o instanceof PlayerActionOption)) {
-            button(g,"display-actions","Display actions...",new Rect(x,top,w,25),
+            button(g,"display-actions","Display actions...",new Rect(x,top,leftW,25),
                 () -> actions.open(detail.getOptions().stream().filter(o -> o instanceof PlayerActionOption).map(o -> (PlayerActionOption)o).toList(), () -> changed(detail)),true,mx,my,false);
             top += 32;
         }
-        viewport = new Rect(x, top, w, Math.max(20, height - top - 28));
+        viewport = new Rect(x, top, leftW, Math.max(20, height - top - 28));
         int rowH = 43;
         List<Option> options = activeOptions();
         maxScroll = Math.max(0, (options.size() + 1) * rowH - viewport.height);
         scrollOffset = Math.min(scrollOffset, maxScroll);
-        g.enableScissor(x, top, x + w, top + viewport.height);
+        g.enableScissor(x, top, x + leftW, top + viewport.height);
         for (int i = 0; i < options.size(); i++) {
             int y = top + i * rowH - renderScroll;
             if (y + rowH <= top || y >= top + viewport.height) continue;
-            optionRow(g, options.get(i), x, y, w - 8, mx, my);
+            optionRow(g, options.get(i), x, y, leftW - 8, mx, my);
         }
         int resetY = top + options.size() * rowH - renderScroll;
         if (resetY < top + viewport.height && resetY + 24 > top)
-            button(g, "reset", "Reset options", new Rect(x, resetY + 4, Math.min(140, w - 8), 24),
+            button(g, "reset", "Reset options", new Rect(x, resetY + 4, Math.min(130, leftW - 8), 24),
                 () -> { detail.getOptions().forEach(Option::reset); changed(detail); notice = "Options reset"; }, true, mx, my, false);
         g.disableScissor(); scrollbar(g);
+
+        if (wide && previewW >= 80) {
+            renderModulePreview(g, detail, previewX, 43, previewW, height - 68, mx, my);
+        }
+    }
+    private void renderModulePreview(LadsGraphics g, Module m, int x, int y, int w, int h, int mx, int my) {
+        if (m == null) return;
+        round(g, x, y, w, h, PANEL);
+        round(g, x, y, w, h, LadsPalette.BORDER);
+
+        g.drawText("PREVIEW", x + 10, y + 9, ACCENT);
+        String statusText = m.isEnabled() ? "ACTIVE" : "DISABLED";
+        int statusColor = m.isEnabled() ? ACCENT : MUTED;
+        g.drawText(statusText, x + w - g.textWidth(statusText) - 10, y + 9, statusColor);
+        g.fill(x + 8, y + 24, x + w - 8, y + 25, LadsPalette.BORDER);
+
+        int boxX = x + 8, boxY = y + 29, boxW = w - 16, boxH = h - 52;
+        if (boxW < 20 || boxH < 20) return;
+
+        round(g, boxX, boxY, boxW, boxH, CARD);
+        round(g, boxX, boxY, boxW, boxH, 0x33000000);
+
+        HudElement hudEl = HudManager.getInstance().getElements().stream()
+            .filter(e -> e.getModuleName() != null && e.getModuleName().equalsIgnoreCase(m.getName()))
+            .findFirst().orElse(null);
+
+        if (hudEl != null) {
+            g.enableScissor(boxX + 2, boxY + 2, boxX + boxW - 2, boxY + boxH - 2);
+            var bounds = hudEl.measureBounds(g, true);
+            int bw = Math.max(1, bounds.width());
+            int bh = Math.max(1, bounds.height());
+            float scale = 1.0f;
+            if (bw > boxW - 16 || bh > boxH - 16) {
+                scale = Math.min((float)(boxW - 16) / bw, (float)(boxH - 16) / bh);
+            }
+            int drawW = (int)(bw * scale);
+            int drawH = (int)(bh * scale);
+            int drawX = boxX + (boxW - drawW) / 2;
+            int drawY = boxY + (boxH - drawH) / 2;
+
+            g.pushPose();
+            g.translate(drawX, drawY);
+            if (scale != 1.0f) g.scale(scale, scale);
+            hudEl.renderAt(g, 0, 0, true);
+            g.popPose();
+            g.disableScissor();
+
+            g.drawCenteredText(fit(g, "Live HUD Preview · Real-time", boxW - 4), boxX + boxW / 2, y + h - 14, MUTED);
+        } else {
+            int centerX = boxX + boxW / 2;
+            int centerY = boxY + boxH / 2;
+            String name = m.getName();
+
+            if ("Crosshair".equalsIgnoreCase(name)) {
+                int chColor = m.isEnabled() ? ACCENT : TEXT;
+                int chSize = 7, chGap = 3;
+                g.fill(centerX - chSize - chGap, centerY - 1, centerX - chGap, centerY + 1, chColor);
+                g.fill(centerX + chGap, centerY - 1, centerX + chSize + chGap, centerY + 1, chColor);
+                g.fill(centerX - 1, centerY - chSize - chGap, centerX + 1, centerY - chGap, chColor);
+                g.fill(centerX - 1, centerY + chGap, centerX + 1, centerY + chSize + chGap, chColor);
+                g.fill(centerX, centerY, centerX + 1, centerY + 1, 0xFFFFFFFF);
+                g.drawCenteredText("Crosshair Reticle", centerX, centerY + 24, MUTED);
+            } else if ("Fullbright".equalsIgnoreCase(name)) {
+                round(g, centerX - 40, centerY - 25, 80, 50, 0x30FFFFFF);
+                g.drawCenteredText("GAMMA BOOST", centerX, centerY - 10, ACCENT);
+                g.drawCenteredText(m.isEnabled() ? "Max 1000% (Daylight)" : "Standard Gamma", centerX, centerY + 6, TEXT);
+            } else if ("Zoom".equalsIgnoreCase(name)) {
+                round(g, centerX - 36, centerY - 36, 72, 72, 0x40FFFFFF);
+                round(g, centerX - 32, centerY - 32, 64, 64, CARD);
+                g.drawCenteredText("ZOOM FOV", centerX, centerY - 8, ACCENT);
+                g.drawCenteredText("Smooth Optic", centerX, centerY + 6, TEXT);
+            } else if ("OldAnimations".equalsIgnoreCase(name) || "1.7 Animations".equalsIgnoreCase(name) || "LegacySwing".equalsIgnoreCase(name)) {
+                round(g, centerX - 48, centerY - 25, 96, 50, 0x20FFFFFF);
+                g.drawCenteredText("1.7 COMBAT STYLES", centerX, centerY - 10, ACCENT);
+                g.drawCenteredText("Blockhit & Swing Active", centerX, centerY + 6, TEXT);
+            } else if (name.toLowerCase(Locale.ROOT).contains("sprint") || name.toLowerCase(Locale.ROOT).contains("sneak")) {
+                round(g, centerX - 55, centerY - 16, 110, 32, CARD);
+                round(g, centerX - 55, centerY - 16, 110, 32, m.isEnabled() ? ACCENT : LadsPalette.BORDER);
+                g.drawCenteredText(m.isEnabled() ? "[ " + name.toUpperCase(Locale.ROOT) + " (KEY) ]" : "[ DISABLED ]", centerX, centerY - 4, m.isEnabled() ? ACCENT : MUTED);
+            } else {
+                g.drawModIcon(name.toLowerCase(Locale.ROOT), centerX - 16, centerY - 36, 32);
+                g.drawCenteredText(fit(g, name, boxW - 12), centerX, centerY + 6, TEXT);
+                g.drawCenteredText(m.getCategory().name(), centerX, centerY + 20, ACCENT);
+            }
+
+            g.drawCenteredText(fit(g, "Live Settings Preview", boxW - 4), boxX + boxW / 2, y + h - 14, MUTED);
+        }
+    }
+    public void openHudFpsDialog() {
+        fpsDialogOpen = true;
+        editingFps = false;
+        draggingFpsSlider = false;
+        int limit = HudSettings.getInstance().getHudFpsLimit();
+        fpsBuffer = limit == 0 ? "0" : String.valueOf(limit);
+    }
+    public void closeHudFpsDialog() {
+        commitFpsEdit();
+        fpsDialogOpen = false;
+        editingFps = false;
+        draggingFpsSlider = false;
+    }
+    private void startEditFps() {
+        editingFps = true;
+        int limit = HudSettings.getInstance().getHudFpsLimit();
+        fpsBuffer = limit == 0 ? "0" : String.valueOf(limit);
+    }
+    private void commitFpsEdit() {
+        if (editingFps && !fpsBuffer.trim().isEmpty()) {
+            try {
+                int val = Integer.parseInt(fpsBuffer.trim());
+                if (val >= 0 && val <= 1000) {
+                    HudSettings.getInstance().setHudFpsLimit(val);
+                    HudSettings.getInstance().setHudFpsCapEnabled(true);
+                    ConfigManager.save();
+                    dirty = true;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+        editingFps = false;
+    }
+    private int getClosestFpsLevelIndex(int currentFps) {
+        int[] levels = HudSettings.HUD_FPS_LEVELS;
+        for (int i = 0; i < levels.length; i++) {
+            if (levels[i] == currentFps || (levels[i] == 0 && (currentFps <= 0 || currentFps > 240))) return i;
+        }
+        int closestIdx = 2;
+        int minDiff = Integer.MAX_VALUE;
+        for (int i = 0; i < levels.length - 1; i++) {
+            int diff = Math.abs(levels[i] - currentFps);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestIdx = i;
+            }
+        }
+        return closestIdx;
+    }
+    private void updateFpsSlider(double mouseX) {
+        if (fpsSliderTrack == null || fpsSliderTrack.width <= 0) return;
+        float fraction = (float)Math.max(0.0, Math.min(1.0, (mouseX - fpsSliderTrack.x) / fpsSliderTrack.width));
+        int[] levels = HudSettings.HUD_FPS_LEVELS;
+        int index = Math.round(fraction * (levels.length - 1));
+        index = Math.max(0, Math.min(levels.length - 1, index));
+        int chosen = levels[index];
+        HudSettings.getInstance().setHudFpsLimit(chosen);
+        if (!HudSettings.getInstance().isHudFpsCapEnabled()) HudSettings.getInstance().setHudFpsCapEnabled(true);
+        fpsBuffer = chosen == 0 ? "0" : String.valueOf(chosen);
+        ConfigManager.save();
+        dirty = true;
+    }
+    private void renderHudFpsDialog(LadsGraphics g, int mx, int my) {
+        if (!fpsDialogOpen) return;
+        int dw = Math.min(370, width - 24);
+        int dh = Math.min(235, height - 24);
+        int dx = (width - dw) / 2;
+        int dy = (height - dh) / 2;
+
+        g.fill(0, 0, width, height, 0xB0000000);
+        round(g, dx - 2, dy + 3, dw + 4, dh + 4, 0x14000000);
+        round(g, dx, dy + 1, dw, dh, 0x28000000);
+
+        round(g, dx, dy, dw, dh, PANEL);
+        round(g, dx, dy, dw, dh, LadsPalette.BORDER);
+        g.fill(dx, dy, dx + dw, dy + 2, ACCENT);
+
+        g.drawText("GLOBAL HUD FRAME RATE CAP", dx + 12, dy + 11, ACCENT);
+        g.drawText("Controls refresh rate of all HUD modules & vanilla HUD", dx + 12, dy + 23, MUTED);
+
+        boolean closeHover = new Rect(dx + dw - 52, dy + 8, 42, 20).contains(mx, my);
+        round(g, dx + dw - 52, dy + 8, 42, 20, closeHover ? LadsPalette.HOVER : CARD);
+        g.drawCenteredText("Done", dx + dw - 31, dy + 13, TEXT);
+
+        boolean capEnabled = HudSettings.getInstance().isHudFpsCapEnabled();
+        int currentFps = HudSettings.getInstance().getHudFpsLimit();
+        Rect toggleRect = new Rect(dx + 12, dy + 40, dw - 24, 22);
+        boolean toggleHover = toggleRect.contains(mx, my);
+        round(g, toggleRect.x, toggleRect.y, toggleRect.width, toggleRect.height,
+            capEnabled ? (toggleHover ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY) : (toggleHover ? LadsPalette.HOVER : CARD));
+        String statusLabel = capEnabled ? "HUD FPS LIMIT: ENABLED (" + HudSettings.formatFpsLimit(currentFps) + ")" : "HUD FPS LIMIT: OFF (UNCAPPED)";
+        g.drawCenteredText(statusLabel, toggleRect.x + toggleRect.width / 2, toggleRect.y + 6, TEXT);
+
+        fpsSliderTrack = new Rect(dx + 12, dy + 78, dw - 24, 14);
+        int[] levels = HudSettings.HUD_FPS_LEVELS;
+        int activeIdx = getClosestFpsLevelIndex(currentFps);
+        float progress = (float) activeIdx / (levels.length - 1);
+
+        round(g, fpsSliderTrack.x, fpsSliderTrack.y + 4, fpsSliderTrack.width, 6, CARD);
+        int thumbX = (int)(fpsSliderTrack.x + progress * (fpsSliderTrack.width - 12));
+        g.fill(fpsSliderTrack.x, fpsSliderTrack.y + 4, thumbX + 6, fpsSliderTrack.y + 10, ACCENT);
+
+        for (int i = 0; i < levels.length; i++) {
+            int tx = (int)(fpsSliderTrack.x + ((float)i / (levels.length - 1)) * (fpsSliderTrack.width - 2));
+            g.fill(tx, fpsSliderTrack.y + 2, tx + 1, fpsSliderTrack.y + 12, i == activeIdx ? ACCENT : MUTED);
+        }
+        round(g, thumbX, fpsSliderTrack.y, 12, 14, draggingFpsSlider ? LadsPalette.PRIMARY_HOVER : ACCENT);
+        round(g, thumbX + 2, fpsSliderTrack.y + 2, 8, 10, TEXT);
+
+        int btnW = (dw - 24 - (levels.length - 1) * 3) / levels.length;
+        int py = dy + 100;
+        for (int i = 0; i < levels.length; i++) {
+            int bx = dx + 12 + i * (btnW + 3);
+            Rect btnRect = new Rect(bx, py, btnW, 18);
+            boolean active = levels[i] == currentFps || (levels[i] == 0 && (currentFps <= 0 || currentFps > 240));
+            boolean hover = btnRect.contains(mx, my);
+            round(g, bx, py, btnW, 18, active ? LadsPalette.PRIMARY : (hover ? LadsPalette.HOVER : CARD));
+            String lbl = levels[i] == 0 ? "Max" : levels[i] == 60 ? "60*" : String.valueOf(levels[i]);
+            g.drawCenteredText(lbl, bx + btnW / 2, py + 4, active ? TEXT : MUTED);
+        }
+
+        g.drawText("Or type custom FPS:", dx + 12, dy + 130, MUTED);
+        Rect textRect = new Rect(dx + 12, dy + 144, 76, 22);
+        round(g, textRect.x, textRect.y, textRect.width, textRect.height, editingFps ? CARD : PANEL);
+        round(g, textRect.x, textRect.y, textRect.width, textRect.height, editingFps ? ACCENT : LadsPalette.BORDER);
+        String displayVal = editingFps ? (fpsBuffer + "|") : (currentFps == 0 ? "0" : String.valueOf(currentFps));
+        g.drawCenteredText(displayVal, textRect.x + textRect.width / 2, textRect.y + 6, TEXT);
+
+        Rect applyRect = new Rect(dx + 94, dy + 144, 48, 22);
+        boolean applyHover = applyRect.contains(mx, my);
+        round(g, applyRect.x, applyRect.y, applyRect.width, applyRect.height, applyHover ? LadsPalette.HOVER : CARD);
+        g.drawCenteredText("Apply", applyRect.x + applyRect.width / 2, applyRect.y + 6, TEXT);
+
+        g.drawText("60 FPS (Recommended) prevents tearing.", dx + 150, dy + 150, MUTED);
+
+        String rateText = "Current HUD Rate: " + HudManager.getInstance().getMeasuredHudFps() + " FPS";
+        g.drawText(rateText, dx + 12, dy + 185, ACCENT);
+        g.drawText("Updates all HUD modules & vanilla HUD in real time.", dx + 12, dy + 200, MUTED);
     }
     private void renderMods(LadsGraphics g, int x, int w, int mx, int my) {
         pollModState();
@@ -460,6 +705,62 @@ public final class LadsSettingsScreen {
     public boolean mouseClicked(double x, double y, int button) {
         if (actions.click(x,y,button)) return true;
         if (colorPicker.click(x, y, button)) return true;
+        if (fpsDialogOpen) {
+            int dw = Math.min(370, width - 24);
+            int dh = Math.min(235, height - 24);
+            int dx = (width - dw) / 2;
+            int dy = (height - dh) / 2;
+            Rect dialogRect = new Rect(dx, dy, dw, dh);
+            if (!dialogRect.contains(x, y)) {
+                closeHudFpsDialog();
+                return true;
+            }
+            if (new Rect(dx + dw - 52, dy + 8, 42, 20).contains(x, y)) {
+                closeHudFpsDialog();
+                return true;
+            }
+            Rect toggleRect = new Rect(dx + 12, dy + 40, dw - 24, 22);
+            if (toggleRect.contains(x, y)) {
+                boolean next = !HudSettings.getInstance().isHudFpsCapEnabled();
+                HudSettings.getInstance().setHudFpsCapEnabled(next);
+                ConfigManager.save();
+                dirty = true;
+                return true;
+            }
+            if (fpsSliderTrack != null && new Rect(fpsSliderTrack.x - 4, fpsSliderTrack.y - 4, fpsSliderTrack.width + 8, fpsSliderTrack.height + 8).contains(x, y)) {
+                draggingFpsSlider = true;
+                updateFpsSlider(x);
+                return true;
+            }
+            int[] levels = HudSettings.HUD_FPS_LEVELS;
+            int btnW = (dw - 24 - (levels.length - 1) * 3) / levels.length;
+            int py = dy + 100;
+            for (int i = 0; i < levels.length; i++) {
+                Rect btnRect = new Rect(dx + 12 + i * (btnW + 3), py, btnW, 18);
+                if (btnRect.contains(x, y)) {
+                    HudSettings.getInstance().setHudFpsLimit(levels[i]);
+                    HudSettings.getInstance().setHudFpsCapEnabled(true);
+                    fpsBuffer = levels[i] == 0 ? "0" : String.valueOf(levels[i]);
+                    ConfigManager.save();
+                    dirty = true;
+                    return true;
+                }
+            }
+            Rect textRect = new Rect(dx + 12, dy + 144, 76, 22);
+            if (textRect.contains(x, y)) {
+                startEditFps();
+                return true;
+            }
+            Rect applyRect = new Rect(dx + 94, dy + 144, 48, 22);
+            if (applyRect.contains(x, y)) {
+                commitFpsEdit();
+                return true;
+            }
+            if (editingFps) {
+                commitFpsEdit();
+            }
+            return true;
+        }
         refreshCapabilities();
         if (button != 0 && button != 1) return false;
         for (Control c : List.copyOf(controls)) {
@@ -476,13 +777,29 @@ public final class LadsSettingsScreen {
         }
         commitEdit(); return true;
     }
-    public boolean mouseDragged(double x, double y, int button, double dx, double dy) { if (colorPicker.move(x, y)) return true; refreshCapabilities(); if (dragging == null) return false; updateDrag(x); return true; }
-    public boolean mouseReleased(double x, double y, int button) { if (colorPicker.release()) return true; refreshCapabilities(); if (dragging == null) return false; updateDrag(x); dragging = null; persist(); return true; }
+    public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
+        if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); return true; }
+        if (colorPicker.move(x, y)) return true;
+        refreshCapabilities();
+        if (dragging == null) return false;
+        updateDrag(x);
+        return true;
+    }
+    public boolean mouseReleased(double x, double y, int button) {
+        if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); draggingFpsSlider = false; return true; }
+        if (colorPicker.release()) return true;
+        refreshCapabilities();
+        if (dragging == null) return false;
+        updateDrag(x);
+        dragging = null;
+        persist();
+        return true;
+    }
     private void updateDrag(double x) {
         double t = Math.max(0, Math.min(1, (x - dragTrack.x - 4) / Math.max(1, dragTrack.width - 8)));
         if (dragging instanceof SliderOption s) s.setValue(s.getMin() + (s.getMax() - s.getMin()) * t);
         else if (dragging instanceof DoubleOption d) d.set(d.getMin() + (d.getMax() - d.getMin()) * t);
-        dirty = true; detail.touch();
+        dirty = true; detail.touch(); persist();
     }
     public boolean mouseScrolled(double x, double y, double amount) {
         if (actions.wheel(amount)) return true;
@@ -493,6 +810,28 @@ public final class LadsSettingsScreen {
     public boolean keyPressed(int key, int modifiers) {
         if (actions.key(key,modifiers)) return true;
         if (colorPicker.key(key)) return true;
+        if (fpsDialogOpen) {
+            if (key == 256) { closeHudFpsDialog(); return true; }
+            if (editingFps) {
+                if (key == 257) { commitFpsEdit(); return true; }
+                if (key == 259) {
+                    if (!fpsBuffer.isEmpty()) fpsBuffer = fpsBuffer.substring(0, fpsBuffer.length() - 1);
+                    return true;
+                }
+            }
+            if (key == 262 || key == 263) {
+                int dir = key == 262 ? 1 : -1;
+                int current = HudSettings.getInstance().getHudFpsLimit();
+                int next = HudSettings.nextFpsLevel(current, dir);
+                HudSettings.getInstance().setHudFpsLimit(next);
+                HudSettings.getInstance().setHudFpsCapEnabled(true);
+                fpsBuffer = next == 0 ? "0" : String.valueOf(next);
+                ConfigManager.save();
+                dirty = true;
+                return true;
+            }
+            return true;
+        }
         refreshCapabilities();
         boolean ctrl = (modifiers & 2) != 0;
         if (ctrl && key == 70) { if (!finish()) return true; if (!modsView) detail = null; startSearch(); return true; }
@@ -549,6 +888,13 @@ public final class LadsSettingsScreen {
     public boolean charTyped(int codePoint) {
         if (actions.type(codePoint)) return true;
         if (colorPicker.type(codePoint)) return true;
+        if (fpsDialogOpen) {
+            if (editingFps && codePoint >= '0' && codePoint <= '9' && fpsBuffer.length() < 4) {
+                fpsBuffer += (char)codePoint;
+                return true;
+            }
+            return true;
+        }
         if (!editingSearch && editingOption == null || Character.isISOControl(codePoint) || !Character.isValidCodePoint(codePoint)) return false;
         String text = new String(Character.toChars(codePoint));
         if (selectAll) { editBuffer = ""; cursor = 0; selectAll = false; }

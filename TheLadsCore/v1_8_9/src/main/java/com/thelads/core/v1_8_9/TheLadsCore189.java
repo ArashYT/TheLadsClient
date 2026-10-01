@@ -9,6 +9,7 @@ import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
+import net.minecraft.client.Minecraft;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
@@ -56,8 +57,14 @@ public class TheLadsCore189 {
      * and bars needs GlStateManager/RenderItem colour hooks, not verified with OptiFine), BossBar, Paperdoll and the tools HUDs
      * (Clock, Stopwatch, ItemCounter, ReachDisplay, ServerAddress, PortalCoordinates), whose 1.8.9 bridge data is not written yet.
      */
+    private static final String[] GAMEPLAY_MODULES = {
+        "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "Crosshair", "OldAnimations", "LegacySwing",
+        "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale"
+    };
+
     static void registerStatuses() {
         ModuleSupport.registerBuiltIn(NativeHud.MODULES);
+        ModuleSupport.registerBuiltIn(GAMEPLAY_MODULES);
         for (String[] module : MOD_BACKED)
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
         ModuleSupport.registerUnavailable("HideChatIndicators", "Minecraft 1.8.9 has no chat signing, so there are no indicators to hide.");
@@ -68,8 +75,29 @@ public class TheLadsCore189 {
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         NativeMenuKey.tick();
-        // The launcher lists Lads modules from this catalog; a later registration bumps the revision and rewrites it.
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer != null) {
+            com.thelads.core.config.Module fullbright = com.thelads.core.config.ModuleManager.getInstance().getModule("Fullbright");
+            if (fullbright != null && fullbright.isEnabled() && mc.gameSettings.gammaSetting < 15.0f) {
+                mc.gameSettings.gammaSetting = 100.0f;
+            }
+            com.thelads.core.config.Module toggleSprint = com.thelads.core.config.ModuleManager.getInstance().getModule("ToggleSprint");
+            if (toggleSprint != null && toggleSprint.isEnabled() && mc.thePlayer.movementInput != null) {
+                if (mc.thePlayer.movementInput.moveForward > 0 && !mc.thePlayer.isSneaking()
+                    && !mc.thePlayer.isCollidedHorizontally && mc.thePlayer.getFoodStats().getFoodLevel() > 6) {
+                    mc.thePlayer.setSprinting(true);
+                }
+            }
+        }
         CoreCatalogExporter.exportIfChanged();
         if (Boolean.getBoolean("thelads.verify189Core")) CoreProbe.tick();
+    }
+
+    @SubscribeEvent
+    public void fov(net.minecraftforge.client.event.EntityViewRenderEvent.FOVModifier event) {
+        com.thelads.core.config.Module zoom = com.thelads.core.config.ModuleManager.getInstance().getModule("Zoom");
+        if (zoom != null && zoom.isEnabled() && org.lwjgl.input.Keyboard.isKeyDown(org.lwjgl.input.Keyboard.KEY_C)) {
+            event.setFOV(event.getFOV() * 0.3f);
+        }
     }
 }

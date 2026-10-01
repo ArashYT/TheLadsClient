@@ -1351,6 +1351,13 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void CheckUpdateBtn_Click(object? sender, RoutedEventArgs e)
+    {
+        Log("[Updater] Manual update check triggered.");
+        ReportUpdate("Checking for updates...");
+        await PollForUpdatesAsync();
+    }
+
     private void MinimizeBtn_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void CloseBtn_Click(object? sender, RoutedEventArgs e)
     {

@@ -66,7 +66,10 @@ public class ConfigManager {
         hud.addProperty("globalColor", HudSettings.getInstance().getGlobalColor());
         hud.addProperty("globalBackground", HudSettings.getInstance().getGlobalBackground());
         hud.addProperty("textShadow", HudSettings.getInstance().isTextShadow());
+        hud.addProperty("softShadow", HudSettings.getInstance().isSoftShadow());
         hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
+        hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled());
+        hud.addProperty("hudFpsLimit", HudSettings.getInstance().getHudFpsLimit());
         JsonArray favorites = new JsonArray();
         HudSettings.getInstance().getFavoriteColors().forEach(favorites::add);
         hud.add("favoriteColors", favorites);
@@ -157,6 +160,15 @@ public class ConfigManager {
             }
             if (hud.has("textShadow")) {
                 HudSettings.getInstance().setTextShadow(hud.get("textShadow").getAsBoolean());
+            }
+            if (hud.has("softShadow")) {
+                HudSettings.getInstance().setSoftShadow(hud.get("softShadow").getAsBoolean());
+            }
+            if (hud.has("hudFpsCapEnabled")) {
+                HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapEnabled").getAsBoolean());
+            }
+            if (hud.has("hudFpsLimit")) {
+                HudSettings.getInstance().setHudFpsLimit(hud.get("hudFpsLimit").getAsInt());
             }
             if (hud.has("backgrounds")) HudSettings.getInstance().setBackgrounds(hud.get("backgrounds").getAsBoolean());
             if (hud.has("favoriteColors")) {

@@ -81,6 +81,43 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public String getItemCountText(int selection) {
+        Minecraft mc = mc();
+        if (mc.thePlayer == null) return "Items: 0";
+        ItemStack held = mc.thePlayer.getHeldItem();
+        if (held == null) return "Items: 0";
+        int total = 0;
+        for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
+            if (stack != null && stack.getItem() == held.getItem() && (!held.getHasSubtypes() || stack.getItemDamage() == held.getItemDamage())) {
+                total += stack.stackSize;
+            }
+        }
+        return held.getDisplayName() + ": " + total;
+    }
+
+    @Override
+    public String getRecentReachText() {
+        Minecraft mc = mc();
+        if (mc.thePlayer == null || mc.objectMouseOver == null) return "Reach: --";
+        if (mc.objectMouseOver.typeOfHit == net.minecraft.util.MovingObjectPosition.MovingObjectType.ENTITY
+            && mc.objectMouseOver.entityHit != null && mc.objectMouseOver.hitVec != null) {
+            double dist = mc.thePlayer.getPositionEyes(1.0f).distanceTo(mc.objectMouseOver.hitVec);
+            return String.format(java.util.Locale.ROOT, "Reach: %.2fm", dist);
+        }
+        return "Reach: --";
+    }
+
+    @Override
+    public boolean hasPaperDollRenderer() {
+        return true;
+    }
+
+    @Override
+    public int bossBarCount() {
+        return net.minecraft.entity.boss.BossStatus.bossName != null && net.minecraft.entity.boss.BossStatus.statusBarTime > 0 ? 1 : 0;
+    }
+
+    @Override
     public String getPlayerDirection() {
         return mc().thePlayer != null ? mc().thePlayer.getHorizontalFacing().getName() : "North";
     }

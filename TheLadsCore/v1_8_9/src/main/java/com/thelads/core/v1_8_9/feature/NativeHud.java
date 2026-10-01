@@ -22,7 +22,8 @@ import org.lwjgl.opengl.GL11;
 public final class NativeHud {
     /** The HUD modules drawn here with VanillaGameBridge189 data: built in, as on the other versions. */
     public static final String[] MODULES = {"FPS", "Coordinates", "PingHUD", "Memory", "Speed", "Day", "Time", "XP", "Potion Effects",
-        "CPS", "Keystrokes", "Biome", "Direction", "Health", "Hunger", "TexturePacks", "ArmorHUD", "Scoreboard"};
+        "CPS", "Keystrokes", "Biome", "Direction", "Health", "Hunger", "TexturePacks", "ArmorHUD", "Scoreboard",
+        "Paperdoll", "BossBar", "Autohide", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates"};
     /** QA only (CoreProbe): frames in which HudManager drew the Lads HUD. */
     public static long frames;
     private static boolean hidSidebar;
