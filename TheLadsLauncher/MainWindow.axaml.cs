@@ -5097,7 +5097,7 @@ public partial class MainWindow : Window
             var activeProfile = _profileService.GetActiveProfile();
             string gameDirectory = _pathService.GetProfileDirectory(activeProfile);
             string launchVersionId = GameVersionPolicy.ResolveVersionId(activeProfile);
-            if (GameVersionPolicy.RequiresBundledCore(activeProfile.MinecraftVersion) && string.IsNullOrWhiteSpace(activeProfile.FabricVersion))
+            if (GameVersionPolicy.RequiresFabric(activeProfile.MinecraftVersion) && string.IsNullOrWhiteSpace(activeProfile.FabricVersion))
                 throw new InvalidOperationException("The Lads Client profile requires a Fabric loader.");
             // Shared worlds/packs/server list (and options.txt unless isolated). Null: the user cancelled at the sharing prompt.
             if (await PrepareSharedContentForLaunchAsync(activeProfile, gameDirectory) is not { } prepared) return;

@@ -19,10 +19,26 @@ jobs:
           dotnet-version: '8.0.x'
       - uses: actions/setup-java@v4
         with:
+          # 25 (last, so JAVA_HOME) runs the Gradle 9 Core build; 21 is the toolchain its build189 task starts the separate
+          # Gradle 8.8 build of the Minecraft 1.8.9 (Forge) Core with (TheLadsCore/build.gradle, found through setup-java's
+          # toolchains.xml or provisioned by foojay). That build downloads its own Java 8 into ~/.gradle/jdks.
           distribution: temurin
           java-version: |
             21
             25
+      # The 1.8.9 Core build: Essential Loom recompresses the Forge patches once (about 20 of a cold build's 22 minutes) into
+      # ~/.gradle/caches/essential-loom, and foojay puts the Java 8 toolchain in ~/.gradle/jdks. Both are keyed on the
+      # v1_8_9 build files, so a new Forge, MCP, Loom or Java version starts over instead of reusing stale output. The build
+      # fetches from repo.essential.gg, maven.minecraftforge.net, repo.spongepowered.org and maven.architectury.dev.
+      - name: Cache the Minecraft 1.8.9 Core toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/essential-loom
+            ~/.gradle/jdks
+          key: lads-core-189-${{ runner.os }}-${{ hashFiles('TheLadsCore/v1_8_9/build.gradle', 'TheLadsCore/v1_8_9/settings.gradle', 'TheLadsCore/v1_8_9/gradle.properties', 'TheLadsCore/v1_8_9/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            lads-core-189-${{ runner.os }}-
       - name: Check tag version
         shell: pwsh
         run: |

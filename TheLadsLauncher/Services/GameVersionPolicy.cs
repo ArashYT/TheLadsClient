@@ -14,7 +14,10 @@ public static class GameVersionPolicy
     public const string ForgeVersionId = "1.8.9-forge1.8.9-11.15.1.2318-1.8.9";
 
     public static bool RequiresBundledCore(string minecraftVersion) =>
-        minecraftVersion is "1.21.1" or "1.21.11" or "26.2" or "26.3";
+        minecraftVersion is "1.21.1" or "1.21.11" or "26.2" or "26.3" or ForgeMinecraftVersion;
+
+    /// <summary>A bundled-Core version whose Core is a Fabric mod: all of them but 1.8.9, whose Core is a Forge mod.</summary>
+    public static bool RequiresFabric(string minecraftVersion) => RequiresBundledCore(minecraftVersion) && !UsesForge(minecraftVersion);
 
     /// <summary>The loader is Forge, never Fabric: only 1.8.9.</summary>
     public static bool UsesForge(string minecraftVersion) => minecraftVersion == ForgeMinecraftVersion;

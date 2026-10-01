@@ -22,6 +22,8 @@ public sealed record FabricModInfo(string Id, string? Name, string? Version, str
     public byte[]? Icon { get; init; }
     /// <summary>Read from Forge's mcmod.info (see <see cref="FabricModMetadata.ReadForgeJar"/>), not fabric.mod.json.</summary>
     public bool Forge { get; init; }
+    /// <summary>mcmod.info's "mcversion". Forge only shows it; the launcher checks it for its bundled 1.8.9 Core.</summary>
+    public string? McVersion { get; init; }
     public bool HasMetadata => Name != null;
     public bool IsServerOnly => Environment == "server";
 }
@@ -52,7 +54,12 @@ public static class FabricModMetadata
     public static FabricModInfo? ReadForgeJar(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-        using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
+        return ReadForgeJar(stream);
+    }
+
+    public static FabricModInfo? ReadForgeJar(Stream stream)
+    {
+        using var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
         var entry = zip.GetEntry("mcmod.info");
         if (entry == null) return ReadOptiFine(zip);
         if (entry.Length > MaximumMetadataSize) throw new InvalidDataException("Oversized mcmod.info.");
@@ -64,7 +71,7 @@ public static class FabricModMetadata
         var authors = mod.TryGetProperty("authorList", out var names) && names.ValueKind == JsonValueKind.Array
             ? names.EnumerateArray().Where(n => n.ValueKind == JsonValueKind.String).Select(n => n.GetString()!).ToList() : new List<string>();
         return new FabricModInfo(id, Text(mod, "name") ?? id, Text(mod, "version"), Text(mod, "description"), authors, null, null,
-            Array.Empty<string>(), new Dictionary<string, string>(), false, Array.Empty<FabricModInfo>(), null) { Forge = true };
+            Array.Empty<string>(), new Dictionary<string, string>(), false, Array.Empty<FabricModInfo>(), null) { Forge = true, McVersion = Text(mod, "mcversion") };
     }
 
     // Forge loads OptiFine through the TweakClass in its manifest. Its changelog.txt opens with "OptiFine <version>".

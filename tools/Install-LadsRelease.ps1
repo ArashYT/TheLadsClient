@@ -8,7 +8,7 @@ $releaseRoot = [IO.Path]::GetFullPath($SourceDirectory)
 $clientInstallRoot = [IO.Path]::GetFullPath($InstallDirectory)
 if ($clientInstallRoot.TrimEnd('\','/') -eq [IO.Path]::GetPathRoot($clientInstallRoot).TrimEnd('\','/')) { throw 'The installation must be a named directory.' }
 if (-not (Test-Path -LiteralPath (Join-Path $releaseRoot 'TheLadsLauncher.exe') -PathType Leaf)) { throw 'No published launcher found.' }
-foreach ($gameVersion in @('1.21.1', '1.21.11', '26.2', '26.3')) {
+foreach ($gameVersion in @('1.8.9', '1.21.1', '1.21.11', '26.2', '26.3')) {
     if (-not (Test-Path -LiteralPath (Join-Path $releaseRoot "game-mods/$gameVersion/theladscore.jar") -PathType Leaf)) { throw "Missing $gameVersion client jar." }
 }
 New-Item -ItemType Directory -Path $clientInstallRoot -Force | Out-Null

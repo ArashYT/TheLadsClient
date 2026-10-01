@@ -61,7 +61,7 @@ public class LaunchService : ILaunchService
         var versionId = GameVersionPolicy.ResolveVersionId(profile);
         var usesFabric = !string.IsNullOrWhiteSpace(profile.FabricVersion);
         var usesForge = GameVersionPolicy.UsesForge(profile.MinecraftVersion); // ResolveVersionId refuses Fabric on these
-        if (GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion) && !usesFabric)
+        if (GameVersionPolicy.RequiresFabric(profile.MinecraftVersion) && !usesFabric)
             throw new InvalidOperationException($"The Lads Core for Minecraft {profile.MinecraftVersion} requires Fabric. Select a Fabric loader in this profile.");
 
         Action<string> report = message =>
