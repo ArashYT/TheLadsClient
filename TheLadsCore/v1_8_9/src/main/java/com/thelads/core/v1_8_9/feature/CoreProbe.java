@@ -42,17 +42,23 @@ import org.lwjgl.input.Mouse;
  * QA only (-Dthelads.verify189Core=true, sandbox game folders only): the C1 checks through 1.8.9's real input paths.
  * Synthetic events go into LWJGL's own keyboard and mouse queues, so GuiScreen.handleInput and Minecraft.runTick read them
  * like typed ones: Right Shift on the title screen, typing in the Lads menu, Right Shift in a QA world, Escape to the pause
- * menu and a click on its "Lads Client" button. Then the launcher catalog is checked. Screenshots: game/lads-qa/screenshots.
+ * menu and a click on its "Lads Client" button. Then the launcher catalog is checked and HudProbe runs the C2 HUD checks in
+ * the same QA world. Screenshots: game/lads-qa/screenshots.
  */
 public final class CoreProbe {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final String WORLD = "Client QA 1_8_9";
-    private interface Step { boolean run(Minecraft mc) throws Exception; }
-    private static final List<Step> STEPS = Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::title, CoreProbe::menuAtTitle,
-        CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
+    interface Step { boolean run(Minecraft mc) throws Exception; }
+    private static final List<Step> STEPS = new java.util.ArrayList<>(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::title,
+        CoreProbe::menuAtTitle, CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
         CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::closedToGame,
         CoreProbe::pauseMenu, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
-        CoreProbe::catalog, CoreProbe::leftWorld);
+        CoreProbe::catalog));
+    static {
+        STEPS.addAll(HudProbe.STEPS);
+        STEPS.add(CoreProbe::leaveWorld);
+        STEPS.add(CoreProbe::leftWorld);
+    }
     private static int step, passed, delay, waited;
     private static boolean finished, pauseOnLostFocus;
     private static GuiScreen title, pause;
@@ -72,7 +78,7 @@ public final class CoreProbe {
             if (++step < STEPS.size()) return;
             finish();
             LOG.info("Lads 1.8.9 core probe END: {} passed, 0 failed; menu key through GuiScreen.handleInput and runTick, pause-menu "
-                + "button, 1.8.9 bridge in a QA world, launcher catalog", passed);
+                + "button, 1.8.9 bridge in a QA world, launcher catalog, HUD through RenderGameOverlayEvent and the HUD editor", passed);
         } catch (Throwable failure) {
             finish();
             LOG.error("Lads 1.8.9 core probe FAILED after {} checks", passed, failure);
@@ -81,6 +87,7 @@ public final class CoreProbe {
 
     private static void finish() {
         finished = true;
+        HudProbe.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -262,18 +269,26 @@ public final class CoreProbe {
             "the catalog names Minecraft 1.8.9 and Core " + core);
         JsonArray modules = root.getAsJsonArray("modules");
         int builtIn = 0, unavailable = 0, pending = 0;
-        List<String> mismatched = new java.util.ArrayList<>();
+        List<String> mismatched = new java.util.ArrayList<>(), builtInNames = new java.util.ArrayList<>();
         for (JsonElement element : modules) {
             JsonObject module = element.getAsJsonObject();
             String name = module.get("name").getAsString(), support = module.get("support").getAsString();
-            if (!support.equals(ModuleSupport.support(name)) || module.get("toggleable").getAsBoolean()) mismatched.add(name + "=" + support);
-            if (support.equals("builtIn")) builtIn++;
+            if (!support.equals(ModuleSupport.support(name)) || module.get("toggleable").getAsBoolean() != ModuleSupport.isToggleable(name))
+                mismatched.add(name + "=" + support);
+            if (support.equals("builtIn")) { builtIn++; builtInNames.add(name); }
             else if (support.equals("unavailable")) unavailable++;
             else if (support.equals("pending")) pending++;
         }
-        check(mismatched.isEmpty(), "every catalog row matches this game's registrations, none toggleable " + mismatched);
-        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == 0 && unavailable == 25
-            && pending == modules.size() - unavailable, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, " + pending + " pending");
+        check(mismatched.isEmpty(), "every catalog row matches this game's registrations and switchability " + mismatched);
+        check(builtInNames.size() == NativeHud.MODULES.length && builtInNames.containsAll(Arrays.asList(NativeHud.MODULES)),
+            "exactly the HUD modules NativeHud draws are built in " + builtInNames);
+        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == 18 && unavailable == 25
+            && pending == modules.size() - unavailable - builtIn, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, " + pending + " pending");
+        mc.displayGuiScreen(null); // Back to Game: the HUD checks run in gameplay
+        return after(10);
+    }
+
+    private static boolean leaveWorld(Minecraft mc) {
         // Leave through the pause menu's own path so the QA world is saved.
         mc.theWorld.sendQuittingDisconnectingPacket();
         mc.loadWorld(null);
@@ -303,14 +318,14 @@ public final class CoreProbe {
         return false;
     }
 
-    private static void screenshot(Minecraft mc, String name) {
+    static void screenshot(Minecraft mc, String name) {
         File folder = new File(mc.mcDataDir, "lads-qa");
         new File(folder, "screenshots").mkdirs(); // ScreenShotHelper creates only the last folder
         ScreenShotHelper.saveScreenshot(folder, name + ".png", mc.displayWidth, mc.displayHeight, mc.getFramebuffer());
     }
 
     /** A key press and release, queued in LWJGL's keyboard buffer as Keyboard.poll() stores them. */
-    private static void tap(int key, char character) throws Exception {
+    static void tap(int key, char character) throws Exception {
         for (int down = 1; down >= 0; down--) {
             ByteBuffer events = queue(Keyboard.class);
             events.compact();
@@ -319,18 +334,26 @@ public final class CoreProbe {
         }
     }
 
-    /** A left click at a GUI position of the current screen, queued in LWJGL's mouse buffer (absolute window pixels, y up). */
-    private static void click(int guiX, int guiY) throws Exception {
+    /** A left click at a GUI position of the current screen. */
+    static void click(int guiX, int guiY) throws Exception {
+        mouse(0, true, guiX, guiY);
+        mouse(0, false, guiX, guiY);
+    }
+
+    /**
+     * One mouse event at a GUI position of the current screen (button -1: a move, which GuiScreen turns into mouseClickMove while
+     * a button is held), queued in LWJGL's mouse buffer as Mouse.poll() stores it: absolute window pixels, y up. Without a screen
+     * (gameplay) only the button matters.
+     */
+    static void mouse(int button, boolean down, int guiX, int guiY) throws Exception {
         Minecraft mc = Minecraft.getMinecraft();
         GuiScreen screen = mc.currentScreen;
-        int x = (guiX * mc.displayWidth + mc.displayWidth / 2) / screen.width;
-        int y = ((screen.height - 1 - guiY) * mc.displayHeight + mc.displayHeight / 2) / screen.height;
-        for (int down = 1; down >= 0; down--) {
-            ByteBuffer events = queue(Mouse.class);
-            events.compact();
-            events.put((byte) 0).put((byte) down).putInt(x).putInt(y).putInt(0).putLong(System.nanoTime());
-            events.flip();
-        }
+        int x = screen == null ? 0 : (guiX * mc.displayWidth + mc.displayWidth / 2) / screen.width;
+        int y = screen == null ? 0 : ((screen.height - 1 - guiY) * mc.displayHeight + mc.displayHeight / 2) / screen.height;
+        ByteBuffer events = queue(Mouse.class);
+        events.compact();
+        events.put((byte) button).put((byte) (down ? 1 : 0)).putInt(x).putInt(y).putInt(0).putLong(System.nanoTime());
+        events.flip();
     }
 
     private static ByteBuffer queue(Class<?> device) throws Exception {
@@ -339,12 +362,19 @@ public final class CoreProbe {
         return (ByteBuffer) field.get(null);
     }
 
-    private static boolean after(int ticks) {
+    /** Step done; the next one runs after this many ticks (each tick renders frames first). */
+    static boolean after(int ticks) {
         delay = ticks;
         return true;
     }
 
-    private static void check(boolean result, String description) {
+    /** Step not done yet: run it again after this many ticks. */
+    static boolean retry(int ticks) {
+        delay = ticks;
+        return false;
+    }
+
+    static void check(boolean result, String description) {
         if (!result) throw new IllegalStateException("1.8.9 core QA: " + description);
         passed++;
         LOG.info("Lads 1.8.9 core probe PASS {}: {}", passed, description);

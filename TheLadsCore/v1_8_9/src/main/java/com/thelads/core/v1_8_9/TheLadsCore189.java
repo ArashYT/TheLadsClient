@@ -7,6 +7,7 @@ import com.thelads.core.mods.CoreCatalogExporter;
 import com.thelads.core.shared.SharedContentPaths;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
+import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
@@ -43,16 +44,20 @@ public class TheLadsCore189 {
         registerStatuses();
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
+        MinecraftForge.EVENT_BUS.register(new NativeHud());
         MinecraftForge.EVENT_BUS.register(this);
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
 
     /**
-     * The launcher catalog shows only what works here. Nothing is built in yet (the HUD and the gameplay modules follow);
-     * modules built on third-party mods, or on game features 1.8.9 lacks, are unavailable with the reason. The rest stay
-     * pending: "not connected to this game version yet".
+     * The launcher catalog shows only what works here: the HUD modules NativeHud draws are built in; modules built on
+     * third-party mods, or on game features 1.8.9 lacks, are unavailable with the reason. The rest stay pending: "not connected
+     * to this game version yet" (the gameplay modules follow in C3). Pending HUD-side modules: Autohide (fading 1.8.9's hotbar
+     * and bars needs GlStateManager/RenderItem colour hooks, not verified with OptiFine), BossBar, Paperdoll and the tools HUDs
+     * (Clock, Stopwatch, ItemCounter, ReachDisplay, ServerAddress, PortalCoordinates), whose 1.8.9 bridge data is not written yet.
      */
     static void registerStatuses() {
+        ModuleSupport.registerBuiltIn(NativeHud.MODULES);
         for (String[] module : MOD_BACKED)
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
         ModuleSupport.registerUnavailable("HideChatIndicators", "Minecraft 1.8.9 has no chat signing, so there are no indicators to hide.");
