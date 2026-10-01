@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$PrepareOnly,
-    [switch]$SkipCoreBuild
+    [switch]$SkipCoreBuild,
+    [switch]$Draft
 )
 $ErrorActionPreference = 'Stop'
 $repo = 'ArashYT/TheLadsClient'
@@ -84,6 +85,13 @@ try {
     foreach ($asset in Get-ChildItem -LiteralPath $packages -File) {
         if (-not ($remote.assets | Where-Object { $_.name -eq $asset.Name -and $_.size -eq $asset.Length })) { throw "Draft asset missing or wrong size: $($asset.Name)" }
     }
-    Write-Host "Draft ready: https://github.com/$repo/releases"
-    Write-Host "Review notes and assets, then publish $tag as the latest stable release. Installed clients will update automatically."
+    if ($Draft) {
+        Write-Host "Draft ready: https://github.com/$repo/releases"
+        Write-Host "Review notes and assets, then publish $tag as the latest stable release. Installed clients will update automatically."
+    } else {
+        & gh release edit $tag --repo $repo --draft=false --latest
+        if ($LASTEXITCODE -ne 0) { throw "Failed to publish release $tag." }
+        Write-Host "Release $tag published to https://github.com/$repo/releases"
+        Write-Host "Installed clients will update automatically."
+    }
 } finally { Pop-Location }
