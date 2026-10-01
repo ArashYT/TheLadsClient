@@ -21,6 +21,15 @@ public static class ProfileTools
             && (string.IsNullOrWhiteSpace(query) || (p.Name + " " + p.MinecraftVersion).Contains(query.Trim(), StringComparison.OrdinalIgnoreCase)))
             .OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>The versions the Play screen offers; profiles for other versions are listed greyed out.</summary>
+    public static readonly string[] PlayableVersions = { "26.3", "26.2", "1.8.9" };
+
+    /// <summary>Newest Minecraft version first (1.8.9 last); "Latest Release" ahead of the profile it matches.</summary>
+    public static IEnumerable<LauncherProfile> NewestFirst(IEnumerable<LauncherProfile> profiles) =>
+        profiles.OrderByDescending(p => Version.TryParse(p.MinecraftVersion, out var v) ? v : new Version(0, 0))
+            .ThenByDescending(p => p.Name == ProfileService.LatestReleaseName)
+            .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase);
+
     public static Preset Capture(LauncherProfile profile, string gameDirectory)
     {
         if (RunningGameMarker.IsRunning(gameDirectory)) throw new IOException("Close this profile's game before copying its settings.");

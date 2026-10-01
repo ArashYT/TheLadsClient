@@ -13,7 +13,9 @@ public class LauncherSettings
     public const string DefaultMicrosoftClientId = "c8ca54dc-01e3-4bb3-824a-35e09bb3aa13";
 
     // Memory
-    public int MaxRamMb { get; set; } = 4096;
+    public int MaxRamMb { get; set; } = RecommendedRamMb(TotalMemoryBytes());
+    /// <summary>Set once the user saves their own amount; until then MaxRamMb follows <see cref="RecommendedRamMb"/>.</summary>
+    public bool RamChosenByUser { get; set; }
     public int MinRamMb { get; set; } = 512;
 
     // Java
@@ -103,7 +105,10 @@ public class LauncherSettings
             if (File.Exists(SettingsPath))
             {
                 string json = File.ReadAllText(SettingsPath);
-                return JsonSerializer.Deserialize<LauncherSettings>(json) ?? new LauncherSettings();
+                var loaded = JsonSerializer.Deserialize<LauncherSettings>(json) ?? new LauncherSettings();
+                // Before 1.4.5 everyone was saved with a flat 4 GB; keep only an amount the user picked.
+                if (!loaded.RamChosenByUser) loaded.MaxRamMb = RecommendedRamMb(TotalMemoryBytes());
+                return loaded;
             }
         }
         catch { }
@@ -122,6 +127,22 @@ public class LauncherSettings
             finally { if (File.Exists(temp)) File.Delete(temp); }
         }
         catch { }
+    }
+
+    /// <summary>Physical memory (0 when it cannot be read).</summary>
+    public static long TotalMemoryBytes()
+    {
+        try { return GC.GetGCMemoryInfo().TotalAvailableMemoryBytes; } catch { return 0; }
+    }
+
+    /// <summary>Game RAM for a PC with this much memory: half of it up to 8 GB (6 GB → 3, 8 → 4), then 1 GB more per
+    /// 4 GB (12 → 5, 16 → 6), between 2 and 8 GB.</summary>
+    public static int RecommendedRamMb(long totalBytes)
+    {
+        int gb = (int)Math.Round(totalBytes / (1024.0 * 1024 * 1024));
+        if (gb <= 0) return 4096;
+        int pick = gb <= 8 ? gb / 2 : 4 + (gb - 8) / 4;
+        return Math.Clamp(pick, 2, 8) * 1024;
     }
 
     public static string[] GetAvailableThemes() => new[]

@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui" xmlns:local="using:TheLadsLauncher.Controls" xmlns:views="using:TheLadsLauncher.Views" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.MainWindow" Title="The Lads Client" Width="1152" Height="720" MinWidth="960" MinHeight="600" Background="#17181B" Icon="avares://TheLadsLauncher/Assets/icon.ico" WindowStartupLocation="CenterScreen" ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="44" WindowDecorations="BorderOnly">
+<Window xmlns="https://github.com/avaloniaui" xmlns:local="using:TheLadsLauncher.Controls" xmlns:views="using:TheLadsLauncher.Views" xmlns:models="using:TheLadsLauncher.Models" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.MainWindow" Title="The Lads Client" Width="1152" Height="720" MinWidth="960" MinHeight="600" Background="#17181B" Icon="avares://TheLadsLauncher/Assets/icon.ico" WindowStartupLocation="CenterScreen" ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="44" WindowDecorations="BorderOnly">
     <Window.Resources>
         <DataTemplate x:Key="ModListItemTemplate">
             <Border Classes="modcard" Background="#1D1E22" CornerRadius="4" Padding="16,12" BorderBrush="#303137" BorderThickness="1" Margin="0,0,0,8">
@@ -29,7 +29,7 @@
             <Grid RowDefinitions="44,*" ColumnDefinitions="184,*">
                 <Border x:Name="TitleBar" Background="#121315" BorderBrush="#303137" BorderThickness="0,0,0,1">
                     <StackPanel Orientation="Horizontal" Margin="19,0,0,0" Spacing="9" VerticalAlignment="Center">
-                        <Image Source="avares://TheLadsLauncher/Assets/logo.png" Width="146" Height="30" Stretch="Uniform" />
+                        <Image Classes="titleLogo" Source="avares://TheLadsLauncher/Assets/logo.png" Width="146" Height="30" Stretch="Uniform" />
                     </StackPanel>
                 </Border>
                 <Border x:Name="ContentTitleBar" Grid.Column="1" Background="#17181B" BorderBrush="#303137" BorderThickness="0,0,0,1">
@@ -58,7 +58,6 @@
                                     </Border>
                                 </Border>
                             </Grid>
-                            <Button Classes="window" Content="⌕" ToolTip.Tip="Command palette (Ctrl+K)" Click="CommandPalette_Click" />
                             <Button x:Name="AspectLockBtn" Classes="window" Content="Free" ToolTip.Tip="Toggle 16:9 aspect lock" Click="AspectLockBtn_Click" />
                             <Button x:Name="ResetSizeBtn" Classes="window" Content="&#8634;" ToolTip.Tip="Reset window size" Click="ResetSizeBtn_Click" />
                             <Button x:Name="CheckUpdateBtn" Classes="window" ToolTip.Tip="Check for launcher updates" Click="CheckUpdateBtn_Click" Padding="7,0">
@@ -83,24 +82,35 @@
                                         <TextBlock Text="Play" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
-                                <Button x:Name="NavWorlds" AutomationProperties.Name="Worlds" Classes="nav" Content="Worlds" Click="NavWorlds_Click" />
+                                <Button x:Name="NavAccounts" AutomationProperties.Name="Accounts" Classes="nav" Click="NavAccounts_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <Path Data="M 9,2 A 3,3 0 1 1 8.99,2 M 2,17 V 14 C 2,9 16,9 16,14 V 17" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <TextBlock Text="Accounts" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="NavProfiles" AutomationProperties.Name="Profiles" Classes="nav" Click="NavProfiles_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
                                         <Path Data="M 2,3 H 16 V 13 H 2 Z M 6,16 H 12 M 9,13 V 16" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
                                         <TextBlock Text="Profiles" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
-                                <Button x:Name="NavMods" AutomationProperties.Name="Mods and packs" Classes="nav" Click="NavMods_Click">
+                                <Border Height="1" Background="#28292E" Margin="12,12" />
+                                <Button x:Name="NavWorlds" AutomationProperties.Name="Worlds" Classes="nav" Click="NavWorlds_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 2,2 H 7 V 7 H 2 Z M 11,2 H 16 V 7 H 11 Z M 2,11 H 7 V 16 H 2 Z M 11,11 H 16 V 16 H 11 Z" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
-                                        <TextBlock Text="Mods &amp; packs" VerticalAlignment="Center" />
+                                        <Path Data="M 9,1 A 8,8 0 1 1 8.99,1 Z M 1,9 H 17 M 9,1 C 5,4 5,14 9,17 M 9,1 C 13,4 13,14 9,17" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <TextBlock Text="Worlds" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
-                                <Border Height="1" Background="#28292E" Margin="12,12" />
-                                <Button x:Name="NavAccounts" AutomationProperties.Name="Accounts" Classes="nav" Click="NavAccounts_Click">
+                                <Button x:Name="NavMods" AutomationProperties.Name="Mods" Classes="nav" Click="NavMods_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 9,2 A 3,3 0 1 1 8.99,2 M 2,17 V 14 C 2,9 16,9 16,14 V 17" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
-                                        <TextBlock Text="Accounts" VerticalAlignment="Center" />
+                                        <Path Data="M 2,2 H 7 V 7 H 2 Z M 11,2 H 16 V 7 H 11 Z M 2,11 H 7 V 16 H 2 Z M 11,11 H 16 V 16 H 11 Z" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <TextBlock Text="Mods" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="NavPacks" AutomationProperties.Name="Packs" Classes="nav" Click="NavPacks_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <Path Data="M 2,7 L 9,3 L 16,7 L 9,11 Z M 2,10.5 L 9,14.5 L 16,10.5" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" StrokeLineCap="Round" VerticalAlignment="Center" />
+                                        <TextBlock Text="Packs" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavGallery" AutomationProperties.Name="Gallery" Classes="nav" Click="NavGallery_Click">
@@ -145,25 +155,26 @@
                         </Border>
                     </Grid>
                 </Border>
-                <Grid Grid.Row="1" Grid.Column="1">
-                    <Grid x:Name="HomePage" Margin="28,16,28,16" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="*,Auto">
+                    <Grid x:Name="HomePage" Margin="28,16,28,16" RowDefinitions="Auto,Auto,Auto,Auto">
                         <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
                             <TextBlock Text="Play" FontSize="24" FontWeight="SemiBold" />
                             <Border x:Name="MinecraftVersionPill" Grid.Column="1" VerticalAlignment="Center" BorderBrush="#3A3B42" BorderThickness="1" Padding="10,4" CornerRadius="3">
                                 <TextBlock x:Name="MinecraftVersionText" Text="Minecraft" Foreground="#B8B9C2" FontSize="11" />
                             </Border>
                         </Grid>
-                        <Border Grid.Row="1" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" ClipToBounds="True" Height="54" MaxHeight="60">
-                            <Grid ColumnDefinitions="*,*">
-                                <StackPanel Margin="20,4,0,4" VerticalAlignment="Center" Spacing="2">
+                        <Border Grid.Row="1" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" ClipToBounds="True" Height="140">
+                            <!-- The art column is twice the banner height: the 2:1 artwork shows whole instead of being cropped to a strip. -->
+                            <Grid ColumnDefinitions="*,280">
+                                <StackPanel Margin="24,8,0,8" VerticalAlignment="Center" Spacing="4">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <Border Width="14" Height="2" Background="{DynamicResource LadsAccent}" VerticalAlignment="Center" />
-                                        <TextBlock Text="BUILT FOR YOUR GAME" Classes="caption" FontSize="8" />
+                                        <TextBlock Text="BUILT FOR YOUR GAME" Classes="caption" FontSize="9" />
                                     </StackPanel>
-                                    <TextBlock Text="THE LADS CLIENT." FontFamily="Bahnschrift SemiCondensed,Inter" FontSize="20" FontWeight="Bold" LetterSpacing="-0.5" />
-                                    <TextBlock Text="Your worlds. Your mods. Your people." Foreground="#999BA5" FontSize="11" Margin="0,1,0,0" />
+                                    <TextBlock Text="THE LADS CLIENT." FontFamily="Bahnschrift SemiCondensed,Inter" FontSize="30" FontWeight="Bold" LetterSpacing="-0.5" />
+                                    <TextBlock Text="Your worlds. Your mods. Your people." Foreground="#999BA5" FontSize="13" />
                                 </StackPanel>
-                                <!-- The Lads artwork fills the right half and fades into the card behind the title. -->
+                                <!-- The Lads artwork fills the right column and fades into the card behind the title. -->
                                 <Border Grid.Column="1" IsHitTestVisible="False">
                                     <Border.Background>
                                         <ImageBrush Source="avares://TheLadsLauncher/Assets/artwork.jpg" Stretch="UniformToFill" />
@@ -195,7 +206,7 @@
                                 <Grid ColumnDefinitions="Auto,*,Auto">
                                     <Path Data="M 4,4 H 8 A 2,2 0 0 1 12,4 H 16 V 8 A 2,2 0 0 1 16,12 V 16 H 12 A 2,2 0 0 0 8,16 H 4 V 12 A 2,2 0 0 0 4,8 Z" Width="17" Height="17" Stretch="Uniform" Stroke="#52A5E0" StrokeThickness="1.5" StrokeLineCap="Round" VerticalAlignment="Center" Margin="0,0,12,0" />
                                     <StackPanel Grid.Column="1" Spacing="4">
-                                        <TextBlock Text="Mods &amp; packs" FontWeight="Medium" />
+                                        <TextBlock Text="Mods" FontWeight="Medium" />
                                         <TextBlock Text="Find your next addition" FontSize="11" Foreground="#8F919B" />
                                     </StackPanel>
                                     <TextBlock Grid.Column="2" Text="&#8599;" Foreground="#8F919B" VerticalAlignment="Center" />
@@ -213,16 +224,27 @@
                             </Button>
                         </Grid>
                         <Border Grid.Row="3" BorderBrush="#303137" BorderThickness="0,1,0,1" Padding="0,16,0,14">
-                            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*,185">
+                            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*,220">
                                 <TextBlock Text="PROFILE" Classes="caption" Margin="0,0,0,7" />
                                 <TextBlock Grid.Column="1" Text="PLAYING AS" Classes="caption" Margin="0,0,0,7" />
-                                <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,*,185">
-                                    <ComboBox x:Name="LaunchProfileSelector" FontSize="13" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Choose the Minecraft profile to launch" SelectionChanged="LaunchProfileSelector_SelectionChanged" Height="46" HorizontalAlignment="Stretch" Grid.Column="0" Margin="0,0,12,0" />
-                                    <ComboBox x:Name="LaunchAccountSelector" PlaceholderText="Select an account" FontSize="13" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Launch with this account (does not change your main account)" SelectionChanged="LaunchAccountSelector_SelectionChanged" Height="46" HorizontalAlignment="Stretch" Grid.Column="1" Margin="0,0,16,0" />
-                                    <Button x:Name="LaunchButton" Classes="launch" FontSize="16" FontWeight="Bold" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Right-click to launch with a different account" Click="LaunchButton_Click" Height="46" Grid.Column="2" MinWidth="185" Margin="0">
-                                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Path Data="M 4,2 L 16,10 L 4,18 Z" Fill="White" Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center" />
-                                            <TextBlock Text="Play" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" />
+                                <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,*,220">
+                                    <ComboBox x:Name="LaunchProfileSelector" Classes="launchPicker" FontSize="16" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Choose the Minecraft profile to launch" SelectionChanged="LaunchProfileSelector_SelectionChanged" Height="69" HorizontalAlignment="Stretch" Grid.Column="0" Margin="0,0,12,0" />
+                                    <ComboBox x:Name="LaunchAccountSelector" Classes="launchPicker" PlaceholderText="Select an account" FontSize="16" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Launch with this account (does not change your main account)" SelectionChanged="LaunchAccountSelector_SelectionChanged" Height="69" HorizontalAlignment="Stretch" Grid.Column="1" Margin="0,0,16,0">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="models:AccountChoice">
+                                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                                    <Border Width="32" Height="32" CornerRadius="4" ClipToBounds="True" Background="#303137">
+                                                        <Image Source="{Binding Head}" Width="32" Height="32" RenderOptions.BitmapInterpolationMode="None" />
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <Button x:Name="LaunchButton" Classes="launch" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Right-click to launch with a different account" Click="LaunchButton_Click" Height="69" Grid.Column="2" MinWidth="220" Margin="0">
+                                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Path Data="M 4,2 L 16,10 L 4,18 Z" Fill="White" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center" />
+                                            <TextBlock Text="Play" FontWeight="Bold" FontSize="22" VerticalAlignment="Center" />
                                         </StackPanel>
                                         <Button.ContextMenu>
                                             <ContextMenu x:Name="LaunchContextMenu">
@@ -231,45 +253,13 @@
                                         </Button.ContextMenu>
                                     </Button>
                                 </Grid>
-                                <Grid Grid.Row="2" Grid.ColumnSpan="3" ColumnDefinitions="*,Auto,Auto" Margin="0,10,0,0">
-                                    <StackPanel VerticalAlignment="Center" Margin="0,0,12,0" Spacing="5">
-                                        <TextBlock x:Name="StatusText" Text="Ready to play" Foreground="#9C9EA8" FontSize="11" TextWrapping="Wrap" />
-                                        <ProgressBar x:Name="ProgressBar" Height="2" Minimum="0" Maximum="100" Value="0" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                                        <Button x:Name="OpenFolderBtn" Classes="action" Content="Game folder" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open this profile's game folder" Click="OpenFolder_Click" Height="28" Padding="10,0" />
-                                        <Button Classes="action" Content="Worlds" Tag="saves" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Browse and search worlds" Click="NavWorlds_Click" Height="28" Padding="10,0" />
-                                        <Button Classes="action" Content="Resource packs" Tag="resourcepacks" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared resource packs folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
-                                        <Button Classes="action" Content="Shader packs" Tag="shaderpacks" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared shader packs folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
-                                        <Button Classes="action" Content="Screenshots" Tag="screenshots" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Open the shared screenshots folder (every version)" Click="OpenSharedFolder_Click" Height="28" Padding="10,0" />
-                                    </StackPanel>
-                                    <Button x:Name="ManageAccountsShortcutBtn" Classes="action" Content="Manage accounts" FontSize="11" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="ManageAccountsShortcutBtn_Click" Height="28" Padding="10,0" Grid.Column="2" Margin="8,0,0,0" />
-                                </Grid>
+                                <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Margin="0,10,0,0" Spacing="5">
+                                    <TextBlock x:Name="StatusText" Text="Ready to play" Foreground="#9C9EA8" FontSize="11" TextWrapping="Wrap" />
+                                    <ProgressBar x:Name="ProgressBar" Height="2" Minimum="0" Maximum="100" Value="0" />
+                                </StackPanel>
                                 <Border x:Name="HomeSharedNotice" Grid.Row="3" Grid.ColumnSpan="3" IsVisible="False" Margin="0,10,0,0" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="4" Padding="12,8" />
                             </Grid>
                         </Border>
-                        <Grid Grid.Row="4" ColumnDefinitions="*,*,*,*,Auto" Margin="0,16,0,0">
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Classes="caption" Text="CPU" VerticalAlignment="Center" />
-                                <TextBlock x:Name="CpuText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Classes="caption" Text="MEMORY" VerticalAlignment="Center" />
-                                <TextBlock x:Name="RamText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Classes="caption" Text="MODS" VerticalAlignment="Center" />
-                                <TextBlock x:Name="ModCountText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Classes="caption" Text="GAME" VerticalAlignment="Center" />
-                                <TextBlock x:Name="GameStateText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8">
-                                <TextBlock Classes="caption" Text="DOWNLOAD" VerticalAlignment="Center" />
-                                <TextBlock x:Name="DownloadSpeedText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Grid>
                     </Grid>
                     <Grid x:Name="AccountsPage" IsVisible="False" Margin="28,24,28,24" ColumnDefinitions="2*,3*">
                         <Border Grid.Column="0" Background="#1D1E22" CornerRadius="4" Padding="16" BorderBrush="#303137" BorderThickness="1" Margin="0,0,12,0">
@@ -455,7 +445,7 @@
                                                         <TextBlock x:Name="RamValueText" Grid.Column="1" Text="4 GB" Foreground="White" FontSize="14" FontWeight="Bold" />
                                                     </Grid>
                                                     <Slider x:Name="RamSlider" Minimum="1" Maximum="32" Value="4" TickFrequency="1" IsSnapToTickEnabled="True" />
-                                                    <TextBlock Text="Recommended: 4-8 GB for modded Minecraft" Foreground="#868994" FontSize="11" />
+                                                    <TextBlock x:Name="RamRecommendText" Text="Recommended: 4-8 GB for modded Minecraft" Foreground="#868994" FontSize="11" />
                                                 </StackPanel>
                                             </StackPanel>
                                         </Border>
@@ -550,7 +540,7 @@
                                     <Setter Property="Foreground" Value="White" />
                                 </Style>
                             </TabControl.Styles>
-                            <TabItem Header="Installed Mods">
+                            <TabItem x:Name="ModsInstalledTab" Header="Installed Mods">
                                 <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="0,12,0,0">
                                     <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,10">
                                         <CheckBox x:Name="SelectAllModsCheckbox" VerticalAlignment="Center" Margin="0,0,8,0" ToolTip.Tip="Select / deselect every row shown (hidden rows are never selected)" Click="SelectAllMods_Click" />
@@ -577,7 +567,6 @@
                                             </Button.Flyout>
                                         </Button>
                                         <Button x:Name="UpdateAllModsBtn" Classes="action" Content="Update my mods" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Update the mods you added yourself from Modrinth; the launcher keeps the pack mods and LadsCore up to date" Click="UpdateAllMods_Click" />
-                                        <Button Classes="action" Content="Open resource packs" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Resource packs are shared by every version; switch them in game" Click="OpenModsResourcePacks_Click" />
                                         <Button Classes="danger" Content="Restore default mod set" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Clear this profile's saved enable/disable choices and switch the pack mods and LadsCore back on" Click="RestoreDefaultMods_Click" />
                                         <Button Classes="action" Content="Refresh" Height="36" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="RefreshMods_Click" Margin="0,0,8,8" />
                                     </WrapPanel>
@@ -595,7 +584,7 @@
                                     </ScrollViewer>
                                 </Grid>
                             </TabItem>
-                            <TabItem Header="Browse Mods">
+                            <TabItem x:Name="ModsBrowseTab" Header="Browse Mods">
                                 <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
                                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,16">
                                         <TextBox x:Name="ModSearchBox" PlaceholderText="Search mods (e.g. Sodium, Iris) &#8212; searches as you type" Height="36" FontSize="13" Margin="0,0,8,0" TextChanged="ModSearchBox_TextChanged" />
@@ -610,9 +599,13 @@
                                     </ScrollViewer>
                                 </Grid>
                             </TabItem>
-                            <TabItem Header="Browse Resourcepacks">
-                                <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
-                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,16">
+                            <TabItem x:Name="PacksBrowseTab" Header="Resource Packs" IsVisible="False">
+                                <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                                        <Button Classes="action" Content="Open resource packs folder" Tag="resourcepacks" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="The shared resource packs folder (every version)" Click="OpenSharedFolder_Click" />
+                                        <Button Classes="action" Content="Open shader packs folder" Tag="shaderpacks" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="The shared shader packs folder (every version)" Click="OpenSharedFolder_Click" />
+                                    </StackPanel>
+                                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,16">
                                         <TextBox x:Name="RpSearchBox" PlaceholderText="Search resource packs &#8212; searches as you type" Height="36" FontSize="13" Margin="0,0,8,0" TextChanged="RpSearchBox_TextChanged" />
                                         <ComboBox x:Name="RpSearchProvider" Grid.Column="1" Width="130" Height="36" SelectedIndex="0" Margin="0,0,8,0">
                                             <ComboBoxItem Content="Modrinth" />
@@ -620,12 +613,12 @@
                                         </ComboBox>
                                         <ComboBox x:Name="SearchRpMcVersionDropdown" Grid.Column="2" Width="130" Height="36" Margin="0,0,8,0" />
                                     </Grid>
-                                    <ScrollViewer Grid.Row="1">
+                                    <ScrollViewer Grid.Row="2">
                                         <StackPanel x:Name="BrowseRpList" Spacing="6" />
                                     </ScrollViewer>
                                 </Grid>
                             </TabItem>
-                            <TabItem Header="Mod Manager Settings">
+                            <TabItem x:Name="ModsSettingsTab" Header="Mod Manager Settings">
                                 <ScrollViewer Margin="0,12,0,0">
                                     <StackPanel Spacing="16">
                                         <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
@@ -704,6 +697,31 @@
                             </StackPanel>
                         </ScrollViewer>
                     </Grid>
+                    <!-- Usage metrics: a status bar along the bottom of every page. -->
+                    <Border Grid.Row="1" Background="#121315" BorderBrush="#303137" BorderThickness="0,1,0,0" Padding="28,8">
+                        <Grid ColumnDefinitions="*,*,*,*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="caption" Text="CPU" VerticalAlignment="Center" />
+                                <TextBlock x:Name="CpuText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="caption" Text="MEMORY" VerticalAlignment="Center" />
+                                <TextBlock x:Name="RamText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="caption" Text="MODS" VerticalAlignment="Center" />
+                                <TextBlock x:Name="ModCountText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="caption" Text="GAME" VerticalAlignment="Center" />
+                                <TextBlock x:Name="GameStateText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="caption" Text="DOWNLOAD" VerticalAlignment="Center" />
+                                <TextBlock x:Name="DownloadSpeedText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Grid>
             <Grid x:Name="LauncherStartupOverlay" Background="#17181B" IsVisible="True" ZIndex="100">

@@ -156,7 +156,6 @@ public partial class MainWindow
         await window.ShowDialog(this);
     });
 
-    private async void CommandPalette_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => await OpenCommandPaletteAsync();
     private async Task OpenCommandPaletteAsync()
     {
         if (_paletteOpen) return;

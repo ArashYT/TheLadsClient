@@ -558,7 +558,14 @@ public partial class MainWindow : Window
         ProfilesPage.IsVisible = page == "Profiles";
         AccountsPage.IsVisible = page == "Accounts";
         SettingsPage.IsVisible = page == "Settings";
-        ModsPage.IsVisible = page == "Mods";
+        ModsPage.IsVisible = page is "Mods" or "Packs";
+        if (page is "Mods" or "Packs")
+        {
+            bool packs = page == "Packs";
+            ModsInstalledTab.IsVisible = ModsBrowseTab.IsVisible = ModsSettingsTab.IsVisible = !packs;
+            PacksBrowseTab.IsVisible = packs;
+            ModsSubTabControl.SelectedItem = packs ? PacksBrowseTab : ModsInstalledTab;
+        }
         FilesPage.IsVisible = page == "Files";
         GalleryPage.IsVisible = page == "Gallery";
         LogsPage.IsVisible = page == "Logs";
@@ -569,6 +576,7 @@ public partial class MainWindow : Window
         NavAccounts.Classes.Set("active", page == "Accounts");
         NavSettings.Classes.Set("active", page == "Settings");
         NavMods.Classes.Set("active", page == "Mods");
+        NavPacks.Classes.Set("active", page == "Packs");
         NavFiles.Classes.Set("active", page == "Files");
         NavGallery.Classes.Set("active", page == "Gallery");
         NavLogs.Classes.Set("active", page == "Logs");
@@ -584,13 +592,13 @@ public partial class MainWindow : Window
         NavigateTo("Profiles");
     }
     private void NavAccounts_Click(object? sender, RoutedEventArgs e) { LoadAccounts(); NavigateTo("Accounts"); }
-    private void ManageAccountsShortcutBtn_Click(object? sender, RoutedEventArgs e) { LoadAccounts(); NavigateTo("Accounts"); }
     private void NavSettings_Click(object? sender, RoutedEventArgs e) => NavigateTo("Settings");
     private void NavMods_Click(object? sender, RoutedEventArgs e)
     {
         ReloadModsInventory();
         NavigateTo("Mods");
     }
+    private void NavPacks_Click(object? sender, RoutedEventArgs e) => NavigateTo("Packs");
     private void NavFiles_Click(object? sender, RoutedEventArgs e) { LoadFiles(settings.InstancePath); NavigateTo("Files"); }
     private void NavLogs_Click(object? sender, RoutedEventArgs e) => NavigateTo("Logs");
 
@@ -1763,11 +1771,9 @@ public partial class MainWindow : Window
             foreach (var name in allAccountNames)
             {
                 bool isOffline = settings.OfflineAccounts.Contains(name);
-                LaunchAccountSelector.Items.Add(new ComboBoxItem
-                {
-                    Content = name + (isOffline ? "  (Offline)" : "  (MS)"),
-                    Tag = name
-                });
+                var choice = new TheLadsLauncher.Models.AccountChoice(name, name + (isOffline ? "  (Offline)" : "  (MS)"));
+                LaunchAccountSelector.Items.Add(choice);
+                _ = LoadAccountHeadAsync(choice);
             }
 
             // Keep an existing override selected if it still exists; otherwise default to main.
@@ -1777,14 +1783,8 @@ public partial class MainWindow : Window
             if (string.IsNullOrEmpty(_launchAccountOverride) || !allAccountNames.Contains(_launchAccountOverride))
                 _launchAccountOverride = "";
 
-            foreach (var obj in LaunchAccountSelector.Items)
-            {
-                if (obj is ComboBoxItem cbi && (cbi.Tag as string) == target)
-                {
-                    LaunchAccountSelector.SelectedItem = cbi;
-                    break;
-                }
-            }
+            LaunchAccountSelector.SelectedItem = LaunchAccountSelector.Items
+                .OfType<TheLadsLauncher.Models.AccountChoice>().FirstOrDefault(c => c.Name == target);
         }
         finally
         {
@@ -1792,10 +1792,28 @@ public partial class MainWindow : Window
         }
     }
 
+    // Skin heads by account name, so re-filling the picker does not download them again.
+    private readonly Dictionary<string, Bitmap> _accountHeads = new();
+
+    private async Task LoadAccountHeadAsync(TheLadsLauncher.Models.AccountChoice choice)
+    {
+        if (_accountHeads.TryGetValue(choice.Name, out var cached)) { choice.Head = cached; return; }
+        try
+        {
+            var bytes = await _httpClient.GetByteArrayAsync($"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(choice.Name))}/64");
+            using var ms = new MemoryStream(bytes);
+            choice.Head = _accountHeads[choice.Name] = new Bitmap(ms);
+        }
+        catch
+        {
+            // Offline or no such player: the picker keeps the grey placeholder.
+        }
+    }
+
     private void LaunchAccountSelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (_populatingLaunchSelector) return;
-        if (LaunchAccountSelector?.SelectedItem is ComboBoxItem cbi && cbi.Tag is string name)
+        if (LaunchAccountSelector?.SelectedItem is TheLadsLauncher.Models.AccountChoice { Name: var name })
         {
             // Only treat it as an override when it differs from the main account.
             _launchAccountOverride = (name == _selectedAccount) ? "" : name;
@@ -2155,33 +2173,6 @@ public partial class MainWindow : Window
         LoadAccounts();
         StatusText.Text = $"Account removed: {username}";
         Log($"[Auth] Removed account: {username}");
-    }
-
-    private void OpenFolder_Click(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var dir = settings.InstancePath;
-            if (string.IsNullOrWhiteSpace(dir))
-            {
-                StatusText.Text = "Game folder is not set.";
-                return;
-            }
-            if (!System.IO.Directory.Exists(dir))
-                System.IO.Directory.CreateDirectory(dir);
-
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = dir,
-                UseShellExecute = true
-            });
-            Log($"[Launcher] Opened game folder: {dir}");
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = "Failed to open folder: " + ex.Message;
-            Log($"[Launcher] Open folder failed: {ex.Message}");
-        }
     }
 
     // ═══════════════════════════════════════
@@ -3245,6 +3236,7 @@ public partial class MainWindow : Window
 
         RamSlider.Value = currentGb;
         RamValueText.Text = $"{currentGb} GB";
+        RamRecommendText.Text = $"Recommended for this PC ({Math.Round(LauncherSettings.TotalMemoryBytes() / (1024.0 * 1024 * 1024))} GB): {LauncherSettings.RecommendedRamMb(LauncherSettings.TotalMemoryBytes()) / 1024} GB";
         
         RamSlider.PropertyChanged += (s, e) =>
         {
@@ -3413,14 +3405,16 @@ public partial class MainWindow : Window
         try
         {
             LaunchProfileSelector.Items.Clear();
-            var profiles = ProfileTools.Filter(_profileService.GetProfiles(), null, null).ToList();
-            foreach (var p in profiles)
-            {
-                LaunchProfileSelector.Items.Add(p);
-            }
-
             var active = _profileService.GetActiveProfile();
-            LaunchProfileSelector.SelectedItem = profiles.FirstOrDefault(p => p.Id == active.Id) ?? profiles.FirstOrDefault();
+            foreach (var p in ProfileTools.NewestFirst(_profileService.GetProfiles()))
+            {
+                bool offered = ProfileTools.PlayableVersions.Contains(p.MinecraftVersion);
+                var item = new ComboBoxItem { Content = p.ToString(), Tag = p, IsEnabled = offered };
+                if (!offered) ToolTip.SetTip(item, $"Minecraft {p.MinecraftVersion} is not offered on the Play screen.");
+                LaunchProfileSelector.Items.Add(item);
+                if (p.Id == active.Id) LaunchProfileSelector.SelectedItem = item;
+            }
+            LaunchProfileSelector.SelectedItem ??= LaunchProfileSelector.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.IsEnabled);
             ApplyProfile(active, false);
         }
         finally
@@ -3433,7 +3427,7 @@ public partial class MainWindow : Window
     {
         if (_populatingProfileSelector) return;
         if (_launching) { PopulateLaunchProfileSelector(); return; }
-        if (LaunchProfileSelector.SelectedItem is TheLadsLauncher.Models.LauncherProfile profile)
+        if (LaunchProfileSelector.SelectedItem is ComboBoxItem { Tag: TheLadsLauncher.Models.LauncherProfile profile })
         {
             try { GameVersionPolicy.ResolveVersionId(profile); }
             catch (ArgumentException ex)
@@ -3784,7 +3778,9 @@ public partial class MainWindow : Window
         }
         MicrosoftClientIdTextBox.Text = settings.MicrosoftClientId;
 
-        settings.MaxRamMb = (int)RamSlider.Value * 1024;
+        int ramMb = (int)RamSlider.Value * 1024;
+        settings.RamChosenByUser |= ramMb != settings.MaxRamMb;
+        settings.MaxRamMb = ramMb;
         settings.CloseToTray = CloseToTrayCheckbox.IsChecked ?? true;
         settings.KeepLauncherOpen = KeepLauncherOpenCheckbox.IsChecked ?? false;
         settings.KeepClosedOnExit = KeepClosedOnExitCheckbox.IsChecked ?? false;
@@ -4487,13 +4483,6 @@ public partial class MainWindow : Window
 
     private void ResetModFilters_Click(object? sender, RoutedEventArgs e) => SetModFilters(0, "");
 
-    private void OpenModsResourcePacks_Click(object? sender, RoutedEventArgs e)
-    {
-        var folder = SharedFolderTarget("resourcepacks");
-        var error = OpenFolderCreatingIt(folder);
-        ModsStatus(error ?? $"Opened the shared resource packs folder ({folder}). Every version uses it; switch packs in game.", error != null);
-    }
-
     private async void RestoreDefaultMods_Click(object? sender, RoutedEventArgs e)
     {
         if (!ModsCanChange()) return;
@@ -4817,7 +4806,6 @@ public partial class MainWindow : Window
         {
             Directory.CreateDirectory(outputDirectory);
             NavigateTo("Mods");
-            ModsSubTabControl.SelectedIndex = 0;
             await ReloadModsInventoryAsync();
             var inventory = _modInventory ?? throw new InvalidOperationException("The mod list could not be built: " + ModsNoticeText.Text);
             result["profile"] = _profileService.GetActiveProfile().Name;

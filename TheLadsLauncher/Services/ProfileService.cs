@@ -409,6 +409,13 @@ public class ProfileService : IProfileService
         SaveProfilesToDisk();
     }
 
+    /// <summary>The name of the profile that always follows the newest supported Minecraft version.</summary>
+    public const string LatestReleaseName = "Latest Release";
+
+    /// <summary>The highest Minecraft version among the bundled profiles.</summary>
+    public static string NewestVersion => CreateDefaultProfiles()
+        .Select(p => p.MinecraftVersion).OrderByDescending(v => Version.Parse(v)).First();
+
     private static bool MigrateSavedProfile(LauncherProfile profile)
     {
         var changed = false;
@@ -422,15 +429,18 @@ public class ProfileService : IProfileService
             profile.Name = "The Lads Client 1.21.11 (Legacy)";
             changed = true;
         }
-        if (profile.MinecraftVersion is "latest.release" or "latest-release")
+        var newest = NewestVersion;
+        if (profile.MinecraftVersion is "latest.release" or "latest-release"
+            || (profile.Name == LatestReleaseName && profile.MinecraftVersion != newest && GameVersionPolicy.RequiresFabric(profile.MinecraftVersion)))
         {
             var oldVersion = profile.MinecraftVersion;
-            profile.MinecraftVersion = "26.2";
+            profile.MinecraftVersion = newest;
+            profile.JavaMajorVersion = GameVersionPolicy.GetRequiredJavaMajor(newest);
             if (string.IsNullOrWhiteSpace(profile.FabricVersion))
                 profile.FabricVersion = "0.19.5";
             else if (profile.FabricVersion.StartsWith("fabric-loader-", StringComparison.Ordinal)
                 && profile.FabricVersion.EndsWith("-" + oldVersion, StringComparison.Ordinal))
-                profile.FabricVersion = profile.FabricVersion.Substring(0, profile.FabricVersion.Length - oldVersion.Length) + "26.2";
+                profile.FabricVersion = profile.FabricVersion.Substring(0, profile.FabricVersion.Length - oldVersion.Length) + newest;
             changed = true;
         }
 

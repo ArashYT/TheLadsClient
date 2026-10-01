@@ -69,4 +69,35 @@ public class ProfileToolsTests
         Assert.Throws<InvalidDataException>(() => ProfileTools.Validate(new(2, "No", "26.3", null, new())));
         Assert.Throws<InvalidDataException>(() => ProfileTools.Validate(new(1, "No", "26.3", null, new() { ["options.txt"] = new string('x', 2 * 1024 * 1024 + 1) })));
     }
+
+    [Fact]
+    public void PlayMenuListsNewestVersionFirstAndOffersOnly263_262_189()
+    {
+        var profiles = new[] { "1.8.9", "1.21.1", "26.2", "1.21.11", "26.3" }.Select(v => new LauncherProfile { Name = "P " + v, MinecraftVersion = v })
+            .Append(new LauncherProfile { Name = ProfileService.LatestReleaseName, MinecraftVersion = "26.3" });
+        Assert.Equal(new[] { "Latest Release", "P 26.3", "P 26.2", "P 1.21.11", "P 1.21.1", "P 1.8.9" }, ProfileTools.NewestFirst(profiles).Select(p => p.Name));
+        Assert.Equal(new[] { "26.3", "26.2", "1.8.9" }, ProfileTools.PlayableVersions);
+    }
+
+    [Fact]
+    public void LatestReleaseProfileFollowsTheNewestVersion()
+    {
+        using var dir = new TestDirectory();
+        var root = Path.Combine(dir.Path, "launcher");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "profiles.json"), System.Text.Json.JsonSerializer.Serialize(new { ActiveProfileId = "latest", Profiles = new[] {
+            new LauncherProfile { Id = "latest", Name = ProfileService.LatestReleaseName, MinecraftVersion = "26.2", FabricVersion = "fabric-loader-0.19.5-26.2", JavaMajorVersion = 25 },
+            new LauncherProfile { Id = "alias", Name = "Old alias", MinecraftVersion = "latest-release", FabricVersion = "0.19.5", JavaMajorVersion = 25 },
+            new LauncherProfile { Id = "mine", Name = "Mine", MinecraftVersion = "26.2", FabricVersion = "0.19.5", JavaMajorVersion = 25 } } }));
+        var service = new ProfileService(new PathService(root), new SharedContentService(Path.Combine(dir.Path, "global")));
+        Assert.Equal("26.3", ProfileService.NewestVersion);
+        Assert.Equal(("26.3", "fabric-loader-0.19.5-26.3"), (service.GetProfile("latest")!.MinecraftVersion, service.GetProfile("latest")!.FabricVersion));
+        Assert.Equal("26.3", service.GetProfile("alias")!.MinecraftVersion);
+        Assert.Equal("26.2", service.GetProfile("mine")!.MinecraftVersion);
+    }
+
+    [Theory]
+    [InlineData(4, 2)] [InlineData(6, 3)] [InlineData(8, 4)] [InlineData(12, 5)] [InlineData(16, 6)] [InlineData(24, 8)] [InlineData(64, 8)] [InlineData(0, 4)]
+    public void RecommendedRamFollowsSystemMemory(int systemGb, int expectedGb) =>
+        Assert.Equal(expectedGb * 1024, LauncherSettings.RecommendedRamMb(systemGb * 1024L * 1024 * 1024));
 }
