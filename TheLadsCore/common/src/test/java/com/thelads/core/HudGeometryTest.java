@@ -41,6 +41,8 @@ class HudGeometryTest {
     private static final class Game extends DefaultGameBridge {
         String biome="Windswept Gravelly Hills";
         int biomeReads;
+        boolean ingame;
+        @Override public boolean isIngame(){return ingame;}
         List<String> effects=List.of("Strength II (120s)","Night Vision (360s)","Speed II (45s)");
         List<ArmorPiece> armor=List.of(new ArmorPiece("Helmet",120,165),new ArmorPiece("Chestplate",200,240));
         @Override public String getBiomeName(){biomeReads++;return biome;}
@@ -126,6 +128,18 @@ class HudGeometryTest {
         assertEquals(120,bounds.x());assertEquals(100,bounds.y());
         assertEquals((int)Math.ceil(board.getWidth()*1.25),bounds.width());
         assertEquals((int)Math.ceil(board.getHeight()*1.25),bounds.height());
+    }
+    @Test void hudFpsCapReplaysTheLastBuildInsteadOfBlinking(){
+        var biome=element("Biome");HudManager.getInstance().getElements().clear();HudManager.getInstance().getElements().add(biome);
+        HudSettings.getInstance().setHudFpsCapEnabled(true);HudSettings.getInstance().setHudFpsLimit(1);game.ingame=true;
+        graphics.clear();HudManager.getInstance().render(graphics);
+        var built=List.copyOf(graphics.draws);int reads=game.biomeReads;
+        assertTrue(built.stream().anyMatch(d->d.text!=null&&d.text.contains("Windswept")));
+        graphics.clear();HudManager.getInstance().render(graphics); // within the same second: replayed, not rebuilt, never empty
+        assertEquals(built,graphics.draws);assertEquals(reads,game.biomeReads);
+        graphics.width=640;graphics.clear();HudManager.getInstance().render(graphics); // a resize rebuilds at once
+        assertTrue(game.biomeReads>reads);
+        game.ingame=false;HudSettings.getInstance().setHudFpsCapEnabled(false);
     }
     @Test void disabledGroupMemberKeepsLiveAndEditorClampingIdentical(){
         var active=element("CPS");var hidden=element("Day");
