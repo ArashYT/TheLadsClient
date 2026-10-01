@@ -1,0 +1,15 @@
+Hovering Hotbar (mod id hoveringhotbar), 26.3.0 for Minecraft 26.3
+Copyright Fuzs (@heyitsfuzs). Source code license: MPL-2.0; the license text is in LICENSE beside this file.
+Project: https://github.com/Fuzss/hovering-hotbar
+Source used: tag v26.3.0-mc26.3.x (commit 9c98dcc9922175b4a70eb867931ae70c6921dc06).
+
+Modified by The Lads: repackaged into Lads Core as com.thelads.core.v26_2.embedded.hoveringhotbar
+(mixin config theladscore.embedded.hoveringhotbar.mixins.json) without Puzzles Lib or Forge Config API Port:
+the key, tick and gui layer helpers are replaced by the Fabric API calls Puzzles Lib makes on Fabric, and a
+minimal reader keeps using config/hoveringhotbar-client.toml (hotbar_offset, move_experience_above_bar,
+hotbar_gui_layers). The selection-height mixin runs before Core's SmoothHotbar redirect of the same call.
+The language file is the one generated from the mod's ModLanguageProvider; the sprite scaling metadata is a
+functional equivalent written for Core. No upstream image assets are included. Everything stands down while
+the original hoveringhotbar mod is installed.
+
+The complete modified source files (MPL-2.0) are in META-INF/lads-sources/hoveringhotbar/v26_3 in this jar.

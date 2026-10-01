@@ -18,5 +18,6 @@ public final class EmbeddedMods {
     public static void clientInit() {
         if (active("fixbookgui")) com.thelads.core.v1_21_1.embedded.fixbookgui.FixBookGui.init();
         if (active("worldplaytime")) new com.thelads.core.v1_21_1.embedded.playtime.fabric.WorldPlayTimeFabric().onInitializeClient();
+        if (active("hoveringhotbar")) com.thelads.core.v1_21_1.embedded.hoveringhotbar.client.HoveringHotbarClient.init();
     }
 }
