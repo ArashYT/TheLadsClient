@@ -48,8 +48,8 @@ public class VersionAndInstallationTests
     [Theory]
     [InlineData("latest.release", null, "0.19.5")]
     [InlineData("latest-release", "0.16.9", "0.19.5")]
-    [InlineData("latest.release", "fabric-loader-0.16.9-latest.release", "fabric-loader-0.19.5-26.2")]
-    [InlineData("latest-release", "fabric-loader-0.20.0-latest-release", "fabric-loader-0.20.0-26.2")]
+    [InlineData("latest.release", "fabric-loader-0.16.9-latest.release", "fabric-loader-0.19.5-26.3")]
+    [InlineData("latest-release", "fabric-loader-0.20.0-latest-release", "fabric-loader-0.20.0-26.3")]
     public void ReleaseAliasMigratesInPlaceToRequestedVersion(string alias, string? loader, string expectedLoader)
     {
         using var dir = new TestDirectory();
@@ -65,10 +65,10 @@ public class VersionAndInstallationTests
         Assert.Equal(profile.Name, active.Name);
         Assert.Equal(world, active.CustomGameDir);
         Assert.Equal(profile.PackwizUrl, active.PackwizUrl);
-        Assert.Equal("26.2", active.MinecraftVersion);
+        Assert.Equal("26.3", active.MinecraftVersion);
         Assert.Equal(25, active.JavaMajorVersion);
         Assert.Equal(expectedLoader, active.FabricVersion);
-        Assert.EndsWith("-26.2", GameVersionPolicy.ResolveVersionId(active));
+        Assert.EndsWith("-26.3", GameVersionPolicy.ResolveVersionId(active));
         string migrated = File.ReadAllText(file);
         var reloaded = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
         Assert.Equal(profile.Id, reloaded.GetActiveProfile().Id);
