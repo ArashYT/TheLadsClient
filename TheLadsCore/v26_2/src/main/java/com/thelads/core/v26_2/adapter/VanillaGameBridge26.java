@@ -100,7 +100,19 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     }
 
     @Override
-    public int bossBarCount() {return ((com.thelads.core.v26_2.mixin.BossBarAccessor)Minecraft.getInstance().gui.hud.getBossOverlay()).ladsEvents().size();}
+    public int bossBarCount() {
+        var mc = Minecraft.getInstance();
+        if (mc.gui == null || mc.gui.hud == null || mc.gui.hud.getBossOverlay() == null) return 0;
+        try {
+            var map = ((com.thelads.core.v26_2.mixin.BossBarAccessor) mc.gui.hud.getBossOverlay()).ladsEvents();
+            if (map == null) return 0;
+            synchronized (map) {
+                return map.size();
+            }
+        } catch (Throwable ignored) {
+            return 0;
+        }
+    }
 
     @Override
     public List<ArmorPiece> getArmor() {

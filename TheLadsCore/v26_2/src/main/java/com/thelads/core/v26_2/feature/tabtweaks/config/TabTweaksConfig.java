@@ -11,6 +11,8 @@ public final class TabTweaksConfig {
     public boolean layout, ping;
     public int maxTabPlayers = 80, playersPerColumn = 20;
     public boolean removeHeader, removeFooter, removeHeads, removeNpcHeads, improvedHeads, removeObjectives;
+    public boolean showPlayerCount;
+    public String playerCountFormat = "Players: {count}";
     public boolean removeHeaderShadow, removeBodyShadow, removeFooterShadow;
     public boolean removePing, showPingInTab, removePingShadow, scalePingDisplay, hideFalsePing;
     public float tabScale = 1, moveTabDown, moveTabHorizontal;
@@ -26,7 +28,9 @@ public final class TabTweaksConfig {
         c.playersPerColumn = c.layout ? (int) number("TabList", "Players Per Column", 20) : 20;
         c.removeHeader = c.layout && bool("TabList", "Hide Header", false);
         c.removeFooter = c.layout && bool("TabList", "Hide Footer", false);
-        c.removeHeads = c.layout && bool("TabList", "Hide Heads", false);
+        c.removeHeads = c.layout && (!bool("TabList", "Player Skins", true) || bool("TabList", "Hide Heads", false));
+        c.showPlayerCount = c.layout && bool("TabList", "Show Player Count", false);
+        c.playerCountFormat = NativeQualityOfLife.string("TabList", "Player Count Format", "Players: {count}");
         c.removeNpcHeads = c.layout && bool("TabList", "Hide NPC Heads", false);
         c.improvedHeads = c.layout && bool("TabList", "Improved Hats", true);
         c.removeObjectives = c.layout && bool("TabList", "Hide Objectives", false);
@@ -59,7 +63,13 @@ public final class TabTweaksConfig {
     private static int panelColor(String name, int fallback) {
         return switch (NativeQualityOfLife.choice("TabList", "Background", 0)) {
             case 1 -> 0xc0000000; case 2 -> 0x60ffffff; case 3 -> 0;
-            default -> color("TabList", name, fallback);
+            default -> {
+                int c = color("TabList", name, fallback);
+                if (c == fallback && "Body Color".equals(name)) {
+                    yield color("TabList", "Global Tab Background", fallback);
+                }
+                yield c;
+            }
         };
     }
     private static int color(String module, String name, int fallback) {

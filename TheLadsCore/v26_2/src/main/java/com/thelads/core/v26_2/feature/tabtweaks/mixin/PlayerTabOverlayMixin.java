@@ -159,8 +159,15 @@ public class PlayerTabOverlayMixin {
 
     @WrapOperation(method = "extractRenderState", at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;footer:Lnet/minecraft/network/chat/Component;", ordinal = 0, opcode = Opcodes.GETFIELD))
     private Component removeFooter(PlayerTabOverlay instance, Operation<Component> original) {
-        if (TabTweaksConfig.current().removeFooter) return null;
-        else return original.call(instance);
+        Component orig = TabTweaksConfig.current().removeFooter ? null : original.call(instance);
+        if (TabTweaksConfig.current().showPlayerCount && minecraft.getConnection() != null) {
+            int count = minecraft.getConnection().getListedOnlinePlayers().size();
+            String fmt = TabTweaksConfig.current().playerCountFormat.replace("{count}", String.valueOf(count));
+            Component countComp = Component.literal(fmt);
+            if (orig == null) return countComp;
+            return Component.empty().append(orig).append("\n").append(countComp);
+        }
+        return orig;
     }
 
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/util/FormattedCharSequence;III)V", ordinal = 0))

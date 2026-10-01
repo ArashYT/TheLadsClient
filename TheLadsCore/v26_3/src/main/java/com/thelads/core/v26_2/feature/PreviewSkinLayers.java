@@ -57,28 +57,50 @@ public final class PreviewSkinLayers {
             else {
                 List<ModelPart.Cube> voxels=new ArrayList<>();
                 for(var cube:original)for(var face:cube.polygons)extrude(face,image,voxels);
-                access.ladsCubes(voxels);
+                if(voxels.isEmpty())access.ladsCubes(original);
+                else access.ladsCubes(voxels);
             }
             APPLIED.put(part,desired);
         }
     }
     private static void extrude(ModelPart.Polygon face,BufferedImage skin,List<ModelPart.Cube> cubes){
         var vertices=face.vertices();if(vertices.length!=4)return;
-        var a=vertices[0];ModelPart.Vertex u=null,v=null;
-        for(var b:vertices){if(Math.abs(b.v()-a.v())<.00001&&Math.abs(b.u()-a.u())>.00001)u=b;if(Math.abs(b.u()-a.u())<.00001&&Math.abs(b.v()-a.v())>.00001)v=b;}
-        if(u==null||v==null)return;
+        var p0=vertices[0];
+        var p1=vertices[1];
+        var p3=vertices[3];
+        float du1=p1.u()-p0.u(), dv1=p1.v()-p0.v();
+        float du2=p3.u()-p0.u(), dv2=p3.v()-p0.v();
+        float det=du1*dv2-dv1*du2;
+        if(Math.abs(det)<1e-6f)return;
         int minU=64,minV=64,maxU=0,maxV=0;
-        for(var b:vertices){minU=Math.min(minU,Math.round(b.u()*64));minV=Math.min(minV,Math.round(b.v()*64));maxU=Math.max(maxU,Math.round(b.u()*64));maxV=Math.max(maxV,Math.round(b.v()*64));}
+        for(var b:vertices){
+            minU=Math.min(minU,Math.round(b.u()*64));minV=Math.min(minV,Math.round(b.v()*64));
+            maxU=Math.max(maxU,Math.round(b.u()*64));maxV=Math.max(maxV,Math.round(b.v()*64));
+        }
+        float invDet=1.0f/det;
         for(int py=Math.max(0,minV);py<Math.min(skin.getHeight(),maxV);py++)for(int px=Math.max(0,minU);px<Math.min(skin.getWidth(),maxU);px++){
             if((skin.getRGB(px,py)>>>24)<16)continue;
             float[] lo={Float.MAX_VALUE,Float.MAX_VALUE,Float.MAX_VALUE},hi={-Float.MAX_VALUE,-Float.MAX_VALUE,-Float.MAX_VALUE};
             for(int dx=0;dx<=1;dx++)for(int dy=0;dy<=1;dy++){
-                float su=((px+dx)/64f-a.u())/(u.u()-a.u()),sv=((py+dy)/64f-a.v())/(v.v()-a.v());
-                float[] point={a.x()+su*(u.x()-a.x())+sv*(v.x()-a.x()),a.y()+su*(u.y()-a.y())+sv*(v.y()-a.y()),a.z()+su*(u.z()-a.z())+sv*(v.z()-a.z())};
-                for(int axis=0;axis<3;axis++){float n=face.normal().get(axis);lo[axis]=Math.min(lo[axis],point[axis]+Math.min(0,n*.35f));hi[axis]=Math.max(hi[axis],point[axis]+Math.max(0,n*.35f));}
+                float u=(px+dx)/64f-p0.u(), v=(py+dy)/64f-p0.v();
+                float s=(u*dv2-v*du2)*invDet;
+                float t=(du1*v-dv1*u)*invDet;
+                float[] point={
+                    p0.x()+s*(p1.x()-p0.x())+t*(p3.x()-p0.x()),
+                    p0.y()+s*(p1.y()-p0.y())+t*(p3.y()-p0.y()),
+                    p0.z()+s*(p1.z()-p0.z())+t*(p3.z()-p0.z())
+                };
+                for(int axis=0;axis<3;axis++){
+                    float n=face.normal().get(axis);
+                    lo[axis]=Math.min(lo[axis],point[axis]+Math.min(0,n*.35f));
+                    hi[axis]=Math.max(hi[axis],point[axis]+Math.max(0,n*.35f));
+                }
             }
             var cube=new ModelPart.Cube(0,0,lo[0],lo[1],lo[2],hi[0]-lo[0],hi[1]-lo[1],hi[2]-lo[2],0,0,0,false,64,64,EnumSet.allOf(Direction.class));
-            for(var polygon:cube.polygons){var points=polygon.vertices();for(int i=0;i<points.length;i++)points[i]=points[i].remap((px+.5f)/64,(py+.5f)/64);}
+            for(var polygon:cube.polygons){
+                var points=polygon.vertices();
+                for(int i=0;i<points.length;i++)points[i]=points[i].remap((px+.5f)/64f,(py+.5f)/64f);
+            }
             cubes.add(cube);
         }
     }

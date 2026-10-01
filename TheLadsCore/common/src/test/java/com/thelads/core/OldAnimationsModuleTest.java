@@ -50,7 +50,7 @@ class OldAnimationsModuleTest {
         module.setEnabled(true);
         for (Feature feature : Feature.values()) {
             assertTrue(module.active(feature, Platform.MODERN), feature + " on 1.21.x and 26.x");
-            assertEquals(feature != Feature.NO_COOLDOWN_DIP, module.active(feature, Platform.V1_8_9), feature + " on 1.8.9");
+            assertEquals(feature != Feature.NO_COOLDOWN_DIP && feature != Feature.LOW_SHIELD, module.active(feature, Platform.V1_8_9), feature + " on 1.8.9");
         }
         for (Feature off : Feature.values()) {
             module.option(off).set(false);
@@ -64,11 +64,12 @@ class OldAnimationsModuleTest {
         for (Feature feature : Feature.values()) {
             assertTrue(feature.appliesTo(Platform.MODERN));
             assertNull(feature.unavailableReason(Platform.MODERN));
-            boolean on189 = feature != Feature.NO_COOLDOWN_DIP;
+            boolean on189 = feature != Feature.NO_COOLDOWN_DIP && feature != Feature.LOW_SHIELD;
             assertEquals(on189, feature.appliesTo(Platform.V1_8_9), feature.toString());
             assertEquals(on189, feature.unavailableReason(Platform.V1_8_9) == null, feature.toString());
         }
         assertTrue(Feature.NO_COOLDOWN_DIP.unavailableReason(Platform.V1_8_9).contains("no attack cooldown"));
+        assertTrue(Feature.LOW_SHIELD.unavailableReason(Platform.V1_8_9).contains("no shields"));
     }
 
     @Test void helpersFollowTheirOptions() {

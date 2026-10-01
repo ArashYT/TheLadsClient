@@ -22,4 +22,15 @@ public class LegacySwingMixin {
     private void ladsConsoleSwing(float progress,PoseStack pose,int side,HumanoidArm arm,CallbackInfo ci){
         if(LegacySwing.apply(pose,progress,side))ci.cancel();
     }
+
+    @Inject(method = "renderItem", at = @At("HEAD"))
+    private void ladsLowShield(net.minecraft.world.entity.LivingEntity entity, net.minecraft.world.item.ItemStack item,
+                               net.minecraft.world.item.ItemDisplayContext context, com.mojang.blaze3d.vertex.PoseStack pose,
+                               net.minecraft.client.renderer.SubmitNodeCollector collector, int light, CallbackInfo ci) {
+        if (context.firstPerson() && item != null && item.is(net.minecraft.world.item.Items.SHIELD)
+                && com.thelads.core.config.ModuleManager.getInstance().getModule("OldAnimations") instanceof com.thelads.core.modules.OldAnimationsModule oam
+                && oam.active(com.thelads.core.modules.OldAnimationsModule.Feature.LOW_SHIELD, com.thelads.core.modules.OldAnimationsModule.Platform.MODERN)) {
+            pose.translate(0.0f, -0.25f, 0.0f);
+        }
+    }
 }

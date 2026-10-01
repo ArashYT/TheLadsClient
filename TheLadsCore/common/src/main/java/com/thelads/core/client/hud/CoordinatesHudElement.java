@@ -5,8 +5,8 @@ import com.thelads.core.config.HudSettings;
 
 public class CoordinatesHudElement extends HudElement {
     private LadsGraphics preparedGraphics;
-    private boolean hasPlayer, vertical;
-    private String px, py, pz, prefix, separator;
+    private boolean hasPlayer, vertical, showBiome;
+    private String px, py, pz, prefix, separator, biomeText;
     public CoordinatesHudElement() {
         this.x = 5;
         this.y = 25;
@@ -18,6 +18,7 @@ public class CoordinatesHudElement extends HudElement {
     public void prepareRender(LadsGraphics g, boolean editor) {
         preparedGraphics = g;
         hasPlayer = g.getGame().hasPlayer();
+        showBiome = optBool("Show Biome", false);
         if (!hasPlayer) {
             width = 110; height = Math.max(16, g.fontHeight() + 6);
             return;
@@ -33,17 +34,28 @@ public class CoordinatesHudElement extends HudElement {
         py = (format == 2 ? "Y: " : "") + posY;
         pz = (format == 2 ? "Z: " : "") + posZ;
 
+        String bName = g.getGame().getBiomeName();
+        biomeText = (bName != null && !bName.isEmpty()) ? bName : "Plains";
+
         if (vertical) {
             int lineHeight = g.fontHeight() + 2;
-            this.width = Math.max(70, Math.max(g.textWidth(px), Math.max(g.textWidth(py), g.textWidth(pz))) + 8);
-            this.height = 3 * lineHeight + 5;
+            int maxTextW = Math.max(g.textWidth(px), Math.max(g.textWidth(py), g.textWidth(pz)));
+            if (showBiome) {
+                maxTextW = Math.max(maxTextW, g.textWidth("Biome: " + biomeText));
+            }
+            this.width = Math.max(70, maxTextW + 8);
+            this.height = (showBiome ? 4 : 3) * lineHeight + 5;
             return;
         }
 
         prefix = format == 1 ? "Coords: " : "";
         separator = format == 1 ? ", " : " ";
-        this.width = Math.max(120, g.textWidth(prefix) + g.textWidth(px + separator)
-                + g.textWidth(py + separator) + g.textWidth(pz) + 8);
+        int horizW = g.textWidth(prefix) + g.textWidth(px + separator)
+                + g.textWidth(py + separator) + g.textWidth(pz);
+        if (showBiome) {
+            horizW += g.textWidth(separator + "(" + biomeText + ")");
+        }
+        this.width = Math.max(120, horizW + 8);
         this.height = Math.max(16, g.fontHeight() + 6);
     }
 
@@ -60,17 +72,25 @@ public class CoordinatesHudElement extends HudElement {
         int cz = perAxis ? optColor("Z Color", base) : base;
         if (vertical) {
             int lineHeight = g.fontHeight() + 2;
-            g.drawText(px, x + (width - g.textWidth(px)) / 2, y + 3, cx, shadow);
-            g.drawText(py, x + (width - g.textWidth(py)) / 2, y + 3 + lineHeight, cy, shadow);
-            g.drawText(pz, x + (width - g.textWidth(pz)) / 2, y + 3 + 2 * lineHeight, cz, shadow);
+            // Force left-aligned
+            g.drawText(px, x + 4, y + 3, cx, shadow);
+            g.drawText(py, x + 4, y + 3 + lineHeight, cy, shadow);
+            g.drawText(pz, x + 4, y + 3 + 2 * lineHeight, cz, shadow);
+            if (showBiome) {
+                g.drawText("Biome: " + biomeText, x + 4, y + 3 + 3 * lineHeight, base, shadow);
+            }
             return;
         }
-        int tx = x + (width - g.textWidth(prefix + px + separator + py + separator + pz)) / 2;
+        // Force left-aligned
+        int tx = x + 4;
         int ty = y + (height - g.fontHeight()) / 2 + 1;
         if (!prefix.isEmpty()) tx = draw(g, prefix, tx, ty, base, shadow);
         tx = draw(g, px + separator, tx, ty, cx, shadow);
         tx = draw(g, py + separator, tx, ty, cy, shadow);
-        draw(g, pz, tx, ty, cz, shadow);
+        tx = draw(g, pz, tx, ty, cz, shadow);
+        if (showBiome) {
+            draw(g, separator + "(" + biomeText + ")", tx, ty, base, shadow);
+        }
     }
 
     private int draw(LadsGraphics g, String s, int tx, int ty, int color, boolean shadow) {

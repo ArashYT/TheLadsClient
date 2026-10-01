@@ -70,6 +70,7 @@ public class ModuleManager {
         HudModule coords = hud("Coordinates", "Show your XYZ coordinates.");
         coords.addOption(new DropdownOption("Format", 2, "X Y Z", "Coords: X, Y, Z", "Labeled X/Y/Z"));
         coords.addOption(new BoolOption("Vertical", true));
+        coords.addOption(new BoolOption("Show Biome", false));
         coords.addOption(new BoolOption("Per-axis colors", false));
         coords.addOption(new ColorOption("X Color", false, 0xFFFF5555));
         coords.addOption(new ColorOption("Y Color", false, 0xFF55FF55));
@@ -180,6 +181,15 @@ public class ModuleManager {
         chatInd.setEnabled(true);
         register(chatInd);
 
+        Module chatMod = new Module("Chat", "Customize chat appearance, size, animations, and screenshot links.");
+        chatMod.addOption(new BoolOption("Chat Background", true));
+        chatMod.addOption(new SliderOption("Chat Width", 320, 100, 600, 10));
+        chatMod.addOption(new SliderOption("Chat Height", 180, 50, 400, 10));
+        chatMod.addOption(new BoolOption("Message Animations", true));
+        chatMod.addOption(new BoolOption("Screenshot Link Buttons", true));
+        chatMod.setEnabled(true);
+        register(chatMod, Module.Category.HUD);
+
         register(new AutoReconnectModule(), Module.Category.SERVER);
 
         register(new DiscordRpcModule(), Module.Category.SERVER);
@@ -191,6 +201,7 @@ public class ModuleManager {
         sb.addOption(new DropdownOption("Background", 0, "Default", "Dark", "Light", "Off"));
         sb.addOption(new BoolOption("Text Shadow", true));
         sb.addOption(new BoolOption("Hide Red Numbers", false));
+        sb.addOption(new BoolOption("Hide Sequential Only", false));
         register(sb, Module.Category.HUD);
 
         Module tab = new TabListModule();
@@ -260,6 +271,12 @@ public class ModuleManager {
         register(new Module("FerriteCore", "Reduce memory used by Minecraft's block and model data."), Module.Category.MECHANIC);
         register(new Module("XaeroMinimap", "Minimap, waypoints and navigation controls."), Module.Category.HUD);
         register(new ShulkerBoxUtilsModule(), Module.Category.MECHANIC);
+        Module rawInput = new Module("RawInput", "Raw mouse input directly from hardware bypassing Windows acceleration.");
+        rawInput.setEnabled(true);
+        register(rawInput, Module.Category.MECHANIC);
+        Module borderless = new Module("BorderlessFullscreen", "Borderless windowed fullscreen mode.");
+        borderless.setEnabled(true);
+        register(borderless, Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

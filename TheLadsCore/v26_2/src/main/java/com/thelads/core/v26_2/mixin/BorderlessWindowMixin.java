@@ -55,4 +55,13 @@ public abstract class BorderlessWindowMixin {
         int[] xx={0},yy={0};GLFW.glfwGetMonitorPos(monitor.monitor(),xx,yy);
         if(x!=xx[0]||y!=yy[0]||width!=mode.width()||height!=mode.height())ladsApplyMonitor(monitor.monitor());
     }
+
+    @ModifyVariable(method = "setTitle", at = @At("HEAD"), argsOnly = true)
+    private String ladsWindowTitle(String title) {
+        if (title == null || title.isEmpty()) return "The Lads Client 1.4.2";
+        if (title.contains(" - ")) {
+            return "The Lads Client 1.4.2" + title.substring(title.indexOf(" - "));
+        }
+        return "The Lads Client 1.4.2";
+    }
 }

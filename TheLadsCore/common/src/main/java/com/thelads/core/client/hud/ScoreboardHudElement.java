@@ -61,8 +61,36 @@ public class ScoreboardHudElement extends HudElement {
         preparedGraphics = g;
     }
 
+    private boolean shouldHideValues(ScoreboardSnapshot snapshot) {
+        if (optBool("Hide Red Numbers", false)) return true;
+        if (optBool("Hide Sequential Only", false) && snapshot != null && isSequential(snapshot.lines())) return true;
+        return false;
+    }
+
+    private static boolean isSequential(List<ScoreLine> lines) {
+        if (lines == null || lines.size() < 2) return false;
+        int count = Math.min(MAX_ROWS, lines.size());
+        if (count < 2) return false;
+        int[] vals = new int[count];
+        for (int i = 0; i < count; i++) {
+            String v = lines.get(i).value();
+            if (v == null || v.trim().isEmpty()) return false;
+            try {
+                vals[i] = Integer.parseInt(v.trim());
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        int diff = vals[1] - vals[0];
+        if (diff != 1 && diff != -1) return false;
+        for (int i = 2; i < count; i++) {
+            if (vals[i] - vals[i - 1] != diff) return false;
+        }
+        return true;
+    }
+
     private void measure(LadsGraphics g, ScoreboardSnapshot snapshot) {
-        measuredHideValues = optBool("Hide Red Numbers", false);
+        measuredHideValues = shouldHideValues(snapshot);
         if (!hasObjective(snapshot)) {
             width = 120;
             height = 16;
@@ -90,14 +118,14 @@ public class ScoreboardHudElement extends HudElement {
         ScoreboardSnapshot snapshot = liveSnapshot(g);
         if (editor && !hasObjective(snapshot)) snapshot = EDITOR_SAMPLE;
         if (preparedGraphics != g || preparedSnapshot != snapshot
-                || measuredHideValues != optBool("Hide Red Numbers", false))
+                || measuredHideValues != shouldHideValues(snapshot))
             measure(g, snapshot);
         preparedGraphics = null;
         preparedSnapshot = null;
         if (!hasObjective(snapshot)) return;
         drawBackground(g);
         boolean shadow = com.thelads.core.config.HudSettings.getInstance().isTextShadow() && optBool("Text Shadow", true);
-        boolean hideValues = optBool("Hide Red Numbers", false);
+        boolean hideValues = shouldHideValues(snapshot);
         boolean light = optCycle("Background", 0) == 2;
         int textColor = light ? 0xFF202020 : resolveColor();
         int valueColor = light ? 0xFFAA0000 : 0xFFFF5555;

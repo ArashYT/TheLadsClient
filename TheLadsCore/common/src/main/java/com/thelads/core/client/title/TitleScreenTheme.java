@@ -119,7 +119,7 @@ public final class TitleScreenTheme {
             if (h >= 220) g.drawText(fit(g, "C L I E N T  /  MAKE YOURSELF AT HOME", l.menuWidth() - 28), brandX + 28, brandY + 23, MUTED);
         }
         g.fill(16, h - 29, w - 16, h - 28, 0x2944202A);
-        String build = "MINECRAFT " + version;
+        String build = "The Lads Client 1.4.2 (" + version + ")";
         var titleModule = ModuleManager.getInstance().getModule("TitleScreen");
         float accountScale = titleModule != null && titleModule.getOption("Account Card Scale") instanceof SliderOption value
             ? (float)value.getValue() / 100f : 1f;

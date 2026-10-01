@@ -17,7 +17,6 @@ public class SkinPreviewMixin {
     @Inject(method="extractWidgetRenderState",at=@At("HEAD"),require=1)
     private void ladsPreviewLayers(CallbackInfo ci){
         var mc=Minecraft.getInstance();
-        if(!(mc.gui.screen() instanceof SkinCustomizationScreen)&&!(mc.gui.screen() instanceof com.thelads.core.v26_2.gui.SkinChangerScreen))return;
         for(var model:new Model.Simple[]{wideModel,slimModel}){
             com.thelads.core.v26_2.feature.PreviewSkinLayers.apply(model,skin.get());
             var root=model.root();

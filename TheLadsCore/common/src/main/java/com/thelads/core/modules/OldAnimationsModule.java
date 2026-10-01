@@ -34,7 +34,9 @@ public final class OldAnimationsModule extends Module {
             + "in third person and on other players.", null),
         DROPPED_2D("2D dropped items", "Dropped items are flat icons that turn to face you, as in 1.7 on Fast graphics.", null),
         NO_COOLDOWN_DIP("No attack-cooldown dip", "The held item stays up after an attack instead of dipping while "
-            + "the attack cooldown recharges.", "Minecraft 1.8.9 has no attack cooldown, so the item never dips.");
+            + "the attack cooldown recharges.", "Minecraft 1.8.9 has no attack cooldown, so the item never dips."),
+        LOW_FIRE("Low Fire", "Lowers the first-person fire overlay when burning so it blocks less of your screen.", null),
+        LOW_SHIELD("Low Shield", "Lowers held shields in first person to improve visibility.", "Minecraft 1.8.9 has no shields.");
 
         public final String option;
         public final String tooltip;

@@ -56,6 +56,8 @@ public class HudManager {
 
         scoreboardElement = new ScoreboardHudElement();
         add(scoreboardElement, "Scoreboard");
+        add(new ToggleSprintHudElement(), "ToggleSprint");
+        add(new ToggleSneakHudElement(), "ToggleSneak");
     }
 
     private void add(HudElement element, String moduleName) {
@@ -73,6 +75,18 @@ public class HudManager {
 
     public void render(LadsGraphics g) {
         if (g == null || (g.getGame() != null && g.getGame().isHudHidden())) return;
+        if (g.getGame() != null && g.getGame().isIngame()
+                && HudSettings.getInstance().isHudFpsCapEnabled() && !HudSettings.getInstance().isHudFpsUnlimited()) {
+            int cap = HudSettings.getInstance().getHudFpsLimit();
+            if (cap > 0) {
+                long now = System.nanoTime();
+                long intervalNanos = 1_000_000_000L / cap;
+                if (lastHudRenderNanos != 0 && (now - lastHudRenderNanos) < intervalNanos) {
+                    return;
+                }
+                lastHudRenderNanos = now;
+            }
+        }
         recordHudFrame();
 
         int screenW = g.getScaledWidth();

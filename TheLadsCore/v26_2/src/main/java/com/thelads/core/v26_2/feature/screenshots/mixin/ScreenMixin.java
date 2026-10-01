@@ -31,6 +31,17 @@ public abstract class ScreenMixin {
    private static void lads_screenshots$inject_handleClickEvent(
       ClickEvent clickEvent, Minecraft client, @org.jetbrains.annotations.Nullable Screen screenAfterRun, CallbackInfo ci
    ) {
+      if (clickEvent instanceof com.thelads.core.v26_2.feature.screenshots.screen.ScreenshotChatActionClickEvent ae) {
+         java.io.File file = ae.screenshotFile();
+         switch (ae.actionType()) {
+            case COPY -> com.thelads.core.v26_2.feature.screenshots.ScreenshotViewerUtils.copyImageToClipboard(file);
+            case OPEN_FILE -> net.minecraft.util.Util.getPlatform().openFile(file);
+            case OPEN_FOLDER -> net.minecraft.util.Util.getPlatform().openFile(file.getParentFile());
+            case UPLOAD_IMGUR -> com.thelads.core.v26_2.feature.screenshots.ScreenshotViewerUtils.uploadToImgur(file);
+         }
+         ci.cancel();
+         return;
+      }
       if (clickEvent instanceof ScreenshotClickEvent ce) {
          if (ScreenshotViewer.active() && !client.hasShiftDown()
             && (Boolean)ScreenshotViewer.getInstance().getConfig().getOrFallback(ScreenshotViewerOptions.REDIRECT_SCREENSHOT_CHAT_LINKS, false)) {

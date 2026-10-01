@@ -38,19 +38,28 @@ public final class NativeFeatures {
         return mc.player != null && mc.level != null && !mc.player.isDeadOrDying()
             && mc.gui.screen() == null && mc.isWindowActive() && !mc.isPaused();
     }
-    public static void reset() {
-        stopOwnedSprint();
+    public static void reset(boolean clearToggles) {
+        if (clearToggles) {
+            stopOwnedSprint();
+            if (module("ToggleSprint") instanceof ToggleSprintModule sprint && sprint.isToggled()) sprint.onToggleKey();
+            if (module("ToggleSneak") instanceof ToggleSneakModule sneak && sneak.isToggled()) sneak.onToggleKey();
+        }
         zoomHeld = sprintHeld = sneakHeld = false;
         zoomPrevious = zoomCurrent = 1;
         zoomTarget = .25f;
-        if (module("ToggleSprint") instanceof ToggleSprintModule sprint && sprint.isToggled()) sprint.onToggleKey();
-        if (module("ToggleSneak") instanceof ToggleSneakModule sneak && sneak.isToggled()) sneak.onToggleKey();
+    }
+    public static void reset() {
+        reset(false);
     }
     public static void tick() {
         Object currentPlayer = Minecraft.getInstance().player;
-        if (currentPlayer != player || !interactive()) {
-            reset();
+        if (currentPlayer != player) {
+            reset(true);
             player = currentPlayer;
+            return;
+        }
+        if (!interactive()) {
+            zoomHeld = false;
             return;
         }
         if (!enabled("ToggleSprint") && module("ToggleSprint") instanceof ToggleSprintModule sprint) {
@@ -103,7 +112,7 @@ public final class NativeFeatures {
         sneakHeld = down;
     }
     public static Input movement(Input original) {
-        if (!interactive()) { reset(); return original; }
+        if (!interactive()) { return original; }
         boolean shift = original.shift(), sprinting = original.sprint();
         if (module("ToggleSneak") instanceof ToggleSneakModule sneak && sneak.isEnabled()) {
             // Use physical hold state in Hold mode, independent of vanilla's toggle preference.
