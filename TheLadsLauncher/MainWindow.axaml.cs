@@ -5456,7 +5456,8 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task<bool> InstallClientModsAsync(string gameDirectory, string minecraftVersion)
     {
-        Action<string> status = message => Dispatcher.UIThread.Post(() => StatusText.Text = message);
+        // The launch overlay shows it too, or a long download looks like the step before it hanging.
+        Action<string> status = message => Dispatcher.UIThread.Post(() => StatusText.Text = GameLaunchStatusText.Text = message);
         try
         {
             await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status);

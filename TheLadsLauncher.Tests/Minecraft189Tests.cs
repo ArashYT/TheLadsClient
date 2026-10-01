@@ -157,49 +157,88 @@ public class Minecraft189Tests
     // ------------------------------------------------------------------ world safety
 
     /// <summary>
-    /// <summary>
-    /// In Version 1.4.2+, 1.8.9 achieves full shared parity: saves, resourcepacks, and shaderpacks are linked
-    /// to the shared folder just like newer versions. Controls and settings sync bidirectionally with smart
-    /// keycode translation.
+    /// The trip-wire for the hard world-safety rule. Whatever a 1.8.9 game folder held before (the links a newer version
+    /// made in it, or its own 1.8.9 worlds and packs) and whichever entry point runs (the startup pass, a launch, the "launch
+    /// without sharing" retry, the post-game sync), it ends with its own saves, resourcepacks and shaderpacks: no links and no
+    /// copies of shared content, the shared folders byte for byte as they were, and options.txt never shared either way.
+    /// servers.dat may be shared.
     /// </summary>
     [Fact]
-    public async Task Minecraft189SharesWorldsPacksAndTranslatesKeybinds()
+    public async Task Minecraft189NeverGetsTheSharedWorldsPacksOrSettings()
     {
         using var l = new Launcher();
-        var p189 = l.Profiles.GetProfile("1.8.9")!;
-        Assert.False(p189.IsIsolated);
+        var shared = l.SharedTree();
+        // An existing folder that a newer version had linked (a profile folder re-used for 1.8.9).
+        await l.Shared.PrepareProfileAsync(l.Game189, "26.3 before", null, coreEnabled: true);
+        Assert.All(SharedContentService.SharedFolders, folder => Assert.True(SafeFileOps.IsLink(Path.Combine(l.Game189, folder))));
+        // A second 1.8.9 profile with its own worlds, packs and settings, and IsIsolated off.
+        var second = new LauncherProfile { Id = "second-189", Name = "Second 1.8.9", MinecraftVersion = "1.8.9", FabricVersion = null, JavaMajorVersion = 8 };
+        l.Profiles.SaveProfile(second);
+        var game2 = l.Paths.GetProfileDirectory(second);
+        Write(Path.Combine(game2, "saves", "Old 1.8.9 World", "level.dat"), "1.8.9 world");
+        Write(Path.Combine(game2, "resourcepacks", "faithful-1.8.zip"), "pack_format 1");
+        Write(Path.Combine(game2, "options.txt"), "fov:0.0\n");
 
-        // Modern shared options has a modern keybind (e.g. key.keyboard.w)
-        File.WriteAllText(l.Paths.SharedOptionsFile, "key_key.forward:key.keyboard.w\nfov:70.0\n");
+        await l.Profiles.PrepareAllProfilesSharedContentAsync();
+        foreach (var profile in new[] { l.Profiles.GetProfile("1.8.9")!, second })
+        {
+            await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+            await l.Profiles.PrepareProfileEnvironmentAsync(profile, null, withoutSharedFolders: true);
+            await l.Profiles.SyncProfileToSharedAsync(profile);
+        }
+        Write(Path.Combine(l.Game189, "saves", "New 1.8.9 World", "level.dat"), "played after the first launch");
+        await l.Profiles.PrepareAllProfilesSharedContentAsync();
+        await l.Profiles.PrepareProfileEnvironmentAsync(l.Profiles.GetProfile("1.8.9")!, null);
 
-        await l.Profiles.PrepareProfileEnvironmentAsync(p189, null);
-
-        // Verify shared folders are linked
-        Assert.All(SharedContentService.SharedFolders, folder =>
-            Assert.True(SafeFileOps.IsLink(Path.Combine(l.Game189, folder)), $"{folder} should be linked for 1.8.9"));
-
-        // Verify options.txt was synced and translated key.keyboard.w -> 17 (LWJGL2)
-        var p189Options = File.ReadAllText(Path.Combine(l.Game189, "options.txt"));
-        Assert.Contains("key_key.forward:17", p189Options);
-        Assert.Contains("fov:70.0", p189Options);
-
-        // Now simulate changing a key in 1.8.9 (e.g. jump to space = 57)
-        File.WriteAllText(Path.Combine(l.Game189, "options.txt"), p189Options + "key_key.jump:57\n");
-        await l.Profiles.SyncProfileToSharedAsync(p189);
-
-        // Verify shared options now has translated jump key: key.keyboard.space
-        var sharedOptions = File.ReadAllText(l.Paths.SharedOptionsFile);
-        Assert.Contains("key_key.jump:key.keyboard.space", sharedOptions);
+        var sharedHashes = shared.Values.ToHashSet();
+        foreach (var game in new[] { l.Game189, game2 })
+        {
+            Assert.All(SharedContentService.SharedFolders, folder => Assert.False(SafeFileOps.IsLink(Path.Combine(game, folder)), $"{game}: {folder} is a link"));
+            Assert.DoesNotContain(Directory.EnumerateFiles(game, "*", SearchOption.AllDirectories), file => sharedHashes.Contains(Sha(file)));
+            Assert.False(File.Exists(Path.Combine(game, WorldCatalogService.GameSourcesFile)));
+            Assert.Equal(Sha(l.G("servers.dat")), Sha(Path.Combine(game, "servers.dat"))); // the server list is shared
+        }
+        Assert.Equal(shared, l.SharedTree()); // nothing changed, removed or added (no 1.8.9 world moved in)
+        Assert.Equal("1.8.9 world", File.ReadAllText(Path.Combine(game2, "saves", "Old 1.8.9 World", "level.dat")));
+        Assert.Equal("played after the first launch", File.ReadAllText(Path.Combine(l.Game189, "saves", "New 1.8.9 World", "level.dat")));
+        Assert.Equal("fov:0.0\n", File.ReadAllText(Path.Combine(game2, "options.txt")));
+        Assert.False(File.Exists(Path.Combine(l.Game189, "options.txt")));
+        Assert.Equal(Launcher.SharedOptions, File.ReadAllText(l.Paths.SharedOptionsFile));
     }
 
     [Fact]
-    public async Task NewerVersionsInGameWorldPickerIncludes189WorldsInParity()
+    public async Task Minecraft189RefusesTheGlobalFolderAForeignLinkAndANewerProfilesFolder()
+    {
+        using var l = new Launcher();
+        var shared = l.SharedTree();
+        var direct = new LauncherProfile { Name = "1.8.9 in .minecraft", MinecraftVersion = "1.8.9", FabricVersion = null, CustomGameDir = l.Global };
+        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => l.Profiles.PrepareProfileEnvironmentAsync(direct, null));
+        Assert.Contains("game folder of its own", refused.Message);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => l.Shared.PrepareProfileAsync(l.Global, "QA", null, false, keepOwnFolders: true));
+
+        // A folder linked anywhere but the shared folder may lead to newer worlds: refused, and the link is left alone.
+        var elsewhere = Path.Combine(l.Root, "other-launcher", "saves");
+        Write(Path.Combine(elsewhere, "World", "level.dat"), "some other world");
+        Directory.CreateDirectory(l.Game189);
+        SafeFileOps.CreateJunction(Path.Combine(l.Game189, "saves"), elsewhere);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => l.Profiles.PrepareProfileEnvironmentAsync(l.Profiles.GetProfile("1.8.9")!, null));
+        Assert.True(SafeFileOps.IsLink(Path.Combine(l.Game189, "saves")));
+
+        var newer = l.Paths.GetProfileDirectory(l.Profiles.GetProfile("26.3")!);
+        var inNewer = new LauncherProfile { Name = "1.8.9 in the 26.3 folder", MinecraftVersion = "1.8.9", FabricVersion = null, CustomGameDir = newer };
+        await Assert.ThrowsAsync<InvalidOperationException>(() => l.Profiles.PrepareProfileEnvironmentAsync(inNewer, null));
+        Assert.False(Directory.Exists(newer));
+        Assert.Equal(shared, l.SharedTree());
+    }
+
+    [Fact]
+    public async Task NewerVersionsInGameWorldPickerNeverLists189Worlds()
     {
         using var l = new Launcher();
         var modern = l.Profiles.GetProfile("26.3")!;
         await l.Profiles.PrepareProfileEnvironmentAsync(modern, null);
         var sources = JsonSerializer.Deserialize<List<WorldSource>>(File.ReadAllText(Path.Combine(l.Paths.GetProfileDirectory(modern), WorldCatalogService.GameSourcesFile)))!;
-        Assert.Contains(sources, s => s.Version == "1.8.9");
+        Assert.DoesNotContain(sources, s => SafeFileOps.PathsEqual(s.GameDirectory, l.Game189));
         Assert.Contains(sources, s => s.Version == "1.21.1");
     }
 
@@ -277,13 +316,12 @@ public class Minecraft189Tests
         var bundle = AppContext.BaseDirectory;
         var manifest = JsonSerializer.Deserialize<ClientModInstaller.Manifest>(File.ReadAllText(Path.Combine(bundle, "game-mods", "1.8.9", "client-mods.json")),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-        Assert.Equal(("1.8.9", 2), (manifest.MinecraftVersion, manifest.Mods.Count));
+        Assert.Equal(("1.8.9", 0), (manifest.MinecraftVersion, manifest.Mods.Count));
         Assert.DoesNotContain(Directory.EnumerateFiles(Path.Combine(bundle, "game-mods"), "*", SearchOption.AllDirectories),
             file => Path.GetFileName(file).Contains("optifine", StringComparison.OrdinalIgnoreCase)
                 || (file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) && FabricModMetadata.ReadForgeJar(file)?.Id == OptiFineInstaller.ModId));
 
         using var box = new ModSandbox();
-        box.Choose(("resourcify", false), ("essential", false));
         await ClientModInstaller.InstallAsync(bundle, box.Game, "1.8.9", httpClient: box.Client());
         Assert.Empty(box.Requests);
         var inventory = await new ModInventoryService().BuildAsync(bundle, box.Game, "1.8.9");

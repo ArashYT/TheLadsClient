@@ -277,7 +277,7 @@ public static class ClientModInstaller
                 if (!SameHash(actual, entry.Sha512))
                     throw new InvalidDataException($"Cached download changed for {entry.Name}. Retry the launch.");
                 var info = ReadMod(temp, minecraftVersion, cancellationToken);
-                if (info?.Id != entry.ModId) throw new InvalidDataException($"Wrong Fabric mod downloaded for {entry.Name}.");
+                if (info?.Id != entry.ModId) throw new InvalidDataException($"Wrong mod downloaded for {entry.Name}.");
                 receipt[entry.ModId] = entry.Sha512;
                 changes.Add(new(destination, temp, previousHash, actual, "previous-" + entry.ModId, $"Installed {entry.Name}."));
                 final[destination] = new(destination, actual, false, info);
@@ -469,7 +469,7 @@ public static class ClientModInstaller
             if (!SameHash(await HashAsync(game, cached, token), entry.Sha512))
                 throw new InvalidDataException($"Cached file '{cached}' is damaged. Move it aside and retry; it was preserved.");
             if (ReadMod(cached, minecraftVersion, token)?.Id != entry.ModId)
-                throw new InvalidDataException($"Wrong Fabric mod cached for {entry.Name}.");
+                throw new InvalidDataException($"Wrong mod cached for {entry.Name}.");
             return;
         }
         status?.Invoke($"Downloading {entry.Name} {entry.Version}...");
@@ -503,7 +503,7 @@ public static class ClientModInstaller
             if (!SameHash(await HashAsync(game, temp, token), entry.Sha512))
                 throw new InvalidDataException($"Download verification failed for {entry.Name}. Retry the launch.");
             if (ReadMod(temp, minecraftVersion, token)?.Id != entry.ModId)
-                throw new InvalidDataException($"Wrong Fabric mod downloaded for {entry.Name}.");
+                throw new InvalidDataException($"Wrong mod downloaded for {entry.Name}.");
             // Never overwrite even an unexpected cache file created during the download.
             File.Move(SafeChild(game, temp), SafeChild(game, cached));
             created = false;

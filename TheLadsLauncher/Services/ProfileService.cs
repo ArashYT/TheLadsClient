@@ -175,24 +175,6 @@ public class ProfileService : IProfileService
         if (ownWorlds) RefuseSharedGameFolder(profile, targetDir);
         Directory.CreateDirectory(targetDir);
 
-        // 1.8.9 unified parity: clean up any legacy separate non-link folders from earlier isolated tests so junction links succeed cleanly like 26.3
-        if (profile.MinecraftVersion == "1.8.9")
-        {
-            foreach (var folder in SharedContentService.SharedFolders)
-            {
-                if (folder == "resourcepacks" && profile.LocalResourcePacks) continue;
-                var fPath = Path.Combine(targetDir, folder);
-                if (Directory.Exists(fPath) && !SafeFileOps.IsLink(fPath))
-                {
-                    try
-                    {
-                        Directory.Delete(fPath, true);
-                    }
-                    catch { }
-                }
-            }
-        }
-
         var coreEnabled = UsesCore(profile, targetDir, out var stateFileError);
         var report = await _sharedContent.PrepareProfileAsync(targetDir, profile.Name, LegacySharedServersFile, coreEnabled,
             progress, cancellationToken, shareFolders: !withoutSharedFolders, keepOwnFolders: ownWorlds);
@@ -489,20 +471,13 @@ public class ProfileService : IProfileService
             }
         }
 
-        // 1.8.9 runs on Forge, Java 8, and now shares settings, worlds and packs with other versions
-        if (GameVersionPolicy.UsesForge(profile.MinecraftVersion))
+        // 1.8.9 runs on Forge and exactly Java 8.
+        if (GameVersionPolicy.UsesForge(profile.MinecraftVersion)
+            && (profile.FabricVersion != null || profile.JavaMajorVersion != GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion)))
         {
-            if (profile.FabricVersion != null || profile.JavaMajorVersion != GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion))
-            {
-                profile.FabricVersion = null;
-                profile.JavaMajorVersion = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion);
-                changed = true;
-            }
-            if (profile.IsIsolated)
-            {
-                profile.IsIsolated = false;
-                changed = true;
-            }
+            profile.FabricVersion = null;
+            profile.JavaMajorVersion = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion);
+            changed = true;
         }
         return changed;
     }
@@ -559,11 +534,11 @@ public class ProfileService : IProfileService
                 FabricVersion = "0.19.5", JavaMajorVersion = 21, IsIsolated = false,
                 PackwizUrl = null, IconKey = "nextgen"
             },
-            // Forge, Java 8, shared content parity
+            // Forge, Java 8, and its own worlds, packs and settings (GameVersionPolicy.KeepsOwnWorlds).
             new()
             {
                 Id = "1.8.9", Name = "The Lads Client 1.8.9", MinecraftVersion = "1.8.9",
-                FabricVersion = null, JavaMajorVersion = 8, IsIsolated = false, PackwizUrl = null
+                FabricVersion = null, JavaMajorVersion = 8, IsIsolated = true, PackwizUrl = null
             }
         };
     }

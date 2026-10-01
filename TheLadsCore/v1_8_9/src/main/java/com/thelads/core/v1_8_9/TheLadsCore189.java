@@ -4,10 +4,12 @@ import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.mods.CoreCatalogExporter;
+import com.thelads.core.shared.SharedContentPaths;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
+import com.thelads.core.v1_8_9.feature.RawMouse189;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
@@ -28,15 +30,15 @@ public class TheLadsCore189 {
         {"Performance", "Sodium"}, {"Lithium", "Lithium"}, {"FerriteCore", "FerriteCore"}, {"EntityCulling", "Entity Culling"},
         {"ImmediatelyFast", "ImmediatelyFast"}, {"ScalableLux", "ScalableLux"}, {"Exordium", "Exordium"}, {"DynamicFPS", "Dynamic FPS"},
         {"DynamicLights", "LambDynamicLights"}, {"SkinLayers", "3D Skin Layers"}, {"NotEnoughAnimations", "Not Enough Animations"},
-        {"BetterF3", "BetterF3"}, {"BetterStats", "Better Statistics Screen"},
+        {"BetterF3", "BetterF3"}, {"BetterStats", "Better Statistics Screen"}, {"Resourcify", "Resourcify"},
         {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroMinimap", "Xaero's Minimap"}, {"XaeroWorldmap", "Xaero's World Map"},
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
         {"EnhancedToolbars", "Durability Tooltip"}, {"Capes", "Capes"}, {"Raised", "Raised"}};
 
     private static Field equippedProgressField;
     private static Field prevEquippedProgressField;
-    private static boolean rawMouseInstalled = false;
     private static boolean borderlessApplied = false;
+    private static String windowTitle = "The Lads Client";
 
     static {
         try {
@@ -48,7 +50,11 @@ public class TheLadsCore189 {
     }
 
     public TheLadsCore189() {
-        // Shared parity enabled: worlds and packs share global paths with newer versions
+        // Before any Core code runs: 1.8.9 corrupts a newer world, so shared worlds and packs must never be used here.
+        SharedContentPaths.isolateWorldsAndPacks();
+        // JInput's jar is sealed: LaunchClassLoader defining its classes logs "has a security seal ... not secure" once per
+        // class. It loads from the parent loader instead, as org.lwjgl. does. Set before RawMouse189 (or any JInput class) loads.
+        net.minecraft.launchwrapper.Launch.classLoader.addClassLoaderExclusion("net.java.games.input.");
     }
 
     @Mod.EventHandler
@@ -56,7 +62,8 @@ public class TheLadsCore189 {
         LOGGER.info("Initializing TheLadsCore for Minecraft 1.8.9...");
         try {
             net.minecraftforge.common.ForgeModContainer.disableVersionCheck = true;
-            org.lwjgl.opengl.Display.setTitle("The Lads Client 1.4.2");
+            windowTitle = "The Lads Client " + net.minecraftforge.fml.common.Loader.instance().getIndexedModList().get("theladscore").getVersion();
+            org.lwjgl.opengl.Display.setTitle(windowTitle);
         } catch (Throwable ignored) {}
         LadsGameBridge.set(new VanillaGameBridge189());
         ConfigManager.load();
@@ -68,8 +75,8 @@ public class TheLadsCore189 {
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
 
-    private static final String[] GAMEPLAY_MODULES = {
-        "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "Crosshair", "OldAnimations", "LegacySwing",
+    public static final String[] GAMEPLAY_MODULES = {
+        "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
         "RawInput", "BorderlessFullscreen"
     };
@@ -113,14 +120,14 @@ public class TheLadsCore189 {
 
         try {
             String title = org.lwjgl.opengl.Display.getTitle();
-            if (title == null || !title.startsWith("The Lads Client 1.4.2")) {
-                org.lwjgl.opengl.Display.setTitle("The Lads Client 1.4.2");
+            if (title == null || !title.startsWith(windowTitle)) {
+                org.lwjgl.opengl.Display.setTitle(windowTitle);
             }
         } catch (Throwable ignored) {}
 
         com.thelads.core.config.Module rawInput = com.thelads.core.config.ModuleManager.getInstance().getModule("RawInput");
         if (rawInput != null && rawInput.isEnabled()) {
-            ensureRawMouseHelper(mc);
+            RawMouse189.ensureInstalled(mc);
         }
 
         com.thelads.core.config.Module borderless = com.thelads.core.config.ModuleManager.getInstance().getModule("BorderlessFullscreen");
@@ -130,43 +137,6 @@ public class TheLadsCore189 {
 
         CoreCatalogExporter.exportIfChanged();
         if (Boolean.getBoolean("thelads.verify189Core")) CoreProbe.tick();
-    }
-
-    private static void ensureRawMouseHelper(Minecraft mc) {
-        if (rawMouseInstalled || mc.mouseHelper == null) return;
-        try {
-            net.java.games.input.Controller[] controllers = net.java.games.input.ControllerEnvironment.getDefaultEnvironment().getControllers();
-            net.java.games.input.Controller mouse = null;
-            for (net.java.games.input.Controller c : controllers) {
-                if (c.getType() == net.java.games.input.Controller.Type.MOUSE) {
-                    mouse = c;
-                    break;
-                }
-            }
-            if (mouse != null) {
-                final net.java.games.input.Controller finalMouse = mouse;
-                net.java.games.input.Component xC = null, yC = null;
-                for (net.java.games.input.Component comp : mouse.getComponents()) {
-                    if (comp.getIdentifier() == net.java.games.input.Component.Identifier.Axis.X) xC = comp;
-                    if (comp.getIdentifier() == net.java.games.input.Component.Identifier.Axis.Y) yC = comp;
-                }
-                final net.java.games.input.Component finalX = xC, finalY = yC;
-                if (finalX != null && finalY != null) {
-                    mc.mouseHelper = new net.minecraft.util.MouseHelper() {
-                        @Override
-                        public void mouseXYChange() {
-                            finalMouse.poll();
-                            this.deltaX = (int) finalX.getPollData();
-                            this.deltaY = -(int) finalY.getPollData();
-                        }
-                    };
-                    rawMouseInstalled = true;
-                    LOGGER.info("Raw mouse input initialized via JInput");
-                }
-            }
-        } catch (Throwable t) {
-            LOGGER.warn("Could not initialize raw mouse input: " + t.getMessage());
-        }
     }
 
     private static void applyBorderlessFullscreen(Minecraft mc) {
