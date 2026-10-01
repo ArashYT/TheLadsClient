@@ -13,6 +13,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class ChatIndicatorMixin {
     @Inject(method = "tag", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$hideIndicator(CallbackInfoReturnable<GuiMessageTag> callback) {
-        if (NativeQualityOfLife.enabled("HideChatIndicators")) callback.setReturnValue(null);
+        if (NativeQualityOfLife.enabled("Chat") && NativeQualityOfLife.bool("Chat", "Hide Signing Indicators", true)) callback.setReturnValue(null);
     }
 }

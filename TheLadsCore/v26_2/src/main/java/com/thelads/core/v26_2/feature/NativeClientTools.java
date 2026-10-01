@@ -116,7 +116,7 @@ public final class NativeClientTools {
             NativeQualityOfLife.number("ParticleBudget", "Distance", 48), (int)NativeQualityOfLife.number("ParticleBudget", "Particles per tick", 64));
     }
     public static Component timestamp(Component original) {
-        if (!NativeQualityOfLife.enabled("ClientTools") || !NativeQualityOfLife.bool("ClientTools", "Chat timestamps", false)) return original;
+        if (!NativeQualityOfLife.enabled("Chat") || !NativeQualityOfLife.bool("Chat", "Timestamps", false)) return original;
         var prefix = Component.literal("[" + java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) + "] ")
             .withStyle(net.minecraft.ChatFormatting.GRAY);
         // Use an unstyled root so the original message keeps its colour/click/hover style.

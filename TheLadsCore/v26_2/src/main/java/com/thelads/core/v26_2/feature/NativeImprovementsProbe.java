@@ -57,7 +57,7 @@ final class NativeImprovementsProbe {
             for (int i = 0; i < 36; i++) inventory.setItem(i, new ItemStack(Items.STONE, 64));
             NativeClientTools.tick();
             require(((Component)overlay.get(mc.gui.hud)).getString().contains("Inventory is full"), "full inventory transition reaches action bar");
-            ((BoolOption)NativeQualityOfLife.module("ClientTools").getOption("Chat timestamps")).set(true);
+            NativeQualityOfLife.module("Chat").setEnabled(true);((BoolOption)NativeQualityOfLife.module("Chat").getOption("Timestamps")).set(true);
             var original = Component.literal("Styled QA").withStyle(net.minecraft.ChatFormatting.AQUA);
             var signature = new MessageSignature(new byte[256]); var tag = GuiMessageTag.system();
             chat.addPlayerMessage(original, signature, tag);
@@ -66,6 +66,13 @@ final class NativeImprovementsProbe {
             require(message.content().getString().matches("\\[\\d{2}:\\d{2}\\] Styled QA"), "transformed chat entry adds timestamp");
             require(message.signature() == signature && message.tag() == tag && original.getString().equals("Styled QA"), "chat signature, tag and original content retained");
             require(message.content().getSiblings().getLast().getStyle().equals(original.getStyle()), "original chat styling retained");
+            ((BoolOption)NativeQualityOfLife.module("Chat").getOption("Message Animations")).set(true);
+            chat.addClientSystemMessage(Component.literal("Lads chat animation QA"));
+            var graphics = new net.minecraft.client.gui.GuiGraphicsExtractor(mc, new net.minecraft.client.renderer.state.gui.GuiRenderState(), 0, 0);
+            var pose = new org.joml.Matrix3x2f(graphics.pose());
+            chat.extractRenderState(graphics, mc.font, mc.gui.hud.getGuiTicks(), 0, 0, net.minecraft.client.gui.components.ChatComponent.DisplayMode.BACKGROUND, false);
+            require(graphics.pose().equals(pose), "animating chat leaves the HUD pose unchanged for everything drawn after it");
+            org.slf4j.LoggerFactory.getLogger("TheLadsCore").info("Lads chat QA: pose after animated chat {} == before {}", graphics.pose(), pose);
             var bridge = LadsGameBridge.get();
             require(bridge.getActivePotionEffects() == bridge.getActivePotionEffects(), "same tick reuses potion snapshot");
             int originalTick = mc.player.tickCount;
