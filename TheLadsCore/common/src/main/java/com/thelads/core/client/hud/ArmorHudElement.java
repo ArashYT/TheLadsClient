@@ -46,9 +46,12 @@ public class ArmorHudElement extends HudElement {
         if (lines.isEmpty()) return;
         drawBackground(g);
         int color = resolveColor();
+        int lineHeight = Math.max(20, g.fontHeight() + 7);
         for (int i = 0; i < lines.size(); i++) {
-            g.drawArmorItem(i, x + 3, y + 2 + i * Math.max(20, g.fontHeight() + 7), preview);
-            g.drawText(lines.get(i), x + 23, y + 6 + i * Math.max(20, g.fontHeight() + 7), color,
+            // Bridges list armor feet first (inventory order); stack it head first. The editor sample is head first already.
+            int row = preview ? i : lines.size() - 1 - i;
+            g.drawArmorItem(i, x + 3, y + 2 + row * lineHeight, preview);
+            g.drawText(lines.get(i), x + 23, y + 6 + row * lineHeight, color,
                     HudSettings.getInstance().isTextShadow());
         }
     }

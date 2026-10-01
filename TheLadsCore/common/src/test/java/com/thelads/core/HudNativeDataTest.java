@@ -230,6 +230,20 @@ class HudNativeDataTest {
     }
 
     @Test
+    void armorStacksHelmetOnTopAndBootsAtTheBottom() {
+        // The bridges list armor feet first, as the inventory stores it.
+        game.armor = List.of(new LadsGameBridge.ArmorPiece("Boots", 10, 100), new LadsGameBridge.ArmorPiece("Helmet", 10, 100));
+        Map<String, Integer> rows = new HashMap<>();
+        named(new ArmorHudElement(), "ArmorHUD").render(new Graphics() {
+            @Override public void drawText(String text, int x, int y, int color, boolean shadow) {
+                super.drawText(text, x, y, color, shadow);
+                rows.put(text.split(" ")[0], y);
+            }
+        });
+        assertTrue(rows.get("Helmet") < rows.get("Boots"), rows.toString());
+    }
+
+    @Test
     void armorNumbersHandleOverMaxAndUnknownDurabilityWithoutFakeRatios() {
         game.armor = List.of(new LadsGameBridge.ArmorPiece("Helmet", 200, 100),
                 new LadsGameBridge.ArmorPiece("Unknown", -1, 100));
