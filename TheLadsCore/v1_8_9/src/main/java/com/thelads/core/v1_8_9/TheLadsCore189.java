@@ -26,11 +26,11 @@ import java.lang.reflect.Field;
 public class TheLadsCore189 {
     private static final Logger LOGGER = LogManager.getLogger("TheLadsCore-1.8.9");
     /** Built on third-party mods The Lads Client does not ship for 1.8.9: listed as unavailable with that reason. */
-    private static final String[][] MOD_BACKED = {
+    public static final String[][] MOD_BACKED = {
         {"Performance", "Sodium"}, {"Lithium", "Lithium"}, {"FerriteCore", "FerriteCore"}, {"EntityCulling", "Entity Culling"},
         {"ImmediatelyFast", "ImmediatelyFast"}, {"ScalableLux", "ScalableLux"}, {"Exordium", "Exordium"}, {"DynamicFPS", "Dynamic FPS"},
         {"DynamicLights", "LambDynamicLights"}, {"SkinLayers", "3D Skin Layers"}, {"NotEnoughAnimations", "Not Enough Animations"},
-        {"BetterF3", "BetterF3"}, {"BetterStats", "Better Statistics Screen"}, {"Resourcify", "Resourcify"},
+        {"BetterF3", "BetterF3"}, {"BetterStats", "Better Statistics Screen"},
         {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroMinimap", "Xaero's Minimap"}, {"XaeroWorldmap", "Xaero's World Map"},
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
         {"EnhancedToolbars", "Durability Tooltip"}, {"Capes", "Capes"}, {"Raised", "Raised"}};
@@ -88,6 +88,8 @@ public class TheLadsCore189 {
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
         ModuleSupport.registerUnavailable("HideChatIndicators", "Minecraft 1.8.9 has no chat signing, so there are no indicators to hide.");
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
+        // The launcher's 1.8.9 pack includes Resourcify (its own in-game browser, no Lads settings page).
+        ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));
     }
 
     @SubscribeEvent

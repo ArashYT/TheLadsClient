@@ -316,12 +316,13 @@ public class Minecraft189Tests
         var bundle = AppContext.BaseDirectory;
         var manifest = JsonSerializer.Deserialize<ClientModInstaller.Manifest>(File.ReadAllText(Path.Combine(bundle, "game-mods", "1.8.9", "client-mods.json")),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-        Assert.Equal(("1.8.9", 0), (manifest.MinecraftVersion, manifest.Mods.Count));
+        Assert.Equal(("1.8.9", 2), (manifest.MinecraftVersion, manifest.Mods.Count));
         Assert.DoesNotContain(Directory.EnumerateFiles(Path.Combine(bundle, "game-mods"), "*", SearchOption.AllDirectories),
             file => Path.GetFileName(file).Contains("optifine", StringComparison.OrdinalIgnoreCase)
                 || (file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) && FabricModMetadata.ReadForgeJar(file)?.Id == OptiFineInstaller.ModId));
 
         using var box = new ModSandbox();
+        box.Choose(("resourcify", false), ("essential", false));
         await ClientModInstaller.InstallAsync(bundle, box.Game, "1.8.9", httpClient: box.Client());
         Assert.Empty(box.Requests);
         var inventory = await new ModInventoryService().BuildAsync(bundle, box.Game, "1.8.9");
@@ -342,6 +343,17 @@ public class Minecraft189Tests
         Assert.Equal((ModOwnership.Core, ModEntryStatus.PendingDownload, info.Version), (core.Ownership, core.Status, core.Version));
         Assert.True(await BundledModInstaller.InstallAsync(bundle, box.Game, "1.8.9"));
         Assert.Equal(File.ReadAllBytes(staged), File.ReadAllBytes(box.Mod("theladscore.jar")));
+    }
+
+    /// <summary>Essential's Forge jar is only its loader, without mcmod.info: it is still the "essential" mod, never a nameless coremod.</summary>
+    [Fact]
+    public void EssentialsLoaderJarReadsAsTheEssentialMod()
+    {
+        using var jar = new MemoryStream();
+        using (var zip = new ZipArchive(jar, ZipArchiveMode.Create, leaveOpen: true))
+            zip.CreateEntry("gg/essential/loader/stage0/EssentialSetupTweaker.class");
+        jar.Position = 0;
+        Assert.Equal(("essential", true), (FabricModMetadata.ReadForgeJar(jar)!.Id, FabricModMetadata.ReadForgeJar(new MemoryStream(jar.ToArray()))!.Forge));
     }
 
     // ------------------------------------------------------------------ the Lads Core on Forge

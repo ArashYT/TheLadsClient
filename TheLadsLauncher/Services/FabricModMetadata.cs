@@ -61,7 +61,7 @@ public static class FabricModMetadata
     {
         using var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
         var entry = zip.GetEntry("mcmod.info");
-        if (entry == null) return ReadOptiFine(zip);
+        if (entry == null) return ReadOptiFine(zip) ?? ReadEssential(zip);
         if (entry.Length > MaximumMetadataSize) throw new InvalidDataException("Oversized mcmod.info.");
         using var document = ReadFabricMetadata(entry.Open(), "mcmod.info");
         var root = document.RootElement;
@@ -87,6 +87,12 @@ public static class FabricModMetadata
         return new FabricModInfo(OptiFineInstaller.ModId, "OptiFine", version, null, new[] { "sp614x" }, null, null, Array.Empty<string>(),
             new Dictionary<string, string>(), false, Array.Empty<FabricModInfo>(), null) { Forge = true };
     }
+
+    // Essential's Forge jar is only its loader (a TweakClass that fetches Essential itself at launch), without mcmod.info.
+    private static FabricModInfo? ReadEssential(ZipArchive zip) =>
+        zip.GetEntry("gg/essential/loader/stage0/EssentialSetupTweaker.class") == null ? null
+            : new FabricModInfo("essential", "Essential", null, null, new[] { "Spark Universe" }, null, null, Array.Empty<string>(),
+                new Dictionary<string, string>(), false, Array.Empty<FabricModInfo>(), null) { Forge = true };
 
     /// <summary>The mod and its nested Fabric modules that load on the client, depth first.</summary>
     public static IEnumerable<FabricModInfo> ClientModules(FabricModInfo mod)
