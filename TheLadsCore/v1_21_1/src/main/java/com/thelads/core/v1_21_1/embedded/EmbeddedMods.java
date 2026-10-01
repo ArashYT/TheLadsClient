@@ -1,5 +1,6 @@
 package com.thelads.core.v1_21_1.embedded;
 
+import com.thelads.core.v1_21_1.embedded.cushions.OptimizedCushionsClient;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.LoggerFactory;
 
@@ -18,5 +19,7 @@ public final class EmbeddedMods {
     /** Called once from the Core client initializer. */
     public static void clientInit() {
         if (active("fastipping")) LoggerFactory.getLogger("FastIpPing").info("ping & connect fast!");
+        // Optimizes Cushion-Backport's entities, so only while that mod is loaded.
+        if (active("optimizedcushionsbackport") && FabricLoader.getInstance().isModLoaded("cushionbackport")) OptimizedCushionsClient.init();
     }
 }

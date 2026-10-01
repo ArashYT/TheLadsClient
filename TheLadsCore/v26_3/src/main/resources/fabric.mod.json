@@ -48,6 +48,7 @@
     "theladscore.embedded.quickpack.mixins.json",
     "theladscore.embedded.lazyai.mixins.json",
     "theladscore.embedded.entityculling.mixins.json",
+    "theladscore.embedded.cushions.mixins.json",
     "theladscore.embedded.immediatelyfast.mixins.json"
   ],
   "jars": [

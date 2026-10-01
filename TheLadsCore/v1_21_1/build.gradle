@@ -55,6 +55,18 @@ processResources {
     }
 }
 
+// Optimized Cushions Backport (embedded) mixes into Cushion-Backport's classes; remapping those mixin targets
+// needs them on the classpath. Compile only: Cushion-Backport stays a separate pack mod.
+repositories {
+    exclusiveContent {
+        forRepository { maven { url 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
+}
+dependencies {
+    modCompileOnly 'maven.modrinth:cushions-backport:3XEQqHaZ' // cushionbackport 1.0.5 (Fabric)
+}
+
 // ImmediatelyFast (embedded) uses the Reflect library, bundled nested like upstream does.
 dependencies {
     implementation 'net.lenni0451:Reflect:1.6.2'
