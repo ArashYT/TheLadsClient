@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
 using CmlLib.Core;
-using CmlLib.Core.Installer.Forge;
 using CmlLib.Core.ProcessBuilder;
 using TheLadsLauncher.Models;
 
@@ -242,10 +241,11 @@ public class LaunchService : ILaunchService
     }
 
     /// <summary>
-    /// Installs Forge <see cref="GameVersionPolicy.ForgeBuild"/> for Minecraft 1.8.9 with CmlLib's Forge installer (which also
-    /// installs vanilla 1.8.9) unless its version manifest is there, then checks that manifest. MainWindow's launch uses it too.
-    /// The installer writes the Forge libraries with maven.minecraftforge.net URLs, so none point at the retired
-    /// files.minecraftforge.net/maven.
+    /// Installs Forge <see cref="GameVersionPolicy.ForgeBuild"/> for Minecraft 1.8.9 (and vanilla 1.8.9 with its libraries) unless
+    /// its version manifest is there, then checks that manifest. MainWindow's launch uses it too. Done here rather than with
+    /// CmlLib.Core.Installer.Forge, whose Install always opens Forge's adfoc.us page in the browser: the pinned official installer's
+    /// install_profile.json versionInfo is the manifest, its universal jar the Forge library. The libraries point at
+    /// maven.minecraftforge.net, not the retired files.minecraftforge.net/maven (byte for byte what CmlLib wrote).
     /// </summary>
     public static async Task InstallForgeAsync(MinecraftLauncher launcher, string gameDir, HttpClient http,
         Action<string>? statusCallback, CancellationToken cancellationToken)
@@ -255,12 +255,11 @@ public class LaunchService : ILaunchService
         if (!File.Exists(manifest))
         {
             statusCallback?.Invoke($"Installing Forge {GameVersionPolicy.ForgeBuild} for Minecraft {GameVersionPolicy.ForgeMinecraftVersion}...");
-            string installed;
             try
             {
-                // The build number alone: the installer finds no version named "11.15.1.2318-1.8.9".
-                installed = await new ForgeInstaller(launcher, http).Install(GameVersionPolicy.ForgeMinecraftVersion, GameVersionPolicy.ForgeBuild,
-                    new ForgeInstallOptions { CancellationToken = cancellationToken });
+                await InstallForgeFilesAsync(gameDir, http, cancellationToken);
+                await launcher.GetAllVersionsAsync(cancellationToken); // pick up the new manifest
+                await launcher.InstallAsync(versionId, cancellationToken);
             }
             catch (Exception) when (cancellationToken.IsCancellationRequested)
             {
@@ -270,10 +269,32 @@ public class LaunchService : ILaunchService
             {
                 throw new InvalidOperationException($"Could not install Forge {GameVersionPolicy.ForgeBuild} for Minecraft {GameVersionPolicy.ForgeMinecraftVersion}. Retry after checking your connection.", ex);
             }
-            if (installed != versionId)
-                throw new InvalidOperationException($"The Forge installer returned '{installed}' instead of '{versionId}'.");
         }
         await CheckManifestAsync(manifest, versionId, GameVersionPolicy.ForgeMinecraftVersion, "Forge", cancellationToken);
+    }
+
+    private const string ForgeInstallerUrl = "https://maven.minecraftforge.net/net/minecraftforge/forge/1.8.9-11.15.1.2318-1.8.9/forge-1.8.9-11.15.1.2318-1.8.9-installer.jar";
+    private const string ForgeInstallerSha256 = "f9fdf4945ca02d73ec6cc46300942f4e199e4add068877d517157b3677563656";
+
+    private static async Task InstallForgeFilesAsync(string gameDir, HttpClient http, CancellationToken cancellationToken)
+    {
+        const string versionId = GameVersionPolicy.ForgeVersionId;
+        var bytes = await http.GetByteArrayAsync(ForgeInstallerUrl, cancellationToken);
+        if (Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant() != ForgeInstallerSha256)
+            throw new InvalidDataException("The downloaded Forge installer does not match the pinned SHA-256.");
+        using var zip = new System.IO.Compression.ZipArchive(new MemoryStream(bytes));
+        using var profile = JsonDocument.Parse(zip.GetEntry("install_profile.json")!.Open());
+        var install = profile.RootElement.GetProperty("install");
+        var manifest = profile.RootElement.GetProperty("versionInfo").GetRawText().Replace("http://files.minecraftforge.net/maven/", "https://maven.minecraftforge.net/");
+        var library = Path.Combine(gameDir, "libraries", "net", "minecraftforge", "forge", "1.8.9-11.15.1.2318-1.8.9", "forge-1.8.9-11.15.1.2318-1.8.9.jar");
+        if (install.GetProperty("target").GetString() != versionId || install.GetProperty("path").GetString() != "net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9")
+            throw new InvalidDataException("The Forge installer describes a different version.");
+        Directory.CreateDirectory(Path.GetDirectoryName(library)!);
+        System.IO.Compression.ZipFileExtensions.ExtractToFile(zip.GetEntry(install.GetProperty("filePath").GetString()!)!, library, overwrite: true);
+        // The manifest last: InstallForgeAsync takes an existing manifest as an installed Forge.
+        var versionDir = Path.Combine(gameDir, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+        await File.WriteAllTextAsync(Path.Combine(versionDir, versionId + ".json"), manifest, cancellationToken);
     }
 
     /// <summary>A loader's version manifest must be exactly the selected version, on top of the selected Minecraft version.</summary>
