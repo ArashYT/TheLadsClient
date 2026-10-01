@@ -23,6 +23,8 @@ public final class NativeWorldVerification {
     private static Path gameDirectory;
     private static long captureAfter;
     private static boolean captureStarted;
+    private static int chatCaptureStep;
+    private static long chatCaptureAt;
     private static boolean titleCaptured;
     private static Screen menuScreen;
     private static String captureKind = "menu";
@@ -111,6 +113,7 @@ public final class NativeWorldVerification {
                     readyLogged = true;
                     NativeImprovementsProbe.prepareCapture();
                     captureAfter = now + 15_000_000_000L;
+                    chatCaptureAt = now + 7_000_000_000L;
                     LOGGER.info("Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted");
                 }
             }
@@ -156,6 +159,7 @@ public final class NativeWorldVerification {
                 net.minecraft.client.Screenshot.takeScreenshot(target,image->{try{image.writeToFile(output);LOGGER.info("Lads title capture END: actual completed framebuffer at {}",output);}catch(Exception e){fail("title capture",e);}finally{image.close();}});
             }catch(Exception e){fail("title capture",e);}
         }
+        chatCapture(target);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
         captureStarted = true;
         try {
@@ -171,6 +175,27 @@ public final class NativeWorldVerification {
                 finally { image.close(); Minecraft.getInstance().execute(NativeImprovementsProbe::restoreCapture); }
             });
         } catch (Exception failure) { fail("world screenshot", failure); }
+    }
+    /** Chat module QA: a gameplay frame, then one about 100 ms into a new message's slide-in; the HUD around chat must not move. */
+    private static void chatCapture(com.mojang.blaze3d.pipeline.RenderTarget target) {
+        var mc = Minecraft.getInstance();
+        if (!readyLogged || chatCaptureAt == 0 || chatCaptureStep >= 2) return;
+        // Wait out a closing menu's fade so both frames show plain gameplay.
+        if (menuScreen != null || mc.gui.screen() != null) { chatCaptureAt = Math.max(chatCaptureAt, System.nanoTime() + 1_500_000_000L); return; }
+        if (System.nanoTime() < chatCaptureAt || !worldReady()) return;
+        String name = chatCaptureStep++ == 0 ? "chat-before" : "chat-arriving";
+        try {
+            Path output = gameDirectory.resolve("screenshots").resolve("native-" + name + "-" + System.currentTimeMillis() + ".png");
+            net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
+                try { image.writeToFile(output); LOGGER.info("Lads {} capture END: actual completed game frame at {}", name, output); }
+                catch (Exception failure) { fail(name + " capture", failure); }
+                finally { image.close(); }
+            });
+        } catch (Exception failure) { fail(name + " capture", failure); }
+        if (chatCaptureStep == 1) {
+            mc.gui.hud.getChat().addClientSystemMessage(net.minecraft.network.chat.Component.literal("Lads chat QA: only this new line slides in"));
+            chatCaptureAt = System.nanoTime() + 100_000_000L;
+        }
     }
     private static void updateMenuCapture(Minecraft mc, long now) {
         if (menuCaptureFinished) { finishMenuCapture(mc, menuCaptureFailure); return; }
@@ -217,7 +242,7 @@ public final class NativeWorldVerification {
         if (failure == null && "mods".equals(captureKind)
             && !(menuScreen instanceof com.thelads.core.v26_2.gui.LadsSettingsScreen26 mods && mods.isModsViewOpen()))
             failure = new IllegalStateException("The Installed mods view was not open when its frame was captured");
-        if(failure==null && java.util.Set.of("pause","essential","essential-settings","colors","actions","skin-changer","skin","packs","controls","worlds","folders","menu").contains(captureKind)){
+        if(failure==null && java.util.Set.of("pause","essential","essential-settings","colors","actions","chat","skin-changer","skin","packs","controls","worlds","folders","menu").contains(captureKind)){
             if ("menu".equals(captureKind))
                 LOGGER.info("Lads menu capture END: 1 passed, 0 failed; {} completed frames; actual framebuffer at {}", menuFrames, menuOutput);
             else LOGGER.info("Lads {} capture END: actual framebuffer at {}",captureKind,menuOutput);
@@ -240,9 +265,10 @@ public final class NativeWorldVerification {
                 case "folders"->new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);
                 case "menu"->{var view=new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);view.openGlobalColors();yield view;}
                 case "colors"->{var view=new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);view.openModule("Paperdoll");view.openDisplayActions();yield view;}
+                case "actions"->{var view=new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);view.openModule("Chat");yield view;}
                 default->{ var view=new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null); view.openMods(); yield view; }
             };
-            captureKind=switch(captureKind){case "pause"->"essential";case "essential"->"essential-settings";case "essential-settings"->"skin";case "skin"->"skin-changer";case "skin-changer"->"packs";case "packs"->"controls";case "controls"->"worlds";case "worlds"->"folders";case "folders"->"menu";case "menu"->"colors";case "colors"->"actions";default->"mods";};
+            captureKind=switch(captureKind){case "pause"->"essential";case "essential"->"essential-settings";case "essential-settings"->"skin";case "skin"->"skin-changer";case "skin-changer"->"packs";case "packs"->"controls";case "controls"->"worlds";case "worlds"->"folders";case "folders"->"menu";case "menu"->"colors";case "colors"->"actions";case "actions"->"chat";default->"mods";};
             menuOpenedAt=System.nanoTime();menuFirstFrame=0;menuFrames=0;
             menuCaptureStarted=false;menuCaptureFinished=false;menuCaptureFailure=null;menuOutput=null;
             if(!"essential-settings".equals(captureKind))mc.setScreenAndShow(menuScreen);menuScreen=mc.gui.screen();return;
