@@ -43,7 +43,8 @@
     "theladscore.embedded.fixbookgui.mixins.json",
     "theladscore.embedded.playtime.mixins.json",
     "theladscore.embedded.hoveringhotbar.mixins.json",
-    "theladscore.embedded.nbtac.mixins.json"
+    "theladscore.embedded.nbtac.mixins.json",
+    "theladscore.embedded.controlling.mixins.json"
   ],
   "jars": [
     {
