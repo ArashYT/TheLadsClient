@@ -1,0 +1,141 @@
+Scenario adhoc; QA folder C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title; shared sandbox C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox; evidence C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification-1.2.3\adhoc\20261001-135456-game-26.3-title
+Shared content prepare (coreEnabled=True): skipped=False renamed=0 pending=0 report=- backup=-
+  saves: Shared (C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\saves -> C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\saves) Shared with every version: 'C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\saves'.
+  resourcepacks: Shared (C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\resourcepacks -> C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\resourcepacks) Shared with every version: 'C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\resourcepacks'.
+  shaderpacks: Shared (C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\shaderpacks -> C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\shaderpacks) Shared with every version: 'C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\shaderpacks'.
+Native port QA: staged pack without replaced autohidehud, jade, classic_minecraft_icon upstream jars. Production manifest preserved.
+Preparing client mod changes...
+Applying client mod changes...
+Client mods ready for Minecraft 26.3.
+Launcher inventory: 84 enabled · 0 disabled · 0 pending · 22 unavailable; 84 enabled jar ids recorded for the running marker.
+Java: 25; Minecraft: 26.3
+Installing production dependencies...
+Install: 0/1
+Started QA game PID 13516. Log: C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\production-smoke.log
+    <log4j:Message><![CDATA[Error loading class: net/vulkanmod/config/option/Options (java.lang.ClassNotFoundException: net/vulkanmod/config/option/Options)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: ca/spottedleaf/starlight/common/integration/v0/ChunkSystemHooks (java.lang.ClassNotFoundException: ca/spottedleaf/starlight/common/integration/v0/ChunkSystemHooks)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: ca/spottedleaf/starlight/common/thread/SchedulingUtil (java.lang.ClassNotFoundException: ca/spottedleaf/starlight/common/thread/SchedulingUtil)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: net/beryl/render/ShadowMap (java.lang.ClassNotFoundException: net/beryl/render/ShadowMap)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: me/jellysquid/mods/sodium/client/render/chunk/DefaultChunkRenderer (java.lang.ClassNotFoundException: me/jellysquid/mods/sodium/client/render/chunk/DefaultChunkRenderer)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: me/jellysquid/mods/sodium/client/render/chunk/RenderSectionManager (java.lang.ClassNotFoundException: me/jellysquid/mods/sodium/client/render/chunk/RenderSectionManager)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: me/jellysquid/mods/sodium/client/render/SodiumWorldRenderer (java.lang.ClassNotFoundException: me/jellysquid/mods/sodium/client/render/SodiumWorldRenderer)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: noobanidus/mods/lootr/common/block/entity/LootrChestBlockEntity (java.lang.ClassNotFoundException: noobanidus/mods/lootr/common/block/entity/LootrChestBlockEntity)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: noobanidus/mods/lootr/common/block/entity/LootrShulkerBoxBlockEntity (java.lang.ClassNotFoundException: noobanidus/mods/lootr/common/block/entity/LootrShulkerBoxBlockEntity)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: net/vulkanmod/render/chunk/build/renderer/BlockRenderer (java.lang.ClassNotFoundException: net/vulkanmod/render/chunk/build/renderer/BlockRenderer)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: net/vulkanmod/render/chunk/build/task/BuildTask (java.lang.ClassNotFoundException: net/vulkanmod/render/chunk/build/task/BuildTask)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: net/vulkanmod/render/chunk/build/task/CompileResult (java.lang.ClassNotFoundException: net/vulkanmod/render/chunk/build/task/CompileResult)]]></log4j:Message>
+    <log4j:Message><![CDATA[Error loading class: net/vulkanmod/render/chunk/WorldRenderer (java.lang.ClassNotFoundException: net/vulkanmod/render/chunk/WorldRenderer)]]></log4j:Message>
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877307738" level="ERROR" thread="main">
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877307751" level="ERROR" thread="main">
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877307765" level="ERROR" thread="main">
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877307777" level="ERROR" thread="main">
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877307778" level="ERROR" thread="main">
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877307791" level="ERROR" thread="main">
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877307803" level="ERROR" thread="main">
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877307804" level="ERROR" thread="main">
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877307818" level="ERROR" thread="main">
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877307819" level="ERROR" thread="main">
+  <log4j:Event logger="oshi.driver.windows.registry.HkeyPerformanceDataUtil" timestamp="1790877309673" level="ERROR" thread="main">
+    <log4j:Throwable><![CDATA[com.sun.jna.platform.win32.Win32Exception: The parameter is incorrect.
+    <log4j:Throwable><![CDATA[java.lang.NullPointerException: Cannot invoke "oshi.software.os.OSProcess.getUserTime()" because "process" is null
+    <log4j:Throwable><![CDATA[java.lang.NullPointerException: Cannot invoke "oshi.software.os.OSProcess.getVirtualSize()" because "process" is null
+    <log4j:Throwable><![CDATA[java.lang.NullPointerException: Cannot invoke "oshi.software.os.OSProcess.getResidentSetSize()" because "process" is null
+  <log4j:Event logger="net.minecraft.client.Minecraft" timestamp="1790877314570" level="ERROR" thread="Download-2">
+    <log4j:Throwable><![CDATA[com.mojang.authlib.exceptions.InvalidCredentialsException: Status: 401
+	at knot//com.mojang.authlib.exceptions.MinecraftClientHttpException.toAuthenticationException(MinecraftClientHttpException.java:70)
+Caused by: MinecraftClientHttpException[type=HTTP_ERROR, status=401, response=ErrorResponse[path=/player/attributes, error=null, errorMessage=null, details=null]]
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.buildHttpException(MinecraftClient.java:170)
+    <log4j:Message><![CDATA[Initializing TheLadsCore for Minecraft 26.3...]]></log4j:Message>
+TheLadsCore 26.3 initialized successfully.
+Game window detected at 22.1s; waiting for UI verification.
+  <log4j:Event logger="Essential Logger" timestamp="1790877322997" level="ERROR" thread="Render thread">
+    <log4j:Throwable><![CDATA[gg.essential.gui.menu.AccountManager$UnknownAccountException: Unknown account
+    <log4j:Message><![CDATA[Could not authorize you against Realms server: java.lang.RuntimeException: Failed to parse into SignedJWT: 0]]></log4j:Message>
+  <log4j:Event logger="com.mojang.realmsclient.client.RealmsClient" timestamp="1790877323641" level="ERROR" thread="Download-1">
+    <log4j:Throwable><![CDATA[com.mojang.realmsclient.exception.RealmsServiceException: Realms authentication error with message 'java.lang.RuntimeException: Failed to parse into SignedJWT: 0'
+Lads auto-world QA BEGIN: isolated save 'Client QA 26_3'; game APIs only; no input/focus verification
+  <log4j:Event logger="euphoria_patcher" timestamp="1790877326307" level="ERROR" thread="Render thread">
+  <log4j:Event logger="xaero.map.WorldMap" timestamp="1790877328028" level="ERROR" thread="Render thread">
+    <log4j:Message><![CDATA[Could not authorize you against Realms server: java.lang.RuntimeException: Failed to parse into SignedJWT: 0]]></log4j:Message>
+  <log4j:Event logger="com.mojang.realmsclient.RealmsAvailability" timestamp="1790877331119" level="ERROR" thread="Download-1">
+    <log4j:Throwable><![CDATA[com.mojang.realmsclient.exception.RealmsServiceException: Realms authentication error with message 'java.lang.RuntimeException: Failed to parse into SignedJWT: 0'
+Lads native SignalLoss probe END: 26 checks passed, 0 failed; native toast geometry and isolated config IO
+    <log4j:Message><![CDATA[Reconnect preferences could not be read; the original file was preserved: com.google.gson.JsonSyntaxException: com.google.gson.stream.MalformedJsonException: Expected ':' at line 1 column 7 path $.bad
+Lads native reconnect probe END: 41 checks passed, 0 failed; mock targets, no network/world reconnect or chat sends
+Lads background policy probe END: 42 passed, 0 failed (transformed hooks; synthetic focus/battery; preferences restored)
+Lads narrator probe END: 13 checks passed, 0 failed; mock speech and actual constructor
+    <log4j:Throwable><![CDATA[com.google.gson.JsonSyntaxException: com.google.gson.stream.MalformedJsonException: Expected ':' at line 1 column 11 path $.invalid
+Caused by: com.google.gson.stream.MalformedJsonException: Expected ':' at line 1 column 11 path $.invalid
+Lads raised title probe END: 52 passed, 0 failed
+Lads shared content probe BEGIN: role CHECK, run id '', LADS_GLOBAL_MINECRAFT_DIR=C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox (redirect on)
+  <log4j:Event logger="gg.essential.gui.modals.ConnectionManagerErrorModal" timestamp="1790877332022" level="ERROR" thread="Render thread">
+    <log4j:Throwable><![CDATA[gg.essential.gui.menu.AccountManager$UnknownAccountException: Unknown account
+Lads shared content: world folder C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\saves resolves to C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\saves
+Lads shared content: resource pack folder C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\resourcepacks resolves to C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\resourcepacks
+Lads shared content: shader pack folder C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\shaderpacks resolves to C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\shaderpacks
+Lads shared content: server list file C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\servers.dat (19 bytes)
+Lads shared content: server list C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\global-sandbox\servers.dat loaded 0 visible server(s)
+Lads shared content: stale-writer 0: 0 entries before: []
+Lads shared content: stale-writer 1: A loaded 0 entries
+Lads shared content: stale-writer 2: B loaded, added 'Lads Stale B check-1790877332070' (lads-stale-b-check-1790877332070.invalid) and saved
+Lads shared content: stale-writer 3: stale A added 'Lads Stale A check-1790877332070' (lads-stale-a-check-1790877332070.invalid) and saved
+Lads shared content: stale-writer 4: C reloaded 2 entries: [Lads Stale A check-1790877332070 | lads-stale-a-check-1790877332070.invalid, Lads Stale B check-1790877332070 | lads-stale-b-check-1790877332070.invalid]
+Lads shared content: stale-writer 5: D renamed B's server to 'Lads Stale B renamed check-1790877332070' and saved; A saved again with its unchanged copy; A now holds 'Lads Stale B renamed check-1790877332070', reload has 'Lads Stale B renamed check-1790877332070'
+Lads shared content: stale-writer 6: removed both and saved; reload has 0 entries: []
+Lads shared content: stale-writer PASS: 6 checks
+Lads shared content probe END: 27 passed, 0 failed
+Lads auto-world QA OPEN: Client QA 26_3
+Lads durability tooltip probe END: 35 passed, 0 failed (transformed tooltip and text extraction; preferences restored)
+Lads nametag and connection probe END: 15 passed, 0 failed
+Lads background policy probe END: 44 passed, 0 failed (transformed hooks; synthetic focus/battery; preferences restored)
+Lads camera and block-distance probe END: 15 passed, 0 failed
+Lads kill banner probe END: 18 passed, 0 failed (synthetic server-stat packets; no real PvP kill claimed)
+Lads shulker probe END: 28 passed, 0 failed (client-only fixture, synthetic inventory packets, real component/render hooks)
+Lads food JEI probe END: 6 passed, 0 failed
+Lads food feature probe END: 47 passed, 0 failed
+Lads shulker parity probe END: 41 passed, 0 failed (real tooltip/inventory extraction; isolated cache round trips)
+Lads improvements probe END: 40 passed, 0 failed
+Lads borderless probe END: 14 passed, 0 failed
+Lads requested features probe END: 94 passed, 0 failed
+Lads native feature probe END: 317 passed, 0 failed
+Lads food JEI probe END: 6 passed, 0 failed
+Lads food render probe END: 14 passed, 0 failed
+Lads native crosshair probe END: 53 passed, 0 failed (transformed extraction/editor handlers; preferences and inventory restored)
+Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted
+Lads clumps server probe END: 21 passed, 0 failed
+Lads paper doll probe END: 19 passed, 0 failed
+Lads tab tweaks probe END: 42 passed, 0 failed
+Lads chat-before capture END: actual completed game frame at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-chat-before-1790877349758.png
+Lads chat-arriving capture END: actual completed game frame at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-chat-arriving-1790877349860.png
+Lads render scale probe END: 61 passed, 0 failed
+Lads world capture END: 1 passed, 0 failed; actual completed game frame at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-world-1790877357759.png
+    <log4j:Throwable><![CDATA[java.io.IOException: Unsupported image format
+    <log4j:Throwable><![CDATA[java.io.IOException: Unsupported image format
+Lads native screenshots probe END: 38 checks passed, 0 failed; real gallery/GPU and isolated files, OS open/copy mocked
+World probes passed; requesting actual Lads menu and Installed mods frames from the QA game.
+Lads pause capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-pause-1790877360571.png
+Lads essential capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-essential-1790877362146.png
+Lads Essential action probe END: 1 passed, 0 failed; relocated Settings action opened gg.essential.gui.vigilancev2.VigilanceV2SettingsGui
+Lads essential-settings capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-essential-settings-1790877363837.png
+Lads skin capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-skin-1790877365410.png
+Lads skin-changer capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-skin-changer-1790877367001.png
+Lads packs capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-packs-1790877368583.png
+Lads controls capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-controls-1790877370179.png
+    <log4j:Throwable><![CDATA[java.nio.channels.OverlappingFileLockException
+Lads worlds capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-worlds-1790877371774.png
+Lads folders capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-folders-1790877373358.png
+Lads menu capture END: 1 passed, 0 failed; 204 completed frames; actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-menu-1790877374948.png
+Lads colors capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-colors-1790877376549.png
+Lads actions capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-actions-1790877378143.png
+Lads chat capture END: actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-chat-1790877379707.png
+Lads mods view capture END: 1 passed, 0 failed; 209 completed frames; actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-mods-1790877381280.png
+Requesting native HUD editor interaction checks and actual frame capture.
+Lads HUD editor probe END: 60 passed, 0 failed; native mouse/key handlers and actual GUI render bounds; fixture restored after capture
+Lads HUD capture END: 1 passed, 0 failed; 301 completed frames; actual framebuffer at C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.3-title\screenshots\native-hud-1790877383786.png
+Fabric loaded list: declared 240, 87 top-level, 166 nested entries, 240 distinct ids; absent as expected: []; present as expected: []
+Lads auto-world QA STOP: isolated graceful stop request received
+Exit path: handler finished; running marker removed; no fallback server-list copy (LadsCore reads the shared servers.dat)
+Lads catalog parity FAILED: DirectoryNotFoundException: Could not find a part of the path 'C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification\26.2-title\lads-core-catalog.json'.
+Trip-wire: C:\Users\Arash\AppData\Roaming\.minecraft unchanged (top-level entries, servers.dat SHA-256, saves/resourcepacks/shaderpacks entries).
+PRODUCTION SMOKE PASS: correct version, core initialized, Lads shared content probe END and the title inventory snapshot passed, native window observed, Fabric loaded 87 top-level mods (declared 240). Online sign-in is not exercised.
+Evidence: C:\Users\Arash\AppData\Local\Temp\w145m\artifacts\verification-1.2.3\adhoc\20261001-135456-game-26.3-title
