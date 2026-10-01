@@ -176,4 +176,8 @@ processResources {
         include 'com/thelads/core/v26_2/embedded/nbtac/**'
         into 'META-INF/lads-sources/nbtac/v26_2'
     }
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/embedded/capes/**'
+        into 'META-INF/lads-sources/capes/v26_2'
+    }
 }

@@ -20,6 +20,7 @@ public final class EmbeddedMods {
         if (active("worldplaytime")) new com.thelads.core.v1_21_1.embedded.playtime.fabric.WorldPlayTimeFabric().onInitializeClient();
         if (active("hoveringhotbar")) com.thelads.core.v1_21_1.embedded.hoveringhotbar.client.HoveringHotbarClient.init();
         if (active("tooltipstxf")) com.thelads.core.v1_21_1.embedded.tooltips.ExtraTooltips.init();
+        if (active("capes")) com.thelads.core.v1_21_1.embedded.capes.Capes.init();
         EmbeddedModsProbe.initialize();
     }
 }

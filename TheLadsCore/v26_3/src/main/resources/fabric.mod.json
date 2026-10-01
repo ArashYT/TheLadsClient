@@ -15,7 +15,8 @@
     "LGPL-3.0-or-later",
     "LGPL-3.0-only",
     "Apache-2.0",
-    "CC-BY-NC-SA-4.0"
+    "CC-BY-NC-SA-4.0",
+    "LGPL-2.1-only"
   ],
   "icon": "assets/modid/icon.png",
   "environment": "*",
@@ -44,7 +45,8 @@
     "theladscore.embedded.playtime.mixins.json",
     "theladscore.embedded.hoveringhotbar.mixins.json",
     "theladscore.embedded.nbtac.mixins.json",
-    "theladscore.embedded.controlling.mixins.json"
+    "theladscore.embedded.controlling.mixins.json",
+    "theladscore.embedded.capes.mixins.json"
   ],
   "jars": [
     {
