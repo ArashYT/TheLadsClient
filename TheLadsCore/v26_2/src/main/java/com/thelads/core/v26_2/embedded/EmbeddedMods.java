@@ -16,5 +16,6 @@ public final class EmbeddedMods {
 
     /** Called once from the Core client initializer. */
     public static void clientInit() {
+        if (active("fixbookgui")) com.thelads.core.v26_2.embedded.fixbookgui.FixBookGui.init();
     }
 }

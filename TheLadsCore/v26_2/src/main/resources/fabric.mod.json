@@ -39,7 +39,8 @@
     "theladscore.tabtweaks.mixins.json",
     "theladscore.screenshots.mixins.json",
     "theladscore.clumps.mixins.json",
-    "jade.mixins.json"
+    "jade.mixins.json",
+    "theladscore.embedded.fixbookgui.mixins.json"
   ],
   "jars": [
     {

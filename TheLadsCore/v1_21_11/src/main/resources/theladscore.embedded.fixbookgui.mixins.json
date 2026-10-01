@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_11.embedded.fixbookgui.mixin",
+  "plugin": "com.thelads.core.v1_21_11.embedded.fixbookgui.FixBookGuiMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "MixinBookEditScreen",
+    "MixinBookSignScreen",
+    "MixinBookViewScreen"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

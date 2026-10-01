@@ -162,3 +162,11 @@ tasks.register('verifyJadePackaging') {
     }
 }
 tasks.named('check') { dependsOn tasks.named('verifyJadePackaging') }
+
+// Embedded upstream mods (1.4.6): the modified LGPL/MPL sources ship in the jar.
+processResources {
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/embedded/fixbookgui/**'
+        into 'META-INF/lads-sources/fixbookgui/v26_3'
+    }
+}
