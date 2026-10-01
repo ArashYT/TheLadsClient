@@ -43,4 +43,7 @@ processResources {
         include 'com/thelads/core/modules/PingViewModule.java'
         into 'META-INF/lads-sources/tabtweaks/common'
     }
+    // LadsVersion reads the Core version from here on every game version.
+    inputs.property 'version', project.version.toString()
+    filesMatching('assets/theladscore/version.txt') { expand version: project.version }
 }
