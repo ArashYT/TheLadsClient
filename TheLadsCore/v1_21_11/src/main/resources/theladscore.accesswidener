@@ -2,3 +2,6 @@ accessWidener v2 named
 
 # Embedded FixBookGUI
 accessible field net/minecraft/client/gui/screens/inventory/BookViewScreen IMAGE_HEIGHT I
+
+# Embedded Controlling
+extendable method net/minecraft/client/gui/screens/options/controls/KeyBindsList$Entry refreshEntry ()V

@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.embedded.controlling.mixin",
+  "plugin": "com.thelads.core.v26_2.embedded.controlling.ControllingMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "AccessAbstractSelectionList",
+    "AccessInputConstantsKey",
+    "AccessKeyBindsScreen",
+    "AccessKeyMapping",
+    "AccessOptionsSubScreen",
+    "searchables.AccessEditBox"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

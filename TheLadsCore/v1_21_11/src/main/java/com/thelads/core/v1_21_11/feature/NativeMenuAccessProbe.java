@@ -17,11 +17,11 @@ import com.thelads.core.modules.ToggleSprintModule;
 import com.thelads.core.v1_21_11.feature.qa.mixin.GameRendererQaInvoker;
 import com.thelads.core.v1_21_11.feature.qa.mixin.KeyboardHandlerQaInvoker;
 import com.thelads.core.v1_21_11.gui.FlashbackScreens;
-import com.thelads.core.v1_21_11.gui.LadsKeyBindsScreen;
 import com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111;
 import com.thelads.core.v1_21_11.gui.SmoothScrollTarget;
 import com.thelads.core.v1_21_11.gui.TitleExtrasScreen12111;
-import com.thelads.core.v1_21_11.mixin.chrome.KeyEntryAccessor;
+import com.thelads.core.v1_21_11.embedded.controlling.api.entries.IKeyEntry;
+import com.thelads.core.v1_21_11.embedded.controlling.client.NewKeyBindsScreen;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -436,45 +436,12 @@ final class NativeMenuAccessProbe {
     }
 
     private static boolean controlsOpen(Minecraft mc) {
-        controllingBaseline(mc);
         mc.setScreen(new KeyBindsScreen(null, mc.options));
-        check(mc.screen instanceof LadsKeyBindsScreen, "Controls opens the native Lads controls screen with Controlling installed, found " + mc.screen);
+        check(mc.screen instanceof NewKeyBindsScreen, "Controls opens the embedded Controlling screen, found " + mc.screen);
         keys = (KeyBindsScreen) mc.screen;
-        check(keys.children().stream().filter(child -> child instanceof EditBox).count() == 1, "exactly one controls search box (none from Controlling)");
+        check(keys.children().stream().filter(child -> child instanceof EditBox).count() == 1, "exactly one controls search box (Controlling's)");
         keyList = keys.children().stream().filter(child -> child instanceof KeyBindsList).map(child -> (KeyBindsList) child).findFirst().orElseThrow();
         return after(0, 2);
-    }
-
-    /**
-     * The 1.21.x baseline before U4 (the 1.3.4 release-list bug): Controlling's own controls screen, built and driven headless
-     * through a binding's change button and a key press. Informational: it is upstream code that U4 replaces, not a Lads check.
-     */
-    private static void controllingBaseline(Minecraft mc) {
-        try {
-            var screen = (KeyBindsScreen) Class.forName("com.blamejared.controlling.client.NewKeyBindsScreen")
-                .getConstructor(Screen.class, net.minecraft.client.Options.class).newInstance(null, mc.options);
-            screen.init(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-            var list = screen.children().stream().filter(child -> child instanceof KeyBindsList).map(child -> (KeyBindsList) child).findFirst().orElseThrow();
-            list.setScrollAmount(Math.min(260, list.maxScrollAmount()));
-            double before = list.scrollAmount();
-            var row = list.children().stream().filter(entry -> entry.children().size() == 2 && entry.children().getFirst() instanceof Button).findFirst().orElseThrow();
-            var key = (KeyMapping) row.getClass().getMethod("getKey").invoke(row);
-            var old = InputConstants.getKey(key.saveString());
-            try {
-                ((Button) row.children().getFirst()).onPress(null);
-                double clicked = list.scrollAmount();
-                screen.keyPressed(new KeyEvent(GLFW.GLFW_KEY_F9, GLFW.glfwGetKeyScancode(GLFW.GLFW_KEY_F9), 0));
-                double assigned = list.scrollAmount();
-                LOGGER.info("Lads menu access probe: 1.21.x before U4, Controlling's own controls screen kept scroll {} after a binding click ({}) and "
-                    + "a key press ({}): the scroll-to-top bug is {} there", before, clicked, assigned, clicked == before && assigned == before ? "absent" : "PRESENT");
-            } finally {
-                key.setKey(old);
-                KeyMapping.resetMapping();
-                mc.options.save();
-            }
-        } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
-            LOGGER.info("Lads menu access probe: the Controlling baseline could not run ({})", failure.toString());
-        }
     }
 
     private static boolean controlsSearch(Minecraft mc) {
@@ -490,26 +457,17 @@ final class NativeMenuAccessProbe {
         check(keyList.children().isEmpty(), "controls search empty state");
         search.setValue("");
         check(keyList.children().size() == total, "clearing search restores every binding");
-        Button mode = keys.children().stream().filter(child -> child instanceof Button button && button.getMessage().getString().startsWith("Search:"))
-            .map(child -> (Button) child).findFirst().orElseThrow();
-        for (String label : List.of("Name", "Keybind", "Category", "Mod")) {
-            mode.onPress(null);
-            check(mode.getMessage().getString().equals("Search: " + label), "visible search mode " + label);
-        }
-        search.setValue("lads core");
-        check(hasKey(NativeKeyBindings.MODULES), "Mod search finds the Lads menu key by its mod name");
-        mode.onPress(null);
-        check(mode.getMessage().getString().equals("Search: All"), "visible search mode All");
+        search.setValue("category:lads");
+        check(hasKey(NativeKeyBindings.MODULES) && keyList.children().stream().allMatch(row -> row instanceof IKeyEntry),
+            "category: search finds the Lads menu key and lists bindings without headings");
         search.setValue("");
-        Button filter = button(keys, "All bindings");
-        check(filter != null, "the binding filter starts at All bindings");
-        filter.onPress(null);
-        check("Conflicts".equals(filter.getMessage().getString()), "the binding filter offers Conflicts");
-        filter.onPress(null);
-        check("Unbound".equals(filter.getMessage().getString()) && keyList.children().stream().allMatch(row -> !(row instanceof KeyEntryAccessor entry) || entry.ladsKey().isUnbound()),
-            "the Unbound filter lists only unbound keys");
-        filter.onPress(null);
-        check(keyList.children().size() == total, "All bindings lists every binding again");
+        Button unbound = button(keys, "Show Unbound");
+        check(unbound != null && button(keys, "Show Conflicts") != null, "Controlling's Show Unbound and Show Conflicts filters are present");
+        unbound.onPress(null);
+        check("Show All".equals(unbound.getMessage().getString()) && keyList.children().stream().allMatch(row -> row instanceof IKeyEntry entry && entry.getKey().isUnbound()),
+            "Show Unbound lists only unbound keys");
+        unbound.onPress(null);
+        check(keyList.children().size() == total, "Show All lists every binding again");
         keyList.setScrollAmount(Math.min(260, keyList.maxScrollAmount()));
         scrollBefore = keyList.scrollAmount();
         check(scrollBefore > 0, "the controls regression fixture is scrolled down");
@@ -527,8 +485,8 @@ final class NativeMenuAccessProbe {
         // A row drawn inside the viewport after the scroll: its change button was placed by that frame (rows scrolled out of view
         // keep the button position of the last frame that drew them).
         for (var row : keyList.children())
-            if (row instanceof KeyEntryAccessor entry && row.getY() >= keyList.getY() + 30 && row.getY() + row.getHeight() <= keyList.getBottom() - 30
-                && row.children().getFirst() instanceof Button button && button.getY() == row.getY()) { key = entry.ladsKey(); change = button; break; }
+            if (row instanceof IKeyEntry entry && row.getY() >= keyList.getY() + 30 && row.getY() + row.getHeight() <= keyList.getBottom() - 30
+                && row.children().getFirst() instanceof Button button && button.getY() == row.getY()) { key = entry.getKey(); change = button; break; }
         check(change != null, "a binding row is fully visible in the scrolled list");
         var old = InputConstants.getKey(key.saveString());
         try {
@@ -654,7 +612,7 @@ final class NativeMenuAccessProbe {
     }
     private static List<String> ids(List<PackSelectionModel.Entry> entries) { return entries.stream().map(PackSelectionModel.Entry::getId).toList(); }
     private static boolean hasKey(KeyMapping mapping) {
-        return keyList.children().stream().anyMatch(row -> row instanceof KeyEntryAccessor entry && entry.ladsKey() == mapping);
+        return keyList.children().stream().anyMatch(row -> row instanceof IKeyEntry entry && entry.getKey() == mapping);
     }
     private static List<AbstractWidget> visible(Screen screen) {
         var widgets = new ArrayList<AbstractWidget>();
