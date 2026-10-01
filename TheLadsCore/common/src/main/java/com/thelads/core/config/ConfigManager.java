@@ -68,7 +68,8 @@ public class ConfigManager {
         hud.addProperty("textShadow", HudSettings.getInstance().isTextShadow());
         hud.addProperty("softShadow", HudSettings.getInstance().isSoftShadow());
         hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
-        hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled());
+        hud.addProperty("hudFpsCapOptIn", HudSettings.getInstance().isHudFpsCapEnabled());
+        hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled()); // read by 1.4.4 and older
         hud.addProperty("hudFpsLimit", HudSettings.getInstance().getHudFpsLimit());
         JsonArray favorites = new JsonArray();
         HudSettings.getInstance().getFavoriteColors().forEach(favorites::add);
@@ -164,11 +165,14 @@ public class ConfigManager {
             if (hud.has("softShadow")) {
                 HudSettings.getInstance().setSoftShadow(hud.get("softShadow").getAsBoolean());
             }
-            if (hud.has("hudFpsCapEnabled")) {
-                HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapEnabled").getAsBoolean());
-            }
             if (hud.has("hudFpsLimit")) {
                 HudSettings.getInstance().setHudFpsLimit(hud.get("hudFpsLimit").getAsInt());
+            }
+            if (hud.has("hudFpsCapOptIn")) {
+                HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapOptIn").getAsBoolean());
+            } else if (hud.has("hudFpsCapEnabled")) {
+                // 1.4.1-1.4.4 saved their default (on, 60) in every config: only a changed limit was the player's choice.
+                HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapEnabled").getAsBoolean() && HudSettings.getInstance().getHudFpsLimit() != 60);
             }
             if (hud.has("backgrounds")) HudSettings.getInstance().setBackgrounds(hud.get("backgrounds").getAsBoolean());
             if (hud.has("favoriteColors")) {
