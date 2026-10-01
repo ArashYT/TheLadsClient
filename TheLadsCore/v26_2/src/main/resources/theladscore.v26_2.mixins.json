@@ -87,6 +87,7 @@
     "AutohideItemMixin",
     "AutohideItemRenderMixin",
     "AutohidePictureMixin",
-    "WindowIconMixin"
+    "WindowIconMixin",
+    "LoadingOverlayMixin"
   ]
 }
