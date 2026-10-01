@@ -268,7 +268,7 @@ public final class CoreProbe {
         check("1.8.9".equals(root.get("minecraftVersion").getAsString()) && core.equals(root.get("coreVersion").getAsString()),
             "the catalog names Minecraft 1.8.9 and Core " + core);
         JsonArray modules = root.getAsJsonArray("modules");
-        int builtIn = 0, unavailable = 0, pending = 0;
+        int builtIn = 0, unavailable = 0, pending = 0, external = 0;
         List<String> mismatched = new java.util.ArrayList<>(), builtInNames = new java.util.ArrayList<>();
         for (JsonElement element : modules) {
             JsonObject module = element.getAsJsonObject();
@@ -278,14 +278,16 @@ public final class CoreProbe {
             if (support.equals("builtIn")) { builtIn++; builtInNames.add(name); }
             else if (support.equals("unavailable")) unavailable++;
             else if (support.equals("pending")) pending++;
+            else if (support.equals("external")) external++;
         }
         check(mismatched.isEmpty(), "every catalog row matches this game's registrations and switchability " + mismatched);
         java.util.Set<String> expected = new java.util.HashSet<>(Arrays.asList(NativeHud.MODULES));
         expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.TheLadsCore189.GAMEPLAY_MODULES));
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
-        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == 25
-            && pending == modules.size() - unavailable - builtIn, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, " + pending + " pending");
+        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 2
+            && pending == modules.size() - unavailable - builtIn - external, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, "
+            + external + " external, " + pending + " pending");
         mc.displayGuiScreen(null); // Back to Game: the HUD checks run in gameplay
         return after(10);
     }

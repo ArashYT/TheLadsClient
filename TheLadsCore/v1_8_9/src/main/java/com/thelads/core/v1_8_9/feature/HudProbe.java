@@ -68,7 +68,7 @@ public final class HudProbe {
         HudProbe::stillHidden, HudProbe::shown, HudProbe::cps, HudProbe::menu, HudProbe::editorOpened, HudProbe::editorShown,
         HudProbe::gearOpened, HudProbe::backInEditor, HudProbe::selected, HudProbe::centred, HudProbe::snapOff, HudProbe::freeDragged,
         HudProbe::multiSelected, HudProbe::contextMenu, HudProbe::grouped, HudProbe::resized, HudProbe::stackOffered, HudProbe::restacked,
-        HudProbe::ungroupOffered, HudProbe::ungrouped, HudProbe::switchedOff, HudProbe::uncovered, HudProbe::switchedOn, HudProbe::dragging, HudProbe::escaped,
+        HudProbe::ungroupOffered, HudProbe::ungrouped, HudProbe::moved, HudProbe::offUncovered, HudProbe::switchedOff, HudProbe::uncovered, HudProbe::switchedOn, HudProbe::dragging, HudProbe::escaped,
         HudProbe::back);
     private static final Set<String> PAIR = new HashSet<>(Arrays.asList("CPS", "Day"));
     private static GlWatch watch;
@@ -355,22 +355,37 @@ public final class HudProbe {
             "context Ungroup splits the group and saves it");
         Rect toggle = editor.ui().toggleBoundsFor("FPS");
         check(toggle != null, "FPS has an ON/OFF switch");
+        // Away from the top-right corner, where Essential (1.8.9 pack) draws its notifications over every screen.
+        HudSettings.getInstance().setPosition("FPS", 200, 150);
+        return after(2);
+    }
+
+    private static boolean moved(Minecraft mc) throws Exception {
+        uncover(editor.ui().toggleBoundsFor("FPS"));
+        return after(2);
+    }
+
+    private static boolean offUncovered(Minecraft mc) throws Exception {
+        Rect toggle = editor.ui().toggleBoundsFor("FPS");
         click(center(toggle)[0], center(toggle)[1]);
         return after(2);
+    }
+
+    /** The earlier drags leave FPS where a later-drawn preview (Paperdoll since 1.4.1, others with mods) may cover its switch,
+     *  and the editor rightly gives that click to the HUD on top: move any such preview aside, then click once it is drawn there. */
+    private static void uncover(Rect toggle) {
+        int[] point = center(toggle);
+        for (HudElement element : HudManager.getInstance().getElements()) {
+            Rect b = editor.ui().boundsFor(element.getModuleName());
+            if ("FPS".equals(element.getModuleName()) || b == null || !b.contains(point[0], point[1])) continue;
+            HudSettings.getInstance().setPosition(element.getModuleName(), Math.max(0, toggle.x() - b.width() - 100), toggle.y() + 60);
+        }
     }
 
     private static boolean switchedOff(Minecraft mc) throws Exception {
         check(!module("FPS").isEnabled() && !enabledOnDisk("FPS"), "FPS's editor switch turns the module off and saves it");
         check(editor.ui().boundsFor("FPS") != null && editor.ui().toggleBoundsFor("FPS") != null, "the switched-off module stays as a dimmed preview");
-        offToggle = editor.ui().toggleBoundsFor("FPS");
-        // The earlier drags leave FPS where a later-drawn preview (Paperdoll, since 1.4.1) may cover its switch, and the editor
-        // rightly gives that click to the HUD on top: move any such preview aside first, then click once it is drawn there.
-        int[] point = center(offToggle);
-        for (HudElement element : HudManager.getInstance().getElements()) {
-            Rect b = editor.ui().boundsFor(element.getModuleName());
-            if ("FPS".equals(element.getModuleName()) || b == null || !b.contains(point[0], point[1])) continue;
-            HudSettings.getInstance().setPosition(element.getModuleName(), Math.max(0, offToggle.x() - b.width() - 100), offToggle.y() + 60);
-        }
+        uncover(editor.ui().toggleBoundsFor("FPS"));
         return after(2);
     }
 
@@ -401,7 +416,7 @@ public final class HudProbe {
     }
 
     private static boolean dragging(Minecraft mc) throws Exception {
-        check(editor.ui().isDragging() && bounds("Day").x() == before.x() + 25 && saved("Day", before), "Day follows an unfinished drag, not saved yet");
+        check(editor.ui().isDragging() && bounds("Day").x() == before.x() + 25 && saved("Day", before), "Day follows an unfinished drag, not saved yet (from " + before + " to " + bounds("Day") + ", dragging " + editor.ui().isDragging() + ")");
         tap(Keyboard.KEY_ESCAPE, (char) 27);
         return after(2);
     }
@@ -461,8 +476,6 @@ public final class HudProbe {
         if (bounds == null) throw new IllegalStateException("1.8.9 HUD QA: no rendered " + name + " preview");
         return bounds;
     }
-
-    private static Rect offToggle;
 
     private static int[] center(Rect bounds) {
         return new int[] {bounds.x() + bounds.width() / 2, bounds.y() + bounds.height() / 2};
