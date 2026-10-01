@@ -21,8 +21,6 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.lang.reflect.Field;
-
 @Mod(modid = "theladscore", name = "The Lads Core", clientSideOnly = true, acceptedMinecraftVersions = "[1.8.9]")
 public class TheLadsCore189 {
     private static final Logger LOGGER = LogManager.getLogger("TheLadsCore-1.8.9");
@@ -36,19 +34,8 @@ public class TheLadsCore189 {
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
         {"EnhancedToolbars", "Durability Tooltip"}, {"Capes", "Capes"}, {"Raised", "Raised"}};
 
-    private static Field equippedProgressField;
-    private static Field prevEquippedProgressField;
     private static boolean borderlessApplied = false;
     private static String windowTitle = "The Lads Client";
-
-    static {
-        try {
-            equippedProgressField = net.minecraftforge.fml.relauncher.ReflectionHelper.findField(
-                net.minecraft.client.renderer.ItemRenderer.class, "equippedProgress", "field_78454_c");
-            prevEquippedProgressField = net.minecraftforge.fml.relauncher.ReflectionHelper.findField(
-                net.minecraft.client.renderer.ItemRenderer.class, "prevEquippedProgress", "field_78451_d");
-        } catch (Throwable ignored) {}
-    }
 
     public TheLadsCore189() {
         // Before any Core code runs: 1.8.9 corrupts a newer world, so shared worlds and packs must never be used here.
@@ -110,15 +97,6 @@ public class TheLadsCore189 {
                     && !mc.thePlayer.isCollidedHorizontally && mc.thePlayer.getFoodStats().getFoodLevel() > 6) {
                     mc.thePlayer.setSprinting(true);
                 }
-            }
-            com.thelads.core.config.Module legacySwing = com.thelads.core.config.ModuleManager.getInstance().getModule("LegacySwing");
-            if (legacySwing != null && legacySwing.isEnabled() && mc.getItemRenderer() != null) {
-                try {
-                    if (mc.thePlayer.isSwingInProgress) {
-                        if (equippedProgressField != null) equippedProgressField.setFloat(mc.getItemRenderer(), 1.0f);
-                        if (prevEquippedProgressField != null) prevEquippedProgressField.setFloat(mc.getItemRenderer(), 1.0f);
-                    }
-                } catch (Throwable ignored) {}
             }
         }
 
