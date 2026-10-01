@@ -8,7 +8,7 @@ import net.minecraft.util.MathHelper;
 /**
  * LegacySwing on 1.8.9, as on 26.x (feature/LegacySwing): the Legacy Console Edition swing of the held item. Progress^4, so the
  * item winds up slowly and snaps through, swung further across (0.55) and lifted on the way, where 1.8.9 turns it at once.
- * ItemRendererMixin calls it, and keeps the item up instead of the re-equip dip (26.x LegacySwingMixin).
+ * ItemRendererMixin calls it in place of vanilla's swing (and its translation), and stops the pop after using an item.
  */
 public final class LegacySwing189 {
     /** QA only (Probe145): frames drawn with the legacy swing. */

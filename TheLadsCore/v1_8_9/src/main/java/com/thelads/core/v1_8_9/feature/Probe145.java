@@ -34,7 +34,7 @@ final class Probe145 {
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe145::rateStart, Probe145::rate, Probe145::mouse,
         Probe145::pacedStart, Probe145::paced, Probe145::unpaced, Probe145::hotbarStart, Probe145::hotbarGlide, Probe145::hotbarMoving,
         Probe145::hotbarSettled,
-        Probe145::swingLegacy, Probe145::swingVanilla, Probe145::borderless, Probe145::windowed, Probe145::resized, Probe145::resizedShot,
+        Probe145::swingLegacy, Probe145::swingSwitch, Probe145::swingVanilla, Probe145::borderless, Probe145::windowed, Probe145::resized, Probe145::resizedShot,
         Probe145::restored);
     private static long frames, since;
     private static float pacedFps;
@@ -157,6 +157,15 @@ final class Probe145 {
     private static boolean swingLegacy(Minecraft mc) {
         check(LegacySwing189.frames > swingFrames, "LegacySwing: the sword swings with the legacy motion in " + (LegacySwing189.frames - swingFrames) + " frames");
         screenshot(mc, "145-legacy-swing-on");
+        mc.thePlayer.inventory.mainInventory[1] = new ItemStack(Items.apple);
+        mc.thePlayer.inventory.currentItem = 1;
+        return after(2);
+    }
+
+    private static boolean swingSwitch(Minecraft mc) {
+        float equip = ((com.thelads.core.v1_8_9.mixin.ItemRendererAccessor) mc.getItemRenderer()).getEquippedProgress();
+        check(equip < 0.5f, "LegacySwing: switching items still lowers the hand to pull the next one out (raised " + equip + ")");
+        mc.thePlayer.inventory.currentItem = 0;
         module("LegacySwing").setEnabled(false);
         swingFrames = LegacySwing189.frames;
         mc.thePlayer.swingItem();
