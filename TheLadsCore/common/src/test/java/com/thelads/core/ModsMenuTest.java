@@ -61,6 +61,16 @@ class ModsMenuTest {
         originalModules.forEach(ModuleState::restore); ownership.close(); ConfigManager.setTestConfigFile(null);
     }
 
+    @Test void dropdownArrowsStepBothWays() {
+        var menu=new LadsSettingsScreen(); menu.openModule("Coordinates"); var g=new Graphics(); g.render(menu);
+        var format=(DropdownOption)ModuleManager.getInstance().getModule("Coordinates").getOptions().stream()
+            .filter(o->o.getName().equals("Format")).findFirst().orElseThrow();
+        format.setIndex(1); g.render(menu);
+        var r=menu.controlBounds("option:Format"); assertNotNull(r); int y=r.y()+r.height()/2;
+        assertTrue(menu.mouseClicked(r.x()+3,y,0)); assertEquals(0,format.getIndex());
+        assertTrue(menu.mouseClicked(r.x()+r.width()-3,y,0)); assertEquals(1,format.getIndex());
+        assertTrue(menu.mouseClicked(r.x()+r.width()-3,y,1)); assertEquals(0,format.getIndex());
+    }
     @Test void searchHandlesUnicodeEditingAndActuallyFiltersModules() {
         var menu=new LadsSettingsScreen(); menu.keyPressed(70,2);
         "Coordinates".codePoints().forEach(menu::charTyped);

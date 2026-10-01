@@ -1,37 +1,6 @@
 {
   "minecraftVersion": "1.8.9",
   "resolveThroughApi": false,
-  "mods": [
-    {
-      "projectId": "RLzHAoZe",
-      "projectSlug": "resourcify",
-      "name": "Resourcify",
-      "modId": "resourcify",
-      "versionId": "y3I4wsCa",
-      "version": "1.4.2",
-      "fileName": "Resourcify (1.8.9-forge)-1.4.2.jar",
-      "url": "https://cdn.modrinth.com/data/RLzHAoZe/versions/y3I4wsCa/Resourcify%20%281.8.9-forge%29-1.4.2.jar",
-      "sha512": "285ba046f72f1cdb5180ee938daf26efae016c421e13eff1fc320db2e525304c2a81ff4557deefa8d331faf2810c9939093b284a0fc60c78ab832fbf43b52743",
-      "size": 8494956,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/DeDiamondPro/Resourcify",
-      "projectUrl": "https://modrinth.com/mod/resourcify"
-    },
-    {
-      "projectId": "k2ZPuTBm",
-      "projectSlug": "essential",
-      "name": "Essential",
-      "modId": "essential",
-      "versionId": "RLvvZ6Nn",
-      "version": "1.5.0.1",
-      "fileName": "Essential_1-5-0-1_forge_1-8-9.jar",
-      "url": "https://cdn.modrinth.com/data/k2ZPuTBm/versions/RLvvZ6Nn/Essential_1-5-0-1_forge_1-8-9.jar",
-      "sha512": "5be2e432d21ef7621becd83a476a445702b665cb30dcbb60eb7672660c54b647c471f228149fedcac180729af1de915c091ab8eddbfab79c900239d9a8119132",
-      "size": 55735363,
-      "license": "LicenseRef-All-Rights-Reserved",
-      "sourceUrl": "https://github.com/SparkUniverse/EssentialClient",
-      "projectUrl": "https://modrinth.com/mod/essential"
-    }
-  ],
+  "mods": [],
   "retired": []
 }

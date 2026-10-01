@@ -280,9 +280,11 @@ public final class CoreProbe {
             else if (support.equals("pending")) pending++;
         }
         check(mismatched.isEmpty(), "every catalog row matches this game's registrations and switchability " + mismatched);
-        check(builtInNames.size() == NativeHud.MODULES.length && builtInNames.containsAll(Arrays.asList(NativeHud.MODULES)),
-            "exactly the HUD modules NativeHud draws are built in " + builtInNames);
-        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == 18 && unavailable == 25
+        java.util.Set<String> expected = new java.util.HashSet<>(Arrays.asList(NativeHud.MODULES));
+        expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.TheLadsCore189.GAMEPLAY_MODULES));
+        check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
+            "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
+        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == 25
             && pending == modules.size() - unavailable - builtIn, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, " + pending + " pending");
         mc.displayGuiScreen(null); // Back to Game: the HUD checks run in gameplay
         return after(10);

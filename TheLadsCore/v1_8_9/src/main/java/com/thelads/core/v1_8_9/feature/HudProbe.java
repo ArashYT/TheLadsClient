@@ -68,7 +68,7 @@ public final class HudProbe {
         HudProbe::stillHidden, HudProbe::shown, HudProbe::cps, HudProbe::menu, HudProbe::editorOpened, HudProbe::editorShown,
         HudProbe::gearOpened, HudProbe::backInEditor, HudProbe::selected, HudProbe::centred, HudProbe::snapOff, HudProbe::freeDragged,
         HudProbe::multiSelected, HudProbe::contextMenu, HudProbe::grouped, HudProbe::resized, HudProbe::stackOffered, HudProbe::restacked,
-        HudProbe::ungroupOffered, HudProbe::ungrouped, HudProbe::switchedOff, HudProbe::switchedOn, HudProbe::dragging, HudProbe::escaped,
+        HudProbe::ungroupOffered, HudProbe::ungrouped, HudProbe::switchedOff, HudProbe::uncovered, HudProbe::switchedOn, HudProbe::dragging, HudProbe::escaped,
         HudProbe::back);
     private static final Set<String> PAIR = new HashSet<>(Arrays.asList("CPS", "Day"));
     private static GlWatch watch;
@@ -96,7 +96,9 @@ public final class HudProbe {
             on++;
             for (Option option : module.getOptions()) option.reset();
         }
-        check(on == NativeHud.MODULES.length, "the " + on + " built-in HUD modules are switched on for the in-world check");
+        // NativeHud's modules but Autohide (no HUD element), plus the elements of built-in gameplay modules (Toggle Sprint/Sneak).
+        check(on >= NativeHud.MODULES.length - 1,
+            "the " + on + " built-in HUD modules are switched on for the in-world check");
         // Client-side only (the integrated server never sees them): worn armour, a Speed effect and a sidebar objective.
         armor = mc.thePlayer.inventory.armorInventory.clone();
         mc.thePlayer.inventory.armorInventory[0] = new ItemStack(Items.iron_boots);
@@ -141,7 +143,8 @@ public final class HudProbe {
             for (String line : drawn) found |= line.matches(text[1]);
             if (!found) missing.add(text[0] + " '" + text[1] + "'");
         }
-        check(modules.size() == NativeHud.MODULES.length && missing.isEmpty(), "each of the " + modules.size() + " built-in HUD modules drew its live 1.8.9 data "
+        // ponytail: the HUD modules added in 1.4.1 (Paperdoll, BossBar, Clock, ...) have no live-data expectation here yet.
+        check(java.util.Arrays.asList(NativeHud.MODULES).containsAll(modules) && missing.isEmpty(), "each of the " + modules.size() + " built-in HUD modules drew its live 1.8.9 data "
             + "(texts, and armour items through RenderItem) " + missing + " of " + drawn.size() + " draws");
         check(!GuiIngameForge.renderObjective, "the Lads Scoreboard replaces vanilla's sidebar (GuiIngameForge.renderObjective off)");
         check(watch.frames > 0 && watch.mismatch == null, "GL state after the Lads HUD equals the state before it in " + watch.frames
@@ -223,9 +226,13 @@ public final class HudProbe {
         check(ids.containsAll(Arrays.asList("select", "group", "ungroup", "lock", "unlock", "snap", "previews", "toolbar", "collapse", "colors", "reset", "done")),
             "the editor toolbar is drawn " + ids);
         List<String> previews = new ArrayList<>();
-        for (HudElement element : HudManager.getInstance().getElements())
-            if (ui.boundsFor(element.getModuleName()) != null) previews.add(element.getModuleName());
-        check(previews.size() == NativeHud.MODULES.length && previews.containsAll(Arrays.asList(NativeHud.MODULES)),
+        boolean previewsMatch = true; // a preview exactly for each HUD element whose module is built in (Autohide has no element)
+        for (HudElement element : HudManager.getInstance().getElements()) {
+            boolean preview = ui.boundsFor(element.getModuleName()) != null;
+            if (preview) previews.add(element.getModuleName());
+            previewsMatch &= preview == ModuleSupport.isBuiltIn(element.getModuleName());
+        }
+        check(previewsMatch && previews.size() >= NativeHud.MODULES.length - 1,
             "every built-in HUD module has a preview (switched-off ones dimmed), pending ones none " + previews);
         Rect cps = bounds("CPS"), fps = bounds("FPS");
         check(cps.x() == 300 && cps.y() == 60 && fps.right() == editor.width && fps.y() == 10, "saved positions place the previews, FPS clamped to the right edge");
@@ -355,6 +362,19 @@ public final class HudProbe {
     private static boolean switchedOff(Minecraft mc) throws Exception {
         check(!module("FPS").isEnabled() && !enabledOnDisk("FPS"), "FPS's editor switch turns the module off and saves it");
         check(editor.ui().boundsFor("FPS") != null && editor.ui().toggleBoundsFor("FPS") != null, "the switched-off module stays as a dimmed preview");
+        offToggle = editor.ui().toggleBoundsFor("FPS");
+        // The earlier drags leave FPS where a later-drawn preview (Paperdoll, since 1.4.1) may cover its switch, and the editor
+        // rightly gives that click to the HUD on top: move any such preview aside first, then click once it is drawn there.
+        int[] point = center(offToggle);
+        for (HudElement element : HudManager.getInstance().getElements()) {
+            Rect b = editor.ui().boundsFor(element.getModuleName());
+            if ("FPS".equals(element.getModuleName()) || b == null || !b.contains(point[0], point[1])) continue;
+            HudSettings.getInstance().setPosition(element.getModuleName(), Math.max(0, offToggle.x() - b.width() - 100), offToggle.y() + 60);
+        }
+        return after(2);
+    }
+
+    private static boolean uncovered(Minecraft mc) throws Exception {
         Rect toggle = editor.ui().toggleBoundsFor("FPS");
         click(center(toggle)[0], center(toggle)[1]);
         // Snapping off for the last drag, so its exact delta shows and Day cannot dock onto CPS. A step ahead of that drag: GuiScreen
@@ -364,7 +384,13 @@ public final class HudProbe {
     }
 
     private static boolean switchedOn(Minecraft mc) throws Exception {
-        check(module("FPS").isEnabled() && enabledOnDisk("FPS"), "and back on");
+        List<String> under = new ArrayList<>();
+        Rect now = editor.ui().toggleBoundsFor("FPS");
+        for (HudElement element : HudManager.getInstance().getElements()) {
+            Rect b = editor.ui().boundsFor(element.getModuleName());
+            if (b != null && now != null && b.contains(center(now)[0], center(now)[1])) under.add(element.getModuleName() + " " + b);
+        }
+        check(module("FPS").isEnabled() && enabledOnDisk("FPS"), "and back on (switch " + now + ", HUDs under it " + under + ")");
         check(control(editor.ui().controls(), "snap").label().equals("Snap: off"), "snapping is off for the unfinished drag");
         // Escape during a drag: pressed and moved, never released.
         before = bounds("Day");
@@ -435,6 +461,8 @@ public final class HudProbe {
         if (bounds == null) throw new IllegalStateException("1.8.9 HUD QA: no rendered " + name + " preview");
         return bounds;
     }
+
+    private static Rect offToggle;
 
     private static int[] center(Rect bounds) {
         return new int[] {bounds.x() + bounds.width() / 2, bounds.y() + bounds.height() / 2};

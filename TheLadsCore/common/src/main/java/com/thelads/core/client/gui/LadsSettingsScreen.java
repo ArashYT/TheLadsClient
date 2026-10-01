@@ -770,7 +770,11 @@ public final class LadsSettingsScreen {
             if (detail != null && c.id.startsWith("option:") && !c.id.endsWith(":global")) {
                 Option o = activeOption(c.id.substring(7));
                 if (o instanceof SliderOption || o instanceof DoubleOption) { dragging = o; dragTrack = c.rect; updateDrag(x); return true; }
-                if (o instanceof DropdownOption d && button == 1) { d.cycleBack(); changed(detail); return true; }
+                // "< value >": the left half (or a right-click) steps back, the right half steps forward.
+                if (o instanceof DropdownOption d) {
+                    if (button == 1 || x < c.rect.x + c.rect.width / 2.0) d.cycleBack(); else d.cycle();
+                    changed(detail); return true;
+                }
             }
             if (button == 0) c.action.run();
             return true;
