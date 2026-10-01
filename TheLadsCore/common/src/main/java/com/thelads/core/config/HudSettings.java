@@ -27,7 +27,7 @@ public class HudSettings {
     private boolean backgrounds = true;
     private final List<Integer> favoriteColors = new ArrayList<>();
     private boolean softShadow = true;
-    private boolean hudFpsCapEnabled = true;
+    private boolean hudFpsCapEnabled = false; // the HUD redraws every frame unless the player opts in to a cap
     private int hudFpsLimit = 60; // 60 by default; 0 means Unlimited
     public static final int[] HUD_FPS_LEVELS = { 25, 30, 60, 75, 120, 144, 165, 180, 240, 0 };
 
