@@ -43,6 +43,8 @@ public final class NativeWorldVerification {
     private static long titleSince, openedAt, nextStopCheck, captureAfter, frames;
     private static Path gameDirectory;
     private static boolean captureStarted;
+    private static int chatCaptureStep;
+    private static long chatCaptureAt;
     private static Screen menuScreen, previousScreen;
     private static String captureKind = "menu";
     private static NativeHudEditorProbe hudProbe;
@@ -57,7 +59,7 @@ public final class NativeWorldVerification {
     private static long titleChildrenFrame;
     private static boolean titleCaptureStarted, titleCaptured;
     /** U4: the 26.x menu capture chain; the menu request starts at "pause" and ends with the Lads menu and its mods view. */
-    private static final java.util.Set<String> CHAIN = java.util.Set.of("pause", "essential", "essential-settings", "packs", "controls", "menu");
+    private static final java.util.Set<String> CHAIN = java.util.Set.of("pause", "essential", "essential-settings", "packs", "controls", "menu", "chat");
     private NativeWorldVerification() {}
 
     /** Client init: nothing is registered unless the QA flag is set. */
@@ -180,8 +182,10 @@ public final class NativeWorldVerification {
         renderMenuCapture(target);
         renderTitleCapture(target);
         NativeHudProbe.frame(target);
+        chatCapture(target);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
         captureStarted = true;
+        chatCaptureAt = System.nanoTime() + 3_000_000_000L;
         try {
             Path output = screenshot("native-world-");
             try (NativeImage image = Screenshot.takeScreenshot(target)) { image.writeToFile(output); }
@@ -190,6 +194,21 @@ public final class NativeWorldVerification {
     }
     /** A new PNG path in the checked QA screenshots folder (the U3 HUD probe's frames). */
     static Path qaScreenshot(String prefix) throws IOException { return screenshot(prefix); }
+    /** Chat module QA: a gameplay frame, then one about 100 ms into a new message's slide-in; the HUD around chat must not move. */
+    private static void chatCapture(RenderTarget target) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!captureStarted || chatCaptureStep >= 2 || System.nanoTime() < chatCaptureAt || menuScreen != null || mc.screen != null || !worldReady()) return;
+        String name = chatCaptureStep++ == 0 ? "chat-before" : "chat-arriving";
+        try {
+            Path output = screenshot("native-" + name + "-");
+            try (NativeImage image = Screenshot.takeScreenshot(target)) { image.writeToFile(output); }
+            LOGGER.info("Lads {} capture END: actual completed game frame at {}", name, output);
+        } catch (Exception failure) { fail(name + " capture", failure); }
+        if (chatCaptureStep == 1) {
+            mc.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal("Lads chat QA: only this new line slides in"));
+            chatCaptureAt = System.nanoTime() + 100_000_000L;
+        }
+    }
     /** The Lads title screen as players see it (26.x native-title), once the title checks ran and before the world opens. */
     private static void renderTitleCapture(RenderTarget target) {
         Minecraft mc = Minecraft.getInstance();
@@ -277,6 +296,7 @@ public final class NativeWorldVerification {
                     case "essential-settings" -> packsScreen(mc);
                     case "packs" -> new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null, mc.options);
                     case "controls" -> new LadsSettingsScreen121(null);
+                    case "menu" -> { var view = new LadsSettingsScreen121(null); view.ui().openModule("Chat"); yield view; }
                     default -> { var view = new LadsSettingsScreen121(null); view.ui().openMods(); yield view; }
                 };
                 captureKind = switch (captureKind) {
@@ -285,6 +305,7 @@ public final class NativeWorldVerification {
                     case "essential-settings" -> "packs";
                     case "packs" -> "controls";
                     case "controls" -> "menu";
+                    case "menu" -> "chat";
                     default -> "mods";
                 };
                 menuOpenedAt = System.nanoTime(); menuFirstFrame = 0; menuFrames = 0;
