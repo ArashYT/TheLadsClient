@@ -1,0 +1,22 @@
+{
+  "worldplaytimereborn.format": "%sh",
+  "worldplaytimereborn.config.header": "World Play Time Reborn Config",
+  "worldplaytimereborn.config.category.general": "General",
+  "worldplaytimereborn.config.category.world_entry": "World Entry",
+  "worldplaytimereborn.config.category.server_entry": "Server Entry",
+  "worldplaytimereborn.config.showServerPlayTime": "Show Server Play Time",
+  "worldplaytimereborn.config.serverPlayTimePosition": "Server Play Time Position",
+  "worldplaytimereborn.config.serverPlayTimePosition.after_name": "After Name",
+  "worldplaytimereborn.config.serverPlayTimePosition.behind_count": "Behind Count",
+  "worldplaytimereborn.config.serverPlayTimePosition.left": "Left",
+  "worldplaytimereborn.config.serverPlayTimePosition.right": "Right",
+  "worldplaytimereborn.config.serverPlayTimeColor": "Server Play Time Color",
+  "worldplaytimereborn.config.showWorldPlayTime": "Show World Play Time",
+  "worldplaytimereborn.config.worldPlayTimeCountAllPlayers": "Count Play Time Of All Players",
+  "worldplaytimereborn.config.showWorldSize": "Show World Size",
+  "worldplaytimereborn.config.worldPlayTimePosition": "World Play Time Position",
+  "worldplaytimereborn.config.worldPlayTimePosition.top_right": "Top Right",
+  "worldplaytimereborn.config.worldPlayTimePosition.left": "Left",
+  "worldplaytimereborn.config.worldPlayTimePosition.right": "Right",
+  "worldplaytimereborn.config.worldPlayTimeColor": "World Play Time Color"
+}

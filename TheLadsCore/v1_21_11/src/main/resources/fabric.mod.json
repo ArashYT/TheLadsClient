@@ -5,7 +5,7 @@
   "name": "The Lads Core",
   "description": "The Lads Core multi-version client mod (1.21.11)",
   "authors": ["The Lads"],
-  "license": ["CC0-1.0", "MPL-2.0", "LGPL-3.0-only", "Apache-2.0"],
+  "license": ["CC0-1.0", "MPL-2.0", "LGPL-3.0-only", "Apache-2.0", "MIT"],
   "icon": "assets/modid/icon.png",
   "environment": "client",
   "accessWidener": "theladscore.accesswidener",
@@ -19,7 +19,8 @@
     "theladscore.v1_21_11.hud.mixins.json",
     "theladscore.v1_21_11.qa.mixins.json",
     "theladscore.v1_21_11.chrome.mixins.json",
-    "theladscore.embedded.fixbookgui.mixins.json"
+    "theladscore.embedded.fixbookgui.mixins.json",
+    "theladscore.embedded.playtime.mixins.json"
   ],
   "custom": {
     "badoptimizations:cache_hooks": { "lightmap": "com.thelads.core.v1_21_11.feature.FullbrightLightmapHook" }

@@ -17,5 +17,6 @@ public final class EmbeddedMods {
     /** Called once from the Core client initializer. */
     public static void clientInit() {
         if (active("fixbookgui")) com.thelads.core.v1_21_11.embedded.fixbookgui.FixBookGui.init();
+        if (active("worldplaytimereborn")) new com.thelads.core.v1_21_11.embedded.playtime.client.WorldPlayTimeRebornClient().onInitializeClient();
     }
 }
