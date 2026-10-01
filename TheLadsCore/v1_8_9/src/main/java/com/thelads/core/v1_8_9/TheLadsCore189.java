@@ -129,10 +129,7 @@ public class TheLadsCore189 {
             }
         } catch (Throwable ignored) {}
 
-        com.thelads.core.config.Module rawInput = com.thelads.core.config.ModuleManager.getInstance().getModule("RawInput");
-        if (rawInput != null && rawInput.isEnabled()) {
-            RawMouse189.ensureInstalled(mc);
-        }
+        RawMouse189.install(mc);
 
         com.thelads.core.config.Module borderless = com.thelads.core.config.ModuleManager.getInstance().getModule("BorderlessFullscreen");
         if (borderless != null && borderless.isEnabled()) {
@@ -156,6 +153,11 @@ public class TheLadsCore189 {
                 borderlessApplied = false;
             }
         } catch (Throwable ignored) {}
+    }
+
+    @SubscribeEvent
+    public void frame(TickEvent.RenderTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) RawMouse189.paceFrame();
     }
 
     @SubscribeEvent
