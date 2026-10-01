@@ -40,7 +40,8 @@
     "theladscore.screenshots.mixins.json",
     "theladscore.clumps.mixins.json",
     "jade.mixins.json",
-    "theladscore.embedded.fixbookgui.mixins.json"
+    "theladscore.embedded.fixbookgui.mixins.json",
+    "theladscore.embedded.playtime.mixins.json"
   ],
   "jars": [
     {

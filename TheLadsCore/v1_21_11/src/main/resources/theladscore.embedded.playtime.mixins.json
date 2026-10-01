@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_11.embedded.playtime.mixin",
+  "plugin": "com.thelads.core.v1_21_11.embedded.playtime.PlayTimeMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "LevelStorageSourceMixin",
+    "LevelSummaryMixin",
+    "OnlineServerEntryMixin",
+    "WorldListEntryMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

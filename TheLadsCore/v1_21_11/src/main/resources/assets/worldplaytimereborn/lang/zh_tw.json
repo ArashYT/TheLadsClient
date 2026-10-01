@@ -1,0 +1,22 @@
+{
+  "worldplaytimereborn.format": "%s小時",
+  "worldplaytimereborn.config.header": "World Play Time Reborn 設定",
+  "worldplaytimereborn.config.category.general": "一般",
+  "worldplaytimereborn.config.category.world_entry": "世界項目",
+  "worldplaytimereborn.config.category.server_entry": "伺服器項目",
+  "worldplaytimereborn.config.showServerPlayTime": "顯示伺服器遊玩時間",
+  "worldplaytimereborn.config.serverPlayTimePosition": "伺服器遊玩時間位置",
+  "worldplaytimereborn.config.serverPlayTimePosition.after_name": "名稱之後",
+  "worldplaytimereborn.config.serverPlayTimePosition.behind_count": "數字之後",
+  "worldplaytimereborn.config.serverPlayTimePosition.left": "左邊",
+  "worldplaytimereborn.config.serverPlayTimePosition.right": "右邊",
+  "worldplaytimereborn.config.serverPlayTimeColor": "伺服器遊玩時間顏色",
+  "worldplaytimereborn.config.showWorldPlayTime": "顯示世界遊玩時間",
+  "worldplaytimereborn.config.worldPlayTimeCountAllPlayers": "計算所有玩家的遊玩時間",
+  "worldplaytimereborn.config.showWorldSize": "顯示世界大小",
+  "worldplaytimereborn.config.worldPlayTimePosition": "世界遊玩時間位置",
+  "worldplaytimereborn.config.worldPlayTimePosition.top_right": "右上角",
+  "worldplaytimereborn.config.worldPlayTimePosition.left": "左邊",
+  "worldplaytimereborn.config.worldPlayTimePosition.right": "右邊",
+  "worldplaytimereborn.config.worldPlayTimeColor": "世界遊玩時間顏色"
+}
