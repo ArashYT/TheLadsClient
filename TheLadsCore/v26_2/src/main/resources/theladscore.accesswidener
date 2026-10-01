@@ -90,3 +90,4 @@ accessible method net/minecraft/client/gui/components/AbstractStringWidget getFo
 accessible method net/minecraft/world/level/gamerules/GameRules registerInteger (Ljava/lang/String;Lnet/minecraft/world/level/gamerules/GameRuleCategory;III)Lnet/minecraft/world/level/gamerules/GameRule;
 accessible field net/minecraft/locale/Language GSON Lcom/google/gson/Gson;
 accessible field net/minecraft/locale/Language UNSUPPORTED_FORMAT_PATTERN Ljava/util/regex/Pattern;
+accessible class net/minecraft/server/packs/FilePackResources$SharedZipFileAccess
