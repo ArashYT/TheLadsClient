@@ -62,7 +62,7 @@ public class TheLadsCore189 {
         LOGGER.info("Initializing TheLadsCore for Minecraft 1.8.9...");
         try {
             net.minecraftforge.common.ForgeModContainer.disableVersionCheck = true;
-            windowTitle = "The Lads Client " + net.minecraftforge.fml.common.Loader.instance().getIndexedModList().get("theladscore").getVersion();
+            windowTitle = com.thelads.core.LadsVersion.clientName();
             org.lwjgl.opengl.Display.setTitle(windowTitle);
         } catch (Throwable ignored) {}
         LadsGameBridge.set(new VanillaGameBridge189());
