@@ -24,7 +24,9 @@
     "client": [
       "com.thelads.core.v26_2.TheLadsCoreClient26"
     ],
-    "main": [],
+    "main": [
+      "com.thelads.core.v26_2.embedded.EmbeddedModsMain"
+    ],
     "jade": [],
     "modmenu": [],
     "jei_mod_plugin": []
@@ -39,7 +41,10 @@
     "theladscore.tabtweaks.mixins.json",
     "theladscore.screenshots.mixins.json",
     "theladscore.clumps.mixins.json",
-    "jade.mixins.json"
+    "jade.mixins.json",
+    "theladscore.embedded.ksyxis.mixins.json",
+    "theladscore.embedded.serverpingerfixer.mixins.json",
+    "theladscore.embedded.fastipping.mixins.json"
   ],
   "jars": [
     {

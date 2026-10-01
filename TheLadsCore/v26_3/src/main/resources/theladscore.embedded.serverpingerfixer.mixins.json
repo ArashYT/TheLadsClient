@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.embedded.serverpingerfixer.mixin",
+  "plugin": "com.thelads.core.v26_2.embedded.serverpingerfixer.ServerPingerFixerMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [],
+  "client": ["ServerSelectionListMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

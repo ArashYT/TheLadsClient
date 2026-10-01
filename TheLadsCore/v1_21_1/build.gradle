@@ -43,3 +43,14 @@ jar {
     archiveClassifier = "mc1.21.1"
     from(project(':common').sourceSets.main.output)
 }
+
+// Embedded LGPL mods (1.4.6): the complete modified sources ship in the jar beside their notices.
+processResources {
+    ['fastipping'].each { key ->
+        from('src/main/java') {
+            include "com/thelads/core/v1_21_1/embedded/${key}/**"
+            into "META-INF/lads-sources/${key}/v1_21_1"
+        }
+        from("src/main/resources/theladscore.embedded.${key}.mixins.json") { into "META-INF/lads-sources/${key}/v1_21_1" }
+    }
+}

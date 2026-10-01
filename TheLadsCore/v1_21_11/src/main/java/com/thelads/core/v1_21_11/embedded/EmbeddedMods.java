@@ -1,6 +1,7 @@
 package com.thelads.core.v1_21_11.embedded;
 
 import net.fabricmc.loader.api.FabricLoader;
+import org.slf4j.LoggerFactory;
 
 /**
  * Upstream mods rebuilt inside Core with no Lads module (1.4.6), one package each. Each stands down while its original
@@ -16,5 +17,6 @@ public final class EmbeddedMods {
 
     /** Called once from the Core client initializer. */
     public static void clientInit() {
+        if (active("fastipping")) LoggerFactory.getLogger("FastIpPing").info("ping & connect fast!");
     }
 }
