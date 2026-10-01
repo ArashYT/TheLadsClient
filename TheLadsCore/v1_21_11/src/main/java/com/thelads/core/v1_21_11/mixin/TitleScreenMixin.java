@@ -4,6 +4,7 @@ import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_21_11.adapter.GuiGraphicsLadsAdapter;
 import com.thelads.core.v1_21_11.gui.AccountSwitcherScreen12111;
 import com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111;
+import com.thelads.core.v1_21_11.gui.TitleExtrasScreen12111;
 import com.thelads.core.v1_21_11.gui.TitleWidgetRegistry;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -35,6 +36,8 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private int ladsLayoutHeight;
     @Unique private Button ladsSettingsButton;
     @Unique private Button ladsAccountsButton;
+    @Unique private Button ladsMoreButton;
+    @Unique private List<AbstractWidget> ladsExtraWidgets = new ArrayList<>();
     @Unique private long ladsLastFrameNanos;
     @Unique private double ladsAnimationSeconds;
 
@@ -45,17 +48,20 @@ public abstract class TitleScreenMixin extends Screen {
     @Inject(method = "init()V", at = @At("TAIL"), require = 1)
     private void ladsArrangeTitle(CallbackInfo ci) {
         com.thelads.core.v1_21_11.feature.SharedContentProbe.runOnce();
+        com.thelads.core.mods.ModInventoryModel.requestAtFirstTitleScreen();
+        com.thelads.core.mods.ModInventoryModel.logAtFirstTitleScreen();
         for (AbstractWidget widget : ladsTitleWidgets) TitleWidgetRegistry.unregister(widget);
         ladsTitleWidgets = new ArrayList<>();
         ladsTitleLayout = null;
-        com.thelads.core.mods.ModInventoryModel.requestAtFirstTitleScreen();
-        com.thelads.core.mods.ModInventoryModel.logAtFirstTitleScreen();
+        ladsExtraWidgets = new ArrayList<>();
         ladsCustomTitle = com.thelads.core.v1_21_11.feature.NativeFeatures.enabled("TitleScreen");
         if (!ladsCustomTitle) return;
-        ladsSettingsButton = addRenderableWidget(Button.builder(Component.literal("Lads Settings"),
+        ladsSettingsButton = addRenderableWidget(Button.builder(Component.literal("Lads Mods"),
             button -> minecraft.setScreen(new LadsSettingsScreen12111(this))).bounds(0, 0, 1, 1).build());
         ladsAccountsButton = addRenderableWidget(Button.builder(Component.literal("Accounts"),
             button -> minecraft.setScreen(new AccountSwitcherScreen12111(this))).bounds(0, 0, 1, 1).build());
+        ladsMoreButton = addRenderableWidget(Button.builder(Component.literal("More..."),
+            button -> minecraft.setScreen(new TitleExtrasScreen12111(this, ladsExtraWidgets))).bounds(0, 0, 1, 1).build());
 
         // Fabric screen events and other init mixins may still add or move widgets after this callback.
         // Leave their native geometry intact until the first draw has the complete widget set.
@@ -70,7 +76,7 @@ public abstract class TitleScreenMixin extends Screen {
         if (!changed) {
             int index = 0;
             for (GuiEventListener child : children()) {
-                if (!(child instanceof AbstractWidget widget)) continue;
+                if (!(child instanceof AbstractWidget widget) || ladsOverlayTool(widget)) continue;
                 if (index >= ladsTitleWidgets.size() || ladsTitleWidgets.get(index) != widget) {
                     changed = true;
                     break;
@@ -84,7 +90,22 @@ public abstract class TitleScreenMixin extends Screen {
         ladsTitleWidgets = new ArrayList<>();
         // Reuse every original widget, including restricted multiplayer, demo and late mod actions.
         for (GuiEventListener child : children()) {
-            if (child instanceof AbstractWidget widget) ladsTitleWidgets.add(widget);
+            if (child instanceof AbstractWidget widget && !ladsOverlayTool(widget)) ladsTitleWidgets.add(widget);
+        }
+        // Keep the home screen focused. All secondary native/mod actions remain in More.
+        for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
+            String key = ladsMessageKey(widget);
+            boolean main = widget == ladsSettingsButton || widget == ladsMoreButton
+                || key.equals("menu.singleplayer") || key.equals("menu.playdemo")
+                || key.equals("menu.multiplayer") || key.equals("menu.options") || key.equals("menu.quit");
+            if (!main) {
+                ladsTitleWidgets.remove(widget);
+                removeWidget(widget);
+                // The Lads theme draws its own artwork: FancyMenu's widgetified vanilla logo, splash, branding and Realms icons go.
+                if (ladsVanillaArtwork(widget)) { widget.visible = false; continue; }
+                if (!ladsExtraWidgets.contains(widget)) ladsExtraWidgets.add(widget);
+                if(widget.getClass().getName().startsWith("gg.essential."))widget.visible=false;
+            }
         }
         ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
         ladsTitleLayout = TitleScreenTheme.layout(width, height, ladsTitleWidgets.size());
@@ -119,6 +140,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique
     private int ladsButtonOrder(AbstractWidget widget) {
         if (widget == ladsSettingsButton) return 3;
+        if (widget == ladsMoreButton) return 7;
         if (widget == ladsAccountsButton) return 4;
         if (ladsIsModMenuWidget(widget)) return 3;
         return switch (ladsMessageKey(widget)) {
@@ -152,6 +174,21 @@ public abstract class TitleScreenMixin extends Screen {
         };
     }
 
+    /**
+     * FancyMenu customization-overlay tools (Drippy's edit tab, a player's FancyMenu layout elements) stay where their mods
+     * keep them: Drippy re-adds its tab on every frame it is missing, which made the layout rebuild every frame (1.21.11).
+     */
+    @Unique
+    private static boolean ladsOverlayTool(AbstractWidget widget) {
+        return widget.getClass().getName().startsWith("de.keksuccino.") && !ladsVanillaArtwork(widget);
+    }
+
+    /** FancyMenu's widgetified vanilla title artwork (logo, splash, branding, Realms icons): not actions, hidden with the Lads theme. */
+    @Unique
+    private static boolean ladsVanillaArtwork(AbstractWidget widget) {
+        return widget.getClass().getName().equals("de.keksuccino.fancymenu.util.rendering.ui.widget.RendererWidget");
+    }
+
     @Unique
     private static boolean ladsIsModMenuWidget(AbstractWidget widget) {
         String type = widget.getClass().getName();
@@ -163,6 +200,7 @@ public abstract class TitleScreenMixin extends Screen {
         at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsRenderTitle(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (!ladsCustomTitle) return;
+        com.thelads.core.v1_21_11.gui.EssentialActions.suppressOverlay(this);
         ladsEnsureTitleLayout();
         long now = System.nanoTime();
         float elapsed = ladsLastFrameNanos == 0 ? 0 : (float) Math.clamp((now - ladsLastFrameNanos) / 1.0e9, 0.0, 0.1);

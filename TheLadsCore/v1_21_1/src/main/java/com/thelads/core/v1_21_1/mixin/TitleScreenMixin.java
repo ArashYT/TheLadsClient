@@ -1,116 +1,233 @@
 package com.thelads.core.v1_21_1.mixin;
 
+import com.thelads.core.client.title.TitleScreenTheme;
+import com.thelads.core.v1_21_1.adapter.GuiGraphicsLadsAdapter;
 import com.thelads.core.v1_21_1.gui.AccountSwitcherScreen121;
 import com.thelads.core.v1_21_1.gui.LadsSettingsScreen121;
-import net.minecraft.client.Minecraft;
+import com.thelads.core.v1_21_1.gui.TitleExtrasScreen121;
+import com.thelads.core.v1_21_1.gui.TitleWidgetRegistry;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.PlayerFaceRenderer;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+/** The 26.x Lads title screen: themed artwork, the main actions as Lads buttons, every secondary action behind More. */
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin extends Screen {
+    @Unique private List<AbstractWidget> ladsTitleWidgets = new ArrayList<>();
+    @Unique private TitleScreenTheme.Layout ladsTitleLayout;
+    @Unique private boolean ladsCustomTitle;
+    @Unique private int ladsLayoutWidth;
+    @Unique private int ladsLayoutHeight;
+    @Unique private Button ladsSettingsButton;
+    @Unique private Button ladsAccountsButton;
+    @Unique private Button ladsMoreButton;
+    @Unique private List<AbstractWidget> ladsExtraWidgets = new ArrayList<>();
+    @Unique private long ladsLastFrameNanos;
+    @Unique private double ladsAnimationSeconds;
 
     protected TitleScreenMixin() {
         super(Component.empty());
     }
 
-    @Unique private static final int CARD_W      = 130;
-    @Unique private static final int CARD_H      = 46;
-    @Unique private static final int CARD_MARGIN = 10;
-    @Unique private static final int ACCENT      = 0xFF6C63FF;
-
-    @Inject(method = "init", at = @At("TAIL"), require = 1)
-    private void ladsInjectTitleScreenButtons(CallbackInfo ci) {
+    @Inject(method = "init()V", at = @At("TAIL"), require = 1)
+    private void ladsArrangeTitle(CallbackInfo ci) {
         com.thelads.core.v1_21_1.feature.SharedContentProbe.runOnce();
-        // Inject "Lads Settings" directly above "Options" in primary vertical list
-        int optionsY = -1;
-        for (GuiEventListener listener : this.children()) {
-            if (listener instanceof AbstractWidget widget) {
-                Component msg = widget.getMessage();
-                boolean isOptions = false;
-                if (msg != null) {
-                    if (msg.getContents() instanceof TranslatableContents tc && "menu.options".equals(tc.getKey())) {
-                        isOptions = true;
-                    }
-                    if (msg.getString().toLowerCase().contains("options")) {
-                        isOptions = true;
-                    }
-                }
-                if (isOptions) {
-                    optionsY = widget.getY();
-                    break;
-                }
-            }
-        }
-
-        if (optionsY != -1) {
-            // Shift all lower buttons down by 24px (restrict to center vertical column)
-            for (GuiEventListener listener : this.children()) {
-                if (listener instanceof AbstractWidget widget) {
-                    int y = widget.getY();
-                    if (y >= optionsY && y < this.height - 40 && Math.abs(widget.getX() - (this.width / 2)) < 150) {
-                        widget.setY(y + 24);
-                    }
-                }
-            }
-
-            // Insert Lads Settings at optionsY
-            this.addRenderableWidget(
-                Button.builder(
-                    Component.literal("Lads Settings"),
-                    btn -> Minecraft.getInstance().setScreen(new LadsSettingsScreen121((Screen)(Object)this))
-                ).bounds(this.width / 2 - 100, optionsY, 200, 20).build()
-            );
-        }
-
-        // Account switcher button added AFTER shift loop to prevent collision with Account Card
-        int cardY = this.height - CARD_H - CARD_MARGIN - 22;
-        this.addRenderableWidget(
-            Button.builder(
-                Component.literal("⇄ Switch Account"),
-                btn -> Minecraft.getInstance().setScreen(new AccountSwitcherScreen121((Screen)(Object)this))
-            ).bounds(CARD_MARGIN, cardY, CARD_W, 20).build()
-        );
         com.thelads.core.mods.ModInventoryModel.requestAtFirstTitleScreen();
         com.thelads.core.mods.ModInventoryModel.logAtFirstTitleScreen();
+        for (AbstractWidget widget : ladsTitleWidgets) TitleWidgetRegistry.unregister(widget);
+        ladsTitleWidgets = new ArrayList<>();
+        ladsTitleLayout = null;
+        ladsExtraWidgets = new ArrayList<>();
+        ladsCustomTitle = com.thelads.core.v1_21_1.feature.NativeFeatures.enabled("TitleScreen");
+        if (!ladsCustomTitle) return;
+        ladsSettingsButton = addRenderableWidget(Button.builder(Component.literal("Lads Mods"),
+            button -> minecraft.setScreen(new LadsSettingsScreen121(this))).bounds(0, 0, 1, 1).build());
+        ladsAccountsButton = addRenderableWidget(Button.builder(Component.literal("Accounts"),
+            button -> minecraft.setScreen(new AccountSwitcherScreen121(this))).bounds(0, 0, 1, 1).build());
+        ladsMoreButton = addRenderableWidget(Button.builder(Component.literal("More..."),
+            button -> minecraft.setScreen(new TitleExtrasScreen121(this, ladsExtraWidgets))).bounds(0, 0, 1, 1).build());
+
+        // Fabric screen events and other init mixins may still add or move widgets after this callback.
+        // Leave their native geometry intact until the first draw has the complete widget set.
+        ladsLastFrameNanos = 0;
+        com.thelads.core.config.BuiltInIntegrations.verifyLoadedAdapters();
+        com.thelads.core.config.IntegrationRuntimeProbe.run();
     }
 
-    @Inject(method = "render", at = @At("HEAD"), require = 1)
-    private void ladsRenderAccountCard(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        int cardX = CARD_MARGIN;
-        int cardY = this.height - CARD_H - CARD_MARGIN;
-
-        guiGraphics.fill(cardX, cardY, cardX + CARD_W, cardY + CARD_H, 0xCC0D0D1A);
-        guiGraphics.fill(cardX, cardY, cardX + CARD_W, cardY + 1, ACCENT);
-
-        Minecraft mc = Minecraft.getInstance();
-        String username = mc.getUser().getName();
-        int headSize = 22;
-        int headX = cardX + 8;
-        int headY = cardY + (CARD_H - headSize) / 2;
-
-        try {
-            PlayerSkin skin = mc.getSkinManager().getInsecureSkin(mc.getGameProfile());
-            PlayerFaceRenderer.draw(guiGraphics, skin.texture(), headX, headY, headSize);
-        } catch (Exception e) {
-            guiGraphics.fill(headX, headY, headX + headSize, headY + headSize, ACCENT);
+    @Unique
+    private void ladsEnsureTitleLayout() {
+        boolean changed = ladsTitleLayout == null || ladsLayoutWidth != width || ladsLayoutHeight != height;
+        if (!changed) {
+            int index = 0;
+            for (GuiEventListener child : children()) {
+                if (!(child instanceof AbstractWidget widget) || ladsOverlayTool(widget)) continue;
+                if (index >= ladsTitleWidgets.size() || ladsTitleWidgets.get(index) != widget) {
+                    changed = true;
+                    break;
+                }
+                index++;
+            }
+            changed |= index != ladsTitleWidgets.size();
         }
+        if (!changed) return;
+        for (AbstractWidget widget : ladsTitleWidgets) TitleWidgetRegistry.unregister(widget);
+        ladsTitleWidgets = new ArrayList<>();
+        // Reuse every original widget, including restricted multiplayer, demo and late mod actions.
+        for (GuiEventListener child : children()) {
+            if (child instanceof AbstractWidget widget && !ladsOverlayTool(widget)) ladsTitleWidgets.add(widget);
+        }
+        // Keep the home screen focused. All secondary native/mod actions remain in More.
+        for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
+            String key = ladsMessageKey(widget);
+            boolean main = widget == ladsSettingsButton || widget == ladsMoreButton
+                || key.equals("menu.singleplayer") || key.equals("menu.playdemo")
+                || key.equals("menu.multiplayer") || key.equals("menu.options") || key.equals("menu.quit");
+            if (!main) {
+                ladsTitleWidgets.remove(widget);
+                removeWidget(widget);
+                // The Lads theme draws its own artwork: FancyMenu's widgetified vanilla logo, splash, branding and Realms icons go.
+                if (ladsVanillaArtwork(widget)) { widget.visible = false; continue; }
+                if (!ladsExtraWidgets.contains(widget)) ladsExtraWidgets.add(widget);
+                if(widget.getClass().getName().startsWith("gg.essential."))widget.visible=false;
+            }
+        }
+        ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
+        ladsTitleLayout = TitleScreenTheme.layout(width, height, ladsTitleWidgets.size());
+        ladsLayoutWidth = width;
+        ladsLayoutHeight = height;
+        boolean primaryAssigned = false;
+        for (AbstractWidget widget : ladsTitleWidgets) removeWidget(widget);
+        for (int i = 0; i < ladsTitleWidgets.size(); i++) {
+            AbstractWidget widget = ladsTitleWidgets.get(i);
+            TitleScreenTheme.Rect rect = ladsTitleLayout.buttons().get(i);
+            widget.setX(rect.x());
+            widget.setY(rect.y());
+            widget.setWidth(rect.width());
+            widget.setHeight(rect.height());
+            widget.setTabOrderGroup(i);
+            addRenderableWidget(widget);
+            boolean primary = !primaryAssigned && "menu.singleplayer".equals(ladsMessageKey(widget));
+            primaryAssigned |= primary;
+            TitleWidgetRegistry.register(this, widget, ladsButtonIcon(widget), primary);
+        }
+        ladsLastFrameNanos = 0;
+        LoggerFactory.getLogger("TheLadsCore-1.21.1").info(
+            "custom title initialized for Minecraft 1.21.1: {} native widgets", ladsTitleWidgets.size());
+    }
 
-        int textX = headX + headSize + 7;
-        String displayName = username.length() <= 12 ? username : username.substring(0, 11) + "…";
-        guiGraphics.drawString(this.font, displayName, textX, cardY + 10, 0xFFFFFFFF, false);
-        guiGraphics.drawString(this.font, "Active", textX, cardY + 22, ACCENT, false);
+    @Unique
+    private static String ladsMessageKey(AbstractWidget widget) {
+        Component message = widget.getMessage();
+        return message != null && message.getContents() instanceof TranslatableContents contents ? contents.getKey() : "";
+    }
+
+    @Unique
+    private int ladsButtonOrder(AbstractWidget widget) {
+        if (widget == ladsSettingsButton) return 3;
+        if (widget == ladsMoreButton) return 7;
+        if (widget == ladsAccountsButton) return 4;
+        if (ladsIsModMenuWidget(widget)) return 3;
+        return switch (ladsMessageKey(widget)) {
+            case "menu.singleplayer", "menu.playdemo" -> 0;
+            case "menu.multiplayer" -> 1;
+            case "menu.online" -> 2;
+            case "modmenu.title", "fml.menu.mods" -> 3;
+            case "menu.options" -> 5;
+            case "options.language" -> 6;
+            case "options.accessibility", "accessibility.onboarding.accessibility.button" -> 7;
+            case "menu.quit" -> 8;
+            default -> 9;
+        };
+    }
+
+    @Unique
+    private String ladsButtonIcon(AbstractWidget widget) {
+        if (widget == ladsSettingsButton) return "mods";
+        if (widget == ladsAccountsButton) return "user";
+        if (ladsIsModMenuWidget(widget)) return "mods";
+        return switch (ladsMessageKey(widget)) {
+            case "menu.singleplayer", "menu.playdemo" -> "play";
+            case "menu.multiplayer" -> "server";
+            case "menu.online" -> "realms";
+            case "modmenu.title", "fml.menu.mods" -> "mods";
+            case "menu.options" -> "settings";
+            case "options.language" -> "language";
+            case "options.accessibility", "accessibility.onboarding.accessibility.button" -> "access";
+            case "menu.quit" -> "quit";
+            default -> "more";
+        };
+    }
+
+    /**
+     * FancyMenu customization-overlay tools (Drippy's edit tab, a player's FancyMenu layout elements) stay where their mods
+     * keep them: Drippy re-adds its tab on every frame it is missing, which made the layout rebuild every frame (1.21.11).
+     */
+    @Unique
+    private static boolean ladsOverlayTool(AbstractWidget widget) {
+        return widget.getClass().getName().startsWith("de.keksuccino.") && !ladsVanillaArtwork(widget);
+    }
+
+    /** FancyMenu's widgetified vanilla title artwork (logo, splash, branding, Realms icons): not actions, hidden with the Lads theme. */
+    @Unique
+    private static boolean ladsVanillaArtwork(AbstractWidget widget) {
+        return widget.getClass().getName().equals("de.keksuccino.fancymenu.util.rendering.ui.widget.RendererWidget");
+    }
+
+    @Unique
+    private static boolean ladsIsModMenuWidget(AbstractWidget widget) {
+        String type = widget.getClass().getName();
+        return type.equals("com.terraformersmc.modmenu.gui.widget.ModMenuButtonWidget")
+            || type.equals("com.terraformersmc.modmenu.gui.widget.SmallModMenuButtonWidget");
+    }
+
+    @Inject(method = "render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V",
+        at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsRenderTitle(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        if (!ladsCustomTitle) return;
+        com.thelads.core.v1_21_1.gui.EssentialActions.suppressOverlay(this);
+        ladsEnsureTitleLayout();
+        long now = System.nanoTime();
+        float elapsed = ladsLastFrameNanos == 0 ? 0 : (float) Math.clamp((now - ladsLastFrameNanos) / 1.0e9, 0.0, 0.1);
+        ladsLastFrameNanos = now;
+        double panoramaSpeed = minecraft.options.panoramaSpeed().get();
+        boolean reducedMotion = panoramaSpeed <= 0 || minecraft.options.screenEffectScale().get() <= 0;
+        if (!reducedMotion) ladsAnimationSeconds += elapsed * panoramaSpeed;
+        var adapter = new GuiGraphicsLadsAdapter(graphics, font);
+        TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(),
+            "1.21.1" + (minecraft.isDemo() ? " Demo" : ""), false, ladsAnimationSeconds);
+        TitleWidgetRegistry.beginFrame(this, adapter, elapsed, reducedMotion);
+        try {
+            // Calls Screen, not TitleScreen: only native widgets and extra renderables, never vanilla artwork
+            // (TitleScreen's renderBackground, which Screen.render calls first, draws nothing on 1.21.1).
+            super.render(graphics, mouseX, mouseY, partialTick);
+        } finally {
+            TitleWidgetRegistry.endFrame();
+        }
+        ci.cancel();
+    }
+
+    @Inject(method = "mouseClicked(DDI)Z", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsClickVisibleTitle(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
+        if (ladsCustomTitle) {
+            ladsEnsureTitleLayout();
+            // Vanilla also forwards clicks to its separate, now hidden Realms notification overlay.
+            cir.setReturnValue(super.mouseClicked(mouseX, mouseY, button));
+        }
     }
 }

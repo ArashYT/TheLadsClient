@@ -23,6 +23,8 @@ public final class NativeQualityOfLife {
         NativeAutohide.register();
         // QA only (-Dthelads.verifyAutoWorld): the isolated auto-world runtime; registers nothing in normal launches.
         NativeWorldVerification.register();
+        // U4 title redesign: TitleScreenMixin draws TitleScreenTheme (branding scaled by Title Scale) through the chrome mixins.
+        ModuleSupport.registerBuiltIn("TitleScreen", "Title Scale");
     }
 
     /** Every client tick, from ClientTickMixin (Minecraft.tick HEAD). */
