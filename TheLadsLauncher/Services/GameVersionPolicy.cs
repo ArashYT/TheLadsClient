@@ -9,7 +9,7 @@ public static class GameVersionPolicy
     private static readonly Regex VersionComponent = new(@"\A[A-Za-z0-9][A-Za-z0-9._+-]*\z");
     private static readonly Regex LoaderVersion = new(@"\A[0-9]+(?:\.[0-9]+)+(?:[-+][A-Za-z0-9.-]+)?\z");
 
-    /// <summary>Minecraft 1.8.9 runs on this Forge build only (installed by CmlLib.Core.Installer.Forge from the build number).</summary>
+    /// <summary>Minecraft 1.8.9 runs on this Forge build only (installed by LaunchService.InstallForgeAsync).</summary>
     public const string ForgeMinecraftVersion = "1.8.9", ForgeBuild = "11.15.1.2318";
     public const string ForgeVersionId = "1.8.9-forge1.8.9-11.15.1.2318-1.8.9";
 
