@@ -1,0 +1,8 @@
+Extra item tooltip lines (com.thelads.core.*.embedded.tooltips) - an independent implementation by The Lads.
+
+It provides the kind of information the Tooltips TXF mod (tooltipstxf, All Rights Reserved) is publicly described
+as adding: durability, food values, compostable chance, burn time, use cooldown, song duration, enchantability,
+repair cost, block hardness/resistance, enchanting power, mining level/speed, mod name and item components.
+It was written from that public description and from observing tooltips in game. No Tooltips TXF code, assets or
+text were copied, decompiled or paraphrased. It reads the same config/tooltipstxf.json5 setting names so a
+player's existing choices keep applying, and it stays off while the tooltipstxf mod itself is installed.
