@@ -55,8 +55,10 @@ KNOWN = {'autoreconnectrf': 'PRy8Khga', 'clientsort': 'K0AkAin6',
          'cloth-config': '9s6osm5g', 'fastershadowmapper': 'nSRLvOHG'}
 # Removed from the pack (modId -> Modrinth project), matched by either key. They are never surveyed, preserved or
 # shipped; lock() lists them under "retired" with their known hashes so launchers retire managed copies.
-# GoodMC left in 1.2.3; it is not a native replacement, so it must not go into NATIVE.
-REMOVED = {'goodmc': 'hwir46QE'}
+# GoodMC left in 1.2.3; it is not a native replacement, so it must not go into NATIVE. 1.4.6 dropped Gamma Utils,
+# Motion Blur (Plus) with its Satin library, Sound Physics Remastered and Client Sort.
+REMOVED = {'goodmc': 'hwir46QE', 'gammautils': 'wdLuzzEP', 'motionblur': 'fWundlde', 'motionblurplus': 'Qbkde6rq',
+           'satin': 'fRbqPLg4', 'sound_physics_remastered': 'qyVF9oeo', 'clientsort': 'K0AkAin6'}
 
 
 def removed(mod_id, project_id):
