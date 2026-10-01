@@ -22,13 +22,15 @@ public class LadsSettingsScreen189 extends GuiScreen {
         ui.setOnOpenResourcePacks(() -> Minecraft.getMinecraft().displayGuiScreen(new GuiScreenResourcePacks(this)));
         ui.setOnOpenVideoSettings(() -> Minecraft.getMinecraft().displayGuiScreen(new GuiVideoSettings(this, Minecraft.getMinecraft().gameSettings)));
         ui.setClipboardReader(GuiScreen::getClipboardString);
-        // ponytail: Edit HUD stays inert until the 1.8.9 HUD and its editor land (unit C2).
+        ui.setOnOpenHudEditor(() -> Minecraft.getMinecraft().displayGuiScreen(new DraggableHudScreen189(this)));
     }
 
     /** The screen the menu returns to (null: gameplay). */
     public GuiScreen parent() { return parent; }
     /** The shared menu this screen draws and routes input to (QA reads its state and control bounds). */
     public LadsSettingsScreen ui() { return ui; }
+    /** Opens a module's settings (the HUD editor's gear). */
+    public void openModule(String name) { ui.openModule(name); }
 
     @Override
     public void initGui() {
