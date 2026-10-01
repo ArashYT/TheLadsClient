@@ -44,7 +44,10 @@ public final class RawMouse189 extends MouseHelper {
 
     /** Replaces Minecraft's MouseHelper once; the Raw Input module is read every frame. */
     public static void install(Minecraft mc) {
-        if (mc.mouseHelper != null && !(mc.mouseHelper instanceof RawMouse189)) mc.mouseHelper = new RawMouse189();
+        if (mc.mouseHelper == null || mc.mouseHelper instanceof RawMouse189) return;
+        RawMouse189 helper = new RawMouse189();
+        if (rawInputOn()) helper.mice = findMice(); // JInput's device scan takes a moment: on the title screen, not in a world
+        mc.mouseHelper = helper;
     }
 
     @Override
