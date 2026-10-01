@@ -1,0 +1,11 @@
+ImmediatelyFast 1.17.1 by RK_01/RaphiMC and contributors
+https://github.com/RaphiMC/ImmediatelyFast (tag v1.17.1, commit 40950692ba461842f74e75efd0c8154588a216cf)
+Copyright (C) 2023-2026 RK_01/RaphiMC and contributors. GNU LGPL v3 or later, see LICENSE beside this file;
+LGPL-3.0 supplements the GNU GPL v3, whose text ships at assets/theladscore/licenses/GNU-GPL-3.0.txt.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v26_2.embedded.immediatelyfast) for
+Minecraft 26.3. The mixin plugin also stands the copy down while the original ImmediatelyFast jar is installed,
+the version string is fixed instead of read from the (absent) mod metadata, the platform service is created
+directly instead of through ServiceLoader, and the class tweaker entries moved into Core's access widener.
+Config file kept: config/immediatelyfast.json. The complete modified source files ship in this jar under
+META-INF/lads-sources/immediatelyfast/v26_3.

@@ -1,0 +1,13 @@
+ImmediatelyFast 1.14.3 by RK_01/RaphiMC and contributors
+https://github.com/RaphiMC/ImmediatelyFast (tag v1.14.3, commit dbceaa7220f27ba2b0fdb3db9686dd009169749d)
+Copyright (C) 2023-2026 RK_01/RaphiMC and contributors. GNU LGPL v3 or later, see LICENSE beside this file;
+LGPL-3.0 supplements the GNU GPL v3, whose text ships at META-INF/lads-sources/GNU-GPL-3.0.txt.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_21_11.embedded.immediatelyfast) for
+Minecraft 1.21.11. The mixin plugin also stands the copy down while the original ImmediatelyFast jar is installed,
+the version string is fixed instead of read from the (absent) mod metadata, the platform service is created
+directly instead of through ServiceLoader, and the class tweaker entries moved into Core's access widener.
+The nested Reflect library (net.lenni0451:Reflect 1.6.2, MIT) is bundled as upstream does. A small added mixin gives the
+repackaged BatchableBufferSource the radar-icon hook Xaero's Minimap installs on ImmediatelyFast's original class.
+Config file kept: config/immediatelyfast.json. The complete modified source files ship in this jar under
+META-INF/lads-sources/immediatelyfast/v1_21_11.
