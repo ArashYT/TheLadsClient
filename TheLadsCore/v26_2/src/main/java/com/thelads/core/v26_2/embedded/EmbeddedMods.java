@@ -19,6 +19,7 @@ public final class EmbeddedMods {
     /** Called once from the Core client initializer. */
     public static void clientInit() {
         if (active("fastipping")) LoggerFactory.getLogger("FastIpPing").info("ping & connect fast!");
+        if (Boolean.getBoolean("thelads.verifyAutoWorld")) EmbeddedNetworkProbe.run();
         // Optimizes Cushion-Backport's entities, so only while that mod is loaded.
         if (active("optimizedcushionsbackport") && FabricLoader.getInstance().isModLoaded("cushionbackport")) OptimizedCushionsClient.init();
     }

@@ -24,14 +24,13 @@ public final class LazyAi {
     public static final int VANILLA_RADIUS = 32;
     /** Vanilla evaluates goals every second tick; lazy intervals are multiples of it so they only drop ticks. */
     public static final int VANILLA_INTERVAL = 2;
-    private static final int RECHECK_TICKS = 20;
     private static final boolean QA = Boolean.getBoolean("thelads.verifyAutoWorld");
     private static final AtomicLong SKIPPED_GOALS = new AtomicLong(), SKIPPED_SENSING = new AtomicLong(), SLOWED_SENSORS = new AtomicLong();
     private static volatile long nextReport;
 
     private LazyAi() {}
 
-    /** Distance band interval, refreshed about once a second per mob: 2 (vanilla) below 32 blocks, then 4, 6, 8. */
+    /** Distance band interval, recomputed every AI tick: 2 (vanilla) below 32 blocks from the nearest player, then 4, 6, 8. */
     public static int distanceInterval(Mob mob) {
         if (exemptType(mob)) return VANILLA_INTERVAL;
         double nearest = Double.MAX_VALUE;
@@ -41,8 +40,6 @@ public final class LazyAi {
         if (nearest < sq(96)) return 6;
         return 8;
     }
-
-    public static int recheckTicks() { return RECHECK_TICKS; }
 
     /** The interval that applies this tick: vanilla while the mob is busy, whatever its distance. */
     public static int interval(Mob mob) {

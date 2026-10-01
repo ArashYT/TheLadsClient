@@ -19,6 +19,7 @@ public final class EmbeddedMods {
     /** Called once from the Core client initializer. */
     public static void clientInit() {
         if (active("fastipping")) LoggerFactory.getLogger("FastIpPing").info("ping & connect fast!");
+        if (Boolean.getBoolean("thelads.verifyAutoWorld")) EmbeddedNetworkProbe.run();
         if (active("optimizedcushions")) OptimizedCushionsClient.init();
     }
 }
