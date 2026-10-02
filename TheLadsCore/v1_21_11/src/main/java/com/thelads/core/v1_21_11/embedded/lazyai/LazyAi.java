@@ -35,10 +35,22 @@ public final class LazyAi {
         if (exemptType(mob)) return VANILLA_INTERVAL;
         double nearest = Double.MAX_VALUE;
         for (Player player : mob.level().players()) nearest = Math.min(nearest, player.distanceToSqr(mob));
-        if (nearest < sq(VANILLA_RADIUS)) return VANILLA_INTERVAL;
-        if (nearest < sq(64)) return 4;
-        if (nearest < sq(96)) return 6;
+        return band(nearest);
+    }
+
+    static int band(double nearestSq) {
+        if (nearestSq < sq(VANILLA_RADIUS)) return VANILLA_INTERVAL;
+        if (nearestSq < sq(64)) return 4;
+        if (nearestSq < sq(96)) return 6;
         return 8;
+    }
+
+    /** QA only: the distance bands, and that the AI hook was merged into Mob. */
+    public static void selfTest() {
+        boolean bands = band(0) == 2 && band(sq(31.9)) == 2 && band(sq(32)) == 4 && band(sq(70)) == 6 && band(sq(200)) == 8
+            && band(Double.MAX_VALUE) == 8;
+        LoggerFactory.getLogger("LazyAI").info("Lazy AI self-test: distance bands {}, Mob hook {}", bands ? "PASS" : "FAIL",
+            LazyMob.class.isAssignableFrom(Mob.class) ? "merged" : "MISSING");
     }
 
     /** The interval that applies this tick: vanilla while the mob is busy, whatever its distance. */
@@ -62,11 +74,11 @@ public final class LazyAi {
     public static void countSensing() { if (QA) SKIPPED_SENSING.incrementAndGet(); }
     public static void countSensor() { if (QA) SLOWED_SENSORS.incrementAndGet(); }
 
-    /** QA only (-Dthelads.verifyAutoWorld): one counter line per minute of game time. */
+    /** QA only (-Dthelads.verifyAutoWorld): a counter line 10 s into the world, then once a minute. */
     public static void report(long gameTime) {
         if (!QA || gameTime < nextReport) return;
         boolean first = nextReport == 0;
-        nextReport = gameTime + 1200;
+        nextReport = gameTime + (first ? 200 : 1200);
         if (!first) LoggerFactory.getLogger("LazyAI").info("Lazy AI: skipped {} goal evaluations, {} sensing clears, slowed {} sensor scans",
             SKIPPED_GOALS.get(), SKIPPED_SENSING.get(), SLOWED_SENSORS.get());
     }
