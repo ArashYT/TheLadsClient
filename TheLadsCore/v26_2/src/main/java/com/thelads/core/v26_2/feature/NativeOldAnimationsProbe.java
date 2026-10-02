@@ -53,8 +53,8 @@ final class NativeOldAnimationsProbe {
     private static int passed;
     private NativeOldAnimationsProbe() {}
 
-    /** One recorded submission: the collector method, its display context (items), overlay (models) and matrix. */
-    private record Call(String method, ItemDisplayContext context, int overlay, Matrix4f pose) {}
+    /** One recorded submission: the collector method, its display context (items), colour (models) and matrix. */
+    private record Call(String method, ItemDisplayContext context, int tint, Matrix4f pose) {}
 
     static int run() throws ReflectiveOperationException {
         Minecraft mc = Minecraft.getInstance();
@@ -295,8 +295,8 @@ final class NativeOldAnimationsProbe {
             var limb = ((HumanoidModel<?>) ((LivingEntityRenderer<?, ?, ?>) dispatcher.getRenderer(state)).getModel()).getArm(avatar.mainArm);
             arm[0] = limb.xRot;
             arm[1] = limb.yRot;
-            int hurt = LivingEntityRenderer.getOverlayCoords(avatar, 0);
-            red[0] = (int) calls.stream().filter(call -> call.method().equals("submitModel") && call.overlay() == hurt).count();
+            // Undyed iron armour is drawn white; hurt, it takes the body's red.
+            red[0] = (int) calls.stream().filter(call -> call.method().equals("submitModel") && call.tint() == NativeOldAnimations.HURT_TINT).count();
         } finally { player.stopUsingItem(); }
         return calls;
     }
@@ -307,6 +307,7 @@ final class NativeOldAnimationsProbe {
         NativeOldAnimations.module().setEnabled(enabled);
         NativeOldAnimations.APPLIED.clear();
         ItemEntity entity = new ItemEntity(mc.level, mc.player.getX(), mc.player.getY(), mc.player.getZ(), new ItemStack(item));
+        entity.setId(Integer.MAX_VALUE - 160); // extraction seeds the model by entity id; the entity is never added to the level
         List<Call> calls = new ArrayList<>();
         var dispatcher = mc.getEntityRenderDispatcher();
         dispatcher.submit(dispatcher.extractEntity(entity, 1), view, 0, 0, 0, new PoseStack(), recorder(calls));
@@ -345,7 +346,7 @@ final class NativeOldAnimationsProbe {
                 if (arg instanceof PoseStack stack && pose == null) pose = new Matrix4f(stack.last().pose());
                 if (arg instanceof ItemDisplayContext display) context = display;
             }
-            calls.add(new Call(method.getName(), context, method.getName().equals("submitModel") ? (int) args[5] : -1, pose));
+            calls.add(new Call(method.getName(), context, method.getName().equals("submitModel") ? (int) args[6] : -1, pose));
             return null;
         };
         return (SubmitNodeCollector) Proxy.newProxyInstance(SubmitNodeCollector.class.getClassLoader(), new Class<?>[]{SubmitNodeCollector.class}, handler);
