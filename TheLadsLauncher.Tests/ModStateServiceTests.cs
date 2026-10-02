@@ -250,5 +250,73 @@ public sealed class ModStateServiceTests : IDisposable
         Assert.Null(preferences.GetEnabled("usermod", null));
     }
 
+    private readonly List<string> recycled = new();
+    private async Task<ModToggleResult> Reset()
+    {
+        using var client = box.Client();
+        return await Service.ResetModsFolderAsync(box.Bundle, box.Game, "26.2", httpClient: client,
+            recycle: path => { recycled.Add(Path.GetFileName(path)); File.Delete(path); });
+    }
+
+    [Fact]
+    public async Task ResetModsFolderRecyclesEveryJarClearsChoicesAndReinstallsThePack()
+    {
+        var pin = box.Pin("sodium", ModSandbox.Jar("sodium"));
+        box.WriteManifest("26.2", new[] { pin });
+        box.WriteCore("26.2", ModSandbox.Core("26.2"));
+        await box.Install();
+        File.Move(box.Mod(pin.FileName), box.Mod(pin.FileName + ".disabled"));
+        Add("own-1.0.0.jar", "own");
+        Add("old-1.0.0.jar.disabled", "old");
+        File.WriteAllText(box.State, """{"schema":1,"extra":"keep","mods":{"sodium":{"enabled":false},"own":{"enabled":true}}}""");
+        var renderer = Path.Combine(box.Game, GraphicsRenderer.StateFile);
+        File.WriteAllText(renderer, """{"Vulkan":true,"SuspendedMods":[]}""");
+
+        var result = await Reset();
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(new[] { "old-1.0.0.jar.disabled", "own-1.0.0.jar", pin.FileName + ".disabled" }, recycled.Order());
+        Assert.Equal(new[] { pin.FileName, "theladscore.jar" }, Directory.GetFiles(box.Mods).Select(Path.GetFileName).Order());
+        Assert.Null(ModPreferences.Load(box.Game).GetEnabled("sodium", null));
+        Assert.Null(ModPreferences.Load(box.Game).GetEnabled("own", null));
+        Assert.Contains("\"extra\": \"keep\"", File.ReadAllText(box.State));
+        Assert.Equal(pin.Sha512, box.ReadReceipt()["sodium"]);
+        Assert.Equal("""{"Vulkan":true,"SuspendedMods":[]}""", File.ReadAllText(renderer));
+        Assert.Equal(1, box.Downloads); // the verified cached jar is reused
+    }
+
+    [Fact]
+    public async Task ResetModsFolderClearsTheReceiptEvenWhenThePackCannotBeInstalledNow()
+    {
+        var sodium = ModSandbox.Jar("sodium");
+        box.WriteManifest("26.2", new[] { box.Pin("sodium", sodium) with { Url = "https://cdn.modrinth.com/data/sodium/versions/offline/sodium.jar" } });
+        box.WriteReceipt(("sodium", sodium));
+        File.WriteAllBytes(box.Mod("sodium-1.0.0.jar"), sodium);
+
+        var result = await Reset();
+
+        Assert.False(result.Success);
+        Assert.Contains("installed at the next launch", result.Message);
+        Assert.Equal(new[] { "sodium-1.0.0.jar" }, recycled);
+        Assert.Empty(Directory.GetFiles(box.Mods));
+        Assert.False(File.Exists(box.Receipt));
+    }
+
+    [Fact]
+    public async Task ResetModsFolderIsRefusedWhileTheGameRuns()
+    {
+        Add("own-1.0.0.jar", "own");
+        box.Choose(("own", false));
+        running = true;
+
+        var result = await Reset();
+
+        Assert.False(result.Success);
+        Assert.Contains("running", result.Message);
+        Assert.Empty(recycled);
+        Assert.True(File.Exists(box.Mod("own-1.0.0.jar")));
+        Assert.False(ModPreferences.Load(box.Game).GetEnabled("own", null));
+    }
+
     public void Dispose() => box.Dispose();
 }

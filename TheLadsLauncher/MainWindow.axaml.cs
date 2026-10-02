@@ -4507,6 +4507,42 @@ public partial class MainWindow : Window
         await AfterModsChangedAsync();
     }
 
+    /// <summary>Every mod file of the profile to the Recycle Bin (yours too), saved choices cleared, LadsCore and the pack
+    /// reinstalled (ModStateService.ResetModsFolderAsync). The way out when a profile's Mods folder is beyond repair.</summary>
+    private async void ResetModsFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!ModsCanChange()) return;
+        var inventory = _modInventory!;
+        if (IsGameRunningFor(inventory.GameDirectory))
+        {
+            ModsStatus($"Minecraft is running for '{ModsProfileName(inventory)}'. Close it, then reset the mods folder.", true);
+            return;
+        }
+        // Busy from the question on: a launch cannot start its installers while it is open or while the pack reinstalls.
+        _modsBusy = true;
+        try
+        {
+            if (!await ShowLadsDialogAsync("Reset mods folder",
+                    $"Reset the mods folder of '{ModsProfileName(inventory)}'?\n\n" +
+                    "• Every mod file in it goes to the Recycle Bin, including mods you added yourself.\n" +
+                    "• Saved mod on/off choices are cleared.\n" +
+                    "• LadsCore and the Lads pack are reinstalled fresh.\n\n" +
+                    "Worlds, settings and mod configs are not touched.",
+                    "Reset mods folder", "Cancel", danger: true))
+                return;
+            ModsStatus("Resetting the mods folder...");
+            var result = await Task.Run(() => _modStateService.ResetModsFolderAsync(AppContext.BaseDirectory, inventory.GameDirectory,
+                inventory.MinecraftVersion, message => Dispatcher.UIThread.Post(() => ModsStatusText.Text = message)));
+            ModsStatus(result.Message, !result.Success);
+        }
+        catch (Exception ex)
+        {
+            ModsStatus($"Could not reset the mods folder: {ex.Message}", true);
+        }
+        finally { _modsBusy = false; }
+        await AfterModsChangedAsync();
+    }
+
     // ─── Add / delete / update your own mods ───────────────
 
     private async void AddModFromFile_Click(object? sender, RoutedEventArgs e)
