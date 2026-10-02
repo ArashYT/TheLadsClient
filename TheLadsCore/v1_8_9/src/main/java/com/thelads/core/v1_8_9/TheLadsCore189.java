@@ -10,6 +10,7 @@ import com.thelads.core.v1_8_9.feature.CoreProbe;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
 import com.thelads.core.v1_8_9.feature.RawMouse189;
+import com.thelads.core.v1_8_9.feature.TabTweaks189;
 import com.thelads.core.v1_8_9.gui.LadsTitleScreen189;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.common.MinecraftForge;
@@ -67,7 +68,9 @@ public class TheLadsCore189 {
         "RawInput", "BorderlessFullscreen",
         // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC: the "Soon" card, as on the other versions, whose
         // presence sends nothing yet (no Discord connection is made).
-        "Threads", "DiscordRPC"
+        "Threads", "DiscordRPC",
+        // TabTweaks189 through GuiPlayerTabOverlayMixin, as 26.x NativeTabTweaks.
+        "PingView", "TabList"
     };
 
     static void registerStatuses() {
@@ -107,6 +110,7 @@ public class TheLadsCore189 {
         } catch (Throwable ignored) {}
 
         RawMouse189.install(mc);
+        TabTweaks189.refresh();
 
         Borderless189.tick(mc);
 
