@@ -28,6 +28,8 @@ public final class SignalLoss189 {
     private static final SignalLossPolicy POLICY = new SignalLossPolicy();
     private static long lastTenths = -1;
     private static String warning = "";
+    /** QA only: a warning frame drawn instead of the live one. */
+    static SignalLossPolicy.Frame qaFrame;
 
     static SignalLossModule module() { return (SignalLossModule) Options189.module("SignalLoss"); }
 
@@ -48,7 +50,7 @@ public final class SignalLoss189 {
 
     @SubscribeEvent
     public void overlay(RenderGameOverlayEvent.Post event) {
-        if (event.type == RenderGameOverlayEvent.ElementType.ALL) renderFrame(frame(), event.resolution.getScaledWidth());
+        if (event.type == RenderGameOverlayEvent.ElementType.ALL) renderFrame(qaFrame != null ? qaFrame : frame(), event.resolution.getScaledWidth());
     }
 
     static void renderFrame(SignalLossPolicy.Frame frame, int guiWidth) {
