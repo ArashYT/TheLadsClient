@@ -13,10 +13,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(TileEntity.class)
 public abstract class TileEntityMixin {
-    @Inject(method = "getMaxRenderDistanceSquared", at = @At("RETURN"), cancellable = true, require = 1)
+    // HEAD, not RETURN: Mixin 0.7 injects a bad dup at a double return (VerifyError). The base method always returns 64 blocks.
+    @Inject(method = "getMaxRenderDistanceSquared", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsFarBlockEntities(CallbackInfoReturnable<Double> cir) {
         if (!Options189.enabled("FarBlockEntities")) return;
         double distance = Math.max(64, Math.min(256, Options189.number("FarBlockEntities", "Distance", 128)));
-        if (distance * distance > cir.getReturnValue()) cir.setReturnValue(distance * distance);
+        cir.setReturnValue(distance * distance);
     }
 }
