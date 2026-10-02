@@ -8,6 +8,7 @@ import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.Clumps189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
+import com.thelads.core.v1_8_9.feature.FoodOverlay189;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
 import com.thelads.core.v1_8_9.feature.RawMouse189;
@@ -63,12 +64,13 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new Tooltips189());
         MinecraftForge.EVENT_BUS.register(new Clumps189());
         MinecraftForge.EVENT_BUS.register(new SignalLoss189());
+        MinecraftForge.EVENT_BUS.register(new FoodOverlay189());
         MinecraftForge.EVENT_BUS.register(this);
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
 
     public static final String[] GAMEPLAY_MODULES = {
-        "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss",
+        "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin",
         "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
         "RawInput", "BorderlessFullscreen"

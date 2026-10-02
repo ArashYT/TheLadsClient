@@ -13,6 +13,7 @@
     "GuiIngameMenuMixin",
     "GuiScreenMixin",
     "GuiSlotMixin",
+    "ItemFoodAccessor",
     "ItemRendererAccessor",
     "ItemRendererMixin",
     "MinecraftMixin",
