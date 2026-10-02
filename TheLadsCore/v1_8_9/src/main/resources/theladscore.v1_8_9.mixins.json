@@ -17,6 +17,7 @@
     "ItemRendererMixin",
     "MinecraftMixin",
     "ResourcePackRepositoryMixin",
-    "SplashProgressMixin"
+    "SplashProgressMixin",
+    "TileEntityMixin"
   ]
 }
