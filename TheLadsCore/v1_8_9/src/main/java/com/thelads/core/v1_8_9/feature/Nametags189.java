@@ -24,7 +24,6 @@ public final class Nametags189 {
     private Nametags189() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn("Nametags");
         MinecraftForge.EVENT_BUS.register(new Nametags189());
     }
 
