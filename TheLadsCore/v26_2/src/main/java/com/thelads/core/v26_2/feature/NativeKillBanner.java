@@ -2,6 +2,9 @@ package com.thelads.core.v26_2.feature;
 
 import com.thelads.core.client.KillBannerTimeline;
 import com.thelads.core.client.ServerKillTracker;
+import com.thelads.core.client.killbanner.KillBannerPlayer;
+import com.thelads.core.client.killbanner.KillBannerStrip;
+import com.thelads.core.client.killbanner.KillBannerStyle;
 import com.thelads.core.config.HudSettings;
 import com.thelads.core.modules.KillBannerModule;
 import net.minecraft.client.Minecraft;
@@ -15,10 +18,12 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.stats.Stats;
 import net.minecraft.stats.StatsCounter;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 
 public final class NativeKillBanner {
     private static final Identifier BASE = Identifier.fromNamespaceAndPath("theladscore", "textures/gui/base_kill_banner.png");
-    private static final Identifier REAVER = Identifier.fromNamespaceAndPath("theladscore", "textures/gui/reaver_kill_banner.png");
     private static final ServerKillTracker KILLS = new ServerKillTracker();
     private static final KillBannerTimeline BANNER = new KillBannerTimeline();
     private static ClientPacketListener trackedConnection;
@@ -28,6 +33,8 @@ public final class NativeKillBanner {
     private static int lastLabelDelta;
     private static boolean lastLabelPreview;
     private static String label = "";
+    private static long lastHit;
+    private static boolean lastHitHead;
     private NativeKillBanner() {}
 
     public static void tick() {
@@ -56,6 +63,18 @@ public final class NativeKillBanner {
         if (delta > 0 && Minecraft.getInstance().player.isAlive()) trigger(delta, false);
     }
 
+    /**
+     * Called as the local player attacks (MultiPlayerGameMode.attack). A hit whose crosshair point lands on the top
+     * quarter of the target's box counts as a head hit; the kill that follows within 3 seconds is a headshot.
+     */
+    public static void attacked(Entity target) {
+        if (Minecraft.getInstance().hitResult instanceof EntityHitResult hit && hit.getType() == HitResult.Type.ENTITY
+            && hit.getEntity() == target) {
+            lastHit = System.nanoTime();
+            lastHitHead = hit.getLocation().y >= target.getY() + target.getBbHeight() * .75;
+        }
+    }
+
     private static boolean eligible() {
         Minecraft minecraft = Minecraft.getInstance();
         return NativeQualityOfLife.enabled("KillBanner") && minecraft.level != null && minecraft.player != null
@@ -72,6 +91,11 @@ public final class NativeKillBanner {
         trackedStats = stats;
     }
 
+    /** QA: binds the current connection now, so the next tick does not reset a banner fired on purpose. */
+    static void bindCurrent() {
+        if (eligible()) bind(Minecraft.getInstance().getConnection());
+    }
+
     static void reset() {
         trackedConnection = null;
         trackedStats = null;
@@ -81,11 +105,17 @@ public final class NativeKillBanner {
     }
 
     static void trigger(int delta, boolean preview) {
+        trigger(delta, preview, !preview && lastHitHead && System.nanoTime() - lastHit < 3_000_000_000L);
+    }
+
+    static void trigger(int delta, boolean preview, boolean headshot) {
         if (!eligible() || !(NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module)) return;
-        BANNER.trigger(delta, System.nanoTime(), preview);
+        BANNER.trigger(delta, System.nanoTime(), preview, headshot);
         if (module.sound.get() && module.volume.getValue() > 0) {
-            SoundEvent sound = module.bannerStyle.getIndex() == 1
-                ? SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("theladscore", "reaver_kill_" + BANNER.sequence()))
+            KillBannerStyle style = style(module);
+            // Each skin's own sound for the kill count, as Valorant plays it.
+            SoundEvent sound = style != null
+                ? SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("theladscore", style.id + "_kill_" + BANNER.sequence()))
                 : SoundEvents.EXPERIENCE_ORB_PICKUP;
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(sound, 1, (float) module.volume.getValue()));
         }
@@ -93,11 +123,35 @@ public final class NativeKillBanner {
 
     static KillBannerTimeline timeline() { return BANNER; }
 
+    /** The selected skin, or null for the static Base banner. */
+    private static KillBannerStyle style(KillBannerModule module) {
+        return switch (module.bannerStyle.getIndex()) {
+            case 1 -> KillBannerStyle.REAVER;
+            case 2 -> KillBannerStyle.ROGUE;
+            default -> null;
+        };
+    }
+
     public static void render(GuiGraphicsExtractor graphics) {
         Minecraft minecraft = Minecraft.getInstance();
         if (!eligible() || minecraft.gui.hud.isHidden()
             || !(NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module)) return;
         double age = BANNER.age(System.nanoTime());
+        if (age < 0) return;
+        KillBannerStyle style = style(module);
+        if (style == null) {
+            renderBase(graphics, minecraft, module, age);
+            return;
+        }
+        KillBannerStrip strip = style.strip(BANNER.sequence());
+        KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(),
+            BANNER.headshot() && module.headshotText.get());
+        if (frame == null) return;
+        int variant = (style == KillBannerStyle.REAVER ? module.reaverVariant : module.rogueVariant).getIndex();
+        KillBannerArt.draw(graphics, style, variant, BANNER.sequence(), strip, frame, (float) module.size.getValue() / 100f);
+    }
+
+    private static void renderBase(GuiGraphicsExtractor graphics, Minecraft minecraft, KillBannerModule module, double age) {
         double opacity = KillBannerTimeline.opacity(age, module.duration.getValue());
         if (opacity <= 0) return;
         if (lastLabelDelta != BANNER.delta() || lastLabelPreview != BANNER.preview() || label.isEmpty()) {
@@ -105,11 +159,10 @@ public final class NativeKillBanner {
             lastLabelPreview = BANNER.preview();
             label = BANNER.preview() ? "PREVIEW" : BANNER.delta() == 1 ? "PLAYER KILL" : BANNER.delta() + " PLAYER KILLS";
         }
-        Identifier texture = module.bannerStyle.getIndex() == 1 ? REAVER : BASE;
-        var image = minecraft.getTextureManager().getTexture(texture).getTexture();
+        var image = minecraft.getTextureManager().getTexture(BASE).getTexture();
         int sourceWidth = image.getWidth(0), sourceHeight = image.getHeight(0);
         if (sourceWidth <= 0 || sourceHeight <= 0) return;
-        int height = 74, width = Math.round(height * (float) sourceWidth / sourceHeight);
+        int height = Math.round(74 * (float) module.size.getValue() / 100f), width = Math.round(height * (float) sourceWidth / sourceHeight);
         float entrance = (float) (1 - Math.pow(1 - Math.min(1, age / .22), 3));
         float scale = .85f + .15f * entrance;
         int alpha = (int) Math.round(255 * opacity);
@@ -117,9 +170,9 @@ public final class NativeKillBanner {
         int textAlpha = (int) Math.round(((chosenColor >>> 24) & 255) * opacity);
         graphics.pose().pushMatrix();
         try {
-            graphics.pose().translate(graphics.guiWidth() / 2f, Math.max(12, graphics.guiHeight() - 154) + (1 - entrance) * 8);
+            graphics.pose().translate(graphics.guiWidth() / 2f, Math.max(12, graphics.guiHeight() - 80 - height) + (1 - entrance) * 8);
             graphics.pose().scale(scale, scale);
-            graphics.blit(RenderPipelines.GUI_TEXTURED, texture, -width / 2, 0, 0, 0,
+            graphics.blit(RenderPipelines.GUI_TEXTURED, BASE, -width / 2, 0, 0, 0,
                 width, height, sourceWidth, sourceHeight, sourceWidth, sourceHeight, alpha << 24 | 0xffffff);
             graphics.text(minecraft.font, label, -minecraft.font.width(label) / 2, height + 3,
                 textAlpha << 24 | chosenColor & 0xffffff, true);

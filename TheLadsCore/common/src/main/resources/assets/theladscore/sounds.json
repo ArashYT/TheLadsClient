@@ -28,5 +28,35 @@
     "sounds": [
       "theladscore:killbanner/reaver-kill-5"
     ]
+  },
+  "rogue_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rogue-kill-1"
+    ]
+  },
+  "rogue_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rogue-kill-2"
+    ]
+  },
+  "rogue_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rogue-kill-3"
+    ]
+  },
+  "rogue_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rogue-kill-4"
+    ]
+  },
+  "rogue_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rogue-kill-5"
+    ]
   }
 }

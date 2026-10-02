@@ -40,13 +40,15 @@ final class NativeKillBannerProbe {
             module.setEnabled(true);
             dispatch(46);
             require(NativeKillBanner.timeline().age(System.nanoTime()) < 0, "reenabling establishes a fresh baseline"); passed++;
-            for (String texture : new String[] {"base_kill_banner", "reaver_kill_banner"}) {
-                require(minecraft.getResourceManager().getResource(Identifier.fromNamespaceAndPath("theladscore", "textures/gui/" + texture + ".png")).isPresent(), texture + " resource loads"); passed++;
-            }
-            for (int index = 1; index <= 5; index++) {
-                Identifier sound = Identifier.fromNamespaceAndPath("theladscore", "reaver_kill_" + index);
-                require(minecraft.getSoundManager().getSoundEvent(sound) != null, "Reaver sound event " + index + " registered"); passed++;
-                require(minecraft.getResourceManager().getResource(Identifier.fromNamespaceAndPath("theladscore", "sounds/killbanner/reaver-kill-" + index + ".ogg")).isPresent(), "Reaver sound sample " + index + " available"); passed++;
+            require(minecraft.getResourceManager().getResource(Identifier.fromNamespaceAndPath("theladscore", "textures/gui/base_kill_banner.png")).isPresent(), "base_kill_banner resource loads"); passed++;
+            for (var style : com.thelads.core.client.killbanner.KillBannerStyle.values()) {
+                for (int index = 1; index <= 5; index++) {
+                    var strip = style.strip(index);
+                    require(strip.frame(strip.introEnd).length == strip.width * strip.height * 4, style.id + " frames for " + index + " kills decode"); passed++;
+                    Identifier sound = Identifier.fromNamespaceAndPath("theladscore", style.id + "_kill_" + index);
+                    require(minecraft.getSoundManager().getSoundEvent(sound) != null, style.id + " sound event " + index + " registered"); passed++;
+                    require(minecraft.getResourceManager().getResource(Identifier.fromNamespaceAndPath("theladscore", "sounds/killbanner/" + style.id + "-kill-" + index + ".ogg")).isPresent(), style.id + " sound sample " + index + " available"); passed++;
+                }
             }
             LoggerFactory.getLogger("TheLadsCore").info("Lads kill banner probe END: {} passed, 0 failed (synthetic server-stat packets; no real PvP kill claimed)", passed);
             completed = true;
