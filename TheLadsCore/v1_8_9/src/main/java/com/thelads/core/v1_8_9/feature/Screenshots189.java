@@ -66,6 +66,9 @@ public final class Screenshots189 {
 
     public static boolean active() { return Options189.enabled("BetterScreenshots"); }
 
+    /** QA only: the preview of the last screenshot is up. */
+    static boolean previewShown() { return preview != null; }
+
     public static boolean open(GuiScreen parent) {
         if (!active()) return false;
         Minecraft.getMinecraft().displayGuiScreen(new ScreenshotsScreen189(parent));
