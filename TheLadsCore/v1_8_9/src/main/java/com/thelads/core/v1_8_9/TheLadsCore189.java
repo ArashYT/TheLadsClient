@@ -7,6 +7,7 @@ import com.thelads.core.mods.CoreCatalogExporter;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
+import com.thelads.core.v1_8_9.feature.Crosshair189;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
 import com.thelads.core.v1_8_9.feature.RawMouse189;
@@ -57,6 +58,8 @@ public class TheLadsCore189 {
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
+        Crosshair189.register();
+        MinecraftForge.EVENT_BUS.register(new Crosshair189());
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(this);
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
@@ -76,7 +79,10 @@ public class TheLadsCore189 {
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
     public static final String[][] LIMITED = {
         // Chat189 through GuiNewChatMixin, as 1.21.1 ChatMixin.
-        {"Chat", "Minecraft 1.8.9 chat is unsigned, so Hide Signing Indicators has nothing to hide."}
+        {"Chat", "Minecraft 1.8.9 chat is unsigned, so Hide Signing Indicators has nothing to hide."},
+        // Crosshair189 through Forge's crosshair overlay event, as 26.x NativeCrosshair.
+        {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Dynamic "
+            + "Attack Gap, Item Cooldown and spyglass options have nothing to show."}
     };
 
     static void registerStatuses() {
