@@ -24,11 +24,20 @@ public final class EmbeddedModsProbe {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static boolean done;
     private static int readyTicks, passed, failed;
+    private static java.util.concurrent.CompletableFuture<List<LevelSummary>> titleWorlds;
 
     private EmbeddedModsProbe() {}
 
     public static void initialize() {
         if (!Boolean.getBoolean("thelads.verifyAutoWorld")) return;
+        // The world list as the title screen shows it, before the QA world opens (an open world is locked and left out).
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED.register(mc -> {
+            try {
+                titleWorlds = mc.getLevelSource().loadLevelSummaries(mc.getLevelSource().findLevelCandidates());
+            } catch (Exception failure) {
+                LOGGER.warn("Lads embedded mods probe: world list not read", failure);
+            }
+        });
         ClientTickEvents.END_CLIENT_TICK.register(mc -> {
             if (done || !NativeWorldVerification.worldReady() || mc.player == null) return;
             if (++readyTicks < 60) return;
@@ -60,15 +69,16 @@ public final class EmbeddedModsProbe {
                 "Fix Book GUI moves the book page buttons to y=" + expected + " (vanilla 159), found " + buttons.stream().map(b -> b.getY()).toList());
         }
         if (EmbeddedMods.active("worldplaytimereborn")) {
-            List<LevelSummary> summaries = mc.getLevelSource().loadLevelSummaries(mc.getLevelSource().findLevelCandidates()).get(30, TimeUnit.SECONDS);
+            List<LevelSummary> summaries = titleWorlds == null ? List.of() : titleWorlds.get(30, TimeUnit.SECONDS);
             for (LevelSummary summary : summaries) {
                 var data = (com.thelads.core.v1_21_11.embedded.playtime.util.IWithPlayTime) summary;
                 LOGGER.info("Lads embedded mods probe: world list '{}' play time {} ticks ({}), size {} bytes", summary.getLevelId(), data.getPlayTimeTicks(),
                     com.thelads.core.v1_21_11.embedded.playtime.client.util.PlayTimeRenderer.getPlayTimeComponent(data.getPlayTimeTicks()) instanceof Component c ? c.getString() : "-",
                     data.getWorldSizeBytes());
             }
-            check(summaries.stream().anyMatch(s -> ((com.thelads.core.v1_21_11.embedded.playtime.util.IWithPlayTime) s).getWorldSizeBytes() > 0),
-                "World Play Time Reborn adds play time/size to the world list summaries");
+            check(summaries.stream().anyMatch(s -> ((com.thelads.core.v1_21_11.embedded.playtime.util.IWithPlayTime) s).getWorldSizeBytes() > 0)
+                    && summaries.stream().anyMatch(s -> ((com.thelads.core.v1_21_11.embedded.playtime.util.IWithPlayTime) s).getPlayTimeTicks() > 0),
+                "World Play Time Reborn adds play time and size to the world list summaries");
         }
         if (EmbeddedMods.active("capes")) {
             var skins = new net.minecraft.client.gui.screens.options.SkinCustomizationScreen(null, mc.options);
@@ -104,23 +114,28 @@ public final class EmbeddedModsProbe {
             new ItemStack(Items.WHEAT_SEEDS), new ItemStack(Items.CAKE), new ItemStack(Items.COAL), new ItemStack(Items.LAVA_BUCKET),
             new ItemStack(Items.OAK_PLANKS), new ItemStack(Items.DIAMOND_SWORD), new ItemStack(Items.NETHERITE_PICKAXE),
             new ItemStack(Items.MUSIC_DISC_CAT), new ItemStack(Items.BOOKSHELF), new ItemStack(Items.ENDER_PEARL), new ItemStack(Items.OBSIDIAN),
-            new ItemStack(Items.ELYTRA), new ItemStack(Items.IRON_HELMET)));
+            new ItemStack(Items.ELYTRA), new ItemStack(Items.IRON_HELMET), new ItemStack(Items.POPPY), new ItemStack(Items.TORCH),
+            new ItemStack(Items.REDSTONE)));
         ItemStack worn = new ItemStack(Items.WOODEN_PICKAXE);
         worn.setDamageValue(2);
         worn.set(DataComponents.REPAIR_COST, 3);
         samples.add(worn);
-        for (ItemStack stack : samples) {
-            var lines = new ArrayList<String>();
-            for (Component line : stack.getTooltipLines(context, mc.player, TooltipFlag.NORMAL)) {
-                var colors = new java.util.LinkedHashSet<String>();
-                line.visit((style, text) -> {
-                    if (!text.isEmpty()) colors.add((style.getColor() == null ? "-" : style.getColor().serialize()) + (style.isItalic() ? " italic" : ""));
-                    return java.util.Optional.empty();
-                }, net.minecraft.network.chat.Style.EMPTY);
-                lines.add(line.getString() + " " + colors);
-            }
-            LOGGER.info("Lads embedded mods probe tooltip {}: {}", BuiltInRegistries.ITEM.getKey(stack.getItem()), String.join(" | ", lines));
-        }
+        samples.add(new ItemStack(Items.WIND_CHARGE));
+        for (ItemStack stack : samples) logTooltip(mc, context, stack, TooltipFlag.NORMAL, "");
+        logTooltip(mc, context, worn, TooltipFlag.ADVANCED, " (advanced)");
         passed++;
+    }
+
+    private static void logTooltip(Minecraft mc, Item.TooltipContext context, ItemStack stack, TooltipFlag flag, String label) {
+        var lines = new ArrayList<String>();
+        for (Component line : stack.getTooltipLines(context, mc.player, flag)) {
+            var colors = new java.util.LinkedHashSet<String>();
+            line.visit((style, text) -> {
+                if (!text.isEmpty()) colors.add((style.getColor() == null ? "-" : style.getColor().serialize()) + (style.isItalic() ? " italic" : ""));
+                return java.util.Optional.empty();
+            }, net.minecraft.network.chat.Style.EMPTY);
+            lines.add(line.getString() + " " + colors);
+        }
+        LOGGER.info("Lads embedded mods probe tooltip {}{}: {}", BuiltInRegistries.ITEM.getKey(stack.getItem()), label, String.join(" | ", lines));
     }
 }

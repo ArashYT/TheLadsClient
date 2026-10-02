@@ -93,10 +93,12 @@ final class TooltipsConfig {
 
     private static String defaults() {
         var text = new StringBuilder("{\n");
-        SWITCHES.forEach((key, value) -> text.append("  \"").append(key).append("\": ").append(value).append(",\n"));
+        SWITCHES.forEach((key, value) -> text.append("  // default: ").append(value).append("\n  \"").append(key).append("\": ").append(value).append(",\n"));
         text.append('\n');
-        COLORS.forEach((key, value) -> text.append("  \"").append(key).append("\": \"").append(value).append("\",\n"));
-        text.append("  // Title, Ctrl, Key, Value\n  \"componentsColors\": [\n");
+        COLORS.forEach((key, value) -> text.append("  // min: 7, width: 7, default: ").append(value)
+            .append("\n  \"").append(key).append("\": \"").append(value).append("\",\n"));
+        text.append("  // Order: Title, Ctrl, Key, Value\n  // min: 7, width: 7, default: [").append(String.join(", ", COMPONENT_COLORS))
+            .append("]\n  \"componentsColors\": [\n");
         for (int i = 0; i < COMPONENT_COLORS.length; i++)
             text.append("    \"").append(COMPONENT_COLORS[i]).append(i + 1 < COMPONENT_COLORS.length ? "\",\n" : "\"\n");
         return text.append("  ]\n}\n").toString();
