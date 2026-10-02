@@ -30,7 +30,7 @@ class RemovedModsTest(unittest.TestCase):
         self.target.parent.mkdir(parents=True)
         self.shipped = (REPO / 'TheLadsLauncher/game-mods' / GAME / 'client-mods.json').read_text(encoding='utf8')
         self.current = json.loads(self.shipped)
-        retired = self.current['retired'][0]
+        retired = self.goodmc_retired = next(r for r in self.current['retired'] if r['modId'] == 'goodmc')
         # The 1.2.2 manifest entry.
         self.goodmc = {'projectId': 'hwir46QE', 'projectSlug': 'goodmc-old-combat', 'name': retired['name'], 'modId': 'goodmc',
                        'versionId': 'id4n4Y0j', 'version': '6.0.1f', 'fileName': 'GoodMC-Fabric-26.3-6.0.1f.jar',
@@ -62,7 +62,8 @@ class RemovedModsTest(unittest.TestCase):
                 sync.lock(game, [])
                 self.assertEqual(target.read_text(encoding='utf8'), shipped)
                 # Both 26.x packs shipped GoodMC, so both must carry the same retirement hashes for the installer.
-                self.assertEqual(json.loads(shipped).get('retired'), self.current['retired'] if game.startswith('26.') else None)
+                goodmc = [r for r in json.loads(shipped).get('retired', []) if r['modId'] == 'goodmc']
+                self.assertEqual(goodmc, [self.goodmc_retired] if game.startswith('26.') else [])
 
     def test_goodmc_in_the_old_manifest_is_dropped_and_retired_with_its_hash(self):
         old = {'minecraftVersion': GAME, 'resolveThroughApi': True, 'mods': self.current['mods'] + [self.goodmc]}

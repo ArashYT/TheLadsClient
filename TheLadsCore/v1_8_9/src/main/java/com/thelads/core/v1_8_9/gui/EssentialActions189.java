@@ -11,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 /** Essential's title and pause buttons on 1.8.9: the same proxy GuiButtons and Elementa layer as on the other versions (EssentialActions). */
 public final class EssentialActions189 {
     private static boolean warned;
+    private static final java.util.Set<Class<?>> WARNED = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private EssentialActions189() {}
 
     public static boolean isEssential(GuiButton button) {
@@ -64,7 +65,7 @@ public final class EssentialActions189 {
             Object target = component;
             String label = key.contains("social") || key.contains("friend") ? "Social" : key.contains("wardrobe") || key.contains("cosmetic") ? "Wardrobe"
                 : key.contains("picture") || key.contains("screenshot") ? "Pictures" : key.contains("host") || key.contains("invite") ? "Host world"
-                : key.contains("setting") ? "Essential settings" : id.replaceAll("(?i)essential[._:-]?", "").replace('_', ' ').replace('-', ' ');
+                : key.contains("setting") ? "Essential" : id.replaceAll("(?i)essential[._:-]?", "").replace('_', ' ').replace('-', ' ');
             return new TitleExtrasScreen189.Action(label, () -> {
                 try {
                     click.invoke(proxy, target);
@@ -73,7 +74,8 @@ public final class EssentialActions189 {
                 }
             }, proxy.enabled);
         } catch (ReflectiveOperationException failure) {
-            LogManager.getLogger("TheLadsCore").warn("Essential menu integration unavailable for {}", proxy.getClass().getName(), failure);
+            if (WARNED.add(proxy.getClass()))
+                LogManager.getLogger("TheLadsCore").warn("Essential menu integration unavailable for {}", proxy.getClass().getName(), failure);
             return null;
         }
     }

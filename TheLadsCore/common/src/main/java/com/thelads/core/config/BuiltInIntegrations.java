@@ -21,9 +21,7 @@ public final class BuiltInIntegrations {
                 case "appleskin" -> appleSkin();
                 case "skinlayers3d" -> skinLayers();
                 case "notenoughanimations" -> animations();
-                case "entityculling" -> entityCulling();
                 case "tabtweaks" -> tabTweaks();
-                case "capes" -> capes();
                 case "betterf3" -> betterF3();
                 case "betterstats" -> betterStats();
                 case "autoreconnectrf" -> autoReconnect();
@@ -32,7 +30,6 @@ public final class BuiltInIntegrations {
                 case "ferritecore" -> new Builder("FerriteCore", () -> {}).help("Automatic memory optimizations are active. No routine tuning is needed. Advanced shows the loaded engine and version.").build();
                 case "clumps" -> new Builder("Clumps", () -> {}).help("Experience-orb merging runs automatically in your local worlds. Multiplayer servers control their own experience orbs.").build();
                 case "scalablelux" -> new Builder("ScalableLux", () -> {}).help("The lighting engine is installed and runs automatically where supported. No in-game switches are required.").build();
-                case "immediatelyfast" -> new Builder("ImmediatelyFast", () -> {}).help("Rendering optimizations load at startup. Hardware and mod compatibility are detected by the engine. Advanced shows its installed version.").build();
                 default -> {
                     Page advanced = AdvancedIntegrations.open(id);
                     yield advanced != null ? advanced : AdditionalIntegrations.open(id);
@@ -81,31 +78,12 @@ public final class BuiltInIntegrations {
         return switches(new Builder("Not Enough Animations", () -> call(mod, "writeConfig")), config)
             .help("Animation switches apply when saved. Advanced includes movement tuning and item lists.").build();
     }
-    private static Page entityCulling() throws Exception {
-        Object mod = get(type("dev.tr7zw.entityculling.EntityCullingModBase"), "instance");
-        Object config = get(mod, "config");
-        return fields(new Builder("Entity Culling", () -> call(mod, "writeConfig")), config,
-            "renderNametagsThroughWalls", "tickCulling", "disableF3", "skipEntityCulling", "skipBlockEntityCulling",
-            "blockEntityFrustumCulling", "forceDisplayCulling", "solidLeaves")
-            .help("Culling switches apply when saved. Advanced includes entity exceptions. Aggressive culling can hide modded objects.").build();
-    }
     private static Page tabTweaks() throws Exception {
         Object handler = get(type("dev.microcontrollers.tabtweaks.config.TabTweaksConfig"), "CONFIG");
         Class<?> api = type("dev.isxander.yacl3.config.v2.api.ConfigClassHandler");
         Object config = api.getMethod("instance").invoke(handler);
         return switches(new Builder("Tab Tweaks", () -> api.getMethod("save").invoke(handler)), config)
             .help("Player-list switches apply when saved. Advanced includes layout, colors and numerical limits.").build();
-    }
-    private static Page capes() throws Exception {
-        Object mod = get(type("me.cael.capes.Capes"), "INSTANCE");
-        Object config = call(mod, "getCONFIG");
-        Builder b = new Builder("Capes", () -> call(config, "save"));
-        for (String name : List.of("ClientCapeType", "EnableOptifine", "EnableLabyMod", "EnableMinecraftCapesMod", "EnableCosmetica", "EnableCloaksPlus", "EnableElytraTexture")) {
-            Method getter = config.getClass().getMethod("get" + name);
-            Method setter = config.getClass().getMethod("set" + name, getter.getReturnType());
-            b.property(label(name), getter.getReturnType(), () -> getter.invoke(config), value -> setter.invoke(config, value));
-        }
-        return b.help("Save cape provider preferences here. Rejoin to refresh already cached cape textures.").build();
     }
     private static Page betterF3() throws Exception {
         Class<?> config = type("me.cominixo.betterf3.config.GeneralOptions");

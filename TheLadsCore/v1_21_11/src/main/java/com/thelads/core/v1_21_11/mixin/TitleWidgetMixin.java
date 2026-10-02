@@ -29,6 +29,20 @@ public abstract class TitleWidgetMixin {
         int mouseX, int mouseY, float partialTick) {
         if (TitleWidgetRegistry.render(widget)) {
             handleCursor(graphics);
+        } else if (com.thelads.core.client.title.ButtonLift.enabled(widget)) {
+            // The pause menu's buttons grow a little about their centre while hovered, label included.
+            com.thelads.core.client.title.ButtonLift.update(widget, widget.active && widget.isHoveredOrFocused());
+            float scale = 1 + com.thelads.core.client.title.TitleScreenTheme.LIFT * com.thelads.core.client.title.ButtonLift.eased(widget);
+            float cx = widget.getX() + widget.getWidth() / 2f, cy = widget.getY() + widget.getHeight() / 2f;
+            graphics.pose().pushMatrix();
+            graphics.pose().translate(cx, cy);
+            graphics.pose().scale(scale, scale);
+            graphics.pose().translate(-cx, -cy);
+            try {
+                renderWidget(graphics, mouseX, mouseY, partialTick);
+            } finally {
+                graphics.pose().popMatrix();
+            }
         } else {
             renderWidget(graphics, mouseX, mouseY, partialTick);
         }

@@ -205,16 +205,6 @@ public class ModuleManager {
         Module tab = new TabListModule();
         register(tab, Module.Category.HUD);
 
-        Module capes = new Module("Capes", "Configure and toggle custom cape rendering providers.");
-        capes.addOption(new DropdownOption("Preferred Cape", 0, "Minecraft", "OptiFine", "LabyMod", "MinecraftCapes", "Cosmetica", "Cloaks+"));
-        capes.addOption(new BoolOption("OptiFine Capes", true));
-        capes.addOption(new BoolOption("LabyMod Capes", false));
-        capes.addOption(new BoolOption("MinecraftCapes", true));
-        capes.addOption(new BoolOption("Cosmetica Capes", true));
-        capes.addOption(new BoolOption("CloaksPlus Capes", true));
-        capes.addOption(new BoolOption("Elytra Texture", true));
-        capes.setEnabled(true);
-        register(capes);
 
         Module rs = new Module("RenderScale", "Scale world rendering while the HUD and menus stay at native resolution.");
         rs.addOption(new DropdownOption("Preset", 0, "Custom", "Ultra Performance", "Balanced", "Quality", "Super Sampling"));
@@ -263,8 +253,6 @@ public class ModuleManager {
 
         register(new ClumpsModule(), Module.Category.MECHANIC);
         register(new SkinLayersModule(), Module.Category.MECHANIC);
-        register(new ImmediatelyFastModule(), Module.Category.MECHANIC);
-        register(new Module("EntityCulling", "Skip rendering entities hidden behind solid objects."), Module.Category.MECHANIC);
         register(new Module("Lithium", "Optimize game logic, physics and world ticking."), Module.Category.MECHANIC);
         register(new Module("FerriteCore", "Reduce memory used by Minecraft's block and model data."), Module.Category.MECHANIC);
         register(new Module("XaeroMinimap", "Minimap, waypoints and navigation controls."), Module.Category.HUD);
