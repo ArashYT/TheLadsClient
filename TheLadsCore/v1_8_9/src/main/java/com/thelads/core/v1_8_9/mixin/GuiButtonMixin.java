@@ -1,5 +1,6 @@
 package com.thelads.core.v1_8_9.mixin;
 
+import com.thelads.core.client.title.ButtonLift;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import net.minecraft.client.Minecraft;
@@ -34,10 +35,23 @@ public abstract class GuiButtonMixin extends Gui {
         FontRenderer font = mc.fontRendererObj;
         hovered = mouseX >= xPosition && mouseY >= yPosition && mouseX < xPosition + width && mouseY < yPosition + height;
         int state = getHoverState(hovered); // 0 disabled (and sliders' track), 1 normal, 2 hovered
-        TitleScreenTheme.renderButtonSurface(new GuiLadsAdapter(font, 0, 0), xPosition, yPosition, width, height, state == 2, false, state != 0, 1);
+        // The pause menu's buttons grow a little about their centre while hovered, label included.
+        boolean lifting = ButtonLift.enabled(this);
+        float lift = 0;
+        if (lifting) {
+            ButtonLift.update(this, enabled && hovered);
+            lift = ButtonLift.eased(this);
+            float cx = xPosition + width / 2f, cy = yPosition + height / 2f, scale = 1 + TitleScreenTheme.LIFT * lift;
+            GlStateManager.pushMatrix();
+            GlStateManager.translate(cx, cy, 0);
+            GlStateManager.scale(scale, scale, 1);
+            GlStateManager.translate(-cx, -cy, 0);
+        }
+        TitleScreenTheme.renderButtonSurface(new GuiLadsAdapter(font, 0, 0), xPosition, yPosition, width, height, state == 2, false, state != 0, 1, lift);
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
         mouseDragged(mc, mouseX, mouseY); // sliders draw their knob here
         int color = packedFGColour != 0 ? packedFGColour : !enabled ? 10526880 : hovered ? 16777120 : 14737632;
         drawCenteredString(font, displayString, xPosition + width / 2, yPosition + (height - 8) / 2, color);
+        if (lifting) GlStateManager.popMatrix();
     }
 }

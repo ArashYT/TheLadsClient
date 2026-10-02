@@ -49,7 +49,8 @@ public final class NativeRequestProbe {
             Screen keys=new KeyBindsScreen(original,mc.options);mc.setScreenAndShow(keys);
             // Exercise the screen the player actually sees with the complete mod pack loaded.
             keys=mc.gui.screen();
-            require(keys instanceof com.thelads.core.v26_2.embedded.controlling.client.NewKeyBindsScreen,"active controls screen is the embedded Controlling screen");passed++;
+            // Controlling's screen: the embedded copy, or the original jar's while one is installed.
+            require(keys.getClass().getSimpleName().equals("NewKeyBindsScreen"),"active controls screen is Controlling's");passed++;
             require(keys.children().stream().filter(c->c instanceof EditBox).count()==1,"exactly one controls search field (Controlling's)");passed++;
             var search=keys.children().stream().filter(c->c instanceof EditBox).map(c->(EditBox)c).findFirst().orElseThrow();
             var list=keys.children().stream().filter(c->c instanceof KeyBindsList).map(c->(KeyBindsList)c).findFirst().orElseThrow();

@@ -164,6 +164,19 @@ public final class NativeWorldVerification {
         }
     }
 
+    /** QA: the virtual pointer (never the OS cursor) over a widget, so the next frames show it hovered. */
+    private static void qaPoint(Minecraft mc, net.minecraft.client.gui.components.AbstractWidget widget) {
+        try {
+            var window = mc.getWindow();
+            var x = net.minecraft.client.MouseHandler.class.getDeclaredField("xpos");
+            var y = net.minecraft.client.MouseHandler.class.getDeclaredField("ypos");
+            x.setAccessible(true);
+            y.setAccessible(true);
+            x.setDouble(mc.mouseHandler, (widget.getX() + widget.getWidth() / 2.0) * window.getScreenWidth() / window.getGuiScaledWidth());
+            y.setDouble(mc.mouseHandler, (widget.getY() + widget.getHeight() / 2.0) * window.getScreenHeight() / window.getGuiScaledHeight());
+        } catch (ReflectiveOperationException failure) { LOGGER.warn("QA pointer unavailable", failure); }
+    }
+
     /** Saves linked by the launcher to the shared folder count only when that folder is a sandbox under artifacts/verification. */
     private static boolean sandboxSaves(Path saves) throws IOException {
         return SharedContentPaths.redirectedInside(gameDirectory.getParent()) && Files.isDirectory(SharedContentPaths.savesDir())
@@ -232,10 +245,10 @@ public final class NativeWorldVerification {
     }
     private static void updateMenuCapture(Minecraft mc, long now) {
         if (menuCaptureFinished) { finishMenuCapture(mc, menuCaptureFailure); return; }
-        if("essential-settings".equals(captureKind) && menuScreen instanceof com.thelads.core.v26_2.gui.TitleExtrasScreen26
+        if("essential-settings".equals(captureKind) && menuScreen instanceof PauseScreen
             &&mc.gui.screen()!=menuScreen&&mc.gui.screen()!=null&&mc.gui.screen().getClass().getName().startsWith("gg.essential.")){
             menuScreen=mc.gui.screen();menuOpenedAt=now;
-            LOGGER.info("Lads Essential action probe END: 1 passed, 0 failed; relocated Settings action opened {}",menuScreen.getClass().getName());
+            LOGGER.info("Lads Essential action probe END: 1 passed, 0 failed; pause row's Essential action opened {}",menuScreen.getClass().getName());
         }
         if (hudProbe != null) hudProbe.tick();
         if (mc.level == null || mc.player == null || mc.player.isDeadOrDying()
@@ -250,10 +263,15 @@ public final class NativeWorldVerification {
         // worldReady intentionally requires screen == null; this path instead requires our exact real menu.
         if (!active() || failed || menuScreen == null || menuCaptureStarted || mc.gui.screen() != menuScreen
             || mc.gui.overlay() != null || mc.level == null || mc.player == null || mc.player.isDeadOrDying()) return;
-        if("essential-settings".equals(captureKind)&&menuScreen instanceof com.thelads.core.v26_2.gui.TitleExtrasScreen26)return;
+        if("essential-settings".equals(captureKind)&&menuScreen instanceof PauseScreen)return;
         long now = System.nanoTime();
         if (menuFirstFrame == 0) menuFirstFrame = now;
         menuFrames++;
+        // The pause frame shows a hovered button: lifted and glowing.
+        if ("pause".equals(captureKind) && menuFrames == 2) for (var child : menuScreen.children())
+            if (child instanceof net.minecraft.client.gui.components.Button button
+                && button.getMessage().getString().equals(net.minecraft.network.chat.Component.translatable("menu.returnToGame").getString()))
+                qaPoint(mc, button);
         if (hudProbe != null && !hudProbe.readyForCapture()) return;
         if (menuFrames < 2 || now - menuFirstFrame < 1_500_000_000L) return;
         menuCaptureStarted = true;

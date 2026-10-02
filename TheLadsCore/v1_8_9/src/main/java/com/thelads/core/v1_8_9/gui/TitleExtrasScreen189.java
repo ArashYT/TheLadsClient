@@ -4,10 +4,8 @@ import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.function.Function;
 import net.minecraft.client.gui.Gui;
@@ -47,16 +45,11 @@ public final class TitleExtrasScreen189 extends GuiScreen {
         return of(owner, buttons, button -> button.displayString);
     }
 
-    /** Each native button pressed on its owner screen (labelled by label), Essential's proxies as their real actions. */
+    /** Each native button pressed on its owner screen (labelled by label). Essential's actions have their own row (EssentialRow189). */
     public static List<Action> of(GuiScreen owner, List<GuiButton> buttons, Function<GuiButton, String> label) {
         List<Action> actions = new ArrayList<>();
-        Set<String> essentialLabels = new HashSet<>();
         for (GuiButton button : buttons) {
-            if (EssentialActions189.isEssential(button)) {
-                Action action = EssentialActions189.capture(button);
-                if (action != null && essentialLabels.add(action.label)) actions.add(action);
-                continue;
-            }
+            if (EssentialActions189.isEssential(button)) continue;
             String text = label.apply(button);
             actions.add(new Action(text == null || text.trim().isEmpty() ? "Extra settings" : text,
                 () -> ((LadsButtonPress) owner).ladsPress(button), button.enabled));

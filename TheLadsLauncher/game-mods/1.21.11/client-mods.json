@@ -153,21 +153,6 @@
       "projectUrl": "https://modrinth.com/mod/c2me-fabric"
     },
     {
-      "projectId": "89Wsn8GD",
-      "projectSlug": "capes",
-      "name": "Capes",
-      "modId": "capes",
-      "versionId": "GAQAG80Q",
-      "version": "1.5.10+1.21.11",
-      "fileName": "capes-1.5.10+1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/89Wsn8GD/versions/GAQAG80Q/capes-1.5.10%2B1.21.11-fabric.jar",
-      "sha512": "54a91977bed9eef58fedb25bc3d845e1bbac5a0c056c9e5f2672d40f54b8193f813eaf89bb243b1c88e8f37728e2d9d6682b578b036f816c7567d64d6d5436bc",
-      "size": 80534,
-      "license": "LGPL-2.1-only",
-      "sourceUrl": "https://github.com/CaelTheColher/Capes",
-      "projectUrl": "https://modrinth.com/mod/capes"
-    },
-    {
       "projectId": "Wb5oqrBJ",
       "projectSlug": "chat-heads",
       "name": "Chat Heads",
@@ -271,21 +256,6 @@
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/PepperCode1/Continuity",
       "projectUrl": "https://modrinth.com/mod/continuity"
-    },
-    {
-      "projectId": "xv94TkTM",
-      "projectSlug": "controlling",
-      "name": "Controlling",
-      "modId": "controlling",
-      "versionId": "A6W4m3vi",
-      "version": "29.0.1",
-      "fileName": "Controlling-fabric-1.21.11-29.0.1.jar",
-      "url": "https://cdn.modrinth.com/data/xv94TkTM/versions/A6W4m3vi/Controlling-fabric-1.21.11-29.0.1.jar",
-      "sha512": "fae3f7be237b901783b873ecc3167e04fdc24819f16539610565993b7916691058b8d6e1aba4c13c0c75503bbd07a8ec4d2d6ce2bf5f94433fdee58933b049d9",
-      "size": 83259,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/jaredlll08/Controlling",
-      "projectUrl": "https://modrinth.com/mod/controlling"
     },
     {
       "projectId": "DBGOO7gw",
@@ -393,51 +363,6 @@
       "projectUrl": "https://modrinth.com/mod/effectual"
     },
     {
-      "projectId": "4I1XuqiY",
-      "projectSlug": "entity-model-features",
-      "name": "[EMF] Entity Model Features",
-      "modId": "entity_model_features",
-      "versionId": "xCEwAgx1",
-      "version": "3.3.8-fabric-1.21.11",
-      "fileName": "entity_model_features-3.3.8-1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/4I1XuqiY/versions/xCEwAgx1/entity_model_features-3.3.8-1.21.11-fabric.jar",
-      "sha512": "680cc1f9d37837ae7ead2a4a7a5bf94cd8871057b01de615a13cf515e903207928072854be5baccfef0384d7cee4654e0aa8ad238d036dc909e518cb1433d395",
-      "size": 654590,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/Traben-0/Entity_Model_Features",
-      "projectUrl": "https://modrinth.com/mod/entity-model-features"
-    },
-    {
-      "projectId": "BVzZfTc1",
-      "projectSlug": "entitytexturefeatures",
-      "name": "[ETF] Entity Texture Features",
-      "modId": "entity_texture_features",
-      "versionId": "TRe10vjj",
-      "version": "7.2.4-fabric-1.21.11",
-      "fileName": "entity_texture_features-7.2.4-1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/BVzZfTc1/versions/TRe10vjj/entity_texture_features-7.2.4-1.21.11-fabric.jar",
-      "sha512": "dd21c1e2359aba58a15086cc848e90101797869d0c909e9244881c2ef06d3e054b60cf3dcba123d4d60e741fbde614fd70a166fbff42c77dd4b29553e52a50d3",
-      "size": 786788,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/Traben-0/Entity_Texture_Features",
-      "projectUrl": "https://modrinth.com/mod/entitytexturefeatures"
-    },
-    {
-      "projectId": "NNAgCjsB",
-      "projectSlug": "entityculling",
-      "name": "Entity Culling",
-      "modId": "entityculling",
-      "versionId": "CFBkR8Vm",
-      "version": "1.11.2",
-      "fileName": "entityculling-fabric-1.11.2-mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/NNAgCjsB/versions/CFBkR8Vm/entityculling-fabric-1.11.2-mc1.21.11.jar",
-      "sha512": "bb73145270e645c95a285fd01ce174f8f4b53e22c688e87d1a989f9afdf4e740ca3cb3984e23441ced8097c67e4e01f48d348d516b0903f756751d5c28e6de47",
-      "size": 1528856,
-      "license": "LicenseRef-tr7zw-Protective-License",
-      "sourceUrl": "https://github.com/tr7zw/EntityCulling",
-      "projectUrl": "https://modrinth.com/mod/entityculling"
-    },
-    {
       "projectId": "k2ZPuTBm",
       "projectSlug": "essential",
       "name": "Essential Mod",
@@ -513,21 +438,6 @@
       "projectUrl": "https://modrinth.com/mod/fancymenu"
     },
     {
-      "projectId": "9mtu0sUO",
-      "projectSlug": "fast-ip-ping",
-      "name": "Fast IP Ping",
-      "modId": "fastipping",
-      "versionId": "d92wadxK",
-      "version": "v1.0.12-mc1.21.11-fabric",
-      "fileName": "fast-ip-ping-v1.0.12-mc1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/9mtu0sUO/versions/d92wadxK/fast-ip-ping-v1.0.12-mc1.21.11-fabric.jar",
-      "sha512": "965b6d26c426550951e071679b58f09fed9b8ff68e6d38b3b867477c080009d1f2bbbe909ae47457a55377ae1b8f12e860650b2fd22728eb603e309a38126a0c",
-      "size": 10203,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/Fallen-Breath/fast-ip-ping",
-      "projectUrl": "https://modrinth.com/mod/fast-ip-ping"
-    },
-    {
       "projectId": "uXXizFIs",
       "projectSlug": "ferrite-core",
       "name": "FerriteCore",
@@ -558,19 +468,19 @@
       "projectUrl": "https://modrinth.com/mod/fism"
     },
     {
-      "projectId": "myKgAJq6",
-      "projectSlug": "fixbookgui",
-      "name": "FixBookGUI",
-      "modId": "fixbookgui",
-      "versionId": "sxwpBDYf",
-      "version": "mc1.21.11-2.1.0-fabric",
-      "fileName": "fixbookgui-fabric-2.1.0+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/myKgAJq6/versions/sxwpBDYf/fixbookgui-fabric-2.1.0%2Bmc1.21.11.jar",
-      "sha512": "888732f2c4f21aa885c2277b16282042267d919e6aa24bf301b9f5d62dfd26d5ba18b74564b0d1c68fbd2a4384017cce6202e266b6fcd74f68dfc46b7adc7072",
-      "size": 9919,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/KosmoMoustache/FixBookGUI",
-      "projectUrl": "https://modrinth.com/mod/fixbookgui"
+      "projectId": "4das1Fjq",
+      "projectSlug": "flashback",
+      "name": "Flashback",
+      "modId": "flashback",
+      "versionId": "JTAZ57qO",
+      "version": "0.39.10",
+      "fileName": "Flashback-0.39.10-for-MC1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/4das1Fjq/versions/JTAZ57qO/Flashback-0.39.10-for-MC1.21.11.jar",
+      "sha512": "eb2cb1ad543df6102c5c26a1272887ed0cbbb15332adeb5f4e32b3221e4570ad227cf1b390d9f11a4924e41a8b9f7dc2ae4f5bc8de1a7068a005d7ed449b9f66",
+      "size": 210513938,
+      "license": "LicenseRef-All-Rights-Reserved",
+      "sourceUrl": "https://github.com/Moulberry/Flashback",
+      "projectUrl": "https://modrinth.com/mod/flashback"
     },
     {
       "projectId": "ohNO6lps",
@@ -616,36 +526,6 @@
       "license": "LicenseRef-TDL-M",
       "sourceUrl": "https://github.com/fzzyhmstrs/fconfig",
       "projectUrl": "https://modrinth.com/mod/fzzy-config"
-    },
-    {
-      "projectId": "IJ4PIJR2",
-      "projectSlug": "hovering-hotbar",
-      "name": "Hovering Hotbar",
-      "modId": "hoveringhotbar",
-      "versionId": "zotNQM7m",
-      "version": "21.11.0",
-      "fileName": "HoveringHotbar-v21.11.0-mc1.21.11-Fabric.jar",
-      "url": "https://cdn.modrinth.com/data/IJ4PIJR2/versions/zotNQM7m/HoveringHotbar-v21.11.0-mc1.21.11-Fabric.jar",
-      "sha512": "2c2c154ba7b555d604421adb0c6d99a0239c0d91b44f87d022e220cb073c0ac92f0a4a726023f532668466cf3bba6071f987c72edebc3b9f9acf129b34eeaf49",
-      "size": 24435,
-      "license": "MPL-2.0",
-      "sourceUrl": "https://github.com/Fuzss/hovering-hotbar",
-      "projectUrl": "https://modrinth.com/mod/hovering-hotbar"
-    },
-    {
-      "projectId": "5ZwdcRci",
-      "projectSlug": "immediatelyfast",
-      "name": "ImmediatelyFast",
-      "modId": "immediatelyfast",
-      "versionId": "4EwhsTu7",
-      "version": "1.14.3+1.21.11-fabric",
-      "fileName": "ImmediatelyFast-Fabric-1.14.3+1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/5ZwdcRci/versions/4EwhsTu7/ImmediatelyFast-Fabric-1.14.3%2B1.21.11.jar",
-      "sha512": "2564cb28259352c3aa5759aceca62667de08a7860a40910dad40a043af851a074b2d75cef50b9fa6f1971febb3a5ecebe4067cbd4b60e63ef711b85f4bc21407",
-      "size": 302709,
-      "license": "LGPL-3.0-or-later",
-      "sourceUrl": "https://github.com/RaphiMC/ImmediatelyFast",
-      "projectUrl": "https://modrinth.com/mod/immediatelyfast"
     },
     {
       "projectId": "YL57xq9U",
@@ -738,21 +618,6 @@
       "projectUrl": "https://modrinth.com/mod/konkrete"
     },
     {
-      "projectId": "2ecVyZ49",
-      "projectSlug": "ksyxis",
-      "name": "Ksyxis",
-      "modId": "ksyxis",
-      "versionId": "9CU8nnVG",
-      "version": "1.4.5",
-      "fileName": "Ksyxis-1.4.5.jar",
-      "url": "https://cdn.modrinth.com/data/2ecVyZ49/versions/9CU8nnVG/Ksyxis-1.4.5.jar",
-      "sha512": "36bb32947ba8dd6160b37bbcf02ae4d54c6c42583717908d646412092088de6e7bbf1db99e7a75738147cdc78e5b34494ab780f7ac7c3f160a70a4d1e8d8e82b",
-      "size": 23303,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/VidTu/Ksyxis",
-      "projectUrl": "https://modrinth.com/mod/ksyxis"
-    },
-    {
       "projectId": "yBW8D80W",
       "projectSlug": "lambdynamiclights",
       "name": "LambDynamicLights - Dynamic Lights",
@@ -766,21 +631,6 @@
       "license": "LicenseRef-Lambda-License",
       "sourceUrl": "https://github.com/LambdAurora/LambDynamicLights",
       "projectUrl": "https://modrinth.com/mod/lambdynamiclights"
-    },
-    {
-      "projectId": "qgWgCnzi",
-      "projectSlug": "lazyai",
-      "name": "LazyAI",
-      "modId": "lazy_ai_pixelindiedev",
-      "versionId": "sF1PSBbf",
-      "version": "1.6.1",
-      "fileName": "lazy-ai-1.6.1.jar",
-      "url": "https://cdn.modrinth.com/data/qgWgCnzi/versions/sF1PSBbf/lazy-ai-1.6.1.jar",
-      "sha512": "fe41c209156f7228bd29c4e3812cea258a6a01bcea03b80725550803db73e4a63b826f14f26e3303efda93c81119933a9e63d96bc9c685c9db91a4c87d288403",
-      "size": 645983,
-      "license": "GPL-3.0-only",
-      "sourceUrl": "https://github.com/PixelIndieDev/LazyAI",
-      "projectUrl": "https://modrinth.com/mod/lazyai"
     },
     {
       "projectId": "WKwQAwke",
@@ -933,21 +783,6 @@
       "projectUrl": "https://modrinth.com/mod/mru"
     },
     {
-      "projectId": "UR0ocuEt",
-      "projectSlug": "nbt-autocomplete",
-      "name": "NBT Autocomplete",
-      "modId": "nbtac",
-      "versionId": "QCCwjcnx",
-      "version": "2.1-fabric-1.21.11",
-      "fileName": "NBTac-FABRIC-1.21.11-2.1.jar",
-      "url": "https://cdn.modrinth.com/data/UR0ocuEt/versions/QCCwjcnx/NBTac-FABRIC-1.21.11-2.1.jar",
-      "sha512": "6b161cc59792a27ea69f90400503b588e67595b58407be0030f5da48be5ef03775cc59791931387244799b754da5f27bb77b8780f4f68ad255326efe6f22d577",
-      "size": 282057,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/mt1006/mc-nbtac-mod",
-      "projectUrl": "https://modrinth.com/mod/nbt-autocomplete"
-    },
-    {
       "projectId": "XFlUmiDF",
       "projectSlug": "network-protocol-disconnect",
       "name": "Network Protocol Disconnect",
@@ -1023,21 +858,6 @@
       "projectUrl": "https://modrinth.com/mod/obe"
     },
     {
-      "projectId": "PD2xMNLQ",
-      "projectSlug": "optimized-cushions",
-      "name": "Optimized Cushions",
-      "modId": "optimizedcushionsbackport",
-      "versionId": "pIpAtsRT",
-      "version": "1.0.0",
-      "fileName": "optimizedcushionsbackport-fabric-mc1.21.11-1.0.0.jar",
-      "url": "https://cdn.modrinth.com/data/PD2xMNLQ/versions/pIpAtsRT/optimizedcushionsbackport-fabric-mc1.21.11-1.0.0.jar",
-      "sha512": "352e81106b841a51ae2296e56a114e0891076fb2214081bb677e8653b4a8d5492006cf6e29be0abb878a87e7312b415f5a819a38858c7c0941cbded344050d28",
-      "size": 56799,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/NikitaCartes/Optimized-Cushions",
-      "projectUrl": "https://modrinth.com/mod/optimized-cushions"
-    },
-    {
       "projectId": "hD0W2Wde",
       "projectSlug": "paper-doll",
       "name": "Paper Doll",
@@ -1081,21 +901,6 @@
       "license": "MPL-2.0",
       "sourceUrl": "https://github.com/Fuzss/puzzleslib",
       "projectUrl": "https://modrinth.com/mod/puzzles-lib"
-    },
-    {
-      "projectId": "pSISfJ4O",
-      "projectSlug": "quick-pack",
-      "name": "quick pack",
-      "modId": "quick-pack",
-      "versionId": "mUvD2wEJ",
-      "version": "fabric-1.5.1+1.21.11",
-      "fileName": "quick-pack-fabric-1.5.1+1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/pSISfJ4O/versions/mUvD2wEJ/quick-pack-fabric-1.5.1%2B1.21.11.jar",
-      "sha512": "a405234b6bf58038287480fe11c4f4ae63c891462f43bd6a5a9b7e205a8c956effc85a77b425039c3e367a29f9856fd5e6c24d9fbc6ce77a8548a0232c66a763",
-      "size": 22515,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/DrexHD/quick-pack",
-      "projectUrl": "https://modrinth.com/mod/quick-pack"
     },
     {
       "projectId": "nCQRBEiR",
@@ -1171,36 +976,6 @@
       "license": "MIT",
       "sourceUrl": "https://github.com/LGatodu47/ScreenshotViewer",
       "projectUrl": "https://modrinth.com/mod/screenshot-viewer"
-    },
-    {
-      "projectId": "fuuu3xnx",
-      "projectSlug": "searchables",
-      "name": "Searchables",
-      "modId": "searchables",
-      "versionId": "8t7XWQgt",
-      "version": "1.0.4",
-      "fileName": "Searchables-fabric-1.21.11-1.0.4.jar",
-      "url": "https://cdn.modrinth.com/data/fuuu3xnx/versions/8t7XWQgt/Searchables-fabric-1.21.11-1.0.4.jar",
-      "sha512": "e9b3d4d1fe7297d4476db1c9f909c209da360c46e7a5a0fef691e43d8fe6a2ba28fdb9e5afc393289785f0ed392252c98896b231901f29e31d01d430a3b55a07",
-      "size": 79919,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/jaredlll08/searchables",
-      "projectUrl": "https://modrinth.com/mod/searchables"
-    },
-    {
-      "projectId": "iqK5uv72",
-      "projectSlug": "serverpingerfixer",
-      "name": "Server Pinger Fixer",
-      "modId": "serverpingerfixer",
-      "versionId": "YkchMFP2",
-      "version": "1.0.6",
-      "fileName": "serverpingerfixer-1.0.6.jar",
-      "url": "https://cdn.modrinth.com/data/iqK5uv72/versions/YkchMFP2/serverpingerfixer-1.0.6.jar",
-      "sha512": "f572a99f55484487702bb16202675e8abd79b3d1629eadf7ca5c4506d2d06fcaf8fc21aa15228a526782999515569210e6e4d4531c515540761a9122e3188c47",
-      "size": 6450,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/JustAlittleWolf/ServerPingerFixer",
-      "projectUrl": "https://modrinth.com/mod/serverpingerfixer"
     },
     {
       "projectId": "AANobbMI",
@@ -1293,21 +1068,6 @@
       "projectUrl": "https://modrinth.com/mod/tlib"
     },
     {
-      "projectId": "RJXFHzQ1",
-      "projectSlug": "tooltips-txf",
-      "name": "Tooltips TXF",
-      "modId": "tooltipstxf",
-      "versionId": "L1xhTYi0",
-      "version": "1.21.11-1.0.8-fabric",
-      "fileName": "tooltipstxf-1.21.11-1.0.8-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/RJXFHzQ1/versions/L1xhTYi0/tooltipstxf-1.21.11-1.0.8-fabric.jar",
-      "sha512": "16ba427760964026daab2043e47af0ade3f1dcf10c626c51420a69d69e528b7ebad03b85393439dca251369c249c4a3e299675691683afc8d83aceceace3df7c",
-      "size": 79835,
-      "license": "LicenseRef-All-Rights-Reserved",
-      "sourceUrl": "https://github.com/jahirxtrap/tooltipstxf",
-      "projectUrl": "https://modrinth.com/mod/tooltips-txf"
-    },
-    {
       "projectId": "rIC2XJV4",
       "projectSlug": "viafabricplus",
       "name": "ViaFabricPlus",
@@ -1353,21 +1113,6 @@
       "projectUrl": "https://modrinth.com/mod/wavey-capes"
     },
     {
-      "projectId": "NDcygmHf",
-      "projectSlug": "world-play-time-reborn",
-      "name": "World Play Time Reborn",
-      "modId": "worldplaytimereborn",
-      "versionId": "g91HCVP5",
-      "version": "1.2.6",
-      "fileName": "worldplaytimereborn-1.2.6+1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/NDcygmHf/versions/g91HCVP5/worldplaytimereborn-1.2.6%2B1.21.11-fabric.jar",
-      "sha512": "fbde4188e2b73d3b9b8917ae5c7145cbd6d8e8f24167330e56f9774832fe8710fc5a65e996b03b107b00085233dc28268d0303212e8a9408f7d860ff187bea6f",
-      "size": 56461,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/korovagg/WorldPlayTimeReborn",
-      "projectUrl": "https://modrinth.com/mod/world-play-time-reborn"
-    },
-    {
       "projectId": "1bokaNcj",
       "projectSlug": "xaeros-minimap",
       "name": "Xaero's Minimap",
@@ -1411,21 +1156,6 @@
       "license": "LGPL-3.0-or-later",
       "sourceUrl": "https://github.com/isXander/YetAnotherConfigLib",
       "projectUrl": "https://modrinth.com/mod/yacl"
-    },
-    {
-      "projectId": "4das1Fjq",
-      "projectSlug": "flashback",
-      "name": "Flashback",
-      "modId": "flashback",
-      "versionId": "JTAZ57qO",
-      "version": "0.39.10",
-      "fileName": "Flashback-0.39.10-for-MC1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/4das1Fjq/versions/JTAZ57qO/Flashback-0.39.10-for-MC1.21.11.jar",
-      "sha512": "eb2cb1ad543df6102c5c26a1272887ed0cbbb15332adeb5f4e32b3221e4570ad227cf1b390d9f11a4924e41a8b9f7dc2ae4f5bc8de1a7068a005d7ed449b9f66",
-      "size": 210513938,
-      "license": "LicenseRef-All-Rights-Reserved",
-      "sourceUrl": "https://github.com/Moulberry/Flashback",
-      "projectUrl": "https://modrinth.com/mod/flashback"
     }
   ],
   "retired": [
@@ -1437,6 +1167,15 @@
         "8ffa549643dfcffa65a24eb7203b50e8e391049fe338342ef22523aed308458c08ec957d11dca7f7a16b7fbfc0262e7045394c3ad686c22c06bb852e27785918"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.0."
+    },
+    {
+      "modId": "capes",
+      "projectId": "89Wsn8GD",
+      "name": "Capes",
+      "sha512": [
+        "54a91977bed9eef58fedb25bc3d845e1bbac5a0c056c9e5f2672d40f54b8193f813eaf89bb243b1c88e8f37728e2d9d6682b578b036f816c7567d64d6d5436bc"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
     },
     {
       "modId": "classic_minecraft_icon",
@@ -1457,6 +1196,60 @@
       "reason": "Removed from The Lads Client pack in 1.4.6."
     },
     {
+      "modId": "controlling",
+      "projectId": "xv94TkTM",
+      "name": "Controlling",
+      "sha512": [
+        "fae3f7be237b901783b873ecc3167e04fdc24819f16539610565993b7916691058b8d6e1aba4c13c0c75503bbd07a8ec4d2d6ce2bf5f94433fdee58933b049d9"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "entity_model_features",
+      "projectId": "4I1XuqiY",
+      "name": "[EMF] Entity Model Features",
+      "sha512": [
+        "680cc1f9d37837ae7ead2a4a7a5bf94cd8871057b01de615a13cf515e903207928072854be5baccfef0384d7cee4654e0aa8ad238d036dc909e518cb1433d395"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "entity_texture_features",
+      "projectId": "BVzZfTc1",
+      "name": "[ETF] Entity Texture Features",
+      "sha512": [
+        "dd21c1e2359aba58a15086cc848e90101797869d0c909e9244881c2ef06d3e054b60cf3dcba123d4d60e741fbde614fd70a166fbff42c77dd4b29553e52a50d3"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "entityculling",
+      "projectId": "NNAgCjsB",
+      "name": "Entity Culling",
+      "sha512": [
+        "bb73145270e645c95a285fd01ce174f8f4b53e22c688e87d1a989f9afdf4e740ca3cb3984e23441ced8097c67e4e01f48d348d516b0903f756751d5c28e6de47"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "fastipping",
+      "projectId": "9mtu0sUO",
+      "name": "Fast IP Ping",
+      "sha512": [
+        "965b6d26c426550951e071679b58f09fed9b8ff68e6d38b3b867477c080009d1f2bbbe909ae47457a55377ae1b8f12e860650b2fd22728eb603e309a38126a0c"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "fixbookgui",
+      "projectId": "myKgAJq6",
+      "name": "FixBookGUI",
+      "sha512": [
+        "888732f2c4f21aa885c2277b16282042267d919e6aa24bf301b9f5d62dfd26d5ba18b74564b0d1c68fbd2a4384017cce6202e266b6fcd74f68dfc46b7adc7072"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
       "modId": "gammautils",
       "projectId": "wdLuzzEP",
       "name": "Gamma Utils (Fullbright)",
@@ -1466,6 +1259,42 @@
       "reason": "Removed from The Lads Client pack in 1.4.6."
     },
     {
+      "modId": "hoveringhotbar",
+      "projectId": "IJ4PIJR2",
+      "name": "Hovering Hotbar",
+      "sha512": [
+        "2c2c154ba7b555d604421adb0c6d99a0239c0d91b44f87d022e220cb073c0ac92f0a4a726023f532668466cf3bba6071f987c72edebc3b9f9acf129b34eeaf49"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "immediatelyfast",
+      "projectId": "5ZwdcRci",
+      "name": "ImmediatelyFast",
+      "sha512": [
+        "2564cb28259352c3aa5759aceca62667de08a7860a40910dad40a043af851a074b2d75cef50b9fa6f1971febb3a5ecebe4067cbd4b60e63ef711b85f4bc21407"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "ksyxis",
+      "projectId": "2ecVyZ49",
+      "name": "Ksyxis",
+      "sha512": [
+        "36bb32947ba8dd6160b37bbcf02ae4d54c6c42583717908d646412092088de6e7bbf1db99e7a75738147cdc78e5b34494ab780f7ac7c3f160a70a4d1e8d8e82b"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "lazy_ai_pixelindiedev",
+      "projectId": "qgWgCnzi",
+      "name": "LazyAI",
+      "sha512": [
+        "fe41c209156f7228bd29c4e3812cea258a6a01bcea03b80725550803db73e4a63b826f14f26e3303efda93c81119933a9e63d96bc9c685c9db91a4c87d288403"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
       "modId": "motionblurplus",
       "projectId": "Qbkde6rq",
       "name": "Motion Blur Plus",
@@ -1473,6 +1302,51 @@
         "d500fa94418657b0e307b8930c951656482ac0a610d2d55cbcd3200500cba32cdae13efa235f9386326f906e548665e123b9cab654a646eeacdda2c8fe08a787"
       ],
       "reason": "Removed from The Lads Client pack in 1.4.6."
+    },
+    {
+      "modId": "nbtac",
+      "projectId": "UR0ocuEt",
+      "name": "NBT Autocomplete",
+      "sha512": [
+        "6b161cc59792a27ea69f90400503b588e67595b58407be0030f5da48be5ef03775cc59791931387244799b754da5f27bb77b8780f4f68ad255326efe6f22d577"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "optimizedcushionsbackport",
+      "projectId": "PD2xMNLQ",
+      "name": "Optimized Cushions",
+      "sha512": [
+        "352e81106b841a51ae2296e56a114e0891076fb2214081bb677e8653b4a8d5492006cf6e29be0abb878a87e7312b415f5a819a38858c7c0941cbded344050d28"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "quick-pack",
+      "projectId": "pSISfJ4O",
+      "name": "quick pack",
+      "sha512": [
+        "a405234b6bf58038287480fe11c4f4ae63c891462f43bd6a5a9b7e205a8c956effc85a77b425039c3e367a29f9856fd5e6c24d9fbc6ce77a8548a0232c66a763"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "searchables",
+      "projectId": "fuuu3xnx",
+      "name": "Searchables",
+      "sha512": [
+        "e9b3d4d1fe7297d4476db1c9f909c209da360c46e7a5a0fef691e43d8fe6a2ba28fdb9e5afc393289785f0ed392252c98896b231901f29e31d01d430a3b55a07"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "serverpingerfixer",
+      "projectId": "iqK5uv72",
+      "name": "Server Pinger Fixer",
+      "sha512": [
+        "f572a99f55484487702bb16202675e8abd79b3d1629eadf7ca5c4506d2d06fcaf8fc21aa15228a526782999515569210e6e4d4531c515540761a9122e3188c47"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
     },
     {
       "modId": "skinlayers3d",
@@ -1491,6 +1365,24 @@
         "0413e8d654fa5d74dc32ab7c21a82cf8e44aec22c7392648f23a34e2cdb7255af5b34a6016d71bda226c251e5089838f2be9310360723f88e9080fd048efd25f"
       ],
       "reason": "Removed from The Lads Client pack in 1.4.6."
+    },
+    {
+      "modId": "tooltipstxf",
+      "projectId": "RJXFHzQ1",
+      "name": "Tooltips TXF",
+      "sha512": [
+        "16ba427760964026daab2043e47af0ade3f1dcf10c626c51420a69d69e528b7ebad03b85393439dca251369c249c4a3e299675691683afc8d83aceceace3df7c"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "worldplaytimereborn",
+      "projectId": "NDcygmHf",
+      "name": "World Play Time Reborn",
+      "sha512": [
+        "fbde4188e2b73d3b9b8917ae5c7145cbd6d8e8f24167330e56f9774832fe8710fc5a65e996b03b107b00085233dc28268d0303212e8a9408f7d860ff187bea6f"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.4.6."
     }
   ]
 }

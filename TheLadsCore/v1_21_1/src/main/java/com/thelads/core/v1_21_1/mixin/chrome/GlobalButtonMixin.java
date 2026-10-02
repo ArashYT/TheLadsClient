@@ -16,6 +16,6 @@ public class GlobalButtonMixin {
     private void ladsButton(GuiGraphics g,ResourceLocation sprite,int x,int y,int width,int height){
         var button=(AbstractWidget)(Object)this;
         var adapter=new com.thelads.core.v1_21_1.adapter.GuiGraphicsLadsAdapter(g);
-        com.thelads.core.client.title.TitleScreenTheme.renderButtonSurface(adapter,x,y,width,height,button.isHoveredOrFocused(),button.isFocused(),button.active,1);
+        com.thelads.core.client.title.TitleScreenTheme.renderButtonSurface(adapter,x,y,width,height,button.isHoveredOrFocused(),button.isFocused(),button.active,1,com.thelads.core.client.title.ButtonLift.eased(button));
     }
 }

@@ -14,21 +14,17 @@ public final class TitleExtrasScreen121 extends Screen {
     private final Screen parent;
     private final List<AbstractWidget> actions;
     private int page;
-    private final java.util.Map<AbstractWidget,EssentialActions.Action> essential=new java.util.IdentityHashMap<>();
     private long previousFrame;
 
     public TitleExtrasScreen121(Screen parent, List<AbstractWidget> actions) {
         super(Component.literal("More"));
         this.parent = parent;
-        var essentialLabels=new java.util.HashSet<String>();
         var availableActions=new java.util.ArrayList<>(actions);
         if(parent instanceof net.minecraft.client.gui.screens.TitleScreen && FlashbackScreens.available()
             &&availableActions.stream().noneMatch(widget->widget.getMessage().getString().equals(Component.translatable("flashback.open_replays").getString())))
             availableActions.add(Button.builder(Component.literal("Replays"),button->FlashbackScreens.open(this)).bounds(0,0,1,1).build());
-        this.actions = availableActions.stream().filter(widget->{
-            if(!widget.getClass().getName().startsWith("gg.essential."))return true;
-            var action=EssentialActions.capture(parent,widget);if(action==null||!essentialLabels.add(action.label()))return false;essential.put(widget,action);return true;
-        }).toList();
+        // Essential's actions have their own row on the title and pause screens.
+        this.actions = availableActions.stream().filter(widget->!widget.getClass().getName().startsWith("gg.essential.")).toList();
     }
 
     @Override protected void init() {
@@ -43,9 +39,7 @@ public final class TitleExtrasScreen121 extends Screen {
         for (int i = page * count; i < Math.min(actions.size(), (page + 1) * count); i++) {
             AbstractWidget original = actions.get(i);
             AbstractWidget widget = original;
-            var action=essential.get(original);
-            if(action!=null){widget=Button.builder(Component.literal(action.label()),b->action.press().run()).bounds(0,0,1,1).build();widget.active=action.active();}
-            if(action==null && original instanceof Button button){
+            if(original instanceof Button button){
                 String label=original.getMessage().getString();
                 if(label.isBlank())label="Extra settings";
                 widget=Button.builder(Component.literal(label),b->button.onPress()).bounds(0,0,1,1).build();widget.active=original.active;

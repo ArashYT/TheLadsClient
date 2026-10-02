@@ -32,14 +32,11 @@ public final class ExternalModSettings {
                 + "Dynamic FPS provides supported background frame limiting.");
         }
         external("AppleSkin", "AppleSkin", "appleskin");
-        external("ImmediatelyFast", "ImmediatelyFast", "immediatelyfast");
         external("Performance", "Sodium", "sodium");
-        external("EntityCulling", "Entity Culling", "entityculling");
         external("Lithium", "Lithium", "lithium");
         external("FerriteCore", "FerriteCore", "ferritecore");
         external("XaeroMinimap", "Xaero Minimap", "xaerominimap");
         external("Crosshair Tweaks", "Custom Crosshair Mod", "custom-crosshair-mod");
-        external("Capes", "Capes", "capes");
         external("Paperdoll", "Paper Doll", "paperdoll");
         external("EnhancedToolbars", "Durability Tooltip", "durabilitytooltip");
         external("AutoReconnect", "AutoReconnect", "autoreconnectrf");

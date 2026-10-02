@@ -4,7 +4,6 @@ import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.thelads.core.shared.QaWorldGuard;
 import com.thelads.core.v1_21_1.gui.LadsSettingsScreen121;
-import com.thelads.core.v1_21_1.gui.TitleExtrasScreen121;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -239,7 +238,7 @@ public final class NativeWorldVerification {
     private static void updateMenuCapture(Minecraft mc, long now) {
         if (menuCaptureFinished) { finishMenuCapture(mc, menuCaptureFailure); return; }
         // Essential opens its settings screen on its own schedule after the relocated Lads action was pressed.
-        if ("essential-settings".equals(captureKind) && menuScreen instanceof TitleExtrasScreen121 && mc.screen != menuScreen
+        if ("essential-settings".equals(captureKind) && menuScreen instanceof net.minecraft.client.gui.screens.PauseScreen && mc.screen != menuScreen
             && mc.screen != null && mc.screen.getClass().getName().startsWith("gg.essential.")) essentialOpened(mc, now);
         if (hudProbe != null) hudProbe.tick();
         if (mc.level == null || mc.player == null || mc.player.isDeadOrDying() || mc.screen != menuScreen) {
@@ -253,7 +252,7 @@ public final class NativeWorldVerification {
         // worldReady intentionally requires screen == null; this path instead requires our exact real menu.
         if (!active() || failed || menuScreen == null || menuCaptureStarted || mc.screen != menuScreen
             || mc.getOverlay() != null || mc.level == null || mc.player == null || mc.player.isDeadOrDying()) return;
-        if ("essential-settings".equals(captureKind) && menuScreen instanceof TitleExtrasScreen121) return;
+        if ("essential-settings".equals(captureKind) && menuScreen instanceof net.minecraft.client.gui.screens.PauseScreen) return;
         long now = System.nanoTime();
         if (menuFirstFrame == 0) menuFirstFrame = now;
         menuFrames++;
@@ -281,15 +280,11 @@ public final class NativeWorldVerification {
             try {
                 Screen next = switch (captureKind) {
                     case "pause" -> {
-                        var more = button(menuScreen, "Essential & extras...");
-                        if (more == null && essential) throw new IllegalStateException("Essential is loaded but its pause actions were not relocated");
-                        if (more != null) { more.onPress(); yield mc.screen; }
-                        yield new TitleExtrasScreen121(menuScreen, java.util.List.of());
-                    }
-                    case "essential" -> {
+                        // Essential's actions are a row above the account name; its settings open from there.
                         if (!essential) yield packsScreen(mc);
-                        var settings = button(menuScreen, "Essential settings");
-                        if (settings == null) throw new IllegalStateException("Relocated Essential settings action missing");
+                        var settings = button(menuScreen, "Essential");
+                        if (!(settings instanceof com.thelads.core.v1_21_1.gui.CompactButton121))
+                            throw new IllegalStateException("Essential's settings action missing from the pause menu row");
                         settings.onPress();
                         yield menuScreen;
                     }
@@ -300,8 +295,7 @@ public final class NativeWorldVerification {
                     default -> { var view = new LadsSettingsScreen121(null); view.ui().openMods(); yield view; }
                 };
                 captureKind = switch (captureKind) {
-                    case "pause" -> "essential";
-                    case "essential" -> essential ? "essential-settings" : "packs";
+                    case "pause" -> essential ? "essential-settings" : "packs";
                     case "essential-settings" -> "packs";
                     case "packs" -> "controls";
                     case "controls" -> "menu";
@@ -339,7 +333,7 @@ public final class NativeWorldVerification {
     /** The relocated "Essential settings" Lads button opened Essential's own screen: capture that screen next (26.x). */
     private static void essentialOpened(Minecraft mc, long now) {
         menuScreen = mc.screen; menuOpenedAt = now;
-        LOGGER.info("Lads Essential action probe END: 1 passed, 0 failed; relocated Settings action opened {}", menuScreen.getClass().getName());
+        LOGGER.info("Lads Essential action probe END: 1 passed, 0 failed; pause row's Essential action opened {}", menuScreen.getClass().getName());
     }
     private static Screen packsScreen(Minecraft mc) {
         return new net.minecraft.client.gui.screens.packs.PackSelectionScreen(mc.getResourcePackRepository(), repository -> {},

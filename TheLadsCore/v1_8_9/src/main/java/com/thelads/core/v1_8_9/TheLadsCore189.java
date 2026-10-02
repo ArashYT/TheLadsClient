@@ -27,13 +27,13 @@ public class TheLadsCore189 {
     private static final Logger LOGGER = LogManager.getLogger("TheLadsCore-1.8.9");
     /** Built on third-party mods The Lads Client does not ship for 1.8.9: listed as unavailable with that reason. */
     public static final String[][] MOD_BACKED = {
-        {"Performance", "Sodium"}, {"Lithium", "Lithium"}, {"FerriteCore", "FerriteCore"}, {"EntityCulling", "Entity Culling"},
-        {"ImmediatelyFast", "ImmediatelyFast"}, {"ScalableLux", "ScalableLux"}, {"Exordium", "Exordium"}, {"DynamicFPS", "Dynamic FPS"},
+        {"Performance", "Sodium"}, {"Lithium", "Lithium"}, {"FerriteCore", "FerriteCore"},
+        {"ScalableLux", "ScalableLux"}, {"Exordium", "Exordium"}, {"DynamicFPS", "Dynamic FPS"},
         {"DynamicLights", "LambDynamicLights"}, {"SkinLayers", "3D Skin Layers"}, {"NotEnoughAnimations", "Not Enough Animations"},
         {"BetterF3", "BetterF3"}, {"BetterStats", "Better Statistics Screen"},
         {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroMinimap", "Xaero's Minimap"}, {"XaeroWorldmap", "Xaero's World Map"},
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
-        {"EnhancedToolbars", "Durability Tooltip"}, {"Capes", "Capes"}, {"Raised", "Raised"}};
+        {"EnhancedToolbars", "Durability Tooltip"}, {"Raised", "Raised"}};
 
     private static String windowTitle = "The Lads Client";
 

@@ -31,6 +31,18 @@ NATIVE = {
              'dynamic_fps': 'NativeDynamicFps', 'autoreconnectrf': 'NativeReconnect',
              'chatsigninghider': 'ChatIndicatorMixin', 'classic_minecraft_icon': 'WindowIconMixin'},
 }
+# 1.4.6: upstream mods Lads Core embeds (com.thelads.core.<adapter>.embedded.*); each copy stands down if its jar is installed.
+EMBEDDED = {'entity_texture_features': 'embedded.etf', 'entity_model_features': 'embedded.emf', 'ksyxis': 'embedded.ksyxis',
+            'serverpingerfixer': 'embedded.serverpingerfixer', 'fastipping': 'embedded.fastipping',
+            'immediatelyfast': 'embedded.immediatelyfast', 'entityculling': 'embedded.entityculling',
+            'lazy_ai_pixelindiedev': 'embedded.lazyai', 'quick-pack': 'embedded.quickpack', 'controlling': 'embedded.controlling',
+            'searchables': 'embedded.controlling', 'nbtac': 'embedded.nbtac', 'capes': 'embedded.capes',
+            'tooltipstxf': 'embedded.tooltips', 'fixbookgui': 'embedded.fixbookgui', 'hoveringhotbar': 'embedded.hoveringhotbar'}
+for _game, _cushions, _playtime in [('1.21.1', 'optimizedcushionsbackport', 'worldplaytime'),
+                                    ('1.21.11', 'optimizedcushionsbackport', 'worldplaytimereborn'),
+                                    ('26.2', 'optimizedcushionsbackport', 'worldplaytimereborn'),
+                                    ('26.3', 'optimizedcushions', 'worldplaytimereborn')]:
+    NATIVE[_game].update(EMBEDDED, **{_cushions: 'embedded.cushions', _playtime: 'embedded.playtime'})
 # Iris 1.10.7 pins Sodium 0.8.7; newer add-ons require Sodium 0.8.14.
 # Original projects supply these features on 1.21.1, before the source-instance forks.
 COMPATIBLE_PROJECTS = {('1.21.1', 'modernfix'): 'nmDcB62a',

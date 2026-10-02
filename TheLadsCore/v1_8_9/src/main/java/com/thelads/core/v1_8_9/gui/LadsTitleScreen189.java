@@ -18,7 +18,8 @@ import org.apache.logging.log4j.LogManager;
 /**
  * The Lads title screen on 1.8.9 (TitleScreenMixin on the other versions), through Forge's screen events so Essential's and
  * OptiFine's GuiMainMenu changes keep working: themed artwork, Singleplayer, Multiplayer, Lads Mods, Options, More and Quit as
- * Lads buttons; every other button (Forge's Mods, Language, Realms, Essential's actions) behind More. "TitleScreen" off: vanilla.
+ * Lads buttons; Essential's actions in a row above the account name; every other button (Forge's Mods, Language, Realms)
+ * behind More. "TitleScreen" off: vanilla.
  */
 public final class LadsTitleScreen189 {
     public static final LadsTitleScreen189 INSTANCE = new LadsTitleScreen189();
@@ -27,6 +28,9 @@ public final class LadsTitleScreen189 {
     private List<GuiButton> buttons;
     private GuiButton ladsButton, accountsButton, moreButton;
     private final List<GuiButton> seen = new ArrayList<>(), main = new ArrayList<>(), extras = new ArrayList<>();
+    private final List<GuiButton> pending = new ArrayList<>(), row = new ArrayList<>();
+    private final List<TitleExtrasScreen189.Action> essential = new ArrayList<>();
+    private long initNanos;
     private TitleScreenTheme.Layout layout;
     private int layoutWidth, layoutHeight;
     private long lastFrame;
@@ -50,6 +54,10 @@ public final class LadsTitleScreen189 {
         screen = (GuiMainMenu) event.gui;
         buttons = event.buttonList;
         extras.clear();
+        pending.clear();
+        row.clear();
+        essential.clear();
+        initNanos = System.nanoTime();
         buttons.add(ladsButton = new GuiButton(LADS_ID, 0, 0, 1, 1, "Lads Mods"));
         buttons.add(accountsButton = new GuiButton(LADS_ID + 1, 0, 0, 1, 1, "Accounts"));
         buttons.add(moreButton = new GuiButton(LADS_ID + 2, 0, 0, 1, 1, "More..."));
@@ -58,7 +66,16 @@ public final class LadsTitleScreen189 {
 
     /** Lays the buttons out on the first frame, when Essential and other mods have added theirs, and again when they change. */
     private void ensureLayout() {
-        if (layout != null && layoutWidth == screen.width && layoutHeight == screen.height && seen.equals(buttons)) return;
+        // Essential binds its buttons a moment after the screen opens; the row is rebuilt once they are ready.
+        boolean bound = false;
+        if (!pending.isEmpty() && System.nanoTime() - initNanos < 5_000_000_000L)
+            for (GuiButton proxy : new ArrayList<>(pending))
+                if (EssentialRow189.collect(proxy, essential)) {
+                    pending.remove(proxy);
+                    bound = true;
+                }
+        if (!bound && layout != null && layoutWidth == screen.width && layoutHeight == screen.height && seen.equals(buttons)) return;
+        buttons.removeAll(row);
         main.clear();
         for (GuiButton button : new ArrayList<>(buttons)) {
             if (button == ladsButton || button == moreButton || vanilla(button, 1, 11, 2, 0, 4)) main.add(button);
@@ -66,13 +83,14 @@ public final class LadsTitleScreen189 {
                 // Off the screen, as the other versions remove them (Essential's proxies override mousePressed).
                 buttons.remove(button);
                 button.visible = false;
-                if (!extras.contains(button)) extras.add(button);
+                if (EssentialActions189.isEssential(button)) {
+                    // Essential's actions get their own row above the account name.
+                    if (!EssentialRow189.collect(button, essential) && !pending.contains(button)) pending.add(button);
+                } else if (!extras.contains(button)) extras.add(button);
             }
         }
-        seen.clear();
-        seen.addAll(buttons);
         main.sort(Comparator.comparingInt(this::order));
-        layout = TitleScreenTheme.layout(screen.width, screen.height, main.size());
+        layout = TitleScreenTheme.layout(screen.width, screen.height, main.size(), !essential.isEmpty());
         layoutWidth = screen.width;
         layoutHeight = screen.height;
         for (int i = 0; i < main.size(); i++) {
@@ -84,6 +102,11 @@ public final class LadsTitleScreen189 {
             button.height = rect.height();
             button.visible = true;
         }
+        row.clear();
+        row.addAll(EssentialRow189.place(essential, LADS_ID + 10, screen.height, TitleScreenTheme.essentialRowWidth(layout)));
+        buttons.addAll(row);
+        seen.clear();
+        seen.addAll(buttons);
         if (!logged) {
             logged = true;
             LogManager.getLogger("TheLadsCore-1.8.9").info("custom title initialized for Minecraft 1.8.9: {} native widgets, {} more", main.size(), extras.size());
@@ -149,6 +172,7 @@ public final class LadsTitleScreen189 {
         TitleScreenTheme.renderBackground(g, layout, mc.getSession().getUsername(), "1.8.9" + (mc.isDemo() ? " Demo" : ""), false, seconds);
         for (GuiButton button : main)
             TitleExtrasScreen189.drawButton(g, button, label(button), icon(button), vanilla(button, 1), event.mouseX, event.mouseY, elapsed);
+        for (GuiButton button : row) button.drawButton(mc, event.mouseX, event.mouseY);
     }
 
     @SubscribeEvent
@@ -159,6 +183,7 @@ public final class LadsTitleScreen189 {
         if (event.button == ladsButton) mc.displayGuiScreen(new LadsSettingsScreen189(screen));
         else if (event.button == accountsButton) mc.displayGuiScreen(new AccountSwitcherScreen189(screen));
         else if (event.button == moreButton) mc.displayGuiScreen(new TitleExtrasScreen189(screen, TitleExtrasScreen189.of(screen, extras, LadsTitleScreen189::label)));
+        else if (event.button instanceof CompactButton189 && row.contains(event.button)) ((CompactButton189) event.button).press();
         else return;
         if (clicked) event.button.playPressSound(mc.getSoundHandler()); // a cancelled press skips GuiScreen's
         event.setCanceled(true);
