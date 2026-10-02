@@ -4,6 +4,7 @@ import com.thelads.core.client.OldAnimations.Held;
 import com.thelads.core.client.OldAnimations.Use;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Module;
+import com.thelads.core.config.Option;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -59,6 +60,8 @@ public final class OldAnimationsModule extends Module {
     }
 
     private final Map<Feature, BoolOption> toggles = new EnumMap<>(Feature.class);
+    /** The game version that runs; the 1.8.9 adapter sets V1_8_9, the Fabric versions keep MODERN. */
+    private Platform platform = Platform.MODERN;
 
     public OldAnimationsModule() {
         super(NAME, "Minecraft 1.7 animations: blockhitting, the 1.7 sword, bow, rod and eating poses, red armour, "
@@ -68,6 +71,16 @@ public final class OldAnimationsModule extends Module {
 
     public BoolOption option(Feature feature) {
         return toggles.get(feature);
+    }
+
+    public void setPlatform(Platform platform) {
+        this.platform = platform;
+    }
+
+    /** The Lads menu leaves this option out: it does nothing on this game version. Its saved value stays for the others. */
+    public boolean hidden(Option option) {
+        for (Feature feature : Feature.values()) if (toggles.get(feature) == option) return !feature.appliesTo(platform);
+        return false;
     }
 
     /** The module is on, the option is on and it exists on this platform. */
