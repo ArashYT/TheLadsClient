@@ -33,6 +33,9 @@ public class GuiGraphicsLadsAdapter implements LadsGraphics {
         return guiGraphics;
     }
 
+    @Override public boolean drawKillBanner(String skin, int variant, int x, int y, int width, int height) {
+        return com.thelads.core.v1_21_1.feature.NativeKillBanner.drawThumb(guiGraphics, skin, variant, x, y, width, height);
+    }
     @Override public void drawModIcon(String id, int x, int y, int size) {
         if (!com.thelads.core.v1_21_1.gui.ModIcons.draw(guiGraphics, id, x, y, size)) LadsGraphics.super.drawModIcon(id, x, y, size);
     }

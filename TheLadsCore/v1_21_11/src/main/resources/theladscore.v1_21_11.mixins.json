@@ -30,7 +30,7 @@
     "ChatIndicatorMixin",
     "ScreenshotChatMixin",
     "BorderlessWindowMixin",
-    "KillBannerStatsMixin",
+    "KillBannerPacketsMixin",
     "KillBannerAttackMixin",
     "KillBannerHudMixin"
   ]

@@ -3,24 +3,8 @@ package com.thelads.core.client;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** The authoritative server kill counter (ServerKillTracker) and the cosmetic banner sequence (KillBannerTimeline). */
+/** The cosmetic banner sequence (KillBannerTimeline). */
 class NativeKillBannerTest {
-    @Test void killCounterReportsOnlyNewServerKills() {
-        var counter = new ServerKillTracker();
-        assertEquals(0, counter.observe(800), "login history does not fabricate kills");
-        assertEquals(0, counter.observe(800), "duplicate response does not replay a kill");
-        assertEquals(1, counter.observe(801), "one newly reported player kill");
-        assertEquals(3, counter.observe(804), "batched server updates retain exact delta");
-        assertEquals(0, counter.observe(5), "server statistic reset is not a kill");
-        assertEquals(1, counter.observe(6), "tracking recovers after reset");
-        assertEquals(0, counter.observe(-1), "invalid negative statistic ignored");
-        assertEquals(0, counter.observe(6), "invalid statistic did not erase baseline");
-        counter.reset();
-        assertEquals(0, counter.observe(15000), "new server history establishes independent baseline");
-        counter.reset();
-        assertEquals(0, counter.observe(0));
-        assertEquals(Integer.MAX_VALUE, counter.observe(Integer.MAX_VALUE), "large valid delta does not overflow");
-    }
     @Test void bannerSequenceIsCosmeticAndBounded() {
         var banner = new KillBannerTimeline();
         long now = 1_000_000_000L;

@@ -326,4 +326,6 @@ public class VanillaGameBridge12111 implements LadsGameBridge {
             if (badge.getType() == net.fabricmc.loader.api.metadata.CustomValue.CvType.STRING && "library".equals(badge.getAsString())) return true;
         return false;
     }
+
+    @Override public void previewKillBannerSound(String skin, float volume) { com.thelads.core.v1_21_11.feature.NativeKillBanner.previewSound(skin, volume); }
 }

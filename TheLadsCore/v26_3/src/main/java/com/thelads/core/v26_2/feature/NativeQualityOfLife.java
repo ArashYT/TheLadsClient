@@ -17,7 +17,7 @@ public final class NativeQualityOfLife {
     private NativeQualityOfLife() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn("Autohide", "Jade", "LegacySwing", "BossBar", "DisableNarrator", "Chat", "BorderlessFullscreen", "Crosshair Tweaks",
+        ModuleSupport.registerBuiltIn("RawInput", "Autohide", "Jade", "LegacySwing", "BossBar", "DisableNarrator", "Chat", "BorderlessFullscreen", "Crosshair Tweaks",
             "SmoothHotbar", "Raised", "OldDamageTilt", "EnhancedToolbars", "EnhancedTooltips",
             "Nametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", "ShulkerBoxUtils", "DiscordRPC", "RenderScale");
         ((com.thelads.core.config.ActionOption)module("Jade").getOption("Settings and addons")).setAction(()->{
@@ -39,10 +39,23 @@ public final class NativeQualityOfLife {
         if (disabled && !narratorWasDisabled) Minecraft.getInstance().getNarrator().clear();
         narratorWasDisabled = disabled;
         NativeKillBanner.tick();
+        rawInput();
         ShulkerContents.tick();
         NativeDiscordPresence.tick();
         NativeQualityProbe.tick();
         NativeSharedContentProbe.tick();
+    }
+
+    private static Boolean rawApplied;
+    /**
+     * RawInput: Minecraft 26.3 has no Raw Input switch; its mouse (SDL relative mode) is raw already. On keeps that; off applies
+     * Windows' pointer speed and acceleration, as vanilla's switch did when it was off.
+     */
+    private static void rawInput() {
+        boolean on = enabled("RawInput");
+        if (rawApplied != null && rawApplied == on) return;
+        org.lwjgl.sdl.SDLHints.SDL_SetHint(org.lwjgl.sdl.SDLHints.SDL_HINT_MOUSE_RELATIVE_SYSTEM_SCALE, on ? "0" : "1");
+        rawApplied = on;
     }
 
     public static Module module(String name) { return ModuleManager.getInstance().getModule(name); }

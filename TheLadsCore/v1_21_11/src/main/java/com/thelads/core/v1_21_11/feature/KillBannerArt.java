@@ -29,6 +29,7 @@ final class KillBannerArt {
     }
     private static final Map<String, Sprite> SPRITES = new HashMap<>();
     private static final Map<KillBannerStyle, Live> LIVE = new EnumMap<>(KillBannerStyle.class);
+    private static final Map<KillBannerStyle, int[]> BOUNDS = new EnumMap<>(KillBannerStyle.class);
     private KillBannerArt() {}
 
     static void draw(GuiGraphics g, KillBannerStyle style, int variant, int kills, KillBannerStrip strip,
@@ -70,6 +71,40 @@ final class KillBannerArt {
         } finally {
             pose.popMatrix();
         }
+    }
+
+    /** Kill Banner picker art: the skin's settled one-kill frame in a variant, with its emblem and kill mark, cropped and fitted into the box. */
+    static void thumb(GuiGraphics g, KillBannerStyle style, int variant, int x, int y, int w, int h) {
+        KillBannerStrip strip = style.strip(1);
+        Sprite cell = SPRITES.computeIfAbsent(style.id + "/thumb/" + variant, key -> {
+            byte[] rgba = strip.frame(strip.introEnd).clone();
+            style.recolor(rgba, variant);
+            NativeImage image = new NativeImage(strip.width, strip.height, true);
+            write(image, rgba, strip.width, strip.height);
+            return register("killbanner/thumb/" + style.id + "_" + variant, image);
+        });
+        int[] box = BOUNDS.computeIfAbsent(style, s -> bounds(strip.frame(strip.introEnd), strip.width, strip.height));
+        float k = Math.min(w / (float) box[2], h / (float) box[3]);
+        var pose = g.pose();
+        pose.pushMatrix();
+        try {
+            pose.translate(x + (w - box[2] * k) / 2, y + (h - box[3] * k) / 2);
+            pose.scale(k, k);
+            pose.translate(-box[0], -box[1]);
+            quad(g, cell, 0, 0, 1, -1);
+            if (style.heart) iconLayer(g, style, sprite(style.asset("heart.png")), 1, -1);
+            mark(g, sprite("/assets/theladscore/killbanner/mark.png"), style.anchorX, style.anchorY + style.markY, style.markSize, KillBannerPlayer.MARK_RED, 1);
+        } finally {
+            pose.popMatrix();
+        }
+    }
+
+    /** x, y, width and height of the frame's visible pixels. */
+    private static int[] bounds(byte[] rgba, int w, int h) {
+        int minX = w, minY = h, maxX = -1, maxY = -1;
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++)
+            if ((rgba[(y * w + x) * 4 + 3] & 255) > 24) { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); }
+        return maxX < 0 ? new int[] {0, 0, w, h} : new int[] {minX, minY, maxX - minX + 1, maxY - minY + 1};
     }
 
     private static int argb(int rgb, float alpha) {

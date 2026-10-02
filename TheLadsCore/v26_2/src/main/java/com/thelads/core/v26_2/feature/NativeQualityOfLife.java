@@ -17,7 +17,7 @@ public final class NativeQualityOfLife {
     private NativeQualityOfLife() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn("Autohide", "Jade", "LegacySwing", "BossBar", "DisableNarrator", "Chat", "BorderlessFullscreen", "Crosshair Tweaks",
+        ModuleSupport.registerBuiltIn("RawInput", "Autohide", "Jade", "LegacySwing", "BossBar", "DisableNarrator", "Chat", "BorderlessFullscreen", "Crosshair Tweaks",
             "SmoothHotbar", "Raised", "OldDamageTilt", "EnhancedToolbars", "EnhancedTooltips",
             "Nametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", "ShulkerBoxUtils", "DiscordRPC", "RenderScale");
         ((com.thelads.core.config.ActionOption)module("Jade").getOption("Settings and addons")).setAction(()->{
@@ -39,10 +39,28 @@ public final class NativeQualityOfLife {
         if (disabled && !narratorWasDisabled) Minecraft.getInstance().getNarrator().clear();
         narratorWasDisabled = disabled;
         NativeKillBanner.tick();
+        rawInput();
         ShulkerContents.tick();
         NativeDiscordPresence.tick();
         NativeQualityProbe.tick();
         NativeSharedContentProbe.tick();
+    }
+
+    private static Boolean rawApplied;
+    /** RawInput is vanilla's Raw Input (Mouse Settings): the module sets it, and a change made there flows back into the module. */
+    private static void rawInput() {
+        var options = Minecraft.getInstance().options;
+        Module module = module("RawInput");
+        if (module == null) return;
+        boolean vanilla = options.rawMouseInput().get();
+        if (rawApplied != null && vanilla != rawApplied) {
+            module.setEnabled(vanilla);
+            com.thelads.core.config.ConfigManager.save();
+        } else if (vanilla != module.isEnabled()) {
+            options.rawMouseInput().set(module.isEnabled());
+            options.save();
+        }
+        rawApplied = options.rawMouseInput().get();
     }
 
     public static Module module(String name) { return ModuleManager.getInstance().getModule(name); }

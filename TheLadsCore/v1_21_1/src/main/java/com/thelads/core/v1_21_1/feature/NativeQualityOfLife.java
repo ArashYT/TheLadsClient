@@ -21,7 +21,7 @@ public final class NativeQualityOfLife {
         // "Soon" card as on 26.x, whose presence tick sends nothing yet; no Discord connection is made.
         ModuleSupport.registerBuiltIn("DiscordRPC");
         // U3 HUD pipeline: the hud mixins (Autohide scope, SmoothHotbar, BossBar overlay).
-        ModuleSupport.registerBuiltIn("Autohide", "SmoothHotbar", "BossBar");
+        ModuleSupport.registerBuiltIn("RawInput", "Autohide", "SmoothHotbar", "BossBar");
         NativeAutohide.register();
         // NativeKillBanner through the KillBanner stats, attack and HUD mixins, as on 26.x.
         ModuleSupport.registerBuiltIn("KillBanner");
@@ -36,9 +36,27 @@ public final class NativeQualityOfLife {
         // Registers "Minimap" on the first tick once Xaero is found (the catalog export follows the revision).
         MinimapIntegration.tick();
         NativeKillBanner.tick();
+        rawInput();
         NativeQualityProbe.tick();
         NativeMenuAccessProbe.tick();
         NativeHudProbe.tick();
+    }
+
+    private static Boolean rawApplied;
+    /** RawInput is vanilla's Raw Input (Mouse Settings): the module sets it, and a change made there flows back into the module. */
+    private static void rawInput() {
+        var options = net.minecraft.client.Minecraft.getInstance().options;
+        Module module = module("RawInput");
+        if (module == null) return;
+        boolean vanilla = options.rawMouseInput().get();
+        if (rawApplied != null && vanilla != rawApplied) {
+            module.setEnabled(vanilla);
+            com.thelads.core.config.ConfigManager.save();
+        } else if (vanilla != module.isEnabled()) {
+            options.rawMouseInput().set(module.isEnabled());
+            options.save();
+        }
+        rawApplied = options.rawMouseInput().get();
     }
 
     public static Module module(String name) { return ModuleManager.getInstance().getModule(name); }
