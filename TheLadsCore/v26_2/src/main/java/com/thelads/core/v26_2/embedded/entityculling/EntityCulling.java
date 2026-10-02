@@ -57,6 +57,7 @@ public final class EntityCulling {
     private static WeakReference<ClientLevel> anchorLevel = new WeakReference<>(null);
     private static double anchorX, anchorY, anchorZ;
     private static int version;
+    private static boolean hookLogged;
 
     private EntityCulling() {}
 
@@ -72,6 +73,10 @@ public final class EntityCulling {
 
     /** Render thread: the camera of the main pass, as handed to the entity visibility check. */
     public static void camera(double x, double y, double z) {
+        if (QA && !hookLogged) {
+            hookLogged = true;
+            LOGGER.info("Entity culling: entity render hook active");
+        }
         ClientLevel level = Minecraft.getInstance().level;
         if (level != anchorLevel.get() || Math.abs(x - anchorX) > CAMERA_STEP || Math.abs(y - anchorY) > CAMERA_STEP || Math.abs(z - anchorZ) > CAMERA_STEP) {
             anchorLevel = new WeakReference<>(level);
@@ -230,6 +235,20 @@ public final class EntityCulling {
             LOGGER.info("Entity culling: entities {} drawn / {} culled, block entities {} drawn / {} culled, tracking {}, last pass {} us",
                 DRAWN.getAndSet(0), CULLED.getAndSet(0), BE_DRAWN.getAndSet(0), BE_CULLED.getAndSet(0), tracked.size(), lastPass / 1000);
         }
+    }
+
+    /** QA only: the ray caster against a synthetic wall, and that the culling state was merged into the game classes. */
+    public static void selfTest() {
+        OcclusionCullingInstance test = new OcclusionCullingInstance(REACH, new com.thelads.core.v26_2.embedded.entityculling.occlusion.DataProvider() {
+            @Override public boolean prepareChunk(int chunkX, int chunkZ) { return true; }
+            @Override public boolean isOpaqueFullCube(int x, int y, int z) { return x == 5; }
+        });
+        Vec3d camera = new Vec3d(0.5, 64.5, 0.5);
+        boolean hidden = !test.isAABBVisible(new Vec3d(10, 64, 0), new Vec3d(11, 65, 1), camera);
+        boolean open = test.isAABBVisible(new Vec3d(-11, 64, 0), new Vec3d(-10, 65, 1), camera);
+        LOGGER.info("Entity culling self-test: box behind a wall hidden {}, open box visible {}, state on entities {}, on block entities {}",
+            hidden ? "PASS" : "FAIL", open ? "PASS" : "FAIL", Cullable.class.isAssignableFrom(Entity.class) ? "merged" : "MISSING",
+            Cullable.class.isAssignableFrom(BlockEntity.class) ? "merged" : "MISSING");
     }
 
     private static MethodHandle irisShadowPass() {
