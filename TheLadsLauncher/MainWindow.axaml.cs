@@ -646,9 +646,7 @@ public partial class MainWindow : Window
         try
         {
             // Worlds, resource packs and shader packs are links to the shared folders: badge them and say where their content lives.
-            // A 1.8.9 profile's folders are its own, never shared, so they get no badge.
-            IReadOnlyList<SharedFolderStatus> statuses = GameVersionPolicy.KeepsOwnWorlds(_profileService.GetActiveProfile().MinecraftVersion)
-                ? Array.Empty<SharedFolderStatus>() : SharedContentService.Instance.GetStatus(_filesRootDir);
+            IReadOnlyList<SharedFolderStatus> statuses = SharedContentService.Instance.GetStatus(_filesRootDir);
             var sharedArea = statuses.FirstOrDefault(s => s.State is SharedFolderState.Shared or SharedFolderState.GlobalFolder
                 && SafeFileOps.IsSameOrInside(dir, s.ProfilePath));
             if (sharedArea != null) FilesPathText.Text = $"{dir}   (shared with every version: {sharedArea.SharedPath})";
@@ -3554,13 +3552,12 @@ public partial class MainWindow : Window
             });
             leftStack.Children.Add(metaPanel);
 
-            // Isolate toggle checkbox (1.8.9 always keeps its own settings, worlds and packs: nothing to choose)
-            bool ownWorlds = GameVersionPolicy.KeepsOwnWorlds(profile.MinecraftVersion);
+            // Isolate toggle checkbox (a 1.8.9 profile's shared settings come from Lunar Client's 1.8 profile when Lunar is installed)
+            bool fromLunar = GameVersionPolicy.UsesForge(profile.MinecraftVersion) && GameOptionsService.LunarOptions18() != null;
             var isolateCheck = new CheckBox
             {
-                Content = new TextBlock { Text = ownWorlds ? OwnWorldsText : IsolationText, TextWrapping = TextWrapping.Wrap },
-                IsChecked = profile.IsIsolated || ownWorlds,
-                IsEnabled = !ownWorlds,
+                Content = new TextBlock { Text = fromLunar ? IsolationText + LunarSettingsText : IsolationText, TextWrapping = TextWrapping.Wrap },
+                IsChecked = profile.IsIsolated,
                 FontSize = 12,
                 Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")),
                 Margin = new Thickness(0, 4, 0, 0)
@@ -3647,8 +3644,8 @@ public partial class MainWindow : Window
 
     private const string IsolationText =
         "Keep this profile's game settings separate (options.txt, keybinds). Worlds, resource packs, shader packs and servers are always shared from the global .minecraft folder.";
-    private const string OwnWorldsText =
-        "Minecraft 1.8.9 always keeps its own worlds, resource packs, shader packs and game settings: a world from a newer version would be corrupted in 1.8.9. Servers and screenshots are shared.";
+    private const string LunarSettingsText =
+        "\nOtherwise its settings come from Lunar Client's 1.8 profile (Lunar's files are never changed).";
 
     private async void AddProfile_Click(object? sender, RoutedEventArgs e)
     {
