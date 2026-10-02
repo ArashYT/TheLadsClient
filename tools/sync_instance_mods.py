@@ -66,7 +66,8 @@ COMPATIBLE_RELEASES = {('1.21.1', 'iris'): 'bAo1Qhte',
 KNOWN = {'autoreconnectrf': 'PRy8Khga', 'clientsort': 'K0AkAin6',
          'cloth-config': '9s6osm5g', 'fastershadowmapper': 'nSRLvOHG'}
 # Removed from the pack (modId -> Modrinth project), matched by either key. They are never surveyed, preserved or
-# shipped; lock() lists them under "retired" with their known hashes so launchers retire managed copies.
+# shipped; lock() lists them (like every mod that leaves a pack, NATIVE ones included) under "retired" with every
+# hash Lads shipped, so launchers retire those copies even without an installed-mod receipt.
 # GoodMC left in 1.2.3; it is not a native replacement, so it must not go into NATIVE. 1.4.6 dropped Gamma Utils,
 # Motion Blur (Plus) with its Satin library, Sound Physics Remastered and Client Sort.
 REMOVED = {'goodmc': 'hwir46QE', 'gammautils': 'wdLuzzEP', 'motionblur': 'fWundlde', 'motionblurplus': 'Qbkde6rq',
@@ -180,16 +181,25 @@ def entry(version, game):
             'projectUrl': 'https://modrinth.com/mod/' + project['slug']}
 
 
-def retired(old):
-    """Keep the old manifest's retired entries and add removed mods it still shipped, with their hashes."""
-    entries = {r['modId']: r for r in old.get('retired', [])}
+def history(old, entries, game):
+    """Every hash Lads shipped for this game: (published, retired). "published" keeps the earlier pins of mods still in the
+    pack; a mod that leaves it (REMOVED, NATIVE or no longer required) is retired with all of its hashes."""
+    pins = {e['modId']: e['sha512'] for e in entries}
+    shipped = {mod_id: list(hashes) for mod_id, hashes in old.get('published', {}).items()}
     for mod in old['mods']:
-        if removed(mod['modId'], mod['projectId']):
-            item = entries.setdefault(mod['modId'], {'modId': mod['modId'], 'projectId': mod['projectId'], 'name': mod['name'],
-                                                     'sha512': [], 'reason': 'Removed from The Lads Client pack.'})
-            if mod['sha512'] not in item['sha512']:
-                item['sha512'].append(mod['sha512'])
-    return sorted(entries.values(), key=lambda r: r['modId'])
+        hashes = shipped.setdefault(mod['modId'], [])
+        if mod['sha512'] not in hashes:
+            hashes.append(mod['sha512'])
+    retire = {r['modId']: r for r in old.get('retired', [])}
+    for mod in old['mods']:
+        if mod['modId'] in pins:
+            continue
+        reason = 'Replaced by native Lads Core functionality.' if mod['modId'] in NATIVE[game] else 'Removed from The Lads Client pack.'
+        item = retire.setdefault(mod['modId'], {'modId': mod['modId'], 'projectId': mod['projectId'], 'name': mod['name'],
+                                                'sha512': [], 'reason': reason})
+        item['sha512'] += [h for h in shipped[mod['modId']] if h not in item['sha512']]
+    published = {mod_id: [h for h in shipped[mod_id] if h != pins[mod_id]] for mod_id in sorted(shipped) if mod_id in pins}
+    return {mod_id: hashes for mod_id, hashes in published.items() if hashes}, sorted(retire.values(), key=lambda r: r['modId'])
 
 
 def lock(game, rows):
@@ -236,15 +246,17 @@ def lock(game, rows):
         entries = list(pool.map(lambda v: entry(v, game), selected.values()))
     if len({e['modId'] for e in entries}) != len(entries):
         raise ValueError('Duplicate Fabric mod IDs for ' + game)
-    retire = retired(old)
-    # A dependency or a fork can reintroduce a removed mod; fail before writing instead of shipping it again.
-    shipped = [e['modId'] for e in entries if removed(e['modId'], e['projectId'])
-               or any(e['modId'] == r['modId'] or e['projectId'] == r['projectId'] for r in retire)]
+    # A dependency or a fork can reintroduce a removed or native mod; fail before writing instead of shipping it again.
+    shipped = [e['modId'] for e in entries if removed(e['modId'], e['projectId']) or e['modId'] in NATIVE[game]
+               or any(e['modId'] == r['modId'] or e['projectId'] == r['projectId'] for r in old.get('retired', []))]
     if shipped:
         raise ValueError('Retired mods would ship again for ' + game + ': ' + ', '.join(shipped)
-                         + ' (drop the requiring mod, or remove the id from REMOVED and the manifest\'s retired list)')
+                         + ' (drop the requiring mod, or remove the id from REMOVED/NATIVE and the manifest\'s retired list)')
+    published, retire = history(old, entries, game)
     entries.sort(key=lambda e: e['modId'])
     manifest = {'minecraftVersion': game, 'resolveThroughApi': True, 'mods': entries}
+    if published:
+        manifest['published'] = published
     if retire:
         manifest['retired'] = retire
     target.parent.mkdir(parents=True, exist_ok=True)

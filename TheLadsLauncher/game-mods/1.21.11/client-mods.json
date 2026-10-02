@@ -1158,6 +1158,29 @@
       "projectUrl": "https://modrinth.com/mod/yacl"
     }
   ],
+  "published": {
+    "fabric-language-kotlin": [
+      "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77"
+    ],
+    "modmenu": [
+      "146f8c356f86c32e5aab76598e021ac123779c89fc7a51a486fccd2871d2751b02046b4eea3194e52f2e7f38abbb5f78301c8f49bde6e60e1839677db9c84e33"
+    ],
+    "notenoughanimations": [
+      "32a75704d907c3a6c63d3068971b8d10f2ea666589b14d9de1534d8623cff87a15cd86d999fc1ca4c054b434c104028b6d0fc522dd75af638cc5aebe42621a73"
+    ],
+    "sodium": [
+      "04c43f9e8534b87a52c42ffd51b0e344d4ef92dc9cc52da33d13af6a18bf74b05380d2027f1e0db982698d0aff274c42741c1e21b313b0cd75ed3af005fc98d9"
+    ],
+    "voicechat": [
+      "dab29df8577b220e1c2ad97b784c5acb837501c8ba42d83205c085f44b4a6df75bce2477b8c2c7905285d248fd2d195b3dc77f169cb11a226dc2965e23f5859a"
+    ],
+    "xaerominimap": [
+      "7df415f04472bf9de4cf5c2b6d11e640c1018d121829e859ea92bb61c75996c6a7fced5707e70743ac9a33aed725e5501e143f82a03f17fc022a1a8ed32c6238"
+    ],
+    "xaeroworldmap": [
+      "cf4a927acdb22e8c6c5febd461e473485b3ae95741be3f2d8fb4cffb544a2e99f7ce523b8c0f09c5bf4b7b9c918e1a478eb162c1af2f05b97acd587774794ff2"
+    ]
+  },
   "retired": [
     {
       "modId": "autohidehud",
@@ -1227,7 +1250,8 @@
       "projectId": "NNAgCjsB",
       "name": "Entity Culling",
       "sha512": [
-        "bb73145270e645c95a285fd01ce174f8f4b53e22c688e87d1a989f9afdf4e740ca3cb3984e23441ced8097c67e4e01f48d348d516b0903f756751d5c28e6de47"
+        "bb73145270e645c95a285fd01ce174f8f4b53e22c688e87d1a989f9afdf4e740ca3cb3984e23441ced8097c67e4e01f48d348d516b0903f756751d5c28e6de47",
+        "67c4fb10bec6dba3368e65cd57f1bb53b9ca4172b2dc391c3d524f2c6e88c8782d8ff5f9634d549fbf7590296d18042cca84b12f3a8035a12f2ab555420df5a9"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
     },
@@ -1353,7 +1377,8 @@
       "projectId": "zV5r3pPn",
       "name": "3D Skin Layers",
       "sha512": [
-        "04329d14e0af83b979e33ee5d200f2db1211a3ded5175d75d8d56dc466931990ad6582477258b82c02d4cc7108d9ca71bbe756377035d98904acd50e7fe3c9c5"
+        "04329d14e0af83b979e33ee5d200f2db1211a3ded5175d75d8d56dc466931990ad6582477258b82c02d4cc7108d9ca71bbe756377035d98904acd50e7fe3c9c5",
+        "d8911912a7935e8578c488b35711beaaf28127778a8ce120d77406c3636071b9b16813f4c467ee64fadda3104ae822711af237c1742005fce2d3defbb801f884"
       ],
       "reason": "Replaced by internal native 3D skin layer module in 1.4.2."
     },

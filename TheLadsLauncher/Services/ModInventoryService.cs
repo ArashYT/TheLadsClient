@@ -102,6 +102,8 @@ public sealed class ModInventoryService
         manifests.TryGetValue(version, out var manifest);
         var pack = manifest?.Mods.ToDictionary(m => m.ModId, StringComparer.Ordinal) ?? new Dictionary<string, ClientModInstaller.Entry>();
         var retiredHashes = manifest == null ? new Dictionary<string, HashSet<string>>() : ClientModInstaller.RetiredHashes(manifest);
+        var publishedHashes = manifest == null ? new Dictionary<string, HashSet<string>>() : ClientModInstaller.PublishedHashes(manifest);
+        bool Published(string id, string hash) => publishedHashes.TryGetValue(id, out var hashes) && hashes.Contains(hash);
         // As in the installer: without a manifest for this version nothing is retired, so receipt jars are ordinary user jars.
         var retireIds = receipt.Keys.Where(id => manifest != null && !pack.ContainsKey(id)).Concat(retiredHashes.Keys).ToHashSet(StringComparer.Ordinal);
 
@@ -148,7 +150,7 @@ public sealed class ModInventoryService
             if (entry != null && ownership != ModOwnership.Core)
             {
                 var pinned = ClientModInstaller.SameHash(file.Scan.Hash!, entry.Sha512);
-                if (pinned || (receipt.TryGetValue(id, out var owned) && ClientModInstaller.SameHash(file.Scan.Hash!, owned)))
+                if (Published(id, file.Scan.Hash!) || (receipt.TryGetValue(id, out var owned) && ClientModInstaller.SameHash(file.Scan.Hash!, owned)))
                 {
                     ownership = ModOwnership.Pack;
                     if (!pinned) notes.Add(file.Disabled ? "Disabled — outdated; updates when enabled" : $"Updates to {entry.Version} at the next launch");
@@ -162,9 +164,8 @@ public sealed class ModInventoryService
             }
             else if (retireIds.Contains(id))
             {
-                var published = retiredHashes.TryGetValue(id, out var hashes) && hashes.Contains(file.Scan.Hash!);
-                if ((receipt.TryGetValue(id, out var owned) && (ClientModInstaller.SameHash(file.Scan.Hash!, owned) || published))
-                    || (published && ClientModInstaller.IsLegacyName(name, id)))
+                // As in the installer: published bytes under any name, or the receipt's copy.
+                if (Published(id, file.Scan.Hash!) || (receipt.TryGetValue(id, out var owned) && ClientModInstaller.SameHash(file.Scan.Hash!, owned)))
                 {
                     ownership = ModOwnership.Retired;
                     status = ModEntryStatus.RetiredCopy;

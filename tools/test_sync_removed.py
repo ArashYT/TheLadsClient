@@ -1,4 +1,5 @@
-"""Offline checks that REMOVED mods cannot re-enter generated manifests or coverage.
+"""Offline checks that REMOVED and NATIVE mods cannot re-enter generated manifests or coverage, and that every hash Lads
+shipped stays recorded ("published" earlier pins, "retired" mods).
 
 Run from the repository root: python tools/test_sync_removed.py
 Uses the shipped manifests as read-only fixtures; everything is written to a temp directory.
@@ -90,6 +91,43 @@ class RemovedModsTest(unittest.TestCase):
         rows = [{'game': GAME, 'status': 'modrinth', 'projectId': requester['projectId'],
                  'selected': version(requester, requires=['hwir46QE'])}]
         with self.assertRaisesRegex(ValueError, 'oldcombat'):
+            sync.lock(GAME, rows)
+        self.assertEqual(self.target.read_text(encoding='utf8'), self.shipped)
+
+    def test_a_changed_pin_keeps_every_earlier_hash_in_published(self):
+        first = self.current['mods'][0]
+        old = self.current | {'mods': [first | {'sha512': 'a' * 128}] + self.current['mods'][1:],
+                              'published': {first['modId']: ['b' * 128, first['sha512']]}}
+        self.target.write_text(json.dumps(old), encoding='utf8')
+        self.serve(self.current['mods'])
+        sync.lock(GAME, [])
+        result = json.loads(self.target.read_text(encoding='utf8'))
+        self.assertEqual(result['mods'], self.current['mods'])
+        # Back on an earlier pin: it is the current one again, so it leaves the history list.
+        self.assertEqual(result['published'], {first['modId']: ['b' * 128, 'a' * 128]})
+
+    def test_a_mod_that_becomes_native_is_retired_with_all_its_hashes(self):
+        self.assertIn('clumps', sync.NATIVE[GAME])
+        clumps = self.goodmc | {'projectId': 'Wnxd13zP', 'name': 'Clumps', 'modId': 'clumps', 'versionId': 'Clumps01',
+                                'sha512': 'c' * 128}
+        old = self.current | {'mods': self.current['mods'] + [clumps], 'published': {'clumps': ['d' * 128]}}
+        self.target.write_text(json.dumps(old), encoding='utf8')
+        self.serve(old['mods'])
+        sync.lock(GAME, [])
+        result = json.loads(self.target.read_text(encoding='utf8'))
+        self.assertEqual(result['mods'], self.current['mods'])
+        self.assertNotIn('published', result)
+        self.assertIn({'modId': 'clumps', 'projectId': 'Wnxd13zP', 'name': 'Clumps', 'sha512': ['d' * 128, 'c' * 128],
+                       'reason': 'Replaced by native Lads Core functionality.'}, result['retired'])
+
+    def test_dependency_on_a_native_mod_fails_before_writing(self):
+        self.target.write_text(self.shipped, encoding='utf8')
+        clumps = self.goodmc | {'projectId': 'Wnxd13zP', 'modId': 'clumps', 'versionId': 'Clumps01', 'sha512': 'c' * 128}
+        self.serve(self.current['mods'] + [clumps])
+        requester = self.current['mods'][0]
+        rows = [{'game': GAME, 'status': 'modrinth', 'projectId': requester['projectId'],
+                 'selected': version(requester, requires=['Wnxd13zP'])}]
+        with self.assertRaisesRegex(ValueError, 'clumps'):
             sync.lock(GAME, rows)
         self.assertEqual(self.target.read_text(encoding='utf8'), self.shipped)
 
