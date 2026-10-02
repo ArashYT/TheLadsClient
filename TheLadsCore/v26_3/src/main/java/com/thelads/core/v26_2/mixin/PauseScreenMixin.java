@@ -18,28 +18,46 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PauseScreenMixin extends Screen {
     @Unique private GridLayout.RowHelper ladsPauseRows;
     @Unique private final java.util.List<net.minecraft.client.gui.components.AbstractWidget> ladsExtras=new java.util.ArrayList<>();
+    @Unique private final java.util.List<com.thelads.core.v26_2.gui.EssentialActions.Action> ladsEssentialActions=new java.util.ArrayList<>();
+    @Unique private java.util.List<net.minecraft.client.gui.components.AbstractWidget> ladsEssentialRow=new java.util.ArrayList<>();
+    @Unique private final java.util.List<net.minecraft.client.gui.components.AbstractWidget> ladsEssentialPending=new java.util.ArrayList<>();
+    @Unique private long ladsInitNanos;
     @Unique private Button ladsExtrasButton;
+    @Unique private Button ladsFullscreenButton;
     @Unique private boolean ladsLayoutReady;
     @Unique private void ladsLayout() {
         if(!((PauseScreen)(Object)this).showsPauseMenu())return;
         boolean changed=!ladsLayoutReady;
+        // Essential binds its buttons a moment after the screen opens; the row is rebuilt once they are ready.
+        if(!ladsEssentialPending.isEmpty()&&System.nanoTime()-ladsInitNanos<5_000_000_000L
+            &&ladsEssentialPending.removeIf(w->com.thelads.core.v26_2.gui.EssentialRow26.collect(this,w,ladsEssentialActions)))changed=true;
         for(var child:java.util.List.copyOf(children()))if(child instanceof net.minecraft.client.gui.components.AbstractWidget widget
-            &&(widget.getClass().getName().startsWith("gg.essential.")
-                || widget instanceof Button&&widget!=ladsExtrasButton&&widget.getWidth()<=30)) {
-            if(!ladsExtras.contains(widget))ladsExtras.add(widget);widget.visible=false;removeWidget(widget);changed=true;
+            &&widget!=ladsFullscreenButton&&!ladsEssentialRow.contains(widget)) {
+            if(widget.getClass().getName().startsWith("gg.essential.")) {
+                // Essential's actions get their own row above the account name; its proxies stay hidden.
+                widget.visible=false;removeWidget(widget);changed=true;
+                if(!com.thelads.core.v26_2.gui.EssentialRow26.collect(this,widget,ladsEssentialActions)&&!ladsEssentialPending.contains(widget))ladsEssentialPending.add(widget);
+            } else if(widget instanceof Button&&widget!=ladsExtrasButton&&widget.getWidth()<=30) {
+                if(!ladsExtras.contains(widget))ladsExtras.add(widget);widget.visible=false;removeWidget(widget);changed=true;
+            }
         }
         if(!changed)return;
         ladsLayoutReady=true;
-        if(!ladsExtras.isEmpty()&&ladsExtrasButton==null)ladsExtrasButton=addRenderableWidget(Button.builder(Component.literal("Essential & extras..."),b->minecraft.setScreenAndShow(new com.thelads.core.v26_2.gui.TitleExtrasScreen26(this,ladsExtras))).bounds(0,0,204,20).build());
-        var widgets=children().stream().filter(c->c instanceof Button).map(c->(Button)c)
+        if(!ladsExtras.isEmpty()&&ladsExtrasButton==null)ladsExtrasButton=addRenderableWidget(Button.builder(Component.literal("Extras..."),b->minecraft.setScreenAndShow(new com.thelads.core.v26_2.gui.TitleExtrasScreen26(this,ladsExtras))).bounds(0,0,204,20).build());
+        ladsEssentialRow.forEach(w->removeWidget(w));
+        ladsEssentialRow=com.thelads.core.v26_2.gui.EssentialRow26.place(w->addRenderableWidget(w),ladsEssentialActions,height,width-32);
+        var widgets=children().stream().filter(c->c instanceof Button&&c!=ladsFullscreenButton&&!ladsEssentialRow.contains(c)).map(c->(Button)c)
             .sorted(java.util.Comparator.comparingInt(this::ladsOrder)).toList();
         int columns=width<380?1:2;
         int total=Math.min(width-32,360),gap=6,cw=(total-gap*(columns-1))/columns;
         int rows=(widgets.size()+columns-1)/columns;
-        int top=Math.max(62,Math.min(height/3,height-rows*29-12));
-        int rowHeight=Math.max(17,Math.min(27,(height-top-10)/Math.max(1,rows)-3));
+        // The grid ends above the account name, and above Essential's row when there is one.
+        int bottom=height-32-(ladsEssentialActions.isEmpty()?0:com.thelads.core.client.title.TitleScreenTheme.ROW_SPACE);
+        int top=Math.max(62,Math.min(height/3,bottom-rows*29));
+        int rowHeight=Math.max(17,Math.min(27,(bottom-top)/Math.max(1,rows)-3));
         for(int i=0;i<widgets.size();i++) {
             var widget=widgets.get(i);widget.setX((width-total)/2+i%columns*(cw+gap));widget.setY(top+i/columns*(rowHeight+3));widget.setWidth(cw);widget.setHeight(rowHeight);
+            com.thelads.core.client.title.ButtonLift.enable(widget);
         }
     }
     @Unique private int ladsOrder(Button button){
@@ -58,6 +76,8 @@ public abstract class PauseScreenMixin extends Screen {
         g.fill(0,0,width,2,0xFFCF1535);
         var adapter=new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(g,font);
         com.thelads.core.client.title.TitleScreenTheme.renderLogo(adapter,width/2,12,Math.min(64,height/6));
+        g.fill(16,height-29,width-16,height-28,0x2944202A);
+        com.thelads.core.client.title.TitleScreenTheme.renderAccount(adapter,height,minecraft.getUser().getName(),Math.min(170,width-32));
         super.extractRenderState(g,mx,my,dt);
         ci.cancel();
     }
@@ -70,6 +90,11 @@ public abstract class PauseScreenMixin extends Screen {
     @Inject(method="init",at=@At("TAIL"),require=1)
     private void ladsRemoveReportButtons(CallbackInfo ci){
         ladsLayoutReady=false;ladsExtras.clear();ladsExtrasButton=null;
+        ladsEssentialActions.clear();ladsEssentialRow=new java.util.ArrayList<>();ladsFullscreenButton=null;
+        ladsEssentialPending.clear();ladsInitNanos=System.nanoTime();
+        if(((PauseScreen)(Object)this).showsPauseMenu())
+            ladsFullscreenButton=addRenderableWidget(new com.thelads.core.v26_2.gui.CompactButton26(width-26,6,20,20,Component.translatable("options.fullscreen"),
+                ()->minecraft.options.fullscreen().get()?"windowed":"fullscreen",com.thelads.core.v26_2.gui.CompactButton26::toggleFullscreen));
         for(var child:java.util.List.copyOf(children()))if(child instanceof net.minecraft.client.gui.components.AbstractWidget widget){
             String text=widget.getMessage().getString();
             if(widget instanceof net.minecraft.client.gui.components.StringWidget){removeWidget(widget);continue;}
