@@ -772,6 +772,7 @@
                     <TextBlock x:Name="GameLaunchVersionText" Text="Minecraft" Foreground="#E27676" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
                     <TextBlock x:Name="GameLaunchStatusText" Text="Initializing launch environment..." Foreground="#A0A1AA" FontSize="14" HorizontalAlignment="Center" />
                     <ProgressBar x:Name="GameLaunchProgressBar" Width="350" Height="8" Minimum="0" Maximum="100" Value="0" Foreground="{DynamicResource LadsAccent}" Background="#303137" CornerRadius="4" />
+                    <Button x:Name="CancelLaunchButton" Classes="action" Content="Cancel" MinWidth="120" Height="34" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Click="CancelLaunch_Click" />
                 </StackPanel>
             </Grid>
             <Grid x:Name="ManualLoginOverlay" Background="#F5121315" IsVisible="False" ZIndex="100">
