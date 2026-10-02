@@ -35,8 +35,8 @@
       "modId": "autohidehud",
       "name": "AutoHideHUD",
       "projectId": "WfEV6RRi",
-      "status": "modrinth",
-      "versionId": "xA0ObEfV"
+      "status": "native",
+      "implementation": "NativeAutohide"
     },
     {
       "game": "1.21.1",
@@ -91,8 +91,8 @@
       "modId": "capes",
       "name": "Capes",
       "projectId": "89Wsn8GD",
-      "status": "modrinth",
-      "versionId": "6SzVPVR4"
+      "status": "native",
+      "implementation": "embedded.capes"
     },
     {
       "game": "1.21.1",
@@ -115,16 +115,8 @@
       "modId": "classic_minecraft_icon",
       "name": "Classic Minecraft Icon",
       "projectId": "NTUQ8Yoi",
-      "status": "modrinth",
-      "versionId": "D7R2YEf6"
-    },
-    {
-      "game": "1.21.1",
-      "modId": "clientsort",
-      "name": "ClientSort",
-      "projectId": "K0AkAin6",
-      "status": "modrinth",
-      "versionId": "2gcFaqQd"
+      "status": "native",
+      "implementation": "WindowIconMixin"
     },
     {
       "game": "1.21.1",
@@ -179,8 +171,8 @@
       "modId": "controlling",
       "name": "Controlling",
       "projectId": "xv94TkTM",
-      "status": "modrinth",
-      "versionId": "hGJDoW2W"
+      "status": "native",
+      "implementation": "embedded.controlling"
     },
     {
       "game": "1.21.1",
@@ -227,24 +219,24 @@
       "modId": "entity_model_features",
       "name": "Entity Model Features",
       "projectId": "4I1XuqiY",
-      "status": "modrinth",
-      "versionId": "FMPLuEEv"
+      "status": "native",
+      "implementation": "embedded.emf"
     },
     {
       "game": "1.21.1",
       "modId": "entity_texture_features",
       "name": "Entity Texture Features",
       "projectId": "BVzZfTc1",
-      "status": "modrinth",
-      "versionId": "lmZfRqnz"
+      "status": "native",
+      "implementation": "embedded.etf"
     },
     {
       "game": "1.21.1",
       "modId": "entityculling",
       "name": "EntityCulling",
       "projectId": "NNAgCjsB",
-      "status": "modrinth",
-      "versionId": "AaC52CuD"
+      "status": "native",
+      "implementation": "embedded.entityculling"
     },
     {
       "game": "1.21.1",
@@ -291,8 +283,8 @@
       "modId": "fastipping",
       "name": "Fast IP Ping",
       "projectId": "9mtu0sUO",
-      "status": "modrinth",
-      "versionId": "CiB6psvm"
+      "status": "native",
+      "implementation": "embedded.fastipping"
     },
     {
       "game": "1.21.1",
@@ -323,16 +315,8 @@
       "modId": "fixbookgui",
       "name": "FixBookGUI",
       "projectId": "myKgAJq6",
-      "status": "modrinth",
-      "versionId": "7S8E0FG3"
-    },
-    {
-      "game": "1.21.1",
-      "modId": "forgeconfigapiport",
-      "name": "Forge Config API Port",
-      "projectId": "ohNO6lps",
-      "status": "modrinth",
-      "versionId": "N5qzq0XV"
+      "status": "native",
+      "implementation": "embedded.fixbookgui"
     },
     {
       "game": "1.21.1",
@@ -352,14 +336,6 @@
     },
     {
       "game": "1.21.1",
-      "modId": "gammautils",
-      "name": "Gamma Utils",
-      "projectId": "wdLuzzEP",
-      "status": "modrinth",
-      "versionId": "GweB3zZk"
-    },
-    {
-      "game": "1.21.1",
       "modId": "gpumemleakfix",
       "name": "Gpu memory leak fix mod",
       "projectId": null,
@@ -371,8 +347,8 @@
       "modId": "hoveringhotbar",
       "name": "Hovering Hotbar",
       "projectId": "IJ4PIJR2",
-      "status": "modrinth",
-      "versionId": "kJD2Sum4"
+      "status": "native",
+      "implementation": "embedded.hoveringhotbar"
     },
     {
       "game": "1.21.1",
@@ -387,8 +363,8 @@
       "modId": "immediatelyfast",
       "name": "ImmediatelyFast",
       "projectId": "5ZwdcRci",
-      "status": "modrinth",
-      "versionId": "7XKnsIC8"
+      "status": "native",
+      "implementation": "embedded.immediatelyfast"
     },
     {
       "game": "1.21.1",
@@ -443,8 +419,8 @@
       "modId": "ksyxis",
       "name": "Ksyxis",
       "projectId": "2ecVyZ49",
-      "status": "modrinth",
-      "versionId": "9CU8nnVG"
+      "status": "native",
+      "implementation": "embedded.ksyxis"
     },
     {
       "game": "1.21.1",
@@ -459,8 +435,8 @@
       "modId": "lazy_ai_pixelindiedev",
       "name": "Lazy AI",
       "projectId": "qgWgCnzi",
-      "status": "modrinth",
-      "versionId": "hONdhTof"
+      "status": "native",
+      "implementation": "embedded.lazyai"
     },
     {
       "game": "1.21.1",
@@ -529,15 +505,6 @@
     },
     {
       "game": "1.21.1",
-      "modId": "motionblurplus",
-      "name": "MotionBlur Plus",
-      "projectId": "fWundlde",
-      "status": "modrinth",
-      "replacement": "Original project replaces the newer fork",
-      "versionId": "BvbEzwcG"
-    },
-    {
-      "game": "1.21.1",
       "modId": "mousetweaks",
       "name": "Mouse Tweaks",
       "projectId": "aC3cM3Vq",
@@ -557,8 +524,8 @@
       "modId": "nbtac",
       "name": "NBT Autocomplete",
       "projectId": "UR0ocuEt",
-      "status": "modrinth",
-      "versionId": "5Cc4iwcu"
+      "status": "native",
+      "implementation": "embedded.nbtac"
     },
     {
       "game": "1.21.1",
@@ -618,19 +585,11 @@
     },
     {
       "game": "1.21.1",
-      "modId": "puzzleslib",
-      "name": "Puzzles Lib",
-      "projectId": "QAGBst4M",
-      "status": "modrinth",
-      "versionId": "Imj7cG2D"
-    },
-    {
-      "game": "1.21.1",
       "modId": "quick-pack",
       "name": "quick-pack",
       "projectId": "pSISfJ4O",
-      "status": "modrinth",
-      "versionId": "QOqEPNtJ"
+      "status": "native",
+      "implementation": "embedded.quickpack"
     },
     {
       "game": "1.21.1",
@@ -653,16 +612,16 @@
       "modId": "searchables",
       "name": "Searchables",
       "projectId": "fuuu3xnx",
-      "status": "modrinth",
-      "versionId": "tRdr8Bg3"
+      "status": "native",
+      "implementation": "embedded.controlling"
     },
     {
       "game": "1.21.1",
       "modId": "serverpingerfixer",
       "name": "Server Pinger Fixer",
       "projectId": "iqK5uv72",
-      "status": "modrinth",
-      "versionId": "YkchMFP2"
+      "status": "native",
+      "implementation": "embedded.serverpingerfixer"
     },
     {
       "game": "1.21.1",
@@ -687,14 +646,6 @@
       "projectId": "AANobbMI",
       "status": "modrinth",
       "versionId": "s7adptIg"
-    },
-    {
-      "game": "1.21.1",
-      "modId": "sound_physics_remastered",
-      "name": "Sound Physics Remastered",
-      "projectId": "qyVF9oeo",
-      "status": "modrinth",
-      "versionId": "tVu2EZ4u"
     },
     {
       "game": "1.21.1",
@@ -725,8 +676,8 @@
       "modId": "tooltipstxf",
       "name": "Tooltips TXF",
       "projectId": "RJXFHzQ1",
-      "status": "modrinth",
-      "versionId": "5mVtA9Jc"
+      "status": "native",
+      "implementation": "embedded.tooltips"
     },
     {
       "game": "1.21.1",
@@ -814,8 +765,8 @@
       "modId": "autohidehud",
       "name": "AutoHideHUD",
       "projectId": "WfEV6RRi",
-      "status": "modrinth",
-      "versionId": "6l0ekHEY"
+      "status": "native",
+      "implementation": "NativeAutohide"
     },
     {
       "game": "1.21.11",
@@ -870,8 +821,8 @@
       "modId": "capes",
       "name": "Capes",
       "projectId": "89Wsn8GD",
-      "status": "modrinth",
-      "versionId": "GAQAG80Q"
+      "status": "native",
+      "implementation": "embedded.capes"
     },
     {
       "game": "1.21.11",
@@ -894,16 +845,8 @@
       "modId": "classic_minecraft_icon",
       "name": "Classic Minecraft Icon",
       "projectId": "NTUQ8Yoi",
-      "status": "modrinth",
-      "versionId": "D7R2YEf6"
-    },
-    {
-      "game": "1.21.11",
-      "modId": "clientsort",
-      "name": "ClientSort",
-      "projectId": "K0AkAin6",
-      "status": "modrinth",
-      "versionId": "GOo6sdCe"
+      "status": "native",
+      "implementation": "WindowIconMixin"
     },
     {
       "game": "1.21.11",
@@ -958,8 +901,8 @@
       "modId": "controlling",
       "name": "Controlling",
       "projectId": "xv94TkTM",
-      "status": "modrinth",
-      "versionId": "A6W4m3vi"
+      "status": "native",
+      "implementation": "embedded.controlling"
     },
     {
       "game": "1.21.11",
@@ -1006,24 +949,24 @@
       "modId": "entity_model_features",
       "name": "Entity Model Features",
       "projectId": "4I1XuqiY",
-      "status": "modrinth",
-      "versionId": "xCEwAgx1"
+      "status": "native",
+      "implementation": "embedded.emf"
     },
     {
       "game": "1.21.11",
       "modId": "entity_texture_features",
       "name": "Entity Texture Features",
       "projectId": "BVzZfTc1",
-      "status": "modrinth",
-      "versionId": "TRe10vjj"
+      "status": "native",
+      "implementation": "embedded.etf"
     },
     {
       "game": "1.21.11",
       "modId": "entityculling",
       "name": "EntityCulling",
       "projectId": "NNAgCjsB",
-      "status": "modrinth",
-      "versionId": "CFBkR8Vm"
+      "status": "native",
+      "implementation": "embedded.entityculling"
     },
     {
       "game": "1.21.11",
@@ -1070,8 +1013,8 @@
       "modId": "fastipping",
       "name": "Fast IP Ping",
       "projectId": "9mtu0sUO",
-      "status": "modrinth",
-      "versionId": "d92wadxK"
+      "status": "native",
+      "implementation": "embedded.fastipping"
     },
     {
       "game": "1.21.11",
@@ -1102,8 +1045,8 @@
       "modId": "fixbookgui",
       "name": "FixBookGUI",
       "projectId": "myKgAJq6",
-      "status": "modrinth",
-      "versionId": "sxwpBDYf"
+      "status": "native",
+      "implementation": "embedded.fixbookgui"
     },
     {
       "game": "1.21.11",
@@ -1131,14 +1074,6 @@
     },
     {
       "game": "1.21.11",
-      "modId": "gammautils",
-      "name": "Gamma Utils",
-      "projectId": "wdLuzzEP",
-      "status": "modrinth",
-      "versionId": "aVJkWMQl"
-    },
-    {
-      "game": "1.21.11",
       "modId": "gpumemleakfix",
       "name": "Gpu memory leak fix mod",
       "projectId": null,
@@ -1150,8 +1085,8 @@
       "modId": "hoveringhotbar",
       "name": "Hovering Hotbar",
       "projectId": "IJ4PIJR2",
-      "status": "modrinth",
-      "versionId": "zotNQM7m"
+      "status": "native",
+      "implementation": "embedded.hoveringhotbar"
     },
     {
       "game": "1.21.11",
@@ -1166,8 +1101,8 @@
       "modId": "immediatelyfast",
       "name": "ImmediatelyFast",
       "projectId": "5ZwdcRci",
-      "status": "modrinth",
-      "versionId": "4EwhsTu7"
+      "status": "native",
+      "implementation": "embedded.immediatelyfast"
     },
     {
       "game": "1.21.11",
@@ -1222,8 +1157,8 @@
       "modId": "ksyxis",
       "name": "Ksyxis",
       "projectId": "2ecVyZ49",
-      "status": "modrinth",
-      "versionId": "9CU8nnVG"
+      "status": "native",
+      "implementation": "embedded.ksyxis"
     },
     {
       "game": "1.21.11",
@@ -1238,8 +1173,8 @@
       "modId": "lazy_ai_pixelindiedev",
       "name": "Lazy AI",
       "projectId": "qgWgCnzi",
-      "status": "modrinth",
-      "versionId": "sF1PSBbf"
+      "status": "native",
+      "implementation": "embedded.lazyai"
     },
     {
       "game": "1.21.11",
@@ -1307,14 +1242,6 @@
     },
     {
       "game": "1.21.11",
-      "modId": "motionblurplus",
-      "name": "MotionBlur Plus",
-      "projectId": "Qbkde6rq",
-      "status": "modrinth",
-      "versionId": "s9TbR2Ff"
-    },
-    {
-      "game": "1.21.11",
       "modId": "mousetweaks",
       "name": "Mouse Tweaks",
       "projectId": "aC3cM3Vq",
@@ -1334,8 +1261,8 @@
       "modId": "nbtac",
       "name": "NBT Autocomplete",
       "projectId": "UR0ocuEt",
-      "status": "modrinth",
-      "versionId": "QCCwjcnx"
+      "status": "native",
+      "implementation": "embedded.nbtac"
     },
     {
       "game": "1.21.11",
@@ -1406,8 +1333,8 @@
       "modId": "quick-pack",
       "name": "quick-pack",
       "projectId": "pSISfJ4O",
-      "status": "modrinth",
-      "versionId": "mUvD2wEJ"
+      "status": "native",
+      "implementation": "embedded.quickpack"
     },
     {
       "game": "1.21.11",
@@ -1430,16 +1357,16 @@
       "modId": "searchables",
       "name": "Searchables",
       "projectId": "fuuu3xnx",
-      "status": "modrinth",
-      "versionId": "8t7XWQgt"
+      "status": "native",
+      "implementation": "embedded.controlling"
     },
     {
       "game": "1.21.11",
       "modId": "serverpingerfixer",
       "name": "Server Pinger Fixer",
       "projectId": "iqK5uv72",
-      "status": "modrinth",
-      "versionId": "YkchMFP2"
+      "status": "native",
+      "implementation": "embedded.serverpingerfixer"
     },
     {
       "game": "1.21.11",
@@ -1464,14 +1391,6 @@
       "projectId": "AANobbMI",
       "status": "modrinth",
       "versionId": "UddlN6L4"
-    },
-    {
-      "game": "1.21.11",
-      "modId": "sound_physics_remastered",
-      "name": "Sound Physics Remastered",
-      "projectId": "qyVF9oeo",
-      "status": "modrinth",
-      "versionId": "pfqxi9qs"
     },
     {
       "game": "1.21.11",
@@ -1502,8 +1421,8 @@
       "modId": "tooltipstxf",
       "name": "Tooltips TXF",
       "projectId": "RJXFHzQ1",
-      "status": "modrinth",
-      "versionId": "L1xhTYi0"
+      "status": "native",
+      "implementation": "embedded.tooltips"
     },
     {
       "game": "1.21.11",
@@ -1534,8 +1453,8 @@
       "modId": "worldplaytimereborn",
       "name": "World Play Time Reborn",
       "projectId": "NDcygmHf",
-      "status": "modrinth",
-      "versionId": "g91HCVP5"
+      "status": "native",
+      "implementation": "embedded.playtime"
     },
     {
       "game": "1.21.11",
@@ -1646,8 +1565,8 @@
       "modId": "capes",
       "name": "Capes",
       "projectId": "89Wsn8GD",
-      "status": "modrinth",
-      "versionId": "ou6uEXQY"
+      "status": "native",
+      "implementation": "embedded.capes"
     },
     {
       "game": "26.2",
@@ -1670,16 +1589,8 @@
       "modId": "classic_minecraft_icon",
       "name": "Classic Minecraft Icon",
       "projectId": "NTUQ8Yoi",
-      "status": "modrinth",
-      "versionId": "utbL6qAb"
-    },
-    {
-      "game": "26.2",
-      "modId": "clientsort",
-      "name": "ClientSort",
-      "projectId": "K0AkAin6",
-      "status": "modrinth",
-      "versionId": "AYoACMch"
+      "status": "native",
+      "implementation": "WindowIconMixin"
     },
     {
       "game": "26.2",
@@ -1734,8 +1645,8 @@
       "modId": "controlling",
       "name": "Controlling",
       "projectId": "xv94TkTM",
-      "status": "modrinth",
-      "versionId": "sZHXONgm"
+      "status": "native",
+      "implementation": "embedded.controlling"
     },
     {
       "game": "26.2",
@@ -1782,24 +1693,24 @@
       "modId": "entity_model_features",
       "name": "Entity Model Features",
       "projectId": "4I1XuqiY",
-      "status": "modrinth",
-      "versionId": "uqpavrXj"
+      "status": "native",
+      "implementation": "embedded.emf"
     },
     {
       "game": "26.2",
       "modId": "entity_texture_features",
       "name": "Entity Texture Features",
       "projectId": "BVzZfTc1",
-      "status": "modrinth",
-      "versionId": "sTno2gjm"
+      "status": "native",
+      "implementation": "embedded.etf"
     },
     {
       "game": "26.2",
       "modId": "entityculling",
       "name": "EntityCulling",
       "projectId": "NNAgCjsB",
-      "status": "modrinth",
-      "versionId": "RWjup6Jf"
+      "status": "native",
+      "implementation": "embedded.entityculling"
     },
     {
       "game": "26.2",
@@ -1846,8 +1757,8 @@
       "modId": "fastipping",
       "name": "Fast IP Ping",
       "projectId": "9mtu0sUO",
-      "status": "modrinth",
-      "versionId": "uA3MAgMy"
+      "status": "native",
+      "implementation": "embedded.fastipping"
     },
     {
       "game": "26.2",
@@ -1878,16 +1789,8 @@
       "modId": "fixbookgui",
       "name": "FixBookGUI",
       "projectId": "myKgAJq6",
-      "status": "modrinth",
-      "versionId": "DnyCBqO4"
-    },
-    {
-      "game": "26.2",
-      "modId": "forgeconfigapiport",
-      "name": "Forge Config API Port",
-      "projectId": "ohNO6lps",
-      "status": "modrinth",
-      "versionId": "rSd3GiG8"
+      "status": "native",
+      "implementation": "embedded.fixbookgui"
     },
     {
       "game": "26.2",
@@ -1907,14 +1810,6 @@
     },
     {
       "game": "26.2",
-      "modId": "gammautils",
-      "name": "Gamma Utils",
-      "projectId": "wdLuzzEP",
-      "status": "modrinth",
-      "versionId": "bR4tEPFq"
-    },
-    {
-      "game": "26.2",
       "modId": "gpumemleakfix",
       "name": "Gpu memory leak fix mod",
       "projectId": null,
@@ -1926,8 +1821,8 @@
       "modId": "hoveringhotbar",
       "name": "Hovering Hotbar",
       "projectId": "IJ4PIJR2",
-      "status": "modrinth",
-      "versionId": "MK1sBb4k"
+      "status": "native",
+      "implementation": "embedded.hoveringhotbar"
     },
     {
       "game": "26.2",
@@ -1942,8 +1837,8 @@
       "modId": "immediatelyfast",
       "name": "ImmediatelyFast",
       "projectId": "5ZwdcRci",
-      "status": "modrinth",
-      "versionId": "pMWERcSu"
+      "status": "native",
+      "implementation": "embedded.immediatelyfast"
     },
     {
       "game": "26.2",
@@ -1998,8 +1893,8 @@
       "modId": "ksyxis",
       "name": "Ksyxis",
       "projectId": "2ecVyZ49",
-      "status": "modrinth",
-      "versionId": "9CU8nnVG"
+      "status": "native",
+      "implementation": "embedded.ksyxis"
     },
     {
       "game": "26.2",
@@ -2014,8 +1909,8 @@
       "modId": "lazy_ai_pixelindiedev",
       "name": "Lazy AI",
       "projectId": "qgWgCnzi",
-      "status": "modrinth",
-      "versionId": "jKkYzh8N"
+      "status": "native",
+      "implementation": "embedded.lazyai"
     },
     {
       "game": "26.2",
@@ -2083,14 +1978,6 @@
     },
     {
       "game": "26.2",
-      "modId": "motionblurplus",
-      "name": "MotionBlur Plus",
-      "projectId": "Qbkde6rq",
-      "status": "modrinth",
-      "versionId": "2nS9oAv4"
-    },
-    {
-      "game": "26.2",
       "modId": "mousetweaks",
       "name": "Mouse Tweaks",
       "projectId": "aC3cM3Vq",
@@ -2110,8 +1997,8 @@
       "modId": "nbtac",
       "name": "NBT Autocomplete",
       "projectId": "UR0ocuEt",
-      "status": "modrinth",
-      "versionId": "www41BUb"
+      "status": "native",
+      "implementation": "embedded.nbtac"
     },
     {
       "game": "26.2",
@@ -2171,19 +2058,11 @@
     },
     {
       "game": "26.2",
-      "modId": "puzzleslib",
-      "name": "Puzzles Lib",
-      "projectId": "QAGBst4M",
-      "status": "modrinth",
-      "versionId": "aNOJuoCM"
-    },
-    {
-      "game": "26.2",
       "modId": "quick-pack",
       "name": "quick-pack",
       "projectId": "pSISfJ4O",
-      "status": "modrinth",
-      "versionId": "8ud7G0oR"
+      "status": "native",
+      "implementation": "embedded.quickpack"
     },
     {
       "game": "26.2",
@@ -2206,16 +2085,16 @@
       "modId": "searchables",
       "name": "Searchables",
       "projectId": "fuuu3xnx",
-      "status": "modrinth",
-      "versionId": "bvFby61J"
+      "status": "native",
+      "implementation": "embedded.controlling"
     },
     {
       "game": "26.2",
       "modId": "serverpingerfixer",
       "name": "Server Pinger Fixer",
       "projectId": "iqK5uv72",
-      "status": "modrinth",
-      "versionId": "S5jb0bIg"
+      "status": "native",
+      "implementation": "embedded.serverpingerfixer"
     },
     {
       "game": "26.2",
@@ -2240,14 +2119,6 @@
       "projectId": "AANobbMI",
       "status": "modrinth",
       "versionId": "xJZxADzI"
-    },
-    {
-      "game": "26.2",
-      "modId": "sound_physics_remastered",
-      "name": "Sound Physics Remastered",
-      "projectId": "qyVF9oeo",
-      "status": "modrinth",
-      "versionId": "d8iioMMp"
     },
     {
       "game": "26.2",
@@ -2278,8 +2149,8 @@
       "modId": "tooltipstxf",
       "name": "Tooltips TXF",
       "projectId": "RJXFHzQ1",
-      "status": "modrinth",
-      "versionId": "2lzau1WE"
+      "status": "native",
+      "implementation": "embedded.tooltips"
     },
     {
       "game": "26.2",
@@ -2310,8 +2181,8 @@
       "modId": "worldplaytimereborn",
       "name": "World Play Time Reborn",
       "projectId": "NDcygmHf",
-      "status": "modrinth",
-      "versionId": "HWpqpkOX"
+      "status": "native",
+      "implementation": "embedded.playtime"
     },
     {
       "game": "26.2",
@@ -2422,8 +2293,8 @@
       "modId": "capes",
       "name": "Capes",
       "projectId": "89Wsn8GD",
-      "status": "modrinth",
-      "versionId": "I89rLLKh"
+      "status": "native",
+      "implementation": "embedded.capes"
     },
     {
       "game": "26.3",
@@ -2446,16 +2317,8 @@
       "modId": "classic_minecraft_icon",
       "name": "Classic Minecraft Icon",
       "projectId": "NTUQ8Yoi",
-      "status": "modrinth",
-      "versionId": "anhxCtFZ"
-    },
-    {
-      "game": "26.3",
-      "modId": "clientsort",
-      "name": "ClientSort",
-      "projectId": "K0AkAin6",
-      "status": "modrinth",
-      "versionId": "UWMryUad"
+      "status": "native",
+      "implementation": "WindowIconMixin"
     },
     {
       "game": "26.3",
@@ -2510,8 +2373,8 @@
       "modId": "controlling",
       "name": "Controlling",
       "projectId": "xv94TkTM",
-      "status": "modrinth",
-      "versionId": "4QeVlQxd"
+      "status": "native",
+      "implementation": "embedded.controlling"
     },
     {
       "game": "26.3",
@@ -2558,24 +2421,24 @@
       "modId": "entity_model_features",
       "name": "Entity Model Features",
       "projectId": "4I1XuqiY",
-      "status": "modrinth",
-      "versionId": "kdDVwkgV"
+      "status": "native",
+      "implementation": "embedded.emf"
     },
     {
       "game": "26.3",
       "modId": "entity_texture_features",
       "name": "Entity Texture Features",
       "projectId": "BVzZfTc1",
-      "status": "modrinth",
-      "versionId": "Hs3N31ud"
+      "status": "native",
+      "implementation": "embedded.etf"
     },
     {
       "game": "26.3",
       "modId": "entityculling",
       "name": "EntityCulling",
       "projectId": "NNAgCjsB",
-      "status": "modrinth",
-      "versionId": "F4loCvYt"
+      "status": "native",
+      "implementation": "embedded.entityculling"
     },
     {
       "game": "26.3",
@@ -2622,8 +2485,8 @@
       "modId": "fastipping",
       "name": "Fast IP Ping",
       "projectId": "9mtu0sUO",
-      "status": "modrinth",
-      "versionId": "N6hOHbOO"
+      "status": "native",
+      "implementation": "embedded.fastipping"
     },
     {
       "game": "26.3",
@@ -2654,16 +2517,8 @@
       "modId": "fixbookgui",
       "name": "FixBookGUI",
       "projectId": "myKgAJq6",
-      "status": "modrinth",
-      "versionId": "HVlSwXx3"
-    },
-    {
-      "game": "26.3",
-      "modId": "forgeconfigapiport",
-      "name": "Forge Config API Port",
-      "projectId": "ohNO6lps",
-      "status": "modrinth",
-      "versionId": "JpKvrr9J"
+      "status": "native",
+      "implementation": "embedded.fixbookgui"
     },
     {
       "game": "26.3",
@@ -2683,14 +2538,6 @@
     },
     {
       "game": "26.3",
-      "modId": "gammautils",
-      "name": "Gamma Utils",
-      "projectId": "wdLuzzEP",
-      "status": "modrinth",
-      "versionId": "b4sCL1Qe"
-    },
-    {
-      "game": "26.3",
       "modId": "gpumemleakfix",
       "name": "Gpu memory leak fix mod",
       "projectId": null,
@@ -2702,8 +2549,8 @@
       "modId": "hoveringhotbar",
       "name": "Hovering Hotbar",
       "projectId": "IJ4PIJR2",
-      "status": "modrinth",
-      "versionId": "FU0AqhCQ"
+      "status": "native",
+      "implementation": "embedded.hoveringhotbar"
     },
     {
       "game": "26.3",
@@ -2718,8 +2565,8 @@
       "modId": "immediatelyfast",
       "name": "ImmediatelyFast",
       "projectId": "5ZwdcRci",
-      "status": "modrinth",
-      "versionId": "3MP9UR23"
+      "status": "native",
+      "implementation": "embedded.immediatelyfast"
     },
     {
       "game": "26.3",
@@ -2774,8 +2621,8 @@
       "modId": "ksyxis",
       "name": "Ksyxis",
       "projectId": "2ecVyZ49",
-      "status": "modrinth",
-      "versionId": "9CU8nnVG"
+      "status": "native",
+      "implementation": "embedded.ksyxis"
     },
     {
       "game": "26.3",
@@ -2790,8 +2637,8 @@
       "modId": "lazy_ai_pixelindiedev",
       "name": "Lazy AI",
       "projectId": "qgWgCnzi",
-      "status": "modrinth",
-      "versionId": "2d1u7MgF"
+      "status": "native",
+      "implementation": "embedded.lazyai"
     },
     {
       "game": "26.3",
@@ -2859,14 +2706,6 @@
     },
     {
       "game": "26.3",
-      "modId": "motionblurplus",
-      "name": "MotionBlur Plus",
-      "projectId": "Qbkde6rq",
-      "status": "modrinth",
-      "versionId": "b63lihC1"
-    },
-    {
-      "game": "26.3",
       "modId": "mousetweaks",
       "name": "Mouse Tweaks",
       "projectId": "aC3cM3Vq",
@@ -2886,8 +2725,8 @@
       "modId": "nbtac",
       "name": "NBT Autocomplete",
       "projectId": "UR0ocuEt",
-      "status": "modrinth",
-      "versionId": "oyCeoqzt"
+      "status": "native",
+      "implementation": "embedded.nbtac"
     },
     {
       "game": "26.3",
@@ -2934,8 +2773,8 @@
       "modId": "optimizedcushions",
       "name": "Optimized Cushions",
       "projectId": "PD2xMNLQ",
-      "status": "modrinth",
-      "versionId": "c2nF5uKP"
+      "status": "native",
+      "implementation": "embedded.cushions"
     },
     {
       "game": "26.3",
@@ -2947,19 +2786,11 @@
     },
     {
       "game": "26.3",
-      "modId": "puzzleslib",
-      "name": "Puzzles Lib",
-      "projectId": "QAGBst4M",
-      "status": "modrinth",
-      "versionId": "oq3MI3wm"
-    },
-    {
-      "game": "26.3",
       "modId": "quick-pack",
       "name": "quick-pack",
       "projectId": "pSISfJ4O",
-      "status": "modrinth",
-      "versionId": "6LPWDWD1"
+      "status": "native",
+      "implementation": "embedded.quickpack"
     },
     {
       "game": "26.3",
@@ -2982,16 +2813,16 @@
       "modId": "searchables",
       "name": "Searchables",
       "projectId": "fuuu3xnx",
-      "status": "modrinth",
-      "versionId": "RlPMfNdS"
+      "status": "native",
+      "implementation": "embedded.controlling"
     },
     {
       "game": "26.3",
       "modId": "serverpingerfixer",
       "name": "Server Pinger Fixer",
       "projectId": "iqK5uv72",
-      "status": "modrinth",
-      "versionId": "S5jb0bIg"
+      "status": "native",
+      "implementation": "embedded.serverpingerfixer"
     },
     {
       "game": "26.3",
@@ -3016,14 +2847,6 @@
       "projectId": "AANobbMI",
       "status": "modrinth",
       "versionId": "bAZQdGpg"
-    },
-    {
-      "game": "26.3",
-      "modId": "sound_physics_remastered",
-      "name": "Sound Physics Remastered",
-      "projectId": "qyVF9oeo",
-      "status": "modrinth",
-      "versionId": "9loJgQlO"
     },
     {
       "game": "26.3",
@@ -3054,8 +2877,8 @@
       "modId": "tooltipstxf",
       "name": "Tooltips TXF",
       "projectId": "RJXFHzQ1",
-      "status": "modrinth",
-      "versionId": "kaF6Sdn3"
+      "status": "native",
+      "implementation": "embedded.tooltips"
     },
     {
       "game": "26.3",
@@ -3086,8 +2909,8 @@
       "modId": "worldplaytimereborn",
       "name": "World Play Time Reborn",
       "projectId": "NDcygmHf",
-      "status": "modrinth",
-      "versionId": "XfhYCqgX"
+      "status": "native",
+      "implementation": "embedded.playtime"
     },
     {
       "game": "26.3",

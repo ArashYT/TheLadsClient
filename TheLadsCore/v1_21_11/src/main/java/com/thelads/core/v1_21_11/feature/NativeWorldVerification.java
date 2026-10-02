@@ -252,7 +252,7 @@ public final class NativeWorldVerification {
             && mc.screen != null && mc.screen.getClass().getName().startsWith("gg.essential.")) essentialOpened(mc, now);
         if (hudProbe != null) hudProbe.tick();
         if (mc.level == null || mc.player == null || mc.player.isDeadOrDying() || mc.screen != menuScreen) {
-            finishMenuCapture(mc, new IllegalStateException("The requested QA menu was replaced before capture"));
+            finishMenuCapture(mc, new IllegalStateException("The requested QA menu was replaced before capture by " + (mc.screen == null ? "no screen" : mc.screen.getClass().getName())));
         } else if (now - menuOpenedAt > 30_000_000_000L) {
             finishMenuCapture(mc, new IllegalStateException("The requested QA menu did not finish rendering/readback within 30 seconds"));
         }
