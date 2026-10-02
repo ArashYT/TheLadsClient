@@ -63,6 +63,7 @@ public final class CoreProbe {
         STEPS.addAll(HudProbe.STEPS);
         STEPS.addAll(Probe145.STEPS);
         STEPS.addAll(Probe150e.STEPS);
+        STEPS.addAll(Probe150.STEPS);
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
     }
@@ -353,6 +354,7 @@ public final class CoreProbe {
         check(mismatched.isEmpty(), "every catalog row matches this game's registrations and switchability " + mismatched);
         java.util.Set<String> expected = new java.util.HashSet<>(Arrays.asList(NativeHud.MODULES));
         expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.TheLadsCore189.GAMEPLAY_MODULES));
+        for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.LIMITED) expected.add(module[0]);
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
         check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 2 /* DisableNarrator, ShulkerBoxUtils */

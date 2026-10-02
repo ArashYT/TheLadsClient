@@ -68,6 +68,14 @@ class CoreCatalogExporterTest {
         assertTrue(modules.get("PendingThing").get("externalModId").isJsonNull());
     }
 
+    @Test void aVersionLimitIsTheBuiltInModulesDetail() {
+        ModuleSupport.registerBuiltInLimited("FPS", "Minecraft 1.8.9 has no attack cooldown.");
+        var fps = byName(CoreCatalogExporter.toJson("1.5.0", "1.8.9", modules)).get("FPS");
+        assertEquals("builtIn", fps.get("support").getAsString());
+        assertTrue(fps.get("toggleable").getAsBoolean());
+        assertEquals("Included in The Lads Client. Changes apply immediately. Minecraft 1.8.9 has no attack cooldown.", fps.get("detail").getAsString());
+    }
+
     @Test void writesAtomicallyOnlyWhenTheRevisionChanges() throws Exception {
         ClientPaths.setBaseDir(dir);
         LadsGameBridge.set(new DefaultGameBridge() {
