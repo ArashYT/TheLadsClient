@@ -324,7 +324,8 @@ public final class HudProbe {
     }
 
     private static boolean resized(Minecraft mc) throws Exception {
-        check(!stacked(), "CPS at 150% overlaps Day");
+        check(!stacked(), "CPS at 150% overlaps Day " + bounds("CPS") + " / " + bounds("Day") + ", CPS size "
+            + ((SliderOption) module("CPS").getOption("Size")).getValue());
         rightClick(bounds("CPS"));
         return after(2);
     }
