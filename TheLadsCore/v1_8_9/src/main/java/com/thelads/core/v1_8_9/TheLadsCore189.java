@@ -11,6 +11,7 @@ import com.thelads.core.v1_8_9.feature.Crosshair189;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
 import com.thelads.core.v1_8_9.feature.RawMouse189;
+import com.thelads.core.v1_8_9.feature.Reconnect189;
 import com.thelads.core.v1_8_9.feature.TabTweaks189;
 import com.thelads.core.v1_8_9.gui.LadsTitleScreen189;
 import net.minecraft.client.Minecraft;
@@ -60,6 +61,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new NativeHud());
         Crosshair189.register();
         MinecraftForge.EVENT_BUS.register(new Crosshair189());
+        Reconnect189.register();
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(this);
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
@@ -82,7 +84,10 @@ public class TheLadsCore189 {
         {"Chat", "Minecraft 1.8.9 chat is unsigned, so Hide Signing Indicators has nothing to hide."},
         // Crosshair189 through Forge's crosshair overlay event, as 26.x NativeCrosshair.
         {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Dynamic "
-            + "Attack Gap, Item Cooldown and spyglass options have nothing to show."}
+            + "Attack Gap, Item Cooldown and spyglass options have nothing to show."},
+        // Reconnect189 through Forge's screen events, GuiDisconnectedAccessor and MinecraftMixin, as 26.x NativeReconnect.
+        {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9 and its chat is unsigned, so it reconnects to servers and local worlds, "
+            + "and Sign Configured Commands has nothing to sign; 1.8.9 servers cut chat messages at 100 characters."}
     };
 
     static void registerStatuses() {
