@@ -12,7 +12,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.ArmedEntityRenderState;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
@@ -22,6 +21,7 @@ import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.EquipmentClientInfo;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
@@ -183,14 +183,17 @@ public final class NativeOldAnimations {
         return true;
     }
 
-    /** Red armour on hurt: humanoid armour layers take the body's hurt overlay instead of none. */
-    public static int armourOverlay(EquipmentClientInfo.LayerType type, Object state, int vanilla) {
+    /** The hurt overlay's result on white (red over the colour at 0.7): what a hurt body shows, as a colour multiplier. */
+    static final int HURT_TINT = 0xFFFFB3B3;
+
+    /** Red armour on hurt: humanoid armour layers take the body's hurt red (as a tint: armour is drawn without the overlay). */
+    public static int armourColor(EquipmentClientInfo.LayerType type, Object state, int vanilla) {
         if (type != EquipmentClientInfo.LayerType.HUMANOID && type != EquipmentClientInfo.LayerType.HUMANOID_LEGGINGS
             && type != EquipmentClientInfo.LayerType.HUMANOID_BABY || !(state instanceof LivingEntityRenderState living)) return vanilla;
         OldAnimationsModule module = module();
         if (module == null || !module.tintArmour(MODERN, living.hasRedOverlay ? 1 : 0, 0)) return vanilla;
         APPLIED.add(Feature.RED_ARMOUR);
-        return LivingEntityRenderer.getOverlayCoords(living, 0);
+        return ARGB.multiply(vanilla, HURT_TINT);
     }
 
     /** ItemEntityRenderer extraction: a flat item is re-resolved without a display transform for the 1.7 icon. */
