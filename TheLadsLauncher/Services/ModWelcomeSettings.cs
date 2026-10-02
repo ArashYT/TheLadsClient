@@ -17,7 +17,7 @@ public static class ModWelcomeSettings
     /// <summary>Essential's Modrinth project: "essential" on 1.8.9 Forge, "essential-container" on Fabric.</summary>
     public const string EssentialProjectId = "k2ZPuTBm";
     public const string EssentialNote =
-        "While enabled, Lads accepts Essential's Terms of Use and Privacy Policy for you (essential.gg/terms-of-use) and turns off its Discord status";
+        "While enabled, Lads accepts Essential's Terms of Use and Privacy Policy for you unless you declined them (essential.gg/terms-of-use), and turns off its Discord status";
     private const string OnboardingFile = "onboarding.json";
 
     public static async Task<IReadOnlyList<string>> PrepareAsync(string gameDirectory, CancellationToken cancellationToken = default)
@@ -34,8 +34,9 @@ public static class ModWelcomeSettings
     /// <summary>
     /// Essential 1.5 (gg.essential.data.OnboardingData) reads its ToS answer, a plain "accepted_tos" boolean not tied to a
     /// ToS version, from the first onboarding.json that exists: &lt;.minecraft&gt;\essential, then the machine-wide
-    /// gg.essential.mod folder, then &lt;gameDir&gt;\essential. The profile's own file is created; the machine-wide
-    /// <paramref name="sharedOnboardingFiles"/> (<see cref="EssentialSharedOnboardingFiles"/>) are only updated when present.
+    /// gg.essential.mod folder, then &lt;gameDir&gt;\essential. Only an unanswered flag is set; a decline is kept. The profile's
+    /// own file is created; the machine-wide <paramref name="sharedOnboardingFiles"/> (<see cref="EssentialSharedOnboardingFiles"/>)
+    /// are only updated when present.
     /// </summary>
     public static async Task<IReadOnlyList<string>> PrepareEssentialAsync(string gameDirectory, IEnumerable<string> sharedOnboardingFiles,
         CancellationToken cancellationToken = default)
@@ -78,7 +79,8 @@ public static class ModWelcomeSettings
     private static string AcceptEssentialTerms(string text)
     {
         var root = ParseObject(text);
-        if (root["accepted_tos"]?.GetValueKind() == JsonValueKind.True) return text;
+        // Essential's flag is a nullable Boolean: absent or null is unanswered; false is the player's decline and is kept.
+        if (root["accepted_tos"]?.GetValueKind() is JsonValueKind.True or JsonValueKind.False) return text;
         root["accepted_tos"] = true;
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n";
     }
