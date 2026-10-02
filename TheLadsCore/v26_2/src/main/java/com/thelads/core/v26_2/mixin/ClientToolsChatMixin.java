@@ -3,6 +3,7 @@ package com.thelads.core.v26_2.mixin;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.thelads.core.client.ChatAnimation;
 import com.thelads.core.v26_2.feature.NativeClientTools;
+import com.thelads.core.v26_2.feature.NativeNicknames;
 import com.thelads.core.v26_2.feature.NativeQualityOfLife;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
@@ -29,6 +30,12 @@ public abstract class ClientToolsChatMixin {
         at = @At("HEAD"), argsOnly = true, ordinal = 0, require = 3)
     private Component ladsTimestamp(Component content) {
         return NativeClientTools.timestamp(content);
+    }
+
+    /** Nametags renames, rewritten once as a message arrives. */
+    @ModifyVariable(method = "addMessage", at = @At("HEAD"), argsOnly = true, require = 1)
+    private Component ladsRename(Component content) {
+        return NativeNicknames.rename(content);
     }
 
     @ModifyArg(method = "addMessage", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;addMessageToDisplayQueue(Lnet/minecraft/client/multiplayer/chat/GuiMessage;)V"), require = 1)

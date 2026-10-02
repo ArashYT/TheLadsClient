@@ -2,6 +2,7 @@ package com.thelads.core.v1_21_11.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.thelads.core.client.ChatAnimation;
+import com.thelads.core.v1_21_11.feature.NativeNicknames;
 import com.thelads.core.v1_21_11.feature.NativeQualityOfLife;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.GuiMessage;
@@ -24,6 +25,13 @@ public abstract class ChatMixin {
     @Unique private final ChatAnimation ladsAnimation = new ChatAnimation();
     @Unique private ChatComponent.ChatGraphicsAccess ladsGraphics;
     @Unique private float ladsSlide;
+
+    /** Nametags renames, rewritten once as a message arrives. */
+    @ModifyVariable(method = "addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/client/GuiMessageTag;)V",
+        at = @At("HEAD"), argsOnly = true, require = 1)
+    private Component ladsRename(Component content) {
+        return NativeNicknames.rename(content);
+    }
 
     @ModifyVariable(method = "addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/client/GuiMessageTag;)V",
         at = @At("HEAD"), argsOnly = true, ordinal = 0, require = 1)

@@ -1,17 +1,24 @@
 package com.thelads.core.v26_2.feature;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Module;
+import com.thelads.core.modules.ToggleNametagsModule;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.font.TextRenderable;
+import net.minecraft.client.renderer.SubmitNodeCollection;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.feature.NameTagFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
-import org.joml.Matrix4f;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Quaternionf;
 import org.slf4j.LoggerFactory;
 
 /** Invoked only by the existing opt-in isolated QA probe; restores preferences before returning. */
@@ -56,16 +63,29 @@ final class NativeNametagConnectionProbe {
             minecraft.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
             require((boolean) nameVisible.invoke(renderer, minecraft.player, 4.0), "own nametag appears in front third person"); passed++;
 
+            // Background and renames are set on the submitted tag (Essential's icon padding reads it); the renderer follows.
+            // Text Shadow is applied while rendering and is verified by the render capture.
             Method prepare = NameTagFeatureRenderer.class.getDeclaredMethod("prepareText", Font.class, NameTagFeatureRenderer.Submit.class);
             prepare.setAccessible(true);
-            var submit = new NameTagFeatureRenderer.Submit(new Matrix4f(), 0, 0, Component.literal("LadsQA"),
-                0xf000f0, 0xffffffff, 0x80000000, Font.DisplayMode.NORMAL);
             background.set(true);
-            require(effects((Font.PreparedText) prepare.invoke(null, minecraft.font, submit)) > 0, "name-tag renderer emits background geometry"); passed++;
+            require(effects((Font.PreparedText) prepare.invoke(null, minecraft.font, submitted("LadsQA"))) > 0, "name-tag renderer emits background geometry"); passed++;
             background.set(false);
-            require(effects((Font.PreparedText) prepare.invoke(null, minecraft.font, submit)) == 0, "background option removes geometry"); passed++;
+            require(submitted("LadsQA").backgroundColor() == 0, "background option clears the submitted tag's background"); passed++;
+            require(effects((Font.PreparedText) prepare.invoke(null, minecraft.font, submitted("LadsQA"))) == 0, "background option removes geometry"); passed++;
+            ToggleNametagsModule names = (ToggleNametagsModule) tags;
+            String nicknamesBefore = names.nicknames.getValue(), displayBefore = names.displayName.getValue();
+            try {
+                names.nicknames.setValue("QaNickTarget=QaNick");
+                names.displayName.setValue("QaSelf");
+                require(submitted("<QaNickTarget> hi QaNickTargets").text().getString().equals("<QaNick> hi QaNickTargets"), "name tags show nicknames for whole names only"); passed++;
+                var info = minecraft.getConnection().getPlayerInfo(minecraft.player.getUUID());
+                require(info != null && minecraft.gui.hud.getTabList().getNameForDisplay(info).getString().contains("QaSelf"), "tab list shows Your Display Name"); passed++;
+            } finally {
+                names.nicknames.setValue(nicknamesBefore);
+                names.displayName.setValue(displayBefore);
+            }
             tags.setEnabled(false);
-            require(effects((Font.PreparedText) prepare.invoke(null, minecraft.font, submit)) > 0, "disabling module restores vanilla background"); passed++;
+            require(effects((Font.PreparedText) prepare.invoke(null, minecraft.font, submitted("LadsQA"))) > 0, "disabling module restores vanilla background"); passed++;
 
             var connection = minecraft.getConnection().getConnection();
             require(connection instanceof PacketActivitySource, "real game connection implements packet activity hook"); passed++;
@@ -102,6 +122,17 @@ final class NativeNametagConnectionProbe {
             tags.setLastModified(tagsModified);
             signal.setLastModified(signalModified);
         }
+    }
+
+    private static NameTagFeatureRenderer.Submit submitted(String name) {
+        var collection = new SubmitNodeCollection();
+        var camera = new CameraRenderState();
+        camera.orientation = new Quaternionf();
+        collection.submitNameTag(new PoseStack(), Vec3.ZERO, 0, Component.literal(name), false, 0xf000f0, camera);
+        List<NameTagFeatureRenderer.Submit> submits = new ArrayList<>();
+        collection.nameTags.sortInto((node, ordered) -> { if (node instanceof NameTagFeatureRenderer.Submit submit) submits.add(submit); });
+        require(submits.size() == 1, "one name tag submitted, got " + submits.size());
+        return submits.get(0);
     }
 
     private static int effects(Font.PreparedText text) {
