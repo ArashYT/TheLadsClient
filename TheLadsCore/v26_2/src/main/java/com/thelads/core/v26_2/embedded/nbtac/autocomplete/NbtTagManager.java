@@ -1,0 +1,67 @@
+// Adapted from NBT Autocomplete 2.1 for Minecraft 26.2 by mt1006 (LGPL-3.0-only); modified by The Lads: repackaged into Lads Core.
+package com.thelads.core.v26_2.embedded.nbtac.autocomplete;
+
+import net.minecraft.resources.Identifier;
+import com.thelads.core.v26_2.embedded.nbtac.autocomplete.tag.GeneratedNbtTag;
+import com.thelads.core.v26_2.embedded.nbtac.autocomplete.tag.NbtTag;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class NbtTagManager
+{
+	private static final Map<String, NbtTagMap> tagMaps = new ConcurrentHashMap<>();
+	public static final Map<Identifier, String> blockToBlockEntityMap = new ConcurrentHashMap<>();
+	private static @Nullable NbtTagMap moddedEntityTagMap = null;
+
+	public static void add(String key, NbtTagMap tagMap, DataSource source)
+	{
+		tagMap.source = source;
+		tagMaps.merge(key, tagMap, (m1, m2) -> m1.source.priority > m2.source.priority ? m1 : m2);
+	}
+
+	public static @Nullable NbtTagMap get(@Nullable String key)
+	{
+		if (key == null) { return null; }
+
+		if (key.startsWith("block/"))
+		{
+			Identifier id = Identifier.tryParse(key.substring(6));
+			String blockEntityKey = blockToBlockEntityMap.get(id);
+			if (blockEntityKey != null) { key = blockEntityKey; }
+		}
+
+		NbtTagMap tagMap = tagMaps.get(key);
+		if (tagMap == null && key.startsWith("entity/"))
+		{
+			Identifier id = Identifier.tryParse(key.substring(7));
+			if (id != null && !id.getNamespace().equals("minecraft")) { return getForModdedEntity(); }
+		}
+
+		return tagMap;
+	}
+
+	private static @Nullable NbtTagMap getForModdedEntity()
+	{
+		if (moddedEntityTagMap != null) { return moddedEntityTagMap; }
+
+		moddedEntityTagMap = new NbtTagMap();
+		getRawMap("_entity/minecraft:_entity").values().forEach(moddedEntityTagMap::add);
+		getRawMap("_entity/minecraft:_living_entity").forEach((k, v) ->
+				moddedEntityTagMap.add(new GeneratedNbtTag(v, 0, null).withSubtext((s) -> "[?] " + s)));
+		getRawMap("_entity/minecraft:_mob").forEach((k, v) ->
+				moddedEntityTagMap.add(new GeneratedNbtTag(v, 0, null).withSubtext((s) -> "[??] " + s)));
+
+		return moddedEntityTagMap;
+	}
+
+	private static Map<String, NbtTag> getRawMap(String tagMapId)
+	{
+		NbtTagMap nbtTagMap = NbtTagManager.get(tagMapId);
+		if (nbtTagMap == null) { return Map.of(); }
+
+		Map<String, NbtTag> rawMap = nbtTagMap.getRawMap();
+		return rawMap != null ? rawMap : Map.of();
+	}
+}

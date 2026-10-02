@@ -32,5 +32,11 @@ public final class EmbeddedMods {
         }
         // Optimizes Cushion-Backport's entities, so only while that mod is loaded.
         if (active("optimizedcushionsbackport") && FabricLoader.getInstance().isModLoaded("cushionbackport")) OptimizedCushionsClient.init();
+        if (active("fixbookgui")) com.thelads.core.v1_21_1.embedded.fixbookgui.FixBookGui.init();
+        if (active("worldplaytime")) new com.thelads.core.v1_21_1.embedded.playtime.fabric.WorldPlayTimeFabric().onInitializeClient();
+        if (active("hoveringhotbar")) com.thelads.core.v1_21_1.embedded.hoveringhotbar.client.HoveringHotbarClient.init();
+        if (active("tooltipstxf")) com.thelads.core.v1_21_1.embedded.tooltips.ExtraTooltips.init();
+        if (active("capes")) com.thelads.core.v1_21_1.embedded.capes.Capes.init();
+        EmbeddedModsProbe.initialize();
     }
 }

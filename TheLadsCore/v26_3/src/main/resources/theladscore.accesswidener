@@ -150,3 +150,6 @@ accessible field net/minecraft/client/renderer/GameRenderer guiRenderer Lnet/min
 accessible field net/minecraft/client/renderer/rendertype/RenderType state Lnet/minecraft/client/renderer/rendertype/RenderSetup;
 accessible class net/minecraft/client/renderer/rendertype/RenderSetup$TextureBinding
 accessible field net/minecraft/client/renderer/GameRenderer fogRenderer Lnet/minecraft/client/renderer/fog/FogRenderer;
+
+# Embedded FixBookGUI
+accessible field net/minecraft/client/gui/screens/inventory/BookViewScreen IMAGE_HEIGHT I

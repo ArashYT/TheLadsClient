@@ -5,7 +5,7 @@
   "name": "The Lads Core",
   "description": "The Lads Core multi-version client mod (1.21.1)",
   "authors": ["The Lads"],
-  "license": ["CC0-1.0", "MPL-2.0", "LGPL-3.0-only", "Apache-2.0", "MIT", "LGPL-3.0-or-later"],
+  "license": ["CC0-1.0", "MPL-2.0", "LGPL-3.0-only", "Apache-2.0", "MIT", "LGPL-3.0-or-later", "LGPL-2.1-only"],
   "icon": "assets/modid/icon.png",
   "environment": "*",
   "accessWidener": "theladscore.accesswidener",
@@ -31,7 +31,13 @@
     "theladscore.embedded.lazyai.mixins.json",
     "theladscore.embedded.entityculling.mixins.json",
     "theladscore.embedded.cushions.mixins.json",
-    "theladscore.embedded.immediatelyfast.mixins.json"
+    "theladscore.embedded.immediatelyfast.mixins.json",
+    "theladscore.embedded.fixbookgui.mixins.json",
+    "theladscore.embedded.playtime.mixins.json",
+    "theladscore.embedded.hoveringhotbar.mixins.json",
+    "theladscore.embedded.nbtac.mixins.json",
+    "theladscore.embedded.controlling.mixins.json",
+    "theladscore.embedded.capes.mixins.json"
   ],
   "custom": {
     "badoptimizations:cache_hooks": { "lightmap": "com.thelads.core.v1_21_1.feature.FullbrightLightmapHook" }

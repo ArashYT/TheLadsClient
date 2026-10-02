@@ -66,3 +66,9 @@ accessible field net/minecraft/client/renderer/MultiBufferSource$BufferSource fi
 accessible field net/minecraft/client/renderer/GameRenderer fogRenderer Lnet/minecraft/client/renderer/fog/FogRenderer;
 accessible method com/mojang/blaze3d/opengl/DirectStateAccess bufferSubData (IJLjava/nio/ByteBuffer;I)V
 accessible method com/mojang/blaze3d/opengl/DirectStateAccess bufferData (ILjava/nio/ByteBuffer;I)V
+
+# Embedded FixBookGUI
+accessible field net/minecraft/client/gui/screens/inventory/BookViewScreen IMAGE_HEIGHT I
+
+# Embedded Controlling
+extendable method net/minecraft/client/gui/screens/options/controls/KeyBindsList$Entry refreshEntry ()V

@@ -72,3 +72,11 @@ accessible field com/mojang/blaze3d/platform/GlStateManager$BooleanState enabled
 accessible field net/minecraft/client/gui/GuiGraphics bufferSource Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;
 mutable field net/minecraft/client/gui/GuiGraphics bufferSource Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;
 accessible field com/mojang/blaze3d/systems/RenderSystem shaderLightDirections [Lorg/joml/Vector3f;
+
+# Embedded FixBookGUI
+accessible field net/minecraft/client/gui/screens/inventory/BookViewScreen IMAGE_HEIGHT I
+accessible class net/minecraft/client/gui/screens/inventory/BookEditScreen$Pos2i
+accessible method net/minecraft/client/gui/screens/inventory/BookEditScreen$Pos2i <init> (II)V
+
+# Embedded Controlling
+extendable method net/minecraft/client/gui/screens/options/controls/KeyBindsList$Entry refreshEntry ()V

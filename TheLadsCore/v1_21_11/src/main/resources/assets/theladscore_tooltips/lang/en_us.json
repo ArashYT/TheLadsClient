@@ -1,0 +1,17 @@
+{
+  "theladscore.tooltips.food": "Nutrition: %s Saturation: %s",
+  "theladscore.tooltips.compostable": "Compostable: %s%%",
+  "theladscore.tooltips.burn_time": "Burn Time: %s",
+  "theladscore.tooltips.cooldown": "Cooldown: %s",
+  "theladscore.tooltips.song_duration": "Duration: %s",
+  "theladscore.tooltips.enchantability": "Enchantability: %s",
+  "theladscore.tooltips.repair_cost": "Repair Cost: %s",
+  "theladscore.tooltips.strength": "Hardness: %s Resistance: %s",
+  "theladscore.tooltips.enchantment_power": "Enchantment Power: %s",
+  "theladscore.tooltips.mining_level": "Mining Level: %s",
+  "theladscore.tooltips.mining_speed": "Mining Speed: %s",
+  "theladscore.tooltips.seconds": "%ss",
+  "theladscore.tooltips.components": "Components: %s",
+  "theladscore.tooltips.hold_ctrl": "CTRL",
+  "theladscore.tooltips.components_title": "Components:"
+}

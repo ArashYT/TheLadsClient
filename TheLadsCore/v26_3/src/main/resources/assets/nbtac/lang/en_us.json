@@ -1,0 +1,117 @@
+{
+  "nbtac.options": "NBT Autocomplete Settings",
+
+  "nbtac.options.style": "Style",
+  "nbtac.options.suggestions": "Suggestions",
+  "nbtac.options.suggestion_priority": "Suggestion Priority",
+  "nbtac.options.item_components": "Item Components",
+  "nbtac.options.debugging_options": "Debugging Options",
+
+
+
+  "nbtac.options.field.short_boolean": "Short Boolean",
+  "nbtac.options.field.short_boolean.desc": "Suggests 1b/0b instead of true/false for boolean value. Note that it doesn't apply to raw JSON format, as it requires true/false form.",
+
+  "nbtac.options.field.tag_quotation_marks": "Put Tags In Quotation Marks",
+  "nbtac.options.field.tag_quotation_marks.false": "When necessary",
+  "nbtac.options.field.tag_quotation_marks.true": "Always",
+  "nbtac.options.field.tag_quotation_marks.desc": "Puts tag names in quotation marks.\ntrue - Always\nfalse - When necessary",
+
+  "nbtac.options.field.string_quotation_marks": "Put Strings In Quotation Marks",
+  "nbtac.options.field.string_quotation_marks.false": "When necessary",
+  "nbtac.options.field.string_quotation_marks.true": "Always",
+  "nbtac.options.field.string_quotation_marks.desc": "Puts values of string type in quotation marks.\ntrue - Always\nfalse - When necessary",
+
+  "nbtac.options.field.default_quotation_mark": "Default Quotation Mark",
+  "nbtac.options.field.default_quotation_mark.single": "Single (')",
+  "nbtac.options.field.default_quotation_mark.double": "Double (\")",
+  "nbtac.options.field.default_quotation_mark.desc": "Defines what kind of quotation mark will be used by default.\nsingle - [']\ndouble - [\"]\nIf you're on 1.21.4 or older note that it doesn't apply to JSON text components.",
+
+  "nbtac.options.field.json_string_suggestion": "JSON String Suggestion",
+  "nbtac.options.field.json_string_suggestion.none": "None",
+  "nbtac.options.field.json_string_suggestion.recommended": "Recommended",
+  "nbtac.options.field.json_string_suggestion.default_for_strings": "Default For Strings",
+  "nbtac.options.field.json_string_suggestion.legacy_separated": "Legacy, Separated (' \")",
+  "nbtac.options.field.json_string_suggestion.legacy_merged": "Legacy, Merged ('\")",
+  "nbtac.options.field.json_string_suggestion.legacy_backslash": "Legacy, Backslash (\"\\\")",
+  "nbtac.options.field.json_string_suggestion.desc": "Defines simple string opening suggestion for JSON text components.\nnone - None\nrecommended - Same as \"default_for_strings\" on 1.20.4 and newer, same as \"legacy_separated\" on older.\ndefault_for_strings - uses quote type from \"Default Quotation Mark Type\" setting.\nlegacy_separated - [' \"]\nlegacy_merged - ['\"] - similar to legacy_separated, but without space.\nlegacy_backslash - [\"\\\"].",
+
+  "nbtac.options.field.hide_mc_namespace_in_tags": "Hide Minecraft Namespace In Tags",
+  "nbtac.options.field.hide_mc_namespace_in_tags.desc": "Hides \"minecraft:\" namespace from tag suggestions.",
+
+  "nbtac.options.field.hide_mc_namespace_in_strings": "Hide Minecraft Namespace In Strings",
+  "nbtac.options.field.hide_mc_namespace_in_strings.desc": "Hides \"minecraft:\" namespace from string suggestions.",
+
+
+  "nbtac.options.field.ignore_letter_case": "Ignore Letter Case",
+  "nbtac.options.field.ignore_letter_case.desc": "Ignores letter case when providing tag name suggestions.",
+
+  "nbtac.options.field.show_tag_hints": "Show Tag Hints",
+  "nbtac.options.field.show_tag_hints.desc": "Shows tag hints (like its type or source) next to its name in a suggestion list.",
+
+  "nbtac.options.field.update_on_cursor_movement": "Update on Cursor Movement",
+  "nbtac.options.field.update_on_cursor_movement.desc": "Updates suggestions on cursor movement.\nThis applies to all command suggestions, not only these provided by NBT Autocomplete.\nThis setting restores behavior from before Minecraft 26.1, and setting it to false doesn't change anything on older versions.",
+
+
+  "nbtac.options.field.custom_sorting": "Custom Sorting",
+  "nbtac.options.field.custom_sorting.desc": "Allows the mod to use non-alphabetical suggestion sorting.",
+
+  "nbtac.options.field.mark_recommended": "Mark Recommended",
+  "nbtac.options.field.mark_recommended.desc": "Marks recommended suggestions with \"<*>\" in a hint.",
+
+  "nbtac.options.field.recommended_at_the_top": "Recommended At The Top",
+  "nbtac.options.field.recommended_at_the_top.desc": "Places recommended suggestions at the top of the list. Requires custom sorting.",
+
+  "nbtac.options.field.mark_irrelevant": "Mark Irrelevant",
+  "nbtac.options.field.mark_irrelevant.desc": "Marks irrelevant suggestions with \"<I>\" in a hint.",
+
+  "nbtac.options.field.gray_out_irrelevant": "Gray Out Irrelevant",
+  "nbtac.options.field.gray_out_irrelevant.desc": "Grays out irrelevant suggestions.",
+
+  "nbtac.options.field.placing_of_irrelevant": "Placing Of Irrelevant",
+  "nbtac.options.field.placing_of_irrelevant.normal": "Normal",
+  "nbtac.options.field.placing_of_irrelevant.at_the_bottom": "At The Bottom",
+  "nbtac.options.field.placing_of_irrelevant.hidden": "Hidden",
+  "nbtac.options.field.placing_of_irrelevant.desc": "Specifies the placing of irrelevant suggestions.\nPossible values: normal, at_the_bottom, hidden\nValues other than \"normal\" require custom sorting to be enabled.",
+
+
+  "nbtac.options.field.hide_mc_namespace_in_components": "Hide Minecraft Namespace In Components",
+  "nbtac.options.field.hide_mc_namespace_in_components.desc": "Hides \"minecraft:\" namespace from item component suggestions.",
+
+  "nbtac.options.field.show_custom_data_as_relevant": "Show \"custom_data\" As Relevant",
+  "nbtac.options.field.show_custom_data_as_relevant.desc": "When enabled it will always show \"minecraft:custom_data\" item component as relevant suggestion. When disabled it will always be shown as irrelevant.",
+
+  "nbtac.options.field.show_custom_model_data_as_relevant": "Show \"custom_model_data\" As Relevant",
+  "nbtac.options.field.show_custom_model_data_as_relevant.desc": "When enabled it will always show \"minecraft:custom_model_data\" item component as relevant suggestion. When disabled it will always be shown as irrelevant.",
+
+  "nbtac.options.field.unknown_item_components": "Unknown Item Components",
+  "nbtac.options.field.unknown_item_components.relevant_by_default": "Relevant By Default",
+  "nbtac.options.field.unknown_item_components.relevant_within_namespace": "Relevant Within Namespace",
+  "nbtac.options.field.unknown_item_components.irrelevant_by_default": "Irrelevant By Default",
+  "nbtac.options.field.unknown_item_components.desc": "Specifies default relevancy of unknown item data components.\nThis applies mainly to modded components.\nIf you see unknown item components in vanilla (with only NBTac installed), report this as an issue.\nrelevant_by_default - unknown item components are marked as relevant by default.\nrelevant_within_namespace - unknown item components are marked as relevant only if their ID is in the same namespace as item ID.\nirrelevant_by_default - unknown item components are marked as irrelevant by default.",
+
+
+  "nbtac.options.field.vanilla_ids_sorting": "Vanilla IDs Sorting",
+  "nbtac.options.field.vanilla_ids_sorting.0": "Without Custom Sorting",
+  "nbtac.options.field.vanilla_ids_sorting.1": "Depends",
+  "nbtac.options.field.vanilla_ids_sorting.2": "Always At The Top",
+  "nbtac.options.field.vanilla_ids_sorting.3": "Always In The Middle",
+  "nbtac.options.field.vanilla_ids_sorting.desc": "Specifies the method vanilla IDs (in \"minecraft:\" namespace) are sorted in relation to non-vanilla IDs (from mods). It applies only to suggestions provided by NBT Autocomplete. This setting is also strongly related to \"Hide Minecraft Namespace In Strings\" setting.\n0 - Without Custom Sorting - with hidden vanilla namespace it will cause IDs to be scattered around IDs from mods, therefore it isn't recommended.\n1 - Depends - placed at the top only with namespace hidden, otherwise in the middle.\n2 - Always At The Top\n3 - Always In The Middle\nOther values will be treated as 1.",
+
+
+  "nbtac.options.field.debug_mode": "Debug Mode",
+  "nbtac.options.field.debug_mode.desc": "Enables additional messages and checks useful for debugging.",
+
+  "nbtac.options.field.debug_sleep": "Debug Loading Sleep",
+  "nbtac.options.field.debug_sleep.0": "[disabled]",
+  "nbtac.options.field.debug_sleep.desc": "Delays suggestion loading to better measure time it takes (value in milliseconds, recommended to set to a few thousand).",
+
+  "nbtac.options.field.debug_config_screen": "Debug Config Screen",
+  "nbtac.options.field.debug_config_screen.desc": "Shows settings GUI after exiting realms screen. It isn't reset to default value by GUI reset button!",
+
+
+
+  "nbtac.options.common.tooltip": "%s\n§8Default value: %s",
+  "nbtac.options.common.reset_settings": "Reset Settings",
+  "nbtac.options.common.gui_debug_warning": "Config screen debug mode is enabled!"
+}
