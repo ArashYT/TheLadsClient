@@ -274,11 +274,12 @@ public final class CoreProbe {
         return after(10);
     }
 
-    /** The redesigned pause menu's grid and its Multiplayer row, which asks before leaving the world (Stay in game here). */
+    /** The grouped pause menu (PauseMenuLayout) and its Multiplayer button, which asks before leaving the world (Stay in game here). */
     private static boolean pauseMultiplayer(Minecraft mc) throws Exception {
         GuiButton lads = ((LadsPauseButton) pause).ladsButton(), multiplayer = ((LadsPauseButton) pause).ladsMultiplayerButton();
         check(mc.currentScreen == pause && multiplayer != null && multiplayer.visible && multiplayer.width == lads.width
-            && multiplayer.yPosition < lads.yPosition && lads.yPosition + lads.height <= pause.height, "the pause menu's buttons are in the Lads grid, Multiplayer above Lads Client");
+            && multiplayer.yPosition > lads.yPosition && multiplayer.xPosition < lads.xPosition && lads.yPosition + lads.height <= pause.height,
+            "the pause menu is in groups: Options | Lads Client, then Multiplayer on the next row");
         click(multiplayer.xPosition + multiplayer.width / 2, multiplayer.yPosition + multiplayer.height / 2);
         return after(10);
     }
