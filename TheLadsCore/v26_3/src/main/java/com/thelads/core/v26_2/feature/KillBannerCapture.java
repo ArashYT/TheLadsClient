@@ -54,6 +54,9 @@ final class KillBannerCapture {
         fire();
     }
 
+    /** Started and not yet finished: another capture waits so the frames do not mix. */
+    static boolean busy() { return step >= 0 && step < SHOTS.length + PICKERS.length; }
+
     /** Each completed game frame (NativeWorldVerification.renderedFrame). */
     static void frame(RenderTarget target, Path game) {
         if (step < 0 || step >= SHOTS.length + PICKERS.length || capturing) return;

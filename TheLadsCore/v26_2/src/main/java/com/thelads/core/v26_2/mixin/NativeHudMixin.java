@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -33,6 +34,13 @@ public class NativeHudMixin {
         graphics.pose().translate(offset, 0);
         com.thelads.core.v26_2.feature.raised.NativeRaised.selection(graphics, pipeline, sprite, x, y, width, height);
         graphics.pose().popMatrix();
+    }
+
+    // 1.7 Animations' No heart flashing: vanilla's health-bar blink flag.
+    @ModifyArg(method = "extractPlayerHealth", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Hud;extractHearts("
+        + "Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/world/entity/player/Player;IIIIFIIIZ)V"), index = 10, require = 1)
+    private boolean lads$noHeartFlash(boolean blink) {
+        return com.thelads.core.v26_2.feature.NativeOldAnimations.heartsBlink(blink);
     }
 
     @Inject(method = "extractHotbarAndDecorations", at = @At("HEAD"), require = 1)
