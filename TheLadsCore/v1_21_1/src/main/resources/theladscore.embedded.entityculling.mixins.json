@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_1.embedded.entityculling.mixin",
+  "plugin": "com.thelads.core.v1_21_1.embedded.entityculling.EntityCullingMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [],
+  "client": ["EntityCullableMixin", "BlockEntityCullableMixin", "EntityRenderDispatcherMixin", "BlockEntityRenderDispatcherMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

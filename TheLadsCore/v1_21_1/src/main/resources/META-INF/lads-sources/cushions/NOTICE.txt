@@ -1,0 +1,8 @@
+Optimized Cushions Backport 1.0.0 by NikitaCartes
+https://github.com/NikitaCartes/Optimized-Cushions (branch backport-stonecutter, commit a6de9ccc8cfd6a93baa6bb5a09eec1ebca8ced03)
+Copyright (c) 2026 NikitaCartes. MIT License, see LICENSE beside this file.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_21_1.embedded.cushions); the Stonecutter sources are resolved for Fabric and
+Minecraft 1.21.1, the client entrypoint is called from Core's client initializer and both mixin configs share one
+plugin that applies them only while Cushion-Backport is loaded. The embedded copy stays inactive while the
+original Optimized Cushions Backport jar is installed.

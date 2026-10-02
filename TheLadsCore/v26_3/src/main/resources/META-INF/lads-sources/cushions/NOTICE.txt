@@ -1,0 +1,8 @@
+Optimized Cushions 1.0.0 by NikitaCartes
+https://github.com/NikitaCartes/Optimized-Cushions (tag 1.0.0, commit 430602dcc943e7f1b233509cf3df57fabf802bad)
+Copyright (c) 2026 NikitaCartes. MIT License, see LICENSE beside this file.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v26_2.embedded.cushions); the Stonecutter sources are resolved for Fabric and
+Minecraft 26.3, the client entrypoint is called from Core's client initializer and both mixin configs share one
+plugin that keeps the upstream OBE rule for the client half. The embedded copy stays inactive while the
+original Optimized Cushions jar is installed.

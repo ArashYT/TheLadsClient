@@ -139,3 +139,14 @@ accessible method net/minecraft/client/renderer/entity/EntityRenderer extractSha
 accessible field net/minecraft/client/renderer/entity/EntityRenderer shadowRadius F
 accessible field net/minecraft/client/renderer/entity/EntityRenderer shadowStrength F
 accessible method net/minecraft/world/entity/projectile/arrow/AbstractArrow isInGround ()Z
+accessible class net/minecraft/server/packs/FilePackResources$SharedZipFileAccess
+# ImmediatelyFast (embedded)
+accessible field net/minecraft/client/gui/render/GuiItemAtlas texture Lcom/mojang/renderpearl/api/textures/GpuTexture;
+accessible field net/minecraft/client/gui/render/GuiItemAtlas depthTexture Lcom/mojang/renderpearl/api/textures/GpuTexture;
+accessible field net/minecraft/client/gui/render/GuiItemAtlas allocator Lnet/minecraft/client/gui/render/DynamicAtlasAllocator;
+accessible field net/minecraft/client/gui/render/DynamicAtlasAllocator usedSlotByKey Ljava/util/Map;
+accessible field net/minecraft/client/gui/render/DynamicAtlasAllocator$Slot fresh Z
+accessible field net/minecraft/client/renderer/GameRenderer guiRenderer Lnet/minecraft/client/gui/render/GuiRenderer;
+accessible field net/minecraft/client/renderer/rendertype/RenderType state Lnet/minecraft/client/renderer/rendertype/RenderSetup;
+accessible class net/minecraft/client/renderer/rendertype/RenderSetup$TextureBinding
+accessible field net/minecraft/client/renderer/GameRenderer fogRenderer Lnet/minecraft/client/renderer/fog/FogRenderer;

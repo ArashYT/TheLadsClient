@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_11.embedded.ksyxis.mixin",
+  "plugin": "com.thelads.core.v1_21_11.embedded.ksyxis.KsyxisMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": ["MinecraftServerMixin", "PrepareSpawnTaskPreparingMixin", "PrepareSpawnTaskReadyMixin"],
+  "client": ["MinecraftMixin"],
+  "injectors": { "defaultRequire": 0 }
+}

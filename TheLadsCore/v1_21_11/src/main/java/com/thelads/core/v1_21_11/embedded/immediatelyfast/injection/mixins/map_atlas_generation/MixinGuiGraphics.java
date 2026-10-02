@@ -1,0 +1,51 @@
+/*
+ * This file is part of ImmediatelyFast - https://github.com/RaphiMC/ImmediatelyFast
+ * Copyright (C) 2023-2026 RK_01/RaphiMC and contributors
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+// Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_21_11.embedded.immediatelyfast).
+package com.thelads.core.v1_21_11.embedded.immediatelyfast.injection.mixins.map_atlas_generation;
+
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.textures.GpuSampler;
+import com.mojang.blaze3d.textures.GpuTextureView;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.state.MapRenderState;
+import com.thelads.core.v1_21_11.embedded.immediatelyfast.injection.interfaces.IMapRenderState;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+
+import static com.thelads.core.v1_21_11.embedded.immediatelyfast.feature.map_atlas_generation.MapAtlasTexture.ATLAS_SIZE;
+import static com.thelads.core.v1_21_11.embedded.immediatelyfast.feature.map_atlas_generation.MapAtlasTexture.MAP_SIZE;
+
+@Mixin(GuiGraphics.class)
+public abstract class MixinGuiGraphics {
+
+    @WrapOperation(method = "submitMapRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;submitBlit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lcom/mojang/blaze3d/textures/GpuTextureView;Lcom/mojang/blaze3d/textures/GpuSampler;IIIIFFFFI)V", ordinal = 0))
+    private void modifyTextureCoordinates(GuiGraphics instance, RenderPipeline pipeline, GpuTextureView textureView, GpuSampler sampler, int x1, int y1, int x2, int y2, float u1, float u2, float v1, float v2, int color, Operation<Void> original, @Local(argsOnly = true) MapRenderState renderState) {
+        final IMapRenderState immediatelyFast$renderState = (IMapRenderState) renderState;
+        if (immediatelyFast$renderState.immediatelyFast$getAtlasTexture() != null && immediatelyFast$renderState.immediatelyFast$getAtlasTexture().getTextureId().equals(renderState.texture)) {
+            u1 = (float) immediatelyFast$renderState.immediatelyFast$getAtlasX() / ATLAS_SIZE;
+            u2 = (float) (immediatelyFast$renderState.immediatelyFast$getAtlasX() + MAP_SIZE) / ATLAS_SIZE;
+            v1 = (float) immediatelyFast$renderState.immediatelyFast$getAtlasY() / ATLAS_SIZE;
+            v2 = (float) (immediatelyFast$renderState.immediatelyFast$getAtlasY() + MAP_SIZE) / ATLAS_SIZE;
+        }
+        original.call(instance, pipeline, textureView, sampler, x1, y1, x2, y2, u1, u2, v1, v2, color);
+    }
+
+}

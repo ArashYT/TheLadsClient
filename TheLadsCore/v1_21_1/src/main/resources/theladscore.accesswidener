@@ -45,3 +45,30 @@ extendable class net/minecraft/client/model/geom/ModelPart$Cube
 accessible field net/minecraft/client/model/geom/ModelPart$Cube polygons [Lnet/minecraft/client/model/geom/ModelPart$Polygon;
 accessible field net/minecraft/world/entity/Entity yRot F
 accessible field net/minecraft/world/entity/projectile/AbstractArrow inGround Z
+accessible class net/minecraft/server/packs/FilePackResources$SharedZipFileAccess
+# ImmediatelyFast (embedded)
+accessible class net/minecraft/client/gui/Font$StringRenderOutput
+accessible method net/minecraft/client/gui/font/FontSet$GlyphInfoFilter select (Z)Lcom/mojang/blaze3d/font/GlyphInfo;
+accessible method net/minecraft/client/gui/Font getFontSet (Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/client/gui/font/FontSet;
+accessible field net/minecraft/client/Minecraft fontManager Lnet/minecraft/client/gui/font/FontManager;
+accessible field net/minecraft/client/gui/font/FontManager fontSets Ljava/util/Map;
+accessible field net/minecraft/client/renderer/entity/layers/WolfCollarLayer WOLF_COLLAR_LOCATION Lnet/minecraft/resources/ResourceLocation;
+accessible field com/mojang/blaze3d/vertex/ByteBufferBuilder pointer J
+accessible field com/mojang/blaze3d/vertex/BufferBuilder buffer Lcom/mojang/blaze3d/vertex/ByteBufferBuilder;
+accessible method net/minecraft/client/renderer/MultiBufferSource$BufferSource <init> (Lcom/mojang/blaze3d/vertex/ByteBufferBuilder;Ljava/util/SequencedMap;)V
+accessible method net/minecraft/client/renderer/MultiBufferSource$BufferSource endBatch (Lnet/minecraft/client/renderer/RenderType;Lcom/mojang/blaze3d/vertex/BufferBuilder;)V
+mutable field net/minecraft/client/renderer/MultiBufferSource$BufferSource sharedBuffer Lcom/mojang/blaze3d/vertex/ByteBufferBuilder;
+accessible method net/minecraft/client/renderer/RenderType$CompositeRenderType state ()Lnet/minecraft/client/renderer/RenderType$CompositeState;
+accessible field net/minecraft/client/renderer/RenderStateShard name Ljava/lang/String;
+accessible class net/minecraft/client/gui/MapRenderer$MapInstance
+accessible field net/minecraft/client/renderer/MultiBufferSource$BufferSource fixedBuffers Ljava/util/SequencedMap;
+accessible field net/minecraft/client/renderer/OutlineBufferSource outlineBufferSource Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;
+accessible field com/mojang/blaze3d/platform/GlStateManager BLEND Lcom/mojang/blaze3d/platform/GlStateManager$BlendState;
+accessible class com/mojang/blaze3d/platform/GlStateManager$BlendState
+accessible field com/mojang/blaze3d/platform/GlStateManager DEPTH Lcom/mojang/blaze3d/platform/GlStateManager$DepthState;
+accessible class com/mojang/blaze3d/platform/GlStateManager$DepthState
+accessible class com/mojang/blaze3d/platform/GlStateManager$BooleanState
+accessible field com/mojang/blaze3d/platform/GlStateManager$BooleanState enabled Z
+accessible field net/minecraft/client/gui/GuiGraphics bufferSource Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;
+mutable field net/minecraft/client/gui/GuiGraphics bufferSource Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;
+accessible field com/mojang/blaze3d/systems/RenderSystem shaderLightDirections [Lorg/joml/Vector3f;
