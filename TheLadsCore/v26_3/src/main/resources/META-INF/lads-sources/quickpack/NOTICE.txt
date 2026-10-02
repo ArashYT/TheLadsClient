@@ -1,0 +1,11 @@
+quick-pack by Drex
+https://github.com/DrexHD/quick-pack (commit b80dac13af15e6d389acc4a62d561d225b5828ff, "Improve mod compatibility",
+2026-07-29, mod_version 1.4.0), the last revision released under the MIT License.
+Copyright (c) 2025 Drex. MIT License, see LICENSE beside this file.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v26_2.embedded.quickpack) and adapted to
+Minecraft 26.3 (injection points, local-variable capture and the overlay/title-screen hooks follow this version's
+code). The pack shipped quick-pack 1.5.1, which upstream relicensed under the GPL-3.0 on 2026-07-29; none of
+that later code is used here, so the 1.5.0 additions (parallel atlas mipmap generation, font provider
+selection) are not part of this copy. Config file kept: config/quick-pack.json. The embedded copy stays
+inactive while the original quick-pack jar is installed.

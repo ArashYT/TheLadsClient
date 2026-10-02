@@ -3,7 +3,7 @@ package com.thelads.core.v1_21_11.embedded.etf.mixin.mixins.mods.imediatelyfast;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.rendertype.RenderType;
-import net.raphimc.immediatelyfast.feature.core.BatchableBufferSource;
+import com.thelads.core.v1_21_11.embedded.immediatelyfast.feature.core.BatchableBufferSource; // The Lads: ImmediatelyFast is embedded too
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;

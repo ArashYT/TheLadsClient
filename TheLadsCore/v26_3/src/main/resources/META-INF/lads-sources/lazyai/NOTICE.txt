@@ -1,0 +1,6 @@
+Lazy AI behaviour in Lads Core (com.thelads.core.v26_2.embedded.lazyai)
+
+An independent implementation written for The Lads Client 1.4.6. It recreates the behaviour described for the
+Lazy AI mod (lazy_ai_pixelindiedev, "Optimizes mob AI by scaling calculations based on distance to players")
+without using, reading or deriving from that mod's GPL-3.0 code. Integrated server only; inactive while the
+original Lazy AI jar is installed.

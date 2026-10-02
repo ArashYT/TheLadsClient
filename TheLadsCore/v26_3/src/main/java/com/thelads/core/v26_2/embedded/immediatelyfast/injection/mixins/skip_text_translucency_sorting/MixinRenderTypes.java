@@ -1,0 +1,39 @@
+/*
+ * This file is part of ImmediatelyFast - https://github.com/RaphiMC/ImmediatelyFast
+ * Copyright (C) 2023-2026 RK_01/RaphiMC and contributors
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+// Modified by The Lads: repackaged into Lads Core (com.thelads.core.v26_2.embedded.immediatelyfast).
+package com.thelads.core.v26_2.embedded.immediatelyfast.injection.mixins.skip_text_translucency_sorting;
+
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
+
+@Mixin(value = RenderTypes.class, priority = 500)
+public abstract class MixinRenderTypes {
+
+    @Redirect(method = {
+        "lambda$static$22" /*TEXT_POLYGON_OFFSET*/,
+        "lambda$static$23" /*TEXT_INTENSITY_POLYGON_OFFSET*/,
+        "lambda$static$25" /*TEXT_INTENSITY_SEE_THROUGH*/
+    }, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/rendertype/RenderSetup$RenderSetupBuilder;sortOnUpload()Lnet/minecraft/client/renderer/rendertype/RenderSetup$RenderSetupBuilder;"))
+    private static RenderSetup.RenderSetupBuilder disableTranslucencySorting(final RenderSetup.RenderSetupBuilder instance) {
+        return instance;
+    }
+
+}

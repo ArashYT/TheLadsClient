@@ -5,11 +5,14 @@
   "name": "The Lads Core",
   "description": "The Lads Core multi-version client mod (1.21.1)",
   "authors": ["The Lads"],
-  "license": ["CC0-1.0", "MPL-2.0", "LGPL-3.0-only", "Apache-2.0"],
+  "license": ["CC0-1.0", "MPL-2.0", "LGPL-3.0-only", "Apache-2.0", "MIT", "LGPL-3.0-or-later"],
   "icon": "assets/modid/icon.png",
   "environment": "*",
   "accessWidener": "theladscore.accesswidener",
   "entrypoints": {
+    "main": [
+      "com.thelads.core.v1_21_1.embedded.EmbeddedModsMain"
+    ],
     "client": [
       "com.thelads.core.v1_21_1.TheLadsCoreClient121"
     ]
@@ -20,7 +23,15 @@
     "theladscore.v1_21_1.qa.mixins.json",
     "theladscore.v1_21_1.chrome.mixins.json",
     "theladscore.embedded.etf.mixins.json",
-    "theladscore.embedded.emf.mixins.json"
+    "theladscore.embedded.emf.mixins.json",
+    "theladscore.embedded.ksyxis.mixins.json",
+    "theladscore.embedded.serverpingerfixer.mixins.json",
+    "theladscore.embedded.fastipping.mixins.json",
+    "theladscore.embedded.quickpack.mixins.json",
+    "theladscore.embedded.lazyai.mixins.json",
+    "theladscore.embedded.entityculling.mixins.json",
+    "theladscore.embedded.cushions.mixins.json",
+    "theladscore.embedded.immediatelyfast.mixins.json"
   ],
   "custom": {
     "badoptimizations:cache_hooks": { "lightmap": "com.thelads.core.v1_21_1.feature.FullbrightLightmapHook" }

@@ -46,7 +46,6 @@ jar {
 
 // Embedded Entity Texture/Model Features (LGPL-3.0-only): upstream's compile-only APIs, and the modified sources in the jar.
 repositories {
-    maven { url 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
     maven { url 'https://repo.redlance.org/public'; content { includeGroup 'com.zigythebird.playeranim' } }
 }
 dependencies {
@@ -62,3 +61,34 @@ processResources {
     from('src/main/java') { include 'com/thelads/core/v1_21_1/embedded/etf/**'; into 'META-INF/lads-sources/etf/v1_21_1' }
     from('src/main/java') { include 'com/thelads/core/v1_21_1/embedded/emf/**'; into 'META-INF/lads-sources/emf/v1_21_1' }
 }
+
+// Embedded LGPL mods (1.4.6): the complete modified sources ship in the jar beside their notices.
+processResources {
+    ['fastipping', 'immediatelyfast'].each { key ->
+        from('src/main/java') {
+            include "com/thelads/core/v1_21_1/embedded/${key}/**"
+            into "META-INF/lads-sources/${key}/v1_21_1"
+        }
+        from("src/main/resources/theladscore.embedded.${key}.mixins.json") { into "META-INF/lads-sources/${key}/v1_21_1" }
+    }
+}
+
+// Optimized Cushions Backport (embedded) mixes into Cushion-Backport's classes; remapping those mixin targets
+// needs them on the classpath. Compile only: Cushion-Backport stays a separate pack mod.
+repositories {
+    exclusiveContent {
+        forRepository { maven { url 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
+}
+dependencies {
+    modCompileOnly 'maven.modrinth:cushions-backport:3XEQqHaZ' // cushionbackport 1.0.5 (Fabric)
+}
+
+// ImmediatelyFast (embedded) uses the Reflect library, bundled nested like upstream does.
+dependencies {
+    implementation 'net.lenni0451:Reflect:1.6.2'
+    include 'net.lenni0451:Reflect:1.6.2'
+}
+// Compile-time stubs of Xaero's Minimap API for the ImmediatelyFast compat mixin; the real classes come from the pack.
+jar { exclude 'xaero/**' }

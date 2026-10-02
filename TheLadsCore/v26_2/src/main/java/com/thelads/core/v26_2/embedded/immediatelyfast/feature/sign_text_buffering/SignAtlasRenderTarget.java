@@ -1,0 +1,160 @@
+/*
+ * This file is part of ImmediatelyFast - https://github.com/RaphiMC/ImmediatelyFast
+ * Copyright (C) 2023-2026 RK_01/RaphiMC and contributors
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+// Modified by The Lads: repackaged into Lads Core (com.thelads.core.v26_2.embedded.immediatelyfast).
+package com.thelads.core.v26_2.embedded.immediatelyfast.feature.sign_text_buffering;
+
+import com.mojang.blaze3d.GpuFormat;
+import com.mojang.blaze3d.pipeline.TextureTarget;
+import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
+import com.thelads.core.v26_2.embedded.immediatelyfast.ImmediatelyFast;
+import com.thelads.core.v26_2.embedded.immediatelyfast.util.RenderTargetTexture;
+import org.joml.Vector4f;
+
+public class SignAtlasRenderTarget extends TextureTarget implements AutoCloseable {
+
+    private static final Vector4f CLEAR_COLOR = new Vector4f(0F);
+    public static final int ATLAS_SIZE = ImmediatelyFast.config.experimental_sign_atlas_size;
+
+    private final int id;
+    private final Identifier textureId;
+    private final Slot rootSlot;
+
+    public SignAtlasRenderTarget(final int id) {
+        super("ImmediatelyFast Sign Atlas", ATLAS_SIZE, ATLAS_SIZE, true, GpuFormat.RGBA8_UNORM);
+        this.id = id;
+        this.textureId = Identifier.fromNamespaceAndPath("immediatelyfast", "sign_atlas/" + id);
+        Minecraft.getInstance().getTextureManager().register(this.textureId, new RenderTargetTexture(this));
+        this.rootSlot = new Slot(null, 0, 0, ATLAS_SIZE, ATLAS_SIZE);
+    }
+
+    public Slot findSlot(final int width, final int height) {
+        return this.rootSlot.findSlot(width, height);
+    }
+
+    public void clear() {
+        RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures(this.getColorTexture(), CLEAR_COLOR, this.getDepthTexture(), 0F);
+        this.rootSlot.subSlot1 = null;
+        this.rootSlot.subSlot2 = null;
+    }
+
+    public int getId() {
+        return this.id;
+    }
+
+    public Identifier getTextureId() {
+        return this.textureId;
+    }
+
+    @Override
+    public void close() {
+        Minecraft.getInstance().getTextureManager().release(this.textureId);
+        this.destroyBuffers();
+    }
+
+    public class Slot {
+
+        public final int x;
+        public final int y;
+        public final int width;
+        public final int height;
+        public final Slot parentSlot;
+        public Slot subSlot1;
+        public Slot subSlot2;
+        public boolean occupied;
+
+        public Slot(final Slot parentSlot, final int x, final int y, final int width, final int height) {
+            this.parentSlot = parentSlot;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
+
+        public void markFree() {
+            if (this.subSlot1 != null || this.subSlot2 != null) {
+                throw new UnsupportedOperationException("Cannot mark slot as free if it has sub slots");
+            }
+            if (!this.occupied) {
+                throw new UnsupportedOperationException("Cannot mark slot as free if it is not occupied");
+            }
+            this.occupied = false;
+            removeUnoccupiedSubSlots(this);
+            RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures(SignAtlasRenderTarget.this.getColorTexture(), CLEAR_COLOR, SignAtlasRenderTarget.this.getDepthTexture(), 0F, this.x, ATLAS_SIZE - this.y - this.height, this.width, this.height);
+        }
+
+        public Slot findSlot(final int width, final int height) {
+            if (this.subSlot1 != null && this.subSlot2 != null) {
+                Slot slot = this.subSlot1.findSlot(width, height);
+                if (slot == null) {
+                    slot = this.subSlot2.findSlot(width, height);
+                }
+
+                return slot;
+            } else if (this.occupied) {
+                return null;
+            } else {
+                if (width > this.width || height > this.height) {
+                    return null;
+                } else if (width == this.width && height == this.height) {
+                    this.occupied = true;
+                    return this;
+                } else {
+                    final int k = this.width - width;
+                    final int l = this.height - height;
+                    if (k > l) {
+                        this.subSlot1 = new Slot(this, this.x, this.y, width, this.height);
+                        this.subSlot2 = new Slot(this, this.x + width, this.y, this.width - width, this.height);
+                    } else {
+                        this.subSlot1 = new Slot(this, this.x, this.y, this.width, height);
+                        this.subSlot2 = new Slot(this, this.x, this.y + height, this.width, this.height - height);
+                    }
+
+                    return this.subSlot1.findSlot(width, height);
+                }
+            }
+        }
+
+        private static void removeUnoccupiedSubSlots(final Slot slot) {
+            if (slot == null) {
+                return;
+            }
+            removeUnoccupiedSubSlots(slot.parentSlot);
+            final boolean subSlot1Unoccupied = slot.subSlot1 != null && !hasOccupiedSlot(slot.subSlot1);
+            final boolean subSlot2Unoccupied = slot.subSlot2 != null && !hasOccupiedSlot(slot.subSlot2);
+
+            if (subSlot1Unoccupied && subSlot2Unoccupied) {
+                slot.subSlot1 = null;
+                slot.subSlot2 = null;
+            }
+        }
+
+        private static boolean hasOccupiedSlot(final Slot slot) {
+            if (slot == null) {
+                return false;
+            }
+            if (slot.occupied) {
+                return true;
+            }
+            return hasOccupiedSlot(slot.subSlot1) || hasOccupiedSlot(slot.subSlot2);
+        }
+
+    }
+
+}
