@@ -114,6 +114,7 @@ public final class Crosshair189 {
         if (event.type != RenderGameOverlayEvent.ElementType.CROSSHAIRS || !active()) return;
         event.setCanceled(true);
         render(event.resolution.getScaledWidth(), event.resolution.getScaledHeight(), event.partialTicks);
+        GlStateManager.disableBlend(); // as vanilla's crosshair leaves it
     }
 
     /** F1 skips the whole overlay; Visible with Hidden HUD draws the crosshair after the world instead. */
@@ -262,11 +263,12 @@ public final class Crosshair189 {
     }
 
     private static void item(ItemStack stack, int x, int y) {
+        boolean depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
         GlStateManager.enableDepth();
         RenderHelper.enableGUIStandardItemLighting();
         Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(stack, x, y);
         RenderHelper.disableStandardItemLighting();
-        GlStateManager.disableDepth();
+        if (!depth) GlStateManager.disableDepth();
         GlStateManager.enableAlpha();
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
     }
