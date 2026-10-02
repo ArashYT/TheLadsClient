@@ -61,6 +61,9 @@ final class NativeHudProbe {
     private static long iconDeadline;
     private NativeHudProbe() {}
 
+    /** The last in-world probe is done (passed or failed). */
+    static boolean finished() { return finished; }
+
     static void tick() {
         if (finished || !NativeWorldVerification.active() || !NativeMenuAccessProbe.finished()) return;
         Minecraft mc = Minecraft.getInstance();

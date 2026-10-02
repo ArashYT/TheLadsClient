@@ -44,6 +44,7 @@ final class NativeQualityProbe {
             inputPipeline();
             chatModule();
             borderless();
+            passed += NativeKillBannerProbe.run();
             LoggerFactory.getLogger("TheLadsCore").info("Lads native feature probe END: {} passed, 0 failed", passed);
         } catch (Throwable failure) {
             LoggerFactory.getLogger("TheLadsCore").error("Lads native feature probe FAILED after {} checks", passed, failure);

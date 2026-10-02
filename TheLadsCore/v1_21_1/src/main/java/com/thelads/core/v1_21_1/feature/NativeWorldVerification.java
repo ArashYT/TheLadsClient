@@ -125,6 +125,8 @@ public final class NativeWorldVerification {
                     LOGGER.info("Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted");
                 }
             }
+            // After the in-world probes: they reset the banner and restore the settings it changes.
+            KillBannerCapture.tick(gameDirectory, readyLogged && worldReady() && menuScreen == null && mc.screen == null && NativeHudProbe.finished());
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.screen == null ? "none" : mc.screen.getClass().getName()));
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
@@ -182,6 +184,7 @@ public final class NativeWorldVerification {
         renderTitleCapture(target);
         NativeHudProbe.frame(target);
         chatCapture(target);
+        KillBannerCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
         captureStarted = true;
         chatCaptureAt = System.nanoTime() + 3_000_000_000L;
