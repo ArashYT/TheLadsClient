@@ -5,6 +5,7 @@ import com.thelads.core.client.BorderlessWindow;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ModuleSupport;
+import com.thelads.core.modules.ToggleNametagsModule;
 import com.thelads.core.v1_21_1.feature.qa.mixin.ChatQaAccessor;
 import com.thelads.core.v1_21_1.feature.qa.mixin.WindowQaInvoker;
 import net.minecraft.ChatFormatting;
@@ -45,6 +46,7 @@ final class NativeQualityProbe {
         try {
             inputPipeline();
             chatModule();
+            nametags();
             borderless();
             passed += NativeKillBannerProbe.run();
             LoggerFactory.getLogger("TheLadsCore").info("Lads native feature probe END: {} passed, 0 failed", passed);
@@ -143,6 +145,29 @@ final class NativeQualityProbe {
             LoggerFactory.getLogger("TheLadsCore").info("Lads chat probe END: {} passed, 0 failed; pose after animated chat {} == before {}", passed - before, graphics.pose().last().pose(), pose);
         } finally {
             buffer.close();
+            ConfigManager.applyJson(settings);
+        }
+    }
+
+    /** Nametags renames through the real ChatComponent and PlayerTabOverlay; the name-tag draw passes are in the render capture. */
+    private static void nametags() {
+        Minecraft mc = Minecraft.getInstance();
+        var tags = (ToggleNametagsModule) NativeQualityOfLife.module("Nametags");
+        var settings = ConfigManager.toJson();
+        int before = passed;
+        try {
+            require(ModuleSupport.isBuiltIn("Nametags"), "Nametags is connected");
+            tags.setEnabled(true);
+            tags.nicknames.setValue("QaNickTarget=QaNick");
+            tags.displayName.setValue("QaSelf");
+            mc.gui.getChat().addMessage(Component.literal("<QaNickTarget> hi QaNickTargets"));
+            require(((ChatQaAccessor) mc.gui.getChat()).ladsQaMessages().get(0).content().getString().endsWith("<QaNick> hi QaNickTargets"), "chat shows nicknames for whole names only");
+            var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
+            require(info != null && mc.gui.getTabList().getNameForDisplay(info).getString().contains("QaSelf"), "tab list shows Your Display Name");
+            tags.setEnabled(false);
+            require(mc.gui.getTabList().getNameForDisplay(info).getString().contains(mc.getUser().getName()), "module off shows the real name");
+            LoggerFactory.getLogger("TheLadsCore").info("Lads nametags probe END: {} passed, 0 failed", passed - before);
+        } finally {
             ConfigManager.applyJson(settings);
         }
     }

@@ -1,17 +1,27 @@
 package com.thelads.core.v26_2.feature;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Module;
+import com.thelads.core.modules.ToggleNametagsModule;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.font.TextRenderable;
+import net.minecraft.client.renderer.SubmitNodeCollection;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
-
+import net.minecraft.client.renderer.feature.TextFeatureRenderer;
+import net.minecraft.client.renderer.feature.phase.FeatureRenderPhase;
+import net.minecraft.client.renderer.feature.phase.TranslucentFeatureRenderPhase;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.slf4j.LoggerFactory;
 
 /** Invoked only by the existing opt-in isolated QA probe; restores preferences before returning. */
@@ -55,7 +65,7 @@ final class NativeNametagConnectionProbe {
             minecraft.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
             require((boolean) nameVisible.invoke(renderer, minecraft.player, 4.0), "own nametag appears in front third person"); passed++;
 
-            // The 26.3 name-tag submission is verified by the render capture.
+            passed += submittedTags(minecraft, (ToggleNametagsModule) tags);
             var connection = minecraft.getConnection().getConnection();
             require(connection instanceof PacketActivitySource, "real game connection implements packet activity hook"); passed++;
             long lastPacket = ((PacketActivitySource) connection).lads$lastPacketNanos();
@@ -91,6 +101,50 @@ final class NativeNametagConnectionProbe {
             tags.setLastModified(tagsModified);
             signal.setLastModified(signalModified);
         }
+    }
+
+    /** Background and Text Shadow on the real name-tag submission, and renames through the real tab list. */
+    private static int submittedTags(Minecraft minecraft, ToggleNametagsModule tags) {
+        BoolOption background = (BoolOption) tags.getOption("Render Background"), shadow = (BoolOption) tags.getOption("Text Shadow");
+        boolean backgroundBefore = background.get(), shadowBefore = shadow.get();
+        String nicknamesBefore = tags.nicknames.getValue(), displayBefore = tags.displayName.getValue();
+        int passed = 0;
+        try {
+            background.set(false);
+            shadow.set(true);
+            var text = submitted();
+            require(text.backgroundColor() == 0 && text.dropShadow(), "background off and text shadow on the submitted name tag"); passed++;
+            background.set(true);
+            shadow.set(false);
+            text = submitted();
+            require(text.backgroundColor() != 0 && !text.dropShadow(), "vanilla background and flat text restored"); passed++;
+            tags.nicknames.setValue("QaNickTarget=QaNick");
+            tags.displayName.setValue("QaSelf");
+            require(NativeNicknames.rename(Component.literal("<QaNickTarget> hi QaNickTargets")).getString().equals("<QaNick> hi QaNickTargets"), "nicknames replace whole names only"); passed++;
+            var info = minecraft.getConnection().getPlayerInfo(minecraft.player.getUUID());
+            require(info != null && minecraft.gui.hud.getTabList().getNameForDisplay(info).getString().contains("QaSelf"), "tab list shows Your Display Name"); passed++;
+            return passed;
+        } finally {
+            background.set(backgroundBefore);
+            shadow.set(shadowBefore);
+            tags.nicknames.setValue(nicknamesBefore);
+            tags.displayName.setValue(displayBefore);
+        }
+    }
+
+    private static TextFeatureRenderer.Content.Text submitted() {
+        var collection = new SubmitNodeCollection(false, new TranslucentFeatureRenderPhase());
+        var camera = new CameraRenderState();
+        camera.orientation = new Quaternionf();
+        collection.submitNameTag(new PoseStack(), Vec3.ZERO, 0, Component.literal("LadsQA"), false, 0xf000f0, camera);
+        List<TextFeatureRenderer.Content.Text> texts = new ArrayList<>();
+        FeatureRenderPhase.Output output = (node, ordered) -> {
+            if (node instanceof TextFeatureRenderer.Submit submit && submit.content() instanceof TextFeatureRenderer.Content.Text text) texts.add(text);
+        };
+        collection.solid.sortInto(output);
+        collection.nameTags.sortInto(output);
+        require(texts.size() == 1, "one name tag submitted, got " + texts.size());
+        return texts.get(0);
     }
 
     private static int effects(Font.PreparedText text) {
