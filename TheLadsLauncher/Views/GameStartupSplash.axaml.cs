@@ -41,6 +41,15 @@ public partial class GameStartupSplash : Window
         };
     }
 
+    /// <summary>The Cancel button: the launcher stops the starting game. The splash closes either way.</summary>
+    public event Action? CancelRequested;
+
+    private void CancelLaunch_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        CancelRequested?.Invoke();
+        Close();
+    }
+
     // Enabled only by the explicit preview command; production animation has no sampling allocations.
     public void CapturePreviewFrameCadence(string outputPath)
         => _previewCadence = new SplashFrameCadence(outputPath);
