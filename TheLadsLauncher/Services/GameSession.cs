@@ -50,6 +50,20 @@ public static class GameSession
         _ = Task.Delay(TimeSpan.FromMinutes(3)).ContinueWith(_ => Restore(), TaskScheduler.Default);
     }
 
+    // Games the user stopped while they were starting. Weak: a finished Process is not kept alive.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Process, object> Cancelled = new();
+
+    /// <summary>The user cancelled while the game was starting: its whole process tree is killed, and its exit is not a crash
+    /// (<see cref="WasCancelled"/>).</summary>
+    public static void Cancel(Process process)
+    {
+        Cancelled.AddOrUpdate(process, true);
+        try { process.Kill(entireProcessTree: true); }
+        catch (Exception e) when (e is InvalidOperationException or AggregateException or System.ComponentModel.Win32Exception) { }
+    }
+
+    public static bool WasCancelled(Process process) => Cancelled.TryGetValue(process, out _);
+
     /// <summary>Call before Start: Core reads its profile folder from THELADS_DIR, the shared root from LADS_GLOBAL_MINECRAFT_DIR
     /// and (1.8.9) Lunar Client's folder, for its 1.8 resource packs, from LADS_LUNAR_DIR.</summary>
     public static void Configure(ProcessStartInfo startInfo, string gameDirectory, string sharedRoot)

@@ -29,4 +29,30 @@ public class GameSessionPriorityTests
         Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);
         await process.WaitForExitAsync();
     }
+
+    [Fact]
+    public async Task CancelStopsTheWholeGameTreeAndItsExitIsNotACrash()
+    {
+        using var dir = new TestDirectory();
+        var game = Path.Combine(dir.Path, "profile");
+        Directory.CreateDirectory(game);
+        var shared = new SharedContentService(Path.Combine(dir.Path, "global"), Path.Combine(dir.Path, "backups"));
+        // cmd and its child ping stand in for the starting game (about a minute); both hold the output pipe.
+        using var process = Process.Start(new ProcessStartInfo("cmd.exe", "/c ping -n 60 127.0.0.1")
+            { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true })!;
+        var cancelledAtExit = new TaskCompletionSource<bool>();
+        GameSession.Attach(process, game, Array.Empty<string>(), _ => { }, shared,
+            afterExit: () => { cancelledAtExit.TrySetResult(GameSession.WasCancelled(process)); return Task.CompletedTask; });
+        string? line;
+        do line = await process.StandardOutput.ReadLineAsync(); while (line == ""); // ping runs once it prints
+        Assert.NotNull(line);
+        Assert.False(GameSession.WasCancelled(process));
+
+        GameSession.Cancel(process);
+
+        Assert.True(await cancelledAtExit.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.NotEqual(0, process.ExitCode); // killed: without the flag the launcher would report a crash
+        // The pipe closes only when ping is gone too.
+        await process.StandardOutput.ReadToEndAsync().WaitAsync(TimeSpan.FromSeconds(10));
+    }
 }
