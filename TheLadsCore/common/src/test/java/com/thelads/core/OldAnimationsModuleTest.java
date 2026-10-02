@@ -110,8 +110,10 @@ class OldAnimationsModuleTest {
         assertTrue(module.iconPlacement(Platform.MODERN, Use.BOW, Held.BOW));
         assertTrue(module.iconPlacement(Platform.MODERN, Use.NONE, Held.BOW), "the 1.7 bow position also covers a held bow");
         assertTrue(module.iconPlacement(Platform.MODERN, Use.NONE, Held.ROD));
-        assertFalse(module.iconPlacement(Platform.MODERN, Use.NONE, Held.TOOL), "idle swords keep vanilla's placement");
-        assertFalse(module.iconPlacement(Platform.MODERN, Use.NONE, Held.ITEM));
+        assertTrue(module.iconPlacement(Platform.MODERN, Use.NONE, Held.TOOL), "idle swords take the 1.7 position (1.7 held item positions)");
+        assertTrue(module.iconPlacement(Platform.MODERN, Use.NONE, Held.ITEM));
+        module.option(Feature.HELD_ITEMS).set(false);
+        assertFalse(module.iconPlacement(Platform.MODERN, Use.NONE, Held.TOOL), "without 1.7 held item positions idle swords are vanilla");
         module.option(Feature.ROD).set(false);
         assertFalse(module.iconPlacement(Platform.MODERN, Use.NONE, Held.ROD));
         module.option(Feature.BLOCK_POSE).set(false);

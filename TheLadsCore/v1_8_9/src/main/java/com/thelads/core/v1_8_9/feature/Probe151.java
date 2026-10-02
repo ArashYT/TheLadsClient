@@ -126,8 +126,11 @@ final class Probe151 {
                 return after(3);
             },
             mc -> {
-                check(holds(mc.thePlayer.getHeldItem(), Items.diamond_sword) && OldAnimations189.hits(Hook.FP_HAND) == 0
-                    && OldAnimations189.hits(Hook.FP_ICON) == 0, state + "an idle sword keeps 1.8.9's own hand and placement");
+                check(holds(mc.thePlayer.getHeldItem(), Items.diamond_sword), state + "the sword is held");
+                // 1.7 held item positions: the idle sword sits where 1.7 held it (by 1.8.9's idle hand), so poses don't resize it.
+                if (on) check(OldAnimations189.hits(Hook.FP_ICON) > 0 && OldAnimations189.hits(Hook.FP_HAND) == 0,
+                    state + "the idle sword is drawn where 1.7 held it " + counts());
+                else check(silent(), state + "1.8.9's idle sword " + counts());
                 screenshot(mc, "151-idle-sword" + tag);
                 key(mc.gameSettings.keyBindUseItem, true);
                 return after(6);
@@ -377,7 +380,9 @@ final class Probe151 {
     private static boolean restored(Minecraft mc) {
         check(mc.playerController.isInCreativeMode() && mc.thePlayer.getHealth() == mc.thePlayer.getMaxHealth()
             && !mc.thePlayer.isUsingItem() && mc.thePlayer.fishEntity == null && MODULE.isEnabled() == wasEnabled,
-            "1.7 Animations: module, options, inventory, game mode, health, food and camera are back as found");
+            "1.7 Animations: module, options, inventory, game mode, health, food and camera are back as found (creative "
+            + mc.playerController.isInCreativeMode() + ", health " + mc.thePlayer.getHealth() + ", using " + mc.thePlayer.isUsingItem()
+            + ", hook " + (mc.thePlayer.fishEntity != null) + ", module " + MODULE.isEnabled() + "/" + wasEnabled + ")");
         return after(1);
     }
 
