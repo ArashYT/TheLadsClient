@@ -64,7 +64,9 @@ public class TheLadsCore189 {
     public static final String[] GAMEPLAY_MODULES = {
         "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
-        "RawInput", "BorderlessFullscreen"
+        "RawInput", "BorderlessFullscreen",
+        // ThreadPriorityModule (common) knows 1.8.9's thread names.
+        "Threads"
     };
 
     static void registerStatuses() {
