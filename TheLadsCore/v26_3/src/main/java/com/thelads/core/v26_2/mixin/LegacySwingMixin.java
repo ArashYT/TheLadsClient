@@ -34,7 +34,7 @@ public class LegacySwingMixin {
         var player = Minecraft.getInstance().player;
         ItemDisplayContext drawn = player == null ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
             : NativeOldAnimations.firstPerson(player, hand, item, partial, swing, equip, pose, ItemDisplayContext.FIRST_PERSON_RIGHT_HAND);
-        if (drawn == ItemDisplayContext.NONE) original.call(NativeOldAnimations.firstPersonIcon(player, hand, item), pose, collector, light, overlay, outline);
+        if (drawn == ItemDisplayContext.NONE) original.call(NativeOldAnimations.firstPersonIcon(hand), pose, collector, light, overlay, outline);
         else if (drawn != null) original.call(state, pose, collector, light, overlay, outline);
     }
 }
