@@ -72,6 +72,29 @@ class OldAnimationsModuleTest {
         assertTrue(Feature.LOW_SHIELD.unavailableReason(Platform.V1_8_9).contains("no shields"));
     }
 
+    @Test void the189MenuHidesTheOptions189LacksAndKeepsTheirValues() throws Exception {
+        var module = (OldAnimationsModule) ModuleManager.getInstance().getModule(OldAnimationsModule.NAME);
+        try (var ownership = new ModsMenuTest.OwnershipFixture()) {
+            ModuleSupport.registerBuiltIn(OldAnimationsModule.NAME);
+            module.setPlatform(Platform.V1_8_9);
+            module.option(Feature.NO_COOLDOWN_DIP).set(false);
+            var menu = new LadsSettingsScreen();
+            menu.openModule(OldAnimationsModule.NAME);
+            var g = new LadsGraphicsTest.MockGraphics();
+            g.height = 1200; // every option row fits
+            menu.render(g, -1, -1);
+            for (Feature feature : Feature.values())
+                assertEquals(feature.appliesTo(Platform.V1_8_9), menu.controlBounds("option:" + feature.option) != null, feature.toString());
+            assertFalse(module.option(Feature.NO_COOLDOWN_DIP).get(), "a hidden option keeps its value for 1.21 and 26.x");
+            module.setPlatform(Platform.MODERN);
+            menu.render(g, -1, -1);
+            for (Feature feature : Feature.values()) assertNotNull(menu.controlBounds("option:" + feature.option), "modern lists " + feature);
+        } finally {
+            module.setPlatform(Platform.MODERN);
+            module.option(Feature.NO_COOLDOWN_DIP).reset();
+        }
+    }
+
     @Test void helpersFollowTheirOptions() {
         var module = enabled();
         assertEquals(0.5f, module.swingShown(Platform.V1_8_9, Use.NONE, 0.5f), "the normal swing is vanilla's");
