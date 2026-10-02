@@ -7,6 +7,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.loader.api.FabricLoader;
@@ -32,6 +33,9 @@ import net.minecraft.world.level.block.ComposterBlock;
 public final class ExtraTooltips {
     private static final DecimalFormat NUMBER = new DecimalFormat("0.##", DecimalFormatSymbols.getInstance(Locale.ROOT));
     private static final String KEY = "theladscore.tooltips.";
+    private static final Map<String, Integer> TIERS = Map.of("incorrect_for_wooden_tool", 0, "incorrect_for_gold_tool", 0,
+        "incorrect_for_stone_tool", 1, "incorrect_for_copper_tool", 1, "incorrect_for_iron_tool", 2,
+        "incorrect_for_diamond_tool", 3, "incorrect_for_netherite_tool", 3);
     private static TooltipsConfig config;
 
     private ExtraTooltips() {}
@@ -47,7 +51,8 @@ public final class ExtraTooltips {
         TooltipDisplay display = stack.getOrDefault(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT);
         if (c.on("showDurability") && stack.isDamageableItem() && display.shows(DataComponents.DAMAGE) && !hasLine(lines, "item.durability")
                 && !nativeLines("Detailed Durability", "EnhancedToolbars")) {
-            lines.add(line(c, "durability", "durability", stack.getMaxDamage() - stack.getDamageValue(), stack.getMaxDamage()));
+            lines.add(Component.translatable("item.durability", stack.getMaxDamage() - stack.getDamageValue(), stack.getMaxDamage())
+                .withStyle(style -> style.withColor(c.color("durability")))); // vanilla's text, as the running mod shows it
         }
         var food = stack.get(DataComponents.FOOD);
         if (c.on("showFoodValues") && food != null && display.shows(DataComponents.FOOD) && !nativeLines("Show Food Values", "EnhancedTooltips")) {
@@ -68,7 +73,7 @@ public final class ExtraTooltips {
         }
         if (c.on("showSongDuration") && stack.has(DataComponents.JUKEBOX_PLAYABLE)) {
             JukeboxSong.fromStack(context.registries(), stack)
-                .ifPresent(song -> lines.add(line(c, "songDuration", "song_duration", minutes(song.value().lengthInSeconds()))));
+                .ifPresent(song -> lines.add(line(c, "songDuration", "song_duration", seconds(song.value().lengthInSeconds()))));
         }
         var enchantable = stack.get(DataComponents.ENCHANTABLE);
         if (c.on("showEnchantability") && enchantable != null) {
@@ -76,11 +81,11 @@ public final class ExtraTooltips {
         }
         Integer repairCost = stack.get(DataComponents.REPAIR_COST);
         if (c.on("showRepairCost") && repairCost != null && repairCost > 0) {
-            lines.add(line(c, "repairCost", "repair_cost", repairCost));
+            lines.add(line(c, "repairCost", "repair_cost", repairCost + 1)); // the anvil's cost for this item: prior work + 1
         }
         if (stack.getItem() instanceof BlockItem blockItem) {
             Block block = blockItem.getBlock();
-            if (c.on("showStrength")) {
+            if (c.on("showStrength") && block.defaultDestroyTime() > 0) { // instant-break blocks (crops, flowers, torches) show none
                 lines.add(line(c, "strength", "strength", NUMBER.format(block.defaultDestroyTime()), NUMBER.format(block.getExplosionResistance())));
             }
             if (c.on("showEnchantmentPower") && block.defaultBlockState().is(BlockTags.ENCHANTMENT_POWER_PROVIDER)) {
@@ -92,12 +97,12 @@ public final class ExtraTooltips {
             if (c.on("showMiningLevel")) miningLevel(tool).ifPresent(tier -> lines.add(line(c, "miningLevel", "mining_level", tier)));
             if (c.on("showMiningSpeed")) lines.add(line(c, "miningSpeed", "mining_speed", NUMBER.format(miningSpeed(tool))));
         }
-        if (c.on("showComponents")) components(c, stack, lines);
         if (c.on("showModName")) {
             String namespace = BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace();
             String name = FabricLoader.getInstance().getModContainer(namespace).map(mod -> mod.getMetadata().getName()).orElse(namespace);
             lines.add(Component.literal(name).withStyle(style -> style.withColor(c.color("modName")).withItalic(true)));
         }
+        if (c.on("showComponents")) components(c, stack, lines);
     }
 
     private static MutableComponent line(TooltipsConfig c, String colorKey, String key, Object... args) {
@@ -115,31 +120,26 @@ public final class ExtraTooltips {
     }
 
     private static Object time(TooltipsConfig c, int ticks) {
-        return c.on("timeInSeconds") ? Component.translatable(KEY + "seconds", NUMBER.format(ticks / 20.0)) : ticks;
+        return c.on("timeInSeconds") ? seconds(ticks / 20.0) : ticks;
     }
 
-    private static String minutes(float seconds) {
-        int whole = Math.round(seconds);
-        return whole / 60 + ":" + String.format(Locale.ROOT, "%02d", whole % 60);
+    private static Component seconds(double seconds) {
+        return Component.translatable(KEY + "seconds", NUMBER.format(seconds));
     }
 
-    private static Optional<String> miningLevel(Tool tool) {
+    /** Harvest level of the tool's tier, read from its "incorrect for" block tag; tiers of other mods show no level. */
+    private static Optional<Integer> miningLevel(Tool tool) {
         for (Tool.Rule rule : tool.rules()) {
             if (rule.correctForDrops().orElse(true)) continue;
             Optional<TagKey<Block>> tag = rule.blocks().unwrapKey();
-            if (tag.isEmpty()) continue;
-            String path = tag.get().location().getPath();
-            if (path.startsWith("incorrect_for_") && path.endsWith("_tool")) {
-                String material = path.substring("incorrect_for_".length(), path.length() - "_tool".length());
-                return Optional.of(Component.translatable(KEY + "material." + material).getString());
-            }
+            if (tag.isPresent() && TIERS.get(tag.get().location().getPath()) instanceof Integer level) return Optional.of(level);
         }
         return Optional.empty();
     }
 
     private static float miningSpeed(Tool tool) {
         float speed = tool.defaultMiningSpeed();
-        for (Tool.Rule rule : tool.rules()) if (rule.speed().isPresent()) speed = Math.max(speed, rule.speed().get());
+        for (Tool.Rule rule : tool.rules()) if (rule.speed().isPresent() && rule.speed().get() < Float.MAX_VALUE) speed = Math.max(speed, rule.speed().get()); // MAX_VALUE: instant mining
         return speed;
     }
 
