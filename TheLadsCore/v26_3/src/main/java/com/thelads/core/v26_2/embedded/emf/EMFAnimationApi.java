@@ -1,0 +1,591 @@
+package com.thelads.core.v26_2.embedded.emf;
+
+import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import org.apache.commons.lang3.function.TriFunction;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import com.thelads.core.v26_2.embedded.emf.models.IEMFModel;
+import com.thelads.core.v26_2.embedded.emf.models.animation.EMFAnimationHandler;
+import com.thelads.core.v26_2.embedded.emf.models.animation.math.asm.ASMVisitable;
+import com.thelads.core.v26_2.embedded.emf.models.animation.math.methods.MethodRegistry;
+import com.thelads.core.v26_2.embedded.emf.models.animation.math.variables.VariableRegistry;
+import com.thelads.core.v26_2.embedded.emf.models.animation.math.variables.factories.UniqueVariableFactory;
+import com.thelads.core.v26_2.embedded.emf.models.animation.state.EMFBipedPose;
+import com.thelads.core.v26_2.embedded.emf.models.animation.state.EMFEntityRenderState;
+import com.thelads.core.v26_2.embedded.emf.models.animation.state.EMFState;
+import com.thelads.core.v26_2.embedded.emf.models.parts.EMFModelPart;
+import com.thelads.core.v26_2.embedded.emf.models.parts.EMFModelPartCustom;
+import com.thelads.core.v26_2.embedded.emf.models.parts.EMFModelPartRoot;
+import com.thelads.core.v26_2.embedded.emf.utils.EMFAnimationPauseHandler;
+import com.thelads.core.v26_2.embedded.emf.utils.EMFEntity;
+import com.thelads.core.v26_2.embedded.emf.utils.EMFUtils;
+
+import java.lang.reflect.Method;
+import java.security.InvalidParameterException;
+import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import net.minecraft.util.valueproviders.SampledFloat;
+import com.thelads.core.v26_2.embedded.etf.ETFApi;
+import com.thelads.core.v26_2.embedded.etf.features.state.ETFEntityRenderState;
+import com.thelads.core.v26_2.embedded.etf.features.state.ETFState;
+
+/**
+ * The main API for registering custom animation math expressions and variables.
+ * This is the main entry point for modders to add their own custom math expressions and variables to the animation system.
+ * This is a static class with static methods for registering custom math expressions and variables.
+ */
+@SuppressWarnings({"unused", "BooleanMethodIsAlwaysInverted"})
+public interface EMFAnimationApi {
+
+    /**
+     * Gets the current version of the EMF API.
+     * Future versions of the api will endeavor to maintain backwards compatibility,
+     * though may depreciate old methods by having them return null or do nothing.
+     *
+     * @return The current version of the EMF API.
+     */
+    @SuppressWarnings("SameReturnValue")
+    static int getApiVersion() {
+        return 11;
+    }
+
+    /**
+     * Gets current rendered entity.
+     * This may be either a {@link net.minecraft.world.entity.Entity} or {@link net.minecraft.world.level.block.entity.BlockEntity} or null.
+     *
+     * @return the currently rendered entity
+     */
+    static @Nullable EMFEntity getCurrentEntity() {
+        var state = EMFState.state();
+        return state != null ? state.emfEntity() : null;
+    }
+
+    /**
+     * Registers a singleton boolean variable for use in animation math expressions.
+     *
+     * @param sourceModId                             The mod id of the mod registering the variable.
+     * @param variableName                            The name of the variable.
+     * @param variableExplanationTranslationKeyOrText The explanation of the variable.
+     * @param variableValueSupplier                   A supplier for the value of the variable.
+     */
+    static void registerSingletonAnimationVariable(String sourceModId, String variableName, String variableExplanationTranslationKeyOrText, BooleanSupplier variableValueSupplier) throws Exception {
+        if (sourceModId != null && variableName != null && variableValueSupplier != null && variableExplanationTranslationKeyOrText != null) {
+            VariableRegistry.getInstance().registerSimpleBoolVariable(variableName, variableExplanationTranslationKeyOrText, variableValueSupplier);
+            EMFUtils.log("Successful registration of singleton variable:" + variableName + " from mod " + sourceModId);
+        } else {
+            throw paramFail("Invalid registration of singleton variable:" + variableName + " from mod " + sourceModId);
+        }
+    }
+
+    @Deprecated(since = "api v8")
+    static void registerSingletonAnimationVariable(String sourceModId, String variableName, String variableExplanationTranslationKeyOrText, SampledFloat variableValueSupplier) {
+        EMFUtils.logWarn("INVALID registration of singleton variable:" + variableName + " from mod " + sourceModId);
+    }
+
+    /**
+     * Registers a singleton float variable for use in animation math expressions.
+     *
+     * @param sourceModId                             The mod id of the mod registering the variable.
+     * @param variableName                            The name of the variable.
+     * @param variableExplanationTranslationKeyOrText The explanation of the variable.
+     * @param variableValueSupplier                   A supplier for the value of the variable.
+     */
+    static void registerSingletonAnimationVariable(String sourceModId, String variableName, String variableExplanationTranslationKeyOrText, Supplier<Float> variableValueSupplier) throws Exception {
+        if (sourceModId != null && variableName != null && variableValueSupplier != null && variableExplanationTranslationKeyOrText != null) {
+            VariableRegistry.getInstance().registerSimpleFloatVariable(variableName, variableExplanationTranslationKeyOrText, variableValueSupplier::get);
+            EMFUtils.log("Successful registration of singleton variable:" + variableName + " from mod " + sourceModId);
+        } else {
+            throw paramFail("Invalid registration of singleton variable:" + variableName + " from mod " + sourceModId);
+        }
+    }
+
+
+    /**
+     * Registers a unique variable factory {@link UniqueVariableFactory} for use in animation math expressions.
+     * you supply a factory to create these variables as needed as they are not singletons.
+     * A unique variable refers to a variable with additional per-model context such as reading other model parts and
+     * other model variables.
+     * It also allows for more elaborate variable name matching as you must supply your own test to check the variable name
+     *
+     * @param sourceModId           The mod id of the mod registering the variable.
+     * @param variableName          The name of the variable.
+     * @param uniqueVariableFactory A factory for the variable.
+     */
+    static void registerUniqueAnimationVariableFactory(String sourceModId, String variableName, UniqueVariableFactory uniqueVariableFactory) throws Exception {
+        if (sourceModId != null && variableName != null && uniqueVariableFactory != null) {
+            VariableRegistry.getInstance().registerContextVariable(uniqueVariableFactory);
+            EMFUtils.log("Successful registration of unique variable:" + variableName + " from mod " + sourceModId);
+        } else {
+            throw paramFail("Invalid registration of unique variable:" + variableName + " from mod " + sourceModId);
+        }
+    }
+
+    /**
+     * Registers a custom {@link com.thelads.core.v26_2.embedded.emf.models.animation.math.methods.MethodRegistry.MethodFactory}
+     * for use in animation math expressions.
+     * <p>
+     * The supplied method must be public and static
+     * The supplied method must return a primitive type of either [boolean] or [float].
+     * The supplied method can accept any number of parameters of types [boolean], [float], or [String].
+     *
+     * @param sourceModId                           The mod id of the mod registering the function.
+     * @param methodName                            The name of the function.
+     * @param methodExplanationTranslationKeyOrText The explanation of the function.
+     * @param staticMethod                          The method to be registered.
+     * @param asmCompiler                           (Optional) an {@link ASMVisitable} function that can provide an optimized
+     *                                              ASM compiled alternative to the static method, just leave it [null] if you can't do this.
+     */
+    static void registerCustomFunctionFromStaticMethod(
+            String sourceModId,
+            String methodName,
+            String methodExplanationTranslationKeyOrText,
+            Method staticMethod,
+            @Nullable ASMVisitable asmCompiler
+    ) throws Exception {
+        if (sourceModId != null && methodName != null && staticMethod != null && methodExplanationTranslationKeyOrText != null) {
+            MethodRegistry.getInstance().registerSimpleMethodFactory(methodName, methodExplanationTranslationKeyOrText, staticMethod, asmCompiler);
+            EMFUtils.log("Successful registration of custom function:" + methodName + " from mod " + sourceModId);
+        } else {
+            throw paramFail("Invalid registration of custom function:" + methodName + " from mod " + sourceModId);
+        }
+    }
+
+    /**
+     * Registers a custom {@link com.thelads.core.v26_2.embedded.emf.models.animation.math.methods.MethodRegistry.MethodFactory}
+     * for use in animation math expressions.
+     * this is for more complex functions that require additional setup or context.
+     * or for functions that require additional parameters that are not simple floats.
+     * these functions can address the input strings from the animation directly if required, without having them
+     * parsed to Float first.
+     *
+     * @param sourceModId                           The mod id of the mod registering the function.
+     * @param methodName                            The name of the function.
+     * @param methodExplanationTranslationKeyOrText The explanation of the function.
+     * @param factory                               The factory to register.
+     */
+    static void registerCustomFunctionFactory(
+            String sourceModId,
+            String methodName,
+            String methodExplanationTranslationKeyOrText,
+            MethodRegistry.MethodFactory factory
+    ) throws Exception {
+        if (sourceModId != null && methodName != null && factory != null && methodExplanationTranslationKeyOrText != null) {
+            MethodRegistry.getInstance().registerAndWrapMethodFactory(methodName, methodExplanationTranslationKeyOrText, factory);
+            EMFUtils.log("Successful registration of custom function:" + methodName + " from mod " + sourceModId);
+        } else {
+            throw paramFail("Invalid registration of custom function:" + methodName + " from mod " + sourceModId);
+        }
+    }
+
+
+    /**
+     * @param entity Entity to cast to EMFEntity
+     * @return the EMFEntity of the entity
+     */
+    static EMFEntity emfEntityOf (Entity entity){
+        return (EMFEntity) entity;
+    }
+    /**
+     * @param blockEntity BlockEntity to cast to EMFEntity
+     * @return the EMFEntity of the BlockEntity
+     */
+    static EMFEntity emfEntityOf (BlockEntity blockEntity){
+        return (EMFEntity) blockEntity;
+    }
+
+    /**
+     * @param hook the animation hook object to register, see {@link EMFAnimationHook}.
+     * @return true if valid inputs were supplied.
+     */
+    static boolean registerAnimationHook(EMFAnimationHook hook) throws Exception {
+        if (hook == null) {
+            throw paramFail("null animation hook");
+        }
+        EMFState.animationHooks.add(hook);
+        return true;
+    }
+
+    /**
+     * Animates the supplied model with the animation state of the supplied entity or block entity.
+     * <p>
+     * Note: API animation hooks WILL run on this animation, and may cancel it silently.
+     * <p>
+     * Note: The setting EMFConfig.resetPlayerModelEachRender_v2 will reset any model animated with a player backed render
+     *       state at the start of the setup for this animation. Use an animation hook to apply any transforms you need to apply
+     *       before the animation, yet after this reset.
+     *       (or if you really need to, copy the inner method impl and run what transforms you need after the ETFState.mount() call)
+     *
+     * @param entityOrBlockEntity The entity or block entity to animate the model for.
+     * @param model The vanilla model to try animate. (it is up to you to run the vanilla animation on this first if needed, or not if that's what you need)
+     * @param ignorePauseConditions If true, the animation will be forced to run even if the animation would otherwise be paused, e.g. API pause listeners.
+     * @return true if valid inputs were supplied and the model can and did animate without error.
+     */
+    static boolean animateModelForEntity(EMFEntity entityOrBlockEntity, EntityModel<?> model, boolean ignorePauseConditions) {
+        if (entityOrBlockEntity == null || !isModelAnimatedByEMF(model)) {
+            return false;
+        }
+        return animateModelForEntity(entityOrBlockEntity, ((IEMFModel) model).emf$getEMFRootModel(), ignorePauseConditions);
+    }
+
+    /**
+     * Animates the supplied model with the animation state of the supplied entity or block entity.
+     * <p>
+     * Note: API animation hooks WILL run on this animation, and may cancel it silently.
+     * <p>
+     * Note: The setting EMFConfig.resetPlayerModelEachRender_v2 will reset any model animated with a player backed render
+     *       state at the start of the setup for this animation. Use an animation hook to apply any transforms you need to apply
+     *       before the animation, yet after this reset.
+     *       (or if you really need to, copy the inner method impl and run what transforms you need after the ETFState.mount() call)
+     *
+     * @param entityOrBlockEntity The entity or block entity to animate the model for.
+     * @param emfModelPartRoot The EMF root part of the model to try animate. (it is up to you to run the vanilla animation on the containing model first if needed, or not if that's what you need)
+     * @param ignorePauseConditions If true, the animation will be forced to run even if the animation would otherwise be paused, e.g. API pause listeners.
+     * @return true if valid inputs were supplied and the model can and did animate without error.
+     */
+    static boolean animateModelForEntity(EMFEntity entityOrBlockEntity, EMFModelPartRoot emfModelPartRoot, boolean ignorePauseConditions) {
+        if (entityOrBlockEntity == null || emfModelPartRoot == null || !emfModelPartRoot.hasAnimation()) {
+            return false;
+        }
+        var state = ETFApi.stateOfEntityOrEntityState(entityOrBlockEntity);
+        if (state == null) return false;
+
+        return animateModelForState(state, emfModelPartRoot, ignorePauseConditions);
+    }
+
+    /**
+     * Animates the supplied model with the animation state supplied.
+     * <p>
+     * Note: API animation hooks WILL run on this animation, and may cancel it silently.
+     * <p>
+     * Note: The setting EMFConfig.resetPlayerModelEachRender_v2 will reset any model animated with a player backed render
+     *       state at the start of the setup for this animation. Use an animation hook to apply any transforms you need to apply
+     *       before the animation, yet after this reset.
+     *       (or if you really need to, copy the inner method impl and run what transforms you need after the ETFState.mount() call)
+     *
+     * @param state The vanilla entity render state of the entity. (may not resolve into an EMF state if not constructed correctly via the renderer object)
+     * @param emfModelPartRoot The EMF root part of the model to try animate. (it is up to you to run the vanilla animation on the containing model first if needed, or not if that's what you need)
+     * @param ignorePauseConditions If true, the animation will be forced to run even if the animation would otherwise be paused, e.g. API pause listeners.
+     * @return true if valid inputs were supplied and the model can and did animate without error.
+     */
+    static boolean animateModelForState(net.minecraft.client.renderer.entity.state.EntityRenderState state, EMFModelPartRoot emfModelPartRoot, boolean ignorePauseConditions) {
+        return animateModelForState(EMFEntityRenderState.from(state), emfModelPartRoot, ignorePauseConditions);
+    }
+
+    /**
+     * Animates the supplied model with the animation state supplied.
+     * <p>
+     * Note: API animation hooks WILL run on this animation, and may cancel it silently.
+     * <p>
+     * Note: The setting EMFConfig.resetPlayerModelEachRender_v2 will reset any model animated with a player backed render
+     *       state at the start of the setup for this animation. Use an animation hook to apply any transforms you need to apply
+     *       before the animation, yet after this reset.
+     *       (or if you really need to, copy this method impl and run what transforms you need after the ETFState.mount() call)
+     *
+     * @param state The EMF or ETF entity render state of the entity.
+     * @param emfModelPartRoot The EMF root part of the model to try animate. (it is up to you to run the vanilla animation on the containing model first if needed, or not if that's what you need)
+     * @param ignorePauseConditions If true, the animation will be forced to run even if the animation would otherwise be paused, e.g. API pause listeners.
+     * @return true if valid inputs were supplied and the model can and did animate without error.
+     */
+    static boolean animateModelForState(ETFEntityRenderState state, EMFModelPartRoot emfModelPartRoot, boolean ignorePauseConditions) {
+        if (state == null || emfModelPartRoot == null || !emfModelPartRoot.hasAnimation()) {
+            return false;
+        }
+
+        ETFState.mount(state);
+        try {
+            if (ignorePauseConditions) {
+                emfModelPartRoot.animateNoPause();
+            } else {
+                emfModelPartRoot.animate();
+            }
+        } catch (Exception e) {
+            return false;
+        } finally {
+            ETFState.unMount();
+        }
+
+        return true;
+    }
+
+    /**
+     * @param shouldPause The function to consider if a given entity should be paused rather that triggering it via uuid.
+     *                    Note: that if this returns false, another mod or even EMF itself might yet return true and pause the entity for other reasons.
+     *                    Returning true from this function will ALWAYS lead to a pause.
+     * @return true if valid inputs were supplied.
+     */
+    static boolean registerPauseCondition(Function<EMFEntity, Boolean> shouldPause) throws Exception {
+        if (shouldPause == null) {
+            throw paramFail("null pause condition");
+        }
+        EMFAnimationPauseHandler.pauseListeners.add(shouldPause);
+        return true;
+    }
+
+    /**
+     * @param entityOrBlockEntity The entity or block entity to pause animations for.
+     * @return true if valid inputs were supplied and the entity's animations were set to pause.
+     */
+    static boolean pauseAllCustomAnimationsForEntity(EMFEntity entityOrBlockEntity) {
+        if (entityOrBlockEntity == null || entityOrBlockEntity.etf$getUuid() == null) {
+            return false;
+        }
+        EMFAnimationPauseHandler.entitiesPaused.add(entityOrBlockEntity.etf$getUuid());
+        return true;
+    }
+
+    /**
+     * @param entityOrBlockEntity The entity or block entity to resume animations for.
+     * @return true if valid inputs were supplied and the entity's animations were set to resume.
+     */
+    static boolean resumeAllCustomAnimationsForEntity(EMFEntity entityOrBlockEntity) {
+        if (entityOrBlockEntity == null || entityOrBlockEntity.etf$getUuid() == null) {
+            return false;
+        }
+        EMFAnimationPauseHandler.entitiesPaused.remove(entityOrBlockEntity.etf$getUuid());
+        EMFAnimationPauseHandler.entitiesPausedParts.remove(entityOrBlockEntity.etf$getUuid());
+        return true;
+    }
+
+    /**
+     * @param entityOrBlockEntity The entity or block entity to pause animations for.
+     * @param parts               The parts of the entity to pause animations for.
+     * @return true if valid inputs were supplied and the entity's animations were set to pause.
+     */
+    static boolean pauseCustomAnimationsForThesePartsOfEntity(EMFEntity entityOrBlockEntity, ModelPart... parts) {
+        if (entityOrBlockEntity == null || entityOrBlockEntity.etf$getUuid() == null
+                || parts == null || parts.length == 0) {
+            return false;
+        }
+        EMFAnimationPauseHandler.entitiesPausedParts.put(entityOrBlockEntity.etf$getUuid(), parts);
+        return true;
+    }
+
+    /**
+     * @param shouldUseVanillaModel The function to consider if a given entity should use the vanilla model rather that triggering it via uuid.
+     *                    Note: that if this returns false, another mod or even EMF itself might yet return true and do it for other reasons.
+     *                    Returning true from this function will ALWAYS lead to using the vanilla model variant.
+     * @return true if valid inputs were supplied.
+     */
+    static boolean registerVanillaModelCondition(Function<EMFEntity, Boolean> shouldUseVanillaModel) throws Exception {
+        if (shouldUseVanillaModel == null) {
+            throw paramFail("null vanilla model condition");
+        }
+        EMFState.forceVanillaModelListeners.add(shouldUseVanillaModel);
+        return true;
+    }
+
+    /**
+     * @param entityOrBlockEntity The entity or block entity to be forced into their vanilla model.
+     * @return true if valid inputs were supplied and the entity was marked to use the vanilla model.
+     */
+    static boolean lockEntityToVanillaModel(EMFEntity entityOrBlockEntity){
+        if (entityOrBlockEntity == null || entityOrBlockEntity.etf$getUuid() == null) {
+            return false;
+        }
+        EMFState.entitiesToForceVanillaModel.add(entityOrBlockEntity.etf$getUuid());
+        return true;
+    }
+
+    /**
+     * @param entityOrBlockEntity The entity or block entity to be re-allowed to variate.
+     * @return true if valid inputs were supplied and the entity was marked to use their variants again.
+     */
+    static boolean unlockEntityToVanillaModel(EMFEntity entityOrBlockEntity){
+        if (entityOrBlockEntity == null || entityOrBlockEntity.etf$getUuid() == null) {
+            return false;
+        }
+        EMFState.entitiesToForceVanillaModel.remove(entityOrBlockEntity.etf$getUuid());
+        return true;
+    }
+
+
+    /**
+     * Get the current emf variant of the model.
+     * Returns -1 if the model is not an EMF model or is null.
+     * Returns 0 if the model is an EMF model but has no variants, or hasn't been set yet.
+     *
+     * @param model the model
+     * @return the int
+     */
+    static int getCurrentEMFVariantOfModel(EntityModel<?> model){
+        if (!isModelCustomizedByEMF(model)) {
+            return -1;
+        }
+        return ((IEMFModel) model).emf$getEMFRootModel().currentModelVariant;
+    }
+
+
+    /**
+     * Checks if the model has custom EMF animations.
+     * Returns false if the model is not an EMF model or is null.
+     *
+     * @param model the model
+     * @return the boolean
+     */
+    static boolean isModelAnimatedByEMF(EntityModel<?> model){
+        if (!isModelCustomizedByEMF(model)) {
+            return false;
+        }
+        return ((IEMFModel) model).emf$getEMFRootModel().hasAnimation();
+    }
+
+    /**
+     * Is this model a custom EMF model.
+     * Returns false if the model is null.
+     *
+     * @param model the model
+     * @return the boolean
+     */
+    static boolean isModelCustomizedByEMF(EntityModel<?> model){
+        if (model == null) {
+            return false;
+        }
+        return ((IEMFModel) model).emf$isEMFModel();
+    }
+
+    /**
+     * Is this model part is an extraneous part added by EMF, and does not represent any actual normal vanilla parts.
+     * Returns false if the modelPart is null.
+     *
+     * @param modelPart the model part
+     * @return the boolean
+     */
+    static boolean isModelPartCustomToEMF(ModelPart modelPart){
+        if (modelPart == null) {
+            return false;
+        }
+        return modelPart instanceof EMFModelPartCustom;
+    }
+
+    /**
+     * Is this model part animated by EMF.
+     * Returns false if the modelPart is null.
+     * Be warned this will not tell you if a parent part of the model is animated.
+     *
+     * @param modelPart the model part
+     * @return the boolean
+     */
+    static boolean isModelPartAnimatedByEMF(ModelPart modelPart){
+        if (modelPart == null) {
+            return false;
+        }
+        return modelPart instanceof EMFModelPart emf && emf.isSetByAnimation;
+    }
+
+    @Deprecated(since = "api v9")
+    static void registerAnimationFunction(String sourceModId, String methodName, String methodExplanationTranslationKeyOrText, Function<Float, Float> function) throws Exception {
+        throw dependencyException();
+    }
+
+    @Deprecated(since = "api v9")
+    static void registerAnimationBiFunction(String sourceModId, String methodName, String methodExplanationTranslationKeyOrText, BiFunction<Float, Float, Float> biFunction) throws Exception {
+        throw dependencyException();
+    }
+
+    @Deprecated(since = "api v9")
+    static void registerAnimationTriFunction(String sourceModId, String methodName, String methodExplanationTranslationKeyOrText, TriFunction<Float, Float, Float, Float> triFunction) throws Exception {
+        throw dependencyException();
+    }
+
+    @Deprecated(since = "api v9")
+    static void registerAnimationMultiFunction(String sourceModId, String methodName, String methodExplanationTranslationKeyOrText, Function<List<Float>, Float> multiFunction) throws Exception {
+        throw dependencyException();
+    }
+
+    @Deprecated(since = "api v2")
+    static void registerSingletonAnimationVariable(String sourceModId, String variableName, BooleanSupplier variableValueSupplier) throws Exception {
+        EMFUtils.logWarn("Invalid registration of singleton variable:" + variableName + " from mod " + sourceModId);
+        registerSingletonAnimationVariable(sourceModId, variableName, variableName, variableValueSupplier);
+    }
+
+    @Deprecated(since = "api v2")
+    static void registerSingletonAnimationVariable(String sourceModId, String variableName, SampledFloat variableValueSupplier) throws Exception {
+        throw dependencyException();
+    }
+
+    @Deprecated(since = "api v2")
+    static void registerSingletonAnimationVariable(String sourceModId, String variableName, Supplier<Float> variableValueSupplier) throws Exception {
+        EMFUtils.logWarn("Invalid registration of singleton variable:" + variableName + " from mod " + sourceModId);
+        registerSingletonAnimationVariable(sourceModId, variableName, variableName, variableValueSupplier);
+    }
+
+
+    @Deprecated(since = "api v2")
+    static void registerAnimationFunction(String sourceModId, String methodName, Function<Float, Float> function) throws Exception {
+        throw dependencyException();
+    }
+
+    @Deprecated(since = "api v2")
+    static void registerAnimationBiFunction(String sourceModId, String methodName, BiFunction<Float, Float, Float> biFunction) throws Exception {
+        throw dependencyException();
+    }
+
+    @Deprecated(since = "api v2")
+    static void registerAnimationTriFunction(String sourceModId, String methodName, TriFunction<Float, Float, Float, Float> triFunction) throws Exception {
+        throw dependencyException();
+    }
+
+    @Deprecated(since = "api v2")
+    static void registerAnimationMultiFunction(String sourceModId, String methodName, Function<List<Float>, Float> multiFunction) throws Exception {
+        throw dependencyException();
+    }
+
+    @Deprecated(since = "api v2")
+    static void registerCustomFunctionFactory(String sourceModId, String methodName, MethodRegistry.MethodFactory factory) throws Exception {
+        throw dependencyException();
+    }
+
+    private static Exception dependencyException() {
+        return new UnsupportedOperationException("EMF Animation API: method is deprecated.");
+    }
+
+    private static Exception paramFail(String message) {
+        EMFUtils.logError("EMF Animation API: " + message);
+        return new InvalidParameterException("EMF Animation API: " + message);
+    }
+
+    /**
+     * Animation hook interface for receiving callbacks at the start and end of animations.
+     */
+    abstract class EMFAnimationHook {
+        /**
+         * @return true if you want to allow this animation, all hooks will still run as normal either way,
+         * but if any hook returns false, the animation will be canceled and not run.
+         */
+        public boolean onAnimationStart(AnimationContext context, boolean isCancelledByHook) { return true; }
+        public void onAnimationEnd(AnimationContext context, boolean wasCancelledByHook) {}
+
+        // Hooks for the simple biped pose copying that EMF does for humanoid models that get disconnected by the 1.21.9+
+        // submit process e.g. armor. But also reapplies on repeated player model animation calls that frame e.g. by Essential mod cosmetics.
+        /**
+         * @return true if you want to allow this pose copy
+         */
+        public boolean onBipedPoseCopyStart(EMFBipedPose pose, HumanoidModel<?> model, boolean isCancelledByHook) { return true; }
+        public void onBipedPoseCopyEnd(EMFBipedPose pose, HumanoidModel<?> model, boolean wasCancelledByHook) {}
+
+        /**
+         * Intended to give the hooks an unchanging method description when api changes are needed.
+         * values in AnimationContext may become expanded or deprecated in the future.
+         */
+        public record AnimationContext(
+                @Nullable EMFEntityRenderState activeState, // Nullability is unlikely but technically possible
+                @NotNull EMFModelPartRoot animatingModelRoot,
+                @Nullable Throwable error, // Note, an error here will also mean that this animation is being removed from future execution
+                @Nullable ModelPart[] partsRequestedToPauseThisAnimation,
+
+                // Make sure you understand this object before messing with it, it's not intended for your use but is exposed here if you need it.
+                // This is the animation execution object that the hooks wrap around, it is conceptually final, but actual implementation varies.
+                // Provides access to the raw animation line data that it was built with.
+                @NotNull EMFAnimationHandler animationHandler
+        ){
+        }
+    }
+}

@@ -1,0 +1,433 @@
+package com.thelads.core.v26_2.embedded.emf.models.animation.math.expression_tree;
+
+
+import com.thelads.core.v26_2.embedded.emf.EMF;
+import com.thelads.core.v26_2.embedded.emf.EMFException;
+import com.thelads.core.v26_2.embedded.emf.models.animation.AnimSetupContext;
+import com.thelads.core.v26_2.embedded.emf.models.animation.math.EMFMathException;
+import com.thelads.core.v26_2.embedded.emf.utils.EMFUtils;
+
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+public class MathExpressionParser {
+
+    public static final MathComponent NULL_EXPRESSION = new MathConstant(Float.NaN) {
+        @Override
+        public float getResult() {
+            EMFUtils.logError("ERROR: NULL_EXPRESSION was called, this should not happen.");
+            return super.getResult();
+        }
+    };
+    private static final List<MathOperator> BOOLEAN_COMPARATOR_ACTIONS = List.of(MathOperator.EQUALS, MathOperator.SMALLER_THAN_OR_EQUALS, MathOperator.SMALLER_THAN, MathOperator.LARGER_THAN_OR_EQUALS, MathOperator.LARGER_THAN, MathOperator.NOT_EQUALS);
+    private static final List<MathOperator> BOOLEAN_LOGICAL_ACTIONS = List.of(MathOperator.AND, MathOperator.OR);
+    private static final List<MathOperator> MULTIPLICATION_ACTIONS = List.of(MathOperator.MULTIPLY, MathOperator.DIVIDE, MathOperator.DIVISION_REMAINDER);
+    private static final List<MathOperator> ADDITION_ACTIONS = List.of(MathOperator.ADD, MathOperator.SUBTRACT);
+    private final String originalExpression;
+    private final boolean wasInvertedBooleanExpression;
+    private final boolean isNegative;
+    private final AnimSetupContext context;
+    private MathComponent optimizedComponent = null;
+    private CalculationList components;
+    private boolean nextValueIsNegative = false;
+    private String caughtExceptionString = null;
+
+    private MathExpressionParser(String expressionString, boolean isNegative, AnimSetupContext context, boolean invertBoolean) {
+        this.isNegative = isNegative;
+        this.context = context;
+
+        wasInvertedBooleanExpression = invertBoolean;
+
+        expressionString = expressionString.trim();
+//        expressionString = expressionString.replaceAll("\\s*", "");
+        originalExpression = expressionString;
+
+        components = new CalculationList();
+        try {
+
+            RollingReader rollingReader = new RollingReader();
+            var charIterator = expressionString.chars()
+                    .mapToObj(c -> (char) c)
+                    .iterator();
+
+            Character firstBooleanChar = null;
+            while (charIterator.hasNext()) {
+                char currentChar = charIterator.next();
+
+                //ignore whitespace
+                if (Character.isWhitespace(currentChar)) continue;
+
+                MathOperator asAction = MathOperator.getAction(currentChar);
+
+                //process the char after a boolean character. i.e.   !, =, &, |, <, > could turn into !=, ==, &&, ||, <=, >=
+                if (firstBooleanChar != null) {
+                    if (asAction == MathOperator.BOOLEAN_CHAR) {
+                        // confirmed double boolean character such as ==, !=, &&, ||, <=, >=
+                        readDoubleBooleanAction(this.context, firstBooleanChar, currentChar);
+                        //now iterate once again manually to continue as a regular iteration
+                        if (!charIterator.hasNext())
+                            throw new EMFMathException("ERROR: boolean operator [" + firstBooleanChar + currentChar + "] at end of expression for [" + this.context.animKey + "] in [" + this.context.modelName + "].");
+                        currentChar = charIterator.next();
+                        asAction = MathOperator.getAction(currentChar);
+                    } else {
+                        // the last boolean character was a single character boolean such as !, =, &, |, <, >
+                        // so process it and continue as normal
+                        readLastSingleBooleanAction(this.context, firstBooleanChar, rollingReader);
+                    }
+                    firstBooleanChar = null;
+                }
+
+                // this character might be the start of a two character boolean operator such as ==, !=, &&, ||, <=, >=
+                // so we store it and continue to the next character
+                if (asAction == MathOperator.BOOLEAN_CHAR) {
+                    firstBooleanChar = currentChar;
+                }
+                //critical that no elif here
+
+                // if the character is a minus sign, at the start of the expression, or after another math action,
+                // then it is a negative sign for the following value
+                if (asAction == MathOperator.SUBTRACT &&
+                        // the character is a minus sign, at the start of the expression
+                        ((components.isEmpty() && rollingReader.isEmpty())
+                                // or after another math action i.e. 2/-4
+                                || (!components.isEmpty() && components.getLast() instanceof MathOperator && rollingReader.isEmpty()))) {
+                    nextValueIsNegative = true;
+                } else if (asAction == MathOperator.NONE) {
+                    //write the character normally
+                    rollingReader.write(currentChar);
+                } else {
+                    // if the character is a bracket, then it is a method or a bracketed expression
+                    if (asAction == MathOperator.OPEN_BRACKET) {
+                        readMethodOrBrackets(rollingReader, charIterator);
+                    } else {//asAction should be only + - * / ^
+                        //add last read data as variable if present
+                        readVariableOrConstant(rollingReader);
+                        //finally add the new math action to the end
+                        if (rollingReader.isEmpty() && asAction != MathOperator.BOOLEAN_CHAR) {
+                            components.add(asAction);
+                        }
+                    }
+                }
+            }
+            //add last read data as variable if present
+            readVariableOrConstant(rollingReader);
+
+            if (components.isEmpty())
+                throw new EMFMathException("ERROR: math components found to be empty for [" + this.context.animKey + "] in [" + this.context.modelName + "]");
+
+            //resolve unnecessary addition actions
+            CalculationList newComponents = new CalculationList();
+            MathComponent lastComponent = null;
+            for (MathComponent component :
+                    components) {
+                if (lastComponent instanceof MathOperator && component instanceof MathOperator action) {
+                    if (action != MathOperator.ADD) {
+                        newComponents.add(component);
+                    }
+                    //do not include unneeded addition action as there is no reason to and will mess with parser logic
+                } else {
+                    newComponents.add(component);
+                }
+                lastComponent = component;
+            }
+            //noinspection SequencedCollectionMethodCanBeUsed
+            if (newComponents.get(0) == MathOperator.ADD) {
+                //noinspection SequencedCollectionMethodCanBeUsed
+                newComponents.remove(0);
+            }
+            if (newComponents.size() != components.size()) components = newComponents;
+
+            //this NEEDS to run
+            validateAndOptimize();
+
+        } catch (EMFMathException e) {
+            caughtExceptionString = e.toString();
+        } catch (Exception e) {
+            caughtExceptionString = "EMF animation ERROR: for [" + this.context.animKey + "] in [" + this.context.modelName + "] cause [" + e + "].";
+            //noinspection CallToPrintStackTrace
+            e.printStackTrace();
+        }
+    }
+
+    public static MathComponent getOptimizedExpression(String expressionString, boolean isNegative, AnimSetupContext context) {
+        return getOptimizedExpression(expressionString, isNegative, context, false);
+    }
+
+    private static MathComponent getOptimizedExpression(String expressionString, boolean isNegative, AnimSetupContext context, boolean invertBoolean) {
+        try {
+            MathExpressionParser expression = new MathExpressionParser(expressionString, isNegative, context, invertBoolean);
+
+            MathComponent optimized = expression.optimizedComponent;
+            if (optimized == null) {
+                EMFUtils.logError("EMF animation ERROR: for [" + context.animKey + "] in [" + context.modelName
+                        + "] because " + expression.caughtExceptionString);
+                return NULL_EXPRESSION;
+            }
+
+            //just a boolean inverting wrapper
+            if (expression.wasInvertedBooleanExpression) {
+                return MathComponent.invertedBooleanDelegate(optimized);
+            }
+
+            return optimized;
+        } catch (Exception e) {
+            EMFUtils.logError("EMF animation ERROR: for [" + context.animKey + "] in [" + context.modelName + "] because [" + e + "].");
+            return NULL_EXPRESSION;
+        }
+    }
+
+    private static String readBracketContents(Iterator<Character> charIterator) {
+        final StringBuilder bracketContents = new StringBuilder();
+        int nesting = 0;
+        while (charIterator.hasNext()) {
+            char ch2 = charIterator.next();
+            if (ch2 == '(') {
+                nesting++;
+            } else if (ch2 == ')') {
+                if (nesting == 0) break;
+                nesting--;
+            }
+            bracketContents.append(ch2);
+        }
+        return bracketContents.toString();
+    }
+
+    private void readLastSingleBooleanAction(AnimSetupContext context, final Character firstBooleanChar, final RollingReader rollingReader) throws EMFMathException {
+        if (firstBooleanChar == '!') {
+            //likely a '!' for boolean variables so need to add to read
+            rollingReader.write('!');
+        } else {
+            //add complete single char boolean action
+            components.add(switch (firstBooleanChar) {
+                case '=' -> MathOperator.EQUALS;
+                case '&' -> MathOperator.AND;
+                case '|' -> MathOperator.OR;
+                case '<' -> MathOperator.SMALLER_THAN;
+                case '>' -> MathOperator.LARGER_THAN;
+                default ->
+                        throw new EMFMathException("ERROR: with boolean processing for operator [" + firstBooleanChar + "] for [" + context.animKey + "] in [" + context.modelName + "].");
+            });
+        }
+    }
+
+    private void readDoubleBooleanAction(AnimSetupContext context, final Character firstBooleanChar, final char currentChar) throws EMFMathException {
+        MathOperator doubleAction = switch (firstBooleanChar + "" + currentChar) {
+            case "==" -> MathOperator.EQUALS;
+            case "!=" -> MathOperator.NOT_EQUALS;
+            case "&&" -> MathOperator.AND;
+            case "||" -> MathOperator.OR;
+            case ">=" -> MathOperator.LARGER_THAN_OR_EQUALS;
+            case "<=" -> MathOperator.SMALLER_THAN_OR_EQUALS;
+            default ->
+                    throw new EMFMathException("ERROR: with boolean processing for operator [" + firstBooleanChar + currentChar + "] for [" + context.animKey + "] in [" + context.modelName + "].");
+        };
+        //add complete double boolean action
+        components.add(doubleAction);
+    }
+
+    private void readMethodOrBrackets(final RollingReader rollingReader, Iterator<Character> charIterator) throws EMFMathException {
+        String functionName = rollingReader.read();
+        String bracketContents = readBracketContents(charIterator);
+        switch (functionName) {
+            case "" ->
+                //just nested brackets
+                    components.add(MathExpressionParser.getOptimizedExpression(bracketContents, getNegativeNext(), this.context, false));
+            case "!" ->
+                //just nested brackets
+                    components.add(MathExpressionParser.getOptimizedExpression(bracketContents, getNegativeNext(), this.context, true));
+            case "-" -> {
+                getNegativeNext(); // drain just in case
+
+                //just nested brackets
+                components.add(MathExpressionParser.getOptimizedExpression(bracketContents, true, this.context, false));
+            }
+            default ->
+                //method
+                    components.add(MathMethod.getOptimizedExpression(functionName, bracketContents, getNegativeNext(), this.context));
+        }
+    }
+
+    @SuppressWarnings("RedundantThrows")
+    private void readVariableOrConstant(final RollingReader rollingReader) throws EMFMathException {
+        if (rollingReader.isEmpty()) return;
+
+        String read = rollingReader.read();
+        try {
+            //assume it is a number
+            var number = Float.parseFloat(read);
+            //valid number
+            if (read.startsWith(".") && EMF.config().getConfig().enforceOptiFineAnimSyntaxLimits){
+                //if it starts with a dot, reject this as incorrect formatting
+                throw new EMFMathException("ERROR: number [" + read + "] in expression [" + originalExpression + "] for [" + context.animKey + "] in [" + context.modelName + "] is not valid in OptiFine. It must not start with '.' please add a zero");
+            }
+
+            components.add(new MathConstant(number, getNegativeNext()));
+        } catch (NumberFormatException ignored) {
+            if (read.matches("^(\\d|_).*") && EMF.config().getConfig().enforceOptiFineAnimSyntaxLimits){
+                //if it starts with a digit or underscore, reject this as incorrect formatting
+                throw new EMFMathException("ERROR: variable [" + read + "] in expression [" + originalExpression + "] for [" + context.animKey + "] in [" + context.modelName + "] is not valid in OptiFine. It must not start with '.' please add a zero");
+            }
+            //otherwise it must be a text variable
+            components.add(MathVariable.getOptimizedVariable(read, getNegativeNext(), this.context));
+        }
+        //throws an additional exception if not a number or variable and not empty
+    }
+
+    protected void validateAndOptimize() {
+        if (caughtExceptionString != null) {
+            EMFUtils.logWarn(caughtExceptionString);
+            //noinspection ThrowableNotThrown
+            new EMFMathException(caughtExceptionString).record();
+            return;
+        }
+
+        // if the expression is not valid, then return NaN
+        if (Float.isNaN(this.validateCalculationAndOptimize())) {
+            EMFUtils.logWarn("result was NaN, expression not valid: " + originalExpression);
+            //noinspection ThrowableNotThrown
+            new EMFMathException("result was NaN, expression not valid: " + originalExpression).record();
+        }
+    }
+
+    private boolean getNegativeNext() {
+        boolean neg = nextValueIsNegative;
+        nextValueIsNegative = false;
+        return neg;
+    }
+
+    private float validateCalculationAndOptimize() {
+
+        //if only one component then it is a simple optimization
+        if (components.size() == 1) {
+            MathComponent comp = components.getLast();
+            if (comp instanceof MathConstant constnt) {
+                if (isNegative) comp = new MathConstant(-constnt.getResult());
+            } else if (comp instanceof MathValue val) {
+                val.isNegative = isNegative != val.isNegative;
+            }
+            optimizedComponent = comp;
+            return comp.getResult();
+        }
+
+        try {
+
+            // optimize the expression into binary expression tree components, following the order of operations
+            CalculationList optimised =
+                    optimiseTheseActionsIntoBinaryComponents(BOOLEAN_LOGICAL_ACTIONS,
+                            optimiseTheseActionsIntoBinaryComponents(BOOLEAN_COMPARATOR_ACTIONS,
+                                    optimiseTheseActionsIntoBinaryComponents(ADDITION_ACTIONS,
+                                            optimiseTheseActionsIntoBinaryComponents(MULTIPLICATION_ACTIONS,
+                                                    new CalculationList(components)))));
+
+
+            if (optimised.size() == 1) {
+                float result = optimised.getLast().getResult();
+                if (Float.isNaN(result)) {
+                    EMFUtils.logError(" result was NaN in [" + context.modelName + "] for expression: " + originalExpression + " as " + components);
+                } else {
+                    //save optimized version of valid expression
+                    optimizedComponent = isNegative
+                            ? MathComponent.negativeDelegate(optimised.getLast())
+                            : optimised.getLast();
+
+                }
+                return result;
+            } else {
+                EMFUtils.logError("ERROR: calculation did not result in 1 component, found: " + optimised + " in [" + context.animKey + "] in [" + context.modelName + "].");
+                EMFUtils.logError("\texpression was [" + originalExpression + "].");
+            }
+        } catch (Exception e) {
+            String message = "EMF animation ERROR: expression error in [" + context.animKey + "] in [" + context.modelName + "] caused by [" + e + "].";
+            EMFUtils.logError(message);
+            //noinspection ThrowableNotThrown
+            new EMFException(message).record();
+        }
+
+        //if the expression is not valid, then return NaN
+        return Float.NaN;
+    }
+
+    private CalculationList optimiseTheseActionsIntoBinaryComponents(List<MathOperator> actionsForThisPass, CalculationList componentsOptimized) {
+
+        List<MathOperator> containedActions = actionsForThisPass.stream()
+                .filter(componentsOptimized::contains)
+                .toList();
+
+        if (containedActions.isEmpty()) {
+            return componentsOptimized;
+        }
+
+        CalculationList newComponents = new CalculationList();
+        Iterator<MathComponent> compIterator = componentsOptimized.iterator();
+        while (compIterator.hasNext()) {
+            MathComponent component = compIterator.next();
+            if (component instanceof MathOperator action && containedActions.contains(action)) {
+                MathComponent last = newComponents.getLast();
+                MathComponent next = compIterator.next();
+                //noinspection SequencedCollectionMethodCanBeUsed
+                newComponents.remove(newComponents.size() - 1);
+                newComponents.add(MathBinaryExpressionComponent.getOptimizedExpression(last, action, next));
+            } else {
+                newComponents.add(component);
+            }
+        }
+        return newComponents;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("{");
+        for (MathComponent comp :
+                components) {
+            builder.append(comp.toString()).append(" ");
+        }
+        builder.append("}");
+        return builder.toString();
+
+    }
+
+    private static class RollingReader {
+        private StringBuilder builder = new StringBuilder();
+
+        void clear() {
+            builder = new StringBuilder();
+        }
+
+        void write(char ch) {
+            builder.append(ch);
+        }
+
+        String read() {
+            var result = builder.toString();
+            clear();
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return builder.toString();
+        }
+
+        boolean isEmpty() {
+            return builder.isEmpty();
+        }
+
+    }
+
+    private static class CalculationList extends ArrayList<MathComponent> {
+        public CalculationList(CalculationList components) {
+            super(components);
+        }
+
+        public CalculationList() {
+        }
+
+        public MathComponent getLast() {
+            return super.get(size() - 1);
+        }
+
+    }
+}
