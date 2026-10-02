@@ -307,7 +307,9 @@ final class NativeMenuAccessProbe {
         title.mouseClicked(new MouseButtonEvent(-1, -1, new MouseButtonInfo(0, 0)), false);
         // FancyMenu customization-overlay tools (Drippy's edit tab, shown while FancyMenu's overlay is on) stay where FancyMenu keeps them.
         var tools = visible(title).stream().filter(NativeMenuAccessProbe::overlayTool).toList();
-        var main = visible(title).stream().filter(widget -> !overlayTool(widget)).toList();
+        // Essential's actions: a row of compact buttons above the account name, apart from the six main actions.
+        var row = visible(title).stream().filter(widget -> widget instanceof com.thelads.core.v1_21_11.gui.CompactButton12111).toList();
+        var main = visible(title).stream().filter(widget -> !overlayTool(widget) && !row.contains(widget)).toList();
         var labels = main.stream().map(widget -> widget.getMessage().getString()).toList();
         LOGGER.info("Lads menu access probe: the Lads title shows {} and leaves {} FancyMenu overlay tool(s) in place", labels, tools.size());
         for (String label : List.of("Lads Mods", "More...", Component.translatable("menu.singleplayer").getString(),
@@ -315,9 +317,13 @@ final class NativeMenuAccessProbe {
                 Component.translatable("menu.quit").getString()))
             check(labels.contains(label), "the Lads title shows " + label + " " + labels);
         check(labels.size() == 6, "only the six main actions stay on the Lads title, found " + labels);
+        var rowLabels = row.stream().map(widget -> widget.getMessage().getString()).toList();
+        check(!FabricLoader.getInstance().isModLoaded("essential") || rowLabels.contains("Essential"),
+            "Essential's actions sit in a row above the account name " + rowLabels);
+        check(row.stream().allMatch(widget -> widget.getBottom() <= title.height - 30), "the Essential row ends above the account name");
         check(title.children().stream().noneMatch(child -> child.getClass().getName().startsWith("gg.essential.")),
             "no Essential widget is left on the Lads title (Essential overlap fix)");
-        apart(main, title, "title");
+        apart(java.util.stream.Stream.concat(main.stream(), row.stream()).toList(), title, "title");
         button(title, "More...").onPress(null);
         check(mc.screen instanceof TitleExtrasScreen12111, "More... opens the Lads extras page, found " + mc.screen);
         LOGGER.info("Lads menu access probe: the title's More page holds {}", originals(mc.screen));
@@ -412,15 +418,18 @@ final class NativeMenuAccessProbe {
             check(!FlashbackScreens.available() || button(pause, "Replays") != null, "the pause menu has Replays with Flashback installed");
             apart(pause, "pause");
             check(!essentialOverlayShown(pause), "Essential's menu layer is not drawn over the Lads pause menu");
-            Button extras = button(pause, "Essential & extras...");
-            check(!FabricLoader.getInstance().isModLoaded("essential") || extras != null, "Essential's pause actions sit behind Essential & extras...");
+            var row = visible(pause).stream().filter(widget -> widget instanceof com.thelads.core.v1_21_11.gui.CompactButton12111)
+                .map(widget -> widget.getMessage().getString()).toList();
+            check(!FabricLoader.getInstance().isModLoaded("essential") || row.contains("Essential"),
+                "Essential's pause actions sit in a row above the account name " + row);
+            Button fullscreen = button(pause, Component.translatable("options.fullscreen").getString());
+            check(fullscreen instanceof com.thelads.core.v1_21_11.gui.CompactButton12111 && fullscreen.getRight() <= pause.width && fullscreen.getY() < 30,
+                "the pause menu has the fullscreen toggle at its top right");
+            Button extras = button(pause, "Extras...");
             if (extras != null) {
                 extras.onPress(null);
-                check(mc.screen instanceof TitleExtrasScreen12111, "Essential & extras... opens the Lads extras page, found " + mc.screen);
-                var labels = visible(mc.screen).stream().map(widget -> widget.getMessage().getString()).toList();
-                LOGGER.info("Lads menu access probe: the pause extras page lists {}", labels);
-                check(!FabricLoader.getInstance().isModLoaded("essential") || labels.contains("Essential settings"),
-                    "Essential's Settings action is relocated as a Lads button " + labels);
+                check(mc.screen instanceof TitleExtrasScreen12111, "Extras... opens the Lads extras page, found " + mc.screen);
+                LOGGER.info("Lads menu access probe: the pause extras page lists {}", visible(mc.screen).stream().map(widget -> widget.getMessage().getString()).toList());
                 button(mc.screen, "Done").onPress(null);
                 check(mc.screen == pause, "Done returns to the pause menu");
             }

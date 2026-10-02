@@ -33,7 +33,7 @@ final class Probe145 {
     private static final int WS_CAPTION = 0x00C00000, WS_THICKFRAME = 0x00040000, GWL_STYLE = -16;
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe145::rateStart, Probe145::rate, Probe145::mouse,
         Probe145::pacedStart, Probe145::paced, Probe145::unpaced, Probe145::hotbarStart, Probe145::hotbarGlide, Probe145::hotbarMoving,
-        Probe145::hotbarSettled,
+        Probe145::hotbarSettled, Probe145::swingStart,
         Probe145::swingLegacy, Probe145::swingSwitch, Probe145::swingVanilla, Probe145::borderless, Probe145::windowed, Probe145::resized, Probe145::resizedShot,
         Probe145::restored);
     private static long frames, since;
@@ -147,7 +147,12 @@ final class Probe145 {
 
     private static boolean hotbarSettled(Minecraft mc) {
         check(NativeHud.selectionOffset == 0, "SmoothHotbar: the frame settles on slot 9");
+        // Back to the sword: the hand lowers and pulls it out (a few ticks) before it can swing.
         mc.thePlayer.inventory.currentItem = 0;
+        return after(10);
+    }
+
+    private static boolean swingStart(Minecraft mc) {
         module("LegacySwing").setEnabled(true);
         swingFrames = LegacySwing189.frames;
         mc.thePlayer.swingItem();

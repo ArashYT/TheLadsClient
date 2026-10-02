@@ -23,7 +23,7 @@ final class KillBannerCapture {
         {2, 1, 2, 0, 1000, 50}, {2, 2, 3, 0, 1000, 50}, {2, 3, 4, 1, 1000, 50}, {2, 0, 5, 1, 3800, 60}};
     private static int step = -1, saved;
     private static long due;
-    private static boolean capturing, enabledBefore, soundBefore, headshotBefore;
+    private static boolean capturing, held, enabledBefore, soundBefore, headshotBefore;
     private static int styleBefore, reaverBefore, rogueBefore;
     private static double durationBefore;
     private static long modifiedBefore;
@@ -51,7 +51,11 @@ final class KillBannerCapture {
 
     /** Each completed game frame (NativeWorldVerification.renderedFrame). */
     static void frame(RenderTarget target, Path game) {
-        if (step < 0 || step >= SHOTS.length || capturing || System.nanoTime() < due) return;
+        if (step < 0 || step >= SHOTS.length || capturing) return;
+        // Another QA menu over the HUD hides the banner: hold this shot and fire it again once the screen is gone.
+        if (Minecraft.getInstance().gui.screen() != null) { held = true; return; }
+        if (held) { held = false; fire(); return; }
+        if (System.nanoTime() < due) return;
         capturing = true;
         int[] s = SHOTS[step];
         String name = "killbanner-" + (s[0] == 1 ? "reaver" : "rogue") + "-v" + s[1] + "-k" + s[2] + (s[3] == 1 ? "-hs" : "")
