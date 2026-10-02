@@ -50,6 +50,7 @@ public partial class MainWindow : Window
     private bool _accountCacheRecoveryShown;
     private readonly Dictionary<string, string> _accountNotices = new(StringComparer.OrdinalIgnoreCase);
     private bool _launching;
+    private CancellationTokenSource? _launchCts; // the launch overlay's Cancel, until the game process starts
     private bool _populatingProfileSelector = false;
 
     private string _selectedAccountInternal = "";
@@ -2531,13 +2532,13 @@ public partial class MainWindow : Window
     /// null means the user cancelled.
     /// </summary>
     private async Task<(SharedContentReport Report, bool WithoutSharing)?> PrepareSharedContentForLaunchAsync(
-        TheLadsLauncher.Models.LauncherProfile profile, string gameDirectory, bool withoutSharing = false)
+        TheLadsLauncher.Models.LauncherProfile profile, string gameDirectory, CancellationToken token, bool withoutSharing = false)
     {
         var progress = new Progress<string>(message => GameLaunchStatusText.Text = message);
         SharedContentReport report;
         try
         {
-            report = await _profileService.PrepareProfileEnvironmentAsync(profile, progress, withoutSharedFolders: withoutSharing);
+            report = await _profileService.PrepareProfileEnvironmentAsync(profile, progress, token, withoutSharedFolders: withoutSharing);
         }
         catch (SharedContentUnavailableException ex) when (!withoutSharing)
         {
@@ -2551,7 +2552,7 @@ public partial class MainWindow : Window
                 StatusText.Text = "Launch cancelled: shared worlds and packs are unavailable for this profile.";
                 return null;
             }
-            report = await _profileService.PrepareProfileEnvironmentAsync(profile, progress, withoutSharedFolders: true);
+            report = await _profileService.PrepareProfileEnvironmentAsync(profile, progress, token, withoutSharedFolders: true);
             withoutSharing = true;
         }
         RecordSharedReport(gameDirectory, profile.Name, report);
@@ -5019,6 +5020,16 @@ public partial class MainWindow : Window
         }
     }
 
+    // Stops the launch at its next step; LaunchGame reports it once the steps have unwound (the game is never started).
+    private void CancelLaunch_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_launchCts is not { IsCancellationRequested: false } launch) return;
+        CancelLaunchButton.IsEnabled = false;
+        CancelLaunchButton.Content = "Cancelling...";
+        Log("[Launcher] Cancelling the launch...");
+        launch.Cancel();
+    }
+
     private string ResolveLaunchAccountName()
     {
         return !string.IsNullOrEmpty(_launchAccountOverride)
@@ -5124,6 +5135,11 @@ public partial class MainWindow : Window
         }
 
         _launching = true;
+        using var launchCts = new CancellationTokenSource();
+        _launchCts = launchCts;
+        var token = launchCts.Token;
+        CancelLaunchButton.Content = "Cancel";
+        CancelLaunchButton.IsEnabled = true;
         LaunchButton.IsEnabled = false;
         GameLaunchOverlay.IsVisible = true;
         RenderModsInventory(); // toggles are off while launching
@@ -5141,7 +5157,7 @@ public partial class MainWindow : Window
             if (GameVersionPolicy.RequiresFabric(activeProfile.MinecraftVersion) && string.IsNullOrWhiteSpace(activeProfile.FabricVersion))
                 throw new InvalidOperationException("The Lads Client profile requires a Fabric loader.");
             // Shared worlds/packs/server list (and options.txt unless isolated). Null: the user cancelled at the sharing prompt.
-            if (await PrepareSharedContentForLaunchAsync(activeProfile, gameDirectory) is not { } prepared) return;
+            if (await PrepareSharedContentForLaunchAsync(activeProfile, gameDirectory, token) is not { } prepared) return;
             // The server list was prepared for this LadsCore state (Core reads the shared list, a profile without it gets a copy).
             bool coreRequested = SharedContentService.IsCoreRequested(gameDirectory, out _);
             settings.InstancePath = gameDirectory;
@@ -5224,15 +5240,16 @@ public partial class MainWindow : Window
                         {
                             // Use cached refresh tokens — no UI
                             GameLaunchStatusText.Text = "Logging in silently...";
-                            session = await loginHandler.AuthenticateSilently(msAccount);
+                            session = await loginHandler.AuthenticateSilently(msAccount, token);
                         }
-                        catch (Exception silentEx) when (MicrosoftAccountService.NeedsInteractiveLogin(silentEx))
+                        catch (Exception silentEx) when (MicrosoftAccountService.NeedsInteractiveLogin(silentEx) && !token.IsCancellationRequested)
                         {
                             // Tokens expired/revoked: fall back to the sign-in window
                             Log("[Auth] The selected account needs Microsoft sign-in again.");
                             GameLaunchStatusText.Text = "Session expired — please sign in again...";
                             _authCts?.Cancel();
-                            _authCts = new CancellationTokenSource(TimeSpan.FromMinutes(16));
+                            _authCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                            _authCts.CancelAfter(TimeSpan.FromMinutes(16));
                             session = await loginHandler.AuthenticateInteractively(msAccount, cancellationToken: _authCts.Token);
                         }
                     }
@@ -5243,7 +5260,7 @@ public partial class MainWindow : Window
                     Log($"[Auth ERROR] Platform not supported: {ex.Message}");
                     throw;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!token.IsCancellationRequested)
                 {
                     GameLaunchStatusText.Text = "Login failed.";
                     Log($"[Auth ERROR] {MicrosoftAccountService.DescribeError(ex)}");
@@ -5297,7 +5314,7 @@ public partial class MainWindow : Window
                             GameLaunchStatusText.Text = $"Downloading Java {requiredJava} runtime: {p:F0}%";
                             GameLaunchProgressBar.Value = (int)p;
                         });
-                    }));
+                    }), cancellationToken: token);
                     launchOpt.JavaPath = resolvedJava;
                 }
                 catch (Exception jEx)
@@ -5308,23 +5325,23 @@ public partial class MainWindow : Window
 
             if (_javaService.GetJavaMajorVersion(launchOpt.JavaPath) != requiredJava)
                 throw new InvalidOperationException($"Select a Java {requiredJava} installation for Minecraft {activeProfile.MinecraftVersion}.");
-            await RunPackwizInstaller(activeProfile, launchOpt.JavaPath);
-            await GraphicsRenderer.PrepareAsync(gameDirectory, activeProfile.MinecraftVersion, settings.GraphicsRenderer, message => Dispatcher.UIThread.Post(() => StatusText.Text = message));
-            await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion);
+            await RunPackwizInstaller(activeProfile, launchOpt.JavaPath, token);
+            await GraphicsRenderer.PrepareAsync(gameDirectory, activeProfile.MinecraftVersion, settings.GraphicsRenderer, message => Dispatcher.UIThread.Post(() => StatusText.Text = message), token);
+            await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion, token);
             // Without a loader (Fabric, or Forge on 1.8.9) nothing in Mods loads, as in LaunchService: no choices to apply.
             bool forge = GameVersionPolicy.UsesForge(activeProfile.MinecraftVersion);
-            if ((forge || !string.IsNullOrWhiteSpace(activeProfile.FabricVersion)) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion)) return;
+            if ((forge || !string.IsNullOrWhiteSpace(activeProfile.FabricVersion)) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion, token)) return;
             // OptiFine is downloaded from optifine.net and verified; if that fails the game starts without it (warned below).
             string? optiFineWarning = forge ? await Task.Run(() => OptiFineInstaller.InstallAsync(_pathService.BaseDirectory, gameDirectory,
-                status: message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message))) : null;
+                status: message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message), cancellationToken: token)) : null;
             if (optiFineWarning != null) Log($"[OptiFine] {optiFineWarning}");
             // A dependency fix chosen at the prompt above can switch LadsCore: prepare the server list again for the new state.
             if (SharedContentService.IsCoreRequested(gameDirectory, out _) != coreRequested
-                && await PrepareSharedContentForLaunchAsync(activeProfile, gameDirectory, prepared.WithoutSharing) == null) return;
+                && await PrepareSharedContentForLaunchAsync(activeProfile, gameDirectory, token, prepared.WithoutSharing) == null) return;
             // The final mod set: the in-game Mods view reads this snapshot, and the running marker records its enabled ids.
             GameLaunchStatusText.Text = "Checking mods...";
-            var launchInventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion);
-            await _modInventoryService.WriteSnapshotAsync(launchInventory);
+            var launchInventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion, token);
+            await _modInventoryService.WriteSnapshotAsync(launchInventory, token);
             var loadedMods = ModInventoryView.EnabledJarIds(launchInventory);
 
             if (settings.AutoRejoinServer)
@@ -5379,23 +5396,25 @@ public partial class MainWindow : Window
             }
             if (GameVersionPolicy.UsesForge(activeProfile.MinecraftVersion))
                 await LaunchService.InstallForgeAsync(launcher, gameDirectory, _httpClient,
-                    message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message), CancellationToken.None);
+                    message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message), token);
 
             string installedMarker = Path.Combine(gameDirectory, "versions", launchVersionId, ".lads-verified");
             if (settings.QuickLaunch && File.Exists(installedMarker))
             {
                 GameLaunchStatusText.Text = "Quick launching (skipping verification)...";
                 Log("[Launcher] QuickLaunch enabled — skipping asset verification.");
-                process = await launcher.BuildProcessAsync(launchVersionId, launchOpt);
+                process = await launcher.BuildProcessAsync(launchVersionId, launchOpt, token);
             }
             else
             {
-                process = await launcher.InstallAndBuildProcessAsync(launchVersionId, launchOpt);
+                process = await launcher.InstallAndBuildProcessAsync(launchVersionId, launchOpt, token);
                 Directory.CreateDirectory(Path.GetDirectoryName(installedMarker)!);
                 await File.WriteAllTextAsync(installedMarker, DateTimeOffset.UtcNow.ToString("O"));
             }
 
-
+            // The last point a cancel stops the launch (steps without a token, like the Fabric install, end here). Nothing
+            // below awaits before process.Start(), so the overlay's Cancel cannot run in between.
+            token.ThrowIfCancellationRequested();
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
@@ -5458,6 +5477,12 @@ public partial class MainWindow : Window
             // between pressing Launch and the Minecraft window appearing.
             var startupSplash = new Views.GameStartupSplash();
             startupSplash.SetGameVersion(activeProfile.MinecraftVersion);
+            // Until the game window appears: the exit then says "Launch cancelled" (OnGameExitedAsync), not a crash.
+            startupSplash.CancelRequested += () =>
+            {
+                Log("[Launcher] Launch cancelled while the game was starting; stopping it.");
+                GameSession.Cancel(process);
+            };
             startupSplash.Show();
             _ = WatchForGameWindowAsync(process, startupSplash);
 
@@ -5468,6 +5493,12 @@ public partial class MainWindow : Window
             if (settings.CloseToTray && !settings.KeepLauncherOpen)
                 this.Hide();
         }
+        catch (Exception ex) when (token.IsCancellationRequested)
+        {
+            // Whatever a step threw once Cancel was pressed (often its OperationCanceledException) ends the launch quietly.
+            StatusText.Text = "Launch cancelled.";
+            Log(ex is OperationCanceledException ? "[Launcher] Launch cancelled." : $"[Launcher] Launch cancelled ({ex.Message}).");
+        }
         catch (Exception ex)
         {
             StatusText.Text = "Launch failed: " + ex.Message;
@@ -5476,6 +5507,7 @@ public partial class MainWindow : Window
         }
         finally
         {
+            _launchCts = null;
             _launching = false;
             GameLaunchOverlay.IsVisible = false;
             LaunchButton.IsEnabled = true;
@@ -5488,19 +5520,19 @@ public partial class MainWindow : Window
     /// that needs it stays on), it offers the coherent fixes from the dependency planner: disable the mods that need it, or
     /// switch the library back on. The choice is saved and the install tried once more. False: cancelled (status says why).
     /// </summary>
-    private async Task<bool> InstallClientModsAsync(string gameDirectory, string minecraftVersion)
+    private async Task<bool> InstallClientModsAsync(string gameDirectory, string minecraftVersion, CancellationToken token)
     {
         // The launch overlay shows it too, or a long download looks like the step before it hanging.
         Action<string> status = message => Dispatcher.UIThread.Post(() => StatusText.Text = GameLaunchStatusText.Text = message);
         try
         {
-            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status);
+            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status, token);
             return true;
         }
         catch (ClientModDependencyException problem)
         {
             Log($"[Mods] {problem.Message}");
-            var inventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion);
+            var inventory = await _modInventoryService.BuildAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, token);
             var (disable, enable) = _modStateService.DependencyFixes(inventory, problem);
             var fixes = new List<(string Text, ModTogglePlan Plan, bool Danger)>();
             if (disable != null) fixes.Add(("Disable " + ModNames(inventory, disable.TargetIds.Concat(disable.AlsoDisable)), disable, true));
@@ -5515,11 +5547,11 @@ public partial class MainWindow : Window
                 Log("[Launcher] Launch cancelled at the mod dependency prompt.");
                 return false;
             }
-            var result = await _modStateService.ApplyAsync(gameDirectory, inventory, fixes[picked].Plan);
+            var result = await _modStateService.ApplyAsync(gameDirectory, inventory, fixes[picked].Plan, token);
             if (!result.Success) throw new InvalidOperationException(result.Message);
             Log($"[Mods] {fixes[picked].Text}: {result.Message}");
             // Once: a second failure ends the launch with its own message. (The Mods page reloads when the launch is over.)
-            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status);
+            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status, token);
             return true;
         }
     }
@@ -5584,8 +5616,10 @@ public partial class MainWindow : Window
             try { exitCode = process.ExitCode; }
             catch (InvalidOperationException ex) { Log($"[Launcher] Could not read the game's exit code: {ex.Message}"); }
 
-            // Re-show the launcher when the game closes, unless the user opted out.
-            if (!settings.KeepClosedOnExit)
+            // Cancelled from the startup splash: killed on purpose, so no crash report or auto-relaunch.
+            bool cancelled = GameSession.WasCancelled(process);
+            // Re-show the launcher when the game closes, unless the user opted out (a cancel always shows it).
+            if (!settings.KeepClosedOnExit || cancelled)
             {
                 this.Show();
                 this.WindowState = WindowState.Normal;
@@ -5594,7 +5628,12 @@ public partial class MainWindow : Window
             foreach (var note in notes) Log($"[Launcher] {note}");
             string suffix = notes.Count > 0 ? " " + string.Join(" ", notes) : "";
 
-            if (exitCode != 0)
+            if (cancelled)
+            {
+                StatusText.Text = "Launch cancelled." + suffix;
+                Log("[Launcher] The game was stopped before its window appeared (launch cancelled).");
+            }
+            else if (exitCode != 0)
             {
                 StatusText.Text = $"Game crashed! (exit code: {exitCode}){suffix}";
                 Log($"[Launcher] Game exited with code {exitCode}");
@@ -5921,7 +5960,7 @@ public partial class MainWindow : Window
     //  PACKWIZ
     // ═══════════════════════════════════════
 
-    private async Task RunPackwizInstaller(TheLadsLauncher.Models.LauncherProfile profile, string javaPath)
+    private async Task RunPackwizInstaller(TheLadsLauncher.Models.LauncherProfile profile, string javaPath, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(profile.PackwizUrl)) return;
         string bootstrap = Path.Combine(AppContext.BaseDirectory, "packwiz-installer-bootstrap.jar");
@@ -5935,7 +5974,7 @@ public partial class MainWindow : Window
         if (linked.Count > 0)
         {
             IReadOnlyList<string> shared;
-            try { shared = await PackwizIndex.FilesInFoldersAsync(profile.PackwizUrl, linked, _httpClient); }
+            try { shared = await PackwizIndex.FilesInFoldersAsync(profile.PackwizUrl, linked, _httpClient, token); }
             catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or UriFormatException or TaskCanceledException)
             {
                 throw new InvalidOperationException($"Could not read this profile's Packwiz pack '{profile.PackwizUrl}' ({ex.Message}). Check its Packwiz URL and connection.", ex);
@@ -5957,9 +5996,12 @@ public partial class MainWindow : Window
         foreach (string argument in new[] { "-jar", bootstrap, "--no-gui", profile.PackwizUrl })
             process.StartInfo.ArgumentList.Add(argument);
         process.Start();
+        // Cancelling the launch stops packwiz-installer and what it started; the next launch updates the profile again.
+        using var stop = token.Register(() => { try { process.Kill(entireProcessTree: true); } catch { } });
         Task output = process.StandardOutput.ReadToEndAsync();
         Task error = process.StandardError.ReadToEndAsync();
         await Task.WhenAll(output, error, process.WaitForExitAsync());
+        token.ThrowIfCancellationRequested();
         if (process.ExitCode != 0) throw new InvalidOperationException($"Packwiz could not update this profile (exit {process.ExitCode}). Check its Packwiz URL and connection.");
         Log("[Packwiz] Profile update complete.");
     }

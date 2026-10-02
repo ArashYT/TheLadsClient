@@ -52,12 +52,13 @@
                         </Border>
                     </Border>
                 </StackPanel>
-                <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,18,0,0">
+                <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,18,0,0">
                     <Border BorderBrush="#353B4B" BorderThickness="1" Background="#171C27" CornerRadius="4" Padding="6,3" VerticalAlignment="Center">
                         <TextBlock Text="RSHIFT" FontSize="9" FontWeight="SemiBold" Foreground="#B6BED0" LetterSpacing="0.5" />
                     </Border>
                     <TextBlock Grid.Column="1" Text="Your mods, one menu" Foreground="#8E98AD" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0" />
                     <TextBlock Grid.Column="2" Text="The game opens automatically" Foreground="#657086" FontSize="10" VerticalAlignment="Center" />
+                    <Button Grid.Column="3" x:Name="CancelLaunchButton" Classes="action" Content="Cancel" FontSize="11" Padding="12,4" Margin="12,0,0,0" VerticalAlignment="Center" Click="CancelLaunch_Click" />
                 </Grid>
             </Grid>
         </Grid>
