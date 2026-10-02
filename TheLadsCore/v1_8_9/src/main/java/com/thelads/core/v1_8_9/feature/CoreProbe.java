@@ -224,6 +224,12 @@ public final class CoreProbe {
     }
 
     private static boolean worldReady(Minecraft mc) {
+        // A run that ended with the QA player dead reopens on the death screen: respawn and go on.
+        if (mc.theWorld != null && mc.thePlayer != null && mc.currentScreen instanceof net.minecraft.client.gui.GuiGameOver) {
+            mc.thePlayer.respawnPlayer();
+            mc.displayGuiScreen(null);
+            return false;
+        }
         if (mc.theWorld == null || mc.thePlayer == null || mc.currentScreen != null) return false;
         // The QA world starts every run the same: no armour left over from an interrupted run.
         final java.util.UUID id = mc.thePlayer.getUniqueID();
