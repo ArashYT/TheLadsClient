@@ -16,4 +16,15 @@ public class ClientTickMixin {
         com.thelads.core.v1_21_11.feature.NativeQualityOfLife.tick();
         com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
     }
+
+    /** 1.7 Animations: an attack click consumed while an item is in use still swings (Blockhitting, Swing while using items). */
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "handleKeybinds",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/KeyMapping;consumeClick()Z"), require = 1)
+    private boolean lads$swingWhileUsing(net.minecraft.client.KeyMapping key, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Boolean> original) {
+        boolean click = original.call(key);
+        Minecraft mc = (Minecraft) (Object) this;
+        if (click && key == mc.options.keyAttack && mc.player != null && mc.player.isUsingItem())
+            com.thelads.core.v1_21_11.feature.NativeOldAnimations.attackWhileUsing(mc.player);
+        return click;
+    }
 }

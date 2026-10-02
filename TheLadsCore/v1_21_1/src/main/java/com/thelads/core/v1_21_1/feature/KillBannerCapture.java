@@ -33,6 +33,8 @@ final class KillBannerCapture {
     private static long modifiedBefore;
     private KillBannerCapture() {}
 
+    static boolean busy() { return step >= 0 && step < SHOTS.length + PICKERS.length; }
+
     /** Each client tick of the auto-world run; starts once the world is ready and the request exists. */
     static void tick(Path game, boolean ready) {
         if (step >= 0 || !ready) return;

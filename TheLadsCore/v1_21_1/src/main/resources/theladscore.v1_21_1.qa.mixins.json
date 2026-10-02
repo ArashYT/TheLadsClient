@@ -16,6 +16,8 @@
     "MouseHandlerQaInvoker",
     "OptionsQaMixin",
     "ChatQaAccessor",
-    "WindowQaInvoker"
+    "WindowQaInvoker",
+    "OldAnimationsQaInvoker",
+    "ScreenEffectQaInvoker"
   ]
 }
