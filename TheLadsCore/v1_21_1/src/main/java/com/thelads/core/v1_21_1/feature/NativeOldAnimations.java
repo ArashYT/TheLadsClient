@@ -49,6 +49,8 @@ public final class NativeOldAnimations {
     static boolean recording;
     static final List<ItemDisplayContext> DRAWN = new ArrayList<>();
     static final Matrix4f LAST = new Matrix4f();
+    /** QA: the pitch blockingArm last gave an arm, before other mods (NotEnoughAnimations smooths arms afterwards). */
+    static float armPitch;
 
     private NativeOldAnimations() {}
 
@@ -112,7 +114,8 @@ public final class NativeOldAnimations {
             hit(Hook.FP_SHIELD_HIDDEN);
             return true;
         }
-        Use use = block ? Use.BLOCK : use(player, hand, stack);
+        // Blockhitting without the block pose: the sword stays in its idle (1.7 held item) place, swinging.
+        Use use = block ? active(Feature.BLOCK_POSE) ? Use.BLOCK : Use.NONE : use(player, hand, stack);
         Held held = use == null ? null : held(stack, player);
         if (held == null || !MODULE.iconPlacement(PLATFORM, use, held)) return false;
         int side = (main ? player.getMainArm() : player.getMainArm().getOpposite()) == HumanoidArm.RIGHT ? 1 : -1;
@@ -192,6 +195,7 @@ public final class NativeOldAnimations {
     public static void blockingArm(ModelPart arm, boolean right) {
         arm.xRot = arm.xRot * 0.5f - 0.9424779f;
         arm.yRot = right ? OldAnimations.BLOCKING_ARM_YAW : -OldAnimations.BLOCKING_ARM_YAW;
+        armPitch = arm.xRot;
         hit(Hook.TP_ARM);
     }
 

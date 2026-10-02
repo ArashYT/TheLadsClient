@@ -16,7 +16,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.LightTexture;
@@ -59,6 +59,7 @@ final class NativeOldAnimationsProbe {
         ItemStack main = player.getMainHandItem(), off = player.getOffhandItem(), chest = player.getItemBySlot(EquipmentSlot.CHEST);
         int hurt = player.hurtTime, ticker = player.attackStrengthTicker, swingTime = player.swingTime;
         InteractionHand swingingArm = player.swingingArm;
+        float attackAnim = player.attackAnim, oAttackAnim = player.oAttackAnim;
         Pose pose = player.getPose();
         passed = 0;
         try {
@@ -82,6 +83,8 @@ final class NativeOldAnimationsProbe {
             player.swinging = swinging;
             player.swingTime = swingTime;
             player.swingingArm = swingingArm;
+            player.attackAnim = attackAnim;
+            player.oAttackAnim = oAttackAnim;
             player.setPose(pose);
             for (Feature feature : features) module.option(feature).set(options[feature.ordinal()]);
             module.setEnabled(enabled);
@@ -107,6 +110,12 @@ final class NativeOldAnimationsProbe {
         module.option(Feature.ROD).set(false);
         require(!icon(hand(MAIN, 0)), "1.7 fishing rod position off: vanilla's rod");
         module.option(Feature.ROD).set(true);
+
+        hold(player, new ItemStack(Items.DIAMOND_SWORD), ItemStack.EMPTY);
+        require(icon(hand(MAIN, 0)), "an idle sword sits where 1.7 held it");
+        module.option(Feature.HELD_ITEMS).set(false);
+        require(!icon(hand(MAIN, 0)), "1.7 held item positions off: vanilla's idle sword");
+        module.option(Feature.HELD_ITEMS).set(true);
 
         hold(player, new ItemStack(Items.APPLE), ItemStack.EMPTY);
         use(player, MAIN, 16);
@@ -148,19 +157,25 @@ final class NativeOldAnimationsProbe {
     }
 
     private static void thirdPerson(OldAnimationsModule module, LocalPlayer player) {
-        var renderer = (PlayerRenderer) Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(player);
-        ModelPart swordArm = player.getMainArm() == HumanoidArm.RIGHT ? renderer.getModel().rightArm : renderer.getModel().leftArm;
+        // The arm is read where the 1.7 hook set it and from the model's arm pose: NotEnoughAnimations (in the pack) smooths
+        // player arm angles after setupAnim and replays its stored angles for every further render in the same tick.
+        var model = ((PlayerRenderer) Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(player)).getModel();
+        boolean right = player.getMainArm() == HumanoidArm.RIGHT;
         player.swinging = false;
         player.swingTime = 0;
+        player.attackAnim = player.oAttackAnim = 0; // a swing left by earlier probes would pitch the arm too
         hold(player, new ItemStack(Items.DIAMOND_SWORD), new ItemStack(Items.SHIELD));
         use(player, OFF, 72000);
         int arm = NativeOldAnimations.hits(Hook.TP_ARM);
         List<ItemDisplayContext> drawn = render(player);
-        require(NativeOldAnimations.hits(Hook.TP_ARM) > arm && swordArm.xRot < -0.7f, "third person: the sword arm blocks as 1.7's did (" + swordArm.xRot + ")");
+        require((right ? model.rightArmPose : model.leftArmPose) == HumanoidModel.ArmPose.BLOCK && NativeOldAnimations.hits(Hook.TP_ARM) > arm
+            && NativeOldAnimations.armPitch < -0.7f, "third person: the sword arm blocks as 1.7's did (" + NativeOldAnimations.armPitch + ")");
         require(icon(drawn), "third person: the shield is hidden and the sword takes 1.7's block placement " + drawn);
         module.setEnabled(false);
+        arm = NativeOldAnimations.hits(Hook.TP_ARM);
         drawn = render(player);
-        require(drawn.size() == 2 && !drawn.contains(ItemDisplayContext.NONE) && swordArm.xRot > -0.7f, "module off: vanilla's arms, sword and shield " + drawn);
+        require(drawn.size() == 2 && !drawn.contains(ItemDisplayContext.NONE) && (right ? model.rightArmPose : model.leftArmPose) != HumanoidModel.ArmPose.BLOCK
+            && NativeOldAnimations.hits(Hook.TP_ARM) == arm, "module off: vanilla's arms, sword and shield " + drawn);
         module.setEnabled(true);
 
         hold(player, new ItemStack(Items.APPLE), ItemStack.EMPTY);

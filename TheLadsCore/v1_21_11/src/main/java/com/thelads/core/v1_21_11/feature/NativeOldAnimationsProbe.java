@@ -17,14 +17,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.render.state.GuiRenderState;
-import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.HumanoidModel.ArmPose;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
-import net.minecraft.client.renderer.entity.player.AvatarRenderer;
+import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.world.InteractionHand;
@@ -56,6 +56,7 @@ final class NativeOldAnimationsProbe {
     private static final MultiBufferSource NO_BUFFERS = type -> NO_VERTICES;
     private static final InteractionHand MAIN = InteractionHand.MAIN_HAND, OFF = InteractionHand.OFF_HAND;
     private static int passed;
+    private static EntityRenderState lastState;
     private NativeOldAnimationsProbe() {}
 
     static int run() {
@@ -70,6 +71,7 @@ final class NativeOldAnimationsProbe {
         ItemStack main = player.getMainHandItem(), off = player.getOffhandItem(), chest = player.getItemBySlot(EquipmentSlot.CHEST);
         int hurt = player.hurtTime, ticker = player.attackStrengthTicker, swapTicker = player.itemSwapTicker, swingTime = player.swingTime;
         InteractionHand swingingArm = player.swingingArm;
+        float attackAnim = player.attackAnim, oAttackAnim = player.oAttackAnim;
         Pose pose = player.getPose();
         passed = 0;
         try {
@@ -94,6 +96,8 @@ final class NativeOldAnimationsProbe {
             player.swinging = swinging;
             player.swingTime = swingTime;
             player.swingingArm = swingingArm;
+            player.attackAnim = attackAnim;
+            player.oAttackAnim = oAttackAnim;
             player.setPose(pose);
             for (Feature feature : features) module.option(feature).set(options[feature.ordinal()]);
             module.setEnabled(enabled);
@@ -119,6 +123,12 @@ final class NativeOldAnimationsProbe {
         module.option(Feature.ROD).set(false);
         require(!icon(hand(MAIN, 0)), "1.7 fishing rod position off: vanilla's rod");
         module.option(Feature.ROD).set(true);
+
+        hold(player, new ItemStack(Items.DIAMOND_SWORD), ItemStack.EMPTY);
+        require(icon(hand(MAIN, 0)), "an idle sword sits where 1.7 held it");
+        module.option(Feature.HELD_ITEMS).set(false);
+        require(!icon(hand(MAIN, 0)), "1.7 held item positions off: vanilla's idle sword");
+        module.option(Feature.HELD_ITEMS).set(true);
 
         hold(player, new ItemStack(Items.APPLE), ItemStack.EMPTY);
         use(player, MAIN, 16);
@@ -160,19 +170,24 @@ final class NativeOldAnimationsProbe {
     }
 
     private static void thirdPerson(OldAnimationsModule module, LocalPlayer player) {
-        var renderer = (AvatarRenderer<?>) Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(player);
-        ModelPart swordArm = player.getMainArm() == HumanoidArm.RIGHT ? renderer.getModel().rightArm : renderer.getModel().leftArm;
+        // The arm is read where the 1.7 hook set it and from the extracted arm pose: NotEnoughAnimations (in the pack) smooths
+        // player arm angles after setupAnim and replays its stored angles for every further render in the same tick.
+        boolean right = player.getMainArm() == HumanoidArm.RIGHT;
         player.swinging = false;
         player.swingTime = 0;
+        player.attackAnim = player.oAttackAnim = 0; // a swing left by earlier probes would pitch the arm too
         hold(player, new ItemStack(Items.DIAMOND_SWORD), new ItemStack(Items.SHIELD));
         use(player, OFF, 72000);
         int arm = NativeOldAnimations.hits(Hook.TP_ARM);
         List<ItemDisplayContext> drawn = render(player);
-        require(NativeOldAnimations.hits(Hook.TP_ARM) > arm && swordArm.xRot < -0.7f, "third person: the sword arm blocks as 1.7's did (" + swordArm.xRot + ")");
+        require(swordArmPose(right) == ArmPose.BLOCK && NativeOldAnimations.hits(Hook.TP_ARM) > arm && NativeOldAnimations.armPitch < -0.7f,
+            "third person: the sword arm blocks as 1.7's did (" + swordArmPose(right) + ", " + NativeOldAnimations.armPitch + ")");
         require(icon(drawn), "third person: the shield is hidden and the sword takes 1.7's block placement " + drawn);
         module.setEnabled(false);
+        arm = NativeOldAnimations.hits(Hook.TP_ARM);
         drawn = render(player);
-        require(drawn.size() == 2 && !drawn.contains(ItemDisplayContext.NONE) && swordArm.xRot > -0.7f, "module off: vanilla's arms, sword and shield " + drawn);
+        require(drawn.size() == 2 && !drawn.contains(ItemDisplayContext.NONE) && swordArmPose(right) != ArmPose.BLOCK
+            && NativeOldAnimations.hits(Hook.TP_ARM) == arm, "module off: vanilla's arms, sword and shield " + drawn);
         module.setEnabled(true);
 
         hold(player, new ItemStack(Items.APPLE), ItemStack.EMPTY);
@@ -286,8 +301,15 @@ final class NativeOldAnimationsProbe {
     private static List<ItemDisplayContext> render(Entity entity) {
         NativeOldAnimations.DRAWN.clear();
         EntityRenderDispatcher dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
-        submit(dispatcher, dispatcher.extractEntity(entity, 0));
+        lastState = dispatcher.extractEntity(entity, 0);
+        submit(dispatcher, lastState);
         return List.copyOf(NativeOldAnimations.DRAWN);
+    }
+
+    /** The main arm's pose in the player state render() last extracted. */
+    private static ArmPose swordArmPose(boolean right) {
+        AvatarRenderState state = (AvatarRenderState) lastState;
+        return right ? state.rightArmPose : state.leftArmPose;
     }
 
     private static <S extends EntityRenderState> void submit(EntityRenderDispatcher dispatcher, S state) {
