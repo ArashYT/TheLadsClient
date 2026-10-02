@@ -142,10 +142,7 @@ final class OldAnimationsCapture {
             player.stopUsingItem();
         }
         removeDropped();
-        player.setItemSlot(EquipmentSlot.MAINHAND, stack(shot.main()));
-        player.setItemSlot(EquipmentSlot.OFFHAND, stack(shot.off()));
-        for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET})
-            player.setItemSlot(slot, shot.thirdPerson() ? stack(armour(slot)) : WORN.get(slot));
+        for (EquipmentSlot slot : SLOTS) player.setItemSlot(slot, worn(shot, slot));
         mc.options.setCameraType(shot.thirdPerson() ? CameraType.THIRD_PERSON_FRONT : CameraType.FIRST_PERSON);
         if (shot.name().equals("blockhit")) player.swing(InteractionHand.MAIN_HAND);
         if (shot.name().equals("dropped-2d")) {
@@ -164,6 +161,20 @@ final class OldAnimationsCapture {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         Shot shot = SHOTS[step];
+        // The items are this client's only: a slot update from the server (another QA probe changing the real inventory) puts the
+        // real items back. Wear the shot's items again and give the pose its full time once more.
+        boolean replaced = false;
+        for (EquipmentSlot slot : SLOTS) {
+            ItemStack expected = worn(shot, slot), actual = player.getItemBySlot(slot);
+            if (actual != expected && !(actual.isEmpty() && expected.isEmpty())) {
+                player.setItemSlot(slot, expected);
+                replaced = true;
+            }
+        }
+        if (replaced) {
+            player.stopUsingItem();
+            due = Math.max(due, System.nanoTime() + shot.delayMs() * 1_000_000L);
+        }
         if (shot.use() != null) {
             try { // no right-click of our own may start while the use key is held down
                 var delay = Minecraft.class.getDeclaredField("rightClickDelay");
@@ -174,6 +185,13 @@ final class OldAnimationsCapture {
             if (!player.isUsingItem()) player.startUsingItem(shot.use());
         }
         if (shot.name().equals("red-armour")) player.hurtTime = player.hurtDuration = 10;
+    }
+
+    /** What the shot wears in this slot: its held items, iron armour in third person, otherwise the player's own armour. */
+    private static ItemStack worn(Shot shot, EquipmentSlot slot) {
+        if (slot == EquipmentSlot.MAINHAND) return stack(shot.main());
+        if (slot == EquipmentSlot.OFFHAND) return stack(shot.off());
+        return shot.thirdPerson() ? stack(armour(slot)) : WORN.get(slot);
     }
 
     private static ItemStack stack(Item item) {
