@@ -9,11 +9,19 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.config.SliderOption;
+import com.thelads.core.modules.AutoReconnectModule;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiDisconnected;
+import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.gui.GuiMultiplayer;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.GuiSelectWorld;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.event.ClickEvent;
 import net.minecraft.scoreboard.IScoreObjectiveCriteria;
@@ -21,6 +29,7 @@ import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatComponentTranslation;
+import org.lwjgl.input.Keyboard;
 
 /**
  * QA only: the 1.5.0 module ports, run by CoreProbe in its QA world after Probe145, each through the real 1.8.9 path and put
@@ -29,7 +38,9 @@ import net.minecraft.util.ChatComponentTranslation;
 final class Probe150 {
     static final List<CoreProbe.Step> STEPS = new ArrayList<>(Arrays.<CoreProbe.Step>asList(Probe150::threadsStart, Probe150::threads,
         Probe150::discord, Probe150::tabStart, Probe150::tab, Probe150::chatStart, Probe150::chat,
-        Probe150::crosshairStart, Probe150::crosshair, Probe150::crosshairHidden, Probe150::crosshairEditor, Probe150::crosshairDone));
+        Probe150::crosshairStart, Probe150::crosshair, Probe150::crosshairHidden, Probe150::crosshairEditor, Probe150::crosshairDone,
+        Probe150::reconnectStart, Probe150::reconnectDialog, Probe150::reconnectCancelled, Probe150::reconnectBack, Probe150::reconnectEditor,
+        Probe150::reconnectDone));
     private static boolean wasEnabled;
     private static double wasValue;
     private static int priority;
@@ -43,6 +54,9 @@ final class Probe150 {
     private static long messages, animated;
     private static boolean crosshairWas, hiddenWas;
     private static long crosshairs;
+    private static boolean reconnectWas, initialWas;
+    private static Reconnect189.Settings reconnectSettings;
+    private static GuiScreen dialog;
 
     private Probe150() {}
 
@@ -191,6 +205,64 @@ final class Probe150 {
         check(mc.currentScreen == null, "Crosshair Tweaks: Escape leaves the editor unsaved, back to gameplay");
         module("Crosshair Tweaks").setEnabled(crosshairWas);
         return after(1);
+    }
+
+    /**
+     * AutoReconnect: this QA world as the target (Retry Initial Failures, as it was opened before the module was on), then a
+     * disconnect screen with a kick reason no filter matches. A 60 s delay, so no retry can start while the world runs.
+     */
+    private static boolean reconnectStart(Minecraft mc) {
+        AutoReconnectModule module = Reconnect189.module();
+        reconnectWas = module.isEnabled();
+        initialWas = module.initial.get();
+        module.setEnabled(true);
+        module.initial.set(true);
+        Reconnect189.Settings test = new Reconnect189.Settings();
+        test.delays = new ArrayList<>(Collections.singletonList(60));
+        reconnectSettings = Reconnect189.swapSettings(test);
+        Reconnect189.world(mc.getIntegratedServer().getFolderName(), mc.getIntegratedServer().getWorldName());
+        mc.displayGuiScreen(new GuiDisconnected(new GuiMultiplayer(new GuiMainMenu()), "disconnect.lost", new ChatComponentText("Lads QA kick")));
+        dialog = mc.currentScreen;
+        return after(5);
+    }
+
+    private static boolean reconnectDialog(Minecraft mc) throws Exception {
+        GuiButton retry = Reconnect189.retryButton(), cancel = Reconnect189.cancelButton();
+        check(mc.currentScreen == dialog && retry != null && retry.displayString.startsWith("Reconnect in ") && cancel != null && cancel.enabled
+            && "Lads QA kick".equals(Reconnect189.lastReason), "AutoReconnect: the disconnect screen counts down to a retry of this world (" + (retry == null ? null : retry.displayString) + ")");
+        screenshot(mc, "150-reconnect");
+        CoreProbe.tap(Keyboard.KEY_ESCAPE, (char) 27);
+        return after(2);
+    }
+
+    private static boolean reconnectCancelled(Minecraft mc) throws Exception {
+        GuiButton retry = Reconnect189.retryButton(), cancel = Reconnect189.cancelButton();
+        check(mc.currentScreen == dialog && retry != null && "Reconnect".equals(retry.displayString) && retry.enabled && !cancel.enabled,
+            "AutoReconnect: the first Escape cancels the pending retry and keeps the screen (" + (retry == null ? null : retry.displayString) + ")");
+        CoreProbe.tap(Keyboard.KEY_ESCAPE, (char) 27);
+        return after(5);
+    }
+
+    private static boolean reconnectBack(Minecraft mc) {
+        check(mc.currentScreen instanceof GuiSelectWorld && Reconnect189.targetId().isEmpty(), "AutoReconnect: the next Escape goes back to the world list, target cleared");
+        Reconnect189.module().retryEditor.run();
+        return after(5);
+    }
+
+    private static boolean reconnectEditor(Minecraft mc) throws Exception {
+        check(mc.currentScreen instanceof com.thelads.core.v1_8_9.gui.ReconnectOptionsScreen189, "AutoReconnect: Delays and Disconnect Filters opens its editor");
+        screenshot(mc, "150-reconnect-editor");
+        CoreProbe.tap(Keyboard.KEY_ESCAPE, (char) 27);
+        return after(5);
+    }
+
+    private static boolean reconnectDone(Minecraft mc) {
+        check(mc.currentScreen instanceof GuiSelectWorld, "AutoReconnect: Escape leaves the editor unsaved");
+        mc.displayGuiScreen(null);
+        Reconnect189.swapSettings(reconnectSettings);
+        Reconnect189.module().initial.set(initialWas);
+        Reconnect189.module().setEnabled(reconnectWas);
+        return after(5);
     }
 
     static Module module(String name) {
