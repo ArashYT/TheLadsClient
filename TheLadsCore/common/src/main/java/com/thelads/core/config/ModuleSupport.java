@@ -22,6 +22,11 @@ public final class ModuleSupport {
             revision++;
         }
     }
+    /** Built in, with what this game version cannot do (the status detail the launcher shows), e.g. a mechanic it lacks. */
+    public static void registerBuiltInLimited(String name, String limits) {
+        registerBuiltIn(name);
+        STATUS.put(name, new Status(true, "Built in", "Included in The Lads Client. Changes apply immediately. " + limits));
+    }
     public static void registerExternal(String name, String modName, boolean installed) {
         BUILT_IN.remove(name);
         EXTERNAL_IDS.remove(name);
