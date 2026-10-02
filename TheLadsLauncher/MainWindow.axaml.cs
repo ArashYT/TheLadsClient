@@ -480,11 +480,13 @@ public partial class MainWindow : Window
     }
 
     private DispatcherTimer? _updateNowPulse;
+    private string? _readyUpdateVersion; // a verified update waits for the Update button (offered again at Play)
 
     /// <summary>A verified update found while the launcher is open waits for the user behind the glowing title-bar button.</summary>
     private void ShowUpdateButton(string version)
     {
         if (_windowClosed) return;
+        _readyUpdateVersion = version;
         ToolTip.SetTip(UpdateNowBtn, $"Version {version} is ready. Click to install it and restart the launcher.");
         if (UpdateNowHost.IsVisible) return;
         UpdateNowHost.IsVisible = true;
@@ -4507,6 +4509,42 @@ public partial class MainWindow : Window
         await AfterModsChangedAsync();
     }
 
+    /// <summary>Every mod file of the profile to the Recycle Bin (yours too), saved choices cleared, LadsCore and the pack
+    /// reinstalled (ModStateService.ResetModsFolderAsync). The way out when a profile's Mods folder is beyond repair.</summary>
+    private async void ResetModsFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!ModsCanChange()) return;
+        var inventory = _modInventory!;
+        if (IsGameRunningFor(inventory.GameDirectory))
+        {
+            ModsStatus($"Minecraft is running for '{ModsProfileName(inventory)}'. Close it, then reset the mods folder.", true);
+            return;
+        }
+        // Busy from the question on: a launch cannot start its installers while it is open or while the pack reinstalls.
+        _modsBusy = true;
+        try
+        {
+            if (!await ShowLadsDialogAsync("Reset mods folder",
+                    $"Reset the mods folder of '{ModsProfileName(inventory)}'?\n\n" +
+                    "• Every mod file in it goes to the Recycle Bin, including mods you added yourself.\n" +
+                    "• Saved mod on/off choices are cleared.\n" +
+                    "• LadsCore and the Lads pack are reinstalled fresh.\n\n" +
+                    "Worlds, settings and mod configs are not touched.",
+                    "Reset mods folder", "Cancel", danger: true))
+                return;
+            ModsStatus("Resetting the mods folder...");
+            var result = await Task.Run(() => _modStateService.ResetModsFolderAsync(AppContext.BaseDirectory, inventory.GameDirectory,
+                inventory.MinecraftVersion, message => Dispatcher.UIThread.Post(() => ModsStatusText.Text = message)));
+            ModsStatus(result.Message, !result.Success);
+        }
+        catch (Exception ex)
+        {
+            ModsStatus($"Could not reset the mods folder: {ex.Message}", true);
+        }
+        finally { _modsBusy = false; }
+        await AfterModsChangedAsync();
+    }
+
     // ─── Add / delete / update your own mods ───────────────
 
     private async void AddModFromFile_Click(object? sender, RoutedEventArgs e)
@@ -5074,6 +5112,14 @@ public partial class MainWindow : Window
         {
             await ShowLadsDialogAsync("⚠️ Game Already Running",
                 $"Minecraft is already running for '{guardProfile.Name}'. Please turn on 'Allow launching multiple copies' in settings if you want to open another instance.");
+            return;
+        }
+        // A waiting launcher update brings the current Lads pack and LadsCore: offer it before playing with the old ones.
+        if (_readyUpdateVersion is { } update && !UpdateBlocked()
+            && await ShowLadsDialogAsync("Update ready", $"An update is ready (v{update}). Restart and update now? (recommended)",
+                "Update now", "Play anyway"))
+        {
+            UpdateNow_Click(this, new RoutedEventArgs());
             return;
         }
 

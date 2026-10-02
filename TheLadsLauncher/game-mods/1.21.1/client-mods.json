@@ -993,6 +993,17 @@
       "projectUrl": "https://modrinth.com/mod/yacl"
     }
   ],
+  "published": {
+    "betterrenderdistance": [
+      "38c6089d80bdb88ccfb3b36b589073b67802cbecb76ec6bd1ba4a9985d2c8231ae7aefdb7d3863f76c79b53a53cdf8d4ddfd4feee00f668d2df08ec8cbe9bdc3"
+    ],
+    "sodium-extra": [
+      "f69b9dfeda4cd6b7216a88cccb335860d0154af2d87f64aa28abab3cf90cff794b4879ebe5dd885eeb1163ca0ddbd10f25a63da0732a80bfbf6e6a6a066b272a"
+    ],
+    "voicechat": [
+      "c44e69400ac7349ad6d4699263bde4d87359e03233c31a872eb02542658cfc73a185b46e4361c54cb1ac029a2991bd8eb4d4ea59b1c3e3b43f234087520b325a"
+    ]
+  },
   "retired": [
     {
       "modId": "autohidehud",

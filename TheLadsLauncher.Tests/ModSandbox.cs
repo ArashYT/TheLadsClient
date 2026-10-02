@@ -73,12 +73,13 @@ internal sealed class ModSandbox : IDisposable
             "https://modrinth.com/mod/" + id);
     }
 
-    public void WriteManifest(string version, IEnumerable<ClientModInstaller.Entry> mods, List<ClientModInstaller.RetiredEntry>? retired = null)
+    public void WriteManifest(string version, IEnumerable<ClientModInstaller.Entry> mods, List<ClientModInstaller.RetiredEntry>? retired = null,
+        Dictionary<string, List<string>>? published = null)
     {
         var directory = Path.Combine(Bundle, "game-mods", version);
         Directory.CreateDirectory(directory);
         File.WriteAllText(Path.Combine(directory, "client-mods.json"),
-            JsonSerializer.Serialize(new ClientModInstaller.Manifest(version, mods.ToList(), false, retired)));
+            JsonSerializer.Serialize(new ClientModInstaller.Manifest(version, mods.ToList(), false, retired, published)));
     }
 
     public void WriteCore(string version, byte[] bytes)
