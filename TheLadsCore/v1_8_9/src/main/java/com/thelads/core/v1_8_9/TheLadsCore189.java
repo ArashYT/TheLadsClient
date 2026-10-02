@@ -6,10 +6,16 @@ import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.mods.CoreCatalogExporter;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.Borderless189;
+import com.thelads.core.v1_8_9.feature.Clumps189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
+import com.thelads.core.v1_8_9.feature.FoodOverlay189;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
 import com.thelads.core.v1_8_9.feature.RawMouse189;
+import com.thelads.core.v1_8_9.feature.RenderScale189;
+import com.thelads.core.v1_8_9.feature.Screenshots189;
+import com.thelads.core.v1_8_9.feature.SignalLoss189;
+import com.thelads.core.v1_8_9.feature.Tooltips189;
 import com.thelads.core.v1_8_9.gui.LadsTitleScreen189;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.common.MinecraftForge;
@@ -57,11 +63,18 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(new Tooltips189());
+        MinecraftForge.EVENT_BUS.register(new Clumps189());
+        MinecraftForge.EVENT_BUS.register(new SignalLoss189());
+        MinecraftForge.EVENT_BUS.register(new FoodOverlay189());
+        MinecraftForge.EVENT_BUS.register(new RenderScale189());
+        Screenshots189.register();
         MinecraftForge.EVENT_BUS.register(this);
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
 
     public static final String[] GAMEPLAY_MODULES = {
+        "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", "RenderScale", "BetterScreenshots",
         "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
         "RawInput", "BorderlessFullscreen"
@@ -73,6 +86,7 @@ public class TheLadsCore189 {
         for (String[] module : MOD_BACKED)
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
+        ModuleSupport.registerUnavailable("ShulkerBoxUtils", "Minecraft 1.8.9 has no shulker boxes; they were added in Minecraft 1.11.");
         // The launcher's 1.8.9 pack includes Resourcify (its own in-game browser, no Lads settings page).
         ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));
     }
