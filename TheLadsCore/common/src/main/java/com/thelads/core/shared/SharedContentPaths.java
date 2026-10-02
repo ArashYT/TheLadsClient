@@ -18,7 +18,6 @@ public final class SharedContentPaths {
     public static final String ENV = "LADS_GLOBAL_MINECRAFT_DIR";
     private static final Logger LOG = LoggerFactory.getLogger("TheLadsCore");
     private static volatile Resolved resolved;
-    private static volatile boolean worldsAndPacksIsolated;
 
     record Resolved(Path root, boolean redirect) {
     }
@@ -36,31 +35,16 @@ public final class SharedContentPaths {
         return resolved().root();
     }
 
-    /**
-     * Minecraft 1.8.9 corrupts a world saved by a newer version and cannot read newer packs, so the launcher gives it its own
-     * saves, resource packs and shader packs. Its Core calls this first; the shared folders below then throw instead of
-     * resolving. The server list and screenshots stay shared.
-     */
-    public static void isolateWorldsAndPacks() {
-        worldsAndPacksIsolated = true;
-    }
-
     public static Path savesDir() {
-        return worldsAndPacks("saves");
+        return root().resolve("saves");
     }
 
     public static Path resourcePacksDir() {
-        return worldsAndPacks("resourcepacks");
+        return root().resolve("resourcepacks");
     }
 
     public static Path shaderPacksDir() {
-        return worldsAndPacks("shaderpacks");
-    }
-
-    private static Path worldsAndPacks(String folder) {
-        if (worldsAndPacksIsolated)
-            throw new IllegalStateException("This game version keeps its own " + folder + "; the shared " + folder + " folder must never be used here");
-        return root().resolve(folder);
+        return root().resolve("shaderpacks");
     }
 
     public static Path screenshotsDir() {
@@ -82,10 +66,9 @@ public final class SharedContentPaths {
             && root().toRealPath().startsWith(directory.toRealPath());
     }
 
-    /** Tests only: pins the shared folder (redirect enabled), or restores environment resolution and shared worlds and packs with {@code null}. */
+    /** Tests only: pins the shared folder (redirect enabled), or restores environment resolution with {@code null}. */
     public static void setRootForTests(Path root) {
         resolved = root == null ? null : new Resolved(root.toAbsolutePath().normalize(), true);
-        if (root == null) worldsAndPacksIsolated = false;
     }
 
     private static Resolved resolved() {

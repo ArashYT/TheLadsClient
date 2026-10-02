@@ -4,7 +4,6 @@ import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.mods.CoreCatalogExporter;
-import com.thelads.core.shared.SharedContentPaths;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
@@ -38,8 +37,6 @@ public class TheLadsCore189 {
     private static String windowTitle = "The Lads Client";
 
     public TheLadsCore189() {
-        // Before any Core code runs: 1.8.9 corrupts a newer world, so shared worlds and packs must never be used here.
-        SharedContentPaths.isolateWorldsAndPacks();
         // JInput's jar is sealed: LaunchClassLoader defining its classes logs "has a security seal ... not secure" once per
         // class. It loads from the parent loader instead, as org.lwjgl. does. Set before RawMouse189 (or any JInput class) loads.
         net.minecraft.launchwrapper.Launch.classLoader.addClassLoaderExclusion("net.java.games.input.");
