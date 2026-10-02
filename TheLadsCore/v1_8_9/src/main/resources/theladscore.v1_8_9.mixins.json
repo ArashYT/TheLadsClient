@@ -19,6 +19,7 @@
     "MinecraftMixin",
     "NetworkManagerMixin",
     "ResourcePackRepositoryMixin",
+    "ScreenShotHelperMixin",
     "SplashProgressMixin",
     "TileEntityMixin"
   ]
