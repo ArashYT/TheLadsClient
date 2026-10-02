@@ -47,6 +47,12 @@ public interface LadsGraphics {
 
     void drawHead(String username, String uuid, int x, int y, int size);
 
+    /**
+     * Kill Banner picker art: a skin's settled one-kill banner ("base", "reaver" or "rogue") in one of its variants, fitted
+     * and centred in the box. False where the version cannot draw it (the picker then shows the name only).
+     */
+    default boolean drawKillBanner(String skin, int variant, int x, int y, int width, int height) { return false; }
+
     /** Render the actual local player with the native entity renderer, when available. */
     default void drawPlayerModel(int x, int y, int width, int height, boolean editor) {}
 

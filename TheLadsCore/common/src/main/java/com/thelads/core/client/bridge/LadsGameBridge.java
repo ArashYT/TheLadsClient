@@ -24,6 +24,8 @@ public interface LadsGameBridge {
     }
 
     default String getDimensionId() { return ""; }
+    /** Kill Banner picker: plays a skin's one-kill sound ("reaver", "rogue"; "base" the plain chime) as a preview. */
+    default void previewKillBannerSound(String skin, float volume) {}
     default String getServerAddress() { return "Singleplayer"; }
     default String getItemCountText(int selection) { return "Items: 0"; }
     default String getRecentReachText() { return "Reach: --"; }
