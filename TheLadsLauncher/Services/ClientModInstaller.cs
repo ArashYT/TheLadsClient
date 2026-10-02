@@ -21,7 +21,10 @@ public static class ClientModInstaller
         string License, string? SourceUrl, string ProjectUrl);
     /// <summary>A mod removed from the pack; its published hashes identify managed copies to retire.</summary>
     public sealed record RetiredEntry(string ModId, string? ProjectId, string? Name, List<string>? Sha512, string? Reason);
-    public sealed record Manifest(string MinecraftVersion, List<Entry> Mods, bool ResolveThroughApi = false, List<RetiredEntry>? Retired = null);
+    /// <param name="Published">Earlier pins of mods still in the pack (mod id → SHA-512s). With the current pins and the retired
+    /// lists this is every jar Lads ever shipped for the version (tools/sync_instance_mods.py keeps it).</param>
+    public sealed record Manifest(string MinecraftVersion, List<Entry> Mods, bool ResolveThroughApi = false, List<RetiredEntry>? Retired = null,
+        Dictionary<string, List<string>>? Published = null);
     private sealed record LocalJar(string Path, string Hash, bool Disabled, FabricModInfo? Info)
     {
         public string? Id => Info?.Id;
@@ -71,6 +74,8 @@ public static class ClientModInstaller
         if (manifest.Mods.Select(m => m.FileName).Distinct(StringComparer.OrdinalIgnoreCase).Count() != manifest.Mods.Count)
             throw new InvalidDataException("Client mod manifest contains duplicate file names.");
         var retiredHashes = RetiredHashes(manifest);
+        var published = PublishedHashes(manifest);
+        bool Published(string id, string hash) => published.TryGetValue(id, out var hashes) && hashes.Contains(hash);
         var client = httpClient ?? Http;
 
         await InstallLock.WaitAsync(cancellationToken);
@@ -104,18 +109,19 @@ public static class ClientModInstaller
             var retiredDirectories = new HashSet<string>(Paths);
 
             // Plan retirements now, but do not move anything until every download and dependency verifies.
-            // Only copies with Lads-ownership evidence are retired; anything else is the user's and stays.
+            // Only copies with Lads-ownership evidence are retired (bytes Lads published, under any name, or the receipt's copy);
+            // anything else is the user's and stays. A stale standalone copy of a mod Core now embeds would switch Core's copy off.
             var retireIds = receipt.Keys.Where(id => packShipped && !desired.Contains(id)).Concat(retiredHashes.Keys).ToHashSet(StringComparer.Ordinal);
+            var keptIds = new HashSet<string>(StringComparer.Ordinal);
             // Disabled copies whose file name was the only record of the choice (v1.2.2, or renamed by hand): id -> project id.
             var keepDisabled = new Dictionary<string, string?>(StringComparer.Ordinal);
             foreach (var jar in inventory.Where(j => j.Id != null && retireIds.Contains(j.Id)))
             {
                 var id = jar.Id!;
-                var published = retiredHashes.TryGetValue(id, out var hashes) && hashes.Contains(jar.Hash);
-                var owned = receipt.TryGetValue(id, out var ownedHash) && (SameHash(jar.Hash, ownedHash) || published);
-                if (!owned && !(published && IsLegacyName(Path.GetFileName(jar.Path), id)))
+                if (!Published(id, jar.Hash) && !(receipt.TryGetValue(id, out var ownedHash) && SameHash(jar.Hash, ownedHash)))
                 {
                     status?.Invoke($"Kept '{jar.Path}': {id} is no longer part of the Lads pack and this copy was added or modified by you.");
+                    keptIds.Add(id);
                     continue;
                 }
                 var project = manifest.Retired?.FirstOrDefault(r => r?.ModId == id)?.ProjectId;
@@ -127,7 +133,8 @@ public static class ClientModInstaller
                 final.Remove(jar.Path);
                 retiredDirectories.Add(directory);
             }
-            foreach (var id in retireIds) receipt.Remove(id);
+            // An id with a kept copy stays in the receipt: its record still identifies Lads' copy if it comes back.
+            foreach (var id in retireIds.Except(keptIds)) receipt.Remove(id);
 
             var pending = new List<(Entry Entry, string Destination, string? PreviousHash)>();
             var disabledByChoice = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -137,7 +144,8 @@ public static class ClientModInstaller
                 var target = SafeChild(game, Path.Combine(mods, entry.FileName));
                 var copies = final.Values.Where(j => j.Id == entry.ModId).OrderBy(j => j.Path, Paths).ToList();
                 originalReceipt.TryGetValue(entry.ModId, out var receiptPin);
-                bool Managed(LocalJar jar) => SameHash(jar.Hash, entry.Sha512) || (receiptPin != null && SameHash(jar.Hash, receiptPin));
+                // Any pin Lads published is managed (and upgraded), even when the receipt is missing or older.
+                bool Managed(LocalJar jar) => Published(entry.ModId, jar.Hash) || (receiptPin != null && SameHash(jar.Hash, receiptPin));
                 int NameRank(LocalJar jar) => BaseName(jar.Path).Equals(entry.FileName, StringComparison.OrdinalIgnoreCase) ? 0
                     : IsLegacyName(Path.GetFileName(jar.Path), entry.ModId) ? 1 : 2;
                 var wantEnabled = preferences.GetEnabled(entry.ModId, entry.ProjectId)
@@ -188,8 +196,8 @@ public static class ClientModInstaller
                 }
 
                 var pinned = SameHash(primary.Hash, entry.Sha512);
-                // Verified pinned bytes are Lads-managed under any name.
-                if (pinned) receipt[entry.ModId] = entry.Sha512;
+                // Verified managed bytes are Lads' under any name: repair a missing or older receipt (an upgrade records the new pin).
+                receipt[entry.ModId] = primary.Hash;
                 var legacyName = NameRank(primary) == 1;
                 if (wantEnabled && !pinned)
                 {
@@ -393,6 +401,27 @@ public static class ClientModInstaller
             result[retired.ModId] = retired.Sha512.ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
         return result;
+    }
+
+    /// <summary>Every SHA-512 Lads shipped per mod id: current pins, earlier pins and retired copies. A jar with one of these
+    /// hashes is Lads' own whatever its name; any other bytes were added or modified by the user.</summary>
+    internal static Dictionary<string, HashSet<string>> PublishedHashes(Manifest manifest)
+    {
+        var result = RetiredHashes(manifest);
+        foreach (var (id, hashes) in manifest.Published ?? new())
+        {
+            if (!ValidId(id) || hashes is null || hashes.Any(h => !ValidHash(h)))
+                throw new InvalidDataException("Client mod manifest has an invalid published entry.");
+            foreach (var hash in hashes) Add(id, hash);
+        }
+        foreach (var mod in manifest.Mods) Add(mod.ModId, mod.Sha512);
+        return result;
+
+        void Add(string id, string hash)
+        {
+            if (!result.TryGetValue(id, out var set)) result[id] = set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            set.Add(hash);
+        }
     }
 
     internal static bool IsLegacyName(string fileName, string id) =>
