@@ -3,9 +3,9 @@ package com.thelads.core.v1_8_9.feature;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityTracker;
 import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.network.play.server.S11PacketSpawnExperienceOrb;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
@@ -77,10 +77,10 @@ public final class Clumps189 {
 
     /** 1.8.9 sends an orb's value only when it spawns on a client: spawn it again there, so it shows the clump's size. */
     private static void resend(EntityXPOrb orb) {
-        if (!(orb.worldObj instanceof WorldServer)) return;
-        EntityTracker tracker = ((WorldServer) orb.worldObj).getEntityTracker();
-        tracker.untrackEntity(orb);
-        tracker.trackEntity(orb);
+        // Only a spawn packet: the client swaps the orb with that id for the new one. Untracking would queue a destroy packet
+        // that arrives after the new spawn and removes the clump on the client.
+        if (orb.worldObj instanceof WorldServer)
+            ((WorldServer) orb.worldObj).getEntityTracker().sendToAllTrackingEntity(orb, new S11PacketSpawnExperienceOrb(orb));
     }
 
     private static List<EntityXPOrb> nearby(World world, EntityXPOrb orb) {

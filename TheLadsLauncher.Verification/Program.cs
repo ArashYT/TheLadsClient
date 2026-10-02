@@ -558,6 +558,11 @@ try
     process.OutputDataReceived += WriteLine;
     process.ErrorDataReceived += WriteLine;
     if (capabilities.Forge && File.Exists(gameLog)) File.Delete(gameLog); // only this run's lines are read
+    // QA instances play no sound (master volume 0): the owner may be using the computer meanwhile.
+    string qaOptions = Path.Combine(directory, "options.txt");
+    var qaLines = File.Exists(qaOptions) ? File.ReadAllLines(qaOptions).Where(l => !l.StartsWith("soundCategory_master:", StringComparison.Ordinal)).ToList() : new List<string>();
+    qaLines.Add("soundCategory_master:0.0");
+    File.WriteAllLines(qaOptions, qaLines);
     var stopwatch = Stopwatch.StartNew();
     process.Start();
     GameSession.Attach(process, directory, loadedMods, message => { lock (sessionMessages) sessionMessages.Add(message); }, shared,

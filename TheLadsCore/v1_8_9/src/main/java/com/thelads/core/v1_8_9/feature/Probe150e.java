@@ -98,11 +98,19 @@ final class Probe150e {
         return after(40);
     }
 
-    private static boolean appleShown(Minecraft mc) {
-        LOG.info("Lads 1.8.9 core probe: AppleSkin: synced {}, saturation {}, exhaustion {}, frames {}", FoodOverlay189.synced,
-            mc.thePlayer.getFoodStats().getSaturationLevel(), FoodOverlay189.exhaustion, FoodOverlay189.frames - count);
+    private static boolean appleShown(Minecraft mc) throws Exception {
+        // Exhaustion grows with every move, so compare with the server's value now, not the 2.5 it started at.
+        MinecraftServer server = mc.getIntegratedServer();
+        float serverExhaustion = server.callFromMainThread(() -> {
+            net.minecraft.nbt.NBTTagCompound tag = new net.minecraft.nbt.NBTTagCompound();
+            server.getConfigurationManager().getPlayerByUUID(mc.thePlayer.getUniqueID()).getFoodStats().writeNBT(tag);
+            return tag.getFloat("foodExhaustionLevel");
+        }).get();
+        LOG.info("Lads 1.8.9 core probe: AppleSkin: synced {}, saturation {}, exhaustion {} (server {}), frames {}", FoodOverlay189.synced,
+            mc.thePlayer.getFoodStats().getSaturationLevel(), FoodOverlay189.exhaustion, serverExhaustion, FoodOverlay189.frames - count);
         check(FoodOverlay189.synced && Math.abs(mc.thePlayer.getFoodStats().getSaturationLevel() - 3.5f) < 0.01f
-            && Math.abs(FoodOverlay189.exhaustion - 2.5f) < 0.6f, "AppleSkin: saturation 3.5 and exhaustion 2.5 come from the integrated server");
+            && serverExhaustion >= 2.5f && Math.abs(FoodOverlay189.exhaustion - serverExhaustion) < 0.3f,
+            "AppleSkin: saturation 3.5 and exhaustion " + FoodOverlay189.exhaustion + " (server " + serverExhaustion + ") come from the integrated server");
         check(FoodOverlay189.frames - count > 20, "AppleSkin: the saturation overlay is drawn over 1.8.9's hunger bar");
         screenshot(mc, "150-appleskin");
         return after(1);
@@ -155,11 +163,14 @@ final class Probe150e {
         MinecraftServer server = mc.getIntegratedServer();
         List<EntityXPOrb> merged = server.callFromMainThread(() -> {
             EntityPlayerMP player = server.getConfigurationManager().getPlayerByUUID(mc.thePlayer.getUniqueID());
-            return player.worldObj.getEntitiesWithinAABB(EntityXPOrb.class, around(player.posX + 12, player.posY, player.posZ));
+            return player.worldObj.getEntitiesWithinAABB(EntityXPOrb.class, player.getEntityBoundingBox().expand(24, 12, 24));
         }).get();
-        List<EntityXPOrb> seen = mc.theWorld.getEntitiesWithinAABB(EntityXPOrb.class, around(mc.thePlayer.posX + 12, mc.thePlayer.posY, mc.thePlayer.posZ));
+        List<EntityXPOrb> seen = mc.theWorld.getEntitiesWithinAABB(EntityXPOrb.class, mc.thePlayer.getEntityBoundingBox().expand(24, 12, 24));
+        StringBuilder found = new StringBuilder();
+        for (EntityXPOrb orb : merged) found.append(' ').append(orb.xpValue).append(String.format("@%.1f,%.1f,%.1f", orb.posX, orb.posY, orb.posZ));
         check(merged.size() == 1 && merged.get(0).xpValue == 30, "Clumps: ten 3-XP orbs became one 30-XP orb on the integrated server ("
-            + merged.size() + " orbs)");
+            + merged.size() + " orbs:" + found + "; player at " + String.format("%.1f,%.1f,%.1f", mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ)
+            + ", XP " + mc.thePlayer.experienceTotal + ")");
         check(seen.size() == 1 && seen.get(0).xpValue == 30, "Clumps: the client shows the one 30-XP clump (" + seen.size() + " orbs)");
         onServer(mc, player -> { for (EntityXPOrb orb : merged) orb.setDead(); });
         restore("Clumps");
