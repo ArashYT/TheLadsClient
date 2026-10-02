@@ -136,14 +136,10 @@ public sealed class SharedContentService
     /// <param name="coreEnabled">LadsCore reads the shared servers.dat itself; without it the profile gets a synced copy.</param>
     /// <param name="shareFolders">False only after the user chose <see cref="SharedContentUnavailableException.LaunchWithoutSharingChoice"/>:
     /// the server list is still handled, the folders are left alone for this launch.</param>
-    /// <param name="keepOwnFolders">Minecraft 1.8.9 (<see cref="GameVersionPolicy.KeepsOwnWorlds"/>): the folders are never
-    /// linked or migrated, and a link this service made is removed (the shared content stays). Only the server list is shared.
-    /// A profile that is the global folder itself, or has a folder linked anywhere else, is refused with InvalidOperationException.</param>
     /// <exception cref="SharedContentUnavailableException">A folder cannot be shared safely; it was left as it was (the other
     /// folders are still shared) and the message says what to fix.</exception>
     public async Task<SharedContentReport> PrepareProfileAsync(string gameDirectory, string profileLabel, string? legacySharedServersFile,
-        bool coreEnabled, IProgress<string>? progress = null, CancellationToken cancellationToken = default, bool shareFolders = true,
-        bool keepOwnFolders = false)
+        bool coreEnabled, IProgress<string>? progress = null, CancellationToken cancellationToken = default, bool shareFolders = true)
     {
         var game = Normalize(gameDirectory);
         var gate = _gates.GetOrAdd(game, _ => new SemaphoreSlim(1, 1));
@@ -157,7 +153,7 @@ public sealed class SharedContentService
             }
             try
             {
-                var run = new MigrationRun(this, game, profileLabel, legacySharedServersFile, coreEnabled, shareFolders, keepOwnFolders, progress, cancellationToken);
+                var run = new MigrationRun(this, game, profileLabel, legacySharedServersFile, coreEnabled, shareFolders, progress, cancellationToken);
                 return await Task.Run(run.ExecuteAsync, cancellationToken);
             }
             finally
@@ -536,7 +532,6 @@ public sealed class SharedContentService
         private readonly string? _legacy;
         private readonly bool _coreEnabled;
         private readonly bool _shareFolders;
-        private readonly bool _ownFolders;
         private readonly IProgress<string>? _progress;
         private readonly CancellationToken _ct;
         private readonly List<string> _messages = new();
@@ -548,7 +543,7 @@ public sealed class SharedContentService
         private int _renamed;
 
         public MigrationRun(SharedContentService service, string game, string label, string? legacy, bool coreEnabled, bool shareFolders,
-            bool ownFolders, IProgress<string>? progress, CancellationToken cancellationToken)
+            IProgress<string>? progress, CancellationToken cancellationToken)
         {
             _s = service;
             _game = game;
@@ -556,7 +551,6 @@ public sealed class SharedContentService
             _legacy = legacy;
             _coreEnabled = coreEnabled;
             _shareFolders = shareFolders;
-            _ownFolders = ownFolders;
             _progress = progress;
             _ct = cancellationToken;
         }
@@ -565,8 +559,6 @@ public sealed class SharedContentService
 
         public async Task<SharedContentReport> ExecuteAsync()
         {
-            if (_ownFolders && SafeFileOps.PathsEqual(SafeFileOps.GetFinalPath(_s.Root), SafeFileOps.GetFinalPath(_game)))
-                throw new InvalidOperationException($"'{_label}' uses the global Minecraft folder '{_s.Root}' as its game folder, and every newer version shares its worlds and packs. Minecraft 1.8.9 corrupts newer worlds, so it needs a game folder of its own. Nothing was changed.");
             if (RunningGameMarker.IsRunning(_game))
                 return Skip("Skipped: the game is running for this profile. Shared content is checked again at the next launch.");
             Directory.CreateDirectory(_game);
@@ -574,16 +566,11 @@ public sealed class SharedContentService
             var finalGame = SafeFileOps.GetFinalPath(_game);
             if (SafeFileOps.PathsEqual(finalRoot, finalGame))
                 return Skip($"This profile uses the global folder '{_s.Root}' directly, so its worlds, packs and server list are already shared.");
-            if (_shareFolders && !_ownFolders) Validate(finalRoot, finalGame);
+            if (_shareFolders) Validate(finalRoot, finalGame);
 
             using var migrationLock = await LockFiles.AcquireAsync(Path.Combine(MigrationRoot, ".lock"), MigrationLockTimeout, _ct);
-            // Every folder is checked (a foreign link throws) before any link is removed or the server list is touched.
-            if (_ownFolders)
-                foreach (var folder in SharedFolders.Where(IsSharedLinkToRemove).ToList()) RemoveSharedLink(folder);
             _progress?.Report("Checking the shared server list...");
             await PrepareServersAsync();
-            // Pending items were meant for the shared folders before this became a 1.8.9 folder: they wait for a newer version.
-            if (_ownFolders) return new SharedContentReport(_messages, _warnings, false, _reportPath, _stampDir, 0, 0);
             // One folder that cannot be shared does not keep the others from being shared; the problems are raised together.
             var problems = new List<string>();
             if (_shareFolders)
@@ -640,25 +627,6 @@ public sealed class SharedContentService
         }
 
         // ---------------------------------------------------------------- folders
-
-        /// <summary>1.8.9: true when the folder is this service's link to the shared folder (it is removed). A link anywhere else
-        /// is refused, since it may lead to newer worlds or packs.</summary>
-        private bool IsSharedLinkToRemove(string folder)
-        {
-            var link = Path.Combine(_game, folder);
-            if (!SafeFileOps.IsLink(link)) return false;
-            if (IsOurLink(link, Path.Combine(_s.Root, folder))) return true;
-            throw new InvalidOperationException($"'{link}' is a link to '{SafeFileOps.GetLinkTarget(link)}'. Minecraft 1.8.9 needs a {folder} folder of its own because it corrupts newer worlds. Remove that link (the folder it leads to is not changed) and launch again. Nothing was changed.");
-        }
-
-        private void RemoveSharedLink(string folder)
-        {
-            var link = Path.Combine(_game, folder);
-            var target = Path.Combine(_s.Root, folder);
-            Append("unlink", link, target, "Minecraft 1.8.9 keeps its own " + folder);
-            SafeFileOps.RemoveLink(link);
-            _messages.Add($"Minecraft 1.8.9 keeps its own {folder}: the link to the shared folder '{target}' was removed. The shared content was not changed.");
-        }
 
         private void PrepareFolder(string folder)
         {

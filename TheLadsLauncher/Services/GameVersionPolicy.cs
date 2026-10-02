@@ -22,10 +22,6 @@ public static class GameVersionPolicy
     /// <summary>The loader is Forge, never Fabric: only 1.8.9.</summary>
     public static bool UsesForge(string minecraftVersion) => minecraftVersion == ForgeMinecraftVersion;
 
-    /// <summary>World safety: a world from a newer version opened in 1.8.9 is corrupted, so 1.8.9 never gets the shared saves,
-    /// resource packs (pack_format 1), shader packs or options.txt. Its servers.dat and screenshots may be shared.</summary>
-    public static bool KeepsOwnWorlds(string minecraftVersion) => minecraftVersion == ForgeMinecraftVersion;
-
     public static string ResolveVersionId(LauncherProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);

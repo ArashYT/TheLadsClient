@@ -11,7 +11,7 @@ using Xunit;
 namespace TheLadsLauncher.Tests;
 
 /// <summary>Minecraft 1.8.9 (Forge, Java 8) in the launcher: version policy, Java 8, Forge output and mods, the default
-/// profile, and the world-safety trip-wire (1.8.9 never gets the shared saves, resource packs, shader packs or options).</summary>
+/// profile, and its shared worlds, packs and settings (from Lunar Client's 1.8 profile when Lunar is installed).</summary>
 public class Minecraft189Tests
 {
     // ------------------------------------------------------------------ version policy and Java
@@ -131,7 +131,7 @@ public class Minecraft189Tests
         var global = new SharedContentService(Path.Combine(dir.Path, "global"));
         var fresh = new ProfileService(new PathService(Path.Combine(dir.Path, "fresh")), global);
         var profile = Assert.Single(fresh.GetProfiles(), p => p.MinecraftVersion == "1.8.9");
-        Assert.Equal(("1.8.9", "The Lads Client 1.8.9", (string?)null, 8), (profile.Id, profile.Name, profile.FabricVersion, profile.JavaMajorVersion));
+        Assert.Equal(("1.8.9", "The Lads Client 1.8.9", (string?)null, 8, false), (profile.Id, profile.Name, profile.FabricVersion, profile.JavaMajorVersion, profile.IsIsolated));
         Assert.Equal(GameVersionPolicy.ForgeVersionId, GameVersionPolicy.ResolveVersionId(profile));
         Assert.Equal("26.3", fresh.GetActiveProfile().Id);
 
@@ -152,94 +152,127 @@ public class Minecraft189Tests
             new LauncherProfile { Id = "old-189", Name = "Old 1.8.9", MinecraftVersion = "1.8.9", FabricVersion = null, JavaMajorVersion = 8 },
             new LauncherProfile { Id = "broken", Name = "Broken", MinecraftVersion = "26.3", FabricVersion = "custom-loader", JavaMajorVersion = 25 } } }));
         Assert.Equal("26.2", new ProfileService(new PathService(broken), global).GetActiveProfile().Id);
+
+        // A 1.8.9 profile an older launcher saved isolated (it was forced) shares its settings now, once: isolating it again sticks.
+        var older = Path.Combine(dir.Path, "older");
+        Write(Path.Combine(older, "profiles.json"), JsonSerializer.Serialize(new { ActiveProfileId = "26.3", Profiles = new[] {
+            new LauncherProfile { Id = "26.3", Name = "Main", MinecraftVersion = "26.3", FabricVersion = "0.19.5", JavaMajorVersion = 25, IsIsolated = true },
+            new LauncherProfile { Id = "1.8.9", Name = "The Lads Client 1.8.9", MinecraftVersion = "1.8.9", FabricVersion = null, JavaMajorVersion = 8, IsIsolated = true } } }));
+        var migrated = new ProfileService(new PathService(older), global);
+        Assert.Equal((false, true), (migrated.GetProfile("1.8.9")!.IsIsolated, migrated.GetProfile("26.3")!.IsIsolated));
+        migrated.GetProfile("1.8.9")!.IsIsolated = true;
+        migrated.SaveProfiles();
+        Assert.True(new ProfileService(new PathService(older), global).GetProfile("1.8.9")!.IsIsolated);
     }
 
-    // ------------------------------------------------------------------ world safety
+    // ------------------------------------------------------------------ shared worlds, packs and settings
 
-    /// <summary>
-    /// The trip-wire for the hard world-safety rule. Whatever a 1.8.9 game folder held before (the links a newer version
-    /// made in it, or its own 1.8.9 worlds and packs) and whichever entry point runs (the startup pass, a launch, the "launch
-    /// without sharing" retry, the post-game sync), it ends with its own saves, resourcepacks and shaderpacks: no links and no
-    /// copies of shared content, the shared folders byte for byte as they were, and options.txt never shared either way.
-    /// servers.dat may be shared.
-    /// </summary>
+    /// <summary>1.8.9 shares saves, resourcepacks and shaderpacks like every version: what its game folder held is moved into the
+    /// shared folders (a name already taken there is kept under another name), and nothing shared is changed or lost.</summary>
     [Fact]
-    public async Task Minecraft189NeverGetsTheSharedWorldsPacksOrSettings()
+    public async Task Minecraft189IsLinkedToTheSharedFoldersAndItsOwnWorldsAndPacksMoveIn()
     {
         using var l = new Launcher();
         var shared = l.SharedTree();
-        // An existing folder that a newer version had linked (a profile folder re-used for 1.8.9).
-        await l.Shared.PrepareProfileAsync(l.Game189, "26.3 before", null, coreEnabled: true);
-        Assert.All(SharedContentService.SharedFolders, folder => Assert.True(SafeFileOps.IsLink(Path.Combine(l.Game189, folder))));
-        // A second 1.8.9 profile with its own worlds, packs and settings, and IsIsolated off.
-        var second = new LauncherProfile { Id = "second-189", Name = "Second 1.8.9", MinecraftVersion = "1.8.9", FabricVersion = null, JavaMajorVersion = 8 };
-        l.Profiles.SaveProfile(second);
-        var game2 = l.Paths.GetProfileDirectory(second);
-        Write(Path.Combine(game2, "saves", "Old 1.8.9 World", "level.dat"), "1.8.9 world");
-        Write(Path.Combine(game2, "resourcepacks", "faithful-1.8.zip"), "pack_format 1");
-        Write(Path.Combine(game2, "options.txt"), "fov:0.0\n");
+        Write(Path.Combine(l.Game189, "saves", "Old 1.8.9 World", "level.dat"), "1.8.9 world");
+        Write(Path.Combine(l.Game189, "saves", "Modern World", "level.dat"), "a 1.8.9 world with a taken name");
+        Write(Path.Combine(l.Game189, "resourcepacks", "faithful-1.8.zip"), "pack_format 1");
 
-        await l.Profiles.PrepareAllProfilesSharedContentAsync();
-        foreach (var profile in new[] { l.Profiles.GetProfile("1.8.9")!, second })
-        {
-            await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
-            await l.Profiles.PrepareProfileEnvironmentAsync(profile, null, withoutSharedFolders: true);
-            await l.Profiles.SyncProfileToSharedAsync(profile);
-        }
-        Write(Path.Combine(l.Game189, "saves", "New 1.8.9 World", "level.dat"), "played after the first launch");
         await l.Profiles.PrepareAllProfilesSharedContentAsync();
         await l.Profiles.PrepareProfileEnvironmentAsync(l.Profiles.GetProfile("1.8.9")!, null);
 
-        var sharedHashes = shared.Values.ToHashSet();
-        foreach (var game in new[] { l.Game189, game2 })
-        {
-            Assert.All(SharedContentService.SharedFolders, folder => Assert.False(SafeFileOps.IsLink(Path.Combine(game, folder)), $"{game}: {folder} is a link"));
-            Assert.DoesNotContain(Directory.EnumerateFiles(game, "*", SearchOption.AllDirectories), file => sharedHashes.Contains(Sha(file)));
-            Assert.False(File.Exists(Path.Combine(game, WorldCatalogService.GameSourcesFile)));
-            Assert.Equal(Sha(l.G("servers.dat")), Sha(Path.Combine(game, "servers.dat"))); // the server list is shared
-        }
-        Assert.Equal(shared, l.SharedTree()); // nothing changed, removed or added (no 1.8.9 world moved in)
-        Assert.Equal("1.8.9 world", File.ReadAllText(Path.Combine(game2, "saves", "Old 1.8.9 World", "level.dat")));
-        Assert.Equal("played after the first launch", File.ReadAllText(Path.Combine(l.Game189, "saves", "New 1.8.9 World", "level.dat")));
-        Assert.Equal("fov:0.0\n", File.ReadAllText(Path.Combine(game2, "options.txt")));
-        Assert.False(File.Exists(Path.Combine(l.Game189, "options.txt")));
-        Assert.Equal(Launcher.SharedOptions, File.ReadAllText(l.Paths.SharedOptionsFile));
+        Assert.All(SharedContentService.SharedFolders, folder =>
+            Assert.Equal(SafeFileOps.GetFinalPath(l.G(folder)), SafeFileOps.GetFinalPath(Path.Combine(l.Game189, folder))));
+        Assert.Equal("1.8.9 world", File.ReadAllText(l.G("saves", "Old 1.8.9 World", "level.dat")));
+        Assert.Equal("pack_format 1", File.ReadAllText(l.G("resourcepacks", "faithful-1.8.zip")));
+        Assert.Contains(Directory.EnumerateFiles(l.G("saves"), "level.dat", SearchOption.AllDirectories),
+            file => File.ReadAllText(file) == "a 1.8.9 world with a taken name");
+        Assert.All(shared, entry => Assert.Equal(entry.Value, Sha(l.G(entry.Key))));
+        Assert.Equal(Sha(l.G("servers.dat")), Sha(Path.Combine(l.Game189, "servers.dat")));
     }
 
     [Fact]
-    public async Task Minecraft189RefusesTheGlobalFolderAForeignLinkAndANewerProfilesFolder()
+    public async Task Minecraft189RefusesTheGlobalFolderAndAFabricProfilesFolder()
     {
         using var l = new Launcher();
         var shared = l.SharedTree();
         var direct = new LauncherProfile { Name = "1.8.9 in .minecraft", MinecraftVersion = "1.8.9", FabricVersion = null, CustomGameDir = l.Global };
         var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => l.Profiles.PrepareProfileEnvironmentAsync(direct, null));
-        Assert.Contains("game folder of its own", refused.Message);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => l.Shared.PrepareProfileAsync(l.Global, "QA", null, false, keepOwnFolders: true));
-
-        // A folder linked anywhere but the shared folder may lead to newer worlds: refused, and the link is left alone.
-        var elsewhere = Path.Combine(l.Root, "other-launcher", "saves");
-        Write(Path.Combine(elsewhere, "World", "level.dat"), "some other world");
-        Directory.CreateDirectory(l.Game189);
-        SafeFileOps.CreateJunction(Path.Combine(l.Game189, "saves"), elsewhere);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => l.Profiles.PrepareProfileEnvironmentAsync(l.Profiles.GetProfile("1.8.9")!, null));
-        Assert.True(SafeFileOps.IsLink(Path.Combine(l.Game189, "saves")));
+        Assert.Contains("Forge and Fabric mods cannot share a mods folder", refused.Message);
 
         var newer = l.Paths.GetProfileDirectory(l.Profiles.GetProfile("26.3")!);
         var inNewer = new LauncherProfile { Name = "1.8.9 in the 26.3 folder", MinecraftVersion = "1.8.9", FabricVersion = null, CustomGameDir = newer };
-        await Assert.ThrowsAsync<InvalidOperationException>(() => l.Profiles.PrepareProfileEnvironmentAsync(inNewer, null));
+        Assert.Contains("'The Lads Client 26.3 (Primary)'", (await Assert.ThrowsAsync<InvalidOperationException>(() => l.Profiles.PrepareProfileEnvironmentAsync(inNewer, null))).Message);
         Assert.False(Directory.Exists(newer));
         Assert.Equal(shared, l.SharedTree());
     }
 
     [Fact]
-    public async Task NewerVersionsInGameWorldPickerNeverLists189Worlds()
+    public async Task InGameWorldPickersList189WorldsAndNewerOnes()
     {
         using var l = new Launcher();
         var modern = l.Profiles.GetProfile("26.3")!;
         await l.Profiles.PrepareProfileEnvironmentAsync(modern, null);
-        var sources = JsonSerializer.Deserialize<List<WorldSource>>(File.ReadAllText(Path.Combine(l.Paths.GetProfileDirectory(modern), WorldCatalogService.GameSourcesFile)))!;
-        Assert.DoesNotContain(sources, s => SafeFileOps.PathsEqual(s.GameDirectory, l.Game189));
-        Assert.Contains(sources, s => s.Version == "1.21.1");
+        await l.Profiles.PrepareProfileEnvironmentAsync(l.Profiles.GetProfile("1.8.9")!, null);
+        List<WorldSource> Sources(string game) => JsonSerializer.Deserialize<List<WorldSource>>(File.ReadAllText(Path.Combine(game, WorldCatalogService.GameSourcesFile)))!;
+        Assert.Contains(Sources(l.Paths.GetProfileDirectory(modern)), s => SafeFileOps.PathsEqual(s.GameDirectory, l.Game189) && s.Version == "1.8.9");
+        Assert.Contains(Sources(l.Game189), s => s.Version == "26.3");
+    }
+
+    /// <summary>Without Lunar, 1.8.9 follows the launcher's shared options.txt with keybinds in 1.8 key codes, and after the game
+    /// only the shared settings and the keybinds (in modern names) go back: never 1.8's own formats.</summary>
+    [Fact]
+    public async Task Minecraft189UsesTheSharedOptionsAndOnlySharedKeysAndKeybindsGoBack()
+    {
+        using var l = new Launcher();
+        var profile = l.Profiles.GetProfile("1.8.9")!;
+        var options = Path.Combine(l.Game189, "options.txt");
+        File.WriteAllText(l.Paths.SharedOptionsFile, "version:4671\nlang:en_us\nfov:0.25\nresourcePacks:[\"vanilla\",\"file/modern.zip\"]\n"
+            + "key_key.attack:key.mouse.left\nkey_key.jump:key.keyboard.space\n");
+
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        var instance = GameOptionsService.ParseOptions(File.ReadAllText(options));
+        Assert.Equal(("-100", "57", "0.25"), (instance["key_key.attack"], instance["key_key.jump"], instance["fov"]));
+
+        // As 1.8.9 saves it on exit.
+        File.WriteAllText(options, "version:0\nlang:en_US\nresourcePacks:[\"faithful-1.8.zip\"]\nfancyGraphics:true\nfov:0.5\nguiScale:3\n"
+            + "key_key.attack:-99\nkey_key.drop:0\n");
+        await l.Profiles.SyncProfileToSharedAsync(profile);
+        var shared = GameOptionsService.ParseOptions(File.ReadAllText(l.Paths.SharedOptionsFile));
+        Assert.Equal(("4671", "en_us", "[\"vanilla\",\"file/modern.zip\"]", false), (shared["version"], shared["lang"], shared["resourcePacks"], shared.ContainsKey("fancyGraphics")));
+        Assert.Equal(("0.5", "3", "key.mouse.right", "key.keyboard.unknown"), (shared["fov"], shared["guiScale"], shared["key_key.attack"], shared["key_key.drop"]));
+    }
+
+    /// <summary>With Lunar installed, 1.8.9 takes its settings from Lunar's 1.8 profile (modern key names, translated) and
+    /// Lunar's optionsof.txt once; Lunar's files are only read, and nothing goes back to the launcher's shared copy.</summary>
+    [Fact]
+    public async Task Minecraft189UsesLunarsSettingsWhenInstalledAndNeverWritesThere()
+    {
+        using var l = new Launcher();
+        var profile = l.Profiles.GetProfile("1.8.9")!;
+        var options = Path.Combine(l.Game189, "options.txt");
+        var optiFine = Path.Combine(l.Game189, "optionsof.txt");
+        var lunar18 = Path.Combine(l.Lunar, "profiles", "1.8");
+        Write(Path.Combine(lunar18, "options.txt"), "version:3700\nlang:en_ca\nfov:0.75\nkey_key.attack:key.mouse.left\nkey_key.sprint:key.keyboard.left.control\n");
+        Write(Path.Combine(lunar18, "optionsof.txt"), "ofFastRender:true\n");
+        Write(Path.Combine(lunar18, "resourcepacks", "lunar-pack.zip"), "a 1.8 pack");
+        Dictionary<string, string> LunarTree() => Directory.EnumerateFiles(l.Lunar, "*", SearchOption.AllDirectories).ToDictionary(file => file, Sha);
+        var lunarBefore = LunarTree();
+
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        var instance = GameOptionsService.ParseOptions(File.ReadAllText(options));
+        Assert.Equal(("-100", "29", "0.75"), (instance["key_key.attack"], instance["key_key.sprint"], instance["fov"]));
+        Assert.Equal("ofFastRender:true\n", File.ReadAllText(optiFine));
+
+        // The game's own changes: OptiFine's are kept (copied once), Lunar's shared settings come back at the next launch.
+        File.WriteAllText(optiFine, "ofFastRender:false\n");
+        File.WriteAllText(options, "fov:1.0\nkey_key.attack:-99\n");
+        await l.Profiles.SyncProfileToSharedAsync(profile);
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        Assert.Equal("ofFastRender:false\n", File.ReadAllText(optiFine));
+        Assert.Equal(("0.75", "-100"), (GameOptionsService.ParseOptions(File.ReadAllText(options))["fov"], GameOptionsService.ParseOptions(File.ReadAllText(options))["key_key.attack"]));
+        Assert.Equal(lunarBefore, LunarTree());
+        Assert.Equal(Launcher.SharedOptions, File.ReadAllText(l.Paths.SharedOptionsFile));
     }
 
     // ------------------------------------------------------------------ Forge mods
@@ -697,13 +730,14 @@ public class Minecraft189Tests
     // ------------------------------------------------------------------ helpers
 
     /// <summary>A sandboxed launcher whose shared folder holds newer-version content: a 26.3 world, packs, a server list,
-    /// and the launcher's shared options.txt.</summary>
+    /// and the launcher's shared options.txt. Its Lunar Client folder (<see cref="Lunar"/>) is absent unless a test writes it.</summary>
     private sealed class Launcher : IDisposable
     {
         public const string SharedOptions = "version:4671\nguiScale:2\n";
         private readonly TestDirectory _dir = new();
         public string Root => _dir.Path;
         public string Global => Path.Combine(Root, "global");
+        public string Lunar => Path.Combine(Root, "lunar");
         public PathService Paths { get; }
         public SharedContentService Shared { get; }
         public ProfileService Profiles { get; }
@@ -713,7 +747,7 @@ public class Minecraft189Tests
         {
             Paths = new PathService(Path.Combine(Root, "launcher"));
             Shared = new SharedContentService(Global, Path.Combine(Root, "launcher", "backups", "servers"));
-            Profiles = new ProfileService(Paths, Shared);
+            Profiles = new ProfileService(Paths, Shared) { LunarRoot = Lunar };
             Write(G("saves", "Modern World", "level.dat"), "a 26.3 world");
             Write(G("saves", "Modern World", "region", "r.0.0.mca"), "26.3 chunks");
             Write(G("resourcepacks", "modern.zip"), "pack_format 46");
