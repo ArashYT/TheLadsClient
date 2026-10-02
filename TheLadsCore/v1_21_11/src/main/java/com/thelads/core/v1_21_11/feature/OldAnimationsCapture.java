@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
  */
 final class OldAnimationsCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private static final String[] SHOTS = {"idle-sword", "block-swing", "block-third-person", "bow-drawn", "fishing-rod", "eating", "dropped-2d", "red-armour"};
+    private static final String[] SHOTS = {"idle-sword", "block", "block-swing", "block-third-person", "bow-drawn", "fishing-rod", "eating", "dropped-2d", "red-armour"};
     private static final EquipmentSlot[] SLOTS = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
     private static final Item[] ARMOUR = {Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.IRON_LEGGINGS, Items.IRON_BOOTS};
     private static final int FIRST_ID = Integer.MAX_VALUE - 96;
@@ -76,6 +76,10 @@ final class OldAnimationsCapture {
         if (Minecraft.getInstance().screen != null) { due = Math.max(due, System.nanoTime() + 600_000_000L); return; }
         if (System.nanoTime() < due) return;
         String name = "oldanim-" + SHOTS[step];
+        // What the frame shows, for QA: a swing here that the shot did not ask for comes from outside this capture.
+        var player = Minecraft.getInstance().player;
+        float swing = player.getAttackAnim(0);
+        boolean swinging = player.swinging, using = player.isUsingItem();
         capturing = true;
         try {
             Path folder = game.resolve("screenshots");
@@ -83,7 +87,7 @@ final class OldAnimationsCapture {
             if (!folder.toRealPath().startsWith(game)) throw new java.io.IOException("QA screenshot folder is outside the isolated game directory");
             Path output = folder.resolve(name + ".png");
             net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
-                try { image.writeToFile(output); saved++; LOGGER.info("Lads 1.7 animations frame {}", output); }
+                try { image.writeToFile(output); saved++; LOGGER.info("Lads 1.7 animations frame {} (swing {}, swinging {}, using {})", output, swing, swinging, using); }
                 catch (Exception failure) { LOGGER.error("Lads 1.7 animations capture FAILED: {}", name, failure); }
                 finally { image.close(); Minecraft.getInstance().execute(OldAnimationsCapture::next); }
             });
@@ -135,13 +139,14 @@ final class OldAnimationsCapture {
     private static void pose() {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) return;
-        switch (SHOTS[step]) {
-            case "block-swing", "block-third-person" -> {
-                using(player, InteractionHand.OFF_HAND, 72000);
-                player.swinging = true; // mid-swing (3 of 6) once the player's tick advances it
-                player.swingTime = 2;
-                player.swingingArm = InteractionHand.MAIN_HAND;
-            }
+        // Only the blockhit shot swings: every other scene holds the arm still, whatever swung last.
+        String shot = SHOTS[step];
+        player.swinging = shot.equals("block-swing"); // mid-swing (3 of 6) once the player's tick advances it
+        player.swingTime = player.swinging ? 2 : 0;
+        player.swingingArm = InteractionHand.MAIN_HAND;
+        if (!player.swinging) player.attackAnim = player.oAttackAnim = 0;
+        switch (shot) {
+            case "block", "block-swing", "block-third-person" -> using(player, InteractionHand.OFF_HAND, 72000);
             case "bow-drawn" -> using(player, InteractionHand.MAIN_HAND, 72000 - 20);
             case "eating" -> using(player, InteractionHand.MAIN_HAND, 16);
             case "red-armour" -> player.hurtTime = 10;
