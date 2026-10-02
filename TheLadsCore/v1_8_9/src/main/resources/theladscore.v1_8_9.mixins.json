@@ -13,10 +13,14 @@
     "GuiIngameMenuMixin",
     "GuiScreenMixin",
     "GuiSlotMixin",
+    "ItemFoodAccessor",
     "ItemRendererAccessor",
     "ItemRendererMixin",
     "MinecraftMixin",
+    "NetworkManagerMixin",
     "ResourcePackRepositoryMixin",
-    "SplashProgressMixin"
+    "ScreenShotHelperMixin",
+    "SplashProgressMixin",
+    "TileEntityMixin"
   ]
 }
