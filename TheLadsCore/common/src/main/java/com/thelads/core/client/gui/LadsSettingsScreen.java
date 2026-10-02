@@ -836,7 +836,7 @@ public final class LadsSettingsScreen {
             button(g, id, editingOption == option ? inputDisplay() : String.format("%08X", c.getColor()), new Rect(r.x, r.y, r.width - 58, r.height), () -> colorPicker.open(option.getName(), c.getColor(), value -> { c.setColor(value); c.setUseGlobal(false); changed(detail); }), true, mx, my, false);
             button(g, id + ":global", c.isUseGlobal() ? "Global" : "Own", new Rect(r.x + r.width - 54, r.y, 54, r.height), () -> { c.setUseGlobal(!c.isUseGlobal()); changed(detail); }, true, mx, my, c.isUseGlobal());
         } else if (option instanceof TextOption t) {
-            button(g, id, editingOption == option ? inputDisplay() : t.getValue(), r, () -> startEdit(option), true, mx, my, editingOption == option);
+            button(g, id, editingOption == option ? inputWindow(g, r.width - 10) : t.getValue(), r, () -> startEdit(option), true, mx, my, editingOption == option);
         }
     }
     private void button(LadsGraphics g, String id, String label, Rect r, Runnable action, boolean enabled, int mx, int my, boolean selected) {
@@ -1088,13 +1088,20 @@ public final class LadsSettingsScreen {
         if (!editingSearch && editingOption == null || Character.isISOControl(codePoint) || !Character.isValidCodePoint(codePoint)) return false;
         String text = new String(Character.toChars(codePoint));
         if (selectAll) { editBuffer = ""; cursor = 0; selectAll = false; }
-        if (editBuffer.length() + text.length() <= (editingSearch ? 64 : editingOption instanceof ColorOption ? 8 : 160)) {
+        if (editBuffer.length() + text.length() <= (editingSearch ? 64 : editingOption instanceof ColorOption ? 8 : 512)) {
             editBuffer = editBuffer.substring(0, cursor) + text + editBuffer.substring(cursor); cursor += text.length();
             if (editingSearch) applySearch();
         }
         return true;
     }
     private String inputDisplay() { return editBuffer.substring(0, cursor) + "|" + editBuffer.substring(cursor); }
+    /** The edited text around the cursor, so a long value (Nametags nicknames) stays readable while typing. */
+    private String inputWindow(LadsGraphics g, int width) {
+        String text = inputDisplay();
+        int start = 0, end = text.length();
+        while (end - start > 1 && g.textWidth(text.substring(start, end)) > width) { if (end > cursor + 1) end--; else start++; }
+        return text.substring(start, end);
+    }
     private void startSearch() { editingSearch = true; editingOption = null; editBuffer = modsView ? modsSearch : searchQuery; cursor = editBuffer.length(); selectAll = false; focusId = modsView ? "mods-search" : "search"; }
     private void applySearch() { if (modsView) { modsSearch = editBuffer; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; } else setSearchQuery(editBuffer); }
     private void startEdit(Option o) { editingSearch = false; editingOption = o; editBuffer = o instanceof TextOption t ? t.getValue() : String.format("%08X", ((ColorOption)o).getColor()); cursor = editBuffer.length(); selectAll = true; }

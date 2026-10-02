@@ -22,6 +22,8 @@ public final class NativeQualityOfLife {
         NativeAutohide.register();
         // NativeKillBanner through the KillBanner stats, attack and HUD mixins, as on 26.x.
         ModuleSupport.registerBuiltIn("KillBanner");
+        // NametagMixin, NametagShadowMixin, OwnNametagMixin, NicknameTabMixin and the ChatMixin rename, as on 26.x.
+        ModuleSupport.registerBuiltIn("Nametags");
         // QA only (-Dthelads.verifyAutoWorld): the isolated auto-world runtime; registers nothing in normal launches.
         NativeWorldVerification.register();
     }
