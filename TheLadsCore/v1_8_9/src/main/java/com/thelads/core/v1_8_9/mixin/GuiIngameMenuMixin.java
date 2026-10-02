@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.client.title.ButtonLift;
+import com.thelads.core.client.title.PauseMenuLayout;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import com.thelads.core.v1_8_9.gui.CompactButton189;
@@ -24,7 +25,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * The Lads pause menu, as on the other versions: Lads theme and logo, every button in a 1-2 column grid, "Lads Client" and
+ * The Lads pause menu, as on the other versions: Lads theme and logo, the buttons in groups (PauseMenuLayout), "Lads Client" and
  * Multiplayer rows, Essential's actions in a row above the account name, other small buttons behind "Extras...", and a
  * top-right fullscreen toggle.
  */
@@ -95,41 +96,40 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         ladsRow = EssentialRow189.place(ladsEssential, LADS_BUTTON_ID + 10, height, width - 32);
         buttonList.addAll(ladsRow);
         ladsLaidOut = buttonList.size();
-        List<GuiButton> grid = new ArrayList<>(); // by ladsOrder, stable (no lambdas in this mixin for Mixin 0.7)
-        for (int order = 0; order <= 8; order++)
-            for (GuiButton button : buttonList)
-                if (button != ladsFullscreenButton && !ladsRow.contains(button) && ladsOrder(button) == order) grid.add(button);
-        int columns = width < 380 ? 1 : 2;
-        int total = Math.min(width - 32, 360), gap = 6, cellWidth = (total - gap * (columns - 1)) / columns;
-        int rows = (grid.size() + columns - 1) / columns;
-        // The grid ends above the account name, and above Essential's row when there is one.
+        List<GuiButton> grid = new ArrayList<>();
+        List<PauseMenuLayout.Slot> slots = new ArrayList<>();
+        for (GuiButton button : buttonList)
+            if (button != ladsFullscreenButton && !ladsRow.contains(button)) { grid.add(button); slots.add(ladsSlot(button)); }
+        // In groups: Back to Game, then Achievements/Statistics, Options/Lads Client, Multiplayer/LAN, Extras, Save and Quit apart.
         int bottom = height - 32 - (ladsEssential.isEmpty() ? 0 : TitleScreenTheme.ROW_SPACE);
-        int top = Math.max(62, Math.min(height / 3, bottom - rows * 29));
-        int rowHeight = Math.max(17, Math.min(27, (bottom - top) / Math.max(1, rows) - 3));
+        int top = Math.max(62, 12 + Math.min(64, height / 6) + 18);
+        List<PauseMenuLayout.Box> boxes = PauseMenuLayout.arrange(slots, width, top, bottom);
         for (int i = 0; i < grid.size(); i++) {
             GuiButton button = grid.get(i);
-            button.xPosition = (width - total) / 2 + i % columns * (cellWidth + gap);
-            button.yPosition = top + i / columns * (rowHeight + 3);
-            button.width = cellWidth;
-            button.height = rowHeight;
+            PauseMenuLayout.Box box = boxes.get(i);
+            button.xPosition = box.x();
+            button.yPosition = box.y();
+            button.width = box.width();
+            button.height = box.height();
             ButtonLift.enable(button);
         }
     }
 
     @Unique
-    private int ladsOrder(GuiButton button) {
-        if (button == ladsButton) return 7;
-        if (button == ladsMultiplayerButton) return 3;
+    private PauseMenuLayout.Slot ladsSlot(GuiButton button) {
+        if (button == ladsButton) return PauseMenuLayout.Slot.LADS;
+        if (button == ladsMultiplayerButton) return PauseMenuLayout.Slot.MULTIPLAYER;
+        if (button == ladsExtrasButton) return PauseMenuLayout.Slot.EXTRAS;
         if (button.getClass() == GuiButton.class)
             switch (button.id) {
-                case 4: return 0;  // Back to Game
-                case 5: return 1;  // Achievements
-                case 6: return 2;  // Statistics
-                case 0: return 3;  // Options
-                case 7: case 12: return 4; // Open to LAN, Mod Options
-                case 1: return 6;  // Save and Quit / Disconnect
+                case 4: return PauseMenuLayout.Slot.BACK;
+                case 5: return PauseMenuLayout.Slot.ADVANCEMENTS; // Achievements
+                case 6: return PauseMenuLayout.Slot.STATS;
+                case 0: return PauseMenuLayout.Slot.OPTIONS;
+                case 7: return PauseMenuLayout.Slot.WORLD; // Open to LAN
+                case 1: return PauseMenuLayout.Slot.QUIT; // Save and Quit / Disconnect
             }
-        return 8;
+        return PauseMenuLayout.Slot.OTHER; // Forge's Mod Options and other mods' buttons
     }
 
     @Inject(method = "drawScreen", at = @At("HEAD"), cancellable = true, require = 1)

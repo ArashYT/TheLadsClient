@@ -54,26 +54,27 @@ public abstract class PauseScreenMixin extends Screen {
         if(!ladsExtras.isEmpty()&&ladsExtrasButton==null)ladsExtrasButton=addRenderableWidget(Button.builder(Component.literal("Extras..."),b->minecraft.setScreen(new com.thelads.core.v1_21_11.gui.TitleExtrasScreen12111(this,ladsExtras))).bounds(0,0,204,20).build());
         ladsEssentialRow.forEach(w->removeWidget(w));
         ladsEssentialRow=com.thelads.core.v1_21_11.gui.EssentialRow12111.place(w->addRenderableWidget(w),ladsEssentialActions,height,width-32);
-        var widgets=children().stream().filter(c->c instanceof Button&&c!=ladsFullscreenButton&&!ladsEssentialRow.contains(c)).map(c->(Button)c)
-            .sorted(java.util.Comparator.comparingInt(this::ladsOrder)).toList();
-        int columns=width<380?1:2;
-        int total=Math.min(width-32,360),gap=6,cw=(total-gap*(columns-1))/columns;
-        int rows=(widgets.size()+columns-1)/columns;
-        // The grid ends above the account name, and above Essential's row when there is one.
+        var buttons=children().stream().filter(c->c instanceof Button&&c!=ladsFullscreenButton&&!ladsEssentialRow.contains(c)).map(c->(Button)c).toList();
+        // In groups: Back to Game, then Advancements/Statistics, Options/Lads Client, Multiplayer/world options, Replays/Extras, Save and Quit apart.
         int bottom=height-32-(ladsEssentialActions.isEmpty()?0:com.thelads.core.client.title.TitleScreenTheme.ROW_SPACE);
-        int top=Math.max(62,Math.min(height/3,bottom-rows*29));
-        int rowHeight=Math.max(17,Math.min(27,(bottom-top)/Math.max(1,rows)-3));
-        for(int i=0;i<widgets.size();i++) {
-            var widget=widgets.get(i);widget.setX((width-total)/2+i%columns*(cw+gap));widget.setY(top+i/columns*(rowHeight+3));widget.setWidth(cw);widget.setHeight(rowHeight);
+        int top=Math.max(62,12+Math.min(64,height/6)+18);
+        var boxes=com.thelads.core.client.title.PauseMenuLayout.arrange(buttons.stream().map(this::ladsSlot).toList(),width,top,bottom);
+        for(int i=0;i<buttons.size();i++) {
+            var widget=buttons.get(i);var box=boxes.get(i);
+            widget.setX(box.x());widget.setY(box.y());widget.setWidth(box.width());widget.setHeight(box.height());
             com.thelads.core.client.title.ButtonLift.enable(widget);
         }
     }
-    @Unique private int ladsOrder(Button button){
+    @Unique private com.thelads.core.client.title.PauseMenuLayout.Slot ladsSlot(Button button){
         String text=button.getMessage().getString();
-        String[] keys={"menu.returnToGame","gui.advancements","gui.stats","menu.options","menu.worldOptions","menu.returnToMenu","menu.disconnect"};
-        for(int i=0;i<keys.length;i++)if(text.equals(Component.translatable(keys[i]).getString()))return i;
-        if(text.equals(Component.translatable("menu.multiplayer").getString()))return 3;
-        if(text.equals("Lads Client"))return 7;return 8;
+        if(button==ladsExtrasButton)return com.thelads.core.client.title.PauseMenuLayout.Slot.EXTRAS;
+        if(text.equals("Lads Client"))return com.thelads.core.client.title.PauseMenuLayout.Slot.LADS;
+        if(text.equals("Replays"))return com.thelads.core.client.title.PauseMenuLayout.Slot.REPLAYS;
+        String[][] keys={{"menu.returnToGame","BACK"},{"gui.advancements","ADVANCEMENTS"},{"gui.stats","STATS"},{"menu.options","OPTIONS"},
+            {"menu.multiplayer","MULTIPLAYER"},{"menu.worldOptions","WORLD"},{"menu.shareToLan","WORLD"},{"menu.returnToMenu","QUIT"},{"menu.disconnect","QUIT"}};
+        for(String[] key:keys)if(text.equals(Component.translatable(key[0]).getString()))
+            return com.thelads.core.client.title.PauseMenuLayout.Slot.valueOf(key[1]);
+        return com.thelads.core.client.title.PauseMenuLayout.Slot.OTHER;
     }
     @Inject(method="render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V",at=@At("HEAD"),cancellable=true,require=1)
     private void ladsPauseTheme(GuiGraphics g,int mx,int my,float dt,CallbackInfo ci){
