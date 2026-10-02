@@ -39,9 +39,10 @@ public final class ThreadPriorityModule extends Module {
         if (scheduler == null) return;
         for (Thread thread : Thread.getAllStackTraces().keySet()) {
             String name = thread.getName();
-            int priority = name.equals("Render thread") ? (int)render.getValue()
+            // 1.8.9 names its render thread "Client thread" and its chunk workers "Chunk Batcher n".
+            int priority = name.equals("Render thread") || name.equals("Client thread") ? (int)render.getValue()
                 : name.equals("Server thread") ? (int)server.getValue()
-                : name.startsWith("Worker-") ? (int)workers.getValue() : 0;
+                : name.startsWith("Worker-") || name.startsWith("Chunk Batcher ") ? (int)workers.getValue() : 0;
             if (priority == 0 || !thread.isAlive()) continue;
             original.putIfAbsent(thread, thread.getPriority());
             thread.setPriority(Math.max(Thread.MIN_PRIORITY, Math.min(8, priority)));
