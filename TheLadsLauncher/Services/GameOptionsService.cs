@@ -9,6 +9,7 @@ public static class GameOptionsService
 {
     private static readonly Dictionary<string, int> ModernToLwjgl2 = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["key.keyboard.unknown"] = 0, // unbound
         ["key.keyboard.escape"] = 1,
         ["key.keyboard.1"] = 2,
         ["key.keyboard.2"] = 3,
@@ -143,6 +144,16 @@ public static class GameOptionsService
     public static bool IsLegacy18(string mcVersion) =>
         mcVersion == "1.8.9" || mcVersion.StartsWith("1.8", StringComparison.Ordinal);
 
+    /// <summary>Lunar Client's folder: LADS_LUNAR_DIR, else %USERPROFILE%\.lunarclient. Only ever read, never written, moved or deleted.</summary>
+    public const string LunarEnvironmentVariable = "LADS_LUNAR_DIR";
+
+    public static string LunarRoot() => Environment.GetEnvironmentVariable(LunarEnvironmentVariable) is { Length: > 0 } root ? root
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".lunarclient");
+
+    /// <summary>Lunar's 1.8 profile options.txt (modern key names), or null when Lunar is not installed.</summary>
+    public static string? LunarOptions18(string? lunarRoot = null) =>
+        Path.Combine(lunarRoot ?? LunarRoot(), "profiles", "1.8", "options.txt") is var file && File.Exists(file) ? file : null;
+
     public static Dictionary<string, string> ParseOptions(string text)
     {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -235,14 +246,14 @@ public static class GameOptionsService
         if (!File.Exists(instanceFile)) return;
         var instanceText = File.ReadAllText(instanceFile);
         var instanceMap = ParseOptions(instanceText);
-        if (instanceMap.Count == 0 && !string.IsNullOrWhiteSpace(instanceText))
+        bool sourceIs18 = IsLegacy18(mcVersion);
+        if (instanceMap.Count == 0 && !string.IsNullOrWhiteSpace(instanceText) && !sourceIs18)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(sharedFile))!);
             File.WriteAllText(sharedFile, instanceText);
             return;
         }
 
-        bool sourceIs18 = IsLegacy18(mcVersion);
         var sharedMap = File.Exists(sharedFile) ? ParseOptions(File.ReadAllText(sharedFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var kvp in instanceMap)
@@ -251,8 +262,9 @@ public static class GameOptionsService
             {
                 sharedMap[kvp.Key] = TranslateKeybindToTarget(kvp.Key, kvp.Value, false); // Store modern representation in shared
             }
-            else
+            else if (!sourceIs18 || SharedSettingsKeys.Contains(kvp.Key))
             {
+                // 1.8's own formats (lang:en_US, its resourcePacks list, fancyGraphics...) never reach the shared copy.
                 sharedMap[kvp.Key] = kvp.Value;
             }
         }

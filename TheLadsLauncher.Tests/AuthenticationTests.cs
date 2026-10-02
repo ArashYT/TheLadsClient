@@ -18,6 +18,15 @@ public sealed class TestDirectory : IDisposable
     public void Dispose() => SafeFileOps.DeleteTree(Path);
 }
 
+/// <summary>No test reads the real Lunar Client folder: whatever resolves it gets a folder that does not exist (Lunar not
+/// installed). A test that needs Lunar passes a sandbox as ProfileService.LunarRoot.</summary>
+internal static class NoRealLunar
+{
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void Initialize() => Environment.SetEnvironmentVariable(GameOptionsService.LunarEnvironmentVariable,
+        System.IO.Path.Combine(System.IO.Path.GetTempPath(), "LadsClientTests", "no-lunar-" + Guid.NewGuid().ToString("N")));
+}
+
 public class AuthenticationTests
 {
     [Fact]

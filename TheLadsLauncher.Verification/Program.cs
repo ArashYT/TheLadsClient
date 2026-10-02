@@ -152,6 +152,10 @@ RequireInside(directory, verificationRoot, "QA game folder");
 string launcherData = Path.Combine(verificationRoot, "harness-launcher-data");
 Environment.SetEnvironmentVariable("THELADS_DIR", launcherData);
 Environment.SetEnvironmentVariable(SharedContentService.RootEnvironmentVariable, sharedRoot);
+// QA never reads the real Lunar Client folder: the game gets this sandbox (absent: Lunar is not installed).
+string lunarRoot = Path.Combine(verificationRoot, "lunar-sandbox");
+if (Directory.Exists(lunarRoot)) RequireInside(lunarRoot, verificationRoot, "Lunar Client sandbox");
+Environment.SetEnvironmentVariable(GameOptionsService.LunarEnvironmentVariable, lunarRoot);
 var shared = new SharedContentService(sharedRoot);
 
 string scenario = Env("LADS_VERIFY_SCENARIO") ?? "adhoc";
@@ -307,13 +311,11 @@ try
         throw new InvalidOperationException($"LadsCore is disabled for {dirName}; pass --expect-core-disabled or run --set-mods {version} <root> enable theladscore --dir {dirName}.");
 
     // The same pre-launch order as the launcher: shared content, installers (which honour lads-mod-state.json), inventory snapshot.
-    // As ProfileService prepares 1.8.9: its own worlds and packs, never linked or copied; the server list is a synced copy,
-    // because the 1.8.9 Core does not read the shared one.
+    // The 1.8.9 Core does not read the shared server list, so 1.8.9 gets a synced copy.
     bool coreReadsServers = coreRequested && !capabilities.Forge;
-    var prepared = await shared.PrepareProfileAsync(directory, "QA " + dirName, null, coreReadsServers, null, ct,
-        keepOwnFolders: GameVersionPolicy.KeepsOwnWorlds(version));
-    if (GameVersionPolicy.KeepsOwnWorlds(version) && LinkedFolder(directory) is { } linked)
-        throw new InvalidOperationException($"WORLD SAFETY: {linked}; Minecraft {version} keeps its own worlds and packs. Nothing was started.");
+    var prepared = await shared.PrepareProfileAsync(directory, "QA " + dirName, null, coreReadsServers, null, ct);
+    if (LinkedOutside(directory, sharedRoot) is { } linked)
+        throw new InvalidOperationException($"SANDBOX: {linked}. Nothing was started.");
     string preparedText = $"Shared content prepare (coreEnabled={coreReadsServers}): skipped={prepared.Skipped} renamed={prepared.Renamed} pending={prepared.Pending} "
         + $"report={prepared.ReportPath ?? "-"} backup={prepared.BackupPath ?? "-"}\n"
         + string.Concat(prepared.Messages.Select(m => "  message: " + m + "\n")) + string.Concat(prepared.Warnings.Select(w => "  warning: " + w + "\n"))
@@ -475,7 +477,7 @@ try
     process.StartInfo.RedirectStandardOutput = true;
     process.StartInfo.RedirectStandardError = true;
     GameSession.Configure(process.StartInfo, directory, shared.Root);
-    summary.Add($"Child environment: THELADS_DIR={directory}; {SharedContentService.RootEnvironmentVariable}={shared.Root}");
+    summary.Add($"Child environment: THELADS_DIR={directory}; {SharedContentService.RootEnvironmentVariable}={shared.Root}; {GameOptionsService.LunarEnvironmentVariable}={lunarRoot}");
     summary.Add("JVM QA flags: " + string.Join(' ', jvmFlags));
     log = new StreamWriter(logPath) { AutoFlush = true };
     void WriteLine(object sender, DataReceivedEventArgs e)
@@ -815,21 +817,7 @@ if (Directory.Exists(screenshots))
 CopyIfExists(Path.Combine(directory, ModPreferences.FileName), Path.Combine(evidence, "lads-mod-state.after.json"));
 string sandboxAfter = Snapshot(sharedRoot);
 await File.WriteAllTextAsync(Path.Combine(evidence, "sandbox-after.txt"), sandboxAfter);
-// World-safety trip-wire (1.8.9 keeps its own worlds and packs): after the run its game folder still has no link to any shared
-// folder, none of the shared sandbox's worlds or packs was copied in, and the shared sandbox gained or lost no world or pack.
-if (GameVersionPolicy.KeepsOwnWorlds(version) && sandboxBefore != null)
-{
-    var safety = new List<string>();
-    if (LinkedFolder(directory) is { } linked) safety.Add(linked);
-    var sharedEntries = WorldEntries(sandboxAfter).Union(WorldEntries(sandboxBefore)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-    var copied = WorldEntries(Snapshot(directory)).Where(sharedEntries.Contains).ToList();
-    if (copied.Count > 0) safety.Add($"the QA game folder holds shared content: {string.Join(", ", copied)}");
-    var moved = WorldEntries(sandboxBefore).ToHashSet(StringComparer.OrdinalIgnoreCase);
-    moved.SymmetricExceptWith(WorldEntries(sandboxAfter));
-    if (moved.Count > 0) safety.Add($"the shared sandbox's worlds or packs changed during the run (another version's QA run at the same time also does this): {string.Join(", ", moved)}");
-    if (safety.Count > 0) failures.Add($"WORLD SAFETY: Minecraft {version} must never see the shared saves, resource packs or shader packs, but " + string.Join("; ", safety));
-    else Console.WriteLine($"World safety: the {version} QA folder links nowhere and holds no shared world or pack; the shared sandbox's worlds and packs are as before.");
-}
+if (LinkedOutside(directory, sharedRoot) is { } linkedAfter) failures.Add($"SANDBOX: after the run {linkedAfter}.");
 string loadedText = $"{modList.Name} loaded {modList.Top.Count} top-level mods (declared {modList.Declared})"
     + (expectAbsent.Count > 0 ? $", none of [{string.Join(", ", expectAbsent)}]" : "")
     + (expectPresent.Count > 0 ? $", including [{string.Join(", ", expectPresent)}]" : "");
@@ -918,17 +906,14 @@ static void CopyIfExists(string source, string destination)
     if (File.Exists(source)) File.Copy(source, destination, overwrite: true);
 }
 
-// "saves\tName", "resourcepacks\tName", "shaderpacks\tName" of a Snapshot: the worlds and packs by name (mtimes left out).
-static IEnumerable<string> WorldEntries(string snapshot) => snapshot.Split('\n')
-    .Select(line => line.Split('\t')).Where(parts => parts.Length >= 3 && parts[0] is "saves" or "resourcepacks" or "shaderpacks")
-    .Select(parts => parts[0] + "\\" + parts[1]);
-
-// A shared folder of the game folder that is a link (to anywhere): "saves -> <target>", or null when none is.
-static string? LinkedFolder(string gameDirectory)
+// A shared folder of the game folder that links outside the sandbox shared root: "saves -> <target>", or null when none does.
+static string? LinkedOutside(string gameDirectory, string sharedRoot)
 {
+    var root = SafeFileOps.GetFinalPath(sharedRoot);
     var links = SharedContentService.SharedFolders.Select(folder => Path.Combine(gameDirectory, folder)).Where(SafeFileOps.IsLink)
+        .Where(link => SafeFileOps.GetLinkTarget(link) is not { } target || !SafeFileOps.IsSameOrInside(SafeFileOps.GetFinalPath(target), root))
         .Select(link => $"{Path.GetFileName(link)} -> {SafeFileOps.GetLinkTarget(link) ?? "?"}").ToList();
-    return links.Count == 0 ? null : $"the QA game folder links {string.Join(", ", links)}";
+    return links.Count == 0 ? null : $"the QA game folder links outside the shared sandbox '{sharedRoot}': {string.Join(", ", links)}";
 }
 
 // Read-only listing: top-level names, sizes and mtimes; servers.dat SHA-256; saves/resourcepacks/shaderpacks entry names and mtimes.

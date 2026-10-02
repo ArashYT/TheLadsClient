@@ -104,6 +104,7 @@ public class RunningGameMarkerTests
         GameSession.Configure(start, game, shared.Root);
         Assert.Equal(game, start.Environment["THELADS_DIR"]);
         Assert.Equal(shared.Root, start.Environment[SharedContentService.RootEnvironmentVariable]);
+        Assert.Equal(GameOptionsService.LunarRoot(), start.Environment[GameOptionsService.LunarEnvironmentVariable]);
 
         // Profile without LadsCore: it gets a copy, the game adds a server to that copy.
         var list = ServerListFile.CreateEmpty();
