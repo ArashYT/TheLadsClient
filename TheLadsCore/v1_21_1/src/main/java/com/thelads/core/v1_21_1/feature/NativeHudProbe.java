@@ -228,9 +228,11 @@ public final class NativeHudProbe {
             String bootsName = new ItemStack(Items.DIAMOND_BOOTS).getHoverName().getString();
             check(data.getArmor().stream().anyMatch(piece -> piece.name().equals(bootsName) && piece.maximum() > 0), "ArmorHUD lists the equipped boots with durability");
 
-            module("SmoothHotbar").setEnabled(true);
+            // Rest on slot 1 first (SmoothHotbar off snaps there), whatever slot an earlier run left selected.
+            module("SmoothHotbar").setEnabled(false);
             var hotbar = (GuiQaInvoker) mc.gui;
             mc.player.getInventory().selected = 0; hotbar.ladsQaItemHotbar(graphics, mc.getTimer()); BLITS.clear();
+            module("SmoothHotbar").setEnabled(true);
             mc.player.getInventory().selected = 4; hotbar.ladsQaItemHotbar(graphics, mc.getTimer());
             float moving = selectionOffset(); BLITS.clear();
             check(moving < -40, "SmoothHotbar slides the highlight from the previous slot (" + moving + ")");

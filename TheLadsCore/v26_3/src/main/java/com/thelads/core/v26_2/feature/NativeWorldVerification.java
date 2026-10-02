@@ -126,6 +126,7 @@ public final class NativeWorldVerification {
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
             Path hudRequest = gameDirectory.resolve(".lads-qa-capture-hud");
             if (menuScreen == null && readyLogged && worldReady()
+                && !com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.NativeScreenshotsProbe.running()
                 && (Files.isRegularFile(menuRequest, LinkOption.NOFOLLOW_LINKS)
                     || Files.isRegularFile(hudRequest, LinkOption.NOFOLLOW_LINKS))) {
                 boolean hud = Files.isRegularFile(hudRequest, LinkOption.NOFOLLOW_LINKS);
@@ -183,6 +184,8 @@ public final class NativeWorldVerification {
             && saves.equals(SharedContentPaths.savesDir().toRealPath());
     }
     public static boolean active() { return verified && !closing; }
+    /** A requested QA menu or HUD capture owns the screen. */
+    public static boolean menuCaptureActive() { return menuScreen != null; }
     /** Capture a completed game frame, including GUI, through Minecraft's own GPU readback. */
     public static void renderedFrame(com.mojang.blaze3d.pipeline.RenderTarget target) {
         renderMenuCapture(target);
