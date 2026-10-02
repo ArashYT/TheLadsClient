@@ -283,7 +283,9 @@ final class NativeMenuAccessProbe {
     }
 
     private static boolean sprinting(Minecraft mc) {
-        check(mc.player.isSprinting(), "the latched sprint makes the player sprint while walking forward");
+        check(mc.player.isSprinting(), "the latched sprint makes the player sprint while walking forward (at " + mc.player.blockPosition()
+            + ", against a wall " + mc.player.horizontalCollision + ", food " + mc.player.getFoodData().getFoodLevel() + ", forward "
+            + mc.player.input.forwardImpulse + ", sprint key " + mc.options.keySprint.isDown() + ", using item " + mc.player.isUsingItem() + ")");
         press(key(mc.options.keyUp), false);
         tap(key(mc.options.keySprint), 0);
         return after(3, 0);
