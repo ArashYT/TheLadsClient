@@ -31,6 +31,8 @@
     "ItemTooltipMixin",
     "OwnNametagMixin",
     "NametagBackgroundMixin",
+    "NametagShadowMixin",
+    "NicknameTabMixin",
     "ConnectionActivityMixin",
     "SignalLossHudMixin",
     "VerticalBobStateMixin",

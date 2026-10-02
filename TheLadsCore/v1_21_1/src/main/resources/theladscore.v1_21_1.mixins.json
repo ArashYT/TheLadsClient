@@ -28,6 +28,9 @@
     "BorderlessWindowMixin",
     "KillBannerPacketsMixin",
     "KillBannerAttackMixin",
-    "KillBannerHudMixin"
+    "KillBannerHudMixin",
+    "NametagMixin",
+    "OwnNametagMixin",
+    "NicknameTabMixin"
   ]
 }

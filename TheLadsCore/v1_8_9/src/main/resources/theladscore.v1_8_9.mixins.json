@@ -16,6 +16,10 @@
     "ItemRendererAccessor",
     "ItemRendererMixin",
     "MinecraftMixin",
+    "NametagEssentialMixin",
+    "NametagLivingMixin",
+    "NametagRenderMixin",
+    "NicknameTabMixin",
     "ResourcePackRepositoryMixin",
     "SplashProgressMixin"
   ]

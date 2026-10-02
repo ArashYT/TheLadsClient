@@ -53,6 +53,7 @@ public class TheLadsCore189 {
         LadsGameBridge.set(new VanillaGameBridge189());
         ConfigManager.load();
         registerStatuses();
+        com.thelads.core.v1_8_9.feature.Nametags189.register();
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
