@@ -65,8 +65,9 @@ public class TheLadsCore189 {
         "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
         "RawInput", "BorderlessFullscreen",
-        // ThreadPriorityModule (common) knows 1.8.9's thread names.
-        "Threads"
+        // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC: the "Soon" card, as on the other versions, whose
+        // presence sends nothing yet (no Discord connection is made).
+        "Threads", "DiscordRPC"
     };
 
     static void registerStatuses() {
