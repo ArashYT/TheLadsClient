@@ -211,7 +211,9 @@ public final class CoreProbe {
     private static boolean closedToTitle(Minecraft mc) throws Exception {
         check(mc.currentScreen == title, "a second Right Shift closes the Lads menu back to its title-screen parent");
         Path game = mc.mcDataDir.toPath().toRealPath(), saves = Files.createDirectories(game.resolve("saves")).toRealPath();
-        check(inVerificationSandbox(game) && saves.startsWith(game), "the QA world goes into the sandbox game folder's own saves (" + saves + ")");
+        // Worlds are shared since 1.4.8: the saves link leads to the sandbox's shared folder, never a real one.
+        check(inVerificationSandbox(game) && inVerificationSandbox(saves) && com.thelads.core.shared.SharedContentPaths.redirectEnabled()
+            && saves.equals(com.thelads.core.shared.SharedContentPaths.savesDir().toRealPath()), "the QA world goes into the sandbox's shared saves (" + saves + ")");
         LOG.info("Lads 1.8.9 core probe: opening the QA world '{}' in {}", WORLD, saves);
         mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(0L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT));
         return true;
