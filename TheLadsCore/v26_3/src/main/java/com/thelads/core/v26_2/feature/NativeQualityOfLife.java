@@ -19,7 +19,8 @@ public final class NativeQualityOfLife {
     public static void register() {
         ModuleSupport.registerBuiltIn("RawInput", "Autohide", "Jade", "LegacySwing", "BossBar", "DisableNarrator", "Chat", "BorderlessFullscreen", "Crosshair Tweaks",
             "SmoothHotbar", "Raised", "OldDamageTilt", "EnhancedToolbars", "EnhancedTooltips",
-            "Nametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", "ShulkerBoxUtils", "DiscordRPC", "RenderScale");
+            "Nametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", "ShulkerBoxUtils", "DiscordRPC", "RenderScale",
+            com.thelads.core.modules.OldAnimationsModule.NAME);
         ((com.thelads.core.config.ActionOption)module("Jade").getOption("Settings and addons")).setAction(()->{
             var mc=Minecraft.getInstance();mc.setScreenAndShow(new snownee.jade.gui.HomeConfigScreen(mc.gui.screen()));
         });
