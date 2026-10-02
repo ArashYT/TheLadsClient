@@ -111,6 +111,7 @@ final class NativeQualityProbe {
             passed += NativeBackgroundFrameProbe.run();
             passed += NativeViewDistanceProbe.run();
             passed += NativeKillBannerProbe.run();
+            passed += NativeOldAnimationsProbe.run();
             passed += NativeShulkerProbe.run();
             passed += com.thelads.core.v26_2.feature.food.NativeFoodProbe.run();
             passed += NativeShulkerParityProbe.run();
