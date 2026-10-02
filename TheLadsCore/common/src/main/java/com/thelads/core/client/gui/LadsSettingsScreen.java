@@ -63,6 +63,9 @@ public final class LadsSettingsScreen {
     private final Set<String> modsToggled = new HashSet<>();
     private long modsCheckedNanos;
     private Consumer<String> onOpenModSettings;
+    // Module description tooltip: shown once the pointer rests on one catalog card for 750 ms.
+    private final HoverDelay tip = new HoverDelay(750_000_000L);
+    private Module tipModule;
 
     /** Menu category of a Lads module, shared with the launcher catalog. */
     public static String categoryOf(Module m) {
@@ -112,7 +115,7 @@ public final class LadsSettingsScreen {
         if (Math.abs(scrollOffset - displayedScroll) < .2) displayedScroll = scrollOffset;
         renderScroll = (int)Math.round(displayedScroll);
         if (hoverStates.size() > 1024) hoverStates.clear();
-        width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear();
+        width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear(); tipModule = null;
         g.fill(0, 0, width, height, BG);
         int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 340 ? 118 : 0;
         g.fill(0, 0, width, 2, ACCENT);
@@ -142,6 +145,29 @@ public final class LadsSettingsScreen {
         colorPicker.render(g, mouseX, mouseY);
         actions.render(g, mouseX, mouseY);
         renderHudFpsDialog(g, mouseX, mouseY);
+        boolean overlay = colorPicker.isOpen() || actions.isOpen() || fpsDialogOpen;
+        if (tip.update(overlay || tipModule == null ? null : tipModule.getName(), now)) tooltip(g, tipModule.getDescription(), mouseX, mouseY);
+    }
+    /** Description tooltip beside the pointer, kept on screen and drawn last so it sits above the frame. */
+    private void tooltip(LadsGraphics g, String text, int mx, int my) {
+        List<String> lines = MenuGraphics.lines(g, text, 208, 8);
+        if (lines.isEmpty()) return;
+        int w = lines.stream().mapToInt(g::textWidth).max().orElse(0) + 12, h = lines.size() * 12 + 6;
+        int x = Math.max(4, Math.min(mx + 10, width - w - 4)), y = my + 14 + h <= height - 4 ? my + 14 : Math.max(4, my - h - 6);
+        round(g, x, y + 1, w, h + 1, 0x40000000);
+        round(g, x, y, w, h, LadsPalette.BORDER);
+        round(g, x + 1, y + 1, w - 2, h - 2, PANEL);
+        for (int i = 0; i < lines.size(); i++) g.drawText(lines.get(i), x + 6, y + 5 + i * 12, TEXT);
+    }
+    /** True once the same key has been hovered for the delay; a new key restarts it, dismiss() hides it until the key changes. */
+    static final class HoverDelay {
+        private final long delay; private String key; private long since; private boolean dismissed;
+        HoverDelay(long delayNanos) { delay = delayNanos; }
+        boolean update(String key, long now) {
+            if (!Objects.equals(key, this.key)) { this.key = key; since = now; dismissed = false; }
+            return key != null && !dismissed && now - since >= delay;
+        }
+        void dismiss() { dismissed = true; }
     }
     private void renderCatalog(LadsGraphics g, int x, int w, boolean compact, int mx, int my) {
         boolean dense = height < 230;
@@ -175,31 +201,44 @@ public final class LadsSettingsScreen {
         top += dense ? 17 : 22;
         viewport = new Rect(x, top, w, Math.max(20, height - top - 28));
         int cols = w >= 450 ? 3 : w >= 305 ? 2 : 1, gap = 8;
-        int cardW = (w - (cols - 1) * gap - 6) / cols, cardH = dense ? 46 : 78;
+        // Cards: name row + a full-width 23 px Settings bar; the description is the hover tooltip and the card itself toggles.
+        int cardW = (w - (cols - 1) * gap - 6) / cols, cardH = dense ? 52 : 58, pad = dense ? 4 : 5;
         maxScroll = Math.max(0, ((modules.size() + cols - 1) / cols) * (cardH + gap) - gap - viewport.height);
         scrollOffset = Math.min(scrollOffset, maxScroll);
-        g.enableScissor(x, top, x + w, top + viewport.height);
+        g.enableScissor(x - 2, top - 2, x + w, top + viewport.height + 2); // 2 px for the hover halo
         for (int i = 0; i < modules.size(); i++) {
             Module m = modules.get(i);
             int cx = x + (i % cols) * (cardW + gap), cy = top + (i / cols) * (cardH + gap) - renderScroll;
             if (cy + cardH <= top || cy >= top + viewport.height) continue;
-            var status = ModuleSupport.get(m.getName());
+            String id = "card:" + m.getName();
+            boolean toggleable = ModuleSupport.isToggleable(m.getName()), on = toggleable && m.isEnabled(), focused = focusId.equals(id);
             boolean cardHovered = new Rect(cx, cy, cardW, cardH).contains(mx, my) && viewport.contains(mx, my);
-            float cardHover = animate("card:" + m.getName(), cardHovered);
-            // Refined soft ambient drop shadow - much easier on the eyes
+            if (cardHovered) tipModule = m;
+            float hover = animate(id, cardHovered);
+            int base = !toggleable ? CARD : on ? LadsPalette.CARD_ON : LadsPalette.CARD_OFF;
+            int glow = !toggleable ? LadsPalette.DISABLED : on ? LadsPalette.CARD_ON_GLOW : LadsPalette.CARD_OFF_GLOW, fill = mix(base, glow, .14f * hover);
             round(g, cx - 1, cy + 2, cardW + 2, cardH + 2, 0x14000000);
             round(g, cx, cy + 1, cardW, cardH + 1, 0x24000000);
-            round(g, cx, cy, cardW, cardH, mix(LadsPalette.BORDER, LadsPalette.PRIMARY_HOVER, cardHover));
-            round(g, cx + 1, cy + 1, cardW - 2, cardH - 2, mix(CARD, LadsPalette.HOVER, cardHover));
-            g.fill(cx + 8, cy + 10, cx + 10, cy + 21, status.configurable() && m.isEnabled() ? ACCENT : MUTED);
-            g.drawText(fit(g, m.getName(), cardW - 48), cx + 16, cy + 11, TEXT);
-            if (!dense) MenuGraphics.wrap(g, m.getDescription(), cx + 10, cy + 29, cardW - 20, 2, MUTED);
-            button(g, "favorite:" + m.getName(), m.isFavorite() ? "*" : "+", new Rect(cx + cardW - 25, cy + 5, 20, 20), () -> { m.setFavorite(!m.isFavorite()); changed(m); }, true, mx, my, m.isFavorite());
-            button(g, "detail:" + m.getName(), "Settings", new Rect(cx + 8, cy + cardH - 23, cardW - 68, 18), () -> openDetails(m), true, mx, my, false);
-            String state = m.getName().equals("DiscordRPC") ? "Soon" : m.isEnabled() ? "ON" : "OFF";
-            button(g, "toggle:" + m.getName(), state, new Rect(cx + cardW - 53, cy + cardH - 23, 45, 18), () -> {
-                if (ModuleSupport.isBuiltIn(m.getName())) { m.toggle(); changed(m); }
-            }, !m.getName().equals("DiscordRPC"), mx, my, status.configurable() && m.isEnabled());
+            if (toggleable && hover > 0) { // glow: a two-step halo outside the edge
+                round(g, cx - 2, cy - 2, cardW + 4, cardH + 4, (int)(0x50 * hover) << 24 | glow & 0xFFFFFF);
+                round(g, cx - 1, cy - 1, cardW + 2, cardH + 2, (int)(0x90 * hover) << 24 | glow & 0xFFFFFF);
+            }
+            if (focused) round(g, cx - 1, cy - 1, cardW + 2, cardH + 2, TEXT);
+            round(g, cx, cy, cardW, cardH, mix(base, glow, .35f + .65f * hover));
+            round(g, cx + 1, cy + 1, cardW - 2, cardH - 2, fill);
+            String soon = toggleable ? "" : "Soon";
+            if (toggleable) { // state pip, filled when on, so the state is not colour alone
+                round(g, cx + 8, cy + pad + 6, 7, 7, TEXT);
+                if (!on) round(g, cx + 9, cy + pad + 7, 5, 5, fill);
+            } else g.drawText(soon, cx + cardW - 29 - g.textWidth(soon), cy + pad + 6, MUTED);
+            g.drawText(fit(g, m.getName(), cardW - 49 - (toggleable ? 0 : g.textWidth(soon) + 4)), cx + 20, cy + pad + 6, toggleable ? TEXT : MUTED);
+            chip(g, "favorite:" + m.getName(), m.isFavorite() ? "*" : "+", new Rect(cx + cardW - 25, cy + pad, 20, 20),
+                () -> { m.setFavorite(!m.isFavorite()); changed(m); }, mx, my, m.isFavorite() ? TEXT : MUTED, false);
+            chip(g, "detail:" + m.getName(), "Settings", new Rect(cx + pad, cy + cardH - pad - 23, cardW - 2 * pad, 23), () -> openDetails(m), mx, my, TEXT, true);
+            // Added after the star and Settings so those win the click.
+            controls.add(new Control(id, m.getName() + (on ? ", On" : toggleable ? ", Off" : ", Soon"), new Rect(cx, cy, cardW, cardH), () -> {
+                if (ModuleSupport.isToggleable(m.getName())) { m.toggle(); changed(m); onNarrate.accept(m.getName() + (m.isEnabled() ? ", On" : ", Off")); }
+            }, toggleable));
         }
         if (modules.isEmpty()) {
             g.drawText("No matching modules", x + 12, top + 18, TEXT);
@@ -811,6 +850,24 @@ public final class LadsSettingsScreen {
         g.drawCenteredText(fit(g, label, r.width - 10), r.x + r.width / 2, r.y + (r.height - g.fontHeight()) / 2 + 1, enabled ? TEXT : LadsPalette.DISABLED);
         controls.add(new Control(id, label, r, action, enabled));
     }
+    /** Card sub-button: dark glass that reads on green, red and neutral cards; the Settings bar puts a gear before its label. */
+    private void chip(LadsGraphics g, String id, String label, Rect r, Runnable action, int mx, int my, int color, boolean gear) {
+        boolean focused = focusId.equals(id);
+        float progress = animate(id, r.contains(mx, my) && viewport.contains(mx, my) || focused);
+        if (focused) round(g, r.x - 1, r.y - 1, r.width + 2, r.height + 2, TEXT);
+        round(g, r.x, r.y, r.width, r.height, mix(0x59000000, 0x30FFFFFF, progress));
+        int textY = r.y + (r.height - g.fontHeight()) / 2 + 1, center = r.x + r.width / 2 + (gear ? 6 : 0);
+        if (gear) gear(g, center - g.textWidth(label) / 2 - 13, textY - 1, color);
+        g.drawCenteredText(label, center, textY, color);
+        controls.add(new Control(id, label, r, action, true));
+    }
+    /** 9x9 cog: ring with a 3x3 hole, four teeth and four corner nubs. */
+    private static void gear(LadsGraphics g, int x, int y, int color) {
+        g.fill(x + 3, y, x + 6, y + 2, color); g.fill(x + 3, y + 7, x + 6, y + 9, color);
+        g.fill(x, y + 3, x + 3, y + 6, color); g.fill(x + 6, y + 3, x + 9, y + 6, color);
+        g.fill(x + 2, y + 2, x + 7, y + 3, color); g.fill(x + 2, y + 6, x + 7, y + 7, color);
+        for (int i = 0; i < 4; i++) g.fill(x + 1 + i % 2 * 6, y + 1 + i / 2 * 6, x + 2 + i % 2 * 6, y + 2 + i / 2 * 6, color);
+    }
     private float animate(String id, boolean active) {
         float target = active ? 1 : 0;
         float previous = hoverStates.getOrDefault(id, 0f);
@@ -821,7 +878,7 @@ public final class LadsSettingsScreen {
     }
     private boolean contentControl(String id) {
         return id.startsWith("option:") || id.startsWith("detail:") || id.startsWith("favorite:")
-            || id.startsWith("toggle:") && !id.equals("toggle:detail") || id.equals("reset") || id.startsWith("mods:") || id.startsWith("kb:");
+            || id.startsWith("card:") || id.equals("reset") || id.startsWith("mods:") || id.startsWith("kb:");
     }
     private void scrollbar(LadsGraphics g) {
         if (maxScroll == 0) return;
@@ -831,6 +888,7 @@ public final class LadsSettingsScreen {
         g.fill(viewport.x + viewport.width - 3, y, viewport.x + viewport.width, y + thumb, MUTED);
     }
     public boolean mouseClicked(double x, double y, int button) {
+        tip.dismiss();
         if (actions.click(x,y,button)) return true;
         if (colorPicker.click(x, y, button)) return true;
         if (fpsDialogOpen) {
@@ -937,7 +995,7 @@ public final class LadsSettingsScreen {
         if (actions.wheel(amount)) return true;
         if (colorPicker.isOpen()) return true;
         if (!viewport.contains(x, y)) return false;
-        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int)(amount * 28))); return true;
+        tip.dismiss(); scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int)(amount * 28))); return true;
     }
     public boolean keyPressed(int key, int modifiers) {
         if (actions.key(key,modifiers)) return true;

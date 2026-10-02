@@ -14,5 +14,7 @@ public final class LadsPalette {
     public static final int TEXT = 0xFFFFF1F1;
     public static final int MUTED = 0xFFC1A6AB;
     public static final int DISABLED = 0xFF795A62;
+    /** Module cards: on = green, off = red (white text on both); the glow tints the edge, hover fill and halo. */
+    public static final int CARD_ON = 0xFF1C5A2E, CARD_ON_GLOW = 0xFF5DF08A, CARD_OFF = 0xFF5E1A21, CARD_OFF_GLOW = ACCENT;
     private LadsPalette() {}
 }
