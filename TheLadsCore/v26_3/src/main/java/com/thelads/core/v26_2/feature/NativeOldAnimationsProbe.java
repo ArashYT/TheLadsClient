@@ -100,7 +100,8 @@ final class NativeOldAnimationsProbe {
             module.option(Feature.SWING_WHILE_USING).set(true);
             off = hands(false, new ItemStack(Items.FISHING_ROD), ItemStack.EMPTY, null, 0, 0);
             changed(Feature.ROD, off, hands(true, new ItemStack(Items.FISHING_ROD), ItemStack.EMPTY, null, 0, 0));
-            require(!icon(hands(true, sword, ItemStack.EMPTY, null, 0, 0)), "an idle sword keeps vanilla's placement");
+            off = hands(false, sword, ItemStack.EMPTY, null, 0, 0);
+            changed(Feature.HELD_ITEMS, off, hands(true, sword, ItemStack.EMPTY, null, 0, 0)); // the idle sword sits where 1.7 held it
 
             // The modern sword block: a sword while the off hand blocks with a shield; the shield hides and the sword blocks.
             off = hands(false, sword, shield, InteractionHand.OFF_HAND, 5, 0);

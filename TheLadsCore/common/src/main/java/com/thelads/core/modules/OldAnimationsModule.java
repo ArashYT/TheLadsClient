@@ -26,6 +26,8 @@ public final class OldAnimationsModule extends Module {
             + "On 1.21 and 26.x it uses the same shield trigger as Blockhitting.", null),
         BOW("1.7 bow position", "In first person the bow is held and drawn as in 1.7.", null),
         ROD("1.7 fishing rod position", "In first person fishing rods are held as in 1.7.", null),
+        HELD_ITEMS("1.7 held item positions", "In first person swords, tools and other flat items are held where 1.7 held them, "
+            + "so they no longer jump in size when a 1.7 pose starts.", null),
         EAT_DRINK("1.7 eating and drinking", "In first person food and potions move as in 1.7 while you eat or drink.", null),
         SWING_WHILE_USING("Swing while using items", "Attacking while you eat, drink or draw a bow still shows the swing, as in 1.7.", null),
         RED_ARMOUR("Red armour on hurt", "Armour turns red with the player when hurt, as in 1.7.", null),
@@ -100,7 +102,9 @@ public final class OldAnimationsModule extends Module {
             case BLOCK: return active(Feature.BLOCK_POSE, platform);
             case EAT_DRINK: return active(Feature.EAT_DRINK, platform);
             case BOW: return active(Feature.BOW, platform);
-            default: return held == Held.BOW ? active(Feature.BOW, platform) : held == Held.ROD && active(Feature.ROD, platform);
+            default:
+                if (held == Held.BOW) return active(Feature.BOW, platform);
+                return held == Held.ROD ? active(Feature.ROD, platform) : active(Feature.HELD_ITEMS, platform);
         }
     }
 

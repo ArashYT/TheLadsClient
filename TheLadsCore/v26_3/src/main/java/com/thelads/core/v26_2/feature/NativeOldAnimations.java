@@ -97,7 +97,7 @@ public final class NativeOldAnimations {
         }
         OldAnimations.item(out, side, held == Held.ROD);
         APPLIED.add(use == Use.BLOCK ? Feature.BLOCK_POSE : use == Use.EAT_DRINK ? Feature.EAT_DRINK
-            : use == Use.BOW || held == Held.BOW ? Feature.BOW : Feature.ROD);
+            : use == Use.BOW || held == Held.BOW ? Feature.BOW : held == Held.ROD ? Feature.ROD : Feature.HELD_ITEMS);
         return ItemDisplayContext.NONE;
     }
 
