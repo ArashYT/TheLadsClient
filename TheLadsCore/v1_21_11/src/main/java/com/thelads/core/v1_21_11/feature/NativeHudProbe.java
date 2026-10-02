@@ -249,11 +249,13 @@ final class NativeHudProbe {
     private static void half() {
         NativeAutohide.activity = System.nanoTime() - 60_000_000_000L; NativeAutohide.opacity = .5f; NativeAutohide.frame = System.nanoTime();
     }
-    /** The selected-slot highlight (24x23) and its X translation. */
+    /** The selected-slot highlight (24x23, or 24x24 tiled with Hovering Hotbar) and its X translation. */
     private static float selectionOffset(GuiRenderState state) {
         float[] offset = {Float.NaN};
-        state.forEachElement(element -> { if (element instanceof BlitRenderState blit && blit.x1() - blit.x0() == 24 && blit.y1() - blit.y0() == 23) offset[0] = blit.pose().m20(); },
-            GuiRenderState.TraverseRange.ALL);
+        state.forEachElement(element -> {
+            if (element instanceof BlitRenderState blit && blit.x1() - blit.x0() == 24 && blit.y1() - blit.y0() == 23) offset[0] = blit.pose().m20();
+            if (element instanceof net.minecraft.client.gui.render.state.TiledBlitRenderState tiled && tiled.x1() - tiled.x0() == 24 && tiled.y1() - tiled.y0() == 24) offset[0] = tiled.pose().m20();
+        }, GuiRenderState.TraverseRange.ALL);
         check(!Float.isNaN(offset[0]), "the hotbar drew its selected-slot highlight");
         return offset[0];
     }
