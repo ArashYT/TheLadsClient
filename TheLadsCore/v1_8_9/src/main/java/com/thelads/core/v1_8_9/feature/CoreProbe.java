@@ -97,6 +97,7 @@ public final class CoreProbe {
     private static void finish() {
         finished = true;
         HudProbe.stop();
+        Probe151.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -224,6 +225,12 @@ public final class CoreProbe {
 
     private static boolean worldReady(Minecraft mc) {
         if (mc.theWorld == null || mc.thePlayer == null || mc.currentScreen != null) return false;
+        // The QA world starts every run the same: no armour left over from an interrupted run.
+        final java.util.UUID id = mc.thePlayer.getUniqueID();
+        mc.getIntegratedServer().addScheduledTask(() -> {
+            net.minecraft.entity.player.EntityPlayerMP player = mc.getIntegratedServer().getConfigurationManager().getPlayerByUUID(id);
+            if (player != null) java.util.Arrays.fill(player.inventory.armorInventory, null);
+        });
         return after(40);
     }
 
