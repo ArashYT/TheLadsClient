@@ -5,6 +5,7 @@ import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
 
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
+import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.config.SliderOption;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,7 +17,8 @@ import net.minecraft.client.Minecraft;
  * back as it was found.
  */
 final class Probe150 {
-    static final List<CoreProbe.Step> STEPS = new ArrayList<>(Arrays.<CoreProbe.Step>asList(Probe150::threadsStart, Probe150::threads));
+    static final List<CoreProbe.Step> STEPS = new ArrayList<>(Arrays.<CoreProbe.Step>asList(Probe150::threadsStart, Probe150::threads,
+        Probe150::discord));
     private static boolean wasEnabled;
     private static double wasValue;
     private static int priority;
@@ -46,6 +48,13 @@ final class Probe150 {
         check(client.getPriority() == priority, "Threads off: its priority " + priority + " is restored");
         render.setValue(wasValue);
         threads.setEnabled(wasEnabled);
+        return after(1);
+    }
+
+    /** DiscordRPC: built in as the "Soon" card the other versions show, which cannot be switched on and connects nowhere. */
+    private static boolean discord(Minecraft mc) {
+        check(ModuleSupport.isBuiltIn("DiscordRPC") && !ModuleSupport.isToggleable("DiscordRPC"),
+            "DiscordRPC: the built-in \"Soon\" card, not switchable, as on the other versions");
         return after(1);
     }
 
