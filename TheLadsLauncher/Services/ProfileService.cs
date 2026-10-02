@@ -205,17 +205,15 @@ public class ProfileService : IProfileService
                 await Task.Run(() =>
                 {
                     _pathService.EnsureDirectories();
-                    if (forge)
+                    if (forge) SyncOptionsTo189(targetDir, profile.MinecraftVersion); // 1.8.9 has no renderer choice
+                    else
                     {
-                        // Only options.txt: 1.8.9 has no renderer choice, and its Core keeps its own thelads_config.json.
-                        SyncOptionsTo189(targetDir, profile.MinecraftVersion);
-                        return;
+                        // Game settings (options.txt, keybinds) follow the launcher's shared copy with smart cross-version keybind translation
+                        GameOptionsService.SyncToInstance(_pathService.SharedOptionsFile, Path.Combine(targetDir, "options.txt"), profile.MinecraftVersion);
+                        // What the launcher last wrote into options.txt (its renderer choice) travels with it.
+                        SyncFileToInstance(SharedRendererOptionsState, Path.Combine(targetDir, GraphicsRenderer.OptionsStateFile));
                     }
-                    // Game settings (options.txt, keybinds) follow the launcher's shared copy with smart cross-version keybind translation
-                    GameOptionsService.SyncToInstance(_pathService.SharedOptionsFile, Path.Combine(targetDir, "options.txt"), profile.MinecraftVersion);
-                    // What the launcher last wrote into options.txt (its renderer choice) travels with it.
-                    SyncFileToInstance(SharedRendererOptionsState, Path.Combine(targetDir, GraphicsRenderer.OptionsStateFile));
-                    // HUD layouts, client configuration and modules sync
+                    // HUD layouts, client configuration and modules sync (the 1.8.9 Core reads the same thelads_config.json)
                     var sharedConfig = Path.Combine(_pathService.SharedDirectory, "thelads_config.json");
                     var targetConfig = Path.Combine(targetDir, "thelads_config.json");
                     if (File.Exists(sharedConfig)) SyncFileToInstance(sharedConfig, targetConfig);
@@ -259,13 +257,16 @@ public class ProfileService : IProfileService
 
         if (!profile.IsIsolated && GameVersionPolicy.UsesForge(profile.MinecraftVersion))
         {
-            // Settings taken from Lunar never go back: Lunar is only read.
-            if (GameOptionsService.LunarOptions18(LunarRoot) == null)
-                await Task.Run(() =>
-                {
-                    _pathService.EnsureDirectories();
+            await Task.Run(() =>
+            {
+                _pathService.EnsureDirectories();
+                // Settings taken from Lunar never go back: Lunar is only read.
+                if (GameOptionsService.LunarOptions18(LunarRoot) == null)
                     GameOptionsService.SyncFromInstance(Path.Combine(targetDir, "options.txt"), _pathService.SharedOptionsFile, profile.MinecraftVersion);
-                });
+                var sharedConfig = Path.Combine(_pathService.SharedDirectory, "thelads_config.json");
+                var targetConfig = Path.Combine(targetDir, "thelads_config.json");
+                if (File.Exists(targetConfig)) SyncFileFromInstance(targetConfig, sharedConfig);
+            });
         }
         else if (!profile.IsIsolated)
         {
