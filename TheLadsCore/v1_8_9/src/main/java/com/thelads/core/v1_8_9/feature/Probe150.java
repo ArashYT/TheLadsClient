@@ -28,7 +28,8 @@ import net.minecraft.util.ChatComponentTranslation;
  */
 final class Probe150 {
     static final List<CoreProbe.Step> STEPS = new ArrayList<>(Arrays.<CoreProbe.Step>asList(Probe150::threadsStart, Probe150::threads,
-        Probe150::discord, Probe150::tabStart, Probe150::tab, Probe150::chatStart, Probe150::chat));
+        Probe150::discord, Probe150::tabStart, Probe150::tab, Probe150::chatStart, Probe150::chat,
+        Probe150::crosshairStart, Probe150::crosshair, Probe150::crosshairHidden, Probe150::crosshairEditor, Probe150::crosshairDone));
     private static boolean wasEnabled;
     private static double wasValue;
     private static int priority;
@@ -40,6 +41,8 @@ final class Probe150 {
     private static boolean chatOn;
     private static double widthWas;
     private static long messages, animated;
+    private static boolean crosshairWas, hiddenWas;
+    private static long crosshairs;
 
     private Probe150() {}
 
@@ -145,6 +148,48 @@ final class Probe150 {
         for (int i = 0; i < CHAT.length; i++) ((BoolOption) chat.getOption(CHAT[i])).set(chatWas[i]);
         ((SliderOption) chat.getOption("Chat Width")).setValue(widthWas);
         chat.setEnabled(chatOn);
+        return after(1);
+    }
+
+    /** Crosshair Tweaks: drawn in place of vanilla's through Forge's crosshair overlay event. */
+    private static boolean crosshairStart(Minecraft mc) {
+        crosshairWas = module("Crosshair Tweaks").isEnabled();
+        module("Crosshair Tweaks").setEnabled(true);
+        crosshairs = Crosshair189.frames;
+        return after(5);
+    }
+
+    private static boolean crosshair(Minecraft mc) {
+        check(Crosshair189.frames > crosshairs, "Crosshair Tweaks: the Lads crosshair replaced vanilla's in " + (Crosshair189.frames - crosshairs) + " frames");
+        screenshot(mc, "150-crosshair");
+        BoolOption hidden = (BoolOption) module("Crosshair Tweaks").getOption("Visible with Hidden HUD");
+        hiddenWas = hidden.get();
+        hidden.set(true);
+        mc.gameSettings.hideGUI = true;
+        crosshairs = Crosshair189.frames;
+        return after(5);
+    }
+
+    /** F1 skips Forge's overlay: Visible with Hidden HUD draws the crosshair after the world. */
+    private static boolean crosshairHidden(Minecraft mc) {
+        check(Crosshair189.frames > crosshairs, "Crosshair Tweaks: Visible with Hidden HUD keeps it under F1 (" + (Crosshair189.frames - crosshairs) + " frames)");
+        screenshot(mc, "150-crosshair-f1");
+        mc.gameSettings.hideGUI = false;
+        ((BoolOption) module("Crosshair Tweaks").getOption("Visible with Hidden HUD")).set(hiddenWas);
+        ((com.thelads.core.modules.CrosshairModule) module("Crosshair Tweaks")).drawingEditor.run();
+        return after(5);
+    }
+
+    private static boolean crosshairEditor(Minecraft mc) throws Exception {
+        check(mc.currentScreen instanceof com.thelads.core.v1_8_9.gui.CrosshairDrawingScreen189, "Crosshair Tweaks: Drawing Editor opens the drawing editor");
+        screenshot(mc, "150-crosshair-editor");
+        CoreProbe.tap(org.lwjgl.input.Keyboard.KEY_ESCAPE, (char) 27);
+        return after(5);
+    }
+
+    private static boolean crosshairDone(Minecraft mc) {
+        check(mc.currentScreen == null, "Crosshair Tweaks: Escape leaves the editor unsaved, back to gameplay");
+        module("Crosshair Tweaks").setEnabled(crosshairWas);
         return after(1);
     }
 
