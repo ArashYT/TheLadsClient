@@ -112,7 +112,7 @@ public sealed class ModWelcomeSettingsTests
             + "\t\tallow_ask_to_join = false\r\n\r\n[__meta]\r\n\tversion = 12\r\n";
         Write(onboarding, "{\n    \"seen_server_discovery\": true,\n    \"has_shown_wiki_toast\": true\n}");
         Write(config, toml);
-        Write(shared, "{\"accepted_tos\":false,\"sent_auto_update_telemetry\":true}");
+        Write(shared, "{\"accepted_tos\":null,\"sent_auto_update_telemetry\":true}");
         Assert.Empty(await ModWelcomeSettings.PrepareEssentialAsync(dir.Path, new[] { shared }));
         Assert.Equal(toml.Replace("set_activity_status_on_discord = true", "set_activity_status_on_discord = false"), File.ReadAllText(config));
         var local = JsonNode.Parse(File.ReadAllText(onboarding))!;
@@ -149,6 +149,21 @@ public sealed class ModWelcomeSettingsTests
         Assert.Equal(toml, File.ReadAllText(config));
         Assert.Equal(stamp, File.GetLastWriteTimeUtc(onboarding));
         Assert.Equal(stamp, File.GetLastWriteTimeUtc(config));
+    }
+
+    [Fact]
+    public async Task EssentialDeclineIsKeptInTheProfileAndMachineWideFiles()
+    {
+        using var dir = new TestDirectory();
+        string onboarding = Path.Combine(dir.Path, "essential", "onboarding.json");
+        string shared = Path.Combine(dir.Path, "gg.essential.mod", "onboarding.json");
+        const string declined = "{\n    \"accepted_tos\": false,\n    \"has_shown_wiki_toast\": true\n}";
+        Write(onboarding, declined);
+        Write(shared, declined);
+        Assert.Empty(await ModWelcomeSettings.PrepareEssentialAsync(dir.Path, new[] { shared }));
+        Assert.Equal(declined, File.ReadAllText(onboarding));
+        Assert.Equal(declined, File.ReadAllText(shared));
+        Assert.Contains("set_activity_status_on_discord = false", File.ReadAllText(Path.Combine(dir.Path, "essential", "config.toml")));
     }
 
     [Theory]
