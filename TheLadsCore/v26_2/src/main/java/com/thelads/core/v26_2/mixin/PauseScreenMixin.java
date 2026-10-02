@@ -63,7 +63,7 @@ public abstract class PauseScreenMixin extends Screen {
         if(text.equals("Lads Client"))return com.thelads.core.client.title.PauseMenuLayout.Slot.LADS;
         if(text.equals("Replays"))return com.thelads.core.client.title.PauseMenuLayout.Slot.REPLAYS;
         String[][] keys={{"menu.returnToGame","BACK"},{"gui.advancements","ADVANCEMENTS"},{"gui.stats","STATS"},{"menu.options","OPTIONS"},
-            {"menu.multiplayer","MULTIPLAYER"},{"menu.worldOptions","WORLD"},{"menu.shareToLan","WORLD"},{"menu.returnToMenu","QUIT"},{"menu.disconnect","QUIT"}};
+            {"menu.multiplayer","MULTIPLAYER"},{"menu.multiplayerOptions.button","WORLD"},{"options.worldOptions.button","WORLD"},{"menu.worldOptions","WORLD"},{"menu.shareToLan","WORLD"},{"menu.returnToMenu","QUIT"},{"menu.disconnect","QUIT"}};
         for(String[] key:keys)if(text.equals(Component.translatable(key[0]).getString()))
             return com.thelads.core.client.title.PauseMenuLayout.Slot.valueOf(key[1]);
         return com.thelads.core.client.title.PauseMenuLayout.Slot.OTHER;

@@ -23,8 +23,8 @@ final class KillBannerCapture {
         {1, 1, 2, 0, 1000, 50}, {1, 2, 3, 0, 1000, 50}, {1, 3, 4, 1, 1100, 50}, {1, 0, 5, 0, 3600, 60},
         {2, 0, 1, 1, 280, 50}, {2, 0, 1, 0, 520, 50}, {2, 0, 1, 1, 1300, 50}, {2, 0, 1, 0, 1900, 20},
         {2, 1, 2, 0, 1000, 50}, {2, 2, 3, 0, 1000, 50}, {2, 3, 4, 1, 1000, 50}, {2, 0, 5, 1, 3800, 60}};
-    // Then the settings picker: skin + variants, Custom, and Randomize's chosen pool.
-    private static final String[] PICKERS = {"reaver", "custom", "chosen"};
+    // Then the modules list and the settings picker: skin + variants, Custom, and Randomize's chosen pool.
+    private static final String[] PICKERS = {"list", "reaver", "custom", "chosen"};
     private static int step = -1, saved;
     private static long due;
     private static boolean held, enabledBefore, soundBefore, headshotBefore;
@@ -111,7 +111,7 @@ final class KillBannerCapture {
             module.customSound.setIndex(KillBannerModule.REAVER);
             com.thelads.core.v1_21_1.gui.LadsSettingsScreen121 screen = new com.thelads.core.v1_21_1.gui.LadsSettingsScreen121(null);
             Minecraft.getInstance().setScreen(screen);
-            screen.openModule("KillBanner");
+            if (!picker.equals("list")) screen.openModule("KillBanner"); // "list": the modules list itself
             due = System.nanoTime() + 1_200_000_000L;
             return;
         }

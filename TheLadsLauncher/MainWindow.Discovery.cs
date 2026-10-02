@@ -69,6 +69,14 @@ public partial class MainWindow
             shot.Save(Path.Combine(output, "game-splash.png"));
         }
         splash.Close();
+        // The launch screen while the launcher prepares a game, with its Cancel button.
+        GameLaunchVersionText.Text = "Minecraft 26.3";
+        GameLaunchStatusText.Text = "Verifying Java 25...";
+        GameLaunchOverlay.IsVisible = true;
+        CancelLaunchButton.IsVisible = true;
+        await Task.Delay(500);
+        SaveWindowScreenshot(Path.Combine(output, "launch-overlay.png"));
+        GameLaunchOverlay.IsVisible = false;
         Close();
     }
 
