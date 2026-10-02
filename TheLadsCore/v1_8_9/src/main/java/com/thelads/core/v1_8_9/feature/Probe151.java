@@ -265,7 +265,7 @@ final class Probe151 {
             },
             mc -> {
                 hooks(on, "camera easing up through orientCamera", Hook.SNEAK);
-                onServer(mc, player -> { player.setGameType(WorldSettings.GameType.SURVIVAL); player.setFire(5); }); // creative players never burn
+                onServer(mc, player -> { survivalSafe(player); player.setFire(5); }); // creative players never burn
                 return after(10);
             },
             mc -> {
@@ -285,7 +285,7 @@ final class Probe151 {
     private static boolean survival(Minecraft mc) {
         check(!mc.thePlayer.isBurning(), "the fire is out");
         onServer(mc, player -> {
-            player.setGameType(WorldSettings.GameType.SURVIVAL);
+            survivalSafe(player);
             player.getFoodStats().readNBT(food(10, 0));
             player.setHealth(player.getMaxHealth());
         });
@@ -363,6 +363,8 @@ final class Probe151 {
         onServer(mc, player -> {
             player.extinguish();
             player.setGameType(WorldSettings.GameType.CREATIVE);
+            if (spawningWas != null) player.worldObj.getGameRules().setOrCreateGameRule("doMobSpawning", spawningWas);
+            spawningWas = null;
             player.getFoodStats().readNBT(food(20, 5));
             player.setHealth(player.getMaxHealth());
             System.arraycopy(main, 0, player.inventory.mainInventory, 0, main.length);
@@ -436,6 +438,18 @@ final class Probe151 {
         food.setFloat("foodSaturationLevel", saturation);
         food.setFloat("foodExhaustionLevel", 0);
         return food;
+    }
+
+    private static String spawningWas;
+
+    /** Survival without being killed meanwhile: superflat spawns slimes, so hostile mobs go and stop spawning until restore. */
+    private static void survivalSafe(EntityPlayerMP player) {
+        net.minecraft.world.GameRules rules = player.worldObj.getGameRules();
+        if (spawningWas == null) spawningWas = rules.getString("doMobSpawning");
+        rules.setOrCreateGameRule("doMobSpawning", "false");
+        for (Object entity : player.worldObj.loadedEntityList)
+            if (entity instanceof net.minecraft.entity.monster.IMob) ((net.minecraft.entity.Entity) entity).setDead();
+        player.setGameType(WorldSettings.GameType.SURVIVAL);
     }
 
     private interface ServerTask { void run(EntityPlayerMP player); }
