@@ -35,12 +35,16 @@ public final class NativeScreenshotsProbe {
     private static boolean enabled;
     private static long modified;
     private static int width, height;
+    /** True while the gallery screen is open for the probe. */
+    public static boolean running() { return state == 1; }
+
     public static void tick() {
         if (state < 0 || !Boolean.getBoolean("thelads.verifyIntegrations") || !ScreenshotViewer.available()) return;
         Minecraft client = Minecraft.getInstance();
         try {
             if (state == 0) {
-                if (client.level == null || client.gui.screen() != null) { frames = 0; return; }
+                // Not while a QA menu capture owns the screen (its screen change only lands on the next frame).
+                if (client.level == null || client.gui.screen() != null || com.thelads.core.v26_2.feature.NativeWorldVerification.menuCaptureActive()) { frames = 0; return; }
                 if (++frames < 320) return;
                 begin(client); state = 1; frames = 0;
             } else if (state == 1) {
