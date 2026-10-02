@@ -11,6 +11,7 @@
     "GuiButtonMixin",
     "GuiIngameMixin",
     "GuiIngameMenuMixin",
+    "GuiPlayerTabOverlayMixin",
     "GuiScreenMixin",
     "GuiSlotMixin",
     "ItemRendererAccessor",
