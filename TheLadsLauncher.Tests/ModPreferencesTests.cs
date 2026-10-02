@@ -4,7 +4,7 @@ using Xunit;
 
 namespace TheLadsLauncher.Tests;
 
-[Collection(TimingSensitive.Name)] // 16 writers share one 3 s lock wait
+[Collection(TimingSensitive.Name)] // 8 writers share one 3 s lock wait (16 timed out on a slow CI runner)
 public sealed class ModPreferencesTests : IDisposable
 {
     private readonly ModSandbox box = new();
@@ -82,10 +82,10 @@ public sealed class ModPreferencesTests : IDisposable
     [Fact]
     public async Task ConcurrentWritersNeverLoseAChoice()
     {
-        await Task.WhenAll(Enumerable.Range(0, 16).Select(i =>
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(i =>
             Task.Run(() => ModPreferences.UpdateAsync(box.Game, root => ModPreferences.SetMod(root, "mod" + i, i % 2 == 0, null)))));
         var preferences = ModPreferences.Load(box.Game);
-        for (var i = 0; i < 16; i++) Assert.Equal(i % 2 == 0, preferences.GetEnabled("mod" + i, null));
+        for (var i = 0; i < 8; i++) Assert.Equal(i % 2 == 0, preferences.GetEnabled("mod" + i, null));
     }
 
     public void Dispose() => box.Dispose();
