@@ -1,6 +1,8 @@
 package com.thelads.core.client.gui;
 
 import com.thelads.core.client.bridge.LadsGraphics;
+import java.util.ArrayList;
+import java.util.List;
 
 final class MenuGraphics {
     static final int BG = LadsPalette.BACKGROUND, PANEL = LadsPalette.PANEL, CARD = LadsPalette.CARD;
@@ -42,16 +44,22 @@ final class MenuGraphics {
         return best == 0 ? "" : text.substring(0, best) + "...";
     }
     static int wrap(LadsGraphics g, String text, int x, int y, int width, int maxLines, int color) {
-        String line = ""; int row = 0;
+        List<String> lines = lines(g, text, width, maxLines);
+        for (int i = 0; i < lines.size(); i++) g.drawText(lines.get(i), x, y + i * 12, color);
+        return lines.size() * 12;
+    }
+    /** Word-wrapped lines (12 px apart when drawn), each fitted to the width. */
+    static List<String> lines(LadsGraphics g, String text, int width, int maxLines) {
+        List<String> lines = new ArrayList<>(); String line = "";
         for (String word : text.split(" ")) {
             String candidate = line.isEmpty() ? word : line + " " + word;
             if (g.textWidth(candidate) > width && !line.isEmpty()) {
-                g.drawText(fit(g, line, width), x, y + row * 12, color);
-                if (++row >= maxLines) return row * 12;
+                lines.add(fit(g, line, width));
+                if (lines.size() >= maxLines) return lines;
                 line = word;
             } else line = candidate;
         }
-        if (row < maxLines && !line.isEmpty()) g.drawText(fit(g, line, width), x, y + row++ * 12, color);
-        return row * 12;
+        if (lines.size() < maxLines && !line.isEmpty()) lines.add(fit(g, line, width));
+        return lines;
     }
 }
