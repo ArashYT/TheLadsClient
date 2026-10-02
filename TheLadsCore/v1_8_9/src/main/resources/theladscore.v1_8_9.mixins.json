@@ -16,6 +16,7 @@
     "ItemRendererAccessor",
     "ItemRendererMixin",
     "MinecraftMixin",
+    "ResourcePackRepositoryMixin",
     "SplashProgressMixin"
   ]
 }

@@ -10,7 +10,6 @@ import com.thelads.core.client.util.ClientPaths;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.mods.CoreCatalogExporter;
-import com.thelads.core.shared.SharedContentPaths;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.gui.LadsPauseButton;
 import com.thelads.core.v1_8_9.gui.LadsSettingsScreen189;
@@ -55,7 +54,7 @@ public final class CoreProbe {
     private static final String WORLD = "Client QA 1_8_9";
     interface Step { boolean run(Minecraft mc) throws Exception; }
     private static final List<Step> STEPS = new java.util.ArrayList<>(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::ladsTitle,
-        CoreProbe::titleMore, CoreProbe::title,
+        CoreProbe::titleMore, CoreProbe::backupPrompt, CoreProbe::backupWarning, CoreProbe::backupDone, CoreProbe::title,
         CoreProbe::menuAtTitle, CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
         CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::closedToGame,
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
@@ -155,7 +154,6 @@ public final class CoreProbe {
         // An unfocused sandbox window must not open the pause menu by itself during the world steps.
         pauseOnLostFocus = mc.gameSettings.pauseOnLostFocus;
         mc.gameSettings.pauseOnLostFocus = false;
-        check(refused(), "shared saves, resource packs and shader packs are refused on 1.8.9 (SharedContentPaths)");
         org.slf4j.Logger slf4j = org.slf4j.LoggerFactory.getLogger("TheLadsCore");
         check(slf4j.getClass().getName().startsWith(Log4jServiceProvider.class.getName()), "common's SLF4J logging goes to Minecraft's log4j");
         slf4j.info("Lads 1.8.9 core probe: this line came through the bundled SLF4J");
@@ -373,12 +371,68 @@ public final class CoreProbe {
         return true;
     }
 
-    private static boolean refused() {
-        try {
-            SharedContentPaths.savesDir();
-            return false;
-        } catch (IllegalStateException expected) {
-            return true;
+    private static final String NEWER = "Lads QA newer world", OLDER = "Lads QA 1_8_9 world";
+
+    /** Shared worlds: a world a newer version saved asks for a backup before it opens; a 1.8.9 world opens directly. */
+    private static boolean backupPrompt(Minecraft mc) throws Exception {
+        File saves = WorldBackup189.savesDir(mc);
+        world(saves, NEWER, true);
+        world(saves, OLDER, false);
+        check("26.3".equals(WorldBackup189.newerVersion(saves, NEWER)), "a world a newer version saved is recognised (DataVersion, version 26.3)");
+        check(WorldBackup189.newerVersion(saves, OLDER) == null, "a 1.8.9 world needs no backup");
+        check(!WorldBackup189.intercept(mc, OLDER, OLDER, null), "a 1.8.9 world opens without the prompt");
+        java.util.concurrent.atomic.AtomicInteger copied = new java.util.concurrent.atomic.AtomicInteger();
+        String copy = WorldBackup189.copy(saves, NEWER, copied);
+        check(copy.equals(NEWER + WorldBackup189.SUFFIX) && new File(saves, copy + "/level.dat").isFile() && copied.get() >= 1,
+            "the backup copies the world to '" + NEWER + " - 1.8.9'");
+        mc.getSaveLoader().renameWorld(copy, NEWER + WorldBackup189.SUFFIX);
+        check((NEWER + WorldBackup189.SUFFIX).equals(mc.getSaveLoader().getWorldInfo(copy).getWorldName()), "the copy is named '<name> - 1.8.9'");
+        check(WorldBackup189.newerVersion(saves, NEWER) != null, "the original stays untouched");
+        check(WorldBackup189.intercept(mc, NEWER, NEWER, null) && mc.currentScreen instanceof WorldBackup189.Prompt,
+            "opening the newer world shows the backup prompt instead");
+        return after(20);
+    }
+
+    private static boolean backupWarning(Minecraft mc) {
+        check(mc.currentScreen instanceof WorldBackup189.Prompt, "the backup prompt is up");
+        screenshot(mc, "w1-backup-prompt");
+        mc.displayGuiScreen(new WorldBackup189.Warning(mc.currentScreen, title, NEWER, NEWER));
+        return after(20);
+    }
+
+    private static boolean backupDone(Minecraft mc) throws Exception {
+        check(mc.currentScreen instanceof WorldBackup189.Warning, "No shows the corruption warning");
+        screenshot(mc, "w1-corruption-warning");
+        File saves = WorldBackup189.savesDir(mc);
+        for (String world : new String[] {NEWER, OLDER, NEWER + WorldBackup189.SUFFIX}) delete(new File(saves, world).toPath());
+        mc.displayGuiScreen(new GuiMainMenu());
+        return after(10);
+    }
+
+    private static void world(File saves, String name, boolean newer) throws Exception {
+        net.minecraft.nbt.NBTTagCompound data = new net.minecraft.nbt.NBTTagCompound();
+        data.setString("LevelName", name);
+        data.setInteger("version", 19133);
+        if (newer) {
+            data.setInteger("DataVersion", 4671);
+            net.minecraft.nbt.NBTTagCompound version = new net.minecraft.nbt.NBTTagCompound();
+            version.setString("Name", "26.3");
+            version.setInteger("Id", 4671);
+            data.setTag("Version", version);
+        }
+        net.minecraft.nbt.NBTTagCompound root = new net.minecraft.nbt.NBTTagCompound();
+        root.setTag("Data", data);
+        File folder = new File(saves, name);
+        check(folder.mkdirs() || folder.isDirectory(), "QA world folder " + folder);
+        try (java.io.OutputStream out = new java.io.FileOutputStream(new File(folder, "level.dat"))) {
+            net.minecraft.nbt.CompressedStreamTools.writeCompressed(root, out);
+        }
+    }
+
+    private static void delete(Path folder) throws java.io.IOException {
+        if (!Files.exists(folder)) return;
+        try (java.util.stream.Stream<Path> walk = Files.walk(folder)) {
+            for (Path path : (Iterable<Path>) walk.sorted(java.util.Comparator.reverseOrder())::iterator) Files.delete(path);
         }
     }
 

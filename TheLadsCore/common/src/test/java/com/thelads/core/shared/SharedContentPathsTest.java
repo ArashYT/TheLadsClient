@@ -69,18 +69,6 @@ class SharedContentPathsTest {
     }
 
     @Test
-    void isolatedVersionsNeverResolveSharedWorldsOrPacks() {
-        SharedContentPaths.setRootForTests(temp);
-        SharedContentPaths.isolateWorldsAndPacks();
-        assertThrows(IllegalStateException.class, SharedContentPaths::savesDir);
-        assertThrows(IllegalStateException.class, SharedContentPaths::resourcePacksDir);
-        assertThrows(IllegalStateException.class, SharedContentPaths::shaderPacksDir);
-        // 1.8.9 may still share the server list and screenshots.
-        assertEquals(temp.resolve("servers.dat"), SharedContentPaths.serversFile());
-        assertEquals(temp.resolve("screenshots"), SharedContentPaths.screenshotsDir());
-    }
-
-    @Test
     void sandboxGuardAcceptsOnlyARootInsideTheGivenFolder() throws Exception {
         Path verification = Files.createDirectories(temp.resolve("artifacts").resolve("verification"));
         Path sandbox = Files.createDirectories(verification.resolve("global-sandbox"));
