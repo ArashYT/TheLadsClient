@@ -4,18 +4,24 @@ import static com.thelads.core.v1_8_9.feature.CoreProbe.after;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.screenshot;
 
+import com.mojang.authlib.GameProfile;
+import com.thelads.core.client.killbanner.KillBanners;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.config.SliderOption;
 import com.thelads.core.modules.AutoReconnectModule;
+import com.thelads.core.modules.KillBannerModule;
+import com.thelads.core.v1_8_9.gui.LadsSettingsScreen189;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiDisconnected;
 import net.minecraft.client.gui.GuiMainMenu;
@@ -23,12 +29,18 @@ import net.minecraft.client.gui.GuiMultiplayer;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiSelectWorld;
 import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.entity.passive.EntityPig;
 import net.minecraft.event.ClickEvent;
+import net.minecraft.network.play.server.S19PacketEntityStatus;
 import net.minecraft.scoreboard.IScoreObjectiveCriteria;
 import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import org.lwjgl.input.Keyboard;
 
 /**
@@ -40,7 +52,7 @@ final class Probe150 {
         Probe150::discord, Probe150::tabStart, Probe150::tab, Probe150::chatStart, Probe150::chat,
         Probe150::crosshairStart, Probe150::crosshair, Probe150::crosshairHidden, Probe150::crosshairEditor, Probe150::crosshairDone,
         Probe150::reconnectStart, Probe150::reconnectDialog, Probe150::reconnectCancelled, Probe150::reconnectBack, Probe150::reconnectEditor,
-        Probe150::reconnectDone));
+        Probe150::reconnectDone, Probe150::killStart, Probe150::killShown, Probe150::killPicker));
     private static boolean wasEnabled;
     private static double wasValue;
     private static int priority;
@@ -57,6 +69,8 @@ final class Probe150 {
     private static boolean reconnectWas, initialWas;
     private static Reconnect189.Settings reconnectSettings;
     private static GuiScreen dialog;
+    private static boolean killWas, mobsWas;
+    private static long banners, thumbs;
 
     private Probe150() {}
 
@@ -262,6 +276,56 @@ final class Probe150 {
         Reconnect189.swapSettings(reconnectSettings);
         Reconnect189.module().initial.set(initialWas);
         Reconnect189.module().setEnabled(reconnectWas);
+        return after(5);
+    }
+
+    /** KillBanner: a preview banner (Reaver, 3 kills) drawn after Forge's overlay, with its sound registered from sounds.json. */
+    private static boolean killStart(Minecraft mc) {
+        KillBannerModule module = (KillBannerModule) module("KillBanner");
+        killWas = module.isEnabled();
+        mobsWas = module.mobs.get();
+        module.setEnabled(true);
+        module.mobs.set(true);
+        banners = KillBanner189.frames;
+        KillBanner189.trigger(3, true);
+        return after(10);
+    }
+
+    /** Then the real signals: a hit mob's death status, and a hit player's kill message in chat. Client-side entities only. */
+    private static boolean killShown(Minecraft mc) {
+        check(KillBanner189.frames > banners, "KillBanner: the banner drew in " + (KillBanner189.frames - banners) + " frames after Forge's overlay");
+        check(mc.getSoundHandler().getSound(new ResourceLocation("theladscore:reaver_kill_3")) != null, "KillBanner: 1.8.9 loaded the Kill Banner sounds.json");
+        screenshot(mc, "150-kill-banner");
+        KillBanner189.reset();
+        EntityPig pig = new EntityPig(mc.theWorld);
+        pig.setPosition(mc.thePlayer.posX + 2, mc.thePlayer.posY, mc.thePlayer.posZ);
+        mc.theWorld.addEntityToWorld(-1500, pig);
+        MinecraftForge.EVENT_BUS.post(new AttackEntityEvent(mc.thePlayer, pig));
+        mc.getNetHandler().handleEntityStatus(new S19PacketEntityStatus(pig, (byte) 3));
+        mc.theWorld.removeEntityFromWorld(-1500);
+        check(KillBanners.TIMELINE.age(System.nanoTime()) >= 0 && !KillBanners.TIMELINE.preview() && KillBanners.TIMELINE.sequence() == 1,
+            "KillBanner: a mob the player hit dies (entity status 3): its banner");
+        EntityOtherPlayerMP victim = new EntityOtherPlayerMP(mc.theWorld, new GameProfile(UUID.randomUUID(), "LadsQaVictim"));
+        mc.theWorld.addEntityToWorld(-1501, victim);
+        MinecraftForge.EVENT_BUS.post(new AttackEntityEvent(mc.thePlayer, victim));
+        MinecraftForge.EVENT_BUS.post(new ClientChatReceivedEvent((byte) 1, new ChatComponentText("LadsQaVictim was slain by " + mc.thePlayer.getName())));
+        mc.theWorld.removeEntityFromWorld(-1501);
+        check(KillBanners.TIMELINE.sequence() == 2, "KillBanner: a hit player's kill message in chat is the second kill (" + KillBanners.TIMELINE.sequence() + ")");
+        LadsSettingsScreen189 settings = new LadsSettingsScreen189(null);
+        mc.displayGuiScreen(settings);
+        settings.openModule("KillBanner");
+        thumbs = KillBanner189.thumbs;
+        return after(10);
+    }
+
+    private static boolean killPicker(Minecraft mc) {
+        check(KillBanner189.thumbs > thumbs, "KillBanner: the settings picker drew the banner art (" + (KillBanner189.thumbs - thumbs) + " thumbnails)");
+        screenshot(mc, "150-kill-banner-picker");
+        mc.displayGuiScreen(null);
+        KillBanner189.reset();
+        KillBannerModule module = (KillBannerModule) module("KillBanner");
+        module.mobs.set(mobsWas);
+        module.setEnabled(killWas);
         return after(5);
     }
 

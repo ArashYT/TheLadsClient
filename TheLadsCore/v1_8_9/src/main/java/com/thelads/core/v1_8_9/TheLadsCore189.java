@@ -8,6 +8,7 @@ import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
 import com.thelads.core.v1_8_9.feature.Crosshair189;
+import com.thelads.core.v1_8_9.feature.KillBanner189;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
 import com.thelads.core.v1_8_9.feature.RawMouse189;
@@ -62,6 +63,7 @@ public class TheLadsCore189 {
         Crosshair189.register();
         MinecraftForge.EVENT_BUS.register(new Crosshair189());
         Reconnect189.register();
+        MinecraftForge.EVENT_BUS.register(new KillBanner189());
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(this);
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
@@ -87,7 +89,10 @@ public class TheLadsCore189 {
             + "Attack Gap, Item Cooldown and spyglass options have nothing to show."},
         // Reconnect189 through Forge's screen events, GuiDisconnectedAccessor and MinecraftMixin, as 26.x NativeReconnect.
         {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9 and its chat is unsigned, so it reconnects to servers and local worlds, "
-            + "and Sign Configured Commands has nothing to sign; 1.8.9 servers cut chat messages at 100 characters."}
+            + "and Sign Configured Commands has nothing to sign; 1.8.9 servers cut chat messages at 100 characters."},
+        // KillBanner189 through Forge's attack and chat events and NetHandlerPlayClientMixin, as 26.x NativeKillBanner.
+        {"KillBanner", "Minecraft 1.8.9 sends no damage events, so a kill counts when your own blow, or a server kill message after it, "
+            + "finishes the target; arrows and other indirect kills do not."}
     };
 
     static void registerStatuses() {
