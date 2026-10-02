@@ -262,7 +262,7 @@ final class Probe151 {
             },
             mc -> {
                 hooks(on, "camera easing up through orientCamera", Hook.SNEAK);
-                onServer(mc, player -> player.setFire(5));
+                onServer(mc, player -> { player.setGameType(WorldSettings.GameType.SURVIVAL); player.setFire(5); }); // creative players never burn
                 return after(10);
             },
             mc -> {
@@ -273,7 +273,7 @@ final class Probe151 {
                 check(mc.thePlayer.isBurning(), state + "the integrated server set the player on fire");
                 hooks(on, "fire overlay", Hook.FIRE);
                 screenshot(mc, "151-low-fire" + tag);
-                onServer(mc, player -> player.extinguish());
+                onServer(mc, player -> { player.extinguish(); player.setGameType(WorldSettings.GameType.CREATIVE); });
                 return after(5);
             });
     }
@@ -355,15 +355,23 @@ final class Probe151 {
         select(mc, slotWas);
         for (Feature feature : Feature.values()) MODULE.option(feature).set(optionsWere[feature.ordinal()]);
         MODULE.setEnabled(wasEnabled);
+        ItemStack[] main = mainWas, armour = armourWas;
+        mainWas = null; // restored once, also when CoreProbe stops after a failure (stop)
         onServer(mc, player -> {
             player.extinguish();
             player.setGameType(WorldSettings.GameType.CREATIVE);
             player.getFoodStats().readNBT(food(20, 5));
             player.setHealth(player.getMaxHealth());
-            System.arraycopy(mainWas, 0, player.inventory.mainInventory, 0, mainWas.length);
-            System.arraycopy(armourWas, 0, player.inventory.armorInventory, 0, armourWas.length);
+            System.arraycopy(main, 0, player.inventory.mainInventory, 0, main.length);
+            System.arraycopy(armour, 0, player.inventory.armorInventory, 0, armour.length);
         });
         return after(20);
+    }
+
+    /** CoreProbe.finish after a failure: the player, inventory and module go back even though the steps stopped. */
+    static void stop() {
+        if (mainWas == null) return;
+        try { restore(Minecraft.getMinecraft()); } catch (Throwable ignored) {}
     }
 
     private static boolean restored(Minecraft mc) {
