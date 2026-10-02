@@ -73,12 +73,19 @@ public class TheLadsCore189 {
         "PingView", "TabList"
     };
 
+    /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
+    public static final String[][] LIMITED = {
+        // Chat189 through GuiNewChatMixin, as 1.21.1 ChatMixin.
+        {"Chat", "Minecraft 1.8.9 chat is unsigned, so Hide Signing Indicators has nothing to hide."}
+    };
+
     static void registerStatuses() {
         ModuleSupport.registerBuiltIn(NativeHud.MODULES);
         ModuleSupport.registerBuiltIn(GAMEPLAY_MODULES);
         for (String[] module : MOD_BACKED)
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
+        for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);
         // The launcher's 1.8.9 pack includes Resourcify (its own in-game browser, no Lads settings page).
         ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));
     }
