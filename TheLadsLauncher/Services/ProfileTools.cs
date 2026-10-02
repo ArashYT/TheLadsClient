@@ -109,9 +109,10 @@ public static class ProfileTools
             checks.Add(new("Game state", running ? "This profile is running." : "This profile is ready to launch.", !running));
         }
         catch (IOException e) { checks.Add(new("Game folder", e.Message, false)); }
-        checks.Add(new("Settings location", GameVersionPolicy.KeepsOwnWorlds(profile.MinecraftVersion)
-            ? $"Separate settings, worlds and packs (Minecraft {profile.MinecraftVersion} never uses the shared ones): {game}"
-            : profile.IsIsolated ? $"Separate settings: {game}" : "Shared options.txt; worlds and packs retain global sharing.", true));
+        checks.Add(new("Settings location", profile.IsIsolated ? $"Separate settings: {game}"
+            : GameVersionPolicy.UsesForge(profile.MinecraftVersion) && GameOptionsService.LunarOptions18() is { } lunar
+                ? $"Settings from Lunar Client's 1.8 profile ({lunar}); worlds and packs retain global sharing."
+                : "Shared options.txt; worlds and packs retain global sharing.", true));
         return checks;
     }
 }
