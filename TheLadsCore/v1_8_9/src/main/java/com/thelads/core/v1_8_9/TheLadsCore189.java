@@ -8,13 +8,17 @@ import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.Clumps189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
+import com.thelads.core.v1_8_9.feature.Crosshair189;
 import com.thelads.core.v1_8_9.feature.FoodOverlay189;
+import com.thelads.core.v1_8_9.feature.KillBanner189;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
 import com.thelads.core.v1_8_9.feature.RawMouse189;
+import com.thelads.core.v1_8_9.feature.Reconnect189;
 import com.thelads.core.v1_8_9.feature.RenderScale189;
 import com.thelads.core.v1_8_9.feature.Screenshots189;
 import com.thelads.core.v1_8_9.feature.SignalLoss189;
+import com.thelads.core.v1_8_9.feature.TabTweaks189;
 import com.thelads.core.v1_8_9.feature.Tooltips189;
 import com.thelads.core.v1_8_9.gui.LadsTitleScreen189;
 import net.minecraft.client.Minecraft;
@@ -62,6 +66,10 @@ public class TheLadsCore189 {
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
+        Crosshair189.register();
+        MinecraftForge.EVENT_BUS.register(new Crosshair189());
+        Reconnect189.register();
+        MinecraftForge.EVENT_BUS.register(new KillBanner189());
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new Tooltips189());
         MinecraftForge.EVENT_BUS.register(new Clumps189());
@@ -77,7 +85,27 @@ public class TheLadsCore189 {
         "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", "RenderScale", "BetterScreenshots",
         "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
-        "RawInput", "BorderlessFullscreen"
+        "RawInput", "BorderlessFullscreen",
+        // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC: the "Soon" card, as on the other versions, whose
+        // presence sends nothing yet (no Discord connection is made).
+        "Threads", "DiscordRPC",
+        // TabTweaks189 through GuiPlayerTabOverlayMixin, as 26.x NativeTabTweaks.
+        "PingView", "TabList"
+    };
+
+    /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
+    public static final String[][] LIMITED = {
+        // Chat189 through GuiNewChatMixin, as 1.21.1 ChatMixin.
+        {"Chat", "Minecraft 1.8.9 chat is unsigned, so Hide Signing Indicators has nothing to hide."},
+        // Crosshair189 through Forge's crosshair overlay event, as 26.x NativeCrosshair.
+        {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Dynamic "
+            + "Attack Gap, Item Cooldown and spyglass options have nothing to show."},
+        // Reconnect189 through Forge's screen events, GuiDisconnectedAccessor and MinecraftMixin, as 26.x NativeReconnect.
+        {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9, so it reconnects to servers and local worlds; 1.8.9 chat is unsigned, "
+            + "so Sign Configured Commands has nothing to sign, and it sends at most 100 characters per action message."},
+        // KillBanner189 through Forge's attack and chat events and NetHandlerPlayClientMixin, as 26.x NativeKillBanner.
+        {"KillBanner", "Minecraft 1.8.9 sends no damage events, so a kill counts when your own blow, or a server kill message after it, "
+            + "finishes the target; arrows and other indirect kills do not."}
     };
 
     static void registerStatuses() {
@@ -87,6 +115,7 @@ public class TheLadsCore189 {
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
         ModuleSupport.registerUnavailable("ShulkerBoxUtils", "Minecraft 1.8.9 has no shulker boxes; they were added in Minecraft 1.11.");
+        for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);
         // The launcher's 1.8.9 pack includes Resourcify (its own in-game browser, no Lads settings page).
         ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));
     }
@@ -118,6 +147,7 @@ public class TheLadsCore189 {
         } catch (Throwable ignored) {}
 
         RawMouse189.install(mc);
+        TabTweaks189.refresh();
 
         Borderless189.tick(mc);
 

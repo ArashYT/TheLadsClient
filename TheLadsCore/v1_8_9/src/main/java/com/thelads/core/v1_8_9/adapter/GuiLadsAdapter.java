@@ -172,6 +172,12 @@ public class GuiLadsAdapter implements LadsGraphics {
         }
     }
 
+    /** Kill Banner picker art, as 26.x NativeKillBanner.drawThumb. */
+    @Override
+    public boolean drawKillBanner(String skin, int variant, int x, int y, int width, int height) {
+        return com.thelads.core.v1_8_9.feature.KillBanner189.drawThumb(skin, variant, x, y, width, height);
+    }
+
     @Override
     public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
         Minecraft mc = Minecraft.getMinecraft();

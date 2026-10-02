@@ -75,6 +75,11 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public void previewKillBannerSound(String skin, float volume) {
+        com.thelads.core.v1_8_9.feature.KillBanner189.previewSound(skin, volume);
+    }
+
+    @Override
     public String getServerAddress() {
         Minecraft mc = mc();
         return mc.isSingleplayer() || mc.getCurrentServerData() == null ? "Singleplayer" : mc.getCurrentServerData().serverIP;
