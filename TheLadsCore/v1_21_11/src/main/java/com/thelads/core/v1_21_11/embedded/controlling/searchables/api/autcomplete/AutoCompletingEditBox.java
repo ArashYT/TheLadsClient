@@ -1,0 +1,176 @@
+// Adapted from Searchables 1.0.4 by Jaredlll08 (MIT); modified by The Lads: repackaged into Lads Core with Controlling.
+package com.thelads.core.v1_21_11.embedded.controlling.searchables.api.autcomplete;
+
+import com.thelads.core.v1_21_11.embedded.controlling.searchables.api.SearchableType;
+import com.thelads.core.v1_21_11.embedded.controlling.searchables.api.SearchablesConstants;
+import com.thelads.core.v1_21_11.embedded.controlling.searchables.api.TokenRange;
+import com.thelads.core.v1_21_11.embedded.controlling.searchables.api.formatter.FormattingVisitor;
+import com.thelads.core.v1_21_11.embedded.controlling.mixin.searchables.AccessEditBox;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+
+public class AutoCompletingEditBox<T> extends EditBox {
+    
+    private final FormattingVisitor formattingVisitor;
+    private final CompletionVisitor completionVisitor;
+    private final DelegatingConsumers<String> responders = new DelegatingConsumers<>();
+    private final AutoComplete<T> autoComplete;
+    
+    public AutoCompletingEditBox(Font font, int x, int y, int width, int height, Component message, SearchableType<T> type, Supplier<List<T>> entries) {
+        
+        this(font, x, y, width, height, null, message, type, entries);
+    }
+    
+    public AutoCompletingEditBox(Font font, int x, int y, int width, int height, @Nullable EditBox thisBox, Component message, SearchableType<T> type, Supplier<List<T>> entries) {
+        
+        super(font, x, y, width, height, thisBox, message);
+        this.setMaxLength(Integer.MAX_VALUE);
+        this.formattingVisitor = new FormattingVisitor(type);
+        this.completionVisitor = new CompletionVisitor();
+        this.autoComplete = new AutoComplete<>(type, this, entries, x, y + 2 + height, width, font.lineHeight + 2);
+        setHint(SearchablesConstants.COMPONENT_SEARCH);
+        this.addFormatter(this.formattingVisitor);
+        this.setResponder(this.responders);
+        addResponder(this.formattingVisitor);
+        addResponder(this.completionVisitor);
+        addResponder(this.autoComplete);
+    }
+    
+    @Override
+    public boolean isMouseOver(double xpos, double ypos) {
+        
+        return super.isMouseOver(xpos, ypos) || this.autoComplete.isMouseOver(xpos, ypos);
+    }
+    
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        
+        if(this.isFocused() && autoComplete.mouseClicked(event, doubleClick)) {
+            return true;
+        }
+        if((isMouseOver(event.x(), event.y()) || autoComplete().isMouseOver(event.x(), event.y())) && event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            this.setValue("");
+            return true;
+        }
+        return super.mouseClicked(event, doubleClick);
+    }
+    
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        
+        if(event.isUp()) {
+            this.autoComplete().scrollUp();
+            return true;
+        }
+        if(event.isDown()) {
+            this.autoComplete().scrollDown();
+            return true;
+        }
+        if(event.isConfirmation()) {
+            this.autoComplete().insertSuggestion();
+            return true;
+        }
+        if(event.key() == GLFW.GLFW_KEY_PAGE_DOWN) {
+            this.autoComplete.scrollDown(this.autoComplete().maxSuggestions());
+            return true;
+        }
+        if(event.key() == GLFW.GLFW_KEY_PAGE_UP) {
+            this.autoComplete.scrollUp(this.autoComplete().maxSuggestions());
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+    
+    /**
+     * Deletes the characters as the given {@link TokenRange}.
+     *
+     * @param range The range to delete characters from
+     */
+    public void deleteChars(TokenRange range) {
+        
+        if(!this.getValue().isEmpty()) {
+            if(!range.isEmpty()) {
+                String newValue = range.delete(this.getValue());
+                if(this.getFilter().test(newValue)) {
+                    this.setValue(newValue);
+                    this.moveCursorTo(range.start(), false);
+                }
+            }
+        }
+    }
+    
+    public Predicate<String> getFilter() {
+        
+        return ((AccessEditBox) this).searchables$getFilter();
+    }
+    
+    @Nullable
+    public Consumer<String> getResponder() {
+        
+        return ((AccessEditBox) this).lads$searchablesResponder();
+    }
+    
+    /**
+     * Should not be used, use {@link AutoCompletingEditBox#addResponder(Consumer)} instead
+     */
+    @SuppressWarnings("DeprecatedIsStillUsed")
+    @Override
+    @Deprecated
+    public void setResponder(Consumer<String> responder) {
+        
+        if(this.getResponder() == null) {
+            super.setResponder(responders);
+        } else {
+            this.addResponder(responder);
+        }
+    }
+    
+    public void addResponder(Consumer<String> responder) {
+        
+        this.responders.addConsumer(responder);
+    }
+    
+    public FormattingVisitor formattingVisitor() {
+        
+        return formattingVisitor;
+    }
+    
+    public CompletionVisitor completionVisitor() {
+        
+        return completionVisitor;
+    }
+    
+    public AutoComplete<T> autoComplete() {
+        
+        return autoComplete;
+    }
+    
+    private static class DelegatingConsumers<T> implements Consumer<T> {
+        
+        private final List<Consumer<T>> consumers = new ArrayList<>();
+        
+        @Override
+        public void accept(T t) {
+            
+            consumers.forEach(tConsumer -> tConsumer.accept(t));
+        }
+        
+        public void addConsumer(Consumer<T> consumer) {
+            
+            this.consumers.add(consumer);
+        }
+        
+    }
+    
+}

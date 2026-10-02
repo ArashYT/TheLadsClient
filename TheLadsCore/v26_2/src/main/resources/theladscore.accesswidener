@@ -152,3 +152,6 @@ accessible method com/mojang/blaze3d/opengl/DirectStateAccess bufferSubData (IJL
 accessible method com/mojang/blaze3d/opengl/DirectStateAccess bufferData (ILjava/nio/ByteBuffer;I)V
 accessible field net/minecraft/client/Minecraft fontManager Lnet/minecraft/client/gui/font/FontManager;
 accessible field net/minecraft/client/renderer/GameRenderer fogRenderer Lnet/minecraft/client/renderer/fog/FogRenderer;
+
+# Embedded FixBookGUI
+accessible field net/minecraft/client/gui/screens/inventory/BookViewScreen IMAGE_HEIGHT I

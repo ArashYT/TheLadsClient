@@ -11,5 +11,6 @@ public final class EmbeddedModsMain implements ModInitializer {
     public void onInitialize() {
         if (EmbeddedMods.active("ksyxis")) LoggerFactory.getLogger("Ksyxis").info("Ksyxis: Ready to remove unneeded chunks. (embedded in Lads Core)");
         if (EmbeddedMods.active("quick-pack")) ConfigManager.load(FabricLoader.getInstance().getConfigDir());
+        if (EmbeddedMods.active("nbtac")) new com.thelads.core.v1_21_1.embedded.nbtac.NBTacFabric().onInitialize();
     }
 }

@@ -1,0 +1,13 @@
+Controlling (mod id controlling), 26.2.4 for Minecraft 26.2, with the parts of its library
+Searchables (mod id searchables), 1.0.1, that it uses.
+Copyright (c) 2021 Jared (Controlling) and (c) 2023 Jared (Searchables). License: MIT; the texts are in LICENSE
+(Controlling) and LICENSE-Searchables beside this file.
+Projects: https://github.com/jaredlll08/Controlling and https://github.com/jaredlll08/searchables
+Sources used: Controlling branch 26.2, commit 3521164fd53771ed95afe4868310ac0f88df8ceb;
+Searchables branch 26.2, commit 10cb075ae5f3526bda799b9a37d8e2769a0277d6.
+
+Modified by The Lads: repackaged into Lads Core as com.thelads.core.v26_2.embedded.controlling
+(Searchables under ...controlling.searchables; mixin config theladscore.embedded.controlling.mixins.json).
+The controls screen swap is done by Core's ControlsScreenMixin instead of Controlling's OpenGuiMixin;
+the platform services are created directly instead of through ServiceLoader. Everything stands down
+while the original controlling mod is installed.

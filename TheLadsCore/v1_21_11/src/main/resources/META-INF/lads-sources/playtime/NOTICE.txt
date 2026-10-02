@@ -1,0 +1,13 @@
+World Play Time Reborn (mod id worldplaytimereborn), 1.2.6 for Minecraft 1.21.11
+Copyright (c) 2026 KoroWin. License: MIT; the license text is in LICENSE beside this file.
+Based on World Play Time by Khajiitos (https://github.com/Khajiitos/WorldPlayTime),
+Copyright (c) Khajiitos, also under the MIT license.
+Project: https://github.com/korovagg/WorldPlayTimeReborn
+Source used: branch main, commit 0948127a60702919e7a7fc04f91ec7f287e3d579
+(folder "World Play Time Reborn 1.21.11 Fabric", mod_version 1.2.6, includes the world size display).
+
+Modified by The Lads: repackaged into Lads Core as com.thelads.core.v1_21_11.embedded.playtime
+(mixin config theladscore.embedded.playtime.mixins.json). The Cloth Config/Mod Menu settings
+screen is not included; the settings file config/worldplaytimereborn/config.json and the server
+play time file config/worldplaytimereborn/servers_playtime.dat are unchanged. Everything stands
+down while the original worldplaytimereborn mod is installed.

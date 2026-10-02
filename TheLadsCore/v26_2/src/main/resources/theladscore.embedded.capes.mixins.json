@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.embedded.capes.mixin",
+  "plugin": "com.thelads.core.v26_2.embedded.capes.CapesMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "AccessorEntityRenderDispatcher",
+    "MixinCapeFeatureRenderer",
+    "MixinEntityRenderDispatcher",
+    "MixinPlayerInfo",
+    "MixinSkinCustomizationScreen"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

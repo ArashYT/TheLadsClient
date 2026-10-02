@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_11.embedded.hoveringhotbar.mixin",
+  "plugin": "com.thelads.core.v1_21_11.embedded.hoveringhotbar.HoveringHotbarMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "GuiMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

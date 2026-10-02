@@ -49,7 +49,8 @@ public final class NativeRequestProbe {
             Screen keys=new KeyBindsScreen(original,mc.options);mc.setScreenAndShow(keys);
             // Exercise the screen the player actually sees with the complete mod pack loaded.
             keys=mc.gui.screen();
-            require(keys instanceof com.thelads.core.v26_2.gui.LadsKeyBindsScreen,"active controls screen uses native filters");passed++;
+            require(keys instanceof com.thelads.core.v26_2.embedded.controlling.client.NewKeyBindsScreen,"active controls screen is the embedded Controlling screen");passed++;
+            require(keys.children().stream().filter(c->c instanceof EditBox).count()==1,"exactly one controls search field (Controlling's)");passed++;
             var search=keys.children().stream().filter(c->c instanceof EditBox).map(c->(EditBox)c).findFirst().orElseThrow();
             var list=keys.children().stream().filter(c->c instanceof KeyBindsList).map(c->(KeyBindsList)c).findFirst().orElseThrow();
             int total=list.children().size();
@@ -59,22 +60,26 @@ public final class NativeRequestProbe {
             require(!list.children().isEmpty()&&list.children().size()<total,"controls search filters real bindings");passed++;
             search.setValue("no_control_should_match_this_309127");require(list.children().isEmpty(),"controls search empty state");passed++;
             search.setValue("");require(list.children().size()==total,"clearing search restores bindings");passed++;extract(keys);
-            var mode=keys.children().stream().filter(c->c instanceof Button b&&b.getMessage().getString().startsWith("Search:")).map(c->(Button)c).findFirst().orElseThrow();
-            for(String label:List.of("Name","Keybind","Category","Mod","All")){
-                mode.onPress(null);require(mode.getMessage().getString().equals("Search: "+label),"visible search mode "+label);passed++;
-            }
+            search.setValue("category:lads");
+            require(list.children().stream().anyMatch(c->c instanceof com.thelads.core.v26_2.embedded.controlling.api.entries.IKeyEntry e&&e.getKey().getName().equals("key.theladscore.modules"))
+                &&list.children().stream().allMatch(c->c instanceof com.thelads.core.v26_2.embedded.controlling.api.entries.IKeyEntry),"category: search finds the Lads menu key");passed++;
+            search.setValue("");
+            var unbound=keys.children().stream().filter(c->c instanceof Button b&&b.getMessage().getString().equals("Show Unbound")).map(c->(Button)c).findFirst().orElseThrow();
+            require(keys.children().stream().anyMatch(c->c instanceof Button b&&b.getMessage().getString().equals("Show Conflicts")),"Controlling's conflict filter is present");passed++;
+            unbound.onPress(null);
+            require(unbound.getMessage().getString().equals("Show All")&&list.children().stream().allMatch(c->c instanceof com.thelads.core.v26_2.embedded.controlling.api.entries.IKeyEntry e&&e.getKey().isUnbound()),"Show Unbound lists only unbound keys");passed++;
+            unbound.onPress(null);require(list.children().size()==total,"Show All lists every binding again");passed++;
             list.setScrollAmount(Math.min(260,list.maxScrollAmount()));double scrollBefore=list.scrollAmount();
             require(scrollBefore>0,"controls regression fixture is scrolled down");passed++;
             extract(keys);
             keys.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(1,1,new net.minecraft.client.input.MouseButtonInfo(0,0)),false);
             require(list.scrollAmount()==scrollBefore,"ordinary controls click keeps scroll position");passed++;
-            var entry=list.children().stream().filter(c->c instanceof KeyBindsList.KeyEntry).findFirst().orElseThrow();
-            var key=((com.thelads.core.v26_2.mixin.KeyEntryAccessor)entry).ladsKey();
+            var entry=(com.thelads.core.v26_2.embedded.controlling.api.entries.IKeyEntry)list.children().stream().filter(c->c instanceof com.thelads.core.v26_2.embedded.controlling.api.entries.IKeyEntry).findFirst().orElseThrow();
+            var key=entry.getKey();
             var keyField=net.minecraft.client.KeyMapping.class.getDeclaredField("key");keyField.setAccessible(true);
             var oldKey=(com.mojang.blaze3d.platform.InputConstants.Key)keyField.get(key);
-            var changeField=KeyBindsList.KeyEntry.class.getDeclaredField("changeButton");changeField.setAccessible(true);
             try {
-                ((Button)changeField.get(entry)).onPress(null);
+                entry.getBtnChangeKeyBinding().onPress(null);
                 keys.keyPressed(new net.minecraft.client.input.KeyEvent(290,0,0));
                 require(list.scrollAmount()==scrollBefore,"assigning a key keeps controls scroll position");passed++;
             }finally{key.setKey(oldKey);net.minecraft.client.KeyMapping.resetMapping();list.resetMappingAndUpdateButtons();mc.options.save();}

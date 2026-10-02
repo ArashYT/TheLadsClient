@@ -188,3 +188,23 @@ processResources {
         from("src/main/resources/theladscore.embedded.${key}.mixins.json") { into "META-INF/lads-sources/${key}/v26_2" }
     }
 }
+
+// Embedded upstream mods (1.4.6): the modified LGPL/MPL sources ship in the jar.
+processResources {
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/embedded/fixbookgui/**'
+        into 'META-INF/lads-sources/fixbookgui/v26_2'
+    }
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/embedded/hoveringhotbar/**'
+        into 'META-INF/lads-sources/hoveringhotbar/v26_2'
+    }
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/embedded/nbtac/**'
+        into 'META-INF/lads-sources/nbtac/v26_2'
+    }
+    from('src/main/java') {
+        include 'com/thelads/core/v26_2/embedded/capes/**'
+        into 'META-INF/lads-sources/capes/v26_2'
+    }
+}

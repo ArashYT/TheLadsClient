@@ -60,7 +60,8 @@ public final class NativeRaised {
         boolean replace = mode == HotbarSelectionFix.REPLACE || (mode == HotbarSelectionFix.AUTO && Pack.getPack());
         graphics.blitSprite(pipeline, replace ? Identifier.fromNamespaceAndPath("raised", "hud/hotbar_selection") : sprite,
                 x, y, width, replace ? 24 : height);
-        if (mode == HotbarSelectionFix.PATCH || (mode == HotbarSelectionFix.AUTO && !Pack.getPack()))
+        // A selection already drawn 24 tall (embedded Hovering Hotbar) has its bottom row; patching would add a 25th.
+        if (height < 24 && (mode == HotbarSelectionFix.PATCH || (mode == HotbarSelectionFix.AUTO && !Pack.getPack())))
             ((GuiGraphicsExtractorInvoker) graphics).invokeInnerBlit(RenderPipelines.GUI_TEXTURED,
                     Identifier.withDefaultNamespace("textures/gui/sprites/hud/hotbar_selection.png"),
                     x, x + width, y + height, y + height + 1, 0, 1, 1 / 23.0f, 0, -1);

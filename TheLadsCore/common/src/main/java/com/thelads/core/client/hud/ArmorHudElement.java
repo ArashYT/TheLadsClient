@@ -107,7 +107,7 @@ public class ArmorHudElement extends HudElement {
 
     @Override
     public int getDisplayY(LadsGraphics g) {
-        return optBool("Attach to hotbar", true) ? g.getScaledHeight() - getRenderHeight() - 4 : super.getDisplayY(g);
+        return optBool("Attach to hotbar", true) ? g.getScaledHeight() - getRenderHeight() - 4 - g.hotbarLift() : super.getDisplayY(g);
     }
 
     @Override
