@@ -10,8 +10,8 @@
   "client": [
     "EntityRendererMixin",
     "GuiButtonMixin",
-    "GuiIngameMixin",
     "GuiDisconnectedAccessor",
+    "GuiIngameMixin",
     "GuiIngameMenuMixin",
     "GuiNewChatMixin",
     "GuiPlayerTabOverlayMixin",

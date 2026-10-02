@@ -88,8 +88,8 @@ public class TheLadsCore189 {
         {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Dynamic "
             + "Attack Gap, Item Cooldown and spyglass options have nothing to show."},
         // Reconnect189 through Forge's screen events, GuiDisconnectedAccessor and MinecraftMixin, as 26.x NativeReconnect.
-        {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9 and its chat is unsigned, so it reconnects to servers and local worlds, "
-            + "and Sign Configured Commands has nothing to sign; 1.8.9 servers cut chat messages at 100 characters."},
+        {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9, so it reconnects to servers and local worlds; 1.8.9 chat is unsigned, "
+            + "so Sign Configured Commands has nothing to sign, and it sends at most 100 characters per action message."},
         // KillBanner189 through Forge's attack and chat events and NetHandlerPlayClientMixin, as 26.x NativeKillBanner.
         {"KillBanner", "Minecraft 1.8.9 sends no damage events, so a kill counts when your own blow, or a server kill message after it, "
             + "finishes the target; arrows and other indirect kills do not."}
