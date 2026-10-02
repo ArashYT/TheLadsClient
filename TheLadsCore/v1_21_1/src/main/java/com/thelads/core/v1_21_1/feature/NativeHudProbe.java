@@ -70,6 +70,9 @@ public final class NativeHudProbe {
     private static String pixels = "";
     private NativeHudProbe() {}
 
+    /** The last in-world probe is done (passed or failed). */
+    static boolean finished() { return finished; }
+
     public static void blit(GuiGraphics graphics, int w, int h) {
         BLITS.add(new float[] {w, h, graphics.pose().last().pose().m30(), RenderSystem.getShaderColor()[3]});
     }
