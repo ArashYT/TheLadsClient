@@ -106,6 +106,8 @@ final class NativeOldAnimationsProbe {
             changed(Feature.ROD, off, hands(true, new ItemStack(Items.FISHING_ROD), ItemStack.EMPTY, null, 0, 0));
             off = hands(false, sword, ItemStack.EMPTY, null, 0, 0);
             changed(Feature.HELD_ITEMS, off, hands(true, sword, ItemStack.EMPTY, null, 0, 0)); // the idle sword sits where 1.7 held it
+            require(!icon(hands(true, new ItemStack(Items.STONE), ItemStack.EMPTY, null, 0, 0))
+                && !icon(hands(true, ItemStack.EMPTY, shield, null, 0, 0)), "held blocks and shields keep vanilla's 3D placement");
 
             // The modern sword block: a sword while the off hand blocks with a shield; the shield hides and the sword blocks.
             off = hands(false, sword, shield, InteractionHand.OFF_HAND, 5, 0);
@@ -155,9 +157,10 @@ final class NativeOldAnimationsProbe {
             off = player(false, sword, shield, view, armOff, redOff);
             List<Call> third = player(true, sword, shield, view, armOn, redOn);
             require(!icon(off) && icon(third) && NativeOldAnimations.APPLIED.contains(Feature.THIRD_PERSON), "1.7 third-person items: the 1.7 held sword");
-            // 1.7's blocking arm pitches down further than the held-item arm and keeps no inward turn (vanilla's block turns it 30°).
-            require(armOn[0] < armOff[0] - 0.3f && Math.abs(armOn[1] - com.thelads.core.client.OldAnimations.BLOCKING_ARM_YAW) < 1e-3f,
-                "1.7 third-person items: the 1.7 blocking arm");
+            // 1.7's blocking arm, read from the model after the whole setupAnim (other mods' arm animations included): pitched
+            // 3π/10 down without the head's pitch (the standing player's walk and idle bob add a few hundredths) and no inward turn.
+            require(Math.abs(armOn[0] + 0.9424779f) < 0.15f && Math.abs(armOn[1] - com.thelads.core.client.OldAnimations.BLOCKING_ARM_YAW) < 1e-3f,
+                "1.7 third-person items: the 1.7 blocking arm (pitch " + armOn[0] + ", yaw " + armOn[1] + ")");
             require(redOn[0] > redOff[0] && NativeOldAnimations.APPLIED.contains(Feature.RED_ARMOUR), "Red armour on hurt tints the armour");
 
             // 2D dropped items: flat items become the 1.7 icon; blocks stay 3D.

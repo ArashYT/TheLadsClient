@@ -28,6 +28,7 @@ import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.BowItem;
+import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.item.FoodOnAStickItem;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -46,6 +47,10 @@ public final class NativeOldAnimations {
     static final EnumSet<Feature> APPLIED = EnumSet.noneOf(Feature.class);
     /** The blink flag the last health bar was drawn with (QA). */
     static boolean lastHeartsBlink;
+    private static final ItemStackRenderState[] ICONS = {new ItemStackRenderState(), new ItemStackRenderState()};
+    /** Both arms' rotations as the 1.7 sword block left them, re-applied after other model mods (NotEnoughAnimations). */
+    private static final float[] BLOCKING_ARMS = new float[6];
+    private static Object blockingModel;
     private NativeOldAnimations() {}
 
     /** Extraction flags carried on every entity render state (OldAnimationsStateMixin). */
@@ -75,7 +80,7 @@ public final class NativeOldAnimations {
         if (block && hand == InteractionHand.OFF_HAND) return null;
         Use use = block ? Use.BLOCK : use(player, hand, item);
         Held held = held(item);
-        if (use == null || !module.iconPlacement(MODERN, use, held)) {
+        if (use == null || !module.iconPlacement(MODERN, use, held) || kept(item) || !flat(icon(player, hand, item))) {
             if (item.getItem() instanceof ShieldItem && module.active(Feature.LOW_SHIELD, MODERN)) {
                 pose.translate(0, -0.25f, 0);
                 APPLIED.add(Feature.LOW_SHIELD);
@@ -97,6 +102,30 @@ public final class NativeOldAnimations {
         APPLIED.add(use == Use.BLOCK ? Feature.BLOCK_POSE : use == Use.EAT_DRINK ? Feature.EAT_DRINK
             : use == Use.BOW || held == Held.BOW ? Feature.BOW : held == Held.ROD ? Feature.ROD : Feature.HELD_ITEMS);
         return ItemDisplayContext.NONE;
+    }
+
+    /**
+     * The item resolved with no display transform, as the 1.7 placement draws it (one state per hand: a submitted item still
+     * reads its state until the frame is drawn).
+     */
+    private static ItemStackRenderState icon(LivingEntity player, InteractionHand hand, ItemStack item) {
+        ItemStackRenderState icon = ICONS[hand.ordinal()];
+        Minecraft.getInstance().getItemModelResolver().updateForTopItem(icon, item, ItemDisplayContext.NONE, player.level(), player,
+            player.getId() + ItemDisplayContext.NONE.ordinal());
+        return icon;
+    }
+
+    /**
+     * A flat icon (generated item model): 1.7's recipes place flat items only. Blocks, special models (shields, banners,
+     * tridents) and 3D in-hand models keep vanilla's placement. The state must be resolved with ItemDisplayContext.NONE.
+     */
+    static boolean flat(ItemStackRenderState item) {
+        return !item.isEmpty() && !item.usesBlockLight() && item.getModelBoundingBox().getZsize() < 0.1;
+    }
+
+    /** Items with modern-only animations 1.7 never had (spear thrusts, the loaded crossbow): always vanilla. */
+    private static boolean kept(ItemStack item) {
+        return item.is(ItemTags.SPEARS) || item.getItem() instanceof CrossbowItem;
     }
 
     /** The 26.x trigger for the 1.7 sword block: a sword in the main hand while the off hand blocks with a shield. */
@@ -172,7 +201,7 @@ public final class NativeOldAnimations {
             var resolver = Minecraft.getInstance().getItemModelResolver();
             resolver.updateForNonLiving(item, entity.getItem(), ItemDisplayContext.NONE, entity);
             // 3D outside the ground context (a trident, a spyglass): vanilla again.
-            if (item.usesBlockLight()) resolver.updateForNonLiving(item, entity.getItem(), ItemDisplayContext.GROUND, entity);
+            if (!flat(item)) resolver.updateForNonLiving(item, entity.getItem(), ItemDisplayContext.GROUND, entity);
             else flags = DROPPED;
         }
         ((State) state).lads$oldAnimations(flags);
@@ -203,10 +232,10 @@ public final class NativeOldAnimations {
             var resolver = Minecraft.getInstance().getItemModelResolver();
             for (HumanoidArm arm : HumanoidArm.values()) {
                 ItemStackRenderState item = itemState(state, arm);
-                if (item.isEmpty() || item.usesBlockLight()) continue; // blocks and special models keep vanilla
                 ItemStack stack = entity.getItemHeldByArm(arm);
+                if (item.isEmpty() || item.usesBlockLight() || kept(stack)) continue; // blocks keep vanilla
                 resolver.updateForLiving(item, stack, ItemDisplayContext.NONE, entity);
-                if (item.usesBlockLight()) resolver.updateForLiving(item, stack,
+                if (!flat(item)) resolver.updateForLiving(item, stack,
                     arm == HumanoidArm.RIGHT ? ItemDisplayContext.THIRD_PERSON_RIGHT_HAND : ItemDisplayContext.THIRD_PERSON_LEFT_HAND, entity);
                 else flags |= arm == HumanoidArm.RIGHT ? RIGHT_ICON : LEFT_ICON;
             }
@@ -234,15 +263,41 @@ public final class NativeOldAnimations {
         return true;
     }
 
-    /** HumanoidModel.setupAnim tail: 1.7's sword-blocking arm only pitches; vanilla's block also follows the head and turns 30° in. */
+    /**
+     * PlayerModel.setupAnim, right after vanilla's pose: 1.7's sword-blocking arm only pitches; vanilla's block also follows the
+     * head and turns 30° in. Both arms are kept for {@link #reapplyBlockingArms}.
+     */
     public static void blockingArm(HumanoidRenderState state, HumanoidModel<?> model) {
+        blockingModel = null;
         if ((((State) state).lads$oldAnimations() & SWORD_BLOCK) == 0) return;
         boolean right = state.mainArm == HumanoidArm.RIGHT;
         ModelPart arm = right ? model.rightArm : model.leftArm;
         // Remove exactly vanilla poseBlockingArm's extra terms; the swing and crouch added after it stay.
         arm.xRot -= Mth.clamp(model.head.xRot, -1.3962634F, 0.43633232F);
         arm.yRot += OldAnimations.BLOCKING_ARM_YAW - (right ? -30 : 30) * Mth.DEG_TO_RAD - Mth.clamp(model.head.yRot, -0.5235988F, 0.5235988F);
+        ModelPart[] arms = {model.rightArm, model.leftArm};
+        for (int i = 0; i < 2; i++) {
+            BLOCKING_ARMS[i * 3] = arms[i].xRot;
+            BLOCKING_ARMS[i * 3 + 1] = arms[i].yRot;
+            BLOCKING_ARMS[i * 3 + 2] = arms[i].zRot;
+        }
+        blockingModel = model;
         APPLIED.add(Feature.THIRD_PERSON);
+    }
+
+    /**
+     * PlayerModel.setupAnim return, after other mods' arm animations: the 1.7 sword block's arms win. NotEnoughAnimations
+     * otherwise eases the arm in from its last pose and re-poses the (hidden) shield arm from the player's real shield use.
+     */
+    public static void reapplyBlockingArms(HumanoidModel<?> model) {
+        if (blockingModel != model) return;
+        blockingModel = null;
+        ModelPart[] arms = {model.rightArm, model.leftArm};
+        for (int i = 0; i < 2; i++) {
+            arms[i].xRot = BLOCKING_ARMS[i * 3];
+            arms[i].yRot = BLOCKING_ARMS[i * 3 + 1];
+            arms[i].zRot = BLOCKING_ARMS[i * 3 + 2];
+        }
     }
 
     private static OldAnimations.Sink sink(PoseStack pose) {
