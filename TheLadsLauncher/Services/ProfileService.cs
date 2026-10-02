@@ -181,6 +181,13 @@ public class ProfileService : IProfileService
         var warnings = report.Warnings.ToList();
         if (stateFileError != null) warnings.Add(stateFileError);
         warnings.AddRange(await ModWelcomeSettings.PrepareAsync(targetDir, cancellationToken));
+        // Every bundled pack ships Essential; not where the player turned it off. Its machine-wide files only from the real
+        // .minecraft: a sandboxed shared root (tests, QA, THELADS_DIR) never edits them.
+        if (GameVersionPolicy.RequiresBundledCore(profile.MinecraftVersion) && ModPreferences.Load(targetDir).GetEnabled(
+                GameVersionPolicy.UsesForge(profile.MinecraftVersion) ? "essential" : "essential-container", ModWelcomeSettings.EssentialProjectId) != false)
+            warnings.AddRange(await ModWelcomeSettings.PrepareEssentialAsync(targetDir,
+                SafeFileOps.PathsEqual(_sharedContent.Root, SharedContentService.OsDefaultRoot()) ? ModWelcomeSettings.EssentialSharedOnboardingFiles()
+                    : Array.Empty<string>(), cancellationToken));
         try
         {
             // An in-game world picker must never offer a world across the 1.8.9 line: a newer world opened in 1.8.9 is

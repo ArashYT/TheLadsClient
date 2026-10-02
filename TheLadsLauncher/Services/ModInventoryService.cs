@@ -189,6 +189,7 @@ public sealed class ModInventoryService
             if (!running && requested != copies[id].Any(f => !f.Disabled) && status != ModEntryStatus.RetiredCopy)
                 notes.Add(requested ? "Enabled at the next launch" : "Disabled at the next launch");
             notes.AddRange(integrations[id].Select(module => "Lads integration: " + module));
+            if (entry?.ProjectId == ModWelcomeSettings.EssentialProjectId) notes.Add(ModWelcomeSettings.EssentialNote);
             var loadedNow = LoadedNow(id);
             var displayName = entry?.Name ?? info.Name ?? id;
             entries.Add(new(id, displayName, entry?.Name, info.Version, name, file.Path, ownership, status, !file.Disabled, requested,
@@ -208,6 +209,7 @@ public sealed class ModInventoryService
             var notes = new List<string> { requested ? "Downloaded at the next launch" : "Disabled — not downloaded" };
             if (info == null) notes.Add("Its dependencies are checked when it is downloaded");
             notes.AddRange(integrations[entry.ModId].Select(module => "Lads integration: " + module));
+            if (entry.ProjectId == ModWelcomeSettings.EssentialProjectId) notes.Add(ModWelcomeSettings.EssentialNote);
             entries.Add(new(entry.ModId, entry.Name, entry.Name, entry.Version, entry.FileName, null, ModOwnership.Pack,
                 requested ? ModEntryStatus.PendingDownload : ModEntryStatus.NotDownloaded, false, requested, running ? false : null,
                 running && requested, true, null, entry.ProjectId, entry.ProjectUrl, entry.License, info?.Authors ?? Array.Empty<string>(),
