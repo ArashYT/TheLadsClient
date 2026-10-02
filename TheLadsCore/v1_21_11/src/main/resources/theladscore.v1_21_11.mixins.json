@@ -29,6 +29,9 @@
     "ChatMixin",
     "ChatIndicatorMixin",
     "ScreenshotChatMixin",
-    "BorderlessWindowMixin"
+    "BorderlessWindowMixin",
+    "KillBannerStatsMixin",
+    "KillBannerAttackMixin",
+    "KillBannerHudMixin"
   ]
 }
