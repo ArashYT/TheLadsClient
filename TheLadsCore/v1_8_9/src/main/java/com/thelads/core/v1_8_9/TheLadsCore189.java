@@ -62,6 +62,7 @@ public class TheLadsCore189 {
     }
 
     public static final String[] GAMEPLAY_MODULES = {
+        "FarBlockEntities",
         "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
         "RawInput", "BorderlessFullscreen"
