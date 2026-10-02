@@ -1,0 +1,78 @@
+package com.thelads.core.v1_21_11.embedded.emf.mixin.mixins;
+
+
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import com.thelads.core.v1_21_11.embedded.emf.EMF;
+import com.thelads.core.v1_21_11.embedded.emf.config.EMFConfig;
+import com.thelads.core.v1_21_11.embedded.emf.EMFManager;
+import com.thelads.core.v1_21_11.embedded.emf.utils.EMFUtils;
+import com.thelads.core.v1_21_11.embedded.emf.utils.UEntityTypes;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
+
+@Mixin(BlockEntityRenderers.class)
+public class MixinBlockEntityRendererFactories {
+
+    @Unique
+    private static final List<String> emf$renderers = new ArrayList<>();
+
+    @Inject(method = "createEntityRenderers", at = @At(value = "RETURN"))
+    private static void emf$clearMarker(final BlockEntityRendererProvider.Context args, final CallbackInfoReturnable<Map<BlockEntityType<?>, BlockEntityRenderer>> cir) {
+        if (EMF.testForForgeLoadingError()) return;
+        EMFManager.getInstance().currentSpecifiedModelLoading.set("");
+        EMFManager.getInstance().currentBlockEntityTypeLoading = null;
+        if (EMF.config().getConfig().logModelCreationData || EMF.config().getConfig().automaticModelExporting)
+            EMFUtils.log("Identified block entity renderers: " + emf$renderers);
+        emf$renderers.clear();
+    }
+
+    @ModifyArg(method = "createEntityRenderers", at = @At(value = "INVOKE", target = "Ljava/util/Map;forEach(Ljava/util/function/BiConsumer;)V"))
+    private static BiConsumer<BlockEntityType<?>, Object> setEmf$Model(final BiConsumer<BlockEntityType<?>, Object> action) {
+        return (BlockEntityType<?> type, Object idk) -> {
+                //mark which variant is currently specified for use by otherwise identical block entity renderers
+                if (EMF.testForForgeLoadingError()) return;
+
+                EMFManager.getInstance().currentBlockEntityTypeLoading = type;
+
+                // TODO DONT FORGET TO REPLICATE CHANGES IN SPECIAL RENDERERS
+                if (UEntityTypes.ENCHANTING_TABLE.equals(type))
+                    EMFManager.getInstance().currentSpecifiedModelLoading.set("enchanting_book");
+                else if (UEntityTypes.LECTERN.equals(type))
+                    EMFManager.getInstance().currentSpecifiedModelLoading.set("lectern_book");
+                else if (UEntityTypes.CHEST.equals(type))
+                    EMFManager.getInstance().currentSpecifiedModelLoading.set("chest");
+                else if (UEntityTypes.ENDER_CHEST.equals(type))
+                    EMFManager.getInstance().currentSpecifiedModelLoading.set("ender_chest");
+                else if (UEntityTypes.TRAPPED_CHEST.equals(type))
+                    EMFManager.getInstance().currentSpecifiedModelLoading.set("trapped_chest");
+                //todo did deprecation start in 1.21.2?
+                else if (type.builtInRegistryHolder() != null && type.builtInRegistryHolder().unwrapKey().isPresent()) {
+                    Identifier id = type.builtInRegistryHolder().unwrapKey().get().identifier();
+                    if (id.getNamespace().equals("minecraft")) {
+                        EMFManager.getInstance().currentSpecifiedModelLoading.set(id.getPath());
+                    } else {
+                        EMFManager.getInstance().currentSpecifiedModelLoading.set(id.getNamespace() + ":" + id.getPath());
+                    }
+                }
+                emf$renderers.add(EMFManager.getInstance().currentSpecifiedModelLoading.get());
+                if (EMF.config().getConfig().logModelCreationData)
+                    EMFUtils.log("Seeing block entity renderer init for: " + EMFManager.getInstance().currentSpecifiedModelLoading.get());
+
+                // og code
+                action.accept(type, idk);
+            };
+    }
+}

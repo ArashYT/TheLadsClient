@@ -1,0 +1,1717 @@
+package com.thelads.core.v26_2.embedded.emf.models;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
+import org.apache.commons.lang3.tuple.MutablePair;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import com.thelads.core.v26_2.embedded.emf.EMF;
+import com.thelads.core.v26_2.embedded.emf.EMFManager;
+import com.thelads.core.v26_2.embedded.emf.config.EMFConfig;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import net.minecraft.client.model.geom.ModelPart;
+import com.thelads.core.v26_2.embedded.emf.utils.EMFUtils;
+import com.thelads.core.v26_2.embedded.emf.utils.IEMFCuboidDataSupplier;
+import com.thelads.core.v26_2.embedded.emf.utils.IEMFTextureSizeSupplier;
+import com.thelads.core.v26_2.embedded.emf.utils.IEMFUnmodifiedLayerRootGetter;
+import com.thelads.core.v26_2.embedded.etf.ETF;
+
+public class EMFModelMappings {
+
+    public static final Map<String, Map<String, String>> UNKNOWN_MODEL_MAP_CACHE = new ConcurrentHashMap<>();
+    public static final Map<String, Map<String, String>> OPTIFINE_MODEL_MAP_CACHE = new HashMap<>();
+
+    public static final Map<String, String> genericNonPlayerBiped = Map.ofEntries(
+            partMapping("head"),
+            partMapping("headwear", "hat"),
+            partMapping("body"),
+            partMapping("left_arm"),
+            partMapping("right_arm"),
+            partMapping("left_leg"),
+            partMapping("right_leg")
+    );
+
+    static {
+        initOptifineMappings();
+    }
+
+    private static void initOptifineMappings() {
+
+        var genericHorse = Map.ofEntries(
+                  partMapping("body", "body"),
+                  partMapping("head", "head"),
+                  partMapping("tail"),
+                  partMapping("mane"),
+                  partMapping("mouth", "upper_mouth"),
+                  partMapping("left_ear"),
+                  partMapping("right_ear"),
+                  partMapping("neck", "head_parts"),
+                  partMapping("back_left_leg", "left_hind_leg"),
+                  partMapping("back_right_leg", "right_hind_leg"),
+                  partMapping("front_left_leg", "left_front_leg"),
+                  partMapping("front_right_leg", "right_front_leg")
+
+          );
+        var genericHorseSaddle = Map.ofEntries(
+                partMapping("body", "body"),
+                partMapping("head", "head"),
+                partMapping("tail"),
+                partMapping("mane"),
+                partMapping("mouth", "upper_mouth"),
+                partMapping("left_ear"),
+                partMapping("right_ear"),
+                partMapping("neck", "head_parts"),
+                partMapping("back_left_leg", "left_hind_leg"),
+                partMapping("back_right_leg", "right_hind_leg"),
+                partMapping("front_left_leg", "left_front_leg"),
+                partMapping("front_right_leg", "right_front_leg"),
+                partMapping("saddle"),
+                partMapping("headpiece", "head_saddle"),
+                partMapping("noseband", "mouth_saddle_wrap"),
+                partMapping("right_rein", "right_saddle_line"),
+                partMapping("left_rein", "left_saddle_line"),
+                partMapping("right_bit", "right_saddle_mouth"),
+                partMapping("left_bit", "left_saddle_mouth")
+        );
+        var genericPlayerBiped = Map.ofEntries(
+                partMapping("head"),
+                partMapping("headwear", "hat"),
+                partMapping("body"),
+                partMapping("left_arm"),
+                partMapping("right_arm"),
+                partMapping("left_leg"),
+                partMapping("right_leg"),
+                partMapping("ear"),
+                partMapping("left_sleeve"),
+                partMapping("right_sleeve"),
+                partMapping("left_pants"),
+                partMapping("right_pants"),
+                partMapping("jacket"),
+                partMapping("cloak")
+        );
+        var genericPiglinBiped = Map.ofEntries(
+                partMapping("head", "head"),
+                partMapping("headwear", "hat"),
+                partMapping("body"),
+                partMapping("left_arm"),
+                partMapping("right_arm"),
+                partMapping("left_leg"),
+                partMapping("ear"),
+                partMapping("right_leg"),
+                partMapping("left_ear"),
+                partMapping("right_ear"),
+                partMapping("left_sleeve"),
+                partMapping("right_sleeve"),
+                partMapping("left_pants"),
+                partMapping("right_pants"),
+                partMapping("jacket"),
+                partMapping("cloak")
+        );
+        var genericQuadraped = Map.ofEntries(
+                partMapping("head"),
+                partMapping("body"),
+                partMapping("leg1", "right_hind_leg"),
+                partMapping("leg2", "left_hind_leg"),
+                partMapping("leg3", "right_front_leg"),
+                partMapping("leg4", "left_front_leg"));
+        var genericLlama = new HashMap<>(genericQuadraped) {{
+            putAll(Map.ofEntries(
+                    partMapping("chest_left", "left_chest"),
+                    partMapping("chest_right", "right_chest")
+            ));
+        }};
+
+        OptifineMapper.models("villager", "wandering_trader")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("headwear", "hat"),
+                        partMapping("headwear2", "hat_rim"),
+                        partMapping("bodywear", "jacket"),
+                        partMapping("body"),
+                        partMapping("arms"),
+                        partMapping("right_leg"),
+                        partMapping("left_leg"),
+                        partMapping("nose")));
+        OptifineMapper.models("villager_baby")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("headwear", "hat"),
+                        partMapping("headwear2", "hat_rim"),
+                        partMapping("bodywear", "bb_main"),
+                        partMapping("body"),
+                        partMapping("arms"),
+                        partMapping("right_leg"),
+                        partMapping("left_leg"),
+                        partMapping("nose")));
+
+        OptifineMapper.models("iron_golem")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("left_arm"),
+                        partMapping("right_arm"),
+                        partMapping("left_leg"),
+                        partMapping("right_leg")));
+        OptifineMapper.models("spider", "cave_spider")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("neck", "body0"),
+                        partMapping("body", "body1"),
+                        partMapping("leg1", "right_hind_leg"),
+                        partMapping("leg2", "left_hind_leg"),
+                        partMapping("leg3", "right_middle_hind_leg"),
+                        partMapping("leg4", "left_middle_hind_leg"),
+                        partMapping("leg5", "right_middle_front_leg"),
+                        partMapping("leg6", "left_middle_front_leg"),
+                        partMapping("leg7", "right_front_leg"),
+                        partMapping("leg8", "left_front_leg")));
+        OptifineMapper.models("sheep", "cow", "warm_cow", "cold_cow", "mooshroom", "panda", "pig", "cold_pig", "warm_pig", "pig_saddle", "polar_bear", "sheep_wool", "sheep_wool_undercoat")
+                .parts(genericQuadraped);
+        OptifineMapper.models("sheep_baby", "cow_baby", "warm_cow_baby", "cold_cow_baby", "mooshroom_baby", "panda_baby", "pig_baby", "cold_pig_baby", "warm_pig_baby", "pig_baby_saddle", "polar_bear_baby", "sheep_baby_wool", "sheep_baby_wool_undercoat")
+                .parts(genericQuadraped);
+
+        OptifineMapper.models("creeper", "creeper_charge")
+                .parts(genericQuadraped);
+        OptifineMapper.models("inner_armor", "outer_armor", "zombie", "husk", "drowned", "drowned_outer",
+                        "zombie_baby", "husk_baby", "drowned_baby", "drowned_baby_outer",
+                        "enderman", "giant", "skeleton", "stray", "stray_outer", "wither_skeleton", "zombie_pigman", "bogged_outer",
+                        "helmet", "helmet_baby", "chestplate", "chestplate_baby", "leggings", "boots", "boots_baby"
+                        , "helmet", "chestplate", "leggings", "boots", "parched"
+                )
+                .parts(genericNonPlayerBiped);
+        OptifineMapper.models("leggings_baby")
+                .parts(Map.ofEntries(
+                        partMapping("body", "waist"),
+                        partMapping("right_arm"),
+                        partMapping("left_leg"),
+                        partMapping("right_leg")
+                        )
+                );
+        OptifineMapper.models("piglin", "piglin_brute", "zombified_piglin")
+                .parts(genericPiglinBiped);
+        OptifineMapper.models("piglin_baby", "zombified_piglin_baby").parts(
+                Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("headwear", "hat"),
+                        partMapping("body"),
+                        partMapping("left_arm"),
+                        partMapping("right_arm"),
+                        partMapping("left_leg"),
+                        partMapping("ear"),
+                        partMapping("right_leg"),
+                        partMapping("left_ear"),
+                        partMapping("right_ear"),
+                        partMapping("left_ear_r1"),
+                        partMapping("right_ear_r1")
+                )
+        );
+
+        OptifineMapper.models("allay", "vex")
+                .parts(Map.ofEntries(
+                                partMapping("head"),
+                                partMapping("body"),
+                                partMapping("left_arm"),
+                                partMapping("right_arm"),
+                                partMapping("left_wing"),
+                                partMapping("right_wing")
+                        ));
+        OptifineMapper.models("squid", "glow_squid", "squid_baby", "glow_squid_baby")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("tentacle1", "tentacle0"),
+                        partMapping("tentacle2", "tentacle1"),
+                        partMapping("tentacle3", "tentacle2"),
+                        partMapping("tentacle4", "tentacle3"),
+                        partMapping("tentacle5", "tentacle4"),
+                        partMapping("tentacle6", "tentacle5"),
+                        partMapping("tentacle7", "tentacle6"),
+                        partMapping("tentacle8", "tentacle7")
+                ));
+        OptifineMapper.models("ghast")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("tentacle1", "tentacle0"),
+                        partMapping("tentacle2", "tentacle1"),
+                        partMapping("tentacle3", "tentacle2"),
+                        partMapping("tentacle4", "tentacle3"),
+                        partMapping("tentacle5", "tentacle4"),
+                        partMapping("tentacle6", "tentacle5"),
+                        partMapping("tentacle7", "tentacle6"),
+                        partMapping("tentacle8", "tentacle7"),
+                        partMapping("tentacle9", "tentacle8")
+                ));
+        OptifineMapper.models("happy_ghast", "happy_ghast_ropes")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("tentacle1", "tentacle0"),
+                        partMapping("tentacle2", "tentacle1"),
+                        partMapping("tentacle3", "tentacle2"),
+                        partMapping("tentacle4", "tentacle3"),
+                        partMapping("tentacle5", "tentacle4"),
+                        partMapping("tentacle6", "tentacle5"),
+                        partMapping("tentacle7", "tentacle6"),
+                        partMapping("tentacle8", "tentacle7"),
+                        partMapping("tentacle9", "tentacle8")
+                ));
+        OptifineMapper.models("happy_ghast_baby", "happy_ghast_baby_ropes")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("inner_body"),
+                        partMapping("tentacle1", "tentacle0"),
+                        partMapping("tentacle2", "tentacle1"),
+                        partMapping("tentacle3", "tentacle2"),
+                        partMapping("tentacle4", "tentacle3"),
+                        partMapping("tentacle5", "tentacle4"),
+                        partMapping("tentacle6", "tentacle5"),
+                        partMapping("tentacle7", "tentacle6"),
+                        partMapping("tentacle8", "tentacle7"),
+                        partMapping("tentacle9", "tentacle8")
+                ));
+
+        OptifineMapper.models("happy_ghast_harness", "happy_ghast_baby_harness")
+                .parts(Map.ofEntries(
+                        partMapping("body", "harness"),
+                        partMapping("goggles")
+                ));
+        OptifineMapper.models("wolf", "wolf_collar", "wolf_armor")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("head"),
+                        partMapping("tail"),
+                        partMapping("mane", "upper_body"),
+                        partMapping("leg1", "right_hind_leg"),
+                        partMapping("leg2", "left_hind_leg"),
+                        partMapping("leg3", "right_front_leg"),
+                        partMapping("leg4", "left_front_leg")
+                ));
+        OptifineMapper.models("wolf_baby", "wolf_baby_collar", "wolf_baby_armor")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("head"),
+                        partMapping("tail"),
+                        partMapping("leg1", "right_hind_leg"),
+                        partMapping("leg2", "left_hind_leg"),
+                        partMapping("leg3", "right_front_leg"),
+                        partMapping("leg4", "left_front_leg")
+                ));
+        OptifineMapper.models("shulker_bullet")
+                .parts(Map.ofEntries(
+                        partMapping("bullet", "main")
+                ));
+        OptifineMapper.models("llama_spit")
+                .parts(Map.ofEntries(
+                        partMapping("body", "main")
+                ));
+        OptifineMapper.models("wither_skull", "head_zombie", "head_wither_skeleton", "head_skeleton", "head_player", "head_creeper")
+                .parts(Map.ofEntries(
+                                partMapping("head")
+                ));
+        OptifineMapper.models("head_piglin")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("left_ear"),
+                        partMapping("right_ear")
+                ));
+        OptifineMapper.models("head_dragon")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("jaw")
+                ));
+
+        OptifineMapper.models("camel", "camel_husk")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("hump"),
+                        partMapping("tail"),
+                        partMapping("head"),
+                        partMapping("left_ear"),
+                        partMapping("right_ear"),
+                        partMapping("back_left_leg", "left_hind_leg"),
+                        partMapping("back_right_leg", "right_hind_leg"),
+                        partMapping("front_left_leg", "left_front_leg"),
+                        partMapping("front_right_leg", "right_front_leg")
+                ));
+        OptifineMapper.models("camel_baby")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("tail"),
+                        partMapping("head"),
+                        partMapping("left_ear"),
+                        partMapping("right_ear"),
+                        partMapping("back_left_leg", "left_hind_leg"),
+                        partMapping("back_right_leg", "right_hind_leg"),
+                        partMapping("front_left_leg", "left_front_leg"),
+                        partMapping("front_right_leg", "right_front_leg")
+                ));
+
+        OptifineMapper.models( "camel_saddle", "camel_baby_saddle", "camel_husk_saddle", "camel_husk_baby_saddle")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("hump"),
+                        partMapping("tail"),
+                        partMapping("head"),
+                        partMapping("left_ear"),
+                        partMapping("right_ear"),
+                        partMapping("back_left_leg", "left_hind_leg"),
+                        partMapping("back_right_leg", "right_hind_leg"),
+                        partMapping("front_left_leg", "left_front_leg"),
+                        partMapping("front_right_leg", "right_front_leg"),
+                        partMapping("saddle"),
+                        partMapping("reins"),
+                        partMapping("bridle")
+                ));
+        OptifineMapper.models("sniffer", "sniffer_baby")
+                .parts(Map.ofEntries(
+                        partMapping("bone"),
+                        partMapping("body"),
+                        partMapping("front_right_leg", "right_front_leg"),
+                        partMapping("middle_right_leg", "right_mid_leg"),
+                        partMapping("back_right_leg", "right_hind_leg"),
+                        partMapping("front_left_leg", "left_front_leg"),
+                        partMapping("middle_left_leg", "left_mid_leg"),
+                        partMapping("back_left_leg", "left_hind_leg"),
+                        partMapping("head"),
+                        partMapping("left_ear"),
+                        partMapping("right_ear"),
+                        partMapping("nose"),
+                        partMapping("lower_beak")
+                ));
+        OptifineMapper.models("chest", "ender_chest", "trapped_chest", "chest_left", "trapped_chest_left", "chest_right", "trapped_chest_right")
+                .parts(Map.ofEntries(
+                        partMapping("lid"),
+                        partMapping("base", "bottom"),
+                        partMapping("knob", "lock")
+                ));
+        OptifineMapper.models("double_chest_right", "trapped_double_chest_right", "ender_double_chest_right")
+                .parts(Map.ofEntries(
+                        partMapping("lid"),
+                        partMapping("base", "bottom"),
+                        partMapping("knob", "lock")
+                ));
+        OptifineMapper.models("double_chest_left", "trapped_double_chest_left", "ender_double_chest_left")
+                .parts(Map.ofEntries(
+                        partMapping("lid"),
+                        partMapping("base", "bottom"),
+                        partMapping("knob", "lock")
+                ));
+
+        OptifineMapper.models("horse", "horse_armor", "skeleton_horse", "skeleton_horse_armor", "zombie_horse", "zombie_horse_armor")
+                .parts(genericHorse);
+        OptifineMapper.models("donkey", "mule")
+                .parts(new HashMap<>(genericHorse) {{
+                    putAll(Map.ofEntries(
+                            partMapping("right_chest"),
+                            partMapping("left_chest"),
+                            partMapping("body")
+                    ));
+                }});
+        OptifineMapper.models("horse_saddle", "mule_saddle", "donkey_saddle", "skeleton_horse_saddle", "zombie_horse_saddle")
+                .parts(new HashMap<>(genericHorseSaddle));
+        OptifineMapper.models("horse_baby", "skeleton_horse_baby", "zombie_horse_baby").parts(Map.ofEntries(
+                partMapping("body"),
+                partMapping("head"),
+                partMapping("tail"),
+                partMapping("left_ear"),
+                partMapping("right_ear"),
+                partMapping("neck", "head_parts"),
+                partMapping("back_left_leg", "left_hind_leg"),
+                partMapping("back_right_leg", "right_hind_leg"),
+                partMapping("front_left_leg", "left_front_leg"),
+                partMapping("front_right_leg", "right_front_leg")
+                )
+        );
+        OptifineMapper.models("donkey_baby", "mule_baby").parts(Map.ofEntries(
+                partMapping("body"),
+                partMapping("head"),
+                partMapping("tail"),
+                partMapping("left_ear"),
+                partMapping("right_ear"),
+                partMapping("neck", "head_parts"),
+                partMapping("back_left_leg", "left_hind_leg"),
+                partMapping("back_right_leg", "right_hind_leg"),
+                partMapping("front_left_leg", "left_front_leg"),
+                partMapping("front_right_leg", "right_front_leg"),
+                partMapping("right_chest"),
+                partMapping("left_chest")
+                )
+        );
+
+
+        OptifineMapper.models("zombie_villager", "zombie_villager_baby")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("headwear", "hat"),
+                        partMapping("body"),
+                        partMapping("left_arm"),
+                        partMapping("right_arm"),
+                        partMapping("left_leg"),
+                        partMapping("right_leg")
+                ));
+        OptifineMapper.models("evoker", "illusioner", "pillager", "vindicator")
+                .parts(Map.ofEntries(
+                        partMapping("head", "head"),
+                        partMapping("headwear", "hat"),
+                        partMapping("body"),
+                        partMapping("nose"),
+                        partMapping("arms"),
+                        partMapping("left_arm"),
+                        partMapping("right_arm"),
+                        partMapping("left_leg"),
+                        partMapping("right_leg")
+                ));
+        OptifineMapper.models("llama", "llama_decor", "trader_llama", "trader_llama_decor")
+                .parts(genericLlama);
+        OptifineMapper.models("llama_baby", "llama_baby_decor", "trader_llama_baby", "trader_llama_baby_decor")
+                .parts(genericLlama);
+        OptifineMapper.models("armor_stand", "armor_stand_small")
+                .parts(new HashMap<>(genericNonPlayerBiped) {{
+                    putAll(Map.ofEntries(
+                            partMapping("right", "right_body_stick"),
+                            partMapping("left", "left_body_stick"),
+                            partMapping("waist", "shoulder_stick"),//todo probably swap with body
+                            partMapping("base", "base_plate")
+                    ));
+                }});
+        OptifineMapper.models("axolotl")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("leg1", "right_hind_leg"),
+                        partMapping("leg2", "left_hind_leg"),
+                        partMapping("leg3", "right_front_leg"),
+                        partMapping("leg4", "left_front_leg"),
+                        partMapping("right_gills"),
+                        partMapping("top_gills"),
+                        partMapping("left_gills"),
+                        partMapping("tail")
+                ));
+        OptifineMapper.models("axolotl_baby")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("leg1", "right_hind_leg"),
+                        partMapping("leg2", "left_hind_leg"),
+                        partMapping("leg3", "right_front_leg"),
+                        partMapping("leg4", "left_front_leg"),
+                        partMapping("right_gills"),
+                        partMapping("top_gills"),
+                        partMapping("left_gills"),
+                        partMapping("tail")
+                ));
+
+
+        OptifineMapper.models("bat")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("head"),
+                        partMapping("right_wing"),
+                        partMapping("left_wing"),
+                        partMapping("outer_right_wing", "right_wing_tip"),
+                        partMapping("outer_left_wing", "left_wing_tip"),
+                        //feet added to new bat
+                        partMapping("feet")
+                ));
+        OptifineMapper.models("bee")
+                .parts(Map.ofEntries(
+                        partMapping("body", "bone"),
+                        partMapping("torso", "body"),
+                        partMapping("right_wing"),
+                        partMapping("left_wing"),
+                        partMapping("front_legs"),
+                        partMapping("middle_legs"),
+                        partMapping("back_legs"),
+                        partMapping("stinger"),
+                        partMapping("left_antenna"),
+                        partMapping("right_antenna")
+                ));
+        OptifineMapper.models("bee_baby")
+                .parts(Map.ofEntries(
+                        partMapping("body", "bone"),
+                        partMapping("torso", "body"),
+                        partMapping("stinger"),
+                        partMapping("right_wing"),
+                        partMapping("left_wing"),
+                        partMapping("front_legs"),
+                        partMapping("middle_legs"),
+                        partMapping("back_legs")
+                ));
+        OptifineMapper.models("blaze")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("stick1", "part0"),
+                        partMapping("stick2", "part1"),
+                        partMapping("stick3", "part2"),
+                        partMapping("stick4", "part3"),
+                        partMapping("stick5", "part4"),
+                        partMapping("stick6", "part5"),
+                        partMapping("stick7", "part6"),
+                        partMapping("stick8", "part7"),
+                        partMapping("stick9", "part8"),
+                        partMapping("stick10", "part9"),
+                        partMapping("stick11", "part10"),
+                        partMapping("stick12", "part11")
+                ));
+        OptifineMapper.models("cat", "cat_collar", "ocelot")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("tail", "tail1"),
+                        partMapping("tail2"),
+                        partMapping("back_left_leg", "left_hind_leg"),
+                        partMapping("back_right_leg", "right_hind_leg"),
+                        partMapping("front_left_leg", "left_front_leg"),
+                        partMapping("front_right_leg", "right_front_leg")
+                ));
+        OptifineMapper.models("cat_baby", "cat_baby_collar", "ocelot_baby")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("tail", "tail1"),
+                        partMapping("tail2"),
+                        partMapping("back_left_leg", "left_hind_leg"),
+                        partMapping("back_right_leg", "right_hind_leg"),
+                        partMapping("front_left_leg", "left_front_leg"),
+                        partMapping("front_right_leg", "right_front_leg")
+                ));
+
+        OptifineMapper.models("chicken", "warm_chicken", "cold_chicken")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("right_leg"),
+                        partMapping("left_leg"),
+                        partMapping("right_wing"),
+                        partMapping("left_wing"),
+                        partMapping("bill", "beak"),
+                        partMapping("chin", "red_thing")
+                ));
+        OptifineMapper.models("chicken_baby", "warm_chicken_baby", "cold_chicken_baby")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("right_leg"),
+                        partMapping("left_leg"),
+                        partMapping("right_wing"),
+                        partMapping("left_wing")
+                ));
+        OptifineMapper.models("cod")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("head"),
+                        partMapping("nose"),
+                        partMapping("tail", "tail_fin"),
+                        partMapping("fin_right", "right_fin"),
+                        partMapping("fin_left", "left_fin"),
+                        partMapping("fin_back", "top_fin")
+                ));
+        OptifineMapper.models("dolphin", "dolphin_baby")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("tail"),
+                        partMapping("tail_fin"),
+                        partMapping("head"),
+                        partMapping("right_fin"),
+                        partMapping("left_fin"),
+                        partMapping("back_fin")
+                ));
+        OptifineMapper.models("elder_guardian", "guardian")
+                .parts(Map.ofEntries(
+                        // guardian                 body, eye, spine1 ... spine12, tail1 ... tail3
+                        partMapping("tail1", "tail0"),
+                        partMapping("tail2", "tail1"),
+                        partMapping("tail3", "tail2"),
+                        partMapping("body", "head"),
+                        partMapping("eye"),
+
+                        partMapping("spine1", "spike0"),
+                        partMapping("spine2", "spike1"),
+                        partMapping("spine3", "spike2"),
+                        partMapping("spine4", "spike3"),
+                        partMapping("spine5", "spike4"),
+                        partMapping("spine6", "spike5"),
+                        partMapping("spine7", "spike6"),
+                        partMapping("spine8", "spike7"),
+                        partMapping("spine9", "spike8"),
+                        partMapping("spine10", "spike9"),
+                        partMapping("spine11", "spike10"),
+                        partMapping("spine12", "spike11")
+                ));
+        OptifineMapper.models("endermite")
+                .parts(Map.ofEntries(
+                        partMapping("body1", "segment0"),
+                        partMapping("body2", "segment1"),
+                        partMapping("body3", "segment2"),
+                        partMapping("body4", "segment3")
+                ));
+        OptifineMapper.models("evoker_fangs")
+                .parts(Map.ofEntries(
+                        partMapping("base"),
+                        partMapping("upper_jaw"),
+                        partMapping("lower_jaw")
+                ));
+        OptifineMapper.models("fox", "fox_baby")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("leg1", "right_hind_leg"),
+                        partMapping("leg2", "left_hind_leg"),
+                        partMapping("leg3", "right_front_leg"),
+                        partMapping("leg4", "left_front_leg"),
+                        partMapping("tail")
+                ));
+        OptifineMapper.models("frog")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("left_leg"),
+                        partMapping("right_leg"),
+                        partMapping("croaking_body"),
+                        partMapping("left_arm"),
+                        partMapping("right_arm"),
+                        partMapping("tongue"),
+                        partMapping("eyes")
+                ));
+        OptifineMapper.models("goat", "goat_baby")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("leg1", "right_hind_leg"),
+                        partMapping("leg2", "left_hind_leg"),
+                        partMapping("leg3", "right_front_leg"),
+                        partMapping("leg4", "left_front_leg"),
+                        partMapping("left_horn"),
+                        partMapping("right_horn"),
+                        partMapping("nose")
+                ));
+        OptifineMapper.models("hoglin", "zoglin")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("back_right_leg", "right_hind_leg"),
+                        partMapping("back_left_leg", "left_hind_leg"),
+                        partMapping("front_right_leg", "right_front_leg"),
+                        partMapping("front_left_leg", "left_front_leg"),
+                        partMapping("mane"),
+                        partMapping("left_ear"),
+                        partMapping("right_ear")
+                ));
+        OptifineMapper.models("hoglin_baby", "zoglin_baby")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("back_right_leg", "right_hind_leg"),
+                        partMapping("back_left_leg", "left_hind_leg"),
+                        partMapping("front_right_leg", "right_front_leg"),
+                        partMapping("front_left_leg", "left_front_leg"),
+                        partMapping("left_ear"),
+                        partMapping("right_ear")
+                ));
+        OptifineMapper.models("magma_cube")
+                .parts(Map.ofEntries(
+                        partMapping("core", "inside_cube"),
+                        partMapping("segment1", "cube0"),
+                        partMapping("segment2", "cube1"),
+                        partMapping("segment3", "cube2"),
+                        partMapping("segment4", "cube3"),
+                        partMapping("segment5", "cube4"),
+                        partMapping("segment6", "cube5"),
+                        partMapping("segment7", "cube6"),
+                        partMapping("segment8", "cube7")
+                ));
+        OptifineMapper.models("phantom")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("head"),
+                        partMapping("tail", "tail_base"),
+                        partMapping("tail2", "tail_tip"),
+                        partMapping("left_wing", "left_wing_base"),
+                        partMapping("right_wing", "right_wing_base"),
+                        partMapping("left_wing_tip"),
+                        partMapping("right_wing_tip")
+                ));
+        OptifineMapper.models("parrot")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("tail"),
+                        partMapping("left_wing"),
+                        partMapping("right_wing"),
+                        partMapping("left_leg"),
+                        partMapping("right_leg")
+                ));
+        OptifineMapper.models("puffer_fish_big")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("fin_right", "right_blue_fin"),
+                        partMapping("fin_left", "left_blue_fin"),
+                        partMapping("spikes_front_top", "top_front_fin"),
+                        partMapping("spikes_middle_top", "top_middle_fin"),
+                        partMapping("spikes_back_top", "top_back_fin"),
+                        partMapping("spikes_front_right", "right_front_fin"),
+                        partMapping("spikes_front_left", "left_front_fin"),
+                        partMapping("spikes_front_bottom", "bottom_front_fin"),
+                        partMapping("spikes_middle_bottom", "bottom_middle_fin"),
+                        partMapping("spikes_back_bottom", "bottom_back_fin"),
+                        partMapping("spikes_back_right", "right_back_fin"),
+                        partMapping("spikes_back_left", "left_back_fin")
+                ));
+        OptifineMapper.models("puffer_fish_medium")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("fin_right", "right_blue_fin"),
+                        partMapping("fin_left", "left_blue_fin"),
+                        partMapping("spikes_front_top", "top_front_fin"),
+                        partMapping("spikes_back_top", "top_back_fin"),
+                        partMapping("spikes_front_right", "right_front_fin"),
+                        partMapping("spikes_front_left", "left_front_fin"),
+                        partMapping("spikes_front_bottom", "bottom_front_fin"),
+                        partMapping("spikes_back_bottom", "bottom_back_fin"),
+                        partMapping("spikes_back_right", "right_back_fin"),
+                        partMapping("spikes_back_left", "left_back_fin")
+                ));
+        OptifineMapper.models("puffer_fish_small")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("fin_right", "right_fin"),
+                        partMapping("fin_left", "left_fin"),
+                        partMapping("eye_right", "right_eye"),
+                        partMapping("eye_left", "left_eye"),
+                        partMapping("tail", "back_fin")
+                ));
+        OptifineMapper.models("rabbit")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("left_foot", "left_haunch"),
+                        partMapping("right_foot", "right_haunch"),
+                        partMapping("left_thigh", "left_hind_leg"),
+                        partMapping("right_thigh", "right_hind_leg"),
+                        partMapping("left_arm", "left_front_leg"),
+                        partMapping("right_arm", "right_front_leg"),
+                        partMapping("head"),
+                        partMapping("frontlegs"),
+                        partMapping("backlegs"),
+                        partMapping("right_ear"),
+                        partMapping("left_ear"),
+                        partMapping("tail")
+                ));
+        OptifineMapper.models("rabbit_baby")
+                .parts(Map.ofEntries(
+                        partMapping("body", "body_r1"),
+                        partMapping("left_foot", "left_haunch"),
+                        partMapping("right_foot", "right_haunch"),
+                        partMapping("left_thigh", "left_hind_leg"),
+                        partMapping("right_thigh", "right_hind_leg"),
+                        partMapping("left_arm", "left_front_leg"),
+                        partMapping("right_arm", "right_front_leg"),
+                        partMapping("head"),
+                        partMapping("frontlegs"),
+                        partMapping("backlegs"),
+                        partMapping("right_ear"),
+                        partMapping("left_ear"),
+                        partMapping("tail", "tail_r1")
+                ));
+        OptifineMapper.models("ravager")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("leg1", "right_hind_leg"),
+                        partMapping("leg2", "left_hind_leg"),
+                        partMapping("leg3", "right_front_leg"),
+                        partMapping("leg4", "left_front_leg"),
+                        partMapping("jaw", "mouth"),
+                        partMapping("neck")
+                ));
+        OptifineMapper.models("salmon", "salmon_large", "salmon_small")
+                .parts(Map.ofEntries(
+                        partMapping("body_front"),
+                        partMapping("body_back"),
+                        partMapping("head"),
+                        partMapping("fin_back_1", "top_front_fin"),
+                        partMapping("fin_back_2", "top_back_fin"),
+                        partMapping("tail", "back_fin"),
+                        partMapping("fin_right", "right_fin"),
+                        partMapping("fin_left", "left_fin")
+                ));
+        OptifineMapper.models("shulker")
+                .parts(Map.ofEntries(
+                        partMapping("lid"),
+                        partMapping("base"),
+                        partMapping("head")
+                ));
+        OptifineMapper.models("shulker_box")
+                .parts(Map.ofEntries(
+                        partMapping("lid"),
+                        partMapping("base")
+                ));
+        OptifineMapper.models("silverfish")
+                .parts(Map.ofEntries(
+                        partMapping("body1", "segment0"),
+                        partMapping("body2", "segment1"),
+                        partMapping("body3", "segment2"),
+                        partMapping("body4", "segment3"),
+                        partMapping("body5", "segment4"),
+                        partMapping("body6", "segment5"),
+                        partMapping("body7", "segment6"),
+                        partMapping("wing1", "layer0"),
+                        partMapping("wing2", "layer1"),
+                        partMapping("wing3", "layer2")
+                ));
+        OptifineMapper.models("slime")
+                .parts(Map.ofEntries(
+                        partMapping("body", "cube"),
+                        partMapping("left_eye"),
+                        partMapping("right_eye"),
+                        partMapping("mouth")
+                ));
+        OptifineMapper.models("slime_outer")
+                .parts(Map.ofEntries(
+                        partMapping("body", "cube")
+                ));
+        OptifineMapper.models("snow_golem")
+                .parts(Map.ofEntries(
+                        partMapping("body", "upper_body"),
+                        partMapping("body_bottom", "lower_body"),
+                        partMapping("head"),
+                        partMapping("left_hand", "left_arm"),
+                        partMapping("right_hand", "right_arm")
+                ));
+        OptifineMapper.models("strider", "strider_saddle")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("right_leg"),
+                        partMapping("left_leg"),
+                        partMapping("hair_right_top", "right_top_bristle"),
+                        partMapping("hair_right_middle", "right_middle_bristle"),
+                        partMapping("hair_right_bottom", "right_bottom_bristle"),
+                        partMapping("hair_left_top", "left_top_bristle"),
+                        partMapping("hair_left_middle", "left_middle_bristle"),
+                        partMapping("hair_left_bottom", "left_bottom_bristle")
+                ));
+        OptifineMapper.models("tadpole")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("tail")
+                ));
+        OptifineMapper.models("tropical_fish_a", "tropical_fish_pattern_a")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("tail"),
+                        partMapping("fin_right", "right_fin"),
+                        partMapping("fin_left", "left_fin"),
+                        partMapping("fin_top", "top_fin")
+                ));
+        OptifineMapper.models("tropical_fish_b", "tropical_fish_pattern_b")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("tail"),
+                        partMapping("fin_right", "right_fin"),
+                        partMapping("fin_left", "left_fin"),
+                        partMapping("fin_top", "top_fin"),
+                        partMapping("fin_bottom", "bottom_fin")
+                ));
+        OptifineMapper.models("turtle")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("body2", "egg_belly"),
+                        partMapping("leg1", "right_hind_leg"),
+                        partMapping("leg2", "left_hind_leg"),
+                        partMapping("leg3", "right_front_leg"),
+                        partMapping("leg4", "left_front_leg")
+                ));
+        OptifineMapper.models("turtle_baby")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("body"),
+                        partMapping("leg1", "right_hind_leg"),
+                        partMapping("leg2", "left_hind_leg"),
+                        partMapping("leg3", "right_front_leg"),
+                        partMapping("leg4", "left_front_leg")
+                ));
+        OptifineMapper.models("warden", "warden_bioluminescent", "warden_heart", "warden_pulsating_spots", "warden_tendrils")
+                .parts(Map.ofEntries(
+                        partMapping("body", "bone"),
+                        partMapping("torso", "body"),
+                        partMapping("head"),
+                        partMapping("left_leg"),
+                        partMapping("right_leg"),
+                        partMapping("left_arm"),
+                        partMapping("right_arm"),
+                        partMapping("left_tendril"),
+                        partMapping("right_tendril"),
+                        partMapping("left_ribcage"),
+                        partMapping("right_ribcage")
+                ));
+        OptifineMapper.models("witch")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("headwear", "hat"),
+                        partMapping("headwear2", "hat_rim"),
+                        partMapping("bodywear", "jacket"),
+                        partMapping("body"),
+                        partMapping("arms"),
+                        partMapping("right_leg"),
+                        partMapping("left_leg"),
+                        partMapping("nose"),
+                        partMapping("mole")
+                ));
+        OptifineMapper.models("wither", "wither_armor")
+                .parts(Map.ofEntries(
+                        partMapping("body1", "shoulders"),
+                        partMapping("body2", "ribcage"),
+                        partMapping("body3", "tail"),
+                        partMapping("head1", "center_head"),
+                        partMapping("head2", "right_head"),
+                        partMapping("head3", "left_head")
+                ));
+
+        OptifineMapper.models("player", "player_slim")
+                .parts(genericPlayerBiped);
+
+        OptifineMapper.models("boat")
+                .parts(Map.ofEntries(
+                        partMapping("bottom"),//todo check
+                        partMapping("back"),
+                        partMapping("front"),
+                        partMapping("right"),
+                        partMapping("left"),
+                        partMapping("paddle_left", "left_paddle"),
+                        partMapping("paddle_right", "right_paddle")
+                ));
+        OptifineMapper.models("banner")
+                .parts(Map.ofEntries(
+                        partMapping("slate", "flag"),
+                        partMapping("stand", "pole"),
+                        partMapping("top", "bar")
+                ));
+        OptifineMapper.models("bed_head")
+                .parts(Map.ofEntries(
+                        partMapping("head", "main"),
+                        partMapping("leg1", "left_leg"),//todo check
+                        partMapping("leg2", "right_leg")//todo check
+                ));
+        OptifineMapper.models("bed_foot")
+                .parts(Map.ofEntries(
+                        partMapping("foot", "main"),
+                        partMapping("leg3", "left_leg"),//todo check
+                        partMapping("leg4", "right_leg")//todo check
+                ));
+        OptifineMapper.models("bell")
+                .parts(Map.ofEntries(
+                        partMapping("body", "bell_body"),
+                        partMapping("base", "bell_base")
+                ));
+        OptifineMapper.models("chest_boat")
+                .parts(Map.ofEntries(
+                        partMapping("bottom"),//todo check
+                        partMapping("back"),
+                        partMapping("front"),
+                        partMapping("right"),
+                        partMapping("left"),
+                        partMapping("paddle_left", "left_paddle"),
+                        partMapping("paddle_right", "right_paddle"),
+
+                        partMapping("chest_base", "chest_bottom"),
+                        partMapping("chest_lid"),
+                        partMapping("chest_knob", "chest_lock")
+                ));
+        OptifineMapper.models("raft")
+                .parts(Map.ofEntries(
+                        partMapping("bottom"),
+                        partMapping("paddle_left", "left_paddle"),
+                        partMapping("paddle_right", "right_paddle")
+                ));
+        OptifineMapper.models("chest_raft")
+                .parts(Map.ofEntries(
+                        partMapping("bottom"),
+                        partMapping("paddle_left", "left_paddle"),
+                        partMapping("paddle_right", "right_paddle"),
+
+                        partMapping("chest_base", "chest_bottom"),
+                        partMapping("chest_lid"),
+                        partMapping("chest_knob", "chest_lock")
+                ));
+        OptifineMapper.models("minecart", "chest_minecart", "command_block_minecart", "spawner_minecart", "tnt_minecart", "furnace_minecart", "hopper_minecart")
+                .parts(
+                        Map.ofEntries(
+                                partMapping("bottom"),
+                                partMapping("back"),
+                                partMapping("front"),
+                                partMapping("right"),
+                                partMapping("left")
+                        ));
+        OptifineMapper.models("conduit_cage")
+                .parts(Map.ofEntries(partMapping("cage", "shell")));
+        OptifineMapper.models("conduit_eye")
+                .parts(Map.ofEntries(partMapping("eye")));
+        OptifineMapper.models("conduit_shell")
+                .parts(Map.ofEntries(partMapping("base", "shell")));
+        OptifineMapper.models("conduit_wind")
+                .parts(Map.ofEntries(partMapping("wind")));
+        OptifineMapper.models("decorated_pot_base")
+                .parts(Map.ofEntries(
+                        partMapping("neck"),
+                        partMapping("top"),
+                        partMapping("bottom")
+                ));
+        OptifineMapper.models("decorated_pot_sides")
+                .parts(Map.ofEntries(
+                        partMapping("front"),
+                        partMapping("back"),
+                        partMapping("left"),
+                        partMapping("right")
+                ));
+        OptifineMapper.models("book")
+                .parts(Map.ofEntries(//yes the left right swap is correct to optifine :/
+                        partMapping("cover_left", "right_lid"),
+                        partMapping("cover_right", "left_lid"),
+                        partMapping("pages_left", "right_pages"),
+                        partMapping("pages_right", "left_pages"),
+                        partMapping("flipping_page_right", "flip_page1"),
+                        partMapping("flipping_page_left", "flip_page2"),
+                        partMapping("book_spine", "seam")
+                ));
+
+        OptifineMapper.models("hanging_sign")
+                .parts(Map.ofEntries(
+                        partMapping("board"),
+                        partMapping("plank"),
+                        partMapping("chains", "normalChains"),
+                        partMapping("chain_left1", "chainL1"),
+                        partMapping("chain_left2", "chainL2"),
+                        partMapping("chain_right1", "chainR1"),
+                        partMapping("chain_right2", "chainR2"),
+                        partMapping("chains_v", "vChains")
+                ));
+        OptifineMapper.models("lead_knot")
+                .parts(Map.ofEntries(
+                        partMapping("knot")
+                ));
+        OptifineMapper.models("spin_attack")
+                .parts(Map.ofEntries(
+                        partMapping("box1", "box0"),
+                        partMapping("box2", "box1")
+                ));
+        OptifineMapper.models("sign")
+                .parts(Map.ofEntries(
+                        partMapping("board", "root"),
+                        partMapping("stick")
+                ));
+        OptifineMapper.models("wall_sign")
+                .parts(Map.ofEntries(
+                        partMapping("board", "root")
+                ));
+        OptifineMapper.models("trident")
+                .parts(Map.ofEntries(
+                        partMapping("body", "pole")
+                        , partMapping("base"),
+                        partMapping("left_spike"),
+                        partMapping("middle_spike"),
+                        partMapping("right_spike")
+                ));
+
+        OptifineMapper.models("shield")
+                .parts(Map.ofEntries(
+                        partMapping("plate"),
+                        partMapping("handle")
+                ));
+        OptifineMapper.models("breeze", "breeze_eyes", "breeze_wind")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("rods"),
+                        partMapping("head"),
+                        partMapping("wind_body"),
+                        partMapping("wind_middle", "wind_mid"),
+                        partMapping("wind_bottom"),
+                        partMapping("wind_top")
+                ));
+
+        OptifineMapper.models("wind_charge","breeze_wind_charge")
+                .parts(Map.ofEntries(
+//                        partMapping("core", "projectile"),//maybe "bone"???
+                        partMapping("wind"),
+//                        partMapping("cube1", "cube_r1"),
+//                        partMapping("cube2", "cube_r2"),
+                        partMapping("charge", "wind_charge")
+                ));
+
+        OptifineMapper.models("bogged").parts(
+                new HashMap<>(genericNonPlayerBiped) {{
+                    put("mushrooms","mushrooms");
+                }});
+
+        OptifineMapper.models("player_cape")
+                .parts(Map.ofEntries(partMapping("cape")));
+        OptifineMapper.models("player_ears")
+                .parts(Map.ofEntries(partMapping("left_ear"), partMapping("right_ear")));
+        OptifineMapper.models("dragon")
+                .parts(Map.ofEntries(
+                        partMapping("head"),
+                        partMapping("jaw", "jaw"),
+                        partMapping("body", "body"),
+
+                        partMapping("neck1", "neck0"),
+                        partMapping("neck2", "neck1"),
+                        partMapping("neck3", "neck2"),
+                        partMapping("neck4", "neck3"),
+                        partMapping("neck5", "neck4"),
+
+                        partMapping("tail1", "tail0"),
+                        partMapping("tail2", "tail1"),
+                        partMapping("tail3", "tail2"),
+                        partMapping("tail4", "tail3"),
+                        partMapping("tail5", "tail4"),
+                        partMapping("tail6", "tail5"),
+                        partMapping("tail7", "tail6"),
+                        partMapping("tail8", "tail7"),
+                        partMapping("tail9", "tail8"),
+                        partMapping("tail10", "tail9"),
+                        partMapping("tail11", "tail10"),
+                        partMapping("tail12", "tail11"),
+
+                        partMapping("left_wing"),
+                        partMapping("left_wing_tip", "left_wing_tip"),
+                        partMapping("right_wing"),
+                        partMapping("right_wing_tip", "right_wing_tip"),
+
+                        partMapping("front_left_leg", "left_front_leg"),
+                        partMapping("front_left_shin", "left_front_leg_tip"),
+                        partMapping("front_left_foot", "left_front_foot"),
+
+                        partMapping("back_left_leg", "left_hind_leg"),
+                        partMapping("back_left_shin", "left_hind_leg_tip"),
+                        partMapping("back_left_foot", "left_hind_foot"),
+
+                        partMapping("front_right_leg", "right_front_leg"),
+                        partMapping("front_right_shin", "right_front_leg_tip"),
+                        partMapping("front_right_foot", "right_front_foot"),
+
+                        partMapping("back_right_leg", "right_hind_leg"),
+                        partMapping("back_right_shin", "right_hind_leg_tip"),
+                        partMapping("back_right_foot", "right_hind_foot")
+                ));
+        OptifineMapper.models("end_crystal")
+                .parts(Map.ofEntries(
+                        partMapping("cube"),
+                        partMapping("inner_glass"),
+                        partMapping("outer_glass"),
+                        partMapping("base")
+                ));
+        OptifineMapper.models("armadillo")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("head"),
+                        partMapping("left_ear"),
+                        partMapping("right_ear"),
+                        partMapping("left_ear_cube"),
+                        partMapping("right_ear_cube"),
+                        partMapping("back_left_leg","left_hind_leg"),
+                        partMapping("back_right_leg","right_hind_leg"),
+                        partMapping("front_left_leg","left_front_leg"),
+                        partMapping("front_right_leg","right_front_leg"),
+                        partMapping("cube"),
+                        partMapping("tail")
+                ));
+
+        OptifineMapper.models("spectral_arrow", "arrow")
+                .parts(Map.ofEntries(
+                        partMapping("back"),
+                        partMapping("cross_1"),
+                        partMapping("cross_2")
+                ));
+        OptifineMapper.models( "bee_stinger")
+                .parts(Map.ofEntries(
+                        partMapping("cross_1"),
+                        partMapping("cross_2")
+                ));
+
+        OptifineMapper.models("boat_water_patch")
+                .parts(Map.ofEntries(partMapping("water_patch", "water_patch")));//todo check
+
+
+        OptifineMapper.models("copper_Golem")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("head"),
+                        partMapping("right_arm"),
+                        partMapping("left_arm"),
+                        partMapping("right_leg"),
+                        partMapping("left_leg")
+                ));
+        OptifineMapper.models("nautilus", "nautilus_baby", "zombie_nautilus")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("shell"),
+                        partMapping("upper_mouth"),
+                        partMapping("inner_mouth"),
+                        partMapping("lower_mouth")
+                ));
+        OptifineMapper.models("zombie_nautilus_coral")
+                .parts(Map.ofEntries(
+                        partMapping("body"),
+                        partMapping("shell"),
+                        partMapping("upper_mouth"),
+                        partMapping("inner_mouth"),
+                        partMapping("lower_mouth"),
+                        partMapping("coral", "root")
+                ));
+        OptifineMapper.models("nautilus_saddle", "zombie_nautilus_saddle")
+                .parts(Map.ofEntries(
+                        partMapping("shell")
+                ));
+        OptifineMapper.models("dragon_fireball") // EMF only
+                .parts(Map.ofEntries(
+                        partMapping("fireball")
+                ));
+
+    }
+
+    @Contract(value = "_ -> new", pure = true)
+    public static Map.@NotNull Entry<String, String> partMapping(String optifineName) {
+        return new MutablePair<>(optifineName, optifineName);
+    }
+
+    @Contract(value = "_, _ -> new", pure = true)
+    public static Map.@NotNull Entry<String, String> partMapping(String optifineName, String vanillaName) {
+        return new MutablePair<>(optifineName, vanillaName);
+    }
+
+    public static boolean isKnownMapping(EMFModel_ID mobId) {
+        return !getMapOf(mobId, null, true, true, false).isEmpty();
+    }
+
+    public static Map<String, String> getMapOf(EMFModel_ID mobId, @Nullable ModelPart root) {
+        return getMapOf(mobId, root, true, false, EMF.config().getConfig().automaticModelExporting);
+    }
+
+    public static Map<String, String> getMapOf(@NotNull EMFModel_ID mobId, @Nullable ModelPart root, boolean exportOnlyFirstTime, boolean noExport, boolean allowsExport) {
+        String mobName = mobId.getMapId();
+
+        Map<String, String> knownMap;
+        if (mobName.endsWith("_inner_armor") || mobName.endsWith("_outer_armor")) {
+            knownMap = genericNonPlayerBiped;
+        } else {
+            knownMap = getKnownMap(mobName);
+        }
+        if (knownMap == null) {
+            return root == null || noExport ? Map.of() : exploreProvidedEntityModelAndExportIfNeeded(root, mobId, null, exportOnlyFirstTime, allowsExport);
+        }
+        //trigger the export of the known model if we are exporting all
+        if (!noExport && allowsExport) {
+            exportKnown(mobId, root, knownMap, exportOnlyFirstTime, true);
+        }
+        return knownMap;
+    }
+
+    private static void exportKnown(final EMFModel_ID mobId, final @Nullable ModelPart root, final Map<String, String> knownMap, boolean exportOnlyFirstTime, boolean allowsExport) {
+        String mobName = mobId.getfileName();
+        EMFUtils.log("Exporting/logging  model for " + mobName + " that has known OptiFine part names:");
+        exploreProvidedEntityModelAndExportIfNeeded(root, mobId, knownMap, exportOnlyFirstTime, allowsExport);
+        //also print out the model with its actual values in case a mod has added something
+        EMFUtils.log("Additionally exporting/logging model for " + mobName + " again as though it did not have known OptiFine part names:\nThis might highlight some vanilla, or mod added, parts that are not usually exposed by OptiFine");
+
+        try {
+            exploreProvidedEntityModelAndExportIfNeeded(root, mobId, null, false, false);
+        } catch (Exception e) {
+            EMFUtils.logError("Error while exporting model for " + mobName + " again as though it did not have known OptiFine part names:");
+            //noinspection CallToPrintStackTrace
+            e.printStackTrace();
+        }
+    }
+
+    private static @Nullable Map<String, String> getKnownMap(String mobName) {
+        return OPTIFINE_MODEL_MAP_CACHE.get(mobName);
+    }
+
+
+
+    //this would make a usable mapping of the given model but with no part name changing as it would not be optifine customized
+    public static Map<String, String> exploreProvidedEntityModelAndExportIfNeeded(ModelPart originalModel, EMFModel_ID mobId, @Nullable Map<String, String> mobMap, boolean exportOnlyFirstTime, boolean allowsExport) {
+        String id = mobId.getCacheID();
+        if (UNKNOWN_MODEL_MAP_CACHE.containsKey(id) && exportOnlyFirstTime)
+            return UNKNOWN_MODEL_MAP_CACHE.get(id);
+
+        //find unmodified model
+        var layer = EMFManager.getInstance().cache_LayersByModelName.get(mobId.getCacheID());
+        if(layer != null){
+            var unModifiedModel = ((IEMFUnmodifiedLayerRootGetter) Minecraft.getInstance().getEntityModels())
+                    .emf$getUnmodifiedRoots().get(layer.second());
+            if (unModifiedModel != null) {
+                originalModel = unModifiedModel.bakeRoot();
+            }
+        }
+
+        if (originalModel == null) {
+            EMFUtils.logError("model part was null and not already mapped in exploreProvidedEntityModel() EMF");
+            return Map.of();
+        }
+
+        Map<String, String> detailsMap = new HashMap<>();
+        boolean known = mobMap != null;
+        if (!known) {
+            mobMap = new HashMap<>();
+            mapThisAndChildren("root", originalModel, mobMap, detailsMap, allowsExport);
+        } else {
+            mapThisAndChildren("root", originalModel, new HashMap<>(), detailsMap, allowsExport);
+        }
+
+        //cache result;
+        UNKNOWN_MODEL_MAP_CACHE.put(id, mobMap);
+
+        StringBuilder mapString = new StringBuilder();
+
+        String namespace = mobId.namespace;
+        String fileName = mobId.getfileName();
+
+        if (allowsExport || EMF.config().getConfig().logModelCreationData) {
+            mapString.append(" |-[assets/").append(namespace).append("/optifine/cem/").append(fileName).append(".jem]\n");
+            mobMap.forEach((key, entry) -> {
+                mapString.append(" | |-[").append("root".equals(key) ? "(optional) " : "").append("part=").append(key).append("]\n");
+                var details = detailsMap.get(entry);
+                mapString.append(details == null ? "" : details);
+            });
+            mapString.append("  \\-\\{{end of model}}");
+
+            if (known) {
+                EMFUtils.log("Known model detected, Mapping now...\n" + mapString);
+            } else {
+                EMFUtils.log("Unknown (possibly modded) model detected, Mapping now...\n" + mapString);
+            }
+        }
+
+        if (allowsExport) {
+            EMFUtils.log("creating example .jem file for " + fileName);
+            var jemPrinter = new JsonObject();
+            int[] textureSize = null;
+            var models = new JsonArray();
+            for (Map.Entry<String, String> entry :
+                    mobMap.entrySet()) {
+
+                JsonObject partPrinter = new JsonObject();
+                partPrinter.addProperty("part", entry.getKey());
+                partPrinter.addProperty("id", entry.getKey());
+                partPrinter.addProperty("attach", false);
+                PartAndOffsets searchPart = getChildByName(entry.getValue(), originalModel,0,0,0);
+                // allow nested child parts named root to be found first otherwise apply the root part as the root
+                PartAndOffsets vanillaModelPart = searchPart == null && "root".equals(entry.getKey()) ? new PartAndOffsets(originalModel, 0,0,0) : searchPart;
+
+                partPrinter(vanillaModelPart, partPrinter, textureSize, mobMap.values(), false);
+
+                if (textureSize == null && partPrinter.has("textureSize")) {
+                    var textureSize2 = partPrinter.getAsJsonArray("textureSize");
+                    if (textureSize2.size() == 2) {
+                        textureSize = new int[]{textureSize2.get(0).getAsInt(), textureSize2.get(1).getAsInt()};
+                    }
+                }
+
+                models.add(partPrinter);
+
+            }
+            if (!models.isEmpty()) jemPrinter.add("models", models);
+            if (textureSize == null) {
+                textureSize = new int[] {64, 32};
+            }
+
+            var textureSize2 = new JsonArray();
+            textureSize2.add(textureSize[0]);
+            textureSize2.add(textureSize[1]);
+            jemPrinter.add("textureSize", textureSize2);
+
+            printModel(namespace, fileName, jemPrinter);
+            // Do not print fallbacks
+        }
+        return mobMap;
+    }
+
+    private static void printModel(final String namespace, final String fileName, final JsonObject jemPrinter) {
+        String path = ETF.getConfigDirectory().toFile().getParent()
+                + "/emf/export/" + "assets/" + namespace + "/optifine/cem/" + fileName + ".jem";
+        File outFile = new File(path);
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+        if (!outFile.getParentFile().exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            outFile.getParentFile().mkdirs();
+        }
+        try {
+            FileWriter fileWriter = new FileWriter(outFile);
+            fileWriter.write(gson.toJson(jemPrinter));
+            fileWriter.close();
+
+            EMFUtils.log(".jem file creation succeeded for [" + path + "]");
+        } catch (IOException e) {
+            EMFUtils.log(".jem file creation failed for [" + path + "]");
+        }
+    }
+
+    private record PartAndOffsets(ModelPart part, float x, float y, float z) {
+    }
+
+    private static void addArrayProperty(JsonObject obj, String name, Number... values) {
+        var arr = new JsonArray(values.length);
+        for (Number value : values) {
+            arr.add(value);
+        }
+        obj.add(name, arr);
+    }
+
+    private static void addArrayProperty(JsonObject obj, String name, JsonObject... values) {
+        var arr = new JsonArray(values.length);
+        for (JsonObject value : values) {
+            arr.add(value);
+        }
+        obj.add(name, arr);
+    }
+
+
+    private static JsonObject partPrinter(PartAndOffsets partAndOffsets, JsonObject partPrinter, int[] textureSize, Collection<String> topLevelParts, boolean child) {
+        if (partAndOffsets != null && partAndOffsets.part != null) {
+
+            var vanillaModelPart = partAndOffsets.part;
+            partPrinter.addProperty("invertAxis", "xy");
+
+            // invert x and y's
+            var x = (child
+                    ? -vanillaModelPart.x - partAndOffsets.x // See self-referential method call at bottom of file
+                    : -partAndOffsets.x + vanillaModelPart.x
+            );
+            var y = (child
+                    ? -vanillaModelPart.y - partAndOffsets.y // See self-referential method call at bottom of file
+                    : -24 -partAndOffsets.y + vanillaModelPart.y
+            );
+            var z = (child
+                    ? vanillaModelPart.z - partAndOffsets.z // See self-referential method call at bottom of file
+                    : partAndOffsets.z - vanillaModelPart.z
+            );
+            if (x != 0 || y != 0 || z != 0) addArrayProperty(partPrinter,"translate", x, y, z);
+
+            float rx = partAndOffsets.part.getInitialPose()
+                    .xRot()
+                    * -Mth.RAD_TO_DEG;
+            float ry = partAndOffsets.part.getInitialPose()
+                    .yRot()
+                    * -Mth.RAD_TO_DEG;
+            float rz = partAndOffsets.part.getInitialPose()
+                    .zRot()
+                    * Mth.RAD_TO_DEG;
+
+            if (child || EMF.config().getConfig().exportRotations && (rx != 0 || ry != 0 || rz != 0))
+                addArrayProperty(partPrinter, "rotate", rx, ry, rz);
+
+            if (vanillaModelPart.xScale != 1f) partPrinter.addProperty("scale", vanillaModelPart.xScale);
+            // get part size incase empty, though cuboids often have better ideas about this
+            //partPrinter.textureSize = ((IEMFTextureSizeSupplier) vanillaModelPart).emf$getTextureSize();
+            int[] thisTextureSize = ((IEMFTextureSizeSupplier) vanillaModelPart).emf$getTextureSize();
+
+            var list =new ArrayList<JsonObject>(vanillaModelPart.cubes.size());
+
+            for (ModelPart.Cube cube :
+                    vanillaModelPart.cubes) {
+                JsonObject boxPrinter = new JsonObject();
+                var coordinates = new Float[]{
+                        cube.minX,
+                        cube.minY,
+                        cube.minZ,
+                        cube.maxX - cube.minX,
+                        cube.maxY - cube.minY,
+                        cube.maxZ - cube.minZ};
+                // can be different from part
+
+                IEMFCuboidDataSupplier cubeData = (IEMFCuboidDataSupplier) cube;
+                thisTextureSize = thisTextureSize == null ? cubeData.emf$getTextureXY() : thisTextureSize;
+
+                var uv = cubeData.emf$getTextureUV();
+                addArrayProperty(boxPrinter, "textureOffset", uv[0], uv[1]);
+
+                var adds = cubeData.emf$getSizeAdd();
+                if (adds != null) {
+                    if (adds[0] == adds[1] && adds[0] == adds[2]) {
+                        if (adds[0] != 0) boxPrinter.addProperty("sizeAdd", adds[0]);
+                    } else {
+                        if (adds[0] != 0) boxPrinter.addProperty("sizeAddX", adds[0]);
+                        if (adds[1] != 0) boxPrinter.addProperty("sizeAddY", adds[1]);
+                        if (adds[2] != 0) boxPrinter.addProperty("sizeAddZ", adds[2]);
+                    }
+                }
+
+                if (cubeData.emf$getMirror()) {
+                    partPrinter.addProperty("mirrorTexture", "u");
+                }
+
+                // invert x and y
+                if (!child) {
+                    coordinates[0] = -coordinates[0] - coordinates[3] - x;
+                    coordinates[1] = -coordinates[1] - coordinates[4] - y;
+
+                    coordinates[2] = coordinates[2] - z;
+                } else {
+                    // Just flat invert as cem will only flat reinvert it
+                    coordinates[0] = -coordinates[0] - coordinates[3];
+                    coordinates[1] = -coordinates[1] - coordinates[4];
+                }
+
+                addArrayProperty(boxPrinter, "coordinates", coordinates);
+
+                list.add(boxPrinter);
+            }
+            if (thisTextureSize != null) {
+                if (textureSize == null){
+                    addArrayProperty(partPrinter,"textureSize", thisTextureSize[0], thisTextureSize[1]);
+                } else if (!Arrays.equals(textureSize, thisTextureSize)) {
+                    addArrayProperty(partPrinter,"textureSize", textureSize[0], textureSize[1]);
+                }
+            }
+
+            if (!list.isEmpty()) addArrayProperty(partPrinter, "boxes", list.toArray(new JsonObject[0]));
+
+            if (!partAndOffsets.part.children.isEmpty()) {
+                var nonTopLevel = partAndOffsets.part.children.keySet().stream().filter(it -> !topLevelParts.contains(it)).toList();
+                if (!nonTopLevel.isEmpty()) {
+                    // There exist child parts that are not in the optifine mappings (e.g. witch hat sub parts & wolf head/tail bullshit)
+                    // we will add them as cem submodels to include their cubes
+                    var childList = new ArrayList<JsonObject>();
+                    for (String name : nonTopLevel) {
+                        var childPart = partAndOffsets.part.getChild(name);
+                        var wrapped = child
+                                // Child calls will use this data class differently as they have simpler setup
+                                ? new PartAndOffsets(childPart, 0, 0, 0) // Further children no longer need weird pivot adjustments
+                                : new PartAndOffsets(childPart, x, y, z); // First child needs to undo these xyz values
+                        var object = new JsonObject();
+                        object.addProperty("id", name + "_export_copy");
+                        childList.add(partPrinter(wrapped, object, thisTextureSize, topLevelParts, true));
+                    }
+                    addArrayProperty(partPrinter, "submodels", childList.toArray(new JsonObject[0]));
+                }
+            }
+        }
+        return partPrinter;
+    }
+
+    private static @Nullable PartAndOffsets getChildByName(String name, @NotNull ModelPart part, float x, float y, float z) {
+        if (part.hasChild(name)) return new PartAndOffsets(part.getChild(name),
+                 x - part.x,
+                 y - part.y,
+                 z - part.z
+        );
+        for (ModelPart childPart :
+                part.children.values()) {
+            PartAndOffsets possibleReturn = getChildByName(name, childPart,
+                     x - part.x,
+                     y - part.y,
+                     z - part.z
+            );
+            if (possibleReturn != null) return possibleReturn;
+        }
+        return null;
+    }
+
+    private static void mapThisAndChildren(String partName, @NotNull ModelPart originalModel, Map<String, String> newMap, Map<String, String> detailsMap, boolean allowsExport) {
+        // iterate over children while collecting their names in a list
+        for (Map.Entry<String, ModelPart> entry :
+                originalModel.children.entrySet()) {
+            mapThisAndChildren(entry.getKey(), entry.getValue(), newMap, detailsMap, allowsExport);
+        }
+
+        // add this part and its children names
+        newMap.put(partName, partName);
+        if (allowsExport) {
+            StringBuilder cubes = new StringBuilder( originalModel.cubes.isEmpty() ? "[No boxes]" : "[boxes]");
+            int i = 0;
+            for (ModelPart.Cube cube :
+                    originalModel.cubes) {
+                    i++;
+                    var coordinates = new float[]{
+                            cube.minX,
+                            cube.minY,
+                            cube.minZ,
+                            cube.maxX - cube.minX,
+                            cube.maxY - cube.minY,
+                            cube.maxZ - cube.minZ};
+                    var textureOffset = ((IEMFCuboidDataSupplier) cube).emf$getTextureUV();
+                    var adds = ((IEMFCuboidDataSupplier) cube).emf$getSizeAdd();
+                    float sizeAdd = Float.NaN;
+                    float sizeAddX = Float.NaN;
+                    float sizeAddY = Float.NaN;
+                    float sizeAddZ = Float.NaN;
+                    if (adds != null) {
+                        if (adds[0] == adds[1] && adds[0] == adds[2]) {
+                            sizeAdd = adds[0];
+                        } else {
+                            sizeAddX = adds[0];
+                            sizeAddY = adds[1];
+                            sizeAddZ = adds[2];
+                        }
+                    }
+
+                    // invert x and y
+                    coordinates[0] = -coordinates[0] - coordinates[3] - originalModel.x;
+                    coordinates[1] = -coordinates[1] - coordinates[4] - originalModel.y;
+
+                    coordinates[2] = coordinates[2] - originalModel.z;
+
+                    // now print final values
+                    cubes.   append("\n | |   |-[#").append(i).append("]")
+                            .append("\n | |   |-coordinates=").append(Arrays.toString(coordinates))
+                            .append("\n | |   |-textureOffset=").append(Arrays.toString(textureOffset));
+                    if(!Float.isNaN(sizeAdd)) {
+                        cubes.append("\n | |    \\-sizeAdd=").append(sizeAdd);
+                    }else{
+                        cubes.   append("\n | |   |-sizeAddX=").append(sizeAddX)
+                                .append("\n | |   |-sizeAddY=").append(sizeAddY)
+                                .append("\n | |    \\-sizeAddZ=").append(sizeAddZ);
+                    }
+            }
+
+
+            detailsMap.put(partName,
+                    " | | |-pivots=" + originalModel.x + ", " + originalModel.y + ", " + originalModel.z +
+                            "\n | | |-rotations=" + (originalModel.xRot* Mth.RAD_TO_DEG) + ", " + (originalModel.yRot* Mth.RAD_TO_DEG) + ", " + (originalModel.zRot* Mth.RAD_TO_DEG) +
+                            "\n | | |-scales=" + originalModel.xScale + ", " + originalModel.yScale + ", " + originalModel.zScale +
+                            "\n | | |visible=" + originalModel.visible + ", _boxes=" + !originalModel.skipDraw +
+                            "\n | |  \\" + cubes +"\n"
+
+            );
+        }
+    }
+
+    private static class OptifineMapper {
+
+        String[] modelNames;
+
+        OptifineMapper(String... modelNames){
+            this.modelNames = modelNames;
+        }
+
+        @Contract(value = "_ -> new", pure = true)
+        static @NotNull OptifineMapper models(String... modelNames) {
+            return new OptifineMapper(modelNames);
+        }
+
+        private static final Set<String> exceptions = Set.of("helmet", "chestplate", "leggings", "boots");
+
+        void parts(final Map<String, String> stringStringMap) {
+            for (String key : modelNames) {
+                if (OPTIFINE_MODEL_MAP_CACHE.put(key, stringStringMap) != null) {
+                    if (!exceptions.contains(key)) {
+                        EMFUtils.logError("OptiFine model map for " + key + " already exists, overwriting");
+                    }
+                }
+            }
+        }
+    }
+}

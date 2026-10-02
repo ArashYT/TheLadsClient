@@ -1,1 +1,47 @@
 accessWidener v2 named
+
+# Entity Texture Features 7.2.4 (embedded)
+accessible method net/minecraft/client/renderer/texture/TextureAtlasSprite <init> (Lnet/minecraft/resources/ResourceLocation;Lnet/minecraft/client/renderer/texture/SpriteContents;IIII)V
+accessible class net/minecraft/client/resources/SkinManager$TextureCache
+accessible field net/minecraft/client/resources/SkinManager$TextureCache textureManager Lnet/minecraft/client/renderer/texture/TextureManager;
+accessible field net/minecraft/client/resources/SkinManager skinTextures Lnet/minecraft/client/resources/SkinManager$TextureCache;
+accessible field net/minecraft/client/renderer/texture/HttpTexture file Ljava/io/File;
+accessible class net/minecraft/client/renderer/RenderType$CompositeRenderType
+accessible class net/minecraft/client/renderer/RenderType$CompositeState
+accessible class net/minecraft/client/renderer/RenderStateShard$EmptyTextureStateShard
+accessible field net/minecraft/client/renderer/RenderType$CompositeRenderType state Lnet/minecraft/client/renderer/RenderType$CompositeState;
+accessible field net/minecraft/client/renderer/RenderType$CompositeState textureState Lnet/minecraft/client/renderer/RenderStateShard$EmptyTextureStateShard;
+accessible method net/minecraft/client/renderer/RenderStateShard$EmptyTextureStateShard cutoutTexture ()Ljava/util/Optional;
+accessible field net/minecraft/client/renderer/SpriteCoordinateExpander sprite Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;
+accessible field net/minecraft/client/renderer/blockentity/BlockEntityRenderers PROVIDERS Ljava/util/Map;
+accessible field net/minecraft/world/entity/animal/horse/AbstractHorse playerJumpPendingScale F
+accessible method net/minecraft/client/renderer/texture/HttpTexture processLegacySkin (Lcom/mojang/blaze3d/platform/NativeImage;)Lcom/mojang/blaze3d/platform/NativeImage;
+accessible class com/mojang/blaze3d/vertex/VertexMultiConsumer$Double
+accessible class com/mojang/blaze3d/vertex/VertexMultiConsumer$Multiple
+accessible field net/minecraft/client/gui/components/AbstractWidget height I
+accessible field com/mojang/blaze3d/vertex/BufferBuilder building Z
+accessible method net/minecraft/world/level/biome/Biome getHeightAdjustedTemperature (Lnet/minecraft/core/BlockPos;)F
+accessible method net/minecraft/client/player/AbstractClientPlayer getPlayerInfo ()Lnet/minecraft/client/multiplayer/PlayerInfo;
+
+# Entity Model Features 3.3.9 (embedded)
+accessible method net/minecraft/client/model/geom/ModelPart compile (Lcom/mojang/blaze3d/vertex/PoseStack$Pose;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V
+extendable class net/minecraft/client/model/geom/ModelPart
+accessible class net/minecraft/client/model/geom/ModelPart$Polygon
+accessible class net/minecraft/client/model/geom/ModelPart$Vertex
+extendable method net/minecraft/client/model/geom/ModelPart compile (Lcom/mojang/blaze3d/vertex/PoseStack$Pose;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V
+accessible field net/minecraft/client/model/geom/ModelPart cubes Ljava/util/List;
+accessible field net/minecraft/client/model/geom/ModelPart children Ljava/util/Map;
+mutable field net/minecraft/client/model/geom/ModelPart cubes Ljava/util/List;
+mutable field net/minecraft/client/model/geom/ModelPart children Ljava/util/Map;
+accessible field net/minecraft/client/model/Model renderType Ljava/util/function/Function;
+accessible field net/minecraft/client/model/geom/EntityModelSet roots Ljava/util/Map;
+accessible field net/minecraft/world/level/block/state/BlockBehaviour hasCollision Z
+accessible field com/mojang/blaze3d/vertex/PoseStack poseStack Ljava/util/Deque;
+accessible method com/mojang/blaze3d/vertex/PoseStack$Pose <init> (Lorg/joml/Matrix4f;Lorg/joml/Matrix3f;)V
+accessible field net/minecraft/world/entity/LivingEntity jumping Z
+accessible field net/minecraft/client/renderer/SpriteCoordinateExpander delegate Lcom/mojang/blaze3d/vertex/VertexConsumer;
+accessible field com/mojang/blaze3d/vertex/VertexMultiConsumer$Double second Lcom/mojang/blaze3d/vertex/VertexConsumer;
+extendable class net/minecraft/client/model/geom/ModelPart$Cube
+accessible field net/minecraft/client/model/geom/ModelPart$Cube polygons [Lnet/minecraft/client/model/geom/ModelPart$Polygon;
+accessible field net/minecraft/world/entity/Entity yRot F
+accessible field net/minecraft/world/entity/projectile/AbstractArrow inGround Z

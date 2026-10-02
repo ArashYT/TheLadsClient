@@ -16,5 +16,10 @@ public final class EmbeddedMods {
 
     /** Called once from the Core client initializer. */
     public static void clientInit() {
+        if (active("entity_texture_features")) {
+            new com.thelads.core.v1_21_1.embedded.etf.ETFInit().onInitializeClient();
+            // EMF builds on ETF, so it stays off on top of an installed ETF jar too
+            if (active("entity_model_features")) new com.thelads.core.v1_21_1.embedded.emf.EMFInit().onInitializeClient();
+        }
     }
 }

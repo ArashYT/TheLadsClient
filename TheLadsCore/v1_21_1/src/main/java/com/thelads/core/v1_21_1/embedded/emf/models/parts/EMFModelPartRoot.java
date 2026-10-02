@@ -1,0 +1,440 @@
+package com.thelads.core.v1_21_1.embedded.emf.models.parts;
+
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import com.thelads.core.v1_21_1.embedded.emf.EMF;
+import com.thelads.core.v1_21_1.embedded.emf.EMFAnimationApi;
+import com.thelads.core.v1_21_1.embedded.emf.models.animation.EMFAnimationHandler;
+import com.thelads.core.v1_21_1.embedded.emf.models.animation.EMFAttachment;
+import com.thelads.core.v1_21_1.embedded.emf.models.animation.math.EMFMath;
+import com.thelads.core.v1_21_1.embedded.emf.models.animation.state.EMFEntityRenderState;
+import com.thelads.core.v1_21_1.embedded.emf.models.animation.state.EMFState;
+import com.thelads.core.v1_21_1.embedded.emf.models.jem_objects.EMFJemData;
+import com.thelads.core.v1_21_1.embedded.emf.models.jem_objects.EMFPartData;
+import com.thelads.core.v1_21_1.embedded.emf.utils.EMFAnimationPauseHandler;
+import com.thelads.core.v1_21_1.embedded.emf.utils.EMFDirectoryHandler;
+import com.thelads.core.v1_21_1.embedded.emf.EMFManager;
+import com.thelads.core.v1_21_1.embedded.emf.utils.EMFResourceCaching;
+import com.thelads.core.v1_21_1.embedded.emf.utils.EMFUtils;
+import com.thelads.core.v1_21_1.embedded.emf.models.EMFModel_ID;
+import com.thelads.core.v1_21_1.embedded.etf.ETFApi;
+import com.thelads.core.v1_21_1.embedded.etf.features.property_reading.PropertiesRandomProvider;
+
+import java.util.*;
+import java.util.function.Consumer;
+
+import static com.thelads.core.v1_21_1.embedded.emf.EMFManager.getJemDataWithDirectory;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.thelads.core.v1_21_1.embedded.etf.utils.ETFLruCache;
+
+
+public class EMFModelPartRoot extends EMFModelPartVanilla {
+
+    public final EMFModel_ID modelName;
+    public final ModelPart vanillaRoot;
+    public final @NotNull ETFLruCache.UUIDInteger entitySuffixMap = new ETFLruCache.UUIDInteger();
+    private final Map<String, EMFModelPartVanilla> allVanillaParts;
+    private final Map<Integer, ModelPart> vanillaFormatModelPartOfEachState = new HashMap<>();
+    public EMFDirectoryHandler directoryContext;
+    public ETFApi.ETFVariantSuffixProvider variantTester = null;
+    public boolean containsCustomModel = false;
+    public boolean containsCustomAnims = false;
+    private long lastMobCountAnimatedOn = 0;
+    private final Set<Integer> hasRemovedTopLevelJemTextureFromChildren = new HashSet<>();
+
+    protected final Map<Integer, Consumer<PoseStack>> leftArmPositioners = new HashMap<>();
+    protected final Map<Integer, Consumer<PoseStack>> rightArmPositioners = new HashMap<>();
+    // Separate as far less likely to be used and also non optifine format so likely to change separately
+    protected final Map<EMFAttachment.Type, Map<Integer, Consumer<PoseStack>>> otherPositioners = new HashMap<>();
+
+    public Consumer<PoseStack> getPositionerForAttachment(EMFAttachment.Type type) {
+        if (type.isHumanoidHand()) {
+            return type == EMFAttachment.Type.RIGHT_HAND
+                    ? rightArmPositioners.get(currentModelVariant)
+                    : leftArmPositioners.get(currentModelVariant);
+        }
+        var ofType = otherPositioners.get(type);
+        if (ofType == null) return null;
+        return ofType.get(currentModelVariant);
+    }
+
+    public boolean isMainModel = false;
+
+    private final Set<String> registeredSet = new HashSet<>();
+
+    private final HashMap<Integer, Runnable> animations = new HashMap<>();
+    @Nullable
+    private Runnable animation = null;
+
+    @Override
+    public EMFModelPartRoot getRoot() {
+        return this;
+    }
+
+    // construct vanilla root
+    public EMFModelPartRoot(EMFModel_ID mobNameForFileAndMap,
+                            EMFDirectoryHandler directoryContext,
+                            ModelPart vanillaRoot,
+                            Collection<String> optifinePartNames,
+                            Map<String, EMFModelPartVanilla> mapForCreatedParts) {
+        // create vanilla root model object
+        super("root", vanillaRoot, optifinePartNames, mapForCreatedParts, null);
+        allVanillaParts = mapForCreatedParts;
+        allVanillaParts.putIfAbsent(name, this);
+
+        this.modelName = mobNameForFileAndMap;
+        this.directoryContext = directoryContext;
+
+        this.vanillaRoot = vanillaRoot;
+    }
+
+
+    @Override
+    protected float[] debugBoxColor() {
+        return new float[]{1f, 0, 0};
+    }
+
+    public Collection<EMFModelPartVanilla> getAllVanillaPartsEMF() {
+        return allVanillaParts.values();
+    }
+
+    @SuppressWarnings("unused") // Requested by third party
+    public Map<String, EMFModelPartVanilla> getAllVanillaPartsByNameEMF() {
+        return allVanillaParts;
+    }
+
+
+    public void oneTimeRunnable() {
+        registerModelRunnableWithEntityTypeContext();
+    }
+
+    private void registerModelRunnableWithEntityTypeContext() {
+        //noinspection deprecation
+        var entity = EMFState.state();
+        if (entity != null) { // await a valid entity
+            String type = entity.typeString();
+
+            if (registeredSet.contains(type)) return;
+            registeredSet.add(type);
+
+            var config = EMF.config().getConfig();
+
+            // register models to entity type for debug print
+            if (config.debugOnRightClick) {
+                EMFManager.getInstance().rootPartsPerEntityTypeForDebug
+                        .computeIfAbsent(type, k -> new HashSet<>())
+                        .add(this);
+            }
+
+            // register variant runnable
+            EMFManager.getInstance().rootPartsPerEntityTypeForVariation
+                    .computeIfAbsent(type, k -> new HashSet<>())
+                    .add(this);
+
+            if (variantTester != null && config.logModelCreationData) {
+                EMFUtils.log("Registered new variating model for: " + type);
+            }
+        }
+    }
+
+
+    public void doVariantCheck(@NotNull EMFEntityRenderState emfState) {
+        if(this.variantTester == null) {
+            this.setVariantStateTo(1);
+            return;
+        }
+
+        UUID id = emfState.uuid();
+        int finalSuffix = entitySuffixMap.get(id);
+
+        if (finalSuffix != -1) {
+            checkIfShouldExpireEntity(emfState, id);
+        } else {
+            finalSuffix = Math.max(1, variantTester.getSuffixForETFEntity(emfState));
+            entitySuffixMap.put(id, finalSuffix);
+        }
+        EMFManager.getInstance().lastModelSuffixOfEntity.put(id, finalSuffix);
+        setVariantStateTo(finalSuffix);
+    }
+
+    public void checkIfShouldExpireEntity(@NotNull EMFEntityRenderState emfState, UUID id) {
+        if (this.variantTester.entityCanUpdate(id)) {
+            switch (EMF.config().getConfig().modelUpdateFrequency) {
+                case Never -> {}
+                case Instant -> this.entitySuffixMap.remove(id);
+                default -> {
+                    int delay = EMF.config().getConfig().modelUpdateFrequency.getDelay();
+                    int time = (int) (EMFMath.getTime(emfState) % delay);
+                    if (time == Math.abs(id.hashCode()) % delay) {
+                        this.entitySuffixMap.remove(id);
+                    }
+                }
+            }
+        }
+    }
+
+    //root only
+    public void addAndSetVariantOfJem(EMFJemData jemData, int variant) {
+        if (EMF.config().getConfig().logModelCreationData)
+            EMFUtils.log(" > " + jemData.getMobModelIDInfo().getfileName() + ", constructing variant #" + variant);
+
+
+        Map<String, EMFModelPartCustom> newEmfParts = new HashMap<>();
+        for (EMFPartData part : jemData.models) {
+            if (part.part != null) {
+                String idUnique = EMFUtils.getIdUnique(newEmfParts.keySet(), part.id);
+                newEmfParts.put(idUnique, new EMFModelPartCustom(part, variant, part.part, idUnique, this));
+            }
+        }
+        var rootTextureOverride = jemData.getCustomTexture();
+
+        for (Map.Entry<String, EMFModelPartVanilla> vanillaEntry : allVanillaParts.entrySet()) {
+            EMFModelPartVanilla thisPart = vanillaEntry.getValue();
+            EMFModelState vanillaState = thisPart.allKnownStateVariants.get(0).copy();
+            thisPart.setFromState(vanillaState);
+
+            thisPart.textureOverride = rootTextureOverride;
+
+            Map<String, ModelPart> children = new HashMap<>(thisPart.vanillaChildren);
+            for (Map.Entry<String, EMFModelPartCustom> newPartEntry : newEmfParts.entrySet()) {
+                EMFModelPartCustom newPart = newPartEntry.getValue();
+                if (vanillaEntry.getKey().equals(newPart.partToBeAttached)) {
+                    if (EMF.config().getConfig().logModelCreationData)
+                        EMFUtils.log(" > > > EMF custom part attached: " + newPartEntry.getKey());
+                    if (!newPart.attach) {
+                        thisPart.cubes = List.of();
+                        thisPart.children.values().forEach((part) -> {
+                            if (part instanceof EMFModelPartVanilla vanilla && !vanilla.isOptiFinePartSpecified)
+                                vanilla.setHideInTheseStates(variant);
+                        });
+                    }
+                    children.put(EMFUtils.getIdUnique(thisPart.children.keySet(), newPartEntry.getKey()), newPart);
+                }
+            }
+            thisPart.children = children;
+            thisPart.allKnownStateVariants.put(variant, thisPart.getCurrentState());
+
+        }
+        allKnownStateVariants.putIfAbsent(variant, allKnownStateVariants.get(0).copy());
+
+        setVariantStateTo(variant);
+
+        if (jemData.hasAttachmentsLeft) {
+            this.leftArmPositioners.put(variant, getAttachmentPositioner(EMFAttachment.Type.LEFT_HAND));
+        }
+        if (jemData.hasAttachmentsRight) {
+            this.rightArmPositioners.put(variant, getAttachmentPositioner(EMFAttachment.Type.RIGHT_HAND));
+        }
+        if (jemData.hasAttachmentsOther) {
+            for (EMFAttachment.Type type : EMFAttachment.Type.NON_HANDS) {
+                var positioner = getAttachmentPositioner(type);
+                if (positioner != null) {
+                    this.otherPositioners.computeIfAbsent(type, t -> new HashMap<>())
+                            .put(variant, positioner);
+                }
+            }
+        }
+    }
+
+    public void discoverAndInitVariants(String fallbackPropertiesName) {
+        boolean printing = EMF.config().getConfig().logModelCreationData;
+
+        //get random properties and init variants
+        String thisDirectoryFileName =  directoryContext.getRelativeDirectoryLocationNoValidation(directoryContext.rawFileName);
+        ResourceLocation propertyID = directoryContext.getRelativeFilePossiblyEMFOverridden(directoryContext.rawFileName + ".properties");
+
+        if(printing) EMFUtils.log(" > checking properties file: " + propertyID + " for: " + thisDirectoryFileName + ".jem");
+
+        var resourceManager = Minecraft.getInstance().getResourceManager();
+        boolean exists = EMFResourceCaching.resourceExists(resourceManager, propertyID);
+
+        //try fallback properties
+        if (!exists && EMF.config().getConfig().allowOptifineFallbackProperties){
+            ResourceLocation fallbackPropertiesID = directoryContext.getRelativeFilePossiblyEMFOverridden(fallbackPropertiesName + ".properties");
+            if(printing) EMFUtils.log(" > checking fallback .properties file: " + fallbackPropertiesID + " for: " + thisDirectoryFileName + ".jem");
+            exists = EMFResourceCaching.resourceExists(resourceManager, fallbackPropertiesID);
+            if(exists){
+                propertyID = fallbackPropertiesID;
+            }
+        }
+
+        if (exists) {
+            if(printing) EMFUtils.log(" > found properties file: " + propertyID + " for: " + thisDirectoryFileName + ".jem");
+            variantTester = ETFApi.getVariantSupplierOrNull(propertyID, EMFUtils.res(thisDirectoryFileName + ".jem"), "models");
+
+            if (variantTester instanceof PropertiesRandomProvider propertiesRandomProvider) {
+                propertiesRandomProvider.setOnMeetsRuleHook((entity, rule) -> {
+                    if (rule == null) {
+                        EMFManager.getInstance().lastModelRuleOfEntity.remove(entity.uuid());
+                    } else {
+                        EMFManager.getInstance().lastModelRuleOfEntity.put(entity.uuid(), rule.ruleNumber);
+                    }
+                });
+            }
+
+            if (variantTester != null) {
+                Set<Integer> allModelVariants = variantTester.getAllSuffixes();
+                allModelVariants.remove(1);
+                allModelVariants.remove(0);
+                if (!allModelVariants.isEmpty()) {
+                    //init all variants
+                    for (int variant : allModelVariants) {
+                        setVariantStateTo(1);
+                        //String jemNameVariant = directoryContext.getRelativeFilePossiblyEMFOverridden( directoryContext.rawFileName + variant + ".jem");
+                        EMFDirectoryHandler variantDirectoryContext = EMFDirectoryHandler.getDirectoryManagerOrNull(EMF.config().getConfig().logModelCreationData, directoryContext.namespace, directoryContext.rawFileName,  variant + ".jem");
+                        boolean canUseVariant = directoryContext.validForThisBase(variantDirectoryContext);//null checks
+
+                        if (printing) EMFUtils.log(" > incorporating variant jem file: " + directoryContext.namespace + ":"+ directoryContext.rawFileName + variant + ".jem");
+
+                        //noinspection DataFlowIssue
+                        EMFJemData jemDataVariant = canUseVariant ? getJemDataWithDirectory(variantDirectoryContext, modelName) : null;
+
+                        if (jemDataVariant != null) {
+                            addAndSetVariantOfJem(jemDataVariant, variant);
+                            EMFManager.getInstance().setupAnimationsFromJemToModel(jemDataVariant, this, variant);
+                            containsCustomModel = true;
+                        } else {
+                            //make this variant map to 1
+                            allKnownStateVariants.put(variant, allKnownStateVariants.get(1));
+                            if (printing) EMFUtils.log(" > invalid jem variant file: " + directoryContext.namespace + ":"+ directoryContext.rawFileName + variant + ".jem");
+                        }
+
+                    }
+                } else {
+                    if (printing) EMFUtils.logWarn("properties with only 1 variant found: " + propertyID + ".");
+                }
+            } else {
+                if (printing) EMFUtils.logWarn("null properties found for: " + propertyID);
+                directoryContext = null;
+            }
+        } else {
+            if (printing) EMFUtils.logWarn("no properties or variants found for found for: [" + thisDirectoryFileName + ".jem]");
+            directoryContext = null;
+        }
+    }
+
+    public void setVariant1ToVanilla0() {
+        allKnownStateVariants.put(1, allKnownStateVariants.get(0));
+        allVanillaParts.forEach((k, child) -> child.allKnownStateVariants.put(1, child.allKnownStateVariants.get(0)));
+    }
+
+    public boolean hasAnimation(){
+        return animation != null;
+    }
+
+    @Override
+    public void setVariantStateTo(int newVariant) {
+        super.setVariantStateTo(newVariant);
+        animation = animations.get(newVariant);
+    }
+
+    @ApiStatus.Internal // EMF animation api exposes an alternative
+    public void animate() {
+        if (animation != null && !EMFAnimationPauseHandler.shouldAnimationsPause(EMFState.state())) {
+            animation.run();
+        }
+    }
+
+    @ApiStatus.Internal // EMF animation api exposes an alternative
+    public void animateNoPause() {
+        if (animation != null) {
+            animation.run();
+        }
+    }
+
+    public void receiveAnimationHandler(int variant, final EMFAnimationHandler animationHandler) {
+        containsCustomAnims = true;
+        Runnable run = () -> {
+            if (lastMobCountAnimatedOn != EMFManager.getInstance().entityRenderCount) {
+                lastMobCountAnimatedOn = EMFManager.getInstance().entityRenderCount;
+
+                var state = EMFState.state();
+                if (state != null && state.isFirstPersonHand() && EMF.config().getConfig().preventFirstPersonHandAnimating)
+                    return;
+
+                var partsPaused = EMFAnimationPauseHandler.getEntityPartsAnimPaused();
+                try {
+                    boolean cancel = false;
+
+                    for (EMFAnimationApi.EMFAnimationHook animationHook : EMFState.animationHooks) {
+                        boolean wantsCancellation = !animationHook.onAnimationStart(
+                                new EMFAnimationApi.EMFAnimationHook.AnimationContext(state, this, null, partsPaused, animationHandler),
+                                cancel
+                        );
+                        if (wantsCancellation) cancel = true;
+                    }
+
+                    if (!cancel) animationHandler.animate(partsPaused);
+
+                    boolean finalCancel = cancel;
+                    EMFState.animationHooks.forEach(hook -> hook.onAnimationEnd(new EMFAnimationApi.EMFAnimationHook.AnimationContext(state, this, null, partsPaused,  animationHandler), finalCancel));
+                } catch (Throwable e) {
+                    EMFUtils.logError("Error in animation for model [" + modelName.getfileName() + "].");
+                    //noinspection CallToPrintStackTrace
+                    e.printStackTrace();
+                    EMFUtils.logError("Disabling all animations for model: [" + modelName + "]");
+                    animations.remove(variant);
+                    animation = null;
+                    containsCustomAnims = false;
+
+                    EMFState.animationHooks.forEach(hook -> hook.onAnimationEnd(new EMFAnimationApi.EMFAnimationHook.AnimationContext(state, this, e, partsPaused,  animationHandler), false));
+                }
+            }
+        };
+        animations.put(variant, run);
+    }
+
+    /**
+     * Gets top level jem texture.
+     * also removes this texture from the child part overrides if this is the first time it's called.
+     * This allows optimizing the amount of times the texture is overridden for living entities
+     *
+     * @return the top level jem texture
+     */
+    @Nullable
+    public ResourceLocation getTopLevelJemTexture() {
+        int variant = currentModelVariant;
+        if (hasRemovedTopLevelJemTextureFromChildren.contains(variant))
+            return jemLevelOverride.get(variant);
+        hasRemovedTopLevelJemTextureFromChildren.add(variant);
+
+        var override = textureOverride; // Store as 'this' is inside allVanillaParts and will be cleared
+        jemLevelOverride.put(variant, override);
+        if (textureOverride != null) {
+            allVanillaParts.values().forEach((emf) -> {
+                if (emf.textureOverride.equals(override)) {
+                    emf.textureOverride = null;
+                    emf.allKnownStateVariants.computeIfPresent(variant,
+                            (k, v) -> v.copyWithoutTexture());
+                }
+            });
+        }
+        return jemLevelOverride.get(variant);
+    }
+
+    private final Map<Integer, ResourceLocation> jemLevelOverride = new HashMap<>();
+
+    public void resetVanillaPartsToDefaults(){
+        this.resetState();
+        allVanillaParts.values().forEach(EMFModelPartWithState::resetState);
+    }
+
+
+    @Override
+    public String toString() {
+        return "[EMF root part of " + modelName.getfileName() + "]";
+    }
+
+    @Override
+    public String toStringShort() {
+        return "[EMF root part of " + modelName.getfileName() + "]";
+    }
+
+
+}

@@ -1,0 +1,38 @@
+package com.thelads.core.v1_21_11.embedded.emf.models.animation.math.methods.simple;
+
+import org.objectweb.asm.MethodVisitor;
+import com.thelads.core.v1_21_11.embedded.emf.models.animation.math.EMFMathException;
+import com.thelads.core.v1_21_11.embedded.emf.models.animation.math.expression_tree.MathMethod;
+import com.thelads.core.v1_21_11.embedded.emf.models.animation.math.asm.ASMVariableHandler;
+import com.thelads.core.v1_21_11.embedded.emf.models.animation.math.methods.MethodRegistry;
+
+import java.util.List;
+import java.util.function.Function;
+
+@Deprecated(forRemoval = true)
+public class MultiFunctionMethods extends MathMethod {
+
+
+    public MultiFunctionMethods(final List<String> args,
+                                final boolean isNegative,
+                                @SuppressWarnings("removal") final com.thelads.core.v1_21_11.embedded.emf.models.animation.EMFAnimation calculationInstance,
+                                final Function<List<Float>, Float> function) throws EMFMathException {
+        super(isNegative, null, args);
+
+    }
+
+    @Deprecated(forRemoval = true)
+    public static MethodRegistry.MethodFactory makeFactory(final String methodName, final Function<List<Float>, Float> function) throws EMFMathException {
+         throw new EMFMathException("Failed to create " + methodName + "() method, because: MultiFunctionMethods if deprecated");
+    }
+
+    @Override
+    public void asmVisitInner(MethodVisitor mv, ASMVariableHandler varNames) throws EMFMathException {
+        throw new UnsupportedOperationException("Deprecated");
+    }
+
+    @Override
+    protected boolean hasCorrectArgCount(final int argCount) {
+        return true;
+    }
+}

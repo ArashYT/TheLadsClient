@@ -1,0 +1,128 @@
+package com.thelads.core.v26_2.embedded.etf.tconfig.gui.entries;
+
+import com.demonwav.mcdev.annotations.Translatable;
+import com.thelads.core.v26_2.embedded.etf.ETF;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.StringWidget;
+import net.minecraft.network.chat.FormattedText;
+import net.minecraft.network.chat.Style;
+
+public class TConfigEntryText extends TConfigEntry {
+
+    protected final StringWidget widget;
+
+    public TConfigEntryText(@Translatable final String text, TextAlignment alignment) {
+        super(text, null);
+        widget = new StringWidget(getText(), Minecraft.getInstance().font);
+        alignment.align(widget);
+    }
+
+    public TConfigEntryText(@Translatable final String text) {
+        this(text, TextAlignment.CENTER);
+    }
+
+    @SuppressWarnings("unused")
+    public static Collection<TConfigEntry> fromLongOrMultilineTranslation(@Translatable String translationKey, int width) {
+        return fromLongOrMultilineTranslation(translationKey, width, TextAlignment.CENTER);
+    }
+
+    public static List<TConfigEntry> fromLongOrMultilineTranslation(@Translatable String translationKey, int width, TextAlignment alignment) {
+        var translated = ETF.getTextFromTranslation(translationKey);
+        var lines = Minecraft.getInstance().font.getSplitter().splitLines(translated, width, Style.EMPTY);
+        List<TConfigEntry> list = new ArrayList<>();
+        String lastLine = null;
+
+        for (FormattedText line : lines) {
+            if (lastLine != null) {
+                list.add(new TwoLines(lastLine, line.getString(), alignment));
+                lastLine = null;
+            } else {
+                lastLine = line.getString();
+            }
+
+        }
+        if (lastLine != null) {
+            //noinspection NoTranslation
+            list.add(new TwoLines(lastLine, "", alignment));
+        }
+        return list;
+    }
+
+    @Override
+    public AbstractWidget getWidget(final int x, final int y, final int width, final int height) {
+        widget.setRectangle(width, height, x, y);
+        return widget;
+    }
+
+    @Override
+    boolean hasChangedFromInitial() {
+        return false;
+    }
+
+    @Override
+    boolean saveValuesToConfig() {
+        return false;
+    }
+
+    @Override
+    void setValuesToDefault() {
+
+    }
+
+    @Override
+    void resetValuesToInitial() {
+
+    }
+
+    @Deprecated //todo reimplement manually
+    public enum TextAlignment {
+        LEFT, CENTER, RIGHT;
+
+        private void align(StringWidget widget) {
+        }
+    }
+
+    public static class TwoLines extends TConfigEntryText {
+
+        protected final StringWidget widget2;
+
+        @SuppressWarnings("unused")
+        public TwoLines(@Translatable final String text1, @Translatable final String text2) {
+            this(text1, text2, TextAlignment.CENTER);
+        }
+
+        public TwoLines(@Translatable final String text1, @Translatable final String text2, TextAlignment alignment) {
+            super(text1, alignment);
+            widget2 = new StringWidget(ETF.getTextFromTranslation(text2), Minecraft.getInstance().font);
+            alignment.align(widget2);
+            // TODO
+        }
+
+        @Override
+        public AbstractWidget getWidget(final int x, final int y, final int width, final int height) {
+
+            widget.setRectangle(width, height / 2, x, y);
+            widget2.setRectangle(width, height / 2, x, y + height / 2 + 2);
+            return widget;
+        }
+
+
+        @Override
+        public void extractContent(final GuiGraphicsExtractor context, final int mouseX, final int mouseY, final boolean hovered, final float tickDelta) {
+            lastWidgetRendered = getWidget(getContentX(), getContentY(), getContentWidth(), getContentHeight());
+            widget.
+                    extractRenderState
+                            (context, mouseX, mouseY, tickDelta);
+            widget2.
+                    extractRenderState
+                            (context, mouseX, mouseY, tickDelta);
+        }
+    }
+}
