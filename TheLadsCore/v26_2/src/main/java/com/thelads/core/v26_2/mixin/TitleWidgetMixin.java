@@ -1,5 +1,7 @@
 package com.thelads.core.v26_2.mixin;
 
+import com.thelads.core.client.title.ButtonLift;
+import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v26_2.gui.TitleWidgetRegistry;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -26,6 +28,20 @@ public abstract class TitleWidgetMixin {
         int mouseX, int mouseY, float partialTick) {
         if (TitleWidgetRegistry.render(widget)) {
             handleCursor(graphics);
+        } else if (ButtonLift.enabled(widget)) {
+            // The pause menu's buttons grow a little about their centre while hovered, label included.
+            ButtonLift.update(widget, widget.active && widget.isHoveredOrFocused());
+            float scale = 1 + TitleScreenTheme.LIFT * ButtonLift.eased(widget);
+            float cx = widget.getX() + widget.getWidth() / 2f, cy = widget.getY() + widget.getHeight() / 2f;
+            graphics.pose().pushMatrix();
+            graphics.pose().translate(cx, cy);
+            graphics.pose().scale(scale, scale);
+            graphics.pose().translate(-cx, -cy);
+            try {
+                extractWidgetRenderState(graphics, mouseX, mouseY, partialTick);
+            } finally {
+                graphics.pose().popMatrix();
+            }
         } else {
             extractWidgetRenderState(graphics, mouseX, mouseY, partialTick);
         }
