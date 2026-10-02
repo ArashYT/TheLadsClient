@@ -116,6 +116,8 @@ bool nativePack = autoWorldRequested || Env("LADS_VERIFY_NATIVE_PORTS") == "1" |
 bool nativePortsVerification = nativePack && !expectCoreDisabled;
 bool menuCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_MENU") == "1";
 bool hudCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_HUD") == "1";
+// 26.x: every Kill Banner skin, variant and kill count fired in the QA world and photographed (KillBannerCapture).
+bool bannerCaptureVerification = autoWorldVerification && capabilities.KillBanner && Env("LADS_VERIFY_CAPTURE_KILLBANNER") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -238,6 +240,9 @@ string menuCaptureRequest = Path.Combine(directory, ".lads-qa-capture-menu");
 if (autoWorldVerification && File.Exists(menuCaptureRequest)) File.Delete(menuCaptureRequest);
 string hudCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hud");
 if (autoWorldVerification && File.Exists(hudCaptureRequest)) File.Delete(hudCaptureRequest);
+string bannerCaptureRequest = Path.Combine(directory, ".lads-qa-capture-killbanner");
+if (autoWorldVerification && File.Exists(bannerCaptureRequest)) File.Delete(bannerCaptureRequest);
+if (bannerCaptureVerification) File.WriteAllText(bannerCaptureRequest, "Fire every kill banner skin in the QA world and capture its frames.");
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
         File.Delete(Path.Combine(directory, flag));
@@ -518,7 +523,7 @@ try
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in requiredWorldProbes)
                 if (line.Contains(marker) && (Passed(line) || marker == "Lads food server sync END:")) passedMarkers.TryAdd(marker, 0);
-            foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:" })
+            foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -590,7 +595,8 @@ try
         {
             bool menuDone = !menuCaptureVerification || (passedMarkers.ContainsKey("Lads menu capture END:") && passedMarkers.ContainsKey("Lads mods view capture END:"));
             bool hudDone = !hudCaptureVerification || (passedMarkers.ContainsKey("Lads HUD capture END:") && passedMarkers.ContainsKey("Lads HUD editor probe END:"));
-            if (menuDone && hudDone)
+            bool bannerDone = !bannerCaptureVerification || passedMarkers.ContainsKey("Lads kill banner capture END:");
+            if (menuDone && hudDone && bannerDone)
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -703,6 +709,8 @@ try
             "The requested native menu and Installed mods frames were not both captured.");
         Require(!hudCaptureVerification || (passedMarkers.ContainsKey("Lads HUD capture END:") && passedMarkers.ContainsKey("Lads HUD editor probe END:")),
             "The requested HUD editor interaction checks and native frame capture did not complete.");
+        Require(!bannerCaptureVerification || passedMarkers.ContainsKey("Lads kill banner capture END:"),
+            "The requested Kill Banner frames were not all captured.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)
@@ -981,6 +989,8 @@ sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, 
     public static readonly string[] Supported = ["1.8.9", "1.21.1", "1.21.11", "26.2", "26.3"];
 
     public bool Forge { get; init; }
+    /// <summary>The Kill Banner skins exist in the 26.x Core only.</summary>
+    public bool KillBanner { get; init; }
 
     public static QaCapabilities For(string version) => version is "26.2" or "26.3"
         ? new(true, true, true, true, GraphicsRenderer.SupportsVulkan(version), true, true,
@@ -988,7 +998,7 @@ sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, 
             ["Lads native feature probe END:", "Lads food render probe END:", "Lads food JEI probe END:",
                 "Lads paper doll probe END:", "Lads food server sync END:", "Lads render scale probe END:", "Lads world capture END:",
                 "Lads durability tooltip probe END:", "Lads tab tweaks probe END:", "Lads clumps server probe END:", "Lads native screenshots probe END:", "Lads native crosshair probe END:",
-                "Lads shared content probe END:"])
+                "Lads shared content probe END:"]) { KillBanner = true }
         // 1.8.9 (Forge): the C1 Core self-test (menu key, pause-menu button, bridge in its own QA world, launcher catalog) is its one probe.
         : GameVersionPolicy.UsesForge(version)
             ? new(false, false, false, false, false, false, false, [], ["Lads 1.8.9 core probe END:"]) { Forge = true }

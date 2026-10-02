@@ -38,6 +38,7 @@
     "VerticalBobbingMixin",
     "FarBlockEntitiesMixin",
     "KillBannerStatsMixin",
+    "KillBannerAttackMixin",
     "KillBannerHudMixin",
     "ShulkerIconStateMixin",
     "ShulkerIconRendererMixin",

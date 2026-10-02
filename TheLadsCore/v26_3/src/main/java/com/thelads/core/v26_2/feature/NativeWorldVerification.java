@@ -117,6 +117,7 @@ public final class NativeWorldVerification {
                     LOGGER.info("Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted");
                 }
             }
+            KillBannerCapture.tick(gameDirectory, readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null);
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
@@ -160,6 +161,7 @@ public final class NativeWorldVerification {
             }catch(Exception e){fail("title capture",e);}
         }
         chatCapture(target);
+        KillBannerCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
         captureStarted = true;
         try {
