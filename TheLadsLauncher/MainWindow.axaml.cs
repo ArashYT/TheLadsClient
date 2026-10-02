@@ -480,11 +480,13 @@ public partial class MainWindow : Window
     }
 
     private DispatcherTimer? _updateNowPulse;
+    private string? _readyUpdateVersion; // a verified update waits for the Update button (offered again at Play)
 
     /// <summary>A verified update found while the launcher is open waits for the user behind the glowing title-bar button.</summary>
     private void ShowUpdateButton(string version)
     {
         if (_windowClosed) return;
+        _readyUpdateVersion = version;
         ToolTip.SetTip(UpdateNowBtn, $"Version {version} is ready. Click to install it and restart the launcher.");
         if (UpdateNowHost.IsVisible) return;
         UpdateNowHost.IsVisible = true;
@@ -5110,6 +5112,14 @@ public partial class MainWindow : Window
         {
             await ShowLadsDialogAsync("⚠️ Game Already Running",
                 $"Minecraft is already running for '{guardProfile.Name}'. Please turn on 'Allow launching multiple copies' in settings if you want to open another instance.");
+            return;
+        }
+        // A waiting launcher update brings the current Lads pack and LadsCore: offer it before playing with the old ones.
+        if (_readyUpdateVersion is { } update && !UpdateBlocked()
+            && await ShowLadsDialogAsync("Update ready", $"An update is ready (v{update}). Restart and update now? (recommended)",
+                "Update now", "Play anyway"))
+        {
+            UpdateNow_Click(this, new RoutedEventArgs());
             return;
         }
 
