@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -165,6 +166,63 @@ public sealed class ModStateService
             .GroupBy(e => e.Id, StringComparer.Ordinal).Where(g => g.All(e => !e.EnabledOnDisk))
             .ToDictionary(g => g.Key, _ => true, StringComparer.Ordinal);
         return ApplyChoicesAsync(Path.GetFullPath(gameDirectory), inventory, choices, true, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reset mods folder: every jar in Mods, enabled or disabled and yours included (on 1.8.9 also everything in mods\1.8.9\),
+    /// goes to the Recycle Bin, the installed-mod receipt and the saved mod choices are cleared, and LadsCore and the Lads pack
+    /// are installed fresh. Nothing else in the profile changes (renderer state, worlds, configs). Refused while its game runs.
+    /// </summary>
+    /// <param name="recycle">Test seam for <see cref="SafeFileOps.DeleteToRecycleBin"/>.</param>
+    public async Task<ModToggleResult> ResetModsFolderAsync(string bundleRoot, string gameDirectory, string minecraftVersion,
+        Action<string>? status = null, Action<string>? recycle = null, HttpClient? httpClient = null, CancellationToken cancellationToken = default)
+    {
+        var game = Path.GetFullPath(gameDirectory);
+        if (isGameRunning(game)) return new(false, false, false, "Minecraft is running for this profile. Close it, then reset the mods folder.");
+        var mods = Path.Combine(game, "mods");
+        var files = Directory.Exists(mods) ? Directory.EnumerateFiles(mods).Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)
+            || p.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase)).ToList() : new List<string>();
+        // Forge also loads mods\1.8.9\.
+        var versionMods = Path.Combine(mods, GameVersionPolicy.ForgeMinecraftVersion);
+        if (GameVersionPolicy.UsesForge(minecraftVersion) && Directory.Exists(versionMods)) files.AddRange(Directory.EnumerateFiles(versionMods));
+        var moved = 0;
+        foreach (var file in files)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                (recycle ?? (path => SafeFileOps.DeleteToRecycleBin(path)))(file);
+                moved++;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException or OperationCanceledException)
+            {
+                return new(false, moved > 0, false, $"Moved {moved} of {files.Count} mod files to the Recycle Bin, but not '{Path.GetFileName(file)}' " +
+                    $"({e.Message}). Saved choices were kept; close what uses it and reset again.");
+            }
+        }
+        try
+        {
+            var receipt = Path.Combine(game, ".lads-mod-cache", "installed.json");
+            if (File.Exists(receipt)) File.Delete(receipt);
+            if (File.Exists(ModPreferences.PathFor(game)))
+                await ModPreferences.UpdateAsync(game, root => ((JsonObject)root["mods"]!).Clear(), cancellationToken);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return new(false, true, false, $"Moved {moved} mod files to the Recycle Bin, but could not clear the saved mod choices ({e.Message}). Reset again.");
+        }
+        try
+        {
+            status?.Invoke("Installing LadsCore and the Lads pack...");
+            await BundledModInstaller.InstallAsync(bundleRoot, game, minecraftVersion, cancellationToken);
+            await ClientModInstaller.InstallAsync(bundleRoot, game, minecraftVersion, status, cancellationToken, httpClient);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return new(false, true, false, $"Moved {moved} mod files to the Recycle Bin and cleared the saved choices, but the Lads pack " +
+                $"could not be installed now ({e.Message}). It is installed at the next launch.");
+        }
+        return new(true, true, false, $"Mods folder reset: {moved} mod files moved to the Recycle Bin, saved choices cleared, Lads pack installed fresh.");
     }
 
     /// <summary>Switches a Lads module in thelads_config.json (modules.&lt;name&gt;.enabled only). Refused while the game runs:

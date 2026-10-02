@@ -963,6 +963,38 @@
       "projectUrl": "https://modrinth.com/mod/yacl"
     }
   ],
+  "published": {
+    "fabric-api": [
+      "4d5d9c3daafe19be187f638f2d6de3db26420b8720ef5a266cfa81f79d9019cab8c86e6d47478bbb0b0ee0b8f769204b72c843caa2e4aabd94adc41f3dafb518"
+    ],
+    "fabric-language-kotlin": [
+      "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77"
+    ],
+    "modmenu": [
+      "1aa297ab5e6fac71ad6af750fe6f8cd25281bd00c0340e5fe1c1e9d153d1198df03be1df55727a4a2116db97dcaad541d41754f3fc0063abfe4345b60f193fb4"
+    ],
+    "notenoughanimations": [
+      "41c05f531298cce723a84639fb6b9510bfa25e65ff27a041083d47900d743d44473e1f7bdbcd87d7cd149f1291a1359dc3d8553a176be21c432ea15bbbdda92e"
+    ],
+    "resourcify": [
+      "33d9c35b269daebb031c6a5a80e1a6e528852eb6a151d6dac0dd8a9dab953732ba5d261cb629666e3cee5781a548b1159ae46647a6152a72fe3844b47d4f42c2"
+    ],
+    "sodium": [
+      "627fbf9625a4b94693c789c84a0686ffe558c0b1ecbeccf2602a903caafa9e126548b644282aa9c391dc798930d378724a383bea6b4397c5294d59ba5c0a6936"
+    ],
+    "voicechat": [
+      "eb45e75e8b031f3bb27e178ed44fd7b78ba681f077f5972e170726b4837146efd49c7b67d63a95ec4ce87e5672cf76bed85ac8fa7790a9e7ff7309a6c3f424ee"
+    ],
+    "xaerominimap": [
+      "dba00f85308524d9d65c559bc48456c8b65cef58eb54891e069cbaacb6e2f633d279b0d65325f510e3d9e590b67e6f5bdb7c816ada484a0d018850267fbc9131"
+    ],
+    "xaeroworldmap": [
+      "3667833b8e80572398c57b501a5750547a5fbe46283e4b7bba6c3fbba570ecfe1dc31d6e430828c182d8871a37820b5a24b88978bfeba7da5ee85107aa271db3"
+    ],
+    "yet_another_config_lib_v3": [
+      "b3a58e4a5ef54647569282b8b2e9630389b3568f0abecb9c168daaa815477cbf961e79de28081cac551b69b810f561f043d669d1034aec80f12153a53dff53ef"
+    ]
+  },
   "retired": [
     {
       "modId": "autohidehud",
@@ -1032,7 +1064,8 @@
       "projectId": "NNAgCjsB",
       "name": "Entity Culling",
       "sha512": [
-        "4562dd16ce9213959c41fe58a3dd73a95c9ab9095a0fc7fbaa752b6ce3433fbef5063e7f5f2634b1ff34499261f48d31e878306dac8701425af1d50e726e53fd"
+        "4562dd16ce9213959c41fe58a3dd73a95c9ab9095a0fc7fbaa752b6ce3433fbef5063e7f5f2634b1ff34499261f48d31e878306dac8701425af1d50e726e53fd",
+        "338813c344a2d924abbaaf249da2b52f5e162bd92407f3099c6ff1bce1c1efecde9df80efcc7b4de3b3a0044cc5735b96594b04da4594bb26793459fc6c960a6"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
     },
@@ -1096,7 +1129,8 @@
       "projectId": "5ZwdcRci",
       "name": "ImmediatelyFast",
       "sha512": [
-        "5836b089072c0fd796613d42c3bd01c7e401b6ad53de80328bb9d74d585de9be0ff0cfc4d6ffa1ed41008750573b0525eff8c064162a2f724ad16817a8fdaf22"
+        "5836b089072c0fd796613d42c3bd01c7e401b6ad53de80328bb9d74d585de9be0ff0cfc4d6ffa1ed41008750573b0525eff8c064162a2f724ad16817a8fdaf22",
+        "b8b375e6d47acd6051fc7110065d0a18b59db584eb68699652ced212ea0a9b2b9a78d2f791f641ab3547e0ca56b51e0af7c60c1164b4d38910d9aa94e45241c0"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
     },
@@ -1159,7 +1193,8 @@
       "projectId": "QAGBst4M",
       "name": "Puzzles Lib",
       "sha512": [
-        "116dcf2d9eee0dc882c66c9190c32fbf2e429845ef05b6a61f6f6d3a56edea62e2c0b32ba454249fd154f4cafe22a2fbe656e6a0994c8a36105a7296c9d15279"
+        "116dcf2d9eee0dc882c66c9190c32fbf2e429845ef05b6a61f6f6d3a56edea62e2c0b32ba454249fd154f4cafe22a2fbe656e6a0994c8a36105a7296c9d15279",
+        "3d5c0fa58f75f3cd345bc48a08a783890aab8ef01d1be113088138dda1bf79030a782dd267688c07cc2ea7a7d09710d50797416fc2292c58004cc6ff27c791bd"
       ],
       "reason": "Removed from The Lads Client pack in 1.4.6: no remaining mod needs it."
     },
@@ -1195,7 +1230,8 @@
       "projectId": "zV5r3pPn",
       "name": "3D Skin Layers",
       "sha512": [
-        "552bafff617fec708739faeb0a94001f5180aced60dc298710b9217893c3b7448c5acfed926f31d162978b4532e7d85a4887e8128bc6579c48a7e7a55aab79c2"
+        "552bafff617fec708739faeb0a94001f5180aced60dc298710b9217893c3b7448c5acfed926f31d162978b4532e7d85a4887e8128bc6579c48a7e7a55aab79c2",
+        "ead4a257e5ec2b092db84aebc7f5146dfb667a01f5d1362485f9ea9835e4558172949bcfb40c7a0bfbfb36e6c746b96c580f855af4109c806e0fc3591d48ad80"
       ],
       "reason": "Replaced by internal native 3D skin layer module in 1.4.2."
     },
