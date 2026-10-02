@@ -306,7 +306,7 @@ public final class LadsSettingsScreen {
         if (banner.randomize.getIndex() == KillBannerModule.RANDOM_CHOSEN) {
             var pool = banner.pool();
             for (KillBannerStyle skin : KillBannerStyle.values()) {
-                String skinName = skin.name().charAt(0) + skin.name().substring(1).toLowerCase(Locale.ROOT);
+                String skinName = skinName(skin);
                 for (int v = 0; v < skin.variantNames.length; v++) {
                     int variant = v;
                     Rect r = new Rect(x + v * (tileW + gap), y, tileW, tileH);
@@ -330,6 +330,7 @@ public final class LadsSettingsScreen {
         }
         return y + 22 + 10 - start;
     }
+    private static String skinName(KillBannerStyle skin) { return skin.name().charAt(0) + skin.name().substring(1).toLowerCase(Locale.ROOT); }
     private int variantTiles(LadsGraphics g, KillBannerModule banner, KillBannerStyle skin, int x, int y, int tileW, int tileH, int mx, int my) {
         y = section(g, skin.name() + " VARIANT", x, y);
         DropdownOption option = banner.variantOf(skin);
@@ -416,9 +417,10 @@ public final class LadsSettingsScreen {
                 KillBannerModule.Pick pick = banner.chosen();
                 if (!g.drawKillBanner(pick.style() == null ? "base" : pick.style().id, pick.variant(), boxX + 6, boxY + 6, boxW - 12, boxH - 30))
                     g.drawCenteredText("KILL BANNER", centerX, centerY - 4, ACCENT);
-                String random = banner.randomize.getIndex() == KillBannerModule.RANDOM_OFF ? "" : " · Randomized";
-                g.drawCenteredText(fit(g, (pick.style() == null ? "Base" : pick.style().variantNames[pick.variant()] + " " + pick.style().name()) + random, boxW - 8),
-                    centerX, boxY + boxH - 18, TEXT);
+                String caption = pick.style() == null ? "Base" : skinName(pick.style()) + " · " + pick.style().variantNames[pick.variant()];
+                if (pick.soundStyle() != pick.style()) caption += " · " + (pick.soundStyle() == null ? "Chime" : skinName(pick.soundStyle())) + " sound";
+                if (banner.randomize.getIndex() != KillBannerModule.RANDOM_OFF) caption += " · Randomized";
+                g.drawCenteredText(fit(g, caption, boxW - 8), centerX, boxY + boxH - 18, TEXT);
             } else if ("Crosshair".equalsIgnoreCase(name)) {
                 int chColor = m.isEnabled() ? ACCENT : TEXT;
                 int chSize = 7, chGap = 3;
