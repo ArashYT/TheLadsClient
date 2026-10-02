@@ -24,6 +24,8 @@ public final class NativeQualityOfLife {
         ModuleSupport.registerBuiltIn("KillBanner");
         // NametagMixin, NametagShadowMixin, OwnNametagMixin, NicknameTabMixin and the ChatMixin rename, as on 26.x.
         ModuleSupport.registerBuiltIn("Nametags");
+        // NativeOldAnimations through the OldAnimations* mixins, ClientTickMixin (swing while using) and GuiMixin (hearts).
+        ModuleSupport.registerBuiltIn(com.thelads.core.modules.OldAnimationsModule.NAME);
         // QA only (-Dthelads.verifyAutoWorld): the isolated auto-world runtime; registers nothing in normal launches.
         NativeWorldVerification.register();
     }

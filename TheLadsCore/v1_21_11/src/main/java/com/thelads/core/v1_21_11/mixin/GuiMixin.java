@@ -20,4 +20,11 @@ public class GuiMixin {
         // Skips the editor's duplicate pass and fades every Lads widget with Autohide.
         com.thelads.core.v1_21_11.feature.NativeAutohide.renderLadsHud(guiGraphics);
     }
+
+    /** 1.7 Animations, No heart flashing: the damage blink renderHearts draws. */
+    @org.spongepowered.asm.mixin.injection.ModifyArg(method = "renderPlayerHealth", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/gui/Gui;renderHearts(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/world/entity/player/Player;IIIIFIIIZ)V"), index = 10, require = 1)
+    private boolean lads$noHeartFlash(boolean blink) {
+        return com.thelads.core.v1_21_11.feature.NativeOldAnimations.heartsBlink(blink);
+    }
 }

@@ -31,6 +31,14 @@
     "KillBannerHudMixin",
     "NametagMixin",
     "OwnNametagMixin",
-    "NicknameTabMixin"
+    "NicknameTabMixin",
+    "OldAnimationsHandMixin",
+    "OldAnimationsModelMixin",
+    "OldAnimationsPlayerMixin",
+    "OldAnimationsItemLayerMixin",
+    "OldAnimationsArmourMixin",
+    "OldAnimationsDropMixin",
+    "OldAnimationsCameraMixin",
+    "OldAnimationsFireMixin"
   ]
 }

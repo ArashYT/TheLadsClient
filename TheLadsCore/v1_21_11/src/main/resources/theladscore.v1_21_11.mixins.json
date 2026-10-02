@@ -36,6 +36,15 @@
     "NametagMixin",
     "NametagShadowMixin",
     "OwnNametagMixin",
-    "NicknameTabMixin"
+    "NicknameTabMixin",
+    "OldAnimationsHandMixin",
+    "OldAnimationsModelMixin",
+    "OldAnimationsAvatarMixin",
+    "OldAnimationsItemLayerMixin",
+    "OldAnimationsArmourMixin",
+    "OldAnimationsEquipmentMixin",
+    "OldAnimationsDropMixin",
+    "OldAnimationsCameraMixin",
+    "OldAnimationsFireMixin"
   ]
 }

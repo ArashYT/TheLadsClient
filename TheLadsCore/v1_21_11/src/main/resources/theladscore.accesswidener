@@ -72,3 +72,19 @@ accessible field net/minecraft/client/gui/screens/inventory/BookViewScreen IMAGE
 
 # Embedded Controlling
 extendable method net/minecraft/client/gui/screens/options/controls/KeyBindsList$Entry refreshEntry ()V
+
+# 1.7 Animations: OldAnimationsCameraMixin and the NONE-resolved item marker; the rest lets NativeOldAnimationsProbe drive and restore state
+accessible field net/minecraft/client/Camera eyeHeight F
+accessible field net/minecraft/client/Camera eyeHeightOld F
+accessible field net/minecraft/client/renderer/item/ItemStackRenderState displayContext Lnet/minecraft/world/item/ItemDisplayContext;
+accessible field net/minecraft/world/entity/LivingEntity useItemRemaining I
+accessible field net/minecraft/world/entity/LivingEntity attackStrengthTicker I
+accessible field net/minecraft/world/entity/LivingEntity itemSwapTicker I
+accessible field net/minecraft/client/renderer/ItemInHandRenderer mainHandItem Lnet/minecraft/world/item/ItemStack;
+accessible field net/minecraft/client/renderer/ItemInHandRenderer mainHandHeight F
+accessible field net/minecraft/client/renderer/ItemInHandRenderer oMainHandHeight F
+accessible field net/minecraft/client/renderer/ItemInHandRenderer offHandItem Lnet/minecraft/world/item/ItemStack;
+accessible field net/minecraft/client/renderer/ItemInHandRenderer offHandHeight F
+accessible field net/minecraft/client/renderer/ItemInHandRenderer oOffHandHeight F
+accessible field net/minecraft/client/gui/Gui healthBlinkTime J
+accessible field net/minecraft/client/gui/Gui tickCount I
