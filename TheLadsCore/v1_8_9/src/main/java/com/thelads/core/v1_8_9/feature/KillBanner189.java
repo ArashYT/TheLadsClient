@@ -183,13 +183,15 @@ public final class KillBanner189 {
         if (event.type != RenderGameOverlayEvent.ElementType.ALL || !eligible() || module == null) return;
         double age = BANNER.age(System.nanoTime());
         if (age < 0) return;
-        boolean depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        // Blending and depth go back as found, as NativeHud leaves them.
+        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND), depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
         GlStateManager.disableDepth();
         KillBannerArt189.begin();
         try {
             render(module, age, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
         } finally {
             KillBannerArt189.end();
+            if (!blend) GlStateManager.disableBlend();
             if (depth) GlStateManager.enableDepth();
         }
     }
