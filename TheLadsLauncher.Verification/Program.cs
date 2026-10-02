@@ -116,7 +116,7 @@ bool nativePack = autoWorldRequested || Env("LADS_VERIFY_NATIVE_PORTS") == "1" |
 bool nativePortsVerification = nativePack && !expectCoreDisabled;
 bool menuCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_MENU") == "1";
 bool hudCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_HUD") == "1";
-// 26.x: every Kill Banner skin, variant and kill count fired in the QA world and photographed (KillBannerCapture).
+// 1.21.x and 26.x: every Kill Banner skin, variant and kill count fired in the QA world and photographed (KillBannerCapture).
 bool bannerCaptureVerification = autoWorldVerification && capabilities.KillBanner && Env("LADS_VERIFY_CAPTURE_KILLBANNER") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
@@ -989,7 +989,7 @@ sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, 
     public static readonly string[] Supported = ["1.8.9", "1.21.1", "1.21.11", "26.2", "26.3"];
 
     public bool Forge { get; init; }
-    /// <summary>The Kill Banner skins exist in the 26.x Core only.</summary>
+    /// <summary>The Kill Banner skins exist in the Fabric Cores (1.21.x and 26.x), not on 1.8.9.</summary>
     public bool KillBanner { get; init; }
 
     public static QaCapabilities For(string version) => version is "26.2" or "26.3"
@@ -1004,7 +1004,7 @@ sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, 
             ? new(false, false, false, false, false, false, false, [], ["Lads 1.8.9 core probe END:"]) { Forge = true }
         // 1.21.x: NativeWorldVerification on its own QA save, the native feature probe, the U1 menu access probe and the U3 HUD pipeline probe.
         : new(false, false, false, false, false, false, false, [],
-            ["Lads native feature probe END:", "Lads menu access probe END:", "Lads HUD pipeline probe END:", "Lads world capture END:", "Lads shared content probe END:"]);
+            ["Lads native feature probe END:", "Lads menu access probe END:", "Lads HUD pipeline probe END:", "Lads world capture END:", "Lads shared content probe END:"]) { KillBanner = true };
 }
 
 /// <summary>The mods a loader reported loading, from the game's log lines.</summary>

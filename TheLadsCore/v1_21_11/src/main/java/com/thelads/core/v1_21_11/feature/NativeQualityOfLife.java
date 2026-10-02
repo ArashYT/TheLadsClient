@@ -20,6 +20,8 @@ public final class NativeQualityOfLife {
         // U3 HUD pipeline: the hud mixins (Autohide scope and faded GUI states, SmoothHotbar, BossBar overlay).
         ModuleSupport.registerBuiltIn("Autohide", "SmoothHotbar", "BossBar");
         NativeAutohide.register();
+        // NativeKillBanner through the KillBanner stats, attack and HUD mixins, as on 26.x.
+        ModuleSupport.registerBuiltIn("KillBanner");
         // QA only (-Dthelads.verifyAutoWorld): the isolated auto-world runtime; registers nothing in normal launches.
         NativeWorldVerification.register();
     }
@@ -28,6 +30,7 @@ public final class NativeQualityOfLife {
     public static void tick() {
         // Registers "Minimap" on the first tick once Xaero is found (the catalog export follows the revision).
         MinimapIntegration.tick();
+        NativeKillBanner.tick();
         NativeQualityProbe.tick();
         NativeMenuAccessProbe.tick();
         NativeHudProbe.tick();
