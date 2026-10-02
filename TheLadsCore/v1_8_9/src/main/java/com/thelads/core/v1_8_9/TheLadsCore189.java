@@ -91,7 +91,9 @@ public class TheLadsCore189 {
         // presence sends nothing yet (no Discord connection is made).
         "Threads", "DiscordRPC",
         // TabTweaks189 through GuiPlayerTabOverlayMixin, as 26.x NativeTabTweaks.
-        "PingView", "TabList"
+        "PingView", "TabList",
+        // Nametags189: shadow, nicknames, own display name and backgrounds (also Essential's).
+        "Nametags"
     };
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
