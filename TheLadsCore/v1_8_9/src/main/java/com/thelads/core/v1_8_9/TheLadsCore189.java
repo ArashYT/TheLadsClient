@@ -4,6 +4,7 @@ import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.mods.CoreCatalogExporter;
+import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.Clumps189;
@@ -13,6 +14,7 @@ import com.thelads.core.v1_8_9.feature.FoodOverlay189;
 import com.thelads.core.v1_8_9.feature.KillBanner189;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
+import com.thelads.core.v1_8_9.feature.OldAnimations189;
 import com.thelads.core.v1_8_9.feature.RawMouse189;
 import com.thelads.core.v1_8_9.feature.Reconnect189;
 import com.thelads.core.v1_8_9.feature.RenderScale189;
@@ -64,6 +66,7 @@ public class TheLadsCore189 {
         ConfigManager.load();
         registerStatuses();
         com.thelads.core.v1_8_9.feature.Nametags189.register();
+        OldAnimations189.register();
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
@@ -93,7 +96,10 @@ public class TheLadsCore189 {
         // TabTweaks189 through GuiPlayerTabOverlayMixin, as 26.x NativeTabTweaks.
         "PingView", "TabList",
         // Nametags189: shadow, nicknames, own display name and backgrounds (also Essential's).
-        "Nametags"
+        "Nametags",
+        // OldAnimations189 through the ItemRenderer, EntityRenderer, LayerHeldItem, ModelBiped, LayerArmorBase, RenderEntityItem,
+        // RenderFish and GuiIngameForge mixins; the menu hides No attack-cooldown dip and Low Shield, which 1.8.9 has nothing for.
+        OldAnimationsModule.NAME
     };
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
@@ -128,6 +134,7 @@ public class TheLadsCore189 {
         if (event.phase != TickEvent.Phase.END) return;
         NativeMenuKey.tick();
         Minecraft mc = Minecraft.getMinecraft();
+        OldAnimations189.tick(mc);
         if (mc.thePlayer != null) {
             com.thelads.core.config.Module fullbright = com.thelads.core.config.ModuleManager.getInstance().getModule("Fullbright");
             if (fullbright != null && fullbright.isEnabled() && mc.gameSettings.gammaSetting < 15.0f) {
