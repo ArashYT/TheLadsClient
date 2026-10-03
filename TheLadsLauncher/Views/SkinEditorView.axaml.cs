@@ -3,23 +3,19 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
-using Avalonia.Platform.Storage;
 using System;
 using System.IO;
-using System.Net.Http;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using TheLadsLauncher.Services;
 
 namespace TheLadsLauncher.Views
 {
-    public partial class SkinManagerView : UserControl
+    public partial class SkinEditorView : UserControl
     {
-        public string ActiveUsername { get; set; } = "No Account Selected";
         public event EventHandler<string>? LogMessage;
-        
-        private static readonly HttpClient _httpClient = new HttpClient();
-        
+        /// <summary>The skin editor's "Save to library": the drawing as a 64x64 PNG.</summary>
+        public event EventHandler<byte[]>? SkinSaved;
+
         // Skin & Cape Editor state
         private string _selectedEditor = "Skin";
         private int _editorWidth = 8;
@@ -31,7 +27,7 @@ namespace TheLadsLauncher.Views
         private Color _activeEditorColor = Colors.White;
         private bool _isUpdatingColor = false;
 
-        public SkinManagerView()
+        public SkinEditorView()
         {
             InitializeComponent();
             InitializeEditor();
@@ -42,137 +38,11 @@ namespace TheLadsLauncher.Views
             LogMessage?.Invoke(this, msg);
         }
 
-        public async Task LoadPlayerSkin(string username)
+        /// <summary>Opens the skin editor on a skin PNG (the cape maker keeps its own drawing).</summary>
+        public void LoadSkin(string path)
         {
-            ActiveUsername = username;
-            try
-            {
-                SelectedAccountText.Text = username;
-
-                string localSkinPath = PathService.Instance.SkinFile;
-                if (File.Exists(localSkinPath))
-                {
-                    using (var stream = File.OpenRead(localSkinPath))
-                    {
-                        PlayerSkinPreview.Source = Bitmap.DecodeToWidth(stream, 150);
-                    }
-                }
-                else
-                {
-                    // Load 3D-like body render
-                    string bodyUrl = $"https://mc-heads.net/body/{username}/150";
-                    var bodyBytes = await _httpClient.GetByteArrayAsync(bodyUrl);
-                    using (var ms = new MemoryStream(bodyBytes))
-                    {
-                        PlayerSkinPreview.Source = new Bitmap(ms);
-                    }
-                }
-
-                LoadPresetsList(username);
-            }
-            catch
-            {
-                PlayerSkinPreview.Source = null;
-            }
-        }
-
-        private void LoadPresetsList(string username)
-        {
-            PresetSelector.Items.Clear();
-            string presetDir = Path.Combine(PathService.Instance.PresetsDirectory, username);
-            if (Directory.Exists(presetDir))
-            {
-                var files = Directory.GetFiles(presetDir, "*.png");
-                foreach (var f in files)
-                {
-                    PresetSelector.Items.Add(Path.GetFileNameWithoutExtension(f));
-                }
-            }
-            if (PresetSelector.Items.Count > 0)
-                PresetSelector.SelectedIndex = 0;
-        }
-
-        private void SavePreset_Click(object? sender, RoutedEventArgs e)
-        {
-            string username = SelectedAccountText.Text ?? "";
-            if (string.IsNullOrEmpty(username) || username == "No Account Selected") return;
-
-            string name = "Preset_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string presetDir = Path.Combine(PathService.Instance.PresetsDirectory, username);
-            Directory.CreateDirectory(presetDir);
-            string dest = Path.Combine(presetDir, name + ".png");
-
-            SaveSkinPng(dest, false);
-            LoadPresetsList(username);
-            Log($"[Presets] Saved skin preset: {name}");
-        }
-
-        private void ApplyPreset_Click(object? sender, RoutedEventArgs e)
-        {
-            string username = SelectedAccountText.Text ?? "";
-            if (string.IsNullOrEmpty(username)) return;
-            string? selected = PresetSelector.SelectedItem as string;
-            if (string.IsNullOrEmpty(selected)) return;
-
-            string src = Path.Combine(PathService.Instance.PresetsDirectory, username, selected + ".png");
-            string dest = PathService.Instance.SkinFile;
-            if (File.Exists(src))
-            {
-                File.Copy(src, dest, true);
-                Log($"[Presets] Applied skin preset: {selected}");
-                _ = LoadPlayerSkin(username);
-                LoadPixelsFromSkinFile(dest);
-                if (EditorContainer.IsVisible)
-                {
-                    DrawPixelGrid();
-                }
-            }
-        }
-
-        private void DeletePreset_Click(object? sender, RoutedEventArgs e)
-        {
-            string username = SelectedAccountText.Text ?? "";
-            if (string.IsNullOrEmpty(username)) return;
-            string? selected = PresetSelector.SelectedItem as string;
-            if (string.IsNullOrEmpty(selected)) return;
-
-            string path = Path.Combine(PathService.Instance.PresetsDirectory, username, selected + ".png");
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-                Log($"[Presets] Deleted skin preset: {selected}");
-                LoadPresetsList(username);
-            }
-        }
-
-        private async void UploadSkin_Click(object? sender, RoutedEventArgs e)
-        {
-            var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel == null) return;
-            
-            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "Select Skin PNG File",
-                FileTypeFilter = new[] { FilePickerFileTypes.ImageAll }
-            });
-
-            if (files != null && files.Count > 0)
-            {
-                string src = files[0].Path.LocalPath;
-                string dest = PathService.Instance.SkinFile;
-                File.Copy(src, dest, true);
-                Log($"[Skin] Imported skin from local file.");
-                
-                string username = SelectedAccountText.Text ?? "";
-                if (!string.IsNullOrEmpty(username) && username != "No Account Selected")
-                    _ = LoadPlayerSkin(username);
-
-                LoadPixelsFromSkinFile(dest);
-                if (EditorContainer.IsVisible)
-                {
-                    DrawPixelGrid();
-                }
-            }
+            LoadPixelsFromSkinFile(path);
+            ToggleSkinEditor_Click(this, new RoutedEventArgs());
         }
 
         private void InitializeEditor()
@@ -221,7 +91,7 @@ namespace TheLadsLauncher.Views
             PixelEditorCanvas.PointerReleased += (s, e) => _isDrawing = false;
             PixelEditorCanvas.PointerExited += (s, e) => _isDrawing = false;
 
-            // Load skin.png if exists
+            // Start from the local skin.png and the saved cape, as before.
             LoadPixelsFromSkinFile(PathService.Instance.SkinFile);
             LoadPixelsFromSkinFile(PathService.Instance.CapeFile, true);
         }
@@ -273,6 +143,7 @@ namespace TheLadsLauncher.Views
             ToggleSkinEditorBtn.Classes.Add("active");
             ToggleCapeEditorBtn.Classes.Remove("active");
             EditorContainer.IsVisible = true;
+            SaveEditorBtn.Content = "Save to library";
             UpdateEditorGridSize();
         }
 
@@ -282,6 +153,7 @@ namespace TheLadsLauncher.Views
             ToggleCapeEditorBtn.Classes.Add("active");
             ToggleSkinEditorBtn.Classes.Remove("active");
             EditorContainer.IsVisible = true;
+            SaveEditorBtn.Content = "Save cape";
             UpdateEditorGridSize();
         }
 
@@ -434,39 +306,17 @@ namespace TheLadsLauncher.Views
 
         private void SaveEditorDrawing_Click(object? sender, RoutedEventArgs e)
         {
-            string username = SelectedAccountText.Text ?? "";
-            if (string.IsNullOrEmpty(username) || username == "No Account Selected")
-            {
-                if (_selectedEditor == "Cape")
-                {
-                    string path = PathService.Instance.CapeFile;
-                    Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                    SaveSkinPng(path, true);
-                    Log("[Cape] Saved custom cape to config.");
-                }
-                else
-                {
-                    string path = PathService.Instance.SkinFile;
-                    SaveSkinPng(path, false);
-                    Log("[Skin] Saved custom skin.");
-                }
-                return;
-            }
-
             if (_selectedEditor == "Cape")
             {
                 string path = PathService.Instance.CapeFile;
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                SaveSkinPng(path, true);
-                Log($"[Cape] Saved custom cape for {username}.");
+                using (var file = File.Create(path)) SaveSkinPng(file, true);
+                Log("[Cape] Saved custom cape to config.");
+                return;
             }
-            else
-            {
-                string path = PathService.Instance.SkinFile;
-                SaveSkinPng(path, false);
-                Log($"[Skin] Saved custom skin for {username}.");
-                _ = LoadPlayerSkin(username);
-            }
+            var png = new MemoryStream();
+            SaveSkinPng(png, false);
+            SkinSaved?.Invoke(this, png.ToArray());
         }
 
         private void LoadPixelsFromSkinFile(string filePath, bool isCape = false)
@@ -554,12 +404,13 @@ namespace TheLadsLauncher.Views
             return false;
         }
 
-        private void SaveSkinPng(string filePath, bool isCape)
+        private void SaveSkinPng(Stream target, bool isCape)
         {
             int w = 64;
             int h = isCape ? 32 : 64;
             
-            var bitmap = new WriteableBitmap(new PixelSize(w, h), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
+            // Unpremul: the pixels below are straight (non-premultiplied) colours.
+            using var bitmap = new WriteableBitmap(new PixelSize(w, h), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Unpremul);
             using (var buf = bitmap.Lock())
             {
                 int size = w * h * 4;
@@ -579,7 +430,7 @@ namespace TheLadsLauncher.Views
                 }
                 Marshal.Copy(raw, 0, buf.Address, raw.Length);
             }
-            bitmap.Save(filePath);
+            bitmap.Save(target);
         }
     }
 }

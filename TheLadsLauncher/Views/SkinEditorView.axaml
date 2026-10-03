@@ -3,73 +3,10 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
-             x:Class="TheLadsLauncher.Views.SkinManagerView">
+             x:Class="TheLadsLauncher.Views.SkinEditorView">
 
-    <UserControl.Styles>
-        <!-- Action Button -->
-        <Style Selector="Button.action">
-            <Setter Property="Background" Value="#303137" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Foreground" Value="#AAAAAA" />
-        </Style>
-        <Style Selector="Button.action:pointerover">
-            <Setter Property="Background" Value="#252545" />
-            <Setter Property="Foreground" Value="White" />
-        </Style>
-
-        <!-- Danger Button -->
-        <Style Selector="Button.danger">
-            <Setter Property="Background" Value="#331111" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Foreground" Value="#FF6666" />
-        </Style>
-        <Style Selector="Button.danger:pointerover">
-            <Setter Property="Background" Value="#441111" />
-            <Setter Property="Foreground" Value="#E27676" />
-        </Style>
-
-        <!-- Launch Button -->
-        <Style Selector="Button.launch">
-            <Setter Property="Background" Value="#C44343" />
-            <Setter Property="CornerRadius" Value="12" />
-        </Style>
-        <Style Selector="Button.launch:pointerover">
-            <Setter Property="Background" Value="#B00000" />
-        </Style>
-        <Style Selector="Button.launch:pressed">
-            <Setter Property="Background" Value="#600000" />
-        </Style>
-    </UserControl.Styles>
-
-    <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
-        <ScrollViewer>
             <StackPanel Spacing="16">
-                <TextBlock Text="Skin &amp; Cape Customizer" Foreground="White" FontSize="18" FontWeight="Bold"/>
-                
-                <!-- Player Skin Preview & Preset Selector -->
-                <Grid ColumnDefinitions="*,*">
-                    <!-- Skin Preview -->
-                    <Border Grid.Column="0" Background="#121315" CornerRadius="4" Height="220" BorderBrush="#303137" BorderThickness="1" Padding="12">
-                        <Grid RowDefinitions="*,Auto">
-                            <Image x:Name="PlayerSkinPreview" Height="160" Width="80" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Row="1" x:Name="SelectedAccountText" Text="No Account Selected" Foreground="#A0A1AA" FontSize="12" HorizontalAlignment="Center" Margin="0,8,0,0"/>
-                        </Grid>
-                    </Border>
-                    
-                    <!-- Presets & Management -->
-                    <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="8">
-                        <TextBlock Text="SKIN PRESETS" Foreground="#C44343" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
-                        <ComboBox x:Name="PresetSelector" HorizontalAlignment="Stretch" Height="32"/>
-                        <Button Classes="action" Content="Apply Preset" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="ApplyPreset_Click"/>
-                        <Button Classes="action" Content="Save as Preset" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="SavePreset_Click"/>
-                        <Button Classes="danger" Content="Delete Preset" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="DeletePreset_Click"/>
-                        <Border Height="1" Background="#303137" Margin="0,4"/>
-                        <Button Classes="action" Content="Upload local Skin (.png)" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" Click="UploadSkin_Click"/>
-                    </StackPanel>
-                </Grid>
-
                 <!-- Editors Toggle & Editor Canvas -->
-                <Border Height="1" Background="#303137"/>
                 <Grid ColumnDefinitions="*,*">
                     <Button x:Name="ToggleSkinEditorBtn" Classes="action" Content="Skin Editor" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleSkinEditor_Click"/>
                     <Button Grid.Column="1" x:Name="ToggleCapeEditorBtn" Classes="action" Content="Cape Maker" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleCapeEditor_Click"/>
@@ -133,11 +70,9 @@
                         <!-- Editor Actions -->
                         <Grid ColumnDefinitions="*,*">
                             <Button Classes="danger" Content="Clear Canvas" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="ClearEditorCanvas_Click"/>
-                            <Button Grid.Column="1" Classes="launch" Content="Apply &amp; Save" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Foreground="White" FontWeight="Bold" Click="SaveEditorDrawing_Click"/>
+                            <Button Grid.Column="1" Classes="launch" x:Name="SaveEditorBtn" Content="Save to library" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Foreground="White" FontWeight="Bold" Click="SaveEditorDrawing_Click"/>
                         </Grid>
                     </StackPanel>
                 </Border>
             </StackPanel>
-        </ScrollViewer>
-    </Border>
 </UserControl>

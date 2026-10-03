@@ -1,0 +1,16 @@
+GET /minecraft/profile
+GET /texture/preview-cape-a (textures.minecraft.net)
+GET /texture/preview-cape-b (textures.minecraft.net)
+GET /texture/preview-skin-0 (textures.minecraft.net)
+POST /minecraft/profile/skins variant=classic file=skin.png image/png 321 bytes
+GET /texture/preview-skin-1 (textures.minecraft.net)
+DELETE /minecraft/profile/capes/active
+PUT /minecraft/profile/capes/active {"capeId":"preview-cape-b"}
+POST /minecraft/profile/skins variant=slim file=skin.png image/png 315 bytes
+PUT /minecraft/profile/capes/active {"capeId":"preview-cape-a"}
+GET /texture/preview-skin-2 (textures.minecraft.net)
+GET /users/profiles/minecraft/PreviewFriend (api.mojang.com)
+GET /session/minecraft/profile/0123456789abcdef0123456789abcdef (sessionserver.mojang.com)
+GET /texture/preview-friend (textures.minecraft.net)
+GET /green-skin.png (skins.example.invalid)
+GET /not-a-skin.png (skins.example.invalid)

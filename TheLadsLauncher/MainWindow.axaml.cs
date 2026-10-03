@@ -121,16 +121,6 @@ public partial class MainWindow : Window
     // Web Client
     private System.Net.Http.HttpClient _httpClient = new();
 
-    // Skin & Cape Editor state
-    private string _selectedEditor = "Skin";
-    private int _editorWidth = 8;
-    private int _editorHeight = 8;
-    private Color[,] _skinBasePixels = new Color[64, 64];
-    private Color[,] _skinOverlayPixels = new Color[64, 64];
-    private Color[,] _capePixels = new Color[64, 64];
-    private bool _isDrawing = false;
-    private Color _activeEditorColor = Colors.White;
-
     public MainWindow()
     {
         InitializeComponent();
@@ -213,7 +203,6 @@ public partial class MainWindow : Window
         PopulateLaunchProfileSelector();
         LoadProfilesUI();
         LoadAccounts();
-        InitializeEditor();
         if (args.Contains("--preview-accounts")) Dispatcher.UIThread.Post(() => NavigateTo("Accounts"));
         // Program.Main already refused this switch unless THELADS_DIR and LADS_GLOBAL_MINECRAFT_DIR point at a sandbox.
         int previewShared = Array.IndexOf(args, "--preview-shared");
@@ -291,6 +280,19 @@ public partial class MainWindow : Window
             if (contentPreview >= 0) { await RunContentPreviewAsync(Path.GetFullPath(args[contentPreview + 1])); return; }
             int modpacksPreview = Array.IndexOf(args, "--preview-modpacks");
             if (modpacksPreview >= 0) { await RunModpacksPreviewAsync(Path.GetFullPath(args[modpacksPreview + 1])); return; }
+            int skinsPreview = Array.IndexOf(args, "--preview-skins");
+            if (skinsPreview >= 0)
+            {
+                string output = Path.GetFullPath(args[skinsPreview + 1]);
+                Directory.CreateDirectory(output);
+                NavigateTo("Accounts");
+                await Task.Delay(400);
+                SaveWindowScreenshot(Path.Combine(output, "accounts.png"));
+                NavigateTo("Skins");
+                await SkinsPage.RunPreviewAsync(output, SaveWindowScreenshot);
+                Close();
+                return;
+            }
             if (_previewWorldsOutput != null)
             {
                 Directory.CreateDirectory(_previewWorldsOutput);
@@ -443,9 +445,6 @@ public partial class MainWindow : Window
         ApplyTheme();
         ApplyUiScale();
 
-        // Drawing release event handler
-        this.PointerReleased += (s, e) => _isDrawing = false;
-
         // Version display
         VersionText.Text = $"v{Program.Version}";
         UpdateMinecraftVersionDisplay();
@@ -582,6 +581,7 @@ public partial class MainWindow : Window
         NavModpacks.Classes.Set("active", page == "Modpacks");
         ProfilesPage.IsVisible = page == "Profiles";
         AccountsPage.IsVisible = page == "Accounts";
+        SkinsPage.IsVisible = page == "Skins";
         SettingsPage.IsVisible = page == "Settings";
         ModsPage.IsVisible = page is "Mods" or "Packs";
         if (page is "Mods" or "Packs")
@@ -599,6 +599,7 @@ public partial class MainWindow : Window
         NavHome.Classes.Set("active", page == "Home");
         NavProfiles.Classes.Set("active", page == "Profiles");
         NavAccounts.Classes.Set("active", page == "Accounts");
+        NavSkins.Classes.Set("active", page == "Skins");
         NavSettings.Classes.Set("active", page == "Settings");
         NavMods.Classes.Set("active", page == "Mods");
         NavPacks.Classes.Set("active", page == "Packs");
@@ -618,6 +619,13 @@ public partial class MainWindow : Window
         NavigateTo("Profiles");
     }
     private void NavAccounts_Click(object? sender, RoutedEventArgs e) { LoadAccounts(); NavigateTo("Accounts"); }
+    private void NavSkins_Click(object? sender, RoutedEventArgs e) { NavigateTo("Skins"); ShowSkins(); }
+    // The Skins tab applies to the main account; Microsoft accounts get a silently refreshed Minecraft token.
+    private void ShowSkins()
+    {
+        var account = loginHandler.AccountManager.GetAccounts().FirstOrDefault(a => (a as CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount)?.Profile?.Username == _selectedAccount);
+        _ = SkinsPage.ShowAsync(_selectedAccount, account == null ? null : async ct => (await loginHandler.AuthenticateSilently(account, ct)).AccessToken!, _httpClient);
+    }
     private void NavSettings_Click(object? sender, RoutedEventArgs e) => NavigateTo("Settings");
     private void NavMods_Click(object? sender, RoutedEventArgs e)
     {
@@ -1720,7 +1728,6 @@ public partial class MainWindow : Window
         {
             _selectedAccount = "";
             MiniAccountName.Text = "Offline User";
-            PlayerSkinPreview.Source = null;
         }
 
         // Listing accounts is local. Only launch or explicit refresh authenticates.
@@ -2713,7 +2720,7 @@ public partial class MainWindow : Window
     }
 
     // ═══════════════════════════════════════
-    //  SKIN & CAPE CUSTOMIZATION / EDITOR
+    //  ACCOUNT SKIN HEADS (the Skins tab is Views/SkinsView)
     // ═══════════════════════════════════════
 
     // mc-heads renders by username OR uuid. Prefer the account's real UUID (most reliable,
@@ -2738,18 +2745,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            SelectedAccountText.Text = username;
             MiniAccountName.Text = username;
 
             string skinId = ResolveSkinId(username);
-
-            // Load 3D-like body render (use uuid/username directly — NOT the broken /player/ path)
-            string bodyUrl = $"https://mc-heads.net/body/{Uri.EscapeDataString(skinId)}/150";
-            var bodyBytes = await _httpClient.GetByteArrayAsync(bodyUrl);
-            using (var ms = new MemoryStream(bodyBytes))
-            {
-                PlayerSkinPreview.Source = new Bitmap(ms);
-            }
 
             // Load head for mini icon
             string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(skinId)}/24";
@@ -2759,12 +2757,9 @@ public partial class MainWindow : Window
                 var headBmp = new Bitmap(ms);
                 MiniSkinHead.Fill = new ImageBrush(headBmp);
             }
-
-            LoadPresetsList(username);
         }
         catch
         {
-            PlayerSkinPreview.Source = null;
             MiniSkinHead.Fill = new SolidColorBrush(Color.Parse("#202125"));
         }
     }
@@ -2790,455 +2785,6 @@ public partial class MainWindow : Window
 
     private Task WriteLaunchAccountFilesAsync(MSession session, bool offline, string gameDirectory) =>
         AccountExportService.WriteLaunchAsync(gameDirectory, session, offline, GetAccountSummaries());
-
-    private void LoadPresetsList(string username)
-    {
-        PresetSelector.Items.Clear();
-        string presetDir = Path.Combine(TheLadsLauncher.Services.PathService.Instance.PresetsDirectory, username);
-        if (Directory.Exists(presetDir))
-        {
-            var files = Directory.GetFiles(presetDir, "*.png");
-            foreach (var f in files)
-            {
-                PresetSelector.Items.Add(Path.GetFileNameWithoutExtension(f));
-            }
-        }
-        if (PresetSelector.Items.Count > 0)
-            PresetSelector.SelectedIndex = 0;
-    }
-
-    private void SavePreset_Click(object? sender, RoutedEventArgs e)
-    {
-        string? username = SelectedAccountText.Text;
-        if (string.IsNullOrEmpty(username) || username == "No Account Selected") return;
-
-        string name = "Preset_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        string presetDir = Path.Combine(TheLadsLauncher.Services.PathService.Instance.PresetsDirectory, username);
-        Directory.CreateDirectory(presetDir);
-        string dest = Path.Combine(presetDir, name + ".png");
-
-        SaveSkinPng(dest, false);
-        LoadPresetsList(username);
-        Log($"[Presets] Saved skin preset: {name}");
-    }
-
-    private void ApplyPreset_Click(object? sender, RoutedEventArgs e)
-    {
-        string? username = SelectedAccountText.Text;
-        if (string.IsNullOrEmpty(username)) return;
-        string? selected = PresetSelector.SelectedItem as string;
-        if (string.IsNullOrEmpty(selected)) return;
-
-        string src = Path.Combine(TheLadsLauncher.Services.PathService.Instance.PresetsDirectory, username, selected + ".png");
-        string dest = TheLadsLauncher.Services.PathService.Instance.SkinFile;
-        if (File.Exists(src))
-        {
-            File.Copy(src, dest, true);
-            Log($"[Presets] Applied skin preset: {selected}");
-            _ = LoadPlayerSkin(username);
-        }
-    }
-
-    private void DeletePreset_Click(object? sender, RoutedEventArgs e)
-    {
-        string? username = SelectedAccountText.Text;
-        if (string.IsNullOrEmpty(username)) return;
-        string? selected = PresetSelector.SelectedItem as string;
-        if (string.IsNullOrEmpty(selected)) return;
-
-        string path = Path.Combine(TheLadsLauncher.Services.PathService.Instance.PresetsDirectory, username, selected + ".png");
-        if (File.Exists(path))
-        {
-            File.Delete(path);
-            Log($"[Presets] Deleted skin preset: {selected}");
-            LoadPresetsList(username);
-        }
-    }
-
-    private async void UploadSkin_Click(object? sender, RoutedEventArgs e)
-    {
-        var files = await this.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Select Skin PNG File",
-            FileTypeFilter = new[] { FilePickerFileTypes.ImageAll }
-        });
-
-        if (files != null && files.Count > 0)
-        {
-            string src = files[0].Path.LocalPath;
-            string dest = TheLadsLauncher.Services.PathService.Instance.SkinFile;
-            File.Copy(src, dest, true);
-            Log($"[Skin] Imported skin from local file.");
-            
-            string? username = SelectedAccountText.Text;
-            if (!string.IsNullOrEmpty(username) && username != "No Account Selected")
-                _ = LoadPlayerSkin(username);
-        }
-    }
-
-    private void InitializeEditor()
-    {
-        var palette = new[] {
-            Colors.Red, Colors.Orange, Colors.Yellow, Colors.Green,
-            Colors.Blue, Colors.Purple, Colors.Pink, Colors.White,
-            Colors.Black, Colors.Gray, Colors.Brown, Colors.Teal
-        };
-        ColorPaletteContainer.Children.Clear();
-        foreach (var c in palette)
-        {
-            var btn = new Button
-            {
-                Width = 24, Height = 24,
-                Background = new SolidColorBrush(c),
-                Margin = new Thickness(2),
-                CornerRadius = new CornerRadius(4)
-            };
-            btn.Click += (s, e) => { SetEditorColor(c); };
-            ColorPaletteContainer.Children.Add(btn);
-        }
-
-        // Sliders property change bindings
-        SliderRed.PropertyChanged += (s, e) => { if (e.Property.Name == "Value") UpdateColorFromSliders(); };
-        SliderGreen.PropertyChanged += (s, e) => { if (e.Property.Name == "Value") UpdateColorFromSliders(); };
-        SliderBlue.PropertyChanged += (s, e) => { if (e.Property.Name == "Value") UpdateColorFromSliders(); };
-
-        ColorHexInput.PropertyChanged += (s, e) => {
-            if (e.Property.Name == "Text" && ColorHexInput.Text != null && ColorHexInput.Text.StartsWith("#") && ColorHexInput.Text.Length == 9) {
-                try {
-                    var parsed = Color.Parse(ColorHexInput.Text);
-                    SetEditorColor(parsed);
-                } catch {}
-            }
-        };
-
-        SkinPartSelector.SelectionChanged += (s, e) => UpdateEditorGridSize();
-        RadioBaseLayer.IsCheckedChanged += (s, e) => DrawPixelGrid();
-        RadioOverlayLayer.IsCheckedChanged += (s, e) => DrawPixelGrid();
-
-        // Initial color setup
-        SetEditorColor(Colors.White);
-
-        // Load skin.png if exists
-        LoadPixelsFromSkinFile(TheLadsLauncher.Services.PathService.Instance.SkinFile);
-    }
-
-    private void UpdateColorFromSliders()
-    {
-        byte r = (byte)SliderRed.Value;
-        byte g = (byte)SliderGreen.Value;
-        byte b = (byte)SliderBlue.Value;
-        _activeEditorColor = Color.FromArgb(255, r, g, b);
-
-        TextRed.Text = r.ToString();
-        TextGreen.Text = g.ToString();
-        TextBlue.Text = b.ToString();
-
-        ActiveColorPreview.Background = new SolidColorBrush(_activeEditorColor);
-        ColorHexInput.Text = $"#{_activeEditorColor.A:X2}{_activeEditorColor.R:X2}{_activeEditorColor.G:X2}{_activeEditorColor.B:X2}";
-    }
-
-    private void SetEditorColor(Color color)
-    {
-        _activeEditorColor = color;
-        SliderRed.Value = color.R;
-        SliderGreen.Value = color.G;
-        SliderBlue.Value = color.B;
-
-        TextRed.Text = color.R.ToString();
-        TextGreen.Text = color.G.ToString();
-        TextBlue.Text = color.B.ToString();
-
-        ActiveColorPreview.Background = new SolidColorBrush(color);
-        ColorHexInput.Text = $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
-    }
-
-    private void ToggleSkinEditor_Click(object? sender, RoutedEventArgs e)
-    {
-        _selectedEditor = "Skin";
-        ToggleSkinEditorBtn.Classes.Add("active");
-        ToggleCapeEditorBtn.Classes.Remove("active");
-        EditorContainer.IsVisible = true;
-        UpdateEditorGridSize();
-    }
-
-    private void ToggleCapeEditor_Click(object? sender, RoutedEventArgs e)
-    {
-        _selectedEditor = "Cape";
-        ToggleCapeEditorBtn.Classes.Add("active");
-        ToggleSkinEditorBtn.Classes.Remove("active");
-        EditorContainer.IsVisible = true;
-        UpdateEditorGridSize();
-    }
-
-    private void UpdateEditorGridSize()
-    {
-        if (_selectedEditor == "Cape")
-        {
-            _editorWidth = 22;
-            _editorHeight = 17;
-            EditorLayersRow.IsVisible = false;
-            SkinPartSelector.IsVisible = false;
-        }
-        else
-        {
-            EditorLayersRow.IsVisible = true;
-            SkinPartSelector.IsVisible = true;
-            string part = (SkinPartSelector.SelectedItem as ComboBoxItem)?.Content as string ?? "Head (8x8)";
-            if (part.Contains("Head")) { _editorWidth = 8; _editorHeight = 8; }
-            else if (part.Contains("Body")) { _editorWidth = 8; _editorHeight = 12; }
-            else { _editorWidth = 4; _editorHeight = 12; }
-        }
-        DrawPixelGrid();
-    }
-
-    private void DrawPixelGrid()
-    {
-        PixelEditorCanvas.Children.Clear();
-        double canvasSize = 192.0;
-        double pixelSize = canvasSize / Math.Max(_editorWidth, _editorHeight);
-
-        double offsetX = (canvasSize - (_editorWidth * pixelSize)) / 2;
-        double offsetY = (canvasSize - (_editorHeight * pixelSize)) / 2;
-
-        bool isOverlay = RadioOverlayLayer.IsChecked ?? false;
-
-        for (int y = 0; y < _editorHeight; y++)
-        {
-            for (int x = 0; x < _editorWidth; x++)
-            {
-                int localX = x;
-                int localY = y;
-                
-                var border = new Border
-                {
-                    Width = pixelSize,
-                    Height = pixelSize,
-                    BorderBrush = new SolidColorBrush(Color.Parse("#1A1A22")),
-                    BorderThickness = new Thickness(0.5)
-                };
-
-                Color c = GetEditorPixel(localX, localY, isOverlay);
-                border.Background = new SolidColorBrush(c);
-
-                border.PointerPressed += (s, e) => {
-                    if (e.GetCurrentPoint(PixelEditorCanvas).Properties.IsLeftButtonPressed)
-                    {
-                        _isDrawing = true;
-                        border.Background = new SolidColorBrush(_activeEditorColor);
-                        SetEditorPixel(localX, localY, isOverlay, _activeEditorColor);
-                    }
-                };
-
-                border.PointerMoved += (s, e) => {
-                    if (_isDrawing && e.GetCurrentPoint(PixelEditorCanvas).Properties.IsLeftButtonPressed)
-                    {
-                        border.Background = new SolidColorBrush(_activeEditorColor);
-                        SetEditorPixel(localX, localY, isOverlay, _activeEditorColor);
-                    }
-                };
-
-                Canvas.SetLeft(border, offsetX + (x * pixelSize));
-                Canvas.SetTop(border, offsetY + (y * pixelSize));
-                PixelEditorCanvas.Children.Add(border);
-            }
-        }
-    }
-
-    private (int X, int Y) GetMappedCoordinates(int localX, int localY, bool isOverlay)
-    {
-        if (_selectedEditor == "Cape")
-        {
-            return (1 + localX, 1 + localY);
-        }
-
-        string part = (SkinPartSelector.SelectedItem as ComboBoxItem)?.Content as string ?? "Head (8x8)";
-        if (part.Contains("Head"))
-        {
-            return (isOverlay ? 40 + localX : 8 + localX, 8 + localY);
-        }
-        else if (part.Contains("Body"))
-        {
-            return (isOverlay ? 20 + localX : 20 + localX, isOverlay ? 36 + localY : 20 + localY);
-        }
-        else if (part.Contains("Left Arm"))
-        {
-            return (isOverlay ? 52 + localX : 36 + localX, 52 + localY);
-        }
-        else if (part.Contains("Right Arm"))
-        {
-            return (isOverlay ? 44 + localX : 44 + localX, isOverlay ? 36 + localY : 20 + localY);
-        }
-        else if (part.Contains("Left Leg"))
-        {
-            return (isOverlay ? 4 + localX : 20 + localX, 52 + localY);
-        }
-        else
-        {
-            return (isOverlay ? 4 + localX : 4 + localX, isOverlay ? 36 + localY : 20 + localY);
-        }
-    }
-
-    private Color GetEditorPixel(int localX, int localY, bool isOverlay)
-    {
-        var (tx, ty) = GetMappedCoordinates(localX, localY, isOverlay);
-        if (_selectedEditor == "Cape")
-        {
-            return _capePixels[tx, ty];
-        }
-        return isOverlay ? _skinOverlayPixels[tx, ty] : _skinBasePixels[tx, ty];
-    }
-
-    private void SetEditorPixel(int localX, int localY, bool isOverlay, Color color)
-    {
-        var (tx, ty) = GetMappedCoordinates(localX, localY, isOverlay);
-        if (_selectedEditor == "Cape")
-        {
-            _capePixels[tx, ty] = color;
-        }
-        else
-        {
-            if (isOverlay)
-                _skinOverlayPixels[tx, ty] = color;
-            else
-                _skinBasePixels[tx, ty] = color;
-        }
-    }
-
-    private void ClearEditorCanvas_Click(object? sender, RoutedEventArgs e)
-    {
-        bool isOverlay = RadioOverlayLayer.IsChecked ?? false;
-        for (int y = 0; y < _editorHeight; y++)
-        {
-            for (int x = 0; x < _editorWidth; x++)
-            {
-                SetEditorPixel(x, y, isOverlay, Colors.Transparent);
-            }
-        }
-        DrawPixelGrid();
-    }
-
-    private void SaveEditorDrawing_Click(object? sender, RoutedEventArgs e)
-    {
-        string? username = SelectedAccountText.Text;
-        if (string.IsNullOrEmpty(username) || username == "No Account Selected")
-        {
-            if (_selectedEditor == "Cape")
-            {
-                string path = TheLadsLauncher.Services.PathService.Instance.CapeFile;
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                SaveSkinPng(path, true);
-                Log("[Cape] Saved custom cape to config.");
-            }
-            else
-            {
-                string path = TheLadsLauncher.Services.PathService.Instance.SkinFile;
-                SaveSkinPng(path, false);
-                Log("[Skin] Saved custom skin.");
-            }
-            return;
-        }
-
-        if (_selectedEditor == "Cape")
-        {
-            string path = TheLadsLauncher.Services.PathService.Instance.CapeFile;
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            SaveSkinPng(path, true);
-            Log($"[Cape] Saved custom cape for {username}.");
-        }
-        else
-        {
-            string path = TheLadsLauncher.Services.PathService.Instance.SkinFile;
-            SaveSkinPng(path, false);
-            Log($"[Skin] Saved custom skin for {username}.");
-            _ = LoadPlayerSkin(username);
-        }
-    }
-
-    private void LoadPixelsFromSkinFile(string filePath)
-    {
-        if (!File.Exists(filePath)) return;
-        try
-        {
-            using (var stream = File.OpenRead(filePath))
-            {
-                using (var bmp = new Bitmap(stream))
-                {
-                    var w = (int)bmp.PixelSize.Width;
-                    var h = (int)bmp.PixelSize.Height;
-                    if (w == 64 && (h == 64 || h == 32))
-                    {
-                        var writeable = new WriteableBitmap(bmp.PixelSize, new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
-                        using (var buf = writeable.Lock())
-                        {
-                            byte[] raw = new byte[w * h * 4];
-                            Marshal.Copy(buf.Address, raw, 0, raw.Length);
-                            for (int y = 0; y < h; y++)
-                            {
-                                for (int x = 0; x < w; x++)
-                                {
-                                    int idx = (y * w + x) * 4;
-                                    byte b = raw[idx];
-                                    byte g = raw[idx + 1];
-                                    byte r = raw[idx + 2];
-                                    byte a = raw[idx + 3];
-                                    var color = Color.FromArgb(a, r, g, b);
-                                    
-                                    _skinBasePixels[x, y] = color;
-                                    if (IsOverlayRegion(x, y))
-                                    {
-                                        _skinOverlayPixels[x, y] = color;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        catch { }
-    }
-
-    private bool IsOverlayRegion(int x, int y)
-    {
-        if (x >= 32 && x < 64 && y >= 0 && y < 16) return true;
-        if (x >= 16 && x < 32 && y >= 32 && y < 48) return true;
-        return false;
-    }
-
-    private void SaveSkinPng(string filePath, bool isCape)
-    {
-        int w = 64;
-        int h = isCape ? 32 : 64;
-        
-        var bitmap = new WriteableBitmap(new PixelSize(w, h), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
-        using (var buf = bitmap.Lock())
-        {
-            int size = w * h * 4;
-            byte[] raw = new byte[size];
-            for (int y = 0; y < h; y++)
-            {
-                for (int x = 0; x < w; x++)
-                {
-                    Color c = isCape ? _capePixels[x, y] : _skinBasePixels[x, y];
-                    if (!isCape)
-                    {
-                        if (_skinOverlayPixels[x, y].A > 0)
-                        {
-                            c = _skinOverlayPixels[x, y];
-                        }
-                    }
-                    
-                    int idx = (y * w + x) * 4;
-                    raw[idx] = c.B;
-                    raw[idx + 1] = c.G;
-                    raw[idx + 2] = c.R;
-                    raw[idx + 3] = c.A;
-                }
-            }
-            Marshal.Copy(raw, 0, buf.Address, raw.Length);
-        }
-        bitmap.Save(filePath);
-    }
 
     // ═══════════════════════════════════════
     //  SETTINGS PAGE
