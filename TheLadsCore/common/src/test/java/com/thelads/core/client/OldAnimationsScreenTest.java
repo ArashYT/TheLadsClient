@@ -18,8 +18,7 @@ class OldAnimationsScreenTest {
 
     /** Texel corner (u, v) of the modern NONE draw through the chain, in pixels. */
     private static double[] pixel(Mat chain, double u, double v) {
-        double[] p = chain.point(u - 0.5, 0.5 - v, 0);
-        return new double[]{640 + p[0] / -p[2] / (TAN * ASPECT) * 640, 360 - p[1] / -p[2] / TAN * 360};
+        return project(chain.point(u - 0.5, 0.5 - v, 0));
     }
 
     private static Mat firstPerson(Use use, int remaining, int maxUse) {
@@ -43,6 +42,27 @@ class OldAnimationsScreenTest {
         // Full draw, standing nearly upright at x 900-1000: not edge-on, not aimed at the crosshair.
         assertPixels(firstPerson(Use.BOW, 72000 - 30, 72000), 1.5, "bow at full draw", new double[]{0, 1, 917, 880},
             new double[]{1, 0, 1018, -21}, new double[]{0, 0, 836, 399});
+    }
+
+    /**
+     * 1.7.10's idle sword is on screen about 1.8.9's own, so the recipes keep its full size (1.6.0: 1.8.9 drew it twice over,
+     * scaling the mesh 2x on top of RenderItem.preTransform's 2x, and players saw items twice too big).
+     */
+    @Test void idleSwordIsAbout189Size() {
+        // 1.8.9: transformFirstPersonItem, preTransform's 2x for flat models, the firstperson display transform, renderItem's 0.5.
+        Mat vanilla = new Mat().t(0.56, -0.52, -0.72).ry(45).s(0.4).s(2).t(0, 0.25, 0.125).ry(-135).rz(25).s(1.7).s(0.5).t(-0.5, -0.5, 0);
+        double[] handle = project(vanilla.point(0, 0, 0)), tip = project(vanilla.point(1, 1, 0));
+        Mat ours = firstPerson(Use.NONE, 0, 1);
+        double ratio = length(pixel(ours, 0, 1), pixel(ours, 1, 0)) / length(handle, tip);
+        assertTrue(ratio > 0.9 && ratio < 1.1, "idle sword on screen vs 1.8.9's: " + ratio);
+    }
+
+    private static double[] project(double[] p) {
+        return new double[]{640 + p[0] / -p[2] / (TAN * ASPECT) * 640, 360 - p[1] / -p[2] / TAN * 360};
+    }
+
+    private static double length(double[] a, double[] b) {
+        return Math.hypot(a[0] - b[0], a[1] - b[1]);
     }
 
     @Test void thirdPersonUndoesTheModernLayerAndMatches1710RenderPlayer() {

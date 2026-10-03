@@ -39,6 +39,7 @@ public class OldAnimationsHandMixin {
 
     @ModifyExpressionValue(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getItemSwapScale(F)F"), require = 1)
     private float lads$noCooldownDip(float scale) {
-        return NativeOldAnimations.equipScale(scale);
+        // Legacy Swing keeps the item up too (LegacySwingMixin holds its other hooks).
+        return com.thelads.core.v1_21_11.feature.NativeQualityOfLife.enabled("LegacySwing") ? 1 : NativeOldAnimations.equipScale(scale);
     }
 }

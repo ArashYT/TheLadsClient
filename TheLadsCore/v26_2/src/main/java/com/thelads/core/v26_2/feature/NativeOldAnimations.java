@@ -90,7 +90,8 @@ public final class NativeOldAnimations {
         HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
         int side = arm == HumanoidArm.RIGHT ? 1 : -1;
         OldAnimations.Sink out = sink(pose);
-        if (use == Use.NONE) OldAnimations.fromModernHand(out, side); // idle bow or rod: vanilla's arm and swing (or LegacySwing's) stay
+        // Idle: vanilla's arm and swing stay, LegacySwing's when it is on (OldAnimations.legacySwingShown: placing blocks too).
+        if (use == Use.NONE) OldAnimations.fromModernHand(out, side);
         else {
             pose.popPose(); // back to the arm origin (submitArmWithItem's own push), dropping vanilla's use transforms
             pose.pushPose();
@@ -303,7 +304,7 @@ public final class NativeOldAnimations {
         }
     }
 
-    private static OldAnimations.Sink sink(PoseStack pose) {
+    static OldAnimations.Sink sink(PoseStack pose) {
         return new OldAnimations.Sink() {
             @Override public void translate(float x, float y, float z) { pose.translate(x, y, z); }
             @Override public void rotate(float degrees, float x, float y, float z) {

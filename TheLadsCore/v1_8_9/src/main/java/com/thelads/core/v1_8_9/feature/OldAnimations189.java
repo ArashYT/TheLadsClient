@@ -89,7 +89,10 @@ public final class OldAnimations189 {
         }
     }
 
-    /** Before a TransformType.NONE draw: RenderItem.renderItem draws models at half size, the recipes place the full-size mesh. */
+    /**
+     * Before a dropped item's RenderItem.renderItem(stack, model), which draws models at half size: the recipes place the full-size
+     * mesh. Not for held items: their draw (renderItemModelTransform) already scales flat models 2x in preTransform.
+     */
     public static void fullSizeMesh() {
         GlStateManager.scale(2, 2, 2);
     }

@@ -11,6 +11,9 @@ package com.thelads.core.client;
  * {@code renderArmWithItem}; <b>legacy hand</b> is the arm origin after the 45° turn and 0.4 scale; <b>item mesh</b>
  * is the centred item model, drawn with no display transform (1.8.9 {@code TransformType.NONE}, modern
  * {@code ItemDisplayContext.NONE}).
+ *
+ * <p>Size: 1.7.10's icon (a unit quad at 0.4 x 1.5) is on screen about 1.8.9's own item (0.4 x 1.7 display x 0.5 RenderItem x 2
+ * RenderItem.preTransform for flat models), so the recipes keep 1.7.10's full size; an adapter must not scale the mesh twice.
  */
 public final class OldAnimations {
     /** 1.7.10 ModelBiped: a blocking arm only pitches (x * 0.5 - 3π/10); 1.8 and later also turn it 30° inward. */
@@ -71,6 +74,37 @@ public final class OldAnimations {
     public static void fromModernHand(Sink out, int side) {
         rotate(out, side, 45, 0, 1, 0);                               // modern swingArm ends 45° back about Y; 1.7 did not
         out.scale(0.4f, 0.4f, 0.4f);                                  // modern item models fold in 1.7's 0.4 hand scale
+    }
+
+    /**
+     * Which swing a first-person hand shows when both modules are on: Legacy Swing's for every hand outside a 1.7 use pose
+     * (attacking, placing blocks, idle items, whether 1.7 or vanilla places the item); 1.7's while the hand blocks, draws a
+     * bow or eats, where 1.7's own swing is the point (blockhitting).
+     */
+    public static boolean legacySwingShown(boolean legacySwingOn, Use use) {
+        return legacySwingOn && use == Use.NONE;
+    }
+
+    /**
+     * Legacy Swing (Legacy Console Edition's swing, LegacySwing module) in modern {@code swingArm}'s place, right after the arm
+     * transform: replaces vanilla's swing translation and turn, and ends 45° back about Y as vanilla's does. Progress^4, so the
+     * item winds up slowly and snaps through, swung further across (0.55) and lifted on the way.
+     */
+    public static void legacySwing(Sink out, int side, float progress) {
+        float t = progress * progress * progress * progress;
+        float arc = sin(sqrt(t) * PI), lift = sin(sqrt(t) * PI * 2), depth = sin(t * PI);
+        translate(out, side, -arc * 0.55f, lift * 0.25f, -depth * 0.2f);
+        rotate(out, side, 45 - arc * 20, 0, 1, 0);
+        rotate(out, side, arc * -20, 0, 0, 1);
+        rotate(out, side, arc * -80, 1, 0, 0);
+        rotate(out, side, -45, 0, 1, 0);
+    }
+
+    /** {@link #hand} for an idle hand while Legacy Swing is on: arm origin to legacy hand frame with Legacy Swing's motion. */
+    public static void legacySwingHand(Sink out, int side, float equip, float swing) {
+        translate(out, side, 0.56f, -0.52f - equip * 0.6f, -0.72f);   // vanilla's (and 1.7's) hand place
+        legacySwing(out, side, swing);
+        fromModernHand(out, side);
     }
 
     /** 1.7.10 renderItem for a flat item in first person: legacy hand frame to item mesh. */
