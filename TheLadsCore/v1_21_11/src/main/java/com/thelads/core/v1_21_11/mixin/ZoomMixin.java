@@ -11,6 +11,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class ZoomMixin {
     @Inject(method = "getFov(Lnet/minecraft/client/Camera;FZ)F", at = @At("RETURN"), cancellable = true, require = 1)
     private void ladsFov(Camera camera, float delta, boolean world, CallbackInfoReturnable<Float> cir) {
-        cir.setReturnValue(cir.getReturnValueF() * NativeFeatures.zoom(delta, !world));
+        cir.setReturnValue(NativeFeatures.fov(cir.getReturnValueF(), !world));
     }
 }

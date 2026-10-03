@@ -10,10 +10,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class ZoomMixin {
     @Inject(method = "calculateFov(F)F", at = @At("RETURN"), cancellable = true, require = 1)
     private void ladsWorldFov(float delta, CallbackInfoReturnable<Float> cir) {
-        cir.setReturnValue(cir.getReturnValueF() * NativeFeatures.zoom(delta, false));
+        cir.setReturnValue(NativeFeatures.fov(cir.getReturnValueF(), false));
     }
     @Inject(method = "calculateHudFov(F)F", at = @At("RETURN"), cancellable = true, require = 1)
     private void ladsHandFov(float delta, CallbackInfoReturnable<Float> cir) {
-        cir.setReturnValue(cir.getReturnValueF() * NativeFeatures.zoom(delta, true));
+        cir.setReturnValue(NativeFeatures.fov(cir.getReturnValueF(), true));
     }
 }

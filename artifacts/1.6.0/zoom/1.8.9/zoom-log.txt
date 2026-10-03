@@ -1,0 +1,13 @@
+Lads 1.8.9 core probe PASS 49: exactly the HUD modules NativeHud draws and the native gameplay modules are built in [Autohide, Clock, Stopwatch, ItemCounter, ReachDisplay, ServerAddress, PortalCoordinates, ClientTools, ParticleBudget, PingView, Threads, FPS, BossBar, Coordinates, Biome, PingHUD, ArmorHUD, Memory, Direction, Speed, Day, Time, Health, Hunger, XP, Keystrokes, CPS, Title Scale, Textur
+Lads 1.8.9 core probe PASS 102: Zoom: its key is bound (C): OptiFine's key-conflict fix leaves it on its zoom key's C
+Lads 1.8.9 core probe PASS 103: Zoom: unzoomed, the world FOV is Minecraft's own (70.0)
+Lads 1.8.9 core probe PASS 104: Zoom: the held zoom key (C through runTick) zooms to 4x (FOV 17.5)
+Lads 1.8.9 core probe PASS 105: Zoom: three wheel notches while zoomed leave the hotbar slot alone
+Lads 1.8.9 zoom trace: zoom-in 68.63->17.50 in 1969 frames; scroll-in 17.20->8.96 in 2381 frames; zoom-out 9.12->70.00 in 1906 frames; 6256 frames, slowest 7.1 ms, worst deviation from the curve 1.76e-07 (C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\1.8.9-title\lads-qa\screenshots\160-zoom-fov.csv)
+Lads 1.8.9 core probe PASS 106: Zoom: every frame's FOV followed Smooth Zoom's curve, never overshot and landed exactly: zoom-in 68.63->17.50 in 1969 frames; scroll-in 17.20->8.96 in 2381 frames; zoom-out 9.12->70.00 in 1906 frames; 6256 frames, slowest 7.1 ms, worst deviation from the curve 1.76e-07
+Lads 1.8.9 core probe PASS 107: Zoom: released, the FOV is exactly Minecraft's again (70.0)
+Lads 1.8.9 core probe PASS 108: Zoom: OptiFine's zoom key, held in LWJGL's key state, reads as up while Lads Zoom is on
+Lads 1.8.9 core probe PASS 109: Zoom: with OptiFine's zoom key held, OptiFine leaves the FOV (70.0 of 70.0) and smooth camera alone
+Lads 1.8.9 core probe PASS 110: Zoom: with Lads Zoom off, OptiFine's own zoom still works (17.5 of 70.0): OptiFine is intact and the check above is real
+Lads 1.8.9 core probe PASS 111: Zoom: OptiFine put smooth camera back (false)
+Lads 1.8.9 core probe PASS 112: Zoom: module and options are back as found

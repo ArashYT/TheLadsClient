@@ -1,0 +1,11 @@
+Lads zoom capture BEGIN: 6 frames through KeyboardHandler.keyPress and MouseHandler.onScroll
+Lads zoom frame C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.3-title\screenshots\zoom-1-off.png (FOV 70.0)
+Lads zoom frame C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.3-title\screenshots\zoom-2-in.png (FOV 17.5)
+Lads zoom capture PASS: scrolling while zoomed leaves the hotbar slot alone
+Lads zoom frame C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.3-title\screenshots\zoom-3-scroll.png (FOV 8.959999)
+Lads zoom frame C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.3-title\screenshots\zoom-4-out.png (FOV 70.0)
+Lads zoom frame C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.3-title\screenshots\zoom-5-essential-key.png (FOV 70.0)
+Lads zoom capture PASS: Essential's zoom key does nothing while Lads Zoom is on (FOV 70.0 of 70.0)
+Lads zoom frame C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.3-title\screenshots\zoom-6-essential-alone.png (FOV 17.5)
+Lads zoom capture PASS: with Lads Zoom off, Essential's zoom key zooms (FOV 17.5 of 70.0): the check above is real
+Lads zoom capture END: 6 frames saved, 0 failed; zoom-in 22.10->17.50 in 110 frames; scroll-in 11.60->8.96 in 115 frames; zoom-out 31.68->70.00 in 126 frames; 351 frames, slowest 36.5 ms, worst deviation from the curve 1.74e-07
