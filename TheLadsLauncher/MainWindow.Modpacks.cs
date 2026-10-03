@@ -75,6 +75,27 @@ public partial class MainWindow
             await Task.Delay(4000); // Modrinth's version list
             SaveWindowScreenshot(Path.Combine(output, "modpacks-manage.png"));
         }
+        // LADS_PREVIEW_MODPACK_PLAY=<instance id>: Play pressed on that instance (the selected account, a real game; QA holds the
+        // machine-wide game lock), captured while it runs, then closed as a player closes it.
+        if (Environment.GetEnvironmentVariable("LADS_PREVIEW_MODPACK_PLAY") is { Length: > 0 } playId
+            && Modpacks.List(_pathService.BaseDirectory).FirstOrDefault(i => i.Id == playId) is { } played)
+        {
+            ModpacksPage.OpenManage(played);
+            ModpacksPage.PressPlay();
+            for (int i = 0; i < 600 && ModpacksPage.RunningGame(played.Id) == null && !ModpacksPage.ManageStatusText.Contains("failed"); i++) await Task.Delay(500);
+            Console.WriteLine("Play: " + ModpacksPage.ManageStatusText);
+            SaveWindowScreenshot(Path.Combine(output, "modpacks-play-started.png"));
+            if (ModpacksPage.RunningGame(played.Id) is { } game)
+            {
+                await Task.Delay(45000);
+                SaveWindowScreenshot(Path.Combine(output, "modpacks-running.png"));
+                game.CloseMainWindow();
+                if (!game.WaitForExit(45000)) game.Kill(entireProcessTree: true);
+                await Task.Delay(1500);
+                Console.WriteLine("Closed: " + ModpacksPage.ManageStatusText);
+                SaveWindowScreenshot(Path.Combine(output, "modpacks-after-exit.png"));
+            }
+        }
         Close();
     }
 }

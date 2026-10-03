@@ -113,7 +113,9 @@ internal static class ModpackQa
                     game.Refresh();
                     if (!window && game.MainWindowHandle != IntPtr.Zero) { window = true; Say($"Window at {started.Elapsed.TotalSeconds:F0}s"); }
                     string text = ReadShared(log);
-                    if (text.Contains("---- Minecraft Crash Report") || text.Contains("Crash report saved")) { failures.Add("the game crashed (see latest.log)"); break; }
+                    // Legacy Forge's SplashProgress logs a "Loading screen debug info" crash report on every start: not a crash.
+                    int reports = text.Split("---- Minecraft Crash Report").Length - text.Split("Loading screen debug info").Length;
+                    if (reports > 0 || text.Contains("Crash report saved")) { failures.Add("the game crashed (see latest.log)"); break; }
                     if (!title && window && text.Contains("Sound engine started")) { title = true; titleAt = started.Elapsed; Say($"Resources loaded (sound engine started) at {titleAt.TotalSeconds:F0}s; waiting 25 s on the title screen"); }
                     if (title && started.Elapsed - titleAt > TimeSpan.FromSeconds(25)) break;
                 }

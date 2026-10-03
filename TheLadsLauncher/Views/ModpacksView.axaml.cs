@@ -261,7 +261,11 @@ public partial class ModpacksView : UserControl
         else if (!browse) RenderCards();
     }
 
+    // --preview-modpacks hooks.
     internal void ShowBrowse() => Tabs.SelectedItem = BrowseTab;
+    internal void PressPlay() => Play_Click(null, new RoutedEventArgs());
+    internal string ManageStatusText => ManageStatus.Text ?? "";
+    internal Process? RunningGame(string id) => _running.GetValueOrDefault(id);
     internal bool BrowseLoaded => Results.Children.Count > 0;
 
     private void BrowseFilter_Changed(object? sender, SelectionChangedEventArgs e) { if (_ready && _browsed) _ = SearchAsync(more: false); }
