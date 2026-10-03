@@ -150,9 +150,7 @@ public class ModuleManager {
         ToggleSneakModule tsn = new ToggleSneakModule();
         register(tsn, Module.Category.MECHANIC);
 
-        ZoomModule zm = new ZoomModule();
-        zm.addOption(new BoolOption("Hand Zoom", true));
-        register(zm, Module.Category.MECHANIC);
+        register(new ZoomModule(), Module.Category.MECHANIC);
 
         register(new SmoothHotbarModule(), Module.Category.MECHANIC);
         register(new DynamicLightsModule(), Module.Category.MECHANIC);

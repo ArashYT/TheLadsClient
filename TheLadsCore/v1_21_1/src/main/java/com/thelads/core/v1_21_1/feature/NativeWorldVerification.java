@@ -128,8 +128,9 @@ public final class NativeWorldVerification {
             // After the in-world probes: they reset the banner and restore the settings it changes.
             // One scene capture at a time: each poses the player and the HUD its own way.
             boolean captureReady = readyLogged && worldReady() && menuScreen == null && mc.screen == null && NativeHudProbe.finished();
-            KillBannerCapture.tick(gameDirectory, captureReady && !OldAnimationsCapture.busy());
-            OldAnimationsCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy());
+            KillBannerCapture.tick(gameDirectory, captureReady && !OldAnimationsCapture.busy() && !ZoomCapture.busy());
+            OldAnimationsCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !ZoomCapture.busy());
+            ZoomCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy());
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.screen == null ? "none" : mc.screen.getClass().getName()));
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
@@ -189,6 +190,7 @@ public final class NativeWorldVerification {
         chatCapture(target);
         KillBannerCapture.frame(target, gameDirectory);
         OldAnimationsCapture.frame(target, gameDirectory);
+        ZoomCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
         captureStarted = true;
         chatCaptureAt = System.nanoTime() + 3_000_000_000L;

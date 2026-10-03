@@ -7,6 +7,9 @@ import net.minecraft.client.MouseHandler;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import com.mojang.blaze3d.platform.InputConstants;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.minecraft.client.player.LocalPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -36,5 +39,11 @@ public class MouseHandlerMixin {
     @Inject(method = "onMove", at = @At("HEAD"), require = 1)
     private void lads$activity(long window, double x, double y, double dx, double dy, CallbackInfo ci) {
         com.thelads.core.v26_2.feature.dynamicfps.feature.state.IdleHandler.onActivity();
+    }
+    /** Zoom: the camera turns slower while zoomed (ZoomModule.sensitivity), smooth camera included. */
+    @WrapOperation(method = "turnPlayer(D)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;turn(DD)V"), require = 1)
+    private void ladsZoomTurn(LocalPlayer player, double yaw, double pitch, Operation<Void> original) {
+        double scale = NativeFeatures.zoomSensitivity();
+        original.call(player, yaw * scale, pitch * scale);
     }
 }

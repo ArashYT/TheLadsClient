@@ -1,6 +1,5 @@
 package com.thelads.core.v26_2.feature;
 
-import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
@@ -8,6 +7,7 @@ import com.thelads.core.config.SliderOption;
 import com.thelads.core.modules.FullbrightModule;
 import com.thelads.core.modules.ToggleSneakModule;
 import com.thelads.core.modules.ToggleSprintModule;
+import com.thelads.core.modules.ZoomModule;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -17,18 +17,18 @@ import org.lwjgl.glfw.GLFW;
 /** Client-thread state. Never writes vanilla options or bypasses vanilla movement eligibility. */
 public final class NativeFeatures {
     private static Object player;
-    private static boolean zoomHeld, sprintHeld, sneakHeld, sprintRequested;
-    private static float zoomPrevious = 1, zoomCurrent = 1, zoomTarget = .25f;
+    private static boolean sprintHeld, sneakHeld, sprintRequested;
+    /** QA: the world FOV of the last rendered frame, zoom included, and when Zoom computed it. */
+    static float lastWorldFov;
+    static long lastWorldNanos;
 
     private NativeFeatures() {}
 
     private static Module module(String name) { return ModuleManager.getInstance().getModule(name); }
+    private static ZoomModule zoom() { return (ZoomModule) module("Zoom"); }
     public static boolean enabled(String name) {
         Module module = module(name);
         return module != null && module.isEnabled();
-    }
-    private static boolean option(Module module, String name, boolean fallback) {
-        return module.getOption(name) instanceof BoolOption value ? value.get() : fallback;
     }
     private static int mode(Module module) {
         return module.getOption("Mode") instanceof DropdownOption value ? value.getIndex() : 0;
@@ -36,7 +36,7 @@ public final class NativeFeatures {
     public static boolean interactive() {
         Minecraft mc = Minecraft.getInstance();
         return mc.player != null && mc.level != null && !mc.player.isDeadOrDying()
-            && mc.gui.screen() == null && mc.isWindowActive() && !mc.isPaused();
+            && mc.gui.screen() == null && NativeWorldVerification.windowActive() && !mc.isPaused();
     }
     public static void reset(boolean clearToggles) {
         if (clearToggles) {
@@ -44,9 +44,9 @@ public final class NativeFeatures {
             if (module("ToggleSprint") instanceof ToggleSprintModule sprint && sprint.isToggled()) sprint.onToggleKey();
             if (module("ToggleSneak") instanceof ToggleSneakModule sneak && sneak.isToggled()) sneak.onToggleKey();
         }
-        zoomHeld = sprintHeld = sneakHeld = false;
-        zoomPrevious = zoomCurrent = 1;
-        zoomTarget = .25f;
+        // Another player or world starts unzoomed; anything else (a screen, focus loss) zooms out smoothly.
+        if (clearToggles) zoom().reset(); else zoom().release();
+        sprintHeld = sneakHeld = false;
     }
     public static void reset() {
         reset(false);
@@ -59,7 +59,7 @@ public final class NativeFeatures {
             return;
         }
         if (!interactive()) {
-            zoomHeld = false;
+            zoom().release();
             return;
         }
         if (!enabled("ToggleSprint") && module("ToggleSprint") instanceof ToggleSprintModule sprint) {
@@ -71,25 +71,13 @@ public final class NativeFeatures {
             sneak.evaluateSneak(false);
             sneakHeld = false;
         }
-        Module zoom = module("Zoom");
-        if (zoom == null || !zoom.isEnabled()) {
-            zoomHeld = false;
-            zoomPrevious = zoomCurrent = 1;
-            zoomTarget = .25f;
-            return;
-        }
-        zoomPrevious = zoomCurrent;
-        float target = zoomHeld ? zoomTarget : 1;
-        zoomCurrent = option(zoom, "Smooth Zoom", true)
-            ? zoomCurrent + .3f * (target - zoomCurrent) : target;
-        if (!zoomHeld) zoomTarget = .25f;
     }
     public static void key(KeyEvent event, int action) {
         if (action == GLFW.GLFW_REPEAT) return;
         if (!interactive()) { reset(); return; }
         boolean down = action == GLFW.GLFW_PRESS;
         Minecraft mc = Minecraft.getInstance();
-        if (NativeKeyBindings.ZOOM.matches(event)) zoomHeld = down && enabled("Zoom");
+        if (NativeKeyBindings.ZOOM.matches(event)) zoom().key(down);
         if (mc.options.keySprint.matches(event)) sprintKey(down);
         if (mc.options.keyShift.matches(event)) sneakKey(down);
     }
@@ -97,7 +85,7 @@ public final class NativeFeatures {
         if (!interactive()) { reset(); return; }
         boolean down = action == GLFW.GLFW_PRESS;
         Minecraft mc = Minecraft.getInstance();
-        if (NativeKeyBindings.ZOOM.matchesMouse(event)) zoomHeld = down && enabled("Zoom");
+        if (NativeKeyBindings.ZOOM.matchesMouse(event)) zoom().key(down);
         if (mc.options.keySprint.matchesMouse(event)) sprintKey(down);
         if (mc.options.keyShift.matchesMouse(event)) sneakKey(down);
     }
@@ -134,23 +122,23 @@ public final class NativeFeatures {
         }
         sprintRequested = false;
     }
+    /** MouseHandler.onScroll: true when Zoom used the scroll, so the hotbar does not move. */
     public static boolean scroll(double amount) {
-        Module zoom = module("Zoom");
-        if (!interactive() || !zoomHeld || zoom == null || !zoom.isEnabled()
-            || !option(zoom, "Scroll to Zoom", true) || amount == 0) return false;
+        if (!interactive() || amount == 0) return false;
         Minecraft mc = Minecraft.getInstance();
-        double adjusted = mc.options.discreteMouseScroll().get() ? Math.signum(amount) : amount;
-        adjusted *= mc.options.mouseWheelSensitivity().get();
-        zoomTarget = (float) Math.max(.05, Math.min(.8, zoomTarget - adjusted * .05));
-        return true;
+        double notches = mc.options.discreteMouseScroll().get() ? Math.signum(amount) : amount;
+        return zoom().scroll(notches * mc.options.mouseWheelSensitivity().get());
     }
-    public static float zoom(float partialTick, boolean hand) {
-        Module zoom = module("Zoom");
-        if (!interactive() || zoom == null || !zoom.isEnabled()
-            || (hand && !option(zoom, "Hand Zoom", true))) return 1;
-        if (!option(zoom, "Smooth Zoom", true)) return zoomHeld ? zoomTarget : 1;
-        float delta = Math.max(0, Math.min(1, partialTick));
-        return zoomPrevious + delta * (zoomCurrent - zoomPrevious);
+    /** ZoomMixin: the FOV Minecraft computed (dynamic FOV, spyglass and fluids included) times the zoom. */
+    public static float fov(float vanilla, boolean hand) {
+        long now = System.nanoTime();
+        float fov = vanilla * zoom().fovFactor(hand, now);
+        if (!hand) { lastWorldFov = fov; lastWorldNanos = now; }
+        return fov;
+    }
+    /** MouseHandler.turnPlayer: zoomed, the camera turns as much per on-screen pixel as unzoomed. */
+    public static float zoomSensitivity() {
+        return zoom().sensitivity();
     }
     public static float gamma(float vanilla) {
         if (module("Fullbright") instanceof FullbrightModule fullbright && fullbright.isEnabled()

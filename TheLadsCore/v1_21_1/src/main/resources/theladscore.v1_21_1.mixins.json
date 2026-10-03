@@ -18,6 +18,7 @@
     "MouseHandlerMixin",
     "FullbrightMixin",
     "ZoomMixin",
+    "EssentialZoomMixin",
     "ServerListAccessor",
     "ServerListSharedMixin",
     "WindowIconMixin",
