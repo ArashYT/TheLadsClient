@@ -17,6 +17,8 @@
     <Content Include="..\docs\releases\*.md" Link="release-notes\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="game-mods\**\*.jar" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="game-mods\**\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- One list of known servers for LadsCore and the launcher (ServerNameResolver, Servers tab). -->
+    <EmbeddedResource Include="..\TheLadsCore\common\src\main\resources\thelads\known_servers.json" Link="Services\known_servers.json" LogicalName="known_servers.json" />
   </ItemGroup>
 
   <ItemGroup>

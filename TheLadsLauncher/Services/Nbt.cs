@@ -336,6 +336,9 @@ public sealed class ServerListFile
         list.Items.Add(entry);
     }
 
+    /// <summary>Removes this exact entry (one of <see cref="Entries"/>' Raw compounds). False when it is not in the list.</summary>
+    public bool Remove(NbtCompound entry) => Root["servers"] is NbtList list && list.Items.Remove(entry);
+
     public byte[] ToBytes() => Nbt.Write(Root, RootName);
 
     /// <summary>Atomic write: temp file next to the target, then File.Replace.</summary>
