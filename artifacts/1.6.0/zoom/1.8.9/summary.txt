@@ -1,0 +1,41 @@
+Scenario: zoom-160
+Command: dotnet run --project TheLadsLauncher.Verification -- 1.8.9 "C:/Users/Arash/Desktop/The Lads Client Dev/w160z" --title --dir 1.8.9-title
+Started: 2026-10-03T17:36:50.6063664-04:00
+Harness environment: LADS_GLOBAL_MINECRAFT_DIR=C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox; LADS_SKIP_UPDATE=1; LADS_VERIFY_AUTO_WORLD=1; LADS_VERIFY_SCENARIO=zoom-160
+QA game folder: C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\1.8.9-title
+Shared sandbox (LADS_GLOBAL_MINECRAFT_DIR): C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox
+Child environment: THELADS_DIR=C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\1.8.9-title; LADS_GLOBAL_MINECRAFT_DIR=C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox; LADS_LUNAR_DIR=C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\lunar-sandbox
+JVM QA flags: -Dthelads.verifyLoadingScreen=true -Dthelads.verify189Core=true
+Exit path: handler finished; running marker removed; fallback server-list copy (the 1.8.9 Core does not read the shared list) passed to GameSession's reconcile into the shared servers.dat
+Finished: 2026-10-03T17:38:32.3198465-04:00
+Result: FAIL: A runtime probe or Forge reported a failure (see the FAILED lines). Inspect logs\latest.log. | Mixin or coremod errors in logs\latest.log: [17:38:32] [Client thread/ERROR]: Lads 1.8.9 core probe FAILED after 227 checks | Required world probes did not all pass: Lads 1.8.9 core probe END:
+Key log lines:
+  [17:36:52] [main/INFO]: Loading tweaker optifine.OptiFineForgeTweaker from OptiFine_1.8.9_HD_U_M5.jar
+  [17:36:52] [main/INFO]: Loading tweaker org.spongepowered.asm.launch.MixinTweaker from theladscore.jar
+  [17:36:52] [main/INFO]: SpongePowered MIXIN Subsystem Version=0.7.11 Source=file:/C:/Users/Arash/Desktop/The%20Lads%20Client%20Dev/w160z/artifacts/verification/1.8.9-title/mods/theladscore.jar Service=LaunchWrapper Env=CLIENT
+  [17:36:56] [Client thread/INFO]: Forge Mod Loader has detected optifine OptiFine_1.8.9_HD_U_M5, enabling compatibility features
+  [17:36:57] [Client thread/INFO]: Forge Mod Loader has identified 4 mods to load
+  [17:36:59] [Client thread/INFO]: TheLadsCore 1.8.9 initialized successfully.
+  [17:36:59] [Client thread/INFO]: Forge Mod Loader has successfully loaded 4 mods
+  [17:38:32] [Client thread/ERROR]: Lads 1.8.9 core probe FAILED after 227 checks
+  Forge (logs\latest.log): FML loaded 4 mods, title screen at 11.0s, OptiFine OptiFine_1.8.9_HD_U_M5, 1 mixin or coremod errors
+  Forge loaded list: declared 4, 4 top-level, 0 nested entries, 4 distinct ids; absent as expected: []; present as expected: [theladscore]
+  Lads catalog parity: report only on 1.8.9, whose first-release scope is deliberately smaller than 26.2's; LADS_VERIFY_PARITY does not apply.
+  Lads catalog parity END: 65 checks, 7 missing
+  Lads catalog parity: built in on 26.2 but neither built in nor an installed external mod on 1.8.9: Jade (unavailable), Minimap (unavailable), DynamicFPS (unavailable), Raised (unavailable), EnhancedToolbars (unavailable), DisableNarrator (unavailable), ShulkerBoxUtils (unavailable)
+Evidence files:
+  inventory-rows.txt (10128 bytes)
+  lads-mod-state.after.json (352 bytes)
+  lads-mod-state.before.json (352 bytes)
+  latest-zoom-160.log (65054 bytes)
+  launcher-inventory-snapshot.json (141337 bytes)
+  loaded-mods.json (182 bytes)
+  mods-listing.txt (424 bytes)
+  production-smoke-zoom-160.log (136523 bytes)
+  sandbox-after.txt (2289 bytes)
+  sandbox-before.txt (2289 bytes)
+  screenshots\lads-loading-1.png (26813 bytes)
+  screenshots\lads-loading-2.png (26918 bytes)
+  shared-prepare.txt (1133 bytes)
+  tripwire-after.txt (20704 bytes)
+  tripwire-before.txt (20704 bytes)
