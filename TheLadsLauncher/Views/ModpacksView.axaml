@@ -107,7 +107,7 @@
           <TextBlock Classes="caption" Text="NAME" />
           <TextBox x:Name="CreateName" PlaceholderText="My modpack" />
           <TextBlock Classes="caption" Text="MINECRAFT VERSION" />
-          <TextBox x:Name="CreateVersion" Text="1.21.1" />
+          <TextBox x:Name="CreateVersion" Text="26.3" />
           <TextBlock Classes="caption" Text="LOADER" />
           <ComboBox x:Name="CreateLoader" HorizontalAlignment="Stretch" />
           <TextBlock Text="The newest loader version for that Minecraft version is used. Add mods to its mods folder (Open folder)." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" />
