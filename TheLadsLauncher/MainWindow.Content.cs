@@ -90,13 +90,15 @@ public partial class MainWindow
 
     /// <summary>
     /// --preview-content &lt;outputDir&gt; (sandbox only; Program.Main refuses it otherwise): CurseForge search without a key, a real
-    /// Modrinth resource pack update (an old Faithful 32x is installed first), shader browsing for every Lads version and a modpack
-    /// instance, and a data pack install into a world. Writes screenshots and preview-content.json, then exits.
+    /// Modrinth resource pack update (Faithful 32x for 26.2 updated for 26.3, then for 1.8.9), shader browsing and installs for the
+    /// focus versions (1.8.9, 26.2, 26.3) and a 26.2 modpack instance, and data pack installs into a world of each. Writes
+    /// screenshots and preview-content.json, then exits.
     /// </summary>
     private async Task RunContentPreviewAsync(string output)
     {
         int exitCode = 0;
         var result = new JsonObject();
+        var focus = new[] { "1.8.9", "26.2", "26.3" };
         async Task<bool> Until(Func<bool> done, int ms = 30000)
         {
             var clock = Stopwatch.StartNew();
@@ -105,6 +107,18 @@ public partial class MainWindow
         }
         async Task Shot(string name) { await Task.Delay(700); SaveWindowScreenshot(Path.Combine(output, name)); }
         static string ListText(StackPanel list) => string.Join(" | ", list.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).Where(t => !string.IsNullOrEmpty(t)).Take(12));
+        static JsonArray Names(string folder) => new(PackContentService.Installed(folder).Select(p => (JsonNode)Path.GetFileName(p)!).ToArray());
+        // Searches, waits until the first result is the expected project (not the popular list still showing), and installs it.
+        async Task<string?> Install(Views.PackBrowserView view, string query, string first)
+        {
+            view.SearchBox.Text = query;
+            await Task.Delay(700); // past the 450 ms search-as-you-type delay: the search for the query is running
+            await Until(() => view.ResultsList.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault()?.Text?.StartsWith(first) == true
+                && view.Status.Text?.Contains(" on Modrinth") == true);
+            view.ResultsList.GetVisualDescendants().OfType<Button>().First().RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Until(() => view.Status.Text?.StartsWith("Installed") == true || view.Status.Text?.Contains(':') == true, 60000);
+            return view.Status.Text;
+        }
         try
         {
             Directory.CreateDirectory(output);
@@ -116,7 +130,7 @@ public partial class MainWindow
             var instance = Path.Combine(paths.BaseDirectory, "instances", "qa-pack");
             Directory.CreateDirectory(Path.Combine(instance, "minecraft", "saves", "Pack World"));
             File.WriteAllBytes(Path.Combine(instance, "minecraft", "saves", "Pack World", "level.dat"), Array.Empty<byte>());
-            File.WriteAllText(Path.Combine(instance, "instance.json"), JsonSerializer.Serialize(new { id = "qa-pack", name = "QA Pack", mcVersion = "1.21.1", loader = "fabric", loaderVersion = "0.16.14", createdUtc = DateTime.UtcNow }));
+            File.WriteAllText(Path.Combine(instance, "instance.json"), JsonSerializer.Serialize(new { id = "qa-pack", name = "QA Pack", mcVersion = "26.2", loader = "fabric", loaderVersion = "0.17.2", createdUtc = DateTime.UtcNow }));
 
             // 1. CurseForge search on the Mods and Resource Packs tabs (without a key: the reason, not "No results").
             result["curseForgeKeySet"] = Catalog().HasCurseForgeKey;
@@ -134,30 +148,37 @@ public partial class MainWindow
             result["resourcePacksCurseForge"] = ListText(BrowseRpList);
             RpSearchProvider.SelectedIndex = 0;
 
-            // 2. Update resource packs: Faithful 32x for 1.20.1, enabled in every options.txt, updated for 1.21.1.
+            // 2. Update resource packs: Faithful 32x for 26.2, enabled in every options.txt (1.8.9's without "file/"), updated for 26.3, then for 1.8.9.
             var catalog = Catalog();
-            var old = await catalog.LatestFileAsync(new ModSearchItem { Id = "w0TnApzs", Provider = "Modrinth" }, ContentKind.ResourcePack, "1.20.1", "fabric")
-                ?? throw new InvalidOperationException("Modrinth lists no Faithful 32x for 1.20.1.");
-            var oldPath = await catalog.InstallAsync(old, shared.ResourcePacksDirectory, shared);
-            var options = SharedPacksTarget("1.21.1").OptionsFiles;
+            var old = await catalog.LatestFileAsync(new ModSearchItem { Id = "w0TnApzs", Provider = "Modrinth" }, ContentKind.ResourcePack, "26.2", "fabric")
+                ?? throw new InvalidOperationException("Modrinth lists no Faithful 32x for 26.2.");
+            var oldName = Path.GetFileName(await catalog.InstallAsync(old, shared.ResourcePacksDirectory, shared));
+            var legacyOptions = ProfileService.Instance.GetProfiles().Where(p => GameVersionPolicy.UsesForge(p.MinecraftVersion))
+                .Select(p => Path.Combine(paths.GetProfileDirectory(p), "options.txt")).ToList();
+            var options = SharedPacksTarget("26.3").OptionsFiles;
             foreach (var file in options)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-                File.WriteAllText(file, $"version:3955\nresourcePacks:[\"vanilla\",\"file/{Path.GetFileName(oldPath)}\"]\nincompatibleResourcePacks:[]\nlang:en_us\n");
+                File.WriteAllText(file, legacyOptions.Contains(file, StringComparer.OrdinalIgnoreCase) ? $"resourcePacks:[\"{oldName}\"]\nlang:en_US\n"
+                    : $"version:4554\nresourcePacks:[\"vanilla\",\"file/{oldName}\"]\nincompatibleResourcePacks:[]\nlang:en_us\n");
             }
-            SearchRpMcVersionDropdown.SelectedItem = "1.21.1";
-            await Until(() => BrowseRpList.Children.Count > 0);
-            await UpdateResourcePacksAsync();
-            result["updateStatus"] = ModsStatusText.Text;
-            result["resourcePacksAfter"] = new JsonArray(PackContentService.Installed(shared.ResourcePacksDirectory).Select(p => (JsonNode)Path.GetFileName(p)!).ToArray());
-            result["optionsAfter"] = new JsonArray(options.Select(f => (JsonNode)$"{f}: {File.ReadAllLines(f)[1]}").ToArray());
-            await Shot("resourcepacks-update.png");
+            var updates = new JsonArray();
+            foreach (var version in new[] { "26.3", "1.8.9" })
+            {
+                SearchRpMcVersionDropdown.SelectedItem = version;
+                await UpdateResourcePacksAsync();
+                updates.Add(new JsonObject { ["version"] = version, ["status"] = ModsStatusText.Text, ["packs"] = Names(shared.ResourcePacksDirectory),
+                    ["options"] = new JsonArray(options.Select(f => (JsonNode)$"{f}: {File.ReadAllLines(f).First(l => l.StartsWith("resourcePacks:"))}").ToArray()) });
+                await Shot($"resourcepacks-update-{version}.png");
+            }
+            result["resourcePackUpdates"] = updates;
 
-            // 3. Shader packs: the filter of every target (Iris on Fabric, OptiFine on 1.8.9), then an install.
+            // 3. Shader packs: the filter of each focus target (Iris on Fabric, OptiFine on 1.8.9), then installs for 26.3, 1.8.9 and the modpack.
             ModsSubTabControl.SelectedItem = ShaderPacksTab;
             await Until(() => ShaderPacksView.TargetBox.ItemCount > 0);
+            var targets = ShaderPacksView.TargetBox.Items.OfType<ContentTarget>().Where(t => focus.Contains(t.MinecraftVersion)).ToList();
             var shaders = new JsonArray();
-            foreach (var target in ShaderPacksView.TargetBox.Items.OfType<ContentTarget>().ToList())
+            foreach (var target in targets)
             {
                 ShaderPacksView.TargetBox.SelectedItem = target;
                 await Until(() => ShaderPacksView.Status.Text?.Contains(" on Modrinth") == true || ShaderPacksView.Status.Text?.Contains("answered") == true);
@@ -165,29 +186,30 @@ public partial class MainWindow
                 await Shot($"shaders-{target.MinecraftVersion}{(target.Label.StartsWith("Modpack") ? "-modpack" : "")}.png");
             }
             result["shaders"] = shaders;
-            ShaderPacksView.TargetBox.SelectedItem = ShaderPacksView.TargetBox.Items.OfType<ContentTarget>().First(t => t.MinecraftVersion == "1.21.11");
-            ShaderPacksView.SearchBox.Text = "complementary reimagined";
-            await Until(() => ListText(ShaderPacksView.ResultsList).Contains("Complementary"));
-            ShaderPacksView.ResultsList.GetVisualDescendants().OfType<Button>().First().RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            await Until(() => ShaderPacksView.Status.Text?.StartsWith("Installed") == true || ShaderPacksView.Status.Text?.Contains(':') == true, 60000);
-            result["shaderInstall"] = ShaderPacksView.Status.Text;
-            result["shaderPacksAfter"] = new JsonArray(PackContentService.Installed(shared.ShaderPacksDirectory).Select(p => (JsonNode)Path.GetFileName(p)!).ToArray());
-            await Shot("shaders-installed.png");
+            var shaderInstalls = new JsonArray();
+            foreach (var (version, query, first, modpack) in new[] { ("26.3", "complementary reimagined", "Complementary Shaders - Reimagined", false),
+                         ("1.8.9", "bsl", "BSL Shaders", false), ("26.2", "complementary reimagined", "Complementary Shaders - Reimagined", true) })
+            {
+                ShaderPacksView.TargetBox.SelectedItem = targets.First(t => t.MinecraftVersion == version && t.Label.StartsWith("Modpack") == modpack);
+                var status = await Install(ShaderPacksView, query, first);
+                shaderInstalls.Add(new JsonObject { ["target"] = ShaderPacksView.TargetBox.SelectedItem?.ToString(), ["status"] = status, ["installed"] = Names(ShaderPacksView.Folder!) });
+                await Shot($"shaders-installed-{version}{(modpack ? "-modpack" : "")}.png");
+                ShaderPacksView.SearchBox.Text = "";
+            }
+            result["shaderInstalls"] = shaderInstalls;
 
-            // 4. Data packs: no 1.8.9 target; install into the shared QA World (1.21.1), then the modpack's world.
+            // 4. Data packs: no 1.8.9 target (data packs need 1.13+); install into the shared QA World (26.3), then the 26.2 modpack's world.
             ModsSubTabControl.SelectedItem = DataPacksTab;
             await Until(() => DataPacksView.TargetBox.ItemCount > 0);
             result["dataPackTargets"] = new JsonArray(DataPacksView.TargetBox.Items.OfType<ContentTarget>().Select(t => (JsonNode)t.Label).ToArray());
             var datapackLines = new JsonArray();
-            foreach (var target in DataPacksView.TargetBox.Items.OfType<ContentTarget>().Where(t => t.MinecraftVersion == "1.21.1").ToList())
+            foreach (var target in DataPacksView.TargetBox.Items.OfType<ContentTarget>()
+                         .Where(t => t.Label.StartsWith("Modpack") ? t.MinecraftVersion == "26.2" : t.MinecraftVersion == "26.3").ToList())
             {
                 DataPacksView.TargetBox.SelectedItem = target;
-                DataPacksView.SearchBox.Text = "veinminer";
-                await Until(() => ListText(DataPacksView.ResultsList).Contains("VeinMiner"));
-                DataPacksView.ResultsList.GetVisualDescendants().OfType<Button>().First().RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                await Until(() => DataPacksView.Status.Text?.StartsWith("Installed") == true || DataPacksView.Status.Text?.Contains(':') == true, 60000);
-                datapackLines.Add(new JsonObject { ["target"] = target.Label, ["world"] = DataPacksView.WorldBox.SelectedItem as string, ["status"] = DataPacksView.Status.Text,
-                    ["installed"] = new JsonArray(PackContentService.Installed(DataPacksView.Folder!).Select(p => (JsonNode)Path.GetFileName(p)!).ToArray()) });
+                var status = await Install(DataPacksView, "veinminer", "VeinMiner");
+                datapackLines.Add(new JsonObject { ["target"] = target.Label, ["world"] = DataPacksView.WorldBox.SelectedItem as string, ["status"] = status,
+                    ["installed"] = Names(DataPacksView.Folder!) });
                 await Shot($"datapacks-{(target.Label.StartsWith("Modpack") ? "modpack" : "lads")}.png");
                 DataPacksView.SearchBox.Text = "";
             }
