@@ -5,6 +5,9 @@ import com.thelads.core.v1_21_1.feature.NativeMenuKey;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import org.lwjgl.glfw.GLFW;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.minecraft.client.player.LocalPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -26,5 +29,11 @@ public class MouseHandlerMixin {
     @Inject(method = "onScroll(JDD)V", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsScroll(long window, double horizontal, double vertical, CallbackInfo ci) {
         if (window == Minecraft.getInstance().getWindow().getWindow() && NativeFeatures.scroll(vertical)) ci.cancel();
+    }
+    /** Zoom: the camera turns slower while zoomed (ZoomModule.sensitivity), smooth camera included. */
+    @WrapOperation(method = "turnPlayer(D)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;turn(DD)V"), require = 1)
+    private void ladsZoomTurn(LocalPlayer player, double yaw, double pitch, Operation<Void> original) {
+        double scale = NativeFeatures.zoomSensitivity();
+        original.call(player, yaw * scale, pitch * scale);
     }
 }

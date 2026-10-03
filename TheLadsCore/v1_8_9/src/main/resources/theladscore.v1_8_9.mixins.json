@@ -8,7 +8,10 @@
     "defaultRequire": 1
   },
   "client": [
+    "EntityRendererAccessor",
     "EntityRendererMixin",
+    "EssentialZoomMixin189",
+    "GameSettingsMixin",
     "GuiButtonMixin",
     "GuiDisconnectedAccessor",
     "GuiIngameForgeMixin",

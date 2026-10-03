@@ -65,6 +65,7 @@ public final class CoreProbe {
         STEPS.addAll(Probe150e.STEPS);
         STEPS.addAll(Probe150.STEPS);
         STEPS.addAll(Probe151.STEPS);
+        STEPS.addAll(Probe160.STEPS);
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
     }
@@ -98,6 +99,7 @@ public final class CoreProbe {
         finished = true;
         HudProbe.stop();
         Probe151.stop();
+        Probe160.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -472,12 +474,24 @@ public final class CoreProbe {
 
     /** A key press and release, queued in LWJGL's keyboard buffer as Keyboard.poll() stores them. */
     static void tap(int key, char character) throws Exception {
-        for (int down = 1; down >= 0; down--) {
-            ByteBuffer events = queue(Keyboard.class);
-            events.compact();
-            events.putInt(key).put((byte) down).putInt(character).putLong(System.nanoTime()).put((byte) 0);
-            events.flip();
-        }
+        key(key, character, true);
+        key(key, character, false);
+    }
+
+    /** One key event (a held key: press now, release later), queued as Keyboard.poll() stores it. */
+    static void key(int key, char character, boolean down) throws Exception {
+        ByteBuffer events = queue(Keyboard.class);
+        events.compact();
+        events.putInt(key).put((byte) (down ? 1 : 0)).putInt(character).putLong(System.nanoTime()).put((byte) 0);
+        events.flip();
+    }
+
+    /** One mouse-wheel event in gameplay (120 is one notch on Windows), queued as Mouse.poll() stores it. */
+    static void wheel(int dwheel) throws Exception {
+        ByteBuffer events = queue(Mouse.class);
+        events.compact();
+        events.put((byte) -1).put((byte) 0).putInt(0).putInt(0).putInt(dwheel).putLong(System.nanoTime());
+        events.flip();
     }
 
     /** A left click at a GUI position of the current screen. */

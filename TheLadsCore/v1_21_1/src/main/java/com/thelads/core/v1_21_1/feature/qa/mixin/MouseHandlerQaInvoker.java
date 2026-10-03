@@ -8,4 +8,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(MouseHandler.class)
 public interface MouseHandlerQaInvoker {
     @Invoker("onPress") void ladsQaPress(long window, int button, int action, int modifiers);
+    /** The scroll callback (ZoomCapture: a zoomed scroll must leave the hotbar slot alone). */
+    @Invoker("onScroll") void ladsQaScroll(long window, double horizontal, double vertical);
 }

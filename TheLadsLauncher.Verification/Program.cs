@@ -120,6 +120,9 @@ bool hudCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_
 bool bannerCaptureVerification = autoWorldVerification && capabilities.KillBanner && Env("LADS_VERIFY_CAPTURE_KILLBANNER") == "1";
 // Fabric versions: the 1.7 Animations poses (sword block, bow, rod, eating, 2D dropped item, red armour) photographed (OldAnimationsCapture).
 bool oldAnimCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_OLDANIM") == "1";
+// Fabric versions: Lads Zoom through the real key and scroll handlers, photographed, with every frame's FOV in zoom-fov.csv (ZoomCapture).
+// 1.8.9's self-test (Probe160) always runs the same checks.
+bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ZOOM") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -252,6 +255,9 @@ if (bannerCaptureVerification) File.WriteAllText(bannerCaptureRequest, "Fire eve
 string oldAnimCaptureRequest = Path.Combine(directory, ".lads-qa-capture-oldanim");
 if (autoWorldVerification && File.Exists(oldAnimCaptureRequest)) File.Delete(oldAnimCaptureRequest);
 if (oldAnimCaptureVerification) File.WriteAllText(oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames.");
+string zoomCaptureRequest = Path.Combine(directory, ".lads-qa-capture-zoom");
+if (autoWorldVerification && File.Exists(zoomCaptureRequest)) File.Delete(zoomCaptureRequest);
+if (zoomCaptureVerification) File.WriteAllText(zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames.");
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
         File.Delete(Path.Combine(directory, flag));
@@ -297,7 +303,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
-    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED",
+    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads zoom capture FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -531,7 +537,7 @@ try
             foreach (string marker in requiredWorldProbes)
                 if (line.Contains(marker) && (Passed(line) || marker == "Lads food server sync END:")) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
-                "Lads 1.7 animations capture END:" })
+                "Lads 1.7 animations capture END:", "Lads zoom capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -616,7 +622,8 @@ try
             bool hudDone = !hudCaptureVerification || (passedMarkers.ContainsKey("Lads HUD capture END:") && passedMarkers.ContainsKey("Lads HUD editor probe END:"));
             bool bannerDone = !bannerCaptureVerification || passedMarkers.ContainsKey("Lads kill banner capture END:");
             bool oldAnimDone = !oldAnimCaptureVerification || passedMarkers.ContainsKey("Lads 1.7 animations capture END:");
-            if (menuDone && hudDone && bannerDone && oldAnimDone)
+            bool zoomDone = !zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:");
+            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone)
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -733,6 +740,8 @@ try
             "The requested Kill Banner frames were not all captured.");
         Require(!oldAnimCaptureVerification || passedMarkers.ContainsKey("Lads 1.7 animations capture END:"),
             "The requested 1.7 Animations frames were not all captured.");
+        Require(!zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:"),
+            "The requested Lads Zoom capture did not pass. Inspect production-smoke.log.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)
@@ -829,7 +838,7 @@ foreach (var (source, node) in inventorySnapshots)
     await File.WriteAllTextAsync(Path.Combine(evidence, $"mods-inventory-snapshot-{source}.json"), node.ToJsonString(evidenceJson));
 string screenshots = Path.Combine(directory, "screenshots");
 if (Directory.Exists(screenshots))
-    foreach (var png in new DirectoryInfo(screenshots).EnumerateFiles("*.png").Where(f => f.LastWriteTimeUtc >= runStartUtc))
+    foreach (var png in new DirectoryInfo(screenshots).EnumerateFiles().Where(f => f.Extension is ".png" or ".csv" && f.LastWriteTimeUtc >= runStartUtc))
     {
         Directory.CreateDirectory(Path.Combine(evidence, "screenshots"));
         png.CopyTo(Path.Combine(evidence, "screenshots", png.Name), overwrite: true);
