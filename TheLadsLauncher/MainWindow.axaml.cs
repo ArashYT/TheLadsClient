@@ -281,6 +281,8 @@ public partial class MainWindow : Window
             if (discoveryPreview >= 0) { await RunDiscoveryPreviewAsync(Path.GetFullPath(args[discoveryPreview + 1])); return; }
             int productivityPreview = Array.IndexOf(args, "--preview-productivity");
             if (productivityPreview >= 0) { await RunProductivityPreviewAsync(Path.GetFullPath(args[productivityPreview + 1])); return; }
+            int modpacksPreview = Array.IndexOf(args, "--preview-modpacks");
+            if (modpacksPreview >= 0) { await RunModpacksPreviewAsync(Path.GetFullPath(args[modpacksPreview + 1])); return; }
             if (_previewWorldsOutput != null)
             {
                 Directory.CreateDirectory(_previewWorldsOutput);
@@ -558,6 +560,8 @@ public partial class MainWindow : Window
         HomePage.IsVisible = page == "Home";
         WorldsPage.IsVisible = page == "Worlds";
         NavWorlds.Classes.Set("active", page == "Worlds");
+        ModpacksPage.IsVisible = page == "Modpacks";
+        NavModpacks.Classes.Set("active", page == "Modpacks");
         ProfilesPage.IsVisible = page == "Profiles";
         AccountsPage.IsVisible = page == "Accounts";
         SettingsPage.IsVisible = page == "Settings";

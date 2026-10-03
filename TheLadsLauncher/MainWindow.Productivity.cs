@@ -57,7 +57,7 @@ public partial class MainWindow
         Closed += (_, _) => _noticeTimer.Stop();
     }
 
-    private Control[] ProductivityPages() => new Control[] { HomePage, WorldsPage, ProfilesPage, AccountsPage, SettingsPage, ModsPage, FilesPage, GalleryPage, LogsPage };
+    private Control[] ProductivityPages() => new Control[] { HomePage, WorldsPage, ModpacksPage, ProfilesPage, AccountsPage, SettingsPage, ModsPage, FilesPage, GalleryPage, LogsPage };
 
     private void AnimateNavigation()
     {
