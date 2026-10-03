@@ -34,7 +34,7 @@ public final class ZoomTrace {
         if (phase == null || nanos == last) return;
         if (phaseFrames == 0) { from = fov; start = nanos; }
         double expected = ZoomModule.approach(from, goal, (nanos - start) / 1e9);
-        double frameMs = last == 0 ? 0 : (nanos - last) / 1e6;
+        double frameMs = phaseFrames == 0 ? 0 : (nanos - last) / 1e6; // not the gap while QA saved the previous shot
         csv.append(String.format(Locale.ROOT, "%s,%.3f,%.3f,%.5f,%.5f\n", phase, (nanos - start) / 1e6, frameMs, fov, expected));
         double deviation = Math.abs(fov / expected - 1);
         worstDeviation = Math.max(worstDeviation, deviation);

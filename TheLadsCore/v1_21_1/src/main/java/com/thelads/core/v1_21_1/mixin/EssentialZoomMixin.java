@@ -1,20 +1,20 @@
 package com.thelads.core.v1_21_1.mixin;
 import com.thelads.core.v1_21_1.feature.NativeFeatures;
+import net.minecraft.client.KeyMapping;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Lads Zoom is the only zoom: while it is on, Essential's zoom (its own key, also C) never starts, so its FOV change, smooth
- * camera and scroll capture stay off. Essential is downloaded at runtime: @Pseudo skips a missing class, require = 0 a changed method.
+ * Lads Zoom is the only zoom: while it is on, Essential's zoom key ("keybind.name.ZOOM", also C) reads as up, so Essential's
+ * ZoomHandler never starts its FOV change, smooth camera or scroll capture. Essential is downloaded at runtime and its classes load
+ * after mixins are prepared, so this sits on the vanilla KeyMapping it polls; its binding and options are untouched.
  */
-@Pseudo
-@Mixin(targets = "gg.essential.handlers.ZoomHandler", remap = false)
+@Mixin(KeyMapping.class)
 public abstract class EssentialZoomMixin {
-    @Inject(method = "getZoomState", at = @At("HEAD"), cancellable = true, require = 0, remap = false)
+    @Inject(method = "isDown()Z", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsOnlyZoom(CallbackInfoReturnable<Boolean> cir) {
-        if (NativeFeatures.enabled("Zoom")) cir.setReturnValue(false);
+        if ("keybind.name.ZOOM".equals(((KeyMapping) (Object) this).getName()) && NativeFeatures.enabled("Zoom")) cir.setReturnValue(false);
     }
 }
