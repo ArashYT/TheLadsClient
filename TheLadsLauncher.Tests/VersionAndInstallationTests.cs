@@ -35,7 +35,7 @@ public class VersionAndInstallationTests
         using var dir = new TestDirectory();
         string oldGame = Path.Combine(dir.Path, "existing-worlds");
         var saved = new { ActiveProfileId = "custom", Profiles = new[] {
-            new LauncherProfile { Id = "custom", Name = "My world", MinecraftVersion = "1.21.1", FabricVersion = "0.16.9", JavaMajorVersion = 21, CustomGameDir = oldGame }
+            new LauncherProfile { Id = "custom", Name = "My world", MinecraftVersion = "1.21.11", FabricVersion = "0.16.9", JavaMajorVersion = 21, CustomGameDir = oldGame }
         }};
         File.WriteAllText(Path.Combine(dir.Path, "profiles.json"), JsonSerializer.Serialize(saved));
         var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
@@ -84,7 +84,6 @@ public class VersionAndInstallationTests
     [InlineData("1.21.11", "fabric-loader-0.20.0-1.21.11", "fabric-loader-0.20.0-1.21.11")]
     [InlineData("1.21.11", "0.18.0-custom", "0.18.0-custom")]
     [InlineData("26.2", "fabric-loader-0.18.0-custom-26.2", "fabric-loader-0.18.0-custom-26.2")]
-    [InlineData("1.21.1", "0.16.9", "0.19.5")]
     [InlineData("26.3", "0.19.5", "0.19.5")]
     [InlineData("26.3", "fabric-loader-0.19.5-26.3", "fabric-loader-0.19.5-26.3")]
     public void SupportedCoreLoaderMinimumPreservesOtherLoaders(string mc, string loader, string expected)
@@ -132,13 +131,46 @@ public class VersionAndInstallationTests
         File.WriteAllText(Path.Combine(dir.Path, "profiles.json"),
             JsonSerializer.Serialize(new { ActiveProfileId = "1.21.11", Profiles = saved }));
         var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
-        Assert.Equal(5, service.GetProfiles().Count); // the two saved ones plus the 26.3, 1.21.1 and 1.8.9 defaults
+        Assert.Equal(4, service.GetProfiles().Count); // the two saved ones plus the 26.3 and 1.8.9 defaults
         Assert.Equal("existing-world", service.GetProfile("1.21.11")!.CustomGameDir);
         Assert.Equal(saved[0].FabricVersion, service.GetProfile("1.21.11")!.FabricVersion);
         Assert.Equal(saved[1].FabricVersion, service.GetProfile("26.2")!.FabricVersion);
         Assert.Equal("26.3", service.GetActiveProfile().Id);
         Assert.Null(service.GetActiveProfile().CustomGameDir);
         GameVersionPolicy.ResolveVersionId(service.GetActiveProfile());
+    }
+
+    /// <summary>1.6.0 dropped Minecraft 1.21.1: a saved 1.21.1 profile is no longer offered and the launcher starts on the default
+    /// version, but the profile entry stays in profiles.json and its game folder is left alone.</summary>
+    [Fact]
+    public void DroppedVersionProfileIsKeptButNoLongerOffered()
+    {
+        using var dir = new TestDirectory();
+        string world = Path.Combine(dir.Path, "my-1.21.1-game");
+        Directory.CreateDirectory(Path.Combine(world, "saves", "Old World"));
+        File.WriteAllText(Path.Combine(world, "options.txt"), "fov:0.5\n");
+        var saved = new[] {
+            new LauncherProfile { Id = "1.21.1", Name = "The Lads Client 1.21.1 (Legacy)", MinecraftVersion = "1.21.1", FabricVersion = "0.19.5", JavaMajorVersion = 21, CustomGameDir = world },
+            new LauncherProfile { Id = "1.8.9", Name = "The Lads Client 1.8.9", MinecraftVersion = "1.8.9", JavaMajorVersion = 8 }
+        };
+        string file = Path.Combine(dir.Path, "profiles.json");
+        File.WriteAllText(file, JsonSerializer.Serialize(new { ActiveProfileId = "1.21.1", Profiles = saved }));
+
+        var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
+        Assert.DoesNotContain(service.GetProfiles(), p => p.MinecraftVersion == "1.21.1");
+        Assert.Null(service.GetProfile("1.21.1"));
+        Assert.Equal("26.3", service.GetActiveProfile().MinecraftVersion); // the default, never 1.8.9 by surprise
+        service.SetActiveProfile("1.21.1");
+        Assert.Equal("26.3", service.GetActiveProfile().MinecraftVersion);
+
+        using var json = JsonDocument.Parse(File.ReadAllText(file));
+        var kept = Assert.Single(json.RootElement.GetProperty("DroppedProfiles").EnumerateArray());
+        Assert.Equal(("1.21.1", world), (kept.GetProperty("MinecraftVersion").GetString(), kept.GetProperty("CustomGameDir").GetString()));
+        Assert.True(Directory.Exists(Path.Combine(world, "saves", "Old World")));
+        Assert.Equal("fov:0.5\n", File.ReadAllText(Path.Combine(world, "options.txt")));
+        string migrated = File.ReadAllText(file);
+        Assert.Equal("26.3", new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global"))).GetActiveProfile().MinecraftVersion);
+        Assert.Equal(migrated, File.ReadAllText(file)); // a second start changes nothing
     }
 
     [Fact]

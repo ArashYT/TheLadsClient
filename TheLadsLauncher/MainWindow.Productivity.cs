@@ -26,7 +26,7 @@ public partial class MainWindow
     private void InitializeProductivity()
     {
         Classes.Set("motion", !settings.ReducedMotion);
-        ProfileVersionFilter.ItemsSource = new[] { "All versions", "26.3", "26.2", "1.21.11", "1.21.1", "1.8.9" };
+        ProfileVersionFilter.ItemsSource = new[] { "All versions", "26.3", "26.2", "1.21.11", "1.8.9" };
         ProfileVersionFilter.SelectedIndex = 0;
         ProfileSearch.TextChanged += (_, _) => LoadProfilesUI();
         ProfileVersionFilter.SelectionChanged += (_, _) => LoadProfilesUI();

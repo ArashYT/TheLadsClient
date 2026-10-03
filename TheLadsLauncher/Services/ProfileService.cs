@@ -18,6 +18,9 @@ public class ProfileService : IProfileService
     private readonly SharedContentService _sharedContent;
     private readonly string _profilesConfigPath;
     private readonly List<LauncherProfile> _profiles = new();
+    /// <summary>Saved profiles of a dropped version (<see cref="GameVersionPolicy.IsDropped"/>): written back to profiles.json as
+    /// they were, never listed, launched or deleted.</summary>
+    private readonly List<LauncherProfile> _dropped = new();
     private string _activeProfileId = "26.3";
 
     // There is deliberately no constructor without the shared-content root: tests must pass a sandbox root.
@@ -392,8 +395,15 @@ public class ProfileService : IProfileService
                 {
                     _profiles.Clear();
                     _profiles.AddRange(container.Profiles);
-                    _activeProfileId = container.ActiveProfileId ?? _profiles[0].Id;
-                    var changed = false;
+                    _dropped.Clear();
+                    _dropped.AddRange(container.DroppedProfiles ?? new());
+                    // 1.6.0 dropped Minecraft 1.21.1: its profiles stop being offered (an active one falls back to the default
+                    // below). The entries stay in profiles.json and their game folders, worlds and settings are left alone.
+                    var dropped = _profiles.Where(p => GameVersionPolicy.IsDropped(p.MinecraftVersion)).ToList();
+                    _dropped.AddRange(dropped);
+                    _profiles.RemoveAll(dropped.Contains);
+                    _activeProfileId = container.ActiveProfileId ?? _profiles.FirstOrDefault()?.Id ?? "";
+                    var changed = dropped.Count > 0;
                     foreach (var savedProfile in _profiles)
                         changed |= MigrateSavedProfile(savedProfile);
                     // Before 1.4.8 every 1.8.9 profile was forced to keep its own settings; it shares them now, like any profile
@@ -419,9 +429,11 @@ public class ProfileService : IProfileService
                     {
                         // Keep unresolved aliases/custom profiles for the user to repair, but
                         // never pass one to startup's exact-version resolver as the active profile.
-                        // A Fabric profile, as before 1.8.9 had a bundled Core: never switch a player to 1.8.9 by surprise.
-                        var fallback = _profiles.FirstOrDefault(p => GameVersionPolicy.RequiresFabric(p.MinecraftVersion)
-                            && IsValidStartupProfile(p));
+                        // The default version first, then any Fabric profile, as before 1.8.9 had a bundled Core: never switch a
+                        // player to 1.8.9 by surprise.
+                        var defaultVersion = CreateDefaultProfiles().First().MinecraftVersion;
+                        var fallback = _profiles.FirstOrDefault(p => p.MinecraftVersion == defaultVersion && IsValidStartupProfile(p))
+                            ?? _profiles.FirstOrDefault(p => GameVersionPolicy.RequiresFabric(p.MinecraftVersion) && IsValidStartupProfile(p));
                         if (fallback == null)
                         {
                             fallback = CreateDefaultProfiles().First();
@@ -515,7 +527,7 @@ public class ProfileService : IProfileService
             changed = true;
         }
 
-        if (profile.MinecraftVersion is "1.21.1" or "1.21.11" or "26.2" or "26.3")
+        if (profile.MinecraftVersion is "1.21.11" or "26.2" or "26.3")
         {
             var requiredJava = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion);
             if (profile.JavaMajorVersion < requiredJava)
@@ -582,12 +594,6 @@ public class ProfileService : IProfileService
                 PackwizUrl = null,
                 IconKey = "nextgen"
             },
-            new()
-            {
-                Id = "1.21.1", Name = "The Lads Client 1.21.1 (Legacy)", MinecraftVersion = "1.21.1",
-                FabricVersion = "0.19.5", JavaMajorVersion = 21, IsIsolated = false,
-                PackwizUrl = null, IconKey = "nextgen"
-            },
             // Forge and Java 8.
             new()
             {
@@ -605,6 +611,7 @@ public class ProfileService : IProfileService
             {
                 ActiveProfileId = _activeProfileId,
                 Profiles = _profiles.ToList(),
+                DroppedProfiles = _dropped.Count > 0 ? _dropped.ToList() : null,
                 Shared189 = true
             };
             var options = new JsonSerializerOptions { WriteIndented = true };
@@ -622,5 +629,8 @@ public class ProfileService : IProfileService
         public List<LauncherProfile>? Profiles { get; set; }
         /// <summary>The 1.8.9 profiles' forced IsIsolated was cleared (1.4.8).</summary>
         public bool Shared189 { get; set; }
+        /// <summary>Profiles of versions the launcher dropped (1.21.1 in 1.6.0), kept as they were saved.</summary>
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public List<LauncherProfile>? DroppedProfiles { get; set; }
     }
 }

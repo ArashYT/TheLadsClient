@@ -213,7 +213,6 @@ public sealed class ModInventoryServiceTests : IDisposable
     }
 
     [Theory]
-    [InlineData("1.21.1")]
     [InlineData("1.21.11")]
     [InlineData("26.2")]
     [InlineData("26.3")]

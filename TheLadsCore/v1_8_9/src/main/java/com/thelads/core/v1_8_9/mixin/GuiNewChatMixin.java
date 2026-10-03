@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * The Chat module, as 1.21.1 ChatMixin: size, line backgrounds, the newest message's slide and fade, and (Chat189) timestamps and
+ * The Chat module, as 1.21.11 ChatMixin: size, line backgrounds, the newest message's slide and fade, and (Chat189) timestamps and
  * screenshot buttons. Display only. A message's lines share the tick it arrived in, which keys its animation.
  */
 @Mixin(GuiNewChat.class)
