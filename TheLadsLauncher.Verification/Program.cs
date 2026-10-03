@@ -254,13 +254,10 @@ string hudCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hud");
 if (autoWorldVerification && File.Exists(hudCaptureRequest)) File.Delete(hudCaptureRequest);
 string bannerCaptureRequest = Path.Combine(directory, ".lads-qa-capture-killbanner");
 if (autoWorldVerification && File.Exists(bannerCaptureRequest)) File.Delete(bannerCaptureRequest);
-if (bannerCaptureVerification) File.WriteAllText(bannerCaptureRequest, "Fire every kill banner skin in the QA world and capture its frames.");
 string oldAnimCaptureRequest = Path.Combine(directory, ".lads-qa-capture-oldanim");
 if (autoWorldVerification && File.Exists(oldAnimCaptureRequest)) File.Delete(oldAnimCaptureRequest);
-if (oldAnimCaptureVerification) File.WriteAllText(oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames.");
 string zoomCaptureRequest = Path.Combine(directory, ".lads-qa-capture-zoom");
 if (autoWorldVerification && File.Exists(zoomCaptureRequest)) File.Delete(zoomCaptureRequest);
-if (zoomCaptureVerification) File.WriteAllText(zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames.");
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
         File.Delete(Path.Combine(directory, flag));
@@ -275,7 +272,7 @@ string logPath = Path.Combine(directory, "production-smoke.log");
 StreamWriter? log = null;
 var logGate = new object();
 bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false;
-bool menuCaptureRequested = false, hudCaptureRequested = false, windowFound = false, snapshotInvalid = false;
+bool menuCaptureRequested = false, hudCaptureRequested = false, worldCapturesRequested = false, windowFound = false, snapshotInvalid = false;
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
@@ -651,6 +648,18 @@ try
                     }
                 }
                 else break;
+            }
+            // The world captures hold items, keys and the zoom, which a screen opened by a world probe (the screenshots gallery,
+            // the pause menu) cuts short: they are asked for once those probes have passed. The Core runs them one at a time and
+            // opens the menu or HUD capture only between them.
+            if (!worldCapturesRequested)
+            {
+                foreach (var (asked, request, text) in new[] {
+                    (bannerCaptureVerification, bannerCaptureRequest, "Fire every kill banner skin in the QA world and capture its frames."),
+                    (oldAnimCaptureVerification, oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames."),
+                    (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames.") })
+                    if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
+                worldCapturesRequested = true;
             }
             if (!menuDone && !menuCaptureRequested)
             {

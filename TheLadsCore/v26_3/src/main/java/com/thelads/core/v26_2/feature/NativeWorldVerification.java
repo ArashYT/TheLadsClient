@@ -128,7 +128,9 @@ public final class NativeWorldVerification {
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
             Path hudRequest = gameDirectory.resolve(".lads-qa-capture-hud");
+            // A menu or HUD capture opens a screen, which zooms out and stops item use: never while a world capture runs.
             if (menuScreen == null && readyLogged && worldReady()
+                && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy()
                 && !com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.NativeScreenshotsProbe.running()
                 && (Files.isRegularFile(menuRequest, LinkOption.NOFOLLOW_LINKS)
                     || Files.isRegularFile(hudRequest, LinkOption.NOFOLLOW_LINKS))) {
