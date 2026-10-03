@@ -32,8 +32,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * <p>1.7 Animations (OldAnimations189), first person. OptiFine M5 keeps renderItemInFirstPerson as it is (it only adds a shaders
  * early return), so its calls are redirected: a HEAD inject reads the frame's item and use, the use branch's transforms become
  * the shared 1.7 hand recipe (which keeps the swing: blockhitting) and the item draw becomes 1.7's icon placement with no 1.8
- * display transform. The idle hand stays vanilla's, which is 1.7's, so LegacySwing still swings it; while an item is in use 1.7
- * Animations draws the hand instead, so the two never both transform it. Low Fire lowers the fire overlay's quads.
+ * display transform. The idle hand stays vanilla's, which is 1.7's, so LegacySwing still swings it (placing blocks too); while an
+ * item is in use 1.7 Animations draws the hand instead, so the two never both transform it (OldAnimations.legacySwingShown). Low Fire lowers the fire overlay's quads.
  */
 @Mixin(ItemRenderer.class)
 public abstract class ItemRendererMixin {
@@ -128,8 +128,7 @@ public abstract class ItemRendererMixin {
             self.renderItem(player, stack, type);
             return;
         }
-        OldAnimations.item(OldAnimations189.GL, 1, ladsHeld == Held.ROD);
-        OldAnimations189.fullSizeMesh();
+        OldAnimations.item(OldAnimations189.GL, 1, ladsHeld == Held.ROD); // full size: RenderItem.preTransform undoes its 0.5
         self.renderItem(player, stack, TransformType.NONE);
         OldAnimations189.hit(Hook.FP_ICON);
     }

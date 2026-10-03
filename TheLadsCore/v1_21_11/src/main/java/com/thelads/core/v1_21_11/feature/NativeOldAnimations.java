@@ -73,7 +73,7 @@ public final class NativeOldAnimations {
     private static boolean active(Feature feature) { return MODULE.active(feature, PLATFORM); }
 
     /** Recipe ops on a PoseStack; each post-multiplies the current matrix, as the recipes expect. */
-    private static OldAnimations.Sink sink(PoseStack pose) {
+    static OldAnimations.Sink sink(PoseStack pose) {
         return new OldAnimations.Sink() {
             @Override public void translate(float x, float y, float z) { pose.translate(x, y, z); }
             @Override public void rotate(float degrees, float x, float y, float z) { pose.mulPose((x != 0 ? Axis.XP : y != 0 ? Axis.YP : Axis.ZP).rotationDegrees(degrees)); }
@@ -140,7 +140,9 @@ public final class NativeOldAnimations {
         if (held == null || !MODULE.iconPlacement(PLATFORM, use, held)) return false;
         int side = (main ? player.getMainArm() : player.getMainArm().getOpposite()) == HumanoidArm.RIGHT ? 1 : -1;
         OldAnimations.Sink sink = sink(pose);
-        OldAnimations.hand(sink, side, equip, MODULE.swingShown(PLATFORM, use, swing), use, player.getUseItemRemainingTicks(), partial,
+        if (OldAnimations.legacySwingShown(NativeQualityOfLife.enabled("LegacySwing"), use))
+            OldAnimations.legacySwingHand(sink, side, equip, swing); // Legacy Swing swings the idle hand (placing blocks too)
+        else OldAnimations.hand(sink, side, equip, MODULE.swingShown(PLATFORM, use, swing), use, player.getUseItemRemainingTicks(), partial,
             stack.getUseDuration(player));
         OldAnimations.item(sink, side, held == Held.ROD);
         renderer.renderItem(player, stack, ItemDisplayContext.NONE, pose, collector, light);

@@ -36,6 +36,9 @@ final class OldAnimationsCapture {
     private record Shot(String name, Item main, Item off, InteractionHand use, boolean thirdPerson, long delayMs) {}
     private static final Shot[] SHOTS = {
         new Shot("idle-sword", Items.DIAMOND_SWORD, Items.AIR, null, false, 900),
+        new Shot("idle-sword-vanilla", Items.DIAMOND_SWORD, Items.AIR, null, false, 900), // 1.7 Animations off, for comparison
+        new Shot("idle-item", Items.APPLE, Items.AIR, null, false, 900),
+        new Shot("held-block", Items.STONE, Items.AIR, null, false, 900),
         new Shot("sword-block", Items.DIAMOND_SWORD, Items.SHIELD, InteractionHand.OFF_HAND, false, 900),
         new Shot("blockhit", Items.DIAMOND_SWORD, Items.SHIELD, InteractionHand.OFF_HAND, false, 120), // swings, captured mid-swing
         new Shot("bow-drawn", Items.BOW, Items.AIR, InteractionHand.MAIN_HAND, false, 1100),
@@ -43,7 +46,11 @@ final class OldAnimationsCapture {
         new Shot("eating", Items.COOKED_BEEF, Items.AIR, InteractionHand.MAIN_HAND, false, 700),
         new Shot("dropped-2d", Items.AIR, Items.AIR, null, false, 900), // a flat apple beside a 3D stone block
         new Shot("red-armour", Items.DIAMOND_SWORD, Items.AIR, null, true, 600), // hurt every tick
-        new Shot("third-person-block", Items.DIAMOND_SWORD, Items.SHIELD, InteractionHand.OFF_HAND, true, 900)};
+        new Shot("third-person-block", Items.DIAMOND_SWORD, Items.SHIELD, InteractionHand.OFF_HAND, true, 900),
+        // Legacy Swing on, held half way through the swing a block placement plays; "-off" with 1.7 Animations off must match.
+        new Shot("legacy-place", Items.STONE, Items.AIR, null, false, 600),
+        new Shot("legacy-place-off", Items.STONE, Items.AIR, null, false, 600),
+        new Shot("legacy-torch", Items.TORCH, Items.AIR, null, false, 600)};
     private static final EquipmentSlot[] SLOTS = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD, EquipmentSlot.CHEST,
         EquipmentSlot.LEGS, EquipmentSlot.FEET};
     private static final int FIRST_ID = Integer.MAX_VALUE - 128;
@@ -142,6 +149,8 @@ final class OldAnimationsCapture {
             player.stopUsingItem();
         }
         removeDropped();
+        NativeOldAnimations.module().setEnabled(!shot.name().endsWith("-vanilla") && !shot.name().equals("legacy-place-off"));
+        NativeQualityOfLife.module("LegacySwing").setEnabled(shot.name().startsWith("legacy"));
         for (EquipmentSlot slot : SLOTS) player.setItemSlot(slot, worn(shot, slot));
         mc.options.setCameraType(shot.thirdPerson() ? CameraType.THIRD_PERSON_FRONT : CameraType.FIRST_PERSON);
         if (shot.name().equals("blockhit")) player.swing(InteractionHand.MAIN_HAND, net.minecraft.world.item.component.SwingAnimation.DEFAULT, false);
@@ -185,6 +194,16 @@ final class OldAnimationsCapture {
             if (!player.isUsingItem()) player.startUsingItem(shot.use());
         }
         if (shot.name().equals("red-armour")) player.hurtTime = player.hurtDuration = 10;
+        if (shot.name().startsWith("legacy")) { // the swing stays half way: this tick's SwingState.tick shows tick 3 of 6
+            if (!player.isSwinging()) player.swing(InteractionHand.MAIN_HAND, net.minecraft.world.item.component.SwingAnimation.DEFAULT, false);
+            try {
+                var state = net.minecraft.world.entity.LivingEntity.class.getDeclaredField("swingState");
+                state.setAccessible(true);
+                var ticks = state.getType().getDeclaredField("ticks");
+                ticks.setAccessible(true);
+                ticks.setInt(state.get(player), 3);
+            } catch (ReflectiveOperationException failure) { LOGGER.warn("Lads 1.7 animations capture: swing state unavailable", failure); }
+        }
     }
 
     /** What the shot wears in this slot: its held items, iron armour in third person, otherwise the player's own armour. */
