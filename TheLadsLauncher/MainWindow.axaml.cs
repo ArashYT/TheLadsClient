@@ -287,6 +287,8 @@ public partial class MainWindow : Window
             if (productivityPreview >= 0) { await RunProductivityPreviewAsync(Path.GetFullPath(args[productivityPreview + 1])); return; }
             int chromePreview = Array.IndexOf(args, "--preview-chrome");
             if (chromePreview >= 0) { await RunChromePreviewAsync(Path.GetFullPath(args[chromePreview + 1])); return; }
+            int contentPreview = Array.IndexOf(args, "--preview-content");
+            if (contentPreview >= 0) { await RunContentPreviewAsync(Path.GetFullPath(args[contentPreview + 1])); return; }
             if (_previewWorldsOutput != null)
             {
                 Directory.CreateDirectory(_previewWorldsOutput);
@@ -582,7 +584,7 @@ public partial class MainWindow : Window
         {
             bool packs = page == "Packs";
             ModsInstalledTab.IsVisible = ModsBrowseTab.IsVisible = ModsSettingsTab.IsVisible = !packs;
-            PacksBrowseTab.IsVisible = packs;
+            PacksBrowseTab.IsVisible = ShaderPacksTab.IsVisible = DataPacksTab.IsVisible = packs;
             ModsSubTabControl.SelectedItem = packs ? PacksBrowseTab : ModsInstalledTab;
         }
         FilesPage.IsVisible = page == "Files";
@@ -6254,261 +6256,11 @@ public partial class MainWindow : Window
         SearchRpMcVersionDropdown.SelectedIndex = 0;
     }
 
+    // The browse tabs open with popular mods / resource packs of their source and version (Prism-style), never blank.
     private async Task TriggerDefaultSearchesAsync()
     {
-        try
-        {
-            string mcVersion = string.IsNullOrEmpty(settings.SelectedMinecraftVersionOverride)
-                ? ResolveMinecraftVersion()
-                : settings.SelectedMinecraftVersionOverride;
-
-            Log($"[Search] TriggerDefaultSearchesAsync started. MC Version: '{mcVersion}'");
-
-            Log($"[Search] Querying Modrinth at: '{settings.ModrinthApiUrl}'");
-
-            // Populate the browse tabs with popular mods / resource packs by default,
-            // so the page isn't blank before the user types a query (Prism-style).
-            var modResults = await SearchModrinthAsync("", mcVersion, isResourcePack: false);
-            if (!string.IsNullOrWhiteSpace(settings.CurseForgeApiKey))
-            {
-                var cfMods = await SearchCurseForgeAsync("", mcVersion, isResourcePack: false);
-                modResults.AddRange(cfMods);
-            }
-            RenderSearchResults(modResults, mcVersion, isResourcePack: false, BrowseModsList);
-
-            var rpResults = await SearchModrinthAsync("", mcVersion, isResourcePack: true);
-            if (!string.IsNullOrWhiteSpace(settings.CurseForgeApiKey))
-            {
-                var cfRps = await SearchCurseForgeAsync("", mcVersion, isResourcePack: true);
-                rpResults.AddRange(cfRps);
-            }
-            RenderSearchResults(rpResults, mcVersion, isResourcePack: true, BrowseRpList);
-
-            Log($"[Search] Default browse loaded: {modResults.Count} mods, {rpResults.Count} packs");
-        }
-        catch (Exception ex)
-        {
-            Log($"[Search Error] TriggerDefaultSearchesAsync failed: {ex.Message}");
-        }
-    }
-
-    private async Task<List<ModSearchItem>> SearchModrinthAsync(string query, string mcVersion, bool isResourcePack)
-    {
-        var list = new List<ModSearchItem>();
-        try
-        {
-            // Modrinth facets: filter by project_type (not a "mods" category, which
-            // doesn't exist) and by loader.
-            string projectType = isResourcePack ? "resourcepack" : "mod";
-            var facets = new List<string[]>();
-            facets.Add(new[] { $"project_type:{projectType}" });
-            if (!isResourcePack) facets.Add(new[] { "categories:fabric" });
-            if (!string.IsNullOrEmpty(mcVersion)) facets.Add(new[] { $"versions:{mcVersion}" });
-
-            string facetsJson = JsonSerializer.Serialize(facets);
-            string baseUrl = string.IsNullOrWhiteSpace(settings.ModrinthApiUrl) ? "https://api.modrinth.com/v2" : settings.ModrinthApiUrl.TrimEnd('/');
-            if (!baseUrl.EndsWith("/v2") && !baseUrl.Contains("/v2/")) baseUrl += "/v2";
-            // Empty query → show popular projects (sorted by downloads), like Prism's browse.
-            string index = string.IsNullOrWhiteSpace(query) ? "downloads" : "relevance";
-            string url = $"{baseUrl}/search?query={Uri.EscapeDataString(query)}&facets={Uri.EscapeDataString(facetsJson)}&index={index}&limit=30";
-
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("User-Agent", "TheLadsLauncher/1.0.0 (contact@thelads.com)");
-
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                string content = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(content);
-                if (doc.RootElement.TryGetProperty("hits", out var hits))
-                {
-                    foreach (var hit in hits.EnumerateArray())
-                    {
-                        list.Add(new ModSearchItem
-                        {
-                            Id = hit.TryGetProperty("project_id", out var idProp) ? idProp.GetString() ?? "" : "",
-                            Name = hit.TryGetProperty("title", out var titleProp) ? titleProp.GetString() ?? "" : "",
-                            Summary = hit.TryGetProperty("description", out var descProp) ? descProp.GetString() ?? "" : "",
-                            IconUrl = hit.TryGetProperty("icon_url", out var i) ? i.GetString() ?? "" : "",
-                            Author = hit.TryGetProperty("author", out var a) ? a.GetString() ?? "" : "Unknown",
-                            DownloadCount = hit.TryGetProperty("downloads", out var d) ? d.GetInt64() : 0,
-                            Provider = "Modrinth",
-                            ProjectSlug = hit.TryGetProperty("slug", out var slugProp) ? slugProp.GetString() ?? "" : "",
-                            Categories = hit.TryGetProperty("categories", out var catProp) && catProp.ValueKind == JsonValueKind.Array
-                                ? catProp.EnumerateArray().Select(v => v.GetString() ?? "").Where(s => !string.IsNullOrEmpty(s)).ToList()
-                                : new List<string>(),
-                            Version = hit.TryGetProperty("latest_version", out var verProp) ? verProp.GetString() ?? "" : "",
-                        });
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log($"[Modrinth Search Error] {ex.Message}");
-        }
-        return list;
-    }
-
-    private async Task<ModFileVersion?> GetLatestModrinthVersionAsync(string projectId, string mcVersion, bool isResourcePack)
-    {
-        try
-        {
-            string loaderFacet = isResourcePack ? "" : "&loaders=[\"fabric\"]";
-            string baseUrl = string.IsNullOrWhiteSpace(settings.ModrinthApiUrl) ? "https://api.modrinth.com/v2" : settings.ModrinthApiUrl.TrimEnd('/');
-            if (!baseUrl.EndsWith("/v2") && !baseUrl.Contains("/v2/")) baseUrl += "/v2";
-            string url = $"{baseUrl}/project/{projectId}/version?game_versions=[\"{mcVersion}\"]" + loaderFacet;
-            
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("User-Agent", "TheLadsLauncher/1.0.0 (contact@thelads.com)");
-
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                string content = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(content);
-                if (doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0)
-                {
-                    var latestVer = doc.RootElement[0];
-                    if (latestVer.TryGetProperty("files", out var files) && files.ValueKind == JsonValueKind.Array && files.GetArrayLength() > 0)
-                    {
-                        var file = files.EnumerateArray().FirstOrDefault(f => f.TryGetProperty("primary", out var p) && p.ValueKind == JsonValueKind.True);
-                        if (file.ValueKind == JsonValueKind.Undefined) file = files[0];
-
-                        return new ModFileVersion
-                        {
-                            Id = latestVer.TryGetProperty("id", out var idProp) ? idProp.GetString() ?? "" : "",
-                            Name = latestVer.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? "" : "",
-                            FileName = file.TryGetProperty("filename", out var fnProp) ? fnProp.GetString() ?? "" : "",
-                            DownloadUrl = file.TryGetProperty("url", out var urlProp) ? urlProp.GetString() ?? "" : "",
-                            Size = file.TryGetProperty("size", out var szProp) ? szProp.GetInt64() : 0
-                        };
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log($"[Modrinth Version Error] {ex.Message}");
-        }
-        return null;
-    }
-
-    private async Task<List<ModSearchItem>> SearchCurseForgeAsync(string query, string mcVersion, bool isResourcePack)
-    {
-        var list = new List<ModSearchItem>();
-        string apiKey = settings.CurseForgeApiKey;
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            Log("[CurseForge Search] Cancelled: No API Key configured.");
-            return list;
-        }
-
-        try
-        {
-            int classId = isResourcePack ? 12 : 6;
-            string loaderParam = isResourcePack ? "" : "&modLoaderType=4";
-            string versionParam = string.IsNullOrEmpty(mcVersion) ? "" : $"&gameVersion={Uri.EscapeDataString(mcVersion)}";
-            string baseUrl = string.IsNullOrWhiteSpace(settings.CurseForgeApiUrl) ? "https://api.curseforge.com/v1" : settings.CurseForgeApiUrl.TrimEnd('/');
-            if (!baseUrl.EndsWith("/v1") && !baseUrl.Contains("/v1/")) baseUrl += "/v1";
-            string url = $"{baseUrl}/mods/search?gameId=432&classId={classId}&searchFilter={Uri.EscapeDataString(query)}{versionParam}{loaderParam}&pageSize=20";
-
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("x-api-key", apiKey);
-
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                string content = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(content);
-                if (doc.RootElement.TryGetProperty("data", out var data))
-                {
-                    foreach (var mod in data.EnumerateArray())
-                    {
-                        string iconUrl = "";
-                        if (mod.TryGetProperty("logo", out var logoProp) && logoProp.ValueKind == JsonValueKind.Object)
-                        {
-                            iconUrl = logoProp.TryGetProperty("thumbnailUrl", out var thumbProp) ? thumbProp.GetString() ?? "" : "";
-                        }
-
-                        list.Add(new ModSearchItem
-                        {
-                            Id = mod.TryGetProperty("id", out var idProp)
-                                ? (idProp.ValueKind == JsonValueKind.Number ? idProp.GetInt32().ToString() : idProp.GetString() ?? "")
-                                : "",
-                            Name = mod.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? "" : "",
-                            Summary = mod.TryGetProperty("summary", out var summaryProp) ? summaryProp.GetString() ?? "" : "",
-                            IconUrl = iconUrl,
-                            Author = "CurseForge Creator",
-                            DownloadCount = mod.TryGetProperty("downloadCount", out var dl) ? (long)dl.GetDouble() : 0,
-                            Provider = "CurseForge",
-                            Categories = mod.TryGetProperty("categories", out var catsProp) && catsProp.ValueKind == JsonValueKind.Array
-                                ? catsProp.EnumerateArray().Select(c => c.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "").Where(s => !string.IsNullOrEmpty(s)).ToList()
-                                : new List<string>(),
-                        });
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log($"[CurseForge Search Error] {ex.Message}");
-        }
-        return list;
-    }
-
-    private async Task<ModFileVersion?> GetLatestCurseForgeVersionAsync(string modId, string mcVersion, bool isResourcePack)
-    {
-        string apiKey = settings.CurseForgeApiKey;
-        if (string.IsNullOrWhiteSpace(apiKey)) return null;
-
-        try
-        {
-            string loaderParam = isResourcePack ? "" : "&modLoaderType=4";
-            string baseUrl = string.IsNullOrWhiteSpace(settings.CurseForgeApiUrl) ? "https://api.curseforge.com/v1" : settings.CurseForgeApiUrl.TrimEnd('/');
-            if (!baseUrl.EndsWith("/v1") && !baseUrl.Contains("/v1/")) baseUrl += "/v1";
-            string url = $"{baseUrl}/mods/{modId}/files?gameVersion={Uri.EscapeDataString(mcVersion)}{loaderParam}";
-
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("x-api-key", apiKey);
-
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                string content = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(content);
-                if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array && data.GetArrayLength() > 0)
-                {
-                    var latestFile = data[0];
-                    string dlUrl = latestFile.TryGetProperty("downloadUrl", out var dlProp) ? dlProp.GetString() ?? "" : "";
-                    
-                    if (string.IsNullOrEmpty(dlUrl))
-                    {
-                        int fileId = latestFile.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : 0;
-                        string fileName = latestFile.TryGetProperty("fileName", out var fnProp) ? fnProp.GetString() ?? "" : "";
-                        string folder1 = (fileId / 1000).ToString();
-                        string folder2 = (fileId % 1000).ToString("D3");
-                        dlUrl = $"https://edge.forgecdn.net/files/{folder1}/{folder2}/{Uri.EscapeDataString(fileName)}";
-                    }
-
-                    return new ModFileVersion
-                    {
-                        Id = latestFile.TryGetProperty("id", out var idProp2)
-                            ? (idProp2.ValueKind == JsonValueKind.Number ? idProp2.GetInt32().ToString() : idProp2.GetString() ?? "")
-                            : "",
-                        Name = latestFile.TryGetProperty("displayName", out var dnProp) ? dnProp.GetString() ?? "" : "",
-                        FileName = latestFile.TryGetProperty("fileName", out var fnProp3) ? fnProp3.GetString() ?? "" : "",
-                        DownloadUrl = dlUrl,
-                        Size = latestFile.TryGetProperty("fileLength", out var flProp) ? flProp.GetInt64() : 0
-                    };
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log($"[CurseForge Version Error] {ex.Message}");
-        }
-        return null;
+        await SearchBrowseAsync(ModSearchBox, ModSearchProvider, SearchModMcVersionDropdown, isResourcePack: false, BrowseModsList);
+        await SearchBrowseAsync(RpSearchBox, RpSearchProvider, SearchRpMcVersionDropdown, isResourcePack: true, BrowseRpList);
     }
 
     private string GetInstalledVersion(string itemName, bool isResourcePack)
@@ -6564,31 +6316,21 @@ public partial class MainWindow : Window
     {
         try
         {
-            ModFileVersion? fileVersion = null;
-            if (item.Provider == "Modrinth")
-            {
-                fileVersion = await GetLatestModrinthVersionAsync(item.Id, mcVersion, isResourcePack);
-            }
-            else if (item.Provider == "CurseForge")
-            {
-                fileVersion = await GetLatestCurseForgeVersionAsync(item.Id, mcVersion, isResourcePack);
-            }
-
-            if (fileVersion == null || string.IsNullOrEmpty(fileVersion.DownloadUrl))
+            var catalog = Catalog();
+            var file = await catalog.LatestFileAsync(item, isResourcePack ? ContentKind.ResourcePack : ContentKind.Mod, mcVersion, ContentCatalog.ModLoader(mcVersion));
+            if (file == null)
             {
                 Log($"[Installer] Could not find version file for {item.Name} on version {mcVersion}");
                 return $"No file of {item.Name} for Minecraft {mcVersion} was found.";
             }
-
-            string safeFileName = Path.GetFileName(fileVersion.FileName);
-            if (string.IsNullOrEmpty(safeFileName))
-            {
-                // The version name is the project author's text: only its last path part may become a file name.
-                safeFileName = Path.GetFileName(fileVersion.Name + (isResourcePack ? ".zip" : ".jar"));
-            }
-            if (isResourcePack) return await DownloadResourcePackAsync(item, fileVersion.DownloadUrl, safeFileName, progress);
-
-            return await InstallBrowsedModAsync(item, fileVersion.DownloadUrl, safeFileName, progress);
+            if (file.Url.Length == 0) return $"The author of {item.Name} allows downloads only on {item.Provider}'s own site.";
+            if (!isResourcePack) return await InstallBrowsedModAsync(item, file.Url, file.FileName, progress);
+            // Resource packs go to the shared folder every version uses; an existing pack is never replaced (a taken name gets " (2)").
+            var shared = SharedContentService.Instance;
+            Log($"[Installer] Downloading {item.Name} to {shared.ResourcePacksDirectory} from {file.Url}");
+            string final = await catalog.InstallAsync(file, shared.ResourcePacksDirectory, shared, progress);
+            Log($"[Installer] Installed {item.Name} as '{final}'");
+            return null;
         }
         catch (Exception ex)
         {
@@ -6597,92 +6339,11 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>
-    /// Resource packs go to the shared folder every version uses: downloaded into a staging folder inside it, then renamed
-    /// into place. An existing pack is never replaced; a taken name gets " (2)" before the extension.
-    /// </summary>
-    private async Task<string?> DownloadResourcePackAsync(ModSearchItem item, string downloadUrl, string fileName, IProgress<double> progress)
-    {
-        // The name also places the download in the staging folder: never "..", a folder part or an invalid character.
-        if (!SafeFileOps.IsPlainFileName(fileName))
-            throw new InvalidDataException($"The download of {item.Name} has no usable file name ('{fileName}'). Nothing was downloaded.");
-        var shared = SharedContentService.Instance;
-        Directory.CreateDirectory(shared.ResourcePacksDirectory);
-        using var incoming = shared.CreateIncomingFolder(shared.ResourcePacksDirectory);
-        string temp = Path.Combine(incoming.Path, fileName);
-        Log($"[Installer] Downloading {item.Name} to {shared.ResourcePacksDirectory} from {downloadUrl}");
-        using (var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
-        {
-            response.EnsureSuccessStatusCode();
-            long? totalBytes = response.Content.Headers.ContentLength;
-            await using var contentStream = await response.Content.ReadAsStreamAsync();
-            await using var fileStream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true);
-            var buffer = new byte[81920];
-            long totalRead = 0;
-            int read;
-            while ((read = await contentStream.ReadAsync(buffer)) > 0)
-            {
-                await fileStream.WriteAsync(buffer.AsMemory(0, read));
-                totalRead += read;
-                if (totalBytes > 0) progress.Report((double)totalRead * 100 / totalBytes.Value);
-            }
-        }
-        string final = await Task.Run(() => SafeFileOps.MoveToFreeName(temp, shared.ResourcePacksDirectory, fileName));
-        Log($"[Installer] Installed {item.Name} as '{final}'");
-        return null;
-    }
+    private async void SearchMods_Click(object? sender, RoutedEventArgs e) =>
+        await SearchBrowseAsync(ModSearchBox, ModSearchProvider, SearchModMcVersionDropdown, isResourcePack: false, BrowseModsList);
 
-    private async void SearchMods_Click(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            string query = ModSearchBox.Text ?? "";
-            string provider = (ModSearchProvider.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
-            string mcVersion = SearchModMcVersionDropdown.SelectedItem as string ?? ResolveMinecraftVersion();
-
-            List<ModSearchItem> results = new();
-            if (provider == "Modrinth")
-            {
-                results = await SearchModrinthAsync(query, mcVersion, isResourcePack: false);
-            }
-            else if (provider == "CurseForge")
-            {
-                results = await SearchCurseForgeAsync(query, mcVersion, isResourcePack: false);
-            }
-
-            RenderSearchResults(results, mcVersion, isResourcePack: false, BrowseModsList);
-        }
-        catch (Exception ex)
-        {
-            Log($"[Search Error] {ex.Message}");
-        }
-    }
-
-    private async void SearchRp_Click(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            string query = RpSearchBox.Text ?? "";
-            string provider = (RpSearchProvider.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
-            string mcVersion = SearchRpMcVersionDropdown.SelectedItem as string ?? ResolveMinecraftVersion();
-
-            List<ModSearchItem> results = new();
-            if (provider == "Modrinth")
-            {
-                results = await SearchModrinthAsync(query, mcVersion, isResourcePack: true);
-            }
-            else if (provider == "CurseForge")
-            {
-                results = await SearchCurseForgeAsync(query, mcVersion, isResourcePack: true);
-            }
-
-            RenderSearchResults(results, mcVersion, isResourcePack: true, BrowseRpList);
-        }
-        catch (Exception ex)
-        {
-            Log($"[Search Error] {ex.Message}");
-        }
-    }
+    private async void SearchRp_Click(object? sender, RoutedEventArgs e) =>
+        await SearchBrowseAsync(RpSearchBox, RpSearchProvider, SearchRpMcVersionDropdown, isResourcePack: true, BrowseRpList);
 
     // Debounced live search for the Browse tabs: query ~450ms after the user stops typing,
     // so it updates automatically without an explicit Search button or hammering the API.
@@ -6720,12 +6381,12 @@ public partial class MainWindow : Window
 
     private void RenderSearchResults(List<ModSearchItem> results, string mcVersion, bool isResourcePack, StackPanel listPanel)
     {
-        listPanel.Children.Clear();
         if (results == null || results.Count == 0)
         {
-            listPanel.Children.Add(new TextBlock { Text = "No results found.", Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0) });
+            ShowSearchMessage(listPanel, $"No results found for Minecraft {mcVersion}.");
             return;
         }
+        listPanel.Children.Clear();
 
         var template = this.FindResource("ModListItemTemplate") as DataTemplate;
         if (template == null) return;
@@ -6881,15 +6542,6 @@ public class ModSearchItem
     public string ProjectSlug { get; set; } = "";
     public List<string> Categories { get; set; } = new(); // NEW: M4 Categories support
     public string Version { get; set; } = ""; // NEW: M4 Version tracking for updates
-}
-
-public class ModFileVersion
-{
-    public string Id { get; set; } = "";
-    public string Name { get; set; } = "";
-    public string FileName { get; set; } = "";
-    public string DownloadUrl { get; set; } = "";
-    public long Size { get; set; }
 }
 
 public class AvaloniaMsalProvider : IAuthenticationProvider
