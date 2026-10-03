@@ -21,6 +21,12 @@
     <EmbeddedResource Include="..\TheLadsCore\common\src\main\resources\thelads\known_servers.json" Link="Services\known_servers.json" LogicalName="known_servers.json" />
   </ItemGroup>
 
+  <!-- The CurseForge API key built into the launcher: LADS_CURSEFORGE_API_KEY (environment variable or CI secret) at build time.
+       Without it CurseForge works only with a key entered in Mod Manager Settings. See docs/CURSEFORGE_API_KEY.md. -->
+  <ItemGroup Condition="'$(LADS_CURSEFORGE_API_KEY)' != ''">
+    <AssemblyMetadata Include="CurseForgeApiKey" Value="$(LADS_CURSEFORGE_API_KEY)" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.0.4" />
     <PackageReference Include="Avalonia.Desktop" Version="12.0.4" />
