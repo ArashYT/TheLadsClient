@@ -1,0 +1,92 @@
+Scenario: zoom-160
+Command: dotnet run --project TheLadsLauncher.Verification -- 26.2 "C:/Users/Arash/Desktop/The Lads Client Dev/w160z" --title --dir 26.2-title
+Started: 2026-10-03T17:45:44.5255398-04:00
+Harness environment: LADS_GLOBAL_MINECRAFT_DIR=C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox; LADS_SKIP_UPDATE=1; LADS_VERIFY_AUTO_WORLD=1; LADS_VERIFY_CAPTURE_ZOOM=1; LADS_VERIFY_SCENARIO=zoom-160
+QA game folder: C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.2-title
+Shared sandbox (LADS_GLOBAL_MINECRAFT_DIR): C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox
+Child environment: THELADS_DIR=C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.2-title; LADS_GLOBAL_MINECRAFT_DIR=C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox; LADS_LUNAR_DIR=C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\lunar-sandbox
+JVM QA flags: -Dthelads.verifyLoadingScreen=true -Dthelads.verifyIntegrations=true -Dthelads.verifyAutoWorld=true -Dthelads.verifyDurabilityTooltip=true -Dthelads.verifyCrosshair=true -Dthelads.verifyRenderScale=true -Dthelads.verifyBackgroundPolicies=true -Dthelads.verifySharedContent=true -Dthelads.verifyModInventory=true
+Exit path: handler finished; running marker removed; no fallback server-list copy (LadsCore reads the shared servers.dat)
+Finished: 2026-10-03T17:46:44.9019879-04:00
+Result: PRODUCTION SMOKE PASS: correct version, core initialized, Lads shared content probe END and the title inventory snapshot passed, native window observed, Fabric loaded 68 top-level mods (declared 221). Online sign-in is not exercised.
+Key log lines:
+  TheLadsCore 26.2 initialized successfully.
+  Lads auto-world QA BEGIN: isolated save 'Client QA 26_2'; game APIs only; no input/focus verification
+  Lads mods inventory snapshot (title): 356 rows, counts {"All":356,"Lads modules":67,"Third-party":81,"Enabled":89,"Disabled":45,"Libraries \u0026 dependencies":229}
+  Lads native SignalLoss probe END: 26 checks passed, 0 failed; native toast geometry and isolated config IO
+  Lads native reconnect probe END: 41 checks passed, 0 failed; mock targets, no network/world reconnect or chat sends
+  Lads background policy probe END: 42 passed, 0 failed (transformed hooks; synthetic focus/battery; preferences restored)
+  Lads narrator probe END: 13 checks passed, 0 failed; mock speech and actual constructor
+  Lads raised title probe END: 52 passed, 0 failed
+  Lads shared content probe BEGIN: role CHECK, run id '', LADS_GLOBAL_MINECRAFT_DIR=C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox (redirect on)
+  Lads shared content: world folder C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.2-title\saves resolves to C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox\saves
+  Lads shared content: resource pack folder C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.2-title\resourcepacks resolves to C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox\resourcepacks
+  Lads shared content: shader pack folder C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.2-title\shaderpacks resolves to C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox\shaderpacks
+  Lads shared content: server list file C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox\servers.dat (16380 bytes)
+  Lads shared content: server list C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\global-sandbox\servers.dat loaded 8 visible server(s)
+  Lads shared content: stale-writer 0: 8 entries before: [Lads Shared QA qa202609290508 | lads-qa-qa202609290508.invalid, Lads Shared QA qa202609290518 | lads-qa-qa202609290518.invalid, Lads Shared QA qa202609290525 | lads-qa-qa202609290525.invalid, Lads Fallback QA qa202609290525 | lads-fallback-qa202609290525.invalid, Lads Shared QA fin202609290705 | lads-qa-fin202609290705.invalid, Lads Shared QA...
+  Lads shared content: stale-writer 1: A loaded 8 entries
+  Lads shared content: stale-writer 2: B loaded, added 'Lads Stale B check-1791063977085' (lads-stale-b-check-1791063977085.invalid) and saved
+  Lads shared content: stale-writer 3: stale A added 'Lads Stale A check-1791063977085' (lads-stale-a-check-1791063977085.invalid) and saved
+  Lads shared content: stale-writer 4: C reloaded 10 entries: [Lads Shared QA qa202609290508 | lads-qa-qa202609290508.invalid, Lads Shared QA qa202609290518 | lads-qa-qa202609290518.invalid, Lads Shared QA qa202609290525 | lads-qa-qa202609290525.invalid, Lads Fallback QA qa202609290525 | lads-fallback-qa202609290525.invalid, Lads Shared QA fin202609290705 | lads-qa-fin202609290705.invalid, Lads Shar...
+  Lads shared content: stale-writer 5: D renamed B's server to 'Lads Stale B renamed check-1791063977085' and saved; A saved again with its unchanged copy; A now holds 'Lads Stale B renamed check-1791063977085', reload has 'Lads Stale B renamed check-1791063977085'
+  Lads shared content: stale-writer 6: removed both and saved; reload has 8 entries: [Lads Shared QA qa202609290508 | lads-qa-qa202609290508.invalid, Lads Shared QA qa202609290518 | lads-qa-qa202609290518.invalid, Lads Shared QA qa202609290525 | lads-qa-qa202609290525.invalid, Lads Fallback QA qa202609290525 | lads-fallback-qa202609290525.invalid, Lads Shared QA fin202609290705 | lads-qa-fin20260929...
+  Lads shared content: stale-writer PASS: 6 checks
+  Lads shared content probe END: 27 passed, 0 failed
+  Lads auto-world QA OPEN: Client QA 26_2
+  Lads durability tooltip probe END: 35 passed, 0 failed (transformed tooltip and text extraction; preferences restored)
+  Lads nametag and connection probe END: 21 passed, 0 failed
+  Lads background policy probe END: 44 passed, 0 failed (transformed hooks; synthetic focus/battery; preferences restored)
+  Lads camera and block-distance probe END: 15 passed, 0 failed
+  Lads kill banner probe END: 41 passed, 0 failed (synthetic packets about client-only stand-ins; no real kill claimed)
+  Lads 1.7 animations probe END: 26 passed, 0 failed (real game methods, module off then on; client-only items, use and pose, all restored)
+  Lads shulker probe END: 28 passed, 0 failed (client-only fixture, synthetic inventory packets, real component/render hooks)
+  Lads food JEI probe END: 6 passed, 0 failed
+  Lads food feature probe END: 47 passed, 0 failed
+  Lads shulker parity probe END: 41 passed, 0 failed (real tooltip/inventory extraction; isolated cache round trips)
+  Lads improvements probe END: 40 passed, 0 failed
+  Lads borderless probe END: 12 passed, 0 failed
+  Lads requested features probe END: 92 passed, 0 failed
+  Lads native feature probe END: 370 passed, 0 failed
+  Lads food JEI probe END: 6 passed, 0 failed
+  Lads food render probe END: 14 passed, 0 failed
+  Lads native crosshair probe END: 53 passed, 0 failed (transformed extraction/editor handlers; preferences and inventory restored)
+  Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted
+  Lads clumps server probe END: 21 passed, 0 failed
+  Lads embedded mods probe END: 6 passed, 0 failed
+  Lads paper doll probe END: 19 passed, 0 failed
+  Lads tab tweaks probe END: 42 passed, 0 failed
+  Lads chat-before capture END: actual completed game frame at C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.2-title\screenshots\native-chat-before-1791063994434.png
+  Lads zoom capture END: 6 frames saved, 0 failed; zoom-in 23.55->16.50 in 102 frames; scroll-in 11.07->8.45 in 104 frames; zoom-out 23.64->66.00 in 126 frames; 332 frames, slowest 39.2 ms, worst deviation from the curve 1.31e-07
+  Lads chat-arriving capture END: actual completed game frame at C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.2-title\screenshots\native-chat-arriving-1791063994583.png
+  Lads render scale probe END: 61 passed, 0 failed
+  Lads world capture END: 1 passed, 0 failed; actual completed game frame at C:\Users\Arash\Desktop\The Lads Client Dev\w160z\artifacts\verification\26.2-title\screenshots\native-world-1791064002435.png
+  Lads native screenshots probe END: 38 checks passed, 0 failed; real gallery/GPU and isolated files, OS open/copy mocked
+  Fabric loaded list: declared 221, 68 top-level, 162 nested entries, 221 distinct ids; absent as expected: []; present as expected: []
+  Lads auto-world QA STOP: isolated graceful stop request received
+  Lads catalog parity END: 65 checks, 0 missing
+Evidence files:
+  inventory-rows.txt (28106 bytes)
+  lads-mod-state.after.json (351 bytes)
+  lads-mod-state.before.json (351 bytes)
+  launcher-inventory-snapshot.json (362222 bytes)
+  loaded-mods.json (21832 bytes)
+  mods-inventory-snapshot-title.json (79779 bytes)
+  mods-listing.txt (6871 bytes)
+  production-smoke-zoom-160.log (355645 bytes)
+  sandbox-after.txt (2289 bytes)
+  sandbox-before.txt (2289 bytes)
+  screenshots\lads-loading-1.png (68192 bytes)
+  screenshots\native-chat-arriving-1791063994583.png (410096 bytes)
+  screenshots\native-chat-before-1791063994434.png (413683 bytes)
+  screenshots\native-world-1791064002435.png (1105348 bytes)
+  screenshots\zoom-1-off.png (386515 bytes)
+  screenshots\zoom-2-in.png (172304 bytes)
+  screenshots\zoom-3-scroll.png (246866 bytes)
+  screenshots\zoom-4-out.png (515870 bytes)
+  screenshots\zoom-5-essential-key.png (1199901 bytes)
+  screenshots\zoom-6-essential-alone.png (414189 bytes)
+  screenshots\zoom-fov.csv (13555 bytes)
+  shared-prepare.txt (1129 bytes)
+  tripwire-after.txt (20704 bytes)
+  tripwire-before.txt (20704 bytes)

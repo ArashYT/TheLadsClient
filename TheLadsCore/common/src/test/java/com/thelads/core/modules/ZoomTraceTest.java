@@ -16,8 +16,9 @@ class ZoomTraceTest {
         Random random = new Random(7);
         long t = 0;
         double fov = 70 * zoom.fovFactor(false, 1);
-        zoom.key(true);
         trace.phase("in", fov, 70 * ZoomModule.DEFAULT_ZOOM);
+        for (int i = 0; i < 3; i++) trace.frame(70 * zoom.fovFactor(false, t += 5 * MS), t); // queued: 1.8.9 applies it next tick
+        zoom.key(true);
         for (int i = 0; i < 200; i++) {
             t += (2 + random.nextInt(40)) * MS; // 25-500 FPS, changing every frame
             fov = 70 * zoom.fovFactor(false, t);

@@ -61,6 +61,8 @@ final class Probe160 {
 
     private static boolean off(Minecraft mc) throws Exception {
         base = Zoom189.lastWorldFov;
+        check(Zoom189.ZOOM.getKeyCode() != 0, "Zoom: its key is bound (" + Keyboard.getKeyName(Zoom189.ZOOM.getKeyCode())
+            + "): OptiFine's key-conflict fix leaves it on its zoom key's C");
         check(!Zoom189.zoom().isActive() && base > 1, "Zoom: unzoomed, the world FOV is Minecraft's own (" + base + ")");
         screenshot(mc, "160-zoom-1-off");
         CoreProbe.key(Zoom189.ZOOM.getKeyCode(), 'c', true);

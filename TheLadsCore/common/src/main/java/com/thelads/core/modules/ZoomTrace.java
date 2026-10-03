@@ -6,7 +6,7 @@ import java.util.Locale;
 
 /**
  * QA (each version's zoom capture): the world FOV of every rendered frame while QA drives Lads Zoom through the game's own key
- * and scroll handlers. From a phase's first frame on, each frame must lie on Smooth Zoom's exact curve for the time it was
+ * and scroll handlers. From a phase's first moved frame on, each frame must lie on Smooth Zoom's exact curve for the time it was
  * rendered (frame-rate independent), move only toward the goal (no jitter or overshoot) and end exactly on it.
  * {@link #csv()} is the per-frame log.
  */
@@ -32,7 +32,11 @@ public final class ZoomTrace {
     /** A rendered frame: its world FOV and the System.nanoTime() Lads Zoom computed it at (the same twice: no new frame). */
     public void frame(double fov, long nanos) {
         if (phase == null || nanos == last) return;
-        if (phaseFrames == 0) { from = fov; start = nanos; }
+        if (phaseFrames == 0) {
+            if (fov == previous) return; // input not applied yet: 1.8.9 reads queued keys in its next tick, up to 50 ms later
+            from = fov;
+            start = nanos;
+        }
         double expected = ZoomModule.approach(from, goal, (nanos - start) / 1e9);
         double frameMs = phaseFrames == 0 ? 0 : (nanos - last) / 1e6; // not the gap while QA saved the previous shot
         csv.append(String.format(Locale.ROOT, "%s,%.3f,%.3f,%.5f,%.5f\n", phase, (nanos - start) / 1e6, frameMs, fov, expected));
