@@ -47,10 +47,10 @@ final class OldAnimationsCapture {
         new Shot("dropped-2d", Items.AIR, Items.AIR, null, false, 900), // a flat apple beside a 3D stone block
         new Shot("red-armour", Items.DIAMOND_SWORD, Items.AIR, null, true, 600), // hurt every tick
         new Shot("third-person-block", Items.DIAMOND_SWORD, Items.SHIELD, InteractionHand.OFF_HAND, true, 900),
-        // Legacy Swing on, captured mid-swing (the swing a block placement plays); "-off" with 1.7 Animations off, for comparison.
-        new Shot("legacy-place", Items.STONE, Items.AIR, null, false, 120),
-        new Shot("legacy-place-off", Items.STONE, Items.AIR, null, false, 120),
-        new Shot("legacy-torch", Items.TORCH, Items.AIR, null, false, 120)};
+        // Legacy Swing on, held half way through the swing a block placement plays; "-off" with 1.7 Animations off must match.
+        new Shot("legacy-place", Items.STONE, Items.AIR, null, false, 600),
+        new Shot("legacy-place-off", Items.STONE, Items.AIR, null, false, 600),
+        new Shot("legacy-torch", Items.TORCH, Items.AIR, null, false, 600)};
     private static final EquipmentSlot[] SLOTS = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD, EquipmentSlot.CHEST,
         EquipmentSlot.LEGS, EquipmentSlot.FEET};
     private static final int FIRST_ID = Integer.MAX_VALUE - 128;
@@ -153,7 +153,7 @@ final class OldAnimationsCapture {
         NativeQualityOfLife.module("LegacySwing").setEnabled(shot.name().startsWith("legacy"));
         for (EquipmentSlot slot : SLOTS) player.setItemSlot(slot, worn(shot, slot));
         mc.options.setCameraType(shot.thirdPerson() ? CameraType.THIRD_PERSON_FRONT : CameraType.FIRST_PERSON);
-        if (shot.name().equals("blockhit") || shot.name().startsWith("legacy")) player.swing(InteractionHand.MAIN_HAND);
+        if (shot.name().equals("blockhit")) player.swing(InteractionHand.MAIN_HAND);
         if (shot.name().equals("dropped-2d")) {
             Vec3 eye = player.getEyePosition(), look = player.getViewVector(1);
             Vec3 side = new Vec3(-look.z, 0, look.x).normalize().scale(0.4);
@@ -194,6 +194,11 @@ final class OldAnimationsCapture {
             if (!player.isUsingItem()) player.startUsingItem(shot.use());
         }
         if (shot.name().equals("red-armour")) player.hurtTime = player.hurtDuration = 10;
+        if (shot.name().startsWith("legacy")) { // this tick's updateSwingTime makes it 3 of 6: the swing stays half way
+            player.swingingArm = InteractionHand.MAIN_HAND;
+            player.swinging = true;
+            player.swingTime = 2;
+        }
     }
 
     /** What the shot wears in this slot: its held items, iron armour in third person, otherwise the player's own armour. */

@@ -33,8 +33,7 @@ public abstract class LayerHeldItemMixin {
             return;
         }
         boolean blocking = entity instanceof EntityPlayer && OldAnimations189.use((EntityPlayer) entity, stack) == Use.BLOCK;
-        OldAnimations.thirdPersonItem(OldAnimations189.GL, 1, held, blocking);
-        OldAnimations189.fullSizeMesh();
+        OldAnimations.thirdPersonItem(OldAnimations189.GL, 1, held, blocking); // full size: RenderItem.preTransform undoes its 0.5
         renderer.renderItem(entity, stack, TransformType.NONE);
         OldAnimations189.hit(Hook.TP_ITEM);
     }

@@ -564,10 +564,13 @@ try
     process.OutputDataReceived += WriteLine;
     process.ErrorDataReceived += WriteLine;
     if (capabilities.Forge && File.Exists(gameLog)) File.Delete(gameLog); // only this run's lines are read
-    // QA instances play no sound (master volume 0): the owner may be using the computer meanwhile.
+    // QA instances play no sound (master volume 0) and keep running when the owner, using the computer meanwhile, clicks away
+    // (pauseOnLostFocus off: a pause menu would stop the integrated server and the probes' input).
     string qaOptions = Path.Combine(directory, "options.txt");
-    var qaLines = File.Exists(qaOptions) ? File.ReadAllLines(qaOptions).Where(l => !l.StartsWith("soundCategory_master:", StringComparison.Ordinal)).ToList() : new List<string>();
+    var qaLines = File.Exists(qaOptions) ? File.ReadAllLines(qaOptions).Where(l => !l.StartsWith("soundCategory_master:", StringComparison.Ordinal)
+        && !l.StartsWith("pauseOnLostFocus:", StringComparison.Ordinal)).ToList() : new List<string>();
     qaLines.Add("soundCategory_master:0.0");
+    qaLines.Add("pauseOnLostFocus:false");
     File.WriteAllLines(qaOptions, qaLines);
     var stopwatch = Stopwatch.StartNew();
     process.Start();
