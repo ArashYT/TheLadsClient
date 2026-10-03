@@ -41,7 +41,7 @@ public final class AddServerProbe {
                     if (!(mc.gui.screen() instanceof TitleScreen)) { step = 0; return; }
                     title = mc.gui.screen();
                     // As the multiplayer screen's Add Server button opens it.
-                    Screen screen = new ManageServerScreen(title, Component.translatable("manageServer.add.title"), added -> {}, new ServerData("", "", ServerData.Type.OTHER));
+                    Screen screen = new ManageServerScreen(title, Component.translatable("manageServer.add.title"), added -> {}, new ServerData(net.minecraft.client.resources.language.I18n.get("selectServer.defaultName"), "", ServerData.Type.OTHER));
                     mc.gui.setScreen(screen);
                     List<EditBox> boxes = screen.children().stream().filter(EditBox.class::isInstance).map(EditBox.class::cast).toList();
                     name = boxes.get(0);
@@ -67,8 +67,8 @@ public final class AddServerProbe {
                     type("play.cubecraft.net");
                     check("Lads SMP", "a typed name is never replaced");
                 }
+                case 3 -> screenshot(mc, "addserver-typed-name"); // written off-thread: END waits a step for it
                 default -> {
-                    screenshot(mc, "addserver-typed-name");
                     mc.gui.setScreen(title);
                     step = -1;
                     LOGGER.info("Lads add-server probe END: {} passed, 0 failed", passed);
