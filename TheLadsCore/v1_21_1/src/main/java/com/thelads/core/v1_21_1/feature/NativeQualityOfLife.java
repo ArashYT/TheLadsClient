@@ -29,6 +29,8 @@ public final class NativeQualityOfLife {
         ModuleSupport.registerBuiltIn("Nametags");
         // NativeOldAnimations through the OldAnimations* mixins, ClientTickMixin (swing while using) and GuiMixin (hearts).
         ModuleSupport.registerBuiltIn(com.thelads.core.modules.OldAnimationsModule.NAME);
+        // LegacySwingMixin (and OldAnimationsHandMixin's no-dip tick hook), as on 26.x.
+        ModuleSupport.registerBuiltIn("LegacySwing");
         // QA only (-Dthelads.verifyAutoWorld): the isolated auto-world runtime; registers nothing in normal launches.
         NativeWorldVerification.register();
         // U4 title redesign: TitleScreenMixin draws TitleScreenTheme (branding scaled by Title Scale) through the chrome mixins.

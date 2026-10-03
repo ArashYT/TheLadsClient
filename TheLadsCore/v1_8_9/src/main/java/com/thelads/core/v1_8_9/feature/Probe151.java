@@ -4,6 +4,8 @@ import static com.thelads.core.v1_8_9.feature.CoreProbe.after;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.screenshot;
 
+import com.thelads.core.config.Module;
+import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.modules.OldAnimationsModule.Feature;
@@ -32,7 +34,8 @@ import net.minecraft.world.WorldSettings;
  * two options 1.8.9 lacks; then each pose through the real input path (held use, attack and sneak keys, so runTick uses the
  * items itself) with the module on and then off: every hook must change 1.8.9's result with it on and stay silent with it off.
  * Eating and the hurt red armour run in survival on the integrated server. Module, options, inventory, game mode, health, food,
- * camera and keys are put back as found. Screenshots: 151-*.png (the "-off" ones are 1.8.9's own for comparison).
+ * camera and keys are put back as found. Screenshots: 151-*.png (the "-off" ones are 1.8.9's own for comparison). Last, a held
+ * block and apple, and Legacy Swing's swing (as placing swings) on a block and on a torch 1.7 places.
  */
 final class Probe151 {
     static final List<CoreProbe.Step> STEPS = new ArrayList<>(Arrays.<CoreProbe.Step>asList(Probe151::start, Probe151::menu,
@@ -48,7 +51,8 @@ final class Probe151 {
     }
     private static final OldAnimationsModule MODULE = OldAnimations189.MODULE;
     private static final boolean[] optionsWere = new boolean[Feature.values().length];
-    private static boolean wasEnabled;
+    private static boolean wasEnabled, legacyWas;
+    private static long legacyFrames;
     private static int slotWas, viewWas;
     private static float pitchWas;
     private static ItemStack[] mainWas, armourWas;
@@ -59,6 +63,7 @@ final class Probe151 {
     /** A sword, bow, rod and food in the hotbar (slot 4 empty) and a chestplate, from the integrated server; every option on. */
     private static boolean start(Minecraft mc) {
         wasEnabled = MODULE.isEnabled();
+        legacyWas = legacy().isEnabled();
         for (Feature feature : Feature.values()) {
             optionsWere[feature.ordinal()] = MODULE.option(feature).get();
             MODULE.option(feature).set(true);
@@ -74,6 +79,9 @@ final class Probe151 {
             player.inventory.mainInventory[1] = new ItemStack(Items.bow);
             player.inventory.mainInventory[2] = new ItemStack(Items.fishing_rod);
             player.inventory.mainInventory[3] = new ItemStack(Items.cooked_beef, 16);
+            player.inventory.mainInventory[5] = new ItemStack(net.minecraft.init.Blocks.stone);
+            player.inventory.mainInventory[6] = new ItemStack(Items.apple);
+            player.inventory.mainInventory[7] = new ItemStack(net.minecraft.init.Blocks.torch);
             player.inventory.armorInventory[2] = new ItemStack(Items.iron_chestplate);
         });
         return after(10);
@@ -277,8 +285,61 @@ final class Probe151 {
                 hooks(on, "fire overlay", Hook.FIRE);
                 screenshot(mc, "151-low-fire" + tag);
                 onServer(mc, player -> { player.extinguish(); player.setGameType(WorldSettings.GameType.CREATIVE); });
+                select(mc, 5);
+                return after(15);
+            },
+            mc -> {
+                OldAnimations189.resetHits();
+                return after(3);
+            },
+            mc -> {
+                check(holds(mc.thePlayer.getHeldItem(), Item.getItemFromBlock(net.minecraft.init.Blocks.stone)), state + "a stone block is held");
+                check(OldAnimations189.hits(Hook.FP_ICON) == 0 && OldAnimations189.hits(Hook.FP_HAND) == 0,
+                    state + "a held block keeps 1.8.9's placement, which is 1.7's " + counts());
+                screenshot(mc, "151-held-block" + tag);
+                select(mc, 6);
+                return after(15);
+            },
+            mc -> {
+                OldAnimations189.resetHits();
+                return after(3);
+            },
+            mc -> {
+                check(holds(mc.thePlayer.getHeldItem(), Items.apple), state + "an apple is held");
+                if (on) check(OldAnimations189.hits(Hook.FP_ICON) > 0, state + "the apple is drawn where 1.7 held it " + counts());
+                else check(silent(), state + "1.8.9's apple " + counts());
+                screenshot(mc, "151-idle-item" + tag);
+                legacy().setEnabled(true);
+                select(mc, 5);
+                return after(15);
+            },
+            mc -> legacySwing(mc),
+            mc -> {
+                check(LegacySwing189.frames > legacyFrames, state + "Legacy Swing swings the block (" + (LegacySwing189.frames - legacyFrames) + " frames)");
+                screenshot(mc, "151-legacy-place" + tag);
+                select(mc, 7);
+                return after(15);
+            },
+            mc -> legacySwing(mc),
+            mc -> {
+                check(LegacySwing189.frames > legacyFrames, state + "Legacy Swing swings the torch (" + (LegacySwing189.frames - legacyFrames) + " frames)");
+                if (on) check(OldAnimations189.hits(Hook.FP_ICON) > 0, state + "where 1.7 holds the torch " + counts());
+                screenshot(mc, "151-legacy-torch" + tag);
+                legacy().setEnabled(legacyWas);
                 return after(5);
             });
+    }
+
+    /** The swing placing a block plays (EntityPlayerSP.swingItem), shown two ticks in with Legacy Swing on. */
+    private static boolean legacySwing(Minecraft mc) {
+        legacyFrames = LegacySwing189.frames;
+        OldAnimations189.resetHits();
+        mc.thePlayer.swingItem();
+        return after(2);
+    }
+
+    private static Module legacy() {
+        return ModuleManager.getInstance().getModule("LegacySwing");
     }
 
     /** Survival and hungry, so the beef can be eaten and the server's hit hurts. */
@@ -358,6 +419,7 @@ final class Probe151 {
         select(mc, slotWas);
         for (Feature feature : Feature.values()) MODULE.option(feature).set(optionsWere[feature.ordinal()]);
         MODULE.setEnabled(wasEnabled);
+        legacy().setEnabled(legacyWas);
         ItemStack[] main = mainWas, armour = armourWas;
         mainWas = null; // restored once, also when CoreProbe stops after a failure (stop)
         onServer(mc, player -> {
