@@ -1,0 +1,30 @@
+{
+  "modIcons": {
+    "ok": true,
+    "detail": "79 of 82 rows show an icon; cache C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\w160u\\artifacts\\verification\\chrome-launcher\\cache\\mod-icons"
+  },
+  "autoSave": {
+    "ok": true,
+    "detail": "KeepLauncherOpen=true, status \u0027All changes saved\u0027"
+  },
+  "validation": {
+    "ok": true,
+    "detail": "saved ModrinthApiUrl=https://api.modrinth.com/v2, status \u0027Fix the highlighted fields; everything else is saved.\u0027"
+  },
+  "maximize": {
+    "ok": true,
+    "detail": "before 376, 151, 1152, 720, maximized 0, 0, 1920, 1032, working area 0, 0, 1920, 1032, restored 376, 151, 1152, 720"
+  },
+  "maximize16x9": {
+    "ok": true,
+    "detail": "locked 376, 151, 1152, 648, maximized 42, 0, 1835, 1032, restored 376, 151, 1152, 648, label while locked \u0027Aspect Ratio: 16:9\u0027"
+  },
+  "controls-modern": {
+    "ok": true,
+    "detail": "fov:0.5 True, key_key.jump:key.keyboard.w True, unknown line kept True, Jump shown as conflict True"
+  },
+  "controls-189": {
+    "ok": true,
+    "detail": "fov:0.5 True, key_key.jump:17 True, unknown line kept True, Jump shown as conflict True"
+  }
+}
