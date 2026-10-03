@@ -3238,10 +3238,10 @@ public partial class MainWindow : Window
             FontWeight = FontWeight.Bold
         });
 
-        var nameBox = new TextBox { PlaceholderText = "Profile Name (e.g. My 1.21.1)", Text = "New Profile", Height = 36 };
+        var nameBox = new TextBox { PlaceholderText = "Profile Name (e.g. My 26.3)", Text = "New Profile", Height = 36 };
         panel.Children.Add(nameBox);
 
-        var versionBox = new TextBox { PlaceholderText = "Minecraft Version (e.g. 1.21.11, 26.3)", Text = "1.21.1", Height = 36 };
+        var versionBox = new TextBox { PlaceholderText = "Minecraft Version (e.g. 26.3, 1.8.9)", Text = "26.3", Height = 36 };
         panel.Children.Add(versionBox);
 
         var isolateCheck = new CheckBox
@@ -3265,7 +3265,8 @@ public partial class MainWindow : Window
         createBtn.Click += (s, ev) =>
         {
             string name = nameBox.Text?.Trim() ?? "";
-            string version = versionBox.Text?.Trim() ?? "1.21.1";
+            string version = versionBox.Text?.Trim() ?? "26.3";
+            if (GameVersionPolicy.IsDropped(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"Minecraft {version} is no longer supported (1.8.9, 26.2 or 26.3)"; return; }
             if (string.IsNullOrEmpty(name)) name = $"Profile {version}";
 
             bool forge = GameVersionPolicy.UsesForge(version); // 1.8.9: Forge and Java 8, never Fabric
@@ -3436,7 +3437,7 @@ public partial class MainWindow : Window
 
     // Extracts the Minecraft version from a version id, supporting both legacy (1.20.1)
     // and modern (26.1.2) version formats.
-    // e.g. "fabric-loader-0.19.2-26.1.2" -> "26.1.2", "1.21.1" -> "1.21.1"
+    // e.g. "fabric-loader-0.19.2-26.1.2" -> "26.1.2", "26.3" -> "26.3"
     private static string? ExtractMcVersionFromId(string versionId)
     {
         // Loader-style ids: the MC version is the part after the loader version
@@ -5786,7 +5787,7 @@ public partial class MainWindow : Window
     {
         string activeVersion = ResolveMinecraftVersion();
         var versionList = new List<string> { activeVersion };
-        var commonVersions = new[] { "26.3", "26.2", "1.21.11", "26.1.2", "26.1.1", "26.1", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5", "1.8.9" };
+        var commonVersions = new[] { "26.3", "26.2", "1.21.11", "26.1.2", "26.1.1", "26.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5", "1.8.9" };
         
         foreach (var v in commonVersions)
         {

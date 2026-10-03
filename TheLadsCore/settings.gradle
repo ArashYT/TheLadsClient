@@ -10,7 +10,6 @@ plugins {
 }
 rootProject.name = 'TheLadsCore'
 include 'common'
-include 'v1_21_1'
 include 'v1_21_11'
 include 'v26_2'
 

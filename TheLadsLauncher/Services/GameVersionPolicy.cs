@@ -14,7 +14,11 @@ public static class GameVersionPolicy
     public const string ForgeVersionId = "1.8.9-forge1.8.9-11.15.1.2318-1.8.9";
 
     public static bool RequiresBundledCore(string minecraftVersion) =>
-        minecraftVersion is "1.21.1" or "1.21.11" or "26.2" or "26.3" or ForgeMinecraftVersion;
+        minecraftVersion is "1.21.11" or "26.2" or "26.3" or ForgeMinecraftVersion;
+
+    /// <summary>A version The Lads Client no longer offers (1.21.1, dropped in 1.6.0). Saved profiles of it are kept in
+    /// profiles.json, and their game folders untouched, but they are not listed or launched (see ProfileService).</summary>
+    public static bool IsDropped(string minecraftVersion) => minecraftVersion == "1.21.1";
 
     /// <summary>A bundled-Core version whose Core is a Fabric mod: all of them but 1.8.9, whose Core is a Forge mod.</summary>
     public static bool RequiresFabric(string minecraftVersion) => RequiresBundledCore(minecraftVersion) && !UsesForge(minecraftVersion);

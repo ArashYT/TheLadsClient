@@ -2,7 +2,7 @@ package com.thelads.core.client.bridge;
 
 /**
  * Universal graphics abstraction layer providing 100% rendering parity
- * across Minecraft 1.21.1 (GuiGraphics / render pipeline) and 26.2 (GuiGraphicsExtractor / Vulkan render pipeline).
+ * across Minecraft 1.21.11 (GuiGraphics / render pipeline) and 26.2 (GuiGraphicsExtractor / Vulkan render pipeline).
  */
 public interface LadsGraphics {
     void fill(int minX, int minY, int maxX, int maxY, int color);

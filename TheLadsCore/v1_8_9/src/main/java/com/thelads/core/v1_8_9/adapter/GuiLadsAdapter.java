@@ -76,7 +76,7 @@ public class GuiLadsAdapter implements LadsGraphics {
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
-    /** A damaged diamond sample in the editor when nothing is worn (as on 1.21.1). */
+    /** A damaged diamond sample in the editor when nothing is worn (as on 1.21.11). */
     static ItemStack armorStack(int index, boolean preview) {
         if (preview) {
             ItemStack stack = new ItemStack(index == 0 ? Items.diamond_helmet : Items.diamond_chestplate);

@@ -1,9 +1,0 @@
-Capes (mod id capes), version 1.5.4+1.21, for Minecraft 1.21.1
-Project: https://github.com/CaelTheColher/Capes
-Source used: tag fabric-1.5.4+1.21 (commit 993664b8e08f07f9b9fabda32567ef0eabc82e5c)
-Copyright (c) Cael and contributors
-License: LGPL-2.1-only (text in LICENSE beside this file)
-
-Modified by The Lads: ported from Kotlin to Java and repackaged into Lads Core as com.thelads.core.v1_21_1.embedded.capes (mixin config theladscore.embedded.capes.mixins.json); Architectury glue and the Mod Menu entry removed; everything stands down while the original capes mod is installed.
-
-The complete modified source is in META-INF/lads-sources/capes/v1_21_1 in this jar.

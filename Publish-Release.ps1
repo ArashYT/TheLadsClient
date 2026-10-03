@@ -51,7 +51,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Launcher tests failed.' }
     & dotnet publish TheLadsLauncher/TheLadsLauncher.csproj -c Release -r win-x64 --self-contained true -o $publish
     if ($LASTEXITCODE -ne 0) { throw 'Launcher publish failed.' }
-    foreach ($gameVersion in @('1.8.9','1.21.1','1.21.11','26.2','26.3')) {
+    foreach ($gameVersion in @('1.8.9','1.21.11','26.2','26.3')) {
         foreach ($file in @('theladscore.jar','client-mods.json')) {
             if (-not (Test-Path -LiteralPath (Join-Path $publish "game-mods/$gameVersion/$file"))) { throw "Missing $gameVersion/$file" }
         }

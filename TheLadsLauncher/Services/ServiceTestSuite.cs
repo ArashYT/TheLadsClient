@@ -78,11 +78,11 @@ public static class ServiceTestSuite
             if (profiles.Count == 0)
                 throw new Exception("No profiles returned by ProfileService");
 
-            var mc121 = profiles.FirstOrDefault(p => p.MinecraftVersion == "1.21.1");
+            var mc121 = profiles.FirstOrDefault(p => p.MinecraftVersion == "1.21.11");
             if (mc121 == null)
-                throw new Exception("1.21.1 default profile not found");
+                throw new Exception("1.21.11 default profile not found");
             if (mc121.JavaMajorVersion != 21)
-                throw new Exception($"Expected Java 21 for 1.21.1, got {mc121.JavaMajorVersion}");
+                throw new Exception($"Expected Java 21 for 1.21.11, got {mc121.JavaMajorVersion}");
 
             var mc262 = profiles.FirstOrDefault(p => p.MinecraftVersion == "26.2");
             if (mc262 == null)
@@ -92,7 +92,7 @@ public static class ServiceTestSuite
 
             // Create custom profile
             string customName = $"Test_Profile_{Guid.NewGuid():N}";
-            var created = profileService.CreateProfile(customName, "1.21.1", 21, isIsolated: false);
+            var created = profileService.CreateProfile(customName, "26.3", 25, isIsolated: false);
             if (created == null || created.Name != customName)
                 throw new Exception("Failed to create profile");
 
@@ -121,7 +121,7 @@ public static class ServiceTestSuite
             string testContent = $"test_keybind:key.keyboard.space\nmodified_at:{DateTime.UtcNow.Ticks}";
             File.WriteAllText(sharedOptions, testContent);
 
-            var testProfile = profileService.CreateProfile("SyncTestProfile", "1.21.1", 21, isIsolated: false);
+            var testProfile = profileService.CreateProfile("SyncTestProfile", "26.3", 25, isIsolated: false);
             string profileDir = pathService.GetProfileDirectory(testProfile);
             Directory.CreateDirectory(profileDir);
 
@@ -164,7 +164,7 @@ public static class ServiceTestSuite
             string originalShared = File.Exists(sharedOptions) ? File.ReadAllText(sharedOptions) : "original_shared";
             File.WriteAllText(sharedOptions, originalShared);
 
-            var isolatedProfile = profileService.CreateProfile("IsolatedTestProfile", "1.21.1", 21, isIsolated: true);
+            var isolatedProfile = profileService.CreateProfile("IsolatedTestProfile", "26.3", 25, isIsolated: true);
             string isoDir = pathService.GetProfileDirectory(isolatedProfile);
             Directory.CreateDirectory(isoDir);
 

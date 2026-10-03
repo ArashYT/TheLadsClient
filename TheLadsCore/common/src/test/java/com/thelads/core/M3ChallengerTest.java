@@ -249,25 +249,25 @@ public class M3ChallengerTest {
     }
 
     /**
-     * Test Mixin JSON configs: 1.21.1 injections fail visibly (defaultRequire = 1, since 1.3.5); the 26.2 main config keeps 0
+     * Test Mixin JSON configs: 1.21.11 injections fail visibly (defaultRequire = 1, since 1.3.5); the 26.2 main config keeps 0
      */
     @Test
-    @DisplayName("Mixin Configuration: 1.21.1 requires its injections, 26.2 main config keeps defaultRequire = 0")
+    @DisplayName("Mixin Configuration: 1.21.11 requires its injections, 26.2 main config keeps defaultRequire = 0")
     public void testMixinDefaultRequire() throws Exception {
         Path root = Path.of("..").toAbsolutePath().normalize();
-        Path v121Mixins = root.resolve("v1_21_1/src/main/resources/theladscore.v1_21_1.mixins.json");
+        Path v121Mixins = root.resolve("v1_21_11/src/main/resources/theladscore.v1_21_11.mixins.json");
         Path v26Mixins = root.resolve("v26_2/src/main/resources/theladscore.v26_2.mixins.json");
 
-        assertTrue(Files.exists(v121Mixins), "1.21.1 mixin config must exist");
+        assertTrue(Files.exists(v121Mixins), "1.21.11 mixin config must exist");
         assertTrue(Files.exists(v26Mixins), "26.2 mixin config must exist");
 
         JsonObject v121Json = JsonParser.parseString(Files.readString(v121Mixins)).getAsJsonObject();
         JsonObject v26Json = JsonParser.parseString(Files.readString(v26Mixins)).getAsJsonObject();
 
         assertTrue(v121Json.has("injectors") && v121Json.getAsJsonObject("injectors").has("defaultRequire"),
-            "1.21.1 mixin config must define injectors.defaultRequire");
+            "1.21.11 mixin config must define injectors.defaultRequire");
         assertEquals(1, v121Json.getAsJsonObject("injectors").get("defaultRequire").getAsInt(),
-            "1.21.1 injectors.defaultRequire must be 1 so a failed injection is not silent");
+            "1.21.11 injectors.defaultRequire must be 1 so a failed injection is not silent");
 
         assertTrue(v26Json.has("injectors") && v26Json.getAsJsonObject("injectors").has("defaultRequire"),
             "26.2 mixin config must define injectors.defaultRequire");
@@ -275,11 +275,11 @@ public class M3ChallengerTest {
             "26.2 injectors.defaultRequire must be 0");
 
         // Verify the TitleScreenMixin.java hooks in both versions are required rather than silently optional
-        Path v121TitleMixin = root.resolve("v1_21_1/src/main/java/com/thelads/core/v1_21_1/mixin/TitleScreenMixin.java");
+        Path v121TitleMixin = root.resolve("v1_21_11/src/main/java/com/thelads/core/v1_21_11/mixin/TitleScreenMixin.java");
         Path v26TitleMixin = root.resolve("v26_2/src/main/java/com/thelads/core/v26_2/mixin/TitleScreenMixin.java");
 
         String v121Title = Files.readString(v121TitleMixin);
-        assertTrue(v121Title.contains("require = 1") && !v121Title.contains("require = 0"), "v1_21_1 TitleScreenMixin must not opt out of defaultRequire");
+        assertTrue(v121Title.contains("require = 1") && !v121Title.contains("require = 0"), "v1_21_11 TitleScreenMixin must not opt out of defaultRequire");
         assertTrue(Files.readString(v26TitleMixin).contains("require = 1"), "26.x title replacement must fail visibly if its required hook no longer matches");
     }
 }

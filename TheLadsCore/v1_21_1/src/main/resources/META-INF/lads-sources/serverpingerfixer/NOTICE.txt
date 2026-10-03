@@ -1,6 +1,0 @@
-Server Pinger Fixer 1.0.6 by JustAlittleWolf
-https://github.com/JustAlittleWolf/ServerPingerFixer (branch 1.18-1.21.11, commit 4fd97be9fd3dfe3e0e24bcc50c0e7fa9417192df)
-Copyright (c) 2023 JustAlittleWolf. MIT License, see LICENSE beside this file.
-
-Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_21_1.embedded.serverpingerfixer).
-The embedded copy stays inactive while the original Server Pinger Fixer jar is installed.

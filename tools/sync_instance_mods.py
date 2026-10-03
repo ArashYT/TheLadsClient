@@ -19,10 +19,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 AUDIT = ROOT / 'artifacts/mod-audit'
 REFRESH = False
 UPDATE = False
-GAMES = ['1.21.1', '1.21.11', '26.2', '26.3']
+GAMES = ['1.21.11', '26.2', '26.3']  # 1.8.9 is Forge (its own manifest); 1.21.1 was dropped in 1.6.0
 # Only replacements implemented by these version adapters may suppress upstream jars.
 NATIVE = {
-    '1.21.1': {'threads': 'ThreadPriorityModule', 'classic_minecraft_icon': 'WindowIconMixin', 'autohidehud': 'NativeAutohide'},
     '1.21.11': {'threads': 'ThreadPriorityModule', 'classic_minecraft_icon': 'WindowIconMixin', 'autohidehud': 'NativeAutohide'},
     '26.2': {'threads': 'ThreadPriorityModule', 'appleskin': 'NativeFoodOverlay', 'clumps': 'NativeClumps',
              'dynamic_fps': 'NativeDynamicFps', 'autoreconnectrf': 'NativeReconnect',
@@ -38,31 +37,16 @@ EMBEDDED = {'entity_texture_features': 'embedded.etf', 'entity_model_features': 
             'lazy_ai_pixelindiedev': 'embedded.lazyai', 'quick-pack': 'embedded.quickpack', 'controlling': 'embedded.controlling',
             'searchables': 'embedded.controlling', 'nbtac': 'embedded.nbtac', 'capes': 'embedded.capes',
             'tooltipstxf': 'embedded.tooltips', 'fixbookgui': 'embedded.fixbookgui', 'hoveringhotbar': 'embedded.hoveringhotbar'}
-for _game, _cushions, _playtime in [('1.21.1', 'optimizedcushionsbackport', 'worldplaytime'),
-                                    ('1.21.11', 'optimizedcushionsbackport', 'worldplaytimereborn'),
+for _game, _cushions, _playtime in [('1.21.11', 'optimizedcushionsbackport', 'worldplaytimereborn'),
                                     ('26.2', 'optimizedcushionsbackport', 'worldplaytimereborn'),
                                     ('26.3', 'optimizedcushions', 'worldplaytimereborn')]:
     NATIVE[_game].update(EMBEDDED, **{_cushions: 'embedded.cushions', _playtime: 'embedded.playtime'})
 # Iris 1.10.7 pins Sodium 0.8.7; newer add-ons require Sodium 0.8.14.
-# Original projects supply these features on 1.21.1, before the source-instance forks.
-COMPATIBLE_PROJECTS = {('1.21.1', 'modernfix'): 'nmDcB62a',
-                       ('1.21.1', 'worldplaytimereborn'): 'YkKeggdl',
-                       ('1.21.1', 'motionblurplus'): 'fWundlde'}
-# Iris's last stable 1.21.1 release requires Sodium 0.6; this beta supports 0.8.
-COMPATIBLE_RELEASES = {('1.21.1', 'iris'): 'bAo1Qhte',
-                       # 1.2.0's Sodium occlusion mixin breaks on Sodium 0.8.12 (every 1.21.1 world join crashed);
-                       # 1.2.1-beta supports it. A 'release' preference would silently pick 1.2.0 again.
-                       ('1.21.1', 'betterrenderdistance'): 'ZI7FceDv',
-                       # Flashback needs voicechat_api >= 2.6.24, which only ships as 'beta' uploads.
-                       ('1.21.1', 'voicechat'): '6PKCVne5', ('1.21.11', 'voicechat'): 'MLNG868g',
-                       ('26.2', 'voicechat'): 'Ls232EsW', ('26.3', 'voicechat'): 'OLnMVWXy',
-                       ('1.21.1', 'reeses-sodium-options'): '3sJ9XmcU',
-                       # 0.9.0 crashes fresh configs (Map.replaceAll on a fastutil 8.5.12 map);
-                       # 0.9.2+ require Sodium >=0.8.12, which rejects 0.8.12-beta.1.
-                       ('1.21.1', 'sodium-extra'): 'taFAlSOP',
-                       # 2.2.0 applies an Amendments mixin even when Amendments is absent.
-                       ('1.21.1', 'fixbookgui'): '7S8E0FG3', ('1.21.11', 'reeses-sodium-options'): 'yIgAFMna',
-                       ('1.21.11', 'sodium-extra'): 'yqY1efrC'}
+# Original projects supplying a feature instead of the source instance's newer fork, per (game, mod): none since 1.21.1 left.
+COMPATIBLE_PROJECTS = {}
+COMPATIBLE_RELEASES = {# Flashback needs voicechat_api >= 2.6.24, which only ships as 'beta' uploads.
+                       ('1.21.11', 'voicechat'): 'MLNG868g', ('26.2', 'voicechat'): 'Ls232EsW', ('26.3', 'voicechat'): 'OLnMVWXy',
+                       ('1.21.11', 'reeses-sodium-options'): 'yIgAFMna', ('1.21.11', 'sodium-extra'): 'yqY1efrC'}
 KNOWN = {'autoreconnectrf': 'PRy8Khga', 'clientsort': 'K0AkAin6',
          'cloth-config': '9s6osm5g', 'fastershadowmapper': 'nSRLvOHG'}
 # Removed from the pack (modId -> Modrinth project), matched by either key. They are never surveyed, preserved or

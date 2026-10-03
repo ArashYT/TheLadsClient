@@ -107,7 +107,7 @@ public class TheLadsCore189 {
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
     public static final String[][] LIMITED = {
-        // Chat189 through GuiNewChatMixin, as 1.21.1 ChatMixin.
+        // Chat189 through GuiNewChatMixin, as 1.21.11 ChatMixin.
         {"Chat", "Minecraft 1.8.9 chat is unsigned, so Hide Signing Indicators has nothing to hide."},
         // Crosshair189 through Forge's crosshair overlay event, as 26.x NativeCrosshair.
         {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Dynamic "

@@ -64,6 +64,8 @@ public static class ProfileTools
             || preset.Settings.Count > SettingsFiles.Length || preset.Settings.Any(p => !SettingsFiles.Contains(p.Key) || p.Value == null)
             || preset.Settings.Sum(p => (long)System.Text.Encoding.UTF8.GetByteCount(p.Value)) > MaximumBytes)
             throw new InvalidDataException("Invalid or unsupported settings preset.");
+        if (GameVersionPolicy.IsDropped(preset.MinecraftVersion))
+            throw new InvalidDataException($"Minecraft {preset.MinecraftVersion} is no longer supported; The Lads Client offers 1.8.9, 26.2 and 26.3.");
         var profile = NewProfile(preset);
         GameVersionPolicy.ResolveVersionId(profile);
         return preset;

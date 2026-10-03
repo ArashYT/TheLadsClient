@@ -719,7 +719,7 @@ public class Minecraft189Tests
         Assert.Contains("1.8.9", shipped);
         foreach (var script in new[] { "Publish-Release.ps1", "Build-LadsClient.ps1", Path.Combine("tools", "Install-LadsRelease.ps1") })
         {
-            // foreach ($gameVersion in @('1.21.1', ...)): the one list of Minecraft versions in the script.
+            // foreach ($gameVersion in @('1.8.9', ...)): the one list of Minecraft versions in the script.
             var lists = Regex.Matches(File.ReadAllText(Path.Combine(root.FullName, script)), @"foreach \(\$\w+ in @\(([^)]*)\)\)")
                 .Select(loop => Regex.Matches(loop.Groups[1].Value, "'([^']*)'").Select(item => item.Groups[1].Value).ToList())
                 .Where(items => items.Count > 0 && items.All(item => Regex.IsMatch(item, @"\A\d+(\.\d+)+\z"))).ToList();

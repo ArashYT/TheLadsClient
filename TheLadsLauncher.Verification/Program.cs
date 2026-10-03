@@ -1007,7 +1007,7 @@ static string InventoryTable(ModInventory inventory)
 sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, bool Version133, bool Version134, bool Replay,
     bool RequestedFeatures, string[] TitleProbes, string[] WorldProbes)
 {
-    public static readonly string[] Supported = ["1.8.9", "1.21.1", "1.21.11", "26.2", "26.3"];
+    public static readonly string[] Supported = ["1.8.9", "1.21.11", "26.2", "26.3"];
 
     public bool Forge { get; init; }
     /// <summary>The Kill Banner skins exist in the Fabric Cores (1.21.x and 26.x), not on 1.8.9.</summary>
