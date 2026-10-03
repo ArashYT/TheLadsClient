@@ -1400,6 +1400,7 @@ public partial class MainWindow : Window
     {
         if (WindowState != WindowState.Normal)
             WindowState = WindowState.Normal;
+        ForgetAnimatedMaximize();
         _adjustingAspect = true;
         this.Width  = DEFAULT_WIDTH;
         this.Height = _lockAspect ? DEFAULT_WIDTH / ASPECT_RATIO : DEFAULT_HEIGHT;

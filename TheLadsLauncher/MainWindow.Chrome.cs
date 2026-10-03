@@ -64,6 +64,19 @@ public partial class MainWindow
             _restoreBounds = PixelBounds();
             AnimateToMaximized();
         }
+        ShowMaximizeState();
+    }
+
+    /// <summary>Reset Size: the window is no longer maximized, and no animation may still move it.</summary>
+    private void ForgetAnimatedMaximize()
+    {
+        _boundsAnimation?.Stop();
+        _restoreBounds = null;
+        ShowMaximizeState();
+    }
+
+    private void ShowMaximizeState()
+    {
         MaximizeBtn.Content = _restoreBounds != null ? "❐" : "□";
         ToolTip.SetTip(MaximizeBtn, _restoreBounds != null ? "Restore" : "Maximize");
     }
@@ -105,6 +118,7 @@ public partial class MainWindow
     private void ApplySeasonalChrome()
     {
         bool halloween = settings.Theme == "Halloween";
+        Classes.Set("halloween", halloween); // LauncherTheme.axaml: the pumpkin launch button
         Background = Brush.Parse(halloween ? "#17121C" : "#17181B");
         TitleBar.Background = Sidebar.Background = Brush.Parse(halloween ? "#110D16" : "#121315");
         ContentTitleBar.Background = Brush.Parse(halloween ? "#17121C" : "#17181B");
@@ -251,7 +265,7 @@ public partial class MainWindow
         _modIconsBusy = true;
         try
         {
-            _modIcons ??= new ModIconService(Path.Combine(_pathService.BaseDirectory, "cache", "mod-icons"), _httpClient);
+            _modIcons ??= new ModIconService(Path.Combine(_pathService.BaseDirectory, "cache", "mod-icons"), _httpClient, settings.ModrinthApiUrl);
             do
             {
                 _modIconsAgain = false;
@@ -305,6 +319,7 @@ public partial class MainWindow
         async Task Shot(string name, int delay = 450) { await Task.Delay(delay); SaveWindowScreenshot(Path.Combine(output, name + ".png")); }
         var settingsTabs = SettingsPage.GetLogicalDescendants().OfType<TabControl>().First();
         void SettingsTab(string header) => settingsTabs.SelectedItem = settingsTabs.Items.OfType<TabItem>().First(t => (string?)t.Header == header);
+        static void ScrollTop(Control inside) => inside.FindAncestorOfType<ScrollViewer>()!.Offset = default;
         static void ScrollTo(Control target)
         {
             var scroller = target.FindAncestorOfType<ScrollViewer>()!;
@@ -327,10 +342,14 @@ public partial class MainWindow
                 ((IPseudoClasses)CloseBtn.Classes).Set(":pointerover", false);
                 NavigateTo("Settings");
                 SettingsTab("General");
+                await Task.Delay(300);
+                ScrollTop(CloseToTrayCheckbox); // the first pass left it scrolled to Behavior
                 await Shot($"settings-general-{tag}");
                 ScrollTo(CloseToTrayCheckbox.FindAncestorOfType<Border>()!);
                 await Shot($"settings-behavior-{tag}");
                 SettingsTab("Controls");
+                await Task.Delay(300);
+                ScrollTop(ControlsSettings.FindControl<Border>("KeysCard")!);
                 await Shot($"settings-controls-{tag}", 700);
                 ScrollTo(ControlsSettings.FindControl<Border>("KeysCard")!);
                 await Shot($"settings-keybinds-{tag}");
@@ -341,6 +360,18 @@ public partial class MainWindow
             }
             Check("modIcons", _modRows.Count(r => r.Icon.Source != null) > 0,
                 $"{_modRows.Count(r => r.Icon.Source != null)} of {_modRows.Count} rows show an icon; cache {Path.Combine(_pathService.BaseDirectory, "cache", "mod-icons")}");
+
+            // The 1.8.9 (Forge) profile's list: mcmod.info icons or Modrinth by hash.
+            ThemeSelector.SelectedItem = "DarkRed";
+            FlushSettingsSave();
+            ComboBoxItem LaunchProfile(string version) => LaunchProfileSelector.Items.OfType<ComboBoxItem>().First(i => i.Tag is LauncherProfile p && p.MinecraftVersion == version);
+            LaunchProfileSelector.SelectedItem = LaunchProfile("1.8.9");
+            await ReloadModsInventoryAsync();
+            for (int i = 0; i < 40 && (_modIconsBusy || _modRows.Count == 0); i++) await Task.Delay(250);
+            await Shot("mods-installed-189", 800);
+            Check("modIcons-189", _modRows.Count(r => r.Icon.Source != null) > 0,
+                $"{_modRows.Count(r => r.Icon.Source != null)} of {_modRows.Count} rows show an icon: " + string.Join(", ", _modRows.Select(r => $"{r.Entry.DisplayName}={(r.Icon.Source != null ? "icon" : "placeholder")}")));
+            LaunchProfileSelector.SelectedItem = LaunchProfile("26.3");
 
             // Auto-save: a checkbox reaches settings.json without a Save button.
             ThemeSelector.SelectedItem = "DarkRed";
@@ -388,6 +419,13 @@ public partial class MainWindow
             Check("maximize16x9", Math.Abs(lockedMax.Width / (double)lockedMax.Height - 16.0 / 9) < 0.01 && lockedMax.Width <= area.Width && lockedMax.Height <= area.Height
                 && Near(lockedMax, WindowGeometry.Maximized(area, true, ASPECT_RATIO)) && Near(lockedRestored, locked),
                 $"locked {locked}, maximized {lockedMax}, restored {lockedRestored}, label while locked '{lockedLabel}'");
+            // Reset Size while maximized: default size, and the button offers Maximize again.
+            ToggleAnimatedMaximize();
+            await Task.Delay(500);
+            ResetSizeBtn_Click(null, new Avalonia.Interactivity.RoutedEventArgs());
+            await Task.Delay(100);
+            Check("resetSize", (string?)MaximizeBtn.Content == "□" && Math.Abs(Width - DEFAULT_WIDTH) < 1 && Math.Abs(Height - DEFAULT_HEIGHT) < 1,
+                $"maximize button '{MaximizeBtn.Content}', size {Width}x{Height}");
 
             // Controls: a modern and the 1.8.9 profile, each saved into its own options.txt (unknown lines kept).
             NavigateTo("Settings");
@@ -399,6 +437,12 @@ public partial class MainWindow
                 var profile = _profileService.GetProfiles().First(p => p.MinecraftVersion == version);
                 picker.SelectedItem = picker.Items.OfType<LauncherProfile>().First(p => p.Id == profile.Id);
                 await Task.Delay(300);
+                if (version == "1.8.9")
+                {
+                    // 1.8.9's own set: no simulation distance, GUI scale Auto/Small/Normal/Large.
+                    ScrollTop(ControlsSettings.FindControl<Border>("KeysCard")!);
+                    await Shot("settings-controls-189", 300);
+                }
                 ControlsSettings.FindControl<Slider>("FovSlider")!.Value = 90;
                 // Jump onto W: the same key as Walk Forwards, which the list must show as a conflict.
                 var rows = ControlsSettings.FindControl<UniformGrid>("KeyRows")!;
@@ -420,6 +464,37 @@ public partial class MainWindow
             await Shot("settings-controls-conflict-189-halloween", 500);
             ThemeSelector.SelectedItem = "DarkRed";
             FlushSettingsSave();
+
+            // Nothing is written while the profile's game runs: a sleeping java process (system java) stands in for 26.2's game.
+            var running = _profileService.GetProfiles().First(p => p.MinecraftVersion == "26.2");
+            var runningDir = _pathService.GetProfileDirectory(running);
+            var runningOptions = Path.Combine(runningDir, "options.txt");
+            Directory.CreateDirectory(runningDir);
+            var sleeper = Path.Combine(_pathService.BaseDirectory, "Sleep.java");
+            File.WriteAllText(sleeper, "class Sleep { public static void main(String[] a) throws Exception { Thread.sleep(60000); } }");
+            using var java = Process.Start(new ProcessStartInfo("java", $"\"{sleeper}\"") { UseShellExecute = false, CreateNoWindow = true })!;
+            try
+            {
+                RunningGameMarker.Write(runningDir, java.Id, java.StartTime, Array.Empty<string>());
+                string? optionsBefore = File.Exists(runningOptions) ? File.ReadAllText(runningOptions) : null;
+                picker.SelectedItem = picker.Items.OfType<LauncherProfile>().First(p => p.Id == running.Id);
+                await Task.Delay(300);
+                bool cardsLocked = !ControlsSettings.FindControl<Border>("GameCard")!.IsEnabled && ControlsSettings.FindControl<TextBlock>("WarningNote")!.IsVisible;
+                ControlsSettings.FindControl<Slider>("FovSlider")!.Value = 100;
+                await ControlsSettings.FlushAsync();
+                ScrollTop(ControlsSettings.FindControl<Border>("KeysCard")!);
+                await Shot("settings-controls-running", 300);
+                string? optionsAfter = File.Exists(runningOptions) ? File.ReadAllText(runningOptions) : null;
+                var status = ControlsSettings.FindControl<TextBlock>("StatusLine")!.Text;
+                Check("controls-running", cardsLocked && optionsBefore == optionsAfter && status?.StartsWith("Not saved") == true,
+                    $"cards disabled with warning {cardsLocked}, options.txt unchanged {optionsBefore == optionsAfter}, status '{status}'");
+            }
+            finally
+            {
+                java.Kill();
+                RunningGameMarker.Delete(runningDir, java.Id);
+                File.Delete(sleeper);
+            }
         }
         catch (Exception ex)
         {

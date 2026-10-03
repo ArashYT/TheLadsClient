@@ -98,6 +98,41 @@
     <Setter Property="BorderBrush" Value="#FF9E1624"/>
     <Setter Property="BoxShadow" Value="0 0 10 2 #88EE3B48"/>
   </Style>
+  <!-- Halloween theme (MainWindow sets the window's "halloween" class): a pumpkin-orange launch button. -->
+  <Style Selector="Window.halloween Button.launch">
+    <Setter Property="Background">
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#FFEE7A22" Offset="0"/>
+        <GradientStop Color="#FFD2600C" Offset="0.5"/>
+        <GradientStop Color="#FFA84808" Offset="1"/>
+      </LinearGradientBrush>
+    </Setter>
+    <Setter Property="BorderBrush" Value="#FFB8560E"/>
+  </Style>
+  <Style Selector="Window.halloween Button.launch /template/ ContentPresenter">
+    <Setter Property="BoxShadow" Value="0 2 10 0 #50F28A2E"/>
+  </Style>
+  <Style Selector="Window.halloween Button.launch:pointerover /template/ ContentPresenter">
+    <Setter Property="Background">
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#FFFF9A42" Offset="0"/>
+        <GradientStop Color="#FFE8701A" Offset="0.5"/>
+        <GradientStop Color="#FFBE560C" Offset="1"/>
+      </LinearGradientBrush>
+    </Setter>
+    <Setter Property="BorderBrush" Value="#FFFFB46E"/>
+    <Setter Property="BoxShadow" Value="0 0 22 4 #CCF28A2E, 0 4 12 0 #808A4FD0"/>
+  </Style>
+  <Style Selector="Window.halloween Button.launch:pressed /template/ ContentPresenter">
+    <Setter Property="Background">
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Color="#FFB8560E" Offset="0"/>
+        <GradientStop Color="#FF8A3E06" Offset="1"/>
+      </LinearGradientBrush>
+    </Setter>
+    <Setter Property="BorderBrush" Value="#FF9A4808"/>
+    <Setter Property="BoxShadow" Value="0 0 10 2 #88F28A2E"/>
+  </Style>
   <Style Selector="Button.danger">
     <Setter Property="Background" Value="#2B2022"/>
     <Setter Property="Foreground" Value="#ED9393"/>
