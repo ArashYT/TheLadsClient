@@ -290,6 +290,9 @@ if (requestedFeaturesOnly)
 var requiredCore = new List<string>();
 bool welcomeVerification = Env("LADS_VERIFY_WELCOME") == "1";
 if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
+// Every version: the Add Server screen names known servers (AddServerProbe), screenshots/addserver-*.png.
+bool addServerVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_ADDSERVER") == "1";
+if (addServerVerification) requiredCore.Add("Lads add-server probe END:");
 if (!expectCoreDisabled && !capabilities.Forge) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
@@ -297,7 +300,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
-    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED",
+    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads add-server probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -442,6 +445,7 @@ try
     }
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
+    if (addServerVerification) AddJvm("-Dthelads.verifyAddServer=true");
     if (capabilities.Forge)
     {
         // The 1.8.9 Core's one QA switch: its self-test (Lads menu on the title screen, in its own QA world and from the
