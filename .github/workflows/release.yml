@@ -51,6 +51,8 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          # Built into the launcher for CurseForge browsing (docs/CURSEFORGE_API_KEY.md); empty when the secret is not set.
+          LADS_CURSEFORGE_API_KEY: ${{ secrets.LADS_CURSEFORGE_API_KEY }}
         run: ./Publish-Release.ps1
       - name: Retain build artifacts
         if: always()

@@ -589,11 +589,11 @@
                                 <Grid RowDefinitions="Auto,*" Margin="0,12,0,0">
                                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,16">
                                         <TextBox x:Name="ModSearchBox" PlaceholderText="Search mods (e.g. Sodium, Iris) &#8212; searches as you type" Height="36" FontSize="13" Margin="0,0,8,0" TextChanged="ModSearchBox_TextChanged" />
-                                        <ComboBox x:Name="ModSearchProvider" Grid.Column="1" Width="130" Height="36" SelectedIndex="0" Margin="0,0,8,0">
+                                        <ComboBox x:Name="ModSearchProvider" Grid.Column="1" Width="130" Height="36" SelectedIndex="0" Margin="0,0,8,0" SelectionChanged="BrowseFilter_Changed">
                                             <ComboBoxItem Content="Modrinth" />
                                             <ComboBoxItem Content="CurseForge" />
                                         </ComboBox>
-                                        <ComboBox x:Name="SearchModMcVersionDropdown" Grid.Column="2" Width="130" Height="36" Margin="0,0,8,0" />
+                                        <ComboBox x:Name="SearchModMcVersionDropdown" Grid.Column="2" Width="130" Height="36" Margin="0,0,8,0" SelectionChanged="BrowseFilter_Changed" />
                                     </Grid>
                                     <ScrollViewer Grid.Row="1">
                                         <StackPanel x:Name="BrowseModsList" Spacing="6" />
@@ -605,19 +605,26 @@
                                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
                                         <Button Classes="action" Content="Open resource packs folder" Tag="resourcepacks" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="The shared resource packs folder (every version)" Click="OpenSharedFolder_Click" />
                                         <Button Classes="action" Content="Open shader packs folder" Tag="shaderpacks" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="The shared shader packs folder (every version)" Click="OpenSharedFolder_Click" />
+                                        <Button x:Name="UpdateResourcePacksBtn" Classes="launch" Content="Update resource packs" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="Replace the packs in the shared folder with their newest release for the Minecraft version chosen below (Modrinth, and CurseForge when a key is set); enabled packs stay enabled" Click="UpdateResourcePacks_Click" />
                                     </StackPanel>
                                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,16">
                                         <TextBox x:Name="RpSearchBox" PlaceholderText="Search resource packs &#8212; searches as you type" Height="36" FontSize="13" Margin="0,0,8,0" TextChanged="RpSearchBox_TextChanged" />
-                                        <ComboBox x:Name="RpSearchProvider" Grid.Column="1" Width="130" Height="36" SelectedIndex="0" Margin="0,0,8,0">
+                                        <ComboBox x:Name="RpSearchProvider" Grid.Column="1" Width="130" Height="36" SelectedIndex="0" Margin="0,0,8,0" SelectionChanged="BrowseFilter_Changed">
                                             <ComboBoxItem Content="Modrinth" />
                                             <ComboBoxItem Content="CurseForge" />
                                         </ComboBox>
-                                        <ComboBox x:Name="SearchRpMcVersionDropdown" Grid.Column="2" Width="130" Height="36" Margin="0,0,8,0" />
+                                        <ComboBox x:Name="SearchRpMcVersionDropdown" Grid.Column="2" Width="130" Height="36" Margin="0,0,8,0" SelectionChanged="BrowseFilter_Changed" />
                                     </Grid>
                                     <ScrollViewer Grid.Row="2">
                                         <StackPanel x:Name="BrowseRpList" Spacing="6" />
                                     </ScrollViewer>
                                 </Grid>
+                            </TabItem>
+                            <TabItem x:Name="ShaderPacksTab" Header="Shader Packs" IsVisible="False">
+                                <views:PackBrowserView x:Name="ShaderPacksView" Kind="Shader" />
+                            </TabItem>
+                            <TabItem x:Name="DataPacksTab" Header="Data Packs" IsVisible="False">
+                                <views:PackBrowserView x:Name="DataPacksView" Kind="DataPack" />
                             </TabItem>
                             <TabItem x:Name="ModsSettingsTab" Header="Mod Manager Settings">
                                 <ScrollViewer Margin="0,12,0,0">
