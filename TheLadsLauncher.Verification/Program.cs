@@ -7,6 +7,9 @@ using CmlLib.Core;
 using CmlLib.Core.ProcessBuilder;
 using TheLadsLauncher.Services;
 
+// Modpacks tab QA (ModpackQa.cs): a real Modrinth modpack installed (and updated) in the sandbox, then started to its title screen.
+if (args.Length >= 3 && args[0] == "--modpack") return await ModpackQa.RunAsync(args[1], Path.GetFullPath(args[2]), args[3..]);
+
 // Explicit maintenance mode: prepare a profile's pinned pack without starting a game or reading accounts.
 if (args.Length == 4 && args[0] == "--install-pack")
 {

@@ -97,6 +97,12 @@
                                         <TextBlock Text="Profiles" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
+                                <Button x:Name="NavModpacks" AutomationProperties.Name="Modpacks" Classes="nav" Click="NavModpacks_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <Path Data="M 9,1 L 16,5 V 13 L 9,17 L 2,13 V 5 Z M 2,5 L 9,9 L 16,5 M 9,9 V 17" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" StrokeJoin="Round" VerticalAlignment="Center" />
+                                        <TextBlock Text="Modpacks" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                                 <Border Height="1" Background="#28292E" Margin="12,12" />
                                 <Button x:Name="NavWorlds" AutomationProperties.Name="Worlds" Classes="nav" Click="NavWorlds_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
@@ -368,6 +374,7 @@
                     </Grid>
                     <views:WorldsView x:Name="WorldsPage" IsVisible="False" />
                     <views:ServersView x:Name="ServersPage" IsVisible="False" />
+                    <views:ModpacksView x:Name="ModpacksPage" IsVisible="False" />
                     <Grid x:Name="ProfilesPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,*">
                         <Grid Grid.Row="0" ColumnDefinitions="*" Margin="0,0,0,16" RowDefinitions="Auto,Auto,Auto">
                             <StackPanel>
