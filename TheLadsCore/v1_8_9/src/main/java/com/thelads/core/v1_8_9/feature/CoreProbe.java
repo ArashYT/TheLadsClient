@@ -60,6 +60,7 @@ public final class CoreProbe {
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     static {
+        STEPS.addAll(Probe160s.STEPS);
         STEPS.addAll(HudProbe.STEPS);
         STEPS.addAll(Probe145.STEPS);
         STEPS.addAll(Probe150e.STEPS);
@@ -98,6 +99,7 @@ public final class CoreProbe {
         finished = true;
         HudProbe.stop();
         Probe151.stop();
+        Probe160s.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -492,13 +494,22 @@ public final class CoreProbe {
      * (gameplay) only the button matters.
      */
     static void mouse(int button, boolean down, int guiX, int guiY) throws Exception {
+        event(button, down, guiX, guiY, 0);
+    }
+
+    /** Wheel notches (negative: towards the user, scrolling down), 120 each as Mouse.poll() stores them. */
+    static void wheel(int guiX, int guiY, int notches) throws Exception {
+        for (int i = 0; i < Math.abs(notches); i++) event(-1, false, guiX, guiY, notches > 0 ? 120 : -120);
+    }
+
+    private static void event(int button, boolean down, int guiX, int guiY, int wheel) throws Exception {
         Minecraft mc = Minecraft.getMinecraft();
         GuiScreen screen = mc.currentScreen;
         int x = screen == null ? 0 : (guiX * mc.displayWidth + mc.displayWidth / 2) / screen.width;
         int y = screen == null ? 0 : ((screen.height - 1 - guiY) * mc.displayHeight + mc.displayHeight / 2) / screen.height;
         ByteBuffer events = queue(Mouse.class);
         events.compact();
-        events.put((byte) button).put((byte) (down ? 1 : 0)).putInt(x).putInt(y).putInt(0).putLong(System.nanoTime());
+        events.put((byte) button).put((byte) (down ? 1 : 0)).putInt(x).putInt(y).putInt(wheel).putLong(System.nanoTime());
         events.flip();
     }
 
