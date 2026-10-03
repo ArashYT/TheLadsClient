@@ -171,7 +171,14 @@ public class TheLadsCore189 {
 
     @SubscribeEvent
     public void frame(TickEvent.RenderTickEvent event) {
-        if (event.phase == TickEvent.Phase.START) RawMouse189.paceFrame();
-        else Zoom189.frame();
+        if (event.phase == TickEvent.Phase.START) {
+            RawMouse189.paceFrame();
+            com.thelads.core.v1_8_9.gui.SmoothScroll189.frame();
+        } else Zoom189.frame();
+    }
+
+    @SubscribeEvent
+    public void open(net.minecraftforge.client.event.GuiOpenEvent event) {
+        event.gui = com.thelads.core.v1_8_9.gui.ControlsScreen189.replace(event.gui);
     }
 }
