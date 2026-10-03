@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.ServersView">
+  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="28,24">
+    <StackPanel Spacing="6">
+      <TextBlock Text="Servers" FontSize="22" FontWeight="Bold" />
+      <TextBlock Text="Find servers and add them to a server list. The global .minecraft list is the one every Lads version shows; a modpack has its own." Foreground="#A0A1AA" TextWrapping="Wrap" />
+    </StackPanel>
+    <WrapPanel Grid.Row="1" Margin="0,18,0,8">
+      <TextBlock Text="Server list" VerticalAlignment="Center" Margin="0,0,10,8" />
+      <ComboBox x:Name="Target" Width="320" Margin="0,0,8,8" SelectionChanged="TargetChanged" />
+      <Button Content="Refresh" Click="Refresh" Margin="0,0,8,8" />
+    </WrapPanel>
+    <TextBlock x:Name="Status" Grid.Row="2" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,0,0,12" />
+    <Grid Grid.Row="3" ColumnDefinitions="330,24,*">
+      <Grid RowDefinitions="Auto,Auto,*">
+        <Border Background="#202126" CornerRadius="4" Padding="16">
+          <StackPanel Spacing="8">
+            <TextBlock Text="Add a server" FontSize="16" FontWeight="SemiBold" />
+            <TextBox x:Name="AddressBox" PlaceholderText="Address, e.g. play.example.com" TextChanged="AddressChanged" />
+            <TextBox x:Name="NameBox" PlaceholderText="Minecraft Server" />
+            <TextBlock Text="The name fills in from the address until you type one." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" />
+            <Button Content="Add to list" Classes="action" HorizontalAlignment="Left" Click="AddTyped" />
+          </StackPanel>
+        </Border>
+        <TextBlock x:Name="SavedTitle" Grid.Row="1" Text="Saved servers" FontSize="16" FontWeight="SemiBold" Margin="0,18,0,8" />
+        <ScrollViewer Grid.Row="2"><StackPanel x:Name="SavedRows" Spacing="6" /></ScrollViewer>
+      </Grid>
+      <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*">
+        <TextBlock Text="Find servers" FontSize="16" FontWeight="SemiBold" />
+        <TextBox x:Name="Search" Grid.Row="1" PlaceholderText="Search by name, address or type…" Margin="0,8,0,8" TextChanged="SearchChanged" />
+        <ScrollViewer Grid.Row="2"><StackPanel x:Name="FindRows" Spacing="6" /></ScrollViewer>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

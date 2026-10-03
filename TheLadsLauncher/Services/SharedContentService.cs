@@ -117,7 +117,8 @@ public sealed class SharedContentService
     public string ShaderPacksDirectory => Path.Combine(Root, "shaderpacks");
     public string ScreenshotsDirectory => Path.Combine(Root, "screenshots");
     public string ServersFile => Path.Combine(Root, "servers.dat");
-    private string ServersLockFile => Path.Combine(Root, ".lads-servers.lock");
+    /// <summary>Held around every write of <see cref="ServersFile"/>, by the launcher and by LadsCore in a running game.</summary>
+    public string ServersLockFile => Path.Combine(Root, ".lads-servers.lock");
 
     /// <summary>Test seam for volumes without reparse points (FAT32/exFAT).</summary>
     public Func<string, bool> SupportsReparsePoints { get; init; } = SafeFileOps.VolumeSupportsReparsePoints;

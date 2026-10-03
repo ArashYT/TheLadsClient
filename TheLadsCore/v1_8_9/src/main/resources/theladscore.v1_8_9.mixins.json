@@ -20,6 +20,7 @@
     "GuiIngameMenuMixin",
     "GuiNewChatMixin",
     "GuiPlayerTabOverlayMixin",
+    "GuiScreenAddServerAccessor",
     "GuiScreenMixin",
     "GuiSlotMixin",
     "GuiSlotAccessor",
@@ -41,6 +42,7 @@
     "RenderFishMixin",
     "ResourcePackRepositoryMixin",
     "ScreenShotHelperMixin",
+    "ServerNameMixin",
     "SplashProgressMixin",
     "TileEntityMixin"
   ]

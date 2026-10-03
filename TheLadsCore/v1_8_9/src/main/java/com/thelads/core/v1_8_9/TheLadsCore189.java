@@ -167,6 +167,7 @@ public class TheLadsCore189 {
 
         CoreCatalogExporter.exportIfChanged();
         if (Boolean.getBoolean("thelads.verify189Core")) CoreProbe.tick();
+        if (Boolean.getBoolean("thelads.verifyAddServer")) com.thelads.core.v1_8_9.feature.AddServerProbe189.tick();
     }
 
     @SubscribeEvent

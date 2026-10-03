@@ -80,6 +80,7 @@ public partial class MainWindow : Window
     // --preview-mods <outputDir>: sandbox-only capture of the Mods page for every filter, then exit.
     private string? _previewModsOutput;
     private string? _previewWorldsOutput;
+    private string? _previewServersOutput;
 
     // ── 16:9 aspect ratio lock ───────────────────────────────────────────────
     private bool   _lockAspect     = false;
@@ -220,6 +221,8 @@ public partial class MainWindow : Window
         if (previewMods >= 0 && previewMods + 1 < args.Length) _previewModsOutput = Path.GetFullPath(args[previewMods + 1]);
         int previewWorlds = Array.IndexOf(args, "--preview-worlds");
         if (previewWorlds >= 0 && previewWorlds + 1 < args.Length) _previewWorldsOutput = Path.GetFullPath(args[previewWorlds + 1]);
+        int previewServers = Array.IndexOf(args, "--preview-servers");
+        if (previewServers >= 0 && previewServers + 1 < args.Length) _previewServersOutput = Path.GetFullPath(args[previewServers + 1]);
 
         // Enable drag-and-drop of .jar files onto the Mods page to install them.
         if (ModsPage != null)
@@ -288,6 +291,14 @@ public partial class MainWindow : Window
                 await WorldsPage.LoadAsync();
                 await Task.Delay(750);
                 SaveWindowScreenshot(Path.Combine(_previewWorldsOutput, "worlds.png"));
+                Close();
+                return;
+            }
+            if (_previewServersOutput != null)
+            {
+                Directory.CreateDirectory(_previewServersOutput);
+                NavigateTo("Servers");
+                await ServersPage.PreviewAsync(name => SaveWindowScreenshot(Path.Combine(_previewServersOutput, name)));
                 Close();
                 return;
             }
@@ -558,6 +569,8 @@ public partial class MainWindow : Window
         HomePage.IsVisible = page == "Home";
         WorldsPage.IsVisible = page == "Worlds";
         NavWorlds.Classes.Set("active", page == "Worlds");
+        ServersPage.IsVisible = page == "Servers";
+        NavServers.Classes.Set("active", page == "Servers");
         ProfilesPage.IsVisible = page == "Profiles";
         AccountsPage.IsVisible = page == "Accounts";
         SettingsPage.IsVisible = page == "Settings";
@@ -587,6 +600,7 @@ public partial class MainWindow : Window
     }
 
     private async void NavWorlds_Click(object? sender, RoutedEventArgs e) { NavigateTo("Worlds"); await WorldsPage.LoadAsync(); }
+    private async void NavServers_Click(object? sender, RoutedEventArgs e) { NavigateTo("Servers"); await ServersPage.LoadAsync(); }
 
     private void NavHome_Click(object? sender, RoutedEventArgs e) => NavigateTo("Home");
     private void NavProfiles_Click(object? sender, RoutedEventArgs e)

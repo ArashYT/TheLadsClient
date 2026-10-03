@@ -101,6 +101,12 @@
                                         <TextBlock Text="Worlds" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
+                                <Button x:Name="NavServers" AutomationProperties.Name="Servers" Classes="nav" Click="NavServers_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="13">
+                                        <Path Data="M 2,2 H 16 V 7 H 2 Z M 2,11 H 16 V 16 H 2 Z M 5,4.5 H 6 M 5,13.5 H 6" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <TextBlock Text="Servers" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="NavMods" AutomationProperties.Name="Mods" Classes="nav" Click="NavMods_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
                                         <Path Data="M 2,2 H 7 V 7 H 2 Z M 11,2 H 16 V 7 H 11 Z M 2,11 H 7 V 16 H 2 Z M 11,11 H 16 V 16 H 11 Z" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
@@ -358,6 +364,7 @@
                         </Border>
                     </Grid>
                     <views:WorldsView x:Name="WorldsPage" IsVisible="False" />
+                    <views:ServersView x:Name="ServersPage" IsVisible="False" />
                     <Grid x:Name="ProfilesPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,*">
                         <Grid Grid.Row="0" ColumnDefinitions="*" Margin="0,0,0,16" RowDefinitions="Auto,Auto,Auto">
                             <StackPanel>
