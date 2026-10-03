@@ -57,6 +57,7 @@
     "ServerListAccessor",
     "ServerDataAccessor",
     "ServerListSharedMixin",
+    "ServerNameMixin",
     "InactivityOptionMixin",
     "BossBarAccessor",
     "BossBarMixin",

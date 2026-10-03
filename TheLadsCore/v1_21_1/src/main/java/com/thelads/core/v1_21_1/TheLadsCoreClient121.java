@@ -21,6 +21,7 @@ public class TheLadsCoreClient121 implements ClientModInitializer {
             "Potion Effects", "CPS", "Keystrokes", "Biome", "Direction", "Health", "Hunger", "TexturePacks", "Scoreboard", "ArmorHUD");
         com.thelads.core.v1_21_1.gui.ExternalModSettings.register();
         com.thelads.core.v1_21_1.feature.NativeQualityOfLife.register();
+        com.thelads.core.v1_21_1.feature.AddServerProbe.register();
         com.thelads.core.v1_21_1.embedded.EmbeddedMods.clientInit();
         // ClientTickMixin writes the launcher catalog on the first tick and again after any later registration.
         LOGGER.info("TheLadsCore 1.21.1 initialized successfully.");
