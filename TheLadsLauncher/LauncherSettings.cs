@@ -147,7 +147,7 @@ public class LauncherSettings
 
     public static string[] GetAvailableThemes() => new[]
     {
-        "DarkRed", "DarkBlue", "DarkPurple", "Midnight"
+        "DarkRed", "DarkBlue", "DarkPurple", "Midnight", "Halloween"
     };
 
     public (string Primary, string PrimaryLight, string PrimaryDark, string Accent) GetThemeColors()
@@ -157,6 +157,7 @@ public class LauncherSettings
             "DarkBlue" => ("#1A3A5C", "#2563EB", "#0F2440", "#3B82F6"),
             "DarkPurple" => ("#4C1D95", "#7C3AED", "#2E1065", "#8B5CF6"),
             "Midnight" => ("#1E1E2E", "#45475A", "#11111B", "#CDD6F4"),
+            "Halloween" => ("#3B1458", "#6B2FA0", "#1E0A2E", "#FF8A1F"), // purple nebulae, pumpkin-orange particles
             _ => ("#8B0000", "#B00000", "#600000", "#FF4444") // DarkRed default
         };
     }
