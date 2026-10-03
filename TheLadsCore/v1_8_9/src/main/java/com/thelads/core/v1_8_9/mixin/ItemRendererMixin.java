@@ -128,8 +128,7 @@ public abstract class ItemRendererMixin {
             self.renderItem(player, stack, type);
             return;
         }
-        OldAnimations.item(OldAnimations189.GL, 1, ladsHeld == Held.ROD);
-        OldAnimations189.fullSizeMesh();
+        OldAnimations.item(OldAnimations189.GL, 1, ladsHeld == Held.ROD); // full size: RenderItem.preTransform undoes its 0.5
         self.renderItem(player, stack, TransformType.NONE);
         OldAnimations189.hit(Hook.FP_ICON);
     }

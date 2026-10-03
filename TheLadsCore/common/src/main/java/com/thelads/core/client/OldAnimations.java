@@ -12,9 +12,8 @@ package com.thelads.core.client;
  * is the centred item model, drawn with no display transform (1.8.9 {@code TransformType.NONE}, modern
  * {@code ItemDisplayContext.NONE}).
  *
- * <p>Size: 1.7.10's code draws its icon over a whole unit at 0.4 x 1.5, which on screen is nearly twice 1.8.9's item. Players
- * remember 1.7 items at about 1.8's size, and the 1.8.9 old-animation mods they know (Sk1er's OldAnimations, OverflowAnimations)
- * draw them at half 1.7.10's icon; {@link #icon} does the same, keeping 1.7's place and turn.
+ * <p>Size: 1.7.10's icon (a unit quad at 0.4 x 1.5) is on screen about 1.8.9's own item (0.4 x 1.7 display x 0.5 RenderItem x 2
+ * RenderItem.preTransform for flat models), so the recipes keep 1.7.10's full size; an adapter must not scale the mesh twice.
  */
 public final class OldAnimations {
     /** 1.7.10 ModelBiped: a blocking arm only pitches (x * 0.5 - 3π/10); 1.8 and later also turn it 30° inward. */
@@ -227,10 +226,9 @@ public final class OldAnimations {
         rotate(out, side, 50, 0, 1, 0);
         rotate(out, side, 335, 0, 0, 1);
         translate(out, side, -0.9375f, -0.0625f, 0);
-        // 1.7.10 draws the icon over [0,1]² at z -1/16..0, mirrored in x; the centred 1.8+ item mesh lands there,
+        // 1.7.10 draws the icon over [0,1]² at z -1/16..0, mirrored in x; the centred 1.8+ item mesh lands there.
         translate(out, side, 0.5f, 0.5f, -0.03125f);
         rotate(out, side, 180, 0, 1, 0);
-        out.scale(0.5f, 0.5f, 0.5f);                                  // at half size (class comment: the size players know)
     }
 
     private static void translate(Sink out, int side, float x, float y, float z) {
