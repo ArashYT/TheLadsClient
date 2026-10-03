@@ -25,6 +25,8 @@ import org.lwjgl.opengl.GLSync;
  * <p>Raw Input: deltas summed over every JInput mouse (Windows lists virtual, HID and touchpad mice; the first one is often idle).
  * LWJGL's own deltas are used until a JInput mouse reports motion, and again when they keep moving while no JInput mouse does
  * (JInput sees no motion, or the user switched to a mouse plugged in later).
+ *
+ * <p>Zoom: the deltas shrink with the zoom (ZoomModule.sensitivity), the remainders carried so slow motion still turns.
  */
 public final class RawMouse189 extends MouseHelper {
     private static final Logger LOGGER = LogManager.getLogger("TheLadsCore-1.8.9");
@@ -37,6 +39,7 @@ public final class RawMouse189 extends MouseHelper {
     List<Controller> mice;
     boolean rawLive;
     private int lwjglOnly;
+    private float carryX, carryY;
     private static GLSync previousFrame;
     static boolean pacing = true;
 
@@ -71,6 +74,14 @@ public final class RawMouse189 extends MouseHelper {
             deltaX = lwjglX;
             deltaY = lwjglY;
         }
+        float scale = Zoom189.sensitivity();
+        if (scale == 1) { carryX = carryY = 0; return; }
+        carryX += deltaX * scale;
+        carryY += deltaY * scale;
+        deltaX = (int) carryX;
+        deltaY = (int) carryY;
+        carryX -= deltaX;
+        carryY -= deltaY;
     }
 
     @Override

@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 public final class NativeWorldVerification {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final String SAVE = "Client QA 26_3";
-    private static boolean initialized, verified, failed, opened, readyLogged, closing, originalPause;
+    private static boolean initialized, verified, failed, opened, readyLogged, closing, originalPause, syntheticInput;
     private static long titleSince, openedAt, nextStopCheck;
     private static Path gameDirectory;
     private static long captureAfter;
@@ -120,10 +120,10 @@ public final class NativeWorldVerification {
                     LOGGER.info("Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted");
                 }
             }
-            KillBannerCapture.tick(gameDirectory, readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null
-                && !OldAnimationsCapture.busy());
-            OldAnimationsCapture.tick(gameDirectory, readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null
-                && !KillBannerCapture.busy());
+            boolean captureReady = readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null;
+            KillBannerCapture.tick(gameDirectory, captureReady && !OldAnimationsCapture.busy() && !ZoomCapture.busy());
+            OldAnimationsCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !ZoomCapture.busy());
+            ZoomCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy());
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
@@ -187,6 +187,9 @@ public final class NativeWorldVerification {
             && saves.equals(SharedContentPaths.savesDir().toRealPath());
     }
     public static boolean active() { return verified && !closing; }
+    /** Lads input rules act only while the window has focus; synthetic QA events stand in for it, inside the verified sandbox only. */
+    public static boolean windowActive() { return Minecraft.getInstance().isWindowActive() || syntheticInput && active(); }
+    static void syntheticInput(boolean on) { syntheticInput = on; }
     /** A requested QA menu or HUD capture owns the screen. */
     public static boolean menuCaptureActive() { return menuScreen != null; }
     /** Capture a completed game frame, including GUI, through Minecraft's own GPU readback. */
@@ -213,6 +216,7 @@ public final class NativeWorldVerification {
         chatCapture(target);
         KillBannerCapture.frame(target, gameDirectory);
         OldAnimationsCapture.frame(target, gameDirectory);
+        ZoomCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
         captureStarted = true;
         try {
@@ -355,6 +359,7 @@ public final class NativeWorldVerification {
         SkinLoadProbe.close();
         if (!verified || closing) return;
         closing = true;
+        syntheticInput = false;
         Minecraft mc = Minecraft.getInstance();
         if (menuScreen != null && mc.gui.screen() == menuScreen) mc.setScreenAndShow(previousScreen);
         menuScreen = null; previousScreen = null;

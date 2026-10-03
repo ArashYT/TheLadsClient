@@ -22,6 +22,7 @@ import com.thelads.core.v1_8_9.feature.Screenshots189;
 import com.thelads.core.v1_8_9.feature.SignalLoss189;
 import com.thelads.core.v1_8_9.feature.TabTweaks189;
 import com.thelads.core.v1_8_9.feature.Tooltips189;
+import com.thelads.core.v1_8_9.feature.Zoom189;
 import com.thelads.core.v1_8_9.gui.LadsTitleScreen189;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.common.MinecraftForge;
@@ -67,7 +68,9 @@ public class TheLadsCore189 {
         registerStatuses();
         com.thelads.core.v1_8_9.feature.Nametags189.register();
         OldAnimations189.register();
+        ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
+        MinecraftForge.EVENT_BUS.register(new Zoom189());
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
         Crosshair189.register();
@@ -135,6 +138,7 @@ public class TheLadsCore189 {
         NativeMenuKey.tick();
         Minecraft mc = Minecraft.getMinecraft();
         OldAnimations189.tick(mc);
+        Zoom189.tick(mc);
         if (mc.thePlayer != null) {
             com.thelads.core.config.Module fullbright = com.thelads.core.config.ModuleManager.getInstance().getModule("Fullbright");
             if (fullbright != null && fullbright.isEnabled() && mc.gameSettings.gammaSetting < 15.0f) {
@@ -168,13 +172,6 @@ public class TheLadsCore189 {
     @SubscribeEvent
     public void frame(TickEvent.RenderTickEvent event) {
         if (event.phase == TickEvent.Phase.START) RawMouse189.paceFrame();
-    }
-
-    @SubscribeEvent
-    public void fov(net.minecraftforge.client.event.EntityViewRenderEvent.FOVModifier event) {
-        com.thelads.core.config.Module zoom = com.thelads.core.config.ModuleManager.getInstance().getModule("Zoom");
-        if (zoom != null && zoom.isEnabled() && org.lwjgl.input.Keyboard.isKeyDown(org.lwjgl.input.Keyboard.KEY_C)) {
-            event.setFOV(event.getFOV() * 0.3f);
-        }
+        else Zoom189.frame();
     }
 }
