@@ -25,6 +25,7 @@
     "ServerListAccessor",
     "ServerDataAccessor",
     "ServerListSharedMixin",
+    "ServerNameMixin",
     "WindowIconMixin",
     "LoadingOverlayMixin",
     "ChatMixin",

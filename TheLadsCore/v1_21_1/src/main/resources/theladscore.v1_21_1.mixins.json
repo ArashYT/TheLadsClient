@@ -21,6 +21,7 @@
     "EssentialZoomMixin",
     "ServerListAccessor",
     "ServerListSharedMixin",
+    "ServerNameMixin",
     "WindowIconMixin",
     "LoadingOverlayMixin",
     "ChatMixin",
