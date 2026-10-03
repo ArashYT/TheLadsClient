@@ -27,7 +27,7 @@ public static class PackContentService
     public static bool SupportsDataPacks(string minecraftVersion) => !minecraftVersion.StartsWith("1.") ||
         (Version.TryParse(minecraftVersion, out var v) && (v.Major > 1 || v.Minor >= 13));
 
-    /// <summary>Every Lads profile, then every modpack instance (instances\&lt;id&gt;\instance.json with a mcVersion).</summary>
+    /// <summary>Every Lads profile, then every modpack instance the Modpacks tab lists (<see cref="Modpacks.List"/>) that names its Minecraft version.</summary>
     public static List<ContentTarget> LoadTargets(IEnumerable<LauncherProfile> profiles, IPathService paths, SharedContentService shared)
     {
         var list = profiles.ToList();
@@ -35,25 +35,12 @@ public static class PackContentService
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var targets = list.Select(p => new ContentTarget(p.Id, $"Lads · {p.Name} ({p.MinecraftVersion})", p.MinecraftVersion, ContentCatalog.ModLoader(p.MinecraftVersion),
             shared.ResourcePacksDirectory, shared.ShaderPacksDirectory, shared.SavesDirectory, ladsOptions)).ToList();
-        var instances = Path.Combine(paths.BaseDirectory, "instances");
-        if (!Directory.Exists(instances)) return targets;
-        foreach (var folder in Directory.GetDirectories(instances).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+        foreach (var instance in Modpacks.List(paths.BaseDirectory).Where(i => i.McVersion.Length > 0))
         {
-            try
-            {
-                using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(folder, "instance.json")));
-                var root = document.RootElement;
-                string Text(string name) => root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : "";
-                if (Text("mcVersion") is not { Length: > 0 } version) continue;
-                var game = Path.Combine(folder, "minecraft");
-                targets.Add(new ContentTarget(Path.GetFileName(folder), $"Modpack · {(Text("name") is { Length: > 0 } name ? name : Path.GetFileName(folder))} ({version})", version,
-                    Text("loader") is { Length: > 0 } loader ? loader : "vanilla", Path.Combine(game, "resourcepacks"), Path.Combine(game, "shaderpacks"),
-                    Path.Combine(game, "saves"), new[] { Path.Combine(game, "options.txt") }));
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
-            {
-                // Not an instance (yet): the modpacks page is still creating it, or it was hand-made.
-            }
+            var game = instance.GameDirectory;
+            targets.Add(new ContentTarget(instance.Id, $"Modpack · {(instance.Name.Length > 0 ? instance.Name : instance.Id)} ({instance.McVersion})", instance.McVersion,
+                instance.Loader.Length > 0 ? instance.Loader : "vanilla", Path.Combine(game, "resourcepacks"), Path.Combine(game, "shaderpacks"),
+                Path.Combine(game, "saves"), new[] { Path.Combine(game, "options.txt") }));
         }
         return targets;
     }

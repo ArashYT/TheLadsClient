@@ -18,27 +18,14 @@ public static class ServerListService
 
     /// <summary>
     /// The shared list first: every Lads version profile reads the global .minecraft servers.dat (profiles never keep their own;
-    /// see <see cref="SharedContentService"/>). Then each modpack instance under &lt;launcher data&gt;\instances\&lt;id&gt; with an
-    /// instance.json, whose game folder is &lt;id&gt;\minecraft.
+    /// see <see cref="SharedContentService"/>). Then each modpack instance the Modpacks tab lists (<see cref="Modpacks.List"/>).
     /// </summary>
     public static IReadOnlyList<ServerListTarget> Targets(SharedContentService shared, string launcherDataDirectory)
     {
         var targets = new List<ServerListTarget> { new("Global .minecraft (every Lads version)", shared.ServersFile, shared.ServersLockFile) };
-        var instances = Path.Combine(launcherDataDirectory, "instances");
-        if (!Directory.Exists(instances)) return targets;
-        foreach (var folder in Directory.GetDirectories(instances).Order(StringComparer.OrdinalIgnoreCase))
-        {
-            var json = Path.Combine(folder, "instance.json");
-            if (!System.IO.File.Exists(json)) continue;
-            var label = Path.GetFileName(folder);
-            try
-            {
-                var node = JsonNode.Parse(System.IO.File.ReadAllText(json));
-                label = $"{node?["name"]?.GetValue<string>() ?? label} {node?["mcVersion"]?.GetValue<string>()}".Trim();
-            }
-            catch (Exception e) when (e is JsonException or InvalidOperationException or IOException) { } // the folder name will do
-            targets.Add(new ServerListTarget("Modpack: " + label, Path.Combine(folder, "minecraft", "servers.dat"), null));
-        }
+        foreach (var instance in Modpacks.List(launcherDataDirectory))
+            targets.Add(new ServerListTarget($"Modpack: {(instance.Name.Length > 0 ? instance.Name : instance.Id)} {instance.McVersion}".Trim(),
+                Path.Combine(instance.GameDirectory, "servers.dat"), null));
         return targets;
     }
 
