@@ -209,6 +209,7 @@ public partial class MainWindow : Window
         }
         
         LoadSettingsUI();
+        InitializeSettingsAutoSave();
         PopulateLaunchProfileSelector();
         LoadProfilesUI();
         LoadAccounts();
@@ -284,6 +285,8 @@ public partial class MainWindow : Window
             if (discoveryPreview >= 0) { await RunDiscoveryPreviewAsync(Path.GetFullPath(args[discoveryPreview + 1])); return; }
             int productivityPreview = Array.IndexOf(args, "--preview-productivity");
             if (productivityPreview >= 0) { await RunProductivityPreviewAsync(Path.GetFullPath(args[productivityPreview + 1])); return; }
+            int chromePreview = Array.IndexOf(args, "--preview-chrome");
+            if (chromePreview >= 0) { await RunChromePreviewAsync(Path.GetFullPath(args[chromePreview + 1])); return; }
             if (_previewWorldsOutput != null)
             {
                 Directory.CreateDirectory(_previewWorldsOutput);
@@ -1384,6 +1387,7 @@ public partial class MainWindow : Window
     private void MinimizeBtn_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void CloseBtn_Click(object? sender, RoutedEventArgs e)
     {
+        FlushSettingsSave();
         if (settings.CloseToTray && _runningProcesses.Keys.Any(IsGameRunning))
             this.Hide();
         else
@@ -1392,11 +1396,13 @@ public partial class MainWindow : Window
 
     private void AspectLockBtn_Click(object? sender, RoutedEventArgs e)
     {
+        bool maximized = IsAnimatedMaximized();
         _lockAspect = !_lockAspect;
         if (AspectLockBtn != null)
-            AspectLockBtn.Content = _lockAspect ? "16:9" : "Free";
+            AspectLockBtn.Content = _lockAspect ? "Aspect Ratio: 16:9" : "Aspect Ratio: Free";
 
-        if (_lockAspect && WindowState == WindowState.Normal)
+        if (maximized) AnimateToMaximized();
+        else if (_lockAspect && WindowState == WindowState.Normal)
         {
             _adjustingAspect = true;
             this.Height = this.Width / ASPECT_RATIO;
@@ -1408,20 +1414,14 @@ public partial class MainWindow : Window
     {
         if (WindowState != WindowState.Normal)
             WindowState = WindowState.Normal;
+        ForgetAnimatedMaximize();
         _adjustingAspect = true;
         this.Width  = DEFAULT_WIDTH;
         this.Height = _lockAspect ? DEFAULT_WIDTH / ASPECT_RATIO : DEFAULT_HEIGHT;
         _adjustingAspect = false;
     }
 
-    private void MaximizeBtn_Click(object? sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-        if (MaximizeBtn != null)
-            MaximizeBtn.Content = WindowState == WindowState.Maximized ? "❐" : "□";
-    }
+    private void MaximizeBtn_Click(object? sender, RoutedEventArgs e) => ToggleAnimatedMaximize();
 
     // ═══════════════════════════════════════
     //  PARTICLES
@@ -1506,6 +1506,7 @@ public partial class MainWindow : Window
             "DarkBlue" => ("#3869AD", "#477CC4", "#2D568F", "#1C2430"),
             "DarkPurple" => ("#7757AA", "#8B69C0", "#624790", "#25202E"),
             "Midnight" => ("#555F76", "#69758F", "#424B60", "#22252D"),
+            "Halloween" => ("#F28A2E", "#FF9F4A", "#C96A1A", "#2A1B38"),
             _ => ("#C44343", "#D65353", "#A53434", "#241C1D")
         };
         // Application scope also keeps owned dialogs consistent with the selected theme.
@@ -1515,6 +1516,7 @@ public partial class MainWindow : Window
         resources["LadsAccentPressed"] = Brush.Parse(pressed);
         resources["LadsAccentSubtle"] = Brush.Parse(subtle);
         GameStateText.Foreground = Brush.Parse("#B9BCC6");
+        ApplySeasonalChrome();
     }
 
     private void ApplyUiScale()
@@ -3475,6 +3477,7 @@ public partial class MainWindow : Window
 
         if (saveSettings)
             settings.Save();
+        ShowProfileSettings();
 
         UpdateMinecraftVersionDisplay();
         ApplyNextAccountRequest(settings.InstancePath);
@@ -3770,27 +3773,35 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SaveSettings_Click(object? sender, RoutedEventArgs e)
+    /// <summary>Settings → settings.json, run by the auto-save timer (see InitializeSettingsAutoSave). A field with an invalid
+    /// value keeps its saved value and shows the error under itself; every other change is still saved.</summary>
+    private void SaveSettingsFromUi()
     {
-        if (_launching) { StatusText.Text = "Wait for the current launch to finish before saving settings."; return; }
+        if (_launching) { _settingsSaveTimer.Start(); SettingsSaveStatus.Text = "Changes are saved when the launch has finished."; return; }
+        bool retry = false;
         string newClientId = MicrosoftClientIdTextBox.Text?.Trim() ?? "";
         if (newClientId.Length == 0) newClientId = LauncherSettings.DefaultMicrosoftClientId;
-        if (!Guid.TryParse(newClientId, out var parsedId) || parsedId == Guid.Empty)
+        string? clientIdError = Guid.TryParse(newClientId, out var parsedId) && parsedId != Guid.Empty ? null
+            : "Enter a valid Microsoft application ID, or leave it blank to restore The Lads Client's default.";
+        if (clientIdError == null && newClientId != settings.MicrosoftClientId)
         {
-            StatusText.Text = "Enter a valid Microsoft application ID, or leave it blank to restore The Lads Client's default.";
-            return;
-        }
-        if (newClientId != settings.MicrosoftClientId)
-        {
-            if (_addingAccount || _launching)
+            if (_addingAccount)
             {
-                StatusText.Text = "Finish or cancel the current sign-in/launch before changing the application ID.";
-                return;
+                clientIdError = "Finish or cancel the current sign-in before changing the application ID.";
+                retry = true;
             }
-            settings.MicrosoftClientId = newClientId;
-            InitializeAuthentication();
+            else
+            {
+                settings.MicrosoftClientId = newClientId;
+                InitializeAuthentication();
+            }
         }
-        MicrosoftClientIdTextBox.Text = settings.MicrosoftClientId;
+        string? fabricError = string.IsNullOrWhiteSpace(FabricVersionBox.Text) ? "Enter a Fabric loader version." : null;
+        string? modrinthError = HttpUrlError(ModrinthApiUrlBox.Text, "The Modrinth API URL");
+        string? curseForgeError = HttpUrlError(CurseForgeApiUrlBox.Text, "The CurseForge API URL");
+        bool valid = ShowFieldError(MicrosoftClientIdTextBox, clientIdError) & ShowFieldError(FabricVersionBox, fabricError)
+            & ShowFieldError(ModrinthApiUrlBox, modrinthError) & ShowFieldError(ModrinthApiUrlBox_ModTab, modrinthError)
+            & ShowFieldError(CurseForgeApiUrlBox, curseForgeError) & ShowFieldError(CurseForgeApiUrlBox_ModTab, curseForgeError);
 
         int ramMb = (int)RamSlider.Value * 1024;
         settings.RamChosenByUser |= ramMb != settings.MaxRamMb;
@@ -3814,16 +3825,11 @@ public partial class MainWindow : Window
         settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
         settings.ShowParticles = ParticleCheckbox.IsChecked ?? true;
         settings.SyncScreenshotsToGlobal = SyncScreenshotsCheckbox.IsChecked ?? true;
-        settings.FabricVersion = FabricVersionBox.Text ?? settings.FabricVersion;
+        if (fabricError == null) settings.FabricVersion = FabricVersionBox.Text!.Trim();
         settings.CurseForgeApiKey = CurseForgeApiKeyBox.Text ?? "";
-        settings.ModrinthApiUrl = ModrinthApiUrlBox.Text ?? settings.ModrinthApiUrl;
-        settings.CurseForgeApiUrl = CurseForgeApiUrlBox.Text ?? settings.CurseForgeApiUrl;
+        if (modrinthError == null) settings.ModrinthApiUrl = ModrinthApiUrlBox.Text!.Trim();
+        if (curseForgeError == null) settings.CurseForgeApiUrl = CurseForgeApiUrlBox.Text!.Trim();
         settings.SelectedMinecraftVersionOverride = MinecraftVersionOverrideBox.Text ?? settings.SelectedMinecraftVersionOverride;
-
-        // Sync with Mod Tab
-        ModrinthApiUrlBox_ModTab.Text = settings.ModrinthApiUrl;
-        CurseForgeApiUrlBox_ModTab.Text = settings.CurseForgeApiUrl;
-        CfApiKeyInputBox.Text = settings.CurseForgeApiKey;
         
         if (JavaSelector.SelectedItem is string javaPath)
             settings.JavaPath = javaPath;
@@ -3861,8 +3867,9 @@ public partial class MainWindow : Window
             _meshControlAdded = false;
         }
 
-        StatusText.Text = "Settings saved!";
-        SettingsSaveStatus.Text = "Changes saved";
+        if (retry) _settingsSaveTimer.Start();
+        SettingsSaveStatus.Text = valid ? "All changes saved" : "Fix the highlighted fields; everything else is saved.";
+        SettingsSaveStatus.Foreground = Brush.Parse(valid ? "#A4BAA7" : "#E27676");
         Log("[Settings] Configuration saved.");
     }
 
@@ -3993,7 +4000,7 @@ public partial class MainWindow : Window
     // The rows the list shows now (filter and search applied): Select all and --preview-mods use exactly these.
     private readonly List<ModRowView> _modRows = new();
 
-    private sealed record ModRowView(ModInventoryEntry Entry, Control Row, Button Toggle, CheckBox? Select, Panel? Children, IReadOnlyList<string> Actions);
+    private sealed record ModRowView(ModInventoryEntry Entry, Control Row, Button Toggle, CheckBox? Select, Panel? Children, IReadOnlyList<string> Actions, Image Icon);
 
     private (string GameDirectory, string MinecraftVersion) ModsTarget()
     {
@@ -4126,6 +4133,7 @@ public partial class MainWindow : Window
             ModsList.Children.Add(BuildModRow(inventory, row.Entry, row.Expanded));
         if (_modRows.Count == 0)
             ModsList.Children.Add(FilesNote("Nothing matches this filter and search. Reset filters to see the whole inventory."));
+        _ = LoadModIconsAsync();
     }
 
     private static bool IsUserJar(ModInventoryEntry e) => e.Ownership == ModOwnership.User && e.FilePath != null;
@@ -4281,7 +4289,7 @@ public partial class MainWindow : Window
         }
 
         var actionLabels = new List<string>();
-        var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+        var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, Margin = new Thickness(12, 8, 0, 0) };
         void Action(Button button) { actions.Children.Add(button); actionLabels.Add(button.Content?.ToString() ?? ""); }
         if (entry.ProjectUrl is { } projectUrl) Action(ModActionButton("Project", "action", projectUrl, () => OpenPath(projectUrl)));
         if (IsUpdatableJar(entry)) Action(ModActionButton("Update", "action", "Look for a newer release on Modrinth", () => _ = UpdateUserModsAsync(new[] { entry })));
@@ -4294,13 +4302,18 @@ public partial class MainWindow : Window
         Action(toggle);
         if (IsUserJar(entry)) Action(ModActionButton("Delete", "danger", "Move this jar to the Recycle Bin", () => _ = DeleteUserModsAsync(new[] { entry })));
 
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        // Two cards per line (ModsList is a two-column WrapPanel): icon and details on top, the expander and actions below.
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
+        grid.Children.Add(ModIconBox(entry, out var icon));
+        Grid.SetColumn(details, 1);
         grid.Children.Add(details);
+        var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        if (expander != null) footer.Children.Add(expander);
         Grid.SetColumn(actions, 1);
-        grid.Children.Add(actions);
+        footer.Children.Add(actions);
         var body = new StackPanel();
         body.Children.Add(grid);
-        if (expander != null) body.Children.Add(expander);
+        body.Children.Add(footer);
         if (children != null) body.Children.Add(children);
         var card = new Border
         {
@@ -4308,7 +4321,7 @@ public partial class MainWindow : Window
             BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(16, 12), Child = body
         };
 
-        var wrapper = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*"), Margin = new Thickness(0, 0, 0, 8) };
+        var wrapper = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*"), Margin = new Thickness(0, 0, 8, 8) };
         CheckBox? select = null;
         if (IsSelectableMod(entry))
         {
@@ -4324,7 +4337,7 @@ public partial class MainWindow : Window
         }
         Grid.SetColumn(card, 1);
         wrapper.Children.Add(card);
-        _modRows.Add(new ModRowView(entry, wrapper, toggle, select, children, actionLabels));
+        _modRows.Add(new ModRowView(entry, wrapper, toggle, select, children, actionLabels, icon));
         return wrapper;
     }
 
@@ -6115,7 +6128,7 @@ public partial class MainWindow : Window
         showItem.Click += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); };
 
         var exitItem = new NativeMenuItem("Exit");
-        exitItem.Click += (s, e) => Environment.Exit(0);
+        exitItem.Click += (s, e) => { FlushSettingsSave(); Environment.Exit(0); };
 
         var menu = new NativeMenu();
         menu.Items.Add(showItem);
@@ -6277,22 +6290,6 @@ public partial class MainWindow : Window
         {
             Log($"[Search Error] TriggerDefaultSearchesAsync failed: {ex.Message}");
         }
-    }
-
-    private void SaveModSettings_Click(object? sender, RoutedEventArgs e)
-    {
-        settings.ModrinthApiUrl = ModrinthApiUrlBox_ModTab.Text ?? settings.ModrinthApiUrl;
-        settings.CurseForgeApiUrl = CurseForgeApiUrlBox_ModTab.Text ?? settings.CurseForgeApiUrl;
-        settings.CurseForgeApiKey = CfApiKeyInputBox.Text ?? settings.CurseForgeApiKey;
-        settings.Save();
-        
-        // Sync UI elements
-        ModrinthApiUrlBox.Text = settings.ModrinthApiUrl;
-        CurseForgeApiUrlBox.Text = settings.CurseForgeApiUrl;
-        CurseForgeApiKeyBox.Text = settings.CurseForgeApiKey;
-        
-        StatusText.Text = "Mod settings saved!";
-        Log("[Settings] Mod configurations saved and synced.");
     }
 
     private async Task<List<ModSearchItem>> SearchModrinthAsync(string query, string mcVersion, bool isResourcePack)

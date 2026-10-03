@@ -1,0 +1,42 @@
+{
+  "modIcons": {
+    "ok": true,
+    "detail": "79 of 82 rows show an icon; cache C:\\Users\\Arash\\Desktop\\The Lads Client Dev\\w160u\\artifacts\\verification\\chrome-launcher\\cache\\mod-icons"
+  },
+  "modIcons-189": {
+    "ok": true,
+    "detail": "78 of 83 rows show an icon: The Lads Core=icon, Essential=icon, OptiFine=placeholder, Resourcify=icon, Lads modules=icon, AppleSkin=icon, Architectury API=icon, Async Logger=icon, Auto Reconnect Reforged=icon, BadOptimizations=placeholder, Balm=icon, Better Render Distance=icon, Better Statistics Screen=icon, BetterF3=icon, Chat Heads=icon, Chat Signing Hider=icon, Cloth Config API=icon, Clumps=icon, Collective=icon, Concurrent Chunk Management Engine (Fabric)=icon, Configured Defaults=icon, Continuity=icon, Cushion Backport=icon, Custom Crosshair Mod=icon, Custom FOV=icon, Drippy Loading Screen=icon, Durability Tooltip=icon, Dynamic FPS=icon, Effectual=icon, Essential Mod=icon, Euphoria Patches=icon, Fabric API=icon, Fabric Language Kotlin=icon, FancyMenu=icon, Faster Iris Shadow Mapper [FISM]=icon, Faster Iris Shadow Mapper [FISM]=icon, FerriteCore=icon, Flashback=icon, FramePacer=icon, Fzzy Config=icon, Iris Shaders=icon, Ixeris=icon, Jasione=icon, Just Enough Items (JEI)=icon, Konkrete=icon, LambDynamicLights - Dynamic Lights=icon, LibJF=icon, Lithium=icon, Melody=icon, MezzConfig=icon, Mod Menu=icon, Modern Advancements Screen=icon, ModernFix-mVUS=icon, Modpack Core Essentials=icon, More Culling=icon, Mouse Tweaks=icon, MRU=icon, Network Protocol Disconnect=icon, No Resource Pack Warnings=icon, NoPackCompatCheck=icon, Not Enough Animations=icon, Optimized Block Entities [OBE]=icon, Paper Doll=icon, Raised=icon, Reese\u0027s Sodium Options=icon, ScalableLux=icon, Screenshot Viewer=icon, Simple Voice Chat=icon, Sodium=icon, Sodium Extra=icon, SuperMartijn642\u0027s Config Lib=icon, Tab Tweaks=icon, TCDCommons API=icon, Text Placeholder API=icon, TLib=icon, ViaFabricPlus=icon, Wavey Capes=icon, Xaero\u0027s Minimap=icon, Xaero\u0027s World Map=icon, YetAnotherConfigLib (YACL)=icon, Forge=placeholder, Java=placeholder, Minecraft=placeholder"
+  },
+  "autoSave": {
+    "ok": true,
+    "detail": "KeepLauncherOpen=true, status \u0027All changes saved\u0027"
+  },
+  "validation": {
+    "ok": true,
+    "detail": "saved ModrinthApiUrl=https://api.modrinth.com/v2, status \u0027Fix the highlighted fields; everything else is saved.\u0027"
+  },
+  "maximize": {
+    "ok": true,
+    "detail": "before 376, 151, 1152, 720, maximized 0, 0, 1920, 1032, working area 0, 0, 1920, 1032, restored 376, 151, 1152, 720"
+  },
+  "maximize16x9": {
+    "ok": true,
+    "detail": "locked 376, 151, 1152, 648, maximized 42, 0, 1835, 1032, restored 376, 151, 1152, 648, label while locked \u0027Aspect Ratio: 16:9\u0027"
+  },
+  "resetSize": {
+    "ok": true,
+    "detail": "maximize button \u0027\u25A1\u0027, size 1152x720"
+  },
+  "controls-modern": {
+    "ok": true,
+    "detail": "fov:0.5 True, key_key.jump:key.keyboard.w True, unknown line kept True, Jump shown as conflict True"
+  },
+  "controls-189": {
+    "ok": true,
+    "detail": "fov:0.5 True, key_key.jump:17 True, unknown line kept True, Jump shown as conflict True"
+  },
+  "controls-running": {
+    "ok": true,
+    "detail": "cards disabled with warning True, options.txt unchanged True, status \u0027Not saved: Minecraft (The Lads Client 26.2) is running. Close it and change the setting again.\u0027"
+  }
+}
