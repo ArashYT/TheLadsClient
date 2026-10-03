@@ -32,10 +32,13 @@ final class Probe145 {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final int WS_CAPTION = 0x00C00000, WS_THICKFRAME = 0x00040000, GWL_STYLE = -16;
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe145::rateStart, Probe145::rate, Probe145::mouse,
-        Probe145::pacedStart, Probe145::pacedCount, Probe145::paced, Probe145::unpaced, Probe145::pacedAgain, Probe145::hotbarStart, Probe145::hotbarGlide, Probe145::hotbarMoving,
+        Probe145::hotbarStart, Probe145::hotbarGlide, Probe145::hotbarMoving,
         Probe145::hotbarSettled, Probe145::swingStart,
         Probe145::swingLegacy, Probe145::swingSwitch, Probe145::swingVanilla, Probe145::borderless, Probe145::windowed, Probe145::resized, Probe145::resizedShot,
         Probe145::restored);
+    /** Frame pacing's cost, a timing check: CoreProbe runs it last, so a busy GPU (another game open) cannot hide the checks after it. */
+    static final List<CoreProbe.Step> PACING = Arrays.<CoreProbe.Step>asList(Probe145::pacedStart, Probe145::pacedCount, Probe145::paced,
+        Probe145::unpaced, Probe145::pacedAgain);
     private static long frames, since;
     private static float pacedFps, unpacedFps;
     private static int limit;
