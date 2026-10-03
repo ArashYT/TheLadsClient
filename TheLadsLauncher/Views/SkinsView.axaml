@@ -1,0 +1,88 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:TheLadsLauncher.Views"
+             x:Class="TheLadsLauncher.Views.SkinsView">
+  <UserControl.Styles>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="#1D1E22" />
+      <Setter Property="BorderBrush" Value="#303137" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="16" />
+    </Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,Auto,*" Margin="28,24">
+    <Grid ColumnDefinitions="Auto,*">
+      <Border x:Name="CurrentPreview" Width="32" Height="64" Margin="0,0,14,0" VerticalAlignment="Center" ToolTip.Tip="The skin this account uses now" />
+      <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+        <TextBlock Text="Skins" FontSize="22" FontWeight="Bold" />
+        <TextBlock x:Name="AccountText" Foreground="#A0A1AA" TextWrapping="Wrap" />
+      </StackPanel>
+    </Grid>
+    <TextBlock x:Name="Status" Grid.Row="1" Foreground="#C9CAD2" TextWrapping="Wrap" Margin="0,12,0,12" />
+    <Grid Grid.Row="2" ColumnDefinitions="270,*">
+      <Border Classes="card">
+        <Grid RowDefinitions="Auto,Auto,Auto,*">
+          <TextBlock Text="LIBRARY" Classes="caption" Margin="0,0,0,8" />
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+            <TextBox x:Name="ImportText" PlaceholderText="Username or https:// link" KeyDown="ImportText_KeyDown" />
+            <Button Grid.Column="1" Classes="action" Content="Import" Margin="6,0,0,0" Click="ImportText_Click" />
+          </Grid>
+          <Button Grid.Row="2" Classes="action" Content="Import PNG file…" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,6,0,10" Click="ImportFile_Click" />
+          <ListBox x:Name="SkinList" Grid.Row="3" Background="Transparent" SelectionChanged="SkinList_SelectionChanged" />
+        </Grid>
+      </Border>
+      <ScrollViewer Grid.Column="1" Margin="16,0,0,0">
+        <StackPanel Spacing="14">
+          <Border Classes="card">
+            <Grid ColumnDefinitions="Auto,*">
+              <Border x:Name="SelectedPreview" Width="80" Height="160" Background="#121315" CornerRadius="4" />
+              <StackPanel Grid.Column="1" Margin="18,0,0,0" Spacing="8">
+                <TextBlock Text="SELECTED SKIN" Classes="caption" />
+                <TextBox x:Name="SkinName" PlaceholderText="Name" LostFocus="SkinName_LostFocus" />
+                <StackPanel Orientation="Horizontal" Spacing="14">
+                  <RadioButton x:Name="ClassicModel" GroupName="SkinModel" Content="Classic (wide arms)" IsChecked="True" IsCheckedChanged="Model_Changed" />
+                  <RadioButton x:Name="SlimModel" GroupName="SkinModel" Content="Slim (thin arms)" IsCheckedChanged="Model_Changed" />
+                </StackPanel>
+                <WrapPanel>
+                  <Button x:Name="ApplySkinBtn" Classes="launch" Content="Apply skin" Foreground="White" FontWeight="Bold" Padding="18,8" Margin="0,0,8,8" Click="ApplySkin_Click" />
+                  <Button x:Name="EditSkinBtn" Classes="action" Content="Open in editor" Padding="12,8" Margin="0,0,8,8" Click="EditSkin_Click" />
+                  <Button x:Name="DeleteSkinBtn" Classes="danger" Content="Delete" Padding="12,8" Margin="0,0,8,8" Click="DeleteSkin_Click" />
+                </WrapPanel>
+                <TextBlock Text="Nothing is uploaded until you click Apply." Classes="caption" TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+          </Border>
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="CAPE" Classes="caption" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="action" Content="Refresh" Click="Refresh_Click" />
+              </Grid>
+              <TextBlock x:Name="CapeHint" Foreground="#A0A1AA" TextWrapping="Wrap" />
+              <ListBox x:Name="CapeList" Background="Transparent">
+                <ListBox.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+              </ListBox>
+              <Button x:Name="ApplyCapeBtn" Classes="action" Content="Apply cape" HorizontalAlignment="Left" Padding="14,8" Click="ApplyCape_Click" />
+            </StackPanel>
+          </Border>
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <TextBlock Text="COMBOS" Classes="caption" />
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBox x:Name="ComboName" PlaceholderText="Combo name" />
+                <Button Grid.Column="1" Classes="action" Content="Save combo" Margin="6,0,0,0" Click="SaveCombo_Click" />
+              </Grid>
+              <TextBlock Text="A combo is the selected skin and model plus the selected cape, applied in one click." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" />
+              <StackPanel x:Name="ComboRows" Spacing="6" />
+            </StackPanel>
+          </Border>
+          <Expander x:Name="EditorExpander" Header="Skin editor and cape maker" HorizontalAlignment="Stretch">
+            <views:SkinEditorView x:Name="Editor" />
+          </Expander>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

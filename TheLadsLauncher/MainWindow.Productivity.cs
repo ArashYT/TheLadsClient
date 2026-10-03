@@ -57,7 +57,7 @@ public partial class MainWindow
         Closed += (_, _) => _noticeTimer.Stop();
     }
 
-    private Control[] ProductivityPages() => new Control[] { HomePage, WorldsPage, ModpacksPage, ProfilesPage, AccountsPage, SettingsPage, ModsPage, FilesPage, GalleryPage, LogsPage };
+    private Control[] ProductivityPages() => new Control[] { HomePage, WorldsPage, ServersPage, ModpacksPage, ProfilesPage, AccountsPage, SkinsPage, SettingsPage, ModsPage, FilesPage, GalleryPage, LogsPage };
 
     private void AnimateNavigation()
     {
@@ -163,13 +163,14 @@ public partial class MainWindow
         try
         {
             var commands = new Dictionary<string, Func<Task>>();
-            foreach (string page in new[] { "Home", "Profiles", "Worlds", "Mods", "Accounts", "Settings", "Files", "Gallery", "Logs" })
+            foreach (string page in new[] { "Home", "Profiles", "Worlds", "Mods", "Accounts", "Skins", "Settings", "Files", "Gallery", "Logs" })
                 commands["Go to " + page] = async () =>
                 {
                     if (page == "Profiles") LoadProfilesUI();
                     if (page == "Worlds") await WorldsPage.LoadAsync();
                     if (page == "Mods") ReloadModsInventory();
                     if (page == "Accounts") LoadAccounts();
+                    if (page == "Skins") ShowSkins();
                     if (page == "Files") LoadFiles(settings.InstancePath);
                     if (page == "Gallery") await LoadGalleryAsync();
                     NavigateTo(page);
