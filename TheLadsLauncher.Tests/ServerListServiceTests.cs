@@ -74,16 +74,16 @@ public class ServerListServiceTests
         var shared = new SharedContentService(Path.Combine(dir.Path, "global"));
         var data = Path.Combine(dir.Path, "launcher");
         Directory.CreateDirectory(Path.Combine(data, "instances", "b-pack"));
-        File.WriteAllText(Path.Combine(data, "instances", "b-pack", "instance.json"), """{"id":"b-pack","name":"Better MC","mcVersion":"1.21.1","loader":"fabric"}""");
+        File.WriteAllText(Path.Combine(data, "instances", "b-pack", "instance.json"), """{"id":"b-pack","name":"Better MC","mcVersion":"26.3","loader":"fabric"}""");
         Directory.CreateDirectory(Path.Combine(data, "instances", "a-broken"));
         File.WriteAllText(Path.Combine(data, "instances", "a-broken", "instance.json"), "{");
         Directory.CreateDirectory(Path.Combine(data, "instances", "not-an-instance"));
 
         var targets = ServerListService.Targets(shared, data);
-        Assert.Equal(new[] { shared.ServersFile, Path.Combine(data, "instances", "a-broken", "minecraft", "servers.dat"),
-            Path.Combine(data, "instances", "b-pack", "minecraft", "servers.dat") }, targets.Select(t => t.File));
+        // the same instances the Modpacks tab lists: a broken instance.json is skipped there and here
+        Assert.Equal(new[] { shared.ServersFile, Path.Combine(data, "instances", "b-pack", "minecraft", "servers.dat") }, targets.Select(t => t.File));
         Assert.Equal(shared.ServersLockFile, targets[0].LockFile);
-        Assert.Equal(new[] { "Modpack: a-broken", "Modpack: Better MC 1.21.1" }, targets.Skip(1).Select(t => t.Label));
+        Assert.Equal(new[] { "Modpack: Better MC 26.3" }, targets.Skip(1).Select(t => t.Label));
     }
 
     [Fact]
