@@ -37,6 +37,7 @@
     "NametagShadowMixin",
     "OwnNametagMixin",
     "NicknameTabMixin",
+    "LegacySwingMixin",
     "OldAnimationsHandMixin",
     "OldAnimationsModelMixin",
     "OldAnimationsAvatarMixin",

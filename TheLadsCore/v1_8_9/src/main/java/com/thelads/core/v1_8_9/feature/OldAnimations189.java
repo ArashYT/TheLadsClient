@@ -35,8 +35,11 @@ public final class OldAnimations189 {
         @Override public void rotate(float degrees, float x, float y, float z) { GlStateManager.rotate(degrees, x, y, z); }
         @Override public void scale(float x, float y, float z) { GlStateManager.scale(x, y, z); }
     };
-    /** 1.7.10 RenderFish: the first-person line leaves the rod here (camera space); 1.8 moved it to (-0.36, 0.03, 0.35) for its rod. */
-    private static final Vec3 ROD_LINE = new Vec3(-0.5, 0.03, 0.8);
+    /**
+     * The first-person line leaves the 1.7 rod's tip here (camera space): 1.7.10 RenderFish's (-0.5, 0.03, 0.8), pulled halfway to
+     * the rod icon's centre as OldAnimations draws the icon at half size. 1.8 moved it to (-0.36, 0.03, 0.35) for its own rod.
+     */
+    private static final Vec3 ROD_LINE = new Vec3(-0.534, -0.131, 0.824);
 
     /** QA only (Probe151): each place a hook changed 1.8.9's result, counted per draw. */
     public enum Hook { FP_HAND, FP_ICON, TP_ITEM, TP_ARM, ARMOUR, HEARTS, SNEAK, DROP, FIRE, LINE, SWING }

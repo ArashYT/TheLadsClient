@@ -166,16 +166,42 @@ class OldAnimationsTest {
             }
     }
 
-    @Test void iconPlacementIs1710RenderItemOnTheCentredMesh() {
+    @Test void iconPlacementIs1710RenderItemAtHalfSizeOnTheCentredMesh() {
         Mat renderItem = new Mat().t(0, -0.3, 0).s(1.5).ry(50).rz(335).t(-0.9375, -0.0625, 0);
-        Mat expected = new Mat().t(0, -0.3, 0).s(1.5).ry(50).rz(335).t(-0.9375, -0.0625, 0).t(0.5, 0.5, -0.03125).ry(180);
+        Mat expected = new Mat().t(0, -0.3, 0).s(1.5).ry(50).rz(335).t(-0.9375, -0.0625, 0).t(0.5, 0.5, -0.03125).ry(180).s(0.5);
         Mat item = of(m -> OldAnimations.item(m, 1, false));
         assertPose(expected.m, item.m, "flat item");
         assertPose(new Mat().ry(180).mul(expected.m).m, of(m -> OldAnimations.item(m, 1, true)).m, "rods turned round");
         // The texture reads unmirrored from +Z on the centred mesh; 1.7.10 put texel (0, 0) at icon corner (1, 1) on its
-        // back face (z -1/16) and texel (1, 1) at (0, 0).
-        assertArrayEquals(renderItem.point(1, 1, -0.0625), item.point(-0.5, 0.5, 0.03125), EPS);
-        assertArrayEquals(renderItem.point(0, 0, -0.0625), item.point(0.5, -0.5, 0.03125), EPS);
+        // back face (z -1/16) and texel (1, 1) at (0, 0). At half size each lands halfway to the icon's centre (0.5, 0.5, -1/32).
+        assertArrayEquals(renderItem.point(0.75, 0.75, -0.046875), item.point(-0.5, 0.5, 0.03125), EPS);
+        assertArrayEquals(renderItem.point(0.25, 0.25, -0.046875), item.point(0.5, -0.5, 0.03125), EPS);
+        assertArrayEquals(renderItem.point(0.5, 0.5, -0.03125), item.point(0, 0, 0), EPS);
+    }
+
+    @Test void legacySwingTakesTheSwingOutsideA17UsePose() {
+        for (Use use : Use.values()) {
+            assertEquals(use == Use.NONE, OldAnimations.legacySwingShown(true, use), use + " with Legacy Swing on");
+            assertFalse(OldAnimations.legacySwingShown(false, use), use + " with Legacy Swing off");
+        }
+    }
+
+    @Test void legacySwingHandIsLegacySwingsMotionWhere17HoldsTheItem() {
+        for (int side : new int[]{1, -1})
+            for (float equip : new float[]{0, 0.5f, 1}) {
+                assertPose(hand(side, equip, 0, Use.NONE, 0, 0, 0).m, of(m -> OldAnimations.legacySwingHand(m, side, equip, 0)).m,
+                    "at rest Legacy Swing leaves the item where 1.7 holds it, side " + side + " equip " + equip);
+                for (float swing : new float[]{0.1f, 0.5f, 0.9f}) {
+                    double t = Math.pow(swing, 4), arc = Math.sin(Math.sqrt(t) * Math.PI);
+                    // 1.8.9's LegacySwing189 as it was before the motion moved here, mirrored for the left hand.
+                    Mat expected = new Mat().t(side * 0.56, -0.52 - 0.6 * equip, -0.72)
+                        .t(side * -arc * 0.55, Math.sin(Math.sqrt(t) * Math.PI * 2) * 0.25, -Math.sin(t * Math.PI) * 0.2)
+                        .ry(side * (45 - arc * 20)).rz(side * arc * -20).rx(arc * -80).s(0.4);
+                    Mat legacy = of(m -> OldAnimations.legacySwingHand(m, side, equip, swing));
+                    assertPose(expected.m, legacy.m, "side " + side + " equip " + equip + " swing " + swing);
+                    assertTrue(distance(hand(side, equip, swing, Use.NONE, 0, 0, 0).m, legacy.m) > 0.01, "not 1.7's swing, swing " + swing);
+                }
+            }
     }
 
     @Test void modernHandPlusBridgeIsThe1710Hand() {
@@ -194,7 +220,7 @@ class OldAnimationsTest {
     }
 
     @Test void thirdPersonIs1710RenderPlayer() {
-        Mat icon = new Mat().t(0, -0.3, 0).s(1.5).ry(50).rz(335).t(-0.9375, -0.0625, 0).t(0.5, 0.5, -0.03125).ry(180);
+        Mat icon = new Mat().t(0, -0.3, 0).s(1.5).ry(50).rz(335).t(-0.9375, -0.0625, 0).t(0.5, 0.5, -0.03125).ry(180).s(0.5);
         Mat toHand = new Mat().t(-0.0625, 0.4375, 0.0625);
         assertPose(toHand.m, of(m -> OldAnimations.thirdPersonHand(m, 1)).m, "hand");
         Mat tool = new Mat().t(0, 0.1875, 0).s(0.625, -0.625, 0.625).rx(-100).ry(45).mul(icon.m).s(1, 1, -1);
@@ -215,7 +241,7 @@ class OldAnimationsTest {
 
     @Test void thirdPersonFlipDrawsThe1710SurfaceWithAProperTransform() {
         Mat flipped = new Mat().t(0, 0.1875, 0).s(0.625, -0.625, 0.625).rx(-100).ry(45)
-            .t(0, -0.3, 0).s(1.5).ry(50).rz(335).t(-0.9375, -0.0625, 0).t(0.5, 0.5, -0.03125).ry(180);
+            .t(0, -0.3, 0).s(1.5).ry(50).rz(335).t(-0.9375, -0.0625, 0).t(0.5, 0.5, -0.03125).ry(180).s(0.5);
         Mat ours = thirdPerson(Held.TOOL, false);
         assertTrue(flipped.det() < 0, "1.7.10's tool transform is a mirror");
         assertTrue(ours.det() > 0);

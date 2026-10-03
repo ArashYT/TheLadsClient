@@ -27,15 +27,17 @@ import org.slf4j.LoggerFactory;
  */
 final class OldAnimationsCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private static final String[] SHOTS = {"idle-sword", "block", "block-swing", "block-third-person", "bow-drawn", "fishing-rod", "eating", "dropped-2d", "red-armour"};
+    // "-vanilla" and "legacy-place-off": 1.7 Animations off, for comparison. "legacy-*": Legacy Swing on, captured mid-swing.
+    private static final String[] SHOTS = {"idle-sword", "idle-sword-vanilla", "idle-item", "held-block", "block", "block-swing", "block-third-person",
+        "bow-drawn", "fishing-rod", "eating", "dropped-2d", "red-armour", "legacy-place", "legacy-place-off", "legacy-torch"};
     private static final EquipmentSlot[] SLOTS = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
     private static final Item[] ARMOUR = {Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.IRON_LEGGINGS, Items.IRON_BOOTS};
     private static final int FIRST_ID = Integer.MAX_VALUE - 96;
     private static final ItemStack[] HELD = new ItemStack[SLOTS.length];
     private static final boolean[] OPTIONS = new boolean[Feature.values().length];
     private static int step = -1, saved;
-    private static long due, modifiedBefore;
-    private static boolean capturing, enabledBefore;
+    private static long due, modifiedBefore, legacyModified;
+    private static boolean capturing, enabledBefore, legacyBefore;
     private static CameraType cameraBefore;
     private OldAnimationsCapture() {}
 
@@ -57,6 +59,8 @@ final class OldAnimationsCapture {
         OldAnimationsModule module = NativeOldAnimations.module();
         enabledBefore = module.isEnabled();
         modifiedBefore = module.getLastModified();
+        legacyBefore = NativeQualityOfLife.enabled("LegacySwing");
+        legacyModified = NativeQualityOfLife.module("LegacySwing").getLastModified();
         for (Feature feature : Feature.values()) {
             OPTIONS[feature.ordinal()] = module.option(feature).get();
             module.option(feature).set(true);
@@ -105,6 +109,8 @@ final class OldAnimationsCapture {
         for (Feature feature : Feature.values()) module.option(feature).set(OPTIONS[feature.ordinal()]);
         module.setEnabled(enabledBefore);
         module.setLastModified(modifiedBefore);
+        NativeQualityOfLife.module("LegacySwing").setEnabled(legacyBefore);
+        NativeQualityOfLife.module("LegacySwing").setLastModified(legacyModified);
         LOGGER.info("Lads 1.7 animations capture END: {} passed, {} failed", saved, SHOTS.length - saved);
     }
 
@@ -113,10 +119,14 @@ final class OldAnimationsCapture {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         String shot = SHOTS[step];
+        NativeOldAnimations.module().setEnabled(!shot.endsWith("-vanilla") && !shot.equals("legacy-place-off"));
+        NativeQualityOfLife.module("LegacySwing").setEnabled(shot.startsWith("legacy"));
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(switch (shot) {
             case "bow-drawn" -> Items.BOW;
             case "fishing-rod" -> Items.FISHING_ROD;
-            case "eating" -> Items.APPLE;
+            case "eating", "idle-item" -> Items.APPLE;
+            case "held-block", "legacy-place", "legacy-place-off" -> Items.STONE;
+            case "legacy-torch" -> Items.TORCH;
             case "dropped-2d" -> Items.AIR;
             default -> Items.DIAMOND_SWORD;
         }));
@@ -141,7 +151,7 @@ final class OldAnimationsCapture {
         if (player == null) return;
         // Only the blockhit shot swings: every other scene holds the arm still, whatever swung last.
         String shot = SHOTS[step];
-        player.swinging = shot.equals("block-swing"); // mid-swing (3 of 6) once the player's tick advances it
+        player.swinging = shot.equals("block-swing") || shot.startsWith("legacy"); // mid-swing (3 of 6) once the player's tick advances it
         player.swingTime = player.swinging ? 2 : 0;
         player.swingingArm = InteractionHand.MAIN_HAND;
         if (!player.swinging) player.attackAnim = player.oAttackAnim = 0;
