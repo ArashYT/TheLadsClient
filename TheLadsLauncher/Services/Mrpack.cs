@@ -95,8 +95,9 @@ public static class Mrpack
 
     /// <summary>
     /// Installs or updates the pack into &lt;instance&gt;/minecraft. A file the previous version installed and the user has
-    /// since changed is never overwritten or removed; files the pack never installed (saves, options, own mods) are not touched.
-    /// A mod the user switched off (".jar.disabled") stays off. The record of installed files is written last.
+    /// since changed is never overwritten or removed; files the pack never installed (saves, options, own mods) are not touched,
+    /// even when the new version brings a file of the same name. A mod the user switched off (".jar.disabled") stays off.
+    /// The record of installed files is written last; a run that fails also records the files it wrote.
     /// </summary>
     public static async Task<MrpackIndex> InstallAsync(string mrpackFile, string instanceDirectory, HttpClient http,
         Action<string>? status, CancellationToken token)
@@ -104,7 +105,8 @@ public static class Mrpack
         var game = Path.Combine(instanceDirectory, "minecraft");
         Directory.CreateDirectory(game);
         var recordPath = Path.Combine(instanceDirectory, RecordFile);
-        var previous = File.Exists(recordPath)
+        bool updating = File.Exists(recordPath);
+        var previous = updating
             ? JsonSerializer.Deserialize<Dictionary<string, string>>(await File.ReadAllTextAsync(recordPath, token)) ?? new()
             : new Dictionary<string, string>();
         var installed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -125,40 +127,59 @@ public static class Mrpack
             .Select(e => (e.Entry, Relative: e.Name[(e.Name.IndexOf('/') + 1)..])).ToList();
         foreach (var o in overrides) SafePath(game, o.Relative);
 
-        int done = 0;
-        await Parallel.ForEachAsync(files, new ParallelOptions { MaxDegreeOfParallelism = 6, CancellationToken = token }, async (item, ct) =>
+        // A kept file keeps its recorded hash, so it still counts as the user's at the next update; one the pack never installed stays unrecorded.
+        void Record(string key, string target, bool kept)
         {
-            var key = Key(item.File.Path);
-            var target = OnDisk(item.Target);
-            bool kept = false;
-            if (!(File.Exists(target) && HashMatches(target, item.File.Sha1, item.File.Sha512)) && !(kept = UserChanged(target, key, previous)))
-                await DownloadAsync(http, item.File, target, ct);
-            lock (installed) installed[key] = kept ? previous[key] : Sha1Of(target);
-            status?.Invoke($"Downloading files {Interlocked.Increment(ref done)}/{files.Count}...");
-        });
-
-        status?.Invoke("Copying pack settings...");
-        foreach (var (entry, relative) in overrides)
-        {
-            token.ThrowIfCancellationRequested();
-            var key = Key(relative);
-            var target = OnDisk(SafePath(game, relative));
-            bool kept = UserChanged(target, key, previous);
-            if (!kept)
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                entry.ExtractToFile(target, overwrite: true);
-            }
-            // A kept file keeps its recorded hash, so it still counts as the user's at the next update.
-            installed[key] = kept ? previous[key] : Sha1Of(target);
+            string? sha1 = !kept ? Sha1Of(target) : previous.TryGetValue(key, out var old) ? old : null;
+            if (sha1 != null) lock (installed) installed[key] = sha1;
         }
 
-        // Files of the previous version that this one no longer has, unless the user changed them.
-        foreach (var (key, sha1) in previous)
+        try
         {
-            if (installed.ContainsKey(key)) continue;
-            var target = OnDisk(SafePath(game, key));
-            if (File.Exists(target) && Sha1Of(target) == sha1) File.Delete(target);
+            int done = 0;
+            await Parallel.ForEachAsync(files, new ParallelOptions { MaxDegreeOfParallelism = 6, CancellationToken = token }, async (item, ct) =>
+            {
+                var key = Key(item.File.Path);
+                var target = OnDisk(item.Target);
+                bool kept = false;
+                if (!(File.Exists(target) && HashMatches(target, item.File.Sha1, item.File.Sha512)) && !(kept = UserChanged(target, key, previous, updating)))
+                    await DownloadAsync(http, item.File, target, ct);
+                Record(key, target, kept);
+                status?.Invoke($"Downloading files {Interlocked.Increment(ref done)}/{files.Count}...");
+            });
+
+            status?.Invoke("Copying pack settings...");
+            foreach (var (entry, relative) in overrides)
+            {
+                token.ThrowIfCancellationRequested();
+                var key = Key(relative);
+                var target = OnDisk(SafePath(game, relative));
+                // A file this run already wrote (overrides/ before client-overrides/) is the pack's, not the user's.
+                bool kept = UserChanged(target, key, previous, updating && !installed.ContainsKey(key));
+                if (!kept)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    entry.ExtractToFile(target, overwrite: true);
+                }
+                Record(key, target, kept);
+            }
+
+            // Files of the previous version that this one no longer has, unless the user changed them.
+            foreach (var (key, sha1) in previous)
+            {
+                if (installed.ContainsKey(key)) continue;
+                var target = OnDisk(SafePath(game, key));
+                if (File.Exists(target) && Sha1Of(target) == sha1) File.Delete(target);
+            }
+        }
+        catch
+        {
+            // The disk now holds old and new files: record both, so the next update replaces or removes them instead of taking them for the user's.
+            var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (key, sha1) in previous.Concat(installed)) merged[key] = sha1;
+            try { File.WriteAllText(recordPath, JsonSerializer.Serialize(merged)); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } // the original failure is the one to report
+            throw;
         }
 
         await File.WriteAllTextAsync(recordPath, JsonSerializer.Serialize(installed), token);
@@ -170,8 +191,10 @@ public static class Mrpack
     // A mod the user switched off is kept (and updated) under its ".disabled" name.
     private static string OnDisk(string target) => !File.Exists(target) && File.Exists(target + ".disabled") ? target + ".disabled" : target;
 
-    private static bool UserChanged(string target, string key, Dictionary<string, string> previous) =>
-        File.Exists(target) && previous.TryGetValue(key, out var sha1) && Sha1Of(target) != sha1;
+    // The user's file: changed since the previous version installed it, or (unlisted) there although that version never installed it,
+    // like the options.txt Minecraft wrote or a config a mod made on first launch.
+    private static bool UserChanged(string target, string key, Dictionary<string, string> previous, bool unlisted) =>
+        File.Exists(target) && (previous.TryGetValue(key, out var sha1) ? Sha1Of(target) != sha1 : unlisted);
 
     private static async Task DownloadAsync(HttpClient http, MrpackFile file, string target, CancellationToken token)
     {

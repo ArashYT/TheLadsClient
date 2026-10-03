@@ -201,6 +201,55 @@ public sealed class ContentCatalogTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdateForOneVersionKeepsAPackAnotherVersionPlaysFromTheSharedFolder()
+    {
+        byte[] oldBytes = "faithful for 26.2 and 26.3"u8.ToArray(), newBytes = "faithful for 1.8.9"u8.ToArray();
+        var (target, pack, modern, legacy) = PackSetup(oldBytes);
+        target = target with { MinecraftVersion = "1.8.9", FolderVersions = new[] { "1.8.9", "26.2", "26.3" } };
+        var before = (File.ReadAllText(modern), File.ReadAllText(legacy));
+        string Release(string versions) => Fixture("modrinth-version-files-update.json").Replace("\"game_versions\":[\"1.21\",\"1.21.1\"]", $"\"game_versions\":[{versions}]")
+            .Replace("ad2020339564f4d5e441a68f757f5293a3160fbd", Sha1(oldBytes)).Replace("cf90d965473549d3d642b835071c6472d60bcf7b", Sha1(newBytes));
+        _routes["https://api.modrinth.com/v2/version_files/update"] = _ => Json(Release("\"1.8.9\""));
+        _routes["https://api.modrinth.com/v2/version_files"] = _ => Json(Release("\"26.2\",\"26.3\""));
+        _routes[NewUrl] = _ => Bytes(newBytes);
+
+        var (updated, failed, lines) = await PackContentService.UpdateResourcePacksAsync(Catalog(), target, new SharedContentService(_root), File.Delete);
+
+        Assert.Equal((0, 0), (updated, failed));
+        Assert.Equal($"{OldName}: kept. It is made for Minecraft 26.2, which also plays from this folder, and the 1.8.9 release (1.21.1-june-2026) does not support 26.2.",
+            Assert.Single(lines));
+        Assert.Equal(new[] { OldName }, Directory.GetFileSystemEntries(target.ResourcePacks).Select(Path.GetFileName));
+        Assert.Equal(oldBytes, File.ReadAllBytes(pack));
+        Assert.Equal(before, (File.ReadAllText(modern), File.ReadAllText(legacy)));
+
+        // A newer release that still supports every version the pack served is an update.
+        _routes["https://api.modrinth.com/v2/version_files/update"] = _ => Json(Release("\"26.2\",\"26.3\""));
+        (updated, failed, _) = await PackContentService.UpdateResourcePacksAsync(Catalog(), target with { MinecraftVersion = "26.3" }, new SharedContentService(_root), File.Delete);
+        Assert.Equal((1, 0), (updated, failed));
+        Assert.Equal(new[] { NewName }, Directory.GetFileSystemEntries(target.ResourcePacks).Select(Path.GetFileName));
+    }
+
+    [Fact]
+    public async Task UpdateWhoseOldPackCannotBeRecycledFailsAndLeavesTheFolderAsItWas()
+    {
+        byte[] oldBytes = "old pack"u8.ToArray(), newBytes = "new pack"u8.ToArray();
+        var (target, pack, modern, _) = PackSetup(oldBytes);
+        var before = File.ReadAllText(modern);
+        RouteModrinthUpdate(Sha1(oldBytes), Sha1(newBytes));
+        _routes[NewUrl] = _ => Bytes(newBytes);
+
+        // The user said No to deleting a pack the Recycle Bin cannot take.
+        var (updated, failed, lines) = await PackContentService.UpdateResourcePacksAsync(Catalog(), target, new SharedContentService(_root),
+            _ => throw new OperationCanceledException("not deleted"));
+
+        Assert.Equal((0, 1), (updated, failed));
+        Assert.Equal($"{OldName}: not deleted", Assert.Single(lines));
+        Assert.Equal(new[] { OldName }, Directory.GetFileSystemEntries(target.ResourcePacks).Select(Path.GetFileName));
+        Assert.Equal(oldBytes, File.ReadAllBytes(pack));
+        Assert.Equal(before, File.ReadAllText(modern));
+    }
+
+    [Fact]
     public async Task UpToDateAndUnknownPacksAreLeftAlone()
     {
         if (ContentCatalog.BuiltInCurseForgeKey.Length > 0) return; // with a built-in key the unknown pack is also looked up on CurseForge

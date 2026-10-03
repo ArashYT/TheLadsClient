@@ -44,7 +44,7 @@ public static class ModpackLauncher
         var instance = Modpacks.NewInstance(dataDirectory, string.IsNullOrWhiteSpace(name) ? index.Name : name);
         try
         {
-            await Mrpack.InstallAsync(mrpackFile, instance.Directory, http, status, token);
+            await Task.Run(() => Mrpack.InstallAsync(mrpackFile, instance.Directory, http, status, token), token); // off the UI thread: it hashes and copies every file
             Apply(instance, index, source);
             instance.Author = author;
             if (iconUrl != null && Uri.TryCreate(iconUrl, UriKind.Absolute, out var icon) && icon.Scheme == Uri.UriSchemeHttps)
@@ -70,7 +70,7 @@ public static class ModpackLauncher
     public static async Task UpdateAsync(ModpackInstance instance, string mrpackFile, ModpackSource source, HttpClient http,
         Action<string>? status, CancellationToken token)
     {
-        var index = await Mrpack.InstallAsync(mrpackFile, instance.Directory, http, status, token);
+        var index = await Task.Run(() => Mrpack.InstallAsync(mrpackFile, instance.Directory, http, status, token), token);
         Apply(instance, index, source);
         Modpacks.Save(instance);
     }

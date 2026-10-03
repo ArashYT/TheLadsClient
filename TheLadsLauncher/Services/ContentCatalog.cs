@@ -17,7 +17,11 @@ namespace TheLadsLauncher.Services;
 public enum ContentKind { Mod, ResourcePack, Shader, DataPack }
 
 /// <summary>One downloadable file. <see cref="Sha1"/> is null only when the source gives no hash.</summary>
-public sealed record ContentFile(string ProjectId, string FileId, string VersionName, string FileName, string Url, string? Sha1, long Size);
+public sealed record ContentFile(string ProjectId, string FileId, string VersionName, string FileName, string Url, string? Sha1, long Size)
+{
+    /// <summary>The Minecraft versions the release supports, as the source lists them.</summary>
+    public IReadOnlyList<string> GameVersions { get; init; } = Array.Empty<string>();
+}
 
 /// <summary>A search or lookup failed; the message is meant for the user.</summary>
 public sealed class ContentSourceException(string message, Exception? inner = null) : Exception(message, inner);
@@ -165,16 +169,24 @@ public sealed class ContentCatalog
         CancellationToken cancellationToken = default)
     {
         if (sha1s.Count == 0) return new Dictionary<string, ContentFile>();
-        var body = JsonSerializer.Serialize(new { hashes = sha1s, algorithm = "sha1", loaders = new[] { loader }, game_versions = new[] { minecraftVersion } });
-        return await SendAsync("Modrinth", new HttpRequestMessage(HttpMethod.Post, $"{_modrinth}/version_files/update")
-        { Content = new StringContent(body, Encoding.UTF8, "application/json") }, root =>
+        return await ModrinthByHashAsync("version_files/update",
+            new { hashes = sha1s, algorithm = "sha1", loaders = new[] { loader }, game_versions = new[] { minecraftVersion } }, cancellationToken);
+    }
+
+    /// <summary>Modrinth's release of each installed file, per SHA-1. Files Modrinth does not know are missing from the result.</summary>
+    public async Task<Dictionary<string, ContentFile>> ModrinthFilesAsync(IReadOnlyCollection<string> sha1s, CancellationToken cancellationToken = default) =>
+        sha1s.Count == 0 ? new Dictionary<string, ContentFile>()
+            : await ModrinthByHashAsync("version_files", new { hashes = sha1s, algorithm = "sha1" }, cancellationToken);
+
+    private Task<Dictionary<string, ContentFile>> ModrinthByHashAsync(string path, object body, CancellationToken cancellationToken) =>
+        SendAsync("Modrinth", new HttpRequestMessage(HttpMethod.Post, $"{_modrinth}/{path}")
+        { Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json") }, root =>
         {
             var result = new Dictionary<string, ContentFile>(StringComparer.OrdinalIgnoreCase);
             foreach (var entry in root.EnumerateObject())
                 if (ModrinthFile(entry.Value) is { } file) result[entry.Name] = file;
             return result;
         }, cancellationToken);
-    }
 
     /// <summary>CurseForge's file of each fingerprint it knows exactly (file id and project id), keyed by fingerprint.</summary>
     public async Task<Dictionary<uint, ContentFile>> CurseForgeMatchesAsync(IReadOnlyCollection<uint> fingerprints, CancellationToken cancellationToken = default)
@@ -241,7 +253,7 @@ public sealed class ContentCatalog
         if (file.ValueKind == JsonValueKind.Undefined) file = files[0];
         return new ContentFile(Text(version, "project_id"), Text(version, "id"), Text(version, "version_number"), Text(file, "filename"), Text(file, "url"),
             file.TryGetProperty("hashes", out var hashes) && hashes.ValueKind == JsonValueKind.Object ? Text(hashes, "sha1") is { Length: > 0 } s ? s : null : null,
-            file.TryGetProperty("size", out var size) && size.ValueKind == JsonValueKind.Number ? size.GetInt64() : 0);
+            file.TryGetProperty("size", out var size) && size.ValueKind == JsonValueKind.Number ? size.GetInt64() : 0) { GameVersions = Strings(version, "game_versions") };
     }
 
     // A null downloadUrl means the author does not allow downloads outside CurseForge's own app; that is respected.
@@ -251,7 +263,8 @@ public sealed class ContentCatalog
             ? hashes.EnumerateArray().Where(h => h.TryGetProperty("algo", out var a) && a.ValueKind == JsonValueKind.Number && a.GetInt32() == 1)
                 .Select(h => Text(h, "value")).FirstOrDefault() ?? "" : "";
         return new ContentFile(Number(file, "modId"), Number(file, "id"), Text(file, "displayName"), Text(file, "fileName"), Text(file, "downloadUrl"),
-            sha1.Length > 0 ? sha1 : null, file.TryGetProperty("fileLength", out var length) && length.ValueKind == JsonValueKind.Number ? length.GetInt64() : 0);
+            sha1.Length > 0 ? sha1 : null, file.TryGetProperty("fileLength", out var length) && length.ValueKind == JsonValueKind.Number ? length.GetInt64() : 0)
+        { GameVersions = Strings(file, "gameVersions") };
     }
 
     /// <summary>
