@@ -1,0 +1,123 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.ModpacksView">
+  <UserControl.Styles>
+    <Style Selector="Button.card">
+      <Setter Property="Background" Value="#1B1C20" />
+      <Setter Property="BorderBrush" Value="#2A2B31" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,16,16" />
+      <Setter Property="VerticalContentAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Button.card:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#24252B" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
+    </Style>
+  </UserControl.Styles>
+  <Grid>
+    <!-- My Modpacks and Browse -->
+    <Grid x:Name="LibraryPanel" RowDefinitions="Auto,Auto,Auto,*" Margin="28,24,28,12">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Modpacks" FontSize="22" FontWeight="Bold" />
+        <TextBlock Text="Modrinth modpacks as separate instances: their own mods, worlds and settings. They never use the Lads profiles' mods or Lads Core." Foreground="#A0A1AA" TextWrapping="Wrap" />
+      </StackPanel>
+      <TabControl x:Name="Tabs" Grid.Row="1" Margin="0,10,0,0" SelectionChanged="Tabs_Changed">
+        <TabItem x:Name="MineTab" Header="My Modpacks" />
+        <TabItem x:Name="BrowseTab" Header="Browse" />
+      </TabControl>
+      <Grid Grid.Row="2" Margin="0,4,0,14">
+        <Grid x:Name="MineToolbar" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto">
+          <Button Classes="launch" Content="+ Create" Height="34" Padding="16,0" Click="Create_Click" />
+          <Button Grid.Column="1" Classes="action" Content="Import .mrpack" Height="34" Margin="8,0,0,0" Click="Import_Click" />
+          <TextBox x:Name="MineSearch" Grid.Column="3" Width="210" PlaceholderText="Search my modpacks…" TextChanged="MineFilter_Changed" />
+          <ComboBox x:Name="MineSort" Grid.Column="4" Width="160" Margin="8,0,0,0" SelectionChanged="MineFilter_Changed" />
+          <ComboBox x:Name="MineLoader" Grid.Column="5" Width="140" Margin="8,0,0,0" SelectionChanged="MineFilter_Changed" />
+        </Grid>
+        <Grid x:Name="BrowseToolbar" ColumnDefinitions="*,Auto,Auto,Auto,Auto" IsVisible="False">
+          <TextBox x:Name="BrowseSearch" PlaceholderText="Search Modrinth modpacks…" KeyDown="BrowseSearch_KeyDown" />
+          <ComboBox x:Name="BrowseVersion" Grid.Column="1" Width="130" Margin="8,0,0,0" SelectionChanged="BrowseFilter_Changed" />
+          <ComboBox x:Name="BrowseLoader" Grid.Column="2" Width="130" Margin="8,0,0,0" SelectionChanged="BrowseFilter_Changed" />
+          <ComboBox x:Name="BrowseSort" Grid.Column="3" Width="150" Margin="8,0,0,0" SelectionChanged="BrowseFilter_Changed" />
+          <Button Grid.Column="4" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="BrowseSearch_Click" />
+        </Grid>
+      </Grid>
+      <Grid Grid.Row="3" RowDefinitions="Auto,*">
+        <TextBlock x:Name="Status" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,0,0,10" />
+        <ScrollViewer x:Name="MineScroll" Grid.Row="1"><WrapPanel x:Name="Cards" /></ScrollViewer>
+        <ScrollViewer x:Name="BrowseScroll" Grid.Row="1" IsVisible="False">
+          <StackPanel>
+            <StackPanel x:Name="Results" Spacing="8" />
+            <Button x:Name="MoreButton" Classes="action" Content="Load more" HorizontalAlignment="Center" Margin="0,10" IsVisible="False" Click="More_Click" />
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+    </Grid>
+
+    <!-- One instance -->
+    <Grid x:Name="ManagePanel" IsVisible="False" RowDefinitions="Auto,Auto,Auto,*" Margin="28,24,28,12">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+        <Button Classes="action" Content="&#8592; Modpacks" Height="34" VerticalAlignment="Top" Click="Back_Click" />
+        <Border x:Name="ManageArt" Grid.Column="1" Width="96" Height="96" CornerRadius="8" ClipToBounds="True" Margin="18,0,18,0" />
+        <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+          <TextBlock x:Name="ManageTitle" FontSize="24" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+          <TextBlock x:Name="ManageInfo" Foreground="#A0A1AA" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+            <Button x:Name="PlayButton" Classes="launch" Content="Play" Width="120" Height="38" HorizontalContentAlignment="Center" Click="Play_Click" />
+            <Button Classes="action" Content="Open folder" Height="38" Click="OpenFolder_Click" />
+            <Button x:Name="DeleteButton" Classes="danger" Content="Delete" Height="38" Click="Delete_Click" />
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+      <TextBlock x:Name="ManageStatus" Grid.Row="1" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,14,0,0" />
+      <WrapPanel Grid.Row="2" Margin="0,14,0,14">
+        <Border Background="#1B1C20" CornerRadius="8" Padding="14" Margin="0,0,12,12">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="caption" Text="INSTANCE" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBox x:Name="NameBox" Width="220" PlaceholderText="Name" />
+              <Button Classes="action" Content="Change icon" Click="Icon_Click" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <NumericUpDown x:Name="RamBox" Width="150" Minimum="0" Maximum="65536" Increment="512" FormatString="0" />
+              <TextBlock Text="MB memory (0 = launcher setting)" Foreground="#A0A1AA" VerticalAlignment="Center" />
+            </StackPanel>
+            <Button Classes="action" Content="Save" Click="Save_Click" />
+          </StackPanel>
+        </Border>
+        <Border x:Name="UpdateCard" Background="#1B1C20" CornerRadius="8" Padding="14" Margin="0,0,12,12">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="caption" Text="PACK VERSION" />
+            <ComboBox x:Name="VersionBox" Width="300" />
+            <TextBlock Text="Updating keeps your worlds, settings you changed and mods you added." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" MaxWidth="300" HorizontalAlignment="Left" />
+            <Button x:Name="UpdateButton" Classes="action" Content="Install this version" Click="Update_Click" />
+          </StackPanel>
+        </Border>
+      </WrapPanel>
+      <Grid Grid.Row="3" RowDefinitions="Auto,*">
+        <TextBlock x:Name="ModsHeader" Classes="caption" Text="MODS" Margin="0,0,0,8" />
+        <ScrollViewer Grid.Row="1"><StackPanel x:Name="ModsList" Spacing="2" /></ScrollViewer>
+      </Grid>
+    </Grid>
+
+    <!-- + Create -->
+    <Border x:Name="CreatePanel" IsVisible="False" Background="#CC000000">
+      <Border Background="#17181B" BorderBrush="#303137" BorderThickness="1" CornerRadius="10" Padding="22" Width="380" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Create a modpack" FontSize="18" FontWeight="Bold" />
+          <TextBlock Classes="caption" Text="NAME" />
+          <TextBox x:Name="CreateName" PlaceholderText="My modpack" />
+          <TextBlock Classes="caption" Text="MINECRAFT VERSION" />
+          <TextBox x:Name="CreateVersion" Text="26.3" />
+          <TextBlock Classes="caption" Text="LOADER" />
+          <ComboBox x:Name="CreateLoader" HorizontalAlignment="Stretch" />
+          <TextBlock Text="The newest loader version for that Minecraft version is used. Add mods to its mods folder (Open folder)." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock x:Name="CreateStatus" Foreground="#FFC07D" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Content="Cancel" Click="CreateCancel_Click" />
+            <Button x:Name="CreateConfirm" Classes="launch" Content="Create" Padding="18,8" Click="CreateConfirm_Click" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid>
+</UserControl>

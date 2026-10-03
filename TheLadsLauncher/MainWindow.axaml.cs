@@ -289,6 +289,8 @@ public partial class MainWindow : Window
             if (chromePreview >= 0) { await RunChromePreviewAsync(Path.GetFullPath(args[chromePreview + 1])); return; }
             int contentPreview = Array.IndexOf(args, "--preview-content");
             if (contentPreview >= 0) { await RunContentPreviewAsync(Path.GetFullPath(args[contentPreview + 1])); return; }
+            int modpacksPreview = Array.IndexOf(args, "--preview-modpacks");
+            if (modpacksPreview >= 0) { await RunModpacksPreviewAsync(Path.GetFullPath(args[modpacksPreview + 1])); return; }
             if (_previewWorldsOutput != null)
             {
                 Directory.CreateDirectory(_previewWorldsOutput);
@@ -576,6 +578,8 @@ public partial class MainWindow : Window
         NavWorlds.Classes.Set("active", page == "Worlds");
         ServersPage.IsVisible = page == "Servers";
         NavServers.Classes.Set("active", page == "Servers");
+        ModpacksPage.IsVisible = page == "Modpacks";
+        NavModpacks.Classes.Set("active", page == "Modpacks");
         ProfilesPage.IsVisible = page == "Profiles";
         AccountsPage.IsVisible = page == "Accounts";
         SettingsPage.IsVisible = page == "Settings";
