@@ -34,7 +34,10 @@
                 </Border>
                 <Border x:Name="ContentTitleBar" Grid.Column="1" Background="#17181B" BorderBrush="#303137" BorderThickness="0,0,0,1">
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="THE LADS CLIENT  /  LAUNCHER" Classes="caption" Margin="28,0" VerticalAlignment="Center" FontSize="9" />
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="28,0" VerticalAlignment="Center">
+                            <TextBlock Text="THE LADS CLIENT  /  LAUNCHER" Classes="caption" VerticalAlignment="Center" FontSize="9" />
+                            <Path x:Name="SeasonalBadge" IsVisible="False" ToolTip.Tip="Happy Halloween" Data="M 9,5 C 3,5 1,8.5 1,11.5 C 1,15 4,17 9,17 C 14,17 17,15 17,11.5 C 17,8.5 15,5 9,5 Z M 9,5 C 6.5,8 6.5,14 9,17 C 11.5,14 11.5,8 9,5 M 9,5 C 9,3 9.5,2 11,1" Width="15" Height="15" Stretch="Uniform" Stroke="#F28A2E" StrokeThickness="1.4" StrokeLineCap="Round" VerticalAlignment="Center" />
+                        </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                             <!-- Shown when a verified update is ready while the launcher is open: glow behind, glossy pill, shine sweep on top. -->
                             <Grid x:Name="UpdateNowHost" IsVisible="False" VerticalAlignment="Center" Margin="0,0,12,0">
@@ -58,8 +61,8 @@
                                     </Border>
                                 </Border>
                             </Grid>
-                            <Button x:Name="AspectLockBtn" Classes="window" Content="Free" ToolTip.Tip="Toggle 16:9 aspect lock" Click="AspectLockBtn_Click" />
-                            <Button x:Name="ResetSizeBtn" Classes="window" Content="&#8634;" ToolTip.Tip="Reset window size" Click="ResetSizeBtn_Click" />
+                            <Button x:Name="AspectLockBtn" Classes="window" Content="Aspect Ratio: Free" ToolTip.Tip="Toggle 16:9 aspect lock" Click="AspectLockBtn_Click" />
+                            <Button x:Name="ResetSizeBtn" Classes="window" Content="Reset Size" ToolTip.Tip="Reset window size" Click="ResetSizeBtn_Click" />
                             <Button x:Name="CheckUpdateBtn" Classes="window" ToolTip.Tip="Check for launcher updates" Click="CheckUpdateBtn_Click" Padding="7,0">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
                                     <Path Data="M 12,4 V 1 M 12,4 A 8,8 0 1 1 5,7 L 3,5" Width="11" Height="11" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.4" StrokeLineCap="Round" VerticalAlignment="Center" />
@@ -68,11 +71,11 @@
                             </Button>
                             <Button x:Name="MinimizeBtn" Classes="window" Content="&#9472;" ToolTip.Tip="Minimize" Click="MinimizeBtn_Click" />
                             <Button x:Name="MaximizeBtn" Classes="window" Content="&#9633;" ToolTip.Tip="Maximize" Click="MaximizeBtn_Click" />
-                            <Button x:Name="CloseBtn" Classes="window" Content="&#215;" ToolTip.Tip="Close" Click="CloseBtn_Click" />
+                            <Button x:Name="CloseBtn" Classes="window close" Content="&#215;" ToolTip.Tip="Close" Click="CloseBtn_Click" />
                         </StackPanel>
                     </Grid>
                 </Border>
-                <Border Grid.Row="1" Background="#121315" BorderBrush="#303137" BorderThickness="0,0,1,0">
+                <Border x:Name="Sidebar" Grid.Row="1" Background="#121315" BorderBrush="#303137" BorderThickness="0,0,1,0">
                     <Grid RowDefinitions="*,Auto">
                         <ScrollViewer>
                             <StackPanel Spacing="3" Margin="10,20,10,0">
@@ -413,19 +416,25 @@
                                         <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
                                             <StackPanel Spacing="12">
                                                 <TextBlock Text="BEHAVIOR" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
-                                                <CheckBox x:Name="CloseToTrayCheckbox" Content="Minimize to system tray when game is running" IsChecked="True" />
-                                                <CheckBox x:Name="KeepLauncherOpenCheckbox" Content="Keep launcher open after launching the game" IsChecked="False" />
-                                                <CheckBox x:Name="KeepClosedOnExitCheckbox" Content="Don't re-open the launcher when the game closes" IsChecked="False" />
-                                                <CheckBox x:Name="AutoLaunchCheckbox" Content="Auto-launch game when launcher opens" IsChecked="False" />
-                                                <CheckBox x:Name="AutoFixCrashesCheckbox" Content="Auto-Fix issues on crash (Disables broken mods)" IsChecked="True" />
-                                                <CheckBox x:Name="AutoRelaunchOnCrashCheckbox" Content="Auto-relaunch game on crash" IsChecked="False" />
-                                                <CheckBox x:Name="AutoRejoinServerCheckbox" Content="Auto-rejoin server on launch" IsChecked="False" />
-                                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="20,0,0,0">
-                                                    <TextBlock Text="Server:" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" />
-                                                    <ComboBox x:Name="QuickLaunchServerComboBox" Width="260" Height="28" FontSize="12" ToolTip.Tip="Pick a server from the shared Minecraft server list, or use Auto to detect from game logs" />
-                                                    <Button x:Name="RefreshServerListBtn" Content="&#8635;" Width="28" Height="28" FontSize="14" ToolTip.Tip="Reload the shared server list (servers.dat in the global .minecraft folder)" Click="RefreshServerList_Click" />
-                                                </StackPanel>
-                                                <CheckBox x:Name="MultiInstanceCheckbox" Content="Allow launching multiple copies of the same instance" IsChecked="False" />
+                                                <Grid ColumnDefinitions="*,24,*">
+                                                    <StackPanel Spacing="12">
+                                                        <CheckBox x:Name="CloseToTrayCheckbox" Content="Minimize to system tray when game is running" IsChecked="True" />
+                                                        <CheckBox x:Name="KeepLauncherOpenCheckbox" Content="Keep launcher open after launching the game" IsChecked="False" />
+                                                        <CheckBox x:Name="KeepClosedOnExitCheckbox" Content="Don't re-open the launcher when the game closes" IsChecked="False" />
+                                                        <CheckBox x:Name="AutoLaunchCheckbox" Content="Auto-launch game when launcher opens" IsChecked="False" />
+                                                        <CheckBox x:Name="MultiInstanceCheckbox" Content="Allow launching multiple copies of the same instance" IsChecked="False" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" Spacing="12">
+                                                        <CheckBox x:Name="AutoFixCrashesCheckbox" Content="Auto-Fix issues on crash (Disables broken mods)" IsChecked="True" />
+                                                        <CheckBox x:Name="AutoRelaunchOnCrashCheckbox" Content="Auto-relaunch game on crash" IsChecked="False" />
+                                                        <CheckBox x:Name="AutoRejoinServerCheckbox" Content="Auto-rejoin server on launch" IsChecked="False" />
+                                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="28,0,0,0">
+                                                            <TextBlock Text="Server:" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" />
+                                                            <ComboBox x:Name="QuickLaunchServerComboBox" Width="240" Height="28" FontSize="12" ToolTip.Tip="Pick a server from the shared Minecraft server list, or use Auto to detect from game logs" />
+                                                            <Button x:Name="RefreshServerListBtn" Content="&#8635;" Width="28" Height="28" Padding="0" FontSize="14" HorizontalContentAlignment="Center" ToolTip.Tip="Reload the shared server list (servers.dat in the global .minecraft folder)" Click="RefreshServerList_Click" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Grid>
                                                 <TextBlock Text="GRAPHICS" Foreground="{DynamicResource LadsAccent}" FontWeight="Bold" Margin="0,8,0,0" />
                                                 <ComboBox x:Name="GraphicsRendererSelector" HorizontalAlignment="Stretch" SelectedIndex="0">
                                                     <ComboBoxItem Content="Vulkan — primary (26.2+)" />
@@ -488,7 +497,7 @@
                                                 </StackPanel>
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="Fabric Loader Version" Foreground="#A0A1AA" FontSize="12" />
-                                                    <TextBox x:Name="FabricVersionBox" Height="32" FontSize="12" />
+                                                    <TextBox x:Name="FabricVersionBox" MinHeight="32" FontSize="12" />
                                                 </StackPanel>
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="CurseForge API Key" Foreground="#A0A1AA" FontSize="12" />
@@ -496,11 +505,11 @@
                                                 </StackPanel>
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="Modrinth API URL" Foreground="#A0A1AA" FontSize="12" />
-                                                    <TextBox x:Name="ModrinthApiUrlBox" Height="32" FontSize="12" />
+                                                    <TextBox x:Name="ModrinthApiUrlBox" MinHeight="32" FontSize="12" />
                                                 </StackPanel>
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="CurseForge API URL" Foreground="#A0A1AA" FontSize="12" />
-                                                    <TextBox x:Name="CurseForgeApiUrlBox" Height="32" FontSize="12" />
+                                                    <TextBox x:Name="CurseForgeApiUrlBox" MinHeight="32" FontSize="12" />
                                                 </StackPanel>
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="Minecraft Version Override" Foreground="#A0A1AA" FontSize="12" />
@@ -510,6 +519,9 @@
                                         </Border>
                                     </StackPanel>
                                 </ScrollViewer>
+                            </TabItem>
+                            <TabItem Header="Controls">
+                                <views:ControlsSettingsView x:Name="ControlsSettings" Margin="0,16,0,16" />
                             </TabItem>
                             <TabItem Header="Microsoft sign-in">
                                 <ScrollViewer Margin="0,16,0,16">
@@ -527,8 +539,7 @@
                                 </ScrollViewer>
                             </TabItem>
                         </TabControl>
-                        <TextBlock x:Name="SettingsSaveStatus" Grid.Row="2" VerticalAlignment="Center" Foreground="#A4BAA7" FontSize="12" />
-                        <Button x:Name="SaveSettingsBtn" Classes="launch" Content="Save changes" Height="44" FontSize="15" FontWeight="Bold" Foreground="White" HorizontalAlignment="Right" HorizontalContentAlignment="Center" Click="SaveSettings_Click" Margin="0" Grid.Row="2" Width="160" />
+                        <TextBlock x:Name="SettingsSaveStatus" Grid.Row="2" VerticalAlignment="Center" Foreground="#A4BAA7" FontSize="12" Text="Changes save automatically" />
                     </Grid>
                     <Grid x:Name="ModsPage" IsVisible="False" Margin="28,24,28,24" DragDrop.AllowDrop="True" RowDefinitions="*,Auto">
                         <TabControl x:Name="ModsSubTabControl">
@@ -587,8 +598,8 @@
                                             <Button Classes="action" Content="Update" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" ToolTip.Tip="Only mods you added yourself" Click="UpdateSelectedMods_Click" />
                                         </StackPanel>
                                     </Border>
-                                    <ScrollViewer Grid.Row="3">
-                                        <StackPanel x:Name="ModsList" />
+                                    <ScrollViewer Grid.Row="3" SizeChanged="ModsListScroller_SizeChanged">
+                                        <WrapPanel x:Name="ModsList" ItemWidth="440" />
                                     </ScrollViewer>
                                 </Grid>
                             </TabItem>
@@ -634,11 +645,11 @@
                                                 <TextBlock Text="API CONFIGURATION" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="Modrinth API URL" Foreground="#CCCCCC" FontSize="13" />
-                                                    <TextBox x:Name="ModrinthApiUrlBox_ModTab" Height="36" />
+                                                    <TextBox x:Name="ModrinthApiUrlBox_ModTab" MinHeight="36" />
                                                 </StackPanel>
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="CurseForge API URL" Foreground="#CCCCCC" FontSize="13" />
-                                                    <TextBox x:Name="CurseForgeApiUrlBox_ModTab" Height="36" />
+                                                    <TextBox x:Name="CurseForgeApiUrlBox_ModTab" MinHeight="36" />
                                                 </StackPanel>
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="CurseForge API Key" Foreground="#CCCCCC" FontSize="13" />
@@ -646,7 +657,7 @@
                                                 </StackPanel>
                                             </StackPanel>
                                         </Border>
-                                        <Button x:Name="SaveModSettingsBtn" Classes="launch" Content="Save Mod Settings" Height="40" FontSize="14" FontWeight="Bold" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="SaveModSettings_Click" />
+                                        <TextBlock Text="Changes save automatically and match Settings &#8594; Paths &amp; services." Foreground="#868994" FontSize="12" />
                                     </StackPanel>
                                 </ScrollViewer>
                             </TabItem>
