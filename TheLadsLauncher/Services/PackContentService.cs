@@ -18,6 +18,9 @@ namespace TheLadsLauncher.Services;
 public sealed record ContentTarget(string Id, string Label, string MinecraftVersion, string Loader, string ResourcePacks, string ShaderPacks, string Saves,
     IReadOnlyList<string> OptionsFiles)
 {
+    /// <summary>Every Minecraft version that plays from these folders (all Lads profiles share theirs); empty means only <see cref="MinecraftVersion"/>.</summary>
+    public IReadOnlyList<string> FolderVersions { get; init; } = Array.Empty<string>();
+
     public override string ToString() => Label;
 }
 
@@ -33,8 +36,9 @@ public static class PackContentService
         var list = profiles.ToList();
         var ladsOptions = list.Select(p => Path.Combine(paths.GetProfileDirectory(p), "options.txt")).Append(paths.SharedOptionsFile)
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var ladsVersions = list.Select(p => p.MinecraftVersion).Distinct().ToList();
         var targets = list.Select(p => new ContentTarget(p.Id, $"Lads · {p.Name} ({p.MinecraftVersion})", p.MinecraftVersion, ContentCatalog.ModLoader(p.MinecraftVersion),
-            shared.ResourcePacksDirectory, shared.ShaderPacksDirectory, shared.SavesDirectory, ladsOptions)).ToList();
+            shared.ResourcePacksDirectory, shared.ShaderPacksDirectory, shared.SavesDirectory, ladsOptions) { FolderVersions = ladsVersions }).ToList();
         foreach (var instance in Modpacks.List(paths.BaseDirectory).Where(i => i.McVersion.Length > 0))
         {
             var game = instance.GameDirectory;
@@ -92,7 +96,8 @@ public static class PackContentService
     /// Updates the .zip packs of <paramref name="target"/>'s resource packs folder to their newest release for its game version:
     /// Modrinth by SHA-1 first, then CurseForge fingerprints when a key is set. Each new file is downloaded to a staging folder,
     /// its SHA-1 checked, then swapped in (a same-named file is replaced in one rename; otherwise the old file goes to the
-    /// Recycle Bin) and options.txt keeps the pack enabled under its new name. Returns one line per pack.
+    /// Recycle Bin) and options.txt keeps the pack enabled under its new name. A pack made for another version that plays from the
+    /// folder (<see cref="ContentTarget.FolderVersions"/>) is kept when the new release does not support that version. Returns one line per pack.
     /// </summary>
     /// <param name="recycle">Removes the old file; the launcher moves it to the Recycle Bin.</param>
     public static async Task<(int Updated, int Failed, List<string> Lines)> UpdateResourcePacksAsync(ContentCatalog catalog, ContentTarget target,
@@ -106,7 +111,9 @@ public static class PackContentService
         foreach (var pack in packs) hashes[pack] = await Task.Run(() => ContentCatalog.Sha1(pack), cancellationToken);
 
         var updates = new Dictionary<string, ContentFile>();
+        var installedFiles = new Dictionary<string, ContentFile>(); // the release each updatable pack is now, when the folder serves other versions
         var current = new HashSet<string>();
+        var others = target.FolderVersions.Where(v => v != target.MinecraftVersion).ToList();
         var found = await catalog.ModrinthUpdatesAsync(hashes.Values.Distinct().ToList(), target.MinecraftVersion, "minecraft", cancellationToken);
         foreach (var pack in packs)
             if (found.TryGetValue(hashes[pack], out var file))
@@ -114,6 +121,12 @@ public static class PackContentService
                 if (string.Equals(file.Sha1, hashes[pack], StringComparison.OrdinalIgnoreCase)) current.Add(pack);
                 else updates[pack] = file;
             }
+        if (others.Count > 0 && updates.Count > 0)
+        {
+            var known = await catalog.ModrinthFilesAsync(updates.Keys.Select(p => hashes[p]).Distinct().ToList(), cancellationToken);
+            foreach (var pack in updates.Keys)
+                if (known.TryGetValue(hashes[pack], out var was)) installedFiles[pack] = was;
+        }
 
         var unknown = packs.Where(p => !updates.ContainsKey(p) && !current.Contains(p)).ToList();
         if (unknown.Count > 0 && catalog.HasCurseForgeKey)
@@ -131,7 +144,7 @@ public static class PackContentService
                         target.MinecraftVersion, "", cancellationToken);
                     if (latest == null) lines.Add($"{Path.GetFileName(pack)}: CurseForge has no release for Minecraft {target.MinecraftVersion}.");
                     else if (latest.FileId == installed.FileId) current.Add(pack);
-                    else updates[pack] = latest;
+                    else { updates[pack] = latest; installedFiles[pack] = installed; }
                 }
             }
             catch (ContentSourceException e)
@@ -151,13 +164,21 @@ public static class PackContentService
                     lines.Add($"{name}: not found on Modrinth{(catalog.HasCurseForgeKey ? " or CurseForge" : "")} for Minecraft {target.MinecraftVersion}.");
                 continue;
             }
+            // The shared folder serves every Lads version: a release for one must not take the place of a pack another one plays.
+            if (installedFiles.TryGetValue(pack, out var was) && others.FirstOrDefault(v => was.GameVersions.Contains(v) && !file.GameVersions.Contains(v)) is { } other)
+            {
+                lines.Add($"{name}: kept. It is made for Minecraft {other}, which also plays from this folder, and the {target.MinecraftVersion} release ({file.VersionName}) does not support {other}.");
+                continue;
+            }
             progress?.Report($"Updating {name}...");
             try
             {
                 lines.Add(await ReplacePackAsync(catalog, target, staging, recycle, pack, file, cancellationToken));
                 updated++;
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Net.Http.HttpRequestException or ContentSourceException)
+            // OperationCanceledException: the user said No to deleting a pack the Recycle Bin cannot take; InvalidOperationException: the pack is a link.
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Net.Http.HttpRequestException or ContentSourceException
+                or InvalidOperationException || e is OperationCanceledException && !cancellationToken.IsCancellationRequested)
             {
                 failed++;
                 lines.Add($"{name}: {e.Message}");
@@ -180,8 +201,14 @@ public static class PackContentService
         }
         else
         {
-            newName = Path.GetFileName(await Task.Run(() => SafeFileOps.MoveToFreeName(temp, target.ResourcePacks, file.FileName), cancellationToken));
-            await Task.Run(() => recycle(pack), cancellationToken);
+            var moved = await Task.Run(() => SafeFileOps.MoveToFreeName(temp, target.ResourcePacks, file.FileName), cancellationToken);
+            newName = Path.GetFileName(moved);
+            try { await Task.Run(() => recycle(pack), cancellationToken); }
+            catch
+            {
+                File.Delete(moved); // the download just moved in, not the user's: the folder is left as it was
+                throw;
+            }
             foreach (var options in target.OptionsFiles) RenamePackInOptions(options, oldName, newName);
         }
         return newName == oldName ? $"{oldName}: updated to {file.VersionName}." : $"{oldName} → {newName} ({file.VersionName}).";

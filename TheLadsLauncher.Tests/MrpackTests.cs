@@ -133,6 +133,59 @@ public sealed class MrpackTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdateNeverOverwritesAFileThePreviousVersionDidNotInstall()
+    {
+        using var http = new HttpClient(new Handler(new() { ["https://cdn.modrinth.com/a.jar"] = "mod a", ["https://cdn.modrinth.com/mine.jar"] = "pack mine" }));
+        var instance = Path.Combine(_root, "instance");
+        string Game(string relative) => Path.Combine(instance, "minecraft", relative);
+        await Mrpack.InstallAsync(Pack("v1", new[] { ("mods/a.jar", "a.jar", "mod a") }, new()), instance, http, null, default);
+
+        // Minecraft writes options.txt, a mod makes its config on first launch, the user adds a mod of their own.
+        File.WriteAllText(Game("options.txt"), "my options");
+        Directory.CreateDirectory(Game("config"));
+        File.WriteAllText(Game("config/mod.json"), "generated");
+        File.WriteAllText(Game("mods/mine.jar"), "my mod");
+
+        var v2 = Pack("v2", new[] { ("mods/a.jar", "a.jar", "mod a"), ("mods/mine.jar", "mine.jar", "pack mine") }, new()
+        {
+            ["overrides/options.txt"] = "pack options", ["overrides/config/mod.json"] = "pack config",
+            ["overrides/config/new.txt"] = "pack new", ["client-overrides/config/new.txt"] = "client new"
+        });
+        await Mrpack.InstallAsync(v2, instance, http, null, default);
+        Assert.Equal(("my options", "generated", "my mod"), (File.ReadAllText(Game("options.txt")), File.ReadAllText(Game("config/mod.json")), File.ReadAllText(Game("mods/mine.jar"))));
+        Assert.Equal("client new", File.ReadAllText(Game("config/new.txt"))); // new to the pack: installed, client-overrides last
+
+        // Still the user's when the pack drops them again.
+        await Mrpack.InstallAsync(Pack("v3", Array.Empty<(string, string, string)>(), new()), instance, http, null, default);
+        Assert.Equal(("my options", "generated", "my mod"), (File.ReadAllText(Game("options.txt")), File.ReadAllText(Game("config/mod.json")), File.ReadAllText(Game("mods/mine.jar"))));
+        Assert.False(File.Exists(Game("config/new.txt")));
+        Assert.False(File.Exists(Game("mods/a.jar")));
+    }
+
+    [Fact]
+    public async Task AFailedUpdateRecordsWhatItWroteSoTheNextUpdateReplacesAndRemovesIt()
+    {
+        using var http = new HttpClient(new Handler(new()
+        {
+            ["https://cdn.modrinth.com/a1.jar"] = "mod a v1", ["https://cdn.modrinth.com/s5.jar"] = "sodium 0.5", ["https://cdn.modrinth.com/a2.jar"] = "mod a v2",
+            ["https://cdn.modrinth.com/s6.jar"] = "sodium 0.6", ["https://cdn.modrinth.com/a3.jar"] = "mod a v3"
+        }));
+        var instance = Path.Combine(_root, "instance");
+        var mods = Path.Combine(instance, "minecraft", "mods");
+        await Mrpack.InstallAsync(Pack("v1", new[] { ("mods/a.jar", "a1.jar", "mod a v1"), ("mods/sodium-0.5.jar", "s5.jar", "sodium 0.5") }, new()), instance, http, null, default);
+
+        // v2's jars arrive, then copying its settings fails (a folder stands where a file goes).
+        Directory.CreateDirectory(Path.Combine(instance, "minecraft", "blocked.txt"));
+        var v2 = Pack("v2", new[] { ("mods/a.jar", "a2.jar", "mod a v2"), ("mods/sodium-0.6.jar", "s6.jar", "sodium 0.6") }, new() { ["overrides/blocked.txt"] = "x" });
+        await Assert.ThrowsAnyAsync<Exception>(() => Mrpack.InstallAsync(v2, instance, http, null, default));
+        Assert.Equal(new[] { "a.jar", "sodium-0.5.jar", "sodium-0.6.jar" }, Directory.GetFiles(mods).Select(Path.GetFileName).Order());
+
+        await Mrpack.InstallAsync(Pack("v3", new[] { ("mods/a.jar", "a3.jar", "mod a v3") }, new()), instance, http, null, default);
+        Assert.Equal(new[] { "a.jar" }, Directory.GetFiles(mods).Select(Path.GetFileName));
+        Assert.Equal("mod a v3", File.ReadAllText(Path.Combine(mods, "a.jar")));
+    }
+
+    [Fact]
     public async Task RefusesADownloadThatDoesNotMatchItsHash()
     {
         using var http = new HttpClient(new Handler(new() { ["https://cdn.modrinth.com/a.jar"] = "tampered" }));

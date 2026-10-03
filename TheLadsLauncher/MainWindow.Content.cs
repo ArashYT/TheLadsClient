@@ -90,7 +90,7 @@ public partial class MainWindow
 
     /// <summary>
     /// --preview-content &lt;outputDir&gt; (sandbox only; Program.Main refuses it otherwise): CurseForge search without a key, a real
-    /// Modrinth resource pack update (Faithful 32x for 26.2 updated for 26.3, then for 1.8.9), shader browsing and installs for the
+    /// Modrinth resource pack update (Faithful 32x for 26.2, Update for 26.3, then for 1.8.9: kept while another profile plays it), shader browsing and installs for the
     /// focus versions (1.8.9, 26.2, 26.3) and a 26.2 modpack instance, and data pack installs into a world of each. Writes
     /// screenshots and preview-content.json, then exits.
     /// </summary>
@@ -148,7 +148,8 @@ public partial class MainWindow
             result["resourcePacksCurseForge"] = ListText(BrowseRpList);
             RpSearchProvider.SelectedIndex = 0;
 
-            // 2. Update resource packs: Faithful 32x for 26.2, enabled in every options.txt (1.8.9's without "file/"), updated for 26.3, then for 1.8.9.
+            // 2. Update resource packs: Faithful 32x for 26.2, enabled in every options.txt (1.8.9's without "file/"), Update for 26.3, then for 1.8.9:
+            // a release that does not support a version another Lads profile plays leaves the pack as it is.
             var catalog = Catalog();
             var old = await catalog.LatestFileAsync(new ModSearchItem { Id = "w0TnApzs", Provider = "Modrinth" }, ContentKind.ResourcePack, "26.2", "fabric")
                 ?? throw new InvalidOperationException("Modrinth lists no Faithful 32x for 26.2.");
