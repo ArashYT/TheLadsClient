@@ -56,6 +56,24 @@ class KillBannerArtTest {
     }
 
     @Test
+    void rogueAceIconDropsInWithItsRing() {
+        KillBannerStyle style = KillBannerStyle.ROGUE;
+        KillBannerStrip ace = style.strip(5);
+        // The ace's ring drops in from 22 cell pixels up (frames 5-23); its icon, and what is drawn on it, come with it.
+        assertEquals(-22, KillBannerPlayer.at(style, ace, 11.5 / 60, 4, false).iconY());
+        assertTrue(KillBannerPlayer.at(style, ace, 18.5 / 60, 4, false).iconY() > -22);
+        assertEquals(0, KillBannerPlayer.at(style, ace, 1.0, 4, false).iconY(), "settled in its place");
+        // The icon itself moved in the frames: its settled place is clear while it is up with the ring.
+        byte[] up = ace.frame(10).clone(), settled = ace.frame(ace.introEnd).clone();
+        int row = 139, x = 158; // the chin's settled place
+        assertTrue((settled[(row * ace.width + x) * 4 + 3] & 255) > 200 && (up[(row * ace.width + x) * 4 + 3] & 255) < 40);
+        for (int kills = 1; kills <= 4; kills++) {
+            KillBannerStrip strip = style.strip(kills);
+            for (int f = 0; f < strip.frames; f++) assertEquals(0, strip.iconY(f), "k" + kills + " keeps its icon in place");
+        }
+    }
+
+    @Test
     void holdsForTheDurationThenLeaves() {
         KillBannerStyle style = KillBannerStyle.REAVER;
         KillBannerStrip strip = style.strip(1);

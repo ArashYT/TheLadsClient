@@ -11,23 +11,24 @@ import java.util.zip.Inflater;
  * One kill count's banner frames ("LKB2", written by tools/killbanner/build_killbanner.py): RGBA frames stored as
  * byte-wise differences from the frame before, in one deflate stream. Frames [0, introEnd] play and introEnd holds;
  * the next exitFrames frames play the way out. Without exit frames, exitIcon and exitRest (PNGs) are the settled
- * icon and the rest of the settled banner, for a drawn way out.
+ * icon and the rest of the settled banner, for a drawn way out. "LKB3" adds each frame's icon offset (iconY).
  */
 public final class KillBannerStrip {
     public final int width, height, frames, introEnd, exitFrames;
     public final byte[] exitIcon, exitRest;
-    private final byte[] packed;
+    private final byte[] packed, iconY;
     private final byte[] frame, delta;
     private final Inflater inflater = new Inflater();
     private int decoded = -1;
 
-    private KillBannerStrip(int width, int height, int frames, int introEnd, int exitFrames, byte[] packed,
+    private KillBannerStrip(int width, int height, int frames, int introEnd, int exitFrames, byte[] iconY, byte[] packed,
                             byte[] exitIcon, byte[] exitRest) {
         this.width = width;
         this.height = height;
         this.frames = frames;
         this.introEnd = introEnd;
         this.exitFrames = exitFrames;
+        this.iconY = iconY;
         this.packed = packed;
         this.exitIcon = exitIcon;
         this.exitRest = exitRest;
@@ -38,11 +39,12 @@ public final class KillBannerStrip {
     public static KillBannerStrip read(InputStream source) throws IOException {
         DataInputStream in = new DataInputStream(source);
         byte[] magic = in.readNBytes(4);
-        if (magic.length != 4 || magic[0] != 'L' || magic[1] != 'K' || magic[2] != 'B' || magic[3] != '2')
+        if (magic.length != 4 || magic[0] != 'L' || magic[1] != 'K' || magic[2] != 'B' || (magic[3] != '2' && magic[3] != '3'))
             throw new IOException("Not a kill banner strip");
         int width = in.readUnsignedShort(), height = in.readUnsignedShort();
         in.readUnsignedShort(); // 60 fps, the only rate the banners use
         int frames = in.readUnsignedShort(), introEnd = in.readUnsignedShort(), exitFrames = in.readUnsignedShort();
+        byte[] iconY = magic[3] == '3' ? in.readNBytes(frames) : new byte[frames];
         byte[] packed = in.readNBytes(in.readInt());
         byte[] icon = null, rest = null;
         if (exitFrames == 0) {
@@ -51,8 +53,11 @@ public final class KillBannerStrip {
         }
         if (width == 0 || height == 0 || introEnd + 1 + exitFrames != frames)
             throw new IOException("Malformed kill banner strip");
-        return new KillBannerStrip(width, height, frames, introEnd, exitFrames, packed, icon, rest);
+        return new KillBannerStrip(width, height, frames, introEnd, exitFrames, iconY, packed, icon, rest);
     }
+
+    /** Cell pixels the icon sits below its settled place in a frame (Rogue's 5-kill ring drops in with its icon). */
+    public int iconY(int index) { return index >= 0 && index < iconY.length ? iconY[index] : 0; }
 
     public static KillBannerStrip read(byte[] data) throws IOException {
         return read(new ByteArrayInputStream(data));

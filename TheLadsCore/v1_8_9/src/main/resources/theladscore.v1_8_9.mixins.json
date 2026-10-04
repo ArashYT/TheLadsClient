@@ -21,10 +21,13 @@
     "GuiNewChatMixin",
     "GuiPlayerTabOverlayMixin",
     "GuiScreenAddServerAccessor",
+    "GuiShareToLanMixin",
     "GuiScreenMixin",
     "GuiSlotMixin",
     "GuiSlotAccessor",
+    "IntegratedServerMixin",
     "ItemFoodAccessor",
+    "ItemModelGeneratorMixin",
     "ItemRendererAccessor",
     "ItemRendererMixin",
     "KeyEntryAccessor",
@@ -47,6 +50,7 @@
     "ServerNameMixin",
     "SkinLayersGateMixin189",
     "SplashProgressMixin",
-    "TileEntityMixin"
+    "TileEntityMixin",
+    "WorldSwitchMixin"
   ]
 }

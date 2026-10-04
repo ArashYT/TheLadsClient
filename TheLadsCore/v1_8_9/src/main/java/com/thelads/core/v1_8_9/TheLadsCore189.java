@@ -144,6 +144,7 @@ public class TheLadsCore189 {
         OldAnimations189.tick(mc);
         Zoom189.tick(mc);
         SkinLayers189.tick(mc);
+        com.thelads.core.v1_8_9.feature.Cheats189.tick(mc);
         if (mc.thePlayer != null) {
             com.thelads.core.config.Module fullbright = com.thelads.core.config.ModuleManager.getInstance().getModule("Fullbright");
             if (fullbright != null && fullbright.isEnabled() && mc.gameSettings.gammaSetting < 15.0f) {

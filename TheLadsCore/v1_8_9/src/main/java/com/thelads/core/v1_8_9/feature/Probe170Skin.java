@@ -24,8 +24,8 @@ import net.minecraft.util.ResourceLocation;
  * the flat ones (170-skinlayers-on.png). Off: no 3D layers and vanilla's flat layers show (170-skinlayers-off.png). Skin, module,
  * camera, pitch, brightness and armour are put back as found.
  */
-final class Probe170 {
-    static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe170::start, Probe170::on, Probe170::off, Probe170::restore);
+final class Probe170Skin {
+    static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe170Skin::start, Probe170Skin::on, Probe170Skin::off, Probe170Skin::restore);
     private static final ResourceLocation SKIN = new ResourceLocation("theladscore", "qa/skinlayers");
     private static boolean started, wasEnabled, texturesWere;
     private static long modifiedWas;
@@ -35,7 +35,7 @@ final class Probe170 {
     private static String typeWas;
     private static ItemStack[] armourWas;
 
-    private Probe170() {}
+    private Probe170Skin() {}
 
     private static boolean start(Minecraft mc) {
         check(SkinLayers189.LOADED, "3D Skin Layers is loaded next to OptiFine and the Core");
