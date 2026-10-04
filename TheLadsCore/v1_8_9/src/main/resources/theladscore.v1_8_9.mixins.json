@@ -11,6 +11,7 @@
     "EntityRendererAccessor",
     "EntityPlayerSPAccessor",
     "EntityPlayerSPMixin",
+    "EntityItemMixin",
     "EntityRendererMixin",
     "EssentialZoomMixin189",
     "GameSettingsMixin",

@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.v1_8_9.feature.Borderless189;
+import com.thelads.core.v1_8_9.feature.ItemPhysics189;
 import com.thelads.core.v1_8_9.feature.OldAnimations189;
 import com.thelads.core.v1_8_9.feature.Reconnect189;
 import com.thelads.core.v1_8_9.feature.WorldBackup189;
@@ -17,11 +18,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** F11 and the fullscreen option: borderless with the BorderlessFullscreen module, and a window that stays resizable after fullscreen.
  * Opening a world a newer version saved asks for a backup first (WorldBackup189); a world that opens is AutoReconnect's target.
- * 1.7 Animations: the use key blocks, draws a bow or eats while the attack key mines a block, as in 1.7 (1.8 waits for the mining). */
+ * 1.7 Animations: the use key blocks, draws a bow or eats while the attack key mines a block, as in 1.7 (1.8 waits for the mining).
+ * Item Physics: with right-click pickup on, the use key on a dropped item picks it up. */
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
     @Shadow private boolean fullscreen;
     @Shadow public EntityPlayerSP thePlayer;
+    @Shadow private int rightClickDelayTimer;
 
     @Inject(method = "toggleFullscreen", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBorderless(CallbackInfo ci) {
@@ -39,6 +42,13 @@ public abstract class MinecraftMixin {
         target = "Lnet/minecraft/client/multiplayer/PlayerControllerMP;getIsHittingBlock()Z"), require = 1, allow = 1)
     private boolean ladsUseWhileMining(PlayerControllerMP controller) {
         return controller.getIsHittingBlock() && !OldAnimations189.useWhileMining(thePlayer.getHeldItem());
+    }
+
+    @Inject(method = "rightClickMouse", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsRightClickPickup(CallbackInfo ci) {
+        if (!ItemPhysics189.pickUp((Minecraft) (Object) this)) return;
+        rightClickDelayTimer = 4;
+        ci.cancel();
     }
 
     @Inject(method = "launchIntegratedServer", at = @At("HEAD"), cancellable = true, require = 1)
