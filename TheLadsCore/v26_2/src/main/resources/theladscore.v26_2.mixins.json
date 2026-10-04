@@ -101,6 +101,9 @@
     "AutohideItemRenderMixin",
     "AutohidePictureMixin",
     "WindowIconMixin",
-    "LoadingOverlayMixin"
+    "LoadingOverlayMixin",
+    "CheatsMixin",
+    "ItemModelGapsMixin",
+    "SodiumItemModelGapsMixin"
   ]
 }

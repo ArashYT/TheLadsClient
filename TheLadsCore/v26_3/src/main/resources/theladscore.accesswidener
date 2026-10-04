@@ -153,3 +153,6 @@ accessible field net/minecraft/client/renderer/GameRenderer fogRenderer Lnet/min
 
 # Embedded FixBookGUI
 accessible field net/minecraft/client/gui/screens/inventory/BookViewScreen IMAGE_HEIGHT I
+# Cheats: the world's own Allow Commands, under Essential's answer for LevelSettings.allowCommands() (NativeCheats)
+accessible field net/minecraft/world/level/storage/PrimaryLevelData settings Lnet/minecraft/world/level/LevelSettings;
+accessible field net/minecraft/world/level/LevelSettings allowCommands Z

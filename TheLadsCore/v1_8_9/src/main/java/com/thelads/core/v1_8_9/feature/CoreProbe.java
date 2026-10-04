@@ -59,8 +59,16 @@ public final class CoreProbe {
         CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::closedToGame,
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
+    /** -Dthelads.verify189Focus: only the title screen and Probe170Misc's steps of that name (with Essential as players have it). */
+    private static final String FOCUS = System.getProperty("thelads.verify189Focus");
     static {
-        STEPS.addAll(Probe170.STEPS);
+        if (FOCUS != null) {
+            STEPS.clear();
+            STEPS.add(CoreProbe::titleShown);
+            STEPS.add(CoreProbe::focused);
+            STEPS.addAll(Probe170Misc.steps(FOCUS));
+        } else {
+        STEPS.addAll(Probe170Skin.STEPS);
         STEPS.addAll(Probe160s.STEPS);
         STEPS.addAll(HudProbe.STEPS);
         STEPS.addAll(Probe145.STEPS);
@@ -71,6 +79,7 @@ public final class CoreProbe {
         STEPS.addAll(Probe145.PACING);
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
+        }
     }
     private static int step, passed, delay, waited;
     private static boolean finished, pauseOnLostFocus;
@@ -90,8 +99,9 @@ public final class CoreProbe {
             waited = 0;
             if (++step < STEPS.size()) return;
             finish();
-            LOG.info("Lads 1.8.9 core probe END: {} passed, 0 failed; menu key through GuiScreen.handleInput and runTick, pause-menu "
-                + "button, 1.8.9 bridge in a QA world, launcher catalog, HUD through RenderGameOverlayEvent and the HUD editor", passed);
+            LOG.info("Lads 1.8.9 core probe END: {} passed, 0 failed; {}", passed, FOCUS != null ? "focused on " + FOCUS
+                : "menu key through GuiScreen.handleInput and runTick, pause-menu button, 1.8.9 bridge in a QA world, launcher catalog, "
+                + "HUD through RenderGameOverlayEvent and the HUD editor");
         } catch (Throwable failure) {
             finish();
             LOG.error("Lads 1.8.9 core probe FAILED after {} checks", passed, failure);
@@ -104,7 +114,7 @@ public final class CoreProbe {
         Probe151.stop();
         Probe160.stop();
         Probe160s.stop();
-        Probe170.stop();
+        Probe170Skin.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -171,6 +181,15 @@ public final class CoreProbe {
         check(LadsGameBridge.get() instanceof VanillaGameBridge189 && !LadsGameBridge.get().isIngame(), "the 1.8.9 game bridge is active, no world yet");
         tap(Keyboard.KEY_RSHIFT, '\0');
         return true;
+    }
+
+    /** The focused self-test's start: no synthetic input, so the window needs no focus and Essential stays loaded. */
+    private static boolean focused(Minecraft mc) {
+        title = mc.currentScreen;
+        pauseOnLostFocus = mc.gameSettings.pauseOnLostFocus;
+        mc.gameSettings.pauseOnLostFocus = false;
+        LOG.info("Lads 1.8.9 core probe: focused on {}", FOCUS);
+        return after(20);
     }
 
     private static boolean menuAtTitle(Minecraft mc) {
@@ -455,6 +474,13 @@ public final class CoreProbe {
         try (java.io.OutputStream out = new java.io.FileOutputStream(new File(folder, "level.dat"))) {
             net.minecraft.nbt.CompressedStreamTools.writeCompressed(root, out);
         }
+    }
+
+    /** Deletes a world folder the QA steps made, only inside the sandbox's saves. */
+    static void deleteQaWorld(Minecraft mc, String name) throws java.io.IOException {
+        Path saves = WorldBackup189.savesDir(mc).toPath().toRealPath();
+        check(inVerificationSandbox(saves), "QA worlds are deleted only in the sandbox's saves (" + saves + ")");
+        delete(saves.resolve(name));
     }
 
     private static void delete(Path folder) throws java.io.IOException {

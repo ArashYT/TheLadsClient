@@ -50,7 +50,12 @@ final class OldAnimationsCapture {
         // Legacy Swing on, held half way through the swing a block placement plays; "-off" with 1.7 Animations off must match.
         new Shot("legacy-place", Items.STONE, Items.AIR, null, false, 600),
         new Shot("legacy-place-off", Items.STONE, Items.AIR, null, false, 600),
-        new Shot("legacy-torch", Items.TORCH, Items.AIR, null, false, 600)};
+        new Shot("legacy-torch", Items.TORCH, Items.AIR, null, false, 600),
+        // Item model gaps: plain held items, then dropped ones close up, all against the sky (looking up).
+        new Shot("gap-sword", Items.DIAMOND_SWORD, Items.AIR, null, false, 900),
+        new Shot("gap-stick", Items.STICK, Items.AIR, null, false, 900),
+        new Shot("gap-bow", Items.BOW, Items.AIR, null, false, 900),
+        new Shot("gap-dropped", Items.AIR, Items.AIR, null, false, 900)};
     private static final EquipmentSlot[] SLOTS = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD, EquipmentSlot.CHEST,
         EquipmentSlot.LEGS, EquipmentSlot.FEET};
     private static final int FIRST_ID = Integer.MAX_VALUE - 128;
@@ -60,6 +65,7 @@ final class OldAnimationsCapture {
     private static boolean capturing, held, enabledBefore, legacyBefore, useBefore;
     private static long modifiedBefore, legacyModified;
     private static CameraType cameraBefore;
+    private static float pitchBefore;
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
     private static final Map<EquipmentSlot, ItemStack> WORN = new LinkedHashMap<>();
     private OldAnimationsCapture() {}
@@ -84,6 +90,7 @@ final class OldAnimationsCapture {
         for (Option option : module.getOptions()) OPTIONS.put(option, option.save().deepCopy());
         for (EquipmentSlot slot : SLOTS) WORN.put(slot, mc.player.getItemBySlot(slot));
         cameraBefore = mc.options.getCameraType();
+        pitchBefore = mc.player.getXRot();
         useBefore = mc.options.keyUse.isDown();
         module.getOptions().forEach(Option::reset); // every option on
         module.setEnabled(true);
@@ -126,6 +133,7 @@ final class OldAnimationsCapture {
         WORN.forEach(player::setItemSlot);
         player.hurtTime = 0;
         mc.options.setCameraType(cameraBefore);
+        player.setXRot(pitchBefore);
         removeDropped();
         OldAnimationsModule module = NativeOldAnimations.module();
         OPTIONS.forEach(Option::load);
@@ -149,7 +157,9 @@ final class OldAnimationsCapture {
             player.stopUsingItem();
         }
         removeDropped();
-        NativeOldAnimations.module().setEnabled(!shot.name().endsWith("-vanilla") && !shot.name().equals("legacy-place-off"));
+        boolean gap = shot.name().startsWith("gap-");
+        NativeOldAnimations.module().setEnabled(!shot.name().endsWith("-vanilla") && !shot.name().equals("legacy-place-off") && !gap);
+        player.setXRot(gap ? -60 : pitchBefore);
         NativeQualityOfLife.module("LegacySwing").setEnabled(shot.name().startsWith("legacy"));
         for (EquipmentSlot slot : SLOTS) player.setItemSlot(slot, worn(shot, slot));
         mc.options.setCameraType(shot.thirdPerson() ? CameraType.THIRD_PERSON_FRONT : CameraType.FIRST_PERSON);
@@ -160,6 +170,13 @@ final class OldAnimationsCapture {
             Vec3 at = eye.add(look.scale(1.6)).add(0, -0.45, 0);
             drop(Items.APPLE, at.subtract(side));
             drop(Items.STONE, at.add(side));
+        }
+        if (shot.name().equals("gap-dropped")) {
+            Vec3 at = player.getEyePosition().add(player.getViewVector(1).scale(1.1));
+            Vec3 side = new Vec3(-player.getViewVector(1).z, 0, player.getViewVector(1).x).normalize().scale(0.45);
+            drop(Items.DIAMOND_SWORD, at.subtract(side));
+            drop(Items.STICK, at);
+            drop(Items.BOW, at.add(side));
         }
         hold();
         due = System.nanoTime() + shot.delayMs() * 1_000_000L;

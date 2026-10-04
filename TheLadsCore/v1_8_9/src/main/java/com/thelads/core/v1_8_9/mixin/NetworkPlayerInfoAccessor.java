@@ -5,7 +5,7 @@ import net.minecraft.util.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-/** QA only (Probe170): the local player wears QaSkin, a custom skin 3D Skin Layers draws, and gets their own back afterwards. */
+/** QA only (Probe170Skin): the local player wears QaSkin, a custom skin 3D Skin Layers draws, and gets their own back afterwards. */
 @Mixin(NetworkPlayerInfo.class)
 public interface NetworkPlayerInfoAccessor {
     @Accessor("locationSkin") ResourceLocation ladsGetSkin();
