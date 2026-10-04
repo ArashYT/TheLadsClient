@@ -375,8 +375,8 @@ public final class NativeWorldVerification {
         }
     }
     /** True while any in-world QA capture is running. */
-    private static boolean captureBusy() {
-        return KillBannerCapture.busy() || OldAnimationsCapture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
+    static boolean captureBusy() {
+        return HudInfoCapture.busy() || KillBannerCapture.busy() || OldAnimationsCapture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
             ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy();
     }
