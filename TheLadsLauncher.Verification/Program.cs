@@ -571,8 +571,9 @@ try
         if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
         if (f3FovCaptureVerification) AddJvm("-Dthelads.verify189F3Fov=true");
         // LADS_VERIFY_189_ONLY=170: only the 1.7.0 in-world checks (Probe170Sprint, Probe170Hud), straight in the QA world;
-        // =itemphysics: only Item Physics (Probe170ItemPhysics); =raised: only Raised and the paper doll (RaisedDollProbe189).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =itemphysics: only Item Physics (Probe170ItemPhysics); =raised: only Raised and the paper doll (RaisedDollProbe189);
+        // =leave: only the QA world's final leave after its server stopped first (the 1.7.0 freeze regression check).
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
     }
     else
     {

@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiIngameMenu;
@@ -32,11 +33,13 @@ import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiYesNo;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ScreenShotHelper;
 import net.minecraft.world.WorldSettings;
 import net.minecraft.world.WorldType;
 import net.minecraftforge.fml.common.Loader;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.input.Keyboard;
@@ -63,8 +66,9 @@ public final class CoreProbe {
     private static final String FOCUS = System.getProperty("thelads.verify189Focus");
     static {
         // Focused QA paths, each straight into the QA world: LADS_VERIFY_189_ONLY (the harness passes it as -Dthelads.verify189Only)
-        // =itemphysics (Probe170ItemPhysics), =170 (Toggle Sprint & Sneak, then the HUD checks) or =raised (Raised and the paper
-        // doll, RaisedDollProbe189); -Dthelads.verifyChatHeads=true (ChatHeadsProbe189) and -Dthelads.verify189F3Fov=true (Probe170F3Fov).
+        // =itemphysics (Probe170ItemPhysics), =170 (Toggle Sprint & Sneak, then the HUD checks), =raised (Raised and the paper
+        // doll, RaisedDollProbe189) or =leave (only the final leave, the 1.7.0 freeze regression check);
+        // -Dthelads.verifyChatHeads=true (ChatHeadsProbe189) and -Dthelads.verify189F3Fov=true (Probe170F3Fov).
         String only = System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY"));
         boolean chatHeadsOnly = Boolean.getBoolean("thelads.verifyChatHeads"), f3FovOnly = Boolean.getBoolean("thelads.verify189F3Fov");
         if (FOCUS != null) {
@@ -82,10 +86,10 @@ public final class CoreProbe {
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe170Sprint.STEPS);
             STEPS.addAll(Probe170Hud.STEPS);
-        } else if ("raised".equals(only)) {
+        } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
-            STEPS.addAll(RaisedDollProbe189.STEPS);
+            if ("raised".equals(only)) STEPS.addAll(RaisedDollProbe189.STEPS);
         } else if (chatHeadsOnly || f3FovOnly) {
             STEPS.subList(1, STEPS.size()).clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::focusTitle, CoreProbe::openWorld, CoreProbe::worldReady));
@@ -510,17 +514,52 @@ public final class CoreProbe {
         return after(10);
     }
 
+    private static volatile boolean serverBusy, raced;
+    private static IntegratedServer leaving;
+    private static long leftAfterMs;
+
+    /**
+     * Leaving while the world's server stops on its own (the regression check for the 1.7.0 freeze fix, IntegratedServerMixin).
+     * loadWorld(null) queues "log every player out" for the server thread and waits for it (OptiFine only skips that task once
+     * the server has stopped running). A server that stops right after that check, as when its owner's connection drops, leaves
+     * its tick loop without running the task, and vanilla waited forever (Not Responding). Forced here on every run: a server
+     * task keeps the server's task queue busy until this thread is blocked queuing its logout, then stops the server as a
+     * dropped owner does (initiateShutdown on the server thread); the queued logout task never runs.
+     */
     private static boolean leaveWorld(Minecraft mc) {
-        // Leave as Minecraft's own shutdown does (the server logs the player out and saves the QA world). The pause menu's
-        // quitting packet first lets the server stop before loadWorld's logout task is queued: that task never ran and the
-        // client waited for it forever (jstack, 1.7.0).
+        final IntegratedServer server = leaving = mc.getIntegratedServer();
+        final Thread client = Thread.currentThread();
+        server.addScheduledTask(() -> {
+            serverBusy = true;
+            long end = System.nanoTime() + 10_000_000_000L;
+            while (!(raced = queuingLogout(client)) && System.nanoTime() < end) LockSupport.parkNanos(1_000_000L);
+            server.initiateShutdown();
+        });
+        long end = System.nanoTime() + 10_000_000_000L;
+        while (!serverBusy && System.nanoTime() < end) LockSupport.parkNanos(1_000_000L);
+        check(serverBusy, "the QA world's server is running a task (its task queue is locked)");
+        long start = System.nanoTime();
         mc.loadWorld(null);
+        leftAfterMs = (System.nanoTime() - start) / 1_000_000;
         mc.displayGuiScreen(new GuiMainMenu());
         return after(20);
     }
 
+    /** The client thread blocked on the server's task queue inside IntegratedServer.initiateShutdown (queuing its logout). */
+    private static boolean queuingLogout(Thread client) {
+        if (client.getState() != Thread.State.BLOCKED) return false;
+        for (StackTraceElement frame : client.getStackTrace()) if (frame.getClassName().equals(IntegratedServer.class.getName())) return true;
+        return false;
+    }
+
     private static boolean leftWorld(Minecraft mc) {
-        check(mc.theWorld == null && mc.currentScreen instanceof GuiMainMenu, "the QA world closed back to the title screen");
+        java.util.Queue<?> tasks = ReflectionHelper.getPrivateValue(net.minecraft.server.MinecraftServer.class, leaving, "futureTaskQueue", "field_175589_i");
+        boolean unrun = false;
+        for (Object task : tasks) unrun |= !((java.util.concurrent.Future<?>) task).isDone();
+        check(raced && unrun, "the client queued its logout task just as the server stopped on its own, and the server never ran it (the freeze's race, forced)");
+        check(leaving.isServerStopped() && mc.theWorld == null && mc.getIntegratedServer() == null && mc.currentScreen instanceof GuiMainMenu,
+            "loadWorld(null) still returned (" + leftAfterMs + " ms) and the QA world closed back to the title screen");
+        screenshot(mc, "c1-title-after-leave");
         return true;
     }
 
