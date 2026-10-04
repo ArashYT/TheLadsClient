@@ -36,7 +36,12 @@ class InstalledModsViewTest {
     static final class Recorder extends LadsGraphicsTest.MockGraphics {
         record Text(String text, int x, int y, boolean centered) {}
         final List<Text> texts = new ArrayList<>();
-        Recorder() { height = 8000; }
+        Recorder() { width = 1400; height = 8000; } // wide cards: whole detail lines
+        /** The column of the Installed mods grid at x: two once the panel is wide enough (LadsSettingsScreen.renderMods). */
+        int column(int x) {
+            int pad = width < 450 ? 10 : 20, left = width >= 530 && height >= 340 ? 134 : pad, w = width - left - pad;
+            return w >= 440 ? (x - left) / ((w - 12) / 2 + 4) : 0;
+        }
         @Override public void drawText(String text, int x, int y, int color, boolean shadow) {
             super.drawText(text, x, y, color, shadow); texts.add(new Text(text, x, y, false));
         }
@@ -52,13 +57,13 @@ class InstalledModsViewTest {
         /** The button drawn on the same row as the row's name, or null. */
         int[] rowButton(String name, String label) {
             Text row = row(name);
-            return texts.stream().filter(t -> t.centered() && t.text().equals(label) && Math.abs(t.y() - row.y()) <= 6)
+            return texts.stream().filter(t -> t.centered() && t.text().equals(label) && Math.abs(t.y() - row.y()) <= 6 && column(t.x()) == column(row.x()))
                 .findFirst().map(t -> new int[]{t.x(), t.y() + 3}).orElse(null);
         }
         /** Second line of a row: ownership, id, status, loaded and next-launch state (after "Restart required"). */
         List<String> rowDetails(String name) {
             Text row = row(name);
-            return texts.stream().filter(t -> !t.centered() && t.y() == row.y() + 13).map(Text::text).toList();
+            return texts.stream().filter(t -> !t.centered() && t.y() == row.y() + 13 && column(t.x()) == column(row.x())).map(Text::text).toList();
         }
         int[] button(String label) {
             return texts.stream().filter(t -> t.centered() && t.text().equals(label)).findFirst()
@@ -269,6 +274,17 @@ class InstalledModsViewTest {
         g.render(menu);
         g.click(menu, g.rowButton("Sodium", "Settings"));
         assertEquals(List.of("sodium"), opened);
+    }
+
+    @Test void entriesSitInTwoColumnsUnlessThePanelIsNarrow() {
+        var g = new Recorder();
+        open(g);
+        var first = g.row("The Lads Core");
+        assertTrue(g.texts.stream().anyMatch(t -> !t.centered() && t.y() == first.y() && g.column(t.x()) == 1), "a second card beside the first");
+        g.width = 427; g.height = 240;
+        var menu = new LadsSettingsScreen(); menu.openMods(); g.render(menu);
+        var row = g.row("The Lads Core");
+        assertTrue(g.texts.stream().noneMatch(t -> !t.centered() && t.y() == row.y() && t.x() > row.x()), "one card per row on a narrow panel");
     }
 
     @Test void smallWindowsKeepRowsReachable() {

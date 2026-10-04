@@ -12,6 +12,7 @@ import java.util.WeakHashMap;
 public final class ButtonLift {
     private static final Map<Object, float[]> STATE = new WeakHashMap<>(); // {progress, last frame seconds}
     private static final Set<Object> LIFTING = Collections.newSetFromMap(new WeakHashMap<>());
+    private static final Map<Object, String> ICONS = new WeakHashMap<>();
     private ButtonLift() {}
 
     /** Advances the button's hover and returns it, linear 0..1; call once per drawn frame. */
@@ -27,7 +28,13 @@ public final class ButtonLift {
     /** A vanilla button the screen lifts as a whole, its own label included (the pause menu's). */
     public static void enable(Object button) { LIFTING.add(button); }
 
+    /** As above, with an icon (TitleScreenTheme) drawn before the button's label. */
+    public static void enable(Object button, String icon) { LIFTING.add(button); ICONS.put(button, icon); }
+
     public static boolean enabled(Object button) { return LIFTING.contains(button); }
+
+    /** The icon a lifting button draws before its label, or null. */
+    public static String icon(Object button) { return ICONS.get(button); }
 
     /** The eased hover last computed, 0 for a button that does not lift. */
     public static float eased(Object button) {

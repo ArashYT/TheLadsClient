@@ -40,7 +40,7 @@ public final class TitleExtrasScreen26 extends Screen {
             AbstractWidget original = actions.get(i);
             AbstractWidget widget = original;
             if(original instanceof Button button){
-                String label=original.getMessage().getString();
+                String label=TitleWidgetRegistry.renderLabel(original);
                 if(label.isBlank())label="Extra settings";
                 widget=Button.builder(Component.literal(label),b->button.onPress(null)).bounds(0,0,1,1).build();widget.active=original.active;
             }
@@ -77,7 +77,7 @@ public final class TitleExtrasScreen26 extends Screen {
         g.fill(0, 0, width, height, LadsPalette.BACKGROUND);
         g.fill(0, 0, width, 2, LadsPalette.ACCENT);
         g.text(font, "MORE FROM YOUR CLIENT", 20, 18, LadsPalette.TEXT, false);
-        g.text(font, "Accounts, services and extra tools", 20, 35, LadsPalette.MUTED, false);
+        g.text(font, "Services and extra tools", 20, 35, LadsPalette.MUTED, false);
         long now = System.nanoTime();
         float elapsed = (float)Math.clamp((now - previousFrame) / 1e9, 0, .1);
         previousFrame = now;

@@ -660,15 +660,17 @@ public final class LadsSettingsScreen {
         if (modsPlan != null) { renderModsPlan(g, x, top, w, mx, my); return; }
         List<ModLine> lines = new ArrayList<>();
         for (var row : modsModel.visible(modsFilter, modsSearch)) addModLines(row, 0, lines);
-        int gap = 4, total = 0;
-        for (ModLine line : lines) total += modRowHeight(line.row()) + gap;
+        // Two columns, like the module cards, read left to right; one on a narrow panel. A row is as tall as its taller card.
+        int gap = 4, cols = w >= 440 ? 2 : 1, cardW = (w - 8 - (cols - 1) * gap) / cols, total = 0;
+        for (int i = 0; i < lines.size(); i += cols) total += modRowHeight(lines, i, cols) + gap;
         maxScroll = Math.max(0, total - gap - viewport.height);
         scrollOffset = Math.min(scrollOffset, maxScroll);
         g.enableScissor(x, top, x + w, top + viewport.height);
         int y = top - renderScroll;
-        for (ModLine line : lines) {
-            int h = modRowHeight(line.row());
-            if (y + h > top && y < top + viewport.height) modRow(g, line, x, y, w - 8, h, mx, my);
+        for (int i = 0; i < lines.size(); i += cols) {
+            int h = modRowHeight(lines, i, cols);
+            if (y + h > top && y < top + viewport.height)
+                for (int c = 0; c < cols && i + c < lines.size(); c++) modRow(g, lines.get(i + c), x + c * (cardW + gap), y, cardW, h, mx, my);
             y += h + gap;
         }
         if (lines.isEmpty()) {
@@ -691,9 +693,15 @@ public final class LadsSettingsScreen {
         return reason == null || row.note().contains(reason) ? row.note() : row.note() + " " + reason;
     }
     private static int modRowHeight(ModInventoryModel.Row row) { return modExtraLine(row) == null ? 34 : 45; }
+    private static int modRowHeight(List<ModLine> lines, int first, int cols) {
+        int h = 0;
+        for (int i = first; i < Math.min(lines.size(), first + cols); i++) h = Math.max(h, modRowHeight(lines.get(i).row()));
+        return h;
+    }
     private void modRow(LadsGraphics g, ModLine line, int x, int y, int w, int h, int mx, int my) {
         var row = line.row();
         int rx = x + line.depth() * 14, rw = w - line.depth() * 14, textX = rx + 38, right = rx + rw - 6;
+        boolean narrow = rw < 300; // a two-column card: a smaller toggle and a gear for Settings leave the name room
         round(g, rx, y, rw, h, line.depth() == 0 ? CARD : PANEL);
         if (!row.children().isEmpty()) {
             boolean open = modExpanded(row);
@@ -712,14 +720,18 @@ public final class LadsSettingsScreen {
             right -= 6;
         } else if (!"platform".equals(row.ownership())) {
             String state = row.nativeModule() && row.id().equals("DiscordRPC") ? "Soon" : row.requested() ? "ON" : "OFF";
-            right -= 45;
-            button(g, "mods:toggle:" + row.key(), state, new Rect(right, y + 6, 45, 18), () -> toggleModRow(row), row.canToggle(), mx, my, row.requested());
+            int toggleW = narrow ? 34 : 45;
+            right -= toggleW;
+            button(g, "mods:toggle:" + row.key(), state, new Rect(right, y + 6, toggleW, 18), () -> toggleModRow(row), row.canToggle(), mx, my, row.requested());
             right -= 6;
         }
         Runnable settings = modSettingsAction(row);
         if (settings != null) {
-            right -= 58;
-            button(g, "mods:settings:" + row.key(), "Settings", new Rect(right, y + 6, 58, 18), settings, true, mx, my, false);
+            int settingsW = narrow ? 18 : 58;
+            right -= settingsW;
+            // Narrow: the label does not fit and draws nothing; the gear stands for it (the control keeps the label).
+            button(g, "mods:settings:" + row.key(), "Settings", new Rect(right, y + 6, settingsW, 18), settings, true, mx, my, false);
+            if (narrow) gear(g, right + 5, y + 11, TEXT);
             right -= 6;
         }
         g.drawText(fit(g, row.displayName() + (row.version() == null ? "" : "  " + row.version()), right - textX - 4), textX, y + 8, TEXT);

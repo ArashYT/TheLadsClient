@@ -19,6 +19,23 @@ public final class PauseMenuLayout {
 
     private PauseMenuLayout() {}
 
+    /** Each button's icon (TitleScreenTheme), drawn before its label. */
+    public static String icon(Slot slot) {
+        return switch (slot) {
+            case BACK -> "play";
+            case ADVANCEMENTS -> "advancements";
+            case STATS -> "stats";
+            case OPTIONS -> "settings";
+            case LADS -> "lads";
+            case MULTIPLAYER -> "server";
+            case WORLD -> "host";
+            case REPLAYS -> "replay";
+            case EXTRAS -> "dots";
+            case OTHER -> "mods";
+            case QUIT -> "quit";
+        };
+    }
+
     /** One box per entry of {@code slots} (same order), centred between {@code top} and {@code bottom}. */
     public static List<Box> arrange(List<Slot> slots, int width, int top, int bottom) {
         List<int[]> rows = new ArrayList<>();

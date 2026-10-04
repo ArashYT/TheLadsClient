@@ -111,7 +111,7 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
             button.yPosition = box.y();
             button.width = box.width();
             button.height = box.height();
-            ButtonLift.enable(button);
+            ButtonLift.enable(button, PauseMenuLayout.icon(slots.get(i)));
         }
     }
 
