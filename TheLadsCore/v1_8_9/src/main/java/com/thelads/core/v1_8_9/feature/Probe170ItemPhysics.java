@@ -74,8 +74,9 @@ final class Probe170ItemPhysics {
             return after(60);
         },
         mc -> { screenshot(mc, "170-ip-rest-side"); view(mc, 0.5, 5, 2.5, 0, 90); return after(20); },
-        // Looking down at the row: no sky in the compared frames (OptiFine's dusk sky changes by itself).
-        mc -> { screenshot(mc, "170-ip-rest-top"); view(mc, 0.5, 2.5, -1.5, 0, 55); return after(20); },
+        // Straight down at the row from close by: no sky (OptiFine's dusk sky changes by itself) and no far chunks still being
+        // re-meshed after the arena went up, which the stopped timer does not stop.
+        mc -> { screenshot(mc, "170-ip-rest-top"); view(mc, 0.5, 3.5, 2.5, 0, 90); return after(60); },
         mc -> { // module off, on, off with the client's timer stopped
             frozen = new FrozenFrames(mc);
             MinecraftForge.EVENT_BUS.register(frozen);
@@ -151,8 +152,10 @@ final class Probe170ItemPhysics {
             if (!ready("lava-3")) return retry(2);
             check(fact("lava-0")[3] == 0, "Item Physics: oak planks burn up in lava");
             String[] names = {"", "cobblestone", "an iron ingot", "a gold ingot"};
-            for (int i = 1; i < 4; i++)
+            for (int i = 1; i < 4; i++) {
                 check(fact("lava-" + i)[3] == 1 && fact("lava-" + i)[1] > 0.3, "Item Physics: " + names[i] + " survives the lava, floating (y " + fmt(fact("lava-" + i)[1]) + ")");
+                check(drawn(mc, "lava-id-" + i), "Item Physics: and this client still has it to draw");
+            }
             module().setEnabled(false);
             onServer(mc, player -> facts.put("lava-off-id", spawn(player.worldObj, Item.getItemFromBlock(Blocks.cobblestone), 1, -3, 0.9, -4).getEntityId()));
             return after(80);
@@ -174,6 +177,7 @@ final class Probe170ItemPhysics {
         mc -> {
             if (!ready("cactus-on")) return retry(2);
             check(fact("cactus-on")[3] == 1 && fact("cactus-on")[1] > 2.5, "Item Physics: an item lying on a cactus survives (y " + fmt(fact("cactus-on")[1]) + ")");
+            check(drawn(mc, "cactus-on-id"), "Item Physics: and this client still has it to draw");
             module().setEnabled(false);
             onServer(mc, player -> {
                 Entity old = player.worldObj.getEntityByID((Integer) facts.get("cactus-on-id"));
@@ -192,8 +196,8 @@ final class Probe170ItemPhysics {
                 EntityItem stick = spawn(player.worldObj, Items.stick, 1, -4.5, 1.05, 5.5);
                 stick.setFire(4);
                 EntityItem stone = spawn(player.worldObj, Item.getItemFromBlock(Blocks.cobblestone), 1, -4.5, 1.05, 3.5);
-                stone.setFire(4);
-                facts.put("stone-burning", stone.isBurning());
+                stone.setFire(4); // 1.8.9 lights it regardless; fire-proof, it goes out by itself and does no harm
+                facts.put("stone-id", stone.getEntityId());
             });
             return after(30);
         },
@@ -201,6 +205,8 @@ final class Probe170ItemPhysics {
             onServer(mc, player -> {
                 facts.put("fire-stick", player.worldObj.getBlockState(base.add(-5, 1, 5)).getBlock() == Blocks.fire);
                 facts.put("fire-stone", player.worldObj.getBlockState(base.add(-5, 1, 3)).getBlock() == Blocks.fire);
+                Entity stone = player.worldObj.getEntityByID((Integer) facts.get("stone-id"));
+                facts.put("stone-burning", stone == null || stone.isDead || stone.isBurning());
             });
             screenshot(mc, "170-ip-ignite");
             return after(4);
@@ -209,7 +215,7 @@ final class Probe170ItemPhysics {
             if (!ready("fire-stick", "fire-stone", "stone-burning")) return retry(2);
             check(Boolean.TRUE.equals(facts.get("fire-stick")), "Item Physics: a burning stick lying on oak planks sets them alight");
             check(Boolean.FALSE.equals(facts.get("stone-burning")) && Boolean.FALSE.equals(facts.get("fire-stone")),
-                "Item Physics: cobblestone cannot be set on fire, so it lights nothing");
+                "Item Physics: set alight, cobblestone survives, goes out and lights nothing");
             onServer(mc, player -> {
                 for (int x = -6; x <= -4; x++) for (int z = 2; z <= 6; z++) for (int y = 0; y <= 2; y++)
                     if (player.worldObj.getBlockState(base.add(x, y, z)).getBlock() == Blocks.fire) set(player.worldObj, base.add(x, y, z), Blocks.air.getDefaultState());
@@ -472,6 +478,12 @@ final class Probe170ItemPhysics {
         Entity item = world.getEntityByID(id);
         facts.put(name, item == null ? new double[]{0, 0, 0, 0}
             : new double[]{item.posX - base.getX(), item.posY - base.getY(), item.posZ - base.getZ(), item.isDead ? 0 : 1});
+    }
+
+    /** This client's copy of the item is alive (1.8.9 also hurts the client's copy). */
+    private static boolean drawn(Minecraft mc, String id) {
+        Entity item = mc.theWorld.getEntityByID((Integer) facts.get(id));
+        return item != null && !item.isDead;
     }
 
     /** The server thread has recorded these facts (its tasks can lag behind the client's ticks). */
