@@ -18,6 +18,7 @@
     "KeyboardHandlerMixin",
     "KeyboardInputMixin",
     "MouseHandlerMixin",
+    "MouseTweaksMixin",
     "FullbrightMixin",
     "ZoomMixin",
     "BetterF3Mixin",
