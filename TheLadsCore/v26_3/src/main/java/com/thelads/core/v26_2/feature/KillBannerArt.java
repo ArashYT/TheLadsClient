@@ -74,7 +74,8 @@ final class KillBannerArt {
                     quad(g, label, style.anchorX - label.width() * s / 2, style.anchorY + style.labelY, s, argb(0xFFFFFF, f.labelAlpha()));
                 }
             } else {
-                // Composite, Swap, Phaseguard kill banners
+                // Composite, Swap, Phaseguard kill banners: Kingdom Archives art, in its own pixels
+                pose.scale(KillBannerStyle.ART_SCALE, KillBannerStyle.ART_SCALE);
                 if (f.shadowAlpha() > 0) {
                     Sprite shadow = sprite("/assets/theladscore/killbanner/shadow.png");
                     float d = style.ring * 3.7f;
