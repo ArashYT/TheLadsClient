@@ -97,10 +97,16 @@ public final class FoodProbe {
         require(found.size() <= 1, "at most one food line: " + found.size());
         return found.isEmpty() ? null : found.getFirst();
     }
+    /** The sprites in a line, in order (Component.toFlatList renders object parts to their empty fallback text, so walk the tree). */
     private static List<String> sprites(Component line) {
-        return line == null ? List.of() : line.toFlatList().stream().filter(part -> part.getContents() instanceof ObjectContents)
-            .map(part -> ((AtlasSprite) ((ObjectContents) part.getContents()).contents()).sprite())
-            .map(id -> "minecraft".equals(id.getNamespace()) ? id.getPath() : id.toString()).toList();
+        List<String> found = new java.util.ArrayList<>();
+        if (line != null) collect(line, found);
+        return found;
+    }
+    private static void collect(Component part, List<String> found) {
+        if (part.getContents() instanceof ObjectContents object && object.contents() instanceof AtlasSprite sprite)
+            found.add("minecraft".equals(sprite.sprite().getNamespace()) ? sprite.sprite().getPath() : sprite.sprite().toString());
+        part.getSiblings().forEach(child -> collect(child, found));
     }
     private static String text(Component line) { return line == null ? "none" : line.getString(); }
     private static void set(String name, boolean value) { ((BoolOption) NativeQualityOfLife.module(NativeFood.MODULE).getOption(name)).set(value); }
