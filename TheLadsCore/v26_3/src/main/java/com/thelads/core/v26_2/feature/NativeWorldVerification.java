@@ -131,6 +131,7 @@ public final class NativeWorldVerification {
             Hud170Capture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy() && !SprintCapture.busy());
             ItemPhysicsCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy()
                 && !SkinLayersCapture.busy() && !SprintCapture.busy() && !Hud170Capture.busy());
+            InventoryCapture.tick(gameDirectory, captureReady);
             CheatsProbe.tick(gameDirectory, captureReady);
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
@@ -251,6 +252,7 @@ public final class NativeWorldVerification {
         SprintCapture.frame(target, gameDirectory);
         Hud170Capture.frame(target, gameDirectory);
         ItemPhysicsCapture.frame(target, gameDirectory);
+        InventoryCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
         captureStarted = true;
         try {

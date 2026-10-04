@@ -141,6 +141,8 @@ bool sprintCaptureVerification = autoWorldVerification && !capabilities.Forge &&
 bool hud170CaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_HUD170") == "1";
 // Fabric versions: Item Physics in a QA arena (ItemPhysicsCapture). 1.8.9's self-test runs the same checks: LADS_VERIFY_189_ONLY=itemphysics.
 bool itemPhysicsCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ITEMPHYSICS") == "1";
+// Fabric versions: the survival and creative inventories with and without potion effects, centred (InventoryCapture). 1.8.9: LADS_VERIFY_189_FOCUS=inventory (ProbeInventory).
+bool inventoryCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_INVENTORY") == "1";
 // Fabric versions: the Lads title screen and its More screen photographed before the QA world opens (NativeWorldVerification).
 // 1.8.9's self-test (CoreProbe) always captures them.
 bool titleCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_TITLE") == "1";
@@ -287,6 +289,8 @@ string hud170CaptureRequest = Path.Combine(directory, ".lads-qa-capture-hud170")
 if (autoWorldVerification && File.Exists(hud170CaptureRequest)) File.Delete(hud170CaptureRequest);
 string itemPhysicsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-itemphysics");
 if (autoWorldVerification && File.Exists(itemPhysicsCaptureRequest)) File.Delete(itemPhysicsCaptureRequest);
+string inventoryCaptureRequest = Path.Combine(directory, ".lads-qa-capture-inventory");
+if (autoWorldVerification && File.Exists(inventoryCaptureRequest)) File.Delete(inventoryCaptureRequest);
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
         File.Delete(Path.Combine(directory, flag));
@@ -337,7 +341,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
     "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads cheats probe FAILED", "Lads zoom capture FAILED", "Lads sprint capture FAILED", "Lads add-server probe FAILED",
-    "Lads HUD 1.7.0 capture FAILED", "Lads item physics capture FAILED",
+    "Lads HUD 1.7.0 capture FAILED", "Lads item physics capture FAILED", "Lads inventory capture FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -578,7 +582,7 @@ try
                 if (line.Contains(marker) && (Passed(line) || marker == "Lads food server sync END:")) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
                 "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
-                "Lads item physics capture END:", "Lads title capture END:", "Lads title More capture END:" })
+                "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -668,7 +672,8 @@ try
             bool sprintDone = !sprintCaptureVerification || passedMarkers.ContainsKey("Lads sprint capture END:");
             bool hud170Done = !hud170CaptureVerification || passedMarkers.ContainsKey("Lads HUD 1.7.0 capture END:");
             bool itemPhysicsDone = !itemPhysicsCaptureVerification || passedMarkers.ContainsKey("Lads item physics capture END:");
-            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && skinLayersDone && sprintDone && hud170Done && itemPhysicsDone)
+            bool inventoryDone = !inventoryCaptureVerification || passedMarkers.ContainsKey("Lads inventory capture END:");
+            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && skinLayersDone && sprintDone && hud170Done && itemPhysicsDone && inventoryDone)
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -702,7 +707,8 @@ try
                     (skinLayersCaptureVerification, skinLayersCaptureRequest, "Photograph the player's 3D skin layers with SkinLayers on and off."),
                     (sprintCaptureVerification, sprintCaptureRequest, "Walk Toggle Sprint & Sneak through the QA world and log every tick's sprint packets."),
                     (hud170CaptureVerification, hud170CaptureRequest, "Capture the 1.7.0 HUD changes in the QA world."),
-                    (itemPhysicsCaptureVerification, itemPhysicsCaptureRequest, "Drop items in an Item Physics arena and capture its frames.") })
+                    (itemPhysicsCaptureVerification, itemPhysicsCaptureRequest, "Drop items in an Item Physics arena and capture its frames."),
+                    (inventoryCaptureVerification, inventoryCaptureRequest, "Capture the inventories with and without potion effects in the QA world.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -811,6 +817,8 @@ try
             "The requested 1.7.0 HUD capture did not pass. Inspect production-smoke.log.");
         Require(!itemPhysicsCaptureVerification || passedMarkers.ContainsKey("Lads item physics capture END:"),
             "The requested Item Physics capture did not pass. Inspect production-smoke.log.");
+        Require(!inventoryCaptureVerification || passedMarkers.ContainsKey("Lads inventory capture END:"),
+            "The requested inventory capture did not pass. Inspect production-smoke.log.");
         Require(!titleCaptureVerification || passedMarkers.ContainsKey("Lads title capture END:") && passedMarkers.ContainsKey("Lads title More capture END:"),
             "The requested title and More frames were not both captured. Inspect production-smoke.log.");
     }
