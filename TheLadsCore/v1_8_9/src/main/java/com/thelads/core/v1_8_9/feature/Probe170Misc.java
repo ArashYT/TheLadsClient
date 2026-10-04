@@ -278,6 +278,7 @@ final class Probe170Misc {
             module.bannerStyle.setIndex(com.thelads.core.modules.KillBannerModule.styleIndexOf(skin));
             module.setVariant(skin, variant);
             module.duration.setValue(6);
+            module.headshotText.set(true);
             KillBanner189.reset();
             KillBanner189.trigger(kills, false, headshot);
             return after(ms / 50);
