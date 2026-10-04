@@ -67,6 +67,7 @@ public final class CoreProbe {
         STEPS.addAll(Probe150.STEPS);
         STEPS.addAll(Probe151.STEPS);
         STEPS.addAll(Probe160.STEPS);
+        STEPS.addAll(LightsProbe189.STEPS);
         STEPS.addAll(Probe145.PACING);
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
@@ -102,6 +103,7 @@ public final class CoreProbe {
         HudProbe.stop();
         Probe151.stop();
         Probe160.stop();
+        LightsProbe189.stop();
         Probe160s.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
