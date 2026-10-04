@@ -124,13 +124,14 @@ public final class NativeWorldVerification {
             KillBannerCapture.tick(gameDirectory, captureReady && !OldAnimationsCapture.busy() && !ZoomCapture.busy());
             OldAnimationsCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !ZoomCapture.busy());
             ZoomCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy());
+            F3FovCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy());
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
             Path hudRequest = gameDirectory.resolve(".lads-qa-capture-hud");
             // A menu or HUD capture opens a screen, which zooms out and stops item use: never while a world capture runs.
             if (menuScreen == null && readyLogged && worldReady()
-                && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy()
+                && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !F3FovCapture.busy()
                 && !com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.NativeScreenshotsProbe.running()
                 && (Files.isRegularFile(menuRequest, LinkOption.NOFOLLOW_LINKS)
                     || Files.isRegularFile(hudRequest, LinkOption.NOFOLLOW_LINKS))) {
@@ -219,6 +220,7 @@ public final class NativeWorldVerification {
         KillBannerCapture.frame(target, gameDirectory);
         OldAnimationsCapture.frame(target, gameDirectory);
         ZoomCapture.frame(target, gameDirectory);
+        F3FovCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
         captureStarted = true;
         try {
