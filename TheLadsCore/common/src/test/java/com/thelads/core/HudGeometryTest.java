@@ -149,9 +149,9 @@ class HudGeometryTest {
         graphics.width=640;graphics.height=360;graphics.clear();HudManager.getInstance().render(graphics);
         var live=graphics.draws.stream().filter(d->d.text!=null&&d.text.startsWith("CPS")).findFirst().orElseThrow();
         assertFalse(graphics.draws.stream().anyMatch(d->d.text!=null&&d.text.startsWith("Day")));
-        graphics.clear();new DraggableHudScreen(()->{}).render(graphics,-1,-1);
-        var editor=graphics.draws.stream().filter(d->d.text!=null&&d.text.startsWith("CPS")).findFirst().orElseThrow();
-        assertEquals(live.x,editor.x);assertEquals(live.y,editor.y);
+        graphics.clear();var screen=new DraggableHudScreen(()->{});screen.render(graphics,-1,-1);
+        var editor=graphics.draws.stream().filter(d->d.text!=null&&d.text.startsWith("CPS")&&screen.previewBounds().contains(d.x,d.y)).findFirst().orElseThrow();
+        assertEquals(screen.screenX(live.x),editor.x,0.01);assertEquals(screen.screenY(live.y),editor.y,0.01);
         assertEquals(580,active.getX());assertEquals(700,hidden.getX());
     }
 }

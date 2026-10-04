@@ -286,8 +286,9 @@ class HudNativeDataTest {
         assertTrue(graphics.drawCalls.isEmpty());
         DraggableHudScreen editor = new DraggableHudScreen(() -> fail("No configuration should be saved"));
         editor.render(graphics, 0, 0);
-        assertFalse(editor.mouseClicked(10, 10, 0));
-        assertTrue(graphics.texts.isEmpty());
+        assertFalse(editor.mouseClicked(editor.screenX(10), editor.screenY(10), 0));
+        assertNull(editor.boundsFor(null), "nothing previewed");
+        assertTrue(editor.listedNames().isEmpty(), "nothing listed");
     }
 
     @Test
@@ -351,13 +352,13 @@ class HudNativeDataTest {
         only(element);
         DraggableHudScreen editor = new DraggableHudScreen(() -> {});
         editor.render(graphics, 0, 0);
-        assertTrue(graphics.rectangles.contains(new Rect(100, 100, 100, 30)));
+        assertTrue(drawnAt(editor, 100, 100, 100, 30), "200% content at its game position, through the preview scale");
         assertTrue(graphics.poses.isEmpty());
-        assertTrue(editor.mouseClicked(190, 120, 0), "the scaled half must be selectable");
-        assertTrue(editor.mouseDragged(240, 170, 0));
+        assertTrue(editor.mouseClicked(editor.screenX(190), editor.screenY(120), 0), "the scaled half must be selectable");
+        assertTrue(editor.mouseDragged(editor.screenX(240), editor.screenY(170), 0));
         assertEquals(150, element.getX());
         assertEquals(150, element.getY());
-        editor.mouseReleased(240, 170, 0);
+        editor.mouseReleased(editor.screenX(240), editor.screenY(170), 0);
         assertArrayEquals(new int[] {150, 150}, HudSettings.getInstance().getPosition("FPS"));
     }
 
@@ -382,9 +383,9 @@ class HudNativeDataTest {
         DraggableHudScreen editor = new DraggableHudScreen(saves::incrementAndGet);
         editor.setOnClose(closes::incrementAndGet);
         editor.render(graphics, 0, 0);
-        editor.mouseClicked(110, 110, 0);
-        editor.mouseDragged(210, 210, 0);
-        assertFalse(editor.mouseReleased(210, 210, 1));
+        editor.mouseClicked(editor.screenX(110), editor.screenY(110), 0);
+        editor.mouseDragged(editor.screenX(210), editor.screenY(210), 0);
+        assertFalse(editor.mouseReleased(editor.screenX(210), editor.screenY(210), 1));
         assertTrue(editor.keyPressed(256));
         assertEquals(1, saves.get());
         assertEquals(1, closes.get());
@@ -404,11 +405,11 @@ class HudNativeDataTest {
         int ey = element.getDisplayY(graphics);
         DraggableHudScreen editor = new DraggableHudScreen(() -> {});
         editor.render(graphics, 0, 0);
-        assertTrue(editor.mouseClicked(ex + 2, ey + 2, 0));
+        assertTrue(editor.mouseClicked(editor.screenX(ex + 2), editor.screenY(ey + 2), 0));
         assertTrue(((BoolOption) ModuleManager.getInstance().getModule("ArmorHUD").getOption("Attach to hotbar")).get());
-        editor.mouseDragged(202, 202, 0);
+        editor.mouseDragged(editor.screenX(202), editor.screenY(202), 0);
         assertFalse(((BoolOption) ModuleManager.getInstance().getModule("ArmorHUD").getOption("Attach to hotbar")).get());
-        editor.mouseReleased(202, 202, 0);
+        editor.mouseReleased(editor.screenX(202), editor.screenY(202), 0);
         assertEquals(200, element.getDisplayX(graphics));
         assertEquals(200, element.getDisplayY(graphics));
         assertArrayEquals(new int[] {200, 200}, HudSettings.getInstance().getPosition("ArmorHUD"));
@@ -423,9 +424,16 @@ class HudNativeDataTest {
         DraggableHudScreen editor = new DraggableHudScreen(() -> {});
         editor.keyPressed(65); // 'A': explicitly opt into disabled HUD previews.
         editor.render(graphics, 0, 0);
-        assertTrue(graphics.rectangles.contains(new Rect(graphics.width / 2f + 96,
-                graphics.height - element.getRenderHeight() - 4, element.getRenderWidth(), element.getRenderHeight())));
+        assertTrue(drawnAt(editor, graphics.width / 2f + 96,
+                graphics.height - element.getRenderHeight() - 4, element.getRenderWidth(), element.getRenderHeight()));
         assertTrue(graphics.rectangles.stream().allMatch(rect -> rect.y() + rect.height() <= graphics.height));
+    }
+
+    /** A fill covering exactly these game GUI bounds, as the editor's preview draws them on screen. */
+    private boolean drawnAt(DraggableHudScreen editor, float x, float y, float width, float height) {
+        double s = editor.previewScale();
+        return graphics.rectangles.stream().anyMatch(r -> Math.abs(r.x() - editor.screenX(x)) < .01 && Math.abs(r.y() - editor.screenY(y)) < .01
+            && Math.abs(r.width() - width * s) < .01 && Math.abs(r.height() - height * s) < .01);
     }
 
     @Test

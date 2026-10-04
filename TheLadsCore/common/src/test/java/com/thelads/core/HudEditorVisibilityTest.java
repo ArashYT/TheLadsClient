@@ -7,6 +7,7 @@ import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.DraggableHudScreen;
 import com.thelads.core.client.hud.FPSHudElement;
 import com.thelads.core.client.hud.HudElement;
+import com.thelads.core.client.hud.HudGroupLayout.Rect;
 import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.HudSettings;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -125,6 +127,17 @@ class HudEditorVisibilityTest {
     }
 
     private void render() { editor.render(graphics, -1, -1); }
+    /** Pointer input at a game GUI position, through the preview's mapping to the screen. */
+    private boolean click(double x, double y) { return editor.mouseClicked(editor.screenX(x), editor.screenY(y), 0); }
+    private boolean move(double x, double y) { return editor.mouseDragged(editor.screenX(x), editor.screenY(y), 0); }
+    private boolean release(double x, double y) { return editor.mouseReleased(editor.screenX(x), editor.screenY(y), 0); }
+    private DraggableHudScreen.Control control(String id) {
+        return editor.controls().stream().filter(control -> control.id().equals(id)).findFirst().orElseThrow();
+    }
+    private void press(DraggableHudScreen.Control control) {
+        assertTrue(editor.mouseClicked(control.bounds().x() + 2, control.bounds().y() + 2, 0));
+        render();
+    }
 
     @Test
     void onlyEnabledHudRendersByDefaultEvenWhenDisabledRowsOverlapIt() {
@@ -133,9 +146,10 @@ class HudEditorVisibilityTest {
         render();
         assertEquals(1, enabled.renders);
         assertEquals(0, disabled.renders);
-        assertTrue(editor.mouseClicked(110, 110, 0));
-        editor.mouseDragged(210, 210, 0);
-        editor.mouseReleased(210, 210, 0);
+        assertEquals(List.of("Enabled"), editor.listedNames());
+        assertTrue(click(110, 110));
+        move(210, 210);
+        release(210, 210);
         assertEquals(200, enabled.getX());
         assertEquals(100, disabled.getX());
         assertFalse(HudSettings.getInstance().getPositions().containsKey("Disabled"));
@@ -145,28 +159,32 @@ class HudEditorVisibilityTest {
     void defaultHiddenHudHasNoClickableBounds() {
         add("Disabled", false, 100, 100);
         render();
-        assertFalse(editor.mouseClicked(110, 110, 0));
-        assertTrue(editor.mouseDragged(210, 210, 0)); // Empty canvas begins box selection, not a HUD move.
+        assertFalse(click(110, 110));
+        assertTrue(move(210, 210)); // Empty preview begins box selection, not a HUD move.
         assertTrue(editor.selectedNames().isEmpty());
         assertEquals(0, saves.get());
     }
 
     @Test
-    void showAllOptInDimsAndLabelsDisabledPreviewWithoutEnablingIt() {
+    void showDisabledListsAndDimsDisabledPreviewWithoutEnablingIt() {
         ProbeHud disabled = add("Disabled", false, 100, 100);
-        assertTrue(editor.keyPressed(65));
+        add("Enabled", true, 300, 100);
         render();
+        press(control("previews"));
+        assertTrue(editor.isShowingAll());
+        assertEquals(List.of("Disabled", "Enabled"), editor.listedNames());
         assertEquals(1, disabled.renders);
         assertFalse(disabled.active);
-        assertFalse(graphics.texts.stream().anyMatch(text -> text.value().contains("disabled")));
-        editor.render(graphics,110,110);
-        assertTrue(graphics.texts.stream().anyMatch(text -> text.value().contains("disabled")));
+        assertFalse(graphics.texts.stream().anyMatch(text -> text.value().contains("· disabled")));
+        editor.render(graphics, (int) editor.screenX(110), (int) editor.screenY(110));
+        assertTrue(graphics.texts.stream().anyMatch(text -> text.value().contains("· disabled")));
         assertTrue(graphics.fills.stream().anyMatch(fill -> fill.color() == 0x88222222));
-        assertTrue(graphics.instructions.contains("All HUDs · disabled previews stay disabled"));
-        assertTrue(editor.controls().stream().anyMatch(control -> control.id().equals("previews") && control.label().equals("Supported only")));
-        assertTrue(editor.mouseClicked(110, 110, 0));
-        editor.mouseReleased(110, 110, 0);
+        assertTrue(click(110, 110));
+        release(110, 110);
         assertFalse(disabled.active);
+        assertTrue(editor.keyPressed(65));
+        render();
+        assertEquals(List.of("Enabled"), editor.listedNames(), "A switches back to switched-on HUDs only");
     }
 
     @Test
@@ -176,19 +194,20 @@ class HudEditorVisibilityTest {
         editor.keyPressed(65);
         render();
         assertEquals(0, unavailable.renders);
-        assertFalse(editor.mouseClicked(110, 110, 0));
+        assertFalse(click(110, 110));
+        assertTrue(editor.listedNames().isEmpty());
     }
 
     @Test
     void togglingPreviewOffRejectsOldBoundsBeforeAnotherFrame() {
-        add("Disabled", false, 100, 100);
+        ProbeHud disabled = add("Disabled", false, 100, 100);
         editor.keyPressed(65);
         render();
         editor.keyPressed(65);
-        assertFalse(editor.mouseClicked(110, 110, 0));
-        graphics.clearFrame();
+        assertFalse(click(110, 110));
+        int renders = disabled.renders;
         render();
-        assertTrue(graphics.texts.isEmpty());
+        assertEquals(renders, disabled.renders);
     }
 
     @Test
@@ -196,10 +215,10 @@ class HudEditorVisibilityTest {
         add("Disabled", false, 100, 100);
         render();
         editor.keyPressed(65);
-        assertFalse(editor.mouseClicked(110, 110, 0));
+        assertFalse(click(110, 110));
         render();
-        assertTrue(editor.mouseClicked(110, 110, 0));
-        editor.mouseReleased(110, 110, 0);
+        assertTrue(click(110, 110));
+        release(110, 110);
     }
 
     @Test
@@ -207,7 +226,7 @@ class HudEditorVisibilityTest {
         ProbeHud element = add("Enabled", true, 100, 100);
         render();
         element.active = false;
-        assertFalse(editor.mouseClicked(110, 110, 0));
+        assertFalse(click(110, 110));
     }
 
     @Test
@@ -215,13 +234,13 @@ class HudEditorVisibilityTest {
         ProbeHud disabled = add("Disabled", false, 100, 100);
         editor.keyPressed(65);
         render();
-        editor.mouseClicked(110, 110, 0);
-        editor.mouseDragged(210, 210, 0);
+        click(110, 110);
+        move(210, 210);
         editor.keyPressed(65);
         assertEquals(1, saves.get());
         assertArrayEquals(new int[] {200, 200}, HudSettings.getInstance().getPosition("Disabled"));
-        assertFalse(editor.mouseDragged(310, 310, 0));
-        assertFalse(editor.mouseReleased(310, 310, 0));
+        assertFalse(move(310, 310));
+        assertFalse(release(310, 310));
         assertEquals(200, disabled.getX());
         assertEquals(1, saves.get());
     }
@@ -230,9 +249,9 @@ class HudEditorVisibilityTest {
     void disablingDuringDragStopsFurtherMovement() {
         ProbeHud element = add("Enabled", true, 100, 100);
         render();
-        editor.mouseClicked(110, 110, 0);
+        click(110, 110);
         element.active = false;
-        assertFalse(editor.mouseDragged(210, 210, 0));
+        assertFalse(move(210, 210));
         assertEquals(100, element.getX());
         assertEquals(0, saves.get()); // Selecting without moving cannot rebase a saved position.
     }
@@ -245,7 +264,8 @@ class HudEditorVisibilityTest {
         editor = new DraggableHudScreen(saves::incrementAndGet);
         render();
         assertEquals(1, disabled.renders);
-        assertFalse(editor.mouseClicked(110, 110, 0));
+        assertFalse(click(110, 110));
+        assertTrue(editor.listedNames().isEmpty());
     }
 
     @Test
@@ -264,45 +284,88 @@ class HudEditorVisibilityTest {
     }
 
     @Test
-    void onlyFpsAt125PercentRendersRealThirtyFpsWithTopLeftUncovered() {
+    void onlyFpsAt125PercentRendersRealThirtyFpsScaledIntoThePreview() {
         for (Module module : ModuleManager.getInstance().getModules()) module.setEnabled(module.getName().equals("FPS"));
         Module fpsModule = ModuleManager.getInstance().getModule("FPS");
         ((BoolOption) fpsModule.getOption("Smooth")).set(false);
         ((SliderOption) fpsModule.getOption("Size")).setValue(125);
         HudManager.getInstance().getElements().addAll(savedElements);
         render();
-        assertEquals(List.of(new Text("30 FPS", HudSettings.getInstance().getGlobalColor())), graphics.texts);
-        Fill bar = graphics.fills.stream().filter(fill -> fill.color() == com.thelads.core.client.gui.LadsPalette.PANEL).findFirst().orElseThrow();
-        assertTrue(bar.y() > graphics.height / 2f);
-        assertTrue(bar.width() < graphics.width);
-        assertTrue(editor.controls().stream().anyMatch(control -> control.id().equals("previews") && control.label().equals("All previews")));
-        assertTrue(graphics.fills.stream().anyMatch(fill -> fill.x() == 5 && fill.y() == 40 && fill.width() == 75 && fill.height() == 20));
+        assertTrue(graphics.texts.contains(new Text("30 FPS", HudSettings.getInstance().getGlobalColor())));
+        assertEquals(List.of("FPS"), editor.listedNames());
+        assertFalse(editor.isShowingAll());
+        // The FPS background (75x20 at 125%) at its game position 5,40, drawn through the preview's one scale.
+        double s = editor.previewScale();
+        assertTrue(graphics.fills.stream().anyMatch(fill -> Math.abs(fill.x() - editor.screenX(5)) < .01 && Math.abs(fill.y() - editor.screenY(40)) < .01
+            && Math.abs(fill.width() - 75 * s) < .01 && Math.abs(fill.height() - 20 * s) < .01), "FPS box scaled at its game position");
         assertTrue(graphics.poses.isEmpty());
+        assertEquals(1, graphics.sx);
     }
 
     @Test
-    void visibleToolbarRemainsClickableOnHoverWithoutHidingHudContent() {
-        ProbeHud element = add("Enabled", true, 100, 100);
+    void listAndPreviewSelectionFollowEachOther() {
+        add("Alpha", true, 100, 100);
+        add("Beta", true, 300, 100);
         render();
-        Fill bar = graphics.fills.stream().filter(fill -> fill.color() == com.thelads.core.client.gui.LadsPalette.PANEL).findFirst().orElseThrow();
-        graphics.clearFrame();
-        editor.render(graphics, (int) bar.x() + 1, (int) bar.y() + 1);
-        assertEquals(2, element.renders);
-        assertFalse(graphics.instructions.isEmpty());
-        assertFalse(editor.controls().isEmpty());
-        assertTrue(graphics.fills.stream().anyMatch(fill -> fill.color() == com.thelads.core.client.gui.LadsPalette.PANEL));
+        Rect beta = editor.rowBoundsFor("Beta");
+        assertNotNull(beta);
+        assertTrue(editor.mouseClicked(beta.x() + 30, beta.y() + 4, 0));
+        assertEquals(Set.of("Beta"), editor.selectedNames(), "a list click selects in the preview");
+        render();
+        Rect alpha = editor.rowBoundsFor("Alpha");
+        assertTrue(editor.mouseClicked(alpha.x() + 30, alpha.y() + 4, 0, 2));
+        assertEquals(Set.of("Alpha", "Beta"), editor.selectedNames(), "Ctrl adds from the list");
+        assertTrue(click(110, 110));
+        release(110, 110);
+        assertEquals(Set.of("Alpha", "Beta"), editor.selectedNames(), "pressing a selected HUD keeps the selection to drag it");
+        click(5, 300);
+        release(5, 300);
+        assertTrue(click(310, 110));
+        release(310, 110);
+        assertEquals(Set.of("Beta"), editor.selectedNames(), "a preview click selects that HUD's list row");
+        assertFalse(editor.isDragging());
     }
 
     @Test
-    void instructionBarHidesDuringDragAndReturnsAfterRelease() {
+    void searchFiltersTheListAndKeepsShortcutLettersAsText() {
+        add("Alpha", true, 100, 100);
+        add("Beta", true, 300, 100);
+        AtomicInteger closes = new AtomicInteger();
+        editor.setOnClose(closes::incrementAndGet);
+        render();
+        press(control("search"));
+        for (char c : "ag".toCharArray()) {
+            editor.keyPressed(Character.toUpperCase(c));
+            editor.charTyped(c);
+        }
+        render();
+        assertFalse(editor.isShowingAll(), "A typed into the search is text, not Show disabled");
+        assertTrue(control("snap").label().endsWith("on"), "G typed into the search is text, not Snap");
+        assertEquals(List.of(), editor.listedNames());
+        editor.keyPressed(259);
+        render();
+        assertEquals(List.of("Alpha", "Beta"), editor.listedNames());
+        editor.charTyped('l');
+        render();
+        assertEquals(List.of("Alpha"), editor.listedNames());
+        assertTrue(editor.keyPressed(256));
+        assertEquals(0, closes.get(), "Escape leaves the search first");
+        assertTrue(editor.keyPressed(256));
+        assertEquals(1, closes.get());
+    }
+
+    @Test
+    void statusLineExplainsShiftGroupingDuringADrag() {
         add("Enabled", true, 100, 100);
         render();
-        editor.mouseClicked(110, 110, 0);
+        click(110, 110);
+        move(130, 130);
         graphics.clearFrame();
         render();
-        assertTrue(graphics.instructions.isEmpty());
-        editor.mouseReleased(110, 110, 0);
+        assertTrue(graphics.texts.stream().anyMatch(text -> text.value().contains("hold Shift")));
+        release(130, 130);
+        graphics.clearFrame();
         render();
-        assertFalse(graphics.instructions.isEmpty());
+        assertFalse(graphics.texts.stream().anyMatch(text -> text.value().contains("hold Shift")));
     }
 }

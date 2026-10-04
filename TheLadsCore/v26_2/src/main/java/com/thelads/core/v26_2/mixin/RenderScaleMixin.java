@@ -67,6 +67,7 @@ public abstract class RenderScaleMixin {
             lads$restoreNativeTarget(delta);
             lads$renderScale.composite(destination);
         }
+        com.thelads.core.v26_2.feature.HudEditorView.copyWorld(mainRenderTarget);
     }
 
     @Unique private void lads$restoreNativeTarget(DeltaTracker delta) {
