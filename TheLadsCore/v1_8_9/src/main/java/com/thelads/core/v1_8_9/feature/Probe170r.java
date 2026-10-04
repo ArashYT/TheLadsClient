@@ -22,8 +22,8 @@ import org.lwjgl.opengl.GL33;
 /**
  * QA only, run by CoreProbe in its QA world after Probe150e: Better Resolution photographed at native, 50 % with each Algorithm,
  * the Balanced preset and 200 %, at noon, each with its FPS (the QA cap is 120) and the GPU time of a whole frame (an OpenGL timer
- * query from RenderTickEvent START to END), with Autohide off so every photo has the HUD. The module settings and the world
- * time are put back as found.
+ * query from RenderTickEvent START to END), with Autohide off so every photo has the HUD, looking 30 degrees down (ground,
+ * horizon and sky in one view). The module settings, view and world time are put back as found.
  */
 final class Probe170r {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
@@ -36,6 +36,7 @@ final class Probe170r {
     private static double scale;
     private static boolean enabled, autohide;
     private static long time;
+    private static float pitch;
     private static GpuTimer timer;
 
     private Probe170r() {}
@@ -50,6 +51,8 @@ final class Probe170r {
         method = module.method.getIndex();
         time = mc.theWorld.getWorldTime();
         autohide = Options189.enabled("Autohide");
+        pitch = mc.thePlayer.rotationPitch;
+        mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = 30;
         Options189.module("Autohide").setEnabled(false);
         check(RenderScale189.program(RenderScalePolicy.SMOOTH) != 0 && RenderScale189.program(RenderScalePolicy.SHARP) != 0,
             "Better Resolution: the Smooth and Sharp programs compile and link on this GPU (with OptiFine loaded)");
@@ -83,6 +86,7 @@ final class Probe170r {
         module.method.setIndex(method);
         module.setEnabled(enabled);
         Options189.module("Autohide").setEnabled(autohide);
+        mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = pitch;
         mc.getIntegratedServer().addScheduledTask(() -> mc.getIntegratedServer().worldServers[0].setWorldTime(time));
         check(true, "Better Resolution: " + STAGES.length + " stages photographed (lads-qa/screenshots/170-resolution-*.png); settings and time restored");
         return after(10);

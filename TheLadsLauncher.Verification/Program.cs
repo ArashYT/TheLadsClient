@@ -277,6 +277,7 @@ StreamWriter? log = null;
 var logGate = new object();
 bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false;
 bool menuCaptureRequested = false, hudCaptureRequested = false, worldCapturesRequested = false, windowFound = false, snapshotInvalid = false;
+bool resolutionCaptureRequested = false;
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
@@ -662,8 +663,7 @@ try
                 foreach (var (asked, request, text) in new[] {
                     (bannerCaptureVerification, bannerCaptureRequest, "Fire every kill banner skin in the QA world and capture its frames."),
                     (oldAnimCaptureVerification, oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames."),
-                    (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames."),
-                    (resolutionCaptureVerification, resolutionCaptureRequest, "Photograph Better Resolution at each setting in the QA world.") })
+                    (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -680,10 +680,19 @@ try
                 Console.WriteLine("Requesting native HUD editor interaction checks and actual frame capture.");
             }
         }
+        // Better Resolution's capture sets the same world-scale settings as the render scale probe, so it waits for that probe and the
+        // other GPU frame probe; it also runs when an unrelated probe failed (e.g. 1.7 Animations' hand checks under an Iris shader pack).
+        if (resolutionCaptureVerification && !resolutionCaptureRequested && passedMarkers.ContainsKey("Lads render scale probe END:")
+            && passedMarkers.ContainsKey("Lads native screenshots probe END:") && (nativeProbeFailed || requiredWorldProbes.All(passedMarkers.ContainsKey)))
+        {
+            await LockFiles.WriteAtomicallyAsync(resolutionCaptureRequest, Encoding.UTF8.GetBytes("Photograph Better Resolution at each setting in the QA world."), ct);
+            resolutionCaptureRequested = true;
+        }
         // Allow independent world/GPU probes to finish after a restored-state assertion fails.
         // The run still fails below; collecting their evidence avoids hiding subsequent defects.
         if (nativeProbeFailed && (!autoWorldVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads native screenshots probe END:")
-            || stopwatch.Elapsed > TimeSpan.FromSeconds(90))) break;
+            || stopwatch.Elapsed > TimeSpan.FromSeconds(90))
+            && (!resolutionCaptureRequested || passedMarkers.ContainsKey("Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
             && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;
