@@ -24,6 +24,6 @@ public final class ItemPhysicsModule extends Module {
 
     public ItemPhysicsModule() {
         // The menu cuts option names at about 17 characters: "SP:" marks the singleplayer rules, as the description says.
-        super(NAME, "Items lie flat, tumble and float. Options marked SP work only in singleplayer and worlds you host.");
+        super(NAME, "Items lie flat, tumble and float. SP options work only in singleplayer or a world you host.");
     }
 }
