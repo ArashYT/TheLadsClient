@@ -67,6 +67,13 @@ public final class CoreProbe {
             STEPS.add(CoreProbe::titleShown);
             STEPS.add(CoreProbe::focused);
             STEPS.addAll(Probe170Misc.steps(FOCUS));
+        } else if ("170".equals(System.getenv("LADS_VERIFY_189_ONLY"))) {
+            // LADS_VERIFY_189_ONLY=170 (QA, inherited from the harness): only the QA world and the 1.7.0 in-world probes, for a short focused run.
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe170Sprint.STEPS);
+            STEPS.add(CoreProbe::leaveWorld);
+            STEPS.add(CoreProbe::leftWorld);
         } else {
         STEPS.addAll(Probe170Skin.STEPS);
         STEPS.addAll(Probe160s.STEPS);
@@ -76,6 +83,7 @@ public final class CoreProbe {
         STEPS.addAll(Probe150.STEPS);
         STEPS.addAll(Probe151.STEPS);
         STEPS.addAll(Probe160.STEPS);
+        STEPS.addAll(Probe170Sprint.STEPS);
         STEPS.addAll(Probe145.PACING);
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
@@ -115,6 +123,7 @@ public final class CoreProbe {
         Probe160.stop();
         Probe160s.stop();
         Probe170Skin.stop();
+        Probe170Sprint.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -240,6 +249,19 @@ public final class CoreProbe {
 
     private static boolean closedToTitle(Minecraft mc) throws Exception {
         check(mc.currentScreen == title, "a second Right Shift closes the Lads menu back to its title-screen parent");
+        return openWorld(mc);
+    }
+
+    /** LADS_VERIFY_189_ONLY: straight from the title screen into the QA world. */
+    private static boolean focusedWorld(Minecraft mc) throws Exception {
+        if (!(mc.currentScreen instanceof GuiMainMenu)) return retry(20);
+        title = mc.currentScreen;
+        pauseOnLostFocus = mc.gameSettings.pauseOnLostFocus;
+        mc.gameSettings.pauseOnLostFocus = false;
+        return openWorld(mc);
+    }
+
+    private static boolean openWorld(Minecraft mc) throws Exception {
         Path game = mc.mcDataDir.toPath().toRealPath(), saves = Files.createDirectories(game.resolve("saves")).toRealPath();
         // Worlds are shared since 1.4.8: the saves link leads to the sandbox's shared folder, never a real one.
         check(inVerificationSandbox(game) && inVerificationSandbox(saves) && com.thelads.core.shared.SharedContentPaths.redirectEnabled()
@@ -406,8 +428,9 @@ public final class CoreProbe {
     }
 
     private static boolean leaveWorld(Minecraft mc) {
-        // Leave through the pause menu's own path so the QA world is saved.
-        mc.theWorld.sendQuittingDisconnectingPacket();
+        // Leave as Minecraft's own shutdown does (the server logs the player out and saves the QA world). The pause menu's
+        // quitting packet first lets the server stop before loadWorld's logout task is queued: that task never ran and the
+        // client waited for it forever (jstack, 1.7.0).
         mc.loadWorld(null);
         mc.displayGuiScreen(new GuiMainMenu());
         return after(20);

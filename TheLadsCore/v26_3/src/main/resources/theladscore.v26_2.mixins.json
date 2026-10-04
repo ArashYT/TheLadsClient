@@ -63,6 +63,7 @@
     "BossBarAccessor",
     "BossBarMixin",
     "KeyEntryAccessor",
+    "LocalPlayerAccessor",
     "KeySearchMixin",
     "ControlsScreenMixin",
     "WorldStorageAccessor",

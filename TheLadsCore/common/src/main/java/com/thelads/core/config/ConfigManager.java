@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
 import com.thelads.core.modules.HudModule;
+import com.thelads.core.modules.ToggleSprintModule;
 import com.thelads.core.client.util.ClientPaths;
 
 import java.util.Map;
@@ -110,6 +111,7 @@ public class ConfigManager {
         if (json == null) {
             return;
         }
+        migrateToggles(json);
         if (json.has("modules")) {
             JsonObject modulesJson = json.getAsJsonObject("modules");
             migrateChat(modulesJson);
@@ -227,6 +229,46 @@ public class ConfigManager {
         if (stamps != null && !options.has("Timestamps")) options.add("Timestamps", stamps);
         if (indicators != null && !options.has("Hide Signing Indicators")) options.add("Hide Signing Indicators", indicators);
     }
+
+    /**
+     * 1.7.0 merged ToggleSprint and ToggleSneak into one module with one HUD element. It is on if either was; each keeps its mode
+     * (Sprint becomes Vanilla only when Toggle Sneak alone was on; Sneak is Toggle only when Toggle Sneak was on in Toggle mode).
+     * The HUD element takes the position, lock and group of the one that was on, Toggle Sprint's when both or neither were.
+     */
+    static void migrateToggles(JsonObject json) {
+        if (!(json.get("modules") instanceof JsonObject modules) || modules.has(ToggleSprintModule.NAME)) return;
+        JsonElement sprint = modules.remove("ToggleSprint"), sneak = modules.remove("ToggleSneak");
+        if (sprint == null && sneak == null) return;
+        boolean sprintOn = bool(legacy(modules(sprint), "enabled")), sneakOn = bool(legacy(modules(sneak), "enabled"));
+        JsonObject merged = new JsonObject(), options = new JsonObject();
+        merged.addProperty("enabled", sprintOn || sneakOn);
+        options.addProperty("Sprint", sneakOn && !sprintOn ? ToggleSprintModule.VANILLA : number(legacy(modules(sprint), "options", "Mode")));
+        options.addProperty("Sneak", sneakOn && number(legacy(modules(sneak), "options", "Mode")) == 0 ? ToggleSprintModule.TOGGLE : 1);
+        JsonElement pause = legacy(modules(sprint), "options", "Disable on sneak");
+        if (pause != null) options.add("Pause sprint while sneaking", pause);
+        merged.add("options", options);
+        merged.addProperty("favorite", bool(legacy(modules(sprint), "favorite")) || bool(legacy(modules(sneak), "favorite")));
+        modules.add(ToggleSprintModule.NAME, merged);
+        if (!(json.get("hud") instanceof JsonObject hud)) return;
+        String kept = sneakOn && !sprintOn ? "ToggleSneak" : "ToggleSprint", dropped = kept.equals("ToggleSprint") ? "ToggleSneak" : "ToggleSprint";
+        if (hud.get("positions") instanceof JsonObject positions) {
+            JsonElement position = positions.remove(kept);
+            positions.remove(dropped);
+            if (position != null) positions.add(ToggleSprintModule.NAME, position);
+        }
+        java.util.List<JsonArray> lists = new java.util.ArrayList<>();
+        if (hud.get("locked") instanceof JsonArray locked) lists.add(locked);
+        if (hud.get("groups") instanceof JsonArray groups) for (JsonElement group : groups) if (group instanceof JsonArray names) lists.add(names);
+        for (JsonArray names : lists) for (int i = names.size() - 1; i >= 0; i--) {
+            String name = names.get(i).isJsonPrimitive() ? names.get(i).getAsString() : "";
+            if (name.equals(kept)) names.set(i, new com.google.gson.JsonPrimitive(ToggleSprintModule.NAME));
+            else if (name.equals(dropped)) names.remove(i);
+        }
+    }
+
+    private static JsonObject modules(JsonElement module) { return module instanceof JsonObject object ? object : null; }
+    private static boolean bool(JsonElement value) { try { return value != null && value.getAsBoolean(); } catch (RuntimeException e) { return false; } }
+    private static int number(JsonElement value) { try { return value == null ? 0 : value.getAsInt(); } catch (RuntimeException e) { return 0; } }
 
     private static JsonElement legacy(JsonObject root, String... path) {
         JsonElement value = root;
