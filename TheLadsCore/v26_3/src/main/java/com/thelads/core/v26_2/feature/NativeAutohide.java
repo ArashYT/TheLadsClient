@@ -25,6 +25,9 @@ public final class NativeAutohide {
             if(scopeOpacity>0)com.thelads.core.client.hud.HudManager.getInstance().render(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics,mc.font));
         }finally{scopeOpacity=previous;}
     }
+    /** QA (Hud170Capture): idle for a minute, at this opacity now. */
+    static void idle(float now){activity=System.nanoTime()-60_000_000_000L;frame=System.nanoTime();opacity=now;}
+    static float level(){return opacity;}
     public static float update(){
         var mc=Minecraft.getInstance();long now=System.nanoTime();
         if(mc.player==null||!NativeQualityOfLife.enabled("Autohide")){player=null;activity=frame=now;return opacity=1;}

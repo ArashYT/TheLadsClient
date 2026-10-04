@@ -124,10 +124,12 @@ public class ScoreboardHudElement extends HudElement {
         preparedSnapshot = null;
         if (!hasObjective(snapshot)) return;
         drawBackground(g);
-        boolean shadow = com.thelads.core.config.HudSettings.getInstance().isTextShadow() && optBool("Text Shadow", true);
+        // Its own shadow option, on by default, whatever the global HUD shadow (1.7.0).
+        boolean shadow = optBool("Text Shadow", true);
         boolean hideValues = shouldHideValues(snapshot);
         boolean light = optCycle("Background", 0) == 2;
-        int textColor = light ? 0xFF202020 : resolveColor();
+        // The sidebar's own colours (formatting codes over white names and red scores), as vanilla draws them, unless Custom Text Color.
+        int textColor = light ? 0xFF202020 : optBool("Custom Text Color", false) ? resolveColor() : 0xFFFFFFFF;
         int valueColor = light ? 0xFFAA0000 : 0xFFFF5555;
         int lineHeight = g.fontHeight() + 2;
         g.drawText(snapshot.title(), x + (width - titleWidth) / 2, y + PADDING, textColor, shadow);

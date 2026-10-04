@@ -59,6 +59,7 @@ class HudHotPathTest {
             for (Option option : module(name).getOptions()) { options.put(option, option.save()); option.reset(); }
         }
         bool("ArmorHUD", "Attach to hotbar", false);
+        cycle("ArmorHUD", "Style", 1); // these cover the List style (Hotbar Slots: ArmorSlotsHudTest)
     }
 
     @AfterEach void restore() { options.forEach(Option::load); LadsGameBridge.set(oldBridge); }

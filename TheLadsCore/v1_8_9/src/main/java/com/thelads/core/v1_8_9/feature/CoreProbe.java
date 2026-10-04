@@ -67,11 +67,13 @@ public final class CoreProbe {
             STEPS.add(CoreProbe::titleShown);
             STEPS.add(CoreProbe::focused);
             STEPS.addAll(Probe170Misc.steps(FOCUS));
-        } else if ("170".equals(System.getenv("LADS_VERIFY_189_ONLY"))) {
-            // LADS_VERIFY_189_ONLY=170 (QA, inherited from the harness): only the QA world and the 1.7.0 in-world probes, for a short focused run.
+        } else if ("170".equals(System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY")))) {
+            // LADS_VERIFY_189_ONLY=170 (the harness passes it as -Dthelads.verify189Only): only the QA world and the 1.7.0
+            // in-world probes (Toggle Sprint & Sneak, then the HUD checks), for a short focused run.
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe170Sprint.STEPS);
+            STEPS.addAll(Probe170Hud.STEPS);
             STEPS.add(CoreProbe::leaveWorld);
             STEPS.add(CoreProbe::leftWorld);
         } else {
@@ -84,6 +86,7 @@ public final class CoreProbe {
         STEPS.addAll(Probe151.STEPS);
         STEPS.addAll(Probe160.STEPS);
         STEPS.addAll(Probe170Sprint.STEPS);
+        STEPS.addAll(Probe170Hud.STEPS);
         STEPS.addAll(Probe145.PACING);
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
@@ -124,6 +127,7 @@ public final class CoreProbe {
         Probe160s.stop();
         Probe170Skin.stop();
         Probe170Sprint.stop();
+        Probe170Hud.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -420,7 +424,7 @@ public final class CoreProbe {
         if (SkinLayers189.LOADED) expected.add("SkinLayers");
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
-        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 2 /* DisableNarrator, ShulkerBoxUtils */
+        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 4 /* DisableNarrator, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
             && pending == modules.size() - unavailable - builtIn - external, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, "
             + external + " external, " + pending + " pending");
         mc.displayGuiScreen(null); // Back to Game: the HUD checks run in gameplay

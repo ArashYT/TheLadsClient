@@ -96,6 +96,8 @@ public final class HudProbe {
             on++;
             for (Option option : module.getOptions()) option.reset();
         }
+        // The Armor HUD's List style draws the text checked below (Probe170Hud covers the default Hotbar Slots).
+        ((com.thelads.core.config.DropdownOption) module("ArmorHUD").getOption("Style")).setIndex(1);
         // NativeHud's modules but Autohide (no HUD element), plus the elements of built-in gameplay modules (Toggle Sprint/Sneak).
         check(on >= NativeHud.MODULES.length - 1,
             "the " + on + " built-in HUD modules are switched on for the in-world check");
