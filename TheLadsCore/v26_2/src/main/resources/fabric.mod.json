@@ -41,6 +41,7 @@
     "theladscore.reconnect.mixins.json",
     "theladscore.tabtweaks.mixins.json",
     "theladscore.screenshots.mixins.json",
+    "theladscore.flashback.mixins.json",
     "theladscore.clumps.mixins.json",
     "jade.mixins.json",
     "theladscore.embedded.etf.mixins.json",
