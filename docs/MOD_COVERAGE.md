@@ -8,14 +8,16 @@ Native means implemented inside Core. Modrinth means an unchanged upstream jar d
 |---|---:|---:|---:|---:|
 | 1.21.1 | 19 | 67 | 5 | 66 |
 | 1.21.11 | 20 | 68 | 5 | 77 |
-| 26.2 | 24 | 62 | 5 | 64 |
-| 26.3 | 25 | 61 | 5 | 59 |
+| 26.2 | 24 | 61 | 5 | 64 |
+| 26.3 | 25 | 60 | 5 | 59 |
 
 Connectivity, Cupboard, Fast Async World Save, GPU Memory Leak Fix, and Identify have no verified Modrinth project. These are explicit gaps, not silently substituted jars.
 
 GoodMC: Old Combat & Blockhitting (`goodmc`) was removed from every version in 1.2.3; it previously shipped on 26.2 and 26.3. `tools/sync_instance_mods.py` excludes it through `REMOVED`, so refreshing the pack cannot add it back, and the 26.2/26.3 manifests list it under `retired` with its published hashes. The launcher moves copies it installed to `.lads-mod-cache\retired\goodmc\` (recoverable) and leaves copies you added or modified in place. LadsCore's separate LegacySwing module is unchanged.
 
 1.4.6: Lads Core embeds Capes, Controlling with Searchables, Entity Culling, Entity Texture Features, Entity Model Features, Fix Book GUI, Hovering Hotbar, Ksyxis, Lazy AI, NBT Autocomplete, Optimized Cushions, Quick-Pack, Server Pinger Fixer, Fast IP Ping, Tooltips TXF, World Play Time (Reborn) and ImmediatelyFast (`NATIVE` in `tools/sync_instance_mods.py`), and the manifests retire their jars. Gamma Utils, MotionBlur Plus (with Satin), Sound Physics Remastered and ClientSort left the pack (`REMOVED`); Puzzles Lib and Forge Config API Port only stay on 1.21.11, where Paper Doll needs them.
+
+1.7.0: NoPackCompatCheck left the 26.2 and 26.3 packs (`REMOVED`; frozen 1.21.11 keeps it until its next sync). No Resource Pack Warnings, still shipped, already hides the outdated-pack warning and confirmation on the resource and data pack screens and lets such packs load. 3D Skin Layers is shipped again on 26.2, 26.3 and (Forge 1.2.0) 1.8.9: the SkinLayers module switches its player layers.
 
 | Source mod | 1.21.1 | 1.21.11 | 26.2 | 26.3 |
 |---|---|---|---|---|
@@ -88,7 +90,7 @@ GoodMC: Old Combat & Blockhitting (`goodmc`) was removed from every version in 1
 | NBT Autocomplete | Native | Native | Native | Native |
 | Network Protocol Disconnect | Modrinth | Modrinth | Modrinth | Modrinth |
 | No Resource Pack Warnings | Modrinth | Modrinth | Modrinth | Modrinth |
-| NoPackCompatCheck | Modrinth | Modrinth | Modrinth | Modrinth |
+| NoPackCompatCheck | Modrinth | Modrinth | Removed | Removed |
 | NotEnoughAnimations | Modrinth | Modrinth | Modrinth | Modrinth |
 | Optimized block entities | Modrinth | Modrinth | Modrinth | Modrinth |
 | Optimized Cushions | Modrinth | Modrinth | Modrinth | Native |

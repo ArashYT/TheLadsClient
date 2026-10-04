@@ -126,6 +126,8 @@ bool oldAnimCaptureVerification = autoWorldVerification && !capabilities.Forge &
 // Fabric versions: Lads Zoom through the real key and scroll handlers, photographed, with every frame's FOV in zoom-fov.csv (ZoomCapture).
 // 1.8.9's self-test (Probe160) always runs the same checks.
 bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ZOOM") == "1";
+// Fabric versions: the player in a checkerboard-layered QA skin, from the front, SkinLayers on and off (SkinLayersCapture). 1.8.9's self-test does the same.
+bool skinLayersCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_SKINLAYERS") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -258,6 +260,8 @@ string oldAnimCaptureRequest = Path.Combine(directory, ".lads-qa-capture-oldanim
 if (autoWorldVerification && File.Exists(oldAnimCaptureRequest)) File.Delete(oldAnimCaptureRequest);
 string zoomCaptureRequest = Path.Combine(directory, ".lads-qa-capture-zoom");
 if (autoWorldVerification && File.Exists(zoomCaptureRequest)) File.Delete(zoomCaptureRequest);
+string skinLayersCaptureRequest = Path.Combine(directory, ".lads-qa-capture-skinlayers");
+if (autoWorldVerification && File.Exists(skinLayersCaptureRequest)) File.Delete(skinLayersCaptureRequest);
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
         File.Delete(Path.Combine(directory, flag));
@@ -541,7 +545,7 @@ try
             foreach (string marker in requiredWorldProbes)
                 if (line.Contains(marker) && (Passed(line) || marker == "Lads food server sync END:")) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
-                "Lads 1.7 animations capture END:", "Lads zoom capture END:" })
+                "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -627,7 +631,8 @@ try
             bool bannerDone = !bannerCaptureVerification || passedMarkers.ContainsKey("Lads kill banner capture END:");
             bool oldAnimDone = !oldAnimCaptureVerification || passedMarkers.ContainsKey("Lads 1.7 animations capture END:");
             bool zoomDone = !zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:");
-            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone)
+            bool skinLayersDone = !skinLayersCaptureVerification || passedMarkers.ContainsKey("Lads skin layers capture END:");
+            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && skinLayersDone)
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -657,7 +662,8 @@ try
                 foreach (var (asked, request, text) in new[] {
                     (bannerCaptureVerification, bannerCaptureRequest, "Fire every kill banner skin in the QA world and capture its frames."),
                     (oldAnimCaptureVerification, oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames."),
-                    (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames.") })
+                    (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames."),
+                    (skinLayersCaptureVerification, skinLayersCaptureRequest, "Photograph the player's 3D skin layers with SkinLayers on and off.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -758,6 +764,8 @@ try
             "The requested 1.7 Animations frames were not all captured.");
         Require(!zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:"),
             "The requested Lads Zoom capture did not pass. Inspect production-smoke.log.");
+        Require(!skinLayersCaptureVerification || passedMarkers.ContainsKey("Lads skin layers capture END:"),
+            "The requested 3D skin layers frames were not both captured.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)
@@ -1083,7 +1091,8 @@ sealed class ForgeModList : LoadedModList
         else if (Loaded.Match(line) is { Success: true } loaded) LoadedMods = int.Parse(loaded.Groups[1].Value);
         else if (Tweaker.IsMatch(line)) OptiFineTweaker = true;
         else if (Detected.Match(line) is { Success: true } detected) OptiFine = detected.Groups[1].Value;
-        else if (Error.IsMatch(line)) Errors.Add(line.Trim());
+        // Mixin 0.8 (Essential's) names a config without "minVersion" at ERROR level, as 3D Skin Layers' is; it still loads.
+        else if (Error.IsMatch(line) && !line.Contains("does not specify \"minVersion\"", StringComparison.Ordinal)) Errors.Add(line.Trim());
         else if (Versions.Match(line) is { Success: true } versions)
             foreach (var part in versions.Groups[1].Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 if (part.Split('@') is [var id, var version] && Top.ContainsKey(id)) Top[id] = version;

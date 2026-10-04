@@ -34,15 +34,18 @@
     "ModelBipedMixin",
     "NetworkManagerMixin",
     "NetHandlerPlayClientMixin",
+    "NetworkPlayerInfoAccessor",
     "NametagEssentialMixin",
     "NametagLivingMixin",
     "NametagRenderMixin",
     "NicknameTabMixin",
     "RenderEntityItemMixin",
     "RenderFishMixin",
+    "RenderPlayerMixin",
     "ResourcePackRepositoryMixin",
     "ScreenShotHelperMixin",
     "ServerNameMixin",
+    "SkinLayersGateMixin189",
     "SplashProgressMixin",
     "TileEntityMixin"
   ]

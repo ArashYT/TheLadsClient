@@ -349,13 +349,13 @@ public class Minecraft189Tests
         var bundle = AppContext.BaseDirectory;
         var manifest = JsonSerializer.Deserialize<ClientModInstaller.Manifest>(File.ReadAllText(Path.Combine(bundle, "game-mods", "1.8.9", "client-mods.json")),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-        Assert.Equal(("1.8.9", 2), (manifest.MinecraftVersion, manifest.Mods.Count));
+        Assert.Equal(("1.8.9", 3), (manifest.MinecraftVersion, manifest.Mods.Count));
         Assert.DoesNotContain(Directory.EnumerateFiles(Path.Combine(bundle, "game-mods"), "*", SearchOption.AllDirectories),
             file => Path.GetFileName(file).Contains("optifine", StringComparison.OrdinalIgnoreCase)
                 || (file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) && FabricModMetadata.ReadForgeJar(file)?.Id == OptiFineInstaller.ModId));
 
         using var box = new ModSandbox();
-        box.Choose(("resourcify", false), ("essential", false));
+        box.Choose(("resourcify", false), ("essential", false), ("skinlayers3d", false));
         await ClientModInstaller.InstallAsync(bundle, box.Game, "1.8.9", httpClient: box.Client());
         Assert.Empty(box.Requests);
         var inventory = await new ModInventoryService().BuildAsync(bundle, box.Game, "1.8.9");

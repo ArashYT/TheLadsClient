@@ -76,6 +76,7 @@
     "LegacySwingMixin",
     "GraphicsCompatibilityMixin",
     "SkinPreviewMixin",
+    "SkinLayersGateMixin",
     "ClientToolsChatMixin",
     "ClientToolsAttackMixin",
     "ParticleBudgetMixin",
