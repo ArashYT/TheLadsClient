@@ -29,6 +29,7 @@
     "GuiSlotMixin",
     "GuiSlotAccessor",
     "IntegratedServerMixin",
+    "InventoryEffectRendererMixin",
     "ItemFoodAccessor",
     "ItemModelGeneratorMixin",
     "ItemRendererAccessor",
