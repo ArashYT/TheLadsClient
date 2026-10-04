@@ -27,6 +27,7 @@
     "GuiSlotAccessor",
     "IntegratedServerMixin",
     "ItemFoodAccessor",
+    "ItemModelGeneratorMixin",
     "ItemRendererAccessor",
     "ItemRendererMixin",
     "KeyEntryAccessor",
