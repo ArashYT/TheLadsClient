@@ -82,11 +82,11 @@ class ItemPhysicsTest {
     @Test
     void waterSpeeds() {
         double vy = -0.3;
-        for (int tick = 0; tick < 200; tick++) vy = ItemPhysics.rise(vy) - 0.04;
-        assertEquals(0.06, vy, 1e-9, "a floating item rises steadily on 1.8.9");
+        for (int tick = 0; tick < 200; tick++) vy = ItemPhysics.buoyancy(vy, true);
+        assertEquals(0.06, vy, 1e-9, "a floating item rises steadily");
         vy = 0.2;
-        for (int tick = 0; tick < 200; tick++) vy = ItemPhysics.sink(vy);
-        assertEquals(-0.06, vy, 1e-6, "a heavy one sinks slowly on 26.x");
+        for (int tick = 0; tick < 200; tick++) vy = ItemPhysics.buoyancy(vy, false);
+        assertEquals(-0.06, vy, 1e-6, "a heavy one sinks slowly");
     }
 
     @Test

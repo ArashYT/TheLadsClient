@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * QA only (auto-world, ".lads-qa-capture-itemphysics" from the harness's LADS_VERIFY_CAPTURE_ITEMPHYSICS): builds a stone arena
- * with a water pool, a lava pool and a cactus at y 150 above the QA player, drops real items on the integrated server and saves
+ * with a water pool, a lava pool and a cactus in open sky above the QA player (from y 150), drops real items on the integrated server and saves
  * itemphysics-*.png frames, with checks for every singleplayer rule. The arena, items, player, inventory and settings are put back.
  */
 final class ItemPhysicsCapture {
@@ -53,7 +53,7 @@ final class ItemPhysicsCapture {
     private static GameType modeBefore;
     private static CameraType cameraBefore;
     private static net.minecraft.client.CloudStatus cloudsBefore;
-    private static BlockPos base;
+    private static volatile BlockPos base;
     private static int[] offPixels, onPixels;
     private ItemPhysicsCapture() {}
 
@@ -193,6 +193,9 @@ final class ItemPhysicsCapture {
             for (Option option : module.getOptions()) OPTIONS.put(option, option.save().deepCopy());
             module.getOptions().forEach(Option::reset);
             module.setEnabled(true);
+            LOGGER.info("Lads item physics rules: this client's level {}, integrated server {}; a remote server's world is only a ClientLevel "
+                + "with no integrated server, so rules() is null there and every rule stays off", NativeItemPhysics.rules(mc.level) != null ? "on" : "off",
+                mc.hasSingleplayerServer() ? "running" : "absent");
             posBefore = new double[]{mc.player.getX(), mc.player.getY(), mc.player.getZ()};
             yawBefore = mc.player.getYRot();
             pitchBefore = mc.player.getXRot();
@@ -202,22 +205,23 @@ final class ItemPhysicsCapture {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             mc.level.setRainLevel(0);
             mc.level.setThunderLevel(0);
-            base = BlockPos.containing(posBefore[0], 150, posBefore[2]); // open sky above the QA world, below the clouds
             onServer(player -> {
                 INVENTORY.clear();
                 for (int i = 0; i < player.getInventory().getContainerSize(); i++) INVENTORY.add(player.getInventory().getItem(i).copy());
                 player.getInventory().clearContent();
                 player.setGameMode(GameType.CREATIVE);
                 ServerLevel level = player.level();
+                base = null; // the first open sky from y 150 up (below the clouds when it can)
+                for (int y = 150; y <= 290 && base == null; y += 20) {
+                    BlockPos at = BlockPos.containing(posBefore[0], y, posBefore[2]);
+                    if (room(level, at)) base = at;
+                }
+                if (base == null) throw new IllegalStateException("no room for the arena above " + player.blockPosition());
                 level.getWeatherData().setRaining(false); // no rain moving between the compared frames
                 level.getWeatherData().setThundering(false);
                 level.getWeatherData().setClearWeatherTime(6000);
                 level.setRainLevel(0);
                 level.setThunderLevel(0);
-                for (int x = -6; x <= 16; x++)
-                    for (int z = -6; z <= 6; z++)
-                        for (int y = -2; y <= 3; y++)
-                            if (!level.getBlockState(base.offset(x, y, z)).isAir()) throw new IllegalStateException("no room for the arena at " + base);
                 for (int x = -6; x <= 16; x++)
                     for (int z = -6; z <= 6; z++) set(level, x, 0, z, Blocks.STONE.defaultBlockState());
                 for (int x = 1; x <= 5; x++) // water pool, two deep: x 2..4, z -5..-3
@@ -239,7 +243,7 @@ final class ItemPhysicsCapture {
             return 10;
         });
         steps.add(mc -> {
-            check(FACTS.containsKey("built"), "the arena (stone floor, water and lava pools, cactus) is built at y 150");
+            check(FACTS.containsKey("built"), "the arena (stone floor, water and lava pools, cactus) is built in open sky at " + base);
             view(mc, 0.5, 1, -2.5, 0, 30);
             onServer(player -> { // a mix of flat items and blocks in a row, lying still
                 Item[] row = {Items.DIAMOND_SWORD, Items.APPLE, Items.STICK, Items.STONE, Items.OAK_LOG, Items.TORCH, Items.CHEST, Items.COBBLESTONE, Items.PAPER};
@@ -573,7 +577,7 @@ final class ItemPhysicsCapture {
                 onServer(player -> {
                     player.level().getServer().tickRateManager().setFrozen(false);
                     clearItems(player.level());
-                    for (ItemEntity item : player.level().getEntitiesOfClass(ItemEntity.class, new net.minecraft.world.phys.AABB(base).inflate(24))) item.discard();
+                    if (base != null) for (ItemEntity item : player.level().getEntitiesOfClass(ItemEntity.class, new net.minecraft.world.phys.AABB(base).inflate(24))) item.discard();
                     List<Map.Entry<BlockPos, BlockState>> found = new ArrayList<>(ARENA.entrySet());
                     java.util.Collections.reverse(found); // cactus and pools before the floor under them: nothing drops or flows
                     for (var entry : found) player.level().setBlockAndUpdate(entry.getKey(), entry.getValue());
@@ -614,6 +618,14 @@ final class ItemPhysicsCapture {
                 newest != null && newest.onGround());
             if (newest != null) newest.discard();
         });
+    }
+
+    private static boolean room(ServerLevel level, BlockPos at) {
+        for (int x = -6; x <= 16; x++)
+            for (int z = -6; z <= 6; z++)
+                for (int y = -2; y <= 3; y++)
+                    if (!level.getBlockState(at.offset(x, y, z)).isAir()) return false;
+        return true;
     }
 
     private static void set(ServerLevel level, int x, int y, int z, BlockState state) {

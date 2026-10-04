@@ -118,16 +118,12 @@ public final class ItemPhysics {
     }
 
     /**
-     * Minecraft 1.8.9 has no item buoyancy: the vertical speed to give a floating item whose middle is under the surface, before
-     * that tick's gravity (0.04) pulls it back. It rises at most 0.06 blocks a tick and bobs where its middle meets the surface.
+     * Vertical speed after a tick under water (or lava, for an item that does not burn), before any gravity: a floating item rises to
+     * the surface at up to 0.06 blocks a tick, a heavy one sinks at 0.06. Vanilla 26.x lifts every item very slowly; 1.8.9 lets
+     * every item fall through.
      */
-    public static double rise(double vy) {
-        return Math.min(vy + 0.05, 0.1);
-    }
-
-    /** 26.x lifts every item in water: the vertical speed for one that sinks instead, settling at 0.06 blocks a tick. */
-    public static double sink(double vy) {
-        return vy * 0.9 - 0.006;
+    public static double buoyancy(double vy, boolean floats) {
+        return floats ? Math.min(vy * 0.9 + 0.01, 0.06) : vy * 0.9 - 0.006;
     }
 
     /** Ticks an item lies before it despawns, for the slider's minutes (vanilla: 5 minutes, 6000 ticks). */
