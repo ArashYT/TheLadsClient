@@ -25,6 +25,7 @@ public final class KillBannerPlayer {
 
     /** Seconds the banner takes with no hold: its frames up to the settled one, and the way out. */
     public static double minimumSeconds(KillBannerStrip strip) {
+        if (strip == null) return 25.0 / 60.0;
         return (strip.introEnd + 1 + exitLength(strip)) / 60.0;
     }
 
@@ -37,6 +38,36 @@ public final class KillBannerPlayer {
     public static Frame at(KillBannerStyle style, KillBannerStrip strip, double age, double seconds, boolean headshot) {
         if (age < 0 || !Double.isFinite(age)) return null;
         int f = (int) Math.floor(age * 60);
+        if (strip == null) {
+            int intro = 12, exit = 12;
+            int hold = Math.max(0, (int) Math.round(seconds * 60) - intro - exit);
+            int e = f - intro - hold;
+            if (e >= exit) return null;
+            float iconAlpha = 1, iconScale = 1, restAlpha = 1, leaving = 1;
+            if (e >= 0) {
+                leaving = 1 - smooth(0, exit, e);
+                iconAlpha = leaving;
+                restAlpha = leaving;
+            } else if (f < 6) {
+                iconScale = 0.88f + 0.12f * smooth(0, 6, f);
+            }
+            int m = KillBannerStyle.MARK_FRAME, t = f - m;
+            float shadow = .5f * smooth(m - 8, m, f) * leaving;
+            float strobe = t >= 0 && t < STROBE.length ? STROBE[t] : 0;
+            float size = 0, thin = 0, solid = 0;
+            int color = MARK_RED;
+            if (t >= 0) {
+                size = style.markSize * (1 + 1.4f * (float) Math.exp(-t / 1.5)) * iconScale;
+                float arriving = 1 - smooth(0, 3, t);
+                thin = .75f * arriving * iconAlpha;
+                solid = (1 - arriving) * iconAlpha;
+                float white = t > 1 ? smooth(.05f, .45f, strobe) : 1;
+                color = mix(MARK_RED, 0xFFFFFFFF, white);
+            }
+            float label = headshot ? smooth(m - 4, m + 4, f) * (e >= 0 ? 1 - smooth(0, 8, e) : 1) : 0;
+            return new Frame(-1, iconAlpha, iconScale, restAlpha, shadow, strobe * iconAlpha, size, thin, solid,
+                color, 0, label, 0);
+        }
         int intro = strip.introEnd + 1, exit = exitLength(strip);
         int hold = Math.max(0, (int) Math.round(seconds * 60) - intro - exit);
         int e = f - intro - hold;

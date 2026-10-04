@@ -64,6 +64,28 @@ class KillDetectorTest {
         assertEquals(Set.of("Arash"), KillDetector.names("Arash", "Arash"));
     }
 
+    /** 1.6.0 saved Style, Custom Banner and Custom Sound as indices: they keep meaning Base, Reaver, Rogue and Custom. */
+    @Test void savedIndicesKeepTheirSkins() {
+        var module = new KillBannerModule();
+        assertArrayEquals(new String[] {"Base", "Reaver", "Rogue", "Custom"}, java.util.Arrays.copyOf(module.bannerStyle.getChoices(), 4));
+        assertArrayEquals(new String[] {"Base", "Reaver", "Rogue"}, java.util.Arrays.copyOf(module.customVisual.getChoices(), 3));
+        assertArrayEquals(new String[] {"Base", "Reaver", "Rogue"}, java.util.Arrays.copyOf(module.customSound.getChoices(), 3));
+        assertEquals(KillBannerStyle.DEFAULT, KillBannerModule.skin(KillBannerModule.BASE));
+        assertEquals(KillBannerStyle.REAVER, KillBannerModule.skin(KillBannerModule.REAVER));
+        assertEquals(KillBannerStyle.ROGUE, KillBannerModule.skin(KillBannerModule.ROGUE));
+        for (KillBannerStyle style : KillBannerStyle.values()) {
+            assertEquals(style, KillBannerModule.skin(KillBannerModule.styleIndexOf(style)), style + " round-trips through its Style index");
+            if (style.ordinal() > 2) assertEquals(style.displayName, module.bannerStyle.getChoices()[KillBannerModule.styleIndexOf(style)]);
+            assertEquals(style, KillBannerModule.visualOrSoundSkin(style.ordinal()));
+        }
+        module.skinVariants.setValue("aemondir:3,nosuchskin:2,phaseguard:9");
+        assertEquals(3, module.getVariant(KillBannerStyle.AEMONDIR));
+        assertEquals(0, module.getVariant(KillBannerStyle.DEFAULT), "an unknown skin id is ignored");
+        assertEquals(KillBannerStyle.PHASEGUARD.variantNames.length - 1, module.getVariant(KillBannerStyle.PHASEGUARD), "an out-of-range variant is clamped");
+        module.skinVariants.setValue("");
+        assertEquals(0, module.getVariant(KillBannerStyle.AEMONDIR), "a reset clears the saved variants");
+    }
+
     @Test void randomizerModes() {
         var module = new KillBannerModule();
         module.bannerStyle.setIndex(KillBannerModule.ROGUE);
@@ -92,7 +114,8 @@ class KillDetectorTest {
         module.randomize.setIndex(KillBannerModule.RANDOM_SKIN);
         Set<KillBannerStyle> skins = new HashSet<>();
         for (int i = 0; i < 200; i++) { var pick = module.next(); skins.add(pick.style()); assertEquals(pick.style(), pick.soundStyle()); }
-        assertEquals(Set.of(KillBannerStyle.REAVER, KillBannerStyle.ROGUE), skins);
+        assertTrue(skins.size() > 2, "random skin picks from all available skins");
+        assertTrue(skins.contains(KillBannerStyle.REAVER) || skins.contains(KillBannerStyle.ROGUE));
 
         module.randomize.setIndex(KillBannerModule.RANDOM_CHOSEN);
         module.randomPool.setValue("");

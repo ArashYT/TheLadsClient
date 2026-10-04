@@ -31,6 +31,7 @@ public class LadsSettingsScreen189 extends GuiScreen {
     public LadsSettingsScreen ui() { return ui; }
     /** Opens a module's settings (the HUD editor's gear). */
     public void openModule(String name) { ui.openModule(name); }
+    public void searchKillBanners(String query) { ui.searchKillBanners(query); }
 
     @Override
     public void initGui() {

@@ -129,10 +129,14 @@ public final class KillBanner189 {
 
     /** QA: a banner with the module's look ({@code kills} 1 to 5), its sound included. */
     static void trigger(int kills, boolean preview) {
+        trigger(kills, preview, false);
+    }
+
+    static void trigger(int kills, boolean preview, boolean headshot) {
         KillBannerModule module = module();
         if (!eligible() || module == null) return;
         trackedConnection = Minecraft.getMinecraft().getNetHandler();
-        play(KillBanners.show(module, kills, preview, false, module.chosen(), System.nanoTime()), (float) module.volume.getValue());
+        play(KillBanners.show(module, kills, preview, headshot, module.chosen(), System.nanoTime()), (float) module.volume.getValue());
     }
 
     /** "theladscore:<skin>_kill_<n>" from the Kill Banner sounds.json, "" the plain chime (1.8.9's orb pickup), at the module's volume. */
@@ -148,24 +152,19 @@ public final class KillBanner189 {
         });
     }
 
-    /** Kill Banner picker: a skin's one-kill sound ("base" the chime). */
+    /** Kill Banner picker: a skin's one-kill sound. */
     public static void previewSound(String skin, float volume) {
-        play("reaver".equals(skin) || "rogue".equals(skin) ? "theladscore:" + skin + "_kill_1" : "", volume);
+        KillBannerStyle style = KillBannerStyle.fromId(skin);
+        play("theladscore:" + style.id + "_kill_1", volume);
     }
 
     /** Kill Banner picker art (LadsGraphics.drawKillBanner). */
     public static boolean drawThumb(String skin, int variant, int x, int y, int w, int h) {
         try {
-            KillBannerStyle style = "reaver".equals(skin) ? KillBannerStyle.REAVER : "rogue".equals(skin) ? KillBannerStyle.ROGUE : null;
+            KillBannerStyle style = KillBannerStyle.fromId(skin);
             KillBannerArt189.begin();
             try {
-                if (style != null) KillBannerArt189.thumb(style, variant, x, y, w, h);
-                else {
-                    KillBannerArt189.Sprite base = KillBannerArt189.sprite(KillBannerArt189.BASE);
-                    float k = Math.min(w / (float) base.width, h / (float) base.height);
-                    int width = Math.round(base.width * k), height = Math.round(base.height * k);
-                    KillBannerArt189.blit(base, x + (w - width) / 2, y + (h - height) / 2, width, height, -1);
-                }
+                KillBannerArt189.thumb(style, variant, x, y, w, h);
             } finally {
                 KillBannerArt189.end();
             }

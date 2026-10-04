@@ -96,15 +96,7 @@ final class NativeKillBannerProbe {
             require(NativeKillBanner.timeline().sequence() == 4, "the same kill's death event does not count twice"); passed++;
 
             require(minecraft.getResourceManager().getResource(Identifier.fromNamespaceAndPath("theladscore", "textures/gui/base_kill_banner.png")).isPresent(), "base_kill_banner resource loads"); passed++;
-            for (var style : com.thelads.core.client.killbanner.KillBannerStyle.values()) {
-                for (int index = 1; index <= 5; index++) {
-                    var strip = style.strip(index);
-                    require(strip.frame(strip.introEnd).length == strip.width * strip.height * 4, style.id + " frames for " + index + " kills decode"); passed++;
-                    Identifier sound = Identifier.fromNamespaceAndPath("theladscore", style.id + "_kill_" + index);
-                    require(minecraft.getSoundManager().getSoundEvent(sound) != null, style.id + " sound event " + index + " registered"); passed++;
-                    require(minecraft.getResourceManager().getResource(Identifier.fromNamespaceAndPath("theladscore", "sounds/killbanner/" + style.id + "-kill-" + index + ".ogg")).isPresent(), style.id + " sound sample " + index + " available"); passed++;
-                }
-            }
+            passed += assets();
             LoggerFactory.getLogger("TheLadsCore").info("Lads kill banner probe END: {} passed, 0 failed (synthetic packets about client-only stand-ins; no real kill claimed)", passed);
             return passed;
         } finally {
@@ -119,6 +111,24 @@ final class NativeKillBannerProbe {
             module.setLastModified(modifiedBefore);
             if (passed > 0) NativeKillBannerPreview.schedule();
         }
+    }
+
+    /** Every skin's strips decode, and each kill count's sound is registered with its sample in the resources (shared copies included). */
+    static int assets() {
+        Minecraft minecraft = Minecraft.getInstance();
+        int passed = 0;
+        for (var style : com.thelads.core.client.killbanner.KillBannerStyle.values()) {
+            for (int index = 1; index <= 5; index++) {
+                var strip = style.strip(index);
+                if (strip != null) { require(strip.frame(strip.introEnd).length == strip.width * strip.height * 4, style.id + " frames for " + index + " kills decode"); passed++; }
+                Identifier sound = Identifier.fromNamespaceAndPath("theladscore", style.id + "_kill_" + Math.min(index, style.soundCount));
+                var event = minecraft.getSoundManager().getSoundEvent(sound);
+                require(event != null, sound + " registered"); passed++;
+                Identifier sample = event.getSound(net.minecraft.util.RandomSource.create()).getPath();
+                require(minecraft.getResourceManager().getResource(sample).isPresent(), sound + " sample " + sample + " available"); passed++;
+            }
+        }
+        return passed;
     }
 
     private static Entity spawn(EntityType<?> type, int id) {
