@@ -36,6 +36,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -92,10 +93,14 @@ final class NativeOldAnimationsProbe {
             changed(Feature.BOW, off, hands(true, new ItemStack(Items.BOW), ItemStack.EMPTY, InteractionHand.MAIN_HAND, 20, 0));
             off = hands(false, beef, ItemStack.EMPTY, InteractionHand.MAIN_HAND, 10, 0);
             changed(Feature.EAT_DRINK, off, hands(true, beef, ItemStack.EMPTY, InteractionHand.MAIN_HAND, 10, 0));
-            List<Call> swung = hands(true, beef, ItemStack.EMPTY, InteractionHand.MAIN_HAND, 10, 0.5f);
-            require(NativeOldAnimations.APPLIED.contains(Feature.SWING_WHILE_USING), "Swing while using items: the swing shows while eating");
+            List<Call> eaten = hands(true, beef, ItemStack.EMPTY, InteractionHand.MAIN_HAND, 10, 0);
+            require(!moved(eaten, hands(true, beef, ItemStack.EMPTY, InteractionHand.MAIN_HAND, 10, 0.5f))
+                && !NativeOldAnimations.APPLIED.contains(Feature.SWING_WHILE_USING), "eating while clicking shows only the eating pose, no swing");
+            ItemStack bow = new ItemStack(Items.BOW);
+            List<Call> swung = hands(true, bow, ItemStack.EMPTY, InteractionHand.MAIN_HAND, 10, 0.5f);
+            require(NativeOldAnimations.APPLIED.contains(Feature.SWING_WHILE_USING), "Swing while using items: the swing shows while drawing a bow");
             module.option(Feature.SWING_WHILE_USING).set(false);
-            require(moved(swung, hands(true, beef, ItemStack.EMPTY, InteractionHand.MAIN_HAND, 10, 0.5f))
+            require(moved(swung, hands(true, bow, ItemStack.EMPTY, InteractionHand.MAIN_HAND, 10, 0.5f))
                 && !NativeOldAnimations.APPLIED.contains(Feature.SWING_WHILE_USING), "Swing while using items: off hides the swing (1.8)");
             module.option(Feature.SWING_WHILE_USING).set(true);
             off = hands(false, new ItemStack(Items.FISHING_ROD), ItemStack.EMPTY, null, 0, 0);
@@ -104,6 +109,12 @@ final class NativeOldAnimationsProbe {
             changed(Feature.HELD_ITEMS, off, hands(true, sword, ItemStack.EMPTY, null, 0, 0)); // the idle sword sits where 1.7 held it
             require(!icon(hands(true, new ItemStack(Items.STONE), ItemStack.EMPTY, null, 0, 0))
                 && !icon(hands(true, ItemStack.EMPTY, shield, null, 0, 0)), "held blocks and shields keep vanilla's 3D placement");
+            ItemStack torch = new ItemStack(Items.TORCH);
+            require(icon(hands(true, torch, ItemStack.EMPTY, null, 0, 0)), "Legacy Swing off: the torch is held where 1.7 held it");
+            legacy.setEnabled(true);
+            require(!icon(hands(true, torch, ItemStack.EMPTY, null, 0, 0)) && icon(hands(true, sword, ItemStack.EMPTY, null, 0, 0)),
+                "Legacy Swing on: a block item keeps vanilla's placement, so Legacy Swing alone animates placing it; the sword stays 1.7's");
+            legacy.setEnabled(false);
 
             // The modern sword block: a sword while the off hand blocks with a shield; the shield hides and the sword blocks.
             off = hands(false, sword, shield, InteractionHand.OFF_HAND, 5, 0);
@@ -132,6 +143,13 @@ final class NativeOldAnimationsProbe {
             float eased = sneakTick(false, camera, standing), instant = sneakTick(true, camera, standing);
             require(instant == player.getEyeHeight() && eased > instant && NativeOldAnimations.APPLIED.contains(Feature.INSTANT_SNEAK),
                 "Instant sneak camera drops within one tick");
+            // A crouch the server echoes after the sneak key is up (a quick tap): the 1.7 camera stays up; vanilla eases down.
+            player.input.keyPresses = Input.EMPTY;
+            NativeOldAnimations.module().setEnabled(true);
+            set(camera, "eyeHeight", standing);
+            set(camera, "eyeHeightOld", standing);
+            camera.tick();
+            require((float) get(camera, "eyeHeight") == standing, "Instant sneak camera: a server's late crouch echo does not drop the camera");
             player.setPose(poseBefore);
 
             // No heart flashing: the health bar's blink flag.
@@ -247,6 +265,7 @@ final class NativeOldAnimationsProbe {
         NativeOldAnimations.module().setEnabled(enabled);
         NativeOldAnimations.APPLIED.clear();
         Minecraft.getInstance().player.setPose(Pose.CROUCHING);
+        Minecraft.getInstance().player.input.keyPresses = new Input(false, false, false, false, false, true, false); // the sneak key
         set(camera, "eyeHeight", standing);
         set(camera, "eyeHeightOld", standing);
         camera.tick();

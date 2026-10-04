@@ -29,7 +29,8 @@ public final class OldAnimationsModule extends Module {
         HELD_ITEMS("1.7 held item positions", "In first person swords, tools and other flat items are held where 1.7 held them, "
             + "so they no longer jump in size when a 1.7 pose starts.", null),
         EAT_DRINK("1.7 eating and drinking", "In first person food and potions move as in 1.7 while you eat or drink.", null),
-        SWING_WHILE_USING("Swing while using items", "Attacking while you eat, drink or draw a bow still shows the swing, as in 1.7.", null),
+        SWING_WHILE_USING("Swing while using items", "Attacking while you draw a bow still shows the swing, as in 1.7. "
+            + "Eating and drinking show only their own pose.", null),
         RED_ARMOUR("Red armour on hurt", "Armour turns red with the player when hurt, as in 1.7.", null),
         INSTANT_SNEAK("Instant sneak camera", "The camera reaches sneak height within one tick, as in 1.7, and eases back up.", null),
         NO_HEART_FLASH("No heart flashing", "Health hearts do not flash when you take damage.", null),
@@ -90,10 +91,24 @@ public final class OldAnimationsModule extends Module {
         return isEnabled() && feature.appliesTo(platform) && toggles.get(feature).get();
     }
 
-    /** The swing to pass to OldAnimations.hand: 1.7 kept the swing turn while using items, 1.8 dropped it. */
+    /**
+     * The swing to pass to OldAnimations.hand: 1.7 kept the swing turn while blocking and drawing a bow, 1.8 dropped it. Eating and
+     * drinking show only their own pose, so clicking while you eat never swings the food.
+     */
     public float swingShown(Platform platform, Use use, float swing) {
         if (use == Use.NONE) return swing;
+        if (use == Use.EAT_DRINK) return 0;
         return active(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING, platform) ? swing : 0;
+    }
+
+    /**
+     * 1.7 started an item's use while the attack key was mining a block; 1.8 and later ignore the use key until the mining stops.
+     * With the module on, blocking, drawing a bow and eating start at once on a block too, as they do when looking at air.
+     *
+     * @param use the use the held item would start (its 1.7 pose), or null for an item without one
+     */
+    public boolean useWhileMining(Use use) {
+        return isEnabled() && use != null && use != Use.NONE;
     }
 
     /** First person: draw this flat item with OldAnimations.item (and no display transform) instead of vanilla's placement. */

@@ -24,9 +24,7 @@ public abstract class VerticalBobExtractionMixin {
         var player = minecraft.player;
         boolean active = player != null && cameraEntity == player && minecraft.level != null
             && !minecraft.isPaused() && minecraft.options.getCameraType().isFirstPerson()
-            && minecraft.options.bobView().get() && NativeQualityOfLife.enabled("VerticalBobbing")
-            && !player.isSpectator() && !player.isPassenger() && !player.isSleeping()
-            && !player.isFallFlying() && !player.isSwimming() && !player.getAbilities().flying;
+            && minecraft.options.bobView().get() && NativeQualityOfLife.enabled("VerticalBobbing"); // NativeVerticalBob eases out flying etc.
         double accessibility = Math.min(minecraft.options.screenEffectScale().get(), minecraft.options.fovEffectScale().get());
         double intensity = switch (NativeQualityOfLife.choice("VerticalBobbing", "Intensity", 1)) {
             case 0 -> .5;

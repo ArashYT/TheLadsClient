@@ -16,10 +16,10 @@ public class OldAnimationsCameraMixin {
     @Shadow private float eyeHeight;
     @Shadow private float eyeHeightOld;
 
-    // 1.7 Animations' Instant sneak camera: 1.7's step replaces vanilla's half-way ease (rendering interpolates both).
+    // 1.7 Animations' Instant sneak camera: 1.7's step towards your own sneak replaces vanilla's half-way ease (rendering interpolates both).
     @Inject(method = "tick", at = @At(value = "FIELD", target = "Lnet/minecraft/client/Camera;eyeHeight:F", opcode = Opcodes.PUTFIELD,
         shift = At.Shift.AFTER), require = 1)
     private void lads$instantSneak(CallbackInfo callback) {
-        eyeHeight = NativeOldAnimations.eyeHeight(eyeHeightOld, entity.getEyeHeight(), eyeHeight);
+        eyeHeight = NativeOldAnimations.eyeHeight(entity, eyeHeightOld, eyeHeight);
     }
 }
