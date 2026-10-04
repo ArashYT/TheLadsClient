@@ -47,7 +47,7 @@ final class Probe170F3Fov {
         Probe170F3Fov::bowDrawn, mc -> world(mc, "bow drawn", "100%", 0.85, CustomFovModule.BOW, 0), Probe170F3Fov::bowDone);
     private static final Map<Option, JsonElement> SAVED = new LinkedHashMap<>();
     private static final StringBuilder CSV = new StringBuilder("state,share,fov_modifier,expected_modifier,world_fov\n");
-    private static boolean f3Enabled, fovEnabled, flying;
+    private static boolean f3Enabled, fovEnabled, flying, screenshotsEnabled;
     private static ItemStack heldBefore;
     private Probe170F3Fov() {}
 
@@ -57,6 +57,10 @@ final class Probe170F3Fov {
     private static boolean vanilla(Minecraft mc) {
         for (Module module : new Module[] {f3(), fov()}) for (Option option : module.getOptions()) SAVED.put(option, option.save());
         f3Enabled = f3().isEnabled();
+        // A clear right column: no "Press E" hint, and no Lads preview of each QA screenshot over it.
+        mc.guiAchievement.clearAchievements();
+        screenshotsEnabled = ModuleManager.getInstance().getModule("BetterScreenshots").isEnabled();
+        ModuleManager.getInstance().getModule("BetterScreenshots").setEnabled(false);
         fovEnabled = fov().isEnabled();
         f3().setEnabled(false);
         mc.gameSettings.showDebugInfo = true;
@@ -102,6 +106,7 @@ final class Probe170F3Fov {
         mc.gameSettings.showDebugInfo = false;
         for (Option option : f3().getOptions()) option.load(SAVED.get(option));
         f3().setEnabled(f3Enabled);
+        ModuleManager.getInstance().getModule("BetterScreenshots").setEnabled(screenshotsEnabled);
         for (Option option : fov().getOptions()) option.reset();
         fov().setEnabled(true);
         flying = mc.thePlayer.capabilities.isFlying;
