@@ -110,6 +110,9 @@ public class TheLadsCore189 {
         // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC: the "Soon" card, as on the other versions, whose
         // presence sends nothing yet (no Discord connection is made).
         "Threads", "DiscordRPC",
+        // BetterF3189 (Forge's debug text event) and CustomFov189 (AbstractClientPlayerMixin and Forge's FOV event); each hands its
+        // module back to an installed betterf3 or customfov jar.
+        "BetterF3", com.thelads.core.modules.CustomFovModule.NAME,
         // EnumValues189 (Jasione); its status says a toggle applies after a restart (registerStatuses).
         "Jasione",
         // TabTweaks189 through GuiPlayerTabOverlayMixin, as 26.x NativeTabTweaks.
