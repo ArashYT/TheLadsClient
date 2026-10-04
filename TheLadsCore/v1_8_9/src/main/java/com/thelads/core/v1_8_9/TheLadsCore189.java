@@ -96,6 +96,8 @@ public class TheLadsCore189 {
         // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC: the "Soon" card, as on the other versions, whose
         // presence sends nothing yet (no Discord connection is made).
         "Threads", "DiscordRPC",
+        // EnumValues189 (Jasione); its status says a toggle applies after a restart (registerStatuses).
+        "Jasione",
         // TabTweaks189 through GuiPlayerTabOverlayMixin, as 26.x NativeTabTweaks.
         "PingView", "TabList",
         // Nametags189: shadow, nicknames, own display name and backgrounds (also Essential's).
