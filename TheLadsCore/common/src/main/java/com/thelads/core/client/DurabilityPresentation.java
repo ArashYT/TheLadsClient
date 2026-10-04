@@ -55,6 +55,20 @@ public final class DurabilityPresentation {
         if ((long) remaining * 10 >= maximum) return "Severely damaged";
         return "Nearly broken";
     }
+    /** The chat colours 0-f, for text that has only those (1.8.9). */
+    private static final int[] CHAT = {0x000000, 0x0000AA, 0x00AA00, 0x00AAAA, 0xAA0000, 0xAA00AA, 0xFFAA00, 0xAAAAAA,
+        0x555555, 0x5555FF, 0x55FF55, 0x55FFFF, 0xFF5555, 0xFF55FF, 0xFFFF55, 0xFFFFFF};
+    /** The chat colour code (0-15) closest to an RGB colour. */
+    public static int chatColor(int rgb) {
+        int best = 0;
+        long bestDistance = Long.MAX_VALUE;
+        for (int i = 0; i < CHAT.length; i++) {
+            long r = (rgb >> 16 & 255) - (CHAT[i] >> 16 & 255), g = (rgb >> 8 & 255) - (CHAT[i] >> 8 & 255), b = (rgb & 255) - (CHAT[i] & 255);
+            long distance = r * r + g * g + b * b;
+            if (distance < bestDistance) { bestDistance = distance; best = i; }
+        }
+        return best;
+    }
     public static Set<String> excludedNamespaces(String text) {
         if (text == null || text.isBlank()) return Set.of();
         Set<String> result = new HashSet<>();
