@@ -138,7 +138,11 @@ public class ConfigManager {
                             }
                         }
                     }
-                    if (moduleJson.has("enabled")) {
+                    // 1.6.0 and older could not switch BetterF3 (an external mod or unavailable there), so the "enabled" they saved is
+                    // only that module's old default: the native Better F3 keeps its own default until a save that has its 1.7.0 options.
+                    boolean legacyBetterF3 = module.getName().equals("BetterF3")
+                        && !(moduleJson.get("options") instanceof JsonObject saved && saved.has("Text Shadow"));
+                    if (moduleJson.has("enabled") && !legacyBetterF3) {
                         module.setEnabled(moduleJson.get("enabled").getAsBoolean());
                     }
                     if (moduleJson.has("favorite")) {

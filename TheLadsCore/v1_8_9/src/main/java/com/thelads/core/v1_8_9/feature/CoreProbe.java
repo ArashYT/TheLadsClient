@@ -60,10 +60,14 @@ public final class CoreProbe {
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     static {
-        // -Dthelads.verifyChatHeads=true: only the Chat Heads checks (ChatHeadsProbe189), straight in the QA world.
-        if (Boolean.getBoolean("thelads.verifyChatHeads")) {
+        // QA paths that run one feature's checks straight in the QA world:
+        // -Dthelads.verifyChatHeads=true (ChatHeadsProbe189) and -Dthelads.verify189F3Fov=true (Probe170F3Fov).
+        boolean chatHeadsOnly = Boolean.getBoolean("thelads.verifyChatHeads"), f3FovOnly = Boolean.getBoolean("thelads.verify189F3Fov");
+        if (chatHeadsOnly || f3FovOnly) {
             STEPS.subList(1, STEPS.size()).clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::focusTitle, CoreProbe::openWorld, CoreProbe::worldReady));
+            if (chatHeadsOnly) STEPS.addAll(ChatHeadsProbe189.STEPS);
+            if (f3FovOnly) STEPS.addAll(Probe170F3Fov.STEPS);
         } else {
             STEPS.addAll(Probe160s.STEPS);
             STEPS.addAll(HudProbe.STEPS);
@@ -73,9 +77,10 @@ public final class CoreProbe {
             STEPS.addAll(ProbeServer170.STEPS);
             STEPS.addAll(Probe151.STEPS);
             STEPS.addAll(Probe160.STEPS);
+            STEPS.addAll(ChatHeadsProbe189.STEPS);
+            STEPS.addAll(Probe170F3Fov.STEPS);
             STEPS.addAll(Probe145.PACING);
         }
-        STEPS.addAll(ChatHeadsProbe189.STEPS);
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
     }

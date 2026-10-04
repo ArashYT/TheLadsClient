@@ -16,6 +16,7 @@ public final class ExternalModSettings {
         external("SkinLayers", "3D Skin Layers", "skinlayers3d");
         external("NotEnoughAnimations", "Not Enough Animations", "notenoughanimations");
         external("BetterF3", "BetterF3", "betterf3");
+        external("Custom FOV", "Custom FOV", "customfov");
         external("BetterStats", "Better Statistics Screen", "betterstats");
         external("ModernAdvancements", "Modern Advancements", "modern-advancements");
         external("Resourcify", "Resourcify", "resourcify");

@@ -43,7 +43,7 @@ public class TheLadsCore189 {
         {"Performance", "Sodium"}, {"Lithium", "Lithium"}, {"FerriteCore", "FerriteCore"},
         {"ScalableLux", "ScalableLux"}, {"Exordium", "Exordium"}, {"DynamicFPS", "Dynamic FPS"},
         {"DynamicLights", "LambDynamicLights"}, {"SkinLayers", "3D Skin Layers"}, {"NotEnoughAnimations", "Not Enough Animations"},
-        {"BetterF3", "BetterF3"}, {"BetterStats", "Better Statistics Screen"},
+        {"BetterStats", "Better Statistics Screen"},
         {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroMinimap", "Xaero's Minimap"}, {"XaeroWorldmap", "Xaero's World Map"},
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
         {"EnhancedToolbars", "Durability Tooltip"}, {"Raised", "Raised"}};
@@ -74,6 +74,8 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new Zoom189());
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
+        com.thelads.core.v1_8_9.feature.BetterF3189.register();
+        com.thelads.core.v1_8_9.feature.CustomFov189.register();
         Crosshair189.register();
         MinecraftForge.EVENT_BUS.register(new Crosshair189());
         AutoReconnect189.register();

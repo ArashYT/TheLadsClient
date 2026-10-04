@@ -154,6 +154,7 @@ public class ModuleManager {
         register(tsn, Module.Category.MECHANIC);
 
         register(new ZoomModule(), Module.Category.MECHANIC);
+        register(new CustomFovModule(), Module.Category.MECHANIC);
 
         register(new SmoothHotbarModule(), Module.Category.MECHANIC);
         register(new DynamicLightsModule(), Module.Category.MECHANIC);
