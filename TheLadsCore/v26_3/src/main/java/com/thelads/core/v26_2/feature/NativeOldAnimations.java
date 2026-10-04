@@ -239,7 +239,8 @@ public final class NativeOldAnimations {
     public static void droppedItem(ItemEntity entity, ItemEntityRenderState state) {
         int flags = 0;
         ItemStackRenderState item = state.item;
-        if (active(Feature.DROPPED_2D) && !item.isEmpty() && !item.usesBlockLight()) { // blocks keep their 3D model
+        // blocks keep their 3D model; Item Physics, when on, lays every dropped item down itself
+        if (active(Feature.DROPPED_2D) && !NativeItemPhysics.renders() && !item.isEmpty() && !item.usesBlockLight()) {
             var resolver = Minecraft.getInstance().getItemModelResolver();
             resolver.updateForNonLiving(item, entity.getItem(), ItemDisplayContext.NONE, entity);
             // 3D outside the ground context (a trident, a spyglass): vanilla again.

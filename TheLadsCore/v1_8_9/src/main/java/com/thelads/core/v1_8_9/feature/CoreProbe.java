@@ -67,6 +67,13 @@ public final class CoreProbe {
             STEPS.add(CoreProbe::titleShown);
             STEPS.add(CoreProbe::focused);
             STEPS.addAll(Probe170Misc.steps(FOCUS));
+        } else if ("itemphysics".equals(System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY")))) {
+            // LADS_VERIFY_189_ONLY=itemphysics: only the QA world and the Item Physics checks (Probe170ItemPhysics).
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe170ItemPhysics.STEPS);
+            STEPS.add(CoreProbe::leaveWorld);
+            STEPS.add(CoreProbe::leftWorld);
         } else if ("170".equals(System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY")))) {
             // LADS_VERIFY_189_ONLY=170 (the harness passes it as -Dthelads.verify189Only): only the QA world and the 1.7.0
             // in-world probes (Toggle Sprint & Sneak, then the HUD checks), for a short focused run.
@@ -128,6 +135,7 @@ public final class CoreProbe {
         Probe170Skin.stop();
         Probe170Sprint.stop();
         Probe170Hud.stop();
+        Probe170ItemPhysics.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
