@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.gui;
 
-import com.thelads.core.v1_8_9.feature.Reconnect189;
+import com.thelads.core.client.ReconnectSettings;
+import com.thelads.core.v1_8_9.feature.AutoReconnect189;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +15,7 @@ import org.lwjgl.input.Mouse;
 /** AutoReconnect's list editor, as 26.x ReconnectOptionsScreen26: one delay per attempt, one reason key/pattern per line. */
 public final class ReconnectOptionsScreen189 extends GuiScreen {
     private final GuiScreen parent;
-    private final Reconnect189.Settings draft;
+    private final ReconnectSettings draft;
     private String delayText;
     private List<String> keyLines, patternLines;
     private String error = "";
@@ -24,12 +25,12 @@ public final class ReconnectOptionsScreen189 extends GuiScreen {
 
     public ReconnectOptionsScreen189(GuiScreen parent) {
         this.parent = parent;
-        draft = Reconnect189.settings().copy();
+        draft = AutoReconnect189.settings().copy();
         StringBuilder text = new StringBuilder();
-        for (Integer seconds : draft.delays) text.append(text.length() == 0 ? "" : ", ").append(seconds);
+        for (Integer seconds : draft.retryDelays) text.append(text.length() == 0 ? "" : ", ").append(seconds);
         delayText = text.toString();
-        keyLines = draft.conditionKeys;
-        patternLines = draft.conditionPatterns;
+        keyLines = draft.reasonKeys;
+        patternLines = draft.reasonPatterns;
     }
 
     @Override
@@ -70,10 +71,10 @@ public final class ReconnectOptionsScreen189 extends GuiScreen {
             List<String> keyList = keys.lines(), patternList = patterns.lines();
             if (keyList.size() > 128 || patternList.size() > 128) throw new IllegalArgumentException("Use at most 128 entries in each filter list.");
             for (String expression : patternList) Pattern.compile(expression);
-            draft.delays = parsed;
-            draft.conditionKeys = keyList;
-            draft.conditionPatterns = patternList;
-            Reconnect189.replaceSettings(draft);
+            draft.retryDelays = parsed;
+            draft.reasonKeys = keyList;
+            draft.reasonPatterns = patternList;
+            AutoReconnect189.replaceSettings(draft);
             mc.displayGuiScreen(parent);
         } catch (RuntimeException invalid) {
             error = invalid instanceof NumberFormatException ? "Enter whole seconds separated by commas." : invalid.getMessage();

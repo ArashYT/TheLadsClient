@@ -28,6 +28,7 @@ public final class NativeQualityOfLife {
         NativeDiscordPresence.register();
         NativeConnectionStatus.register();
         NativeReconnect.register();
+        ConnectionTweaks.register();
         com.thelads.core.v26_2.feature.crosshair.NativeCrosshair.register();
     }
 

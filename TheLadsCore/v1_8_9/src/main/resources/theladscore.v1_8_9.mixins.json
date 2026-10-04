@@ -16,6 +16,8 @@
     "GuiButtonMixin",
     "GuiControlsAccessor",
     "GuiDisconnectedAccessor",
+    "GuiMultiplayerInvoker",
+    "MessageDeserializerMixin",
     "GuiIngameForgeMixin",
     "GuiIngameMixin",
     "GuiIngameMenuMixin",

@@ -1,8 +1,0 @@
-{
-  "required": true,
-  "minVersion": "0.8",
-  "package": "com.thelads.core.v26_2.mixin.reconnect",
-  "compatibilityLevel": "JAVA_25",
-  "client": ["ReconnectServerMixin", "ReconnectWorldMixin", "ReconnectRealmMixin", "ReconnectGuiMixin", "ReconnectDisconnectedMixin", "ReconnectEscapeMixin"],
-  "injectors": { "defaultRequire": 1 }
-}
