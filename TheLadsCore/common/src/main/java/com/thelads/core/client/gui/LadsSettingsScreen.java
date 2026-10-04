@@ -54,7 +54,7 @@ public final class LadsSettingsScreen {
     private Consumer<String> onNarrate = ignored -> {};
     private Supplier<String> clipboardReader = () -> "";
     private static final String[] CATEGORIES = {"All", "HUD", "Gameplay", "Performance", "Server"};
-    private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore", "Async");
+    private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore");
     // Installed mods view: its own state, search and "mods:" row ids, so the native catalog above stays native-only.
     private record ModLine(ModInventoryModel.Row row, int depth) {}
     private boolean modsView, detailFromMods;

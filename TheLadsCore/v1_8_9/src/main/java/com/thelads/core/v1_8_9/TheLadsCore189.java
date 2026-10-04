@@ -155,7 +155,6 @@ public class TheLadsCore189 {
         for (String[] module : MOD_BACKED)
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
-        ModuleSupport.registerUnavailable("Async", "Parallel entity ticking is built for the Minecraft 26.x server; 1.8.9 ticks entities on one thread.");
         ModuleSupport.registerUnavailable("ShulkerBoxUtils", "Minecraft 1.8.9 has no shulker boxes; they were added in Minecraft 1.11.");
         for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);
         com.thelads.core.v1_8_9.feature.DynamicLights189.register(); // unavailable without OptiFine
