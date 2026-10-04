@@ -126,9 +126,10 @@ public abstract class GuiNewChatMixin {
 
     @Redirect(method = "drawChat", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/FontRenderer;drawStringWithShadow(Ljava/lang/String;FFI)I"), require = 1)
     private int ladsLineText(FontRenderer font, String text, float x, float y, int color) {
-        NetworkPlayerInfo head = ((ChatHeads189.Line) ladsDrawn).ladsHead();
+        ChatHeads189.Line line = (ChatHeads189.Line) ladsDrawn;
+        NetworkPlayerInfo head = line == null ? null : line.ladsHead();
         int offset = ChatHeads189.offset(head);
-        if (offset > 0 && head != null && ((ChatHeads189.Line) ladsDrawn).ladsFirst())
+        if (offset > 0 && head != null && line.ladsFirst())
             ChatHeads189.draw(head, (int) x, (int) y, ladsFaded(color) >>> 24);
         int width = font.drawStringWithShadow(text, x + offset, y, ladsFaded(color));
         if (ladsLinePushed) {
