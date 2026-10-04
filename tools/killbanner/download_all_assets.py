@@ -1,4 +1,10 @@
+"""Downloads every Kingdom Archives kill banner's art and sounds into the Core's assets, and writes banners.json.
+
+Usage: download_all_assets.py <folder with all_banners.json and all_audios.json scraped from kingdomarchives.com/killbanners>
+Then run gen_style_java.py and dedupe_assets.py. Writes only inside this repository.
+"""
 import json
+import sys
 import urllib.request
 import re
 import subprocess
@@ -9,14 +15,15 @@ from concurrent.futures import ThreadPoolExecutor
 
 FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
 
-REPO_ROOT = Path(r'C:\Users\Arash\Desktop\The Lads Client Dev\w170k')
+REPO_ROOT = Path(__file__).resolve().parents[2]
 ASSETS_ROOT = REPO_ROOT / 'TheLadsCore/common/src/main/resources/assets/theladscore'
 KILLBANNER_DIR = ASSETS_ROOT / 'killbanner'
 SOUNDS_DIR = ASSETS_ROOT / 'sounds/killbanner'
 SOUNDS_JSON_PATH = ASSETS_ROOT / 'sounds.json'
-BANNERS_JSON_PATH = KILLBANNER_DIR / 'banners.json'
+BANNERS_JSON_PATH = Path(__file__).resolve().parent / 'banners.json'
+STRIPS = {'reaver', 'rogue'}  # drawn from their measured 60 fps strips: only their sounds are used
 
-SCRATCH = Path(r'C:\Users\Arash\.gemini\antigravity\brain\4e61994b-1692-437a-9f38-e98bf65c0ee2\scratch')
+SCRATCH = Path(sys.argv[1])
 
 with open(SCRATCH / 'all_banners.json', 'r', encoding='utf-8') as f:
     ALL_BANNERS = json.load(f)
@@ -42,7 +49,7 @@ def process_skin(bid):
     img_dir.mkdir(parents=True, exist_ok=True)
     
     def dl_img(url, name):
-        if not url or not isinstance(url, str) or not url.endswith('.png'):
+        if bid in STRIPS or not url or not isinstance(url, str) or not url.endswith('.png'):
             return False
         dest = img_dir / name
         if dest.exists() and dest.stat().st_size > 0:
@@ -151,7 +158,7 @@ if __name__ == '__main__':
             pass
 
     for bid in manifest.keys():
-        for k in range(1, 7):
+        for k in range(1, 6):  # the client shows at most 5 kills
             ogg = SOUNDS_DIR / f"{bid}-kill-{k}.ogg"
             if ogg.exists():
                 event_name = f"{bid}_kill_{k}"
