@@ -16,7 +16,8 @@ notice, its licence copy and the `META-INF/lads-sources/reconnect` source bundle
   and Cancel reconnect under the disconnect screen's last button; Escape cancels a running countdown.
 - 1.8.9 (`AutoReconnect189`): servers as their `GuiConnecting` opens, local worlds once joined, buttons and
   Escape through Forge's screen events. Realms do not accept 1.8.9; its chat is unsigned.
-- Realms are no longer reconnected on 26.x (the old port did); servers and local worlds are.
+- Realms on 26.x: `RealmsConnect.connect` (ReconnectRealmsMixin) remembers the Realm by name; a retry joins it again
+  through `RealmsMainScreen.play`, as the Realms screen does (it wakes the Realm and asks for its current address).
 - Kicks and bans never count down by default: the reason key list skips kicks, bans, whitelist, duplicate
   login, outdated client/server, spam and idle kicks, and the default text patterns skip reasons containing
   "banned", "kicked" or "white-list" (servers and 1.8.9 send most kicks as plain text). Login, session,

@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.client.ChatAnimation;
+import com.thelads.core.client.ChatHeads;
 import com.thelads.core.v1_8_9.feature.Chat189;
 import com.thelads.core.v1_8_9.feature.ChatHeads189;
 import com.thelads.core.v1_8_9.feature.Options189;
@@ -32,7 +33,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class GuiNewChatMixin {
     @Unique private final ChatAnimation ladsAnimation = new ChatAnimation();
     @Unique private boolean ladsAnimating, ladsLinePushed, ladsFirstLine;
-    @Unique private int ladsLine, ladsClickOffset;
+    @Unique private int ladsLine, ladsClickOffset, ladsClickAt, ladsSenderAt, ladsRewrappedAt;
     @Unique private float ladsFade = 1f;
     @Unique private ChatLine ladsDrawn;
     @Unique private NetworkPlayerInfo ladsSender, ladsRewrapped;
@@ -53,7 +54,9 @@ public abstract class GuiNewChatMixin {
     @Inject(method = "setChatLine", at = @At("HEAD"), require = 1)
     private void ladsNewestMessage(IChatComponent message, int id, int updateCounter, boolean displayOnly, CallbackInfo ci) {
         if (!displayOnly) ladsAnimation.start(updateCounter);
-        ladsSender = displayOnly ? ladsRewrapped : ChatHeads189.sender(message);
+        ChatHeads.Match<NetworkPlayerInfo> match = displayOnly ? null : ChatHeads189.sender(message);
+        ladsSender = displayOnly ? ladsRewrapped : match == null ? null : match.player();
+        ladsSenderAt = displayOnly ? ladsRewrappedAt : match == null ? 0 : match.at();
         ladsRewrapped = null;
         ladsFirstLine = true;
     }
@@ -62,6 +65,7 @@ public abstract class GuiNewChatMixin {
     @Redirect(method = "refreshChat", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/ChatLine;getChatComponent()Lnet/minecraft/util/IChatComponent;"), require = 1)
     private IChatComponent ladsRewrap(ChatLine line) {
         ladsRewrapped = ((ChatHeads189.Line) line).ladsHead();
+        ladsRewrappedAt = ((ChatHeads189.Line) line).ladsAt();
         return line.getChatComponent();
     }
 
@@ -74,22 +78,31 @@ public abstract class GuiNewChatMixin {
     @Redirect(method = "setChatLine", at = @At(value = "INVOKE", target = "Ljava/util/List;add(ILjava/lang/Object;)V"), require = 2)
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void ladsLineSender(List lines, int index, Object line) {
-        ((ChatHeads189.Line) line).ladsHead(ladsSender, ladsFirstLine);
+        ((ChatHeads189.Line) line).ladsHead(ladsSender, ladsSenderAt, ladsFirstLine);
         ladsFirstLine = false;
         lines.add(index, line);
     }
 
-    /** Clicks and hovers find the text where it is drawn, after the head. */
+    /**
+     * Clicks and hovers find the text where it is drawn, after the head: getChatComponent adds up its parts' widths, and the part
+     * holding the head's place (Before name: the sender's name on the first line; Start of line: the first part) gets its width.
+     */
     @Redirect(method = "getChatComponent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/ChatLine;getChatComponent()Lnet/minecraft/util/IChatComponent;"), require = 1)
     private IChatComponent ladsPointedLine(ChatLine line) {
-        ladsClickOffset = ChatHeads189.offset(((ChatHeads189.Line) line).ladsHead());
+        ChatHeads189.Line head = (ChatHeads189.Line) line;
+        boolean beforeName = ChatHeads.beforeName();
+        ladsClickOffset = beforeName && !head.ladsFirst() ? 0 : ChatHeads189.offset(head.ladsHead());
+        ladsClickAt = beforeName ? head.ladsAt() : 0;
         return line.getChatComponent();
     }
 
     @Redirect(method = "getChatComponent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/FontRenderer;getStringWidth(Ljava/lang/String;)I"), require = 1)
     private int ladsPointedWidth(FontRenderer font, String text) {
-        int width = font.getStringWidth(text) + ladsClickOffset;
-        ladsClickOffset = 0;
+        int width = font.getStringWidth(text);
+        if (ladsClickOffset > 0 && (ladsClickAt -= ChatHeads.visibleLength(text)) < 0) {
+            width += ladsClickOffset;
+            ladsClickOffset = 0;
+        }
         return width;
     }
 
@@ -134,10 +147,22 @@ public abstract class GuiNewChatMixin {
     private int ladsLineText(FontRenderer font, String text, float x, float y, int color) {
         ChatHeads189.Line line = (ChatHeads189.Line) ladsDrawn;
         NetworkPlayerInfo head = line == null ? null : line.ladsHead();
-        int offset = ChatHeads189.offset(head);
-        if (offset > 0 && head != null && line.ladsFirst())
-            ChatHeads189.draw(head, (int) x, (int) y, ladsFaded(color) >>> 24);
-        int width = font.drawStringWithShadow(text, x + offset, y, ladsFaded(color));
+        int offset = ChatHeads189.offset(head), width;
+        if (offset > 0 && ChatHeads.beforeName()) {
+            if (head != null && line.ladsFirst()) {
+                // Before name: the text before the sender's name, the head, then the rest of the line after the head.
+                int split = ChatHeads.split(text, line.ladsAt());
+                String before = text.substring(0, split);
+                float headX = x + font.getStringWidth(before);
+                font.drawStringWithShadow(before, x, y, ladsFaded(color));
+                ChatHeads189.draw(head, (int) headX, (int) y, ladsFaded(color) >>> 24);
+                width = font.drawStringWithShadow(FontRenderer.getFormatFromString(before) + text.substring(split), headX + offset, y, ladsFaded(color));
+            } else width = font.drawStringWithShadow(text, x, y, ladsFaded(color));
+        } else {
+            if (offset > 0 && head != null && line.ladsFirst())
+                ChatHeads189.draw(head, (int) x, (int) y, ladsFaded(color) >>> 24);
+            width = font.drawStringWithShadow(text, x + offset, y, ladsFaded(color));
+        }
         if (ladsLinePushed) {
             ladsLinePushed = false;
             GlStateManager.popMatrix();
