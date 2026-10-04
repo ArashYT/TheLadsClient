@@ -180,27 +180,12 @@ public class GuiLadsAdapter implements LadsGraphics {
 
     @Override
     public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
-        Minecraft mc = Minecraft.getMinecraft();
-        if (mc.thePlayer == null && !editor) return;
-        try {
-            GlStateManager.enableColorMaterial();
-            GlStateManager.pushMatrix();
-            int scale = (int)(Math.min(width, height) * 0.45f);
-            int posX = x + width / 2;
-            int posY = y + height - 4;
-            if (mc.thePlayer != null) {
-                net.minecraft.client.gui.inventory.GuiInventory.drawEntityOnScreen(posX, posY, scale, 0, 0, mc.thePlayer);
-            }
-            GlStateManager.popMatrix();
-            RenderHelper.disableStandardItemLighting();
-            GlStateManager.disableRescaleNormal();
-            GlStateManager.setActiveTexture(net.minecraft.client.renderer.OpenGlHelper.lightmapTexUnit);
-            GlStateManager.disableTexture2D();
-            GlStateManager.setActiveTexture(net.minecraft.client.renderer.OpenGlHelper.defaultTexUnit);
-            GlStateManager.disableDepth();
-            GlStateManager.enableAlpha();
-            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
-        } catch (Exception ignored) {}
+        com.thelads.core.v1_8_9.feature.PaperDoll189.render(x, y, width, height, editor, this.width);
+    }
+
+    @Override
+    public int hotbarLift() {
+        return com.thelads.core.v1_8_9.feature.Raised189.hotbar();
     }
 
     @Override

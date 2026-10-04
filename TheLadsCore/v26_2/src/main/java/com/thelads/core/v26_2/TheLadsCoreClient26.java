@@ -37,8 +37,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.NativeTooltips.initializeVerification();
         com.thelads.core.v26_2.feature.HudInfoCapture.register();
         com.thelads.core.v26_2.feature.food.NativeFood.initialize();
-        com.thelads.core.v26_2.feature.paperdoll.NativePaperDoll.register();
-        com.thelads.core.v26_2.feature.raised.NativeRaised.initialize();
+        com.thelads.core.v26_2.feature.paperdoll.PaperDoll26.register();
         com.thelads.core.v26_2.feature.tabtweaks.NativeTabTweaks.initialize();
         com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.register();
         com.thelads.core.v26_2.feature.clumps.NativeClumps.initialize();

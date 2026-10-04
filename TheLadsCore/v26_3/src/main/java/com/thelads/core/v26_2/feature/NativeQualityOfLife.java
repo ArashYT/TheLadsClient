@@ -9,7 +9,6 @@ import com.thelads.core.config.SliderOption;
 import com.thelads.core.modules.CrosshairModule;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.ChatScreen;
 
 /** Features owned by Lads, with no upstream mod configuration or runtime dependency. */
 public final class NativeQualityOfLife {
@@ -24,6 +23,7 @@ public final class NativeQualityOfLife {
         // A loaded Custom Crosshair Mod or Durability Tooltip jar keeps its module (ExternalModSettings registered it as installed).
         if (!com.thelads.core.v26_2.feature.crosshair.NativeCrosshair.externalPresent()) ModuleSupport.registerBuiltIn("Crosshair Tweaks");
         if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("durabilitytooltip")) ModuleSupport.registerBuiltIn("EnhancedToolbars");
+        Raised26.register();
         ((com.thelads.core.config.ActionOption)module("Jade").getOption("Settings and addons")).setAction(()->{
             var mc=Minecraft.getInstance();mc.setScreenAndShow(new snownee.jade.gui.HomeConfigScreen(mc.gui.screen()));
         });
@@ -39,7 +39,8 @@ public final class NativeQualityOfLife {
         NativeClientTools.tick();
         NativeNarrator.tick();
         MinimapIntegration.tick();
-        com.thelads.core.v26_2.feature.raised.NativeRaisedProbe.tick();
+        Raised26.titleProbe();
+        com.thelads.core.v26_2.feature.paperdoll.PaperDoll26.tick(Minecraft.getInstance());
         boolean disabled = enabled("DisableNarrator");
         if (disabled && !narratorWasDisabled) Minecraft.getInstance().getNarrator().clear();
         narratorWasDisabled = disabled;
@@ -84,9 +85,4 @@ public final class NativeQualityOfLife {
         Module value = module(module);
         return value != null && value.getOption(option) instanceof com.thelads.core.config.StringOption setting ? setting.get() : fallback;
     }
-    public static int raisedDistance() {
-        return com.thelads.core.v26_2.feature.raised.NativeRaised.active() && enabled("Raised") && Minecraft.getInstance().gui.screen() instanceof ChatScreen
-            ? (int) number("Raised", "Distance", 14) : 0;
-    }
-
 }

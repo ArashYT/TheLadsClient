@@ -242,10 +242,7 @@ public class ModuleManager {
         farBlock.setEnabled(true);
         register(farBlock);
 
-        Module raised = new Module("Raised", "Moves the hotbar up when the chat is open.");
-        raised.addOption(new SliderOption("Distance", 14, 0, 50, 1));
-        raised.setEnabled(true);
-        register(raised);
+        register(new RaisedModule());
 
         register(new AppleSkinModule());
         register(new EnhancedTooltipsModule());

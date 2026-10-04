@@ -60,10 +60,15 @@ public final class CoreProbe {
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     static {
-        // QA paths that run one feature's checks straight in the QA world:
-        // -Dthelads.verifyChatHeads=true (ChatHeadsProbe189) and -Dthelads.verify189F3Fov=true (Probe170F3Fov).
+        // QA paths that run one feature's checks straight in the QA world: -Dthelads.verifyChatHeads=true (ChatHeadsProbe189),
+        // -Dthelads.verify189F3Fov=true (Probe170F3Fov) and -Dthelads.verify189Only=raised (the harness's LADS_VERIFY_189_ONLY:
+        // Raised and the paper doll, RaisedDollProbe189).
         boolean chatHeadsOnly = Boolean.getBoolean("thelads.verifyChatHeads"), f3FovOnly = Boolean.getBoolean("thelads.verify189F3Fov");
-        if (chatHeadsOnly || f3FovOnly) {
+        if ("raised".equals(System.getProperty("thelads.verify189Only"))) {
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll(RaisedDollProbe189.STEPS);
+        } else if (chatHeadsOnly || f3FovOnly) {
             STEPS.subList(1, STEPS.size()).clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::focusTitle, CoreProbe::openWorld, CoreProbe::worldReady));
             if (chatHeadsOnly) STEPS.addAll(ChatHeadsProbe189.STEPS);
@@ -77,6 +82,7 @@ public final class CoreProbe {
             STEPS.addAll(ProbeServer170.STEPS);
             STEPS.addAll(Probe151.STEPS);
             STEPS.addAll(Probe160.STEPS);
+            STEPS.addAll(RaisedDollProbe189.STEPS);
             STEPS.addAll(ChatHeadsProbe189.STEPS);
             STEPS.addAll(Probe170F3Fov.STEPS);
             STEPS.addAll(Probe145.PACING);
@@ -118,6 +124,7 @@ public final class CoreProbe {
         ChatHeadsProbe189.stop(Minecraft.getMinecraft());
         Probe160s.stop();
         ProbeServer170.stop();
+        RaisedDollProbe189.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -251,6 +258,17 @@ public final class CoreProbe {
         check(inVerificationSandbox(game) && inVerificationSandbox(saves) && com.thelads.core.shared.SharedContentPaths.redirectEnabled()
             && saves.equals(com.thelads.core.shared.SharedContentPaths.savesDir().toRealPath()), "the QA world goes into the sandbox's shared saves (" + saves + ")");
         LOG.info("Lads 1.8.9 core probe: opening the QA world '{}' in {}", WORLD, saves);
+        mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(0L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT));
+        return true;
+    }
+
+    /** The --only path: the title step's unfocused-window guard, the sandbox check and the QA world. */
+    private static boolean quickWorld(Minecraft mc) throws Exception {
+        title = mc.currentScreen;
+        pauseOnLostFocus = mc.gameSettings.pauseOnLostFocus;
+        mc.gameSettings.pauseOnLostFocus = false;
+        Path game = mc.mcDataDir.toPath().toRealPath(), saves = Files.createDirectories(game.resolve("saves")).toRealPath();
+        check(inVerificationSandbox(game) && inVerificationSandbox(saves), "the QA world goes into the sandbox (" + saves + ")");
         mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(0L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT));
         return true;
     }

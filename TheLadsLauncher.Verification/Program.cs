@@ -136,6 +136,8 @@ bool chatHeadsCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CA
 bool f3FovCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_F3FOV") == "1";
 // 26.x: the AppleSkin module's food previews, food and durability tooltips and Crosshair Tweaks styles photographed (HudInfoCapture).
 bool hudInfoCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_HUDINFO") == "1";
+// Fabric versions: Raised and the paper doll in the QA world (RaisedDollCapture). 1.8.9's self-test runs the same (RaisedDollProbe189).
+bool raisedCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_RAISED") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -274,6 +276,8 @@ string f3FovCaptureRequest = Path.Combine(directory, ".lads-qa-capture-f3fov");
 if (autoWorldVerification && File.Exists(f3FovCaptureRequest)) File.Delete(f3FovCaptureRequest);
 string hudInfoCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hudinfo");
 if (autoWorldVerification && File.Exists(hudInfoCaptureRequest)) File.Delete(hudInfoCaptureRequest);
+string raisedCaptureRequest = Path.Combine(directory, ".lads-qa-capture-raised");
+if (autoWorldVerification && File.Exists(raisedCaptureRequest)) File.Delete(raisedCaptureRequest);
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
         File.Delete(Path.Combine(directory, flag));
@@ -322,8 +326,9 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
-    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED", "Lads server features capture FAILED",
-    "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
+    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED",
+    "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
+    "Lads raised capture FAILED", "Lads raised title probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -476,6 +481,8 @@ try
         if (autoWorldVerification) AddJvm("-Dthelads.verify189Core=true");
         if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
         if (f3FovCaptureVerification) AddJvm("-Dthelads.verify189F3Fov=true");
+        // LADS_VERIFY_189_ONLY=raised: only the Raised and paper doll checks (RaisedDollProbe189), straight in the QA world.
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "raised") AddJvm("-Dthelads.verify189Only=raised");
     }
     else
     {
@@ -562,7 +569,7 @@ try
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
                 "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads server features capture END:", "Lads F3/FOV capture END:",
-                "Lads HUD info capture END:" })
+                "Lads HUD info capture END:", "Lads raised capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -651,7 +658,8 @@ try
             bool serverDone = !serverCaptureVerification || passedMarkers.ContainsKey("Lads server features capture END:");
             bool f3FovDone = !f3FovCaptureVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads F3/FOV capture END:");
             bool hudInfoDone = !hudInfoCaptureVerification || passedMarkers.ContainsKey("Lads HUD info capture END:");
-            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && serverDone && f3FovDone && hudInfoDone)
+            bool raisedDone = !raisedCaptureVerification || passedMarkers.ContainsKey("Lads raised capture END:");
+            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && serverDone && f3FovDone && hudInfoDone && raisedDone)
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -684,7 +692,8 @@ try
                     (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames."),
                     (serverCaptureVerification, serverCaptureRequest, "Check the multiplayer features in the QA world and capture their frames."),
                     (f3FovCaptureVerification && !capabilities.Forge, f3FovCaptureRequest, "Capture Better F3 frames and log Custom FOV values."),
-                    (hudInfoCaptureVerification, hudInfoCaptureRequest, "Photograph food previews, tooltips and crosshair styles in the QA world.") })
+                    (hudInfoCaptureVerification, hudInfoCaptureRequest, "Photograph food previews, tooltips and crosshair styles in the QA world."),
+                    (raisedCaptureVerification, raisedCaptureRequest, "Capture Raised and the paper doll in the QA world.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -791,6 +800,8 @@ try
             "The requested Better F3 / Custom FOV capture did not pass. Inspect production-smoke.log.");
         Require(!hudInfoCaptureVerification || passedMarkers.ContainsKey("Lads HUD info capture END:"),
             "The requested food, tooltip and crosshair frames were not all captured. Inspect production-smoke.log.");
+        Require(!raisedCaptureVerification || passedMarkers.ContainsKey("Lads raised capture END:"),
+            "The requested Raised and paper doll capture did not pass. Inspect production-smoke.log.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)

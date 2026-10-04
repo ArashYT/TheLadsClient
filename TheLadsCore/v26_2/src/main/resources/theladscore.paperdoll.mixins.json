@@ -1,7 +1,0 @@
-{
-  "required": true,
-  "package": "com.thelads.core.v26_2.feature.paperdoll.mixin",
-  "compatibilityLevel": "JAVA_25",
-  "client": ["PaperDollStateMixin", "PaperDollSubmitMixin", "PaperDollRenderTypeMixin", "PaperDollRenderSetupMixin", "PaperDollTextureBindingMixin"],
-  "injectors": { "defaultRequire": 1 }
-}
