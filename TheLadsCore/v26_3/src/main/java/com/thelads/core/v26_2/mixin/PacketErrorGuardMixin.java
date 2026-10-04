@@ -16,7 +16,7 @@ abstract class PacketErrorGuardMixin {
     @Inject(method = "onPacketError", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$keepPlaying(Packet<?> packet, Exception failure, CallbackInfo ci) {
         if ((Object) this instanceof ClientPacketListener && ConnectionTweaks.ignorePacketErrors() && PacketErrorPolicy.skippable(failure)) {
-            PacketErrorPolicy.skipped("play packet that failed to apply:", packet.type(), failure);
+            PacketErrorPolicy.skipped("play packet " + packet.type() + ", whose handler failed,", failure);
             ci.cancel();
         }
     }

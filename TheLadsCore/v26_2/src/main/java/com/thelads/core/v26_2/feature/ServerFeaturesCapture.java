@@ -110,6 +110,7 @@ final class ServerFeaturesCapture {
         module("AutoReconnect").setEnabled(true);
         NativeReconnect.module().initial.set(false);
         module("IgnorePacketErrors").setEnabled(true);
+        ((com.thelads.core.config.BoolOption) module("Chat").getOption("Hide Signing Indicators")).set(true);
         // The QA world was joined before AutoReconnect was switched on here: it becomes the target as if joined with it on.
         NativeReconnect.session().begin(world, () -> NativeReconnect.openWorld(world), mc.getUser().getProfileId());
         NativeReconnect.session().joined(null, lists, false, false, false, System.nanoTime());
@@ -145,7 +146,11 @@ final class ServerFeaturesCapture {
             check(false, "with IgnorePacketErrors off the same frame must fail");
         } catch (io.netty.handler.codec.DecoderException expected) {
             check(true, "with IgnorePacketErrors off the same frame fails as in vanilla (" + expected.getMessage() + ")");
-        } finally { vanilla.finishAndReleaseAll(); module("IgnorePacketErrors").setEnabled(true); }
+        } finally {
+            // Vanilla kept the bad frame's tail, which closing would decode again: only the write above is under test.
+            try { vanilla.finishAndReleaseAll(); } catch (RuntimeException leftover) { }
+            module("IgnorePacketErrors").setEnabled(true);
+        }
         return true;
     }
 

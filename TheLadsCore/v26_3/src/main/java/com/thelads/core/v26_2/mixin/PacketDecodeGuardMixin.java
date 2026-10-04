@@ -37,7 +37,7 @@ abstract class PacketDecodeGuardMixin {
             if (failure instanceof SkipPacketException || !PacketErrorPolicy.skippable(failure)) throw failure;
             while (out.size() > decoded) out.remove(out.size() - 1);
             in.skipBytes(in.readableBytes());
-            PacketErrorPolicy.skipped("unreadable play packet", "", failure);
+            PacketErrorPolicy.skipped("an unreadable play packet", failure);
         }
     }
 }

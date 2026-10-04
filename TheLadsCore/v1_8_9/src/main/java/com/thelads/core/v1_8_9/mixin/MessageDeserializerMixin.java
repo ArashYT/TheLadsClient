@@ -43,7 +43,7 @@ public abstract class MessageDeserializerMixin extends ByteToMessageDecoder {
             if (!PacketErrorPolicy.skippable(failure)) throw failure;
             while (out.size() > decoded) out.remove(out.size() - 1);
             in.skipBytes(in.readableBytes());
-            PacketErrorPolicy.skipped("unreadable play packet", "", failure);
+            PacketErrorPolicy.skipped("an unreadable play packet", failure);
         } finally {
             lads$inside = false;
         }

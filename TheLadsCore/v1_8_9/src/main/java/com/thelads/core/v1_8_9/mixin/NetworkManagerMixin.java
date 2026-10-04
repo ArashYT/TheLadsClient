@@ -43,7 +43,7 @@ public abstract class NetworkManagerMixin implements SignalLoss189.PacketActivit
             throw scheduled;
         } catch (RuntimeException failure) {
             if (!(handler instanceof NetHandlerPlayClient) || !ConnectionTweaks189.ignorePacketErrors() || !PacketErrorPolicy.skippable(failure)) throw failure;
-            PacketErrorPolicy.skipped("play packet that failed to apply:", packet.getClass().getSimpleName(), failure);
+            PacketErrorPolicy.skipped("play packet " + packet.getClass().getSimpleName() + ", whose handler failed,", failure);
         }
     }
 

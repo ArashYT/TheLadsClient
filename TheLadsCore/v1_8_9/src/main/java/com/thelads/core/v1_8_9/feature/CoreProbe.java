@@ -65,9 +65,9 @@ public final class CoreProbe {
         STEPS.addAll(Probe145.STEPS);
         STEPS.addAll(Probe150e.STEPS);
         STEPS.addAll(Probe150.STEPS);
+        STEPS.addAll(ProbeServer170.STEPS);
         STEPS.addAll(Probe151.STEPS);
         STEPS.addAll(Probe160.STEPS);
-        STEPS.addAll(ProbeServer170.STEPS);
         STEPS.addAll(Probe145.PACING);
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);

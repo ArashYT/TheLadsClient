@@ -95,11 +95,13 @@ public final class NativeReconnect {
         mc.createWorldOpenFlows().openWorld(folder, () -> mc.gui.setScreen(new SelectWorldScreen(new TitleScreen())));
     }
 
-    /** Below the screen's last button; re-added when the screen re-initializes (resize), which never restarts the countdown. */
+    /** Below the screen's last button. Fabric runs this again on a resize: the old pair is replaced, the countdown goes on. */
     private static void addButtons(DisconnectedScreen screen) {
+        List<AbstractWidget> widgets = Screens.getWidgets(screen);
+        widgets.remove(retry);
+        widgets.remove(cancel);
         retry = cancel = null;
         if (!active() || !SESSION.canRetry(account(), module().initial.get())) return;
-        List<AbstractWidget> widgets = Screens.getWidgets(screen);
         AbstractWidget last = null;
         for (AbstractWidget widget : widgets) if (widget instanceof Button) last = widget;
         int width = last == null ? 200 : last.getWidth(), x = last == null ? (screen.width - width) / 2 : last.getX();
