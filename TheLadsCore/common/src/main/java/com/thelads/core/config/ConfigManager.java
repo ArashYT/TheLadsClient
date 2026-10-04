@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
+import com.thelads.core.modules.BetterResolutionModule;
 import com.thelads.core.modules.HudModule;
 import com.thelads.core.client.util.ClientPaths;
 
@@ -117,6 +118,13 @@ public class ConfigManager {
                 try {
                     if (module.getName().equals("Nametags") && !modulesJson.has("Nametags") && modulesJson.has("ToggleNametags"))
                         modulesJson.add("Nametags", modulesJson.get("ToggleNametags"));
+                    // 1.7.0 renamed RenderScale to BetterResolution (same options): what only the old entry has carries over,
+                    // e.g. its options when the launcher has already switched BetterResolution on or off.
+                    if (module.getName().equals(BetterResolutionModule.NAME) && modulesJson.get("RenderScale") instanceof JsonObject old) {
+                        if (!(modulesJson.get(BetterResolutionModule.NAME) instanceof JsonObject)) modulesJson.add(BetterResolutionModule.NAME, new JsonObject());
+                        JsonObject renamed = modulesJson.getAsJsonObject(BetterResolutionModule.NAME);
+                        for (var entry : old.entrySet()) if (!renamed.has(entry.getKey())) renamed.add(entry.getKey(), entry.getValue());
+                    }
                     if (!modulesJson.has(module.getName())) {
                         continue;
                     }

@@ -4,6 +4,7 @@ import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.mods.CoreCatalogExporter;
+import com.thelads.core.modules.BetterResolutionModule;
 import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
 import com.thelads.core.v1_8_9.feature.AutoReconnect189;
@@ -97,7 +98,7 @@ public class TheLadsCore189 {
     }
 
     public static final String[] GAMEPLAY_MODULES = {
-        "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", "RenderScale", "BetterScreenshots", "EnhancedToolbars",
+        "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", BetterResolutionModule.NAME, "BetterScreenshots", "EnhancedToolbars",
         "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
         "RawInput", "BorderlessFullscreen",

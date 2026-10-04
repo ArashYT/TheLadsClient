@@ -58,6 +58,7 @@
     "ShulkerBlockChangesMixin",
     "RenderScaleMixin",
     "RenderScaleTargetsAccessorMixin",
+    "RenderScaleSkyMixin",
     "PrivacyMixin",
     "GlobalScreenshotMixin",
     "ServerListAccessor",

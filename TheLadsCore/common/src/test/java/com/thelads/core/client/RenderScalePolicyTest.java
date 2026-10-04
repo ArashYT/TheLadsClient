@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Sizing and cadence only; GPU/world verification lives in the adapters' NativeRenderScaleProbe. */
 class RenderScalePolicyTest {
     private static RenderScalePolicy.Settings settings(int preset, double scale, boolean dynamic, int target, double min) {
-        return new RenderScalePolicy.Settings(true, preset, scale, false, dynamic, target, min);
+        return new RenderScalePolicy.Settings(true, preset, scale, RenderScalePolicy.LINEAR, dynamic, target, min);
     }
     private static void size(int w, int h, double scale, int limit, int expectedW, int expectedH) {
         var size = RenderScalePolicy.size(w, h, scale, limit);
