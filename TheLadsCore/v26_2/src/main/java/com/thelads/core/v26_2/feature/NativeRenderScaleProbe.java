@@ -23,6 +23,9 @@ final class NativeRenderScaleProbe {
     private static RenderScalePolicy.Settings savedSettings;
     private NativeRenderScaleProbe() {}
 
+    /** Requested and not finished: a capture that opens a screen (Chat Heads) waits, or this probe loses its world frames. */
+    static boolean pending() { return REQUESTED && !done; }
+
     static RenderScalePolicy.Settings settings(NativeRenderScale owner, RenderScalePolicy.Settings actual, boolean world) {
         if (!REQUESTED || done) return actual;
         try {

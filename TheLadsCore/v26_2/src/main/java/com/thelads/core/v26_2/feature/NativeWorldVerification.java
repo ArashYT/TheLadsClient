@@ -131,8 +131,9 @@ public final class NativeWorldVerification {
             OldAnimationsCapture.tick(gameDirectory, captureReady && (OldAnimationsCapture.busy() || !captureBusy()));
             ZoomCapture.tick(gameDirectory, captureReady && (ZoomCapture.busy() || !captureBusy()));
             ServerFeaturesCapture.tick(gameDirectory, captureReady && (ServerFeaturesCapture.busy() || !captureBusy()));
-            // After the Chat module's own capture, so its message does not land among the heads.
-            ChatHeadsCapture.tick(captureReady && chatCaptureStep >= 2 && (ChatHeadsCapture.busy() || !captureBusy()));
+            // After the Chat module's own capture, so its message does not land among the heads, and after the render scale probe,
+            // whose world frames its chat screen would interrupt.
+            ChatHeadsCapture.tick(captureReady && chatCaptureStep >= 2 && !NativeRenderScaleProbe.pending() && (ChatHeadsCapture.busy() || !captureBusy()));
             F3FovCapture.tick(gameDirectory, captureReady && (F3FovCapture.busy() || !captureBusy()));
             RaisedDollCapture.tick(gameDirectory, captureReady && (RaisedDollCapture.busy() || !captureBusy()));
             MouseTweaksCapture.tick(gameDirectory, captureReady && (MouseTweaksCapture.busy() || !captureBusy()));
