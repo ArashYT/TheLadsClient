@@ -36,7 +36,7 @@ class DiscordRpcServiceTest {
             service.submit(request(false, ID, PRIVATE, MENU)); service.pump();
             service.submit(request(true, "", PRIVATE, MENU)); service.pump();
             service.submit(request(true, "18446744073709551616", PRIVATE, MENU)); service.pump();
-            assertEquals(0, created[0]); assertTrue(service.status().contains("Application ID"));
+            assertEquals(0, created[0]); assertTrue(service.status().contains("application ID"));
         }
     }
     @Test void requiresReadyAndThrottlesChangedActivity() {
@@ -117,18 +117,52 @@ class DiscordRpcServiceTest {
         } finally { leave.countDown(); }
         assertTrue(cleared.await(1, TimeUnit.SECONDS)); assertTrue(ipc.updates.isEmpty());
     }
-    @Test void privateDefaultsAndDetailLevelsNeverAccidentallyExposeIdentifiers() {
+    @Test void defaultsShowScreensAndServerHostButNeverIpsWorldsOrDimensions() {
         var module = new DiscordRpcModule();
-        assertFalse(module.isEnabled()); assertFalse(module.shareActivity.get()); assertFalse(module.shareServerAddress.get()); assertFalse(module.shareWorldName.get());
-        var game = new DiscordPresence.Game(DiscordPresence.Place.MULTIPLAYER, "26.2", "secret.example:25565", "Private world", "minecraft:the_nether", 123);
-        assertEquals("Minecraft 26.2", DiscordPresence.from(game, PRIVATE).state());
+        assertTrue(module.isEnabled()); assertTrue(module.shareServerAddress.get()); assertFalse(module.shareWorldName.get());
+        var game = new DiscordPresence.Game(DiscordPresence.Place.MULTIPLAYER, "26.2", "Play.Example.net:25565", "Private world", "minecraft:the_nether", "Paused", 123);
+        var shown = DiscordPresence.from(game, module.privacy());
+        assertEquals(new DiscordPresence("Playing on play.example.net", "Paused", 123), shown);
+        for (String address : new String[] {"192.168.1.20:25565", "73.12.4.9", "[::1]:25565", "localhost", "my-pc.local", ""})
+            assertEquals("Playing multiplayer", DiscordPresence.from(new DiscordPresence.Game(DiscordPresence.Place.MULTIPLAYER, "26.2", address, null, null, null, 1), module.privacy()).details(), address);
         var full = new DiscordPresence.Privacy(true, true, true, false, 0);
-        assertEquals("secret.example:25565 | minecraft:the_nether", DiscordPresence.from(game, full).state());
-        assertEquals(0, DiscordPresence.from(game, full).startTimestamp());
+        var world = new DiscordPresence.Game(DiscordPresence.Place.SINGLEPLAYER, "1.8.9", null, "Private world", "minecraft:the_nether", null, 123);
+        assertEquals(new DiscordPresence("Playing in Private world", "In the Nether", 0), DiscordPresence.from(world, full));
+        assertEquals(new DiscordPresence("Playing singleplayer", "Minecraft 1.8.9", 123), DiscordPresence.from(world, module.privacy()));
+        var menu = new DiscordPresence.Game(DiscordPresence.Place.MENU, "26.3", null, null, null, "Browsing servers", 5);
+        assertEquals(new DiscordPresence("Browsing servers", "Minecraft 26.3", 0), DiscordPresence.from(menu, full));
+        assertEquals("In the menus", DiscordPresence.from(menu, new DiscordPresence.Privacy(true, true, true, true, 1)).details());
         for (int level : new int[] {1, 2}) {
             var presence = DiscordPresence.from(game, new DiscordPresence.Privacy(true, true, true, false, level));
-            assertEquals("Minecraft 26.2", presence.state()); assertFalse(presence.toString().contains("secret"));
+            assertFalse(presence.toString().contains("example")); assertFalse(presence.toString().contains("Paused"));
         }
+    }
+    // Stand-ins named like the game's screens: labels go by simple class name, a version suffix dropped, then superclasses.
+    static class TitleScreen {}
+    static class GuiVideoSettings {}
+    static class LadsSettingsScreen26 {}
+    static class DraggableHudScreen189 {}
+    static class KeyBindsScreen {}
+    static class LadsKeyBindsScreen extends KeyBindsScreen {}
+    static class SodiumOptionsScreen {}
+    static class class_442 {}
+    @Test void everyScreenGetsALabel() {
+        assertEquals("In the main menu", DiscordPresence.screen(TitleScreen.class));
+        assertEquals("In video settings", DiscordPresence.screen(GuiVideoSettings.class));
+        assertEquals("In the Lads menu", DiscordPresence.screen(LadsSettingsScreen26.class));
+        assertEquals("Editing the HUD", DiscordPresence.screen(DraggableHudScreen189.class));
+        assertEquals("Changing keybinds", DiscordPresence.screen(LadsKeyBindsScreen.class));
+        assertEquals("In Sodium Options", DiscordPresence.screen(SodiumOptionsScreen.class));
+        assertEquals("In the menus", DiscordPresence.screen(class_442.class));
+        assertEquals("In the menus", DiscordPresence.screen(new Object() {}.getClass()));
+    }
+    @Test void savedComingSoonEntryIsDroppedOnceSoPresenceStartsOn() {
+        var old = com.google.gson.JsonParser.parseString("{\"DiscordRPC\":{\"enabled\":false,\"options\":{\"Application ID\":\"\",\"Share activity\":false}}}").getAsJsonObject();
+        com.thelads.core.config.ConfigManager.migrateDiscord(old);
+        assertFalse(old.has("DiscordRPC"));
+        var chosen = com.google.gson.JsonParser.parseString("{\"DiscordRPC\":{\"enabled\":false,\"options\":{\"Detail Level\":1}}}").getAsJsonObject();
+        com.thelads.core.config.ConfigManager.migrateDiscord(chosen);
+        assertFalse(chosen.getAsJsonObject("DiscordRPC").get("enabled").getAsBoolean());
     }
     @Test void unicodeTextFitsNativeBufferWithoutBrokenSurrogatesOrControls() {
         String output = DiscordPresence.text("😀".repeat(70) + "\n\u0000");

@@ -201,6 +201,12 @@ public partial class MainWindow : Window
         LoadSettingsUI();
         InitializeLanguageSetting();
         InitializeSettingsAutoSave();
+        DiscordPresence.Log = Log;
+        DiscordPresence.Enable(settings.DiscordRichPresence);
+        // Every other launcher window (a dialog) shows on Discord by its title while it is open; the game splash runs with the game.
+        WindowOpenedEvent.AddClassHandler<Window>((window, _) => { if (window is not MainWindow and not Views.GameStartupSplash) DiscordPresence.Dialog(window.Title); });
+        WindowClosedEvent.AddClassHandler<Window>((window, _) => { if (window is not MainWindow and not Views.GameStartupSplash) DiscordPresence.Dialog(null); });
+        ModsSubTabControl.SelectionChanged += ModsSubTab_SelectionChanged;
         PopulateLaunchProfileSelector();
         LoadProfilesUI();
         LoadAccounts();
@@ -578,8 +584,17 @@ public partial class MainWindow : Window
         catch (Exception ex) { Log($"[Release notes] {ex.Message}"); }
         finally { _releaseNotesOpen = false; }
     }
+    // Mods and Packs sub-tabs show on Discord as their own pages. SelectionChanged bubbles from lists inside the tabs too.
+    private void ModsSubTab_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source != ModsSubTabControl || !ModsPage.IsVisible) return;
+        var tab = ModsSubTabControl.SelectedItem;
+        DiscordPresence.Page(tab == ModsBrowseTab ? "BrowseMods" : tab == ModsSettingsTab ? "ModSettings" : tab == PacksBrowseTab ? "Packs"
+            : tab == ShaderPacksTab ? "Shaders" : tab == DataPacksTab ? "DataPacks" : "Mods");
+    }
     private void NavigateTo(string page)
     {
+        DiscordPresence.Page(page);
         HomePage.IsVisible = page == "Home";
         WorldsPage.IsVisible = page == "Worlds";
         NavWorlds.Classes.Set("active", page == "Worlds");
@@ -2823,6 +2838,7 @@ public partial class MainWindow : Window
 
         CloseToTrayCheckbox.IsChecked = settings.CloseToTray;
         KeepLauncherOpenCheckbox.IsChecked = settings.KeepLauncherOpen;
+        DiscordPresenceCheckbox.IsChecked = settings.DiscordRichPresence;
         KeepClosedOnExitCheckbox.IsChecked = settings.KeepClosedOnExit;
         FullscreenOnLaunchCheckbox.IsChecked = settings.FullscreenOnLaunch;
         GraphicsRendererSelector.SelectedIndex = GraphicsRenderer.Normalize(settings.GraphicsRenderer) == GraphicsRenderer.OpenGl ? 1 : 0;
@@ -3369,6 +3385,8 @@ public partial class MainWindow : Window
         settings.MaxRamMb = ramMb;
         settings.CloseToTray = CloseToTrayCheckbox.IsChecked ?? true;
         settings.KeepLauncherOpen = KeepLauncherOpenCheckbox.IsChecked ?? false;
+        settings.DiscordRichPresence = DiscordPresenceCheckbox.IsChecked ?? true;
+        DiscordPresence.Enable(settings.DiscordRichPresence);
         settings.KeepClosedOnExit = KeepClosedOnExitCheckbox.IsChecked ?? false;
         settings.AutoLaunch = AutoLaunchCheckbox.IsChecked ?? false;
         settings.AutoFixCrashes = AutoFixCrashesCheckbox.IsChecked ?? true;
@@ -4721,6 +4739,7 @@ public partial class MainWindow : Window
         }
 
         _launching = true;
+        DiscordPresence.Launching(guardProfile.MinecraftVersion);
         using var launchCts = new CancellationTokenSource();
         _launchCts = launchCts;
         var token = launchCts.Token;
@@ -5038,6 +5057,7 @@ public partial class MainWindow : Window
             Log("[Launcher] Starting game process...");
             process.Start();
             _runningProcesses[process] = gameDirectory;
+            DiscordPresence.GameRunning(true);
             // Running marker now; on exit (once): marker removed, server list reconciled, then OnGameExitedAsync.
             var sessionMessages = optiFineWarning == null ? new List<string>() : new List<string> { optiFineWarning };
             GameSession.Attach(process, gameDirectory, loadedMods, message =>
@@ -5095,6 +5115,7 @@ public partial class MainWindow : Window
         {
             _launchCts = null;
             _launching = false;
+            DiscordPresence.Launching(null);
             GameLaunchOverlay.IsVisible = false;
             LaunchButton.IsEnabled = true;
             RenderModsInventory();
@@ -5197,6 +5218,7 @@ public partial class MainWindow : Window
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             _runningProcesses.Remove(process);
+            DiscordPresence.GameRunning(_runningProcesses.Count > 0);
             ApplyNextAccountRequest(gameDirectory);
             int exitCode = 0;
             try { exitCode = process.ExitCode; }

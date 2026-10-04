@@ -88,10 +88,10 @@ final class Probe150 {
         return after(1);
     }
 
-    /** DiscordRPC: built in as the "Soon" card the other versions show, which cannot be switched on and connects nowhere. */
+    /** DiscordRPC (1.7.1): built in and switchable, as on 26.x; Discord189 samples the game for it. */
     private static boolean discord(Minecraft mc) {
-        check(ModuleSupport.isBuiltIn("DiscordRPC") && !ModuleSupport.isToggleable("DiscordRPC"),
-            "DiscordRPC: the built-in \"Soon\" card, not switchable, as on the other versions");
+        check(ModuleSupport.isBuiltIn("DiscordRPC") && ModuleSupport.isToggleable("DiscordRPC"),
+            "DiscordRPC: built in and switchable, as on 26.x");
         return after(1);
     }
 

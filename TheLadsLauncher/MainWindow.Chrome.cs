@@ -148,7 +148,7 @@ public partial class MainWindow
         _settingsSaveTimer.Tick += (_, _) => { _settingsSaveTimer.Stop(); SaveSettingsFromUi(); };
         foreach (var box in new[] { CloseToTrayCheckbox, KeepLauncherOpenCheckbox, KeepClosedOnExitCheckbox, AutoLaunchCheckbox, AutoFixCrashesCheckbox,
                      AutoRelaunchOnCrashCheckbox, AutoRejoinServerCheckbox, MultiInstanceCheckbox, FullscreenOnLaunchCheckbox, QuickLaunchCheckbox,
-                     SyncScreenshotsCheckbox, ParticleCheckbox })
+                     SyncScreenshotsCheckbox, ParticleCheckbox, DiscordPresenceCheckbox })
             box.IsCheckedChanged += (_, _) => ScheduleSettingsSave();
         foreach (var combo in new[] { ThemeSelector, UiScaleSelector, QuickLaunchServerComboBox, GraphicsRendererSelector, JavaSelector })
             combo.SelectionChanged += (_, _) => ScheduleSettingsSave();

@@ -46,6 +46,7 @@ public class LauncherSettings
     public bool MinimizeOnLaunch { get; set; } = true;
     public bool AllowMultiInstance { get; set; } = false;
     public bool KeepLauncherOpen { get; set; } = false;   // don't hide/close after launching the game
+    public bool DiscordRichPresence { get; set; } = true;  // launcher activity on Discord; the game has its own DiscordRPC module
     public bool KeepClosedOnExit { get; set; } = false;   // don't re-open the launcher when the game closes
 
     // Gallery

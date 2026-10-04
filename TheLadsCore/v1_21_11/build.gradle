@@ -24,8 +24,6 @@ dependencies {
 
     implementation project(':common')
     // Common classes are merged below. Minecraft supplies JNA, Gson and SLF4J.
-    include 'club.minnced:java-discord-rpc:2.0.1'
-    include 'club.minnced:discord-rpc-release:v3.3.0'
 }
 
 processResources {
