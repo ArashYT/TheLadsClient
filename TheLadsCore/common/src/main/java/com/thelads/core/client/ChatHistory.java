@@ -20,9 +20,10 @@ public final class ChatHistory {
     /** Lines laid out beyond the visible page, so scrolling up never waits on a layout. */
     public static final int AHEAD = 100;
     /**
-     * Chat Heads (bundled on 26.x) gives each new chat line ChatHeads.getLineData(): the message's own head only while its
+     * A Chat Heads jar a player added on 26.x (Lads' own Chat Heads stand down for it; they keep the head on the message, so lazy
+     * layout needs nothing for them) gives each new chat line ChatHeads.getLineData(): the message's own head only while its
      * refreshTrimmedMessages hook sets refreshing, otherwise the newest message's pending head. Lazy layout skips that method, so it
-     * sets the same state around each message it splits. Null without Chat Heads.
+     * sets the same state around each message it splits. Null without that jar.
      */
     private static final Field HEADS_REFRESHING, HEADS_DATA;
     private static final Method HEAD_OF;

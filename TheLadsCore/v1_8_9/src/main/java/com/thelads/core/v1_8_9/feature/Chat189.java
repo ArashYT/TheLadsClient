@@ -35,13 +35,20 @@ public final class Chat189 {
         int ladsMessages();
     }
 
-    /** Infinite History (GuiNewChatMixin): stored messages from laidOut on, wrapped as setChatLine wraps them, below the drawn lines. */
+    /**
+     * Infinite History (GuiNewChatMixin): stored messages from laidOut on, wrapped as setChatLine wraps them, below the drawn lines.
+     * Each line keeps its message's chat head (ChatHeads189) and leaves room for it, as setChatLine's lines do.
+     */
     public static int layOut(List<ChatLine> chatLines, int laidOut, List<ChatLine> drawnLines, int lines, final int width) {
         final FontRenderer font = Minecraft.getMinecraft().fontRendererObj;
         return ChatHistory.layOut(chatLines, laidOut, drawnLines, lines, message -> true, message -> {
+            ChatHeads189.Line sender = (ChatHeads189.Line) message;
             List<ChatLine> parts = new ArrayList<ChatLine>();
-            for (IChatComponent line : GuiUtilRenderComponents.splitText(message.getChatComponent(), width, font, false, false))
-                parts.add(new ChatLine(message.getUpdatedCounter(), line, message.getChatLineID()));
+            for (IChatComponent line : GuiUtilRenderComponents.splitText(message.getChatComponent(), width - ChatHeads189.offset(sender.ladsHead()), font, false, false)) {
+                ChatLine part = new ChatLine(message.getUpdatedCounter(), line, message.getChatLineID());
+                ((ChatHeads189.Line) part).ladsHead(sender.ladsHead(), sender.ladsAt(), parts.isEmpty());
+                parts.add(part);
+            }
             return parts;
         });
     }

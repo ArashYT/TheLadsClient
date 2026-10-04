@@ -10,6 +10,7 @@ import com.thelads.core.config.Module;
 import com.thelads.core.mods.ModDependencyPlanner;
 import com.thelads.core.mods.ModInventoryModel;
 import com.thelads.core.mods.ModStateStore;
+import com.thelads.core.modules.BetterResolutionModule;
 import com.thelads.core.modules.KillBannerModule;
 import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.modules.ToggleSprintModule;
@@ -54,7 +55,7 @@ public final class LadsSettingsScreen {
     private Consumer<String> onNarrate = ignored -> {};
     private Supplier<String> clipboardReader = () -> "";
     private static final String[] CATEGORIES = {"All", "HUD", "Gameplay", "Performance", "Server"};
-    private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "Exordium", "RenderScale", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore");
+    private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore", "Async");
     // Installed mods view: its own state, search and "mods:" row ids, so the native catalog above stays native-only.
     private record ModLine(ModInventoryModel.Row row, int depth) {}
     private boolean modsView, detailFromMods;
@@ -230,19 +231,21 @@ public final class LadsSettingsScreen {
             if (focused) round(g, cx - 1, cy - 1, cardW + 2, cardH + 2, TEXT);
             round(g, cx, cy, cardW, cardH, mix(base, glow, .35f + .65f * hover));
             round(g, cx + 1, cy + 1, cardW - 2, cardH - 2, fill);
-            String soon = toggleable ? "" : "Soon";
+            boolean settingsOnly = ModuleSupport.isSettingsOnly(m.getName());
+            String soon = toggleable || settingsOnly ? "" : "Soon";
             if (toggleable) { // state pip, filled when on, so the state is not colour alone
                 round(g, cx + 8, cy + pad + 6, 7, 7, TEXT);
                 if (!on) round(g, cx + 9, cy + pad + 7, 5, 5, fill);
             } else g.drawText(soon, cx + cardW - 29 - g.textWidth(soon), cy + pad + 6, MUTED);
-            g.drawText(fit(g, m.getName(), cardW - 49 - (toggleable ? 0 : g.textWidth(soon) + 4)), cx + 20, cy + pad + 6, toggleable ? TEXT : MUTED);
+            g.drawText(fit(g, m.getName(), cardW - 49 - (toggleable ? 0 : g.textWidth(soon) + 4)), cx + 20, cy + pad + 6, toggleable || settingsOnly ? TEXT : MUTED);
             chip(g, "favorite:" + m.getName(), m.isFavorite() ? "*" : "+", new Rect(cx + cardW - 25, cy + pad, 20, 20),
                 () -> { m.setFavorite(!m.isFavorite()); changed(m); }, mx, my, m.isFavorite() ? TEXT : MUTED, false);
             chip(g, "detail:" + m.getName(), "Settings", new Rect(cx + pad, cy + cardH - pad - 23, cardW - 2 * pad, 23), () -> openDetails(m), mx, my, TEXT, true);
             // Added after the star and Settings so those win the click.
-            controls.add(new Control(id, m.getName() + (on ? ", On" : toggleable ? ", Off" : ", Soon"), new Rect(cx, cy, cardW, cardH), () -> {
+            controls.add(new Control(id, m.getName() + (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon"), new Rect(cx, cy, cardW, cardH), () -> {
                 if (ModuleSupport.isToggleable(m.getName())) { m.toggle(); changed(m); onNarrate.accept(m.getName() + (m.isEnabled() ? ", On" : ", Off")); }
-            }, toggleable));
+                else if (ModuleSupport.isSettingsOnly(m.getName())) openDetails(m);
+            }, toggleable || settingsOnly));
         }
         if (modules.isEmpty()) {
             g.drawText("No matching modules", x + 12, top + 18, TEXT);
@@ -261,8 +264,9 @@ public final class LadsSettingsScreen {
         int descriptionH = height < 230 ? 0 : MenuGraphics.wrap(g, detail.getDescription(), x, 76, leftW, 2, MUTED);
         int stateY = height < 230 ? 68 : 81 + descriptionH;
         g.drawText("LADS MODULE", x, stateY + 6, ACCENT);
-        button(g, "toggle:detail", detail.getName().equals("DiscordRPC") ? "Soon" : detail.isEnabled() ? "ON" : "OFF", new Rect(x + leftW - 52, stateY, 52, 22),
-            () -> { detail.toggle(); changed(detail); }, !detail.getName().equals("DiscordRPC"), mx, my, detail.isEnabled());
+        if (!ModuleSupport.isSettingsOnly(detail.getName()))
+            button(g, "toggle:detail", detail.getName().equals("DiscordRPC") ? "Soon" : detail.isEnabled() ? "ON" : "OFF", new Rect(x + leftW - 52, stateY, 52, 22),
+                () -> { detail.toggle(); changed(detail); }, !detail.getName().equals("DiscordRPC"), mx, my, detail.isEnabled());
         int top = stateY + 30;
         if(detail.getOptions().stream().anyMatch(o -> o instanceof PlayerActionOption)) {
             button(g,"display-actions","Display actions...",new Rect(x,top,leftW,25),
@@ -902,7 +906,9 @@ public final class LadsSettingsScreen {
             double min = option instanceof SliderOption s ? s.getMin() : ((DoubleOption)option).getMin();
             double max = option instanceof SliderOption s ? s.getMax() : ((DoubleOption)option).getMax();
             double value = option instanceof SliderOption s ? s.getValue() : ((DoubleOption)option).get();
-            button(g, id, String.format(Locale.ROOT, "%.2f", value).replaceAll("\\.?0+$", ""), r, () -> {}, true, mx, my, false);
+            // Better Resolution's Scale only counts with the Custom preset: shown greyed and not draggable.
+            boolean free = !(detail instanceof BetterResolutionModule resolution && resolution.locked(option));
+            button(g, id, String.format(Locale.ROOT, "%.2f", value).replaceAll("\\.?0+$", ""), r, () -> {}, free, mx, my, false);
             int fillW = (int)((controlW - 8) * (value - min) / Math.max(.001, max - min));
             g.fill(r.x + 4, r.y + 20, r.x + 4 + fillW, r.y + 22, ACCENT);
         } else if (option instanceof ColorOption c) {
@@ -1203,7 +1209,8 @@ public final class LadsSettingsScreen {
         return detail.getOptions().stream().filter(o -> !(o instanceof PlayerActionOption))
             .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
             .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o)))
-            .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o))).toList();
+            .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o)))
+            .filter(o -> !(detail instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o))).toList();
     }
     private Option activeOption(String name) { return activeOptions().stream().filter(o -> o.getName().equals(name)).findFirst().orElse(null); }
     private boolean finish() { if (!commitEdit()) return false; persist(); return true; }

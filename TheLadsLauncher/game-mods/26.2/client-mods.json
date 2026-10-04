@@ -18,21 +18,6 @@
       "projectUrl": "https://modrinth.com/mod/architectury-api"
     },
     {
-      "projectId": "zvNzKfGF",
-      "projectSlug": "asynclogger",
-      "name": "Async Logger",
-      "modId": "asynclogger",
-      "versionId": "Ert0LmWj",
-      "version": "2.2.2+26.1.2-fabric",
-      "fileName": "asynclogger-2.2.2+26.1.2-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/zvNzKfGF/versions/Ert0LmWj/asynclogger-2.2.2%2B26.1.2-fabric.jar",
-      "sha512": "2775a667b13ade2e2596a5de0662abef41c837c5cb33152b305beb59eacbfe671f2fc0853f50f86c162d96ff78b7f9f59cf4ba654e6a9d3685b6d73709b05253",
-      "size": 584150,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/decce6/AsyncLogger",
-      "projectUrl": "https://modrinth.com/mod/asynclogger"
-    },
-    {
       "projectId": "g96Z4WVZ",
       "projectSlug": "badoptimizations",
       "name": "BadOptimizations",
@@ -61,21 +46,6 @@
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/TwelveIterations/Balm",
       "projectUrl": "https://modrinth.com/mod/balm"
-    },
-    {
-      "projectId": "8shC1gFX",
-      "projectSlug": "betterf3",
-      "name": "BetterF3",
-      "modId": "betterf3",
-      "versionId": "6zNdg01Z",
-      "version": "19.0.0",
-      "fileName": "BetterF3-19.0.0-Fabric-26.2.jar",
-      "url": "https://cdn.modrinth.com/data/8shC1gFX/versions/6zNdg01Z/BetterF3-19.0.0-Fabric-26.2.jar",
-      "sha512": "5da2f586b32b133f3098abca62905d9e2eecb8a6723bea5902def879dca17443b4dcf767d1ac48b28c77af3e0a13e80d445120c68c9e0c03e0b9ae2c8048dc4b",
-      "size": 719081,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/TreyRuffy/BetterF3",
-      "projectUrl": "https://modrinth.com/mod/betterf3"
     },
     {
       "projectId": "iRXmuz7a",
@@ -123,21 +93,6 @@
       "projectUrl": "https://modrinth.com/mod/c2me-fabric"
     },
     {
-      "projectId": "Wb5oqrBJ",
-      "projectSlug": "chat-heads",
-      "name": "Chat Heads",
-      "modId": "chat_heads",
-      "versionId": "fQEym0D5",
-      "version": "1.3.1",
-      "fileName": "chat_heads-1.3.1-fabric-26.1.jar",
-      "url": "https://cdn.modrinth.com/data/Wb5oqrBJ/versions/fQEym0D5/chat_heads-1.3.1-fabric-26.1.jar",
-      "sha512": "021dba051dae5d97cf10ecb113ad491cf6632af57a7cebe4a031a519ef80bee44b3f7b5e68dfa60697db281b4fee79d207448092db0957215c107c2662f25050",
-      "size": 98373,
-      "license": "MPL-2.0",
-      "sourceUrl": "https://github.com/dzwdz/chat_heads",
-      "projectUrl": "https://modrinth.com/mod/chat-heads"
-    },
-    {
       "projectId": "9s6osm5g",
       "projectSlug": "cloth-config",
       "name": "Cloth Config API",
@@ -168,21 +123,6 @@
       "projectUrl": "https://modrinth.com/mod/collective"
     },
     {
-      "projectId": "SISoSFPP",
-      "projectSlug": "configured-defaults",
-      "name": "Configured Defaults",
-      "modId": "configureddefaults",
-      "versionId": "oM0C4RRZ",
-      "version": "26.2.0",
-      "fileName": "ConfiguredDefaults-v26.2.0-mc26.2.x-Fabric.jar",
-      "url": "https://cdn.modrinth.com/data/SISoSFPP/versions/oM0C4RRZ/ConfiguredDefaults-v26.2.0-mc26.2.x-Fabric.jar",
-      "sha512": "a8d3274943c67145722c1afe26ad39ba127ef2195c86f17bf4ade40205e571f0efae1db51368e83c31d88c9dafb22a4ff8846ff2e8969c3adbb4781989e78c4c",
-      "size": 22578,
-      "license": "MPL-2.0",
-      "sourceUrl": "https://github.com/Fuzss/configureddefaults",
-      "projectUrl": "https://modrinth.com/mod/configured-defaults"
-    },
-    {
       "projectId": "1IjD5062",
       "projectSlug": "continuity",
       "name": "Continuity",
@@ -211,21 +151,6 @@
       "license": "MIT",
       "sourceUrl": "https://github.com/Leclowndu93150/Cushion-Backport",
       "projectUrl": "https://modrinth.com/mod/cushions-backport"
-    },
-    {
-      "projectId": "uZAcFHLd",
-      "projectSlug": "custom-fov-illusive",
-      "name": "Custom FOV",
-      "modId": "customfov",
-      "versionId": "yAKmIknR",
-      "version": "14.0.0+26.2",
-      "fileName": "customfov-fabric-14.0.0+26.2.jar",
-      "url": "https://cdn.modrinth.com/data/uZAcFHLd/versions/yAKmIknR/customfov-fabric-14.0.0%2B26.2.jar",
-      "sha512": "fb0691395f4dc336c07f6bde557ecd3bc36bbe671f5a506137c52c405d85298f300d569da05154617e3bf86f394cccaf740b8e55813a0cb51347566d5cd19951",
-      "size": 43708,
-      "license": "LGPL-3.0-or-later",
-      "sourceUrl": "https://github.com/TheIllusiveC4/CustomFoV",
-      "projectUrl": "https://modrinth.com/mod/custom-fov-illusive"
     },
     {
       "projectId": "v3CYg2V9",
@@ -438,21 +363,6 @@
       "projectUrl": "https://modrinth.com/mod/ixeris"
     },
     {
-      "projectId": "qlDkBPij",
-      "projectSlug": "jasione",
-      "name": "Jasione",
-      "modId": "jasione",
-      "versionId": "kbKBk4b3",
-      "version": "1.0.9+26.1.2-fabric",
-      "fileName": "jasione-1.0.9+26.1.2-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/qlDkBPij/versions/kbKBk4b3/jasione-1.0.9%2B26.1.2-fabric.jar",
-      "sha512": "ad6ff0c19eab2945489c2523d19fcd79b39cc33ed7130e3c5b3ac13028dd66ed1d207faaa0b04399d2cfd67cbb1c2390d0733c667dea8c3bb9a01a3e03a61829",
-      "size": 748721,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/decce6/Jasione",
-      "projectUrl": "https://modrinth.com/mod/jasione"
-    },
-    {
       "projectId": "u6dRKJwZ",
       "projectSlug": "jei",
       "name": "Just Enough Items (JEI)",
@@ -481,36 +391,6 @@
       "license": "Apache-2.0",
       "sourceUrl": "https://github.com/Keksuccino/Konkrete",
       "projectUrl": "https://modrinth.com/mod/konkrete"
-    },
-    {
-      "projectId": "yBW8D80W",
-      "projectSlug": "lambdynamiclights",
-      "name": "LambDynamicLights - Dynamic Lights",
-      "modId": "lambdynlights",
-      "versionId": "XVsaQXSm",
-      "version": "4.12.4+26.2",
-      "fileName": "lambdynamiclights-4.12.4+26.2.jar",
-      "url": "https://cdn.modrinth.com/data/yBW8D80W/versions/XVsaQXSm/lambdynamiclights-4.12.4%2B26.2.jar",
-      "sha512": "1e7c2abf18f4364cc8802c3ce21f9cbadd62074c1cf9829c025fe0d8dd04b6c7b47ca8fe6783b2399939fda0e40001d43dd82b6bced43546e9c26622ef3708c2",
-      "size": 1344429,
-      "license": "LicenseRef-Lambda-License",
-      "sourceUrl": "https://github.com/LambdAurora/LambDynamicLights",
-      "projectUrl": "https://modrinth.com/mod/lambdynamiclights"
-    },
-    {
-      "projectId": "WKwQAwke",
-      "projectSlug": "libjf",
-      "name": "LibJF",
-      "modId": "libjf",
-      "versionId": "I5brbhNh",
-      "version": "26.2.2",
-      "fileName": "libjf-26.2.2.jar",
-      "url": "https://cdn.modrinth.com/data/WKwQAwke/versions/I5brbhNh/libjf-26.2.2.jar",
-      "sha512": "83885e9d73ee54629dcb0e5f0f7ca00bf4616b1625cddb5ad0f9a650085fb7f30ccccc059e5789a9850296cb2ed3a890d1ce5c5361149d1381ada11cf7039c38",
-      "size": 1507878,
-      "license": "LGPL-3.0-or-later",
-      "sourceUrl": "https://git.frohnmeyer-wds.de/JfMods/LibJF",
-      "projectUrl": "https://modrinth.com/mod/libjf"
     },
     {
       "projectId": "gvQqBUqZ",
@@ -633,21 +513,6 @@
       "projectUrl": "https://modrinth.com/mod/moreculling"
     },
     {
-      "projectId": "aC3cM3Vq",
-      "projectSlug": "mouse-tweaks",
-      "name": "Mouse Tweaks",
-      "modId": "mousetweaks",
-      "versionId": "jOiTBIaB",
-      "version": "26.2-2.31-fabric",
-      "fileName": "MouseTweaks-fabric-mc26.2-2.31.jar",
-      "url": "https://cdn.modrinth.com/data/aC3cM3Vq/versions/jOiTBIaB/MouseTweaks-fabric-mc26.2-2.31.jar",
-      "sha512": "bc77723465dc4aef7a3a8fa2fea3641df1e6ba7cc8a2d86cd2659ef65ca661f6a763d3997fdaed1f8ff6c78a4c6061f8074160ca3162a29021735779a6c55e46",
-      "size": 75872,
-      "license": "BSD-3-Clause",
-      "sourceUrl": "https://github.com/YaLTeR/MouseTweaks",
-      "projectUrl": "https://modrinth.com/mod/mouse-tweaks"
-    },
-    {
       "projectId": "SNVQ2c0g",
       "projectSlug": "mru",
       "name": "MRU",
@@ -661,21 +526,6 @@
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/IMB11-Mods/MRU",
       "projectUrl": "https://modrinth.com/mod/mru"
-    },
-    {
-      "projectId": "XFlUmiDF",
-      "projectSlug": "network-protocol-disconnect",
-      "name": "Network Protocol Disconnect",
-      "modId": "netprodis",
-      "versionId": "NKG0fjy4",
-      "version": "2.0.0+26.1",
-      "fileName": "netprodis-2.0.0+26.1.jar",
-      "url": "https://cdn.modrinth.com/data/XFlUmiDF/versions/NKG0fjy4/netprodis-2.0.0%2B26.1.jar",
-      "sha512": "c47138381a8095eb6823a40ce7088783b9f649c2780a6a57f8ce095c67f1fe803421d4aed4c39dc359af5ff77ef98ffdca6cb7b2706c60525014aefb5a8fb695",
-      "size": 27528,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/Mobilelize/Network-Protocol-Disconnect",
-      "projectUrl": "https://modrinth.com/mod/network-protocol-disconnect"
     },
     {
       "projectId": "6xKUDQcB",
@@ -967,9 +817,6 @@
     "c2me": [
       "76a7c52ea9b22295c15d02be7f1ca4b68fc67368465f1bd3cffb47cd36bf3bf6b9dd925bca02ccb2c7cb2c26df1235538d98ddbac43f85985c39fd183c9f3468"
     ],
-    "chat_heads": [
-      "df46ba29901787839cf28fec90fd00dea178e25efcd69f74d0a78aeb5e5769f3ec4f59fa3530b08e02be70be53c7d632a38283d4489b7a4c0e6ab6e32d5fe05d"
-    ],
     "collective": [
       "1c35fa28b2ec42cc130c578ad9bb1f320477d881816044a4ba28429ec633c8bd6725fd1378a8ae41b88337ab43aff174d55db0468ed23c5cd16cca776d001c93"
     ],
@@ -978,9 +825,6 @@
     ],
     "fabric-language-kotlin": [
       "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77"
-    ],
-    "jasione": [
-      "5f486d84ead692ce40baf1c4966b17c0cd2c97daea06bc679297ffee3c936fa1003ef35eb8c2e924da38a8451f55b9247dec2adb75b80cc035158eaeb94d54fa"
     ],
     "mezz_config": [
       "b4a45d5e3c5f9467ac3ce72c4d311c18cd85422966e8f8c5503d3df13f70dfa829947a33443952205e4d64580fd77399ac7fba7b8f969d15ca5d872e69039d78"
@@ -1021,6 +865,15 @@
   },
   "retired": [
     {
+      "modId": "asynclogger",
+      "projectId": "zvNzKfGF",
+      "name": "Async Logger",
+      "sha512": [
+        "2775a667b13ade2e2596a5de0662abef41c837c5cb33152b305beb59eacbfe671f2fc0853f50f86c162d96ff78b7f9f59cf4ba654e6a9d3685b6d73709b05253"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.7.0 (built-in async logging)."
+    },
+    {
       "modId": "autohidehud",
       "projectId": "WfEV6RRi",
       "name": "Auto Hide HUD",
@@ -1030,6 +883,15 @@
       "reason": "Replaced by native Lads Core functionality in 1.3.3."
     },
     {
+      "modId": "betterf3",
+      "projectId": "8shC1gFX",
+      "name": "BetterF3",
+      "sha512": [
+        "5da2f586b32b133f3098abca62905d9e2eecb8a6723bea5902def879dca17443b4dcf767d1ac48b28c77af3e0a13e80d445120c68c9e0c03e0b9ae2c8048dc4b"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.7.0 (Better F3 module)."
+    },
+    {
       "modId": "capes",
       "projectId": "89Wsn8GD",
       "name": "Capes",
@@ -1037,6 +899,16 @@
         "260a95398c2a9e31b1deb9da0cc8e97310acb08219785b590116070f963aef4ca834342f03c8c31640a204bcb2c67861c83fe9c056be1b9df8b8d970980b0e91"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "chat_heads",
+      "projectId": "Wb5oqrBJ",
+      "name": "Chat Heads",
+      "sha512": [
+        "df46ba29901787839cf28fec90fd00dea178e25efcd69f74d0a78aeb5e5769f3ec4f59fa3530b08e02be70be53c7d632a38283d4489b7a4c0e6ab6e32d5fe05d",
+        "021dba051dae5d97cf10ecb113ad491cf6632af57a7cebe4a031a519ef80bee44b3f7b5e68dfa60697db281b4fee79d207448092db0957215c107c2662f25050"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.7.0 (Chat Heads module)."
     },
     {
       "modId": "classic_minecraft_icon",
@@ -1057,6 +929,15 @@
       "reason": "Removed from The Lads Client pack in 1.4.6."
     },
     {
+      "modId": "configureddefaults",
+      "projectId": "SISoSFPP",
+      "name": "Configured Defaults",
+      "sha512": [
+        "a8d3274943c67145722c1afe26ad39ba127ef2195c86f17bf4ade40205e571f0efae1db51368e83c31d88c9dafb22a4ff8846ff2e8969c3adbb4781989e78c4c"
+      ],
+      "reason": "Replaced by native Lads launcher functionality in 1.7.0 (pack defaults from the configureddefaults folder)."
+    },
+    {
       "modId": "controlling",
       "projectId": "xv94TkTM",
       "name": "Controlling",
@@ -1064,6 +945,15 @@
         "27147edf57915d88db8d2cbda8a54e97f4dd36bb7379e191d6fec67fe2c42f8f1f96d75a5afc8b84c9177661089ec28f0e89b519321e5d2fcf512a3df27e22c4"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "customfov",
+      "projectId": "uZAcFHLd",
+      "name": "Custom FOV",
+      "sha512": [
+        "fb0691395f4dc336c07f6bde557ecd3bc36bbe671f5a506137c52c405d85298f300d569da05154617e3bf86f394cccaf740b8e55813a0cb51347566d5cd19951"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.7.0 (Custom FOV module)."
     },
     {
       "modId": "entity_model_features",
@@ -1168,6 +1058,16 @@
       "reason": "Replaced by native Lads Core functionality in 1.3.3."
     },
     {
+      "modId": "jasione",
+      "projectId": "qlDkBPij",
+      "name": "Jasione",
+      "sha512": [
+        "5f486d84ead692ce40baf1c4966b17c0cd2c97daea06bc679297ffee3c936fa1003ef35eb8c2e924da38a8451f55b9247dec2adb75b80cc035158eaeb94d54fa",
+        "ad6ff0c19eab2945489c2523d19fcd79b39cc33ed7130e3c5b3ac13028dd66ed1d207faaa0b04399d2cfd67cbb1c2390d0733c667dea8c3bb9a01a3e03a61829"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.7.0 (Jasione module)."
+    },
+    {
       "modId": "ksyxis",
       "projectId": "2ecVyZ49",
       "name": "Ksyxis",
@@ -1175,6 +1075,15 @@
         "36bb32947ba8dd6160b37bbcf02ae4d54c6c42583717908d646412092088de6e7bbf1db99e7a75738147cdc78e5b34494ab780f7ac7c3f160a70a4d1e8d8e82b"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "lambdynlights",
+      "projectId": "yBW8D80W",
+      "name": "LambDynamicLights - Dynamic Lights",
+      "sha512": [
+        "1e7c2abf18f4364cc8802c3ce21f9cbadd62074c1cf9829c025fe0d8dd04b6c7b47ca8fe6783b2399939fda0e40001d43dd82b6bced43546e9c26622ef3708c2"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.7.0 (Dynamic Lights module)."
     },
     {
       "modId": "lazy_ai_pixelindiedev",
@@ -1186,6 +1095,15 @@
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
     },
     {
+      "modId": "libjf",
+      "projectId": "WKwQAwke",
+      "name": "LibJF",
+      "sha512": [
+        "83885e9d73ee54629dcb0e5f0f7ca00bf4616b1625cddb5ad0f9a650085fb7f30ccccc059e5789a9850296cb2ed3a890d1ce5c5361149d1381ada11cf7039c38"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.7.0: no remaining mod needs it (Jasione, its only user, is native now)."
+    },
+    {
       "modId": "motionblurplus",
       "projectId": "Qbkde6rq",
       "name": "Motion Blur Plus",
@@ -1195,6 +1113,15 @@
       "reason": "Removed from The Lads Client pack in 1.4.6."
     },
     {
+      "modId": "mousetweaks",
+      "projectId": "aC3cM3Vq",
+      "name": "Mouse Tweaks",
+      "sha512": [
+        "bc77723465dc4aef7a3a8fa2fea3641df1e6ba7cc8a2d86cd2659ef65ca661f6a763d3997fdaed1f8ff6c78a4c6061f8074160ca3162a29021735779a6c55e46"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.7.0 (Mouse Tweaks module)."
+    },
+    {
       "modId": "nbtac",
       "projectId": "UR0ocuEt",
       "name": "NBT Autocomplete",
@@ -1202,6 +1129,15 @@
         "8f4bfff3560737ce7eb946260ed6ffb19eca59f5e6d9a1de8663661caf4ad6d7253f0e8bc2d140f83803920102019a02911a88b9f8ce251007f1d308e275022e"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "netprodis",
+      "projectId": "XFlUmiDF",
+      "name": "Network Protocol Disconnect",
+      "sha512": [
+        "c47138381a8095eb6823a40ce7088783b9f649c2780a6a57f8ce095c67f1fe803421d4aed4c39dc359af5ff77ef98ffdca6cb7b2706c60525014aefb5a8fb695"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.7.0 (IgnorePacketErrors module)."
     },
     {
       "modId": "nopackcompatcheck",

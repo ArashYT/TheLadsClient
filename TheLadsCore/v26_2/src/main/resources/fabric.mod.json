@@ -25,6 +25,9 @@
     "client": [
       "com.thelads.core.v26_2.TheLadsCoreClient26"
     ],
+    "preLaunch": [
+      "com.thelads.core.v26_2.LadsPreLaunch"
+    ],
     "main": [
       "com.thelads.core.v26_2.embedded.EmbeddedModsMain"
     ],
@@ -35,13 +38,12 @@
   "mixins": [
     "theladscore.v26_2.mixins.json",
     "theladscore.food.mixins.json",
-    "theladscore.paperdoll.mixins.json",
-    "theladscore.raised.mixins.json",
     "theladscore.dynamicfps.mixins.json",
-    "theladscore.reconnect.mixins.json",
     "theladscore.tabtweaks.mixins.json",
     "theladscore.screenshots.mixins.json",
+    "theladscore.flashback.mixins.json",
     "theladscore.clumps.mixins.json",
+    "theladscore.async.mixins.json",
     "jade.mixins.json",
     "theladscore.embedded.etf.mixins.json",
     "theladscore.embedded.emf.mixins.json",

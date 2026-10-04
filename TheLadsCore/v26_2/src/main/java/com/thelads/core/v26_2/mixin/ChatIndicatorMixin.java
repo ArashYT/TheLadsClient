@@ -1,6 +1,6 @@
 package com.thelads.core.v26_2.mixin;
 
-import com.thelads.core.v26_2.feature.NativeQualityOfLife;
+import com.thelads.core.v26_2.feature.ConnectionTweaks;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.client.multiplayer.chat.GuiMessageTag;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,6 +13,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class ChatIndicatorMixin {
     @Inject(method = "tag", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$hideIndicator(CallbackInfoReturnable<GuiMessageTag> callback) {
-        if (NativeQualityOfLife.enabled("Chat") && NativeQualityOfLife.bool("Chat", "Hide Signing Indicators", true)) callback.setReturnValue(null);
+        if (ConnectionTweaks.hideChatSigning()) callback.setReturnValue(null);
     }
 }

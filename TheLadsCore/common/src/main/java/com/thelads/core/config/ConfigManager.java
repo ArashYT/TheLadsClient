@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
+import com.thelads.core.modules.BetterResolutionModule;
 import com.thelads.core.modules.HudModule;
 import com.thelads.core.modules.ToggleSprintModule;
 import com.thelads.core.client.util.ClientPaths;
@@ -115,10 +116,18 @@ public class ConfigManager {
         if (json.has("modules")) {
             JsonObject modulesJson = json.getAsJsonObject("modules");
             migrateChat(modulesJson);
+            migrateDynamicLights(modulesJson);
             for (Module module : ModuleManager.getInstance().getModules()) {
                 try {
                     if (module.getName().equals("Nametags") && !modulesJson.has("Nametags") && modulesJson.has("ToggleNametags"))
                         modulesJson.add("Nametags", modulesJson.get("ToggleNametags"));
+                    // 1.7.0 renamed RenderScale to BetterResolution (same options): what only the old entry has carries over,
+                    // e.g. its options when the launcher has already switched BetterResolution on or off.
+                    if (module.getName().equals(BetterResolutionModule.NAME) && modulesJson.get("RenderScale") instanceof JsonObject old) {
+                        if (!(modulesJson.get(BetterResolutionModule.NAME) instanceof JsonObject)) modulesJson.add(BetterResolutionModule.NAME, new JsonObject());
+                        JsonObject renamed = modulesJson.getAsJsonObject(BetterResolutionModule.NAME);
+                        for (var entry : old.entrySet()) if (!renamed.has(entry.getKey())) renamed.add(entry.getKey(), entry.getValue());
+                    }
                     if (!modulesJson.has(module.getName())) {
                         continue;
                     }
@@ -140,7 +149,11 @@ public class ConfigManager {
                             }
                         }
                     }
-                    if (moduleJson.has("enabled")) {
+                    // 1.6.0 and older could not switch BetterF3 (an external mod or unavailable there), so the "enabled" they saved is
+                    // only that module's old default: the native Better F3 keeps its own default until a save that has its 1.7.0 options.
+                    boolean legacyBetterF3 = module.getName().equals("BetterF3")
+                        && !(moduleJson.get("options") instanceof JsonObject saved && saved.has("Text Shadow"));
+                    if (moduleJson.has("enabled") && !legacyBetterF3) {
                         module.setEnabled(moduleJson.get("enabled").getAsBoolean());
                     }
                     if (moduleJson.has("favorite")) {
@@ -270,6 +283,17 @@ public class ConfigManager {
     private static boolean bool(JsonElement value) { try { return value != null && value.getAsBoolean(); } catch (RuntimeException e) { return false; } }
     private static int number(JsonElement value) { try { return value == null ? 0 : value.getAsInt(); } catch (RuntimeException e) { return 0; } }
 
+    /**
+     * 1.7.0 builds Dynamic Lights in, on as the LambDynamicLights it replaces was. Until then nobody could change the module
+     * (its card showed that mod's own settings), so a state saved without a change holds only the old defaults: drop it.
+     */
+    static void migrateDynamicLights(JsonObject modules) {
+        JsonElement changed = legacy(modules, "DynamicLights", "lastModified");
+        if (modules.get("DynamicLights") instanceof JsonObject
+            && (changed == null || changed.isJsonPrimitive() && changed.getAsJsonPrimitive().isNumber() && changed.getAsLong() == 0))
+            modules.remove("DynamicLights");
+    }
+
     private static JsonElement legacy(JsonObject root, String... path) {
         JsonElement value = root;
         for (String key : path) {
@@ -299,6 +323,18 @@ public class ConfigManager {
         } catch (Exception e) {
             System.err.println("Failed to load config");
             e.printStackTrace();
+        }
+    }
+
+    /** A module's saved on/off, read before modules exist: for features set up once at startup (Jasione). */
+    public static boolean savedEnabled(String module, boolean fallback) {
+        File configFile = getConfigFile();
+        if (!configFile.exists()) return fallback;
+        try (InputStreamReader reader = new InputStreamReader(new FileInputStream(configFile), StandardCharsets.UTF_8)) {
+            JsonElement enabled = legacy(GSON.fromJson(reader, JsonObject.class), "modules", module, "enabled");
+            return enabled == null ? fallback : enabled.getAsBoolean();
+        } catch (Exception e) {
+            return fallback;
         }
     }
 

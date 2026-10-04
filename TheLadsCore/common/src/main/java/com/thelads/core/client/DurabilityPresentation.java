@@ -1,71 +1,106 @@
 package com.thelads.core.client;
 
+import java.awt.Color;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.HashSet;
 
-/** Original Lads presentation of public durability values; independent of any upstream implementation. */
+/**
+ * EnhancedToolbars' durability line, shared by 26.x NativeDurabilityTooltip and 1.8.9 Durability189. It is always one line:
+ * the uses left as a count, a gauge of pips with a percentage, or a condition word. The wear colour uses the item's own
+ * durability-bar hue, from red when worn out to green when new.
+ */
 public final class DurabilityPresentation {
-    public enum Format { NUMBERS, BAR, TEXT }
-    public enum Coloring { VARYING, BASE, GOLD }
-    public record Span(String text, int rgb) {}
-    public record Line(List<Span> spans) { public Line { spans = List.copyOf(spans); } }
-    public record Style(Format format, Coloring coloring, boolean hint, boolean maximum, boolean colorize, int baseRgb) {}
+    /** In the order of the "Durability Style" dropdown (Numbers, Bar, Text). */
+    public enum Shape { COUNT, GAUGE, WORDS }
+    /** In the order of the "Durability Color Style" dropdown (Varying, Base, Gold). */
+    public enum Tint { WEAR, PLAIN, GOLD }
+    public record Part(String text, int rgb) {}
+    public record Settings(Shape shape, Tint tint, boolean label, boolean showMax, boolean colorize, int baseRgb) {}
+
+    /** Condition words from worn out to new: under a quarter left, under half, under three quarters, not full, full. */
+    public static final List<String> WEAR_WORDS = List.of("About to break", "Battered", "Worn", "Good", "Like new");
+    public static final int PIPS = 20;
+    private static final int GOLD = 0xffaa00, SPENT_PIP = 0x555555;
     private DurabilityPresentation() {}
 
-    public static List<Line> lines(int maximum, int damage, Style style) {
+    /** The line as coloured parts, or nothing for an item without durability. */
+    public static List<Part> line(int maximum, int damage, Settings settings) {
         if (maximum <= 0) return List.of();
-        int remaining = maximum - Math.max(0, Math.min(damage, maximum));
-        int base = style.baseRgb() & 0xffffff;
-        int reactive = !style.colorize() || style.coloring() == Coloring.BASE ? base
-            : style.coloring() == Coloring.GOLD ? 0xffaa00 : color(remaining, maximum);
-        List<Line> output = new ArrayList<>(2);
-        List<Span> spans = new ArrayList<>(5);
-        if (style.format() == Format.BAR) {
-            if (style.hint()) output.add(new Line(List.of(new Span("Durability:", base))));
-            int filled = (int) Math.round(10.0 * remaining / maximum);
-            spans.add(new Span("[", base));
-            spans.add(new Span("█".repeat(filled) + "▒".repeat(10 - filled), reactive));
-            spans.add(new Span("]", base));
-        } else {
-            if (style.hint()) spans.add(new Span("Durability: ", base));
-            if (style.format() == Format.TEXT) {
-                spans.add(new Span(condition(remaining, maximum), reactive));
-            } else {
-                int maxColor = style.coloring() == Coloring.VARYING || !style.colorize() ? base : reactive;
-                spans.add(new Span(Integer.toString(remaining), remaining == maximum && style.maximum() ? maxColor : reactive));
-                if (style.maximum() && remaining != maximum) {
-                    spans.add(new Span(" / ", base));
-                    spans.add(new Span(Integer.toString(maximum), maxColor));
-                }
+        int left = (int) Math.max(0, Math.min(maximum, (long) maximum - damage));
+        int base = settings.baseRgb() & 0xffffff;
+        int ink = !settings.colorize() ? base : switch (settings.tint()) {
+            case WEAR -> wearColor(left, maximum);
+            case PLAIN -> base;
+            case GOLD -> GOLD;
+        };
+        List<Part> parts = new ArrayList<>(4);
+        if (settings.label()) parts.add(new Part(settings.shape() == Shape.WORDS ? "Condition: " : "Uses left: ", base));
+        switch (settings.shape()) {
+            case COUNT -> {
+                parts.add(new Part(Integer.toString(left), ink));
+                if (settings.showMax()) parts.add(new Part(" / " + maximum, base));
             }
+            case GAUGE -> {
+                int lit = share(left, maximum, PIPS);
+                parts.add(new Part("|".repeat(lit), ink));
+                parts.add(new Part("|".repeat(PIPS - lit), settings.colorize() ? SPENT_PIP : base));
+                parts.add(new Part(" " + share(left, maximum, 100) + "%", ink));
+            }
+            case WORDS -> parts.add(new Part(condition(left, maximum), ink));
         }
-        output.add(new Line(spans));
-        return List.copyOf(output);
+        return List.copyOf(parts);
     }
-    public static int color(int remaining, int maximum) {
-        return (long) remaining * 10 >= (long) maximum * 4 ? 0x55ff55
-            : (long) remaining * 10 >= maximum ? 0xffaa00 : 0xff5555;
+
+    /** The colour scale of the item's durability bar: hue from red (nothing left) to green (new). */
+    public static int wearColor(int left, int maximum) {
+        float health = maximum <= 0 ? 0 : Math.max(0, Math.min(1, (float) left / maximum));
+        return Color.HSBtoRGB(health / 3, 1, 1) & 0xffffff;
     }
-    public static String condition(int remaining, int maximum) {
-        if (remaining >= maximum) return "Pristine";
-        if ((long) remaining * 10 >= (long) maximum * 4) return "Slightly damaged";
-        if ((long) remaining * 10 >= maximum) return "Severely damaged";
-        return "Nearly broken";
+
+    static String condition(int left, int maximum) {
+        return WEAR_WORDS.get(left >= maximum ? 4 : (int) (4L * Math.max(0, left) / maximum));
     }
-    public static Set<String> excludedNamespaces(String text) {
-        if (text == null || text.isBlank()) return Set.of();
-        Set<String> result = new HashSet<>();
-        for (String token : text.substring(0, Math.min(text.length(), 4096)).split(",")) {
-            String namespace = token.strip().toLowerCase(Locale.ROOT);
-            if (namespace.matches("[a-z0-9_.-]+")) result.add(namespace);
+
+    /** {@code left} of {@code maximum} in {@code units}, rounded down, but at least 1 while anything is left. */
+    static int share(int left, int maximum, int units) {
+        return left <= 0 ? 0 : (int) Math.max(1, (long) left * units / maximum);
+    }
+
+    /** The chat colours 0-f, for text that has only those (1.8.9). */
+    private static final int[] CHAT = {0x000000, 0x0000AA, 0x00AA00, 0x00AAAA, 0xAA0000, 0xAA00AA, 0xFFAA00, 0xAAAAAA,
+        0x555555, 0x5555FF, 0x55FF55, 0x55FFFF, 0xFF5555, 0xFF55FF, 0xFFFF55, 0xFFFFFF};
+    /** The chat colour code (0-15) closest to an RGB colour. */
+    public static int chatColor(int rgb) {
+        int best = 0;
+        long bestDistance = Long.MAX_VALUE;
+        for (int i = 0; i < CHAT.length; i++) {
+            long r = (rgb >> 16 & 255) - (CHAT[i] >> 16 & 255), g = (rgb >> 8 & 255) - (CHAT[i] >> 8 & 255), b = (rgb & 255) - (CHAT[i] & 255);
+            long distance = r * r + g * g + b * b;
+            if (distance < bestDistance) { bestDistance = distance; best = i; }
         }
-        return Set.copyOf(result);
+        return best;
     }
-    public static boolean visible(String namespace, int maximum, int damage, boolean vanillaOnly, boolean showFull, Set<String> excluded) {
-        return maximum > 0 && (!vanillaOnly || "minecraft".equals(namespace)) && !excluded.contains(namespace)
-            && (showFull || damage > 0);
+
+    /**
+     * The "Excluded Mods" text, split on commas, semicolons or spaces. An entry "mod" hides every item of that mod and "mod:item"
+     * hides one item. Anything that is not a resource id is dropped.
+     */
+    public static Set<String> exclusions(String text) {
+        Set<String> entries = new HashSet<>();
+        if (text != null)
+            for (String entry : text.toLowerCase(Locale.ROOT).split("[,;\\s]+"))
+                if (entry.matches("[a-z0-9_.-]+(:[a-z0-9_./-]+)?")) entries.add(entry);
+        return Set.copyOf(entries);
+    }
+
+    /** Whether item {@code itemId} ("mod:item"; no "mod:" means minecraft) gets the line under the module's filters. */
+    public static boolean shows(String itemId, int maximum, int damage, boolean vanillaOnly, boolean whenFull, Set<String> exclusions) {
+        if (maximum <= 0 || damage <= 0 && !whenFull) return false;
+        int colon = itemId.indexOf(':');
+        String mod = colon < 0 ? "minecraft" : itemId.substring(0, colon);
+        return (!vanillaOnly || mod.equals("minecraft")) && !exclusions.contains(mod) && !exclusions.contains(itemId);
     }
 }

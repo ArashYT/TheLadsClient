@@ -18,6 +18,11 @@ dependencies {
     api 'com.google.code.gson:gson:2.11.0'
     api 'org.slf4j:slf4j-api:2.0.16'
     api 'club.minnced:java-discord-rpc:2.0.1'
+    // EnumValuesRewriter: each game supplies ASM at runtime (Fabric 9.x, LaunchWrapper 5.0.3).
+    compileOnly 'org.ow2.asm:asm-tree:9.10.1'
+    compileOnly 'org.ow2.asm:asm-analysis:9.10.1'
+    testImplementation 'org.ow2.asm:asm-tree:9.10.1'
+    testImplementation 'org.ow2.asm:asm-analysis:9.10.1'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -27,12 +32,7 @@ test {
     useJUnitPlatform()
 }
 
-// MPL-covered Paper Doll timing source travels with every artifact containing common classes.
 processResources {
-    from('src/main/java') {
-        include 'com/thelads/core/client/paperdoll/**'
-        into 'assets/theladscore/sources/paperdoll/common'
-    }
     from('src/main/java') {
         include 'com/thelads/core/client/SignalLossPolicy.java'
         include 'com/thelads/core/modules/SignalLossModule.java'

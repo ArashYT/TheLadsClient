@@ -146,6 +146,32 @@ bool inventoryCaptureVerification = autoWorldVerification && !capabilities.Forge
 // Fabric versions: the Lads title screen and its More screen photographed before the QA world opens (NativeWorldVerification).
 // 1.8.9's self-test (CoreProbe) always captures them.
 bool titleCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_TITLE") == "1";
+// Fabric versions: IgnorePacketErrors, AutoReconnect (the QA world and a closed port), chat signing and Ctrl+R on the server list
+// (ServerFeaturesCapture). 1.8.9's self-test (ProbeServer170) always runs the same checks.
+bool serverCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_SERVER") == "1";
+// Every version: Chat Heads with own, second-player and ranked server chat, photographed closed, open, aligned and off (Fabric:
+// ChatHeadsCapture, which the world capture waits for; 1.8.9: ChatHeadsProbe189 alone in the self-test's QA world).
+bool chatHeadsCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_CHATHEADS") == "1";
+// Better F3 frames and Custom FOV values in the QA world (Fabric: F3FovCapture; 1.8.9: a focused self-test, Probe170F3Fov).
+bool f3FovCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_F3FOV") == "1";
+// 26.x: the AppleSkin module's food previews, food and durability tooltips and Crosshair Tweaks styles photographed (HudInfoCapture).
+bool hudInfoCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_HUDINFO") == "1";
+// Fabric versions: Raised and the paper doll in the QA world (RaisedDollCapture). 1.8.9's self-test runs the same (RaisedDollProbe189).
+bool raisedCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_RAISED") == "1";
+// Fabric versions: Lads Mouse Tweaks in a server chest through the screen's own mouse handlers (MouseTweaksCapture).
+// 1.8.9's self-test (MouseTweaksProbe189) always runs the same checks.
+bool mouseTweaksCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_MOUSETWEAKS") == "1";
+// Fabric versions: Better Resolution photographed per setting with its FPS and GPU frame time (ResolutionCapture). 1.8.9: Probe170r.
+bool resolutionCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_RESOLUTION") == "1";
+// Fabric versions: Dynamic Lights at midnight with the module off and on, and a moving torch's frame rate (DynamicLightsCapture).
+// 1.8.9's self-test (LightsProbe189) always checks that the module drives OptiFine's Dynamic Lights.
+bool lightsCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_LIGHTS") == "1";
+// 26.x: Flashback Settings records into a Lads replay folder and times stock vs Lads exports of the same clip (FlashbackExportProbe).
+bool flashbackVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_FLASHBACK") == "1";
+// 26.x: Async stress test (AsyncStressProbe): ~1700 mobs plus items in pens, tick time with Async off and on, behaviour checks.
+bool asyncStressVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_ASYNC") == "1";
+// 26.x: AppleSkin server payloads (saturation, exhaustion, natural regeneration) injected in the QA world (AppleSkinSyncCapture).
+bool appleSkinSyncVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_APPLESKIN_SYNC") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -291,10 +317,29 @@ string itemPhysicsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-ite
 if (autoWorldVerification && File.Exists(itemPhysicsCaptureRequest)) File.Delete(itemPhysicsCaptureRequest);
 string inventoryCaptureRequest = Path.Combine(directory, ".lads-qa-capture-inventory");
 if (autoWorldVerification && File.Exists(inventoryCaptureRequest)) File.Delete(inventoryCaptureRequest);
+string serverCaptureRequest = Path.Combine(directory, ".lads-qa-capture-server");
+if (autoWorldVerification && File.Exists(serverCaptureRequest)) File.Delete(serverCaptureRequest);
+string f3FovCaptureRequest = Path.Combine(directory, ".lads-qa-capture-f3fov");
+if (autoWorldVerification && File.Exists(f3FovCaptureRequest)) File.Delete(f3FovCaptureRequest);
+string hudInfoCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hudinfo");
+if (autoWorldVerification && File.Exists(hudInfoCaptureRequest)) File.Delete(hudInfoCaptureRequest);
+string raisedCaptureRequest = Path.Combine(directory, ".lads-qa-capture-raised");
+if (autoWorldVerification && File.Exists(raisedCaptureRequest)) File.Delete(raisedCaptureRequest);
+string mouseTweaksCaptureRequest = Path.Combine(directory, ".lads-qa-capture-mousetweaks");
+if (autoWorldVerification && File.Exists(mouseTweaksCaptureRequest)) File.Delete(mouseTweaksCaptureRequest);
+string resolutionCaptureRequest = Path.Combine(directory, ".lads-qa-capture-resolution");
+if (autoWorldVerification && File.Exists(resolutionCaptureRequest)) File.Delete(resolutionCaptureRequest);
+string lightsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-lights");
+if (autoWorldVerification && File.Exists(lightsCaptureRequest)) File.Delete(lightsCaptureRequest);
+string asyncStressRequest = Path.Combine(directory, ".lads-qa-async");
+if (autoWorldVerification && File.Exists(asyncStressRequest)) File.Delete(asyncStressRequest);
+string appleSkinSyncRequest = Path.Combine(directory, ".lads-qa-appleskin-sync");
+if (autoWorldVerification && File.Exists(appleSkinSyncRequest)) File.Delete(appleSkinSyncRequest);
 if (autoWorldVerification)
-    foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
+    foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed",
+        ".lads-qa-flashback", ".lads-qa-flashback-done", ".lads-qa-flashback-failed" })
         File.Delete(Path.Combine(directory, flag));
-using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification ? 20 : asyncStressVerification ? 16 : 10));
 var ct = timeout.Token;
 
 Process? process = null;
@@ -304,8 +349,9 @@ var runStartUtc = DateTime.UtcNow;
 string logPath = Path.Combine(directory, "production-smoke.log");
 StreamWriter? log = null;
 var logGate = new object();
-bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false;
+bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false, flashbackPassed = false, flashbackRequested = false;
 bool menuCaptureRequested = false, hudCaptureRequested = false, worldCapturesRequested = false, windowFound = false, snapshotInvalid = false;
+bool resolutionCaptureRequested = false;
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
@@ -342,6 +388,10 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
     "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads cheats probe FAILED", "Lads zoom capture FAILED", "Lads sprint capture FAILED", "Lads add-server probe FAILED",
     "Lads HUD 1.7.0 capture FAILED", "Lads item physics capture FAILED", "Lads inventory capture FAILED",
+    "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
+    "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
+    "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
+    "Lads AppleSkin sync capture FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -493,9 +543,11 @@ try
         // pause-menu button, the 1.8.9 bridge, the launcher catalog). Every flag below is the Fabric Core's.
         if (autoWorldVerification) AddJvm("-Dthelads.verify189Core=true");
         if (focus189 != null) AddJvm("-Dthelads.verify189Focus=" + focus189);
+        if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
+        if (f3FovCaptureVerification) AddJvm("-Dthelads.verify189F3Fov=true");
         // LADS_VERIFY_189_ONLY=170: only the 1.7.0 in-world checks (Probe170Sprint, Probe170Hud), straight in the QA world;
-        // =itemphysics: only Item Physics (Probe170ItemPhysics).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =itemphysics: only Item Physics (Probe170ItemPhysics); =raised: only Raised and the paper doll (RaisedDollProbe189).
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
     }
     else
     {
@@ -520,12 +572,14 @@ try
         if (titleCaptureVerification) AddJvm("-Dthelads.verifyTitleCapture=true");
         if (Env("LADS_VERIFY_V134") == "1") { AddJvm("-Dthelads.verify134=true"); AddJvm("-Dthelads.verifyRenderer=" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan")); }
         if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
+        if (flashbackVerification) AddJvm("-Dthelads.verifyFlashback=true");
         if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
         AddJvm("-Dthelads.verifySharedContent=true");
         if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
         if (runId != null) AddJvm("-Dthelads.sharedContentRunId=" + runId);
         AddJvm("-Dthelads.verifyModInventory=true");
         if (modRequest != null) AddJvm("-Dthelads.verifyModRequest=" + modRequest);
+        if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
     }
     process.StartInfo.UseShellExecute = false;
     process.StartInfo.CreateNoWindow = true;
@@ -574,15 +628,19 @@ try
             if (failureMarkers.Any(line.Contains)) nativeProbeFailed = true;
             if (line.Contains("Lads 1.3.4 screenshots probe END:") && Passed(line)) screenshots134Passed = true;
             if (line.Contains("Lads 1.3.4 replay probe END:") && Passed(line)) replay134Passed = true;
+            if (line.Contains("Lads Flashback probe END:") && Passed(line)) flashbackPassed = true;
             if (line.Contains("Lads 1.3.4 renderer probe END:") && Passed(line)) renderer134Passed = true;
             if (line.Contains("Lads 1.3.3 probe END:") && Passed(line)) version133ProbePassed = true;
             foreach (string marker in requiredTitleProbes.Concat(requiredCore))
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in requiredWorldProbes)
-                if (line.Contains(marker) && (Passed(line) || marker == "Lads food server sync END:")) passedMarkers.TryAdd(marker, 0);
+                if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
                 "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
-                "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:" })
+                "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
+                "Lads server features capture END:", "Lads F3/FOV capture END:",
+                "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:", "Lads resolution capture END:",
+                "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -627,7 +685,10 @@ try
     qaLines.AddRange(qaForced);
     File.WriteAllLines(qaOptions, qaLines);
     var stopwatch = Stopwatch.StartNew();
+    // 26.3 (SDL) shows its window without activating it; QaWindowGuard covers 1.8.9 and 26.2 (and moves every game window).
+    if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") != "1") process.StartInfo.Environment["SDL_WINDOW_ACTIVATE_WHEN_SHOWN"] = "0";
     process.Start();
+    QaWindowGuard.Watch(process);
     GameSession.Attach(process, directory, loadedMods, message => { lock (sessionMessages) sessionMessages.Add(message); }, shared,
         () => { exitHandled.TrySetResult(); return Task.CompletedTask; });
     process.BeginOutputReadLine();
@@ -637,7 +698,7 @@ try
     // Title runs without the 26.x auto-world end once every check the harness asserts has passed (they never did before, so
     // 1.21.x waited the full 540 s); the stop is a Kill, as for every non-auto-world run.
     bool earlyTitleExit = titleVerification && !autoWorldVerification;
-    while (stopwatch.Elapsed < TimeSpan.FromSeconds(titleVerification ? 540 : 180) && !process.HasExited)
+    while (stopwatch.Elapsed < TimeSpan.FromSeconds(titleVerification ? (asyncStressVerification ? 900 : 540) : 180) && !process.HasExited)
     {
         process.Refresh();
         if (!windowFound && process.MainWindowHandle != IntPtr.Zero)
@@ -673,7 +734,17 @@ try
             bool hud170Done = !hud170CaptureVerification || passedMarkers.ContainsKey("Lads HUD 1.7.0 capture END:");
             bool itemPhysicsDone = !itemPhysicsCaptureVerification || passedMarkers.ContainsKey("Lads item physics capture END:");
             bool inventoryDone = !inventoryCaptureVerification || passedMarkers.ContainsKey("Lads inventory capture END:");
-            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && skinLayersDone && sprintDone && hud170Done && itemPhysicsDone && inventoryDone)
+            bool serverDone = !serverCaptureVerification || passedMarkers.ContainsKey("Lads server features capture END:");
+            bool f3FovDone = !f3FovCaptureVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads F3/FOV capture END:");
+            bool hudInfoDone = !hudInfoCaptureVerification || passedMarkers.ContainsKey("Lads HUD info capture END:");
+            bool raisedDone = !raisedCaptureVerification || passedMarkers.ContainsKey("Lads raised capture END:");
+            bool mouseTweaksDone = !mouseTweaksCaptureVerification || passedMarkers.ContainsKey("Lads mouse tweaks capture END:");
+            bool resolutionDone = !resolutionCaptureVerification || passedMarkers.ContainsKey("Lads resolution capture END:");
+            bool lightsDone = !lightsCaptureVerification || passedMarkers.ContainsKey("Lads dynamic lights capture END:");
+            bool asyncDone = !asyncStressVerification || passedMarkers.ContainsKey("Lads async stress probe END:");
+            bool appleSkinSyncDone = !appleSkinSyncVerification || passedMarkers.ContainsKey("Lads AppleSkin sync capture END:");
+            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && skinLayersDone && sprintDone && hud170Done && itemPhysicsDone && inventoryDone
+                && serverDone && f3FovDone && hudInfoDone && raisedDone && mouseTweaksDone && resolutionDone && lightsDone && asyncDone && appleSkinSyncDone)
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -693,6 +764,15 @@ try
                         Console.WriteLine("Requesting real Flashback recording, replay and PNG export.");
                     }
                 }
+                else if (flashbackVerification && !flashbackPassed)
+                {
+                    if (!flashbackRequested)
+                    {
+                        await LockFiles.WriteAtomicallyAsync(Path.Combine(directory, ".lads-qa-flashback"), Encoding.UTF8.GetBytes("Record into the Lads replay folder and time stock vs Lads exports."), ct);
+                        flashbackRequested = true;
+                        Console.WriteLine("Requesting Flashback Settings recording and stock vs Lads exports.");
+                    }
+                }
                 else break;
             }
             // The world captures hold items, keys and the zoom, which a screen opened by a world probe (the screenshots gallery,
@@ -708,7 +788,15 @@ try
                     (sprintCaptureVerification, sprintCaptureRequest, "Walk Toggle Sprint & Sneak through the QA world and log every tick's sprint packets."),
                     (hud170CaptureVerification, hud170CaptureRequest, "Capture the 1.7.0 HUD changes in the QA world."),
                     (itemPhysicsCaptureVerification, itemPhysicsCaptureRequest, "Drop items in an Item Physics arena and capture its frames."),
-                    (inventoryCaptureVerification, inventoryCaptureRequest, "Capture the inventories with and without potion effects in the QA world.") })
+                    (inventoryCaptureVerification, inventoryCaptureRequest, "Capture the inventories with and without potion effects in the QA world."),
+                    (serverCaptureVerification, serverCaptureRequest, "Check the multiplayer features in the QA world and capture their frames."),
+                    (f3FovCaptureVerification && !capabilities.Forge, f3FovCaptureRequest, "Capture Better F3 frames and log Custom FOV values."),
+                    (hudInfoCaptureVerification, hudInfoCaptureRequest, "Photograph food previews, tooltips and crosshair styles in the QA world."),
+                    (raisedCaptureVerification, raisedCaptureRequest, "Capture Raised and the paper doll in the QA world."),
+                    (mouseTweaksCaptureVerification, mouseTweaksCaptureRequest, "Drive Lads Mouse Tweaks in a QA chest and capture its frames."),
+                    (lightsCaptureVerification, lightsCaptureRequest, "Light the QA world at midnight with Dynamic Lights and capture its frames."),
+                    (asyncStressVerification, asyncStressRequest, "Stress Async with a pen of mobs in the QA world."),
+                    (appleSkinSyncVerification, appleSkinSyncRequest, "Inject AppleSkin server payloads in the QA world and capture the food bar.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -725,10 +813,19 @@ try
                 Console.WriteLine("Requesting native HUD editor interaction checks and actual frame capture.");
             }
         }
+        // Better Resolution's capture sets the same world-scale settings as the render scale probe, so it waits for that probe and the
+        // other GPU frame probe; it also runs when an unrelated probe failed (e.g. 1.7 Animations' hand checks under an Iris shader pack).
+        if (resolutionCaptureVerification && !resolutionCaptureRequested && passedMarkers.ContainsKey("Lads render scale probe END:")
+            && passedMarkers.ContainsKey("Lads native screenshots probe END:") && (nativeProbeFailed || requiredWorldProbes.All(passedMarkers.ContainsKey)))
+        {
+            await LockFiles.WriteAtomicallyAsync(resolutionCaptureRequest, Encoding.UTF8.GetBytes("Photograph Better Resolution at each setting in the QA world."), ct);
+            resolutionCaptureRequested = true;
+        }
         // Allow independent world/GPU probes to finish after a restored-state assertion fails.
         // The run still fails below; collecting their evidence avoids hiding subsequent defects.
         if (nativeProbeFailed && (!autoWorldVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads native screenshots probe END:")
-            || stopwatch.Elapsed > TimeSpan.FromSeconds(90))) break;
+            || stopwatch.Elapsed > TimeSpan.FromSeconds(90))
+            && (!resolutionCaptureRequested || passedMarkers.ContainsKey("Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
             && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;
@@ -746,6 +843,7 @@ try
         Require(!exitedOnItsOwn || process.ExitCode == 0, "Game exited with an error.");
         Require(Env("LADS_VERIFY_V134") != "1" || screenshots134Passed, "1.3.4 external screenshot gallery probe did not finish.");
         Require(Env("LADS_VERIFY_REPLAY") != "1" || replay134Passed, "Flashback record/replay/export probe did not finish.");
+        Require(!flashbackVerification || flashbackPassed, "Flashback Settings probe did not finish.");
         Require(Env("LADS_VERIFY_V134") != "1" || renderer134Passed, "1.3.4 actual renderer/Flashback probe did not finish.");
         Require(Env("LADS_VERIFY_V133") != "1" || version133ProbePassed, "1.3.3 native/API probe did not finish.");
         Require(!nativeProbeFailed, $"A runtime probe or {modList.Name} reported a failure (see the FAILED lines). Inspect {(capabilities.Forge ? @"logs\latest.log" : "production-smoke.log")}.");
@@ -821,6 +919,24 @@ try
             "The requested inventory capture did not pass. Inspect production-smoke.log.");
         Require(!titleCaptureVerification || passedMarkers.ContainsKey("Lads title capture END:") && passedMarkers.ContainsKey("Lads title More capture END:"),
             "The requested title and More frames were not both captured. Inspect production-smoke.log.");
+        Require(!serverCaptureVerification || passedMarkers.ContainsKey("Lads server features capture END:"),
+            "The requested multiplayer features capture did not pass. Inspect production-smoke.log.");
+        Require(!f3FovCaptureVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads F3/FOV capture END:"),
+            "The requested Better F3 / Custom FOV capture did not pass. Inspect production-smoke.log.");
+        Require(!hudInfoCaptureVerification || passedMarkers.ContainsKey("Lads HUD info capture END:"),
+            "The requested food, tooltip and crosshair frames were not all captured. Inspect production-smoke.log.");
+        Require(!raisedCaptureVerification || passedMarkers.ContainsKey("Lads raised capture END:"),
+            "The requested Raised and paper doll capture did not pass. Inspect production-smoke.log.");
+        Require(!mouseTweaksCaptureVerification || passedMarkers.ContainsKey("Lads mouse tweaks capture END:"),
+            "The requested Lads Mouse Tweaks capture did not pass. Inspect production-smoke.log.");
+        Require(!resolutionCaptureVerification || passedMarkers.ContainsKey("Lads resolution capture END:"),
+            "The requested Better Resolution capture did not pass. Inspect production-smoke.log.");
+        Require(!lightsCaptureVerification || passedMarkers.ContainsKey("Lads dynamic lights capture END:"),
+            "The requested Dynamic Lights capture did not pass. Inspect production-smoke.log.");
+        Require(!asyncStressVerification || passedMarkers.ContainsKey("Lads async stress probe END:"),
+            "The requested Async stress probe did not pass. Inspect production-smoke.log.");
+        Require(!appleSkinSyncVerification || passedMarkers.ContainsKey("Lads AppleSkin sync capture END:"),
+            "The requested AppleSkin server payload capture did not pass. Inspect production-smoke.log.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)
@@ -1088,8 +1204,8 @@ sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, 
     public static QaCapabilities For(string version) => version is "26.2" or "26.3"
         ? new(true, true, true, true, GraphicsRenderer.SupportsVulkan(version), true, true,
             ["Lads raised title probe END:", "Lads native reconnect probe END:", "Lads background policy probe END:", "Lads native SignalLoss probe END:", "Lads narrator probe END:"],
-            ["Lads native feature probe END:", "Lads food render probe END:", "Lads food JEI probe END:",
-                "Lads paper doll probe END:", "Lads food server sync END:", "Lads render scale probe END:", "Lads world capture END:",
+            ["Lads native feature probe END:", "Lads food probe END:",
+                "Lads paper doll probe END:", "Lads render scale probe END:", "Lads world capture END:",
                 "Lads durability tooltip probe END:", "Lads tab tweaks probe END:", "Lads clumps server probe END:", "Lads native screenshots probe END:", "Lads native crosshair probe END:",
                 "Lads shared content probe END:"]) { KillBanner = true }
         // 1.8.9 (Forge): the C1 Core self-test (menu key, pause-menu button, bridge in its own QA world, launcher catalog) is its one probe.

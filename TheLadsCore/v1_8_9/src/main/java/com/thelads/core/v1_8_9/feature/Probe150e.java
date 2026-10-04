@@ -11,6 +11,7 @@ import com.thelads.core.client.SignalLossPolicy;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.SliderOption;
+import com.thelads.core.modules.BetterResolutionModule;
 import com.thelads.core.v1_8_9.gui.ScreenshotsScreen189;
 import java.io.File;
 import java.nio.file.Files;
@@ -35,13 +36,16 @@ import org.apache.logging.log4j.Logger;
  * QA only: the 1.5.0 ports, run by CoreProbe in its QA world after Probe145, each through the real 1.8.9 paths: FarBlockEntities
  * (TileEntity's distance), EnhancedTooltips and AppleSkin's tooltip (ItemTooltipEvent), AppleSkin's HUD in survival with food
  * data from the integrated server, SignalLoss (the connection's packet time, the warning drawn), Clumps (orbs spawned on the
- * integrated server merge, clients see the clump), RenderScale at 50 % and BetterScreenshots (the screenshot key's preview,
+ * integrated server merge, clients see the clump), Better Resolution at 50 % and BetterScreenshots (the screenshot key's preview,
  * the gallery key and its list). Every module and the player are put back as found.
  */
 final class Probe150e {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe150e::farBlockEntities, Probe150e::tooltips,
-        Probe150e::appleStart, Probe150e::appleShown, Probe150e::appleDone, Probe150e::signalLoss, Probe150e::signalShown,
+        Probe150e::appleStart, Probe150e::appleShown, Probe150e::rottenShown, Probe150e::saturationShown, Probe150e::goldenShown,
+        Probe150e::appleDone, Probe150e::tooltipShown, Probe150e::tooltipShown, Probe150e::tooltipShown, Probe150e::tooltipShown,
+        Probe150e::tooltipShown, Probe150e::tooltipShown, Probe150e::crosshairShown, Probe150e::crosshairShown, Probe150e::crosshairShown,
+        Probe150e::crosshairShown, Probe150e::crosshairShown, Probe150e::crosshairsDone, Probe150e::signalLoss, Probe150e::signalShown,
         Probe150e::clumpsStart, Probe150e::clumpsSpawn, Probe150e::clumpsMerged, Probe150e::scaleStart, Probe150e::scaleShown,
         Probe150e::scaleOff, Probe150e::shotTaken, Probe150e::shotPreview, Probe150e::galleryShown, Probe150e::galleryClosed);
     private static boolean[] states;
@@ -53,7 +57,11 @@ final class Probe150e {
 
     private Probe150e() {}
 
-    private static final String[] MODULES = {"FarBlockEntities", "EnhancedTooltips", "AppleSkin", "SignalLoss", "Clumps", "RenderScale", "BetterScreenshots"};
+    private static final String[] MODULES = {"FarBlockEntities", "EnhancedTooltips", "AppleSkin", "SignalLoss", "Clumps", BetterResolutionModule.NAME,
+        "BetterScreenshots", "EnhancedToolbars", "Crosshair Tweaks"};
+    /** Options the 1.7.0 food, tooltip and crosshair shots change, put back afterwards. */
+    private static final java.util.Map<com.thelads.core.config.Option, com.google.gson.JsonElement> OPTIONS = new java.util.LinkedHashMap<>();
+    private static int pose;
 
     private static boolean farBlockEntities(Minecraft mc) {
         states = new boolean[MODULES.length];
@@ -80,14 +88,19 @@ final class Probe150e {
         Options189.module("EnhancedTooltips").setEnabled(false);
         lines = new ItemStack(Items.apple).getTooltip(mc.thePlayer, false);
         check(lines.size() == 2 && lines.get(1).contains("Food: +4 hunger, +2.4 saturation"), "AppleSkin's food tooltip alone " + lines);
-        check(FoodOverlay189.regeneration(20, 5, 0) == 11 && FoodOverlay189.regeneration(17, 20, 0) == 0,
-            "AppleSkin: 1.8.9's regeneration estimate (20 hunger, 5 saturation: 11 health)");
+        check(com.thelads.core.client.FoodPreview.regenerated(20, 5, 0, 100, true) == 11, "AppleSkin: 1.8.9's regeneration estimate (20 hunger, 5 saturation: 11 health)");
+        check(Food189.regenerationEffect(new ItemStack(Items.golden_apple)) == 4 && Food189.regenerationEffect(new ItemStack(Items.golden_apple, 1, 1)) == 200
+            && Food189.harmful(new ItemStack(Items.rotten_flesh)) && Food189.harmful(new ItemStack(Items.spider_eye)) && !Food189.harmful(new ItemStack(Items.apple)),
+            "AppleSkin: golden apples' Regeneration (4 and 200 health) and harmful foods' green icons, through ItemFoodFields");
         return after(1);
     }
 
     /** Survival, hungry and hurt on the integrated server, an apple in hand on the client: every AppleSkin overlay has work. */
     private static boolean appleStart(Minecraft mc) {
-        count = FoodOverlay189.frames;
+        count = Food189.frames;
+        Food189.qaPulse = 1f; // previews at full strength in the photos
+        for (String module : new String[] {"AppleSkin", "EnhancedToolbars", "Crosshair Tweaks"})
+            for (com.thelads.core.config.Option option : Options189.module(module).getOptions()) OPTIONS.put(option, option.save());
         slot = mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem];
         mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem] = new ItemStack(Items.apple);
         onServer(mc, player -> {
@@ -106,14 +119,113 @@ final class Probe150e {
             server.getConfigurationManager().getPlayerByUUID(mc.thePlayer.getUniqueID()).getFoodStats().writeNBT(tag);
             return tag.getFloat("foodExhaustionLevel");
         }).get();
-        LOG.info("Lads 1.8.9 core probe: AppleSkin: synced {}, saturation {}, exhaustion {} (server {}), frames {}", FoodOverlay189.synced,
-            mc.thePlayer.getFoodStats().getSaturationLevel(), FoodOverlay189.exhaustion, serverExhaustion, FoodOverlay189.frames - count);
-        check(FoodOverlay189.synced && Math.abs(mc.thePlayer.getFoodStats().getSaturationLevel() - 3.5f) < 0.01f
-            && serverExhaustion >= 2.5f && Math.abs(FoodOverlay189.exhaustion - serverExhaustion) < 0.3f,
-            "AppleSkin: saturation 3.5 and exhaustion " + FoodOverlay189.exhaustion + " (server " + serverExhaustion + ") come from the integrated server");
-        check(FoodOverlay189.frames - count > 20, "AppleSkin: the saturation overlay is drawn over 1.8.9's hunger bar");
+        EntityPlayerMP own = Food189.serverPlayer(mc.thePlayer);
+        float read = Food189.exhaustion(own);
+        LOG.info("Lads 1.8.9 core probe: AppleSkin: saturation {}, exhaustion {} (server {}), frames {}", own == null ? -1 : own.getFoodStats().getSaturationLevel(),
+            read, serverExhaustion, Food189.frames - count);
+        check(own != null && Math.abs(own.getFoodStats().getSaturationLevel() - 3.5f) < 0.01f && serverExhaustion >= 2.5f && Math.abs(read - serverExhaustion) < 0.3f,
+            "AppleSkin: saturation 3.5 and exhaustion " + read + " (server " + serverExhaustion + ") are the integrated server's");
+        check(Food189.frames - count > 20 && Food189.heldFood(mc.thePlayer) != null, "AppleSkin: the saturation outlines are drawn over 1.8.9's hunger bar, the apple previewed");
         screenshot(mc, "150-appleskin");
+        hold(mc, new ItemStack(Items.rotten_flesh));
+        onServer(mc, player -> { player.getFoodStats().readNBT(food(6, 0, 1)); player.setHealth(player.getMaxHealth()); });
+        return after(30);
+    }
+
+    /** 1.7.0 shots: rotten flesh's green hunger preview; saturation outlines and the exhaustion band; a golden apple's health. */
+    private static boolean rottenShown(Minecraft mc) {
+        screenshot(mc, "170-food-rotten-flesh");
+        hold(mc, null);
+        onServer(mc, player -> player.getFoodStats().readNBT(food(20, 13, 3)));
+        return after(30);
+    }
+
+    private static boolean saturationShown(Minecraft mc) {
+        screenshot(mc, "170-food-saturation-exhaustion");
+        hold(mc, new ItemStack(Items.golden_apple));
+        onServer(mc, player -> { player.getFoodStats().readNBT(food(20, 2, 0)); player.setHealth(7); });
+        return after(30);
+    }
+
+    private static boolean goldenShown(Minecraft mc) {
+        check(Food189.heldFood(mc.thePlayer) != null, "AppleSkin: a golden apple is edible at full hunger");
+        screenshot(mc, "170-food-golden-apple-health");
         return after(1);
+    }
+
+    /**
+     * The real tooltip renderer (GuiScreen.renderToolTip) over the HUD: food lines, then EnhancedToolbars' durability styles. It is
+     * drawn from the overlay event, not an opened screen: closing a screen while the window is in the background leaves the game
+     * without input focus, which later probes need.
+     */
+    private static boolean tooltipShown(Minecraft mc) {
+        String[] names = {"apple", "golden-carrot", "durability-numbers", "durability-bar", "durability-text"};
+        if (pose > 0) screenshot(mc, "170-tooltip-" + names[pose - 1]);
+        if (pose == names.length) {
+            pose = 0;
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(TOOLTIP);
+            TOOLTIP.stack = null;
+            return after(5);
+        }
+        if (pose == 0) net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(TOOLTIP);
+        ItemStack stack = pose == 0 ? new ItemStack(Items.apple) : pose == 1 ? new ItemStack(Items.golden_carrot) : new ItemStack(Items.diamond_sword, 1, 1200);
+        Options189.module("AppleSkin").setEnabled(true); // put back as found by crosshairsDone
+        if (pose >= 2) {
+            Options189.module("EnhancedToolbars").setEnabled(true);
+            ((DropdownOption) Options189.module("EnhancedToolbars").getOption("Durability Style")).setIndex(pose - 2);
+            List<String> lines = stack.getTooltip(mc.thePlayer, true);
+            String expected = new String[] {"361", "23%", "About to break"}[pose - 2]; // 361 of 1561 uses left
+            check(!lines.contains("Durability: 361 / 1561") && String.join("\n", lines).contains(expected),
+                "EnhancedToolbars on 1.8.9: style " + (pose - 2) + " replaces the advanced durability line " + lines);
+        }
+        pose++;
+        TOOLTIP.stack = stack;
+        return after(10);
+    }
+
+    private static final TooltipOverlay TOOLTIP = new TooltipOverlay();
+
+    public static final class TooltipOverlay extends net.minecraft.client.gui.GuiScreen {
+        private ItemStack stack;
+        @net.minecraftforge.fml.common.eventhandler.SubscribeEvent
+        public void overlay(net.minecraftforge.client.event.RenderGameOverlayEvent.Post event) {
+            if (event.type != net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.ALL || stack == null) return;
+            setWorldAndResolution(Minecraft.getMinecraft(), event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
+            renderToolTip(stack, width / 2 - 60, height / 2 - 20);
+        }
+    }
+
+    /** Crosshair Tweaks styles: a cross with a centre dot, a green circle, a turned triangle, a thick arrow, the vanilla shape. */
+    private static boolean crosshairShown(Minecraft mc) {
+        String[] names = {"cross-dot", "circle-green", "triangle-rotated", "arrow-thick", "vanilla-adaptive"};
+        if (pose > 0) screenshot(mc, "170-crosshair-" + names[pose - 1]);
+        Module crosshair = Options189.module("Crosshair Tweaks");
+        crosshair.setEnabled(true);
+        ((DropdownOption) crosshair.getOption("Shape")).setIndex(new int[] {0, 4, 5, 6, 3}[pose]);
+        ((com.thelads.core.config.BoolOption) crosshair.getOption("Center Dot")).set(pose == 0);
+        if (pose == 1) {
+            com.thelads.core.config.ColorOption color = (com.thelads.core.config.ColorOption) crosshair.getOption("Color");
+            color.setUseGlobal(false);
+            color.setColor(0xff55ff55);
+        }
+        ((SliderOption) crosshair.getOption("Rotation")).setValue(pose == 2 ? 180 : 0);
+        ((com.thelads.core.modules.CrosshairModule) crosshair).thickness.set(pose == 3 ? 2 : 1);
+        pose++;
+        return after(10);
+    }
+
+    private static boolean crosshairsDone(Minecraft mc) {
+        screenshot(mc, "170-crosshair-vanilla-adaptive");
+        pose = 0;
+        OPTIONS.forEach(com.thelads.core.config.Option::load);
+        restore("AppleSkin");
+        restore("EnhancedToolbars");
+        restore("Crosshair Tweaks");
+        return after(5);
+    }
+
+    private static void hold(Minecraft mc, ItemStack stack) {
+        mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem] = stack;
     }
 
     private static boolean appleDone(Minecraft mc) {
@@ -123,6 +235,7 @@ final class Probe150e {
             player.setHealth(player.getMaxHealth());
             player.setGameType(WorldSettings.GameType.CREATIVE);
         });
+        Food189.qaPulse = null;
         restore("AppleSkin");
         restore("EnhancedTooltips");
         return after(20);
@@ -178,13 +291,13 @@ final class Probe150e {
     }
 
     private static boolean scaleStart(Minecraft mc) {
-        SliderOption option = (SliderOption) Options189.module("RenderScale").getOption("Scale");
-        DropdownOption presets = (DropdownOption) Options189.module("RenderScale").getOption("Preset");
+        SliderOption option = (SliderOption) Options189.module(BetterResolutionModule.NAME).getOption("Scale");
+        DropdownOption presets = (DropdownOption) Options189.module(BetterResolutionModule.NAME).getOption("Preset");
         scale = option.getValue();
         preset = presets.getIndex();
         option.setValue(50);
         presets.setIndex(0); // Custom: the Scale slider
-        Options189.module("RenderScale").setEnabled(true);
+        Options189.module(BetterResolutionModule.NAME).setEnabled(true);
         count = RenderScale189.scaledFrames;
         return after(30);
     }
@@ -192,12 +305,12 @@ final class Probe150e {
     private static boolean scaleShown(Minecraft mc) {
         RenderScalePolicy.Size half = RenderScalePolicy.size(mc.displayWidth, mc.displayHeight, 0.5, Integer.MAX_VALUE);
         check(RenderScale189.scaledFrames - count > 10 && RenderScale189.scaledWidth == half.width() && RenderScale189.scaledHeight == half.height(),
-            "RenderScale 50 %: the world rendered at " + RenderScale189.scaledWidth + "x" + RenderScale189.scaledHeight + " in "
+            "Better Resolution 50 %: the world rendered at " + RenderScale189.scaledWidth + "x" + RenderScale189.scaledHeight + " in "
             + (RenderScale189.scaledFrames - count) + " frames for a " + mc.displayWidth + "x" + mc.displayHeight + " window (needs framebuffers: OptiFine Fast Render off)");
         screenshot(mc, "150-renderscale-50");
-        ((SliderOption) Options189.module("RenderScale").getOption("Scale")).setValue(scale);
-        ((DropdownOption) Options189.module("RenderScale").getOption("Preset")).setIndex(preset);
-        restore("RenderScale");
+        ((SliderOption) Options189.module(BetterResolutionModule.NAME).getOption("Scale")).setValue(scale);
+        ((DropdownOption) Options189.module(BetterResolutionModule.NAME).getOption("Preset")).setIndex(preset);
+        restore(BetterResolutionModule.NAME);
         return after(10);
     }
 
@@ -207,8 +320,8 @@ final class Probe150e {
     }
 
     private static boolean shotTaken(Minecraft mc) throws Exception {
-        if (!Options189.enabled("RenderScale") || preset == 0 && scale == 100)
-            check(RenderScale189.scaledFrames == count, "RenderScale back as found (off or 100 %): the world renders into Minecraft's framebuffer again");
+        if (!Options189.enabled(BetterResolutionModule.NAME) || preset == 0 && scale == 100)
+            check(RenderScale189.scaledFrames == count, "Better Resolution back as found (off or 100 %): the world renders into Minecraft's framebuffer again");
         Options189.module("BetterScreenshots").setEnabled(true);
         Screenshots189.lastSaved = null;
         tap(mc.gameSettings.keyBindScreenshot.getKeyCode(), '\0');

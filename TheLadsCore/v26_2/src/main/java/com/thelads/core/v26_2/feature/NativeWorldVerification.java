@@ -112,6 +112,11 @@ public final class NativeWorldVerification {
                 LOGGER.info("Lads auto-world QA OPEN: {}", SAVE);
                 mc.createWorldOpenFlows().openWorld(SAVE, () -> fail("world open cancelled or returned to menu", null));
             } else if (mc.level != null && mc.player != null) {
+                // A QA run that ended with its player dead reopens on the death screen: respawn, as the 1.8.9 self-test does.
+                if (mc.player.isDeadOrDying() && mc.gui.screen() instanceof net.minecraft.client.gui.screens.DeathScreen) {
+                    mc.player.respawn();
+                    mc.setScreenAndShow(null);
+                }
                 // Remove only Minecraft's ordinary pause screen. Never accept confirmation, error or upgrade dialogs.
                 if (mc.gui.screen() != null && mc.gui.screen().getClass() == PauseScreen.class && menuScreen == null) mc.setScreenAndShow(null);
                 if (worldReady() && !readyLogged) {
@@ -123,24 +128,33 @@ public final class NativeWorldVerification {
                 }
             }
             boolean captureReady = readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null;
-            KillBannerCapture.tick(gameDirectory, captureReady && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy() && !SprintCapture.busy() && !Hud170Capture.busy());
-            OldAnimationsCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy() && !SprintCapture.busy() && !Hud170Capture.busy());
-            ZoomCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !SkinLayersCapture.busy() && !SprintCapture.busy() && !Hud170Capture.busy());
-            SkinLayersCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SprintCapture.busy() && !Hud170Capture.busy());
-            SprintCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy() && !Hud170Capture.busy());
-            Hud170Capture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy() && !SprintCapture.busy());
-            ItemPhysicsCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy()
-                && !SkinLayersCapture.busy() && !SprintCapture.busy() && !Hud170Capture.busy());
-            InventoryCapture.tick(gameDirectory, captureReady);
+            // In-world captures run one at a time: each may tick while it is the one running or none is.
+            KillBannerCapture.tick(gameDirectory, captureReady && (KillBannerCapture.busy() || !captureBusy()));
+            OldAnimationsCapture.tick(gameDirectory, captureReady && (OldAnimationsCapture.busy() || !captureBusy()));
+            ZoomCapture.tick(gameDirectory, captureReady && (ZoomCapture.busy() || !captureBusy()));
+            SkinLayersCapture.tick(gameDirectory, captureReady && (SkinLayersCapture.busy() || !captureBusy()));
+            SprintCapture.tick(gameDirectory, captureReady && (SprintCapture.busy() || !captureBusy()));
+            Hud170Capture.tick(gameDirectory, captureReady && (Hud170Capture.busy() || !captureBusy()));
+            ItemPhysicsCapture.tick(gameDirectory, captureReady && (ItemPhysicsCapture.busy() || !captureBusy()));
+            InventoryCapture.tick(gameDirectory, captureReady && (InventoryCapture.busy() || !captureBusy()));
             CheatsProbe.tick(gameDirectory, captureReady);
+            ServerFeaturesCapture.tick(gameDirectory, captureReady && (ServerFeaturesCapture.busy() || !captureBusy()));
+            // After the Chat module's own capture, so its message does not land among the heads, and after the render scale probe,
+            // whose world frames its chat screen would interrupt.
+            ChatHeadsCapture.tick(captureReady && chatCaptureStep >= 2 && !NativeRenderScaleProbe.pending() && (ChatHeadsCapture.busy() || !captureBusy()));
+            F3FovCapture.tick(gameDirectory, captureReady && (F3FovCapture.busy() || !captureBusy()));
+            RaisedDollCapture.tick(gameDirectory, captureReady && (RaisedDollCapture.busy() || !captureBusy()));
+            MouseTweaksCapture.tick(gameDirectory, captureReady && (MouseTweaksCapture.busy() || !captureBusy()));
+            ResolutionCapture.tick(gameDirectory, captureReady && (ResolutionCapture.busy() || !captureBusy()));
+            DynamicLightsCapture.tick(gameDirectory, captureReady && (DynamicLightsCapture.busy() || !captureBusy()));
+            com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.tick(gameDirectory, captureReady && (com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() || !captureBusy()));
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
             Path hudRequest = gameDirectory.resolve(".lads-qa-capture-hud");
             // A menu or HUD capture opens a screen, which zooms out and stops item use: never while a world capture runs.
             if (menuScreen == null && readyLogged && worldReady()
-                && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy() && !SprintCapture.busy()
-                && !Hud170Capture.busy() && !ItemPhysicsCapture.busy()
+                && !captureBusy()
                 && !com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.NativeScreenshotsProbe.running()
                 && (Files.isRegularFile(menuRequest, LinkOption.NOFOLLOW_LINKS)
                     || Files.isRegularFile(hudRequest, LinkOption.NOFOLLOW_LINKS))) {
@@ -253,7 +267,15 @@ public final class NativeWorldVerification {
         Hud170Capture.frame(target, gameDirectory);
         ItemPhysicsCapture.frame(target, gameDirectory);
         InventoryCapture.frame(target, gameDirectory);
-        if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
+        ServerFeaturesCapture.frame(target, gameDirectory);
+        ChatHeadsCapture.frame(target, gameDirectory);
+        F3FovCapture.frame(target, gameDirectory);
+        RaisedDollCapture.frame(target, gameDirectory);
+        MouseTweaksCapture.frame(target, gameDirectory);
+        ResolutionCapture.frame(target, gameDirectory);
+        com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.frame(target, gameDirectory);
+        DynamicLightsCapture.frame(target, gameDirectory);
+        if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter || ChatHeadsCapture.pending()) return;
         captureStarted = true;
         try {
             Path folder = gameDirectory.resolve("screenshots");
@@ -383,6 +405,13 @@ public final class NativeWorldVerification {
             LOGGER.error("Lads " + captureKind + " capture FAILED", failure);
             fail("menu screenshot", failure);
         }
+    }
+    /** True while any in-world QA capture is running. */
+    private static boolean captureBusy() {
+        return KillBannerCapture.busy() || OldAnimationsCapture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
+            ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || MouseTweaksCapture.busy() ||
+            ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
+            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();

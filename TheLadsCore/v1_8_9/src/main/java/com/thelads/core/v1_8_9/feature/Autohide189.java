@@ -138,12 +138,18 @@ public final class Autohide189 {
         float u = buffer.framebufferWidth / (float) buffer.framebufferTextureWidth, v = buffer.framebufferHeight / (float) buffer.framebufferTextureHeight;
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer quad = tessellator.getWorldRenderer();
+        // The overlay's own matrix (EntityRenderer.setupOverlayRendering): an element can end with its matrix still pushed (Raised189
+        // pops in the same Post), and the captured pixels already sit where that matrix drew them.
+        GlStateManager.pushMatrix();
+        GlStateManager.loadIdentity();
+        GlStateManager.translate(0.0F, 0.0F, -2000.0F);
         quad.begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION_TEX);
         quad.pos(0, height, 0).tex(0, 0).endVertex();
         quad.pos(width, height, 0).tex(u, 0).endVertex();
         quad.pos(width, 0, 0).tex(u, v).endVertex();
         quad.pos(0, 0, 0).tex(0, v).endVertex();
         tessellator.draw();
+        GlStateManager.popMatrix();
         buffer.unbindFramebufferTexture();
         GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         GlStateManager.color(1, 1, 1, 1);
