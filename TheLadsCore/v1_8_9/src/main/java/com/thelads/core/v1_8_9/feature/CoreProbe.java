@@ -408,8 +408,9 @@ public final class CoreProbe {
     }
 
     private static boolean leaveWorld(Minecraft mc) {
-        // Leave through the pause menu's own path so the QA world is saved.
-        mc.theWorld.sendQuittingDisconnectingPacket();
+        // Leave as Minecraft's own shutdown does (the server logs the player out and saves the QA world). The pause menu's
+        // quitting packet first lets the server stop before loadWorld's logout task is queued: that task never ran and the
+        // client waited for it forever (jstack, 1.7.0).
         mc.loadWorld(null);
         mc.displayGuiScreen(new GuiMainMenu());
         return after(20);

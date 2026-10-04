@@ -316,6 +316,9 @@ final class Probe170 {
             player.setHealth(player.getMaxHealth());
             for (int x = -3; x <= 3; x++) for (int z = -3; z <= 40; z++) for (int y = -1; y <= 3; y++)
                 set(player.worldObj, origin.add(x, y, z), y < 0 ? Blocks.stone.getDefaultState() : Blocks.air.getDefaultState());
+            // A world saved in mid-air (an interrupted run) must not drop the player to its death first.
+            player.fallDistance = 0;
+            player.playerNetServerHandler.setPlayerLocation(origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5, 0, 0);
         });
         return after(20);
     }
@@ -409,6 +412,10 @@ final class Probe170 {
                 for (Map.Entry<BlockPos, IBlockState> entry : blocksWere.entrySet()) player.worldObj.setBlockState(entry.getKey(), entry.getValue(), 2);
                 blocksWere.clear();
             }
+            // Off the corridor (its floor is gone again) onto the ground: the next run must not start in mid-air.
+            BlockPos ground = player.worldObj.getTopSolidOrLiquidBlock(new BlockPos(player.posX, 0, player.posZ));
+            player.fallDistance = 0;
+            player.playerNetServerHandler.setPlayerLocation(ground.getX() + 0.5, ground.getY(), ground.getZ() + 0.5, player.rotationYaw, player.rotationPitch);
         });
         ToggleSprintModule toggles = toggles();
         optionsWere.forEach(Option::load);
