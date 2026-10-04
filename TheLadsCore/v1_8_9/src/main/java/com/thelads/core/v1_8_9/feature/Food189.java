@@ -93,7 +93,10 @@ public final class Food189 {
             EntityPlayerMP own = on() && option("Show Exhaustion") ? serverPlayer(Minecraft.getMinecraft().thePlayer) : null;
             int band = own == null ? 0 : Math.round(81 * Math.max(0, Math.min(exhaustion(own), FoodPreview.MAX_EXHAUSTION)) / FoodPreview.MAX_EXHAUSTION);
             if (band > 0) {
+                // No depth write: the hunger icons Forge draws next (at the HUD's lower z) must still show through it.
+                GlStateManager.depthMask(false);
                 Gui.drawRect(foodRight - band, top, foodRight, top + 9, 0x50FFFFFF);
+                GlStateManager.depthMask(true);
                 GlStateManager.color(1, 1, 1, 1);
             }
         } else if (event.type == ElementType.TEXT && Minecraft.getMinecraft().gameSettings.showDebugInfo && on()) {
