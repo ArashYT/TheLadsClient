@@ -3,7 +3,6 @@ package com.thelads.core.v1_21_11.feature;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
-import com.mojang.math.Axis;
 import com.thelads.core.client.killbanner.KillBannerPlayer;
 import com.thelads.core.client.killbanner.KillBannerStrip;
 import com.thelads.core.client.killbanner.KillBannerStyle;
@@ -119,7 +118,7 @@ final class KillBannerArt {
                             float py = -r * (float) Math.cos(rad);
                             pose.pushMatrix();
                             pose.translate(px, py);
-                            pose.mulPose(Axis.ZP.rotationDegrees(-deg));
+                            pose.rotate(-rad);
                             quad(g, pip, -pip.width() / 2f, -pip.height() / 2f, 1f, argb(0xFFFFFF, f.restAlpha()));
                             pose.popMatrix();
                         }
