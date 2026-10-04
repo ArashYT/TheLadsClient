@@ -3,8 +3,8 @@ package com.thelads.core.client;
 public final class LegacyVerticalBob {
     /**
      * Share of the gap to the target closed each tick: 1.8's 0.8 while the player can bob, and a gentler 0.4 back to level once a
-     * state without bob starts (flying, swimming, riding), as 1.8's own camera settles when flying stops a fall (its fall speed
-     * drops 40% a tick). Per tick and interpolated per frame, so the ease looks the same at every frame rate.
+     * state without bob starts (flying, swimming, riding), so stopping a fall by flying eases the camera level over about half a
+     * second instead of snapping. Per tick and interpolated per frame, so the ease looks the same at every frame rate.
      */
     static final float FOLLOW=.8f,SETTLE=.4f;
     private int lastTick=Integer.MIN_VALUE;
