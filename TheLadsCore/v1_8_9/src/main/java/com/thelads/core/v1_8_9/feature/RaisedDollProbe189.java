@@ -40,7 +40,7 @@ final class RaisedDollProbe189 {
         RaisedDollProbe189::sneak, RaisedDollProbe189::hover, RaisedDollProbe189::fly, RaisedDollProbe189::eat, RaisedDollProbe189::faded,
         RaisedDollProbe189::editor, RaisedDollProbe189::done);
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
-    private static boolean raisedWas, dollWas, started, swapped;
+    private static boolean raisedWas, dollWas, togglesWas, started, swapped;
     private static int[] positionWas;
     private static int gameModeWas, slot;
     private static ItemStack heldWas;
@@ -62,6 +62,9 @@ final class RaisedDollProbe189 {
         for (Module module : new Module[] {raised(), doll()}) for (Option option : module.getOptions()) OPTIONS.put(option, option.save());
         raisedWas = raised().isEnabled();
         dollWas = doll().isEnabled();
+        // The doll's sprint holds the Sprint key as vanilla does; Toggle Sprint & Sneak (on in upgraded configs) would want a tap.
+        togglesWas = Toggles189.toggles().isEnabled();
+        Toggles189.toggles().setEnabled(false);
         positionWas = HudSettings.getInstance().getPosition("Paperdoll");
         gameModeWas = mc.playerController.getCurrentGameType().getID();
         raised().getOptions().forEach(Option::reset);
@@ -221,6 +224,7 @@ final class RaisedDollProbe189 {
         for (Map.Entry<Option, JsonElement> entry : OPTIONS.entrySet()) entry.getKey().load(entry.getValue());
         raised().setEnabled(raisedWas);
         doll().setEnabled(dollWas);
+        Toggles189.toggles().setEnabled(togglesWas);
         if (positionWas == null) HudSettings.getInstance().getPositions().remove("Paperdoll");
         else HudSettings.getInstance().setPosition("Paperdoll", positionWas[0], positionWas[1]);
         if (mc.thePlayer != null && mc.getIntegratedServer() != null) {
