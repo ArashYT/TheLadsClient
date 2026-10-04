@@ -91,6 +91,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.Raised189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PaperDoll189());
         Screenshots189.register();
+        com.thelads.core.v1_8_9.feature.MouseTweaks189.register();
         MinecraftForge.EVENT_BUS.register(this);
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
@@ -102,6 +103,8 @@ public class TheLadsCore189 {
         "RawInput", "BorderlessFullscreen",
         // Raised189: Forge's overlay events and the GuiIngame, GuiIngameForge and GuiNewChat mixins.
         "Raised",
+        // MouseTweaks189 through GuiContainerMouseTweaksMixin and Forge's mouse input event, as 26.x NativeMouseTweaks.
+        com.thelads.core.modules.MouseTweaksModule.NAME,
         // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC: the "Soon" card, as on the other versions, whose
         // presence sends nothing yet (no Discord connection is made).
         "Threads", "DiscordRPC",

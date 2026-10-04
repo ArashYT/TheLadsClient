@@ -83,6 +83,7 @@ public final class CoreProbe {
             STEPS.addAll(Probe151.STEPS);
             STEPS.addAll(Probe160.STEPS);
             STEPS.addAll(RaisedDollProbe189.STEPS);
+            STEPS.addAll(MouseTweaksProbe189.STEPS);
             STEPS.addAll(ChatHeadsProbe189.STEPS);
             STEPS.addAll(Probe170F3Fov.STEPS);
             STEPS.addAll(Probe145.PACING);
@@ -122,6 +123,7 @@ public final class CoreProbe {
         Probe151.stop();
         Probe160.stop();
         ChatHeadsProbe189.stop(Minecraft.getMinecraft());
+        MouseTweaksProbe189.stop(Minecraft.getMinecraft());
         Probe160s.stop();
         ProbeServer170.stop();
         RaisedDollProbe189.stop();
