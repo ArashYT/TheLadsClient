@@ -2,6 +2,7 @@ package com.thelads.core.v26_2.feature;
 
 import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
 import com.mojang.renderpearl.api.pipeline.ColorTargetState;
+import com.mojang.renderpearl.api.pipeline.CompiledRenderPipeline;
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
@@ -113,7 +114,7 @@ public final class NativeRenderScale {
     }
 
     /** The method's compiled pass. Linear, Nearest and a shader that does not compile (logged once) use vanilla's blit. */
-    static com.mojang.renderpearl.api.pipeline.CompiledRenderPipeline compiled(int method) {
+    static CompiledRenderPipeline compiled(int method) {
         RenderPipeline custom = method == RenderScalePolicy.SMOOTH ? SMOOTH : method == RenderScalePolicy.SHARP ? SHARP : null;
         var pass = custom == null || upscaleFailed ? null : RenderSystem.getCompiledPipelineNullable(custom);
         if (custom != null && pass == null && !upscaleFailed) {
