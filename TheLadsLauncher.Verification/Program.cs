@@ -126,6 +126,12 @@ bool oldAnimCaptureVerification = autoWorldVerification && !capabilities.Forge &
 // Fabric versions: Lads Zoom through the real key and scroll handlers, photographed, with every frame's FOV in zoom-fov.csv (ZoomCapture).
 // 1.8.9's self-test (Probe160) always runs the same checks.
 bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ZOOM") == "1";
+// Fabric versions: cheats turned on as World Options and Multiplayer Options do ("set"), "off", or what stayed after the
+// world reopened ("check") (CheatsProbe). 1.8.9 runs its checks as a focused self-test: LADS_VERIFY_189_FOCUS (CoreProbe).
+string? cheatsPhase = autoWorldVerification && !capabilities.Forge ? Env("LADS_VERIFY_CHEATS") : null;
+if (cheatsPhase is not (null or "set" or "check" or "off")) throw new ArgumentException("LADS_VERIFY_CHEATS must be set, check or off.");
+string? focus189 = autoWorldVerification && capabilities.Forge ? Env("LADS_VERIFY_189_FOCUS") : null;
+if (focus189 != null && !Regex.IsMatch(focus189, @"\A[a-z0-9-]{1,40}\z")) throw new ArgumentException("LADS_VERIFY_189_FOCUS must be a plain step list name.");
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -258,6 +264,9 @@ string oldAnimCaptureRequest = Path.Combine(directory, ".lads-qa-capture-oldanim
 if (autoWorldVerification && File.Exists(oldAnimCaptureRequest)) File.Delete(oldAnimCaptureRequest);
 string zoomCaptureRequest = Path.Combine(directory, ".lads-qa-capture-zoom");
 if (autoWorldVerification && File.Exists(zoomCaptureRequest)) File.Delete(zoomCaptureRequest);
+string cheatsRequest = Path.Combine(directory, ".lads-qa-cheats");
+if (autoWorldVerification && File.Exists(cheatsRequest)) File.Delete(cheatsRequest);
+if (cheatsPhase != null) File.WriteAllText(cheatsRequest, cheatsPhase);
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
         File.Delete(Path.Combine(directory, flag));
@@ -291,6 +300,7 @@ if (requestedFeaturesOnly)
     requiredWorldProbes = ["Lads native feature probe END:", "Lads improvements probe END:", "Lads font reload probe END:", "Lads world capture END:", "Lads shared content probe END:"];
     Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
 }
+if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
 // The 1.8.9 Core has neither report: its runs are checked from logs\latest.log (Forge's mod list, OptiFine, the title screen).
 var requiredCore = new List<string>();
@@ -306,7 +316,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
-    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED",
+    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads cheats probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -457,6 +467,7 @@ try
         // The 1.8.9 Core's one QA switch: its self-test (Lads menu on the title screen, in its own QA world and from the
         // pause-menu button, the 1.8.9 bridge, the launcher catalog). Every flag below is the Fabric Core's.
         if (autoWorldVerification) AddJvm("-Dthelads.verify189Core=true");
+        if (focus189 != null) AddJvm("-Dthelads.verify189Focus=" + focus189);
     }
     else
     {
