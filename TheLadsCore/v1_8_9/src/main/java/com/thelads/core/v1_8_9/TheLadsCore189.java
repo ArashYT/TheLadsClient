@@ -6,8 +6,10 @@ import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.mods.CoreCatalogExporter;
 import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.v1_8_9.adapter.VanillaGameBridge189;
+import com.thelads.core.v1_8_9.feature.AutoReconnect189;
 import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.Clumps189;
+import com.thelads.core.v1_8_9.feature.ConnectionTweaks189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
 import com.thelads.core.v1_8_9.feature.Crosshair189;
 import com.thelads.core.v1_8_9.feature.FoodOverlay189;
@@ -16,7 +18,6 @@ import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
 import com.thelads.core.v1_8_9.feature.OldAnimations189;
 import com.thelads.core.v1_8_9.feature.RawMouse189;
-import com.thelads.core.v1_8_9.feature.Reconnect189;
 import com.thelads.core.v1_8_9.feature.RenderScale189;
 import com.thelads.core.v1_8_9.feature.Screenshots189;
 import com.thelads.core.v1_8_9.feature.SignalLoss189;
@@ -75,7 +76,8 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new NativeHud());
         Crosshair189.register();
         MinecraftForge.EVENT_BUS.register(new Crosshair189());
-        Reconnect189.register();
+        AutoReconnect189.register();
+        MinecraftForge.EVENT_BUS.register(new ConnectionTweaks189());
         MinecraftForge.EVENT_BUS.register(new KillBanner189());
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new Tooltips189());
@@ -111,10 +113,13 @@ public class TheLadsCore189 {
     public static final String[][] LIMITED = {
         // Chat189 through GuiNewChatMixin, as 1.21.11 ChatMixin.
         {"Chat", "Minecraft 1.8.9 chat is unsigned, so Hide Signing Indicators has nothing to hide."},
+        // MessageDeserializerMixin and NetworkManagerMixin, as 26.x PacketDecodeGuardMixin and PacketErrorGuardMixin.
+        {"IgnorePacketErrors", "Minecraft 1.8.9 already keeps playing when a packet fails on the game thread; this covers packets "
+            + "that can't be decoded and handlers that fail on the network thread."},
         // Crosshair189 through Forge's crosshair overlay event, as 26.x NativeCrosshair.
         {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Dynamic "
             + "Attack Gap, Item Cooldown and spyglass options have nothing to show."},
-        // Reconnect189 through Forge's screen events, GuiDisconnectedAccessor and MinecraftMixin, as 26.x NativeReconnect.
+        // AutoReconnect189 through Forge's screen and tick events and GuiDisconnectedAccessor, as 26.x NativeReconnect.
         {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9, so it reconnects to servers and local worlds; 1.8.9 chat is unsigned, "
             + "so Sign Configured Commands has nothing to sign, and it sends at most 100 characters per action message."},
         // KillBanner189 through Forge's attack and chat events and NetHandlerPlayClientMixin, as 26.x NativeKillBanner.

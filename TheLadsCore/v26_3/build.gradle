@@ -64,21 +64,6 @@ processResources {
         into 'META-INF/lads-sources/raised'
     }
     from('src/main/java') {
-        include 'com/thelads/core/v26_2/feature/*Reconnect*.java'
-        include 'com/thelads/core/v26_2/gui/Reconnect*.java'
-        include 'com/thelads/core/v26_2/mixin/reconnect/**'
-        into 'META-INF/lads-sources/reconnect/v26_2'
-    }
-    from('../common/src/main/java') {
-        include 'com/thelads/core/client/Reconnect*.java'
-        include 'com/thelads/core/config/ActionOption.java'
-        include 'com/thelads/core/modules/AutoReconnectModule.java'
-        into 'META-INF/lads-sources/reconnect/common'
-    }
-    from('src/main/resources/theladscore.reconnect.mixins.json') {
-        into 'META-INF/lads-sources/reconnect/resources'
-    }
-    from('src/main/java') {
         include 'com/thelads/core/v26_2/feature/tabtweaks/**'
         into 'META-INF/lads-sources/tabtweaks/v26_2'
     }

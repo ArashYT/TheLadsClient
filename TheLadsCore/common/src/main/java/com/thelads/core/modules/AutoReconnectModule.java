@@ -15,6 +15,7 @@ public final class AutoReconnectModule extends Module {
     public final BoolOption signedCommands = addOption(new BoolOption("Sign Configured Commands", false));
     public final ActionOption actionsEditor = addOption(new ActionOption("Actions After Reconnecting", "Edit"));
     public AutoReconnectModule() {
-        super("AutoReconnect", "Retry interrupted server, Realm or local-world sessions. Configure delays, reasons and optional actions; Escape cancels a pending retry.");
+        super("AutoReconnect", "After an unexpected disconnect from a server or local world, the disconnect screen counts down and reconnects. "
+            + "Kicks and bans don't retry. Configure the delays, reason filters and messages to send after reconnecting; Cancel or Escape stops a countdown.");
     }
 }
