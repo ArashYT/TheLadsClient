@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.state.ArmedEntityRenderState;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
@@ -24,9 +25,12 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.FishingRodItem;
@@ -80,7 +84,9 @@ public final class NativeOldAnimations {
         if (block && hand == InteractionHand.OFF_HAND) return null;
         Use use = block ? Use.BLOCK : use(player, hand, item);
         Held held = held(item);
-        if (use == null || !module.iconPlacement(MODERN, use, held) || kept(item) || !flat(icon(player, hand, item))) {
+        if (use == null || !module.iconPlacement(MODERN, use, held) || kept(item)
+            || OldAnimations.legacySwingPlaces(NativeQualityOfLife.enabled("LegacySwing"), use, item.getItem() instanceof BlockItem)
+            || !flat(icon(player, hand, item))) {
             if (item.getItem() instanceof ShieldItem && module.active(Feature.LOW_SHIELD, MODERN)) {
                 pose.translate(0, -0.25f, 0);
                 APPLIED.add(Feature.LOW_SHIELD);
@@ -90,7 +96,7 @@ public final class NativeOldAnimations {
         HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
         int side = arm == HumanoidArm.RIGHT ? 1 : -1;
         OldAnimations.Sink out = sink(pose);
-        // Idle: vanilla's arm and swing stay, LegacySwing's when it is on (OldAnimations.legacySwingShown: placing blocks too).
+        // Idle: vanilla's arm and swing stay, LegacySwing's when it is on (a block item stays vanilla's then: legacySwingPlaces).
         if (use == Use.NONE) OldAnimations.fromModernHand(out, side);
         else {
             pose.popPose(); // back to the arm origin (submitArmWithItem's own push), dropping vanilla's use transforms
@@ -134,6 +140,22 @@ public final class NativeOldAnimations {
         return item.is(ItemTags.SPEARS) || item.getItem() instanceof CrossbowItem;
     }
 
+    /**
+     * Minecraft.startUseItem while the attack key mines a block (ClientTickMixin): true lets a held item's 1.7 use (a shield's
+     * block, a bow, food) start at once, as it does when looking at air.
+     */
+    public static boolean useWhileMining(LivingEntity player) {
+        OldAnimationsModule module = module();
+        if (module == null || player == null) return false;
+        for (InteractionHand hand : InteractionHand.values()) {
+            ItemUseAnimation animation = player.getItemInHand(hand).getUseAnimation();
+            Use use = animation == ItemUseAnimation.EAT || animation == ItemUseAnimation.DRINK ? Use.EAT_DRINK
+                : animation == ItemUseAnimation.BOW ? Use.BOW : animation == ItemUseAnimation.BLOCK ? Use.BLOCK : null;
+            if (module.useWhileMining(use)) return true;
+        }
+        return false;
+    }
+
     /** The 26.x trigger for the 1.7 sword block: a sword in the main hand while the off hand blocks with a shield. */
     static boolean swordBlocking(LivingEntity entity) {
         return (active(Feature.BLOCK_POSE) || active(Feature.BLOCKHIT)) && entity.isUsingItem()
@@ -174,9 +196,16 @@ public final class NativeOldAnimations {
         return lastHeartsBlink;
     }
 
-    /** Instant sneak camera, each Camera.tick: 1.7's step towards the entity's eye height instead of vanilla's half-way ease. */
-    public static float eyeHeight(float previous, float target, float vanilla) {
+    /**
+     * Instant sneak camera, each Camera.tick: 1.7's step towards the eye height instead of vanilla's half-way ease. Your own sneak is
+     * your keys' (LocalPlayer.isCrouching), as in 1.7 and 1.8, not the pose the server echoes back a tick or two later: after a quick
+     * sneak tap that echo crouched the player again for a tick, and the instant step dropped the camera a second time.
+     */
+    public static float eyeHeight(Entity entity, float previous, float vanilla) {
         if (!active(Feature.INSTANT_SNEAK)) return vanilla;
+        float target = entity.getEyeHeight();
+        if (entity instanceof LocalPlayer player && (player.getPose() == Pose.STANDING || player.getPose() == Pose.CROUCHING))
+            target = player.getEyeHeight(player.isCrouching() ? Pose.CROUCHING : Pose.STANDING);
         float eye = OldAnimations.sneakEyeHeight(previous, target);
         if (eye != vanilla) APPLIED.add(Feature.INSTANT_SNEAK);
         return eye;

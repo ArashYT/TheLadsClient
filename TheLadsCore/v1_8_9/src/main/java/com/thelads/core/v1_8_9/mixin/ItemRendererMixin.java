@@ -32,8 +32,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * <p>1.7 Animations (OldAnimations189), first person. OptiFine M5 keeps renderItemInFirstPerson as it is (it only adds a shaders
  * early return), so its calls are redirected: a HEAD inject reads the frame's item and use, the use branch's transforms become
  * the shared 1.7 hand recipe (which keeps the swing: blockhitting) and the item draw becomes 1.7's icon placement with no 1.8
- * display transform. The idle hand stays vanilla's, which is 1.7's, so LegacySwing still swings it (placing blocks too); while an
- * item is in use 1.7 Animations draws the hand instead, so the two never both transform it (OldAnimations.legacySwingShown). Low Fire lowers the fire overlay's quads.
+ * display transform. The idle hand stays vanilla's, which is 1.7's, so LegacySwing still swings it; a block item (a torch) also keeps
+ * 1.8.9's placement while LegacySwing is on, so placing blocks is LegacySwing's alone (OldAnimations.legacySwingPlaces). While an
+ * item is in use 1.7 Animations draws the hand instead, so the two never both transform it. Low Fire lowers the fire overlay's quads.
  */
 @Mixin(ItemRenderer.class)
 public abstract class ItemRendererMixin {
@@ -77,7 +78,8 @@ public abstract class ItemRendererMixin {
         ladsUse = OldAnimations189.use(mc.thePlayer, itemToRender);
         if (ladsUse == null) return;
         ladsReplay = ladsUse != Use.NONE && (ladsUse != Use.BOW || OldAnimations189.active(Feature.BOW));
-        ladsIcon = OldAnimations189.MODULE.iconPlacement(OldAnimations189.PLATFORM, ladsUse, ladsHeld);
+        ladsIcon = OldAnimations189.MODULE.iconPlacement(OldAnimations189.PLATFORM, ladsUse, ladsHeld)
+            && !OldAnimations.legacySwingPlaces(LegacySwing189.enabled(), ladsUse, OldAnimations189.placesBlock(itemToRender.getItem()));
     }
 
     /** All five calls: the idle one and the use branch's four (each passes swing 0, 1.8's drop of the swing while using). */

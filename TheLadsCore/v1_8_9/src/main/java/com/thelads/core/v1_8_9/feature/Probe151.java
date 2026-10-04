@@ -2,6 +2,7 @@ package com.thelads.core.v1_8_9.feature;
 
 import static com.thelads.core.v1_8_9.feature.CoreProbe.after;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
+import static com.thelads.core.v1_8_9.feature.CoreProbe.retry;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.screenshot;
 
 import com.thelads.core.config.Module;
@@ -19,6 +20,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.layers.LayerBipedArmor;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.init.Items;
@@ -35,7 +37,9 @@ import net.minecraft.world.WorldSettings;
  * items itself) with the module on and then off: every hook must change 1.8.9's result with it on and stay silent with it off.
  * Eating and the hurt red armour run in survival on the integrated server. Module, options, inventory, game mode, health, food,
  * camera and keys are put back as found. Screenshots: 151-*.png (the "-off" ones are 1.8.9's own for comparison). Last, a held
- * block and apple, and Legacy Swing's swing (as placing swings) on a block and on a torch 1.7 places.
+ * block and apple, and Legacy Swing's swing (as placing swings) on a block and on a torch, which 1.7 then leaves to Legacy Swing.
+ * 1.7.0: the sword block, bow and food start at once while the attack key mines a block (in survival); eating never swings; and
+ * the camera pitch (1.8.9's own vertical bob) sampled per tick as flying stops a fall, into lads-qa/170-fly-cancel-bob.csv.
  */
 final class Probe151 {
     static final List<CoreProbe.Step> STEPS = new ArrayList<>(Arrays.<CoreProbe.Step>asList(Probe151::start, Probe151::menu,
@@ -43,7 +47,10 @@ final class Probe151 {
     static {
         STEPS.addAll(creative(true));
         STEPS.addAll(creative(false));
+        STEPS.addAll(flyCancel());
         STEPS.add(Probe151::survival);
+        STEPS.addAll(onBlock(true));
+        STEPS.addAll(onBlock(false));
         STEPS.addAll(survival(true));
         STEPS.addAll(survival(false));
         STEPS.add(Probe151::restore);
@@ -51,7 +58,9 @@ final class Probe151 {
     }
     private static final OldAnimationsModule MODULE = OldAnimations189.MODULE;
     private static final boolean[] optionsWere = new boolean[Feature.values().length];
-    private static boolean wasEnabled, legacyWas;
+    private static boolean wasEnabled, legacyWas, focusWas;
+    private static double[] posWas;
+    private static final StringBuilder BOB = new StringBuilder();
     private static long legacyFrames;
     private static int slotWas, viewWas;
     private static float pitchWas;
@@ -82,6 +91,7 @@ final class Probe151 {
             player.inventory.mainInventory[5] = new ItemStack(net.minecraft.init.Blocks.stone);
             player.inventory.mainInventory[6] = new ItemStack(Items.apple);
             player.inventory.mainInventory[7] = new ItemStack(net.minecraft.init.Blocks.torch);
+            player.inventory.mainInventory[8] = new ItemStack(Items.arrow); // a survival bow draws only with an arrow
             player.inventory.armorInventory[2] = new ItemStack(Items.iron_chestplate);
         });
         return after(10);
@@ -309,6 +319,17 @@ final class Probe151 {
                 if (on) check(OldAnimations189.hits(Hook.FP_ICON) > 0, state + "the apple is drawn where 1.7 held it " + counts());
                 else check(silent(), state + "1.8.9's apple " + counts());
                 screenshot(mc, "151-idle-item" + tag);
+                select(mc, 7);
+                return after(15);
+            },
+            mc -> {
+                OldAnimations189.resetHits();
+                return after(3);
+            },
+            mc -> {
+                check(holds(mc.thePlayer.getHeldItem(), Item.getItemFromBlock(net.minecraft.init.Blocks.torch)), state + "a torch is held");
+                if (on) check(OldAnimations189.hits(Hook.FP_ICON) > 0, state + "Legacy Swing off: the torch is drawn where 1.7 held it " + counts());
+                else check(silent(), state + "1.8.9's torch " + counts());
                 legacy().setEnabled(true);
                 select(mc, 5);
                 return after(15);
@@ -323,11 +344,128 @@ final class Probe151 {
             mc -> legacySwing(mc),
             mc -> {
                 check(LegacySwing189.frames > legacyFrames, state + "Legacy Swing swings the torch (" + (LegacySwing189.frames - legacyFrames) + " frames)");
-                if (on) check(OldAnimations189.hits(Hook.FP_ICON) > 0, state + "where 1.7 holds the torch " + counts());
+                check(silent(), state + "placing blocks is Legacy Swing's alone: 1.7 Animations leaves the torch to it " + counts());
                 screenshot(mc, "151-legacy-torch" + tag);
                 legacy().setEnabled(legacyWas);
                 return after(5);
             });
+    }
+
+    /**
+     * 1.8.9's own vertical bob (EntityPlayer.cameraPitch, which EntityRenderer.setupViewBobbing turns the camera by): a creative fall
+     * from 24 blocks up, then flying starts as a double jump would, and the pitch is sampled each tick at four partial ticks.
+     */
+    private static List<CoreProbe.Step> flyCancel() {
+        int[] ticks = {0};
+        return Arrays.<CoreProbe.Step>asList(
+            mc -> {
+                posWas = new double[]{mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ};
+                mc.thePlayer.capabilities.isFlying = false;
+                onServer(mc, player -> player.setPositionAndUpdate(posWas[0], posWas[1] + 24, posWas[2]));
+                BOB.setLength(0);
+                BOB.append("tick,phase,motionY,partial0,partial25,partial50,partial75\n");
+                return after(4);
+            },
+            mc -> {
+                check(mc.thePlayer.posY > posWas[1] + 15 && !mc.thePlayer.onGround, "fly-cancel bob: the player falls from 24 blocks up");
+                ticks[0] = 0;
+                return after(0);
+            },
+            mc -> {
+                if (ticks[0] == 10) {
+                    mc.thePlayer.capabilities.isFlying = true; // flying stops the fall
+                    mc.thePlayer.sendPlayerAbilities();
+                }
+                EntityPlayer p = mc.thePlayer;
+                BOB.append(ticks[0]).append(ticks[0] < 10 ? ",fall," : ",flying,").append(String.format(java.util.Locale.ROOT, "%.4f", p.motionY));
+                for (float partial : new float[]{0, 0.25f, 0.5f, 0.75f})
+                    BOB.append(',').append(String.format(java.util.Locale.ROOT, "%.4f", p.prevCameraPitch + (p.cameraPitch - p.prevCameraPitch) * partial));
+                BOB.append('\n');
+                return ++ticks[0] < 26 ? retry(1) : after(0);
+            },
+            mc -> {
+                java.io.File out = new java.io.File(mc.mcDataDir, "lads-qa/170-fly-cancel-bob.csv");
+                java.nio.file.Files.write(out.toPath(), BOB.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                String[] rows = BOB.toString().split("\n");
+                float before = Float.parseFloat(rows[10].split(",")[6]), largest = 0, last = before;
+                for (int row = 11; row < rows.length; row++)
+                    for (int column = 3; column <= 6; column++) {
+                        float value = Float.parseFloat(rows[row].split(",")[column]);
+                        largest = Math.max(largest, Math.abs(value - last));
+                        last = value;
+                    }
+                org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").info("Lads 1.7.0 fly-cancel bob (1.8.9 cameraPitch):\n{}", BOB);
+                check(before > 1 && largest < before * 0.5f && Math.abs(last) < before * 0.2f, "fly-cancel bob: 1.8.9's pitch eases back from "
+                    + before + " (largest quarter-tick step " + largest + ", " + last + " after 15 ticks): no snap");
+                onServer(mc, player -> {
+                    player.capabilities.isFlying = false;
+                    player.sendPlayerAbilities();
+                    player.setPositionAndUpdate(posWas[0], posWas[1], posWas[2]);
+                });
+                return after(10);
+            },
+            mc -> {
+                check(Math.abs(mc.thePlayer.posY - posWas[1]) < 0.01 && !mc.thePlayer.capabilities.isFlying, "fly-cancel bob: back on the ground");
+                mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = 35;
+                return after(5);
+            });
+    }
+
+    /**
+     * Survival: the attack key held on the ground mines it (isHittingBlock), then the use key. 1.7 Animations on, the sword blocks,
+     * the bow draws and the food is eaten at once (1.8.9 ignores the use key while mining); eating never swings.
+     */
+    private static List<CoreProbe.Step> onBlock(boolean on) {
+        String tag = on ? "" : "-off", state = "1.7 Animations " + (on ? "on" : "off") + ": ";
+        List<CoreProbe.Step> steps = new ArrayList<>();
+        for (int slot : new int[]{0, 1, 3}) {
+            String what = slot == 0 ? "block" : slot == 1 ? "bow" : "eat";
+            steps.add(mc -> {
+                MODULE.setEnabled(on);
+                select(mc, slot);
+                return after(15);
+            });
+            steps.add(mc -> {
+                net.minecraft.util.MovingObjectPosition target = mc.objectMouseOver;
+                check(target != null && target.typeOfHit == net.minecraft.util.MovingObjectPosition.MovingObjectType.BLOCK, state + "looking at the ground");
+                net.minecraft.block.Block block = mc.theWorld.getBlockState(target.getBlockPos()).getBlock();
+                float perTick = block.getPlayerRelativeBlockHardness(mc.thePlayer, mc.theWorld, target.getBlockPos());
+                check(perTick * 12 < 1, state + block.getLocalizedName() + " outlasts the 10 ticks this mines it (" + perTick + " a tick)");
+                focusWas = mc.inGameHasFocus;
+                mc.inGameHasFocus = true; // QA: runTick mines only with in-game focus; the synthetic keys stand in for the window's
+                key(mc.gameSettings.keyBindAttack, true);
+                return after(4);
+            });
+            steps.add(mc -> {
+                check(mc.playerController.getIsHittingBlock() && !mc.thePlayer.isUsingItem(), state + "the held attack key mines the ground");
+                key(mc.gameSettings.keyBindUseItem, true);
+                OldAnimations189.resetHits();
+                return after(slot == 1 ? 6 : 3);
+            });
+            steps.add(mc -> {
+                boolean using = mc.thePlayer.isUsingItem();
+                if (on) check(using && OldAnimations189.hits(Hook.FP_HAND) > 0, state + "the use key starts the " + what
+                    + " at once while the attack key mines, as in 1.7 " + counts());
+                else check(!using && mc.playerController.getIsHittingBlock(), state + "1.8.9 ignores the use key while mining: no " + what);
+                if (on && slot == 3) check(OldAnimations189.hits(Hook.SWING) == 0 && OldAnimations189.usedSwing == 0,
+                    state + "eating on a block never swings the food " + counts());
+                key(mc.gameSettings.keyBindAttack, false); // the mining stops here: the ground never breaks
+                screenshot(mc, "170-" + what + "-on-block" + tag);
+                select(mc, 4); // the empty slot ends the use first: no arrow flies
+                return after(2);
+            });
+            steps.add(mc -> {
+                key(mc.gameSettings.keyBindAttack, false);
+                key(mc.gameSettings.keyBindUseItem, false);
+                mc.inGameHasFocus = focusWas;
+                return after(6);
+            });
+            steps.add(mc -> {
+                check(!mc.thePlayer.isUsingItem() && !mc.playerController.getIsHittingBlock(), state + "both keys up: no use, no mining");
+                return after(2);
+            });
+        }
+        return steps;
     }
 
     /** The swing placing a block plays (EntityPlayerSP.swingItem), shown two ticks in with Legacy Swing on. */
@@ -377,8 +515,9 @@ final class Probe151 {
             mc -> {
                 int left = mc.thePlayer.getItemInUseCount();
                 check(mc.thePlayer.isUsingItem() && left > 0 && left < 32, state + "still eating, " + left + " of 32 ticks left");
-                if (on) check(OldAnimations189.hits(Hook.FP_HAND) > 0 && OldAnimations189.hits(Hook.FP_ICON) > 0 && OldAnimations189.hits(Hook.SWING) > 0
-                    && OldAnimations189.usedSwing > 0, state + "1.7's eating pose and placement, and the held attack swings the food " + counts());
+                if (on) check(OldAnimations189.hits(Hook.FP_HAND) > 0 && OldAnimations189.hits(Hook.FP_ICON) > 0 && OldAnimations189.hits(Hook.SWING) == 0
+                    && OldAnimations189.usedSwing == 0 && !mc.thePlayer.isSwingInProgress, state + "1.7's eating pose and placement; the held attack "
+                    + "does not swing the food " + counts());
                 else check(silent() && !mc.thePlayer.isSwingInProgress, state + "1.8.9's eating, no swing " + counts());
                 screenshot(mc, "151-eat" + tag);
                 key(mc.gameSettings.keyBindAttack, false);

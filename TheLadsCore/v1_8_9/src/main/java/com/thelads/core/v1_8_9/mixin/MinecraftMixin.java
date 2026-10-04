@@ -1,21 +1,27 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.v1_8_9.feature.Borderless189;
+import com.thelads.core.v1_8_9.feature.OldAnimations189;
 import com.thelads.core.v1_8_9.feature.Reconnect189;
 import com.thelads.core.v1_8_9.feature.WorldBackup189;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityPlayerSP;
+import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.world.WorldSettings;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** F11 and the fullscreen option: borderless with the BorderlessFullscreen module, and a window that stays resizable after fullscreen.
- * Opening a world a newer version saved asks for a backup first (WorldBackup189); a world that opens is AutoReconnect's target. */
+ * Opening a world a newer version saved asks for a backup first (WorldBackup189); a world that opens is AutoReconnect's target.
+ * 1.7 Animations: the use key blocks, draws a bow or eats while the attack key mines a block, as in 1.7 (1.8 waits for the mining). */
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
     @Shadow private boolean fullscreen;
+    @Shadow public EntityPlayerSP thePlayer;
 
     @Inject(method = "toggleFullscreen", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBorderless(CallbackInfo ci) {
@@ -27,6 +33,12 @@ public abstract class MinecraftMixin {
     @Inject(method = "toggleFullscreen", at = @At("TAIL"), require = 1)
     private void ladsResizable(CallbackInfo ci) {
         if (!fullscreen) Borderless189.resizable();
+    }
+
+    @Redirect(method = "rightClickMouse", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/multiplayer/PlayerControllerMP;getIsHittingBlock()Z"), require = 1, allow = 1)
+    private boolean ladsUseWhileMining(PlayerControllerMP controller) {
+        return controller.getIsHittingBlock() && !OldAnimations189.useWhileMining(thePlayer.getHeldItem());
     }
 
     @Inject(method = "launchIntegratedServer", at = @At("HEAD"), cancellable = true, require = 1)

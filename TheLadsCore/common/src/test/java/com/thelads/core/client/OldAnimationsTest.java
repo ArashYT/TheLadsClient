@@ -185,6 +185,15 @@ class OldAnimationsTest {
         }
     }
 
+    @Test void legacySwingAloneAnimatesPlacingBlocks() {
+        for (Use use : Use.values())
+            for (boolean block : new boolean[]{true, false}) {
+                assertEquals(use == Use.NONE && block, OldAnimations.legacySwingPlaces(true, use, block),
+                    use + (block ? " block item" : " other item") + " with Legacy Swing on");
+                assertFalse(OldAnimations.legacySwingPlaces(false, use, block), use + " with Legacy Swing off: 1.7 places it");
+            }
+    }
+
     @Test void legacySwingHandIsLegacySwingsMotionWhere17HoldsTheItem() {
         for (int side : new int[]{1, -1})
             for (float equip : new float[]{0, 0.5f, 1}) {
