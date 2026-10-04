@@ -150,6 +150,8 @@ final class F3FovCapture {
                 share("Speed Effects", 100);
                 server(sp -> sp.removeEffect(MobEffects.SPEED));
                 check(mc.player.getMainHandItem().is(Items.BOW), "the bow reached the client's main hand");
+                // Held use key: the game releases a bow whose key is up (Minecraft.handleKeybinds).
+                mc.options.keyUse.setDown(true);
                 mc.player.startUsingItem(InteractionHand.MAIN_HAND);
             }),
             new Step(null, 1500, () -> {
@@ -161,6 +163,7 @@ final class F3FovCapture {
             new Step(null, 1000, () -> {
                 world("bow drawn", "Bow Aiming", 1);
                 mc.player.stopUsingItem();
+                mc.options.keyUse.setDown(false);
                 ItemStack held = heldBefore;
                 server(sp -> sp.setItemInHand(InteractionHand.MAIN_HAND, held));
                 SAVED.forEach((option, value) -> { if (fov.getOptions().contains(option)) option.load(value); });
