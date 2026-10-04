@@ -155,3 +155,5 @@ accessible field net/minecraft/client/renderer/GameRenderer fogRenderer Lnet/min
 
 # Embedded FixBookGUI
 accessible field net/minecraft/client/gui/screens/inventory/BookViewScreen IMAGE_HEIGHT I
+accessible class net/minecraft/world/level/redstone/CollectingNeighborUpdater$NeighborUpdates
+accessible method net/minecraft/world/level/pathfinder/WalkNodeEvaluator getPathTypeFromState (Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/pathfinder/PathType;

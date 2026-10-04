@@ -46,6 +46,7 @@ public class ModuleManager {
         register(new BetterF3Module(), Module.Category.MECHANIC);
         register(new PerformanceManagerModule(), Module.Category.MECHANIC);
         register(new ThreadPriorityModule(), Module.Category.MECHANIC);
+        register(new AsyncModule(), Module.Category.MECHANIC);
 
         // HUD overlay modules (rendered by HudManager)
         HudModule fps = hud("FPS", "Show your current FPS on screen.");
