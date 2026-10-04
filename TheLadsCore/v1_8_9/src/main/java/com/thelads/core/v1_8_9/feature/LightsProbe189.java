@@ -36,6 +36,7 @@ final class LightsProbe189 {
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<>();
     private static boolean started, wasEnabled;
     private static long modifiedWas, timeWas;
+    private static int optiFineWas;
     private static float pitchWas;
     private static ItemStack heldWas;
     private static double offBrightness;
@@ -50,6 +51,7 @@ final class LightsProbe189 {
         modifiedWas = module.getLastModified();
         for (Option option : module.getOptions()) optionsWere.put(option, option.save());
         heldWas = mc.thePlayer.inventory.getCurrentItem();
+        try { optiFineWas = setting(mc); } catch (Exception failure) { throw new IllegalStateException(failure); }
         pitchWas = mc.thePlayer.rotationPitch;
         WorldServer world = mc.getIntegratedServer().worldServerForDimension(0);
         timeWas = world.getWorldTime();
@@ -99,7 +101,7 @@ final class LightsProbe189 {
         return after(5);
     }
 
-    /** Puts the module (which then puts OptiFine's setting back), the time, the held item and the view back. */
+    /** Puts the module and OptiFine's setting back and saves both, then the time, the held item and the view. */
     static void stop() {
         if (!started) return;
         started = false;
@@ -108,6 +110,11 @@ final class LightsProbe189 {
         for (Map.Entry<Option, JsonElement> entry : optionsWere.entrySet()) entry.getKey().load(entry.getValue());
         module.setEnabled(wasEnabled);
         module.setLastModified(modifiedWas);
+        com.thelads.core.config.ConfigManager.save();
+        try {
+            field().setInt(mc.gameSettings, optiFineWas);
+            mc.gameSettings.saveOptions();
+        } catch (Exception failure) { org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").error("OptiFine's Dynamic Lights setting was not put back", failure); }
         if (mc.thePlayer != null) {
             mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem] = heldWas;
             mc.thePlayer.rotationPitch = pitchWas;
