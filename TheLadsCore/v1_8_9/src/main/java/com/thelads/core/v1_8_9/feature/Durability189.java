@@ -11,8 +11,8 @@ import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 /**
- * EnhancedToolbars (Durability Tooltip) on 1.8.9, as 26.x NativeDurabilityTooltip: numbers, a bar or condition text from the shared
- * DurabilityPresentation, in place of 1.8.9's advanced "Durability: x / y" line. 1.8.9 text has the 16 chat colours, so each colour
+ * EnhancedToolbars on 1.8.9, as 26.x NativeDurabilityTooltip: Lads' durability line from the shared DurabilityPresentation, in
+ * place of 1.8.9's advanced "Durability: x / y" line. 1.8.9 text has the 16 chat colours, so each colour
  * is the nearest of them. ItemStackTooltipMixin hides attribute lines (Show Item Attributes).
  */
 public final class Durability189 {
@@ -26,24 +26,23 @@ public final class Durability189 {
         if (stack == null || !stack.isItemStackDamageable() || !Options189.enabled(MODULE) || !Options189.bool(MODULE, "Detailed Durability", true)) return;
         String exclusions = ((TextOption) Options189.module(MODULE).getOption("Excluded Mods")).getValue();
         if (!exclusions.equals(lastExclusions)) {
-            excluded = DurabilityPresentation.excludedNamespaces(exclusions);
+            excluded = DurabilityPresentation.exclusions(exclusions);
             lastExclusions = exclusions;
         }
         Object id = Item.itemRegistry.getNameForObject(stack.getItem());
-        String namespace = id instanceof ResourceLocation ? ((ResourceLocation) id).getResourceDomain() : "minecraft";
+        String itemId = id instanceof ResourceLocation ? id.toString() : "minecraft:";
         int maximum = stack.getMaxDamage(), damage = stack.getItemDamage();
-        if (!DurabilityPresentation.visible(namespace, maximum, damage, Options189.bool(MODULE, "Only Vanilla Tools", false),
+        if (!DurabilityPresentation.shows(itemId, maximum, damage, Options189.bool(MODULE, "Only Vanilla Tools", false),
             Options189.bool(MODULE, "Show When Full", true), excluded)) return;
         event.toolTip.remove("Durability: " + (maximum - damage) + " / " + maximum); // 1.8.9's own line (advanced tooltips)
-        DurabilityPresentation.Style style = new DurabilityPresentation.Style(
-            DurabilityPresentation.Format.values()[Options189.choice(MODULE, "Durability Style", 0)],
-            DurabilityPresentation.Coloring.values()[Options189.choice(MODULE, "Durability Color Style", 0)],
+        DurabilityPresentation.Settings settings = new DurabilityPresentation.Settings(
+            DurabilityPresentation.Shape.values()[Options189.choice(MODULE, "Durability Style", 0)],
+            DurabilityPresentation.Tint.values()[Options189.choice(MODULE, "Durability Color Style", 0)],
             Options189.bool(MODULE, "Show Durability Hint", true), Options189.bool(MODULE, "Show Max Durability", true),
             Options189.bool(MODULE, "Colorize Durability", true), Options189.color(MODULE, "Durability Base Color", 0xffaaaaaa));
-        for (DurabilityPresentation.Line line : DurabilityPresentation.lines(maximum, damage, style)) {
-            StringBuilder text = new StringBuilder();
-            for (DurabilityPresentation.Span span : line.spans()) text.append('\u00a7').append(Integer.toHexString(DurabilityPresentation.chatColor(span.rgb()))).append(span.text());
-            event.toolTip.add(text.toString());
-        }
+        StringBuilder text = new StringBuilder();
+        for (DurabilityPresentation.Part part : DurabilityPresentation.line(maximum, damage, settings))
+            text.append('\u00a7').append(Integer.toHexString(DurabilityPresentation.chatColor(part.rgb()))).append(part.text());
+        event.toolTip.add(text.toString());
     }
 }
