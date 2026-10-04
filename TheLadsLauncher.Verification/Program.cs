@@ -126,6 +126,8 @@ bool oldAnimCaptureVerification = autoWorldVerification && !capabilities.Forge &
 // Fabric versions: Lads Zoom through the real key and scroll handlers, photographed, with every frame's FOV in zoom-fov.csv (ZoomCapture).
 // 1.8.9's self-test (Probe160) always runs the same checks.
 bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ZOOM") == "1";
+// 26.x: Flashback Settings records into a Lads replay folder and times stock vs Lads exports of the same clip (FlashbackExportProbe).
+bool flashbackVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_FLASHBACK") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -259,9 +261,10 @@ if (autoWorldVerification && File.Exists(oldAnimCaptureRequest)) File.Delete(old
 string zoomCaptureRequest = Path.Combine(directory, ".lads-qa-capture-zoom");
 if (autoWorldVerification && File.Exists(zoomCaptureRequest)) File.Delete(zoomCaptureRequest);
 if (autoWorldVerification)
-    foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
+    foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed",
+        ".lads-qa-flashback", ".lads-qa-flashback-done", ".lads-qa-flashback-failed" })
         File.Delete(Path.Combine(directory, flag));
-using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification ? 20 : 10));
 var ct = timeout.Token;
 
 Process? process = null;
@@ -271,7 +274,7 @@ var runStartUtc = DateTime.UtcNow;
 string logPath = Path.Combine(directory, "production-smoke.log");
 StreamWriter? log = null;
 var logGate = new object();
-bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false;
+bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false, flashbackPassed = false, flashbackRequested = false;
 bool menuCaptureRequested = false, hudCaptureRequested = false, worldCapturesRequested = false, windowFound = false, snapshotInvalid = false;
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
@@ -306,7 +309,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
-    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED",
+    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED", "Lads Flashback probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -480,6 +483,7 @@ try
         if (Env("LADS_VERIFY_V133") == "1") AddJvm("-Dthelads.verify133=true");
         if (Env("LADS_VERIFY_V134") == "1") { AddJvm("-Dthelads.verify134=true"); AddJvm("-Dthelads.verifyRenderer=" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan")); }
         if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
+        if (flashbackVerification) AddJvm("-Dthelads.verifyFlashback=true");
         if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
         AddJvm("-Dthelads.verifySharedContent=true");
         if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
@@ -534,6 +538,7 @@ try
             if (failureMarkers.Any(line.Contains)) nativeProbeFailed = true;
             if (line.Contains("Lads 1.3.4 screenshots probe END:") && Passed(line)) screenshots134Passed = true;
             if (line.Contains("Lads 1.3.4 replay probe END:") && Passed(line)) replay134Passed = true;
+            if (line.Contains("Lads Flashback probe END:") && Passed(line)) flashbackPassed = true;
             if (line.Contains("Lads 1.3.4 renderer probe END:") && Passed(line)) renderer134Passed = true;
             if (line.Contains("Lads 1.3.3 probe END:") && Passed(line)) version133ProbePassed = true;
             foreach (string marker in requiredTitleProbes.Concat(requiredCore))
@@ -647,6 +652,15 @@ try
                         Console.WriteLine("Requesting real Flashback recording, replay and PNG export.");
                     }
                 }
+                else if (flashbackVerification && !flashbackPassed)
+                {
+                    if (!flashbackRequested)
+                    {
+                        await LockFiles.WriteAtomicallyAsync(Path.Combine(directory, ".lads-qa-flashback"), Encoding.UTF8.GetBytes("Record into the Lads replay folder and time stock vs Lads exports."), ct);
+                        flashbackRequested = true;
+                        Console.WriteLine("Requesting Flashback Settings recording and stock vs Lads exports.");
+                    }
+                }
                 else break;
             }
             // The world captures hold items, keys and the zoom, which a screen opened by a world probe (the screenshots gallery,
@@ -695,6 +709,7 @@ try
         Require(!exitedOnItsOwn || process.ExitCode == 0, "Game exited with an error.");
         Require(Env("LADS_VERIFY_V134") != "1" || screenshots134Passed, "1.3.4 external screenshot gallery probe did not finish.");
         Require(Env("LADS_VERIFY_REPLAY") != "1" || replay134Passed, "Flashback record/replay/export probe did not finish.");
+        Require(!flashbackVerification || flashbackPassed, "Flashback Settings probe did not finish.");
         Require(Env("LADS_VERIFY_V134") != "1" || renderer134Passed, "1.3.4 actual renderer/Flashback probe did not finish.");
         Require(Env("LADS_VERIFY_V133") != "1" || version133ProbePassed, "1.3.3 native/API probe did not finish.");
         Require(!nativeProbeFailed, $"A runtime probe or {modList.Name} reported a failure (see the FAILED lines). Inspect {(capabilities.Forge ? @"logs\latest.log" : "production-smoke.log")}.");

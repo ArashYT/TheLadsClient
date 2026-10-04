@@ -10,7 +10,7 @@ public final class ModuleSupport {
     private static final Map<String, String> EXTERNAL_IDS = new HashMap<>();
     /** Upstream mod id each module wraps or replaces, kept whether or not that mod is installed (launcher catalog). */
     private static final Map<String, String> EXTERNAL_MOD_IDS = new HashMap<>();
-    private static final java.util.Set<String> BUILT_IN = new java.util.HashSet<>();
+    private static final java.util.Set<String> BUILT_IN = new java.util.HashSet<>(), SETTINGS_ONLY = new java.util.HashSet<>();
     private static long revision;
     private static final Status PENDING = new Status(false, "Unavailable", "This feature is not connected to this game version yet.");
     private ModuleSupport() {}
@@ -27,6 +27,13 @@ public final class ModuleSupport {
         registerBuiltIn(name);
         STATUS.put(name, new Status(true, "Built in", "Included in The Lads Client. Changes apply immediately. " + limits));
     }
+    /** Built in with no on/off switch: the card opens its settings (e.g. Flashback's folder and export options). */
+    public static void registerSettingsOnly(String name) {
+        registerBuiltIn(name);
+        SETTINGS_ONLY.add(name);
+        STATUS.put(name, new Status(true, "Built in", "Included in The Lads Client and always on. Its settings apply immediately."));
+    }
+    public static boolean isSettingsOnly(String name) { return BUILT_IN.contains(name) && SETTINGS_ONLY.contains(name); }
     public static void registerExternal(String name, String modName, boolean installed) {
         BUILT_IN.remove(name);
         EXTERNAL_IDS.remove(name);
@@ -44,7 +51,7 @@ public final class ModuleSupport {
     public static String getExternalId(String name) { return EXTERNAL_IDS.get(name); }
     public static boolean isBuiltIn(String name) { return BUILT_IN.contains(name); }
     /** Same rule as the in-game card toggle: only built-in modules, and Discord RPC stays "Soon". */
-    public static boolean isToggleable(String name) { return isBuiltIn(name) && !"DiscordRPC".equals(name); }
+    public static boolean isToggleable(String name) { return isBuiltIn(name) && !"DiscordRPC".equals(name) && !isSettingsOnly(name); }
     /** Catalog support kind: builtIn, external (wraps an upstream mod), unavailable, or pending (never registered here). */
     public static String support(String name) {
         if (BUILT_IN.contains(name)) return "builtIn";
