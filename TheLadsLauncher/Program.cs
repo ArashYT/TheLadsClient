@@ -27,7 +27,7 @@ class Program
         }
 
         // QA captures of the shared-content and Mods UI: only ever against sandbox folders, never the real .minecraft or launcher data.
-        foreach (var preview in new[] { "--preview-shared", "--preview-mods", "--preview-worlds", "--preview-servers", "--preview-productivity", "--preview-discovery", "--preview-startup", "--preview-chrome", "--preview-content", "--preview-modpacks", "--preview-skins" })
+        foreach (var preview in new[] { "--preview-shared", "--preview-mods", "--preview-worlds", "--preview-servers", "--preview-productivity", "--preview-discovery", "--preview-startup", "--preview-chrome", "--preview-content", "--preview-modpacks", "--preview-skins", "--preview-language" })
         {
             int index = System.Array.IndexOf(args, preview);
             if (index >= 0 && (index + 1 >= args.Length

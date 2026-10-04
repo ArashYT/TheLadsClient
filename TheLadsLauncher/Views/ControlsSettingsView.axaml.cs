@@ -211,7 +211,7 @@ public partial class ControlsSettingsView : UserControl
         {
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 0, 24, 6) };
             row.Children.Add(new TextBlock { Text = key.Label, Classes = { "label" }, TextTrimming = TextTrimming.CharacterEllipsis });
-            var button = new Button { Classes = { "keybind" } };
+            var button = new Button { Classes = { "keybind", LauncherTranslator.NoTranslate } }; // key names stay as Minecraft shows them
             Grid.SetColumn(button, 1);
             button.Click += (_, _) => { StopListening(); _listening = key; button.Content = "> press a key <"; button.Classes.Add("listening"); };
             row.Children.Add(button);

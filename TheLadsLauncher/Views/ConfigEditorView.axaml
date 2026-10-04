@@ -10,7 +10,7 @@
         <Border Grid.Column="0" Background="#1D1E22" CornerRadius="4" BorderBrush="#303137" BorderThickness="1" Margin="0,0,12,0" Padding="12">
             <Grid RowDefinitions="Auto,*,Auto">
                 <TextBlock Text="Config Files" Foreground="White" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
-                <ListBox x:Name="ConfigFilesList" Grid.Row="1" Background="Transparent" BorderThickness="0" 
+                <ListBox x:Name="ConfigFilesList" Classes="notranslate" Grid.Row="1" Background="Transparent" BorderThickness="0" 
                          SelectionChanged="ConfigFilesList_SelectionChanged">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="views:ConfigFileItem">

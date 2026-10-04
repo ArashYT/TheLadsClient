@@ -56,9 +56,9 @@ public partial class WorldsView : UserControl
         foreach (var world in filtered)
         {
             var text = new StackPanel { Spacing = 4 };
-            text.Children.Add(new TextBlock { Text = world.Name, FontSize = 16, FontWeight = FontWeight.SemiBold });
-            text.Children.Add(new TextBlock { Text = $"{world.Category}  ·  {world.Source}  ·  {world.Version}  ·  {world.LastPlayed.ToLocalTime():g}", Foreground = Brushes.LightGray, TextWrapping = TextWrapping.Wrap });
-            text.Children.Add(new TextBlock { Text = world.Folder, FontSize = 11, Foreground = Brushes.Gray, TextWrapping = TextWrapping.Wrap });
+            text.Children.Add(new TextBlock { Text = world.Name, FontSize = 16, FontWeight = FontWeight.SemiBold }.Untranslated());
+            text.Children.Add(new TextBlock { Text = $"{world.Category}  ·  {world.Source}  ·  {world.Version}  ·  {world.LastPlayed.ToLocalTime():g}", Foreground = Brushes.LightGray, TextWrapping = TextWrapping.Wrap }.Untranslated());
+            text.Children.Add(new TextBlock { Text = world.Folder, FontSize = 11, Foreground = Brushes.Gray, TextWrapping = TextWrapping.Wrap }.Untranslated());
             if (world.Warning != null) text.Children.Add(new TextBlock { Text = world.Warning, TextWrapping = TextWrapping.Wrap, Foreground = Brushes.Orange });
             var open = new Button { Content = "Open folder", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left };
             open.Click += (_, _) => { try { Process.Start(new ProcessStartInfo(world.Folder) { UseShellExecute = true }); } catch (Exception e) { Status.Text = e.Message; } };
