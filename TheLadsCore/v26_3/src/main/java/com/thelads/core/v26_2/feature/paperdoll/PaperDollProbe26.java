@@ -53,7 +53,7 @@ final class PaperDollProbe26 {
             var avatar = (AvatarRenderState) left;
             check(avatar.bodyRot == 160 && ((AvatarRenderState) PaperDoll26.state(1, false)).bodyRot == 200, "turned toward the screen middle from either side");
             check(avatar.xRot == 10, "pitch held within Maximum Pitch (" + avatar.xRot + ")");
-            check(avatar.scale == 1 && avatar.shadowPieces.isEmpty() && avatar.outlineColor == 0, "no world scale, shadow or outline");
+            check(avatar.scale == 1 && avatar.shadowPieces.isEmpty() && avatar.outlineColor == 0 && avatar.nameTag == null, "no world scale, shadow, outline or name tag");
             check(player.getXRot() == 70 && player.getYRot() == yaw && player.yBodyRot == body && player.yHeadRot == head, "the player is not turned");
             number("Model Opacity", 50);
             NativeAutohide.PICTURES.clear();

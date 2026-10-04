@@ -33,7 +33,8 @@ public abstract class NametagLivingMixin {
     @Inject(method = "canRenderName(Lnet/minecraft/entity/EntityLivingBase;)Z", at = @At("HEAD"), cancellable = true, require = 0)
     private void ladsOwnName(EntityLivingBase entity, CallbackInfoReturnable<Boolean> cir) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (entity == mc.thePlayer && mc.getRenderViewEntity() == entity && mc.gameSettings.thirdPersonView != 0 && Nametags189.ownNametag())
+        if (entity == mc.thePlayer && mc.getRenderViewEntity() == entity && mc.gameSettings.thirdPersonView != 0 && Nametags189.ownNametag()
+            && !com.thelads.core.v1_8_9.feature.PaperDoll189.drawing())
             cir.setReturnValue(Minecraft.isGuiEnabled() && !entity.isInvisibleToPlayer(mc.thePlayer) && entity.riddenByEntity == null);
     }
 }
