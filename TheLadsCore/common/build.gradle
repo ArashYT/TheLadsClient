@@ -32,12 +32,7 @@ test {
     useJUnitPlatform()
 }
 
-// MPL-covered Paper Doll timing source travels with every artifact containing common classes.
 processResources {
-    from('src/main/java') {
-        include 'com/thelads/core/client/paperdoll/**'
-        into 'assets/theladscore/sources/paperdoll/common'
-    }
     from('src/main/java') {
         include 'com/thelads/core/client/SignalLossPolicy.java'
         include 'com/thelads/core/modules/SignalLossModule.java'
