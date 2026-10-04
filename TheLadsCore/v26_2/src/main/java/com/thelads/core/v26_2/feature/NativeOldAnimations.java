@@ -192,15 +192,19 @@ public final class NativeOldAnimations {
     }
 
     /**
-     * Instant sneak camera, each Camera.tick: 1.7's step towards the eye height instead of vanilla's half-way ease. Your own sneak is
-     * your keys' (LocalPlayer.isCrouching), as in 1.7 and 1.8, not the pose the server echoes back a tick or two later: after a quick
-     * sneak tap that echo crouched the player again for a tick, and the instant step dropped the camera a second time.
+     * Instant sneak camera, each Camera.tick: 1.7's step towards the eye height instead of vanilla's half-way ease. Your own sneak
+     * follows your keys, as in 1.7 and 1.8 (Player.getDesiredPose: the sneak key, or no room to stand), not the pose a server sends
+     * back a tick or more later, which after a quick sneak tap would crouch the player again and drop the camera a second time.
      */
     public static float eyeHeight(Entity entity, float previous, float vanilla) {
         if (!active(Feature.INSTANT_SNEAK)) return vanilla;
         float target = entity.getEyeHeight();
-        if (entity instanceof LocalPlayer player && (player.getPose() == Pose.STANDING || player.getPose() == Pose.CROUCHING))
-            target = player.getEyeHeight(player.isCrouching() ? Pose.CROUCHING : Pose.STANDING);
+        if (entity instanceof LocalPlayer player && (player.getPose() == Pose.STANDING || player.getPose() == Pose.CROUCHING)) {
+            boolean crouch = player.isShiftKeyDown() && !player.getAbilities().flying
+                || !player.isSpectator() && !player.isPassenger()
+                && !player.level().noCollision(player, player.getDimensions(Pose.STANDING).makeBoundingBox(player.position()).deflate(1.0E-7));
+            target = player.getEyeHeight(crouch ? Pose.CROUCHING : Pose.STANDING);
+        }
         float eye = OldAnimations.sneakEyeHeight(previous, target);
         if (eye != vanilla) APPLIED.add(Feature.INSTANT_SNEAK);
         return eye;

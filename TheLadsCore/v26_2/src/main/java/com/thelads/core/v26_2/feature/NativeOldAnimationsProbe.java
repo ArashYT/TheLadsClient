@@ -35,6 +35,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -147,7 +148,7 @@ final class NativeOldAnimationsProbe {
             require(instant == player.getEyeHeight() && eased > instant && NativeOldAnimations.APPLIED.contains(Feature.INSTANT_SNEAK),
                 "Instant sneak camera drops within one tick");
             // A crouch the server echoes after the sneak key is up (a quick tap): the 1.7 camera stays up; vanilla eases down.
-            set(player, "crouching", false);
+            player.input.keyPresses = Input.EMPTY;
             NativeOldAnimations.module().setEnabled(true);
             set(camera, "eyeHeight", standing);
             set(camera, "eyeHeightOld", standing);
@@ -264,7 +265,7 @@ final class NativeOldAnimationsProbe {
         NativeOldAnimations.module().setEnabled(enabled);
         NativeOldAnimations.APPLIED.clear();
         Minecraft.getInstance().player.setPose(Pose.CROUCHING);
-        set(Minecraft.getInstance().player, "crouching", true); // the sneak key's own crouch, which the 1.7 camera follows
+        Minecraft.getInstance().player.input.keyPresses = new Input(false, false, false, false, false, true, false); // the sneak key
         set(camera, "eyeHeight", standing);
         set(camera, "eyeHeightOld", standing);
         camera.tick();
