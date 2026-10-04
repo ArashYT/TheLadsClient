@@ -33,6 +33,8 @@
     "NarratorShortcutMixin",
     "ChatIndicatorMixin",
     "DamageTiltMixin",
+    "DynamicLightsBlockMixin",
+    "DynamicLightsEntityMixin",
     "ItemTooltipMixin",
     "OwnNametagMixin",
     "NametagBackgroundMixin",

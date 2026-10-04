@@ -44,7 +44,7 @@ public class TheLadsCore189 {
     public static final String[][] MOD_BACKED = {
         {"Performance", "Sodium"}, {"Lithium", "Lithium"}, {"FerriteCore", "FerriteCore"},
         {"ScalableLux", "ScalableLux"}, {"Exordium", "Exordium"}, {"DynamicFPS", "Dynamic FPS"},
-        {"DynamicLights", "LambDynamicLights"}, {"SkinLayers", "3D Skin Layers"}, {"NotEnoughAnimations", "Not Enough Animations"},
+        {"SkinLayers", "3D Skin Layers"}, {"NotEnoughAnimations", "Not Enough Animations"},
         {"BetterStats", "Better Statistics Screen"},
         {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroMinimap", "Xaero's Minimap"}, {"XaeroWorldmap", "Xaero's World Map"},
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"}};
@@ -138,7 +138,10 @@ public class TheLadsCore189 {
             + "so Sign Configured Commands has nothing to sign, and it sends at most 100 characters per action message."},
         // KillBanner189 through Forge's attack and chat events and NetHandlerPlayClientMixin, as 26.x NativeKillBanner.
         {"KillBanner", "Minecraft 1.8.9 sends no damage events, so a kill counts when your own blow, or a server kill message after it, "
-            + "finishes the target; arrows and other indirect kills do not."}
+            + "finishes the target; arrows and other indirect kills do not."},
+        // DynamicLights189 through OptiFine's GameSettings.ofDynamicLights, as 26.x NativeDynamicLights.
+        {"DynamicLights", "On Minecraft 1.8.9 it switches OptiFine's Dynamic Lights (Off, Fast or Fancy), which light up held items, burning "
+            + "and glowing entities and dropped items with no radius, entity or underwater settings."}
     };
 
     static void registerStatuses() {
@@ -150,6 +153,7 @@ public class TheLadsCore189 {
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
         ModuleSupport.registerUnavailable("ShulkerBoxUtils", "Minecraft 1.8.9 has no shulker boxes; they were added in Minecraft 1.11.");
         for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);
+        com.thelads.core.v1_8_9.feature.DynamicLights189.register(); // unavailable without OptiFine
         // The launcher's 1.8.9 pack includes Resourcify (its own in-game browser, no Lads settings page).
         ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));
     }
@@ -161,6 +165,7 @@ public class TheLadsCore189 {
         Minecraft mc = Minecraft.getMinecraft();
         OldAnimations189.tick(mc);
         com.thelads.core.v1_8_9.feature.PaperDoll189.tick(mc);
+        com.thelads.core.v1_8_9.feature.DynamicLights189.tick(mc);
         Zoom189.tick(mc);
         if (mc.thePlayer != null) {
             com.thelads.core.config.Module fullbright = com.thelads.core.config.ModuleManager.getInstance().getModule("Fullbright");
