@@ -42,6 +42,7 @@
     "RenderEntityItemMixin",
     "RenderFishMixin",
     "ResourcePackRepositoryMixin",
+    "ScaledResolutionMixin",
     "ScreenShotHelperMixin",
     "ServerNameMixin",
     "SplashProgressMixin",
