@@ -242,6 +242,9 @@ final class OldAnimationsCapture {
     private static GameType modeBefore;
     private static int foodBefore;
     private static final StringBuilder CSV = new StringBuilder();
+    /** The input checks' own stone platform, 40 blocks above the QA player (the 26.2 QA world puts the player in the sea). */
+    private static final Map<net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState> PLATFORM = new LinkedHashMap<>();
+    private static double[] platform;
 
     private static void inputTick(Path game) {
         if (pendingFrame != null || frameBusy) return; // a frame is being saved
@@ -289,9 +292,8 @@ final class OldAnimationsCapture {
 
     private static List<Step> inputSteps() {
         List<Step> steps = new ArrayList<>();
-        steps.add(mc -> { // survival with a sword, bow and food (shield in the off hand, an arrow), looking down at the block below
+        steps.add(mc -> { // survival with a sword, bow and food (shield in the off hand, an arrow), on a stone platform in the air
             LocalPlayer player = mc.player;
-            if (!player.onGround()) throw new IllegalStateException("the QA player must stand on a block for survival");
             slotBefore = player.getInventory().getSelectedSlot();
             xRotBefore = player.getXRot();
             yRotBefore = player.getYRot();
@@ -309,11 +311,31 @@ final class OldAnimationsCapture {
                 server.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
                 server.getFoodData().setFoodLevel(10);
                 server.setGameMode(GameType.SURVIVAL);
+                var level = server.level();
+                var base = net.minecraft.core.BlockPos.containing(posBefore[0], posBefore[1], posBefore[2]).above(40);
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dz = -1; dz <= 1; dz++)
+                        for (int dy = 0; dy <= 2; dy++)
+                            if (!level.getBlockState(base.offset(dx, dy, dz)).isAir()) throw new IllegalStateException("no room for the QA platform at " + base);
+                PLATFORM.clear();
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dz = -1; dz <= 1; dz++) {
+                        var at = base.offset(dx, 0, dz);
+                        PLATFORM.put(at, level.getBlockState(at));
+                        level.setBlockAndUpdate(at, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+                    }
+                platform = new double[]{base.getX() + 0.5, base.getY() + 1, base.getZ() + 0.5};
+                server.teleportTo(platform[0], platform[1], platform[2]);
             });
             mc.options.setCameraType(CameraType.FIRST_PERSON);
-            aimAtPlainBlock(player);
             NativeOldAnimations.module().getOptions().forEach(Option::reset);
             NativeQualityOfLife.module("LegacySwing").setEnabled(false);
+            return 10;
+        });
+        steps.add(mc -> {
+            if (platform == null) throw new IllegalStateException("the QA platform was not built");
+            check(Math.abs(mc.player.getY() - platform[1]) < 0.01 && mc.player.onGround(), "the QA player stands on the input checks' stone platform");
+            aimAtPlainBlock(mc.player);
             return 20;
         });
         for (boolean on : new boolean[]{true, false})
@@ -336,9 +358,12 @@ final class OldAnimationsCapture {
                     if (perTick * 12 >= 1) throw new IllegalStateException(state + mc.level.getBlockState(pos) + " breaks within 12 ticks");
                     mouseGrabbed(mc, true); // QA: continueAttack mines only with the mouse grabbed by a focused window
                     mc.options.keyAttack.setDown(true);
+                    sample = 0;
                     return 4;
                 });
                 steps.add(mc -> {
+                    // MultiPlayerGameMode.destroyDelay (5 ticks after an earlier probe's creative break) holds the mining back
+                    if (!mc.gameMode.isDestroying() && ++sample < 20) return -1;
                     check(mc.gameMode.isDestroying() && !mc.player.isUsingItem(), state + "the held attack key mines the block");
                     mc.options.keyUse.setDown(true);
                     return held == 1 ? 6 : 3;
@@ -416,7 +441,7 @@ final class OldAnimationsCapture {
             // Fly-cancel bob: up 24 blocks, falling, then flying stops the fall.
             mc.player.getAbilities().flying = false;
             mc.player.onUpdateAbilities();
-            onServer(server -> server.teleportTo(posBefore[0], posBefore[1] + 24, posBefore[2]));
+            onServer(server -> server.teleportTo(platform[0], platform[1] + 24, platform[2]));
             CSV.setLength(0);
             CSV.append("tick,phase,velocityY,partial0,partial25,partial50,partial75\n");
             sample = 0;
@@ -461,6 +486,8 @@ final class OldAnimationsCapture {
                 GameType mode = modeBefore;
                 double[] at = posBefore;
                 onServer(server -> {
+                    PLATFORM.forEach(server.level()::setBlockAndUpdate); // the platform goes, as found
+                    PLATFORM.clear();
                     server.setGameMode(mode);
                     if (!INVENTORY.isEmpty()) { // saved on the server thread before this task
                         server.getInventory().clearContent();
