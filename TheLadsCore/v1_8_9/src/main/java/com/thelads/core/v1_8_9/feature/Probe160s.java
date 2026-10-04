@@ -33,6 +33,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.opengl.Display;
 
 /**
  * QA only: 1.6.0's Controls search and smooth list scrolling, run by CoreProbe in its QA world after Probe151. Options -> Controls
@@ -53,6 +54,7 @@ final class Probe160s {
     private static ControlsScreen189 controls;
     private static Frames frames;
     private static float moved;
+    private static int glideTries;
     private static final StringBuilder SAMPLES = new StringBuilder();
 
     private Probe160s() {}
@@ -182,7 +184,7 @@ final class Probe160s {
     }
 
     private static boolean glidedControls(Minecraft mc) throws Exception {
-        glided(mc, "the Controls list (GuiListExtended)", 5, "160-scroll-controls");
+        if (!glidedOrAgain(mc, "the Controls list (GuiListExtended)", 5, "160-scroll-controls")) return false;
         // Another glide back up, interrupted by a direct scroll (as a drag or the scroll buttons move it).
         return notches(5) && after(1);
     }
@@ -208,7 +210,7 @@ final class Probe160s {
     }
 
     private static boolean glidedLanguage(Minecraft mc) throws Exception {
-        glided(mc, "the Language list (GuiSlot)", 3, "160-scroll-language");
+        if (!glidedOrAgain(mc, "the Language list (GuiSlot)", 3, "160-scroll-language")) return false;
         stop();
         mc.displayGuiScreen(null);
         return after(10);
@@ -253,6 +255,27 @@ final class Probe160s {
         check(!scroll.isEmpty() && scroll.get(scroll.size() - 1) == target && rising && between >= 3 && !gliding(list),
             what + " glides to " + target + " over " + between + " in-between frames instead of jumping (samples in " + file.getName() + ")");
         screenshot(mc, shot);
+    }
+
+    /**
+     * glided(), measured once more when it fails: a wheel turned over the QA window (Windows scrolls the window under the pointer,
+     * focused or not) bends the samples, as one reversing a glide halfway did. A broken glide fails both times; both are logged.
+     */
+    private static boolean glidedOrAgain(Minecraft mc, String what, int notches, String shot) throws Exception {
+        try {
+            glided(mc, what, notches, shot);
+            glideTries = 0;
+            return true;
+        } catch (IllegalStateException failure) {
+            if (++glideTries > 1) throw failure;
+            LogManager.getLogger("TheLadsCore").warn("Lads 1.8.9 core probe: measuring {} once more (window focused {}): {}", what, Display.isActive(),
+                failure.getMessage());
+            GuiSlot list = frames.list;
+            list.scrollBy(-10_000); // straight back to the top; a direct scroll also ends a glide
+            frames.scroll.clear();
+            CoreProbe.wheel(list.left + list.width / 2, (list.top + list.bottom) / 2, -notches);
+            return CoreProbe.retry(20);
+        }
     }
 
     /** The first list among a screen's fields (and its superclasses'), found by type: field names are obfuscated outside dev. */

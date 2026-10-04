@@ -2,6 +2,7 @@ package com.thelads.core.v1_8_9.feature;
 
 import static com.thelads.core.v1_8_9.feature.CoreProbe.after;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
+import static com.thelads.core.v1_8_9.feature.CoreProbe.retry;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.screenshot;
 
 import com.thelads.core.config.Module;
@@ -53,7 +54,7 @@ final class Probe151 {
     private static final boolean[] optionsWere = new boolean[Feature.values().length];
     private static boolean wasEnabled, legacyWas;
     private static long legacyFrames;
-    private static int slotWas, viewWas;
+    private static int slotWas, viewWas, dropWait;
     private static float pitchWas;
     private static ItemStack[] mainWas, armourWas;
     private static LadsSettingsScreen189 settings;
@@ -246,6 +247,9 @@ final class Probe151 {
             },
             mc -> {
                 check(!items(mc).isEmpty(), state + "the integrated server dropped an apple in view");
+                // Its render hook counts frames: a loaded PC can render none in 3 ticks (every hook at 0), so on waits up to 2 s more.
+                if (on && OldAnimations189.hits(Hook.DROP) == 0 && ++dropWait < 40) return retry(1);
+                dropWait = 0;
                 hooks(on, "dropped apple", Hook.DROP);
                 screenshot(mc, "151-dropped-2d" + tag);
                 onServer(mc, player -> {
