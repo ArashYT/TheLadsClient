@@ -87,15 +87,18 @@ public class BetterF3Module extends Module {
         boolean hide = bool("Hide Inessential"), rainbow = bool("Rainbow Colors");
         List<Line> out = new ArrayList<>();
         Section current = null, last = null;
-        boolean blank = false, newSection = true;
+        boolean blank = false, newSection = true, hiddenAbove = false;
         for (String text : column) {
-            if (text == null || text.isEmpty()) { current = null; blank = newSection = true; continue; }
+            if (text == null || text.isEmpty()) { current = null; blank = newSection = true; hiddenAbove = false; continue; }
             String plain = FORMAT.matcher(text).replaceAll("");
             Section labelled = label(plain), section = labelled != null ? labelled : current;
             boolean header = newSection || section != current;
             current = section;
             newSection = false;
-            if (section != null && !bool(section.option) || hide && inessential(plain)) continue;
+            // A line without a "label: " of its own continues the one above (26.x wraps its key help): hidden with it.
+            boolean hidden = hide && (inessential(plain) || hiddenAbove && labelled == null && !plain.contains(": "));
+            hiddenAbove = hidden;
+            if (section != null && !bool(section.option) || hidden) continue;
             if (!out.isEmpty() && (blank || section != last)) out.add(GAP);
             blank = false;
             last = section;

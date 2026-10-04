@@ -20,7 +20,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.ActiveRenderInfo;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Items;
@@ -32,14 +34,17 @@ import net.minecraft.potion.PotionEffect;
  * QA only, run by CoreProbe in its QA world (-Dthelads.verify189F3Fov=true runs it alone). Better F3: the debug screen with the
  * module off (vanilla + OptiFine), mid slide-in, with its defaults, with Hide Inessential off, and with System, World and the
  * background off (f3-*.png). Custom FOV: the player's getFovModifier standing, sprinting, flying, with Speed II (given by the
- * integrated server) and with a fully drawn bow, at 0% and 100% of that change, plus the world FOV the camera settled at with
- * Speed II and the bow (Zoom189's last world FOV); lads-qa/screenshots/custom-fov.csv. Everything restored.
+ * integrated server) and with a fully drawn bow, at 0% and 100% of that change, plus the world FOV the camera settled at
+ * (Zoom189's last world FOV) standing (Underwater at 100% and 0%, should the camera be in water), with Speed II and with the bow;
+ * lads-qa/screenshots/custom-fov.csv. Everything restored.
  */
 final class Probe170F3Fov {
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe170F3Fov::vanilla, Probe170F3Fov::betterOn,
         Probe170F3Fov::open, Probe170F3Fov::slide, Probe170F3Fov::defaults, Probe170F3Fov::allLines, Probe170F3Fov::sectionsOff,
-        Probe170F3Fov::speedSynced, mc -> world(mc, "speed II", CustomFovModule.EFFECTS, 1.2), mc -> world(mc, "speed II", CustomFovModule.EFFECTS, 1),
-        Probe170F3Fov::bowDrawn, mc -> world(mc, "bow drawn", CustomFovModule.BOW, 0.85), Probe170F3Fov::bowDone);
+        mc -> world(mc, "standing", "Underwater 100%", 1, CustomFovModule.UNDERWATER, 0),
+        mc -> world(mc, "standing", "Underwater 0%", 1, CustomFovModule.UNDERWATER, 100) && give(mc), Probe170F3Fov::speedSynced,
+        mc -> world(mc, "speed II", "100%", 1.2, CustomFovModule.EFFECTS, 0), mc -> world(mc, "speed II", "0%", 1, CustomFovModule.EFFECTS, 100),
+        Probe170F3Fov::bowDrawn, mc -> world(mc, "bow drawn", "100%", 0.85, CustomFovModule.BOW, 0), Probe170F3Fov::bowDone);
     private static final Map<Option, JsonElement> SAVED = new LinkedHashMap<>();
     private static final StringBuilder CSV = new StringBuilder("state,share,fov_modifier,expected_modifier,world_fov\n");
     private static boolean f3Enabled, fovEnabled, flying;
@@ -91,7 +96,7 @@ final class Probe170F3Fov {
         return after(12);
     }
 
-    /** The last F3 frame; then the FOV modifier standing, sprinting and flying, and the server gives Speed II and a bow. */
+    /** The last F3 frame; then the FOV modifier standing, sprinting and flying. */
     private static boolean sectionsOff(Minecraft mc) throws Exception {
         screenshot(mc, "f3-5-system-world-background-off");
         mc.gameSettings.showDebugInfo = false;
@@ -108,6 +113,11 @@ final class Probe170F3Fov {
         mc.thePlayer.capabilities.isFlying = true;
         measure(mc, "flying", CustomFovModule.FLYING, 1.1);
         mc.thePlayer.capabilities.isFlying = flying;
+        return after(20);
+    }
+
+    /** The server gives Speed II and a bow. */
+    private static boolean give(Minecraft mc) {
         heldBefore = ItemStack.copyItemStack(mc.thePlayer.getCurrentEquippedItem());
         server(mc, player -> {
             player.addPotionEffect(new PotionEffect(Potion.moveSpeed.id, 20 * 60, 1));
@@ -122,13 +132,18 @@ final class Probe170F3Fov {
         return after(20);
     }
 
-    /** After the camera settled: the world FOV is the FOV setting times the modifier; then the next share. */
-    private static boolean world(Minecraft mc, String state, String change, double modifier) {
-        double expected = mc.gameSettings.fovSetting * modifier, world = Zoom189.lastWorldFov;
-        String share = modifier == 1 ? "0%" : "100%";
-        CSV.append(String.format(Locale.ROOT, "%s (world),%s,,%.5f,%.3f\n", state, share, modifier, world));
-        check(Math.abs(world / expected - 1) < 2e-3, "Custom FOV: " + state + " at " + share + ", world FOV " + world + " (expected " + expected + ")");
-        share(change, modifier == 1 ? 100 : 0);
+    /**
+     * After the camera settled: the world FOV is the FOV setting times the modifier and, with the camera in water, 1.8.9's 60/70
+     * kept at the Underwater share; then {@code next} is set to {@code nextShare}% for the next step.
+     */
+    private static boolean world(Minecraft mc, String state, String share, double modifier, String next, int nextShare) {
+        boolean wet = ActiveRenderInfo.getBlockAtEntityViewpoint(mc.theWorld, mc.getRenderViewEntity(), 1.0F).getMaterial() == Material.water;
+        double water = wet ? CustomFovModule.scaled(60.0 / 70.0, ((CustomFovModule) fov()).share(CustomFovModule.UNDERWATER)) : 1;
+        double expected = mc.gameSettings.fovSetting * modifier * water, world = Zoom189.lastWorldFov;
+        String where = wet ? "water" : "dry";
+        CSV.append(String.format(Locale.ROOT, "%s (world; %s),%s,,%.5f,%.3f\n", state, where, share, modifier, world));
+        check(Math.abs(world / expected - 1) < 2e-3, "Custom FOV: " + state + " (" + where + ") at " + share + ", world FOV " + world + " (expected " + expected + ")");
+        share(next, nextShare);
         return after(20);
     }
 
@@ -148,7 +163,7 @@ final class Probe170F3Fov {
     }
 
     private static boolean bowDone(Minecraft mc) throws Exception {
-        world(mc, "bow drawn", CustomFovModule.BOW, 1);
+        world(mc, "bow drawn", "0%", 1, CustomFovModule.BOW, 100);
         mc.thePlayer.clearItemInUse();
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
         final ItemStack held = heldBefore;

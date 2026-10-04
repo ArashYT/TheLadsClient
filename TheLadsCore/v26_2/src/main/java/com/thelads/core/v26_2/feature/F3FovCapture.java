@@ -25,6 +25,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.FogType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +34,8 @@ import org.slf4j.LoggerFactory;
  * the module off (the game's own), mid slide-in, with its defaults, with Hide Inessential off, and with System, World and the
  * background off (f3-*.png). Custom FOV: the player's FOV modifier from the game's own getFieldOfViewModifier (FOV Effects 100%)
  * standing, sprinting, flying, with Speed II (given by the integrated server) and with a fully drawn bow, at 0% and 100% of that
- * change, plus the world FOV the camera settled at with Speed II and the bow; screenshots/custom-fov.csv. All restored.
+ * change, plus the world FOV the camera settled at standing (Underwater at 100% and 0%: the QA player stands in the sea), with
+ * Speed II and with the bow; screenshots/custom-fov.csv. All restored.
  */
 final class F3FovCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -132,7 +134,13 @@ final class F3FovCapture {
                 player.getAbilities().flying = true;
                 measure("flying", "Flying", 1.1);
                 player.getAbilities().flying = flying;
-                heldBefore = player.getMainHandItem().copy();
+            }),
+            // The camera's water or lava FOV (the QA player may stand in the sea): Underwater at 100% and at 0%.
+            new Step(null, 1000, () -> { world("standing", "Underwater 100%", 1); share("Underwater", 0); }),
+            new Step(null, 1000, () -> {
+                world("standing", "Underwater 0%", 1);
+                share("Underwater", 100);
+                heldBefore = mc.player.getMainHandItem().copy();
                 server(sp -> {
                     sp.addEffect(new MobEffectInstance(MobEffects.SPEED, 20 * 60, 1));
                     sp.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BOW));
@@ -144,9 +152,9 @@ final class F3FovCapture {
                 measure("speed II", "Speed Effects", 1.2);
                 share("Speed Effects", 100);
             }),
-            new Step(null, 1000, () -> { world("speed II", "Speed Effects", 1.2); share("Speed Effects", 0); }),
+            new Step(null, 1000, () -> { world("speed II", "100%", 1.2); share("Speed Effects", 0); }),
             new Step(null, 1000, () -> {
-                world("speed II", "Speed Effects", 1);
+                world("speed II", "0%", 1);
                 share("Speed Effects", 100);
                 server(sp -> sp.removeEffect(MobEffects.SPEED));
                 check(mc.player.getMainHandItem().is(Items.BOW), "the bow reached the client's main hand");
@@ -159,9 +167,9 @@ final class F3FovCapture {
                 measure("bow drawn", "Bow Aiming", 0.85);
                 share("Bow Aiming", 100);
             }),
-            new Step(null, 1000, () -> { world("bow drawn", "Bow Aiming", 0.85); share("Bow Aiming", 0); }),
+            new Step(null, 1000, () -> { world("bow drawn", "100%", 0.85); share("Bow Aiming", 0); }),
             new Step(null, 1000, () -> {
-                world("bow drawn", "Bow Aiming", 1);
+                world("bow drawn", "0%", 1);
                 mc.player.stopUsingItem();
                 mc.options.keyUse.setDown(false);
                 ItemStack held = heldBefore;
@@ -184,13 +192,19 @@ final class F3FovCapture {
         share(change, 100);
     }
 
-    /** The world FOV the camera settled at: the FOV option times the modifier (Lads Zoom off, dry land). */
-    private static void world(String state, String change, double modifier) {
+    /**
+     * The world FOV the camera settled at (Lads Zoom off): the FOV option times the modifier and, with the camera in water or
+     * lava, the game's 6/7 kept at the Underwater share; both through the FOV Effects slider, as Camera computes them.
+     */
+    private static void world(String state, String share, double modifier) {
         Minecraft mc = Minecraft.getInstance();
-        double expected = mc.options.fov().get() * modifier, world = NativeFeatures.lastWorldFov;
-        String share = modifier == 1 ? "0%" : "100%";
-        CSV.append(String.format(Locale.ROOT, "%s (world),%s,,%.5f,%.3f\n", state, share, modifier, world));
-        check(Math.abs(world / expected - 1) < 2e-3, state + " at " + share + ": world FOV " + world + " (expected " + expected + ")");
+        FogType fluid = mc.gameRenderer.mainCamera().getFluidInCamera();
+        boolean wet = fluid == FogType.WATER || fluid == FogType.LAVA;
+        double effects = mc.options.fovEffectScale().get(), water = wet ? NativeCustomFov.scaled(0.85714287F, CustomFovModule.UNDERWATER) : 1;
+        double expected = mc.options.fov().get() * (1 + (modifier - 1) * effects) * (1 + (water - 1) * effects), world = NativeFeatures.lastWorldFov;
+        String where = wet ? fluid.name().toLowerCase(Locale.ROOT) : "dry";
+        CSV.append(String.format(Locale.ROOT, "%s (world; %s),%s,,%.5f,%.3f\n", state, where, share, modifier, world));
+        check(Math.abs(world / expected - 1) < 2e-3, state + " (" + where + ") at " + share + ": world FOV " + world + " (expected " + expected + ")");
     }
 
     private static void server(java.util.function.Consumer<net.minecraft.server.level.ServerPlayer> action) {
