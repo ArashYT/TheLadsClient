@@ -152,11 +152,21 @@ final class Probe150e {
         return after(1);
     }
 
-    /** The real tooltip renderer (GuiScreen.renderToolTip) over the world: food lines, then EnhancedToolbars' durability styles. */
+    /**
+     * The real tooltip renderer (GuiScreen.renderToolTip) over the HUD: food lines, then EnhancedToolbars' durability styles. It is
+     * drawn from the overlay event, not an opened screen: closing a screen while the window is in the background leaves the game
+     * without input focus, which later probes need.
+     */
     private static boolean tooltipShown(Minecraft mc) {
         String[] names = {"apple", "golden-carrot", "durability-numbers", "durability-bar", "durability-text"};
         if (pose > 0) screenshot(mc, "170-tooltip-" + names[pose - 1]);
-        if (pose == names.length) { pose = 0; mc.displayGuiScreen(null); return after(5); }
+        if (pose == names.length) {
+            pose = 0;
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(TOOLTIP);
+            TOOLTIP.stack = null;
+            return after(5);
+        }
+        if (pose == 0) net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(TOOLTIP);
         ItemStack stack = pose == 0 ? new ItemStack(Items.apple) : pose == 1 ? new ItemStack(Items.golden_carrot) : new ItemStack(Items.diamond_sword, 1, 1200);
         Options189.module("AppleSkin").setEnabled(true); // put back as found by crosshairsDone
         if (pose >= 2) {
@@ -168,15 +178,20 @@ final class Probe150e {
                 "EnhancedToolbars on 1.8.9: style " + (pose - 2) + " replaces the advanced durability line " + lines);
         }
         pose++;
-        mc.displayGuiScreen(new TooltipScreen(stack));
+        TOOLTIP.stack = stack;
         return after(10);
     }
 
-    private static final class TooltipScreen extends net.minecraft.client.gui.GuiScreen {
-        private final ItemStack stack;
-        TooltipScreen(ItemStack stack) { this.stack = stack; }
-        @Override public void drawScreen(int mouseX, int mouseY, float partial) { renderToolTip(stack, width / 2 - 60, height / 2 - 20); }
-        @Override public boolean doesGuiPauseGame() { return false; }
+    private static final TooltipOverlay TOOLTIP = new TooltipOverlay();
+
+    public static final class TooltipOverlay extends net.minecraft.client.gui.GuiScreen {
+        private ItemStack stack;
+        @net.minecraftforge.fml.common.eventhandler.SubscribeEvent
+        public void overlay(net.minecraftforge.client.event.RenderGameOverlayEvent.Post event) {
+            if (event.type != net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.ALL || stack == null) return;
+            setWorldAndResolution(Minecraft.getMinecraft(), event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
+            renderToolTip(stack, width / 2 - 60, height / 2 - 20);
+        }
     }
 
     /** Crosshair Tweaks styles: a cross with a centre dot, a green circle, a turned triangle, a thick arrow, the vanilla shape. */
