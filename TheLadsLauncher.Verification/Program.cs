@@ -126,6 +126,9 @@ bool oldAnimCaptureVerification = autoWorldVerification && !capabilities.Forge &
 // Fabric versions: Lads Zoom through the real key and scroll handlers, photographed, with every frame's FOV in zoom-fov.csv (ZoomCapture).
 // 1.8.9's self-test (Probe160) always runs the same checks.
 bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ZOOM") == "1";
+// Fabric versions: the Lads title screen and its More screen photographed before the QA world opens (NativeWorldVerification).
+// 1.8.9's self-test (CoreProbe) always captures them.
+bool titleCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_TITLE") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -478,6 +481,7 @@ try
         }
         if (renderScaleVerification) AddJvm("-Dthelads.verifyRenderScale=true");
         if (Env("LADS_VERIFY_V133") == "1") AddJvm("-Dthelads.verify133=true");
+        if (titleCaptureVerification) AddJvm("-Dthelads.verifyTitleCapture=true");
         if (Env("LADS_VERIFY_V134") == "1") { AddJvm("-Dthelads.verify134=true"); AddJvm("-Dthelads.verifyRenderer=" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan")); }
         if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
         if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
@@ -541,7 +545,7 @@ try
             foreach (string marker in requiredWorldProbes)
                 if (line.Contains(marker) && (Passed(line) || marker == "Lads food server sync END:")) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
-                "Lads 1.7 animations capture END:", "Lads zoom capture END:" })
+                "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads title capture END:", "Lads title More capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -758,6 +762,8 @@ try
             "The requested 1.7 Animations frames were not all captured.");
         Require(!zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:"),
             "The requested Lads Zoom capture did not pass. Inspect production-smoke.log.");
+        Require(!titleCaptureVerification || passedMarkers.ContainsKey("Lads title capture END:") && passedMarkers.ContainsKey("Lads title More capture END:"),
+            "The requested title and More frames were not both captured. Inspect production-smoke.log.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)

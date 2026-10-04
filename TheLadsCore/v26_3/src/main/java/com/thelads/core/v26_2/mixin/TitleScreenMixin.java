@@ -3,12 +3,14 @@ package com.thelads.core.v26_2.mixin;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter;
 import com.thelads.core.v26_2.gui.AccountSwitcherScreen26;
+import com.thelads.core.v26_2.gui.CompactButton26;
 import com.thelads.core.v26_2.gui.LadsSettingsScreen26;
 import com.thelads.core.v26_2.gui.TitleWidgetRegistry;
 import com.thelads.core.v26_2.gui.TitleExtrasScreen26;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -35,7 +37,8 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private int ladsLayoutWidth;
     @Unique private int ladsLayoutHeight;
     @Unique private Button ladsSettingsButton;
-    @Unique private Button ladsAccountsButton;
+    @Unique private Button ladsSwitchButton;
+    @Unique private Button ladsFullscreenButton;
     @Unique private Button ladsMoreButton;
     @Unique private List<AbstractWidget> ladsExtraWidgets = new ArrayList<>();
     @Unique private List<com.thelads.core.v26_2.gui.EssentialActions.Action> ladsEssentialActions = new ArrayList<>();
@@ -65,10 +68,16 @@ public abstract class TitleScreenMixin extends Screen {
         if (!ladsCustomTitle) return;
         ladsSettingsButton = addRenderableWidget(Button.builder(Component.literal("Lads Mods"),
             button -> minecraft.setScreenAndShow(new LadsSettingsScreen26(this))).bounds(0, 0, 1, 1).build());
-        ladsAccountsButton = addRenderableWidget(Button.builder(Component.literal("Accounts"),
-            button -> minecraft.setScreenAndShow(new AccountSwitcherScreen26(this))).bounds(0, 0, 1, 1).build());
         ladsMoreButton = addRenderableWidget(Button.builder(Component.literal("More..."),
             button -> minecraft.setScreenAndShow(new TitleExtrasScreen26(this, ladsExtraWidgets))).bounds(0, 0, 1, 1).build());
+        // Beside the account name (placed each frame after it) and top right, as on the pause menu; not in the menu grid.
+        ladsSwitchButton = addRenderableWidget(new CompactButton26(0, 0, 1, 1, Component.literal(TitleScreenTheme.SWITCH),
+            () -> "switch", button -> minecraft.setScreenAndShow(new AccountSwitcherScreen26(this))));
+        ladsSwitchButton.setTooltip(Tooltip.create(Component.literal("Switch account")));
+        ladsSwitchButton.setTabOrderGroup(200);
+        ladsFullscreenButton = addRenderableWidget(new CompactButton26(width - 26, 6, 20, 20, Component.translatable("options.fullscreen"),
+            () -> minecraft.options.fullscreen().get() ? "windowed" : "fullscreen", CompactButton26::toggleFullscreen));
+        ladsFullscreenButton.setTabOrderGroup(201);
 
         // Fabric screen events and other init mixins may still add or move widgets after this callback.
         // Leave their native geometry intact until the first draw has the complete widget set.
@@ -83,7 +92,7 @@ public abstract class TitleScreenMixin extends Screen {
         if (!changed) {
             int index = 0;
             for (GuiEventListener child : children()) {
-                if (!(child instanceof AbstractWidget widget) || ladsEssentialRow.contains(widget)) continue;
+                if (!(child instanceof AbstractWidget widget) || ladsOwnControl(widget)) continue;
                 if (index >= ladsTitleWidgets.size() || ladsTitleWidgets.get(index) != widget) {
                     changed = true;
                     break;
@@ -97,14 +106,14 @@ public abstract class TitleScreenMixin extends Screen {
         ladsTitleWidgets = new ArrayList<>();
         // Reuse every original widget, including restricted multiplayer, demo and late mod actions.
         for (GuiEventListener child : children()) {
-            if (child instanceof AbstractWidget widget && !ladsEssentialRow.contains(widget)) ladsTitleWidgets.add(widget);
+            if (child instanceof AbstractWidget widget && !ladsOwnControl(widget)) ladsTitleWidgets.add(widget);
         }
         // Keep the home screen focused. All secondary native/mod actions remain in More.
         for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
             String key = ladsMessageKey(widget);
-            boolean main = widget == ladsSettingsButton || widget == ladsMoreButton
-                || key.equals("menu.singleplayer") || key.equals("menu.playdemo")
-                || key.equals("menu.multiplayer") || key.equals("menu.options") || key.equals("menu.quit");
+            boolean main = widget == ladsSettingsButton || widget == ladsMoreButton || ladsIsModMenuWidget(widget)
+                || key.equals("menu.singleplayer") || key.equals("menu.playdemo") || key.equals("menu.multiplayer")
+                || key.equals("menu.options") || key.equals("menu.quit") || key.equals("screen.lads_screenshots.manage_screenshots");
             if (!main) {
                 ladsTitleWidgets.remove(widget);
                 removeWidget(widget);
@@ -113,7 +122,8 @@ public abstract class TitleScreenMixin extends Screen {
                     widget.visible = false;
                     if (!com.thelads.core.v26_2.gui.EssentialRow26.collect(this, widget, ladsEssentialActions)
                         && !ladsEssentialPending.contains(widget)) ladsEssentialPending.add(widget);
-                } else if (!ladsExtraWidgets.contains(widget)) ladsExtraWidgets.add(widget);
+                } else if (!ladsExtraWidgets.contains(widget) && !key.startsWith("fancymenu.widgetified_screens."))
+                    ladsExtraWidgets.add(widget); // FancyMenu's stand-ins for the vanilla logo, splash and branding: nothing to press
             }
         }
         ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
@@ -143,6 +153,12 @@ public abstract class TitleScreenMixin extends Screen {
             "custom title initialized for Minecraft 26.3: {} native widgets", ladsTitleWidgets.size());
     }
 
+    /** The Essential row, Switch and fullscreen: placed by this screen, outside the menu grid. */
+    @Unique
+    private boolean ladsOwnControl(AbstractWidget widget) {
+        return ladsEssentialRow.contains(widget) || widget == ladsSwitchButton || widget == ladsFullscreenButton;
+    }
+
     @Unique
     private static String ladsMessageKey(AbstractWidget widget) {
         Component message = widget.getMessage();
@@ -151,18 +167,15 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private int ladsButtonOrder(AbstractWidget widget) {
+        // In pairs below Singleplayer and Multiplayer: Lads Mods | Mods, Options | Screenshots, More... | Quit Game.
         if (widget == ladsSettingsButton) return 3;
         if (widget == ladsMoreButton) return 7;
-        if (widget == ladsAccountsButton) return 4;
-        if (ladsIsModMenuWidget(widget)) return 3;
+        if (ladsIsModMenuWidget(widget)) return 4;
         return switch (ladsMessageKey(widget)) {
             case "menu.singleplayer", "menu.playdemo" -> 0;
             case "menu.multiplayer" -> 1;
-            case "menu.online" -> 2;
-            case "modmenu.title", "fml.menu.mods" -> 3;
             case "menu.options" -> 5;
-            case "options.language" -> 6;
-            case "options.accessibility", "accessibility.onboarding.accessibility.button" -> 7;
+            case "screen.lads_screenshots.manage_screenshots" -> 6;
             case "menu.quit" -> 8;
             default -> 9;
         };
@@ -170,15 +183,14 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private String ladsButtonIcon(AbstractWidget widget) {
-        if (widget == ladsSettingsButton) return "mods";
-        if (widget == ladsAccountsButton) return "user";
+        if (widget == ladsSettingsButton) return "lads";
+        if (widget == ladsMoreButton) return "dots";
         if (ladsIsModMenuWidget(widget)) return "mods";
         return switch (ladsMessageKey(widget)) {
             case "menu.singleplayer", "menu.playdemo" -> "play";
             case "menu.multiplayer" -> "server";
-            case "menu.online" -> "realms";
-            case "modmenu.title", "fml.menu.mods" -> "mods";
             case "menu.options" -> "settings";
+            case "screen.lads_screenshots.manage_screenshots" -> "camera";
             case "options.language" -> "language";
             case "options.accessibility", "accessibility.onboarding.accessibility.button" -> "access";
             case "menu.quit" -> "quit";
@@ -186,11 +198,10 @@ public abstract class TitleScreenMixin extends Screen {
         };
     }
 
+    /** Mod Menu's "Mods", in any of its button styles. */
     @Unique
     private static boolean ladsIsModMenuWidget(AbstractWidget widget) {
-        String type = widget.getClass().getName();
-        return type.equals("com.terraformersmc.modmenu.gui.widget.ModMenuButtonWidget")
-            || type.equals("com.terraformersmc.modmenu.gui.widget.SmallModMenuButtonWidget");
+        return widget.getClass().getName().startsWith("com.terraformersmc.modmenu.") || ladsMessageKey(widget).equals("modmenu.title");
     }
 
     @Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
@@ -210,8 +221,9 @@ public abstract class TitleScreenMixin extends Screen {
         boolean reducedMotion = panoramaSpeed <= 0 || minecraft.options.screenEffectScale().get() <= 0;
         if (!reducedMotion) ladsAnimationSeconds += elapsed * panoramaSpeed;
         var adapter = new GuiGraphicsExtractorLadsAdapter(graphics, font);
-        TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(),
-            net.minecraft.SharedConstants.getCurrentVersion().name() + (minecraft.isDemo() ? " Demo" : ""), false, ladsAnimationSeconds);
+        TitleScreenTheme.Rect switchBox = TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(),
+            net.minecraft.SharedConstants.getCurrentVersion().name() + (minecraft.isDemo() ? " Demo" : ""), false, ladsAnimationSeconds, true);
+        ladsSwitchButton.setRectangle(switchBox.width(), switchBox.height(), switchBox.x(), switchBox.y());
         TitleWidgetRegistry.beginFrame(this, adapter, elapsed, reducedMotion);
         try {
             // Calls Screen, not TitleScreen: only native widgets and extra renderables, never vanilla artwork.

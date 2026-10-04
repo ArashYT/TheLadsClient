@@ -68,6 +68,18 @@ public final class TitleScreenTheme {
 
     public static void renderBackground(LadsGraphics g, Layout l, String username,
                                         String version, boolean online, double seconds) {
+        renderBackground(g, l, username, version, online, seconds, false);
+    }
+
+    /** The account card's account-switcher button. */
+    public static final String SWITCH = "Switch";
+
+    /**
+     * {@code withSwitch}: the account card keeps room after the name for its Switch button, whose place this returns (null
+     * without it): labelled, or its icon alone when the bottom line is too narrow for the label.
+     */
+    public static Rect renderBackground(LadsGraphics g, Layout l, String username,
+                                        String version, boolean online, double seconds, boolean withSwitch) {
         int w = l.width(), h = l.height();
         for (int i = 0; i < 32; i++) {
             int top = i * h / 32, bottom = (i + 1) * h / 32;
@@ -124,18 +136,22 @@ public final class TitleScreenTheme {
         }
         g.fill(16, h - 29, w - 16, h - 28, 0x2944202A);
         String build = com.thelads.core.LadsVersion.clientName() + " (" + version + ")";
-        renderAccount(g, h, username, Math.min(l.wide() ? 170 : 150, w - g.textWidth(build) - 58));
+        int room = w - g.textWidth(build) - 58, labelled = g.textWidth(SWITCH) + COMPACT_PADDING;
+        int switchWidth = !withSwitch ? 0 : room >= labelled + 66 ? labelled : 16; // the label while the name keeps a few letters
+        int right = renderAccount(g, h, username, Math.min(l.wide() ? 170 : 150, room - (withSwitch ? switchWidth + 6 : 0)));
         g.drawText(build, w - 18 - g.textWidth(build), h - 21, MUTED);
+        return withSwitch ? new Rect(right + 6, h - 25, switchWidth, 16) : null;
     }
 
-    /** The signed-in account at the bottom left, as on the title screen (the pause menu shows it too). */
-    public static void renderAccount(LadsGraphics g, int height, String username, int maxWidth) {
+    /** The signed-in account at the bottom left, as on the title screen (the pause menu shows it too); returns its right edge. */
+    public static int renderAccount(LadsGraphics g, int height, String username, int maxWidth) {
         var titleModule = ModuleManager.getInstance().getModule("TitleScreen");
         float accountScale = titleModule != null && titleModule.getOption("Account Card Scale") instanceof SliderOption value
             ? (float)value.getValue() / 100f : 1f;
         String name = fit(g, username == null ? "Player" : username, (int)(maxWidth / accountScale) - 15);
         g.pushPose(); g.translate(18, height - 21); g.scale(accountScale, accountScale);
         icon(g, "user", 0, 1, 9, ACCENT); g.drawText(name, 15, 0, TEXT); g.popPose();
+        return 18 + Math.round((name.isEmpty() ? 9 : 15 + g.textWidth(name)) * accountScale);
     }
 
     /** Height a bottom row of Essential actions takes above the account card. */
@@ -214,7 +230,7 @@ public final class TitleScreenTheme {
         roundRect(g, x, y, width, height, 5, active ? mix(base, target, hover) : LadsPalette.PANEL);
         g.fill(x + 5, y, x + width - 5, y + 1, primary ? 0x66FF6666 : alpha(0x00FF6666, active ? 28 + (int)(hover * 62) : 12));
         int color = !active ? LadsPalette.DISABLED : TEXT;
-        int iconSize = height < 23 ? 8 : 10;
+        int iconSize = 10;
         int inset = width < 100 ? 8 : 12;
         icon(g, icon, x + inset, y + (height - iconSize) / 2, iconSize, color);
         String caption = fit(g, label, width - inset - iconSize - 24);
@@ -268,6 +284,21 @@ public final class TitleScreenTheme {
     /** A compact button's width beyond its label: icon, gaps and edges. */
     public static final int COMPACT_PADDING = 26;
 
+    /** The pause menu's button icons: their size and gap to the label, centred together with it. */
+    public static final int LABEL_ICON = 10, LABEL_ICON_GAP = 4;
+
+    /** Where a label textWidth wide starts when centred together with its icon in a button at x, width wide. */
+    public static int iconLabelX(int x, int width, int textWidth) {
+        return Math.max(x + 4, x + (width - LABEL_ICON - LABEL_ICON_GAP - textWidth) / 2) + LABEL_ICON + LABEL_ICON_GAP;
+    }
+
+    /** The icon before a label placed by iconLabelX, with the label's drop shadow. */
+    public static void renderLabelIcon(LadsGraphics g, String icon, int x, int y, int width, int height, int textWidth, int color) {
+        int ix = iconLabelX(x, width, textWidth) - LABEL_ICON - LABEL_ICON_GAP, iy = y + (height - LABEL_ICON) / 2;
+        icon(g, icon, ix + 1, iy + 1, LABEL_ICON, color & 0xFF000000 | (color & 0xFCFCFC) >> 2);
+        icon(g, icon, ix, iy, LABEL_ICON, color);
+    }
+
     private static void ridge(LadsGraphics g, int[] heights, int width, int bottom, int color) {
         // Bound work even at 4K or GUI scale 1; each layer uses at most 240 strips.
         int strips = Math.min(240, Math.max(1, width / 2));
@@ -295,7 +326,35 @@ public final class TitleScreenTheme {
         g.fill(x + 10, y + 6, x + 22, y + 11, color);
     }
 
+    /** 10x10 pixel icons, one string per row ('#' drawn). */
+    private static final java.util.Map<String, String[]> PIXEL_ICONS = java.util.Map.of(
+        "settings", new String[] {"....##....", ".#.####.#.", "..######..", ".###..###.", "###....###",
+                                  "###....###", ".###..###.", "..######..", ".#.####.#.", "....##...."},
+        "dots", new String[] {"", "", "", "", "##..##..##", "##..##..##"},
+        "stats", new String[] {"........##", "........##", "....##..##", "....##..##", "....##..##",
+                               "##..##..##", "##..##..##", "##..##..##", "##..##..##", "##..##..##"},
+        "advancements", new String[] {".########.", "#.######.#", "#.######.#", ".#.####.#.", "...####...",
+                                      "....##....", "....##....", "...####...", "..######..", "..######.."},
+        "lads", new String[] {"##..##....", "##..##....", "##..##....", "##..######", "##..######",
+                              "##........", "##........", "##........", "########..", "########.."},
+        "replay", new String[] {"", "##########", "#........#", "#...#....#", "#...##...#",
+                                "#...###..#", "#...##...#", "#...#....#", "#........#", "##########"},
+        "camera", new String[] {"", "..###.....", "##########", "####..####", "###....###",
+                                "###....###", "####..####", "##########", "##########"},
+        "switch", new String[] {"......#...", "......##..", "#########.", "......##..", "......#...",
+                                "...#......", "..##......", ".#########", "..##......", "...#......"});
+
     private static void icon(LadsGraphics g, String kind, int x, int y, int size, int c) {
+        String[] rows = PIXEL_ICONS.get(kind);
+        if (rows != null) {
+            for (int row = 0; row < rows.length; row++)
+                for (int start = rows[row].indexOf('#'), end; start >= 0; start = rows[row].indexOf('#', end)) {
+                    end = start;
+                    while (end < rows[row].length() && rows[row].charAt(end) == '#') end++;
+                    g.fill(x + start, y + row, x + end, y + row + 1, c);
+                }
+            return;
+        }
         switch (kind) {
             case "play" -> {
                 for (int i = 0; i < size / 2; i++) g.fill(x + i, y + i, x + i + 1, y + size - i, c);

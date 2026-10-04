@@ -26,7 +26,8 @@ public final class TitleWidgetRegistry {
         WIDGETS.put(widget, new Entry(owner, icon, primary, renderLabel(widget), widget.getMessage()));
     }
 
-    private static String renderLabel(AbstractWidget widget) {
+    /** The short English label drawn for a title widget (More draws its copies with it too). */
+    static String renderLabel(AbstractWidget widget) {
         Component message = widget.getMessage();
         if (message == null) return "";
         String original = message.getString();
@@ -41,6 +42,8 @@ public final class TitleWidgetRegistry {
             case "options.language" -> "Language";
             case "options.accessibility", "accessibility.onboarding.accessibility.button" -> "Accessibility";
             case "title.credits" -> "Credits";
+            case "modmenu.title" -> "Mods"; // without Mod Menu's mod count, which would not fit
+            case "screen.lads_screenshots.manage_screenshots" -> "Screenshots";
             default -> original;
         };
     }
