@@ -88,8 +88,12 @@ public final class NativeMouseTweaks implements MouseTweaksModule.Menu<Slot, Ite
 
     /** In the player's own inventory: hotbar and main inventory. Elsewhere: the player's 36 slots and the container's. */
     @Override public int part(Slot slot) {
-        if (slot.container instanceof Inventory && slot.getContainerSlot() < Inventory.INVENTORY_SIZE)
-            return ownInventory ? (slot.getContainerSlot() < Inventory.SELECTION_SIZE ? 1 : 2) : 1;
-        return ownInventory ? 0 : 2;
+        if (ownInventory) {
+            // InventoryMenu's own numbering; the creative tab's wrappers carry it as their container slot.
+            int i = screen instanceof CreativeModeInventoryScreen ? slot.getContainerSlot() : slot.index;
+            return i >= InventoryMenu.USE_ROW_SLOT_START && i < InventoryMenu.USE_ROW_SLOT_END ? 1
+                : i >= InventoryMenu.INV_SLOT_START && i < InventoryMenu.INV_SLOT_END ? 2 : 0;
+        }
+        return slot.container instanceof Inventory && slot.getContainerSlot() < Inventory.INVENTORY_SIZE ? 1 : 2;
     }
 }
