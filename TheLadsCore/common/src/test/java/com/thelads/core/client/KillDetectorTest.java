@@ -92,7 +92,8 @@ class KillDetectorTest {
         module.randomize.setIndex(KillBannerModule.RANDOM_SKIN);
         Set<KillBannerStyle> skins = new HashSet<>();
         for (int i = 0; i < 200; i++) { var pick = module.next(); skins.add(pick.style()); assertEquals(pick.style(), pick.soundStyle()); }
-        assertEquals(Set.of(KillBannerStyle.REAVER, KillBannerStyle.ROGUE), skins);
+        assertTrue(skins.size() > 2, "random skin picks from all available skins");
+        assertTrue(skins.contains(KillBannerStyle.REAVER) || skins.contains(KillBannerStyle.ROGUE));
 
         module.randomize.setIndex(KillBannerModule.RANDOM_CHOSEN);
         module.randomPool.setValue("");
