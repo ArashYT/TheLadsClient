@@ -27,9 +27,9 @@ public final class PacketErrorPolicy {
     public static int skippedCount() { return SKIPPED.get(); }
 
     /** Logs a skipped packet: the stack trace for the first few, one line after that so a broken server can't flood the log. */
-    public static void skipped(String what, Object packet, Throwable failure) {
+    public static void skipped(String what, Throwable failure) {
         int count = SKIPPED.incrementAndGet();
-        if (count <= 3) LOGGER.warn("Lads IgnorePacketErrors: skipped {} {} instead of disconnecting (#{})", what, packet, count, failure);
-        else LOGGER.warn("Lads IgnorePacketErrors: skipped {} {} instead of disconnecting (#{}): {}", what, packet, count, failure.toString());
+        if (count <= 3) LOGGER.warn("Lads IgnorePacketErrors: skipped {} instead of disconnecting (#{})", what, count, failure);
+        else LOGGER.warn("Lads IgnorePacketErrors: skipped {} instead of disconnecting (#{}): {}", what, count, failure.toString());
     }
 }

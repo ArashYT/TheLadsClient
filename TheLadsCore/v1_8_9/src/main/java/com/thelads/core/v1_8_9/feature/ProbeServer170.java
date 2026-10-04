@@ -38,7 +38,7 @@ import net.minecraftforge.fml.client.FMLClientHandler;
 import org.lwjgl.input.Keyboard;
 
 /**
- * QA only: 1.7.0's multiplayer features, run by CoreProbe in its QA world after Probe160. IgnorePacketErrors (an undecodable frame
+ * QA only: 1.7.0's multiplayer features, run by CoreProbe in its QA world after Probe150. IgnorePacketErrors (an undecodable frame
  * through a real MessageDeserializer; a packet whose handler throws on the network thread, through the real NetworkManager, staying
  * connected), then with it off the same packet disconnects the world and AutoReconnect counts down and reopens it; a closed local
  * port retried twice; Ctrl+R on the server list; the QA world reopened. Screenshots 170-*.png; modules and options put back.
@@ -98,7 +98,8 @@ final class ProbeServer170 {
         boolean failed = false;
         try { vanilla.writeInbound(Unpooled.wrappedBuffer(new byte[] {0x7F, 1, 2, 3})); }
         catch (Exception expected) { failed = true; }
-        vanilla.finish();
+        // Vanilla kept the bad frame's tail, which closing would decode again: only the write above is under test.
+        try { vanilla.finish(); } catch (Exception leftover) { }
         Options189.module("IgnorePacketErrors").setEnabled(true);
         check(failed, "with IgnorePacketErrors off the same frame fails as in vanilla");
         return after(1);
