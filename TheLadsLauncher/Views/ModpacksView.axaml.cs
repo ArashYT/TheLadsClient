@@ -109,8 +109,8 @@ public partial class ModpacksView : UserControl
                 Child = new TextBlock { Text = "Running", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White }
             });
         var text = new StackPanel { Margin = new Thickness(12, 9, 12, 12), Spacing = 2 };
-        text.Children.Add(new TextBlock { Text = instance.Name, FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White, TextTrimming = TextTrimming.CharacterEllipsis });
-        text.Children.Add(new TextBlock { Text = Byline(instance), FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), TextTrimming = TextTrimming.CharacterEllipsis });
+        text.Children.Add(new TextBlock { Text = instance.Name, FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated());
+        text.Children.Add(new TextBlock { Text = Byline(instance), FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated(instance.Author is { Length: > 0 }));
         var body = new StackPanel();
         body.Children.Add(top);
         body.Children.Add(text);
@@ -308,7 +308,7 @@ public partial class ModpacksView : UserControl
         {
             new Avalonia.Controls.Documents.Run(hit.Title) { FontSize = 15, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White },
             new Avalonia.Controls.Documents.Run("  by " + hit.Author) { FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")) }
-        } };
+        } }.Untranslated();
         text.Children.Add(title);
         text.Children.Add(new TextBlock { Text = hit.Description, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = new SolidColorBrush(Color.Parse("#C9CAD1")), FontSize = 12 });
         string versions = hit.GameVersions.Count == 0 ? "" : hit.GameVersions.Count == 1 ? hit.GameVersions[0] : $"{hit.GameVersions[0]} – {hit.GameVersions[^1]}";
@@ -431,7 +431,7 @@ public partial class ModpacksView : UserControl
             ModsList.Children.Add(new TextBlock { Text = i.Loader == "vanilla" ? "Vanilla instances have no mods." : "No mods yet. Use Open folder and put mods in the mods folder.", Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")) });
         foreach (var mod in mods)
         {
-            var box = new CheckBox { Content = mod.FileName, IsChecked = mod.Enabled, IsEnabled = Idle(i) };
+            var box = new CheckBox { Content = mod.FileName, IsChecked = mod.Enabled, IsEnabled = Idle(i) }.Untranslated();
             box.IsCheckedChanged += (_, _) =>
             {
                 try { Modpacks.SetModEnabled(mod, box.IsChecked == true); }

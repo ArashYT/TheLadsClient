@@ -66,8 +66,8 @@ public partial class ServersView : UserControl
             var remove = new Button { Content = "Remove", Classes = { "danger" }, VerticalAlignment = VerticalAlignment.Center };
             remove.Click += async (_, _) => await ChangeAsync(() => ServerListService.RemoveAsync(target, entry.Ip), $"Removed {entry.Name}.");
             var text = new StackPanel { Spacing = 2 };
-            text.Children.Add(new TextBlock { Text = entry.Name.Length > 0 ? entry.Name : entry.Ip, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
-            text.Children.Add(new TextBlock { Text = entry.Ip, Foreground = Muted, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis });
+            text.Children.Add(new TextBlock { Text = entry.Name.Length > 0 ? entry.Name : entry.Ip, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated());
+            text.Children.Add(new TextBlock { Text = entry.Ip, Foreground = Muted, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated());
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
             grid.Children.Add(text);
             Grid.SetColumn(remove, 1);
@@ -94,13 +94,13 @@ public partial class ServersView : UserControl
             await ChangeAsync(() => ServerListService.AddAsync(target, name, server.Address), $"Added {name} to {target.Label}.");
         };
         var icon = new Border { Width = 48, Height = 48, CornerRadius = new CornerRadius(4), Background = new SolidColorBrush(Color.Parse("#2C2D33")), VerticalAlignment = VerticalAlignment.Top };
-        var motd = new TextBlock { Text = server.Description, TextWrapping = TextWrapping.Wrap, FontSize = 12, MaxLines = 2 };
+        var motd = new TextBlock { Text = server.Description, TextWrapping = TextWrapping.Wrap, FontSize = 12, MaxLines = 2 }.Untranslated();
         var text = new StackPanel { Spacing = 3, Margin = new Thickness(12, 0) };
-        text.Children.Add(new TextBlock { Text = server.Name, FontSize = 15, FontWeight = FontWeight.SemiBold });
-        text.Children.Add(new TextBlock { Text = $"{server.Category}  ·  {server.Address}", Foreground = Muted, FontSize = 12 });
+        text.Children.Add(new TextBlock { Text = server.Name, FontSize = 15, FontWeight = FontWeight.SemiBold }.Untranslated());
+        text.Children.Add(new TextBlock { Text = $"{server.Category}  ·  {server.Address}", Foreground = Muted, FontSize = 12 }.Untranslated());
         text.Children.Add(motd);
         var players = new TextBlock { Text = "Checking…", Foreground = Muted, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Right };
-        var right = new StackPanel { Spacing = 6, Width = 100, VerticalAlignment = VerticalAlignment.Center };
+        var right = new StackPanel { Spacing = 6, MinWidth = 100, VerticalAlignment = VerticalAlignment.Center }; // grows for a longer translated Added
         right.Children.Add(players);
         right.Children.Add(add);
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };

@@ -15,6 +15,8 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Before any window: every TextBlock remembers its English text for Settings → Language.
+        Services.LauncherTranslator.Install();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // The preview exercises the real splash without loading accounts or starting Java.

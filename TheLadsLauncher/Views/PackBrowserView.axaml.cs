@@ -112,7 +112,7 @@ public partial class PackBrowserView : UserControl
         foreach (var path in packs)
         {
             var text = new StackPanel { Spacing = 2 };
-            var name = new TextBlock { Text = Path.GetFileName(path), Foreground = Brushes.White, FontSize = 13, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
+            var name = new TextBlock { Text = Path.GetFileName(path), Foreground = Brushes.White, FontSize = 13, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated();
             ToolTip.SetTip(name, path);
             text.Children.Add(name);
             long bytes = Directory.Exists(path) ? -1 : new FileInfo(path).Length;
@@ -170,9 +170,9 @@ public partial class PackBrowserView : UserControl
     {
         var icon = new Image { Width = 40, Height = 40 };
         var text = new StackPanel { Spacing = 2, Margin = new Thickness(12, 0, 0, 0) };
-        text.Children.Add(new TextBlock { Text = item.Name, Foreground = Brushes.White, FontSize = 14, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap });
+        text.Children.Add(new TextBlock { Text = item.Name, Foreground = Brushes.White, FontSize = 14, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap }.Untranslated());
         text.Children.Add(new TextBlock { Text = item.Summary, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis });
-        text.Children.Add(new TextBlock { Text = $"⬇ {Downloads(item.DownloadCount)}  ·  {item.Provider}{(item.Author.Length > 0 ? "  ·  by " + item.Author : "")}", Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 10 });
+        text.Children.Add(new TextBlock { Text = $"⬇ {Downloads(item.DownloadCount)}  ·  {item.Provider}{(item.Author.Length > 0 ? "  ·  by " + item.Author : "")}", Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 10 }.Untranslated());
         var body = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         body.Children.Add(new Border { Width = 40, Height = 40, CornerRadius = new CornerRadius(4), ClipToBounds = true, Background = new SolidColorBrush(Color.Parse("#25262A")), Child = icon, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top });
         Grid.SetColumn(text, 1);
