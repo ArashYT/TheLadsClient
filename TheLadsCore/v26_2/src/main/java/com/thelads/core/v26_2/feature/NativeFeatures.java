@@ -18,7 +18,7 @@ import org.lwjgl.glfw.GLFW;
 /** Client-thread state. Never writes vanilla options or bypasses vanilla movement eligibility. */
 public final class NativeFeatures {
     private static Object player;
-    private static boolean sprintHeld, sneakHeld;
+    private static boolean sprintHeld, sneakHeld, forward;
     /** QA: the world FOV of the last rendered frame, zoom included, and when Zoom computed it. */
     static float lastWorldFov;
     static long lastWorldNanos;
@@ -35,8 +35,8 @@ public final class NativeFeatures {
     /** Toggle Sprint &amp; Sneak's key rows in the Lads menu: the key that toggles, and a click opens Controls. */
     public static void initialize() {
         ToggleSprintModule toggles = toggles();
-        toggles.sprintKey.setLabel(() -> keyLabel(NativeKeyBindings.TOGGLE_SPRINT, Minecraft.getInstance().options.keySprint, "Sprint"));
-        toggles.sneakKey.setLabel(() -> keyLabel(NativeKeyBindings.TOGGLE_SNEAK, Minecraft.getInstance().options.keyShift, "Sneak"));
+        toggles.sprintKey.setLabel(() -> keyLabel(NativeKeyBindings.TOGGLE_SPRINT, "Sprint"));
+        toggles.sneakKey.setLabel(() -> keyLabel(NativeKeyBindings.TOGGLE_SNEAK, "Sneak"));
         Runnable controls = () -> {
             Minecraft mc = Minecraft.getInstance();
             mc.gui.setScreen(new KeyBindsScreen(mc.gui.screen(), mc.options));
@@ -44,8 +44,8 @@ public final class NativeFeatures {
         toggles.sprintKey.setAction(controls);
         toggles.sneakKey.setAction(controls);
     }
-    private static String keyLabel(KeyMapping toggle, KeyMapping vanilla, String name) {
-        return toggle.isUnbound() ? name + " key: " + vanilla.getTranslatedKeyMessage().getString() : toggle.getTranslatedKeyMessage().getString();
+    private static String keyLabel(KeyMapping toggle, String vanilla) {
+        return toggle.isUnbound() ? "Same as " + vanilla : toggle.getTranslatedKeyMessage().getString();
     }
     /** Unbound, the vanilla key toggles; bound, the toggle key does and the vanilla key is a plain hold key again. */
     private static KeyMapping sprintToggleKey() {
@@ -106,10 +106,13 @@ public final class NativeFeatures {
      */
     public static Input movement(Input original) {
         ToggleSprintModule toggles = toggles();
+        var player = Minecraft.getInstance().player;
+        // What the last tick sent, and whether its input still asked to go forward (aiStep stops a sprint without it).
+        if (player != null) toggles.sent(((com.thelads.core.v26_2.mixin.LocalPlayerAccessor) player).ladsSentSprint(), forward);
+        forward = original.forward() && !original.backward();
         boolean separateSprint = !NativeKeyBindings.TOGGLE_SPRINT.isUnbound();
         boolean shift = toggles.sneakInput(original.shift(), !NativeKeyBindings.TOGGLE_SNEAK.isUnbound());
         boolean sprinting = toggles.sprintInput(original.sprint(), separateSprint, shift);
-        var player = Minecraft.getInstance().player;
         // Vanilla keeps sprinting after the key is released: a toggle that ends stops it, once.
         if (toggles.sprintEnded(original.sprint(), separateSprint, shift) && player != null) player.setSprinting(false);
         toggles.observe(player != null && player.isSprinting(), shift, original.sprint());

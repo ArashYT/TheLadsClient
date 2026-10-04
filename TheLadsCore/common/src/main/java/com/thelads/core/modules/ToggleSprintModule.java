@@ -18,11 +18,14 @@ import com.thelads.core.config.Option;
 public class ToggleSprintModule extends Module {
     public static final String NAME = "Toggle Sprint & Sneak";
     public static final int TOGGLE = 0, ALWAYS = 1, VANILLA = 2; // Sprint; Sneak is TOGGLE or 1 (Vanilla)
+    /** 0.25 s: no START_SPRINTING follows a STOP_SPRINTING sooner (see {@link #sent}). */
+    static final int RESTART_TICKS = 5;
     private final DropdownOption sprintMode, sneakMode;
     private final BoolOption pauseWhileSneaking, sprintToggled, sneakToggled;
     /** Shows the key and opens Controls; adapters set both. */
     public final ActionOption sprintKey, sneakKey;
-    private boolean owned, sprinting, sneaking, sprintKeyDown;
+    private boolean owned, sentSprint, sprinting, sneaking, sprintKeyDown;
+    private int restartIn;
 
     public ToggleSprintModule() {
         super(NAME, "Sprint and sneak without holding the keys. With Toggle Sprint and Toggle Sneak unbound in Controls, "
@@ -64,7 +67,21 @@ public class ToggleSprintModule extends Module {
     /** What Minecraft reads as the Sprint key; Minecraft still decides whether the player may sprint. */
     public boolean sprintInput(boolean keyDown, boolean separateKey, boolean sneaking) {
         if (!isEnabled() || sprintMode.getIndex() == VANILLA) return keyDown;
-        return owns(sneaking) || separateKey && keyDown;
+        return owns(sneaking) && restartIn == 0 || separateKey && keyDown;
+    }
+
+    /**
+     * Once per tick, the sprint state the client last sent the server, and whether the player's movement input could still
+     * sprint on that tick (forward, not slowed by an item or sneaking). When Minecraft stopped a toggled sprint the player was
+     * still asking for (a STOP_SPRINTING went out because of a wall, water, hunger), the toggle waits {@link #RESTART_TICKS}
+     * before asking again: a held key asks on the very next tick, and where Minecraft's start and stop rules disagree for a tick
+     * (stepping into or out of water) that is a STOP/START pair every tick or two. Stops the player made (W-tap, S-tap,
+     * blocking, eating) and a hit's sprint reset (it never reaches the server) are not delayed.
+     */
+    public void sent(boolean sprinting, boolean forward) {
+        if (sentSprint && !sprinting && owned && forward) restartIn = RESTART_TICKS;
+        else if (restartIn > 0) restartIn--;
+        sentSprint = sprinting;
     }
 
     private boolean owns(boolean sneaking) {

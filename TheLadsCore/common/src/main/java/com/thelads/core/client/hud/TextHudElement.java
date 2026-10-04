@@ -10,12 +10,15 @@ abstract class TextHudElement extends HudElement {
     private int preparedTextWidth;
     private Object metricsKey;
     private String measuredText;
+    /** updateText is measuring for the HUD editor or a menu preview, where a sample may stand in for empty content. */
+    protected boolean editor;
 
     protected TextHudElement(int minimumWidth) { this.minimumWidth = minimumWidth; }
     protected abstract String updateText(LadsGraphics graphics);
     protected int textColor() { return resolveColor(); }
 
     @Override public final void prepareRender(LadsGraphics graphics, boolean editor) {
+        this.editor = editor;
         preparedText = updateText(graphics);
         Object key = graphics.textMetricsKey();
         if (key == null || key != metricsKey || !preparedText.equals(measuredText)) {

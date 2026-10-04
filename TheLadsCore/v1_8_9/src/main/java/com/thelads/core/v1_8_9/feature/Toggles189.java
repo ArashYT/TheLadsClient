@@ -36,15 +36,15 @@ public final class Toggles189 {
         ClientRegistry.registerKeyBinding(TOGGLE_SNEAK);
         MinecraftForge.EVENT_BUS.register(new Toggles189());
         ToggleSprintModule toggles = toggles();
-        toggles.sprintKey.setLabel(() -> label(TOGGLE_SPRINT, Minecraft.getMinecraft().gameSettings.keyBindSprint, "Sprint"));
-        toggles.sneakKey.setLabel(() -> label(TOGGLE_SNEAK, Minecraft.getMinecraft().gameSettings.keyBindSneak, "Sneak"));
+        toggles.sprintKey.setLabel(() -> label(TOGGLE_SPRINT, "Sprint"));
+        toggles.sneakKey.setLabel(() -> label(TOGGLE_SNEAK, "Sneak"));
         Runnable controls = () -> Minecraft.getMinecraft().displayGuiScreen(new GuiControls(Minecraft.getMinecraft().currentScreen, Minecraft.getMinecraft().gameSettings));
         toggles.sprintKey.setAction(controls);
         toggles.sneakKey.setAction(controls);
     }
 
-    private static String label(KeyBinding toggle, KeyBinding vanilla, String name) {
-        return toggle.getKeyCode() == 0 ? name + " key: " + GameSettings.getKeyDisplayString(vanilla.getKeyCode()) : GameSettings.getKeyDisplayString(toggle.getKeyCode());
+    private static String label(KeyBinding toggle, String vanilla) {
+        return toggle.getKeyCode() == 0 ? "Same as " + vanilla : GameSettings.getKeyDisplayString(toggle.getKeyCode());
     }
 
     private static int sprintCode() {
@@ -98,6 +98,8 @@ public final class Toggles189 {
         // A screen or focus loss can swallow the key's release; the next press must toggle.
         if (mc.currentScreen != null || !org.lwjgl.opengl.Display.isActive()) sprintHeld = sneakHeld = false;
         if (mc.thePlayer == null) return;
+        // What this tick sent, and whether its input could still sprint (onLivingUpdate stops below 0.8 forward).
+        toggles().sent(((EntityPlayerSPAccessor) mc.thePlayer).ladsSentSprint(), mc.thePlayer.movementInput.moveForward >= 0.8F);
         boolean keyDown = mc.gameSettings.keyBindSprint.isKeyDown();
         if (toggles().sprintEnded(keyDown, TOGGLE_SPRINT.getKeyCode() != 0, sneaking())) mc.thePlayer.setSprinting(false);
         toggles().observe(mc.thePlayer.isSprinting(), sneaking(), keyDown);

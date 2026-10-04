@@ -8,7 +8,6 @@ import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.Option;
 import com.thelads.core.modules.SprintTrace;
 import com.thelads.core.modules.ToggleSprintModule;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -49,7 +48,7 @@ import org.slf4j.LoggerFactory;
  * QA only (auto-world, ".lads-qa-capture-sprint" from the harness's LADS_VERIFY_CAPTURE_SPRINT): Toggle Sprint &amp; Sneak in the
  * QA world, in survival on a stone corridor QA builds (and takes away again). The Sprint key is tapped through
  * KeyboardHandler.keyPress, W held, then a wall, three mob hits, hunger 6, eating, blindness, shallow water, sneaking, flying,
- * a death and respawn, and a separate Toggle Sprint key (H). Every tick's sprint state and the state last sent to the server
+ * a death and respawn, and a separate Toggle Sprint key (J). Every tick's sprint state and the state last sent to the server
  * go to screenshots/sprint-trace.csv (SprintTrace: no start-stop flicker); frames sprint-hud, sprint-controls,
  * sneak-controls and sprint-module are saved. Module, options, keys, game mode, food, effects and blocks are put back.
  */
@@ -66,7 +65,7 @@ final class SprintCapture {
     private static GameType modeBefore;
     private static BlockPos origin;
     private static String shot;
-    private static Field sentField;
+    private static LocalPlayer before;
     private SprintCapture() {}
 
     static boolean busy() { return step >= 0 && step <= LAST; }
@@ -106,14 +105,14 @@ final class SprintCapture {
                 toggles.getOptions().forEach(Option::reset); // Sprint Toggle, Sneak Vanilla, untoggled
                 toggles.setEnabled(true);
                 NativeWorldVerification.syntheticInput(true);
-                origin = player.blockPosition();
+                origin = new BlockPos(player.getBlockX(), 200, player.getBlockZ()); // open sky: no terrain, water or mobs in the way
                 server(sp -> {
                     modeBefore = sp.gameMode.getGameModeForPlayer();
                     sp.setGameMode(GameType.SURVIVAL);
                     sp.getFoodData().setFoodLevel(20);
                     sp.setHealth(sp.getMaxHealth());
                     ServerLevel level = sp.level();
-                    for (int x = -2; x <= 2; x++) for (int z = -1; z <= 40; z++) for (int y = -1; y <= 3; y++)
+                    for (int x = -3; x <= 3; x++) for (int z = -3; z <= 40; z++) for (int y = -1; y <= 3; y++)
                         set(level, origin.offset(x, y, z), y < 0 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
                 });
                 wait = 20;
@@ -229,6 +228,7 @@ final class SprintCapture {
             case 22 -> {
                 server(sp -> { sp.getAbilities().flying = false; sp.setGameMode(GameType.SURVIVAL); sp.onUpdateAbilities(); });
                 player.getAbilities().flying = false;
+                reposition(player);
                 TRACE.phase("landed");
                 wait = 30;
             }
@@ -236,6 +236,7 @@ final class SprintCapture {
                 resumed("flying ended");
                 TRACE.phase("death");
                 mc.options.keyUp.setDown(false);
+                before = player;
                 server(sp -> sp.kill(sp.level()));
                 wait = 20;
             }
@@ -246,7 +247,7 @@ final class SprintCapture {
             }
             case 25 -> {
                 if (mc.gui.screen() instanceof DeathScreen) mc.gui.setScreen(null);
-                check(mc.player != null && mc.player != player && mc.player.isAlive(), "QA respawned as a new player");
+                check(mc.player != null && mc.player != before && mc.player.isAlive(), "QA respawned as a new player");
                 check(toggles.isSprintToggled(), "the sprint toggle survived death and respawn (a new player, as a world, server or dimension change)");
                 server(sp -> sp.setGameMode(GameType.SURVIVAL));
                 reposition(mc.player);
@@ -258,12 +259,12 @@ final class SprintCapture {
                 resumed("respawned");
                 mc.options.keyUp.setDown(false);
                 TRACE.phase("separate-key");
-                NativeKeyBindings.TOGGLE_SPRINT.setKey(InputConstants.getKey("key.keyboard.h"));
+                NativeKeyBindings.TOGGLE_SPRINT.setKey(InputConstants.getKey("key.keyboard.j"));
                 KeyMapping.resetMapping();
                 tap(mc.options.keySprint);
-                check(toggles.isSprintToggled(), "with Toggle Sprint on H, a Sprint tap no longer toggles");
+                check(toggles.isSprintToggled(), "with Toggle Sprint on J, a Sprint tap no longer toggles");
                 tap(NativeKeyBindings.TOGGLE_SPRINT);
-                check(!toggles.isSprintToggled(), "H toggles sprint off");
+                check(!toggles.isSprintToggled(), "J toggles sprint off");
                 wait = 10;
             }
             case 27 -> {
@@ -277,7 +278,7 @@ final class SprintCapture {
                 key(mc.options.keySprint, false);
                 mc.options.keyUp.setDown(false);
                 tap(NativeKeyBindings.TOGGLE_SPRINT);
-                check(toggles.isSprintToggled(), "H toggles sprint on again");
+                check(toggles.isSprintToggled(), "J toggles sprint on again");
                 wait = 10;
             }
             case 29 -> {
@@ -389,12 +390,12 @@ final class SprintCapture {
         });
     }
 
-    /** Back to the corridor's start, facing along it (+Z), still. */
+    /** Back to the corridor's start, facing along it (+Z, yaw 0), still: the server moves the player. */
     private static void reposition(LocalPlayer player) {
-        player.setPos(origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5);
         player.setDeltaMovement(Vec3.ZERO);
         player.setYRot(0);
         player.setXRot(0);
+        server(sp -> sp.teleportTo(sp.level(), origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5, java.util.Set.of(), 0, 0, false));
     }
 
     /** Server thread: one block, remembering what was there first (flag 2: no neighbour updates, so water stays put). */
@@ -411,7 +412,7 @@ final class SprintCapture {
                     BlockPos pos = entry.getKey();
                     boolean floor = pos.getY() < origin.getY();
                     if (!corridor) sp.level().setBlock(pos, entry.getValue(), 2);
-                    else if (!floor && Math.abs(pos.getX() - origin.getX()) <= 2) sp.level().setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+                    else if (!floor) sp.level().setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
                 }
                 if (!corridor) BLOCKS.clear();
             }
@@ -452,13 +453,7 @@ final class SprintCapture {
 
     /** The sprint state LocalPlayer last sent (its START/STOP_SPRINTING packets). */
     private static boolean sent(LocalPlayer player) {
-        try {
-            if (sentField == null) {
-                sentField = LocalPlayer.class.getDeclaredField("wasSprinting");
-                sentField.setAccessible(true);
-            }
-            return sentField.getBoolean(player);
-        } catch (ReflectiveOperationException failure) { throw new IllegalStateException(failure); }
+        return ((com.thelads.core.v26_2.mixin.LocalPlayerAccessor) player).ladsSentSprint();
     }
 
     private static String detail(LocalPlayer player) {
