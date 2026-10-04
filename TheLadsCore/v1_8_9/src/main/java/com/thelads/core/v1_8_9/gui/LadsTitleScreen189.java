@@ -4,6 +4,7 @@ import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
+import com.thelads.core.v1_8_9.feature.Screenshots189;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -17,16 +18,17 @@ import org.apache.logging.log4j.LogManager;
 
 /**
  * The Lads title screen on 1.8.9 (TitleScreenMixin on the other versions), through Forge's screen events so Essential's and
- * OptiFine's GuiMainMenu changes keep working: themed artwork, Singleplayer, Multiplayer, Lads Mods, Options, More and Quit as
- * Lads buttons; Essential's actions in a row above the account name; every other button (Forge's Mods, Language, Realms)
- * behind More. "TitleScreen" off: vanilla.
+ * OptiFine's GuiMainMenu changes keep working: themed artwork, Singleplayer, Multiplayer, Lads Mods, Forge's Mods, Options,
+ * Screenshots, More and Quit as Lads buttons; Essential's actions in a row above the account name, Switch (accounts) beside it
+ * and a fullscreen toggle top right; every other button (Language, Realms) behind More. "TitleScreen" off: vanilla.
  */
 public final class LadsTitleScreen189 {
     public static final LadsTitleScreen189 INSTANCE = new LadsTitleScreen189();
     private static final int LADS_ID = 0x4C414453 + 1; // the pause menu's Lads button is 0x4C414453; vanilla and Forge use 0-14
     private GuiMainMenu screen;
     private List<GuiButton> buttons;
-    private GuiButton ladsButton, accountsButton, moreButton;
+    private GuiButton ladsButton, moreButton, screenshotsButton;
+    private CompactButton189 switchButton, fullscreenButton;
     private final List<GuiButton> seen = new ArrayList<>(), main = new ArrayList<>(), extras = new ArrayList<>();
     private final List<GuiButton> pending = new ArrayList<>(), row = new ArrayList<>();
     private final List<TitleExtrasScreen189.Action> essential = new ArrayList<>();
@@ -43,6 +45,8 @@ public final class LadsTitleScreen189 {
     public GuiMainMenu screen() { return screen; }
     public List<GuiButton> mainButtons() { return main; }
     public GuiButton moreButton() { return moreButton; }
+    public GuiButton switchButton() { return switchButton; }
+    public GuiButton fullscreenButton() { return fullscreenButton; }
 
     @SubscribeEvent
     public void init(GuiScreenEvent.InitGuiEvent.Post event) {
@@ -59,8 +63,15 @@ public final class LadsTitleScreen189 {
         essential.clear();
         initNanos = System.nanoTime();
         buttons.add(ladsButton = new GuiButton(LADS_ID, 0, 0, 1, 1, "Lads Mods"));
-        buttons.add(accountsButton = new GuiButton(LADS_ID + 1, 0, 0, 1, 1, "Accounts"));
         buttons.add(moreButton = new GuiButton(LADS_ID + 2, 0, 0, 1, 1, "More..."));
+        // The gallery, as the other versions' title button for it; only while BetterScreenshots is on.
+        screenshotsButton = Screenshots189.active() ? new GuiButton(LADS_ID + 4, 0, 0, 1, 1, "Screenshots") : null;
+        if (screenshotsButton != null) buttons.add(screenshotsButton);
+        // Beside the account name (placed each frame after it) and top right, as on the pause menu; not in the menu grid.
+        GuiMainMenu title = screen;
+        buttons.add(switchButton = new CompactButton189(LADS_ID + 1, 0, 0, 1, 1, TitleScreenTheme.SWITCH, () -> "switch",
+            () -> Minecraft.getMinecraft().displayGuiScreen(new AccountSwitcherScreen189(title))));
+        buttons.add(fullscreenButton = EssentialRow189.fullscreen(LADS_ID + 3, screen.width));
         lastFrame = 0;
     }
 
@@ -78,7 +89,8 @@ public final class LadsTitleScreen189 {
         buttons.removeAll(row);
         main.clear();
         for (GuiButton button : new ArrayList<>(buttons)) {
-            if (button == ladsButton || button == moreButton || vanilla(button, 1, 11, 2, 0, 4)) main.add(button);
+            if (button == switchButton || button == fullscreenButton) continue;
+            if (button == ladsButton || button == moreButton || button == screenshotsButton || vanilla(button, 1, 11, 2, 0, 4, 6)) main.add(button);
             else {
                 // Off the screen, as the other versions remove them (Essential's proxies override mousePressed).
                 buttons.remove(button);
@@ -113,12 +125,15 @@ public final class LadsTitleScreen189 {
         }
     }
 
+    /** In pairs below Singleplayer and Multiplayer: Lads Mods | Mods, Options | Screenshots, More... | Quit Game. */
     private int order(GuiButton button) {
         if (button == ladsButton) return 3;
+        if (button == screenshotsButton) return 6;
         if (button == moreButton) return 7;
         switch (button.id) {
             case 1: case 11: return 0;
             case 2: return 1;
+            case 6: return 4; // Forge's Mods
             case 0: return 5;
             default: return 8; // Quit
         }
@@ -131,10 +146,13 @@ public final class LadsTitleScreen189 {
     }
 
     private static String icon(GuiButton button) {
-        if (button.id == LADS_ID) return "mods";
+        if (button.id == LADS_ID) return "lads";
+        if (button.id == LADS_ID + 2) return "dots";
+        if (button.id == LADS_ID + 4) return "camera";
         switch (button.id) {
             case 1: case 11: return "play";
             case 2: return "server";
+            case 6: return "mods";
             case 0: return "settings";
             case 4: return "quit";
             default: return "more";
@@ -169,10 +187,17 @@ public final class LadsTitleScreen189 {
         seconds += elapsed;
         Minecraft mc = Minecraft.getMinecraft();
         GuiLadsAdapter g = new GuiLadsAdapter(mc.fontRendererObj, screen.width, screen.height);
-        TitleScreenTheme.renderBackground(g, layout, mc.getSession().getUsername(), "1.8.9" + (mc.isDemo() ? " Demo" : ""), false, seconds);
+        TitleScreenTheme.Rect switchBox = TitleScreenTheme.renderBackground(g, layout, mc.getSession().getUsername(),
+            "1.8.9" + (mc.isDemo() ? " Demo" : ""), false, seconds, true);
+        switchButton.xPosition = switchBox.x();
+        switchButton.yPosition = switchBox.y();
+        switchButton.width = switchBox.width();
+        switchButton.height = switchBox.height();
         for (GuiButton button : main)
             TitleExtrasScreen189.drawButton(g, button, label(button), icon(button), vanilla(button, 1), event.mouseX, event.mouseY, elapsed);
         for (GuiButton button : row) button.drawButton(mc, event.mouseX, event.mouseY);
+        switchButton.drawButton(mc, event.mouseX, event.mouseY);
+        fullscreenButton.drawButton(mc, event.mouseX, event.mouseY);
     }
 
     @SubscribeEvent
@@ -181,9 +206,9 @@ public final class LadsTitleScreen189 {
         Minecraft mc = Minecraft.getMinecraft();
         boolean clicked = mc.currentScreen == screen; // not pressed from the More screen, which played the click sound
         if (event.button == ladsButton) mc.displayGuiScreen(new LadsSettingsScreen189(screen));
-        else if (event.button == accountsButton) mc.displayGuiScreen(new AccountSwitcherScreen189(screen));
+        else if (event.button == screenshotsButton) Screenshots189.open(screen);
         else if (event.button == moreButton) mc.displayGuiScreen(new TitleExtrasScreen189(screen, TitleExtrasScreen189.of(screen, extras, LadsTitleScreen189::label)));
-        else if (event.button instanceof CompactButton189 && row.contains(event.button)) ((CompactButton189) event.button).press();
+        else if (event.button == switchButton || event.button == fullscreenButton || row.contains(event.button)) ((CompactButton189) event.button).press();
         else return;
         if (clicked) event.button.playPressSound(mc.getSoundHandler()); // a cancelled press skips GuiScreen's
         event.setCanceled(true);

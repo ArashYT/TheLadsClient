@@ -32,6 +32,11 @@ class PauseMenuLayoutTest {
         assertEquals(320, boxes.get(4).width(), "an odd one out spans");
     }
 
+    @Test void everyButtonHasItsOwnIcon() {
+        var icons = java.util.Arrays.stream(PauseMenuLayout.Slot.values()).map(PauseMenuLayout::icon).toList();
+        assertEquals(icons.size(), new java.util.HashSet<>(icons).size(), "one icon per kind of button " + icons);
+    }
+
     @Test void narrowScreensGetOneColumn() {
         var boxes = PauseMenuLayout.arrange(List.of(BACK, ADVANCEMENTS, STATS, QUIT), 300, 60, 260);
         for (int i = 1; i < boxes.size(); i++) assertTrue(boxes.get(i).y() > boxes.get(i - 1).y());

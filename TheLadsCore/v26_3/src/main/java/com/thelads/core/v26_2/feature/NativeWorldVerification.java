@@ -25,7 +25,9 @@ public final class NativeWorldVerification {
     private static boolean captureStarted;
     private static int chatCaptureStep;
     private static long chatCaptureAt;
-    private static boolean titleCaptured;
+    private static boolean titleCaptured, moreCaptured;
+    /** The title screen and its More screen photographed before the world opens (verify133, or LADS_VERIFY_CAPTURE_TITLE). */
+    private static final boolean TITLE_CAPTURE = Boolean.getBoolean("thelads.verify133") || Boolean.getBoolean("thelads.verifyTitleCapture");
     private static int titleTrip; // verify133: 1 More is open, 2 back on the title, 3 captured again
     private static long titleTripAt;
     private static Screen menuScreen;
@@ -170,6 +172,14 @@ public final class NativeWorldVerification {
         }
     }
 
+    /** QA: a screen's visible buttons as "label@x,y wxh", for the capture log. */
+    private static String titleLabels(Screen screen) {
+        if (screen == null) return "[]";
+        return screen.children().stream().filter(c -> c instanceof net.minecraft.client.gui.components.AbstractWidget w && w.visible)
+            .map(c -> (net.minecraft.client.gui.components.AbstractWidget) c)
+            .map(w -> w.getMessage().getString() + "@" + w.getX() + "," + w.getY() + " " + w.getWidth() + "x" + w.getHeight()).toList().toString();
+    }
+
     /** QA: the virtual pointer (never the OS cursor) over a widget, so the next frames show it hovered. */
     private static void qaPoint(Minecraft mc, net.minecraft.client.gui.components.AbstractWidget widget) {
         try {
@@ -197,16 +207,26 @@ public final class NativeWorldVerification {
     /** Capture a completed game frame, including GUI, through Minecraft's own GPU readback. */
     public static void renderedFrame(com.mojang.blaze3d.pipeline.RenderTarget target) {
         renderMenuCapture(target);
-        if(Boolean.getBoolean("thelads.verify133")&&active()&&!opened&&!titleCaptured&&titleSince>0
+        if(TITLE_CAPTURE&&active()&&!opened&&!titleCaptured&&titleSince>0
             &&System.nanoTime()-titleSince>2_000_000_000L&&Minecraft.getInstance().gui.screen() instanceof TitleScreen&&Minecraft.getInstance().gui.overlay()==null) {
             titleCaptured=true;
             try {
                 Path folder=gameDirectory.resolve("screenshots");Files.createDirectories(folder);
                 if(!folder.toRealPath().startsWith(gameDirectory))throw new IOException("Unsafe QA screenshot directory");
                 Path output=folder.resolve("native-title-"+System.currentTimeMillis()+".png");
-                net.minecraft.client.Screenshot.takeScreenshot(target,image->{try{image.writeToFile(output);LOGGER.info("Lads title capture END: actual completed framebuffer at {}",output);}catch(Exception e){fail("title capture",e);}finally{image.close();}});
+                String labels=titleLabels(Minecraft.getInstance().gui.screen());
+                net.minecraft.client.Screenshot.takeScreenshot(target,image->{try{image.writeToFile(output);LOGGER.info("Lads title capture END: 1 passed, 0 failed; buttons {}; actual completed framebuffer at {}",labels,output);}catch(Exception e){fail("title capture",e);}finally{image.close();}});
                 titleTripAt=System.nanoTime()+500_000_000L;
             }catch(Exception e){fail("title capture",e);}
+        }
+        if(titleTrip==1&&!moreCaptured&&System.nanoTime()>=titleTripAt-700_000_000L
+            &&Minecraft.getInstance().gui.screen() instanceof com.thelads.core.v26_2.gui.TitleExtrasScreen26 more&&Minecraft.getInstance().gui.overlay()==null) {
+            moreCaptured=true;
+            try {
+                Path output=gameDirectory.resolve("screenshots").resolve("native-title-more-"+System.currentTimeMillis()+".png");
+                String labels=titleLabels(more);
+                net.minecraft.client.Screenshot.takeScreenshot(target,image->{try{image.writeToFile(output);LOGGER.info("Lads title More capture END: 1 passed, 0 failed; buttons {}; {}",labels,output);}catch(Exception e){fail("title More capture",e);}finally{image.close();}});
+            }catch(Exception e){fail("title More capture",e);}
         }
         if(titleTrip==2&&System.nanoTime()>=titleTripAt&&Minecraft.getInstance().gui.screen() instanceof TitleScreen&&Minecraft.getInstance().gui.overlay()==null) {
             titleTrip=3;

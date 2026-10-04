@@ -122,7 +122,7 @@ public final class TitleExtrasScreen189 extends GuiScreen {
         Gui.drawRect(0, 0, width, height, LadsPalette.BACKGROUND);
         Gui.drawRect(0, 0, width, 2, LadsPalette.ACCENT);
         fontRendererObj.drawString("MORE FROM YOUR CLIENT", 20, 18, LadsPalette.TEXT);
-        fontRendererObj.drawString("Accounts, services and extra tools", 20, 35, LadsPalette.MUTED);
+        fontRendererObj.drawString("Services and extra tools", 20, 35, LadsPalette.MUTED);
         long now = System.nanoTime();
         float elapsed = (float) Math.min(0.1, (now - previousFrame) / 1e9);
         previousFrame = now;
