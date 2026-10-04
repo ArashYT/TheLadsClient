@@ -77,8 +77,10 @@ public static class DiscordPresence
     {
         lock (Gate)
         {
-            if (!_enabled || _gameRunning) return null;
+            if (!_enabled) return null;
+            // Until its window is up, a starting game has no presence of its own.
             if (_launching != null) return ($"Launching Minecraft {_launching}", "Getting the game ready");
+            if (_gameRunning) return null;
             return ("In the launcher", string.IsNullOrWhiteSpace(_dialog) ? PageLabel(_page) : _dialog);
         }
     }
