@@ -53,12 +53,12 @@ final class NativeRenderScaleProbe {
             }
             require(savedSettings.equals(actual), "QA does not mutate declared settings");
             return switch (stage) {
-                case 0 -> test(true, 50, false, false);
-                case 1 -> test(true, 50, true, false);
-                case 2 -> test(true, 150, false, false);
-                case 3 -> test(false, 50, false, false);
-                case 4 -> test(true, 100, false, false);
-                default -> test(true, 75, false, true);
+                case 0 -> test(true, 50, RenderScalePolicy.LINEAR, false);
+                case 1 -> test(true, 50, RenderScalePolicy.NEAREST, false);
+                case 2 -> test(true, 150, RenderScalePolicy.SMOOTH, false);
+                case 3 -> test(false, 50, RenderScalePolicy.LINEAR, false);
+                case 4 -> test(true, 100, RenderScalePolicy.LINEAR, false);
+                default -> test(true, 75, RenderScalePolicy.SHARP, true);
             };
         } catch (Throwable failure) {
             fail(failure);
@@ -125,6 +125,8 @@ final class NativeRenderScaleProbe {
     }
 
     private static void startGpuChecks() {
+        require(NativeRenderScale.upscaleReady(), "Better Resolution's Smooth and Sharp shaders compile");
+        int[] middles = new int[4];
         TextureTarget source = new TextureTarget("Lads scale QA source", 2, 2, false, GpuFormat.RGBA8_UNORM);
         try (NativeImage pixels = new NativeImage(2, 2, false)) {
             for (int y = 0; y < 2; y++) {
@@ -133,30 +135,40 @@ final class NativeRenderScaleProbe {
             }
             RenderSystem.getDevice().createCommandEncoder().writeToTexture(source.getColorTexture(), pixels);
         }
-        pendingReadbacks = 2;
-        for (boolean nearest : new boolean[]{true, false}) {
+        pendingReadbacks = 4;
+        for (int method = 0; method < 4; method++) {
+            boolean nearest = method == RenderScalePolicy.NEAREST;
+            int index = method;
             TextureTarget destination = new TextureTarget("Lads scale QA destination", 8, 4, false, GpuFormat.RGBA8_UNORM);
-            NativeRenderScale.blit(source, destination, nearest);
+            NativeRenderScale.blit(source, destination, method);
             Screenshot.takeScreenshot(destination, pixels -> {
                 try (pixels) {
                     int left = pixels.getPixel(0, 1), right = pixels.getPixel(7, 1), middle = pixels.getPixel(3, 1);
                     require((left & 0x00ffffff) == 0x00ff0000 && (right & 0x00ffffff) == 0x000000ff,
-                        "GPU composite covers the full destination with the expected colors");
+                        "GPU composite (method " + index + ") covers the full destination with the expected colors");
                     if (nearest) require((middle & 0x00ffffff) == 0x00ff0000, "nearest sampling preserves an exact source pixel");
                     else require(((middle >>> 16) & 255) > 0 && (middle & 255) > 0,
-                        "linear sampling blends neighboring pixels on the GPU");
+                        "method " + index + " blends neighboring pixels on the GPU");
+                    middles[index] = middle;
                     passed += 2;
                 } catch (Throwable failure) { gpuFailure = failure; }
                 finally {
                     destination.destroyBuffers();
-                    if (--pendingReadbacks == 0) source.destroyBuffers();
+                    if (--pendingReadbacks == 0) {
+                        source.destroyBuffers();
+                        // Sharp holds each world pixel flatter: next to the edge it keeps more of the red pixel than Linear.
+                        int sharp = middles[RenderScalePolicy.SHARP] >>> 16 & 255, linear = middles[RenderScalePolicy.LINEAR] >>> 16 & 255;
+                        if (gpuFailure == null && sharp <= linear + 10)
+                            gpuFailure = new IllegalStateException("Sharp is not crisper than Linear (red " + sharp + " vs " + linear + ")");
+                        else passed++;
+                    }
                 }
             });
         }
     }
 
-    private static RenderScalePolicy.Settings test(boolean enabled, double percent, boolean nearest, boolean dynamic) {
-        return new RenderScalePolicy.Settings(enabled, 0, percent, nearest, dynamic, 144, 50);
+    private static RenderScalePolicy.Settings test(boolean enabled, double percent, int method, boolean dynamic) {
+        return new RenderScalePolicy.Settings(enabled, 0, percent, method, dynamic, 144, 50);
     }
     private static void require(boolean condition, String message) {
         if (!condition) throw new IllegalStateException(message);

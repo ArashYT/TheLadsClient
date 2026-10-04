@@ -11,6 +11,7 @@ import com.thelads.core.client.SignalLossPolicy;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.SliderOption;
+import com.thelads.core.modules.BetterResolutionModule;
 import com.thelads.core.v1_8_9.gui.ScreenshotsScreen189;
 import java.io.File;
 import java.nio.file.Files;
@@ -35,7 +36,7 @@ import org.apache.logging.log4j.Logger;
  * QA only: the 1.5.0 ports, run by CoreProbe in its QA world after Probe145, each through the real 1.8.9 paths: FarBlockEntities
  * (TileEntity's distance), EnhancedTooltips and AppleSkin's tooltip (ItemTooltipEvent), AppleSkin's HUD in survival with food
  * data from the integrated server, SignalLoss (the connection's packet time, the warning drawn), Clumps (orbs spawned on the
- * integrated server merge, clients see the clump), RenderScale at 50 % and BetterScreenshots (the screenshot key's preview,
+ * integrated server merge, clients see the clump), Better Resolution at 50 % and BetterScreenshots (the screenshot key's preview,
  * the gallery key and its list). Every module and the player are put back as found.
  */
 final class Probe150e {
@@ -56,8 +57,8 @@ final class Probe150e {
 
     private Probe150e() {}
 
-    private static final String[] MODULES = {"FarBlockEntities", "EnhancedTooltips", "AppleSkin", "SignalLoss", "Clumps", "RenderScale", "BetterScreenshots",
-        "EnhancedToolbars", "Crosshair Tweaks"};
+    private static final String[] MODULES = {"FarBlockEntities", "EnhancedTooltips", "AppleSkin", "SignalLoss", "Clumps", BetterResolutionModule.NAME,
+        "BetterScreenshots", "EnhancedToolbars", "Crosshair Tweaks"};
     /** Options the 1.7.0 food, tooltip and crosshair shots change, put back afterwards. */
     private static final java.util.Map<com.thelads.core.config.Option, com.google.gson.JsonElement> OPTIONS = new java.util.LinkedHashMap<>();
     private static int pose;
@@ -290,13 +291,13 @@ final class Probe150e {
     }
 
     private static boolean scaleStart(Minecraft mc) {
-        SliderOption option = (SliderOption) Options189.module("RenderScale").getOption("Scale");
-        DropdownOption presets = (DropdownOption) Options189.module("RenderScale").getOption("Preset");
+        SliderOption option = (SliderOption) Options189.module(BetterResolutionModule.NAME).getOption("Scale");
+        DropdownOption presets = (DropdownOption) Options189.module(BetterResolutionModule.NAME).getOption("Preset");
         scale = option.getValue();
         preset = presets.getIndex();
         option.setValue(50);
         presets.setIndex(0); // Custom: the Scale slider
-        Options189.module("RenderScale").setEnabled(true);
+        Options189.module(BetterResolutionModule.NAME).setEnabled(true);
         count = RenderScale189.scaledFrames;
         return after(30);
     }
@@ -304,12 +305,12 @@ final class Probe150e {
     private static boolean scaleShown(Minecraft mc) {
         RenderScalePolicy.Size half = RenderScalePolicy.size(mc.displayWidth, mc.displayHeight, 0.5, Integer.MAX_VALUE);
         check(RenderScale189.scaledFrames - count > 10 && RenderScale189.scaledWidth == half.width() && RenderScale189.scaledHeight == half.height(),
-            "RenderScale 50 %: the world rendered at " + RenderScale189.scaledWidth + "x" + RenderScale189.scaledHeight + " in "
+            "Better Resolution 50 %: the world rendered at " + RenderScale189.scaledWidth + "x" + RenderScale189.scaledHeight + " in "
             + (RenderScale189.scaledFrames - count) + " frames for a " + mc.displayWidth + "x" + mc.displayHeight + " window (needs framebuffers: OptiFine Fast Render off)");
         screenshot(mc, "150-renderscale-50");
-        ((SliderOption) Options189.module("RenderScale").getOption("Scale")).setValue(scale);
-        ((DropdownOption) Options189.module("RenderScale").getOption("Preset")).setIndex(preset);
-        restore("RenderScale");
+        ((SliderOption) Options189.module(BetterResolutionModule.NAME).getOption("Scale")).setValue(scale);
+        ((DropdownOption) Options189.module(BetterResolutionModule.NAME).getOption("Preset")).setIndex(preset);
+        restore(BetterResolutionModule.NAME);
         return after(10);
     }
 
@@ -319,8 +320,8 @@ final class Probe150e {
     }
 
     private static boolean shotTaken(Minecraft mc) throws Exception {
-        if (!Options189.enabled("RenderScale") || preset == 0 && scale == 100)
-            check(RenderScale189.scaledFrames == count, "RenderScale back as found (off or 100 %): the world renders into Minecraft's framebuffer again");
+        if (!Options189.enabled(BetterResolutionModule.NAME) || preset == 0 && scale == 100)
+            check(RenderScale189.scaledFrames == count, "Better Resolution back as found (off or 100 %): the world renders into Minecraft's framebuffer again");
         Options189.module("BetterScreenshots").setEnabled(true);
         Screenshots189.lastSaved = null;
         tap(mc.gameSettings.keyBindScreenshot.getKeyCode(), '\0');

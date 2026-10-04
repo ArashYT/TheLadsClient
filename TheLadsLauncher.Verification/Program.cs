@@ -141,6 +141,8 @@ bool raisedCaptureVerification = autoWorldVerification && !capabilities.Forge &&
 // Fabric versions: Lads Mouse Tweaks in a server chest through the screen's own mouse handlers (MouseTweaksCapture).
 // 1.8.9's self-test (MouseTweaksProbe189) always runs the same checks.
 bool mouseTweaksCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_MOUSETWEAKS") == "1";
+// Fabric versions: Better Resolution photographed per setting with its FPS and GPU frame time (ResolutionCapture). 1.8.9: Probe170r.
+bool resolutionCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_RESOLUTION") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -283,6 +285,8 @@ string raisedCaptureRequest = Path.Combine(directory, ".lads-qa-capture-raised")
 if (autoWorldVerification && File.Exists(raisedCaptureRequest)) File.Delete(raisedCaptureRequest);
 string mouseTweaksCaptureRequest = Path.Combine(directory, ".lads-qa-capture-mousetweaks");
 if (autoWorldVerification && File.Exists(mouseTweaksCaptureRequest)) File.Delete(mouseTweaksCaptureRequest);
+string resolutionCaptureRequest = Path.Combine(directory, ".lads-qa-capture-resolution");
+if (autoWorldVerification && File.Exists(resolutionCaptureRequest)) File.Delete(resolutionCaptureRequest);
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
         File.Delete(Path.Combine(directory, flag));
@@ -298,6 +302,7 @@ StreamWriter? log = null;
 var logGate = new object();
 bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false;
 bool menuCaptureRequested = false, hudCaptureRequested = false, worldCapturesRequested = false, windowFound = false, snapshotInvalid = false;
+bool resolutionCaptureRequested = false;
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
@@ -333,7 +338,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
     "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED",
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
-    "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED",
+    "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -574,7 +579,7 @@ try
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
                 "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads server features capture END:", "Lads F3/FOV capture END:",
-                "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:" })
+                "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:", "Lads resolution capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -665,7 +670,8 @@ try
             bool hudInfoDone = !hudInfoCaptureVerification || passedMarkers.ContainsKey("Lads HUD info capture END:");
             bool raisedDone = !raisedCaptureVerification || passedMarkers.ContainsKey("Lads raised capture END:");
             bool mouseTweaksDone = !mouseTweaksCaptureVerification || passedMarkers.ContainsKey("Lads mouse tweaks capture END:");
-            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && serverDone && f3FovDone && hudInfoDone && raisedDone && mouseTweaksDone)
+            bool resolutionDone = !resolutionCaptureVerification || passedMarkers.ContainsKey("Lads resolution capture END:");
+            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && serverDone && f3FovDone && hudInfoDone && raisedDone && mouseTweaksDone && resolutionDone)
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -717,10 +723,19 @@ try
                 Console.WriteLine("Requesting native HUD editor interaction checks and actual frame capture.");
             }
         }
+        // Better Resolution's capture sets the same world-scale settings as the render scale probe, so it waits for that probe and the
+        // other GPU frame probe; it also runs when an unrelated probe failed (e.g. 1.7 Animations' hand checks under an Iris shader pack).
+        if (resolutionCaptureVerification && !resolutionCaptureRequested && passedMarkers.ContainsKey("Lads render scale probe END:")
+            && passedMarkers.ContainsKey("Lads native screenshots probe END:") && (nativeProbeFailed || requiredWorldProbes.All(passedMarkers.ContainsKey)))
+        {
+            await LockFiles.WriteAtomicallyAsync(resolutionCaptureRequest, Encoding.UTF8.GetBytes("Photograph Better Resolution at each setting in the QA world."), ct);
+            resolutionCaptureRequested = true;
+        }
         // Allow independent world/GPU probes to finish after a restored-state assertion fails.
         // The run still fails below; collecting their evidence avoids hiding subsequent defects.
         if (nativeProbeFailed && (!autoWorldVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads native screenshots probe END:")
-            || stopwatch.Elapsed > TimeSpan.FromSeconds(90))) break;
+            || stopwatch.Elapsed > TimeSpan.FromSeconds(90))
+            && (!resolutionCaptureRequested || passedMarkers.ContainsKey("Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
             && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;
@@ -811,6 +826,8 @@ try
             "The requested Raised and paper doll capture did not pass. Inspect production-smoke.log.");
         Require(!mouseTweaksCaptureVerification || passedMarkers.ContainsKey("Lads mouse tweaks capture END:"),
             "The requested Lads Mouse Tweaks capture did not pass. Inspect production-smoke.log.");
+        Require(!resolutionCaptureVerification || passedMarkers.ContainsKey("Lads resolution capture END:"),
+            "The requested Better Resolution capture did not pass. Inspect production-smoke.log.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)
