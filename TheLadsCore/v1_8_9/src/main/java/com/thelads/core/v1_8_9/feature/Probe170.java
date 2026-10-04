@@ -45,7 +45,7 @@ import org.lwjgl.input.Keyboard;
  * QA only: Toggle Sprint &amp; Sneak (Toggles189), run by CoreProbe in its QA world (superflat; survival with mob spawning off,
  * on a stone corridor QA builds and takes away). The Sprint key is tapped through runTick's own input loop, W held, then a wall,
  * three zombie hits, hunger 6, eating, blindness, water, sneaking, flying, a death and respawn, and a separate Toggle Sprint key
- * (H). Every tick's sprint state and the state last sent to the server go to lads-qa/screenshots/170-sprint-trace.csv
+ * (J). Every tick's sprint state and the state last sent to the server go to lads-qa/screenshots/170-sprint-trace.csv
  * (SprintTrace: no start-stop flicker). Screenshots: 170-controls-sprint-bound, 170-controls-sprint, 170-controls-sneak,
  * 170-module, 170-hud. Module, options, keys, game mode, food, effects, game rule and blocks are put back.
  */
@@ -214,18 +214,18 @@ final class Probe170 {
             resumed(mc, "respawned");
             hold(mc.gameSettings.keyBindForward, false);
             trace.phase("separate-key");
-            Toggles189.TOGGLE_SPRINT.setKeyCode(Keyboard.KEY_H);
+            Toggles189.TOGGLE_SPRINT.setKeyCode(Keyboard.KEY_J);
             KeyBinding.resetKeyBindingArrayAndHash();
             CoreProbe.tap(SPRINT, (char) 0);
             return after(3);
         },
         mc -> {
-            check(toggles().isSprintToggled(), "Sprint: with Toggle Sprint on H, a Sprint tap no longer toggles");
-            CoreProbe.tap(Keyboard.KEY_H, 'h');
+            check(toggles().isSprintToggled(), "Sprint: with Toggle Sprint on J, a Sprint tap no longer toggles");
+            CoreProbe.tap(Keyboard.KEY_J, 'j');
             return after(3);
         },
         mc -> {
-            check(!toggles().isSprintToggled(), "Sprint: H toggles sprint off");
+            check(!toggles().isSprintToggled(), "Sprint: J toggles sprint off");
             reposition(mc);
             hold(mc.gameSettings.keyBindSprint, true);
             hold(mc.gameSettings.keyBindForward, true);
@@ -235,11 +235,11 @@ final class Probe170 {
             check(mc.thePlayer.isSprinting() && !toggles().isSprintToggled(), "Sprint: with the toggle off, holding Sprint (Left Control) sprints as in vanilla");
             hold(mc.gameSettings.keyBindSprint, false);
             hold(mc.gameSettings.keyBindForward, false);
-            CoreProbe.tap(Keyboard.KEY_H, 'h');
+            CoreProbe.tap(Keyboard.KEY_J, 'j');
             return after(3);
         },
         mc -> {
-            check(toggles().isSprintToggled(), "Sprint: H toggles sprint on again");
+            check(toggles().isSprintToggled(), "Sprint: J toggles sprint on again");
             return openControls(mc);
         },
         mc -> {
@@ -302,8 +302,8 @@ final class Probe170 {
         started = true;
         trace = new SprintTrace();
         Toggles189.trace = trace;
-        origin = new BlockPos(MathHelper.floor_double(mc.thePlayer.posX), MathHelper.floor_double(mc.thePlayer.getEntityBoundingBox().minY),
-            MathHelper.floor_double(mc.thePlayer.posZ));
+        // Open sky: no terrain, water or mobs in the way.
+        origin = new BlockPos(MathHelper.floor_double(mc.thePlayer.posX), 200, MathHelper.floor_double(mc.thePlayer.posZ));
         onServer(mc, player -> {
             net.minecraft.world.GameRules rules = player.worldObj.getGameRules();
             if (spawningWas == null) spawningWas = rules.getString("doMobSpawning");
@@ -313,7 +313,7 @@ final class Probe170 {
             player.setGameType(WorldSettings.GameType.SURVIVAL);
             player.getFoodStats().setFoodLevel(20);
             player.setHealth(player.getMaxHealth());
-            for (int x = -2; x <= 2; x++) for (int z = -1; z <= 40; z++) for (int y = -1; y <= 3; y++)
+            for (int x = -3; x <= 3; x++) for (int z = -3; z <= 40; z++) for (int y = -1; y <= 3; y++)
                 set(player.worldObj, origin.add(x, y, z), y < 0 ? Blocks.stone.getDefaultState() : Blocks.air.getDefaultState());
         });
         return after(20);

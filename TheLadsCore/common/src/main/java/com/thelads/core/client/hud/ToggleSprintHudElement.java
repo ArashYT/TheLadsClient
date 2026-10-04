@@ -6,6 +6,8 @@ import com.thelads.core.modules.ToggleSprintModule;
 
 /** Toggle Sprint &amp; Sneak's one HUD line: "[Sprinting (Toggled)] [Sneaking (Key Held)]" and the like (ToggleSprintModule.status). */
 public class ToggleSprintHudElement extends TextHudElement {
+    private static final String SAMPLE = "[Sprinting (Toggled)]";
+
     public ToggleSprintHudElement() {
         super(70);
         this.x = 5;
@@ -17,7 +19,8 @@ public class ToggleSprintHudElement extends TextHudElement {
     @Override
     protected String updateText(LadsGraphics g) {
         boolean hasPlayer = g.getGame() != null && g.getGame().hasPlayer();
-        if (!hasPlayer) return "[Sprinting (Toggled)]";
-        return ModuleManager.getInstance().getModule(ToggleSprintModule.NAME) instanceof ToggleSprintModule module ? module.status() : "";
+        String status = hasPlayer && ModuleManager.getInstance().getModule(ToggleSprintModule.NAME) instanceof ToggleSprintModule module
+            ? module.status() : "";
+        return status.isEmpty() && (editor || !hasPlayer) ? SAMPLE : status;
     }
 }

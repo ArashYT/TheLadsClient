@@ -38,8 +38,19 @@ class ToggleSprintModuleTest {
             if (!state && module.sprintInput(keyDown, false, false)) state = true;
             if (forbidden[tick]) state = false;
             sprinting[tick] = state;
+            module.sent(state, true); // the player's tick sends its state, W held
         }
         return sprinting;
+    }
+
+    /** Ticks from each sent stop to the next sent start. */
+    private static java.util.List<Integer> restarts(boolean[] sent) {
+        java.util.List<Integer> gaps = new java.util.ArrayList<>();
+        for (int tick = 1, stop = -1; tick < sent.length; tick++) {
+            if (sent[tick - 1] && !sent[tick]) stop = tick;
+            if (!sent[tick - 1] && sent[tick] && stop >= 0) gaps.add(tick - stop);
+        }
+        return gaps;
     }
 
     @Test void theSprintKeyTogglesWhileToggleSprintIsUnbound() {
@@ -97,17 +108,55 @@ class ToggleSprintModuleTest {
         assertTrue(module.sneakInput(true, true), "own toggle key: Sneak is held");
     }
 
-    /** Wall bump, knockback, hunger 6 or less, item use, sneaking, shallow water, blindness: Minecraft's to stop, not ours. */
+    /** Wall bump, hunger 6 or less, item use, shallow water, blindness: Minecraft's to stop; the toggle starts again later. */
     @Test void minecraftStoppingTheSprintNeitherFlickersNorClearsTheToggle() {
         ToggleSprintModule module = fresh();
         module.pressSprint();
-        boolean[] forbidden = {false, false, true, true, true, false, false, true, false, false};
+        boolean[] forbidden = new boolean[40];
+        java.util.Arrays.fill(forbidden, 5, 12, true); // a wall
+        forbidden[20] = true; // one tick: stepping into water (shallow, then under)
+        java.util.Arrays.fill(forbidden, 30, 32, true);
         boolean[] sprinting = vanilla(module, forbidden, false);
-        int changes = 0;
-        for (int tick = 1; tick < sprinting.length; tick++) if (sprinting[tick] != sprinting[tick - 1]) changes++;
-        assertEquals(4, changes, "one stop and one start per interruption, never a flicker within one");
-        for (int tick = 0; tick < sprinting.length; tick++) assertEquals(!forbidden[tick], sprinting[tick], "tick " + tick);
-        assertTrue(module.isSprintToggled());
+        java.util.List<Integer> gaps = restarts(sprinting);
+        assertEquals(3, gaps.size(), "each stop is followed by one start: " + gaps);
+        assertTrue(gaps.stream().allMatch(gap -> gap >= ToggleSprintModule.RESTART_TICKS), "never sooner than the restart delay: " + gaps);
+        assertTrue(sprinting[39] && module.isSprintToggled());
+    }
+
+    /** Held Sprint (1.6.0's toggle): the one-tick water step is a STOP and START a tick apart, the spam this fixes. */
+    @Test void aHeldKeyWouldFlicker() {
+        ToggleSprintModule module = fresh();
+        ((DropdownOption) module.getOption("Sprint")).setIndex(ToggleSprintModule.VANILLA);
+        boolean[] forbidden = new boolean[10];
+        forbidden[4] = true;
+        assertEquals(java.util.List.of(1), restarts(vanilla(module, forbidden, true)));
+    }
+
+    /** W-tap, S-tap, blocking or eating: the player stopped the sprint, so pressing forward again sprints at once. */
+    @Test void aWTapIsNotDelayed() {
+        ToggleSprintModule module = fresh();
+        module.pressSprint();
+        module.sprintEnded(false, false, false);
+        module.sent(true, true);
+        module.sent(false, false); // W released (or blocking: too slow to sprint)
+        assertTrue(module.sprintInput(false, false, false));
+    }
+
+    /** An attack's sprint reset happens between ticks and the same tick sprints again: nothing went out, nothing is delayed. */
+    @Test void aHitsSprintResetIsNotDelayed() {
+        ToggleSprintModule module = fresh();
+        module.pressSprint();
+        module.sprintEnded(false, false, false);
+        module.sent(true, true);
+        module.sent(true, true);
+        assertTrue(module.sprintInput(false, false, false));
+        module.sent(false, true); // Minecraft stopped it and told the server
+        assertFalse(module.sprintInput(false, false, false));
+        assertTrue(module.sprintInput(true, true, false), "a held separate Sprint key is never delayed");
+        for (int tick = 1; tick < ToggleSprintModule.RESTART_TICKS; tick++) module.sent(false, true);
+        assertFalse(module.sprintInput(false, false, false));
+        module.sent(false, true);
+        assertTrue(module.sprintInput(false, false, false));
     }
 
     @Test void theModuleStopsOnlyTheSprintItAskedFor() {
