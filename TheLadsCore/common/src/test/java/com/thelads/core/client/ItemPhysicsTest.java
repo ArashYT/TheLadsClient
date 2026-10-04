@@ -41,31 +41,33 @@ class ItemPhysicsTest {
     void tumblesInTheAirAndSettlesWithoutSnapping() {
         ItemPhysics.Tumble tumble = new ItemPhysics.Tumble(40);
         assertEquals(40, tumble.yaw(0.5f), 0, "starts at its own yaw");
-        for (int tick = 0; tick < 3; tick++) tumble.tick(0.5, false, false);
+        for (int tick = 0; tick < 3; tick++) tumble.tick(0.5, false, 0);
         assertEquals(60, tumble.pitch(1), 1e-4, "spins 20 degrees a tick at half a block a tick");
         assertEquals(50, tumble.pitch(0.5f), 1e-4, "interpolated between ticks");
         float before = tumble.pitch(1);
-        tumble.tick(0, true, false);
+        tumble.tick(0, true, 0);
         float step = tumble.pitch(1) - before;
         assertTrue(step < 0 && step > -20, "lands easing back towards lying flat: " + step);
         for (int tick = 0; tick < 40; tick++) {
             float last = tumble.pitch(1);
-            tumble.tick(0, true, false);
+            tumble.tick(0, true, 0);
             assertTrue(Math.abs(tumble.pitch(1) - last) <= Math.abs(step) + 1e-4, "each step no larger than the first");
         }
         assertEquals(0, tumble.pitch(1), 0, "and comes to rest exactly");
         assertEquals(40, tumble.yaw(1), 0, "keeping its yaw");
         tumble.rest = 90;
-        for (int tick = 0; tick < 4; tick++) tumble.tick(1, false, false);
-        for (int tick = 0; tick < 60; tick++) tumble.tick(0, true, false);
+        for (int tick = 0; tick < 4; tick++) tumble.tick(1, false, 0);
+        for (int tick = 0; tick < 60; tick++) tumble.tick(0, true, 0);
         assertEquals(0, tumble.pitch(1) % 90, 0, "a block comes to rest on a side");
         assertEquals(0, tumble.raise(1), "a resting item is drawn at its entity");
         for (int tick = 0; tick < 30; tick++) {
             float last = tumble.raise(1);
-            tumble.tick(0, false, true);
-            assertTrue(tumble.raise(1) >= last && tumble.raise(1) - last <= ItemPhysics.FLOAT * 0.3f + 1e-6, "eases up onto the surface");
+            tumble.tick(0, false, 0.19);
+            assertTrue(tumble.raise(1) >= last && tumble.raise(1) - last <= 0.21f * 0.3f + 1e-6, "eases up onto the surface");
         }
-        assertEquals(ItemPhysics.FLOAT, tumble.raise(1), 1e-4, "and floats on it");
+        assertEquals(0.19 + ItemPhysics.FLOAT, tumble.raise(1), 1e-4, "and lies on it");
+        for (int tick = 0; tick < 30; tick++) tumble.tick(0, false, 0.8);
+        assertEquals(0, tumble.raise(1), 1e-4, "a sinking item is drawn where it is");
         assertTrue(tumble.yaw(1) > 40, "afloat it turns slowly");
     }
 

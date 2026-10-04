@@ -20,6 +20,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -136,7 +137,7 @@ public final class NativeItemPhysics {
         if (!renders()) return;
         double dx = entity.getX() - entity.xo, dy = entity.getY() - entity.yo, dz = entity.getZ() - entity.zo;
         ((ItemPhysics.Holder) entity).lads$tumble().tick(Math.sqrt(dx * dx + dy * dy + dz * dz), entity.onGround(),
-            entity.isInWater() || entity.isInLava());
+            Math.max(entity.getFluidHeight(FluidTags.WATER), entity.getFluidHeight(FluidTags.LAVA)));
     }
 
     // ---- singleplayer rules ----

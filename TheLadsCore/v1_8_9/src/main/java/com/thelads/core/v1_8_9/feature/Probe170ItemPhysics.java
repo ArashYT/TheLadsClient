@@ -50,7 +50,7 @@ final class Probe170ItemPhysics {
     private static final Map<BlockPos, IBlockState> blocksWere = new LinkedHashMap<BlockPos, IBlockState>();
     private static final Map<String, Object> facts = new ConcurrentHashMap<String, Object>();
     private static final List<Integer> spawned = new java.util.concurrent.CopyOnWriteArrayList<Integer>();
-    private static boolean wasEnabled, started, guiWas;
+    private static boolean wasEnabled, started, guiWas, flyingWas;
     private static long modifiedWas;
     private static BlockPos base;
     private static double[] posWas;
@@ -74,7 +74,8 @@ final class Probe170ItemPhysics {
             return after(60);
         },
         mc -> { screenshot(mc, "170-ip-rest-side"); view(mc, 0.5, 5, 2.5, 0, 90); return after(20); },
-        mc -> { screenshot(mc, "170-ip-rest-top"); view(mc, 0.5, 1, -2.5, 0, 30); return after(20); },
+        // Looking down at the row: no sky in the compared frames (OptiFine's dusk sky changes by itself).
+        mc -> { screenshot(mc, "170-ip-rest-top"); view(mc, 0.5, 2.5, -1.5, 0, 55); return after(20); },
         mc -> { // module off, on, off with the client's timer stopped
             frozen = new FrozenFrames(mc);
             MinecraftForge.EVENT_BUS.register(frozen);
@@ -84,7 +85,8 @@ final class Probe170ItemPhysics {
             if (!frozen.done) return retry(1);
             MinecraftForge.EVENT_BUS.unregister(frozen);
             module().setEnabled(true);
-            check(frozen.offAgain == 0, "Item Physics: module off draws the frozen scene pixel for pixel as before it was on");
+            check(frozen.offAgain == 0, "Item Physics: module off draws the frozen scene pixel for pixel as before it was on (" + frozen.offAgain
+                + " pixels differ)");
             check(frozen.onChanged > 1000, "Item Physics: module on changes that scene (" + frozen.onChanged + " pixels differ)");
             view(mc, 0.5, 1.6, -3, 0, 5);
             onServer(mc, player -> {
@@ -351,6 +353,7 @@ final class Probe170ItemPhysics {
             ItemPhysics189.rules(mc.theWorld) != null ? "on" : "off", mc.isIntegratedServerRunning() ? "running" : "absent");
         started = true;
         guiWas = mc.gameSettings.hideGUI;
+        flyingWas = mc.thePlayer.capabilities.isFlying;
         posWas = new double[]{mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ};
         base = new BlockPos(MathHelper.floor_double(mc.thePlayer.posX), 200, MathHelper.floor_double(mc.thePlayer.posZ));
         onServer(mc, player -> {
@@ -542,7 +545,7 @@ final class Probe170ItemPhysics {
             }
             player.inventory.clear();
             if (inventoryWas != null) for (int i = 0; i < inventoryWas.length; i++) player.inventory.setInventorySlotContents(i, inventoryWas[i]);
-            player.capabilities.isFlying = false;
+            player.capabilities.isFlying = flyingWas; // as found
             player.sendPlayerAbilities();
             player.fallDistance = 0;
             if (posWas != null) player.playerNetServerHandler.setPlayerLocation(posWas[0], posWas[1], posWas[2], 0, 0);

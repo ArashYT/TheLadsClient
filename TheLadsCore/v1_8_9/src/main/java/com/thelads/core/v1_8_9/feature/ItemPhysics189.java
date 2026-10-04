@@ -82,13 +82,13 @@ public final class ItemPhysics189 {
         return kind;
     }
 
-    /** The item floats deeper than 0.1 in this liquid (water or lava); 26.x items float that deep too. */
-    public static boolean under(EntityItem item, net.minecraft.block.material.Material liquid) {
-        double floated = item.posY + 0.1;
-        BlockPos at = new BlockPos(item.posX, floated, item.posZ);
+    /** How deep the item's bottom is in this liquid (water or lava): 0 out of it, 1 once a whole block of it is above. */
+    public static double depth(EntityItem item, net.minecraft.block.material.Material liquid) {
+        BlockPos at = new BlockPos(item.posX, item.posY, item.posZ);
         IBlockState state = item.worldObj.getBlockState(at);
-        return state.getBlock().getMaterial() == liquid
-            && floated < at.getY() + 1 - BlockLiquid.getLiquidHeightPercent(state.getValue(BlockLiquid.LEVEL));
+        if (state.getBlock().getMaterial() != liquid) return 0;
+        if (item.worldObj.getBlockState(at.up()).getBlock().getMaterial() == liquid) return 1;
+        return Math.max(0, at.getY() + 1 - BlockLiquid.getLiquidHeightPercent(state.getValue(BlockLiquid.LEVEL)) - item.posY);
     }
 
     /** A burning flammable item lying on a flammable block sets it alight, if the doFireTick game rule allows fire to spread. */

@@ -43,7 +43,8 @@ public abstract class EntityItemMixin extends Entity implements ItemPhysics.Hold
     private void ladsItemPhysics(CallbackInfo ci) {
         if (worldObj.isRemote && ItemPhysics189.renders()) {
             double dx = posX - prevPosX, dy = posY - prevPosY, dz = posZ - prevPosZ;
-            lads$tumble().tick(Math.sqrt(dx * dx + dy * dy + dz * dz), onGround, isInWater() || isInLava());
+            lads$tumble().tick(Math.sqrt(dx * dx + dy * dy + dz * dz), onGround, Math.max(ItemPhysics189.depth((EntityItem) (Object) this, Material.water),
+                ItemPhysics189.depth((EntityItem) (Object) this, Material.lava)));
         }
         ItemPhysicsModule module = ItemPhysics189.rules(worldObj);
         ItemStack stack = getEntityItem();
@@ -52,9 +53,10 @@ public abstract class EntityItemMixin extends Entity implements ItemPhysics.Hold
         if (module == null) return;
         // 1.8.9 has no item buoyancy: light items rise in water and heavy ones sink slowly, fire-proof ones float on lava. The
         // tick's gravity (0.04) follows, so it is added back.
-        if (module.floating.get() && ItemPhysics189.under((EntityItem) (Object) this, Material.water))
+        // Like 26.x, an item floats about 0.1 deep.
+        if (module.floating.get() && ItemPhysics189.depth((EntityItem) (Object) this, Material.water) > 0.1)
             motionY = ItemPhysics.buoyancy(motionY, ItemPhysics189.floats(stack)) + 0.04;
-        else if (fireproof && ItemPhysics189.under((EntityItem) (Object) this, Material.lava))
+        else if (fireproof && ItemPhysics189.depth((EntityItem) (Object) this, Material.lava) > 0.1)
             motionY = ItemPhysics.buoyancy(motionY, true) + 0.04;
         if (!worldObj.isRemote) ItemPhysics189.ignite((EntityItem) (Object) this);
     }
