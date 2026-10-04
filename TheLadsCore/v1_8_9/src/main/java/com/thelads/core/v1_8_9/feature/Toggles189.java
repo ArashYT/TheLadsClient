@@ -23,8 +23,8 @@ import org.lwjgl.input.Mouse;
  * default), the Sprint and Sneak keys toggle; bound, those keys toggle and Sprint and Sneak are hold keys again.
  */
 public final class Toggles189 {
-    public static final KeyBinding TOGGLE_SPRINT = new KeyBinding("key.theladscore.toggle_sprint", Keyboard.KEY_NONE, "key.category.theladscore.controls");
-    public static final KeyBinding TOGGLE_SNEAK = new KeyBinding("key.theladscore.toggle_sneak", Keyboard.KEY_NONE, "key.category.theladscore.controls");
+    public static final KeyBinding TOGGLE_SPRINT = new KeyBinding("key.theladscore.toggle_sprint", Keyboard.KEY_NONE, "key.categories.movement");
+    public static final KeyBinding TOGGLE_SNEAK = new KeyBinding("key.theladscore.toggle_sneak", Keyboard.KEY_NONE, "key.categories.movement");
     private static boolean sprintHeld, sneakHeld;
     /** QA (Probe170): every tick's sprint state and the state last sent to the server. */
     static SprintTrace trace;

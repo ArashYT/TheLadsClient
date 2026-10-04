@@ -11,10 +11,11 @@ public final class NativeKeyBindings {
         InputConstants.Type.KEYBOARD, InputConstants.KEY_C, CATEGORY);
     public static final KeyMapping MODULES = new KeyMapping("key.theladscore.modules",
         InputConstants.Type.KEYBOARD, InputConstants.KEY_RSHIFT, CATEGORY);
-    /** Toggle Sprint & Sneak: unbound by default, so Sprint and Sneak toggle (NativeFeatures); bound, these toggle instead. */
+    /** Toggle Sprint & Sneak, listed under Movement right after Sprint and Sneak ("Sprint (Toggle)"): unbound by default, so Sprint
+     * and Sneak toggle (NativeFeatures); bound, these toggle instead. */
     public static final KeyMapping TOGGLE_SPRINT = new KeyMapping("key.theladscore.toggle_sprint",
-        InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
+        InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), KeyMapping.Category.MOVEMENT);
     public static final KeyMapping TOGGLE_SNEAK = new KeyMapping("key.theladscore.toggle_sneak",
-        InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
+        InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), KeyMapping.Category.MOVEMENT);
     private NativeKeyBindings() {}
 }

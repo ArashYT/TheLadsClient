@@ -101,8 +101,9 @@ final class SprintCapture {
                 enabledBefore = toggles.isEnabled();
                 modifiedBefore = toggles.getLastModified();
                 for (Option option : toggles.getOptions()) OPTIONS.put(option, option.save().deepCopy());
-                LOGGER.info("Lads sprint capture BEGIN: at world load Toggle Sprint & Sneak is {}, sprint toggled={}, sneak toggled={} (thelads_config.json)",
-                    enabledBefore ? "on" : "off", toggles.isSprintToggled(), toggles.isSneakToggled());
+                LOGGER.info("Lads sprint capture BEGIN: at world load Toggle Sprint & Sneak is {}, sprint toggled={}, sneak toggled={}, options {}, HUD position {} (thelads_config.json)",
+                    enabledBefore ? "on" : "off", toggles.isSprintToggled(), toggles.isSneakToggled(), OPTIONS.values(),
+                    java.util.Arrays.toString(com.thelads.core.config.HudSettings.getInstance().getPosition(ToggleSprintModule.NAME)));
                 toggles.getOptions().forEach(Option::reset); // Sprint Toggle, Sneak Vanilla, untoggled
                 toggles.setEnabled(true);
                 NativeWorldVerification.syntheticInput(true);
@@ -290,7 +291,7 @@ final class SprintCapture {
             case 30 -> {
                 NativeKeyBindings.TOGGLE_SPRINT.setKey(InputConstants.UNKNOWN);
                 KeyMapping.resetMapping();
-                screen(mc, new KeyBindsScreen(null, mc.options), "sprint");
+                screen(mc, new KeyBindsScreen(null, mc.options), "");
                 wait = 15;
                 shot = "sprint-controls";
             }
