@@ -112,12 +112,12 @@
       "projectSlug": "c2me-fabric",
       "name": "Concurrent Chunk Management Engine (Fabric)",
       "modId": "c2me",
-      "versionId": "LmKTn6Yc",
-      "version": "0.4.2-alpha.0.52+26.2",
-      "fileName": "c2me-fabric-mc26.2-0.4.2-alpha.0.52.jar",
-      "url": "https://cdn.modrinth.com/data/VSNURh3q/versions/LmKTn6Yc/c2me-fabric-mc26.2-0.4.2-alpha.0.52.jar",
-      "sha512": "76a7c52ea9b22295c15d02be7f1ca4b68fc67368465f1bd3cffb47cd36bf3bf6b9dd925bca02ccb2c7cb2c26df1235538d98ddbac43f85985c39fd183c9f3468",
-      "size": 3842500,
+      "versionId": "JRbWYiJa",
+      "version": "0.4.2-alpha.0.56+26.2",
+      "fileName": "c2me-fabric-mc26.2-0.4.2-alpha.0.56.jar",
+      "url": "https://cdn.modrinth.com/data/VSNURh3q/versions/JRbWYiJa/c2me-fabric-mc26.2-0.4.2-alpha.0.56.jar",
+      "sha512": "8d4c8ff211928ac1a9a7ce1d6dcad514791a6071827197f81343a7c2640bf1a5c6d34868ef044ed2b7eba07a68fd998fa46dd281047de3dc2f653b4233883b4c",
+      "size": 3842648,
       "license": "MIT",
       "sourceUrl": "https://github.com/RelativityMC/C2ME-fabric",
       "projectUrl": "https://modrinth.com/mod/c2me-fabric"
@@ -127,12 +127,12 @@
       "projectSlug": "chat-heads",
       "name": "Chat Heads",
       "modId": "chat_heads",
-      "versionId": "PJEyme1x",
-      "version": "1.3.0",
-      "fileName": "chat_heads-1.3.0-fabric-26.1.jar",
-      "url": "https://cdn.modrinth.com/data/Wb5oqrBJ/versions/PJEyme1x/chat_heads-1.3.0-fabric-26.1.jar",
-      "sha512": "df46ba29901787839cf28fec90fd00dea178e25efcd69f74d0a78aeb5e5769f3ec4f59fa3530b08e02be70be53c7d632a38283d4489b7a4c0e6ab6e32d5fe05d",
-      "size": 96696,
+      "versionId": "fQEym0D5",
+      "version": "1.3.1",
+      "fileName": "chat_heads-1.3.1-fabric-26.1.jar",
+      "url": "https://cdn.modrinth.com/data/Wb5oqrBJ/versions/fQEym0D5/chat_heads-1.3.1-fabric-26.1.jar",
+      "sha512": "021dba051dae5d97cf10ecb113ad491cf6632af57a7cebe4a031a519ef80bee44b3f7b5e68dfa60697db281b4fee79d207448092db0957215c107c2662f25050",
+      "size": 98373,
       "license": "MPL-2.0",
       "sourceUrl": "https://github.com/dzwdz/chat_heads",
       "projectUrl": "https://modrinth.com/mod/chat-heads"
@@ -157,12 +157,12 @@
       "projectSlug": "collective",
       "name": "Collective",
       "modId": "collective",
-      "versionId": "k9G2Omhm",
-      "version": "26.2.0-8.40-fabric+forge+neo",
-      "fileName": "collective-26.2.0-8.40.jar",
-      "url": "https://cdn.modrinth.com/data/e0M1UDsY/versions/k9G2Omhm/collective-26.2.0-8.40.jar",
-      "sha512": "1c35fa28b2ec42cc130c578ad9bb1f320477d881816044a4ba28429ec633c8bd6725fd1378a8ae41b88337ab43aff174d55db0468ed23c5cd16cca776d001c93",
-      "size": 1081485,
+      "versionId": "RCPUFFy1",
+      "version": "26.2.0-8.41-fabric+forge+neo",
+      "fileName": "collective-26.2.0-8.41.jar",
+      "url": "https://cdn.modrinth.com/data/e0M1UDsY/versions/RCPUFFy1/collective-26.2.0-8.41.jar",
+      "sha512": "7b1bb2add04a7e35d41b6463d643331fa4870861892d84d47943289266801f10fcca6873fd5c34481213cf298ba45408ad6bcafb38e87a7c3259370a8672254d",
+      "size": 1081455,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/Serilum/Collective",
       "projectUrl": "https://modrinth.com/mod/collective"
@@ -442,12 +442,12 @@
       "projectSlug": "jasione",
       "name": "Jasione",
       "modId": "jasione",
-      "versionId": "TPKzcQgZ",
-      "version": "1.0.8+26.1.2-fabric",
-      "fileName": "jasione-1.0.8+26.1.2-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/qlDkBPij/versions/TPKzcQgZ/jasione-1.0.8%2B26.1.2-fabric.jar",
-      "sha512": "5f486d84ead692ce40baf1c4966b17c0cd2c97daea06bc679297ffee3c936fa1003ef35eb8c2e924da38a8451f55b9247dec2adb75b80cc035158eaeb94d54fa",
-      "size": 748305,
+      "versionId": "kbKBk4b3",
+      "version": "1.0.9+26.1.2-fabric",
+      "fileName": "jasione-1.0.9+26.1.2-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/qlDkBPij/versions/kbKBk4b3/jasione-1.0.9%2B26.1.2-fabric.jar",
+      "sha512": "ad6ff0c19eab2945489c2523d19fcd79b39cc33ed7130e3c5b3ac13028dd66ed1d207faaa0b04399d2cfd67cbb1c2390d0733c667dea8c3bb9a01a3e03a61829",
+      "size": 748721,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/decce6/Jasione",
       "projectUrl": "https://modrinth.com/mod/jasione"
@@ -547,12 +547,12 @@
       "projectSlug": "mezzconfig",
       "name": "MezzConfig",
       "modId": "mezz_config",
-      "versionId": "W6bsdPpY",
-      "version": "0.6.5",
-      "fileName": "mezz_config-26.2-fabric-0.6.5.jar",
-      "url": "https://cdn.modrinth.com/data/7tEfOcA7/versions/W6bsdPpY/mezz_config-26.2-fabric-0.6.5.jar",
-      "sha512": "b4a45d5e3c5f9467ac3ce72c4d311c18cd85422966e8f8c5503d3df13f70dfa829947a33443952205e4d64580fd77399ac7fba7b8f969d15ca5d872e69039d78",
-      "size": 351869,
+      "versionId": "2T4ew9Zj",
+      "version": "0.6.8",
+      "fileName": "mezz_config-26.2-fabric-0.6.8.jar",
+      "url": "https://cdn.modrinth.com/data/7tEfOcA7/versions/2T4ew9Zj/mezz_config-26.2-fabric-0.6.8.jar",
+      "sha512": "f97f858d949de310fdd749d81c0239d005a461640bce365f670b0495ed58e22052e5e0137ea97ec7882b3290e49effe0cf552c6a09354293874b6f2b9d0ab3c5",
+      "size": 368394,
       "license": "MIT",
       "sourceUrl": "https://github.com/mezz/MezzConfig",
       "projectUrl": "https://modrinth.com/mod/mezzconfig"
@@ -693,21 +693,6 @@
       "projectUrl": "https://modrinth.com/mod/no-resource-pack-warnings"
     },
     {
-      "projectId": "1agMh8Z8",
-      "projectSlug": "nopackcompatcheck",
-      "name": "NoPackCompatCheck",
-      "modId": "nopackcompatcheck",
-      "versionId": "IghJHOah",
-      "version": "v0.1.1-fabric-mc26.1+",
-      "fileName": "NoPackCompatCheck-0.1.1-fabric-mc26.1+.jar",
-      "url": "https://cdn.modrinth.com/data/1agMh8Z8/versions/IghJHOah/NoPackCompatCheck-0.1.1-fabric-mc26.1%2B.jar",
-      "sha512": "42cffcc506703379f0b15369e676c1c3a4b629f2db3e349909bfccd1eca4813f490d70d32225e07f07b33aaf69a8427f8dce25f8ef399719dcf825d0e1f109bc",
-      "size": 21255,
-      "license": "LGPL-3.0-only",
-      "sourceUrl": "https://github.com/Wudji/NoPackCompatCheck",
-      "projectUrl": "https://modrinth.com/mod/nopackcompatcheck"
-    },
-    {
       "projectId": "MPCX6s5C",
       "projectSlug": "not-enough-animations",
       "name": "Not Enough Animations",
@@ -727,12 +712,12 @@
       "projectSlug": "obe",
       "name": "Optimized Block Entities [OBE]",
       "modId": "obe",
-      "versionId": "I4KMbfbE",
-      "version": "1.1.49",
-      "fileName": "obe+26.2-1.1.49.jar",
-      "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/I4KMbfbE/obe%2B26.2-1.1.49.jar",
-      "sha512": "41bb5446c884eb474a3f17c47dbb3178e0794dd1b289ad889949618556fe3a6263e2041fe2702c5008ad5718cedce581eccd188f101b65ab3211e69cfa401bd8",
-      "size": 189080,
+      "versionId": "qKpOS1SP",
+      "version": "1.1.50",
+      "fileName": "obe+26.2-1.1.50.jar",
+      "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/qKpOS1SP/obe%2B26.2-1.1.50.jar",
+      "sha512": "d0ec86b8e68914c019f5615d5aa79ea9003c01869c47ca18844393f1546c6b39d9943b43b449e949a22149347a84e5ead32e5a39be50d08e2bd6e81a26e304a0",
+      "size": 191155,
       "license": "LGPL-3.0-or-later",
       "sourceUrl": "https://github.com/maDU59/OptimisedBlockEntities",
       "projectUrl": "https://modrinth.com/mod/obe"
@@ -798,6 +783,21 @@
       "projectUrl": "https://modrinth.com/mod/scalablelux"
     },
     {
+      "projectId": "zV5r3pPn",
+      "projectSlug": "3dskinlayers",
+      "name": "3D Skin Layers",
+      "modId": "skinlayers3d",
+      "versionId": "AfYGPfcD",
+      "version": "1.11.3",
+      "fileName": "skinlayers3d-fabric-1.11.3-mc26.2.jar",
+      "url": "https://cdn.modrinth.com/data/zV5r3pPn/versions/AfYGPfcD/skinlayers3d-fabric-1.11.3-mc26.2.jar",
+      "sha512": "552bafff617fec708739faeb0a94001f5180aced60dc298710b9217893c3b7448c5acfed926f31d162978b4532e7d85a4887e8128bc6579c48a7e7a55aab79c2",
+      "size": 1890348,
+      "license": "LicenseRef-tr7zw-Protective-License",
+      "sourceUrl": "https://github.com/tr7zw/3d-skin-layers",
+      "projectUrl": "https://modrinth.com/mod/3dskinlayers"
+    },
+    {
       "projectId": "AANobbMI",
       "projectSlug": "sodium",
       "name": "Sodium",
@@ -832,12 +832,12 @@
       "projectSlug": "supermartijn642s-config-lib",
       "name": "SuperMartijn642's Config Lib",
       "modId": "supermartijn642configlib",
-      "versionId": "tg619S8t",
-      "version": "1.1.8-fabric-mc26.2",
-      "fileName": "supermartijn642configlib-1.1.8-fabric-mc26.2.jar",
-      "url": "https://cdn.modrinth.com/data/LN9BxssP/versions/tg619S8t/supermartijn642configlib-1.1.8-fabric-mc26.2.jar",
-      "sha512": "415c6ce953ccc618a98653c08eb36bfa1344227ef9e17c4c7603a07882f71e29266091e67b391dde59f76836b7d7d783342c65e75b6c4cffaaf31d0d929dacef",
-      "size": 206149,
+      "versionId": "iInTTGso",
+      "version": "1.1.8a-fabric-mc26.2",
+      "fileName": "supermartijn642configlib-1.1.8a-fabric-mc26.2.jar",
+      "url": "https://cdn.modrinth.com/data/LN9BxssP/versions/iInTTGso/supermartijn642configlib-1.1.8a-fabric-mc26.2.jar",
+      "sha512": "5479b2dc62b73706817007803c4b2bac4c007705484d8b57daef20649793ae524f2123a66842e6490da766a0eada3c3469dcc1bba6b4a430dbdb16d221d6c9f1",
+      "size": 206152,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/SuperMartijn642/SuperMartijn642sConfigLib",
       "projectUrl": "https://modrinth.com/mod/supermartijn642s-config-lib"
@@ -964,11 +964,26 @@
     }
   ],
   "published": {
+    "c2me": [
+      "76a7c52ea9b22295c15d02be7f1ca4b68fc67368465f1bd3cffb47cd36bf3bf6b9dd925bca02ccb2c7cb2c26df1235538d98ddbac43f85985c39fd183c9f3468"
+    ],
+    "chat_heads": [
+      "df46ba29901787839cf28fec90fd00dea178e25efcd69f74d0a78aeb5e5769f3ec4f59fa3530b08e02be70be53c7d632a38283d4489b7a4c0e6ab6e32d5fe05d"
+    ],
+    "collective": [
+      "1c35fa28b2ec42cc130c578ad9bb1f320477d881816044a4ba28429ec633c8bd6725fd1378a8ae41b88337ab43aff174d55db0468ed23c5cd16cca776d001c93"
+    ],
     "fabric-api": [
       "4d5d9c3daafe19be187f638f2d6de3db26420b8720ef5a266cfa81f79d9019cab8c86e6d47478bbb0b0ee0b8f769204b72c843caa2e4aabd94adc41f3dafb518"
     ],
     "fabric-language-kotlin": [
       "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77"
+    ],
+    "jasione": [
+      "5f486d84ead692ce40baf1c4966b17c0cd2c97daea06bc679297ffee3c936fa1003ef35eb8c2e924da38a8451f55b9247dec2adb75b80cc035158eaeb94d54fa"
+    ],
+    "mezz_config": [
+      "b4a45d5e3c5f9467ac3ce72c4d311c18cd85422966e8f8c5503d3df13f70dfa829947a33443952205e4d64580fd77399ac7fba7b8f969d15ca5d872e69039d78"
     ],
     "modmenu": [
       "1aa297ab5e6fac71ad6af750fe6f8cd25281bd00c0340e5fe1c1e9d153d1198df03be1df55727a4a2116db97dcaad541d41754f3fc0063abfe4345b60f193fb4"
@@ -976,11 +991,20 @@
     "notenoughanimations": [
       "41c05f531298cce723a84639fb6b9510bfa25e65ff27a041083d47900d743d44473e1f7bdbcd87d7cd149f1291a1359dc3d8553a176be21c432ea15bbbdda92e"
     ],
+    "obe": [
+      "41bb5446c884eb474a3f17c47dbb3178e0794dd1b289ad889949618556fe3a6263e2041fe2702c5008ad5718cedce581eccd188f101b65ab3211e69cfa401bd8"
+    ],
     "resourcify": [
       "33d9c35b269daebb031c6a5a80e1a6e528852eb6a151d6dac0dd8a9dab953732ba5d261cb629666e3cee5781a548b1159ae46647a6152a72fe3844b47d4f42c2"
     ],
+    "skinlayers3d": [
+      "ead4a257e5ec2b092db84aebc7f5146dfb667a01f5d1362485f9ea9835e4558172949bcfb40c7a0bfbfb36e6c746b96c580f855af4109c806e0fc3591d48ad80"
+    ],
     "sodium": [
       "627fbf9625a4b94693c789c84a0686ffe558c0b1ecbeccf2602a903caafa9e126548b644282aa9c391dc798930d378724a383bea6b4397c5294d59ba5c0a6936"
+    ],
+    "supermartijn642configlib": [
+      "415c6ce953ccc618a98653c08eb36bfa1344227ef9e17c4c7603a07882f71e29266091e67b391dde59f76836b7d7d783342c65e75b6c4cffaaf31d0d929dacef"
     ],
     "voicechat": [
       "eb45e75e8b031f3bb27e178ed44fd7b78ba681f077f5972e170726b4837146efd49c7b67d63a95ec4ce87e5672cf76bed85ac8fa7790a9e7ff7309a6c3f424ee"
@@ -1180,6 +1204,15 @@
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
     },
     {
+      "modId": "nopackcompatcheck",
+      "projectId": "1agMh8Z8",
+      "name": "NoPackCompatCheck",
+      "sha512": [
+        "42cffcc506703379f0b15369e676c1c3a4b629f2db3e349909bfccd1eca4813f490d70d32225e07f07b33aaf69a8427f8dce25f8ef399719dcf825d0e1f109bc"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.7.0: No Resource Pack Warnings already hides the outdated-pack warnings."
+    },
+    {
       "modId": "optimizedcushionsbackport",
       "projectId": "PD2xMNLQ",
       "name": "Optimized Cushions",
@@ -1224,16 +1257,6 @@
         "a39ad7675ea41a3e8620101497a14f3242adce55c2d34fae6d6b335c8a35e554a5fd7a0f603b62ffdf0235571c7958d222f143c13ad1746b230f22d9900aa788"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
-    },
-    {
-      "modId": "skinlayers3d",
-      "projectId": "zV5r3pPn",
-      "name": "3D Skin Layers",
-      "sha512": [
-        "552bafff617fec708739faeb0a94001f5180aced60dc298710b9217893c3b7448c5acfed926f31d162978b4532e7d85a4887e8128bc6579c48a7e7a55aab79c2",
-        "ead4a257e5ec2b092db84aebc7f5146dfb667a01f5d1362485f9ea9835e4558172949bcfb40c7a0bfbfb36e6c746b96c580f855af4109c806e0fc3591d48ad80"
-      ],
-      "reason": "Replaced by internal native 3D skin layer module in 1.4.2."
     },
     {
       "modId": "sound_physics_remastered",

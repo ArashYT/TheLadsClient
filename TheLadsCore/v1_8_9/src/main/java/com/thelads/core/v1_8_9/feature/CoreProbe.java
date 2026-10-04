@@ -60,6 +60,7 @@ public final class CoreProbe {
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     static {
+        STEPS.addAll(Probe170.STEPS);
         STEPS.addAll(Probe160s.STEPS);
         STEPS.addAll(HudProbe.STEPS);
         STEPS.addAll(Probe145.STEPS);
@@ -103,6 +104,7 @@ public final class CoreProbe {
         Probe151.stop();
         Probe160.stop();
         Probe160s.stop();
+        Probe170.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -374,6 +376,7 @@ public final class CoreProbe {
         java.util.Set<String> expected = new java.util.HashSet<>(Arrays.asList(NativeHud.MODULES));
         expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.TheLadsCore189.GAMEPLAY_MODULES));
         for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.LIMITED) expected.add(module[0]);
+        if (SkinLayers189.LOADED) expected.add("SkinLayers");
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
         check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 2 /* DisableNarrator, ShulkerBoxUtils */

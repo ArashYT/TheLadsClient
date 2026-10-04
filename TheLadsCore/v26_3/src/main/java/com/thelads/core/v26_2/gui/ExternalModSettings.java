@@ -14,6 +14,8 @@ public final class ExternalModSettings {
         external("DynamicFPS", "Dynamic FPS", "dynamic_fps");
         external("DynamicLights", "LambDynamicLights", "lambdynlights");
         external("SkinLayers", "3D Skin Layers", "skinlayers3d");
+        // The bundled jar draws the layers; the module switches them for players (SkinLayersGateMixin).
+        if (FabricLoader.getInstance().isModLoaded("skinlayers3d")) ModuleSupport.registerBuiltIn("SkinLayers");
         external("NotEnoughAnimations", "Not Enough Animations", "notenoughanimations");
         external("BetterF3", "BetterF3", "betterf3");
         external("BetterStats", "Better Statistics Screen", "betterstats");
