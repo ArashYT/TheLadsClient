@@ -76,7 +76,8 @@ public class ScoreboardHudElement extends HudElement {
             String v = lines.get(i).value();
             if (v == null || v.trim().isEmpty()) return false;
             try {
-                vals[i] = Integer.parseInt(v.trim());
+                // 26.x values carry the sidebar's section-sign colour codes ("§r§c15").
+                vals[i] = Integer.parseInt(v.replaceAll("§.", "").trim());
             } catch (NumberFormatException e) {
                 return false;
             }

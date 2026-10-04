@@ -207,6 +207,16 @@ class ScoreboardHudTest {
         assertTrue(scoreboard.getWidth() < withNumbers);
     }
 
+    /** 26.x bridges keep the sidebar's red colour codes on every value; sequential detection must see through them. */
+    @Test
+    void hideSequentialOnlySeesThroughColourCodes() {
+        game.scoreboard = new ScoreboardSnapshot("Server", List.of(new ScoreLine("a", "§r§c3"),
+                new ScoreLine("b", "§r§c2"), new ScoreLine("c", "§r§c1")));
+        flag("Hide Sequential Only", true);
+        scoreboard.render(graphics);
+        assertEquals(List.of("Server", "a", "b", "c"), textValues());
+    }
+
     @ParameterizedTest
     @CsvSource({"0,80000000", "1,C0000000", "2,C0FFFFFF", "3,00000000"})
     void backgroundChoicesControlActualDraws(int choice, String color) {
