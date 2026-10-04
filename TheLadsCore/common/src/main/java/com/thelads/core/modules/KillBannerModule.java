@@ -10,23 +10,52 @@ import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Option;
 import com.thelads.core.config.TextOption;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
 public class KillBannerModule extends Module {
     public static final int BASE = 0, REAVER = 1, ROGUE = 2, CUSTOM = 3;
     public static final int RANDOM_OFF = 0, RANDOM_VARIANT = 1, RANDOM_SKIN = 2, RANDOM_CHOSEN = 3;
-    public final DropdownOption bannerStyle = new DropdownOption("Style", REAVER, "Base", "Reaver", "Rogue", "Custom");
+
+    private static String[] createStyleChoices() {
+        KillBannerStyle[] styles = KillBannerStyle.values();
+        String[] choices = new String[styles.length + 1];
+        choices[0] = "Base";
+        choices[1] = "Reaver";
+        choices[2] = "Rogue";
+        choices[3] = "Custom";
+        for (int i = 3; i < styles.length; i++) {
+            choices[i + 1] = styles[i].displayName;
+        }
+        return choices;
+    }
+
+    private static String[] createCustomChoices() {
+        KillBannerStyle[] styles = KillBannerStyle.values();
+        String[] choices = new String[styles.length];
+        choices[0] = "Base";
+        choices[1] = "Reaver";
+        choices[2] = "Rogue";
+        for (int i = 3; i < styles.length; i++) {
+            choices[i] = styles[i].displayName;
+        }
+        return choices;
+    }
+
+    public final DropdownOption bannerStyle = new DropdownOption("Style", REAVER, createStyleChoices());
     public final DropdownOption reaverVariant = new DropdownOption("Reaver Variant", 0, "Base", "Red", "Black", "White");
     public final DropdownOption rogueVariant = new DropdownOption("Rogue Variant", 0, "Base", "Green", "Red", "Blue");
     /** Custom: the banner of one skin with the sound of another. */
-    public final DropdownOption customVisual = new DropdownOption("Custom Banner", REAVER, "Base", "Reaver", "Rogue");
-    public final DropdownOption customSound = new DropdownOption("Custom Sound", ROGUE, "Base", "Reaver", "Rogue");
+    public final DropdownOption customVisual = new DropdownOption("Custom Banner", REAVER, createCustomChoices());
+    public final DropdownOption customSound = new DropdownOption("Custom Sound", ROGUE, createCustomChoices());
     public final DropdownOption randomize = new DropdownOption("Randomize", RANDOM_OFF, "Off", "Variant", "Skin and variant", "Chosen");
     /** The Chosen randomizer's pool: "reaver:0,rogue:3,..." (skin id and variant index). */
     public final TextOption randomPool = new TextOption("Random Pool", "reaver:0,reaver:1,reaver:2,reaver:3,rogue:0,rogue:1,rogue:2,rogue:3");
+    public final TextOption skinVariants = new TextOption("Skin Variants", "");
     public final BoolOption players = new BoolOption("Players", true);
     public final BoolOption mobs = new BoolOption("Mobs", false);
     public final BoolOption bosses = new BoolOption("Bosses", true);
@@ -38,13 +67,15 @@ public class KillBannerModule extends Module {
     public final SliderOption duration = new SliderOption("Duration", 2, 1, 5, .25);
     public final SliderOption size = new SliderOption("Size", 100, 50, 150, 10);
     private final Random random = new Random();
+    private final Map<KillBannerStyle, Integer> variants = new EnumMap<>(KillBannerStyle.class);
+    private boolean variantsLoaded;
     private Pick last;
 
     /** What one kill shows and plays: {@code style} null is the Base banner, {@code soundStyle} null the plain chime. */
     public record Pick(KillBannerStyle style, int variant, KillBannerStyle soundStyle) {}
 
     public KillBannerModule() {
-        super("KillBanner", "Valorant Reaver and Rogue kill banners, with their animations and sounds, the moment you kill a player, mob or boss.");
+        super("KillBanner", "Valorant kill banners with animations, rings, pips and sounds, the moment you kill a player, mob or boss.");
         addOption(bannerStyle);
         addOption(reaverVariant);
         addOption(rogueVariant);
@@ -52,6 +83,7 @@ public class KillBannerModule extends Module {
         addOption(customSound);
         addOption(randomize);
         addOption(randomPool);
+        addOption(skinVariants);
         addOption(players);
         addOption(mobs);
         addOption(bosses);
@@ -66,7 +98,8 @@ public class KillBannerModule extends Module {
     /** Options the Kill Banner picker draws itself, so the settings list leaves them out. */
     public boolean pickerOption(Option option) {
         return option == bannerStyle || option == reaverVariant || option == rogueVariant || option == customVisual
-            || option == customSound || option == randomize || option == randomPool || option == players || option == mobs || option == bosses;
+            || option == customSound || option == randomize || option == randomPool || option == skinVariants
+            || option == players || option == mobs || option == bosses;
     }
 
     public boolean counts(KillDetector.Kind kind) {
@@ -78,18 +111,79 @@ public class KillBannerModule extends Module {
     }
 
     public static KillBannerStyle skin(int index) {
-        return index == REAVER ? KillBannerStyle.REAVER : index == ROGUE ? KillBannerStyle.ROGUE : null;
+        if (index == BASE) return KillBannerStyle.DEFAULT;
+        if (index == REAVER) return KillBannerStyle.REAVER;
+        if (index == ROGUE) return KillBannerStyle.ROGUE;
+        if (index == CUSTOM) return null;
+        KillBannerStyle[] all = KillBannerStyle.values();
+        int styleIdx = index - 1;
+        return styleIdx >= 0 && styleIdx < all.length ? all[styleIdx] : KillBannerStyle.DEFAULT;
     }
 
-    public DropdownOption variantOf(KillBannerStyle style) { return style == KillBannerStyle.ROGUE ? rogueVariant : reaverVariant; }
+    public static KillBannerStyle visualOrSoundSkin(int index) {
+        KillBannerStyle[] all = KillBannerStyle.values();
+        return index >= 0 && index < all.length ? all[index] : KillBannerStyle.DEFAULT;
+    }
+
+    public static int styleIndexOf(KillBannerStyle style) {
+        if (style == KillBannerStyle.DEFAULT) return BASE;
+        if (style == KillBannerStyle.REAVER) return REAVER;
+        if (style == KillBannerStyle.ROGUE) return ROGUE;
+        KillBannerStyle[] all = KillBannerStyle.values();
+        for (int i = 3; i < all.length; i++) {
+            if (all[i] == style) return i + 1;
+        }
+        return BASE;
+    }
+
+    public DropdownOption variantOf(KillBannerStyle style) {
+        return style == KillBannerStyle.ROGUE ? rogueVariant : reaverVariant;
+    }
+
+    private void loadVariantsOnce() {
+        if (variantsLoaded) return;
+        variantsLoaded = true;
+        String val = skinVariants.getValue();
+        if (val == null || val.isBlank()) return;
+        for (String entry : val.split(",")) {
+            int colon = entry.indexOf(':');
+            if (colon <= 0) continue;
+            KillBannerStyle s = KillBannerStyle.fromId(entry.substring(0, colon));
+            try {
+                variants.put(s, Integer.parseInt(entry.substring(colon + 1)));
+            } catch (NumberFormatException ignored) {}
+        }
+    }
+
+    public int getVariant(KillBannerStyle style) {
+        if (style == null) return 0;
+        if (style == KillBannerStyle.REAVER) return reaverVariant.getIndex();
+        if (style == KillBannerStyle.ROGUE) return rogueVariant.getIndex();
+        loadVariantsOnce();
+        return variants.getOrDefault(style, 0);
+    }
+
+    public void setVariant(KillBannerStyle style, int v) {
+        if (style == null) return;
+        if (style == KillBannerStyle.REAVER) reaverVariant.setIndex(v);
+        else if (style == KillBannerStyle.ROGUE) rogueVariant.setIndex(v);
+        else {
+            loadVariantsOnce();
+            variants.put(style, v);
+            List<String> list = new ArrayList<>();
+            for (Map.Entry<KillBannerStyle, Integer> e : variants.entrySet()) {
+                list.add(e.getKey().id + ":" + e.getValue());
+            }
+            skinVariants.setValue(String.join(",", list));
+        }
+    }
 
     /** The banner as set, without randomizing. */
     public Pick chosen() {
         int index = bannerStyle.getIndex();
-        int visual = index == CUSTOM ? customVisual.getIndex() : index;
-        KillBannerStyle style = skin(visual);
-        KillBannerStyle soundStyle = index == CUSTOM ? skin(customSound.getIndex()) : style;
-        return new Pick(style, style == null ? 0 : variantOf(style).getIndex(), soundStyle);
+        KillBannerStyle style = index == CUSTOM ? visualOrSoundSkin(customVisual.getIndex()) : skin(index);
+        KillBannerStyle soundStyle = index == CUSTOM ? visualOrSoundSkin(customSound.getIndex()) : style;
+        return new Pick(style, getVariant(style), soundStyle);
     }
 
     /** The banner for the next kill: the chosen one, or a random one (never the same twice in a row when there is a choice). */
@@ -107,10 +201,13 @@ public class KillBannerModule extends Module {
             }
             case RANDOM_CHOSEN -> {
                 for (String entry : pool()) {
-                    KillBannerStyle style = entry.startsWith("rogue:") ? KillBannerStyle.ROGUE : entry.startsWith("reaver:") ? KillBannerStyle.REAVER : null;
+                    int colon = entry.indexOf(':');
+                    if (colon <= 0) continue;
+                    KillBannerStyle style = KillBannerStyle.fromId(entry.substring(0, colon));
                     if (style == null) continue;
-                    try { pool.add(new Pick(style, Integer.parseInt(entry.substring(entry.indexOf(':') + 1)), style)); }
-                    catch (NumberFormatException ignored) {}
+                    try {
+                        pool.add(new Pick(style, Integer.parseInt(entry.substring(colon + 1)), style));
+                    } catch (NumberFormatException ignored) {}
                 }
             }
             default -> {}

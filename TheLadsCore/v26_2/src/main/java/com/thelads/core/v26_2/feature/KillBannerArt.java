@@ -30,6 +30,8 @@ final class KillBannerArt {
     private static final Map<String, Sprite> SPRITES = new HashMap<>();
     private static final Map<KillBannerStyle, Live> LIVE = new EnumMap<>(KillBannerStyle.class);
     private static final Map<KillBannerStyle, int[]> BOUNDS = new EnumMap<>(KillBannerStyle.class);
+    private static final int[] PHASEGUARD_COLORS = { 0xED6D3B, 0x008BBD, 0x68BD42, 0xD6D642 };
+
     private KillBannerArt() {}
 
     static void draw(GuiGraphicsExtractor g, KillBannerStyle style, int variant, int kills, KillBannerStrip strip,
@@ -41,33 +43,102 @@ final class KillBannerArt {
         try {
             pose.translate(g.guiWidth() / 2f, g.guiHeight() * .794f);
             pose.scale(k, k);
-            pose.translate(-style.anchorX, -style.anchorY);
-            if (f.shadowAlpha() > 0) {
-                Sprite shadow = sprite("/assets/theladscore/killbanner/shadow.png");
-                float d = style.ring * 3.7f;
-                quad(g, shadow, style.anchorX - d / 2, style.anchorY + f.iconY() - d / 2, d / shadow.width(), argb(0, f.shadowAlpha()));
-            }
-            if (f.drawnExit()) {
-                quad(g, exitLayer(style, kills, variant, strip, false), 0, 0, 1, argb(0xFFFFFF, f.restAlpha()));
-                if (f.iconAlpha() > 0)
-                    iconLayer(g, style, exitLayer(style, kills, variant, strip, true), f.iconScale(), argb(0xFFFFFF, f.iconAlpha()));
+
+            if (style.isAnimated() && strip != null) {
+                pose.translate(-style.anchorX, -style.anchorY);
+                if (f.shadowAlpha() > 0) {
+                    Sprite shadow = sprite("/assets/theladscore/killbanner/shadow.png");
+                    float d = style.ring * 3.7f;
+                    quad(g, shadow, style.anchorX - d / 2, style.anchorY + f.iconY() - d / 2, d / shadow.width(), argb(0, f.shadowAlpha()));
+                }
+                if (f.drawnExit()) {
+                    quad(g, exitLayer(style, kills, variant, strip, false), 0, 0, 1, argb(0xFFFFFF, f.restAlpha()));
+                    if (f.iconAlpha() > 0)
+                        iconLayer(g, style, exitLayer(style, kills, variant, strip, true), f.iconScale(), argb(0xFFFFFF, f.iconAlpha()));
+                } else {
+                    Identifier frame = frame(style, variant, strip, f.stripFrame());
+                    g.blit(RenderPipelines.GUI_TEXTURED, frame, 0, 0, 0, 0, strip.width, strip.height, strip.width, strip.height, -1);
+                }
+                pose.translate(0, f.iconY()); // the overlays sit on the icon, wherever the strip has it
+                if (f.heartAlpha() > 0) iconLayer(g, style, sprite(style.asset("heart.png")), f.iconScale(), argb(0xFFFFFF, f.heartAlpha()));
+                if (f.strobe() > 0) iconLayer(g, style, sprite(style.asset("tint.png")), f.iconScale(),
+                    argb(KillBannerPlayer.STROBE_RED & 0xFFFFFF, f.strobe()));
+                if (f.markSize() > 0) {
+                    float cx = style.anchorX, cy = style.anchorY + style.markY * f.iconScale();
+                    mark(g, sprite("/assets/theladscore/killbanner/mark_thin.png"), cx, cy, f.markSize(), f.markColor(), f.markThinAlpha());
+                    mark(g, sprite("/assets/theladscore/killbanner/mark.png"), cx, cy, f.markSize(), f.markColor(), f.markAlpha());
+                }
+                if (f.labelAlpha() > 0) {
+                    Sprite label = sprite("/assets/theladscore/killbanner/headshot.png");
+                    float s = style.ring * 1.45f / label.width();
+                    quad(g, label, style.anchorX - label.width() * s / 2, style.anchorY + style.labelY, s, argb(0xFFFFFF, f.labelAlpha()));
+                }
             } else {
-                Identifier frame = frame(style, variant, strip, f.stripFrame());
-                g.blit(RenderPipelines.GUI_TEXTURED, frame, 0, 0, 0, 0, strip.width, strip.height, strip.width, strip.height, -1);
-            }
-            pose.translate(0, f.iconY()); // the overlays sit on the icon, wherever the strip has it
-            if (f.heartAlpha() > 0) iconLayer(g, style, sprite(style.asset("heart.png")), f.iconScale(), argb(0xFFFFFF, f.heartAlpha()));
-            if (f.strobe() > 0) iconLayer(g, style, sprite(style.asset("tint.png")), f.iconScale(),
-                argb(KillBannerPlayer.STROBE_RED & 0xFFFFFF, f.strobe()));
-            if (f.markSize() > 0) {
-                float cx = style.anchorX, cy = style.anchorY + style.markY * f.iconScale();
-                mark(g, sprite("/assets/theladscore/killbanner/mark_thin.png"), cx, cy, f.markSize(), f.markColor(), f.markThinAlpha());
-                mark(g, sprite("/assets/theladscore/killbanner/mark.png"), cx, cy, f.markSize(), f.markColor(), f.markAlpha());
-            }
-            if (f.labelAlpha() > 0) {
-                Sprite label = sprite("/assets/theladscore/killbanner/headshot.png");
-                float s = style.ring * 1.45f / label.width();
-                quad(g, label, style.anchorX - label.width() * s / 2, style.anchorY + style.labelY, s, argb(0xFFFFFF, f.labelAlpha()));
+                // Composite, Swap, Phaseguard kill banners
+                if (f.shadowAlpha() > 0) {
+                    Sprite shadow = sprite("/assets/theladscore/killbanner/shadow.png");
+                    float d = style.ring * 3.7f;
+                    quad(g, shadow, -d / 2f, -d / 2f, d / shadow.width(), argb(0, f.shadowAlpha()));
+                }
+
+                if (style.type == KillBannerStyle.Type.BANNER_SWAP) {
+                    Sprite swap = sprite(style.swapAsset(kills));
+                    float swapScale = 1.25f * f.iconScale();
+                    float sw = swap.width() * swapScale, sh = swap.height() * swapScale;
+                    quad(g, swap, -sw / 2f, -sh / 2f, swapScale, argb(0xFFFFFF, f.restAlpha()));
+                } else {
+                    if (style.hasFrame) {
+                        Sprite frame = sprite(style.frameAsset());
+                        quad(g, frame, -frame.width() / 2f, -frame.height() / 2f, 1f, argb(0xFFFFFF, f.restAlpha()));
+                    }
+                    if (style.hasRing) {
+                        Sprite ring = sprite(style.ringAsset());
+                        quad(g, ring, -ring.width() / 2f, -ring.height() / 2f, 1f, argb(0xFFFFFF, f.restAlpha()));
+                    }
+                    if (style.hasEmblem) {
+                        Sprite emblem = sprite(style.emblemAsset(variant));
+                        int baseColor = style.type == KillBannerStyle.Type.PHASEGUARD
+                            ? PHASEGUARD_COLORS[Math.max(0, Math.min(3, variant))]
+                            : 0xFFFFFF;
+                        int color = f.strobe() > 0 ? mix(baseColor, KillBannerPlayer.STROBE_RED & 0xFFFFFF, f.strobe()) : baseColor;
+                        float es = f.iconScale();
+                        float ew = emblem.width() * es, eh = emblem.height() * es;
+                        quad(g, emblem, -ew / 2f, -eh / 2f, es, argb(color, f.iconAlpha()));
+                    }
+                    if (style.hasPip) {
+                        Sprite pip = sprite(style.pipAsset(variant));
+                        int ct = Math.max(1, Math.min(6, kills));
+                        float step = 360f / ct;
+                        float r = style.ring;
+                        for (int s = 0; s < ct; s++) {
+                            float deg = step * (s + 1);
+                            if (ct == 2) deg += 90f;
+                            float rad = (float) Math.toRadians(deg);
+                            float px = -r * (float) Math.sin(rad);
+                            float py = -r * (float) Math.cos(rad);
+                            pose.pushMatrix();
+                            pose.translate(px, py);
+                            pose.rotate(-rad);
+                            quad(g, pip, -pip.width() / 2f, -pip.height() / 2f, 1f, argb(0xFFFFFF, f.restAlpha()));
+                            pose.popMatrix();
+                        }
+                    }
+                }
+
+                if (f.markSize() > 0) {
+                    float cy = style.markY * f.iconScale();
+                    mark(g, sprite("/assets/theladscore/killbanner/mark_thin.png"), 0, cy, f.markSize(), f.markColor(), f.markThinAlpha());
+                    mark(g, sprite("/assets/theladscore/killbanner/mark.png"), 0, cy, f.markSize(), f.markColor(), f.markAlpha());
+                }
+                if (f.labelAlpha() > 0) {
+                    Sprite hsMark = sprite("/assets/theladscore/killbanner/hs_mark.png");
+                    float cy = style.markY * f.iconScale();
+                    quad(g, hsMark, -hsMark.width() / 2f, cy - hsMark.height() / 2f, 1f, argb(KillBannerPlayer.MARK_RED & 0xFFFFFF, f.labelAlpha()));
+
+                    Sprite label = sprite("/assets/theladscore/killbanner/headshot.png");
+                    float s = style.ring * 1.45f / label.width();
+                    quad(g, label, -label.width() * s / 2f, style.labelY, s, argb(0xFFFFFF, f.labelAlpha()));
+                }
             }
         } finally {
             pose.popMatrix();
@@ -76,25 +147,74 @@ final class KillBannerArt {
 
     /** Kill Banner picker art: the skin's settled one-kill frame in a variant, with its emblem and kill mark, cropped and fitted into the box. */
     static void thumb(GuiGraphicsExtractor g, KillBannerStyle style, int variant, int x, int y, int w, int h) {
-        KillBannerStrip strip = style.strip(1);
-        Sprite cell = SPRITES.computeIfAbsent(style.id + "/thumb/" + variant, key -> {
-            byte[] rgba = strip.frame(strip.introEnd).clone();
-            style.recolor(rgba, variant);
-            NativeImage image = new NativeImage(strip.width, strip.height, true);
-            write(image, rgba, strip.width, strip.height);
-            return register("killbanner/thumb/" + style.id + "_" + variant, image);
-        });
-        int[] box = BOUNDS.computeIfAbsent(style, s -> bounds(strip.frame(strip.introEnd), strip.width, strip.height));
-        float k = Math.min(w / (float) box[2], h / (float) box[3]);
+        if (style.isAnimated()) {
+            KillBannerStrip strip = style.strip(1);
+            Sprite cell = SPRITES.computeIfAbsent(style.id + "/thumb/" + variant, key -> {
+                byte[] rgba = strip.frame(strip.introEnd).clone();
+                style.recolor(rgba, variant);
+                NativeImage image = new NativeImage(strip.width, strip.height, true);
+                write(image, rgba, strip.width, strip.height);
+                return register("killbanner/thumb/" + style.id + "_" + variant, image);
+            });
+            int[] box = BOUNDS.computeIfAbsent(style, s -> bounds(strip.frame(strip.introEnd), strip.width, strip.height));
+            float k = Math.min(w / (float) box[2], h / (float) box[3]);
+            var pose = g.pose();
+            pose.pushMatrix();
+            try {
+                pose.translate(x + (w - box[2] * k) / 2, y + (h - box[3] * k) / 2);
+                pose.scale(k, k);
+                pose.translate(-box[0], -box[1]);
+                quad(g, cell, 0, 0, 1, -1);
+                if (style.heart) iconLayer(g, style, sprite(style.asset("heart.png")), 1, -1);
+                mark(g, sprite("/assets/theladscore/killbanner/mark.png"), style.anchorX, style.anchorY + style.markY, style.markSize, KillBannerPlayer.MARK_RED, 1);
+            } finally {
+                pose.popMatrix();
+            }
+            return;
+        }
+
+        if (style.type == KillBannerStyle.Type.BANNER_SWAP) {
+            Sprite swap = sprite(style.swapAsset(1));
+            float sw = swap.width() * 1.25f, sh = swap.height() * 1.25f;
+            float k = Math.min(w / sw, h / sh);
+            var pose = g.pose();
+            pose.pushMatrix();
+            try {
+                pose.translate(x + w / 2f, y + h / 2f);
+                pose.scale(k, k);
+                quad(g, swap, -swap.width() * 1.25f / 2f, -swap.height() * 1.25f / 2f, 1.25f, -1);
+            } finally {
+                pose.popMatrix();
+            }
+            return;
+        }
+
+        Sprite frame = style.hasFrame ? sprite(style.frameAsset()) : null;
+        float bw = frame != null ? frame.width() : style.ring * 2.5f;
+        float bh = frame != null ? frame.height() : style.ring * 2.5f;
+        float k = Math.min(w / bw, h / bh);
         var pose = g.pose();
         pose.pushMatrix();
         try {
-            pose.translate(x + (w - box[2] * k) / 2, y + (h - box[3] * k) / 2);
+            pose.translate(x + w / 2f, y + h / 2f);
             pose.scale(k, k);
-            pose.translate(-box[0], -box[1]);
-            quad(g, cell, 0, 0, 1, -1);
-            if (style.heart) iconLayer(g, style, sprite(style.asset("heart.png")), 1, -1);
-            mark(g, sprite("/assets/theladscore/killbanner/mark.png"), style.anchorX, style.anchorY + style.markY, style.markSize, KillBannerPlayer.MARK_RED, 1);
+            if (frame != null) quad(g, frame, -frame.width() / 2f, -frame.height() / 2f, 1f, -1);
+            if (style.hasRing) {
+                Sprite ring = sprite(style.ringAsset());
+                quad(g, ring, -ring.width() / 2f, -ring.height() / 2f, 1f, -1);
+            }
+            if (style.hasEmblem) {
+                Sprite emblem = sprite(style.emblemAsset(variant));
+                int tint = style.type == KillBannerStyle.Type.PHASEGUARD
+                    ? argb(PHASEGUARD_COLORS[Math.max(0, Math.min(3, variant))], 1f)
+                    : -1;
+                quad(g, emblem, -emblem.width() / 2f, -emblem.height() / 2f, 1f, tint);
+            }
+            if (style.hasPip) {
+                Sprite pip = sprite(style.pipAsset(variant));
+                quad(g, pip, -pip.width() / 2f, -style.ring - pip.height() / 2f, 1f, -1);
+            }
+            mark(g, sprite("/assets/theladscore/killbanner/mark.png"), 0, style.markY, style.markSize, KillBannerPlayer.MARK_RED, 1f);
         } finally {
             pose.popMatrix();
         }
@@ -110,6 +230,14 @@ final class KillBannerArt {
 
     private static int argb(int rgb, float alpha) {
         return Math.round(Math.max(0, Math.min(1, alpha)) * 255) << 24 | rgb & 0xFFFFFF;
+    }
+
+    private static int mix(int a, int b, float t) {
+        float inv = 1 - t;
+        int r = Math.round(((a >> 16) & 255) * inv + ((b >> 16) & 255) * t);
+        int g = Math.round(((a >> 8) & 255) * inv + ((b >> 8) & 255) * t);
+        int bl = Math.round((a & 255) * inv + (b & 255) * t);
+        return r << 16 | g << 8 | bl;
     }
 
     private static void quad(GuiGraphicsExtractor g, Sprite s, float x, float y, float scale, int color) {
@@ -141,7 +269,8 @@ final class KillBannerArt {
         return SPRITES.computeIfAbsent(path, p -> {
             try (InputStream in = KillBannerArt.class.getResourceAsStream(p)) {
                 if (in == null) throw new IOException(p + " is missing");
-                return register("killbanner/" + p.substring(p.indexOf("/killbanner/") + 12).replace(".png", ""), NativeImage.read(in));
+                String name = p.substring(p.indexOf("/killbanner/") + 12).replace(".png", "").replace('/', '_');
+                return register("killbanner/" + name, NativeImage.read(in));
             } catch (IOException failure) {
                 throw new IllegalStateException("Kill banner art unavailable: " + p, failure);
             }

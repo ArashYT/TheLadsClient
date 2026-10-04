@@ -11,6 +11,7 @@ class KillBannerArtTest {
     @Test
     void everyStripDecodesFromItsFirstFrameToItsLast() {
         for (KillBannerStyle style : KillBannerStyle.values()) {
+            if (!style.isAnimated()) continue;
             for (int kills = 1; kills <= 5; kills++) {
                 KillBannerStrip strip = style.strip(kills);
                 byte[] settled = strip.frame(strip.introEnd).clone();
@@ -23,6 +24,41 @@ class KillBannerArtTest {
             }
         }
         assertSame(KillBannerStyle.REAVER.strip(9), KillBannerStyle.REAVER.strip(5), "more than five kills show as five");
+    }
+
+    @Test
+    void allBannersHaveValidAssetsAndSounds() {
+        for (KillBannerStyle style : KillBannerStyle.values()) {
+            assertNotNull(style.id);
+            assertNotNull(style.displayName);
+            if (style.type == KillBannerStyle.Type.BANNER_SWAP) {
+                for (int k = 1; k <= 6; k++) {
+                    assertNotNull(KillBannerArtTest.class.getResourceAsStream(style.swapAsset(k)),
+                        style.id + " k" + k + ".png missing");
+                }
+            } else if (!style.isAnimated()) {
+                if (style.hasFrame) {
+                    assertNotNull(KillBannerArtTest.class.getResourceAsStream(style.frameAsset()),
+                        style.id + " frame.png missing");
+                }
+                if (style.hasRing) {
+                    assertNotNull(KillBannerArtTest.class.getResourceAsStream(style.ringAsset()),
+                        style.id + " ring.png missing");
+                }
+                if (style.hasEmblem) {
+                    assertNotNull(KillBannerArtTest.class.getResourceAsStream(style.emblemAsset(0)),
+                        style.id + " emblem.png missing");
+                }
+                if (style.hasPip) {
+                    assertNotNull(KillBannerArtTest.class.getResourceAsStream(style.pipAsset(0)),
+                        style.id + " pip.png missing");
+                }
+            }
+            for (int s = 1; s <= style.soundCount; s++) {
+                String path = "/assets/theladscore/sounds/killbanner/" + style.id + "-kill-" + s + ".ogg";
+                assertNotNull(KillBannerArtTest.class.getResourceAsStream(path), path + " missing");
+            }
+        }
     }
 
     @Test

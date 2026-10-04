@@ -58,5 +58,2687 @@
     "sounds": [
       "theladscore:killbanner/rogue-kill-5"
     ]
+  },
+  "default_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/default-kill-1"
+    ]
+  },
+  "default_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/default-kill-2"
+    ]
+  },
+  "default_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/default-kill-3"
+    ]
+  },
+  "default_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/default-kill-4"
+    ]
+  },
+  "default_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/default-kill-5"
+    ]
+  },
+  "orabyonetap-renegade_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-renegade-kill-1"
+    ]
+  },
+  "orabyonetap-renegade_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-renegade-kill-2"
+    ]
+  },
+  "orabyonetap-renegade_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-renegade-kill-3"
+    ]
+  },
+  "orabyonetap-renegade_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-renegade-kill-4"
+    ]
+  },
+  "orabyonetap-renegade_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-renegade-kill-5"
+    ]
+  },
+  "orabyonetap-lawyer_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-lawyer-kill-1"
+    ]
+  },
+  "orabyonetap-lawyer_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-lawyer-kill-2"
+    ]
+  },
+  "orabyonetap-lawyer_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-lawyer-kill-3"
+    ]
+  },
+  "orabyonetap-lawyer_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-lawyer-kill-4"
+    ]
+  },
+  "orabyonetap-lawyer_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-lawyer-kill-5"
+    ]
+  },
+  "solarstride_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/solarstride-kill-1"
+    ]
+  },
+  "solarstride_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/solarstride-kill-2"
+    ]
+  },
+  "solarstride_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/solarstride-kill-3"
+    ]
+  },
+  "solarstride_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/solarstride-kill-4"
+    ]
+  },
+  "solarstride_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/solarstride-kill-5"
+    ]
+  },
+  "orabyonetap-watch_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-watch-kill-1"
+    ]
+  },
+  "orabyonetap-watch_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-watch-kill-2"
+    ]
+  },
+  "orabyonetap-watch_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-watch-kill-3"
+    ]
+  },
+  "orabyonetap-watch_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-watch-kill-4"
+    ]
+  },
+  "orabyonetap-watch_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-watch-kill-5"
+    ]
+  },
+  "orabyonetap-raja_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-raja-kill-1"
+    ]
+  },
+  "orabyonetap-raja_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-raja-kill-2"
+    ]
+  },
+  "orabyonetap-raja_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-raja-kill-3"
+    ]
+  },
+  "orabyonetap-raja_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-raja-kill-4"
+    ]
+  },
+  "orabyonetap-raja_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-raja-kill-5"
+    ]
+  },
+  "orabyonetap-ignition_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-ignition-kill-1"
+    ]
+  },
+  "orabyonetap-ignition_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-ignition-kill-2"
+    ]
+  },
+  "orabyonetap-ignition_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-ignition-kill-3"
+    ]
+  },
+  "orabyonetap-ignition_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-ignition-kill-4"
+    ]
+  },
+  "orabyonetap-ignition_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/orabyonetap-ignition-kill-5"
+    ]
+  },
+  "holomeridian_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/holomeridian-kill-1"
+    ]
+  },
+  "holomeridian_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/holomeridian-kill-2"
+    ]
+  },
+  "holomeridian_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/holomeridian-kill-3"
+    ]
+  },
+  "holomeridian_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/holomeridian-kill-4"
+    ]
+  },
+  "holomeridian_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/holomeridian-kill-5"
+    ]
+  },
+  "champions2025_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2025-kill-1"
+    ]
+  },
+  "champions2025_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2025-kill-2"
+    ]
+  },
+  "champions2025_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2025-kill-3"
+    ]
+  },
+  "champions2025_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2025-kill-4"
+    ]
+  },
+  "champions2025_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2025-kill-5"
+    ]
+  },
+  "blackspyre_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blackspyre-kill-1"
+    ]
+  },
+  "blackspyre_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blackspyre-kill-2"
+    ]
+  },
+  "blackspyre_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blackspyre-kill-3"
+    ]
+  },
+  "blackspyre_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blackspyre-kill-4"
+    ]
+  },
+  "blackspyre_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blackspyre-kill-5"
+    ]
+  },
+  "aeris_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/aeris-kill-1"
+    ]
+  },
+  "aeris_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/aeris-kill-2"
+    ]
+  },
+  "aeris_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/aeris-kill-3"
+    ]
+  },
+  "aeris_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/aeris-kill-4"
+    ]
+  },
+  "aeris_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/aeris-kill-5"
+    ]
+  },
+  "bubblegumdeathwish3_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish3-kill-1"
+    ]
+  },
+  "bubblegumdeathwish3_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish3-kill-2"
+    ]
+  },
+  "bubblegumdeathwish3_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish3-kill-3"
+    ]
+  },
+  "bubblegumdeathwish3_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish3-kill-4"
+    ]
+  },
+  "bubblegumdeathwish3_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish3-kill-5"
+    ]
+  },
+  "bubblegumdeathwish4_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish4-kill-1"
+    ]
+  },
+  "bubblegumdeathwish4_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish4-kill-2"
+    ]
+  },
+  "bubblegumdeathwish4_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish4-kill-3"
+    ]
+  },
+  "bubblegumdeathwish4_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish4-kill-4"
+    ]
+  },
+  "bubblegumdeathwish4_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish4-kill-5"
+    ]
+  },
+  "bubblegumdeathwish_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish-kill-1"
+    ]
+  },
+  "bubblegumdeathwish_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish-kill-2"
+    ]
+  },
+  "bubblegumdeathwish_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish-kill-3"
+    ]
+  },
+  "bubblegumdeathwish_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish-kill-4"
+    ]
+  },
+  "bubblegumdeathwish_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish-kill-5"
+    ]
+  },
+  "bubblegumdeathwish2_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish2-kill-1"
+    ]
+  },
+  "bubblegumdeathwish2_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish2-kill-2"
+    ]
+  },
+  "bubblegumdeathwish2_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish2-kill-3"
+    ]
+  },
+  "bubblegumdeathwish2_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish2-kill-4"
+    ]
+  },
+  "bubblegumdeathwish2_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bubblegumdeathwish2-kill-5"
+    ]
+  },
+  "blackthorn_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blackthorn-kill-1"
+    ]
+  },
+  "blackthorn_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blackthorn-kill-2"
+    ]
+  },
+  "blackthorn_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blackthorn-kill-3"
+    ]
+  },
+  "blackthorn_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blackthorn-kill-4"
+    ]
+  },
+  "blackthorn_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blackthorn-kill-5"
+    ]
+  },
+  "mystbloom-v25_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/mystbloom-v25-kill-1"
+    ]
+  },
+  "mystbloom-v25_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/mystbloom-v25-kill-2"
+    ]
+  },
+  "mystbloom-v25_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/mystbloom-v25-kill-3"
+    ]
+  },
+  "mystbloom-v25_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/mystbloom-v25-kill-4"
+    ]
+  },
+  "mystbloom-v25_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/mystbloom-v25-kill-5"
+    ]
+  },
+  "reaverv26_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/reaverv26-kill-1"
+    ]
+  },
+  "reaverv26_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/reaverv26-kill-2"
+    ]
+  },
+  "reaverv26_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/reaverv26-kill-3"
+    ]
+  },
+  "reaverv26_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/reaverv26-kill-4"
+    ]
+  },
+  "reaverv26_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/reaverv26-kill-5"
+    ]
+  },
+  "ayakashi_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ayakashi-kill-1"
+    ]
+  },
+  "ayakashi_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ayakashi-kill-2"
+    ]
+  },
+  "ayakashi_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ayakashi-kill-3"
+    ]
+  },
+  "ayakashi_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ayakashi-kill-4"
+    ]
+  },
+  "ayakashi_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ayakashi-kill-5"
+    ]
+  },
+  "ayakashi_kill_6": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ayakashi-kill-6"
+    ]
+  },
+  "dolmirsrevenge_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/dolmirsrevenge-kill-1"
+    ]
+  },
+  "dolmirsrevenge_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/dolmirsrevenge-kill-2"
+    ]
+  },
+  "dolmirsrevenge_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/dolmirsrevenge-kill-3"
+    ]
+  },
+  "dolmirsrevenge_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/dolmirsrevenge-kill-4"
+    ]
+  },
+  "dolmirsrevenge_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/dolmirsrevenge-kill-5"
+    ]
+  },
+  "neptunev25_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neptunev25-kill-1"
+    ]
+  },
+  "neptunev25_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neptunev25-kill-2"
+    ]
+  },
+  "neptunev25_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neptunev25-kill-3"
+    ]
+  },
+  "neptunev25_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neptunev25-kill-4"
+    ]
+  },
+  "neptunev25_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neptunev25-kill-5"
+    ]
+  },
+  "preludetochaosv25_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/preludetochaosv25-kill-1"
+    ]
+  },
+  "preludetochaosv25_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/preludetochaosv25-kill-2"
+    ]
+  },
+  "preludetochaosv25_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/preludetochaosv25-kill-3"
+    ]
+  },
+  "preludetochaosv25_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/preludetochaosv25-kill-4"
+    ]
+  },
+  "preludetochaosv25_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/preludetochaosv25-kill-5"
+    ]
+  },
+  "phaseguard_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/phaseguard-kill-1"
+    ]
+  },
+  "phaseguard_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/phaseguard-kill-2"
+    ]
+  },
+  "phaseguard_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/phaseguard-kill-3"
+    ]
+  },
+  "phaseguard_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/phaseguard-kill-4"
+    ]
+  },
+  "phaseguard_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/phaseguard-kill-5"
+    ]
+  },
+  "vct2025_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/vct2025-kill-1"
+    ]
+  },
+  "vct2025_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/vct2025-kill-2"
+    ]
+  },
+  "vct2025_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/vct2025-kill-3"
+    ]
+  },
+  "vct2025_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/vct2025-kill-4"
+    ]
+  },
+  "vct2025_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/vct2025-kill-5"
+    ]
+  },
+  "splashx_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/splashx-kill-1"
+    ]
+  },
+  "splashx_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/splashx-kill-2"
+    ]
+  },
+  "splashx_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/splashx-kill-3"
+    ]
+  },
+  "splashx_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/splashx-kill-4"
+    ]
+  },
+  "splashx_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/splashx-kill-5"
+    ]
+  },
+  "divergence_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/divergence-kill-1"
+    ]
+  },
+  "divergence_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/divergence-kill-2"
+    ]
+  },
+  "divergence_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/divergence-kill-3"
+    ]
+  },
+  "divergence_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/divergence-kill-4"
+    ]
+  },
+  "divergence_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/divergence-kill-5"
+    ]
+  },
+  "exo_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/exo-kill-1"
+    ]
+  },
+  "exo_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/exo-kill-2"
+    ]
+  },
+  "exo_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/exo-kill-3"
+    ]
+  },
+  "exo_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/exo-kill-4"
+    ]
+  },
+  "exo_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/exo-kill-5"
+    ]
+  },
+  "helix_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/helix-kill-1"
+    ]
+  },
+  "helix_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/helix-kill-2"
+    ]
+  },
+  "helix_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/helix-kill-3"
+    ]
+  },
+  "helix_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/helix-kill-4"
+    ]
+  },
+  "helix_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/helix-kill-5"
+    ]
+  },
+  "bolt_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bolt-kill-1"
+    ]
+  },
+  "bolt_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bolt-kill-2"
+    ]
+  },
+  "bolt_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bolt-kill-3"
+    ]
+  },
+  "bolt_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bolt-kill-4"
+    ]
+  },
+  "bolt_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/bolt-kill-5"
+    ]
+  },
+  "mystbloom_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/mystbloom-kill-1"
+    ]
+  },
+  "mystbloom_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/mystbloom-kill-2"
+    ]
+  },
+  "mystbloom_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/mystbloom-kill-3"
+    ]
+  },
+  "mystbloom_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/mystbloom-kill-4"
+    ]
+  },
+  "mystbloom_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/mystbloom-kill-5"
+    ]
+  },
+  "cyrax_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/cyrax-kill-1"
+    ]
+  },
+  "cyrax_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/cyrax-kill-2"
+    ]
+  },
+  "cyrax_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/cyrax-kill-3"
+    ]
+  },
+  "cyrax_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/cyrax-kill-4"
+    ]
+  },
+  "cyrax_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/cyrax-kill-5"
+    ]
+  },
+  "arcanecollectorsset_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/arcanecollectorsset-kill-1"
+    ]
+  },
+  "arcanecollectorsset_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/arcanecollectorsset-kill-2"
+    ]
+  },
+  "arcanecollectorsset_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/arcanecollectorsset-kill-3"
+    ]
+  },
+  "arcanecollectorsset_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/arcanecollectorsset-kill-4"
+    ]
+  },
+  "arcanecollectorsset_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/arcanecollectorsset-kill-5"
+    ]
+  },
+  "vct_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/vct-kill-1"
+    ]
+  },
+  "vct_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/vct-kill-2"
+    ]
+  },
+  "vct_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/vct-kill-3"
+    ]
+  },
+  "vct_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/vct-kill-4"
+    ]
+  },
+  "vct_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/vct-kill-5"
+    ]
+  },
+  "singularityep9_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/singularityep9-kill-1"
+    ]
+  },
+  "singularityep9_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/singularityep9-kill-2"
+    ]
+  },
+  "singularityep9_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/singularityep9-kill-3"
+    ]
+  },
+  "singularityep9_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/singularityep9-kill-4"
+    ]
+  },
+  "singularityep9_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/singularityep9-kill-5"
+    ]
+  },
+  "doombringer_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/doombringer-kill-1"
+    ]
+  },
+  "doombringer_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/doombringer-kill-2"
+    ]
+  },
+  "doombringer_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/doombringer-kill-3"
+    ]
+  },
+  "doombringer_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/doombringer-kill-4"
+    ]
+  },
+  "doombringer_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/doombringer-kill-5"
+    ]
+  },
+  "champions2024_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2024-kill-1"
+    ]
+  },
+  "champions2024_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2024-kill-2"
+    ]
+  },
+  "champions2024_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2024-kill-3"
+    ]
+  },
+  "champions2024_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2024-kill-4"
+    ]
+  },
+  "champions2024_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2024-kill-5"
+    ]
+  },
+  "araxysep9_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/araxysep9-kill-1"
+    ]
+  },
+  "araxysep9_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/araxysep9-kill-2"
+    ]
+  },
+  "araxysep9_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/araxysep9-kill-3"
+    ]
+  },
+  "araxysep9_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/araxysep9-kill-4"
+    ]
+  },
+  "araxysep9_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/araxysep9-kill-5"
+    ]
+  },
+  "kuronami_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/kuronami-kill-1"
+    ]
+  },
+  "kuronami_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/kuronami-kill-2"
+    ]
+  },
+  "kuronami_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/kuronami-kill-3"
+    ]
+  },
+  "kuronami_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/kuronami-kill-4"
+    ]
+  },
+  "kuronami_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/kuronami-kill-5"
+    ]
+  },
+  "aemondir_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/aemondir-kill-1"
+    ]
+  },
+  "aemondir_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/aemondir-kill-2"
+    ]
+  },
+  "aemondir_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/aemondir-kill-3"
+    ]
+  },
+  "aemondir_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/aemondir-kill-4"
+    ]
+  },
+  "aemondir_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/aemondir-kill-5"
+    ]
+  },
+  "rgx11zproep9_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zproep9-kill-1"
+    ]
+  },
+  "rgx11zproep9_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zproep9-kill-2"
+    ]
+  },
+  "rgx11zproep9_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zproep9-kill-3"
+    ]
+  },
+  "rgx11zproep9_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zproep9-kill-4"
+    ]
+  },
+  "rgx11zproep9_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zproep9-kill-5"
+    ]
+  },
+  "sovereignep8_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sovereignep8-kill-1"
+    ]
+  },
+  "sovereignep8_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sovereignep8-kill-2"
+    ]
+  },
+  "sovereignep8_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sovereignep8-kill-3"
+    ]
+  },
+  "sovereignep8_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sovereignep8-kill-4"
+    ]
+  },
+  "sovereignep8_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sovereignep8-kill-5"
+    ]
+  },
+  "nocturnum_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/nocturnum-kill-1"
+    ]
+  },
+  "nocturnum_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/nocturnum-kill-2"
+    ]
+  },
+  "nocturnum_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/nocturnum-kill-3"
+    ]
+  },
+  "nocturnum_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/nocturnum-kill-4"
+    ]
+  },
+  "nocturnum_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/nocturnum-kill-5"
+    ]
+  },
+  "evoridreamwings_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/evoridreamwings-kill-1"
+    ]
+  },
+  "evoridreamwings_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/evoridreamwings-kill-2"
+    ]
+  },
+  "evoridreamwings_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/evoridreamwings-kill-3"
+    ]
+  },
+  "evoridreamwings_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/evoridreamwings-kill-4"
+    ]
+  },
+  "evoridreamwings_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/evoridreamwings-kill-5"
+    ]
+  },
+  "primordium_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/primordium-kill-1"
+    ]
+  },
+  "primordium_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/primordium-kill-2"
+    ]
+  },
+  "primordium_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/primordium-kill-3"
+    ]
+  },
+  "primordium_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/primordium-kill-4"
+    ]
+  },
+  "primordium_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/primordium-kill-5"
+    ]
+  },
+  "xerofang_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/xerofang-kill-1"
+    ]
+  },
+  "xerofang_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/xerofang-kill-2"
+    ]
+  },
+  "xerofang_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/xerofang-kill-3"
+    ]
+  },
+  "xerofang_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/xerofang-kill-4"
+    ]
+  },
+  "xerofang_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/xerofang-kill-5"
+    ]
+  },
+  "res-knockout_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-knockout-kill-1"
+    ]
+  },
+  "res-knockout_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-knockout-kill-2"
+    ]
+  },
+  "res-knockout_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-knockout-kill-3"
+    ]
+  },
+  "res-knockout_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-knockout-kill-4"
+    ]
+  },
+  "res-knockout_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-knockout-kill-5"
+    ]
+  },
+  "imperium_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/imperium-kill-1"
+    ]
+  },
+  "imperium_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/imperium-kill-2"
+    ]
+  },
+  "imperium_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/imperium-kill-3"
+    ]
+  },
+  "imperium_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/imperium-kill-4"
+    ]
+  },
+  "imperium_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/imperium-kill-5"
+    ]
+  },
+  "neofrontier_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neofrontier-kill-1"
+    ]
+  },
+  "neofrontier_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neofrontier-kill-2"
+    ]
+  },
+  "neofrontier_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neofrontier-kill-3"
+    ]
+  },
+  "neofrontier_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neofrontier-kill-4"
+    ]
+  },
+  "neofrontier_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neofrontier-kill-5"
+    ]
+  },
+  "overdrive_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/overdrive-kill-1"
+    ]
+  },
+  "overdrive_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/overdrive-kill-2"
+    ]
+  },
+  "overdrive_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/overdrive-kill-3"
+    ]
+  },
+  "overdrive_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/overdrive-kill-4"
+    ]
+  },
+  "overdrive_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/overdrive-kill-5"
+    ]
+  },
+  "res-dancefever_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-dancefever-kill-1"
+    ]
+  },
+  "res-dancefever_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-dancefever-kill-2"
+    ]
+  },
+  "res-dancefever_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-dancefever-kill-3"
+    ]
+  },
+  "res-dancefever_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-dancefever-kill-4"
+    ]
+  },
+  "res-dancefever_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-dancefever-kill-5"
+    ]
+  },
+  "res-bazookabadger_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-bazookabadger-kill-1"
+    ]
+  },
+  "res-bazookabadger_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-bazookabadger-kill-2"
+    ]
+  },
+  "res-bazookabadger_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-bazookabadger-kill-3"
+    ]
+  },
+  "res-bazookabadger_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-bazookabadger-kill-4"
+    ]
+  },
+  "res-bazookabadger_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/res-bazookabadger-kill-5"
+    ]
+  },
+  "oniep6_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/oniep6-kill-1"
+    ]
+  },
+  "oniep6_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/oniep6-kill-2"
+    ]
+  },
+  "oniep6_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/oniep6-kill-3"
+    ]
+  },
+  "oniep6_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/oniep6-kill-4"
+    ]
+  },
+  "oniep6_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/oniep6-kill-5"
+    ]
+  },
+  "champions2023_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2023-kill-1"
+    ]
+  },
+  "champions2023_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2023-kill-2"
+    ]
+  },
+  "champions2023_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2023-kill-3"
+    ]
+  },
+  "champions2023_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2023-kill-4"
+    ]
+  },
+  "champions2023_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2023-kill-5"
+    ]
+  },
+  "valianthero_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/valianthero-kill-1"
+    ]
+  },
+  "valianthero_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/valianthero-kill-2"
+    ]
+  },
+  "valianthero_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/valianthero-kill-3"
+    ]
+  },
+  "valianthero_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/valianthero-kill-4"
+    ]
+  },
+  "valianthero_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/valianthero-kill-5"
+    ]
+  },
+  "preludetochaos_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/preludetochaos-kill-1"
+    ]
+  },
+  "preludetochaos_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/preludetochaos-kill-2"
+    ]
+  },
+  "preludetochaos_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/preludetochaos-kill-3"
+    ]
+  },
+  "preludetochaos_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/preludetochaos-kill-4"
+    ]
+  },
+  "preludetochaos_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/preludetochaos-kill-5"
+    ]
+  },
+  "neptune_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neptune-kill-1"
+    ]
+  },
+  "neptune_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neptune-kill-2"
+    ]
+  },
+  "neptune_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neptune-kill-3"
+    ]
+  },
+  "neptune_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neptune-kill-4"
+    ]
+  },
+  "neptune_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/neptune-kill-5"
+    ]
+  },
+  "sentinelsoflightep7_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sentinelsoflightep7-kill-1"
+    ]
+  },
+  "sentinelsoflightep7_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sentinelsoflightep7-kill-2"
+    ]
+  },
+  "sentinelsoflightep7_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sentinelsoflightep7-kill-3"
+    ]
+  },
+  "sentinelsoflightep7_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sentinelsoflightep7-kill-4"
+    ]
+  },
+  "sentinelsoflightep7_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sentinelsoflightep7-kill-5"
+    ]
+  },
+  "cryostasis_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/cryostasis-kill-1"
+    ]
+  },
+  "cryostasis_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/cryostasis-kill-2"
+    ]
+  },
+  "cryostasis_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/cryostasis-kill-3"
+    ]
+  },
+  "cryostasis_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/cryostasis-kill-4"
+    ]
+  },
+  "cryostasis_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/cryostasis-kill-5"
+    ]
+  },
+  "gaiasvengeanceep7_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/gaiasvengeanceep7-kill-1"
+    ]
+  },
+  "gaiasvengeanceep7_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/gaiasvengeanceep7-kill-2"
+    ]
+  },
+  "gaiasvengeanceep7_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/gaiasvengeanceep7-kill-3"
+    ]
+  },
+  "gaiasvengeanceep7_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/gaiasvengeanceep7-kill-4"
+    ]
+  },
+  "gaiasvengeanceep7_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/gaiasvengeanceep7-kill-5"
+    ]
+  },
+  "magepunkep6_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunkep6-kill-1"
+    ]
+  },
+  "magepunkep6_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunkep6-kill-2"
+    ]
+  },
+  "magepunkep6_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunkep6-kill-3"
+    ]
+  },
+  "magepunkep6_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunkep6-kill-4"
+    ]
+  },
+  "magepunkep6_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunkep6-kill-5"
+    ]
+  },
+  "araxys_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/araxys-kill-1"
+    ]
+  },
+  "araxys_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/araxys-kill-2"
+    ]
+  },
+  "araxys_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/araxys-kill-3"
+    ]
+  },
+  "araxys_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/araxys-kill-4"
+    ]
+  },
+  "araxys_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/araxys-kill-5"
+    ]
+  },
+  "reaverep5_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/reaverep5-kill-1"
+    ]
+  },
+  "reaverep5_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/reaverep5-kill-2"
+    ]
+  },
+  "reaverep5_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/reaverep5-kill-3"
+    ]
+  },
+  "reaverep5_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/reaverep5-kill-4"
+    ]
+  },
+  "reaverep5_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/reaverep5-kill-5"
+    ]
+  },
+  "champions2022_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2022-kill-1"
+    ]
+  },
+  "champions2022_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2022-kill-2"
+    ]
+  },
+  "champions2022_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2022-kill-3"
+    ]
+  },
+  "champions2022_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2022-kill-4"
+    ]
+  },
+  "champions2022_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2022-kill-5"
+    ]
+  },
+  "ionep5_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ionep5-kill-1"
+    ]
+  },
+  "ionep5_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ionep5-kill-2"
+    ]
+  },
+  "ionep5_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ionep5-kill-3"
+    ]
+  },
+  "ionep5_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ionep5-kill-4"
+    ]
+  },
+  "ionep5_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ionep5-kill-5"
+    ]
+  },
+  "gaiasvengeance_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/gaiasvengeance-kill-1"
+    ]
+  },
+  "gaiasvengeance_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/gaiasvengeance-kill-2"
+    ]
+  },
+  "gaiasvengeance_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/gaiasvengeance-kill-3"
+    ]
+  },
+  "gaiasvengeance_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/gaiasvengeance-kill-4"
+    ]
+  },
+  "gaiasvengeance_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/gaiasvengeance-kill-5"
+    ]
+  },
+  "magepunkep3_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunkep3-kill-1"
+    ]
+  },
+  "magepunkep3_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunkep3-kill-2"
+    ]
+  },
+  "magepunkep3_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunkep3-kill-3"
+    ]
+  },
+  "magepunkep3_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunkep3-kill-4"
+    ]
+  },
+  "magepunkep3_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunkep3-kill-5"
+    ]
+  },
+  "protocol781-a_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/protocol781-a-kill-1"
+    ]
+  },
+  "protocol781-a_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/protocol781-a-kill-2"
+    ]
+  },
+  "protocol781-a_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/protocol781-a-kill-3"
+    ]
+  },
+  "protocol781-a_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/protocol781-a-kill-4"
+    ]
+  },
+  "protocol781-a_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/protocol781-a-kill-5"
+    ]
+  },
+  "rgx11zproep4_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zproep4-kill-1"
+    ]
+  },
+  "rgx11zproep4_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zproep4-kill-2"
+    ]
+  },
+  "rgx11zproep4_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zproep4-kill-3"
+    ]
+  },
+  "rgx11zproep4_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zproep4-kill-4"
+    ]
+  },
+  "rgx11zproep4_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zproep4-kill-5"
+    ]
+  },
+  "spectrum_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/spectrum-kill-1"
+    ]
+  },
+  "spectrum_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/spectrum-kill-2"
+    ]
+  },
+  "spectrum_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/spectrum-kill-3"
+    ]
+  },
+  "spectrum_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/spectrum-kill-4"
+    ]
+  },
+  "spectrum_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/spectrum-kill-5"
+    ]
+  },
+  "spectrum_kill_6": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/spectrum-kill-6"
+    ]
+  },
+  "forsaken_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/forsaken-kill-1"
+    ]
+  },
+  "forsaken_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/forsaken-kill-2"
+    ]
+  },
+  "forsaken_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/forsaken-kill-3"
+    ]
+  },
+  "forsaken_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/forsaken-kill-4"
+    ]
+  },
+  "forsaken_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/forsaken-kill-5"
+    ]
+  },
+  "champions2021_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2021-kill-1"
+    ]
+  },
+  "champions2021_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2021-kill-2"
+    ]
+  },
+  "champions2021_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2021-kill-3"
+    ]
+  },
+  "champions2021_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2021-kill-4"
+    ]
+  },
+  "champions2021_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/champions2021-kill-5"
+    ]
+  },
+  "radiantcrisis001_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/radiantcrisis001-kill-1"
+    ]
+  },
+  "radiantcrisis001_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/radiantcrisis001-kill-2"
+    ]
+  },
+  "radiantcrisis001_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/radiantcrisis001-kill-3"
+    ]
+  },
+  "radiantcrisis001_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/radiantcrisis001-kill-4"
+    ]
+  },
+  "radiantcrisis001_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/radiantcrisis001-kill-5"
+    ]
+  },
+  "rgx11zpro_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zpro-kill-1"
+    ]
+  },
+  "rgx11zpro_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zpro-kill-2"
+    ]
+  },
+  "rgx11zpro_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zpro-kill-3"
+    ]
+  },
+  "rgx11zpro_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zpro-kill-4"
+    ]
+  },
+  "rgx11zpro_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/rgx11zpro-kill-5"
+    ]
+  },
+  "chronovoid_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/chronovoid-kill-1"
+    ]
+  },
+  "chronovoid_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/chronovoid-kill-2"
+    ]
+  },
+  "chronovoid_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/chronovoid-kill-3"
+    ]
+  },
+  "chronovoid_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/chronovoid-kill-4"
+    ]
+  },
+  "chronovoid_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/chronovoid-kill-5"
+    ]
+  },
+  "recon_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/recon-kill-1"
+    ]
+  },
+  "recon_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/recon-kill-2"
+    ]
+  },
+  "recon_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/recon-kill-3"
+    ]
+  },
+  "recon_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/recon-kill-4"
+    ]
+  },
+  "recon_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/recon-kill-5"
+    ]
+  },
+  "oni_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/oni-kill-1"
+    ]
+  },
+  "oni_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/oni-kill-2"
+    ]
+  },
+  "oni_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/oni-kill-3"
+    ]
+  },
+  "oni_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/oni-kill-4"
+    ]
+  },
+  "oni_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/oni-kill-5"
+    ]
+  },
+  "glitchpop20_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/glitchpop20-kill-1"
+    ]
+  },
+  "glitchpop20_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/glitchpop20-kill-2"
+    ]
+  },
+  "glitchpop20_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/glitchpop20-kill-3"
+    ]
+  },
+  "glitchpop20_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/glitchpop20-kill-4"
+    ]
+  },
+  "glitchpop20_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/glitchpop20-kill-5"
+    ]
+  },
+  "ruination_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ruination-kill-1"
+    ]
+  },
+  "ruination_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ruination-kill-2"
+    ]
+  },
+  "ruination_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ruination-kill-3"
+    ]
+  },
+  "ruination_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ruination-kill-4"
+    ]
+  },
+  "ruination_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ruination-kill-5"
+    ]
+  },
+  "glitchpop_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/glitchpop-kill-1"
+    ]
+  },
+  "glitchpop_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/glitchpop-kill-2"
+    ]
+  },
+  "glitchpop_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/glitchpop-kill-3"
+    ]
+  },
+  "glitchpop_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/glitchpop-kill-4"
+    ]
+  },
+  "glitchpop_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/glitchpop-kill-5"
+    ]
+  },
+  "origin_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/origin-kill-1"
+    ]
+  },
+  "origin_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/origin-kill-2"
+    ]
+  },
+  "origin_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/origin-kill-3"
+    ]
+  },
+  "origin_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/origin-kill-4"
+    ]
+  },
+  "origin_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/origin-kill-5"
+    ]
+  },
+  "prime20_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/prime20-kill-1"
+    ]
+  },
+  "prime20_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/prime20-kill-2"
+    ]
+  },
+  "prime20_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/prime20-kill-3"
+    ]
+  },
+  "prime20_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/prime20-kill-4"
+    ]
+  },
+  "prime20_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/prime20-kill-5"
+    ]
+  },
+  "sentinelsoflight_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sentinelsoflight-kill-1"
+    ]
+  },
+  "sentinelsoflight_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sentinelsoflight-kill-2"
+    ]
+  },
+  "sentinelsoflight_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sentinelsoflight-kill-3"
+    ]
+  },
+  "sentinelsoflight_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sentinelsoflight-kill-4"
+    ]
+  },
+  "sentinelsoflight_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sentinelsoflight-kill-5"
+    ]
+  },
+  "singularity_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/singularity-kill-1"
+    ]
+  },
+  "singularity_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/singularity-kill-2"
+    ]
+  },
+  "singularity_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/singularity-kill-3"
+    ]
+  },
+  "singularity_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/singularity-kill-4"
+    ]
+  },
+  "singularity_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/singularity-kill-5"
+    ]
+  },
+  "prime_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/prime-kill-1"
+    ]
+  },
+  "prime_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/prime-kill-2"
+    ]
+  },
+  "prime_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/prime-kill-3"
+    ]
+  },
+  "prime_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/prime-kill-4"
+    ]
+  },
+  "prime_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/prime-kill-5"
+    ]
+  },
+  "magepunk_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunk-kill-1"
+    ]
+  },
+  "magepunk_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunk-kill-2"
+    ]
+  },
+  "magepunk_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunk-kill-3"
+    ]
+  },
+  "magepunk_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunk-kill-4"
+    ]
+  },
+  "magepunk_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/magepunk-kill-5"
+    ]
+  },
+  "ion_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ion-kill-1"
+    ]
+  },
+  "ion_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ion-kill-2"
+    ]
+  },
+  "ion_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ion-kill-3"
+    ]
+  },
+  "ion_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ion-kill-4"
+    ]
+  },
+  "ion_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/ion-kill-5"
+    ]
+  },
+  "blastx_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blastx-kill-1"
+    ]
+  },
+  "blastx_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blastx-kill-2"
+    ]
+  },
+  "blastx_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blastx-kill-3"
+    ]
+  },
+  "blastx_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blastx-kill-4"
+    ]
+  },
+  "blastx_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/blastx-kill-5"
+    ]
+  },
+  "elderflame_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/elderflame-kill-1"
+    ]
+  },
+  "elderflame_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/elderflame-kill-2"
+    ]
+  },
+  "elderflame_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/elderflame-kill-3"
+    ]
+  },
+  "elderflame_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/elderflame-kill-4"
+    ]
+  },
+  "elderflame_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/elderflame-kill-5"
+    ]
+  },
+  "sovereign_kill_1": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sovereign-kill-1"
+    ]
+  },
+  "sovereign_kill_2": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sovereign-kill-2"
+    ]
+  },
+  "sovereign_kill_3": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sovereign-kill-3"
+    ]
+  },
+  "sovereign_kill_4": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sovereign-kill-4"
+    ]
+  },
+  "sovereign_kill_5": {
+    "category": "player",
+    "sounds": [
+      "theladscore:killbanner/sovereign-kill-5"
+    ]
   }
 }

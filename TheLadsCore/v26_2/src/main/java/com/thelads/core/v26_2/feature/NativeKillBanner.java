@@ -145,25 +145,18 @@ public final class NativeKillBanner {
     /** Kill Banner picker art (LadsGraphics.drawKillBanner). */
     public static boolean drawThumb(GuiGraphicsExtractor g, String skin, int variant, int x, int y, int w, int h) {
         try {
-            KillBannerStyle style = "reaver".equals(skin) ? KillBannerStyle.REAVER : "rogue".equals(skin) ? KillBannerStyle.ROGUE : null;
-            if (style != null) { KillBannerArt.thumb(g, style, variant, x, y, w, h); return true; }
-            var image = Minecraft.getInstance().getTextureManager().getTexture(BASE).getTexture();
-            int sourceWidth = image.getWidth(0), sourceHeight = image.getHeight(0);
-            if (sourceWidth <= 0 || sourceHeight <= 0) return false;
-            float k = Math.min(w / (float) sourceWidth, h / (float) sourceHeight);
-            int width = Math.round(sourceWidth * k), height = Math.round(sourceHeight * k);
-            g.blit(RenderPipelines.GUI_TEXTURED, BASE, x + (w - width) / 2, y + (h - height) / 2, 0, 0, width, height,
-                sourceWidth, sourceHeight, sourceWidth, sourceHeight, -1);
+            KillBannerStyle style = KillBannerStyle.fromId(skin);
+            KillBannerArt.thumb(g, style, variant, x, y, w, h);
             return true;
         } catch (RuntimeException failure) {
             return false;
         }
     }
 
-    /** Kill Banner picker: a skin's one-kill sound ("base" the chime). */
+    /** Kill Banner picker: a skin's one-kill sound. */
     public static void previewSound(String skin, float volume) {
-        SoundEvent event = "reaver".equals(skin) || "rogue".equals(skin)
-            ? SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("theladscore", skin + "_kill_1")) : SoundEvents.EXPERIENCE_ORB_PICKUP;
+        KillBannerStyle style = KillBannerStyle.fromId(skin);
+        SoundEvent event = SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath("theladscore", style.id + "_kill_1"));
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(event, 1, volume));
     }
 
