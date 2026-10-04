@@ -27,10 +27,13 @@ public final class Raised189 {
         return raised == null ? 0 : raised.hotbarLift(Minecraft.getMinecraft().currentScreen instanceof GuiChat);
     }
 
-    /** GUI pixels chat moves up. */
+    /**
+     * GUI pixels chat moves up: the Chat slider, or more once the hotbar has risen into chat (chat open, a tall Hotbar). 1.8.9 draws
+     * chat 12 px lower than 26.x, so without this the hotbar covers the newest line; this keeps 26.x's 2 px gap above the hotbar.
+     */
     public static int chat() {
         RaisedModule raised = RaisedModule.get();
-        return raised == null ? 0 : raised.chatLift();
+        return raised == null ? 0 : Math.max(raised.chatLift(), hotbar() - 4);
     }
 
     /** Starts drawing a hotbar part raised; {@link GlStateManager#popMatrix()} ends it. */
