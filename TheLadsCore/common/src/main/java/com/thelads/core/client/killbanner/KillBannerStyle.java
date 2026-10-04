@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * All Valorant kill banners (91 skins from Kingdom Archives, plus Reaver and Rogue animated 60 fps strips).
@@ -120,6 +121,8 @@ public enum KillBannerStyle {
     public static final float ART_SCALE = .73f;
 
     private static final Map<String, KillBannerStyle> BY_ID = new HashMap<>();
+    /** Identical art kept once: "skin/file.png" to the copy shipped (tools/killbanner/dedupe_assets.py). */
+    private static final Properties SHARED = new Properties();
 
     static {
         for (KillBannerStyle style : values()) {
@@ -127,6 +130,10 @@ public enum KillBannerStyle {
         }
         // Aliases
         BY_ID.put("base", DEFAULT);
+        try (InputStream in = KillBannerStyle.class.getResourceAsStream("/assets/theladscore/killbanner/shared.properties")) {
+            if (in != null) SHARED.load(in);
+        } catch (IOException ignored) {
+        }
     }
 
     public final String id;
@@ -178,7 +185,8 @@ public enum KillBannerStyle {
     }
 
     public String asset(String name) {
-        return "/assets/theladscore/killbanner/" + id + "/" + name;
+        String file = id + "/" + name;
+        return "/assets/theladscore/killbanner/" + SHARED.getProperty(file, file);
     }
 
     public String frameAsset() {
@@ -200,7 +208,7 @@ public enum KillBannerStyle {
     }
 
     public String swapAsset(int kills) {
-        int k = Math.max(1, Math.min(6, kills));
+        int k = Math.max(1, Math.min(5, kills));
         return asset("k" + k + ".png");
     }
 
