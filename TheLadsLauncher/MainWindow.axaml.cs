@@ -4740,6 +4740,7 @@ public partial class MainWindow : Window
 
         _launching = true;
         DiscordPresence.Launching(guardProfile.MinecraftVersion);
+        bool gameStarted = false; // from then on the launch shows on Discord until the game window is up (WatchForGameWindowAsync)
         using var launchCts = new CancellationTokenSource();
         _launchCts = launchCts;
         var token = launchCts.Token;
@@ -5057,7 +5058,7 @@ public partial class MainWindow : Window
             Log("[Launcher] Starting game process...");
             process.Start();
             _runningProcesses[process] = gameDirectory;
-            DiscordPresence.GameRunning(true);
+            DiscordPresence.GameRunning(gameStarted = true);
             // Running marker now; on exit (once): marker removed, server list reconciled, then OnGameExitedAsync.
             var sessionMessages = optiFineWarning == null ? new List<string>() : new List<string> { optiFineWarning };
             GameSession.Attach(process, gameDirectory, loadedMods, message =>
@@ -5115,7 +5116,7 @@ public partial class MainWindow : Window
         {
             _launchCts = null;
             _launching = false;
-            DiscordPresence.Launching(null);
+            if (!gameStarted) DiscordPresence.Launching(null);
             GameLaunchOverlay.IsVisible = false;
             LaunchButton.IsEnabled = true;
             RenderModsInventory();
@@ -5319,6 +5320,7 @@ public partial class MainWindow : Window
         // Small grace period so the game's first (black) frame is on screen
         // before the splash disappears.
         await Task.Delay(500);
+        DiscordPresence.Launching(null);
         Dispatcher.UIThread.Post(() => { try { splash.Close(); } catch { } });
     }
 
