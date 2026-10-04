@@ -33,7 +33,7 @@ public final class FlashbackExportProbe {
     private static List<Run> runs;
     private static boolean done;
     private static int stage, ticks, runIndex, passed;
-    private static long deadline, runStarted, browserAt;
+    private static long deadline, runStarted, browserAt, listedAt;
     private static Path game, folder, ownFolder, replay, exports, output;
     private static Set<Path> ownBefore, folderBefore;
     private static String previousFolder;
@@ -207,12 +207,21 @@ public final class FlashbackExportProbe {
         long since = System.nanoTime() - browserAt;
         if (stage == 5) {
             if (since < 2_000_000_000L) return;
+            if (listedAt == 0) {
+                // The browser reads the folder in the background, which a busy PC can take longer than 2 s for: polled for up to 20 s.
+                var list = SelectReplayScreen.class.getDeclaredField("list");
+                list.setAccessible(true);
+                var entries = ((net.minecraft.client.gui.components.AbstractSelectionList<?>) list.get(mc.gui.screen())).children();
+                boolean listed = entries.stream().anyMatch(entry -> ((Object) entry).getClass().getSimpleName().equals("ReplayListEntry"));
+                if (!listed && since < 20_000_000_000L) return;
+                check(listed, "the browser lists the saved replay (after " + since / 1_000_000 + " ms)");
+                listedAt = System.nanoTime();
+                return;
+            }
+            long shown = System.nanoTime() - listedAt;
+            if (shown < 500_000_000L) return; // drawn with the replay listed before the frame is taken
             if (!browserShot) { browserShot = true; shot(mc, "flashback-browser"); return; }
-            if (since < 3_000_000_000L) return;
-            var list = SelectReplayScreen.class.getDeclaredField("list");
-            list.setAccessible(true);
-            var entries = ((net.minecraft.client.gui.components.AbstractSelectionList<?>) list.get(mc.gui.screen())).children();
-            check(entries.stream().anyMatch(entry -> ((Object) entry).getClass().getSimpleName().equals("ReplayListEntry")), "the browser lists the saved replay");
+            if (shown < 1_500_000_000L) return;
             var menu = new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);
             mc.setScreenAndShow(menu);
             var ui = com.thelads.core.v26_2.gui.LadsSettingsScreen26.class.getDeclaredField("ui");

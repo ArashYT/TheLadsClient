@@ -55,10 +55,14 @@ public final class HudInfoCapture {
         if (Boolean.getBoolean("thelads.verifyAutoWorld")) ClientTickEvents.END_CLIENT_TICK.register(mc -> tick());
     }
 
+    /** True from the first frame's setup until everything is put back; the other in-world captures wait for it. */
+    static boolean busy() { return step >= 0 && step < SHOTS.size(); }
+
     private static void tick() {
         Minecraft mc = Minecraft.getInstance();
         if (step < 0) {
-            if (!NativeWorldVerification.worldReady()) return;
+            // Not while another capture runs: one of them (Server Features) leaves the world, and this one needs the player.
+            if (!NativeWorldVerification.worldReady() || NativeWorldVerification.captureBusy()) return;
             Path request = FabricLoader.getInstance().getGameDir().resolve(".lads-qa-capture-hudinfo");
             if (!Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS)) return;
             try { Files.delete(request); begin(mc); }

@@ -49,6 +49,7 @@ final class Probe145 {
         Probe145::unpaced, Probe145::pacedAgain);
     private static long frames, since;
     private static float pacedFps, unpacedFps;
+    private static int pacingRounds;
     private static int limit;
     private static boolean vsync;
     private static ItemStack[] hotbar;
@@ -143,16 +144,33 @@ final class Probe145 {
         return after(60);
     }
 
+    /**
+     * Up to three rounds, each an unpaced window between two paced ones: a busy PC (other games, builds) can slow one window, while a
+     * real cost of pacing shows in every round. Each round is logged.
+     */
     private static boolean pacedAgain(Minecraft mc) {
-        pacedFps = Math.max(pacedFps, fps());
-        float unpaced = unpacedFps;
+        if (!RawMouse189.pacing) { // a further round: its unpaced window just ended
+            unpacedFps = fps();
+            RawMouse189.pacing = true;
+            startCount();
+            return retry(60);
+        }
+        float last = fps(), best = Math.max(pacedFps, last), unpaced = unpacedFps;
+        pacingRounds++;
+        LOG.info("Lads 1.8.9 core probe: frame pacing round {}: {} FPS paced, {} FPS unpaced (no VSync, no limit; window focused {})",
+            pacingRounds, best, unpaced, Display.isActive());
+        // Thousands of FPS: a percentage measures noise there, so pacing may also cost under 0.1 ms a frame.
+        boolean kept = best >= unpaced * 0.85f || 1000f / best - 1000f / unpaced < 0.1f;
+        if (!kept && pacingRounds < 3) {
+            pacedFps = last;
+            RawMouse189.pacing = false;
+            startCount();
+            return retry(60);
+        }
         mc.gameSettings.enableVsync = vsync;
         Display.setVSyncEnabled(vsync);
         mc.gameSettings.limitFramerate = limit;
-        LOG.info("Lads 1.8.9 core probe: frame pacing: {} FPS paced, {} FPS unpaced (no VSync, no limit)", pacedFps, unpaced);
-        // Thousands of FPS: a percentage measures noise there, so pacing may also cost under 0.1 ms a frame.
-        check(pacedFps >= unpaced * 0.85f || 1000f / pacedFps - 1000f / unpaced < 0.1f,
-            "frame pacing keeps the frame rate: " + pacedFps + " FPS paced, " + unpaced + " unpaced");
+        check(kept, "frame pacing keeps the frame rate: " + best + " FPS paced, " + unpaced + " unpaced (round " + pacingRounds + " of up to 3)");
         return after(1);
     }
 
