@@ -9,6 +9,8 @@
   },
   "client": [
     "EntityRendererAccessor",
+    "EntityPlayerSPAccessor",
+    "EntityPlayerSPMixin",
     "EntityRendererMixin",
     "EssentialZoomMixin189",
     "GameSettingsMixin",
@@ -31,6 +33,7 @@
     "LayerArmorBaseMixin",
     "LayerHeldItemMixin",
     "MinecraftMixin",
+    "MovementInputFromOptionsMixin",
     "ModelBipedMixin",
     "NetworkManagerMixin",
     "NetHandlerPlayClientMixin",

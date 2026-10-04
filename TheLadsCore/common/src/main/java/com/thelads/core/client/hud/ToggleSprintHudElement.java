@@ -4,6 +4,7 @@ import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.ToggleSprintModule;
 
+/** Toggle Sprint &amp; Sneak's one HUD line: "[Sprinting (Toggled)] [Sneaking (Key Held)]" and the like (ToggleSprintModule.status). */
 public class ToggleSprintHudElement extends TextHudElement {
     public ToggleSprintHudElement() {
         super(70);
@@ -15,15 +16,8 @@ public class ToggleSprintHudElement extends TextHudElement {
 
     @Override
     protected String updateText(LadsGraphics g) {
-        var mod = ModuleManager.getInstance().getModule("ToggleSprint");
-        boolean isToggled = mod instanceof ToggleSprintModule sprint && sprint.isToggled();
         boolean hasPlayer = g.getGame() != null && g.getGame().hasPlayer();
-        if (!hasPlayer) {
-            return "[Sprinting (Toggled)]";
-        }
-        if (isToggled) {
-            return "[Sprinting (Toggled)]";
-        }
-        return "";
+        if (!hasPlayer) return "[Sprinting (Toggled)]";
+        return ModuleManager.getInstance().getModule(ToggleSprintModule.NAME) instanceof ToggleSprintModule module ? module.status() : "";
     }
 }

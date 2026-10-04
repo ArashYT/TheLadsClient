@@ -49,15 +49,11 @@ public class OptionsMixin {
     private void ladsRegisterControls(CallbackInfo ci) {
         // Register before native options parsing, so saved bindings load on the first launch.
         // Reloads and upgrades add only missing entries, retaining every other mod's binding.
-        boolean zoom = false, modules = false;
-        for (KeyMapping binding : keyMappings) {
-            zoom |= binding == NativeKeyBindings.ZOOM;
-            modules |= binding == NativeKeyBindings.MODULES;
+        for (KeyMapping ours : new KeyMapping[] {NativeKeyBindings.ZOOM, NativeKeyBindings.MODULES,
+                NativeKeyBindings.TOGGLE_SPRINT, NativeKeyBindings.TOGGLE_SNEAK}) {
+            if (Arrays.asList(keyMappings).contains(ours)) continue;
+            keyMappings = Arrays.copyOf(keyMappings, keyMappings.length + 1);
+            keyMappings[keyMappings.length - 1] = ours;
         }
-        if (zoom && modules) return;
-        int next = keyMappings.length;
-        keyMappings = Arrays.copyOf(keyMappings, next + (zoom ? 0 : 1) + (modules ? 0 : 1));
-        if (!zoom) keyMappings[next++] = NativeKeyBindings.ZOOM;
-        if (!modules) keyMappings[next] = NativeKeyBindings.MODULES;
     }
 }

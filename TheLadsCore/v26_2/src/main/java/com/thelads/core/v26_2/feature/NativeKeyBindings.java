@@ -12,5 +12,10 @@ public final class NativeKeyBindings {
         InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, CATEGORY);
     public static final KeyMapping MODULES = new KeyMapping("key.theladscore.modules",
         InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY);
+    /** Toggle Sprint & Sneak: unbound by default, so Sprint and Sneak toggle (NativeFeatures); bound, these toggle instead. */
+    public static final KeyMapping TOGGLE_SPRINT = new KeyMapping("key.theladscore.toggle_sprint",
+        InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
+    public static final KeyMapping TOGGLE_SNEAK = new KeyMapping("key.theladscore.toggle_sneak",
+        InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
     private NativeKeyBindings() {}
 }
