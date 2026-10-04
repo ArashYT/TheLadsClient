@@ -2,6 +2,7 @@
   "required": true,
   "minVersion": "0.7",
   "package": "com.thelads.core.v1_8_9.mixin",
+  "plugin": "com.thelads.core.v1_8_9.feature.EarlyPlugin189",
   "refmap": "theladscore.v1_8_9.refmap.json",
   "compatibilityLevel": "JAVA_8",
   "injectors": {
