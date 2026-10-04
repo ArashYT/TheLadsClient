@@ -10,6 +10,7 @@ import com.thelads.core.config.Module;
 import com.thelads.core.mods.ModDependencyPlanner;
 import com.thelads.core.mods.ModInventoryModel;
 import com.thelads.core.mods.ModStateStore;
+import com.thelads.core.modules.BetterResolutionModule;
 import com.thelads.core.modules.KillBannerModule;
 import com.thelads.core.modules.OldAnimationsModule;
 import java.io.IOException;
@@ -53,7 +54,7 @@ public final class LadsSettingsScreen {
     private Consumer<String> onNarrate = ignored -> {};
     private Supplier<String> clipboardReader = () -> "";
     private static final String[] CATEGORIES = {"All", "HUD", "Gameplay", "Performance", "Server"};
-    private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "Exordium", "RenderScale", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore");
+    private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore");
     // Installed mods view: its own state, search and "mods:" row ids, so the native catalog above stays native-only.
     private record ModLine(ModInventoryModel.Row row, int depth) {}
     private boolean modsView, detailFromMods;
@@ -830,7 +831,9 @@ public final class LadsSettingsScreen {
             double min = option instanceof SliderOption s ? s.getMin() : ((DoubleOption)option).getMin();
             double max = option instanceof SliderOption s ? s.getMax() : ((DoubleOption)option).getMax();
             double value = option instanceof SliderOption s ? s.getValue() : ((DoubleOption)option).get();
-            button(g, id, String.format(Locale.ROOT, "%.2f", value).replaceAll("\\.?0+$", ""), r, () -> {}, true, mx, my, false);
+            // Better Resolution's Scale only counts with the Custom preset: shown greyed and not draggable.
+            boolean free = !(detail instanceof BetterResolutionModule resolution && resolution.locked(option));
+            button(g, id, String.format(Locale.ROOT, "%.2f", value).replaceAll("\\.?0+$", ""), r, () -> {}, free, mx, my, false);
             int fillW = (int)((controlW - 8) * (value - min) / Math.max(.001, max - min));
             g.fill(r.x + 4, r.y + 20, r.x + 4 + fillW, r.y + 22, ACCENT);
         } else if (option instanceof ColorOption c) {
