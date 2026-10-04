@@ -20,6 +20,7 @@ import com.thelads.core.v1_8_9.feature.Reconnect189;
 import com.thelads.core.v1_8_9.feature.RenderScale189;
 import com.thelads.core.v1_8_9.feature.Screenshots189;
 import com.thelads.core.v1_8_9.feature.SignalLoss189;
+import com.thelads.core.v1_8_9.feature.SkinLayers189;
 import com.thelads.core.v1_8_9.feature.TabTweaks189;
 import com.thelads.core.v1_8_9.feature.Tooltips189;
 import com.thelads.core.v1_8_9.feature.Zoom189;
@@ -41,7 +42,7 @@ public class TheLadsCore189 {
     public static final String[][] MOD_BACKED = {
         {"Performance", "Sodium"}, {"Lithium", "Lithium"}, {"FerriteCore", "FerriteCore"},
         {"ScalableLux", "ScalableLux"}, {"Exordium", "Exordium"}, {"DynamicFPS", "Dynamic FPS"},
-        {"DynamicLights", "LambDynamicLights"}, {"SkinLayers", "3D Skin Layers"}, {"NotEnoughAnimations", "Not Enough Animations"},
+        {"DynamicLights", "LambDynamicLights"}, {"NotEnoughAnimations", "Not Enough Animations"},
         {"BetterF3", "BetterF3"}, {"BetterStats", "Better Statistics Screen"},
         {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroMinimap", "Xaero's Minimap"}, {"XaeroWorldmap", "Xaero's World Map"},
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
@@ -130,6 +131,9 @@ public class TheLadsCore189 {
         for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);
         // The launcher's 1.8.9 pack includes Resourcify (its own in-game browser, no Lads settings page).
         ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));
+        // ... and 3D Skin Layers, which the SkinLayers module switches (SkinLayers189).
+        ModuleSupport.registerExternal("SkinLayers", "3D Skin Layers", "skinlayers3d", SkinLayers189.LOADED);
+        if (SkinLayers189.LOADED) ModuleSupport.registerBuiltInLimited("SkinLayers", "Minecraft 1.8.9 has no skin preview, so 3D Preview has nothing to show.");
     }
 
     @SubscribeEvent
@@ -139,6 +143,7 @@ public class TheLadsCore189 {
         Minecraft mc = Minecraft.getMinecraft();
         OldAnimations189.tick(mc);
         Zoom189.tick(mc);
+        SkinLayers189.tick(mc);
         if (mc.thePlayer != null) {
             com.thelads.core.config.Module fullbright = com.thelads.core.config.ModuleManager.getInstance().getModule("Fullbright");
             if (fullbright != null && fullbright.isEnabled() && mc.gameSettings.gammaSetting < 15.0f) {
