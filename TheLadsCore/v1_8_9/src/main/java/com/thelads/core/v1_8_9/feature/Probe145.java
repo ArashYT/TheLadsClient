@@ -103,8 +103,10 @@ final class Probe145 {
         dx.setInt(null, 37);
         dy.setInt(null, -11);
         helper.mouseXYChange();
-        LOG.info("Lads 1.8.9 core probe: mouse: RawInput {}, {} JInput mice, raw live {}, frame pacing {}", module("RawInput").isEnabled(),
-            helper.mice == null ? "no scan of" : String.valueOf(helper.mice.size()), helper.rawLive, RawMouse189.pacing);
+        // An ungrabbed mouse (QA window without focus) makes Mouse.poll() replace the injected deltas with the cursor's own.
+        LOG.info("Lads 1.8.9 core probe: mouse: RawInput {}, {} JInput mice, raw live {}, frame pacing {}, window focused {}, mouse grabbed {}",
+            module("RawInput").isEnabled(), helper.mice == null ? "no scan of" : String.valueOf(helper.mice.size()), helper.rawLive,
+            RawMouse189.pacing, Display.isActive(), Mouse.isGrabbed());
         check(helper.rawLive || (helper.deltaX == 37 && helper.deltaY == -11),
             "with Raw Input on and no JInput mouse moving, the camera turns by LWJGL's deltas (37, -11): " + helper.deltaX + ", " + helper.deltaY);
         check(RawMouse189.pacing, "frame pacing is on (GL 3.2 fences)");
