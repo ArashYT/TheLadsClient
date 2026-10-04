@@ -158,6 +158,7 @@ final class Probe150e {
         if (pose > 0) screenshot(mc, "170-tooltip-" + names[pose - 1]);
         if (pose == names.length) { pose = 0; mc.displayGuiScreen(null); return after(5); }
         ItemStack stack = pose == 0 ? new ItemStack(Items.apple) : pose == 1 ? new ItemStack(Items.golden_carrot) : new ItemStack(Items.diamond_sword, 1, 1200);
+        Options189.module("AppleSkin").setEnabled(true); // put back as found by crosshairsDone
         if (pose >= 2) {
             Options189.module("EnhancedToolbars").setEnabled(true);
             ((DropdownOption) Options189.module("EnhancedToolbars").getOption("Durability Style")).setIndex(pose - 2);
@@ -201,6 +202,7 @@ final class Probe150e {
         screenshot(mc, "170-crosshair-vanilla-adaptive");
         pose = 0;
         OPTIONS.forEach(com.thelads.core.config.Option::load);
+        restore("AppleSkin");
         restore("EnhancedToolbars");
         restore("Crosshair Tweaks");
         return after(5);
