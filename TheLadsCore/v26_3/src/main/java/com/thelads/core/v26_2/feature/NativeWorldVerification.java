@@ -121,17 +121,20 @@ public final class NativeWorldVerification {
                 }
             }
             boolean captureReady = readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null;
-            KillBannerCapture.tick(gameDirectory, captureReady && !OldAnimationsCapture.busy() && !ZoomCapture.busy());
-            OldAnimationsCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !ZoomCapture.busy());
-            ZoomCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy());
-            ServerFeaturesCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy());
+            // In-world captures run one at a time: each may tick while it is the one running or none is.
+            KillBannerCapture.tick(gameDirectory, captureReady && (KillBannerCapture.busy() || !captureBusy()));
+            OldAnimationsCapture.tick(gameDirectory, captureReady && (OldAnimationsCapture.busy() || !captureBusy()));
+            ZoomCapture.tick(gameDirectory, captureReady && (ZoomCapture.busy() || !captureBusy()));
+            ServerFeaturesCapture.tick(gameDirectory, captureReady && (ServerFeaturesCapture.busy() || !captureBusy()));
+            // After the Chat module's own capture, so its message does not land among the heads.
+            ChatHeadsCapture.tick(captureReady && chatCaptureStep >= 2 && (ChatHeadsCapture.busy() || !captureBusy()));
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
             Path hudRequest = gameDirectory.resolve(".lads-qa-capture-hud");
             // A menu or HUD capture opens a screen, which zooms out and stops item use: never while a world capture runs.
             if (menuScreen == null && readyLogged && worldReady()
-                && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !ServerFeaturesCapture.busy()
+                && !captureBusy()
                 && !com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.NativeScreenshotsProbe.running()
                 && (Files.isRegularFile(menuRequest, LinkOption.NOFOLLOW_LINKS)
                     || Files.isRegularFile(hudRequest, LinkOption.NOFOLLOW_LINKS))) {
@@ -221,7 +224,8 @@ public final class NativeWorldVerification {
         OldAnimationsCapture.frame(target, gameDirectory);
         ZoomCapture.frame(target, gameDirectory);
         ServerFeaturesCapture.frame(target, gameDirectory);
-        if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
+        ChatHeadsCapture.frame(target, gameDirectory);
+        if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter || ChatHeadsCapture.pending()) return;
         captureStarted = true;
         try {
             Path folder = gameDirectory.resolve("screenshots");
@@ -351,6 +355,11 @@ public final class NativeWorldVerification {
             LOGGER.error("Lads " + captureKind + " capture FAILED", failure);
             fail("menu screenshot", failure);
         }
+    }
+    /** True while any in-world QA capture is running. */
+    private static boolean captureBusy() {
+        return KillBannerCapture.busy() || OldAnimationsCapture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy()
+            || ChatHeadsCapture.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();

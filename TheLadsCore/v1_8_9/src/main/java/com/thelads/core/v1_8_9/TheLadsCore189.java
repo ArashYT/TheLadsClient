@@ -116,6 +116,9 @@ public class TheLadsCore189 {
         // MessageDeserializerMixin and NetworkManagerMixin, as 26.x PacketDecodeGuardMixin and PacketErrorGuardMixin.
         {"IgnorePacketErrors", "Minecraft 1.8.9 already keeps playing when a packet fails on the game thread; this covers packets "
             + "that can't be decoded and handlers that fail on the network thread."},
+        // ChatHeads189 through GuiNewChatMixin and ChatLineMixin, as 26.x NativeChatHeads.
+        {"Chat Heads", "Minecraft 1.8.9 chat does not name its sender, so a head comes from the player names in the tab list: with "
+            + "Detect by name off no message has one."},
         // Crosshair189 through Forge's crosshair overlay event, as 26.x NativeCrosshair.
         {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Dynamic "
             + "Attack Gap, Item Cooldown and spyglass options have nothing to show."},
