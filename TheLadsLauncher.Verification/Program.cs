@@ -148,6 +148,8 @@ bool resolutionCaptureVerification = autoWorldVerification && !capabilities.Forg
 bool lightsCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_LIGHTS") == "1";
 // 26.x: Flashback Settings records into a Lads replay folder and times stock vs Lads exports of the same clip (FlashbackExportProbe).
 bool flashbackVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_FLASHBACK") == "1";
+// 26.x: Async stress test (AsyncStressProbe): ~1700 mobs plus items in pens, tick time with Async off and on, behaviour checks.
+bool asyncStressVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_ASYNC") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -294,11 +296,13 @@ string resolutionCaptureRequest = Path.Combine(directory, ".lads-qa-capture-reso
 if (autoWorldVerification && File.Exists(resolutionCaptureRequest)) File.Delete(resolutionCaptureRequest);
 string lightsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-lights");
 if (autoWorldVerification && File.Exists(lightsCaptureRequest)) File.Delete(lightsCaptureRequest);
+string asyncStressRequest = Path.Combine(directory, ".lads-qa-async");
+if (autoWorldVerification && File.Exists(asyncStressRequest)) File.Delete(asyncStressRequest);
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed",
         ".lads-qa-flashback", ".lads-qa-flashback-done", ".lads-qa-flashback-failed" })
         File.Delete(Path.Combine(directory, flag));
-using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification ? 20 : 10));
+using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification ? 20 : asyncStressVerification ? 16 : 10));
 var ct = timeout.Token;
 
 Process? process = null;
@@ -347,7 +351,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED",
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
     "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
-    "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED",
+    "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -591,7 +595,7 @@ try
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
                 "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads server features capture END:", "Lads F3/FOV capture END:",
                 "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:", "Lads resolution capture END:",
-                "Lads dynamic lights capture END:" })
+                "Lads dynamic lights capture END:", "Lads async stress probe END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -646,7 +650,7 @@ try
     // Title runs without the 26.x auto-world end once every check the harness asserts has passed (they never did before, so
     // 1.21.x waited the full 540 s); the stop is a Kill, as for every non-auto-world run.
     bool earlyTitleExit = titleVerification && !autoWorldVerification;
-    while (stopwatch.Elapsed < TimeSpan.FromSeconds(titleVerification ? 540 : 180) && !process.HasExited)
+    while (stopwatch.Elapsed < TimeSpan.FromSeconds(titleVerification ? (asyncStressVerification ? 900 : 540) : 180) && !process.HasExited)
     {
         process.Refresh();
         if (!windowFound && process.MainWindowHandle != IntPtr.Zero)
@@ -684,7 +688,8 @@ try
             bool mouseTweaksDone = !mouseTweaksCaptureVerification || passedMarkers.ContainsKey("Lads mouse tweaks capture END:");
             bool resolutionDone = !resolutionCaptureVerification || passedMarkers.ContainsKey("Lads resolution capture END:");
             bool lightsDone = !lightsCaptureVerification || passedMarkers.ContainsKey("Lads dynamic lights capture END:");
-            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && serverDone && f3FovDone && hudInfoDone && raisedDone && mouseTweaksDone && resolutionDone && lightsDone)
+            bool asyncDone = !asyncStressVerification || passedMarkers.ContainsKey("Lads async stress probe END:");
+            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && serverDone && f3FovDone && hudInfoDone && raisedDone && mouseTweaksDone && resolutionDone && lightsDone && asyncDone)
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -729,7 +734,8 @@ try
                     (hudInfoCaptureVerification, hudInfoCaptureRequest, "Photograph food previews, tooltips and crosshair styles in the QA world."),
                     (raisedCaptureVerification, raisedCaptureRequest, "Capture Raised and the paper doll in the QA world."),
                     (mouseTweaksCaptureVerification, mouseTweaksCaptureRequest, "Drive Lads Mouse Tweaks in a QA chest and capture its frames."),
-                    (lightsCaptureVerification, lightsCaptureRequest, "Light the QA world at midnight with Dynamic Lights and capture its frames.") })
+                    (lightsCaptureVerification, lightsCaptureRequest, "Light the QA world at midnight with Dynamic Lights and capture its frames."),
+                    (asyncStressVerification, asyncStressRequest, "Stress Async with a pen of mobs in the QA world.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -854,6 +860,8 @@ try
             "The requested Better Resolution capture did not pass. Inspect production-smoke.log.");
         Require(!lightsCaptureVerification || passedMarkers.ContainsKey("Lads dynamic lights capture END:"),
             "The requested Dynamic Lights capture did not pass. Inspect production-smoke.log.");
+        Require(!asyncStressVerification || passedMarkers.ContainsKey("Lads async stress probe END:"),
+            "The requested Async stress probe did not pass. Inspect production-smoke.log.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)
