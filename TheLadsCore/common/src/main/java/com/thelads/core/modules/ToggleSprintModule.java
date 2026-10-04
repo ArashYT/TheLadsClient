@@ -28,7 +28,7 @@ public class ToggleSprintModule extends Module {
     private int restartIn;
 
     public ToggleSprintModule() {
-        super(NAME, "Sprint and sneak without holding the keys. With Toggle Sprint and Toggle Sneak unbound in Controls, "
+        super(NAME, "Sprint and sneak without holding the keys. While Sprint (Toggle) and Sneak (Toggle) are unbound in Controls, "
             + "the Sprint and Sneak keys toggle; bind them to other keys to keep Sprint and Sneak for holding.");
         sprintMode = addOption(new DropdownOption("Sprint", TOGGLE, "Toggle", "Always", "Vanilla"));
         pauseWhileSneaking = addOption(new BoolOption("Pause sprint while sneaking", true));

@@ -250,7 +250,7 @@ final class Probe170 {
         },
         mc -> {
             check(controls.shownKeys().contains(Toggles189.TOGGLE_SPRINT) && controls.shownKeys().contains(mc.gameSettings.keyBindSprint),
-                "Controls: 'sprint' lists Sprint and Toggle Sprint");
+                "Controls: 'sprint' lists Sprint and Sprint (Toggle)");
             screenshot(mc, "170-controls-sprint");
             for (int i = 0; i < 6; i++) CoreProbe.tap(Keyboard.KEY_BACK, '\b');
             type("sneak");
@@ -258,7 +258,7 @@ final class Probe170 {
         },
         mc -> {
             check(controls.shownKeys().contains(Toggles189.TOGGLE_SNEAK) && controls.shownKeys().contains(mc.gameSettings.keyBindSneak),
-                "Controls: 'sneak' lists Sneak and Toggle Sneak");
+                "Controls: 'sneak' lists Sneak and Sneak (Toggle)");
             screenshot(mc, "170-controls-sneak");
             LadsSettingsScreen189 menu = new LadsSettingsScreen189(null);
             mc.displayGuiScreen(menu);
@@ -295,8 +295,9 @@ final class Probe170 {
         wasEnabled = toggles.isEnabled();
         modifiedWas = toggles.getLastModified();
         for (Option option : toggles.getOptions()) optionsWere.put(option, option.save());
-        LogManager.getLogger("TheLadsCore").info("Lads 1.8.9 sprint probe: at world load Toggle Sprint & Sneak is {}, sprint toggled={}, sneak toggled={} (thelads_config.json)",
-            wasEnabled ? "on" : "off", toggles.isSprintToggled(), toggles.isSneakToggled());
+        LogManager.getLogger("TheLadsCore").info("Lads 1.8.9 sprint probe: at world load Toggle Sprint & Sneak is {}, sprint toggled={}, sneak toggled={}, options {}, HUD position {} (thelads_config.json)",
+            wasEnabled ? "on" : "off", toggles.isSprintToggled(), toggles.isSneakToggled(), optionsWere.values(),
+            Arrays.toString(com.thelads.core.config.HudSettings.getInstance().getPosition(ToggleSprintModule.NAME)));
         toggles.getOptions().forEach(Option::reset); // Sprint Toggle, Sneak Vanilla, untoggled
         toggles.setEnabled(true);
         started = true;
