@@ -118,13 +118,13 @@ final class Probe170 {
     private static boolean fading(Minecraft mc) {
         check(Autohide189.shown == 0, "Autohide: idle, the hotbar, its items, the status bars and the Lads HUD are hidden");
         screenshot(mc, "170-autohide-hidden");
-        ((SliderOption) Options189.module("Autohide").getOption("Fade milliseconds")).setValue(1500);
+        ((SliderOption) Options189.module("Autohide").getOption("Fade milliseconds")).setValue(3000);
         Autohide189.idle(0.6f);
-        return after(1);
+        return after(3);
     }
 
     private static boolean restore(Minecraft mc) {
-        check(Autohide189.shown > 0 && Autohide189.shown < 0.6f, "Autohide: fading out (" + Autohide189.shown + ")");
+        check(Autohide189.shown > 0.3f && Autohide189.shown < 0.6f, "Autohide: fading out (" + Autohide189.shown + ")");
         screenshot(mc, "170-autohide-fading");
         stop();
         return after(5);

@@ -95,14 +95,17 @@ public final class Autohide189 {
     public static boolean begin() {
         Minecraft mc = Minecraft.getMinecraft();
         if (!OpenGlHelper.isFramebufferEnabled()) return false;
+        // Before creating or resizing the buffer, which binds framebuffer 0 when done.
+        previous = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
+        GL11.glGetInteger(GL11.GL_VIEWPORT, VIEWPORT);
+        boolean depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST); // creating the buffer turns depth testing on
         if (buffer == null) {
             buffer = new Framebuffer(mc.displayWidth, mc.displayHeight, true);
             buffer.setFramebufferColor(0, 0, 0, 0); // transparent black: the composite is premultiplied
         } else if (buffer.framebufferWidth != mc.displayWidth || buffer.framebufferHeight != mc.displayHeight) {
             buffer.createBindFramebuffer(mc.displayWidth, mc.displayHeight);
         }
-        previous = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
-        GL11.glGetInteger(GL11.GL_VIEWPORT, VIEWPORT);
+        if (!depth) GlStateManager.disableDepth();
         buffer.framebufferClear();
         buffer.bindFramebuffer(true);
         return true;
