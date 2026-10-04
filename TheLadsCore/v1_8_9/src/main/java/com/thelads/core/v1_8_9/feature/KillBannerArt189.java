@@ -52,12 +52,13 @@ final class KillBannerArt189 {
             if (f.shadowAlpha() > 0) {
                 Sprite shadow = sprite("/assets/theladscore/killbanner/shadow.png");
                 float d = style.ring * 3.7f;
-                quad(shadow, style.anchorX - d / 2, style.anchorY - d / 2, d / shadow.width, argb(0, f.shadowAlpha()));
+                quad(shadow, style.anchorX - d / 2, style.anchorY + f.iconY() - d / 2, d / shadow.width, argb(0, f.shadowAlpha()));
             }
             if (f.drawnExit()) {
                 quad(exitLayer(style, kills, variant, strip, false), 0, 0, 1, argb(0xFFFFFF, f.restAlpha()));
                 if (f.iconAlpha() > 0) iconLayer(style, exitLayer(style, kills, variant, strip, true), f.iconScale(), argb(0xFFFFFF, f.iconAlpha()));
             } else quad(frame(style, variant, strip, f.stripFrame()), 0, 0, 1, -1);
+            GlStateManager.translate(0.0F, f.iconY(), 0.0F); // the overlays sit on the icon, wherever the strip has it
             if (f.heartAlpha() > 0) iconLayer(style, sprite(style.asset("heart.png")), f.iconScale(), argb(0xFFFFFF, f.heartAlpha()));
             if (f.strobe() > 0) iconLayer(style, sprite(style.asset("tint.png")), f.iconScale(), argb(KillBannerPlayer.STROBE_RED & 0xFFFFFF, f.strobe()));
             if (f.markSize() > 0) {

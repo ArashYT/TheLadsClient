@@ -4,11 +4,8 @@ to tune the overlay timing and colours. Developer tool.
 
 python preview_killbanner.py --style reaver --video reaver.mp4 --kill-frame 55 --out sheet.png [--variant 0]"""
 import argparse
-import io
 import math
-import struct
 import sys
-import zlib
 from pathlib import Path
 
 import cv2
@@ -16,7 +13,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_killbanner import OUT  # noqa: E402
+from build_killbanner import OUT, read_strip  # noqa: E402
 
 # Mirrors com.thelads.core.client.killbanner.KillBannerStyle.
 STYLES = {
@@ -33,23 +30,6 @@ TINT = [0.85, 0.27, 0.01, 0.06, 0.38, 1.0, 0.79, 0.25, 0.01, 0.06, 0.40, 1.0, 0.
 RED = np.array([226, 18, 44], float)
 MARK_RED = np.array([196, 22, 38], float)
 SCREEN_SCALE = 1.15  # one cell pixel on a 1080p screen, as in Valorant (Rogue ring 48.2 -> 55.3 px)
-
-
-def read_strip(path):
-    data = path.read_bytes()
-    assert data[:4] == b'LKB2'
-    w, h, fps, frames, intro_end, exit_frames, packed = struct.unpack('>6HI', data[4:20])
-    raw = zlib.decompress(data[20:20 + packed])
-    out, current = [], np.zeros(h * w * 4, np.uint8)
-    for i in range(frames):
-        current = (current + np.frombuffer(raw, np.uint8, h * w * 4, i * h * w * 4)).astype(np.uint8)
-        out.append(current.reshape(h, w, 4).copy())
-    layers, pos = [], 20 + packed
-    while pos < len(data):
-        n = struct.unpack('>I', data[pos:pos + 4])[0]
-        layers.append(np.asarray(Image.open(io.BytesIO(data[pos + 4:pos + 4 + n])).convert('RGBA')))
-        pos += 4 + n
-    return dict(frames=out, intro_end=intro_end, exit_frames=exit_frames, layers=layers)
 
 
 def recolor(frame, style, variant):
@@ -110,18 +90,19 @@ def compose(style, strip, f, variant=0, headshot=False, canvas=None):
     m = s['mark']
     frames, intro_end = strip['frames'], strip['intro_end']
     frame = frames[min(f, intro_end)]
+    ay += strip['icon_y'][min(f, intro_end)]  # the overlays sit on the icon, wherever the strip has it
     # Backdrop: a soft dark disc with the ring.
     shadow_alpha = 0.5 * smooth(m - 8, m, f)
     sh = art['shadow']
     sh_scale = (s['ring'] * 1.85 * 2) / sh.shape[0]
     over(canvas, sh, ax - sh.shape[1] * sh_scale / 2, ay - sh.shape[0] * sh_scale / 2, sh_scale, (0, 0, 0), shadow_alpha)
     over(canvas, recolor(frame, style, variant), 0, 0)
-    t = f - m
+    t, dy = f - m, ay - s['anchor'][1]
     if t >= 0:
         if s['heart']:
-            over(canvas, art['heart'], 0, 0)
+            over(canvas, art['heart'], 0, dy)
         if t < len(TINT):
-            over(canvas, art['tint'], 0, 0, 1.0, RED, TINT[t])
+            over(canvas, art['tint'], 0, dy, 1.0, RED, TINT[t])
         level = TINT[t] if t < len(TINT) else 0
         white = smooth(0.05, 0.45, level) if t > 1 else 1.0
         color = MARK_RED * (1 - white) + np.array([255, 255, 255]) * white

@@ -16,7 +16,12 @@ and prints the geometry that KillBannerStyle holds.
 .lkb, big-endian: "LKB2", u16 width, height, fps, frames, introEnd, exitFrames, u32 deflated length, then one zlib stream
 of `frames` RGBA frames, each the byte-wise difference (mod 256) from the frame before (the first from transparent).
 Frames [0, introEnd] play and introEnd holds; the next exitFrames frames play the way out. With exitFrames 0 two PNGs
-follow (u32 length each): the settled icon and the settled banner without it, for a drawn way out."""
+follow (u32 length each): the settled icon and the settled banner without it, for a drawn way out.
+"LKB3" is the same with `frames` signed bytes after exitFrames: each frame's icon offset (cell pixels down from its
+settled place), which the overlays drawn on the icon follow.
+
+python build_killbanner.py --refit   re-fits the icon of the shipped Rogue strips to their ring (follow_ring) without
+the source videos."""
 import argparse
 import io
 import math
@@ -216,7 +221,87 @@ def glow(frame, sigma=2.0, strength=1.5):
     return np.clip(np.dstack([out_rgb, out_a]) * 255 + 0.5, 0, 255).astype(np.uint8)
 
 
-def write_strip(path, frames, intro_end, exit_frames, layers=()):
+def read_strip(path):
+    """A .lkb back into frames: dict(frames, intro_end, exit_frames, icon_y, layers)."""
+    data = path.read_bytes()
+    assert data[:4] in (b'LKB2', b'LKB3')
+    w, h, fps, frames, intro_end, exit_frames = struct.unpack('>6H', data[4:16])
+    pos, icon_y = 16, [0] * frames
+    if data[:4] == b'LKB3':
+        icon_y, pos = list(struct.unpack(f'>{frames}b', data[pos:pos + frames])), pos + frames
+    packed = struct.unpack('>I', data[pos:pos + 4])[0]
+    raw = zlib.decompress(data[pos + 4:pos + 4 + packed])
+    out, current = [], np.zeros(h * w * 4, np.uint8)
+    for i in range(frames):
+        current = (current + np.frombuffer(raw, np.uint8, h * w * 4, i * h * w * 4)).astype(np.uint8)
+        out.append(current.reshape(h, w, 4).copy())
+    layers, pos = [], pos + 4 + packed
+    while pos < len(data):
+        n = struct.unpack('>I', data[pos:pos + 4])[0]
+        layers.append(np.asarray(Image.open(io.BytesIO(data[pos + 4:pos + 4 + n])).convert('RGBA')))
+        pos += 4 + n
+    return dict(frames=out, intro_end=intro_end, exit_frames=exit_frames, icon_y=icon_y, layers=layers)
+
+
+def follow_ring(frames, intro_end, cx, cy, radius):
+    """Rogue's 5-kill export drops its ring in from above (frames 5-23) while the icon stays in the middle; every other
+    kill count keeps the icon in its ring. Moves the icon with the ring in the intro frames (the ring it covered is
+    redrawn from the opposite side of the ring, which is symmetric); returns the frames and each frame's icon offset (cell pixels down, 0 where the
+    ring is settled or not yet seen)."""
+    settled = frames[intro_end]
+    icon = ndimage.binary_dilation(icon_mask(settled, cx, cy, radius), iterations=2)
+    xs = np.nonzero(icon)[1]
+    band = np.zeros(icon.shape, bool)
+    band[:, xs.min() - 4:xs.max() + 5] = True  # the icon's columns, wherever it is in them
+    alpha = settled[:, :, 3].astype(float)
+    ring_alpha = np.where(band, 0, alpha)
+    icon_alpha = np.where(icon, alpha, 0)
+    yy, xx = np.mgrid[0:icon.shape[0], 0:icon.shape[1]]
+
+    def shift(a, dy):
+        out = np.zeros_like(a)
+        if dy >= 0:
+            out[dy:] = a[:a.shape[0] - dy]
+        else:
+            out[:dy] = a[-dy:]
+        return out
+
+    def fit(a, template, offsets):
+        """(score, offset): where the template sits in a, by normalised correlation."""
+        def score(d):
+            b = shift(template, d)
+            return (a * b).sum() / (math.sqrt((a * a).sum() * (b * b).sum()) + 1e-9)
+        return max((score(d), d) for d in offsets)
+
+    out, icon_y = list(frames), [0] * len(frames)
+    for f in range(intro_end):
+        frame = frames[f]
+        a = frame[:, :, 3].astype(float)
+        if not np.where(band, 0, a).any():
+            continue
+        score, dy = fit(np.where(band, 0, a), ring_alpha, range(-40, 9))
+        if dy == 0 or score < 0.15:
+            continue
+        icon_y[f] = dy
+        own = fit(np.where(band, a, 0), icon_alpha, range(-40, 9))[1]
+        if own == dy:
+            continue
+        head = shift(icon, own) & band
+        # The ring under the icon's old place: this frame's ring turned half a turn about the ring's centre.
+        sx, sy = np.rint(2 * cx - xx).astype(int), np.rint(2 * (cy + dy) - yy).astype(int)
+        inside = (sx >= 0) & (sx < xx.shape[1]) & (sy >= 0) & (sy < yy.shape[0])
+        sx, sy = np.clip(sx, 0, xx.shape[1] - 1), np.clip(sy, 0, yy.shape[0] - 1)
+        under = np.where((inside & ~head[sy, sx])[:, :, None], frame[sy, sx], 0)
+        rest = np.where(head[:, :, None], under, frame).astype(float) / 255
+        moved = shift(np.where(head[:, :, None], frame, 0).astype(np.uint8), dy - own).astype(float) / 255
+        out_a = moved[:, :, 3:4] + rest[:, :, 3:4] * (1 - moved[:, :, 3:4])
+        rgb = (moved[:, :, :3] * moved[:, :, 3:4] + rest[:, :, :3] * rest[:, :, 3:4] * (1 - moved[:, :, 3:4])) \
+            / np.maximum(out_a, 1e-6)
+        out[f] = np.clip(np.dstack([rgb, out_a]) * 255 + 0.5, 0, 255).astype(np.uint8)
+    return out, icon_y
+
+
+def write_strip(path, frames, intro_end, exit_frames, layers=(), icon_y=None):
     previous = np.zeros_like(frames[0])
     deltas = bytearray()
     for f in frames:
@@ -225,8 +310,12 @@ def write_strip(path, frames, intro_end, exit_frames, layers=()):
     packed = zlib.compress(bytes(deltas), 9)
     h, w = frames[0].shape[:2]
     data = io.BytesIO()
-    data.write(b'LKB2')
-    data.write(struct.pack('>6HI', w, h, 60, len(frames), intro_end, exit_frames, len(packed)))
+    moving = icon_y is not None and any(icon_y)
+    data.write(b'LKB3' if moving else b'LKB2')
+    data.write(struct.pack('>6H', w, h, 60, len(frames), intro_end, exit_frames))
+    if moving:
+        data.write(struct.pack(f'>{len(frames)}b', *icon_y))
+    data.write(struct.pack('>I', len(packed)))
     data.write(packed)
     for layer in layers:
         blob = png(layer)
@@ -257,11 +346,12 @@ def build_style(name, kills, has_exit):
     total = 0
     for kill, frames in kills.items():
         intro_end, exit_start = phases(frames, has_exit)
-        layers = ()
+        layers, icon_y = (), None
         if has_exit:
             # The hold is the settled frame held, so the frames between it and the way out are not stored.
             frames = frames[:intro_end + 1] + frames[exit_start:]
             exit_frames = len(frames) - intro_end - 1
+            frames, icon_y = follow_ring(frames, intro_end, cx, cy, radius)
         else:
             done = frames[intro_end]
             m = icon_mask(done, cx, cy, radius)
@@ -270,7 +360,7 @@ def build_style(name, kills, has_exit):
             rest[m, 3] = 0
             layers = (icon_layer, rest)
             frames, exit_frames = frames[:intro_end + 1], 0
-        size = write_strip(OUT / name / f'k{kill}.lkb', frames, intro_end, exit_frames, layers)
+        size = write_strip(OUT / name / f'k{kill}.lkb', frames, intro_end, exit_frames, layers, icon_y)
         total += size
         print(f'  k{kill}: {len(frames)} frames, hold at {intro_end}, {exit_frames} exit frames, {size // 1024} KB')
     print(f'  {name}: {total // 1024} KB')
@@ -290,7 +380,17 @@ def rogue_sounds(folder):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--rogue', help='folder with "Rouge N Kill(s).mov"; without it Rogue is left as built')
+    parser.add_argument('--refit', action='store_true', help='only re-fit the shipped Rogue strips (follow_ring)')
     args = parser.parse_args()
+    if args.refit:
+        strips = {k: read_strip(OUT / 'rogue' / f'k{k}.lkb') for k in range(1, 6)}
+        cx, cy, radius = ring(strips[1]['frames'][strips[1]['intro_end']])
+        for kill, strip in strips.items():
+            frames, icon_y = follow_ring(strip['frames'], strip['intro_end'], cx, cy, radius)
+            if any(icon_y) and icon_y != strip['icon_y']:
+                write_strip(OUT / 'rogue' / f'k{kill}.lkb', frames, strip['intro_end'], strip['exit_frames'], (), icon_y)
+            print(f'  rogue k{kill}: icon offsets {[(f, d) for f, d in enumerate(icon_y) if d]}')
+        return
     save(OUT / 'mark.png', mark_sprite())
     # The game strokes the mark at a fixed width while it shrinks in, so it arrives thin-lined.
     save(OUT / 'mark_thin.png', mark_sprite(stroke=0.03))
