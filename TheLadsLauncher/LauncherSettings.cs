@@ -32,6 +32,8 @@ public class LauncherSettings
     public string Theme { get; set; } = "DarkRed";
     public bool ShowParticles { get; set; } = true;
     public bool ReducedMotion { get; set; }
+    /// <summary>Google Translate code of the launcher's language (Services.LauncherTranslator.Languages); "en" is untranslated.</summary>
+    public string Language { get; set; } = "en";
 
     // Behavior
     public bool CloseToTray { get; set; } = true;

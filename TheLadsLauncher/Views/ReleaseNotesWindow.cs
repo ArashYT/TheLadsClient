@@ -113,7 +113,7 @@ public sealed class ReleaseNotesWindow : Window
         foreach (Match part in Regex.Matches(text, @"\*\*(.+?)\*\*|`(.+?)`|\[(.+?)\]\((.+?)\)|[^*`\[]+|."))
         {
             if (part.Groups[1].Success) inlines.Add(new Run(part.Groups[1].Value) { FontWeight = FontWeight.SemiBold, Foreground = Brush("#F1F2F5") });
-            else if (part.Groups[2].Success) inlines.Add(new Run(part.Groups[2].Value) { FontFamily = new FontFamily("Cascadia Mono, Consolas, monospace"), Foreground = Brush("#E6C07B") });
+            else if (part.Groups[2].Success) inlines.Add(new Run(part.Groups[2].Value) { FontFamily = new FontFamily("Cascadia Mono, Consolas, monospace"), Foreground = Brush("#E6C07B"), Classes = { Services.LauncherTranslator.NoTranslate } });
             else if (part.Groups[3].Success) inlines.Add(new Run(part.Groups[3].Value) { TextDecorations = TextDecorations.Underline });
             else inlines.Add(new Run(part.Value));
         }

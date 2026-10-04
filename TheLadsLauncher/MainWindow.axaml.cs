@@ -199,6 +199,7 @@ public partial class MainWindow : Window
         }
         
         LoadSettingsUI();
+        InitializeLanguageSetting();
         InitializeSettingsAutoSave();
         PopulateLaunchProfileSelector();
         LoadProfilesUI();
@@ -274,6 +275,13 @@ public partial class MainWindow : Window
             if (discoveryPreview >= 0) { await RunDiscoveryPreviewAsync(Path.GetFullPath(args[discoveryPreview + 1])); return; }
             int productivityPreview = Array.IndexOf(args, "--preview-productivity");
             if (productivityPreview >= 0) { await RunProductivityPreviewAsync(Path.GetFullPath(args[productivityPreview + 1])); return; }
+            int languagePreview = Array.IndexOf(args, "--preview-language");
+            if (languagePreview >= 0)
+            {
+                await RunLanguagePreviewAsync(Path.GetFullPath(args[languagePreview + 1]),
+                    languagePreview + 2 < args.Length ? args[languagePreview + 2].Split(',') : new[] { "es", "de", "ja" });
+                return;
+            }
             int chromePreview = Array.IndexOf(args, "--preview-chrome");
             if (chromePreview >= 0) { await RunChromePreviewAsync(Path.GetFullPath(args[chromePreview + 1])); return; }
             int contentPreview = Array.IndexOf(args, "--preview-content");
@@ -729,7 +737,7 @@ public partial class MainWindow : Window
         Grid.SetColumn(icon, 0);
         grid.Children.Add(icon);
 
-        var nameText = new TextBlock { Text = name, Foreground = new SolidColorBrush(Color.Parse(isDir ? "#CCCCDD" : "#AAAAAA")), FontSize = 13, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis };
+        var nameText = new TextBlock { Text = name, Foreground = new SolidColorBrush(Color.Parse(isDir ? "#CCCCDD" : "#AAAAAA")), FontSize = 13, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis }.Untranslated();
         Grid.SetColumn(nameText, 1);
         grid.Children.Add(nameText);
 
@@ -958,7 +966,7 @@ public partial class MainWindow : Window
         {
             var items = CreateScreenshotCatalog().LoadCustomRoots().Select(root =>
             {
-                var item = new MenuItem { Header = root.Path };
+                var item = new MenuItem { Header = root.Path }.Untranslated();
                 item.Click += async (_, _) =>
                 {
                     try
@@ -1044,13 +1052,13 @@ public partial class MainWindow : Window
         imgBorder.PointerPressed += (s, e) => ShowGalleryViewer(path);
         stack.Children.Add(imgBorder);
 
-        stack.Children.Add(new TextBlock { Text = name, Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")), FontSize = 11, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis });
+        stack.Children.Add(new TextBlock { Text = name, Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")), FontSize = 11, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis }.Untranslated());
         if (_gallerySources.TryGetValue(path, out var source))
-            stack.Children.Add(new TextBlock { Text = source.Source, Foreground = new SolidColorBrush(Color.Parse("#CF8D8D")), FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis });
+            stack.Children.Add(new TextBlock { Text = source.Source, Foreground = new SolidColorBrush(Color.Parse("#CF8D8D")), FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated());
         stack.Children.Add(new TextBlock { Text = time.ToString("g"), Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 10 });
 
         // Metadata sidecar (written in-game): server/world, coords, biome. Filled in with the thumbnail.
-        meta = new TextBlock { Foreground = new SolidColorBrush(Color.Parse("#7A88B0")), FontSize = 10, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis, IsVisible = false };
+        meta = new TextBlock { Foreground = new SolidColorBrush(Color.Parse("#7A88B0")), FontSize = 10, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis, IsVisible = false }.Untranslated();
         stack.Children.Add(meta);
 
         var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4, Margin = new Thickness(0, 2, 0, 0) };
@@ -1745,7 +1753,7 @@ public partial class MainWindow : Window
 
             foreach (var accName in allAccountNames)
             {
-                var item = new MenuItem { Header = accName };
+                var item = new MenuItem { Header = accName }.Untranslated();
                 if (accName == _selectedAccount)
                 {
                     item.Icon = "✓";
@@ -1946,7 +1954,7 @@ public partial class MainWindow : Window
                 FontSize = 14,
                 FontWeight = FontWeight.Bold,
                 TextWrapping = TextWrapping.Wrap
-            };
+            }.Untranslated();
             infoStack.Children.Add(nameText);
 
             var badgeRow = new StackPanel
@@ -3076,7 +3084,7 @@ public partial class MainWindow : Window
                 Foreground = Brushes.White,
                 FontSize = 15,
                 FontWeight = FontWeight.Bold
-            });
+            }.Untranslated());
 
             if (isActive)
             {
@@ -3801,13 +3809,14 @@ public partial class MainWindow : Window
             Text = entry.DisplayName, FontSize = 14, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 8, 0),
             Foreground = new SolidColorBrush(Color.Parse(on || entry.Ownership == ModOwnership.Platform ? "#FFFFFF" : "#90929D")),
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
-        });
+        }.Untranslated());
         if (!string.IsNullOrEmpty(entry.Version))
             header.Children.Add(new TextBlock { Text = ModVersionText(entry.Version), Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
         header.Children.Add(ModBadge(ModOwnershipBadge(entry)));
         if (entry.RestartRequired) header.Children.Add(ModBadge("Restart required", "#E0A458"));
         details.Children.Add(header);
-        details.Children.Add(new TextBlock { Text = ModMetaLine(entry), Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis });
+        // Ids, file names and authors stay as they are; a Lads module's line is the launcher's own text.
+        details.Children.Add(new TextBlock { Text = ModMetaLine(entry), Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated(entry.Ownership != ModOwnership.NativeModule));
         details.Children.Add(new TextBlock { Text = ModStatusLine(entry, inventory.MinecraftVersion), Foreground = new SolidColorBrush(Color.Parse(ModStatusColor(entry))), FontSize = 12, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap });
         if (ModNoteLine(entry) is { } note)
             details.Children.Add(new TextBlock { Text = note, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), FontSize = 12, TextWrapping = TextWrapping.Wrap });
@@ -3847,7 +3856,7 @@ public partial class MainWindow : Window
         if (entry.ProjectUrl is { } projectUrl) Action(ModActionButton("Project", "action", projectUrl, () => OpenPath(projectUrl)));
         if (IsUpdatableJar(entry)) Action(ModActionButton("Update", "action", "Look for a newer release on Modrinth", () => _ = UpdateUserModsAsync(new[] { entry })));
         var toggle = ModActionButton(on ? "Disable" : "Enable", on ? "danger" : "action", null, () => _ = ToggleModEntryAsync(entry, !on));
-        toggle.Width = 72;
+        toggle.MinWidth = 72; // a translated Disable is longer
         var blocked = ModToggleBlocked(entry);
         toggle.IsEnabled = blocked == null;
         ToolTip.SetTip(toggle, blocked);
@@ -3898,12 +3907,12 @@ public partial class MainWindow : Window
     {
         var text = new StackPanel { Spacing = 2, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
         var header = new WrapPanel();
-        header.Children.Add(new TextBlock { Text = child.DisplayName, Foreground = new SolidColorBrush(Color.Parse("#CCCCCC")), FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+        header.Children.Add(new TextBlock { Text = child.DisplayName, Foreground = new SolidColorBrush(Color.Parse("#CCCCCC")), FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center }.Untranslated());
         if (!string.IsNullOrEmpty(child.Version))
             header.Children.Add(new TextBlock { Text = ModVersionText(child.Version), Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
         header.Children.Add(ModBadge(ModOwnershipBadge(child)));
         text.Children.Add(header);
-        text.Children.Add(new TextBlock { Text = ModMetaLine(child) + " · " + ModStatusLine(child, _modInventory?.MinecraftVersion ?? ""), Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11, TextWrapping = TextWrapping.Wrap });
+        text.Children.Add(new TextBlock { Text = ModMetaLine(child) + " · " + ModStatusLine(child, _modInventory?.MinecraftVersion ?? ""), Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11, TextWrapping = TextWrapping.Wrap }.Untranslated(child.Ownership != ModOwnership.NativeModule));
         var note = ModNoteLine(child) ?? child.ToggleBlockedReason;
         if (note != null) text.Children.Add(new TextBlock { Text = note, Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 11, TextWrapping = TextWrapping.Wrap });
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };

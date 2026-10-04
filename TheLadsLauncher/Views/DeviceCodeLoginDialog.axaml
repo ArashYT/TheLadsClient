@@ -28,7 +28,7 @@
                     <!-- Code Display Box -->
                     <Border Background="#12121E" CornerRadius="4" BorderBrush="#C44343" BorderThickness="1" Padding="12">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock x:Name="UserCodeText" Grid.Column="0" Text="XXXX-XXXX"
+                            <TextBlock x:Name="UserCodeText" Classes="notranslate" Grid.Column="0" Text="XXXX-XXXX"
                                        Foreground="#FFD700" FontSize="22" FontWeight="Bold"
                                        FontFamily="Consolas, monospace"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
