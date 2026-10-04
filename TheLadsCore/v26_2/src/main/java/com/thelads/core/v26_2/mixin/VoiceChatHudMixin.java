@@ -17,7 +17,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class VoiceChatHudMixin {
     @Inject(method = "renderIcon", at = @At("HEAD"), cancellable = true, remap = false)
     private void lads$statusIcon(net.minecraft.client.gui.GuiGraphicsExtractor graphics, net.minecraft.resources.Identifier icon, CallbackInfo ci) {
-        if (VoiceChatIntegration.loaded() && NativeQualityOfLife.enabled("Voice Chat")) ci.cancel();
+        if (VoiceChatIntegration.loaded() && NativeQualityOfLife.enabled("Voice Chat")) {
+            VoiceChatIntegration.suppressed++;
+            ci.cancel();
+        }
     }
 
     @Pseudo
@@ -25,7 +28,10 @@ public class VoiceChatHudMixin {
     public static class Group {
         @Inject(method = "renderIcons", at = @At("HEAD"), cancellable = true, remap = false)
         private static void lads$groupList(net.minecraft.client.gui.GuiGraphicsExtractor graphics, CallbackInfo ci) {
-            if (VoiceChatIntegration.loaded() && NativeQualityOfLife.enabled("Voice Chat Group")) ci.cancel();
+            if (VoiceChatIntegration.loaded() && NativeQualityOfLife.enabled("Voice Chat Group")) {
+                VoiceChatIntegration.suppressed++;
+                ci.cancel();
+            }
         }
     }
 }

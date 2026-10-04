@@ -20,7 +20,10 @@ public class PictureInPictureReplayMixin {
 
     @Inject(method = "textureIsReadyToBlit", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$replayed(PictureInPictureRenderState state, CallbackInfoReturnable<Boolean> cir) {
-        if (state == lads$lastRendered && HudCapture.replayed(state)) cir.setReturnValue(true);
+        if (state == lads$lastRendered && HudCapture.replayed(state)) {
+            HudCapture.replayBlits++;
+            cir.setReturnValue(true);
+        }
     }
 
     @Inject(method = "prepare", at = @At(value = "INVOKE",

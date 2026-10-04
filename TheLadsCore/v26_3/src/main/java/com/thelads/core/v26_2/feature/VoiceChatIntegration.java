@@ -22,6 +22,9 @@ public final class VoiceChatIntegration {
     private static final Map<String, Method> METHODS = new ConcurrentHashMap<>();
     private static final boolean LOADED = FabricLoader.getInstance().isModLoaded("voicechat");
     private static boolean failed;
+    /** QA (Hud170Capture): a state shown instead of Simple Voice Chat's, and how often its own icons were held back. */
+    static VoiceChatState qa;
+    public static int suppressed;
     private static long cachedAt;
     private static VoiceChatState cached;
 
@@ -32,6 +35,7 @@ public final class VoiceChatIntegration {
     /** At most once a frame's worth of time apart: both elements read it every HUD frame. */
     public static VoiceChatState state() {
         if (!loaded()) return null;
+        if (qa != null) return qa;
         long now = System.nanoTime();
         if (cached != null && now - cachedAt < 16_000_000L) return cached;
         try {

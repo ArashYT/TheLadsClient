@@ -1,12 +1,10 @@
 package com.thelads.core.v26_2.feature;
 
 import com.thelads.core.client.hud.HudFrameCap;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
@@ -23,10 +21,11 @@ import net.minecraft.client.renderer.state.gui.GuiRenderState;
 public final class HudCapture {
     private record Op(float opacity, Consumer<GuiRenderState> add) {}
     private static final List<Op> OPS = new ArrayList<>();
-    /** Pictures re-added by this frame's replay: PictureInPictureRendererMixin blits their last texture instead of rendering. */
+    /** Pictures re-added by this frame's replay: their renderers blit their last texture instead of rendering again. */
     private static final Set<Object> REPLAYED = Collections.newSetFromMap(new IdentityHashMap<>());
-    private static final Map<Class<?>, Field> PREPARED = new IdentityHashMap<>();
     private static boolean recording;
+    /** QA (Hud170Capture): pictures blitted from their last texture on replayed frames. */
+    public static int replayBlits;
 
     private HudCapture() {}
 
@@ -34,18 +33,9 @@ public final class HudCapture {
         if (recording) OPS.add(new Op(NativeAutohide.scopeOpacity, op));
     }
 
-    /** A picture's replay: marked, and Xaero's per-state "prepared" guard (set by its first prepare) cleared, so its renderer blits again. */
+    /** A picture's replay, marked so its renderer blits its last texture (PictureInPictureReplayMixin, XaeroMinimapReplayMixin). */
     public static void replayPicture(GuiRenderState state, net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState picture) {
         REPLAYED.add(picture);
-        Field prepared = PREPARED.computeIfAbsent(picture.getClass(), type -> {
-            try {
-                Field field = type.getField("prepared");
-                return field.getType() == boolean.class ? field : null;
-            } catch (NoSuchFieldException none) {
-                return null;
-            }
-        });
-        if (prepared != null) try { prepared.setBoolean(picture, false); } catch (IllegalAccessException ignored) {}
         state.addPicturesInPictureState(picture);
     }
 

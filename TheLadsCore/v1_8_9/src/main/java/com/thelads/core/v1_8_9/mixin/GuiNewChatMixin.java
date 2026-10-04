@@ -30,7 +30,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * screenshot buttons. Display only. A message's lines share the tick it arrived in, which keys its animation.
  */
 @Mixin(GuiNewChat.class)
-public abstract class GuiNewChatMixin {
+public abstract class GuiNewChatMixin implements Chat189.History {
     @Unique private final ChatAnimation ladsAnimation = new ChatAnimation();
     @Unique private boolean ladsAnimating, ladsLinePushed;
     @Unique private int ladsLine;
@@ -44,6 +44,10 @@ public abstract class GuiNewChatMixin {
     @Shadow public abstract void resetScroll();
     /** Infinite History (ChatHistory): chatLines[0, ladsLaidOut) have their lines in drawnChatLines; -1 while every message has (vanilla). */
     @Unique private int ladsLaidOut = -1;
+
+    @Override public int ladsScrollPos() { return scrollPos; }
+    @Override public int ladsDrawnLines() { return drawnChatLines.size(); }
+    @Override public int ladsMessages() { return chatLines.size(); }
 
     /** Infinite History: the 100-message and 100-line caps become the ceiling. */
     @ModifyConstant(method = "setChatLine", constant = @Constant(intValue = 100), require = 2)
