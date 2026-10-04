@@ -53,30 +53,6 @@ processResources {
     filesMatching("fabric.mod.json") {
         expand "version": project.version
     }
-    // The complete modified MPL-covered native files are available to every binary recipient.
-    from('src/main/java') {
-        include 'com/thelads/core/v26_2/feature/paperdoll/**'
-        into 'assets/theladscore/sources/paperdoll/v26_2'
-    }
-    from('src/main/java') {
-        include 'com/thelads/core/v26_2/feature/raised/**'
-        into 'META-INF/lads-sources/raised'
-    }
-    from('src/main/java') {
-        include 'com/thelads/core/v26_2/feature/*Reconnect*.java'
-        include 'com/thelads/core/v26_2/gui/Reconnect*.java'
-        include 'com/thelads/core/v26_2/mixin/reconnect/**'
-        into 'META-INF/lads-sources/reconnect/v26_2'
-    }
-    from('../common/src/main/java') {
-        include 'com/thelads/core/client/Reconnect*.java'
-        include 'com/thelads/core/config/ActionOption.java'
-        include 'com/thelads/core/modules/AutoReconnectModule.java'
-        into 'META-INF/lads-sources/reconnect/common'
-    }
-    from('src/main/resources/theladscore.reconnect.mixins.json') {
-        into 'META-INF/lads-sources/reconnect/resources'
-    }
     from('src/main/java') {
         include 'com/thelads/core/v26_2/feature/tabtweaks/**'
         into 'META-INF/lads-sources/tabtweaks/v26_2'
@@ -109,6 +85,8 @@ repositories {
 dependencies {
     compileOnly 'com.demonwav.mcdev:annotations:2.1.0'
     compileOnly('maven.modrinth:iris:3uIIps8q') { transitive = false }
+    // Flashback 0.43.6 for this version: the Flashback Settings mixins compile against it; Flashback stays an optional mod.
+    compileOnly('maven.modrinth:flashback:Um7qd3Na') { transitive = false }
     compileOnly('com.zigythebird.playeranim:PlayerAnimationLibCommon:1.1.0+alpha.1+mc.1.21.9') { transitive = false }
     compileOnly('com.zigythebird.playeranim:PlayerAnimationLibCore:1.1.0+alpha.1+mc.1.21.9') { transitive = false }
 }

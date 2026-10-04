@@ -46,6 +46,10 @@ public class ModuleManager {
         register(new BetterF3Module(), Module.Category.MECHANIC);
         register(new PerformanceManagerModule(), Module.Category.MECHANIC);
         register(new ThreadPriorityModule(), Module.Category.MECHANIC);
+        Module jasione = new Module("Jasione", "Cut garbage from enum lookups: Enum#values() calls that only read the array share one copy. Applies after a restart.");
+        jasione.setEnabled(true);
+        register(jasione, Module.Category.MECHANIC);
+        register(new AsyncModule(), Module.Category.MECHANIC);
 
         // HUD overlay modules (rendered by HudManager)
         HudModule fps = hud("FPS", "Show your current FPS on screen.");
@@ -154,6 +158,7 @@ public class ModuleManager {
         register(new ToggleSprintModule(), Module.Category.MECHANIC);
 
         register(new ZoomModule(), Module.Category.MECHANIC);
+        register(new CustomFovModule(), Module.Category.MECHANIC);
 
         register(new SmoothHotbarModule(), Module.Category.MECHANIC);
         register(new DynamicLightsModule(), Module.Category.MECHANIC);
@@ -192,8 +197,22 @@ public class ModuleManager {
         chatMod.addOption(new BoolOption("Text Shadow", true));
         chatMod.setEnabled(true);
         register(chatMod, Module.Category.HUD);
+        Module chatHeads = new Module(com.thelads.core.client.ChatHeads.NAME, "The sender's head in chat, just before their name or at the start of the line: "
+            + "from signed chat, or from player names in the tab list. Keep text aligned applies to Start of line.");
+        chatHeads.addOption(new DropdownOption(com.thelads.core.client.ChatHeads.POSITION, 0, com.thelads.core.client.ChatHeads.POSITIONS));
+        chatHeads.addOption(new BoolOption(com.thelads.core.client.ChatHeads.BY_NAME, true));
+        chatHeads.addOption(new BoolOption(com.thelads.core.client.ChatHeads.ALIGNED, false));
+        chatHeads.setEnabled(true);
+        register(chatHeads, Module.Category.HUD);
 
         register(new AutoReconnectModule(), Module.Category.SERVER);
+
+        Module packets = new Module("IgnorePacketErrors", "Stay connected when the server sends a packet the client can't read or handle: it is skipped and logged "
+            + "instead of disconnecting with Network Protocol Error. Warning: a skipped packet can leave the world out of sync (missing blocks, "
+            + "entities or inventory changes) until you rejoin, and a broken or hostile server can keep you connected; turn it off on servers you "
+            + "don't trust. Timeouts, kicks and lost connections still disconnect.");
+        packets.setEnabled(true);
+        register(packets, Module.Category.SERVER);
 
         register(new DiscordRpcModule(), Module.Category.SERVER);
 
@@ -213,15 +232,7 @@ public class ModuleManager {
         register(tab, Module.Category.HUD);
 
 
-        Module rs = new Module("RenderScale", "Scale world rendering while the HUD and menus stay at native resolution.");
-        rs.addOption(new DropdownOption("Preset", 0, "Custom", "Ultra Performance", "Balanced", "Quality", "Super Sampling"));
-        rs.addOption(new SliderOption("Scale", 100, 50, 200, 25));
-        rs.addOption(new DropdownOption("Algorithm", 0, "Linear", "Nearest"));
-        rs.addOption(new BoolOption("Dynamic Resolution", false));
-        rs.addOption(new DropdownOption("Target FPS", 1, "30", "60", "90", "120", "144", "Unlimited"));
-        rs.addOption(new SliderOption("Min Scale", 50, 50, 100, 25));
-        rs.setEnabled(true);
-        register(rs);
+        register(new BetterResolutionModule());
 
         register(new XaeroWorldMapModule(), Module.Category.SERVER);
         register(new JeiModule());
@@ -235,10 +246,7 @@ public class ModuleManager {
         farBlock.setEnabled(true);
         register(farBlock);
 
-        Module raised = new Module("Raised", "Moves the hotbar up when the chat is open.");
-        raised.addOption(new SliderOption("Distance", 14, 0, 50, 1));
-        raised.setEnabled(true);
-        register(raised);
+        register(new RaisedModule());
 
         register(new AppleSkinModule());
         register(new EnhancedTooltipsModule());
@@ -253,6 +261,7 @@ public class ModuleManager {
         register(disableNarrator);
 
         register(new SignalLossModule());
+        register(new FlashbackModule());
 
         Module decentScreenshot = new Module("BetterScreenshots", "Better screenshot saving and GUI.");
         decentScreenshot.setEnabled(true);
@@ -264,6 +273,7 @@ public class ModuleManager {
         register(new Module("FerriteCore", "Reduce memory used by Minecraft's block and model data."), Module.Category.MECHANIC);
         register(new Module("XaeroMinimap", "Minimap, waypoints and navigation controls."), Module.Category.HUD);
         register(new ShulkerBoxUtilsModule(), Module.Category.MECHANIC);
+        register(new MouseTweaksModule(), Module.Category.MECHANIC);
         Module rawInput = new Module("RawInput", "Raw mouse input directly from hardware bypassing Windows acceleration.");
         rawInput.setEnabled(true);
         register(rawInput, Module.Category.MECHANIC);

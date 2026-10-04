@@ -1,20 +1,25 @@
-# Native durability tooltip for 26.2
+# Native durability tooltip (26.x and 1.8.9)
 
-EnhancedToolbars now recreates the declared display behavior of **Durability Tooltip 1.1.6-fabric-mc26.2** using original Lads code. The reference is all rights reserved: no upstream Java source, translations, textures or libraries were copied into Lads. Public settings and visible output semantics were checked against the exact pinned artifact, recorded in `artifacts/verification/native-mods-26.2/parity-durability-tooltip-1.1.6.txt`.
+EnhancedToolbars adds a durability line to tool and armour tooltips. It covers the same ground as **Durability Tooltip** (all rights reserved), but the layout, colours and wording are Lads' own. In 1.7.0 the presentation was redesigned so it no longer follows the reference's structure, thresholds or text. No upstream source, translations, textures or libraries are used. The shared logic is `DurabilityPresentation` in common. `NativeDurabilityTooltip` (26.2, 26.3) and `Durability189` (1.8.9) only read the item and the settings.
 
-The existing controls remain active: Detailed Durability enables the extra display, Show Max Durability controls numeric denominators, Colorize Durability enables reactive colors, and Show Item Attributes controls vanilla attribute tooltips. Seven new controls provide:
+The settings are unchanged, so saved choices carry over. Detailed Durability turns the line on. Show Max Durability adds the maximum, Colorize Durability turns colours on, and Show Item Attributes controls vanilla's attribute lines.
 
-- **Numbers / Bar / Text** presentation. Bars contain ten filled/empty text segments; the reference also uses text glyphs, so Minecraft's regular tooltip renderer handles font layout and extraction.
-- **Show Durability Hint** to include or omit the label.
-- **Varying / Base / Gold** reactive colors and **Durability Base Color**, including the normal Lads global-color option.
-- **Only Vanilla Tools** by the actual item's `minecraft` namespace.
-- **Show When Full** for undamaged items.
-- **Excluded Mods**, a comma-separated namespace list. Whitespace and case are normalized; invalid IDs are ignored. The bounded parser reads up to 4,096 characters.
+- **Durability Style**: always one line.
+  - *Numbers* shows `Uses left: 1461 / 1561`, or `Uses left: 1461` without the maximum.
+  - *Bar* shows a gauge of 20 `|` pips plus a percentage, e.g. `Uses left: |||||||||||||||||||| 93%`. Lit pips take the line colour and spent pips are dark grey. The gauge and the percentage round down, but a tool with one use left still shows one pip and 1%.
+  - *Text* shows a condition word for each quarter of the item's life: `Like new` (full), `Good` (75% or more), `Worn` (50% or more), `Battered` (25% or more) and `About to break`.
+- **Show Durability Hint** shows or hides the `Uses left:` / `Condition:` label.
+- **Durability Color Style**:
+  - *Varying* uses the hue of the item's own durability bar: green when new, yellow at half, red when nearly broken.
+  - *Base* uses Durability Base Color, which can follow the Lads global colour.
+  - *Gold* uses a fixed gold.
+  - The label and the maximum always use the base colour. With Colorize off, the whole line uses the base colour.
+- **Only Vanilla Tools** limits the line to `minecraft:` items.
+- **Show When Full** also shows the line on undamaged items.
+- **Excluded Mods** takes entries separated by commas, semicolons or spaces. `mod` hides a whole mod and `mod:item` hides one item. Case is ignored, entries that are not resource ids are dropped, and a mod name never matches by prefix.
 
-Varying colors and condition text use the reference's 40% and 10% boundaries. Full durability is pristine; damaged items become slightly damaged, severely damaged and nearly broken. Numeric full durability appears once rather than `maximum / maximum`. Hint text, separators and the denominator retain the base color under varying colors. Disabling Colorize uses the base color throughout.
+On 1.8.9 each colour becomes the nearest of the 16 chat colours.
 
-The native integration replaces only the vanilla `item.durability` advanced entry when adding its own durability display. It preserves item IDs, attributes, lore, food overlays, shulker previews and other custom tooltip components. Hidden tooltip, damage and maximum-damage components prevent the extra display. Excluded items and disabled features retain vanilla behavior, including vanilla's own advanced tooltip.
+The integration replaces only vanilla's `item.durability` advanced line. Item IDs, attributes, lore, food overlays, shulker previews and other mods' tooltip lines are kept. Hidden tooltip, damage and maximum-damage components prevent the line. Excluded items and a disabled module keep vanilla's behaviour.
 
-`DurabilityPresentationTest` passes ten focused tests covering format output, exact thresholds, all color modes, malformed/extreme damage, namespace filtering and full-item visibility. The new opt-in runtime probe requires a loaded world because 26.2 item components are not bound at the title. Enable `-Dthelads.verifyDurabilityTooltip=true`; expected marker is `Lads durability tooltip probe END: 34 passed, 0 failed`. It exercises actual transformed ItemStack tooltips and native text extraction for all three formats, checks filtering/hidden metadata/duplicate removal, and restores module options and recency before reporting success. A failure logs `Lads durability tooltip probe FAILED`.
-
-All 34 checks passed in both [native world checkpoints](NATIVE_RUNTIME_CHECKPOINT_26_2.md), with the exact tested JARs and logs preserved. These checks exercise transformed tooltip output and actual text extraction; final desktop visual review remains separate.
+`DurabilityPresentationTest` covers each style, the gauge rounding, the condition ladder, the wear colour scale, every colour choice, out-of-range damage, chat-colour matching and both kinds of exclusion. The runtime probe needs a loaded world, because 26.x item components are not bound at the title screen. Enable it with `-Dthelads.verifyDurabilityTooltip=true`; the marker is `Lads durability tooltip probe END: <n> passed, 0 failed`. It checks real transformed ItemStack tooltips and native text extraction for all three styles, the colours, the filters (including a single excluded item), hidden components and duplicate removal. It then restores the module's options. A failure logs `Lads durability tooltip probe FAILED`. On 1.8.9, Probe150e checks each style's line and takes the `170-tooltip-durability-*` screenshots.

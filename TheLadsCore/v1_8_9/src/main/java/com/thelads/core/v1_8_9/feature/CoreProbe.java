@@ -62,39 +62,55 @@ public final class CoreProbe {
     /** -Dthelads.verify189Focus: only the title screen and Probe170Misc's steps of that name (with Essential as players have it). */
     private static final String FOCUS = System.getProperty("thelads.verify189Focus");
     static {
+        // Focused QA paths, each straight into the QA world: LADS_VERIFY_189_ONLY (the harness passes it as -Dthelads.verify189Only)
+        // =itemphysics (Probe170ItemPhysics), =170 (Toggle Sprint & Sneak, then the HUD checks) or =raised (Raised and the paper
+        // doll, RaisedDollProbe189); -Dthelads.verifyChatHeads=true (ChatHeadsProbe189) and -Dthelads.verify189F3Fov=true (Probe170F3Fov).
+        String only = System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY"));
+        boolean chatHeadsOnly = Boolean.getBoolean("thelads.verifyChatHeads"), f3FovOnly = Boolean.getBoolean("thelads.verify189F3Fov");
         if (FOCUS != null) {
             STEPS.clear();
             STEPS.add(CoreProbe::titleShown);
             STEPS.add(CoreProbe::focused);
             STEPS.addAll(Probe170Misc.steps(FOCUS));
-        } else if ("itemphysics".equals(System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY")))) {
-            // LADS_VERIFY_189_ONLY=itemphysics: only the QA world and the Item Physics checks (Probe170ItemPhysics).
+        } else {
+        if ("itemphysics".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe170ItemPhysics.STEPS);
-            STEPS.add(CoreProbe::leaveWorld);
-            STEPS.add(CoreProbe::leftWorld);
-        } else if ("170".equals(System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY")))) {
-            // LADS_VERIFY_189_ONLY=170 (the harness passes it as -Dthelads.verify189Only): only the QA world and the 1.7.0
-            // in-world probes (Toggle Sprint & Sneak, then the HUD checks), for a short focused run.
+        } else if ("170".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe170Sprint.STEPS);
             STEPS.addAll(Probe170Hud.STEPS);
-            STEPS.add(CoreProbe::leaveWorld);
-            STEPS.add(CoreProbe::leftWorld);
+        } else if ("raised".equals(only)) {
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll(RaisedDollProbe189.STEPS);
+        } else if (chatHeadsOnly || f3FovOnly) {
+            STEPS.subList(1, STEPS.size()).clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::focusTitle, CoreProbe::openWorld, CoreProbe::worldReady));
+            if (chatHeadsOnly) STEPS.addAll(ChatHeadsProbe189.STEPS);
+            if (f3FovOnly) STEPS.addAll(Probe170F3Fov.STEPS);
         } else {
-        STEPS.addAll(Probe170Skin.STEPS);
-        STEPS.addAll(Probe160s.STEPS);
-        STEPS.addAll(HudProbe.STEPS);
-        STEPS.addAll(Probe145.STEPS);
-        STEPS.addAll(Probe150e.STEPS);
-        STEPS.addAll(Probe150.STEPS);
-        STEPS.addAll(Probe151.STEPS);
-        STEPS.addAll(Probe160.STEPS);
-        STEPS.addAll(Probe170Sprint.STEPS);
-        STEPS.addAll(Probe170Hud.STEPS);
-        STEPS.addAll(Probe145.PACING);
+            STEPS.addAll(Probe170Skin.STEPS);
+            STEPS.addAll(Probe160s.STEPS);
+            STEPS.addAll(HudProbe.STEPS);
+            STEPS.addAll(Probe145.STEPS);
+            STEPS.addAll(Probe150e.STEPS);
+            STEPS.addAll(Probe170r.STEPS);
+            STEPS.addAll(Probe150.STEPS);
+            STEPS.addAll(ProbeServer170.STEPS);
+            STEPS.addAll(Probe151.STEPS);
+            STEPS.addAll(Probe160.STEPS);
+            STEPS.addAll(Probe170Sprint.STEPS);
+            STEPS.addAll(Probe170Hud.STEPS);
+            STEPS.addAll(RaisedDollProbe189.STEPS);
+            STEPS.addAll(MouseTweaksProbe189.STEPS);
+            STEPS.addAll(LightsProbe189.STEPS);
+            STEPS.addAll(ChatHeadsProbe189.STEPS);
+            STEPS.addAll(Probe170F3Fov.STEPS);
+            STEPS.addAll(Probe145.PACING);
+        }
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
         }
@@ -131,11 +147,16 @@ public final class CoreProbe {
         HudProbe.stop();
         Probe151.stop();
         Probe160.stop();
+        ChatHeadsProbe189.stop(Minecraft.getMinecraft());
+        MouseTweaksProbe189.stop(Minecraft.getMinecraft());
+        LightsProbe189.stop();
         Probe160s.stop();
         Probe170Skin.stop();
         Probe170Sprint.stop();
         Probe170Hud.stop();
         Probe170ItemPhysics.stop();
+        ProbeServer170.stop();
+        RaisedDollProbe189.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -291,12 +312,31 @@ public final class CoreProbe {
         return openWorld(mc);
     }
 
+    /** The focused run's title step: the title screen as found, kept from pausing the unfocused QA window. */
+    private static boolean focusTitle(Minecraft mc) {
+        title = mc.currentScreen;
+        pauseOnLostFocus = mc.gameSettings.pauseOnLostFocus;
+        mc.gameSettings.pauseOnLostFocus = false;
+        return true;
+    }
+
     private static boolean openWorld(Minecraft mc) throws Exception {
         Path game = mc.mcDataDir.toPath().toRealPath(), saves = Files.createDirectories(game.resolve("saves")).toRealPath();
         // Worlds are shared since 1.4.8: the saves link leads to the sandbox's shared folder, never a real one.
         check(inVerificationSandbox(game) && inVerificationSandbox(saves) && com.thelads.core.shared.SharedContentPaths.redirectEnabled()
             && saves.equals(com.thelads.core.shared.SharedContentPaths.savesDir().toRealPath()), "the QA world goes into the sandbox's shared saves (" + saves + ")");
         LOG.info("Lads 1.8.9 core probe: opening the QA world '{}' in {}", WORLD, saves);
+        mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(0L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT));
+        return true;
+    }
+
+    /** The --only path: the title step's unfocused-window guard, the sandbox check and the QA world. */
+    private static boolean quickWorld(Minecraft mc) throws Exception {
+        title = mc.currentScreen;
+        pauseOnLostFocus = mc.gameSettings.pauseOnLostFocus;
+        mc.gameSettings.pauseOnLostFocus = false;
+        Path game = mc.mcDataDir.toPath().toRealPath(), saves = Files.createDirectories(game.resolve("saves")).toRealPath();
+        check(inVerificationSandbox(game) && inVerificationSandbox(saves), "the QA world goes into the sandbox (" + saves + ")");
         mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(0L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT));
         return true;
     }
@@ -463,7 +503,7 @@ public final class CoreProbe {
         if (SkinLayers189.LOADED) expected.add("SkinLayers");
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
-        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 4 /* DisableNarrator, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
+        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 5 /* DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
             && pending == modules.size() - unavailable - builtIn - external, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, "
             + external + " external, " + pending + " pending");
         mc.displayGuiScreen(null); // Back to Game: the HUD checks run in gameplay

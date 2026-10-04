@@ -18,6 +18,7 @@ public final class ExternalModSettings {
         if (FabricLoader.getInstance().isModLoaded("skinlayers3d")) ModuleSupport.registerBuiltIn("SkinLayers");
         external("NotEnoughAnimations", "Not Enough Animations", "notenoughanimations");
         external("BetterF3", "BetterF3", "betterf3");
+        external("Custom FOV", "Custom FOV", "customfov");
         external("BetterStats", "Better Statistics Screen", "betterstats");
         external("ModernAdvancements", "Modern Advancements", "modern-advancements");
         external("Resourcify", "Resourcify", "resourcify");
@@ -48,6 +49,7 @@ public final class ExternalModSettings {
         external("BetterScreenshots", "Screenshot Viewer", "screenshot_viewer");
         external("TabList", "Tab Tweaks", "tabtweaks");
         external("PingView", "Tab Tweaks", "tabtweaks");
+        external("Chat Heads", "Chat Heads", "chat_heads");
     }
     private static void external(String name, String display, String id) {
         ModuleSupport.registerExternal(name, display, id, FabricLoader.getInstance().isModLoaded(id));

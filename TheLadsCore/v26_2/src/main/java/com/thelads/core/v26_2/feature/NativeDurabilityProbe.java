@@ -1,6 +1,7 @@
 package com.thelads.core.v26_2.feature;
 
 import com.google.gson.JsonElement;
+import com.thelads.core.client.DurabilityPresentation;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.ColorOption;
 import com.thelads.core.config.DropdownOption;
@@ -62,36 +63,41 @@ public final class NativeDurabilityProbe {
             ((DropdownOption) bars.getOption("Durability Color Style")).setIndex(0);
             var color = (ColorOption) bars.getOption("Durability Base Color"); color.setUseGlobal(false); color.setColor(0xff123456);
             check(lines(sword, TooltipFlag.NORMAL).stream().noneMatch(NativeDurabilityProbe::itemDurabilityKey), "enabled Lads line replaces every item.durability line (no duplicate)");
-            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Durability: " + remaining + " / " + maximum)), "numbers show actual remaining/max");
+            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Uses left: " + remaining + " / " + maximum)), "numbers show actual remaining/max");
             check(durability(sword, TooltipFlag.ADVANCED).size() == 1, "advanced tooltip has one durability line");
             set(bars, "Show Max Durability", false);
-            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Durability: " + remaining)), "existing maximum control consumed");
+            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Uses left: " + remaining)), "existing maximum control consumed");
             set(bars, "Show Max Durability", true);
             int attributeCount = lines(sword, TooltipFlag.NORMAL).size(); set(bars, "Show Item Attributes", false);
             check(lines(sword, TooltipFlag.NORMAL).size() < attributeCount, "existing attribute control still reaches real hook");
             set(bars, "Show Item Attributes", true);
             ((DropdownOption) bars.getOption("Durability Style")).setIndex(1);
             var bar = durabilityComponents(sword, TooltipFlag.NORMAL);
-            check(bar.size() == 2 && bar.getFirst().getString().equals("Durability:") && bar.getLast().getString().length() == 12, "bar has hint plus ten segments");
-            check(bar.getLast().getString().contains("█") && bar.getLast().getString().contains("▒"), "bar reflects actual damage");
+            int pips = DurabilityPresentation.PIPS, lit = (int) ((long) remaining * pips / maximum);
+            check(bar.size() == 1 && bar.getFirst().getString().equals("Uses left: " + "|".repeat(pips) + " " + remaining * 100 / maximum + "%"),
+                "gauge is one line of pips and a percentage: " + durability(sword, TooltipFlag.NORMAL));
+            int lead = "Uses left: ".length();
+            check(colorAt(bar.getFirst(), lead + lit - 1) != 0x555555 && colorAt(bar.getFirst(), lead + lit) == 0x555555, "gauge reflects actual damage");
             set(bars, "Show Durability Hint", false);
-            check(durabilityComponents(sword, TooltipFlag.NORMAL).size() == 1, "bar hint can be hidden");
+            check(durability(sword, TooltipFlag.NORMAL).getFirst().startsWith("|"), "gauge label can be hidden");
             ((DropdownOption) bars.getOption("Durability Style")).setIndex(2);
-            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Slightly damaged")), "text style without hint");
-            sword.setDamageValue(maximum - maximum / 5);
-            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Severely damaged")), "middle condition label");
+            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Good")), "text style without hint");
+            sword.setDamageValue(maximum / 2);
+            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Worn")), "half-life condition word");
+            sword.setDamageValue(maximum * 3 / 4);
+            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Battered")), "quarter-life condition word");
             sword.setDamageValue(maximum - 1);
-            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Nearly broken")), "low condition label");
+            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("About to break")), "low condition word");
             ((DropdownOption) bars.getOption("Durability Color Style")).setIndex(2);
             check(firstColor(durabilityComponents(sword, TooltipFlag.NORMAL).getFirst()) == 0xffaa00, "gold color style on actual component");
             ((DropdownOption) bars.getOption("Durability Color Style")).setIndex(1);
             check(firstColor(durabilityComponents(sword, TooltipFlag.NORMAL).getFirst()) == 0x123456, "custom base color consumed");
             ((DropdownOption) bars.getOption("Durability Color Style")).setIndex(0);
-            check(firstColor(durabilityComponents(sword, TooltipFlag.NORMAL).getFirst()) == 0xff5555, "varying critical color");
+            check(firstColor(durabilityComponents(sword, TooltipFlag.NORMAL).getFirst()) == 0xff0000, "varying colour is the durability bar's red when almost broken");
             set(bars, "Colorize Durability", false);
             check(firstColor(durabilityComponents(sword, TooltipFlag.NORMAL).getFirst()) == 0x123456, "existing colorize off uses base");
             set(bars, "Colorize Durability", true); sword.setDamageValue(0);
-            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Pristine")), "full condition label");
+            check(durability(sword, TooltipFlag.NORMAL).equals(List.of("Like new")), "full condition word");
             set(bars, "Show When Full", false);
             check(durability(sword, TooltipFlag.NORMAL).isEmpty(), "full durability can be hidden");
             sword.setDamageValue(100);
@@ -102,6 +108,10 @@ public final class NativeDurabilityProbe {
             check(durability(sword, TooltipFlag.NORMAL).isEmpty(), "whole mod namespace blacklist consumed");
             ((TextOption) bars.getOption("Excluded Mods")).setValue("minecraft_extra");
             check(!durability(sword, TooltipFlag.NORMAL).isEmpty(), "blacklist does not match namespace prefix");
+            ((TextOption) bars.getOption("Excluded Mods")).setValue("minecraft:diamond_sword");
+            check(durability(sword, TooltipFlag.NORMAL).isEmpty(), "a single item id can be excluded");
+            ((TextOption) bars.getOption("Excluded Mods")).setValue("minecraft:iron_sword");
+            check(!durability(sword, TooltipFlag.NORMAL).isEmpty(), "excluding another item leaves this one");
             ((TextOption) bars.getOption("Excluded Mods")).setValue("");
             sword.set(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT.withHidden(DataComponents.DAMAGE, true));
             check(durability(sword, TooltipFlag.NORMAL).isEmpty(), "hidden damage component respected");
@@ -146,12 +156,21 @@ public final class NativeDurabilityProbe {
     private static List<Component> durabilityComponents(ItemStack item, TooltipFlag flag) {
         return lines(item, flag).stream().filter(line -> {
             String text = line.getString();
-            return !itemDurabilityKey(line) && (text.startsWith("Durability:") || text.startsWith("[") && text.endsWith("]") || text.equals("Pristine") || text.equals("Slightly damaged") || text.equals("Severely damaged") || text.equals("Nearly broken"));
+            return !itemDurabilityKey(line) && (text.startsWith("Uses left: ") || text.startsWith("Condition: ") || text.startsWith("|")
+                || DurabilityPresentation.WEAR_WORDS.contains(text));
         }).toList();
     }
     private static List<String> durability(ItemStack item, TooltipFlag flag) { return durabilityComponents(item, flag).stream().map(Component::getString).toList(); }
-    private static int firstColor(Component component) {
-        int[] color = {-1}; component.getVisualOrderText().accept((index, style, codePoint) -> { color[0] = style.getColor() == null ? -1 : style.getColor().getValue(); return false; }); return color[0];
+    private static int firstColor(Component component) { return colorAt(component, 0); }
+    /** The colour of the {@code at}-th character drawn (-1: none). */
+    private static int colorAt(Component component, int at) {
+        int[] color = {-1}, seen = {0};
+        component.getVisualOrderText().accept((index, style, codePoint) -> {
+            if (seen[0]++ < at) return true;
+            color[0] = style.getColor() == null ? -1 : style.getColor().getValue();
+            return false;
+        });
+        return color[0];
     }
     private static boolean itemDurabilityKey(Component line) { return line.getContents() instanceof TranslatableContents text && "item.durability".equals(text.getKey()); }
     private static void set(Module module, String name, boolean value) { ((BoolOption) module.getOption(name)).set(value); }

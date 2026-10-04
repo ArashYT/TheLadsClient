@@ -32,7 +32,8 @@ public class NativeHudMixin {
             NativeQualityOfLife.enabled("SmoothHotbar")) - x);
         graphics.pose().pushMatrix();
         graphics.pose().translate(offset, 0);
-        com.thelads.core.v26_2.feature.raised.NativeRaised.selection(graphics, pipeline, sprite, x, y, width, height);
+        graphics.blitSprite(pipeline, sprite, x, y, width, height);
+        com.thelads.core.v26_2.feature.Raised26.selectionBottom(graphics, x, y, width, height);
         graphics.pose().popMatrix();
     }
 
@@ -47,12 +48,24 @@ public class NativeHudMixin {
     private void lads$raise(GuiGraphicsExtractor graphics, DeltaTracker delta, CallbackInfo callback) {
         com.thelads.core.v26_2.feature.NativeAutohide.scopeOpacity=com.thelads.core.v26_2.feature.NativeAutohide.update();
         graphics.pose().pushMatrix();
-        graphics.pose().translate(0, -NativeQualityOfLife.raisedDistance());
+        graphics.pose().translate(0, -com.thelads.core.v26_2.feature.Raised26.hotbar());
     }
 
     @Inject(method = "extractHotbarAndDecorations", at = @At("RETURN"), require = 1)
     private void lads$restore(GuiGraphicsExtractor graphics, DeltaTracker delta, CallbackInfo callback) {
         com.thelads.core.v26_2.feature.NativeAutohide.scopeOpacity=1;
+        graphics.pose().popMatrix();
+    }
+
+    // Raised: the action bar sits above the hotbar, so it moves with it.
+    @Inject(method = "extractOverlayMessage", at = @At("HEAD"), require = 1)
+    private void lads$raiseOverlay(GuiGraphicsExtractor graphics, DeltaTracker delta, CallbackInfo callback) {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(0, -com.thelads.core.v26_2.feature.Raised26.hotbar());
+    }
+
+    @Inject(method = "extractOverlayMessage", at = @At("RETURN"), require = 1)
+    private void lads$restoreOverlay(GuiGraphicsExtractor graphics, DeltaTracker delta, CallbackInfo callback) {
         graphics.pose().popMatrix();
     }
 }

@@ -65,12 +65,14 @@ public static class GameSession
     public static bool WasCancelled(Process process) => Cancelled.TryGetValue(process, out _);
 
     /// <summary>Call before Start: Core reads its profile folder from THELADS_DIR, the shared root from LADS_GLOBAL_MINECRAFT_DIR
-    /// and (1.8.9) Lunar Client's folder, for its 1.8 resource packs, from LADS_LUNAR_DIR.</summary>
+    /// and (1.8.9) Lunar Client's folder, for its 1.8 resource packs, from LADS_LUNAR_DIR. Also copies in the pack's missing
+    /// default files (<see cref="PackDefaults"/>).</summary>
     public static void Configure(ProcessStartInfo startInfo, string gameDirectory, string sharedRoot)
     {
         startInfo.Environment["THELADS_DIR"] = gameDirectory;
         startInfo.Environment[SharedContentService.RootEnvironmentVariable] = sharedRoot;
         startInfo.Environment[GameOptionsService.LunarEnvironmentVariable] = GameOptionsService.LunarRoot();
+        PackDefaults.Apply(gameDirectory);
     }
 
     /// <summary>
