@@ -196,10 +196,13 @@ public final class NativeFood {
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Hud.HeartType.NORMAL.getSprite(hardcore, i * 2 + 1 == after, false), heartX[i], heartY[i], 9, 9, color);
     }
 
-    /** The tooltip line of a food: hunger icons and points, then saturation outlines and points. Null when it shows none. */
+    /**
+     * The tooltip line of a food: hunger icons and points, then saturation outlines and points. Null when it shows none, and off
+     * the client thread (the creative search index builds tooltips in the background, where the Shift key cannot be read).
+     */
     public static Component tooltipLine(ItemStack stack, TooltipDisplay display) {
         var food = stack.get(DataComponents.FOOD);
-        if (food == null || !stack.has(DataComponents.CONSUMABLE) || !on() || !option("Food Tooltips") || !display.shows(DataComponents.FOOD)
+        if (food == null || !Minecraft.getInstance().isSameThread() || !stack.has(DataComponents.CONSUMABLE) || !on() || !option("Food Tooltips") || !display.shows(DataComponents.FOOD)
             || !option("Tooltips Always Visible") && !Minecraft.getInstance().hasShiftDown()) return null;
         boolean rotten = harmful(stack);
         MutableComponent line = Component.empty();
