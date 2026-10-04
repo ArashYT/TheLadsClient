@@ -13,11 +13,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -26,15 +28,19 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * QA only (auto-world, ".lads-qa-capture-lights" from the harness's LADS_VERIFY_CAPTURE_LIGHTS): Dynamic Lights at midnight in the QA
- * world, each scene with the module off and on: a held torch, a dropped glowstone and a burning zombie (both client-only), saved as
+ * QA only (auto-world, ".lads-qa-capture-lights" from the harness's LADS_VERIFY_CAPTURE_LIGHTS): Dynamic Lights at midnight on a dry stone
+ * stand above the QA world, each scene with the module off and on: a held torch, a dropped glowstone and a burning zombie (both client-only), saved as
  * lights-*.png with the frame's mean brightness. Then a torch circles the player for 8 s with the module on and 8 s off to measure
- * the frame rate. Held items are this client's only; the time of day, module settings and Fullbright are put back afterwards.
+ * the frame rate. Held items are this client's only; the time of day, the player's position, the stand, module settings
+ * and Fullbright are put back afterwards.
  */
 final class DynamicLightsCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -51,9 +57,13 @@ final class DynamicLightsCapture {
     private static final double[] BRIGHTNESS = new double[SHOTS.length];
     private static int step = -1, passed, timeBefore = Integer.MIN_VALUE;
     private static long due, measureStart, frames, worstFrame, lastFrame, ticksBefore, nanosBefore, rebuildsBefore;
-    private static boolean capturing, enabledBefore, fullbrightBefore;
-    private static long modifiedBefore, fullbrightModified;
-    private static float pitchBefore;
+    private static boolean capturing, enabledBefore, fullbrightBefore, sceneReady, moved;
+    private static long modifiedBefore, fullbrightModified, sceneDeadline;
+    private static float pitchBefore, yawBefore;
+    private static Vec3 posBefore;
+    /** The stone the player stands on for the scene, high above the QA world's ground; what it replaced is put back. */
+    private static BlockPos stand;
+    private static final Map<BlockPos, BlockState> BLOCKS = new LinkedHashMap<>();
     private static ItemStack mainBefore, offBefore;
     private static ItemEntity dropped, orbit;
     private static Zombie burning;
@@ -83,13 +93,40 @@ final class DynamicLightsCapture {
         mainBefore = mc.player.getItemBySlot(EquipmentSlot.MAINHAND);
         offBefore = mc.player.getItemBySlot(EquipmentSlot.OFFHAND);
         pitchBefore = mc.player.getXRot();
+        posBefore = mc.player.position();
+        yawBefore = mc.player.getYRot();
         mc.player.setXRot(50);
-        midnight(mc);
+        stage(mc);
         LOGGER.info("Lads dynamic lights capture BEGIN: {} frames and an 8 s + 8 s frame-rate run; Sodium {}; client-only items and mobs",
             SHOTS.length, FabricLoader.getInstance().getModContainer("sodium").map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("not loaded"));
         step = 0;
+        sceneReady = moved = false;
+        sceneDeadline = System.nanoTime() + 20_000_000_000L;
         fire();
-        due = System.nanoTime() + 2 * SETTLE; // the night sky settles first
+    }
+
+    /**
+     * Once the client has the stand's stone the player is moved onto it (before, they could fall through blocks the client does not
+     * have yet); then waits until the client shows midnight and the player stands dry on the stand, and the night sky settles.
+     */
+    private static void awaitScene(long now) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!moved && mc.level.getBlockState(stand).is(Blocks.SMOOTH_STONE)) {
+            moved = true;
+            command(mc, String.format(Locale.ROOT, "tp %s %.1f %d %.1f %.1f 50", mc.player.getUUID(), stand.getX() + 0.5, stand.getY() + 1, stand.getZ() + 0.5, yawBefore));
+        }
+        long time = Math.floorMod(mc.level.getDefaultClockTime(), 24000L);
+        boolean night = Math.abs(time - 18000) <= 1000;
+        // Standing on the stand's stone (anywhere on its 15 x 15 blocks: the client may carry the player a little after the teleport).
+        BlockPos under = BlockPos.containing(mc.player.getX(), mc.player.getY() - 0.2, mc.player.getZ());
+        boolean placed = under.getY() == stand.getY() && Math.abs(under.getX() - stand.getX()) <= 7 && Math.abs(under.getZ() - stand.getZ()) <= 7
+            && Math.abs(mc.player.getY() - (stand.getY() + 1)) < 0.6 && mc.level.getBlockState(under).is(Blocks.SMOOTH_STONE);
+        boolean dry = !mc.player.isInWater() && !mc.player.isUnderWater();
+        if (!(night && placed && dry) && now < sceneDeadline) return;
+        check(night && placed && dry, "scene: clock time " + time + " (midnight 18000), dark outside " + mc.level.isDarkOutside() + ", on the stand at "
+            + stand.toShortString() + " " + placed + " (standing on " + under.toShortString() + "), in water " + !dry);
+        sceneReady = true;
+        due = now + 2 * SETTLE;
     }
 
     /** Each completed game frame (NativeWorldVerification.renderedFrame). */
@@ -97,6 +134,7 @@ final class DynamicLightsCapture {
         if (!busy() || capturing) return;
         long now = System.nanoTime();
         if (step >= SHOTS.length) { measure(now); return; }
+        if (!sceneReady) { awaitScene(now); return; }
         if (now < due) return;
         capturing = true;
         Shot shot = SHOTS[step];
@@ -240,7 +278,7 @@ final class DynamicLightsCapture {
         mc.player.setItemSlot(EquipmentSlot.MAINHAND, mainBefore);
         mc.player.setItemSlot(EquipmentSlot.OFFHAND, offBefore);
         mc.player.setXRot(pitchBefore);
-        restoreTime(mc);
+        unstage(mc);
         DynamicLightsModule module = module();
         OPTIONS.forEach(Option::load);
         module.setEnabled(enabledBefore);
@@ -262,27 +300,64 @@ final class DynamicLightsCapture {
         orbit = null;
     }
 
-    /** Midnight through the integrated server's own time command; the clock is set back afterwards. */
-    private static void midnight(Minecraft mc) {
+    /**
+     * Midnight through the integrated server's own time command (26.x's midnight time marker), and a dry 15 x 15 stone stand 20 blocks
+     * above the highest block here, which awaitScene puts the player on, looking down at it: no water, trees or terrain in the scene.
+     * All of it is undone afterwards.
+     */
+    private static void stage(Minecraft mc) {
         var server = mc.getSingleplayerServer();
-        if (server == null) { fail("no integrated server to set the time"); return; }
+        if (server == null) { fail("no integrated server to stage the scene"); stand = mc.player.blockPosition().below(); return; }
+        BlockPos at = mc.player.blockPosition();
+        int top = Math.max(at.getY(), mc.level.getHeight(Heightmap.Types.MOTION_BLOCKING, at.getX(), at.getZ()));
+        BlockPos floor = stand = new BlockPos(at.getX(), Math.min(mc.level.getMaxY() - 8, top + 20), at.getZ());
+        java.util.UUID id = mc.player.getUUID();
         server.execute(() -> {
             try {
                 var source = server.createCommandSourceStack().withSuppressedOutput();
                 var commands = server.getCommands().getDispatcher();
+                ServerLevel level = server.getPlayerList().getPlayer(id).level();
+                for (int dx = -7; dx <= 7; dx++) for (int dz = -7; dz <= 7; dz++) {
+                    BlockPos pos = floor.offset(dx, 0, dz);
+                    BlockState before = level.getBlockState(pos);
+                    if (!before.canBeReplaced()) continue;
+                    BLOCKS.putIfAbsent(pos.immutable(), before);
+                    level.setBlock(pos, Blocks.SMOOTH_STONE.defaultBlockState(), 2);
+                }
                 timeBefore = commands.execute("time query time", source);
-                commands.execute("time add " + Math.floorMod(18000 - timeBefore, 24000), source);
-            } catch (Exception failure) { fail("midnight: " + failure); }
+                commands.execute("time set midnight", source);
+            } catch (Exception failure) { fail("scene: " + failure); }
         });
     }
 
-    private static void restoreTime(Minecraft mc) {
+    private static void command(Minecraft mc, String command) {
         var server = mc.getSingleplayerServer();
-        if (server == null || timeBefore == Integer.MIN_VALUE) return;
-        int time = timeBefore;
+        if (server == null) return;
         server.execute(() -> {
-            try { server.getCommands().getDispatcher().execute("time set " + time, server.createCommandSourceStack().withSuppressedOutput()); }
-            catch (Exception failure) { LOGGER.error("Lads dynamic lights capture: the time could not be set back to {}", time, failure); }
+            try { server.getCommands().getDispatcher().execute(command, server.createCommandSourceStack().withSuppressedOutput()); }
+            catch (Exception failure) { fail("scene: " + command + ": " + failure); }
+        });
+    }
+
+    /** The player back where they were, the stand's blocks and the clock as they were. */
+    private static void unstage(Minecraft mc) {
+        var server = mc.getSingleplayerServer();
+        if (server == null) return;
+        int time = timeBefore;
+        Vec3 pos = posBefore;
+        float yaw = yawBefore, pitch = pitchBefore;
+        java.util.UUID id = mc.player.getUUID();
+        List<Map.Entry<BlockPos, BlockState>> blocks = new ArrayList<>(BLOCKS.entrySet());
+        BLOCKS.clear();
+        server.execute(() -> {
+            try {
+                var source = server.createCommandSourceStack().withSuppressedOutput();
+                var commands = server.getCommands().getDispatcher();
+                if (pos != null) commands.execute(String.format(Locale.ROOT, "tp %s %.3f %.3f %.3f %.1f %.1f", id, pos.x, pos.y, pos.z, yaw, pitch), source);
+                ServerLevel level = server.getPlayerList().getPlayer(id).level();
+                for (int i = blocks.size() - 1; i >= 0; i--) level.setBlock(blocks.get(i).getKey(), blocks.get(i).getValue(), 2);
+                if (time != Integer.MIN_VALUE) commands.execute("time set " + time, source);
+            } catch (Exception failure) { LOGGER.error("Lads dynamic lights capture: the scene could not be undone (time {}, position {})", time, pos, failure); }
         });
     }
 

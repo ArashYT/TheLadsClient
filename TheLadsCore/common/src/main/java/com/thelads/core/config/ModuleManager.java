@@ -49,7 +49,6 @@ public class ModuleManager {
         Module jasione = new Module("Jasione", "Cut garbage from enum lookups: Enum#values() calls that only read the array share one copy. Applies after a restart.");
         jasione.setEnabled(true);
         register(jasione, Module.Category.MECHANIC);
-        register(new AsyncModule(), Module.Category.MECHANIC);
 
         // HUD overlay modules (rendered by HudManager)
         HudModule fps = hud("FPS", "Show your current FPS on screen.");

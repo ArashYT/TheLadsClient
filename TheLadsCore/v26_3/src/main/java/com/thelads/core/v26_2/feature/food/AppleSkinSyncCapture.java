@@ -1,13 +1,20 @@
 package com.thelads.core.v26_2.feature.food;
 
+import com.google.gson.JsonElement;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.thelads.core.client.AppleSkinSync;
+import com.thelads.core.config.ActionOption;
+import com.thelads.core.config.Module;
+import com.thelads.core.config.Option;
+import com.thelads.core.v26_2.feature.NativeQualityOfLife;
 import io.netty.buffer.Unpooled;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
@@ -20,7 +27,8 @@ import org.slf4j.LoggerFactory;
  * regeneration off arrive as AppleSkin payloads: their bytes through the registered codec into a custom payload packet that the
  * client's own connection handles (Fabric's receiver). The values the module shows are checked and appleskin-sync-1 (survival
  * HUD: half the exhaustion band, saturation outlines over 3.5) is saved; then a payload of the wrong size must change nothing and
- * a new join must forget the values. Game mode and the remote flag are put back.
+ * a new join must forget the values. For the frame the AppleSkin module is on with its default options and Autohide is off, so
+ * the HUD shows whatever the QA profile has set. Game mode, the remote flag and both modules are put back.
  */
 public final class AppleSkinSyncCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -29,6 +37,9 @@ public final class AppleSkinSyncCapture {
     private static long due;
     private static boolean capturing;
     private static String gameModeWas;
+    private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
+    private static final Map<Module, Boolean> ENABLED = new LinkedHashMap<>();
+    private static final Map<Module, Long> MODIFIED = new LinkedHashMap<>();
     private AppleSkinSyncCapture() {}
 
     public static boolean busy() { return step >= 0 && step < 2; }
@@ -43,6 +54,12 @@ public final class AppleSkinSyncCapture {
         try {
             Files.delete(request);
             gameModeWas = mc.gameMode.getPlayerMode().getName();
+            Module appleSkin = NativeQualityOfLife.module("AppleSkin"), autohide = NativeQualityOfLife.module("Autohide");
+            for (Module module : new Module[] {appleSkin, autohide}) { ENABLED.put(module, module.isEnabled()); MODIFIED.put(module, module.getLastModified()); }
+            appleSkin.getOptions().forEach(option -> OPTIONS.put(option, option.save().deepCopy()));
+            appleSkin.getOptions().stream().filter(option -> !(option instanceof ActionOption)).forEach(Option::reset);
+            appleSkin.setEnabled(true);
+            autohide.setEnabled(false);
             command("effect give @a minecraft:resistance 30 255 true");
             command("gamemode survival @a");
             NativeFood.qaRemote = true;
@@ -113,6 +130,9 @@ public final class AppleSkinSyncCapture {
     private static void finish() {
         NativeFood.qaRemote = false;
         NativeFood.resetSync();
+        OPTIONS.forEach(Option::load);
+        ENABLED.forEach(Module::setEnabled);
+        MODIFIED.forEach(Module::setLastModified);
         if (gameModeWas != null) command("gamemode " + gameModeWas + " @a");
         command("effect clear @a minecraft:resistance");
         step = 2;
