@@ -134,6 +134,9 @@ string? cheatsPhase = autoWorldVerification && !capabilities.Forge ? Env("LADS_V
 if (cheatsPhase is not (null or "set" or "check" or "off")) throw new ArgumentException("LADS_VERIFY_CHEATS must be set, check or off.");
 string? focus189 = autoWorldVerification && capabilities.Forge ? Env("LADS_VERIFY_189_FOCUS") : null;
 if (focus189 != null && !Regex.IsMatch(focus189, @"\A[a-z0-9-]{1,40}\z")) throw new ArgumentException("LADS_VERIFY_189_FOCUS must be a plain step list name.");
+// Fabric versions: Toggle Sprint & Sneak in the QA world (walls, hits, hunger, items, water, sneaking, flying, death, keys), every tick's
+// sprint packets in sprint-trace.csv (SprintCapture). 1.8.9's self-test runs the same checks (Probe170Sprint).
+bool sprintCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_SPRINT") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -271,6 +274,8 @@ if (autoWorldVerification && File.Exists(skinLayersCaptureRequest)) File.Delete(
 string cheatsRequest = Path.Combine(directory, ".lads-qa-cheats");
 if (autoWorldVerification && File.Exists(cheatsRequest)) File.Delete(cheatsRequest);
 if (cheatsPhase != null) File.WriteAllText(cheatsRequest, cheatsPhase);
+string sprintCaptureRequest = Path.Combine(directory, ".lads-qa-capture-sprint");
+if (autoWorldVerification && File.Exists(sprintCaptureRequest)) File.Delete(sprintCaptureRequest);
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
         File.Delete(Path.Combine(directory, flag));
@@ -320,7 +325,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads durability tooltip probe FAILED", "Lads native SignalLoss probe FAILED", "Lads tab tweaks probe FAILED", "Lads narrator probe FAILED",
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
-    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads cheats probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED",
+    "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads cheats probe FAILED", "Lads zoom capture FAILED", "Lads sprint capture FAILED", "Lads add-server probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -556,7 +561,7 @@ try
             foreach (string marker in requiredWorldProbes)
                 if (line.Contains(marker) && (Passed(line) || marker == "Lads food server sync END:")) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
-                "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:" })
+                "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -643,7 +648,8 @@ try
             bool oldAnimDone = !oldAnimCaptureVerification || passedMarkers.ContainsKey("Lads 1.7 animations capture END:");
             bool zoomDone = !zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:");
             bool skinLayersDone = !skinLayersCaptureVerification || passedMarkers.ContainsKey("Lads skin layers capture END:");
-            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && skinLayersDone)
+            bool sprintDone = !sprintCaptureVerification || passedMarkers.ContainsKey("Lads sprint capture END:");
+            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && skinLayersDone && sprintDone)
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -674,7 +680,8 @@ try
                     (bannerCaptureVerification, bannerCaptureRequest, "Fire every kill banner skin in the QA world and capture its frames."),
                     (oldAnimCaptureVerification, oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames."),
                     (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames."),
-                    (skinLayersCaptureVerification, skinLayersCaptureRequest, "Photograph the player's 3D skin layers with SkinLayers on and off.") })
+                    (skinLayersCaptureVerification, skinLayersCaptureRequest, "Photograph the player's 3D skin layers with SkinLayers on and off."),
+                    (sprintCaptureVerification, sprintCaptureRequest, "Walk Toggle Sprint & Sneak through the QA world and log every tick's sprint packets.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -777,6 +784,8 @@ try
             "The requested Lads Zoom capture did not pass. Inspect production-smoke.log.");
         Require(!skinLayersCaptureVerification || passedMarkers.ContainsKey("Lads skin layers capture END:"),
             "The requested 3D skin layers frames were not both captured.");
+        Require(!sprintCaptureVerification || passedMarkers.ContainsKey("Lads sprint capture END:"),
+            "The requested Toggle Sprint & Sneak capture did not pass. Inspect production-smoke.log.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)

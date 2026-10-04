@@ -12,6 +12,7 @@ import com.thelads.core.mods.ModInventoryModel;
 import com.thelads.core.mods.ModStateStore;
 import com.thelads.core.modules.KillBannerModule;
 import com.thelads.core.modules.OldAnimationsModule;
+import com.thelads.core.modules.ToggleSprintModule;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
@@ -1124,7 +1125,8 @@ public final class LadsSettingsScreen {
         if (detail == null || detail.getName().equals("DiscordRPC")) return List.of();
         return detail.getOptions().stream().filter(o -> !(o instanceof PlayerActionOption))
             .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
-            .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o))).toList();
+            .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o)))
+            .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o))).toList();
     }
     private Option activeOption(String name) { return activeOptions().stream().filter(o -> o.getName().equals(name)).findFirst().orElse(null); }
     private boolean finish() { if (!commitEdit()) return false; persist(); return true; }

@@ -7,8 +7,11 @@ import com.google.gson.JsonNull;
 public final class ActionOption extends Option {
     private final String label;
     private Runnable action;
+    private java.util.function.Supplier<String> liveLabel;
     public ActionOption(String name, String label) { super(name); this.label = label; }
-    public String getLabel() { return label; }
+    public String getLabel() { return liveLabel == null ? label : liveLabel.get(); }
+    /** A label read on every frame (Toggle Sprint &amp; Sneak shows its current key). */
+    public void setLabel(java.util.function.Supplier<String> value) { liveLabel = value; }
     public boolean isAvailable() { return action != null; }
     public void setAction(Runnable value) { action = value; }
     public void run() { if (action != null) action.run(); }

@@ -71,6 +71,7 @@ public class TheLadsCore189 {
         OldAnimations189.register();
         ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
+        com.thelads.core.v1_8_9.feature.Toggles189.register();
         MinecraftForge.EVENT_BUS.register(new Zoom189());
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
@@ -91,7 +92,7 @@ public class TheLadsCore189 {
 
     public static final String[] GAMEPLAY_MODULES = {
         "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", "RenderScale", "BetterScreenshots",
-        "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
+        "Fullbright", com.thelads.core.modules.ToggleSprintModule.NAME, "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
         "RawInput", "BorderlessFullscreen",
         // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC: the "Soon" card, as on the other versions, whose
@@ -145,17 +146,11 @@ public class TheLadsCore189 {
         Zoom189.tick(mc);
         SkinLayers189.tick(mc);
         com.thelads.core.v1_8_9.feature.Cheats189.tick(mc);
+        com.thelads.core.v1_8_9.feature.Toggles189.tick(mc);
         if (mc.thePlayer != null) {
             com.thelads.core.config.Module fullbright = com.thelads.core.config.ModuleManager.getInstance().getModule("Fullbright");
             if (fullbright != null && fullbright.isEnabled() && mc.gameSettings.gammaSetting < 15.0f) {
                 mc.gameSettings.gammaSetting = 100.0f;
-            }
-            com.thelads.core.config.Module toggleSprint = com.thelads.core.config.ModuleManager.getInstance().getModule("ToggleSprint");
-            if (toggleSprint != null && toggleSprint.isEnabled() && mc.thePlayer.movementInput != null) {
-                if (mc.thePlayer.movementInput.moveForward > 0 && !mc.thePlayer.isSneaking()
-                    && !mc.thePlayer.isCollidedHorizontally && mc.thePlayer.getFoodStats().getFoodLevel() > 6) {
-                    mc.thePlayer.setSprinting(true);
-                }
             }
         }
 

@@ -121,10 +121,11 @@ public final class NativeWorldVerification {
                 }
             }
             boolean captureReady = readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null;
-            KillBannerCapture.tick(gameDirectory, captureReady && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy());
-            OldAnimationsCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy());
-            ZoomCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !SkinLayersCapture.busy());
-            SkinLayersCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy());
+            KillBannerCapture.tick(gameDirectory, captureReady && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy() && !SprintCapture.busy());
+            OldAnimationsCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy() && !SprintCapture.busy());
+            ZoomCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !SkinLayersCapture.busy() && !SprintCapture.busy());
+            SkinLayersCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SprintCapture.busy());
+            SprintCapture.tick(gameDirectory, captureReady && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy());
             CheatsProbe.tick(gameDirectory, captureReady);
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
@@ -132,7 +133,7 @@ public final class NativeWorldVerification {
             Path hudRequest = gameDirectory.resolve(".lads-qa-capture-hud");
             // A menu or HUD capture opens a screen, which zooms out and stops item use: never while a world capture runs.
             if (menuScreen == null && readyLogged && worldReady()
-                && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy()
+                && !KillBannerCapture.busy() && !OldAnimationsCapture.busy() && !ZoomCapture.busy() && !SkinLayersCapture.busy() && !SprintCapture.busy()
                 && !com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.NativeScreenshotsProbe.running()
                 && (Files.isRegularFile(menuRequest, LinkOption.NOFOLLOW_LINKS)
                     || Files.isRegularFile(hudRequest, LinkOption.NOFOLLOW_LINKS))) {
@@ -222,6 +223,7 @@ public final class NativeWorldVerification {
         OldAnimationsCapture.frame(target, gameDirectory);
         ZoomCapture.frame(target, gameDirectory);
         SkinLayersCapture.frame(target, gameDirectory);
+        SprintCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter) return;
         captureStarted = true;
         try {
