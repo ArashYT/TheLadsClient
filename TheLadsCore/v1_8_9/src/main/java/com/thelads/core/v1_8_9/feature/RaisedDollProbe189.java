@@ -37,7 +37,7 @@ import net.minecraft.util.IChatComponent;
 final class RaisedDollProbe189 {
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(RaisedDollProbe189::setup, RaisedDollProbe189::defaults,
         RaisedDollProbe189::chatOpen, RaisedDollProbe189::changed, RaisedDollProbe189::chatClick, RaisedDollProbe189::sprint,
-        RaisedDollProbe189::sneak, RaisedDollProbe189::fly, RaisedDollProbe189::eat, RaisedDollProbe189::faded,
+        RaisedDollProbe189::sneak, RaisedDollProbe189::hover, RaisedDollProbe189::fly, RaisedDollProbe189::eat, RaisedDollProbe189::faded,
         RaisedDollProbe189::editor, RaisedDollProbe189::done);
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
     private static boolean raisedWas, dollWas, started;
@@ -108,6 +108,7 @@ final class RaisedDollProbe189 {
         raised().getOptions().forEach(Option::reset);
         doll().getOptions().forEach(Option::reset);
         doll().setEnabled(true);
+        HudSettings.getInstance().setPosition("Paperdoll", 60, 60); // clear of the tutorial toast in the corner
         command(mc, "gamemode 1 " + mc.thePlayer.getName());
         // Sprinting only lasts while moving forward: hold both keys, as a player does.
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), true);
@@ -131,7 +132,14 @@ final class RaisedDollProbe189 {
         bool(doll(), "Creative Flying", true);
         mc.thePlayer.capabilities.isFlying = true;
         mc.thePlayer.sendPlayerAbilities();
-        return after(50); // past the crouch's display time: flying alone keeps it up
+        // Off the ground first: landing ends flying.
+        KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), true);
+        return after(5);
+    }
+
+    private static boolean hover(Minecraft mc) {
+        KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), false);
+        return after(45); // past the crouch's display time: flying alone keeps it up
     }
 
     private static boolean fly(Minecraft mc) {
@@ -191,7 +199,7 @@ final class RaisedDollProbe189 {
         started = false;
         Minecraft mc = Minecraft.getMinecraft();
         for (KeyBinding key : new KeyBinding[] {mc.gameSettings.keyBindForward, mc.gameSettings.keyBindSprint, mc.gameSettings.keyBindSneak,
-            mc.gameSettings.keyBindUseItem}) KeyBinding.setKeyBindState(key.getKeyCode(), false);
+            mc.gameSettings.keyBindJump, mc.gameSettings.keyBindUseItem}) KeyBinding.setKeyBindState(key.getKeyCode(), false);
         for (Map.Entry<Option, JsonElement> entry : OPTIONS.entrySet()) entry.getKey().load(entry.getValue());
         raised().setEnabled(raisedWas);
         doll().setEnabled(dollWas);

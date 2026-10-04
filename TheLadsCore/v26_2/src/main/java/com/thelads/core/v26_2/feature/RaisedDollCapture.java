@@ -76,7 +76,11 @@ final class RaisedDollCapture {
 
     /** Each completed game frame (NativeWorldVerification.renderedFrame). */
     static void frame(RenderTarget target, Path game) {
-        if (!busy() || capturing || System.nanoTime() < due) return;
+        if (!busy() || capturing) return;
+        // Kept up every frame: sprinting ends at a wall or the water's surface, flying when the player touches the ground.
+        if (step == 3) Minecraft.getInstance().player.setSprinting(true);
+        if (step == 5) Minecraft.getInstance().player.getAbilities().flying = true;
+        if (System.nanoTime() < due) return;
         capturing = true;
         String name = SHOTS[step];
         try {
@@ -133,13 +137,13 @@ final class RaisedDollCapture {
                     doll().getOptions().forEach(Option::reset);
                     doll().setEnabled(true);
                     command("gamemode creative @a");
-                    // Sprinting lasts only while moving forward: both keys held, as a player does.
+                    // Sprinting lasts while moving forward: forward held, sprint started as the sprint key would.
                     options.keyUp.setDown(true);
-                    options.keySprint.setDown(true);
+                    mc.player.setSprinting(true);
                 }
                 case 3 -> {
                     options.keyUp.setDown(false);
-                    options.keySprint.setDown(false);
+                    mc.player.setSprinting(false);
                     options.keyShift.setDown(true);
                 }
                 case 4 -> {

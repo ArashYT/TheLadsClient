@@ -64,6 +64,7 @@ public final class PaperDoll26 {
         var state = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(player).createRenderState(player, partialTick);
         state.shadowPieces.clear();
         state.outlineColor = 0;
+        state.nameTag = null; // Lads Nametags can show your own name; not over the doll
         if (state instanceof LivingEntityRenderState living) {
             living.bodyRot = PaperDoll.INSTANCE.bodyYaw(leftHalfOfScreen);
             living.yRot = PaperDoll.INSTANCE.headYaw(partialTick);

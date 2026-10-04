@@ -22,6 +22,10 @@ public final class PaperDoll189 {
     /** GL 1.4 blend factors (LWJGL 2 lists them under ARB_imaging only). */
     private static final int CONSTANT_ALPHA = 0x8003, ONE_MINUS_CONSTANT_ALPHA = 0x8004;
     private static float lastYaw = Float.NaN, partialTicks = 1;
+    private static boolean drawing;
+
+    /** The doll is being drawn (no own name tag over it). */
+    public static boolean drawing() { return drawing; }
 
     /** Every client tick (TheLadsCore189): the triggers happening now and how far the view turned. Paused: the doll stays as it is. */
     public static void tick(Minecraft mc) {
@@ -96,12 +100,14 @@ public final class PaperDoll189 {
             player.renderYawOffset = player.prevRenderYawOffset = body;
             player.rotationYawHead = player.prevRotationYawHead = body + PaperDoll.INSTANCE.headYaw(partial);
             player.rotationPitch = player.prevRotationPitch = pitch;
+            drawing = true;
             RenderManager manager = mc.getRenderManager();
             manager.setPlayerViewY(180);
             manager.setRenderShadow(false);
             manager.renderEntityWithPosYaw(player, 0, 0, 0, 0, partial);
             manager.setRenderShadow(true);
         } finally {
+            drawing = false;
             player.renderYawOffset = saved[0];
             player.prevRenderYawOffset = saved[1];
             player.rotationYawHead = saved[2];
