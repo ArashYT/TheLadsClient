@@ -68,7 +68,10 @@ final class RaisedDollCapture {
         raised().getOptions().forEach(Option::reset);
         raised().setEnabled(true);
         doll().setEnabled(false);
-        command("gamemode survival @a"); // hearts, hunger and air sit on the hotbar
+        // Survival for the hearts, hunger and air on the hotbar; nothing in the QA world may hurt the player meanwhile.
+        command("effect give @a minecraft:resistance 60 255 true");
+        command("effect give @a minecraft:fire_resistance 60 0 true");
+        command("gamemode survival @a");
         LOGGER.info("Lads raised capture BEGIN: {} frames", SHOTS.length);
         step = 0;
         due = System.nanoTime() + WAIT_MS[0] * 1_000_000L;
@@ -194,6 +197,8 @@ final class RaisedDollCapture {
         else HudSettings.getInstance().setPosition("Paperdoll", positionWas[0], positionWas[1]);
         hold(heldWas);
         command("gamemode " + gameModeWas + " @a");
+        command("effect clear @a minecraft:resistance");
+        command("effect clear @a minecraft:fire_resistance");
         step = SHOTS.length;
         if (FAILURES.isEmpty()) LOGGER.info("Lads raised capture END: {} frames saved, 0 failed", saved);
         else LOGGER.error("Lads raised capture FAILED: {}", String.join(" | ", FAILURES));
