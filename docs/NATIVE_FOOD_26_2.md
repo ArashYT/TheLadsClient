@@ -1,28 +1,31 @@
-# Built-in food overlays for Minecraft 26.2
+# Built-in food overlays (the AppleSkin module)
 
-The AppleSkin catalog entry is implemented inside Lads Core for 26.2. It no longer requires an AppleSkin jar. The implementation adapts AppleSkin 3.0.10's public-domain (Unlicense) 26.2 source at commit `62513191f6a3497447595c2215d466ad1d2bdb92`, with relocated classes and assets, Lads settings, and revised connection/lifecycle handling. The license is embedded at `assets/theladscore/licenses/AppleSkin-Unlicense.txt`.
+Since 1.7.0 the AppleSkin catalog entry is Lads' own code on 26.2, 26.3 and 1.8.9, written from the mod's public feature list and the game's food rules. It contains no AppleSkin code, textures or config format. The 1.6.0 adaptation, its license notice and its network channels were removed. 1.21.11 is frozen and still ships the upstream jar.
 
-Reference: https://github.com/squeek502/AppleSkin/tree/62513191f6a3497447595c2215d466ad1d2bdb92
+## Behavior and settings (module "AppleSkin", option names unchanged from 1.6.0)
 
-## Behavior and settings
+- **Show Food Values**: while you hold a food you can eat, the hunger icons it would fill pulse on the hunger bar. Harmful food (rotten flesh, spider eyes, raw chicken, pufferfish) pulses in the hunger effect's green icons. **Offhand Food** (26.x) also previews an edible off-hand food when the main hand has none.
+- **Show Saturation**: current saturation is drawn as gold outlines on the hunger icons. A part-filled icon shows its right side, like the game's half shank. **Show Saturation Overlay** pulses the saturation the held food would add.
+- **Show Exhaustion**: exhaustion (0 to 4) is drawn as a pale band behind the hunger bar, growing from the right.
+- **Show Health Overlay**: the hearts the held food would give back pulse on the health bar. The estimate covers natural regeneration from the new hunger and saturation, following the game's tick rules (26.x fast healing at a full bar, 1.8.9's 1 health per 3 exhaustion), plus the food's own Regeneration (golden apples). It is hidden in Peaceful, where health regenerates anyway.
+- **Vanilla Animations**: previews follow the bars' shake (hunger at empty saturation, hearts at low health, the Regeneration bounce). They take the positions the game actually drew; off, they stay steady.
+- **Overlay Opacity**: the pulse's peak opacity.
+- **Food Tooltips** and **Tooltips Always Visible** (off: hold Shift). 26.x tooltips show the game's own hunger icons and points, then gold saturation outlines and points, as inline sprites in a plain text line, so any tooltip renderer shows them. 1.8.9 tooltips are text only and show "Food: +4 hunger, +2.4 saturation". When EnhancedTooltips already prints that line, it is not repeated.
+- **F3**: a food line with hunger, saturation and exhaustion. On 26.x, enable it in the debug options screen as "theladscore:food".
+- With the module off, nothing is drawn. It never changes hunger, health, items or packets.
 
-- Food tooltips show hunger and saturation bars, including partial values, harmful-food icons, large-value multipliers, and data-component values. Hidden tooltips and non-edible items remain respected.
-- Tooltips can always appear or require Shift. The food component factory coexists with the separate native shulker tooltip factory.
-- Current saturation, exhaustion, held-food hunger and saturation restoration, estimated health recovery, offhand food, vanilla icon movement, and overlay opacity have live Lads controls.
-- The existing Show Saturation option controls current saturation. Show Saturation Overlay independently controls the extra saturation from held food. Show Food Values controls held-food restoration. Food Tooltips controls tooltip bars.
-- Food statistics are available in Minecraft's configurable debug screen while the module is enabled.
-- The master module switch disables all food visuals without modifying player hunger, saturation, health, or server gameplay.
+## What the client can know
 
-## Server data and compatibility
+Singleplayer worlds, and LAN worlds you host, run an integrated server in the same game. The overlays read that server's own copy of your player, so saturation, exhaustion and the natural-regeneration game rule are exact.
 
-The integrated server sends exact saturation, exhaustion and natural-regeneration state using the AppleSkin wire protocol. The receiver also works with remote servers that supply that protocol. Payloads are sent only to clients advertising all three channels, changes are tracked per actual server-player instance, and state is cleared when a server stops. Client sync state resets on connection changes, and invalid numeric payloads are ignored.
+On other servers the game sends hunger and saturation, but saturation only arrives with a health or hunger change. Exhaustion is never sent. There, saturation is the last value received, the exhaustion band and F3 exhaustion ("?") are not shown, and health estimates assume no exhaustion and natural regeneration on. 1.6.0 accepted AppleSkin's server channels. 1.7.0 does not, because no server mod is part of the client.
 
-Vanilla remote servers do not continuously synchronize saturation or exhaustion. As with the reference client-only mod, overlays on such servers use the limited client state and health recovery is an estimate. This client cannot make an unmodified remote server reveal exact values. Lads does not change server hunger rules.
+## Compatibility
 
-A manually installed upstream AppleSkin jar keeps ownership: the built-in overlay and network registration stay inactive, preventing duplicate overlays/channel registration. The managed installer retires only the old Lads-owned, hash-matching AppleSkin jar. The 1.21.11 dependency set remains unchanged. The pinned JEI renderer retains the native food component through its own tooltip conversion, preserving surrounding text and other image components. The relocated implementation does not publish the upstream third-party API namespace.
+A manually installed AppleSkin jar keeps the job: on 26.x the module then stands down and the card links to that mod's settings. The managed installer removes only Lads' own pinned copies.
 
 ## Verification
 
-The native runtime probe exercises transformed item tooltip methods, both tooltip factories, actual food data, main/offhand selection, all visual toggles, connection/player lifecycle and packet codec round trips. A separate in-world check waits for actual integrated-server payloads. Temporary probe preferences, inventory, abilities and food values are restored in `finally`.
-
-Minecraft 26.2 binds item components after joining a world, so item extraction checks run there. The verified world checkpoint passed 47 food behavior checks, 14 sprite/factory/master-toggle checks and 6 pinned JEI conversion checks. The integrated server delivered saturation, exhaustion and natural-regeneration payloads through the actual connection. This caught and fixed a native tooltip conflict: cancellable return injections could prevent later callbacks; the food and detail hooks now compose return values. Connection-scoped regeneration state survives player replacement while player-scoped food state resets. Evidence is preserved in `artifacts/verification/native-ports-checkpoint/world-pass.log` and repeated in the TabTweaks checkpoint. See [the runtime report](NATIVE_RUNTIME_CHECKPOINT_26_2.md) for exact JAR hashes and limits.
+- `common`: `FoodPreviewTest` covers eating caps, icon fill, the pulse, both regeneration rule sets, Regeneration effect healing and the F3 line.
+- 26.x: `FoodProbe` (in the native feature probe, marker "Lads food probe END") checks real tooltip lines, hidden components, options, off-hand selection, harmful food and the integrated-server read. `LADS_VERIFY_CAPTURE_HUDINFO=1` photographs the previews, tooltips and crosshair styles (`screenshots/hudinfo-*.png`).
+- 1.8.9: the self-test (`Probe150e`) checks the integrated-server read, Regeneration and harmful-food detection, and saves `lads-qa/screenshots/150-appleskin.png` and `170-food-*`, `170-tooltip-*` and `170-crosshair-*` shots.

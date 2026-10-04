@@ -49,7 +49,7 @@ import org.lwjgl.opengl.GL11;
 /**
  * Crosshair Tweaks on 1.8.9, as 26.x NativeCrosshair: drawn in place of vanilla's through Forge's crosshair overlay event (and
  * after the frame while F1 hides the HUD); EntityRendererMixin hides F3's 3D crosshair by the same rules. It reads local aiming
- * state only. 1.8.9 has no attack cooldown, attack indicator, item cooldowns, offhand or spyglass.
+ * state only. 1.8.9 has no attack cooldown, attack indicator, item cooldowns, offhand or spyglass (Dynamic Attack Gap follows the swing).
  */
 public final class Crosshair189 {
     private static final String MODULE = "Crosshair Tweaks";
@@ -136,7 +136,9 @@ public final class Crosshair189 {
         boolean axes = context.debug() && !mc.gameSettings.hideGUI && flag("Keep Vanilla Debug");
         if (flag("Disable Crosshair") || axes) return;
         int cx = width / 2 + (int) number("Offset X"), cy = height / 2 + (int) number("Offset Y");
-        double gap = CrosshairDesign.gap(number("Gap"), flag("Dynamic Attack Gap"), 1, flag("Dynamic Bow Gap"), chargeProgress(mc.thePlayer, partial));
+        // 1.8.9 has no attack cooldown: the attack gap opens and closes with the arm swing instead.
+        double swing = 1 - Math.sin(Math.PI * mc.thePlayer.getSwingProgress(partial));
+        double gap = CrosshairDesign.gap(number("Gap"), flag("Dynamic Attack Gap"), swing, flag("Dynamic Bow Gap"), chargeProgress(mc.thePlayer, partial));
         draw(cx, cy, gap, alpha, context.thirdPerson(), null);
         indicators(mc, cx, cy, alpha);
         frames++;

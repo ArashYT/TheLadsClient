@@ -27,6 +27,15 @@ class DurabilityPresentationTest {
         assertEquals("Severely damaged", DurabilityPresentation.condition(10, 100));
         assertEquals("Nearly broken", DurabilityPresentation.condition(9, 100));
     }
+    @Test void chatColorPicksTheNearestOfSixteen() {
+        assertEquals(0xa, DurabilityPresentation.chatColor(0x55ff55));
+        assertEquals(0x6, DurabilityPresentation.chatColor(0xffaa00));
+        assertEquals(0xc, DurabilityPresentation.chatColor(0xff5555));
+        assertEquals(0x7, DurabilityPresentation.chatColor(0xaaaaaa));
+        assertEquals(0x8, DurabilityPresentation.chatColor(0x123456));
+        assertEquals(0x1, DurabilityPresentation.chatColor(0x0000a0));
+        assertEquals(0xf, DurabilityPresentation.chatColor(0xfefefe));
+    }
     @Test void reactiveColorsHaveExactBoundaries() {
         assertEquals(0x55ff55, DurabilityPresentation.color(40, 100));
         assertEquals(0xffaa00, DurabilityPresentation.color(39, 100));
