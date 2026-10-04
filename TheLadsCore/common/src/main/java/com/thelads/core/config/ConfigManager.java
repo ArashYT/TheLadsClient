@@ -113,6 +113,7 @@ public class ConfigManager {
         if (json.has("modules")) {
             JsonObject modulesJson = json.getAsJsonObject("modules");
             migrateChat(modulesJson);
+            migrateDynamicLights(modulesJson);
             for (Module module : ModuleManager.getInstance().getModules()) {
                 try {
                     if (module.getName().equals("Nametags") && !modulesJson.has("Nametags") && modulesJson.has("ToggleNametags"))
@@ -226,6 +227,17 @@ public class ConfigManager {
         JsonObject options = chat.getAsJsonObject("options");
         if (stamps != null && !options.has("Timestamps")) options.add("Timestamps", stamps);
         if (indicators != null && !options.has("Hide Signing Indicators")) options.add("Hide Signing Indicators", indicators);
+    }
+
+    /**
+     * 1.7.0 builds Dynamic Lights in, on as the LambDynamicLights it replaces was. Until then nobody could change the module
+     * (its card showed that mod's own settings), so a state saved without a change holds only the old defaults: drop it.
+     */
+    static void migrateDynamicLights(JsonObject modules) {
+        JsonElement changed = legacy(modules, "DynamicLights", "lastModified");
+        if (modules.get("DynamicLights") instanceof JsonObject
+            && (changed == null || changed.isJsonPrimitive() && changed.getAsJsonPrimitive().isNumber() && changed.getAsLong() == 0))
+            modules.remove("DynamicLights");
     }
 
     private static JsonElement legacy(JsonObject root, String... path) {

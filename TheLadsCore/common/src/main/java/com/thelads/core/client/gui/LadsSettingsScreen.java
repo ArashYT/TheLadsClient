@@ -1124,7 +1124,8 @@ public final class LadsSettingsScreen {
         if (detail == null || detail.getName().equals("DiscordRPC")) return List.of();
         return detail.getOptions().stream().filter(o -> !(o instanceof PlayerActionOption))
             .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
-            .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o))).toList();
+            .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o)))
+            .filter(o -> !(detail instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o))).toList();
     }
     private Option activeOption(String name) { return activeOptions().stream().filter(o -> o.getName().equals(name)).findFirst().orElse(null); }
     private boolean finish() { if (!commitEdit()) return false; persist(); return true; }
