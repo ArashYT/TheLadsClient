@@ -146,6 +146,7 @@ class DiscordRpcServiceTest {
     static class LadsKeyBindsScreen extends KeyBindsScreen {}
     static class SodiumOptionsScreen {}
     static class class_442 {}
+    static class WorldBackup189 { static class Warning {} }
     @Test void everyScreenGetsALabel() {
         assertEquals("In the main menu", DiscordPresence.screen(TitleScreen.class));
         assertEquals("In video settings", DiscordPresence.screen(GuiVideoSettings.class));
@@ -154,6 +155,7 @@ class DiscordRpcServiceTest {
         assertEquals("Changing keybinds", DiscordPresence.screen(LadsKeyBindsScreen.class));
         assertEquals("In Sodium Options", DiscordPresence.screen(SodiumOptionsScreen.class));
         assertEquals("In the menus", DiscordPresence.screen(class_442.class));
+        assertEquals("Opening a world", DiscordPresence.screen(WorldBackup189.Warning.class));
         assertEquals("In the menus", DiscordPresence.screen(new Object() {}.getClass()));
     }
     @Test void savedComingSoonEntryIsDroppedOnceSoPresenceStartsOn() {
