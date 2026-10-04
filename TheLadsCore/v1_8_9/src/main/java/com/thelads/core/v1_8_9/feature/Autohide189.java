@@ -38,6 +38,13 @@ public final class Autohide189 {
     private static ElementType capturing;
     private static int previous;
 
+    /** QA (Probe170): idle for a minute, at this opacity now. */
+    static void idle(float now) {
+        activity = System.nanoTime() - 60_000_000_000L;
+        frame = System.nanoTime();
+        opacity = now;
+    }
+
     /** Same signals as NativeAutohide.update on 26.x. */
     static float update() {
         Minecraft mc = Minecraft.getMinecraft();

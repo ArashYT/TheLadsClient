@@ -28,6 +28,13 @@ public final class Chat189 {
 
     private Chat189() {}
 
+    /** QA (Probe170): GuiNewChatMixin's view of the chat's history. */
+    public interface History {
+        int ladsScrollPos();
+        int ladsDrawnLines();
+        int ladsMessages();
+    }
+
     /** Infinite History (GuiNewChatMixin): stored messages from laidOut on, wrapped as setChatLine wraps them, below the drawn lines. */
     public static int layOut(List<ChatLine> chatLines, int laidOut, List<ChatLine> drawnLines, int lines, final int width) {
         final FontRenderer font = Minecraft.getMinecraft().fontRendererObj;
