@@ -43,7 +43,6 @@
     "theladscore.screenshots.mixins.json",
     "theladscore.flashback.mixins.json",
     "theladscore.clumps.mixins.json",
-    "theladscore.async.mixins.json",
     "jade.mixins.json",
     "theladscore.embedded.etf.mixins.json",
     "theladscore.embedded.emf.mixins.json",
