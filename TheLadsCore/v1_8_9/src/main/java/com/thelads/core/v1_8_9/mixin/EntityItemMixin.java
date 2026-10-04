@@ -68,10 +68,15 @@ public abstract class EntityItemMixin extends Entity implements ItemPhysics.Hold
         return ladsFireproof ? Material.air : block.getMaterial();
     }
 
+    /**
+     * Cactus spares items; a fire-proof item takes no fire damage (EntityItem.dealFireDamage, which lava and fire in its box call
+     * every tick, skips the isImmuneToFire test that Entity's own has).
+     */
     @Inject(method = "attackEntityFrom", at = @At("HEAD"), cancellable = true, require = 1)
-    private void ladsCactus(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
-        if (source != DamageSource.cactus || worldObj.isRemote) return;
-        ItemPhysicsModule module = ItemPhysics189.rules(worldObj);
+    private void ladsSpared(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+        if (worldObj.isRemote) return;
+        if (ladsFireproof && source.isFireDamage()) { cir.setReturnValue(false); return; }
+        ItemPhysicsModule module = source == DamageSource.cactus ? ItemPhysics189.rules(worldObj) : null;
         if (module != null && module.cactus.get()) cir.setReturnValue(false);
     }
 }
