@@ -25,9 +25,9 @@ public enum KillBannerStyle {
     BLASTX("blastx", "BLASTX", Type.COMPOSITE, 0f, 0f, 70.0f, 0.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     BOLT("bolt", "BOLT", Type.COMPOSITE, 0f, 0f, 82.5f, 0.0f, 38f, 94.5f, false, true, false, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     BUBBLEGUMDEATHWISH("bubblegumdeathwish", "BUBBLEGUM DEATHWISH", Type.COMPOSITE, 0f, 0f, 85.0f, 3.2f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
-    BUBBLEGUMDEATHWISH2("bubblegumdeathwish2", "BUBBLEGUM DEATHWISH", Type.COMPOSITE, 0f, 0f, 85.0f, -16.5f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
-    BUBBLEGUMDEATHWISH3("bubblegumdeathwish3", "BUBBLEGUM DEATHWISH", Type.COMPOSITE, 0f, 0f, 85.0f, -4.0f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
-    BUBBLEGUMDEATHWISH4("bubblegumdeathwish4", "BUBBLEGUM DEATHWISH", Type.COMPOSITE, 0f, 0f, 85.0f, 4.0f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    BUBBLEGUMDEATHWISH2("bubblegumdeathwish2", "BUBBLEGUM DEATHWISH 2", Type.COMPOSITE, 0f, 0f, 85.0f, -16.5f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    BUBBLEGUMDEATHWISH3("bubblegumdeathwish3", "BUBBLEGUM DEATHWISH 3", Type.COMPOSITE, 0f, 0f, 85.0f, -4.0f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    BUBBLEGUMDEATHWISH4("bubblegumdeathwish4", "BUBBLEGUM DEATHWISH 4", Type.COMPOSITE, 0f, 0f, 85.0f, 4.0f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     CHAMPIONS2021("champions2021", "CHAMPIONS 2021", Type.COMPOSITE, 0f, 0f, 67.0f, 0.0f, 38f, 79.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     CHAMPIONS2022("champions2022", "CHAMPIONS 2022", Type.COMPOSITE, 0f, 0f, 67.0f, 0.0f, 38f, 79.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     CHAMPIONS2023("champions2023", "CHAMPIONS 2023", Type.COMPOSITE, 0f, 0f, 67.0f, 0.0f, 38f, 79.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
@@ -73,7 +73,7 @@ public enum KillBannerStyle {
     OVERDRIVE("overdrive", "OVERDRIVE", Type.COMPOSITE, 0f, 0f, 67.0f, -20.0f, 38f, 79.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     PHASEGUARD("phaseguard", "PHASEGUARD", Type.PHASEGUARD, 0f, 0f, 81.5f, -2.5f, 38f, 93.5f, false, true, false, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     PRELUDETOCHAOS("preludetochaos", "PRELUDE TO CHAOS", Type.COMPOSITE, 0f, 0f, 85.0f, -18.0f, 38f, 97.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
-    PRELUDETOCHAOSV25("preludetochaosv25", "PRELUDE TO CHAOS", Type.COMPOSITE, 0f, 0f, 85.0f, -18.0f, 38f, 97.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
+    PRELUDETOCHAOSV25("preludetochaosv25", "PRELUDE TO CHAOS, V25", Type.COMPOSITE, 0f, 0f, 85.0f, -18.0f, 38f, 97.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     PRIME("prime", "PRIME", Type.COMPOSITE, 0f, 0f, 72.5f, -17.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     PRIME20("prime20", "PRIME//2.0", Type.COMPOSITE, 0f, 0f, 72.5f, -17.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     PRIMORDIUM("primordium", "PRIMORDIUM", Type.COMPOSITE, 0f, 0f, 76.0f, -20.0f, 38f, 88.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
@@ -174,9 +174,13 @@ public enum KillBannerStyle {
         this.variants = variants;
     }
 
+    /** The skin with this id ("base" is DEFAULT), or null. */
+    public static KillBannerStyle byId(String id) {
+        return id == null ? null : BY_ID.get(id.trim().toLowerCase(Locale.ROOT));
+    }
+
     public static KillBannerStyle fromId(String id) {
-        if (id == null || id.isBlank()) return DEFAULT;
-        KillBannerStyle style = BY_ID.get(id.toLowerCase(Locale.ROOT));
+        KillBannerStyle style = byId(id);
         return style != null ? style : DEFAULT;
     }
 
