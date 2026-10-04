@@ -1486,7 +1486,7 @@
       "name": "AppleSkin",
       "projectId": "EsAfCjCV",
       "status": "native",
-      "implementation": "NativeFoodOverlay"
+      "implementation": "NativeFood"
     },
     {
       "game": "26.2",
@@ -1501,8 +1501,8 @@
       "modId": "asynclogger",
       "name": "Async Logger",
       "projectId": "zvNzKfGF",
-      "status": "modrinth",
-      "versionId": "Ert0LmWj"
+      "status": "native",
+      "implementation": "AsyncLogging"
     },
     {
       "game": "26.2",
@@ -1573,8 +1573,8 @@
       "modId": "chat_heads",
       "name": "Chat Heads",
       "projectId": "Wb5oqrBJ",
-      "status": "modrinth",
-      "versionId": "PJEyme1x"
+      "status": "native",
+      "implementation": "NativeChatHeads"
     },
     {
       "game": "26.2",
@@ -1621,8 +1621,8 @@
       "modId": "configureddefaults",
       "name": "Configured Defaults",
       "projectId": "SISoSFPP",
-      "status": "modrinth",
-      "versionId": "oM0C4RRZ"
+      "status": "native",
+      "implementation": "PackDefaults (launcher)"
     },
     {
       "game": "26.2",
@@ -1661,8 +1661,8 @@
       "modId": "customfov",
       "name": "Custom FOV",
       "projectId": "uZAcFHLd",
-      "status": "modrinth",
-      "versionId": "yAKmIknR"
+      "status": "native",
+      "implementation": "NativeCustomFov"
     },
     {
       "game": "26.2",
@@ -1869,8 +1869,8 @@
       "modId": "jasione",
       "name": "Jasione",
       "projectId": "qlDkBPij",
-      "status": "modrinth",
-      "versionId": "TPKzcQgZ"
+      "status": "native",
+      "implementation": "EnumValuesHook"
     },
     {
       "game": "26.2",
@@ -1901,8 +1901,8 @@
       "modId": "lambdynlights",
       "name": "LambDynamicLights",
       "projectId": "yBW8D80W",
-      "status": "modrinth",
-      "versionId": "XVsaQXSm"
+      "status": "native",
+      "implementation": "NativeDynamicLights"
     },
     {
       "game": "26.2",
@@ -1917,8 +1917,8 @@
       "modId": "libjf",
       "name": "LibJF",
       "projectId": "WKwQAwke",
-      "status": "modrinth",
-      "versionId": "I5brbhNh"
+      "status": "removed",
+      "reason": "Only Jasione used it (libjf:asm); Jasione is native since 1.7.0."
     },
     {
       "game": "26.2",
@@ -1981,8 +1981,8 @@
       "modId": "mousetweaks",
       "name": "Mouse Tweaks",
       "projectId": "aC3cM3Vq",
-      "status": "modrinth",
-      "versionId": "jOiTBIaB"
+      "status": "native",
+      "implementation": "NativeMouseTweaks"
     },
     {
       "game": "26.2",
@@ -2005,8 +2005,8 @@
       "modId": "netprodis",
       "name": "Network Protocol Disconnect",
       "projectId": "XFlUmiDF",
-      "status": "modrinth",
-      "versionId": "NKG0fjy4"
+      "status": "native",
+      "implementation": "PacketErrorGuardMixin"
     },
     {
       "game": "26.2",
@@ -2214,7 +2214,7 @@
       "name": "AppleSkin",
       "projectId": "EsAfCjCV",
       "status": "native",
-      "implementation": "NativeFoodOverlay"
+      "implementation": "NativeFood"
     },
     {
       "game": "26.3",
@@ -2229,8 +2229,8 @@
       "modId": "asynclogger",
       "name": "Async Logger",
       "projectId": "zvNzKfGF",
-      "status": "modrinth",
-      "versionId": "Ert0LmWj"
+      "status": "native",
+      "implementation": "AsyncLogging"
     },
     {
       "game": "26.3",
@@ -2301,8 +2301,8 @@
       "modId": "chat_heads",
       "name": "Chat Heads",
       "projectId": "Wb5oqrBJ",
-      "status": "modrinth",
-      "versionId": "tDI1Q0zx"
+      "status": "native",
+      "implementation": "NativeChatHeads"
     },
     {
       "game": "26.3",
@@ -2349,8 +2349,8 @@
       "modId": "configureddefaults",
       "name": "Configured Defaults",
       "projectId": "SISoSFPP",
-      "status": "modrinth",
-      "versionId": "frAVVzBj"
+      "status": "native",
+      "implementation": "PackDefaults (launcher)"
     },
     {
       "game": "26.3",
@@ -2389,8 +2389,8 @@
       "modId": "customfov",
       "name": "Custom FOV",
       "projectId": "uZAcFHLd",
-      "status": "modrinth",
-      "versionId": "HUGpoOXm"
+      "status": "native",
+      "implementation": "NativeCustomFov"
     },
     {
       "game": "26.3",
@@ -2597,8 +2597,8 @@
       "modId": "jasione",
       "name": "Jasione",
       "projectId": "qlDkBPij",
-      "status": "modrinth",
-      "versionId": "TPKzcQgZ"
+      "status": "native",
+      "implementation": "EnumValuesHook"
     },
     {
       "game": "26.3",
@@ -2629,8 +2629,8 @@
       "modId": "lambdynlights",
       "name": "LambDynamicLights",
       "projectId": "yBW8D80W",
-      "status": "modrinth",
-      "versionId": "rylKnJ4M"
+      "status": "native",
+      "implementation": "NativeDynamicLights"
     },
     {
       "game": "26.3",
@@ -2645,8 +2645,8 @@
       "modId": "libjf",
       "name": "LibJF",
       "projectId": "WKwQAwke",
-      "status": "modrinth",
-      "versionId": "S0d8Wc3k"
+      "status": "removed",
+      "reason": "Only Jasione used it (libjf:asm); Jasione is native since 1.7.0."
     },
     {
       "game": "26.3",
@@ -2709,8 +2709,8 @@
       "modId": "mousetweaks",
       "name": "Mouse Tweaks",
       "projectId": "aC3cM3Vq",
-      "status": "modrinth",
-      "versionId": "LeMuMhLv"
+      "status": "native",
+      "implementation": "NativeMouseTweaks"
     },
     {
       "game": "26.3",
@@ -2733,8 +2733,8 @@
       "modId": "netprodis",
       "name": "Network Protocol Disconnect",
       "projectId": "XFlUmiDF",
-      "status": "modrinth",
-      "versionId": "NKG0fjy4"
+      "status": "native",
+      "implementation": "PacketErrorGuardMixin"
     },
     {
       "game": "26.3",
