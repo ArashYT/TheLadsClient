@@ -129,10 +129,14 @@ public final class KillBanner189 {
 
     /** QA: a banner with the module's look ({@code kills} 1 to 5), its sound included. */
     static void trigger(int kills, boolean preview) {
+        trigger(kills, preview, false);
+    }
+
+    static void trigger(int kills, boolean preview, boolean headshot) {
         KillBannerModule module = module();
         if (!eligible() || module == null) return;
         trackedConnection = Minecraft.getMinecraft().getNetHandler();
-        play(KillBanners.show(module, kills, preview, false, module.chosen(), System.nanoTime()), (float) module.volume.getValue());
+        play(KillBanners.show(module, kills, preview, headshot, module.chosen(), System.nanoTime()), (float) module.volume.getValue());
     }
 
     /** "theladscore:<skin>_kill_<n>" from the Kill Banner sounds.json, "" the plain chime (1.8.9's orb pickup), at the module's volume. */

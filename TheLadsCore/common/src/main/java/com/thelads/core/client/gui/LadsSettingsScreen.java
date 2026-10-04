@@ -1198,6 +1198,8 @@ public final class LadsSettingsScreen {
     public void openGlobalColors(){colorPicker.openGlobal();}
     public void openDisplayActions(){if(detail!=null)actions.open(detail.getOptions().stream().filter(o->o instanceof PlayerActionOption).map(o->(PlayerActionOption)o).toList(),()->changed(detail));}
     public void openModule(String name) { Module m=ModuleManager.getInstance().getModule(name); if(m!=null)openDetails(m); }
+    /** QA (kill banner captures): the Kill Banner picker's skin search, as typed. */
+    public void searchKillBanners(String query) { kbSearch = query; }
     private void openDetails(Module m) { if (!ModuleSupport.isBuiltIn(m.getName())) return; detail = m; detailFromMods = false; m.setLastOpenedTime(System.currentTimeMillis()); scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = "back"; notice = ""; }
     private void back() {
         if (!finish()) return;
