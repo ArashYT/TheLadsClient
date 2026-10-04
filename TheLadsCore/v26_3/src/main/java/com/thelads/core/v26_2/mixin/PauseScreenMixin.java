@@ -50,11 +50,12 @@ public abstract class PauseScreenMixin extends Screen {
         // In groups: Back to Game, then Advancements/Statistics, Options/Lads Client, Multiplayer/world options, Replays/Extras, Save and Quit apart.
         int bottom=height-32-(ladsEssentialActions.isEmpty()?0:com.thelads.core.client.title.TitleScreenTheme.ROW_SPACE);
         int top=Math.max(62,12+Math.min(64,height/6)+18);
-        var boxes=com.thelads.core.client.title.PauseMenuLayout.arrange(buttons.stream().map(this::ladsSlot).toList(),width,top,bottom);
+        var slots=buttons.stream().map(this::ladsSlot).toList();
+        var boxes=com.thelads.core.client.title.PauseMenuLayout.arrange(slots,width,top,bottom);
         for(int i=0;i<buttons.size();i++) {
             var widget=buttons.get(i);var box=boxes.get(i);
             widget.setX(box.x());widget.setY(box.y());widget.setWidth(box.width());widget.setHeight(box.height());
-            com.thelads.core.client.title.ButtonLift.enable(widget);
+            com.thelads.core.client.title.ButtonLift.enable(widget,com.thelads.core.client.title.PauseMenuLayout.icon(slots.get(i)));
         }
     }
     @Unique private com.thelads.core.client.title.PauseMenuLayout.Slot ladsSlot(Button button){

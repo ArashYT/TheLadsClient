@@ -9,7 +9,7 @@ import net.minecraft.client.gui.GuiButton;
 
 /**
  * Essential's actions as compact Lads buttons in a row at the bottom left, above the account name, on the title and pause
- * screens; and the pause menu's fullscreen toggle (EssentialRow121 on the other versions).
+ * screens; and their top-right fullscreen toggle (EssentialRow121 on the other versions).
  */
 public final class EssentialRow189 {
     private static final List<String> ORDER = Arrays.asList("Social", "Wardrobe", "Pictures", "Host world", "Essential");
@@ -47,8 +47,8 @@ public final class EssentialRow189 {
         return row;
     }
 
-    /** The pause menu's top-right fullscreen toggle: Minecraft's own F11. */
-    public static GuiButton fullscreen(int id, int screenWidth) {
+    /** The title and pause menus' top-right fullscreen toggle: Minecraft's own F11. */
+    public static CompactButton189 fullscreen(int id, int screenWidth) {
         Minecraft mc = Minecraft.getMinecraft();
         return new CompactButton189(id, screenWidth - 26, 6, 20, 20, "Fullscreen",
             () -> mc.isFullScreen() ? "windowed" : "fullscreen", mc::toggleFullscreen);

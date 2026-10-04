@@ -56,7 +56,7 @@ public final class CoreProbe {
     private static final List<Step> STEPS = new java.util.ArrayList<>(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::ladsTitle,
         CoreProbe::titleMore, CoreProbe::backupPrompt, CoreProbe::backupWarning, CoreProbe::backupDone, CoreProbe::title,
         CoreProbe::menuAtTitle, CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
-        CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::closedToGame,
+        CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     /** -Dthelads.verify189Focus: only the title screen and Probe170Misc's steps of that name (with Essential as players have it). */
@@ -135,19 +135,36 @@ public final class CoreProbe {
         return mc.currentScreen instanceof GuiMainMenu && after(40);
     }
 
-    /** The Lads title screen (LadsTitleScreen189): its main buttons laid out by TitleScreenTheme, and a click on More. */
+    /**
+     * The Lads title screen (LadsTitleScreen189): its main buttons laid out by TitleScreenTheme (Forge's Mods and Screenshots
+     * among them), Switch beside the account name, the fullscreen toggle top right, and a click on More.
+     */
     private static boolean ladsTitle(Minecraft mc) throws Exception {
         LadsTitleScreen189 lads = LadsTitleScreen189.INSTANCE;
         check(lads.screen() != null && lads.screen() == mc.currentScreen, "the TitleScreen module put the Lads layout on the title screen");
         List<String> labels = new java.util.ArrayList<>();
+        List<GuiButton> placed = new java.util.ArrayList<>(lads.mainButtons());
+        placed.add(lads.switchButton());
+        placed.add(lads.fullscreenButton());
         boolean laidOut = true;
-        for (GuiButton button : lads.mainButtons()) {
-            labels.add(button.displayString);
-            laidOut &= button.visible && button.width > 20 && button.xPosition >= 0 && button.xPosition + button.width <= mc.currentScreen.width
+        for (GuiButton button : placed) {
+            if (lads.mainButtons().contains(button)) labels.add(button.displayString);
+            laidOut &= button.visible && button.width >= 16 && button.xPosition >= 0 && button.xPosition + button.width <= mc.currentScreen.width
                 && button.yPosition + button.height <= mc.currentScreen.height;
+            for (GuiButton other : placed)
+                laidOut &= other == button || button.xPosition + button.width <= other.xPosition || other.xPosition + other.width <= button.xPosition
+                    || button.yPosition + button.height <= other.yPosition || other.yPosition + other.height <= button.yPosition;
         }
-        check(laidOut && labels.equals(Arrays.asList(I18n.format("menu.singleplayer"), I18n.format("menu.multiplayer"), "Lads Mods",
-            I18n.format("menu.options"), "More...", I18n.format("menu.quit"))), "the main title actions, laid out by TitleScreenTheme " + labels);
+        List<String> expected = new java.util.ArrayList<>(Arrays.asList(I18n.format("menu.singleplayer"), I18n.format("menu.multiplayer"),
+            "Lads Mods", I18n.format("fml.menu.mods"), I18n.format("menu.options")));
+        if (com.thelads.core.v1_8_9.feature.Screenshots189.active()) expected.add("Screenshots");
+        expected.addAll(Arrays.asList("More...", I18n.format("menu.quit")));
+        check(laidOut && labels.equals(expected), "the main title actions, laid out by TitleScreenTheme without overlaps " + labels);
+        GuiButton switchButton = lads.switchButton(), fullscreen = lads.fullscreenButton();
+        int h = mc.currentScreen.height, w = mc.currentScreen.width;
+        check(switchButton.xPosition > 30 && switchButton.yPosition == h - 25 && "Switch".equals(switchButton.displayString)
+            && fullscreen.xPosition == w - 26 && fullscreen.yPosition == 6,
+            "Switch sits after the account name at the bottom left (x " + switchButton.xPosition + ", " + switchButton.width + " wide), fullscreen top right");
         screenshot(mc, "c1-title");
         GuiButton more = lads.moreButton();
         click(more.xPosition + more.width / 2, more.yPosition + more.height / 2);
@@ -158,8 +175,9 @@ public final class CoreProbe {
     private static boolean titleMore(Minecraft mc) throws Exception {
         if (mc.currentScreen instanceof TitleExtrasScreen189) {
             TitleExtrasScreen189 more = (TitleExtrasScreen189) mc.currentScreen;
-            check(more.labels().containsAll(Arrays.asList("Mods", "Language", "Realms", "Accounts")),
-                "a click on More opens the secondary actions: Forge's Mods, Language, Realms, Accounts " + more.labels());
+            check(more.labels().containsAll(Arrays.asList("Language", "Realms")) && !more.labels().contains("Mods")
+                    && !more.labels().contains("Accounts") && !more.labels().contains("Screenshots"),
+                "a click on More opens the rest: Language and Realms; Mods, Screenshots and Accounts are on the title screen " + more.labels());
             screenshot(mc, "c1-title-more");
             GuiButton language = more.button("Language");
             click(language.xPosition + language.width / 2, language.yPosition + language.height / 2);
@@ -322,9 +340,21 @@ public final class CoreProbe {
         return after(10);
     }
 
+    /** The Installed mods view over the world: its entries in two columns, like the module cards (LadsSettingsScreen). */
+    private static boolean installedMods(Minecraft mc) throws Exception {
+        if (!menu.ui().isModsViewOpen()) {
+            screenshot(mc, "c1-lads-menu-world");
+            mc.guiAchievement.clearAchievements(); // the "Press E" hint would cover the menu's top-right buttons
+            menu.ui().openMods();
+            return retry(20);
+        }
+        check(mc.currentScreen == menu, "the Installed mods view opened in the Lads menu");
+        screenshot(mc, "c1-installed-mods");
+        return after(2);
+    }
+
     private static boolean closedToGame(Minecraft mc) throws Exception {
         if (mc.currentScreen == menu) {
-            screenshot(mc, "c1-lads-menu-world");
             tap(Keyboard.KEY_RSHIFT, '\0');
             return false;
         }
@@ -339,6 +369,7 @@ public final class CoreProbe {
         GuiButton button = pause instanceof LadsPauseButton ? ((LadsPauseButton) pause).ladsButton() : null;
         check(button != null && "Lads Client".equals(button.displayString) && button.visible && button.enabled,
             "GuiIngameMenuMixin added the Lads Client button to the pause menu");
+        mc.guiAchievement.clearAchievements(); // the "Press E" hint would cover the fullscreen toggle in the pause screenshot
         return after(10);
     }
 
