@@ -10,15 +10,14 @@ import com.moulberry.flashback.exporting.FlashbackFFmpegFrameRecorder;
 import com.thelads.core.modules.FlashbackModule;
 import com.thelads.core.v26_2.feature.flashback.NativeFlashback;
 import java.util.Arrays;
-import java.util.function.Consumer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Faster Flashback exports, decided where Flashback opens its FFmpeg encoder (every export, PNG sequences included, goes through
- * this writer): OpenH264 moves to a GPU encoder that works here, PNG drops the alpha of opaque frames and encodes frames in parallel.
+ * Lads' Flashback export changes, made where Flashback opens its FFmpeg encoder (every export, PNG sequences included, goes through
+ * this writer): opaque PNG frames drop the alpha channel at the chosen zlib level; an OpenH264 export can move to a working GPU encoder.
  */
 @Mixin(targets = "com.moulberry.flashback.exporting.AsyncFFmpegVideoWriter")
 abstract class ExportWriterMixin {
@@ -64,25 +63,14 @@ abstract class ExportWriterMixin {
         target = "Lcom/moulberry/flashback/exporting/PixelFormatHelper;getBestPixelFormat(Ljava/lang/String;IZ)I"))
     private int lads$opaquePng(String encoder, int source, boolean transparent, Operation<Integer> original) {
         // AV_PIX_FMT_RGB24: the frames are opaque, so the alpha channel is a quarter of the work and carries nothing.
-        return !transparent && "png".equals(encoder) && NativeFlashback.fasterExports() ? 2 : original.call(encoder, source, transparent);
+        return !transparent && "png".equals(encoder) && NativeFlashback.exportChanges() ? 2 : original.call(encoder, source, transparent);
     }
 
     @WrapOperation(method = "tryStart", at = @At(value = "INVOKE", target = "Lcom/moulberry/flashback/exporting/FlashbackFFmpegFrameRecorder;start()V"))
-    private void lads$tune(FlashbackFFmpegFrameRecorder recorder, Operation<Void> original) {
-        String encoder = lads$encoder != null ? lads$encoder : settings.encoder();
-        if (NativeFlashback.fasterExports()) {
-            int threads = FlashbackModule.encoderThreads(encoder, Runtime.getRuntime().availableProcessors());
-            if (threads > 0) recorder.setVideoOption("threads", Integer.toString(threads));
-            if ("png".equals(encoder)) recorder.setVideoOption("compression_level", Integer.toString(NativeFlashback.module().pngCompression.getIntValue()));
-        }
+    private void lads$pngCompression(FlashbackFFmpegFrameRecorder recorder, Operation<Void> original) {
+        // FFmpeg's PNG encoder already writes frames in parallel on every core; the zlib level is the size/speed choice left.
+        if ("png".equals(lads$encoder != null ? lads$encoder : settings.encoder()) && NativeFlashback.exportChanges())
+            recorder.setVideoOption("compression_level", Integer.toString(NativeFlashback.module().pngCompression.getIntValue()));
         original.call(recorder);
-    }
-
-    /** How long the encoder takes to drain and close after the last frame (Flashback's "Finalizing video"). */
-    @WrapMethod(method = "finish")
-    private void lads$finishTime(Consumer<String> progress, Operation<Void> original) {
-        long start = System.nanoTime();
-        original.call(progress);
-        NativeFlashback.LOGGER.info("Flashback export finalized in {} ms", (System.nanoTime() - start) / 1_000_000);
     }
 }

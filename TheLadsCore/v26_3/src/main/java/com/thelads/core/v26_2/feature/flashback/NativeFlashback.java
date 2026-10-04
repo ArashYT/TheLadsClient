@@ -53,6 +53,7 @@ public final class NativeFlashback {
         return null;
     }
 
-    public static boolean fasterExports() { return !qaStock && module().fasterExports.get(); }
+    /** Lads changes the export (always, except in the QA stock comparison). */
+    public static boolean exportChanges() { return !qaStock; }
     public static boolean gpuEncoder() { return !qaStock && module().gpuEncoder.get(); }
 }
