@@ -85,6 +85,8 @@ repositories {
 dependencies {
     compileOnly 'com.demonwav.mcdev:annotations:2.1.0'
     compileOnly('maven.modrinth:iris:3uIIps8q') { transitive = false }
+    // Flashback 0.43.6 for this version: the Flashback Settings mixins compile against it; Flashback stays an optional mod.
+    compileOnly('maven.modrinth:flashback:Um7qd3Na') { transitive = false }
     compileOnly('com.zigythebird.playeranim:PlayerAnimationLibCommon:1.1.0+alpha.1+mc.1.21.9') { transitive = false }
     compileOnly('com.zigythebird.playeranim:PlayerAnimationLibCore:1.1.0+alpha.1+mc.1.21.9') { transitive = false }
 }

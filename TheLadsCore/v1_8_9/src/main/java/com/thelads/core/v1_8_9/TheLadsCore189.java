@@ -47,7 +47,8 @@ public class TheLadsCore189 {
         {"SkinLayers", "3D Skin Layers"}, {"NotEnoughAnimations", "Not Enough Animations"},
         {"BetterStats", "Better Statistics Screen"},
         {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroMinimap", "Xaero's Minimap"}, {"XaeroWorldmap", "Xaero's World Map"},
-        {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"}};
+        {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
+        {"Flashback Settings", "Flashback"}};
 
     private static String windowTitle = "The Lads Client";
 
