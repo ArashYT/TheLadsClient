@@ -308,8 +308,8 @@ public final class LadsSettingsScreen {
         button(g, "kb:search", searchLabel, new Rect(x, y, w, 20), this::startKbSearch, true, mx, my, editingKbSearch);
         y += 24;
 
-        // Custom Tile + Skin Tiles
-        int perRow = w >= 360 ? 4 : 3;
+        // Four tiles a row, so a skin's four variants fit one row
+        int perRow = 4;
         int tileW = (w - (perRow - 1) * gap) / perRow;
         int tileH = Math.max(40, tileW * 3 / 4 + 12);
 
@@ -321,6 +321,49 @@ public final class LadsSettingsScreen {
             }
         }
 
+        // The chosen skin's variants, then Custom's picks, above the skin grid: no scrolling past every skin to reach them
+        if (style != KillBannerModule.CUSTOM && activeStyle != null && activeStyle.variantNames.length > 1) {
+            y = variantTiles(g, banner, activeStyle, x, y, tileW, tileH, mx, my);
+        }
+        if (style == KillBannerModule.CUSTOM) {
+            y = section(g, "CUSTOM BANNER", x, y);
+            KillBannerStyle visual = KillBannerModule.visualOrSoundSkin(banner.customVisual.getIndex());
+            if (visual.variantNames.length > 1) y = variantTiles(g, banner, visual, x, y, tileW, tileH, mx, my);
+            int vIdx = 0;
+            for (KillBannerStyle skin : visible) {
+                int col = vIdx % perRow, row = vIdx / perRow;
+                Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
+                int kIdx = skin.ordinal();
+                boolean selected = banner.customVisual.getIndex() == kIdx;
+                int v = banner.getVariant(skin);
+                tile(g, "kb:visual:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
+                    banner.customVisual.setIndex(kIdx);
+                    changed(detail);
+                });
+                vIdx++;
+            }
+            y += ((vIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
+
+            y = section(g, "CUSTOM SOUND (CLICK TO HEAR)", x, y);
+            int sIdx = 0;
+            for (KillBannerStyle skin : visible) {
+                int col = sIdx % perRow, row = sIdx / perRow;
+                Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
+                int kIdx = skin.ordinal();
+                boolean selected = banner.customSound.getIndex() == kIdx;
+                int v = banner.getVariant(skin);
+                tile(g, "kb:sound:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
+                    banner.customSound.setIndex(kIdx);
+                    changed(detail);
+                    g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
+                });
+                sIdx++;
+            }
+            y += ((sIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
+            y = section(g, "SKINS", x, y);
+        }
+
+        // Custom Tile + Skin Tiles
         boolean showCustom = q.isEmpty() || "custom".contains(q);
         int tileIdx = 0;
         if (showCustom) {
@@ -349,49 +392,6 @@ public final class LadsSettingsScreen {
         }
         y += ((tileIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
 
-        // Variants for active skin
-        if (activeStyle != null && activeStyle.variantNames.length > 1) {
-            y = variantTiles(g, banner, activeStyle, x, y, tileW, tileH, mx, my);
-        }
-
-        // Custom section
-        if (style == KillBannerModule.CUSTOM) {
-            y = section(g, "CUSTOM BANNER", x, y);
-            int vIdx = 0;
-            for (KillBannerStyle skin : visible) {
-                int col = vIdx % perRow, row = vIdx / perRow;
-                Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
-                int kIdx = skin.ordinal();
-                boolean selected = banner.customVisual.getIndex() == kIdx;
-                int v = banner.getVariant(skin);
-                tile(g, "kb:visual:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
-                    banner.customVisual.setIndex(kIdx);
-                    changed(detail);
-                });
-                vIdx++;
-            }
-            y += ((vIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
-            KillBannerStyle visual = KillBannerModule.visualOrSoundSkin(banner.customVisual.getIndex());
-            if (visual != null && visual.variantNames.length > 1) y = variantTiles(g, banner, visual, x, y, tileW, tileH, mx, my);
-
-            y = section(g, "CUSTOM SOUND (CLICK TO HEAR)", x, y);
-            int sIdx = 0;
-            for (KillBannerStyle skin : visible) {
-                int col = sIdx % perRow, row = sIdx / perRow;
-                Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
-                int kIdx = skin.ordinal();
-                boolean selected = banner.customSound.getIndex() == kIdx;
-                int v = banner.getVariant(skin);
-                tile(g, "kb:sound:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
-                    banner.customSound.setIndex(kIdx);
-                    changed(detail);
-                    g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
-                });
-                sIdx++;
-            }
-            y += ((sIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
-        }
-
         y = section(g, "RANDOMIZE", x, y);
         String[] modes = {"Off", "Variant", "Skin + variant", "Chosen"};
         int rPerRow = w >= 300 ? 4 : 2, cell = (w - (rPerRow - 1) * gap) / rPerRow;
@@ -405,7 +405,7 @@ public final class LadsSettingsScreen {
         y += 14;
         if (banner.randomize.getIndex() == KillBannerModule.RANDOM_CHOSEN) {
             var pool = banner.pool();
-            for (KillBannerStyle skin : KillBannerStyle.values()) {
+            for (KillBannerStyle skin : visible) {
                 String skinName = skin.displayName;
                 for (int v = 0; v < skin.variantNames.length; v++) {
                     int variant = v;
@@ -1087,7 +1087,7 @@ public final class LadsSettingsScreen {
         boolean ctrl = (modifiers & 2) != 0;
         if (ctrl && key == 70) { if (!finish()) return true; if (!modsView) detail = null; startSearch(); return true; }
         if (key == 256) {
-            if (editingSearch || editingOption != null) { editingSearch = false; editingOption = null; notice = ""; }
+            if (editingSearch || editingOption != null) { editingSearch = editingKbSearch = false; editingOption = null; notice = ""; }
             else if (modsPlan != null) modsPlan = null;
             else if (modsView) closeMods();
             else if (detail != null) back(); else close();

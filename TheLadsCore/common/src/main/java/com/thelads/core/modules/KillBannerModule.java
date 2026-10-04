@@ -67,8 +67,6 @@ public class KillBannerModule extends Module {
     public final SliderOption duration = new SliderOption("Duration", 2, 1, 5, .25);
     public final SliderOption size = new SliderOption("Size", 100, 50, 150, 10);
     private final Random random = new Random();
-    private final Map<KillBannerStyle, Integer> variants = new EnumMap<>(KillBannerStyle.class);
-    private boolean variantsLoaded;
     private Pick last;
 
     /** What one kill shows and plays: {@code style} null is the Base banner, {@code soundStyle} null the plain chime. */
@@ -95,11 +93,11 @@ public class KillBannerModule extends Module {
         addOption(size);
     }
 
-    /** Options the Kill Banner picker draws itself, so the settings list leaves them out. */
+    /** Options the Kill Banner picker draws itself, so the settings list leaves them out (Text Color: only the old Base label used it). */
     public boolean pickerOption(Option option) {
         return option == bannerStyle || option == reaverVariant || option == rogueVariant || option == customVisual
             || option == customSound || option == randomize || option == randomPool || option == skinVariants
-            || option == players || option == mobs || option == bosses;
+            || option == players || option == mobs || option == bosses || option == textColor;
     }
 
     public boolean counts(KillDetector.Kind kind) {
@@ -140,27 +138,25 @@ public class KillBannerModule extends Module {
         return style == KillBannerStyle.ROGUE ? rogueVariant : reaverVariant;
     }
 
-    private void loadVariantsOnce() {
-        if (variantsLoaded) return;
-        variantsLoaded = true;
-        String val = skinVariants.getValue();
-        if (val == null || val.isBlank()) return;
-        for (String entry : val.split(",")) {
+    /** The other skins' variants, read from Skin Variants each time (a reset or a loaded config changes it). */
+    private Map<KillBannerStyle, Integer> variants() {
+        Map<KillBannerStyle, Integer> variants = new EnumMap<>(KillBannerStyle.class);
+        for (String entry : skinVariants.getValue().split(",")) {
             int colon = entry.indexOf(':');
-            if (colon <= 0) continue;
-            KillBannerStyle s = KillBannerStyle.fromId(entry.substring(0, colon));
+            KillBannerStyle s = colon > 0 ? KillBannerStyle.byId(entry.substring(0, colon)) : null;
+            if (s == null) continue;
             try {
-                variants.put(s, Integer.parseInt(entry.substring(colon + 1)));
+                variants.put(s, Math.max(0, Math.min(s.variantNames.length - 1, Integer.parseInt(entry.substring(colon + 1).trim()))));
             } catch (NumberFormatException ignored) {}
         }
+        return variants;
     }
 
     public int getVariant(KillBannerStyle style) {
         if (style == null) return 0;
         if (style == KillBannerStyle.REAVER) return reaverVariant.getIndex();
         if (style == KillBannerStyle.ROGUE) return rogueVariant.getIndex();
-        loadVariantsOnce();
-        return variants.getOrDefault(style, 0);
+        return variants().getOrDefault(style, 0);
     }
 
     public void setVariant(KillBannerStyle style, int v) {
@@ -168,12 +164,10 @@ public class KillBannerModule extends Module {
         if (style == KillBannerStyle.REAVER) reaverVariant.setIndex(v);
         else if (style == KillBannerStyle.ROGUE) rogueVariant.setIndex(v);
         else {
-            loadVariantsOnce();
+            Map<KillBannerStyle, Integer> variants = variants();
             variants.put(style, v);
             List<String> list = new ArrayList<>();
-            for (Map.Entry<KillBannerStyle, Integer> e : variants.entrySet()) {
-                list.add(e.getKey().id + ":" + e.getValue());
-            }
+            for (Map.Entry<KillBannerStyle, Integer> e : variants.entrySet()) list.add(e.getKey().id + ":" + e.getValue());
             skinVariants.setValue(String.join(",", list));
         }
     }
@@ -203,7 +197,7 @@ public class KillBannerModule extends Module {
                 for (String entry : pool()) {
                     int colon = entry.indexOf(':');
                     if (colon <= 0) continue;
-                    KillBannerStyle style = KillBannerStyle.fromId(entry.substring(0, colon));
+                    KillBannerStyle style = KillBannerStyle.byId(entry.substring(0, colon));
                     if (style == null) continue;
                     try {
                         pool.add(new Pick(style, Integer.parseInt(entry.substring(colon + 1)), style));
