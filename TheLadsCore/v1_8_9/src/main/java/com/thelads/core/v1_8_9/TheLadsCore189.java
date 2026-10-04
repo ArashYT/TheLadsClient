@@ -96,6 +96,8 @@ public class TheLadsCore189 {
         // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC: the "Soon" card, as on the other versions, whose
         // presence sends nothing yet (no Discord connection is made).
         "Threads", "DiscordRPC",
+        // EnumValues189 (Jasione); its status says a toggle applies after a restart (registerStatuses).
+        "Jasione",
         // TabTweaks189 through GuiPlayerTabOverlayMixin, as 26.x NativeTabTweaks.
         "PingView", "TabList",
         // Nametags189: shadow, nicknames, own display name and backgrounds (also Essential's).
@@ -123,6 +125,7 @@ public class TheLadsCore189 {
     static void registerStatuses() {
         ModuleSupport.registerBuiltIn(NativeHud.MODULES);
         ModuleSupport.registerBuiltIn(GAMEPLAY_MODULES);
+        ModuleSupport.registerBuiltInRestart("Jasione");
         for (String[] module : MOD_BACKED)
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
@@ -166,6 +169,8 @@ public class TheLadsCore189 {
         Borderless189.tick(mc);
 
         CoreCatalogExporter.exportIfChanged();
+        com.thelads.core.v1_8_9.feature.EnumValues189.reportOnce();
+        com.thelads.core.shared.LogProbe.tick(true, mc::shutdown);
         if (Boolean.getBoolean("thelads.verify189Core")) CoreProbe.tick();
         if (Boolean.getBoolean("thelads.verifyAddServer")) com.thelads.core.v1_8_9.feature.AddServerProbe189.tick();
     }
