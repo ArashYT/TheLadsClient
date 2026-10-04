@@ -21,6 +21,7 @@ public final class NativeQualityOfLife {
             "SmoothHotbar", "Raised", "OldDamageTilt", "EnhancedToolbars", "EnhancedTooltips",
             "Nametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", "ShulkerBoxUtils", "DiscordRPC", "RenderScale",
             com.thelads.core.modules.OldAnimationsModule.NAME);
+        ModuleSupport.registerBuiltIn(com.thelads.core.modules.MouseTweaksModule.NAME); // NativeMouseTweaks
         ((com.thelads.core.config.ActionOption)module("Jade").getOption("Settings and addons")).setAction(()->{
             var mc=Minecraft.getInstance();mc.setScreenAndShow(new snownee.jade.gui.HomeConfigScreen(mc.gui.screen()));
         });
