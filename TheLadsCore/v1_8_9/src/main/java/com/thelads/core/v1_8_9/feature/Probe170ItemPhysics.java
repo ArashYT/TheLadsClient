@@ -62,7 +62,8 @@ final class Probe170ItemPhysics {
 
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe170ItemPhysics::start,
         mc -> {
-            check(facts.containsKey("built"), "Item Physics: the arena (stone floor, water and lava pools, cactus) is built at y 200");
+            if (!ready("built")) return retry(5); // 1.8.9 relights every block of the arena: it can take seconds
+            check(true, "Item Physics: the arena (stone floor, water and lava pools, cactus) is built at y 200");
             view(mc, 0.5, 1, -2.5, 0, 30);
             onServer(mc, player -> {
                 Item[] row = {Items.diamond_sword, Items.apple, Items.stick, Item.getItemFromBlock(Blocks.stone), Item.getItemFromBlock(Blocks.log),
@@ -111,6 +112,7 @@ final class Probe170ItemPhysics {
             return after(4);
         },
         mc -> {
+            if (!ready("water-5")) return retry(2);
             String[] names = {"oak planks", "a stick", "white wool", "stone", "an iron ingot", "a diamond"};
             for (int i = 0; i < 6; i++) {
                 double y = fact("water-" + i)[1];
@@ -128,6 +130,7 @@ final class Probe170ItemPhysics {
         },
         mc -> { onServer(mc, player -> record(player.worldObj, "water-off", (Integer) facts.get("water-off-id"))); return after(4); },
         mc -> {
+            if (!ready("water-off")) return retry(2);
             check(fact("water-off")[1] < -0.6, "Item Physics: control, module off: oak planks sink as in vanilla 1.8.9 (y " + fmt(fact("water-off")[1]) + ")");
             module().setEnabled(true);
             view(mc, -3, 3.2, -0.6, 180, 50);
@@ -143,6 +146,7 @@ final class Probe170ItemPhysics {
             return after(4);
         },
         mc -> {
+            if (!ready("lava-3")) return retry(2);
             check(fact("lava-0")[3] == 0, "Item Physics: oak planks burn up in lava");
             String[] names = {"", "cobblestone", "an iron ingot", "a gold ingot"};
             for (int i = 1; i < 4; i++)
@@ -153,6 +157,7 @@ final class Probe170ItemPhysics {
         },
         mc -> { onServer(mc, player -> record(player.worldObj, "lava-off", (Integer) facts.get("lava-off-id"))); return after(4); },
         mc -> {
+            if (!ready("lava-off")) return retry(2);
             check(fact("lava-off")[3] == 0, "Item Physics: control, module off: cobblestone burns in lava as vanilla");
             module().setEnabled(true);
             view(mc, 0.5, 3.6, 1.2, 0, 35);
@@ -165,6 +170,7 @@ final class Probe170ItemPhysics {
             return after(4);
         },
         mc -> {
+            if (!ready("cactus-on")) return retry(2);
             check(fact("cactus-on")[3] == 1 && fact("cactus-on")[1] > 2.5, "Item Physics: an item lying on a cactus survives (y " + fmt(fact("cactus-on")[1]) + ")");
             module().setEnabled(false);
             onServer(mc, player -> {
@@ -176,6 +182,7 @@ final class Probe170ItemPhysics {
         },
         mc -> { onServer(mc, player -> record(player.worldObj, "cactus-off", (Integer) facts.get("cactus-off-id"))); return after(4); },
         mc -> {
+            if (!ready("cactus-off")) return retry(2);
             check(fact("cactus-off")[3] == 0, "Item Physics: control, module off: the cactus destroys the item as vanilla");
             module().setEnabled(true);
             view(mc, -2.5, 2.5, 4, 90, 40);
@@ -197,6 +204,7 @@ final class Probe170ItemPhysics {
             return after(4);
         },
         mc -> {
+            if (!ready("fire-stick", "fire-stone", "stone-burning")) return retry(2);
             check(Boolean.TRUE.equals(facts.get("fire-stick")), "Item Physics: a burning stick lying on oak planks sets them alight");
             check(Boolean.FALSE.equals(facts.get("stone-burning")) && Boolean.FALSE.equals(facts.get("fire-stone")),
                 "Item Physics: cobblestone cannot be set on fire, so it lights nothing");
@@ -232,6 +240,7 @@ final class Probe170ItemPhysics {
             return after(3);
         },
         mc -> {
+            if (!ready("emerald-waiting")) return retry(2);
             check(Boolean.TRUE.equals(facts.get("emerald-waiting")), "Item Physics: right-click pickup on: an emerald at the player's feet is not picked up by walking into it");
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), true);
             return after(2);
@@ -243,6 +252,7 @@ final class Probe170ItemPhysics {
             return after(4);
         },
         mc -> {
+            if (!ready("emerald-picked")) return retry(2);
             check(Boolean.TRUE.equals(facts.get("emerald-picked")), "Item Physics: the use key on the emerald picks it up into the inventory");
             module().pickup.set(false);
             mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = 0;
@@ -257,6 +267,7 @@ final class Probe170ItemPhysics {
         },
         mc -> { onServer(mc, player -> facts.put("gold-picked", player.inventory.hasItem(Items.gold_ingot))); return after(4); },
         mc -> {
+            if (!ready("gold-picked")) return retry(2);
             check(Boolean.TRUE.equals(facts.get("gold-picked")), "Item Physics: right-click pickup off: walking into a gold ingot picks it up as vanilla");
             onServer(mc, player -> {
                 player.inventory.clear();
@@ -279,6 +290,7 @@ final class Probe170ItemPhysics {
         mc -> { screenshot(mc, "170-ip-throw-midair"); return after(60); },
         mc -> { thrown(mc, "throw-charged"); return after(4); },
         mc -> {
+            if (!ready("throw-tap", "throw-charged")) return retry(2);
             double tap = fact("throw-tap")[0], charged = fact("throw-charged")[0];
             check(tap > 0.5 && charged > tap * 1.5, "Item Physics: a charged throw lands further than a tap (" + fmt(charged) + " vs " + fmt(tap) + " blocks)");
             LadsSettingsScreen189 menu = new LadsSettingsScreen189(null);
@@ -299,7 +311,7 @@ final class Probe170ItemPhysics {
                 EntityItem one = (EntityItem) player.worldObj.getEntityByID((Integer) facts.get("despawn-1"));
                 EntityItem ten = (EntityItem) player.worldObj.getEntityByID((Integer) facts.get("despawn-10"));
                 facts.put("lifespans", new double[]{one.lifespan, ten.lifespan});
-                ReflectionHelper.setPrivateValue(EntityItem.class, one, 1190, "age", "field_70292_b");
+                ReflectionHelper.setPrivateValue(EntityItem.class, one, 1150, "age", "field_70292_b");
                 ReflectionHelper.setPrivateValue(EntityItem.class, ten, 6100, "age", "field_70292_b");
             });
             return after(3);
@@ -309,16 +321,17 @@ final class Probe170ItemPhysics {
                 facts.put("one-early", player.worldObj.getEntityByID((Integer) facts.get("despawn-1")) != null);
                 facts.put("ten-late", player.worldObj.getEntityByID((Integer) facts.get("despawn-10")) != null);
             });
-            return after(20);
+            return after(70);
         },
         mc -> {
             onServer(mc, player -> facts.put("one-gone", player.worldObj.getEntityByID((Integer) facts.get("despawn-1")) == null));
             return after(4);
         },
         mc -> {
+            if (!ready("lifespans", "one-early", "ten-late", "one-gone")) return retry(2);
             double[] lifespans = (double[]) facts.get("lifespans");
             check(lifespans[0] == 1200 && lifespans[1] == 12000, "Item Physics: despawn 1 and 10 minutes give lifespans " + (int) lifespans[0] + " and " + (int) lifespans[1]);
-            check(Boolean.TRUE.equals(facts.get("one-early")) && Boolean.TRUE.equals(facts.get("one-gone")), "Item Physics: 1-minute despawn: there at 1190 ticks, gone by 1213");
+            check(Boolean.TRUE.equals(facts.get("one-early")) && Boolean.TRUE.equals(facts.get("one-gone")), "Item Physics: 1-minute despawn: there at about 1150 ticks, gone 70 ticks later");
             check(Boolean.TRUE.equals(facts.get("ten-late")), "Item Physics: 10-minute despawn: still there at 6100 ticks, past vanilla's 6000");
             return after(1);
         },
@@ -333,6 +346,9 @@ final class Probe170ItemPhysics {
         for (Option option : module.getOptions()) optionsWere.put(option, option.save());
         for (Option option : module.getOptions()) option.reset();
         module.setEnabled(true);
+        LogManager.getLogger("TheLadsCore").info("Lads 1.8.9 item physics rules: this client's world {}, integrated server {}; a remote server's world "
+            + "is only a client world with no integrated server, so rules() is null there and every rule stays off",
+            ItemPhysics189.rules(mc.theWorld) != null ? "on" : "off", mc.isIntegratedServerRunning() ? "running" : "absent");
         started = true;
         guiWas = mc.gameSettings.hideGUI;
         posWas = new double[]{mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ};
@@ -453,6 +469,12 @@ final class Probe170ItemPhysics {
         Entity item = world.getEntityByID(id);
         facts.put(name, item == null ? new double[]{0, 0, 0, 0}
             : new double[]{item.posX - base.getX(), item.posY - base.getY(), item.posZ - base.getZ(), item.isDead ? 0 : 1});
+    }
+
+    /** The server thread has recorded these facts (its tasks can lag behind the client's ticks). */
+    private static boolean ready(String... names) {
+        for (String name : names) if (!facts.containsKey(name)) return false;
+        return true;
     }
 
     private static double[] fact(String name) {

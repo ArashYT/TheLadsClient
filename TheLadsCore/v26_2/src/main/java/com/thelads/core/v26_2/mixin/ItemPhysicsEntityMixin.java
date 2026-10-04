@@ -63,13 +63,13 @@ public abstract class ItemPhysicsEntityMixin implements ItemPhysics.Holder {
         if (module != null && module.cactus.get() && source.is(DamageTypes.CACTUS)) callback.setReturnValue(false);
     }
 
-    /** Vanilla lifts every item in water; heavy ones sink instead. */
+    /** Vanilla lifts every item in water, slowly; light ones rise to the surface and heavy ones sink instead. */
     @Inject(method = "setUnderwaterMovement", at = @At("HEAD"), cancellable = true, require = 1)
-    private void lads$sink(CallbackInfo callback) {
+    private void lads$buoyancy(CallbackInfo callback) {
         ItemPhysicsModule module = NativeItemPhysics.rules(lads$self().level());
-        if (module == null || !module.floating.get() || NativeItemPhysics.floats(lads$self())) return;
+        if (module == null || !module.floating.get()) return;
         Vec3 movement = lads$self().getDeltaMovement();
-        lads$self().setDeltaMovement(movement.x * 0.99, ItemPhysics.sink(movement.y), movement.z * 0.99);
+        lads$self().setDeltaMovement(movement.x * 0.99, ItemPhysics.buoyancy(movement.y, NativeItemPhysics.floats(lads$self())), movement.z * 0.99);
         callback.cancel();
     }
 

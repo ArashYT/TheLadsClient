@@ -50,10 +50,12 @@ public abstract class EntityItemMixin extends Entity implements ItemPhysics.Hold
         boolean fireproof = module != null && module.fireproof.get() && !ItemPhysics189.burns(stack);
         if (fireproof != ladsFireproof) isImmuneToFire = ladsFireproof = fireproof;
         if (module == null) return;
-        // 1.8.9 has no item buoyancy: light items rise in water, fire-proof ones on lava; heavy ones sink as before.
-        if (module.floating.get() && ItemPhysics189.floats(stack) && ItemPhysics189.under((EntityItem) (Object) this, Material.water)
-            || fireproof && ItemPhysics189.under((EntityItem) (Object) this, Material.lava))
-            motionY = ItemPhysics.rise(motionY);
+        // 1.8.9 has no item buoyancy: light items rise in water and heavy ones sink slowly, fire-proof ones float on lava. The
+        // tick's gravity (0.04) follows, so it is added back.
+        if (module.floating.get() && ItemPhysics189.under((EntityItem) (Object) this, Material.water))
+            motionY = ItemPhysics.buoyancy(motionY, ItemPhysics189.floats(stack)) + 0.04;
+        else if (fireproof && ItemPhysics189.under((EntityItem) (Object) this, Material.lava))
+            motionY = ItemPhysics.buoyancy(motionY, true) + 0.04;
         if (!worldObj.isRemote) ItemPhysics189.ignite((EntityItem) (Object) this);
     }
 
