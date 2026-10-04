@@ -13,9 +13,10 @@ public final class KillBannerPlayer {
     static final int ICON_OUT = 14, FRAME_HOLD = 38, DRAWN_EXIT = 54;
     public static final int MARK_RED = 0xFFC41626, STROBE_RED = 0xFFE2122C;
 
+    /** iconY: cell pixels the strip's icon sits below its settled place; everything drawn over the banner follows it. */
     public record Frame(int stripFrame, float iconAlpha, float iconScale, float restAlpha, float shadowAlpha,
                         float strobe, float markSize, float markThinAlpha, float markAlpha, int markColor,
-                        float heartAlpha, float labelAlpha) {
+                        float heartAlpha, float labelAlpha, float iconY) {
         /** True when the frame comes from the drawn way out (the strip's exit layers), not the strip. */
         public boolean drawnExit() { return stripFrame < 0; }
     }
@@ -73,7 +74,7 @@ public final class KillBannerPlayer {
         }
         float label = headshot ? smooth(m - 4, m + 4, f) * (e >= 0 ? 1 - smooth(0, 8, e) : 1) : 0;
         return new Frame(stripFrame, iconAlpha, iconScale, restAlpha, shadow, strobe * iconAlpha, size, thin, solid,
-            color, heart, label);
+            color, heart, label, strip.iconY(stripFrame));
     }
 
     static float smooth(float from, float to, float x) {
