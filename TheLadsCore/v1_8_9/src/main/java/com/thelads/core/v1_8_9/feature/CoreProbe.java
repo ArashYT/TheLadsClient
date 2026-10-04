@@ -60,6 +60,14 @@ public final class CoreProbe {
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     static {
+        // LADS_VERIFY_189_ONLY=170 (QA, inherited from the harness): only the QA world and Probe170, for a short focused run.
+        if ("170".equals(System.getenv("LADS_VERIFY_189_ONLY"))) {
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe170.STEPS);
+            STEPS.add(CoreProbe::leaveWorld);
+            STEPS.add(CoreProbe::leftWorld);
+        } else {
         STEPS.addAll(Probe160s.STEPS);
         STEPS.addAll(HudProbe.STEPS);
         STEPS.addAll(Probe145.STEPS);
@@ -67,9 +75,11 @@ public final class CoreProbe {
         STEPS.addAll(Probe150.STEPS);
         STEPS.addAll(Probe151.STEPS);
         STEPS.addAll(Probe160.STEPS);
+        STEPS.addAll(Probe170.STEPS);
         STEPS.addAll(Probe145.PACING);
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
+        }
     }
     private static int step, passed, delay, waited;
     private static boolean finished, pauseOnLostFocus;
@@ -103,6 +113,7 @@ public final class CoreProbe {
         Probe151.stop();
         Probe160.stop();
         Probe160s.stop();
+        Probe170.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -219,6 +230,19 @@ public final class CoreProbe {
 
     private static boolean closedToTitle(Minecraft mc) throws Exception {
         check(mc.currentScreen == title, "a second Right Shift closes the Lads menu back to its title-screen parent");
+        return openWorld(mc);
+    }
+
+    /** LADS_VERIFY_189_ONLY: straight from the title screen into the QA world. */
+    private static boolean focusedWorld(Minecraft mc) throws Exception {
+        if (!(mc.currentScreen instanceof GuiMainMenu)) return retry(20);
+        title = mc.currentScreen;
+        pauseOnLostFocus = mc.gameSettings.pauseOnLostFocus;
+        mc.gameSettings.pauseOnLostFocus = false;
+        return openWorld(mc);
+    }
+
+    private static boolean openWorld(Minecraft mc) throws Exception {
         Path game = mc.mcDataDir.toPath().toRealPath(), saves = Files.createDirectories(game.resolve("saves")).toRealPath();
         // Worlds are shared since 1.4.8: the saves link leads to the sandbox's shared folder, never a real one.
         check(inVerificationSandbox(game) && inVerificationSandbox(saves) && com.thelads.core.shared.SharedContentPaths.redirectEnabled()

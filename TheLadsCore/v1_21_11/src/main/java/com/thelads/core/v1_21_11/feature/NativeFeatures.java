@@ -1,11 +1,10 @@
 package com.thelads.core.v1_21_11.feature;
 
-import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.SliderOption;
 import com.thelads.core.modules.FullbrightModule;
-import com.thelads.core.modules.ToggleSneakModule;
 import com.thelads.core.modules.ToggleSprintModule;
 import com.thelads.core.modules.ZoomModule;
 import net.minecraft.client.Minecraft;
@@ -17,7 +16,7 @@ import org.lwjgl.glfw.GLFW;
 /** Client-thread state. Never writes vanilla options or bypasses vanilla movement eligibility. */
 public final class NativeFeatures {
     private static Object player;
-    private static boolean sprintHeld, sneakHeld, sprintRequested;
+    private static boolean sprintHeld, sneakHeld;
     /** QA: the world FOV of the last rendered frame, zoom included, and when Zoom computed it. */
     static float lastWorldFov;
     static long lastWorldNanos;
@@ -30,22 +29,16 @@ public final class NativeFeatures {
         Module module = module(name);
         return module != null && module.isEnabled();
     }
-    private static int mode(Module module) {
-        return module.getOption("Mode") instanceof DropdownOption value ? value.getIndex() : 0;
-    }
+    private static ToggleSprintModule toggles() { return (ToggleSprintModule) module(ToggleSprintModule.NAME); }
     public static boolean interactive() {
         Minecraft mc = Minecraft.getInstance();
         return mc.player != null && mc.level != null && !mc.player.isDeadOrDying()
             && mc.screen == null && NativeWorldVerification.windowActive() && !mc.isPaused();
     }
-    public static void reset(boolean clearToggles) {
-        if (clearToggles) {
-            stopOwnedSprint();
-            if (module("ToggleSprint") instanceof ToggleSprintModule sprint && sprint.isToggled()) sprint.onToggleKey();
-            if (module("ToggleSneak") instanceof ToggleSneakModule sneak && sneak.isToggled()) sneak.onToggleKey();
-        }
+    /** 1.21.11 is frozen: Toggle Sprint &amp; Sneak toggles with the Sprint and Sneak keys only; toggles are never cleared. */
+    public static void reset(boolean newPlayer) {
         // Another player or world starts unzoomed; anything else (a screen, focus loss) zooms out smoothly.
-        if (clearToggles) zoom().reset(); else zoom().release();
+        if (newPlayer) zoom().reset(); else zoom().release();
         sprintHeld = sneakHeld = false;
     }
     public static void reset() {
@@ -58,19 +51,7 @@ public final class NativeFeatures {
             player = currentPlayer;
             return;
         }
-        if (!interactive()) {
-            zoom().release();
-            return;
-        }
-        if (!enabled("ToggleSprint") && module("ToggleSprint") instanceof ToggleSprintModule sprint) {
-            stopOwnedSprint();
-            sprint.evaluateSprint(false);
-            sprintHeld = false;
-        }
-        if (!enabled("ToggleSneak") && module("ToggleSneak") instanceof ToggleSneakModule sneak) {
-            sneak.evaluateSneak(false);
-            sneakHeld = false;
-        }
+        if (!interactive()) zoom().release();
     }
     public static void key(KeyEvent event, int action) {
         if (action == GLFW.GLFW_REPEAT) return;
@@ -90,37 +71,24 @@ public final class NativeFeatures {
         if (mc.options.keyShift.matchesMouse(event)) sneakKey(down);
     }
     private static void sprintKey(boolean down) {
-        if (down && !sprintHeld && module("ToggleSprint") instanceof ToggleSprintModule sprint
-            && sprint.isEnabled() && mode(sprint) == 0) sprint.onToggleKey();
+        if (down && !sprintHeld && toggles().pressSprint()) ConfigManager.save();
         sprintHeld = down;
     }
     private static void sneakKey(boolean down) {
-        if (down && !sneakHeld && module("ToggleSneak") instanceof ToggleSneakModule sneak
-            && sneak.isEnabled() && mode(sneak) == 0) sneak.onToggleKey();
+        if (down && !sneakHeld && toggles().pressSneak()) ConfigManager.save();
         sneakHeld = down;
     }
     public static Input movement(Input original) {
-        if (!interactive()) { return original; }
-        boolean shift = original.shift(), sprinting = original.sprint();
-        if (module("ToggleSneak") instanceof ToggleSneakModule sneak && sneak.isEnabled()) {
-            // Use physical hold state in Hold mode, independent of vanilla's toggle preference.
-            shift = sneak.evaluateSneak(mode(sneak) == 1 && sneakHeld);
-        }
-        if (module("ToggleSprint") instanceof ToggleSprintModule sprint && sprint.isEnabled()) {
-            sprinting = sprint.evaluateSprint(shift);
-            // Vanilla continues sprinting after the input is released; explicitly end our latch.
-            if (sprintRequested && !sprinting) stopOwnedSprint();
-            sprintRequested = sprinting;
-        }
+        ToggleSprintModule toggles = toggles();
+        boolean shift = toggles.sneakInput(original.shift(), false);
+        boolean sprinting = toggles.sprintInput(original.sprint(), false, shift);
+        var player = Minecraft.getInstance().player;
+        // Vanilla keeps sprinting after the key is released: a toggle that ends stops it, once.
+        if (toggles.sprintEnded(original.sprint(), false, shift) && player != null) player.setSprinting(false);
+        toggles.observe(player != null && player.isSprinting(), shift, original.sprint());
         if (shift == original.shift() && sprinting == original.sprint()) return original;
         return new Input(original.forward(), original.backward(), original.left(), original.right(),
             original.jump(), shift, sprinting);
-    }
-    private static void stopOwnedSprint() {
-        if (sprintRequested && Minecraft.getInstance().player != null) {
-            Minecraft.getInstance().player.setSprinting(false);
-        }
-        sprintRequested = false;
     }
     /** MouseHandler.onScroll: true when Zoom used the scroll, so the hotbar does not move. */
     public static boolean scroll(double amount) {

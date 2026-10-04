@@ -144,11 +144,7 @@ public class ModuleManager {
         fb.addOption(new SliderOption("Brightness Multiplier", 1.0, 1.0, 10.0, 0.5));
         register(fb, Module.Category.MECHANIC);
 
-        ToggleSprintModule ts = new ToggleSprintModule();
-        register(ts, Module.Category.MECHANIC);
-
-        ToggleSneakModule tsn = new ToggleSneakModule();
-        register(tsn, Module.Category.MECHANIC);
+        register(new ToggleSprintModule(), Module.Category.MECHANIC);
 
         register(new ZoomModule(), Module.Category.MECHANIC);
 

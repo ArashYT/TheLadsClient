@@ -12,7 +12,6 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
 import com.thelads.core.config.SliderOption;
-import com.thelads.core.modules.ToggleSneakModule;
 import com.thelads.core.modules.ToggleSprintModule;
 import com.thelads.core.v1_21_11.feature.qa.mixin.GameRendererQaInvoker;
 import com.thelads.core.v1_21_11.feature.qa.mixin.KeyboardHandlerQaInvoker;
@@ -134,7 +133,7 @@ final class NativeMenuAccessProbe {
         try {
             if (step == 0) {
                 if (!NativeWorldVerification.worldReady()) return;
-                for (String name : List.of("Zoom", "Fullbright", "ToggleSprint", "ToggleSneak", "FPS")) save(module(name));
+                for (String name : List.of("Zoom", "Fullbright", ToggleSprintModule.NAME, "FPS")) save(module(name));
                 restored = false;
             } else check(NativeWorldVerification.active() && mc.level != null && mc.player != null, "the isolated QA world is still open");
             if (!STEPS.get(step).run(mc)) return;
@@ -262,11 +261,11 @@ final class NativeMenuAccessProbe {
 
     private static boolean sneakOn(Minecraft mc) {
         // ToggleSneak in Toggle mode: one tap of the real sneak key latches crouching until the next tap.
-        module("ToggleSneak").setEnabled(true);
-        ((DropdownOption) module("ToggleSneak").getOption("Mode")).setIndex(0);
+        module(ToggleSprintModule.NAME).setEnabled(true);
+        ((DropdownOption) module(ToggleSprintModule.NAME).getOption("Sneak")).setIndex(ToggleSprintModule.TOGGLE);
         NativeWorldVerification.syntheticInput(true);
         tap(key(mc.options.keyShift), 0);
-        check(((ToggleSneakModule) module("ToggleSneak")).isToggled(), "ToggleSneak latches on a sneak-key tap");
+        check(((ToggleSprintModule) module(ToggleSprintModule.NAME)).isSneakToggled(), "ToggleSneak latches on a sneak-key tap");
         return after(2, 0);
     }
 
@@ -277,12 +276,11 @@ final class NativeMenuAccessProbe {
     }
 
     private static boolean sneakReleased(Minecraft mc) {
-        check(!((ToggleSneakModule) module("ToggleSneak")).isToggled() && !mc.player.isShiftKeyDown(), "a second sneak-key tap releases the latch");
+        check(!((ToggleSprintModule) module(ToggleSprintModule.NAME)).isSneakToggled() && !mc.player.isShiftKeyDown(), "a second sneak-key tap releases the latch");
         // ToggleSprint in Toggle mode: one tap of the real sprint key, then walking forward sprints without holding it.
-        module("ToggleSprint").setEnabled(true);
-        ((DropdownOption) module("ToggleSprint").getOption("Mode")).setIndex(0);
+        ((DropdownOption) module(ToggleSprintModule.NAME).getOption("Sprint")).setIndex(ToggleSprintModule.TOGGLE);
         tap(key(mc.options.keySprint), 0);
-        check(((ToggleSprintModule) module("ToggleSprint")).isToggled(), "ToggleSprint latches on a sprint-key tap");
+        check(((ToggleSprintModule) module(ToggleSprintModule.NAME)).isSprintToggled(), "ToggleSprint latches on a sprint-key tap");
         press(key(mc.options.keyUp), true);
         return after(10, 0);
     }
@@ -295,7 +293,7 @@ final class NativeMenuAccessProbe {
     }
 
     private static boolean sprintReleased(Minecraft mc) {
-        check(!((ToggleSprintModule) module("ToggleSprint")).isToggled() && !mc.player.isSprinting(), "a second sprint-key tap ends the sprint");
+        check(!((ToggleSprintModule) module(ToggleSprintModule.NAME)).isSprintToggled() && !mc.player.isSprinting(), "a second sprint-key tap ends the sprint");
         return true;
     }
 

@@ -1,14 +1,15 @@
 package com.thelads.core.v26_2.feature;
 
-import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.SliderOption;
 import com.thelads.core.modules.FullbrightModule;
-import com.thelads.core.modules.ToggleSneakModule;
 import com.thelads.core.modules.ToggleSprintModule;
 import com.thelads.core.modules.ZoomModule;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.world.entity.player.Input;
@@ -17,7 +18,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 /** Client-thread state. Never writes vanilla options or bypasses vanilla movement eligibility. */
 public final class NativeFeatures {
     private static Object player;
-    private static boolean sprintHeld, sneakHeld, sprintRequested;
+    private static boolean sprintHeld, sneakHeld;
     /** QA: the world FOV of the last rendered frame, zoom included, and when Zoom computed it. */
     static float lastWorldFov;
     static long lastWorldNanos;
@@ -30,22 +31,38 @@ public final class NativeFeatures {
         Module module = module(name);
         return module != null && module.isEnabled();
     }
-    private static int mode(Module module) {
-        return module.getOption("Mode") instanceof DropdownOption value ? value.getIndex() : 0;
+    static ToggleSprintModule toggles() { return (ToggleSprintModule) module(ToggleSprintModule.NAME); }
+    /** Toggle Sprint &amp; Sneak's key rows in the Lads menu: the key that toggles, and a click opens Controls. */
+    public static void initialize() {
+        ToggleSprintModule toggles = toggles();
+        toggles.sprintKey.setLabel(() -> keyLabel(NativeKeyBindings.TOGGLE_SPRINT, Minecraft.getInstance().options.keySprint, "Sprint"));
+        toggles.sneakKey.setLabel(() -> keyLabel(NativeKeyBindings.TOGGLE_SNEAK, Minecraft.getInstance().options.keyShift, "Sneak"));
+        Runnable controls = () -> {
+            Minecraft mc = Minecraft.getInstance();
+            mc.gui.setScreen(new KeyBindsScreen(mc.gui.screen(), mc.options));
+        };
+        toggles.sprintKey.setAction(controls);
+        toggles.sneakKey.setAction(controls);
+    }
+    private static String keyLabel(KeyMapping toggle, KeyMapping vanilla, String name) {
+        return toggle.isUnbound() ? name + " key: " + vanilla.getTranslatedKeyMessage().getString() : toggle.getTranslatedKeyMessage().getString();
+    }
+    /** Unbound, the vanilla key toggles; bound, the toggle key does and the vanilla key is a plain hold key again. */
+    private static KeyMapping sprintToggleKey() {
+        return NativeKeyBindings.TOGGLE_SPRINT.isUnbound() ? Minecraft.getInstance().options.keySprint : NativeKeyBindings.TOGGLE_SPRINT;
+    }
+    private static KeyMapping sneakToggleKey() {
+        return NativeKeyBindings.TOGGLE_SNEAK.isUnbound() ? Minecraft.getInstance().options.keyShift : NativeKeyBindings.TOGGLE_SNEAK;
     }
     public static boolean interactive() {
         Minecraft mc = Minecraft.getInstance();
         return mc.player != null && mc.level != null && !mc.player.isDeadOrDying()
             && mc.gui.screen() == null && NativeWorldVerification.windowActive() && !mc.isPaused();
     }
-    public static void reset(boolean clearToggles) {
-        if (clearToggles) {
-            stopOwnedSprint();
-            if (module("ToggleSprint") instanceof ToggleSprintModule sprint && sprint.isToggled()) sprint.onToggleKey();
-            if (module("ToggleSneak") instanceof ToggleSneakModule sneak && sneak.isToggled()) sneak.onToggleKey();
-        }
+    /** Toggle Sprint &amp; Sneak's toggles survive all of this: deaths, worlds, servers and restarts never clear them. */
+    public static void reset(boolean newPlayer) {
         // Another player or world starts unzoomed; anything else (a screen, focus loss) zooms out smoothly.
-        if (clearToggles) zoom().reset(); else zoom().release();
+        if (newPlayer) zoom().reset(); else zoom().release();
         sprintHeld = sneakHeld = false;
     }
     public static void reset() {
@@ -58,69 +75,47 @@ public final class NativeFeatures {
             player = currentPlayer;
             return;
         }
-        if (!interactive()) {
-            zoom().release();
-            return;
-        }
-        if (!enabled("ToggleSprint") && module("ToggleSprint") instanceof ToggleSprintModule sprint) {
-            stopOwnedSprint();
-            sprint.evaluateSprint(false);
-            sprintHeld = false;
-        }
-        if (!enabled("ToggleSneak") && module("ToggleSneak") instanceof ToggleSneakModule sneak) {
-            sneak.evaluateSneak(false);
-            sneakHeld = false;
-        }
+        if (!interactive()) zoom().release();
     }
     public static void key(KeyEvent event, int action) {
         if (action == InputConstants.REPEAT) return;
         if (!interactive()) { reset(); return; }
         boolean down = action == InputConstants.PRESS;
-        Minecraft mc = Minecraft.getInstance();
         if (NativeKeyBindings.ZOOM.matches(event)) zoom().key(down);
-        if (mc.options.keySprint.matches(event)) sprintKey(down);
-        if (mc.options.keyShift.matches(event)) sneakKey(down);
+        if (sprintToggleKey().matches(event)) sprintKey(down);
+        if (sneakToggleKey().matches(event)) sneakKey(down);
     }
     public static void mouse(MouseButtonEvent event, int action) {
         if (!interactive()) { reset(); return; }
         boolean down = action == InputConstants.PRESS;
-        Minecraft mc = Minecraft.getInstance();
         if (NativeKeyBindings.ZOOM.matchesMouse(event)) zoom().key(down);
-        if (mc.options.keySprint.matchesMouse(event)) sprintKey(down);
-        if (mc.options.keyShift.matchesMouse(event)) sneakKey(down);
+        if (sprintToggleKey().matchesMouse(event)) sprintKey(down);
+        if (sneakToggleKey().matchesMouse(event)) sneakKey(down);
     }
     private static void sprintKey(boolean down) {
-        if (down && !sprintHeld && module("ToggleSprint") instanceof ToggleSprintModule sprint
-            && sprint.isEnabled() && mode(sprint) == 0) sprint.onToggleKey();
+        if (down && !sprintHeld && toggles().pressSprint()) ConfigManager.save();
         sprintHeld = down;
     }
     private static void sneakKey(boolean down) {
-        if (down && !sneakHeld && module("ToggleSneak") instanceof ToggleSneakModule sneak
-            && sneak.isEnabled() && mode(sneak) == 0) sneak.onToggleKey();
+        if (down && !sneakHeld && toggles().pressSneak()) ConfigManager.save();
         sneakHeld = down;
     }
+    /**
+     * KeyboardInput.tick, every player tick (screens open too, as vanilla's own toggle options): the Sprint and Sneak keys as
+     * Toggle Sprint &amp; Sneak reads them. LocalPlayer.aiStep then applies its own sprint rules to them, as to held keys.
+     */
     public static Input movement(Input original) {
-        if (!interactive()) { return original; }
-        boolean shift = original.shift(), sprinting = original.sprint();
-        if (module("ToggleSneak") instanceof ToggleSneakModule sneak && sneak.isEnabled()) {
-            // Use physical hold state in Hold mode, independent of vanilla's toggle preference.
-            shift = sneak.evaluateSneak(mode(sneak) == 1 && sneakHeld);
-        }
-        if (module("ToggleSprint") instanceof ToggleSprintModule sprint && sprint.isEnabled()) {
-            sprinting = sprint.evaluateSprint(shift);
-            // Vanilla continues sprinting after the input is released; explicitly end our latch.
-            if (sprintRequested && !sprinting) stopOwnedSprint();
-            sprintRequested = sprinting;
-        }
+        ToggleSprintModule toggles = toggles();
+        boolean separateSprint = !NativeKeyBindings.TOGGLE_SPRINT.isUnbound();
+        boolean shift = toggles.sneakInput(original.shift(), !NativeKeyBindings.TOGGLE_SNEAK.isUnbound());
+        boolean sprinting = toggles.sprintInput(original.sprint(), separateSprint, shift);
+        var player = Minecraft.getInstance().player;
+        // Vanilla keeps sprinting after the key is released: a toggle that ends stops it, once.
+        if (toggles.sprintEnded(original.sprint(), separateSprint, shift) && player != null) player.setSprinting(false);
+        toggles.observe(player != null && player.isSprinting(), shift, original.sprint());
         if (shift == original.shift() && sprinting == original.sprint()) return original;
         return new Input(original.forward(), original.backward(), original.left(), original.right(),
             original.jump(), shift, sprinting);
-    }
-    private static void stopOwnedSprint() {
-        if (sprintRequested && Minecraft.getInstance().player != null) {
-            Minecraft.getInstance().player.setSprinting(false);
-        }
-        sprintRequested = false;
     }
     /** MouseHandler.onScroll: true when Zoom used the scroll, so the hotbar does not move. */
     public static boolean scroll(double amount) {
