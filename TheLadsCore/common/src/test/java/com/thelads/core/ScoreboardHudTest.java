@@ -323,11 +323,11 @@ class ScoreboardHudTest {
         onlyScoreboard();
         DraggableHudScreen editor = new DraggableHudScreen(() -> {});
         editor.render(graphics, 0, 0);
-        assertTrue(editor.mouseClicked(142, 132, 0));
+        assertTrue(editor.mouseClicked(editor.screenX(142), editor.screenY(132), 0));
         assertEquals(140, scoreboard.getDisplayX(graphics));
         assertEquals(130, scoreboard.getDisplayY(graphics));
-        editor.mouseDragged(242, 232, 0);
-        editor.mouseReleased(242, 232, 0);
+        editor.mouseDragged(editor.screenX(242), editor.screenY(232), 0);
+        editor.mouseReleased(editor.screenX(242), editor.screenY(232), 0);
         assertEquals(240, scoreboard.getDisplayX(graphics));
         assertEquals(230, scoreboard.getDisplayY(graphics));
         assertArrayEquals(new int[] {200, 250}, HudSettings.getInstance().getPosition("Scoreboard"));
