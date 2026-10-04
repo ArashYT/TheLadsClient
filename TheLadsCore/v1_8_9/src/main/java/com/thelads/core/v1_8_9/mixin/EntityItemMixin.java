@@ -70,11 +70,11 @@ public abstract class EntityItemMixin extends Entity implements ItemPhysics.Hold
 
     /**
      * Cactus spares items; a fire-proof item takes no fire damage (EntityItem.dealFireDamage, which lava and fire in its box call
-     * every tick, skips the isImmuneToFire test that Entity's own has).
+     * every tick, skips the isImmuneToFire test that Entity's own has). On both sides: 1.8.9 hurts the client's copy too, which
+     * would vanish while the server's lives on.
      */
     @Inject(method = "attackEntityFrom", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsSpared(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
-        if (worldObj.isRemote) return;
         if (ladsFireproof && source.isFireDamage()) { cir.setReturnValue(false); return; }
         ItemPhysicsModule module = source == DamageSource.cactus ? ItemPhysics189.rules(worldObj) : null;
         if (module != null && module.cactus.get()) cir.setReturnValue(false);
