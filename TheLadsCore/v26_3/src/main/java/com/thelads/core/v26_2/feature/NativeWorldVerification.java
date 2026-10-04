@@ -128,6 +128,7 @@ public final class NativeWorldVerification {
             ServerFeaturesCapture.tick(gameDirectory, captureReady && (ServerFeaturesCapture.busy() || !captureBusy()));
             // After the Chat module's own capture, so its message does not land among the heads.
             ChatHeadsCapture.tick(captureReady && chatCaptureStep >= 2 && (ChatHeadsCapture.busy() || !captureBusy()));
+            F3FovCapture.tick(gameDirectory, captureReady && (F3FovCapture.busy() || !captureBusy()));
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
@@ -225,6 +226,7 @@ public final class NativeWorldVerification {
         ZoomCapture.frame(target, gameDirectory);
         ServerFeaturesCapture.frame(target, gameDirectory);
         ChatHeadsCapture.frame(target, gameDirectory);
+        F3FovCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter || ChatHeadsCapture.pending()) return;
         captureStarted = true;
         try {
@@ -358,8 +360,8 @@ public final class NativeWorldVerification {
     }
     /** True while any in-world QA capture is running. */
     private static boolean captureBusy() {
-        return KillBannerCapture.busy() || OldAnimationsCapture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy()
-            || ChatHeadsCapture.busy();
+        return KillBannerCapture.busy() || OldAnimationsCapture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
+            ChatHeadsCapture.busy() || F3FovCapture.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();

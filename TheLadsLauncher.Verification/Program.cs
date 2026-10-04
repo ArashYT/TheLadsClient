@@ -132,6 +132,8 @@ bool serverCaptureVerification = autoWorldVerification && !capabilities.Forge &&
 // Every version: Chat Heads with own, second-player and ranked server chat, photographed closed, open, aligned and off (Fabric:
 // ChatHeadsCapture, which the world capture waits for; 1.8.9: ChatHeadsProbe189 alone in the self-test's QA world).
 bool chatHeadsCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_CHATHEADS") == "1";
+// Better F3 frames and Custom FOV values in the QA world (Fabric: F3FovCapture; 1.8.9: a focused self-test, Probe170F3Fov).
+bool f3FovCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_F3FOV") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -266,6 +268,8 @@ string zoomCaptureRequest = Path.Combine(directory, ".lads-qa-capture-zoom");
 if (autoWorldVerification && File.Exists(zoomCaptureRequest)) File.Delete(zoomCaptureRequest);
 string serverCaptureRequest = Path.Combine(directory, ".lads-qa-capture-server");
 if (autoWorldVerification && File.Exists(serverCaptureRequest)) File.Delete(serverCaptureRequest);
+string f3FovCaptureRequest = Path.Combine(directory, ".lads-qa-capture-f3fov");
+if (autoWorldVerification && File.Exists(f3FovCaptureRequest)) File.Delete(f3FovCaptureRequest);
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed" })
         File.Delete(Path.Combine(directory, flag));
@@ -315,7 +319,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
     "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED", "Lads server features capture FAILED",
-    "Lads chat heads capture FAILED",
+    "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -467,6 +471,7 @@ try
         // pause-menu button, the 1.8.9 bridge, the launcher catalog). Every flag below is the Fabric Core's.
         if (autoWorldVerification) AddJvm("-Dthelads.verify189Core=true");
         if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
+        if (f3FovCaptureVerification) AddJvm("-Dthelads.verify189F3Fov=true");
     }
     else
     {
@@ -552,7 +557,7 @@ try
             foreach (string marker in requiredWorldProbes)
                 if (line.Contains(marker) && (Passed(line) || marker == "Lads food server sync END:")) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
-                "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads server features capture END:" })
+                "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads server features capture END:", "Lads F3/FOV capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -639,7 +644,8 @@ try
             bool oldAnimDone = !oldAnimCaptureVerification || passedMarkers.ContainsKey("Lads 1.7 animations capture END:");
             bool zoomDone = !zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:");
             bool serverDone = !serverCaptureVerification || passedMarkers.ContainsKey("Lads server features capture END:");
-            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && serverDone)
+            bool f3FovDone = !f3FovCaptureVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads F3/FOV capture END:");
+            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && serverDone && f3FovDone)
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -670,7 +676,8 @@ try
                     (bannerCaptureVerification, bannerCaptureRequest, "Fire every kill banner skin in the QA world and capture its frames."),
                     (oldAnimCaptureVerification, oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames."),
                     (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames."),
-                    (serverCaptureVerification, serverCaptureRequest, "Check the multiplayer features in the QA world and capture their frames.") })
+                    (serverCaptureVerification, serverCaptureRequest, "Check the multiplayer features in the QA world and capture their frames."),
+                    (f3FovCaptureVerification && !capabilities.Forge, f3FovCaptureRequest, "Capture Better F3 frames and log Custom FOV values.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -773,6 +780,8 @@ try
             "The requested Lads Zoom capture did not pass. Inspect production-smoke.log.");
         Require(!serverCaptureVerification || passedMarkers.ContainsKey("Lads server features capture END:"),
             "The requested multiplayer features capture did not pass. Inspect production-smoke.log.");
+        Require(!f3FovCaptureVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads F3/FOV capture END:"),
+            "The requested Better F3 / Custom FOV capture did not pass. Inspect production-smoke.log.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)
