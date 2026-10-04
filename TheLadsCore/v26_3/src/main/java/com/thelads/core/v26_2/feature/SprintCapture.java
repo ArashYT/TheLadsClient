@@ -360,6 +360,10 @@ final class SprintCapture {
             sp.getFoodData().setFoodLevel(20);
             sp.setHealth(sp.getMaxHealth());
             if (modeBefore != null) sp.setGameMode(modeBefore);
+            // Off the corridor (its floor is gone again) onto the ground: the next run must not start in mid-air.
+            var ground = sp.level().getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, sp.blockPosition());
+            sp.resetFallDistance();
+            sp.teleportTo(sp.level(), ground.getX() + 0.5, ground.getY(), ground.getZ() + 0.5, java.util.Set.of(), sp.getYRot(), sp.getXRot(), false);
         });
         ToggleSprintModule toggles = NativeFeatures.toggles();
         OPTIONS.forEach(Option::load);
