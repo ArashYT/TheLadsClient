@@ -75,6 +75,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new Zoom189());
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.Autohide189());
         Crosshair189.register();
         MinecraftForge.EVENT_BUS.register(new Crosshair189());
         Reconnect189.register();
@@ -129,6 +130,8 @@ public class TheLadsCore189 {
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
         ModuleSupport.registerUnavailable("ShulkerBoxUtils", "Minecraft 1.8.9 has no shulker boxes; they were added in Minecraft 1.11.");
+        for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
+            ModuleSupport.registerUnavailable(voice, "Simple Voice Chat does not exist for Minecraft 1.8.9.");
         for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);
         // The launcher's 1.8.9 pack includes Resourcify (its own in-game browser, no Lads settings page).
         ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));

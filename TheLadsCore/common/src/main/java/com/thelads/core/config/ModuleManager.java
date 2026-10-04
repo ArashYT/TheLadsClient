@@ -84,6 +84,8 @@ public class ModuleManager {
         ping.addOption(new BoolOption("Color by ping", true));
 
         HudModule armor = hud("ArmorHUD", "Show armor pieces and durability.");
+        // 1.7.0: four hotbar slots by default; the 1.6.0 list stays available. New, so every config starts on the default.
+        armor.addOption(new DropdownOption("Style", 0, "Hotbar Slots", "List"));
         armor.addOption(new DropdownOption("Durability", 1, "Off", "Number", "Percent"));
         armor.addOption(new BoolOption("Attach to hotbar", true));
 
@@ -135,6 +137,11 @@ public class ModuleManager {
         tp.addOption(new DropdownOption("Max Packs", 2, "1", "2", "3", "4", "5", "6", "7", "8"));
         register(tp, Module.Category.HUD);
 
+        // 1.7.0: Simple Voice Chat's HUD as Lads elements; on, they replace its fixed-position icons (26.x only: no SVC on 1.8.9).
+        hud("Voice Chat", "Simple Voice Chat's talking, muted, deafened and disconnected icon.").addOption(new BoolOption("Show label", true));
+        getModule("Voice Chat").setEnabled(true);
+        hud("Voice Chat Group", "The players in your Simple Voice Chat group; talking players turn green.").setEnabled(true);
+
         HudModule pot = hud("Potion Effects", "Show your active potion effects.");
         pot.addOption(new BoolOption("Show duration", true));
         pot.addOption(new BoolOption("Show when empty", false));
@@ -179,6 +186,9 @@ public class ModuleManager {
         chatMod.addOption(new BoolOption("Timestamps", false));
         chatMod.addOption(new BoolOption("Hide Signing Indicators", true));
         chatMod.addOption(new BoolOption("Screenshot Link Buttons", true));
+        // 1.7.0, both on by default: no 100-line history cap (ChatHistory), and chat text with its shadow.
+        chatMod.addOption(new BoolOption("Infinite History", true));
+        chatMod.addOption(new BoolOption("Text Shadow", true));
         chatMod.setEnabled(true);
         register(chatMod, Module.Category.HUD);
 
@@ -192,6 +202,8 @@ public class ModuleManager {
         sb.addOption(new SliderOption("Y Offset", 0, -40, 40, 20));
         sb.addOption(new DropdownOption("Background", 0, "Default", "Dark", "Light", "Off"));
         sb.addOption(new BoolOption("Text Shadow", true));
+        // 1.7.0: the scoreboard shows its own colours unless this is on (1.6.0 always tinted it with the HUD colour).
+        sb.addOption(new BoolOption("Custom Text Color", false));
         sb.addOption(new BoolOption("Hide Red Numbers", false));
         sb.addOption(new BoolOption("Hide Sequential Only", false));
         register(sb, Module.Category.HUD);

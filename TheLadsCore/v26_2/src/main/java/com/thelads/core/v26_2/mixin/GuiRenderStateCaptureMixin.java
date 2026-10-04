@@ -30,8 +30,12 @@ public class GuiRenderStateCaptureMixin {
     private void lads$text(GuiTextRenderState text, CallbackInfo ci) { HudCapture.record(state -> state.addText(text)); }
 
     @Inject(method = "addPicturesInPictureState", at = @At("HEAD"), require = 1)
-    private void lads$picture(PictureInPictureRenderState picture, CallbackInfo ci) { HudCapture.record(state -> state.addPicturesInPictureState(picture)); }
+    private void lads$picture(PictureInPictureRenderState picture, CallbackInfo ci) { HudCapture.record(state -> HudCapture.replayPicture(state, picture)); }
 
+    /** Recorded unfaded whichever HEAD injector runs first: the replay fades it again in its recorded Autohide opacity (HudCapture). */
     @Inject(method = "addGuiElement", at = @At("HEAD"), require = 1)
-    private void lads$element(GuiElementRenderState element, CallbackInfo ci) { HudCapture.record(state -> state.addGuiElement(element)); }
+    private void lads$element(GuiElementRenderState element, CallbackInfo ci) {
+        GuiElementRenderState plain = element instanceof com.thelads.core.v26_2.feature.FadedElement faded ? faded.element() : element;
+        HudCapture.record(state -> state.addGuiElement(plain));
+    }
 }

@@ -38,6 +38,8 @@ public final class HudDefaults {
             case "Hunger" -> {x=w-ew-5;y=h-eh-42;}
             case "XP" -> {x=w-ew-5;y=h-eh-22;}
             case "TexturePacks" -> {x=w-ew-5;y=h-eh-5;}
+            case "Voice Chat" -> {x=w/2+99;y=h-eh-1;}
+            case "Voice Chat Group" -> {x=4;y=4;}
             case com.thelads.core.modules.ToggleSprintModule.NAME -> {x=5;y=h-eh-64;}
             default -> {return null;}
         }

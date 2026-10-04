@@ -32,6 +32,9 @@ final class RecordingGraphics implements LadsGraphics {
     @Override public void drawHead(String username, String uuid, int x, int y, int size) { ops.add(g -> g.drawHead(username, uuid, x, y, size)); }
     @Override public void drawPlayerModel(int x, int y, int width, int height, boolean editor) { ops.add(g -> g.drawPlayerModel(x, y, width, height, editor)); }
     @Override public void drawArmorItem(int index, int x, int y, boolean preview) { ops.add(g -> g.drawArmorItem(index, x, y, preview)); }
+    @Override public void drawHotbarSlots(int x, int y, int slots) { ops.add(g -> g.drawHotbarSlots(x, y, slots)); }
+    @Override public void drawArmorSlot(int slot, int x, int y, boolean preview) { ops.add(g -> g.drawArmorSlot(slot, x, y, preview)); }
+    @Override public void drawSprite(String sprite, int x, int y, int size) { ops.add(g -> g.drawSprite(sprite, x, y, size)); }
     @Override public void drawBossBars(int x, int y, int max, boolean names, boolean preview) { ops.add(g -> g.drawBossBars(x, y, max, names, preview)); }
 
     @Override public int textWidth(String text) { return target.textWidth(text); }

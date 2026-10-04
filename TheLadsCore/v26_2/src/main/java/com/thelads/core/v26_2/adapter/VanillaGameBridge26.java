@@ -14,6 +14,7 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     @Override public boolean hasMinimap(){return com.thelads.core.v26_2.feature.MinimapIntegration.available();}
     @Override public int[] minimapSize(){return com.thelads.core.v26_2.feature.MinimapIntegration.size();}
     @Override public void positionMinimap(int x,int y){com.thelads.core.v26_2.feature.MinimapIntegration.position(x,y);}
+    @Override public VoiceChatState voiceChat(){return com.thelads.core.v26_2.feature.VoiceChatIntegration.state();}
     @Override public boolean hasPaperDollRenderer() {
         return com.thelads.core.v26_2.feature.paperdoll.NativePaperDoll.active();
     }
@@ -57,12 +58,30 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         var format = objective.numberFormatOrDefault(net.minecraft.network.chat.numbers.StyledFormat.SIDEBAR_DEFAULT);
         List<ScoreLine> lines = board.listPlayerScores(objective).stream()
             .filter(score -> !score.isHidden()).sorted(SCORE_ORDER).limit(15)
-            .map(score -> new ScoreLine(net.minecraft.world.scores.PlayerTeam.formatNameForTeam(
-                board.getPlayersTeam(score.owner()), score.ownerName()).getString(),
-                score.formatValue(format).getString())).toList();
+            .map(score -> new ScoreLine(legacy(net.minecraft.world.scores.PlayerTeam.formatNameForTeam(
+                board.getPlayersTeam(score.owner()), score.ownerName())),
+                legacy(score.formatValue(format)))).toList();
         // Keep blank/custom number-format display text; never substitute the raw integer score.
-        scoreboardSnapshot = new ScoreboardSnapshot(objective.getDisplayName().getString(), lines);
+        scoreboardSnapshot = new ScoreboardSnapshot(legacy(objective.getDisplayName()), lines);
         return scoreboardSnapshot;
+    }
+
+    /** The text with its colours and styles as section-sign codes, which the Lads HUD draws (getString() dropped them before 1.7.0). */
+    private static String legacy(net.minecraft.network.chat.Component text) {
+        StringBuilder out = new StringBuilder();
+        text.visit((style, part) -> {
+            if (part.isEmpty()) return java.util.Optional.empty();
+            out.append("\u00a7r");
+            if (style.getColor() != null) out.append('\u00a7').append(com.thelads.core.client.LegacyText.code(style.getColor().getValue()));
+            if (style.isBold()) out.append("\u00a7l");
+            if (style.isItalic()) out.append("\u00a7o");
+            if (style.isUnderlined()) out.append("\u00a7n");
+            if (style.isStrikethrough()) out.append("\u00a7m");
+            if (style.isObfuscated()) out.append("\u00a7k");
+            out.append(part);
+            return java.util.Optional.empty();
+        }, net.minecraft.network.chat.Style.EMPTY);
+        return out.toString();
     }
 
     @Override
