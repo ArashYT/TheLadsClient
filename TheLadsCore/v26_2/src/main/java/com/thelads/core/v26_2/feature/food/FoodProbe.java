@@ -48,8 +48,8 @@ public final class FoodProbe {
             require(sprites(apple).equals(List.of("hud/food_full", "hud/food_full", "theladscore:hud/food_saturation", "theladscore:hud/food_saturation")),
                 "apple icons: two shanks, two saturation outlines " + sprites(apple));
             require(sprites(foodLine(new ItemStack(Items.ROTTEN_FLESH))).getFirst().equals("hud/food_full_hunger"), "rotten flesh shows the hunger effect's icons");
-            require(sprites(foodLine(new ItemStack(Items.COOKED_COD))).contains("hud/food_half") == false
-                && sprites(foodLine(new ItemStack(Items.BREAD))).contains("hud/food_half"), "odd hunger ends in a half shank (bread 5)");
+            require(!sprites(foodLine(new ItemStack(Items.COOKED_BEEF))).contains("hud/food_half")
+                && sprites(foodLine(new ItemStack(Items.BREAD))).contains("hud/food_half"), "even hunger is whole shanks (cooked beef 8), odd ends in a half (bread 5)");
             require(foodLine(new ItemStack(Items.DIAMOND_SWORD)) == null, "non-food has no food line");
             var hidden = new ItemStack(Items.APPLE);
             hidden.set(DataComponents.TOOLTIP_DISPLAY, new TooltipDisplay(false, new java.util.LinkedHashSet<>(List.of(DataComponents.FOOD))));
