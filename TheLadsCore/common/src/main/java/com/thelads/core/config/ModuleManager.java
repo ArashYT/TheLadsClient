@@ -169,6 +169,7 @@ public class ModuleManager {
         vb.addOption(new DropdownOption("Intensity", 1, "Low", "Normal", "High"));
         register(vb, Module.Category.MECHANIC);
         register(new OldAnimationsModule(), Module.Category.MECHANIC);
+        register(new ItemPhysicsModule(), Module.Category.MECHANIC);
 
         register(new DynamicFPSModule(), Module.Category.MECHANIC);
         register(new ToggleNametagsModule(), Module.Category.MECHANIC);

@@ -83,6 +83,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new Tooltips189());
         MinecraftForge.EVENT_BUS.register(new Clumps189());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.ItemPhysics189());
         MinecraftForge.EVENT_BUS.register(new SignalLoss189());
         MinecraftForge.EVENT_BUS.register(new FoodOverlay189());
         MinecraftForge.EVENT_BUS.register(new RenderScale189());
@@ -105,7 +106,9 @@ public class TheLadsCore189 {
         "Nametags",
         // OldAnimations189 through the ItemRenderer, EntityRenderer, LayerHeldItem, ModelBiped, LayerArmorBase, RenderEntityItem,
         // RenderFish and GuiIngameForge mixins; the menu hides No attack-cooldown dip and Low Shield, which 1.8.9 has nothing for.
-        OldAnimationsModule.NAME
+        OldAnimationsModule.NAME,
+        // ItemPhysics189 through the EntityItem, RenderEntityItem and Minecraft mixins and Forge's item events.
+        com.thelads.core.modules.ItemPhysicsModule.NAME
     };
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
