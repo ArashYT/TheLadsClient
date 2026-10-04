@@ -12,7 +12,7 @@ public final class AsyncModule extends Module {
     private final DropdownOption threads = addOption(new DropdownOption("Threads", 0, THREADS));
 
     public AsyncModule() {
-        super(NAME, "Ticks mobs and items that are far apart on several CPU cores in singleplayer and LAN worlds you host. "
+        super(NAME, "Experimental. Ticks mobs and items that are far apart on several CPU cores in singleplayer and LAN worlds you host. "
             + "Players, riders, projectiles, bosses and raids stay on the main thread. If anything goes wrong it switches back "
             + "to normal ticking until you rejoin.");
     }

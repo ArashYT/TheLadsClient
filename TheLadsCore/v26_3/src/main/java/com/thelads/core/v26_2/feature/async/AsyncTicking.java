@@ -66,6 +66,8 @@ public final class AsyncTicking {
     private static int poolSize;
     /** QA counters. */
     static final AtomicLong PARALLEL_TICKS = new AtomicLong(), PARALLEL_ENTITIES = new AtomicLong(), REGIONS = new AtomicLong(), PHASES = new AtomicLong();
+    /** QA: time spent in the entity loop of every dimension, Async on or off. */
+    static final AtomicLong LOOP_NANOS = new AtomicLong();
 
     private AsyncTicking() {}
 
@@ -107,6 +109,11 @@ public final class AsyncTicking {
 
     /** ServerLevel.tick's entity loop. {@code action} is vanilla's per-entity lambda, run unchanged on whichever thread. */
     public static void tickEntities(ServerLevel level, EntityTickList list, Consumer<Entity> action, Operation<Void> original) {
+        long start = System.nanoTime();
+        try { tick(level, list, action, original); } finally { LOOP_NANOS.addAndGet(System.nanoTime() - start); }
+    }
+
+    private static void tick(ServerLevel level, EntityTickList list, Consumer<Entity> action, Operation<Void> original) {
         AsyncModule module = ModuleManager.getInstance().getModule(AsyncModule.NAME) instanceof AsyncModule async ? async : null;
         int threads = module == null ? 1 : module.threads(Runtime.getRuntime().availableProcessors());
         // An active profiler (F3 profiling, /debug) is one per thread: its records would be torn apart.
