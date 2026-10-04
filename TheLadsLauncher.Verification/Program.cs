@@ -316,6 +316,29 @@ bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false
 bool menuCaptureRequested = false, hudCaptureRequested = false, worldCapturesRequested = false, windowFound = false, snapshotInvalid = false;
 bool resolutionCaptureRequested = false;
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+// END markers whose FAILED line was logged instead ("Lads x capture END:" -> "Lads x capture FAILED"): that capture is settled, so one
+// failure no longer ends the run before the other requested captures have finished. The run still fails (nativeProbeFailed, Require).
+var failedCaptures = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:",
+    "Lads kill banner capture END:", "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads server features capture END:",
+    "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
+    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:"];
+// A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
+bool Settled(bool requested, params string[] ends) => !requested || ends.All(passedMarkers.ContainsKey) || ends.Any(failedCaptures.ContainsKey);
+bool CapturesSettled(bool resolutionRequested) =>
+    Settled(menuCaptureVerification, "Lads menu capture END:", "Lads mods view capture END:")
+    && Settled(hudCaptureVerification, "Lads HUD capture END:", "Lads HUD editor probe END:")
+    && Settled(bannerCaptureVerification, "Lads kill banner capture END:")
+    && Settled(oldAnimCaptureVerification, "Lads 1.7 animations capture END:")
+    && Settled(zoomCaptureVerification, "Lads zoom capture END:")
+    && Settled(serverCaptureVerification, "Lads server features capture END:")
+    && Settled(f3FovCaptureVerification && !capabilities.Forge, "Lads F3/FOV capture END:")
+    && Settled(hudInfoCaptureVerification, "Lads HUD info capture END:")
+    && Settled(raisedCaptureVerification, "Lads raised capture END:")
+    && Settled(mouseTweaksCaptureVerification, "Lads mouse tweaks capture END:")
+    && Settled(resolutionRequested, "Lads resolution capture END:")
+    && Settled(lightsCaptureVerification, "Lads dynamic lights capture END:")
+    && Settled(appleSkinSyncVerification, "Lads AppleSkin sync capture END:");
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
 LoadedModList modList = capabilities.Forge ? new ForgeModList() : new FabricModList();
@@ -584,6 +607,8 @@ try
             if (line.Contains($"TheLadsCore {version} initialized successfully")) initialized = true;
             if (line.Contains("Lads integration write probe END:") && Passed(line)) settingsProbePassed = true;
             if (failureMarkers.Any(line.Contains)) nativeProbeFailed = true;
+            foreach (string end in captureEnds)
+                if (line.Contains(end.Replace(" END:", " FAILED"))) failedCaptures.TryAdd(end, 0);
             if (line.Contains("Lads 1.3.4 screenshots probe END:") && Passed(line)) screenshots134Passed = true;
             if (line.Contains("Lads 1.3.4 replay probe END:") && Passed(line)) replay134Passed = true;
             if (line.Contains("Lads Flashback probe END:") && Passed(line)) flashbackPassed = true;
@@ -680,20 +705,10 @@ try
         }
         if (autoWorldVerification && requiredTitleProbes.Concat(requiredWorldProbes).All(passedMarkers.ContainsKey) && CoreChecksDone())
         {
-            bool menuDone = !menuCaptureVerification || (passedMarkers.ContainsKey("Lads menu capture END:") && passedMarkers.ContainsKey("Lads mods view capture END:"));
-            bool hudDone = !hudCaptureVerification || (passedMarkers.ContainsKey("Lads HUD capture END:") && passedMarkers.ContainsKey("Lads HUD editor probe END:"));
-            bool bannerDone = !bannerCaptureVerification || passedMarkers.ContainsKey("Lads kill banner capture END:");
-            bool oldAnimDone = !oldAnimCaptureVerification || passedMarkers.ContainsKey("Lads 1.7 animations capture END:");
-            bool zoomDone = !zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:");
-            bool serverDone = !serverCaptureVerification || passedMarkers.ContainsKey("Lads server features capture END:");
-            bool f3FovDone = !f3FovCaptureVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads F3/FOV capture END:");
-            bool hudInfoDone = !hudInfoCaptureVerification || passedMarkers.ContainsKey("Lads HUD info capture END:");
-            bool raisedDone = !raisedCaptureVerification || passedMarkers.ContainsKey("Lads raised capture END:");
-            bool mouseTweaksDone = !mouseTweaksCaptureVerification || passedMarkers.ContainsKey("Lads mouse tweaks capture END:");
-            bool resolutionDone = !resolutionCaptureVerification || passedMarkers.ContainsKey("Lads resolution capture END:");
-            bool lightsDone = !lightsCaptureVerification || passedMarkers.ContainsKey("Lads dynamic lights capture END:");
-            bool appleSkinSyncDone = !appleSkinSyncVerification || passedMarkers.ContainsKey("Lads AppleSkin sync capture END:");
-            if (menuDone && hudDone && bannerDone && oldAnimDone && zoomDone && serverDone && f3FovDone && hudInfoDone && raisedDone && mouseTweaksDone && resolutionDone && lightsDone && appleSkinSyncDone)
+            // Settled: passed, or failed (then the run fails at the end, after the other requested captures had their turn).
+            bool menuDone = Settled(menuCaptureVerification, "Lads menu capture END:", "Lads mods view capture END:");
+            bool hudDone = Settled(hudCaptureVerification, "Lads HUD capture END:", "Lads HUD editor probe END:");
+            if (CapturesSettled(resolutionCaptureVerification))
             {
                 if (Env("LADS_VERIFY_V134") == "1" && !screenshots134Passed)
                 {
@@ -713,7 +728,7 @@ try
                         Console.WriteLine("Requesting real Flashback recording, replay and PNG export.");
                     }
                 }
-                else if (flashbackVerification && !flashbackPassed)
+                else if (flashbackVerification && !flashbackPassed && !failedCaptures.ContainsKey("Lads Flashback probe END:"))
                 {
                     if (!flashbackRequested)
                     {
@@ -766,9 +781,11 @@ try
         }
         // Allow independent world/GPU probes to finish after a restored-state assertion fails.
         // The run still fails below; collecting their evidence avoids hiding subsequent defects.
+        // Once the world captures were asked for, every requested one (and a requested Flashback probe) settles first.
         if (nativeProbeFailed && (!autoWorldVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads native screenshots probe END:")
             || stopwatch.Elapsed > TimeSpan.FromSeconds(90))
-            && (!resolutionCaptureRequested || passedMarkers.ContainsKey("Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))) break;
+            && (Settled(resolutionCaptureRequested, "Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))
+            && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
             && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;
