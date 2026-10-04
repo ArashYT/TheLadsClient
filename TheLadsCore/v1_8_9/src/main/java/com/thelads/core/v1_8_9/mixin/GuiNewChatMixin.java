@@ -9,9 +9,16 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiNewChat;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.util.IChatComponent;
+import com.thelads.core.client.ChatHistory;
+import java.util.List;
+import net.minecraft.util.MathHelper;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Constant;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -28,6 +35,58 @@ public abstract class GuiNewChatMixin {
     @Unique private boolean ladsAnimating, ladsLinePushed;
     @Unique private int ladsLine;
     @Unique private float ladsFade = 1f;
+    @Shadow @Final private List<ChatLine> chatLines;
+    @Shadow @Final private List<ChatLine> drawnChatLines;
+    @Shadow private int scrollPos;
+    @Shadow public abstract int getLineCount();
+    @Shadow public abstract int getChatWidth();
+    @Shadow public abstract float getChatScale();
+    @Shadow public abstract void resetScroll();
+    /** Infinite History (ChatHistory): chatLines[0, ladsLaidOut) have their lines in drawnChatLines; -1 while every message has (vanilla). */
+    @Unique private int ladsLaidOut = -1;
+
+    /** Infinite History: the 100-message and 100-line caps become the ceiling. */
+    @ModifyConstant(method = "setChatLine", constant = @Constant(intValue = 100), require = 2)
+    private int ladsHistoryCap(int vanilla) {
+        return ChatHistory.limit(vanilla);
+    }
+
+    @Inject(method = "setChatLine", at = @At("TAIL"), require = 1)
+    private void ladsNewMessageLaidOut(IChatComponent message, int id, int updateCounter, boolean displayOnly, CallbackInfo ci) {
+        if (!displayOnly && ladsLaidOut >= 0) ladsLaidOut = Math.min(ladsLaidOut + 1, chatLines.size());
+    }
+
+    /** Vanilla drops the first message with this id from chatLines: one fewer laid out if it was among them. */
+    @Inject(method = "deleteChatLine", at = @At("HEAD"), require = 1)
+    private void ladsDeletedMessage(int id, CallbackInfo ci) {
+        for (int i = 0; i < chatLines.size() && i < ladsLaidOut; i++)
+            if (chatLines.get(i).getChatLineID() == id) { ladsLaidOut--; return; }
+    }
+
+    /** A resize or a chat setting lays out only the lines near the newest message, not the whole history. */
+    @Inject(method = "refreshChat", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsLazyRefresh(CallbackInfo ci) {
+        if (!ChatHistory.infinite()) {
+            ladsLaidOut = -1;
+            return;
+        }
+        ci.cancel();
+        drawnChatLines.clear();
+        resetScroll();
+        ladsLaidOut = 0;
+        ladsLayOut(getLineCount() + ChatHistory.AHEAD);
+    }
+
+    @Inject(method = "scroll", at = @At("HEAD"), require = 1)
+    private void ladsLayOutOlder(int amount, CallbackInfo ci) {
+        if (ChatHistory.infinite()) ladsLayOut(scrollPos + amount + getLineCount() + ChatHistory.AHEAD);
+    }
+
+    @Unique
+    private void ladsLayOut(int lines) {
+        if (ladsLaidOut < 0) return;
+        ladsLaidOut = Chat189.layOut(chatLines, ladsLaidOut, drawnChatLines, lines, MathHelper.floor_float(getChatWidth() / getChatScale()));
+    }
 
     @ModifyVariable(method = "printChatMessageWithOptionalDeletion", at = @At("HEAD"), argsOnly = true, require = 1)
     private IChatComponent ladsMessage(IChatComponent message) {
@@ -76,7 +135,8 @@ public abstract class GuiNewChatMixin {
 
     @Redirect(method = "drawChat", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/FontRenderer;drawStringWithShadow(Ljava/lang/String;FFI)I"), require = 1)
     private int ladsLineText(FontRenderer font, String text, float x, float y, int color) {
-        int width = font.drawStringWithShadow(text, x, y, ladsFaded(color));
+        // The Chat module's Text Shadow, on by default as in vanilla.
+        int width = font.drawString(text, x, y, ladsFaded(color), ChatHistory.shadow());
         if (ladsLinePushed) {
             ladsLinePushed = false;
             GlStateManager.popMatrix();

@@ -14,6 +14,8 @@ import net.minecraft.client.gui.screens.ChatScreen;
 /** Features owned by Lads, with no upstream mod configuration or runtime dependency. */
 public final class NativeQualityOfLife {
     private static boolean narratorWasDisabled;
+    /** True while the chat draws with the Chat module's Text Shadow off (ChatTextShadowMixin). */
+    public static boolean chatWithoutShadow;
     private NativeQualityOfLife() {}
 
     public static void register() {
@@ -24,6 +26,9 @@ public final class NativeQualityOfLife {
         ((com.thelads.core.config.ActionOption)module("Jade").getOption("Settings and addons")).setAction(()->{
             var mc=Minecraft.getInstance();mc.setScreenAndShow(new snownee.jade.gui.HomeConfigScreen(mc.gui.screen()));
         });
+        for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
+            if (VoiceChatIntegration.loaded()) ModuleSupport.registerBuiltIn(voice);
+            else ModuleSupport.registerUnavailable(voice, "Simple Voice Chat is not installed in this game.");
         NativeClientTools.register();
         NativeDiscordPresence.register();
         NativeConnectionStatus.register();

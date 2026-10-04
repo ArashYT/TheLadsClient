@@ -100,6 +100,7 @@ class HudNativeDataTest {
             }
         }
         savedElements = new ArrayList<>(HudManager.getInstance().getElements());
+        ((com.thelads.core.config.DropdownOption) ModuleManager.getInstance().getModule("ArmorHUD").getOption("Style")).setIndex(1); // List; Hotbar Slots: ArmorSlotsHudTest
         game = new Game();
         LadsGameBridge.set(game);
         graphics = new Graphics();

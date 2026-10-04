@@ -227,6 +227,28 @@ class ScoreboardHudTest {
         assertTrue(graphics.texts.stream().allMatch(text -> text.shadow() == shadow));
     }
 
+    /** 1.7.0: regular colours unless Custom Text Color; the shadow is the scoreboard's own option, on by default. */
+    @Test
+    void regularColoursByDefaultAndShadowIndependentOfTheGlobalSwitch() {
+        game.scoreboard = realObjective();
+        HudSettings.getInstance().setGlobalColor(0xFF33CCFF);
+        boolean globalShadow = HudSettings.getInstance().isTextShadow();
+        HudSettings.getInstance().setTextShadow(false);
+        try {
+            scoreboard.render(graphics);
+            assertEquals(0xFFFFFFFF, graphics.texts.get(0).color());
+            assertEquals(0xFFFFFFFF, graphics.texts.get(1).color());
+            assertEquals(0xFFFF5555, graphics.texts.get(2).color());
+            assertTrue(graphics.texts.stream().allMatch(Text::shadow));
+            graphics.texts.clear();
+            flag("Custom Text Color", true);
+            scoreboard.render(graphics);
+            assertEquals(0xFF33CCFF, graphics.texts.get(1).color());
+        } finally {
+            HudSettings.getInstance().setTextShadow(globalShadow);
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {50, 100, 125, 150})
     void registeredSizeScalesRealSidebarGeometry(int size) {

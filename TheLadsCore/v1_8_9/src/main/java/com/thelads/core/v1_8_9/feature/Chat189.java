@@ -1,6 +1,13 @@
 package com.thelads.core.v1_8_9.feature;
 
+import com.thelads.core.client.ChatHistory;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ChatLine;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.GuiUtilRenderComponents;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import net.minecraft.event.ClickEvent;
@@ -20,6 +27,17 @@ public final class Chat189 {
     public static long messages, animated;
 
     private Chat189() {}
+
+    /** Infinite History (GuiNewChatMixin): stored messages from laidOut on, wrapped as setChatLine wraps them, below the drawn lines. */
+    public static int layOut(List<ChatLine> chatLines, int laidOut, List<ChatLine> drawnLines, int lines, final int width) {
+        final FontRenderer font = Minecraft.getMinecraft().fontRendererObj;
+        return ChatHistory.layOut(chatLines, laidOut, drawnLines, lines, message -> true, message -> {
+            List<ChatLine> parts = new ArrayList<ChatLine>();
+            for (IChatComponent line : GuiUtilRenderComponents.splitText(message.getChatComponent(), width, font, false, false))
+                parts.add(new ChatLine(message.getUpdatedCounter(), line, message.getChatLineID()));
+            return parts;
+        });
+    }
 
     /** A new chat message (printChatMessageWithOptionalDeletion); refreshChat re-wraps stored messages without coming here. */
     public static IChatComponent message(IChatComponent message) {

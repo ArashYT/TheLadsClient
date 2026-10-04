@@ -58,7 +58,16 @@ public interface LadsGraphics {
 
     default void drawArmorItem(int index, int x, int y, boolean preview) {}
 
+    /** The left part of vanilla's hotbar frame with this many slots (each 20 px) and its right edge: 2 + 20 * slots by 22 px. */
+    default void drawHotbarSlots(int x, int y, int slots) {}
+
+    /** Armour slot 0 head to 3 feet: the worn piece with its durability bar, or a faint empty-slot icon (preview: a sample set). */
+    default void drawArmorSlot(int slot, int x, int y, boolean preview) {}
+
     default void drawBossBars(int x,int y,int max,boolean names,boolean preview) {}
+
+    /** A GUI atlas sprite such as "voicechat:icons/microphone", size by size; nothing where the version has no such sprite. */
+    default void drawSprite(String sprite, int x, int y, int size) {}
 
     int getScaledWidth();
 

@@ -99,6 +99,22 @@ public interface LadsGameBridge {
         }
     }
 
+    /** A Simple Voice Chat group member. */
+    record VoiceMember(String name, String uuid, boolean talking, boolean disabled) {}
+
+    /**
+     * What Simple Voice Chat's own HUD would show now: icon is a GUI sprite id ("voicechat:icons/microphone", ..._whisper, _off,
+     * speaker_off, disconnected) or null, and group the members of the player's group (empty outside one).
+     */
+    record VoiceChatState(String icon, List<VoiceMember> group) {
+        public VoiceChatState {
+            group = List.copyOf(group);
+        }
+    }
+
+    /** Null without Simple Voice Chat (1.8.9 has none). */
+    default VoiceChatState voiceChat() { return null; }
+
     /** Null when no sidebar objective is available. Never substitute demo data here. */
     default ScoreboardSnapshot getScoreboard() { return null; }
 

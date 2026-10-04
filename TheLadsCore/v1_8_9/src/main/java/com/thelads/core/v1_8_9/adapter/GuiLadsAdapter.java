@@ -76,6 +76,47 @@ public class GuiLadsAdapter implements LadsGraphics {
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
+    @Override
+    public void drawHotbarSlots(int x, int y, int slots) {
+        int width = 1 + slots * 20;
+        GlStateManager.enableBlend();
+        blit("minecraft:textures/gui/widgets.png", x, y, 0, 0, width, 22);
+        blit("minecraft:textures/gui/widgets.png", x + width, y, 181, 0, 1, 22);
+    }
+
+    /** Armour slot 0 head to 3 feet as the hotbar draws items, or the inventory's empty-slot icon, faint. */
+    @Override
+    public void drawArmorSlot(int slot, int x, int y, boolean preview) {
+        Minecraft mc = Minecraft.getMinecraft();
+        ItemStack stack = null;
+        if (preview) {
+            // The editor sample: a worn helmet, no chestplate, leggings and boots.
+            net.minecraft.item.Item[] items = {Items.chainmail_helmet, null, Items.iron_leggings, Items.golden_boots};
+            if (items[slot] != null) {
+                stack = new ItemStack(items[slot]);
+                if (slot != 2) stack.setItemDamage(stack.getMaxDamage() * (slot == 0 ? 9 : 2) / 10);
+            }
+        } else if (mc.thePlayer != null) stack = mc.thePlayer.inventory.armorInventory[3 - slot];
+        if (stack != null) {
+            if (recording != null) recording.add("item:" + stack.getDisplayName());
+            RenderItem items = mc.getRenderItem();
+            GlStateManager.enableDepth();
+            RenderHelper.enableGUIStandardItemLighting();
+            items.renderItemAndEffectIntoGUI(stack, x, y);
+            items.renderItemOverlays(font, stack, x, y);
+            RenderHelper.disableStandardItemLighting();
+            GlStateManager.disableDepth();
+            GlStateManager.enableAlpha();
+            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+            return;
+        }
+        mc.getTextureManager().bindTexture(net.minecraft.client.renderer.texture.TextureMap.locationBlocksTexture);
+        GlStateManager.enableBlend();
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 0.35f);
+        new Gui().drawTexturedModalRect(x, y, mc.getTextureMapBlocks().getAtlasSprite(net.minecraft.item.ItemArmor.EMPTY_SLOT_NAMES[slot]), 16, 16);
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+
     /** A damaged diamond sample in the editor when nothing is worn (as on 1.21.11). */
     static ItemStack armorStack(int index, boolean preview) {
         if (preview) {
