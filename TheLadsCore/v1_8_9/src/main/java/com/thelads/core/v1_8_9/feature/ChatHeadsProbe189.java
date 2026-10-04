@@ -8,6 +8,7 @@ import com.google.gson.JsonElement;
 import com.mojang.authlib.GameProfile;
 import com.thelads.core.client.ChatHeads;
 import com.thelads.core.config.BoolOption;
+import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
@@ -36,8 +37,9 @@ import net.minecraft.util.IChatComponent;
  * timestamps on. A second player, Lads_Tester (Lads nickname "Testy"), joins the client's tab list. Own chat goes to the integrated
  * server and back; the tester's chat, server lines with rank prefixes and colour codes (for the tester and, long enough to wrap,
  * for the own player), a similar unknown name and a plain line arrive as chat packets (Forge's chat event renames Lads nicknames
- * first). Each message's head is checked on its chat lines, then 170-chatheads-1-closed, -2-open (GuiChat), -3-aligned (Keep text
- * aligned) and -4-off (module off: 1.8.9's own chat) are saved. Everything is put back.
+ * first). Each message's head and where it goes (Position Before name, the default: just before the sender's name) are checked
+ * on its chat lines, then 170-chatheads-1-closed, -2-open (GuiChat), -3-startofline (Position Start of line, Keep text aligned)
+ * and -4-off (module off: 1.8.9's own chat) are saved. Everything is put back.
  */
 final class ChatHeadsProbe189 {
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(ChatHeadsProbe189::start, ChatHeadsProbe189::closed,
@@ -101,6 +103,11 @@ final class ChatHeadsProbe189 {
         int first = 0;
         for (ChatLine line : lines) if (((ChatHeads189.Line) line).ladsFirst() && ((ChatHeads189.Line) line).ladsHead() == own) first++;
         check(first == 2, "each of the own player's two messages has one first drawn line (" + first + ")");
+        check(ChatHeads.beforeName(), "Position defaults to Before name");
+        expectAt(lines, "my own chat", mc.getSession().getUsername());
+        expectAt(lines, "hi, this is", "Testy", TESTER.getName());
+        expectAt(lines, "[Admin]", "Testy");
+        expectAt(lines, "[VIP+]", mc.getSession().getUsername());
         screenshot(mc, "170-chatheads-1-closed");
         mc.displayGuiScreen(new GuiChat());
         return after(20);
@@ -109,12 +116,14 @@ final class ChatHeadsProbe189 {
     private static boolean open(Minecraft mc) {
         check(mc.currentScreen instanceof GuiChat, "the chat screen is open");
         screenshot(mc, "170-chatheads-2-open");
+        ((DropdownOption) module(ChatHeads.NAME).getOption(ChatHeads.POSITION)).setIndex(1);
         ((BoolOption) module(ChatHeads.NAME).getOption(ChatHeads.ALIGNED)).set(true);
         return after(20);
     }
 
     private static boolean aligned(Minecraft mc) {
-        screenshot(mc, "170-chatheads-3-aligned");
+        screenshot(mc, "170-chatheads-3-startofline");
+        ((DropdownOption) module(ChatHeads.NAME).getOption(ChatHeads.POSITION)).setIndex(0);
         ((BoolOption) module(ChatHeads.NAME).getOption(ChatHeads.ALIGNED)).set(false);
         mc.displayGuiScreen(null);
         module(ChatHeads.NAME).setEnabled(false);
@@ -145,6 +154,21 @@ final class ChatHeadsProbe189 {
         ChatLine line = text(lines, text);
         check(line != null && ((ChatHeads189.Line) line).ladsHead() == head, "\"" + (line == null ? text : line.getChatComponent().getUnformattedText())
             + "\" has the head of " + (head == null ? "nobody" : head.getGameProfile().getName()));
+    }
+
+    /** Before name: the head goes just before the first of {@code names} on the message's first drawn line. */
+    private static void expectAt(List<ChatLine> lines, String text, String... names) {
+        for (ChatLine line : lines) {
+            ChatHeads189.Line head = (ChatHeads189.Line) line;
+            String plain = line.getChatComponent().getUnformattedText().replaceAll("(?s)\u00a7.", "");
+            if (!head.ladsFirst() || !plain.contains(text)) continue;
+            int expected = Integer.MAX_VALUE;
+            for (String name : names) if (plain.indexOf(name) >= 0) expected = Math.min(expected, plain.indexOf(name));
+            check(expected > 0 && expected < plain.length() && head.ladsAt() == plain.codePointCount(0, expected),
+                "\"" + plain + "\": head before " + names[0] + " at " + head.ladsAt() + " (expected " + expected + ")");
+            return;
+        }
+        check(false, "a first drawn line containing \"" + text + "\"");
     }
 
     private static ChatLine text(List<ChatLine> lines, String text) {

@@ -56,6 +56,7 @@ class AsyncTickPlanTest {
 
     @Test void threadsLeaveOneCoreForRendering() {
         var module = new AsyncModule();
+        assertTrue(module.isEnabled(), "on by default (1.7.0 decision); it still falls back to normal ticking on its own");
         assertEquals(7, module.threads(8));
         assertEquals(1, module.threads(1));
         ((com.thelads.core.config.DropdownOption) module.getOption("Threads")).setIndex(3);
