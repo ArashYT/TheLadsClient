@@ -112,7 +112,7 @@ public class DraggableHudScreen {
 
     /** Toolbar across the top, element list on the left, and the largest preview with the game's aspect ratio in the rest. */
     private void layout(){
-        int side=viewportWidth>=560?150:viewportWidth>=400?124:104;
+        int side=viewportWidth>=560?150:viewportWidth>=400?132:112;
         panel=new Rect(GAP,TOP,side,Math.max(40,viewportHeight-TOP-STATUS));
         int ax=panel.right()+GAP+3,ay=TOP+3,aw=Math.max(16,viewportWidth-ax-GAP-3),ah=Math.max(16,viewportHeight-TOP-STATUS-6);
         scale=Math.min(aw/(double)Math.max(1,viewportWidth),ah/(double)Math.max(1,viewportHeight));
@@ -127,7 +127,7 @@ public class DraggableHudScreen {
         try{
             g.fill(p.x(),p.y(),p.right(),p.bottom(),0xFF14101A);
             g.drawGameView(p.x(),p.y(),p.width(),p.height());
-            if(showGrid){
+            if(showGrid&&isDragging()){
                 for(int x=0;x<viewportWidth;x+=GRID){int sx=(int)Math.round(screenX(x));g.fill(sx,p.y(),sx+1,p.bottom(),0x15FFFFFF);}
                 for(int y=0;y<viewportHeight;y+=GRID){int sy=(int)Math.round(screenY(y));g.fill(p.x(),sy,p.right(),sy+1,0x15FFFFFF);}
             }
@@ -192,7 +192,7 @@ public class DraggableHudScreen {
         int x=panel.x()+5,w=panel.width()-10,y=panel.y()+6;
         var listed=listed();
         String count=String.valueOf(listed.size());
-        g.drawText(MenuGraphics.fit(g,showAll?"ALL HUD ELEMENTS":"HUD ELEMENTS",w-g.textWidth(count)-4),x,y,LadsPalette.MUTED,false);
+        g.drawText(MenuGraphics.fit(g,"HUD ELEMENTS",w-g.textWidth(count)-4),x,y,LadsPalette.MUTED,false);
         g.drawText(count,x+w-g.textWidth(count),y,LadsPalette.MUTED,false);
         y+=13;
         String query=editingSearch?search+"_":search.isEmpty()?"Search...":search;
@@ -231,10 +231,12 @@ public class DraggableHudScreen {
         boolean hover=r.contains(mx,my)&&list.contains(mx,my),chosen=selected.contains(element),on=element.isEnabled();
         int fill=chosen?(hover?LadsPalette.PRIMARY_HOVER:LadsPalette.PRIMARY):hover?LadsPalette.HOVER:LadsPalette.CARD;
         MenuGraphics.round(g,r.x(),r.y(),r.width(),r.height(),fill);
-        int tile=r.y()+(r.height()-11)/2;
-        MenuGraphics.round(g,r.x()+3,tile,11,11,on?LadsPalette.CARD_ON:LadsPalette.CARD_OFF);
         String name=element.getModuleName();
-        g.drawCenteredText(name.substring(0,1).toUpperCase(Locale.ROOT),r.x()+9,tile+2,LadsPalette.TEXT,false);
+        // A monogram tile in the module's on/off colour, where the list is wide enough to keep the names whole.
+        int text=r.x()+5;
+        if(panel.width()>=130){int tile=r.y()+(r.height()-11)/2;text=r.x()+18;
+            MenuGraphics.round(g,r.x()+3,tile,11,11,on?LadsPalette.CARD_ON:LadsPalette.CARD_OFF);
+            g.drawCenteredText(name.substring(0,1).toUpperCase(Locale.ROOT),r.x()+9,tile+2,LadsPalette.TEXT,false);}
         Rect toggle=canToggle(element)?new Rect(r.right()-21,r.y()+(r.height()-10)/2,18,10):null;
         Rect gear=new Rect((toggle!=null?toggle.x():r.right())-14,r.y()+(r.height()-11)/2,11,11);
         if(toggle!=null){
@@ -244,7 +246,7 @@ public class DraggableHudScreen {
         int gx=gear.x()+5,gy=gear.y()+5,gearColor=gear.contains(mx,my)?LadsPalette.TEXT:LadsPalette.MUTED;
         g.fill(gx-3,gy-3,gx+4,gy+4,gearColor);g.fill(gx-1,gy-4,gx+2,gy+5,gearColor);g.fill(gx-4,gy-1,gx+5,gy+2,gearColor);
         g.fill(gx-1,gy-1,gx+2,gy+2,fill);
-        g.drawText(MenuGraphics.fit(g,name,gear.x()-r.x()-22),r.x()+18,r.y()+(r.height()-g.fontHeight())/2+1,on?LadsPalette.TEXT:LadsPalette.MUTED,false);
+        g.drawText(MenuGraphics.fit(g,name,gear.x()-text-4),text,r.y()+(r.height()-g.fontHeight())/2+1,on?LadsPalette.TEXT:LadsPalette.MUTED,false);
         rows.add(new Row(element,r,toggle,gear));
     }
 

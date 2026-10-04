@@ -229,12 +229,14 @@ public final class HudProbe {
         for (DraggableHudScreen.Control control : ui.controls()) clear &= !control.bounds().intersects(preview);
         check(clear && Math.abs(preview.width() / (double) preview.height() - editor.width / (double) editor.height) < 0.02
             && preview.right() <= editor.width && preview.bottom() <= editor.height, "the framed preview keeps the game's aspect, beside the controls " + preview);
-        check(ui.listedNames().equals(FIXTURE), "the list shows only the switched-on HUDs " + ui.listedNames());
+        // FIXTURE, plus the HUDs of built-in gameplay modules setup left on (Toggle Sprint/Sneak).
+        check(ui.listedNames().equals(switchedOn()) && ui.listedNames().containsAll(FIXTURE) && !ui.listedNames().contains("Memory"),
+            "the list shows only the switched-on HUDs " + ui.listedNames());
         List<String> previews = new ArrayList<>();
         for (HudElement element : HudManager.getInstance().getElements())
             if (ui.boundsFor(element.getModuleName()) != null) previews.add(element.getModuleName());
         java.util.Collections.sort(previews, String.CASE_INSENSITIVE_ORDER);
-        check(previews.equals(FIXTURE), "and previews only them " + previews);
+        check(previews.equals(switchedOn()), "and previews only them " + previews);
         Rect cps = bounds("CPS"), fps = bounds("FPS");
         check(cps.x() == 300 && cps.y() == 60 && fps.right() == editor.width && fps.y() == 10, "saved positions place the previews, FPS clamped to the right edge");
         check(ui.toggleBoundsFor("CPS") != null && ui.settingsBoundsFor("CPS") != null, "CPS's list row has an ON/OFF switch and a settings gear");
@@ -383,7 +385,7 @@ public final class HudProbe {
 
     /** Health dragged until it docks under Day, held there (no release) for the capture. */
     private static boolean plainDragging(Minecraft mc) throws Exception {
-        check(!editor.ui().isShowingAll() && editor.ui().listedNames().equals(FIXTURE), "Show disabled off: the four switched-on HUDs again");
+        check(!editor.ui().isShowingAll() && editor.ui().listedNames().equals(switchedOn()), "Show disabled off: only the switched-on HUDs again");
         Rect day = bounds("Day"), health = bounds("Health");
         int[] from = center(health);
         mouse(0, true, sx(from[0]), sy(from[1]));
@@ -518,6 +520,15 @@ public final class HudProbe {
     private static void rightClick(Rect bounds) throws Exception {
         mouse(1, true, sx(bounds.x() + 2), sy(bounds.y() + 2));
         mouse(1, false, sx(bounds.x() + 2), sy(bounds.y() + 2));
+    }
+
+    /** Names of the HUDs that are switched on and run on 1.8.9, in the list's order. */
+    private static List<String> switchedOn() {
+        List<String> names = new ArrayList<>();
+        for (HudElement element : HudManager.getInstance().getElements())
+            if (element.getModuleName() != null && element.isAvailable() && element.isEnabled()) names.add(element.getModuleName());
+        java.util.Collections.sort(names, String.CASE_INSENSITIVE_ORDER);
+        return names;
     }
 
     private static String positionOf(String name) {
