@@ -19,6 +19,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         ConfigManager.load();
         com.thelads.core.v26_2.feature.LocalSkins.initialize();
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
+        ModuleSupport.registerBuiltInRestart("Jasione");
         // These HUD controls are consumed by HudManager through the required native HUD mixin.
         // Other modules remain unavailable until their native behavior and options are connected.
         ModuleSupport.registerBuiltIn("FPS", "Coordinates", "PingHUD", "Memory", "Speed",
@@ -42,7 +43,11 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         LOGGER.info("TheLadsCore 26.3 initialized successfully.");
         com.thelads.core.mods.NativeCatalogProbe.log();
         // The launcher lists Lads modules from this catalog; late registrations (Minimap) bump the revision on a later tick.
-        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
-            client -> com.thelads.core.mods.CoreCatalogExporter.exportIfChanged());
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
+            boolean loaded = client.isGameLoadFinished() && client.gui.overlay() == null;
+            if (loaded) com.thelads.core.v26_2.feature.EnumValuesHook.reportOnce();
+            com.thelads.core.shared.LogProbe.tick(loaded, client::stop);
+        });
     }
 }
