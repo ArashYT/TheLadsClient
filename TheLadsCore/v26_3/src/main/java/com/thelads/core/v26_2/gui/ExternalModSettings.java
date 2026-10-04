@@ -46,6 +46,7 @@ public final class ExternalModSettings {
         external("BetterScreenshots", "Screenshot Viewer", "screenshot_viewer");
         external("TabList", "Tab Tweaks", "tabtweaks");
         external("PingView", "Tab Tweaks", "tabtweaks");
+        external("Chat Heads", "Chat Heads", "chat_heads");
     }
     private static void external(String name, String display, String id) {
         ModuleSupport.registerExternal(name, display, id, FabricLoader.getInstance().isModLoaded(id));

@@ -129,6 +129,9 @@ bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && E
 // Fabric versions: IgnorePacketErrors, AutoReconnect (the QA world and a closed port), chat signing and Ctrl+R on the server list
 // (ServerFeaturesCapture). 1.8.9's self-test (ProbeServer170) always runs the same checks.
 bool serverCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_SERVER") == "1";
+// Every version: Chat Heads with own, second-player and ranked server chat, photographed closed, open, aligned and off (Fabric:
+// ChatHeadsCapture, which the world capture waits for; 1.8.9: ChatHeadsProbe189 alone in the self-test's QA world).
+bool chatHeadsCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_CHATHEADS") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -312,6 +315,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
     "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads zoom capture FAILED", "Lads add-server probe FAILED", "Lads server features capture FAILED",
+    "Lads chat heads capture FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -462,6 +466,7 @@ try
         // The 1.8.9 Core's one QA switch: its self-test (Lads menu on the title screen, in its own QA world and from the
         // pause-menu button, the 1.8.9 bridge, the launcher catalog). Every flag below is the Fabric Core's.
         if (autoWorldVerification) AddJvm("-Dthelads.verify189Core=true");
+        if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
     }
     else
     {
@@ -491,6 +496,7 @@ try
         if (runId != null) AddJvm("-Dthelads.sharedContentRunId=" + runId);
         AddJvm("-Dthelads.verifyModInventory=true");
         if (modRequest != null) AddJvm("-Dthelads.verifyModRequest=" + modRequest);
+        if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
     }
     process.StartInfo.UseShellExecute = false;
     process.StartInfo.CreateNoWindow = true;
