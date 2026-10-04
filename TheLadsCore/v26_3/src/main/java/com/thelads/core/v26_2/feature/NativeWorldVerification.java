@@ -113,7 +113,8 @@ public final class NativeWorldVerification {
                 mc.createWorldOpenFlows().openWorld(SAVE, () -> fail("world open cancelled or returned to menu", null));
             } else if (mc.level != null && mc.player != null) {
                 // A QA run that ended with its player dead reopens on the death screen: respawn, as the 1.8.9 self-test does.
-                if (mc.player.isDeadOrDying() && mc.gui.screen() instanceof net.minecraft.client.gui.screens.DeathScreen) {
+                // Only until the world is first ready: later deaths belong to the captures (SprintCapture checks its death screen).
+                if (!readyLogged && mc.player.isDeadOrDying() && mc.gui.screen() instanceof net.minecraft.client.gui.screens.DeathScreen) {
                     mc.player.respawn();
                     mc.setScreenAndShow(null);
                 }
