@@ -98,13 +98,18 @@ class OldAnimationsModuleTest {
     @Test void helpersFollowTheirOptions() {
         var module = enabled();
         assertEquals(0.5f, module.swingShown(Platform.V1_8_9, Use.NONE, 0.5f), "the normal swing is vanilla's");
-        for (Use use : new Use[]{Use.BLOCK, Use.EAT_DRINK, Use.BOW}) {
+        for (Use use : new Use[]{Use.BLOCK, Use.BOW}) {
             Feature gate = use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING;
             assertEquals(0.5f, module.swingShown(Platform.V1_8_9, use, 0.5f), use + " shows the 1.7 swing");
             module.option(gate).set(false);
             assertEquals(0, module.swingShown(Platform.V1_8_9, use, 0.5f), use + " without " + gate + " is 1.8");
             module.option(gate).set(true);
         }
+        for (Platform platform : Platform.values())
+            assertEquals(0, module.swingShown(platform, Use.EAT_DRINK, 0.5f), "eating and drinking never swing the food, " + platform);
+        for (Use use : new Use[]{Use.BLOCK, Use.BOW, Use.EAT_DRINK}) assertTrue(module.useWhileMining(use), use + " starts while mining");
+        assertFalse(module.useWhileMining(Use.NONE), "an item without a use waits, as in 1.8");
+        assertFalse(module.useWhileMining(null), "a use 1.7 never drew (a spyglass) waits, as in 1.8");
         assertTrue(module.iconPlacement(Platform.MODERN, Use.BLOCK, Held.TOOL));
         assertTrue(module.iconPlacement(Platform.MODERN, Use.EAT_DRINK, Held.ITEM));
         assertTrue(module.iconPlacement(Platform.MODERN, Use.BOW, Held.BOW));
@@ -134,6 +139,7 @@ class OldAnimationsModuleTest {
         module.setEnabled(false);
         assertEquals(0, module.swingShown(Platform.MODERN, Use.BLOCK, 0.5f), "module off is vanilla");
         assertFalse(module.iconPlacement(Platform.MODERN, Use.BOW, Held.BOW));
+        assertFalse(module.useWhileMining(Use.BLOCK), "module off: the use waits for the mining, as in 1.8");
     }
 
     @Test void togglesSurviveASaveAndLoad() {

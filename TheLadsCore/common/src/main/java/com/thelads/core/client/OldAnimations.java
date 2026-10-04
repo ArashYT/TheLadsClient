@@ -86,6 +86,16 @@ public final class OldAnimations {
     }
 
     /**
+     * Placing blocks with both modules on: an idle block item (a torch, a flower, a rail: blocks with a flat icon) keeps vanilla's
+     * placement, so Legacy Swing alone animates placing it instead of swinging the item where 1.7 holds it. Every other idle hand
+     * swings Legacy Swing's way where 1.7 holds the item; in a use pose (blocking, a bow, eating) 1.7 draws the hand with its own
+     * swing (blockhitting). True: leave this hand to vanilla and Legacy Swing.
+     */
+    public static boolean legacySwingPlaces(boolean legacySwingOn, Use use, boolean blockItem) {
+        return legacySwingOn && blockItem && use == Use.NONE;
+    }
+
+    /**
      * Legacy Swing (Legacy Console Edition's swing, LegacySwing module) in modern {@code swingArm}'s place, right after the arm
      * transform: replaces vanilla's swing translation and turn, and ends 45° back about Y as vanilla's does. Progress^4, so the
      * item winds up slowly and snaps through, swung further across (0.55) and lifted on the way.

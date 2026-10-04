@@ -96,11 +96,11 @@ public final class NativeRequestProbe {
             require(com.thelads.core.v26_2.feature.screenshots.ScreenshotViewerUtils.getVanillaScreenshotsFolder().equals(global),"gallery shares global screenshot location");passed++;
             var overlay=(BossBarAccessor)mc.gui.hud.getBossOverlay();var graphics=new GuiGraphicsExtractor(mc,new GuiRenderState(),0,0);
             var adapter=new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics);adapter.drawBossBars(10,10,3,true,true);passed++;
-            var motion=new LegacyVerticalBob();float a=motion.sample(1,.4,false,1,true);float expected=(float)(Math.atan(-.4*.2)*15*.8);
+            var motion=new LegacyVerticalBob();float a=motion.sample(1,.4,false,true,1,true);float expected=(float)(Math.atan(-.4*.2)*15*.8);
             require(Math.abs(a-expected)<.00001,"legacy airborne pitch formula");passed++;
-            require(motion.sample(1,.4,false,1,true)==a,"render frames do not advance tick smoothing");passed++;
-            require(motion.sample(2,0,true,1,true)<0&&Math.abs(motion.sample(2,0,true,1,true))<Math.abs(a),"landing eases pitch to zero");passed++;
-            require(motion.sample(3,.4,false,1,false)==0,"disabled bob resets immediately");passed++;
+            require(motion.sample(1,.4,false,true,1,true)==a,"render frames do not advance tick smoothing");passed++;
+            require(motion.sample(2,0,true,true,1,true)<0&&Math.abs(motion.sample(2,0,true,true,1,true))<Math.abs(a),"landing eases pitch to zero");passed++;
+            require(motion.sample(3,.4,false,true,1,false)==0,"disabled bob resets immediately");passed++;
             org.slf4j.LoggerFactory.getLogger("TheLadsCore").info("Lads requested features probe END: {} passed, 0 failed",passed);
             return passed;
         }finally{mc.setScreenAndShow(original);}

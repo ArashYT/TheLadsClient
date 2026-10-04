@@ -11,7 +11,9 @@ public final class NativeVerticalBob {
         if(level!=mc.level||player!=mc.player){motion.reset();level=mc.level;player=mc.player;}
         if(mc.player!=null&&mc.level!=null&&!mc.isPaused()){
             var p=mc.player;
-            motion.sample(p.tickCount,p.getDeltaMovement().y,p.onGround()||p.isDeadOrDying(),1,true);
+            // No bob while flying, swimming or riding: the pitch eases back to level (it no longer snaps when flying stops a fall).
+            boolean bobbing=!p.isSpectator()&&!p.isPassenger()&&!p.isSleeping()&&!p.isFallFlying()&&!p.isSwimming()&&!p.getAbilities().flying;
+            motion.sample(p.tickCount,p.getDeltaMovement().y,p.onGround()||p.isDeadOrDying(),bobbing,1,true);
         }
     }
     public static float value(float partial,boolean active){return active?motion.interpolate(partial):0;}

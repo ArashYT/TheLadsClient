@@ -16,6 +16,14 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemBed;
+import net.minecraft.item.ItemBlock;
+import net.minecraft.item.ItemDoor;
+import net.minecraft.item.ItemRedstone;
+import net.minecraft.item.ItemReed;
+import net.minecraft.item.ItemSeedFood;
+import net.minecraft.item.ItemSeeds;
+import net.minecraft.item.ItemSign;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.Vec3;
@@ -80,13 +88,28 @@ public final class OldAnimations189 {
 
     /** What the player does with the stack as 1.7 saw it: its use action while the use count is above 0; null keeps vanilla. */
     public static Use use(EntityPlayer player, ItemStack stack) {
-        if (player.getItemInUseCount() <= 0) return Use.NONE;
+        return player.getItemInUseCount() <= 0 ? Use.NONE : action(stack);
+    }
+
+    /** The 1.7 pose the stack's use draws, or null for an item without one. */
+    private static Use action(ItemStack stack) {
         switch (stack.getItemUseAction()) {
             case EAT: case DRINK: return Use.EAT_DRINK;
             case BLOCK: return Use.BLOCK;
             case BOW: return Use.BOW;
             default: return null;
         }
+    }
+
+    /** Minecraft.rightClickMouse while the attack key mines a block: true lets the held item's use start (1.7), as on air. */
+    public static boolean useWhileMining(ItemStack held) {
+        return held != null && MODULE.useWhileMining(action(held));
+    }
+
+    /** Items that place a block, as modern BlockItem: Legacy Swing alone animates them (OldAnimations.legacySwingPlaces). */
+    public static boolean placesBlock(Item item) {
+        return item instanceof ItemBlock || item instanceof ItemReed || item instanceof ItemSeeds || item instanceof ItemSeedFood
+            || item instanceof ItemRedstone || item instanceof ItemDoor || item instanceof ItemBed || item instanceof ItemSign;
     }
 
     /**
@@ -100,7 +123,7 @@ public final class OldAnimations189 {
     /**
      * Every client tick (END). Instant sneak camera: 1.7's per-tick eye height for the view entity. Blockhitting and Swing while
      * using items: 1.7 swung the arm while the attack key was held on a block during a use (1.8 dropped that), so the swing shows
-     * on the blocking sword, the food or the bow. Drawn only: no packet, no block damage, so servers see 1.8.9 play.
+     * on the blocking sword or the bow (never the food: swingShown). Drawn only: no packet, no block damage, so servers see 1.8.9 play.
      */
     public static void tick(Minecraft mc) {
         Entity view = mc.getRenderViewEntity();

@@ -17,4 +17,11 @@ public class ClientTickMixin {
     }
     @Inject(method="tick()V",at=@At("TAIL"),require=1)
     private void ladsLegacyCameraTick(CallbackInfo ci){com.thelads.core.v26_2.feature.NativeVerticalBob.tick();}
+
+    // 1.7 Animations: the use key blocks, draws a bow or eats while the attack key mines a block, as in 1.7 (vanilla waits).
+    @com.llamalad7.mixinextras.injector.ModifyExpressionValue(method = "startUseItem", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;isDestroying()Z"), require = 1)
+    private boolean ladsUseWhileMining(boolean destroying) {
+        return destroying && !com.thelads.core.v26_2.feature.NativeOldAnimations.useWhileMining(((Minecraft) (Object) this).player);
+    }
 }
