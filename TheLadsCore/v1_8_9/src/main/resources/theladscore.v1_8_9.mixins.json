@@ -31,6 +31,7 @@
     "GuiSlotMixin",
     "GuiSlotAccessor",
     "FoodStatsAccessor",
+    "IntegratedServerMixin",
     "ItemFoodFields",
     "ItemRendererAccessor",
     "ItemRendererMixin",
