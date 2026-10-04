@@ -112,8 +112,11 @@ public class GuiLadsAdapter implements LadsGraphics {
         }
         mc.getTextureManager().bindTexture(net.minecraft.client.renderer.texture.TextureMap.locationBlocksTexture);
         GlStateManager.enableBlend();
-        GlStateManager.color(1.0f, 1.0f, 1.0f, 0.35f);
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 0.3f);
+        // 1.8.9's silhouettes are near-black (made for the light inventory slot): GL_BLEND draws 1 - texel, a light silhouette, as on 26.x.
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_BLEND);
         new Gui().drawTexturedModalRect(x, y, mc.getTextureMapBlocks().getAtlasSprite(net.minecraft.item.ItemArmor.EMPTY_SLOT_NAMES[slot]), 16, 16);
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
