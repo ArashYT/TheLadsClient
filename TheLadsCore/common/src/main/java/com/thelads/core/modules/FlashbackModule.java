@@ -22,14 +22,13 @@ public final class FlashbackModule extends Module {
 
     public final TextOption replayFolder = addOption(new TextOption("Replay folder", ""));
     public final ActionOption browse = addOption(new ActionOption("Choose replay folder", "Browse..."));
-    public final ActionOption defaultFolder = addOption(new ActionOption("Flashback's own folder", "Reset"));
-    public final BoolOption fasterExports = addOption(new BoolOption("Faster exports", true));
-    public final SliderOption pngCompression = addOption(new SliderOption("PNG compression", 1, 0, 9, 1));
-    public final BoolOption gpuEncoder = addOption(new BoolOption("OpenH264 exports use the GPU", true));
+    public final ActionOption defaultFolder = addOption(new ActionOption("Default folder", "Reset"));
+    public final SliderOption pngCompression = addOption(new SliderOption("PNG compression", 6, 0, 9, 1));
+    // Off by default: on the Lads test PC (24 threads, RTX 4060 Ti) NVENC exports were slower than OpenH264. For CPU-bound exports.
+    public final BoolOption gpuEncoder = addOption(new BoolOption("OpenH264 to GPU", false));
 
     public FlashbackModule() {
-        super(NAME, "Choose where Flashback saves replays (blank: its own folder). Exports run faster: PNG frames are written in "
-            + "parallel without an alpha channel, and OpenH264 videos move to a working GPU encoder.");
+        super(NAME, "Where Flashback saves replays (blank: its own folder) and how fast it exports.");
         setEnabled(true);
     }
 
@@ -54,10 +53,5 @@ public final class FlashbackModule extends Module {
         if (!"libopenh264".equals(encoder)) return null;
         for (String candidate : GPU_H264) if (working.contains(candidate)) return candidate;
         return null;
-    }
-
-    /** FFmpeg threads for an encoder: frame-parallel PNG leaves one core to the render thread; 0 keeps FFmpeg's own choice. */
-    public static int encoderThreads(String encoder, int cores) {
-        return "png".equals(encoder) ? Math.max(1, cores - 1) : 0;
     }
 }

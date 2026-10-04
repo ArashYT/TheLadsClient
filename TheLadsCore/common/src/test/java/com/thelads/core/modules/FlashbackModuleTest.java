@@ -44,11 +44,4 @@ class FlashbackModuleTest {
         com.thelads.core.config.ModuleSupport.registerUnavailable("FlashbackTestEntry", "Flashback is not installed.");
         assertFalse(com.thelads.core.config.ModuleSupport.isSettingsOnly("FlashbackTestEntry"));
     }
-
-    @Test void pngLeavesOneCoreAndOtherEncodersKeepFfmpegsChoice() {
-        assertEquals(23, FlashbackModule.encoderThreads("png", 24));
-        assertEquals(1, FlashbackModule.encoderThreads("png", 1));
-        assertEquals(0, FlashbackModule.encoderThreads("libopenh264", 24));
-        assertEquals(0, FlashbackModule.encoderThreads("h264_nvenc", 24));
-    }
 }
