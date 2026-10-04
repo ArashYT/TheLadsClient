@@ -18,6 +18,7 @@
     "GuiIngameForgeMixin",
     "GuiIngameMixin",
     "GuiIngameMenuMixin",
+    "ChatLineMixin",
     "GuiNewChatMixin",
     "GuiPlayerTabOverlayMixin",
     "GuiScreenAddServerAccessor",

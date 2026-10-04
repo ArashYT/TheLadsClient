@@ -185,6 +185,11 @@ public class ModuleManager {
         chatMod.addOption(new BoolOption("Screenshot Link Buttons", true));
         chatMod.setEnabled(true);
         register(chatMod, Module.Category.HUD);
+        Module chatHeads = new Module(com.thelads.core.client.ChatHeads.NAME, "The sender's head before chat messages: from signed chat, or from player names in the tab list.");
+        chatHeads.addOption(new BoolOption(com.thelads.core.client.ChatHeads.BY_NAME, true));
+        chatHeads.addOption(new BoolOption(com.thelads.core.client.ChatHeads.ALIGNED, false));
+        chatHeads.setEnabled(true);
+        register(chatHeads, Module.Category.HUD);
 
         register(new AutoReconnectModule(), Module.Category.SERVER);
 
