@@ -60,25 +60,31 @@ import org.lwjgl.opengl.GL14;
  * QA only: the C2 checks, run by CoreProbe in its sandbox QA world with OptiFine loaded. Real frames: all 18 built-in HUD modules
  * draw live 1.8.9 data through RenderGameOverlayEvent.Post(ALL) (every text and item the adapter drew is recorded), the GL state
  * after the Lads HUD equals the state before it, and F1 hides it. Then the HUD editor through the real Edit HUD button, driven
- * with LWJGL input only: gear, selection, centre snapping, a free drag, Select multiple, the right-click menu's Group, Center
- * stack and Ungroup, a module switch, and Escape during a drag, each checked against the config file on disk.
+ * with LWJGL input aimed through its preview: the list's gear, selection, centre snapping, a free drag, a box selection, the
+ * right-click menu's Group, Center stack and Ungroup, a list switch with Show disabled, a plain drop that docks without
+ * grouping, a Shift drop that groups, and Escape during a drag, each checked against the config file on disk.
  */
 public final class HudProbe {
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(HudProbe::setup, HudProbe::drawn, HudProbe::hidden,
         HudProbe::stillHidden, HudProbe::shown, HudProbe::cps, HudProbe::menu, HudProbe::editorOpened, HudProbe::editorShown,
         HudProbe::gearOpened, HudProbe::backInEditor, HudProbe::selected, HudProbe::centred, HudProbe::snapOff, HudProbe::freeDragged,
         HudProbe::multiSelected, HudProbe::contextMenu, HudProbe::grouped, HudProbe::resized, HudProbe::stackOffered, HudProbe::restacked,
-        HudProbe::ungroupOffered, HudProbe::ungrouped, HudProbe::moved, HudProbe::offUncovered, HudProbe::switchedOff, HudProbe::uncovered, HudProbe::switchedOn, HudProbe::dragging, HudProbe::escaped,
-        HudProbe::back);
+        HudProbe::ungroupOffered, HudProbe::ungrouped, HudProbe::switchedOff, HudProbe::allShown, HudProbe::switchedOn, HudProbe::plainDragging,
+        HudProbe::plainDocked, HudProbe::plainDropped, HudProbe::shiftDropped, HudProbe::shiftGrouped, HudProbe::shiftCaptured,
+        HudProbe::dragging, HudProbe::escaped, HudProbe::back);
     private static final Set<String> PAIR = new HashSet<>(Arrays.asList("CPS", "Day"));
+    private static final List<String> FIXTURE = Arrays.asList("CPS", "Day", "FPS", "Health");
     private static GlWatch watch;
     private static long frames, openedAt;
+    private static int mark = -1;
     private static int cpsBefore;
     private static ItemStack[] armor;
     private static ScoreObjective objective, sidebar;
     private static LadsSettingsScreen189 menu;
     private static DraggableHudScreen189 editor;
     private static Rect before;
+    private static int[] expected;
+    private static String layout;
     private HudProbe() {}
 
     /** Gameplay in the QA world: every built-in HUD module on with default options, no saved layout, real data for each. */
@@ -184,9 +190,9 @@ public final class HudProbe {
 
     private static boolean cps(Minecraft mc) throws Exception {
         check(CpsTracker.get().rightCps() == cpsBefore + 3, "three right clicks in one tick count 3 CPS (InputEvent.MouseInputEvent)");
-        // The editor fixture of 1.21.x's probe: FPS clamped to the right edge, CPS, Day and Health on; the other built-in modules are
-        // dimmed previews. CPS stands alone on the right, so its settings gear takes the first spot, right of it.
-        for (String name : NativeHud.MODULES) module(name).setEnabled(Arrays.asList("FPS", "CPS", "Day", "Health").contains(name));
+        // The editor fixture of the 26.x probe: FPS clamped to the right edge, CPS, Day and Health on; the other built-in modules
+        // are off, so the editor lists and previews only these four until Show disabled.
+        for (String name : NativeHud.MODULES) module(name).setEnabled(FIXTURE.contains(name));
         ((SliderOption) module("Day").getOption("Size")).setValue(125);
         HudSettings.getInstance().setPosition("FPS", 10000, 10);
         HudSettings.getInstance().setPosition("CPS", 300, 60);
@@ -215,34 +221,32 @@ public final class HudProbe {
     }
 
     private static boolean editorShown(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
         DraggableHudScreen ui = editor.ui();
-        // The toolbar auto-docks away from the previews; its own Dock control pins it to the bottom, as 1.21.x's probe does.
-        DraggableHudScreen.Control dock = control(ui.controls(), "toolbar");
-        if (dock != null && !dock.label().equals("Dock: bottom")) {
-            click(center(dock.bounds())[0], center(dock.bounds())[1]);
-            return retry(2);
-        }
         check(NativeHud.frames == frames, "the in-game Lads HUD pauses while the editor draws its previews");
         check(!GuiIngameForge.renderObjective, "vanilla's sidebar is hidden while editing");
         List<String> ids = ids(ui.controls());
-        check(ids.containsAll(Arrays.asList("select", "group", "ungroup", "lock", "unlock", "snap", "previews", "toolbar", "collapse", "colors", "reset", "done")),
-            "the editor toolbar is drawn " + ids);
+        check(ids.containsAll(Arrays.asList("group", "ungroup", "lock", "snap", "done", "search", "previews", "colors", "reset")),
+            "the editor toolbar and list controls are drawn " + ids);
+        Rect preview = ui.previewBounds();
+        boolean clear = true;
+        for (DraggableHudScreen.Control control : ui.controls()) clear &= !control.bounds().intersects(preview);
+        check(clear && Math.abs(preview.width() / (double) preview.height() - editor.width / (double) editor.height) < 0.02
+            && preview.right() <= editor.width && preview.bottom() <= editor.height, "the framed preview keeps the game's aspect, beside the controls " + preview);
+        // FIXTURE, plus the HUDs of built-in gameplay modules setup left on (Toggle Sprint/Sneak).
+        check(ui.listedNames().equals(switchedOn()) && ui.listedNames().containsAll(FIXTURE) && !ui.listedNames().contains("Memory"),
+            "the list shows only the switched-on HUDs " + ui.listedNames());
         List<String> previews = new ArrayList<>();
-        boolean previewsMatch = true; // a preview exactly for each HUD element whose module is built in (Autohide has no element)
-        for (HudElement element : HudManager.getInstance().getElements()) {
-            boolean preview = ui.boundsFor(element.getModuleName()) != null;
-            if (preview) previews.add(element.getModuleName());
-            previewsMatch &= preview == ModuleSupport.isBuiltIn(element.getModuleName());
-        }
-        check(previewsMatch && previews.size() >= NativeHud.MODULES.length - 1,
-            "every built-in HUD module has a preview (switched-off ones dimmed), pending ones none " + previews);
+        for (HudElement element : HudManager.getInstance().getElements())
+            if (ui.boundsFor(element.getModuleName()) != null) previews.add(element.getModuleName());
+        java.util.Collections.sort(previews, String.CASE_INSENSITIVE_ORDER);
+        check(previews.equals(switchedOn()), "and previews only them " + previews);
         Rect cps = bounds("CPS"), fps = bounds("FPS");
         check(cps.x() == 300 && cps.y() == 60 && fps.right() == editor.width && fps.y() == 10, "saved positions place the previews, FPS clamped to the right edge");
-        Rect toggle = ui.toggleBoundsFor("CPS");
-        check(toggle != null && toggle.x() == cps.right() + 15 && toggle.y() == cps.y(), "CPS's settings gear and ON/OFF switch sit right of it");
+        check(ui.toggleBoundsFor("CPS") != null && ui.settingsBoundsFor("CPS") != null, "CPS's list row has an ON/OFF switch and a settings gear");
         screenshot(mc, "c2-editor");
         openedAt = System.currentTimeMillis();
-        click(cps.right() + 7, cps.y() + 5);
+        clickScreen(ui.settingsBoundsFor("CPS"));
         return after(10);
     }
 
@@ -259,13 +263,12 @@ public final class HudProbe {
 
     private static boolean backInEditor(Minecraft mc) throws Exception {
         check(mc.currentScreen == editor, "Done returns from the module settings to the editor");
-        int[] cps = center(bounds("CPS"));
-        click(cps[0], cps[1]);
+        clickGame(center(bounds("CPS")));
         return after(2);
     }
 
     private static boolean selected(Minecraft mc) throws Exception {
-        check(editor.ui().selectedNames().equals(new HashSet<>(Arrays.asList("CPS"))), "a click selects CPS " + editor.ui().selectedNames());
+        check(editor.ui().selectedNames().equals(new HashSet<>(Arrays.asList("CPS"))), "a click in the preview selects CPS " + editor.ui().selectedNames());
         // Centre snapping: CPS's centre is dropped 2 px right of the screen centre, its top on a grid line.
         Rect cps = bounds("CPS");
         int[] from = center(cps);
@@ -275,8 +278,8 @@ public final class HudProbe {
 
     private static boolean centred(Minecraft mc) throws Exception {
         Rect cps = bounds("CPS");
-        check(cps.x() + cps.width() / 2 == editor.width / 2 && cps.y() == 40, "a drag (press, mouseClickMove, release) moved CPS and centre snapping "
-            + "pulled it onto the screen centre " + cps);
+        check(cps.x() + cps.width() / 2 == editor.width / 2 && cps.y() == 40, "a drag in the preview (press, mouseClickMove, release) moved CPS and "
+            + "centre snapping pulled it onto the screen centre " + cps);
         check(saved("CPS", cps), "the drag saved CPS's position to the config file");
         tap(Keyboard.KEY_G, 'g');
         return after(2);
@@ -285,35 +288,37 @@ public final class HudProbe {
     private static boolean snapOff(Minecraft mc) throws Exception {
         check(control(editor.ui().controls(), "snap").label().equals("Snap: off"), "G turns snapping off");
         before = bounds("CPS");
-        drag(center(before), 13, 7);
+        expected = drag(center(before), 13, 7);
         return after(2);
     }
 
     private static boolean freeDragged(Minecraft mc) throws Exception {
         Rect cps = bounds("CPS");
-        check(cps.x() == before.x() + 13 && cps.y() == before.y() + 7 && saved("CPS", cps), "without snapping CPS moves by the exact pointer delta, saved " + cps);
+        check(cps.x() == before.x() + expected[0] && cps.y() == before.y() + expected[1] && saved("CPS", cps),
+            "without snapping CPS moves by the exact pointer delta (" + expected[0] + ", " + expected[1] + " game pixels), saved " + cps);
         tap(Keyboard.KEY_G, 'g');
-        DraggableHudScreen.Control select = control(editor.ui().controls(), "select");
-        click(center(select.bounds())[0], center(select.bounds())[1]);
-        click(center(bounds("Day"))[0], center(bounds("Day"))[1]);
+        // Box selection on the open preview: from above-left of Day to past CPS's centre, short of Health and FPS.
+        int[] from = {2, 30};
+        drag(from, editor.width / 2 + 60 - from[0], 100 - from[1]);
         return after(2);
     }
 
     private static boolean multiSelected(Minecraft mc) throws Exception {
         check(control(editor.ui().controls(), "snap").label().equals("Snap: on"), "G turns snapping back on");
-        check(editor.ui().selectedNames().equals(PAIR), "Select multiple adds Day to the CPS selection " + editor.ui().selectedNames());
+        check(editor.ui().selectedNames().equals(PAIR), "a box drawn on the preview selects CPS and Day " + editor.ui().selectedNames());
         rightClick(bounds("CPS"));
         return after(2);
     }
 
     private static boolean contextMenu(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
         List<DraggableHudScreen.Control> items = editor.ui().contextControls();
         check(ids(items).equals(Arrays.asList("settings", "lock", "centerX", "centerY", "centerBoth", "group", "ungroup", "stack", "toggle")),
             "a right click opens the context menu " + ids(items));
         check(editor.ui().selectedNames().equals(PAIR), "the right click keeps the two-HUD selection");
         check(control(items, "group").enabled() && !control(items, "ungroup").enabled() && !control(items, "stack").enabled(), "Group is offered for two ungrouped HUDs");
         screenshot(mc, "c2-editor-context-menu");
-        click(center(control(items, "group").bounds())[0], center(control(items, "group").bounds())[1]);
+        clickScreen(control(items, "group").bounds());
         return after(2);
     }
 
@@ -335,7 +340,7 @@ public final class HudProbe {
     private static boolean stackOffered(Minecraft mc) throws Exception {
         DraggableHudScreen.Control stack = control(editor.ui().contextControls(), "stack");
         check(stack != null && stack.enabled(), "Center stack is offered for the grouped selection");
-        click(center(stack.bounds())[0], center(stack.bounds())[1]);
+        clickScreen(stack.bounds());
         return after(2);
     }
 
@@ -349,7 +354,7 @@ public final class HudProbe {
     private static boolean ungroupOffered(Minecraft mc) throws Exception {
         DraggableHudScreen.Control ungroup = control(editor.ui().contextControls(), "ungroup");
         check(ungroup != null && ungroup.enabled(), "a right click on the other member offers Ungroup");
-        click(center(ungroup.bounds())[0], center(ungroup.bounds())[1]);
+        clickScreen(ungroup.bounds());
         return after(2);
     }
 
@@ -357,69 +362,107 @@ public final class HudProbe {
         check(HudSettings.getInstance().getGroupMembers("CPS") == null && HudSettings.getInstance().getGroupMembers("Day") == null && groupsOnDisk() == 0,
             "context Ungroup splits the group and saves it");
         Rect toggle = editor.ui().toggleBoundsFor("FPS");
-        check(toggle != null, "FPS has an ON/OFF switch");
-        // Away from the top-right corner, where Essential (1.8.9 pack) draws its notifications over every screen.
-        HudSettings.getInstance().setPosition("FPS", 200, 150);
+        check(toggle != null, "FPS's list row has an ON/OFF switch");
+        clickScreen(toggle);
         return after(2);
-    }
-
-    private static boolean moved(Minecraft mc) throws Exception {
-        uncover(editor.ui().toggleBoundsFor("FPS"));
-        return after(2);
-    }
-
-    private static boolean offUncovered(Minecraft mc) throws Exception {
-        Rect toggle = editor.ui().toggleBoundsFor("FPS");
-        click(center(toggle)[0], center(toggle)[1]);
-        return after(2);
-    }
-
-    /** The earlier drags leave FPS where a later-drawn preview (Paperdoll since 1.4.1, others with mods) may cover its switch,
-     *  and the editor rightly gives that click to the HUD on top: move any such preview aside, then click once it is drawn there. */
-    private static void uncover(Rect toggle) {
-        int[] point = center(toggle);
-        for (HudElement element : HudManager.getInstance().getElements()) {
-            Rect b = editor.ui().boundsFor(element.getModuleName());
-            if ("FPS".equals(element.getModuleName()) || b == null || !b.contains(point[0], point[1])) continue;
-            HudSettings.getInstance().setPosition(element.getModuleName(), Math.max(0, toggle.x() - b.width() - 100), toggle.y() + 60);
-        }
     }
 
     private static boolean switchedOff(Minecraft mc) throws Exception {
-        check(!module("FPS").isEnabled() && !enabledOnDisk("FPS"), "FPS's editor switch turns the module off and saves it");
-        check(editor.ui().boundsFor("FPS") != null && editor.ui().toggleBoundsFor("FPS") != null, "the switched-off module stays as a dimmed preview");
-        uncover(editor.ui().toggleBoundsFor("FPS"));
+        check(!module("FPS").isEnabled() && !enabledOnDisk("FPS"), "FPS's list switch turns the module off and saves it");
+        check(editor.ui().boundsFor("FPS") == null && !editor.ui().listedNames().contains("FPS"), "and it leaves the default list and preview");
+        clickScreen(control(editor.ui().controls(), "previews").bounds());
         return after(2);
     }
 
-    private static boolean uncovered(Minecraft mc) throws Exception {
-        Rect toggle = editor.ui().toggleBoundsFor("FPS");
-        click(center(toggle)[0], center(toggle)[1]);
-        // Snapping off for the last drag, so its exact delta shows and Day cannot dock onto CPS. A step ahead of that drag: GuiScreen
-        // handles the queued mouse events before the queued keys, and the snap toggle finishes any drag.
-        tap(Keyboard.KEY_G, 'g');
+    private static boolean allShown(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
+        check(editor.ui().isShowingAll() && editor.ui().boundsFor("FPS") != null && editor.ui().listedNames().contains("Memory"),
+            "Show disabled lists and previews the switched-off HUDs " + editor.ui().listedNames());
+        screenshot(mc, "c2-editor-all");
+        clickScreen(editor.ui().toggleBoundsFor("FPS"));
         return after(2);
     }
 
     private static boolean switchedOn(Minecraft mc) throws Exception {
-        List<String> under = new ArrayList<>();
-        Rect now = editor.ui().toggleBoundsFor("FPS");
-        for (HudElement element : HudManager.getInstance().getElements()) {
-            Rect b = editor.ui().boundsFor(element.getModuleName());
-            if (b != null && now != null && b.contains(center(now)[0], center(now)[1])) under.add(element.getModuleName() + " " + b);
-        }
-        check(module("FPS").isEnabled() && enabledOnDisk("FPS"), "and back on (switch " + now + ", HUDs under it " + under + ")");
+        check(module("FPS").isEnabled() && enabledOnDisk("FPS"), "and its switch turns FPS back on");
+        clickScreen(control(editor.ui().controls(), "previews").bounds());
+        return after(2);
+    }
+
+    /** Health dragged until it docks under Day, held there (no release) for the capture. */
+    private static boolean plainDragging(Minecraft mc) throws Exception {
+        check(!editor.ui().isShowingAll() && editor.ui().listedNames().equals(switchedOn()), "Show disabled off: only the switched-on HUDs again");
+        Rect day = bounds("Day"), health = bounds("Health");
+        int[] from = center(health);
+        hold(sx(from[0]), sy(from[1]));
+        for (int i = 1; i <= 4; i++) moveTo(sx(from[0] + (day.x() + 1 - health.x()) * i / 4.0), sy(from[1] + (day.bottom() + 2 - health.y()) * i / 4.0));
+        return after(2);
+    }
+
+    private static boolean plainDocked(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
+        Rect day = bounds("Day"), health = bounds("Health");
+        check(editor.ui().isDragging() && health.y() == day.bottom() && health.x() == day.x(), "snapping docks Health under Day during the drag " + health + " / " + day);
+        screenshot(mc, "c2-editor-dragging");
+        editor.ui().mouseReleased(sx(center(health)[0]), sy(center(health)[1]), 0, 0);
+        return after(2);
+    }
+
+    private static boolean plainDropped(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
+        Rect day = bounds("Day"), health = bounds("Health");
+        check(!editor.ui().isDragging() && HudSettings.getInstance().getGroupMembers("Health") == null && groupsOnDisk() == 0,
+            "a plain drop docks Health without grouping it");
+        check(health.y() == day.bottom() && saved("Health", health), "and saves it where the preview shows it " + health);
+        screenshot(mc, "c2-editor-plain-drop");
+        // The same drop with Shift (see shiftDropped).
+        int[] from = center(health);
+        hold(sx(from[0]), sy(from[1]));
+        moveTo(sx(from[0]), sy(from[1] + 30));
+        moveTo(sx(from[0]), sy(from[1]));
+        return after(2);
+    }
+
+    /**
+     * Synthetic LWJGL key events cannot hold Shift (GuiScreen.isShiftKeyDown reads the device state, which Display.update
+     * refreshes from the real keyboard), so this release carries the Shift bit DraggableHudScreen189 passes for a held Shift.
+     */
+    private static boolean shiftDropped(Minecraft mc) throws Exception {
+        check(editor.ui().isDragging(), "the Shift drop's drag is in progress");
+        int[] at = center(bounds("Health"));
+        editor.ui().mouseReleased(sx(at[0]), sy(at[1]), 0, 1);
+        return after(2);
+    }
+
+    private static boolean shiftGrouped(Minecraft mc) throws Exception {
+        check(new HashSet<>(Arrays.asList("Day", "Health")).equals(HudSettings.getInstance().getGroupMembers("Health")) && groupsOnDisk() == 1,
+            "a Shift drop groups Health with Day, which it docks under, and saves it " + HudSettings.getInstance().getGroupMembers("Health"));
+        clickGame(center(bounds("Health")));
+        // Snapping off for the last drag, so its exact delta shows. A step ahead of that drag: GuiScreen handles the queued mouse
+        // events before the queued keys, and the snap toggle finishes any drag.
+        tap(Keyboard.KEY_G, 'g');
+        return after(2);
+    }
+
+    private static boolean shiftCaptured(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
+        screenshot(mc, "c2-editor-shift-group");
         check(control(editor.ui().controls(), "snap").label().equals("Snap: off"), "snapping is off for the unfinished drag");
         // Escape during a drag: pressed and moved, never released.
         before = bounds("Day");
         int[] from = center(before);
-        mouse(0, true, from[0], from[1]);
-        mouse(-1, false, from[0] + 25, from[1]);
+        hold(sx(from[0]), sy(from[1]));
+        moveTo(sx(from[0] + 25), sy(from[1]));
+        expected = new int[] {(int) Math.round((sx(from[0] + 25) - sx(from[0])) / editor.ui().previewScale()), 0};
         return after(2);
     }
 
     private static boolean dragging(Minecraft mc) throws Exception {
-        check(editor.ui().isDragging() && bounds("Day").x() == before.x() + 25 && saved("Day", before), "Day follows an unfinished drag, not saved yet (from " + before + " to " + bounds("Day") + ", dragging " + editor.ui().isDragging() + ")");
+        if (!framed()) return retry(0); // the capture below shows this state
+        check(editor.ui().isDragging() && bounds("Day").x() == before.x() + expected[0] && saved("Day", before),
+            "Day follows an unfinished drag, not saved yet (from " + before + " to " + bounds("Day") + ", dragging " + editor.ui().isDragging() + ")");
+        // The layout Escape keeps, as the preview shows it: c2-hud-after-edit shows the same in game.
+        screenshot(mc, "c2-editor-before-escape");
         tap(Keyboard.KEY_ESCAPE, (char) 27);
         return after(2);
     }
@@ -432,6 +475,7 @@ public final class HudProbe {
         int[] cps = HudSettings.getInstance().getPosition("CPS");
         check(cps != null && saved("CPS", new Rect(cps[0], cps[1], 0, 0)) && enabledOnDisk("CPS") && !enabledOnDisk("Scoreboard"),
             "the config file holds the edited layout and switches");
+        layout = "CPS " + positionOf("CPS") + ", Day " + positionOf("Day") + ", Health " + positionOf("Health") + ", FPS " + positionOf("FPS");
         frames = NativeHud.frames;
         tap(Keyboard.KEY_RSHIFT, '\0');
         return after(10);
@@ -439,6 +483,9 @@ public final class HudProbe {
 
     private static boolean back(Minecraft mc) {
         check(mc.currentScreen == null && NativeHud.frames > frames, "the Lads HUD draws again in gameplay");
+        // The edited layout in game, to compare with the editor captures: GUI positions x2 (GUI scale 2) in pixels.
+        screenshot(mc, "c2-hud-after-edit");
+        org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").info("Lads 1.8.9 HUD layout after editing (GUI coordinates): {}", layout);
         check(GuiIngameForge.renderObjective, "vanilla's sidebar returns with the Lads Scoreboard off");
         check(watch.mismatch == null, "GL state around the Lads HUD stayed unchanged in all " + watch.frames + " frames");
         Scoreboard board = mc.theWorld.getScoreboard();
@@ -450,22 +497,71 @@ public final class HudProbe {
         return true;
     }
 
+    /**
+     * True once a frame has been drawn since this step first ran. After a slow tick (a PNG or config save) the game loop runs the
+     * missed ticks back to back, so a step can run before the last input's result was ever drawn and capture the previous frame.
+     */
+    private static boolean framed() {
+        if (mark < 0) mark = watch.frames;
+        if (watch.frames <= mark) return false;
+        mark = -1;
+        return true;
+    }
+
     /** Ends the recording (also when the probe fails). */
     static void stop() {
         GuiLadsAdapter.recording = null;
         if (watch != null) MinecraftForge.EVENT_BUS.unregister(watch);
     }
 
-    /** A drag in one tick (press, four mouseClickMove steps, release), so a real pointer cannot interleave. */
-    private static void drag(int[] from, int dx, int dy) throws Exception {
-        mouse(0, true, from[0], from[1]);
-        for (int i = 1; i <= 4; i++) mouse(-1, false, from[0] + dx * i / 4, from[1] + dy * i / 4);
-        mouse(0, false, from[0] + dx, from[1] + dy);
+    /** GUI pixel of a game GUI position inside the editor's preview. */
+    private static int sx(double gameX) { return (int) Math.round(editor.ui().screenX(gameX)); }
+    private static int sy(double gameY) { return (int) Math.round(editor.ui().screenY(gameY)); }
+
+    /**
+     * A drag held across ticks (for a capture, a Shift release or Escape) goes to the editor directly: GuiScreen never sees the
+     * press, so a real pointer crossing the window meanwhile cannot move it. Quick drags (drag) go through LWJGL in one tick.
+     */
+    private static void hold(int x, int y) { editor.ui().mouseClicked(x, y, 0, 0); }
+    private static void moveTo(int x, int y) { editor.ui().mouseDragged(x, y, 0); }
+
+    private static void clickGame(int[] game) throws Exception {
+        click(sx(game[0]), sy(game[1]));
+    }
+
+    private static void clickScreen(Rect bounds) throws Exception {
+        click(bounds.x() + bounds.width() / 2, bounds.y() + bounds.height() / 2);
+    }
+
+    /**
+     * A drag in game pixels through the preview, in one tick (press, four mouseClickMove steps, release), so a real pointer
+     * cannot interleave. Returns the delta in game pixels that the whole GUI pixels sent amount to.
+     */
+    private static int[] drag(int[] from, double dx, double dy) throws Exception {
+        mouse(0, true, sx(from[0]), sy(from[1]));
+        for (int i = 1; i <= 4; i++) mouse(-1, false, sx(from[0] + dx * i / 4), sy(from[1] + dy * i / 4));
+        mouse(0, false, sx(from[0] + dx), sy(from[1] + dy));
+        double scale = editor.ui().previewScale();
+        return new int[] {(int) Math.round((sx(from[0] + dx) - sx(from[0])) / scale), (int) Math.round((sy(from[1] + dy) - sy(from[1])) / scale)};
     }
 
     private static void rightClick(Rect bounds) throws Exception {
-        mouse(1, true, bounds.x() + 2, bounds.y() + 2);
-        mouse(1, false, bounds.x() + 2, bounds.y() + 2);
+        mouse(1, true, sx(bounds.x() + 2), sy(bounds.y() + 2));
+        mouse(1, false, sx(bounds.x() + 2), sy(bounds.y() + 2));
+    }
+
+    /** Names of the HUDs that are switched on and run on 1.8.9, in the list's order. */
+    private static List<String> switchedOn() {
+        List<String> names = new ArrayList<>();
+        for (HudElement element : HudManager.getInstance().getElements())
+            if (element.getModuleName() != null && element.isAvailable() && element.isEnabled()) names.add(element.getModuleName());
+        java.util.Collections.sort(names, String.CASE_INSENSITIVE_ORDER);
+        return names;
+    }
+
+    private static String positionOf(String name) {
+        int[] position = HudSettings.getInstance().getPosition(name);
+        return position == null ? "default" : position[0] + "," + position[1];
     }
 
     /** CPS directly above Day, centres aligned (one width), 2 px apart, as the editor stacks a group. */

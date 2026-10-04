@@ -201,6 +201,7 @@ public final class NativeWorldVerification {
     public static boolean menuCaptureActive() { return menuScreen != null; }
     /** Capture a completed game frame, including GUI, through Minecraft's own GPU readback. */
     public static void renderedFrame(com.mojang.blaze3d.pipeline.RenderTarget target) {
+        if (hudProbe != null && active() && !failed) hudProbe.frame(target, gameDirectory);
         renderMenuCapture(target);
         if(Boolean.getBoolean("thelads.verify133")&&active()&&!opened&&!titleCaptured&&titleSince>0
             &&System.nanoTime()-titleSince>2_000_000_000L&&Minecraft.getInstance().gui.screen() instanceof TitleScreen&&Minecraft.getInstance().gui.overlay()==null) {
@@ -273,7 +274,7 @@ public final class NativeWorldVerification {
         }
         if (hudProbe != null) hudProbe.tick();
         if (mc.level == null || mc.player == null || mc.player.isDeadOrDying()
-            || mc.gui.screen() != menuScreen) {
+            || mc.gui.screen() != menuScreen && (hudProbe == null || !hudProbe.inGame())) {
             finishMenuCapture(mc, new IllegalStateException("The requested QA menu was replaced before capture by " + (mc.gui.screen() == null ? "no screen" : mc.gui.screen().getClass().getName())));
         } else if (now - menuOpenedAt > 30_000_000_000L) {
             finishMenuCapture(mc, new IllegalStateException("The requested QA menu did not finish rendering/readback within 30 seconds"));

@@ -34,7 +34,11 @@ public class DraggableHudScreen26 extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
-        ui.render(new GuiGraphicsExtractorLadsAdapter(g, this.font), mouseX, mouseY);
+        ui.render(new GuiGraphicsExtractorLadsAdapter(g, this.font) {
+            @Override public boolean drawGameView(int x, int y, int width, int height) {
+                return com.thelads.core.v26_2.feature.HudEditorView.draw(g, x, y, width, height);
+            }
+        }, mouseX, mouseY);
         super.extractRenderState(g, mouseX, mouseY, delta);
     }
 
@@ -48,7 +52,7 @@ public class DraggableHudScreen26 extends Screen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        if (ui.mouseReleased(event.x(), event.y(), CommonInput.button(event.button()))) {
+        if (ui.mouseReleased(event.x(), event.y(), CommonInput.button(event.button()), CommonInput.modifiers(event.modifiers()))) {
             return true;
         }
         return super.mouseReleased(event);
@@ -60,6 +64,11 @@ public class DraggableHudScreen26 extends Screen {
             return true;
         }
         return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        return ui.mouseScrolled(mouseX, mouseY, verticalAmount) || super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
@@ -78,5 +87,5 @@ public class DraggableHudScreen26 extends Screen {
 
     @Override public boolean charTyped(net.minecraft.client.input.CharacterEvent event){return ui.charTyped(event.codepoint())||super.charTyped(event);}
 
-    @Override public void removed() { ui.close(); super.removed(); }
+    @Override public void removed() { ui.close(); com.thelads.core.v26_2.feature.HudEditorView.release(); super.removed(); }
 }

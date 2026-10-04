@@ -10,26 +10,31 @@ import com.thelads.core.config.HudSettings;
 import com.thelads.core.config.ModuleSupport;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/** One measured canvas for HUD selection, rigid groups, position locks and visible editor controls. */
+/**
+ * The HUD editor: the live game in a framed, scaled-down preview, with a list of HUD elements beside it and a toolbar above.
+ * Element bounds, drags, snapping, guides and groups are in game GUI coordinates; the preview shows that whole viewport at one
+ * scale, so a HUD dropped in the preview is exactly where it draws in game. Mouse input arrives in screen coordinates.
+ */
 public class DraggableHudScreen {
     public record Control(String id,String label,Rect bounds,boolean enabled) {}
+    /** A list row with its on/off switch (null when the module cannot be switched) and settings gear. */
+    private record Row(HudElement element,Rect bounds,Rect toggle,Rect gear) {}
     private final Runnable saveConfig;
     private Runnable onClose=()->{};
     private java.util.function.Consumer<String> onSettings=name->{};
-    private final Map<HudElement,Rect> gears=new LinkedHashMap<>();
-    private final Map<HudElement,Rect> toggles=new LinkedHashMap<>();
     private final List<Control> contextControls=new ArrayList<>();
-    private int dock=0,contextX,contextY;
-    private boolean collapsed,contextOpen,autoHideDock;
-    private long dockExitNanos;
+    private int contextX,contextY;
+    private boolean contextOpen;
     private final ColorPicker colorPicker = new ColorPicker();
     public void setOnSettings(java.util.function.Consumer<String> action){onSettings=action;}
     private final Set<HudElement> selected=new LinkedHashSet<>();
@@ -37,118 +42,212 @@ public class DraggableHudScreen {
     private final Map<HudElement,Rect> renderedBounds=new IdentityHashMap<>();
     private final Map<HudElement,Rect> dragStart=new LinkedHashMap<>();
     private final List<Control> controls=new ArrayList<>();
-    private boolean showGrid=true,showAll,multiSelect,toolbarPinned;
+    private final List<Row> rows=new ArrayList<>();
+    private boolean showGrid=true,showAll;
     private boolean marquee,marqueeAdditive;
-    private boolean dragMoved;
+    private boolean dragMoved,editingSearch;
     private double downX,downY,marqueeX,marqueeY;
-    private int viewportWidth,viewportHeight,focusedControl=-1;
-    private Rect toolbarBounds=new Rect(0,0,0,0);
+    private int viewportWidth,viewportHeight,focusedControl=-1,listScroll,maxListScroll;
+    /** The preview frame on screen and its scale: one game GUI pixel is {@code scale} screen pixels. */
+    private Rect preview=new Rect(0,0,0,0),panel=new Rect(0,0,0,0),list=new Rect(0,0,0,0);
+    private double scale=1;
     private Integer guideX,guideY;
-    private String notice="";
-    private static final int GRID=10,SNAP=4;
+    private HudElement reveal;
+    private String notice="",search="";
+    private static final int GRID=10,SNAP=4,TOP=26,STATUS=14,GAP=6,ROW=18;
 
     public DraggableHudScreen(){this(ConfigManager::save);}
     public DraggableHudScreen(Runnable saveConfig){this.saveConfig=Objects.requireNonNull(saveConfig);}
     public void setOnClose(Runnable action){onClose=action;}
     public Set<String> selectedNames(){var names=new LinkedHashSet<String>();for(var element:selected)if(element.getModuleName()!=null)names.add(element.getModuleName());return Set.copyOf(names);}
+    /** Game GUI bounds of a HUD drawn in the last preview (the position it has in game), or null. */
     public Rect boundsFor(String name){for(var entry:renderedBounds.entrySet())if(Objects.equals(name,entry.getKey().getModuleName()))return entry.getValue();return null;}
     public List<Control> controls(){return List.copyOf(controls);}
     public List<Control> contextControls(){return List.copyOf(contextControls);}
-    public Rect toggleBoundsFor(String name){for(var entry:toggles.entrySet())if(Objects.equals(name,entry.getKey().getModuleName()))return entry.getValue();return null;}
+    /** Screen bounds of the module switch in a HUD's list row, or null when that row is not shown or cannot switch. */
+    public Rect toggleBoundsFor(String name){var row=row(name);return row==null?null:row.toggle();}
+    /** Screen bounds of the settings gear in a HUD's list row, or null. */
+    public Rect settingsBoundsFor(String name){var row=row(name);return row==null?null:row.gear();}
+    /** Screen bounds of a HUD's list row, or null when it is not listed or scrolled out of view. */
+    public Rect rowBoundsFor(String name){var row=row(name);return row==null?null:row.bounds();}
+    /** Names in the element list, top to bottom (including rows scrolled out of view). */
+    public List<String> listedNames(){return listed().stream().map(HudElement::getModuleName).toList();}
+    public Rect previewBounds(){return preview;}
+    public double previewScale(){return scale;}
+    public boolean isShowingAll(){return showAll;}
     public boolean isDragging(){return !dragStart.isEmpty();}
+    /** Screen position of a game GUI coordinate inside the preview. */
+    public double screenX(double gameX){return preview.x()+gameX*scale;}
+    public double screenY(double gameY){return preview.y()+gameY*scale;}
+    /** Screen pixels covering game GUI bounds in the preview. */
+    public Rect toScreen(Rect bounds){
+        int x=(int)Math.floor(screenX(bounds.x())),y=(int)Math.floor(screenY(bounds.y()));
+        return new Rect(x,y,Math.max(1,(int)Math.ceil(screenX(bounds.right()))-x),Math.max(1,(int)Math.ceil(screenY(bounds.bottom()))-y));
+    }
+    private double gameX(double x){return (x-preview.x())/scale;}
+    private double gameY(double y){return (y-preview.y())/scale;}
 
     public void render(LadsGraphics graphics,int mouseX,int mouseY){
         finishHiddenDrag();
         int width=graphics.getScaledWidth(),height=graphics.getScaledHeight();
-        if(viewportWidth>0&&(width!=viewportWidth||height!=viewportHeight)){finishDrag();marquee=false;}
+        if(viewportWidth>0&&(width!=viewportWidth||height!=viewportHeight)){finishDrag(false);marquee=false;}
         viewportWidth=width;viewportHeight=height;
-        measuredBounds.clear();renderedBounds.clear();gears.clear();toggles.clear();
-        graphics.fill(0,0,width,height,0x44000000);
-        if(showGrid){
-            for(int x=0;x<width;x+=GRID)graphics.fill(x,0,x+1,height,0x15FFFFFF);
-            for(int y=0;y<height;y+=GRID)graphics.fill(0,y,width,y+1,0x15FFFFFF);
-        }
+        layout();
+        measuredBounds.clear();renderedBounds.clear();controls.clear();rows.clear();
+        graphics.fill(0,0,width,height,LadsPalette.BACKGROUND);
+        graphics.fill(0,0,width,2,LadsPalette.ACCENT);
         List<HudElement> elements=HudManager.getInstance().getElements();
         // Hidden members are measured too: enabling a grouped HUD later must not reveal a split group.
         for(var element:elements)if(element.isAvailable())measuredBounds.put(element,element.measureBounds(graphics,true));
         HudGroupLayout.matchDockedWidths(measuredBounds);
         clampGroups(elements);
-        for(var element:paintOrder()){
-            if(!isVisible(element))continue;
-            Rect bounds=measuredBounds.get(element);if(bounds==null)continue;
-            element.renderAt(graphics,bounds.x(),bounds.y(),true);
-            renderedBounds.put(element,bounds);
-            boolean hover=bounds.contains(mouseX,mouseY),chosen=selected.contains(element),locked=isLocked(element);
-            if(!element.isEnabled())graphics.fill(bounds.x(),bounds.y(),bounds.right(),bounds.bottom(),0x88222222);
-            int color=chosen?LadsPalette.ACCENT:locked?LadsPalette.MUTED:hover?LadsPalette.PRIMARY_HOVER:0x66FFFFFF;
-            border(graphics,bounds,color);
-            // Only the hovered widget gets a label; disabled previews use a muted body.
-            // Reserve an exterior hit target, keeping the icon off the widget's text.
-            if(!isDragging()&&!marquee){
-            Rect gear=placeGear(bounds);
-            gears.put(element,gear);
-            graphics.fill(gear.x(),gear.y(),gear.right(),gear.bottom(),LadsPalette.CARD);
-            int gx=gear.x()+5,gy=gear.y()+5;
-            graphics.fill(gx-3,gy-3,gx+4,gy+4,LadsPalette.TEXT);
-            graphics.fill(gx-1,gy-4,gx+2,gy+5,LadsPalette.TEXT);
-            graphics.fill(gx-4,gy-1,gx+5,gy+2,LadsPalette.TEXT);
-            graphics.fill(gx-1,gy-1,gx+2,gy+2,LadsPalette.CARD);
-            // Same rule as the settings card: only modules this game version runs can be switched.
-            if(canToggle(element)){Rect toggle=placeToggle(element,bounds,gear);toggles.put(element,toggle);
-            graphics.fill(toggle.x(),toggle.y(),toggle.right(),toggle.bottom(),element.isEnabled()?LadsPalette.PRIMARY:LadsPalette.CARD);
-            border(graphics,toggle,LadsPalette.BORDER);
-            graphics.drawCenteredText(element.isEnabled()?"ON":"OFF",toggle.x()+toggle.width()/2,toggle.y()+(toggle.height()-graphics.fontHeight())/2,LadsPalette.TEXT,false);}
-            }
-            if(hover&&!contextOpen){
-                String label=element.getModuleName()+(!element.isEnabled()?" · disabled":"")+(locked?" · locked":"");
-                int lx=Math.max(0,Math.min(mouseX+12,width-graphics.textWidth(label)-8));
-                int ly=Math.max(0,Math.min(mouseY+14,height-graphics.fontHeight()-8));
-                graphics.fill(lx,ly,lx+graphics.textWidth(label)+6,ly+graphics.fontHeight()+6,LadsPalette.PANEL);
-                graphics.drawText(label,lx+3,ly+3,LadsPalette.TEXT,false);
-            }
-        }
-        drawGroupOutlines(graphics);
-        if(isDragging()&&showGrid){
-            if(guideX!=null)graphics.fill(guideX,0,guideX+1,height,LadsPalette.ACCENT);
-            if(guideY!=null)graphics.fill(0,guideY,width,guideY+1,LadsPalette.ACCENT);
-        }
-        if(marquee){Rect box=marqueeBounds();graphics.fill(box.x(),box.y(),box.right(),box.bottom(),0x226F1624);border(graphics,box,LadsPalette.ACCENT);}
-        if(!isDragging()&&!marquee)drawToolbar(graphics,mouseX,mouseY);else controls.clear();
+        drawToolbar(graphics,mouseX,mouseY);
+        drawPanel(graphics,mouseX,mouseY);
+        drawPreview(graphics,mouseX,mouseY);
+        String status=notice.isEmpty()?selectionStatus():notice;
+        graphics.drawText(MenuGraphics.fit(graphics,status,width-2*GAP),GAP,height-STATUS+3,LadsPalette.MUTED,false);
         if(contextOpen)drawContext(graphics,mouseX,mouseY);
         colorPicker.render(graphics,mouseX,mouseY);
     }
 
-    private Rect placeGear(Rect bounds){
-        Rect best=new Rect(Math.max(0,Math.min(bounds.right()+2,viewportWidth-11)),Math.max(0,Math.min(bounds.y(),viewportHeight-11)),11,11);
-        long bestOverlap=Long.MAX_VALUE;
-        for(Rect candidate:List.of(new Rect(bounds.right()+2,bounds.y(),11,11),new Rect(bounds.x()-13,bounds.y(),11,11),
-                new Rect(bounds.right()-11,bounds.y()-12,11,11),new Rect(bounds.right()-11,bounds.bottom()+2,11,11))){
-            if(candidate.x()<0||candidate.y()<0||candidate.right()>viewportWidth||candidate.bottom()>viewportHeight)continue;
-            long overlap=0;
-            for(var entry:measuredBounds.entrySet())if(isVisible(entry.getKey()))overlap+=intersectionArea(candidate,entry.getValue());
-            for(Rect gear:gears.values())overlap+=intersectionArea(candidate,gear);
-            for(Rect toggle:toggles.values())overlap+=intersectionArea(candidate,toggle);
-            if(overlap<bestOverlap){best=candidate;bestOverlap=overlap;if(overlap==0)break;}
-        }
-        return best;
+    /** Toolbar across the top, element list on the left, and the largest preview with the game's aspect ratio in the rest. */
+    private void layout(){
+        int side=viewportWidth>=560?150:viewportWidth>=400?132:112;
+        panel=new Rect(GAP,TOP,side,Math.max(40,viewportHeight-TOP-STATUS));
+        int ax=panel.right()+GAP+3,ay=TOP+3,aw=Math.max(16,viewportWidth-ax-GAP-3),ah=Math.max(16,viewportHeight-TOP-STATUS-6);
+        scale=Math.min(aw/(double)Math.max(1,viewportWidth),ah/(double)Math.max(1,viewportHeight));
+        int pw=(int)Math.round(viewportWidth*scale),ph=(int)Math.round(viewportHeight*scale);
+        preview=new Rect(ax+(aw-pw)/2,ay+(ah-ph)/2,pw,ph);
     }
-    private static long intersectionArea(Rect a,Rect b){
-        return (long)Math.max(0,Math.min(a.right(),b.right())-Math.max(a.x(),b.x()))*Math.max(0,Math.min(a.bottom(),b.bottom())-Math.max(a.y(),b.y()));
-    }
-    private Rect placeToggle(HudElement owner,Rect bounds,Rect gear){
-        Rect best=null;long bestOverlap=Long.MAX_VALUE;
-        for(Rect candidate:List.of(new Rect(gear.right()+2,gear.y(),27,11),new Rect(gear.x()-29,gear.y(),27,11),
-                new Rect(bounds.x(),bounds.y()-13,27,11),new Rect(bounds.x(),bounds.bottom()+2,27,11))){
-            if(candidate.x()<0||candidate.y()<0||candidate.right()>viewportWidth||candidate.bottom()>viewportHeight)continue;
-            // Never over another HUD: clicking that HUD must select it, not switch this module off.
-            if(measuredBounds.entrySet().stream().anyMatch(entry->entry.getKey()!=owner&&isVisible(entry.getKey())&&entry.getValue().intersects(candidate)))continue;
-            long overlap=intersectionArea(candidate,bounds);
-            for(Rect occupied:gears.values())overlap+=intersectionArea(candidate,occupied);
-            for(Rect occupied:toggles.values())overlap+=intersectionArea(candidate,occupied);
-            if(overlap<bestOverlap){best=candidate;bestOverlap=overlap;if(overlap==0)break;}
+
+    private void drawPreview(LadsGraphics g,int mx,int my){
+        Rect p=preview;
+        MenuGraphics.round(g,p.x()-3,p.y()-3,p.width()+6,p.height()+6,isDragging()?LadsPalette.ACCENT:LadsPalette.BORDER);
+        g.enableScissor(p.x(),p.y(),p.right(),p.bottom());
+        try{
+            g.fill(p.x(),p.y(),p.right(),p.bottom(),0xFF14101A);
+            g.drawGameView(p.x(),p.y(),p.width(),p.height());
+            if(showGrid&&isDragging()){
+                for(int x=0;x<viewportWidth;x+=GRID){int sx=(int)Math.round(screenX(x));g.fill(sx,p.y(),sx+1,p.bottom(),0x15FFFFFF);}
+                for(int y=0;y<viewportHeight;y+=GRID){int sy=(int)Math.round(screenY(y));g.fill(p.x(),sy,p.right(),sy+1,0x15FFFFFF);}
+            }
+            // Live HUD content, drawn in game coordinates under one translate and scale.
+            g.pushPose();
+            try{
+                g.translate(p.x(),p.y());g.scale((float)scale,(float)scale);
+                for(var element:paintOrder()){
+                    if(!isVisible(element))continue;
+                    Rect bounds=measuredBounds.get(element);if(bounds==null)continue;
+                    element.renderAt(g,bounds.x(),bounds.y(),true);
+                    renderedBounds.put(element,bounds);
+                }
+            }finally{g.popPose();}
+            // Outlines in whole screen pixels, so they stay crisp at any preview scale.
+            for(var element:paintOrder()){
+                Rect bounds=renderedBounds.get(element);if(bounds==null)continue;
+                Rect box=toScreen(bounds);
+                boolean hover=box.contains(mx,my)&&p.contains(mx,my),chosen=selected.contains(element),locked=isLocked(element);
+                if(!element.isEnabled())g.fill(box.x(),box.y(),box.right(),box.bottom(),0x88222222);
+                border(g,box,chosen?LadsPalette.ACCENT:locked?LadsPalette.MUTED:hover?LadsPalette.PRIMARY_HOVER:0x66FFFFFF);
+            }
+            drawGroupOutlines(g);
+            if(isDragging()&&showGrid){
+                if(guideX!=null){int sx=(int)Math.round(screenX(guideX));g.fill(sx,p.y(),sx+1,p.bottom(),LadsPalette.ACCENT);}
+                if(guideY!=null){int sy=(int)Math.round(screenY(guideY));g.fill(p.x(),sy,p.right(),sy+1,LadsPalette.ACCENT);}
+            }
+            if(marquee){Rect box=toScreen(marqueeBounds());g.fill(box.x(),box.y(),box.right(),box.bottom(),0x226F1624);border(g,box,LadsPalette.ACCENT);}
+        }finally{g.disableScissor();}
+        if(contextOpen||isDragging()||marquee||!p.contains(mx,my))return;
+        var order=paintOrder();
+        for(int i=order.size()-1;i>=0;i--){var element=order.get(i);Rect bounds=renderedBounds.get(element);
+            if(bounds==null||!toScreen(bounds).contains(mx,my))continue;
+            String label=element.getModuleName()+(!element.isEnabled()?" · disabled":"")+(isLocked(element)?" · locked":"");
+            int w=g.textWidth(label)+6,lx=Math.max(0,Math.min(mx+12,viewportWidth-w)),ly=Math.max(0,Math.min(my+14,viewportHeight-g.fontHeight()-6));
+            MenuGraphics.round(g,lx,ly,w,g.fontHeight()+6,LadsPalette.PANEL);
+            g.drawText(label,lx+3,ly+3,LadsPalette.TEXT,false);
+            return;
         }
-        // Crowded layouts keep the switch on its own module, leaving the rest of the body to select and drag.
-        return best!=null?best:new Rect(bounds.x(),bounds.y(),Math.min(27,Math.max(1,bounds.width()/2)),Math.min(11,bounds.height()));
+    }
+
+    private void drawToolbar(LadsGraphics g,int mx,int my){
+        boolean locked=selected.stream().anyMatch(this::isLocked);
+        String[][] buttons={{"group","Group"},{"ungroup","Ungroup"},{locked?"unlock":"lock",locked?"Unlock":"Lock"},{"snap",showGrid?"Snap: on":"Snap: off"},{"done","Done"}};
+        var bounds=new Rect[buttons.length];
+        int x=viewportWidth-GAP;
+        for(int i=buttons.length-1;i>=0;i--){int w=g.textWidth(buttons[i][1])+14;x-=w;bounds[i]=new Rect(x,5,w,17);x-=4;}
+        int titleRoom=x-GAP-4;
+        if(titleRoom>=g.textWidth("THE LADS")){
+            g.drawText("THE LADS",GAP+2,10,LadsPalette.ACCENT,false);
+            if(titleRoom>=g.textWidth("THE LADS  HUD EDITOR"))g.drawText("HUD EDITOR",GAP+2+g.textWidth("THE LADS  "),10,LadsPalette.MUTED,false);
+        }
+        for(int i=0;i<buttons.length;i++){
+            String id=buttons[i][0];
+            boolean enabled=switch(id){case "group"->selectedNames().size()>=2;case "ungroup"->selected.stream().anyMatch(e->HudSettings.getInstance().getGroupIndex(e.getModuleName())>=0);case "lock"->!selected.isEmpty();default->true;};
+            drawControl(g,new Control(id,buttons[i][1],bounds[i],enabled),mx,my,controls,id.equals("snap")&&showGrid,false);
+        }
+    }
+
+    private void drawPanel(LadsGraphics g,int mx,int my){
+        MenuGraphics.round(g,panel.x(),panel.y(),panel.width(),panel.height(),LadsPalette.PANEL);
+        int x=panel.x()+5,w=panel.width()-10,y=panel.y()+6;
+        var listed=listed();
+        String count=String.valueOf(listed.size());
+        g.drawText(MenuGraphics.fit(g,"HUD ELEMENTS",w-g.textWidth(count)-4),x,y,LadsPalette.MUTED,false);
+        g.drawText(count,x+w-g.textWidth(count),y,LadsPalette.MUTED,false);
+        y+=13;
+        String query=editingSearch?search+"_":search.isEmpty()?"Search...":search;
+        drawControl(g,new Control("search",query,new Rect(x,y,w,16),true),mx,my,controls,editingSearch,true);
+        y+=20;
+        drawControl(g,new Control("previews","Show disabled",new Rect(x,y,w,16),true),mx,my,controls,showAll,false);
+        y+=21;
+        int footer=panel.bottom()-21;
+        list=new Rect(x,y,w,Math.max(ROW,footer-4-y));
+        maxListScroll=Math.max(0,listed.size()*ROW-list.height());
+        if(reveal!=null){int index=listed.indexOf(reveal);reveal=null;
+            if(index>=0){int top=index*ROW;if(top<listScroll)listScroll=top;else if(top+ROW>listScroll+list.height())listScroll=top+ROW-list.height();}}
+        listScroll=Math.max(0,Math.min(maxListScroll,listScroll));
+        g.enableScissor(list.x(),list.y(),list.right(),list.bottom());
+        try{
+            for(int i=0;i<listed.size();i++){
+                int ry=list.y()+i*ROW-listScroll;
+                if(ry+ROW<=list.y()||ry>=list.bottom())continue;
+                drawRow(g,listed.get(i),new Rect(x,ry,w-(maxListScroll>0?4:0),ROW-2),mx,my);
+            }
+            if(listed.isEmpty())g.drawText(MenuGraphics.fit(g,search.isEmpty()?"No HUD elements on":"No matches",w),x+2,list.y()+4,LadsPalette.MUTED,false);
+        }finally{g.disableScissor();}
+        if(maxListScroll>0){
+            int thumb=Math.max(10,list.height()*list.height()/(list.height()+maxListScroll));
+            int ty=list.y()+(list.height()-thumb)*listScroll/maxListScroll;
+            g.fill(list.right()-2,list.y(),list.right(),list.bottom(),LadsPalette.CARD);
+            g.fill(list.right()-2,ty,list.right(),ty+thumb,LadsPalette.BORDER);
+        }
+        int half=(w-4)/2;
+        drawControl(g,new Control("colors","Colors",new Rect(x,footer,half,16),true),mx,my,controls,false,false);
+        drawControl(g,new Control("reset","Reset",new Rect(x+half+4,footer,w-half-4,16),true),mx,my,controls,false,false);
+    }
+
+    /** Monogram tile, name, settings gear and on/off switch; the selected row is filled with the primary colour. */
+    private void drawRow(LadsGraphics g,HudElement element,Rect r,int mx,int my){
+        boolean hover=r.contains(mx,my)&&list.contains(mx,my),chosen=selected.contains(element),on=element.isEnabled();
+        int fill=chosen?(hover?LadsPalette.PRIMARY_HOVER:LadsPalette.PRIMARY):hover?LadsPalette.HOVER:LadsPalette.CARD;
+        MenuGraphics.round(g,r.x(),r.y(),r.width(),r.height(),fill);
+        String name=element.getModuleName();
+        // A monogram tile in the module's on/off colour, where the list is wide enough to keep the names whole.
+        int text=r.x()+5;
+        if(panel.width()>=130){int tile=r.y()+(r.height()-11)/2;text=r.x()+18;
+            MenuGraphics.round(g,r.x()+3,tile,11,11,on?LadsPalette.CARD_ON:LadsPalette.CARD_OFF);
+            g.drawCenteredText(name.substring(0,1).toUpperCase(Locale.ROOT),r.x()+9,tile+2,LadsPalette.TEXT,false);}
+        Rect toggle=canToggle(element)?new Rect(r.right()-21,r.y()+(r.height()-10)/2,18,10):null;
+        Rect gear=new Rect((toggle!=null?toggle.x():r.right())-14,r.y()+(r.height()-11)/2,11,11);
+        if(toggle!=null){
+            MenuGraphics.round(g,toggle.x(),toggle.y(),toggle.width(),toggle.height(),on?0xFF2E9E57:LadsPalette.BORDER);
+            MenuGraphics.round(g,on?toggle.right()-8:toggle.x()+2,toggle.y()+2,6,6,on?LadsPalette.TEXT:LadsPalette.MUTED);
+        }
+        int gx=gear.x()+5,gy=gear.y()+5,gearColor=gear.contains(mx,my)?LadsPalette.TEXT:LadsPalette.MUTED;
+        g.fill(gx-3,gy-3,gx+4,gy+4,gearColor);g.fill(gx-1,gy-4,gx+2,gy+5,gearColor);g.fill(gx-4,gy-1,gx+5,gy+2,gearColor);
+        g.fill(gx-1,gy-1,gx+2,gy+2,fill);
+        g.drawText(MenuGraphics.fit(g,name,gear.x()-text-4),text,r.y()+(r.height()-g.fontHeight())/2+1,on?LadsPalette.TEXT:LadsPalette.MUTED,false);
+        rows.add(new Row(element,r,toggle,gear));
     }
 
     private void clampGroups(List<HudElement> elements){
@@ -165,7 +264,7 @@ public class DraggableHudScreen {
         Set<Integer> drawn=new LinkedHashSet<>();
         for(var element:selected){int group=HudSettings.getInstance().getGroupIndex(element.getModuleName());if(group<0||!drawn.add(group))continue;
             var boxes=groupElements(element).stream().filter(renderedBounds::containsKey).map(renderedBounds::get).toList();
-            if(!boxes.isEmpty()){Rect union=HudGroupLayout.union(boxes);border(graphics,new Rect(union.x()-2,union.y()-2,union.width()+4,union.height()+4),LadsPalette.ACCENT);}
+            if(!boxes.isEmpty()){Rect union=toScreen(HudGroupLayout.union(boxes));border(graphics,new Rect(union.x()-2,union.y()-2,union.width()+4,union.height()+4),LadsPalette.ACCENT);}
         }
     }
     private static void border(LadsGraphics graphics,Rect bounds,int color){
@@ -173,52 +272,14 @@ public class DraggableHudScreen {
         graphics.fill(bounds.x(),bounds.y(),bounds.x()+1,bounds.bottom(),color);graphics.fill(bounds.right()-1,bounds.y(),bounds.right(),bounds.bottom(),color);
     }
 
-    private void drawToolbar(LadsGraphics g,int mx,int my){
-        controls.clear();
-        if (autoHideDock && !collapsed && !colorPicker.isOpen()) {
-            if (toolbarBounds.contains(mx,my)) dockExitNanos=0;
-            else if (dockExitNanos==0) dockExitNanos=System.nanoTime();
-            else if (System.nanoTime()-dockExitNanos>=1_500_000_000L) collapsed=true;
-        }
-        if(collapsed){
-            toolbarBounds=switch(dock){
-                case 1 -> new Rect(0,viewportHeight/2-22,16,44);
-                case 2 -> new Rect(viewportWidth-16,viewportHeight/2-22,16,44);
-                case 3 -> new Rect(viewportWidth/2-22,0,44,16);
-                default -> new Rect(viewportWidth/2-22,viewportHeight-16,44,16);
-            };
-            if (!toolbarBounds.contains(mx,my)) {
-                drawControl(g,new Control("collapse",switch(dock){case 1 -> ">"; case 2 -> "<"; case 3 -> "v"; default -> "^";},toolbarBounds,true),mx,my,controls);return;
-            }
-            collapsed=false;dockExitNanos=0;
-        }
-        boolean locked=selected.stream().anyMatch(this::isLocked);
-        String[] docks={"bottom","left","right","top"};
-        String[][] buttons={{"select",multiSelect?"Multi-select: on":"Select multiple"},{"group","Group"},{"ungroup","Ungroup"},{"lock","Lock position"},{"unlock","Unlock"},{"snap",showGrid?"Snap: on":"Snap: off"},{"previews",showAll?"Supported only":"All previews"},{"toolbar","Dock: "+docks[dock]},{"collapse","Hide controls"},{"colors","Global colors"},{"reset","Reset layout"},{"done","Done"}};
-        boolean vertical=dock==1||dock==2;
-        int cols=vertical?1:Math.max(1,Math.min(5,(viewportWidth-24)/90));
-        int bw=vertical?Math.min(116,viewportWidth-16):Math.min(100,(viewportWidth-24)/cols-4);
-        int bh=Math.max(12,Math.min(21,(viewportHeight-38)/(vertical?buttons.length:3)-3));
-        int rows=(buttons.length+cols-1)/cols,pw=cols*(bw+4)+12,ph=rows*(bh+3)+30;
-        int px=dock==1?4:dock==2?viewportWidth-pw-4:(viewportWidth-pw)/2;
-        if(!toolbarPinned&&!vertical){
-            long top=overlapArea(new Rect(px,4,pw,ph)),bottom=overlapArea(new Rect(px,Math.max(4,viewportHeight-ph-4),pw,ph));
-            dock=top<bottom?3:0;
-        }
-        int py=dock==3?4:vertical?Math.max(4,(viewportHeight-ph)/2):Math.max(4,viewportHeight-ph-4);
-        toolbarBounds=new Rect(px,py,pw,ph);
-        g.fill(px,py,px+pw,py+ph,LadsPalette.PANEL);border(g,toolbarBounds,LadsPalette.BORDER);
-        g.drawCenteredText(clip(g,selectionStatus(),pw-12),px+pw/2,py+6,LadsPalette.TEXT,false);
-        for(int i=0;i<buttons.length;i++){
-            String id=buttons[i][0];boolean enabled=switch(id){case "group"->selectedNames().size()>=2;case "ungroup"->selected.stream().anyMatch(e->HudSettings.getInstance().getGroupIndex(e.getModuleName())>=0);case "lock"->!selected.isEmpty()&&!locked;case "unlock"->locked;default->true;};
-            drawControl(g,new Control(id,buttons[i][1],new Rect(px+8+(i%cols)*(bw+4),py+23+(i/cols)*(bh+3),bw,bh),enabled),mx,my,controls);
-        }
-    }
-    private void drawControl(LadsGraphics g,Control c,int mx,int my,List<Control> target){
+    private void drawControl(LadsGraphics g,Control c,int mx,int my,List<Control> target,boolean on,boolean leftAligned){
         target.add(c);Rect b=c.bounds();
-        g.fill(b.x(),b.y(),b.right(),b.bottom(),b.contains(mx,my)?LadsPalette.HOVER:LadsPalette.CARD);
-        border(g,b,LadsPalette.BORDER);
-        g.drawCenteredText(clip(g,c.label(),b.width()-6),b.x()+b.width()/2,b.y()+(b.height()-g.fontHeight())/2,c.enabled()?LadsPalette.TEXT:LadsPalette.DISABLED,false);
+        boolean hover=c.enabled()&&b.contains(mx,my),focused=target==controls&&focusedControl==controls.size()-1;
+        if(focused)MenuGraphics.round(g,b.x()-1,b.y()-1,b.width()+2,b.height()+2,LadsPalette.ACCENT);
+        MenuGraphics.round(g,b.x(),b.y(),b.width(),b.height(),!c.enabled()?LadsPalette.PANEL:on?(hover?LadsPalette.PRIMARY_HOVER:LadsPalette.PRIMARY):hover?LadsPalette.HOVER:LadsPalette.CARD);
+        int ty=b.y()+(b.height()-g.fontHeight())/2+1,color=c.enabled()?LadsPalette.TEXT:LadsPalette.DISABLED;
+        if(leftAligned)g.drawText(MenuGraphics.fit(g,c.label(),b.width()-10),b.x()+5,ty,on||!search.isEmpty()?color:LadsPalette.MUTED,false);
+        else g.drawCenteredText(MenuGraphics.fit(g,c.label(),b.width()-6),b.x()+b.width()/2,ty,color,false);
     }
     private void drawContext(LadsGraphics g,int mx,int my){
         contextControls.clear();
@@ -228,7 +289,7 @@ public class DraggableHudScreen {
         int x=Math.max(0,Math.min(contextX,viewportWidth-132)),y=Math.max(0,Math.min(contextY,viewportHeight-rowHeight*items.length));
         for(int i=0;i<items.length;i++){
             String id=items[i][0];boolean enabled=switch(id){case "group"->selectedNames().size()>=2&&!locked;case "stack"->selectedNames().size()>=2&&!locked&&Objects.requireNonNullElse(HudSettings.getInstance().getGroupMembers(selectedNames().iterator().next()),Set.of()).containsAll(selectedNames());case "ungroup"->selected.stream().anyMatch(e->HudSettings.getInstance().getGroupIndex(e.getModuleName())>=0);case "centerX","centerY","centerBoth"->!locked;case "toggle"->selected.stream().anyMatch(DraggableHudScreen::canToggle);default->!selected.isEmpty();};
-            drawControl(g,new Control(id,items[i][1],new Rect(x,y+i*rowHeight,132,rowHeight),enabled),mx,my,contextControls);
+            drawControl(g,new Control(id,items[i][1],new Rect(x,y+i*rowHeight,132,rowHeight),enabled),mx,my,contextControls,false,false);
         }
     }
     private void center(boolean horizontal,boolean vertical){
@@ -236,14 +297,13 @@ public class DraggableHudScreen {
         Rect union=HudGroupLayout.union(selected.stream().filter(measuredBounds::containsKey).map(measuredBounds::get).toList());
         int dx=horizontal?(viewportWidth-union.width())/2-union.x():0;
         int dy=vertical?(viewportHeight-union.height())/2-union.y():0;
-        startDrag(0,0);boolean snap=showGrid;showGrid=false;mouseDragged(dx,dy,0);showGrid=snap;finishDrag();
+        startDrag(0,0);boolean snap=showGrid;showGrid=false;dragTo(dx,dy);showGrid=snap;finishDrag(false);
     }
-    private long overlapArea(Rect panel){long area=0;for(var bounds:renderedBounds.values())area+=(long)Math.max(0,Math.min(panel.right(),bounds.right())-Math.max(panel.x(),bounds.x()))*Math.max(0,Math.min(panel.bottom(),bounds.bottom())-Math.max(panel.y(),bounds.y()));return area;}
-    private static String clip(LadsGraphics graphics,String text,int width){if(graphics.textWidth(text)<=width)return text;int end=text.length();while(end>0&&graphics.textWidth(text.substring(0,end)+"…")>width)end--;return text.substring(0,end)+"…";}
     private String selectionStatus(){
-        if(selected.isEmpty())return showAll?"All HUDs · disabled previews stay disabled":"HUD editor · select HUDs to group or lock";
+        if(isDragging())return "Release to place · hold Shift while releasing to group with the HUD it touches";
+        if(selected.isEmpty())return "Drag HUDs in the preview · Ctrl-click or drag a box to select several · right-click for more";
         boolean locked=selected.stream().anyMatch(this::isLocked);String name=selected.size()==1?selected.iterator().next().getModuleName():selected.size()+" HUDs selected";
-        return name+(locked?" · Position locked: use Unlock":" · Drag to move together");
+        return name+(locked?" · Position locked: use Unlock":" · Drag to move · arrows nudge");
     }
 
     public boolean mouseClicked(double x,double y,int button){return mouseClicked(x,y,button,0);}
@@ -254,94 +314,132 @@ public class DraggableHudScreen {
             if(button==0)for(var c:contextControls)if(c.bounds().contains(x,y)){contextOpen=false;if(c.enabled())perform(c.id());return true;}
             contextOpen=false;return true;
         }
+        boolean onSearch=controls.stream().anyMatch(c->c.id().equals("search")&&c.bounds().contains(x,y));
+        if(editingSearch&&!onSearch)editingSearch=false;
+        marquee=false;
+        if(button==0)for(var control:controls)if(control.bounds().contains(x,y)){if(control.enabled())perform(control.id());return true;}
+        Row row=rowAt(x,y);
+        if(row!=null)return clickRow(row,x,y,button,modifiers);
+        if(!preview.contains(x,y))return button==0&&(panel.contains(x,y)||y<TOP);
+        double gx=gameX(x),gy=gameY(y);
+        HudElement hit=hitAt(gx,gy);
         if(button==1){
             // Right-clicking any part of the selection keeps it for Group; otherwise the topmost HUD becomes the selection.
-            boolean onSelection=selected.stream().map(renderedBounds::get).anyMatch(bounds->bounds!=null&&bounds.contains(x,y));
-            HudElement hit=null;var order=paintOrder();
-            for(int i=order.size()-1;i>=0&&hit==null;i--){Rect bounds=renderedBounds.get(order.get(i));if(bounds!=null&&bounds.contains(x,y))hit=order.get(i);}
-            if(onSelection||hit!=null){finishDrag();if(!onSelection){selected.clear();selected.addAll(groupElements(hit));}contextOpen=true;contextX=(int)x;contextY=(int)y;return true;}
-            if(!selected.isEmpty()){contextOpen=true;contextX=(int)x;contextY=(int)y;return true;}
-            return false;
+            boolean onSelection=selected.stream().map(renderedBounds::get).anyMatch(bounds->bounds!=null&&bounds.contains(gx,gy));
+            if(!onSelection&&hit==null&&selected.isEmpty())return false;
+            finishDrag(false);if(!onSelection&&hit!=null){selected.clear();selected.addAll(groupElements(hit));reveal=hit;}
+            openContext(x,y);return true;
         }
-        if(button!=0)return false;marquee=false;
-        for(var control:controls)if(control.bounds.contains(x,y)){if(control.enabled)perform(control.id);return true;}
-        if(!controls.isEmpty()&&toolbarBounds.contains(x,y))return true;
-        notice="";focusedControl=-1;boolean additive=multiSelect||(modifiers&3)!=0;
-        // Topmost first, mirroring render(): each HUD draws its body, then its gear, then its switch, so later HUDs cover earlier controls.
-        var order=paintOrder();
-        for(int i=order.size()-1;i>=0;i--){var element=order.get(i);
-            Rect toggle=toggles.get(element);
-            if(toggle!=null&&toggle.contains(x,y)){finishDrag();setEnabled(element,!element.isEnabled());saveConfig.run();return true;}
-            Rect gear=gears.get(element);
-            if(gear!=null&&gear.contains(x,y)){finishDrag();onSettings.accept(element.getModuleName());return true;}
-            Rect bounds=renderedBounds.get(element);
-            if(!isVisible(element)||bounds==null||!bounds.contains(x,y))continue;
-            Set<HudElement> group=groupElements(element);
-            if(additive){if(selected.containsAll(group))selected.removeAll(group);else selected.addAll(group);return true;}
-            if(!selected.contains(element)){selected.clear();selected.addAll(group);}
+        if(button!=0)return false;
+        notice="";focusedControl=-1;
+        if(hit!=null){
+            Set<HudElement> group=groupElements(hit);reveal=hit;
+            // Ctrl toggles a HUD in the selection; Shift alone still drags, so Shift can be held through a drop that groups.
+            if((modifiers&2)!=0){if(selected.containsAll(group))selected.removeAll(group);else selected.addAll(group);return true;}
+            if(!selected.contains(hit)){selected.clear();selected.addAll(group);}
             if(selected.stream().anyMatch(this::isLocked)){notice="Position locked. Select Unlock to move this selection.";return true;}
-            startDrag(x,y);return true;
+            startDrag(gx,gy);return true;
         }
+        boolean additive=(modifiers&3)!=0;
         if(!additive)selected.clear();
-        marquee=true;marqueeAdditive=additive;downX=x;downY=y;marqueeX=x;marqueeY=y;
+        marquee=true;marqueeAdditive=additive;downX=gx;downY=gy;marqueeX=gx;marqueeY=gy;
         return false;
     }
+    /** Topmost HUD under a game coordinate, as render() paints them. */
+    private HudElement hitAt(double gx,double gy){
+        var order=paintOrder();
+        for(int i=order.size()-1;i>=0;i--){var element=order.get(i);Rect bounds=renderedBounds.get(element);if(isVisible(element)&&bounds!=null&&bounds.contains(gx,gy))return element;}
+        return null;
+    }
+    private boolean clickRow(Row row,double x,double y,int button,int modifiers){
+        var element=row.element();finishDrag(false);notice="";
+        if(button==0&&row.toggle()!=null&&row.toggle().contains(x,y)){
+            boolean on=!element.isEnabled();setEnabled(element,on);saveConfig.run();
+            if(!on&&!showAll)notice=element.getModuleName()+" is off. Turn on Show disabled to list it again.";
+            return true;
+        }
+        if(button==0&&row.gear().contains(x,y)){onSettings.accept(element.getModuleName());return true;}
+        Set<HudElement> group=groupElements(element);
+        if(button==1){if(!selected.contains(element)){selected.clear();selected.addAll(group);}openContext(x,y);return true;}
+        if(button!=0)return false;
+        if((modifiers&2)!=0){if(selected.containsAll(group))selected.removeAll(group);else selected.addAll(group);}
+        else{selected.clear();selected.addAll(group);}
+        return true;
+    }
+    private void openContext(double x,double y){contextOpen=true;contextX=(int)x;contextY=(int)y;}
+    private Row row(String name){for(var row:rows)if(Objects.equals(name,row.element().getModuleName()))return row;return null;}
+    private Row rowAt(double x,double y){if(!list.contains(x,y))return null;for(var row:rows)if(row.bounds().contains(x,y))return row;return null;}
     private void startDrag(double x,double y){
-        finishDrag();downX=x;downY=y;
+        finishDrag(false);downX=x;downY=y;
         Set<HudElement> members=new LinkedHashSet<>();for(var element:selected)members.addAll(groupElements(element));selected.addAll(members);
         for(var element:members){Rect bounds=measuredBounds.get(element);if(bounds!=null)dragStart.put(element,bounds);}
     }
     public boolean mouseDragged(double x,double y,int button){
         if(colorPicker.move(x,y))return true;
         finishHiddenDrag();if(button!=0)return false;
-        if(marquee){marqueeX=x;marqueeY=y;return true;}
+        if(marquee){marqueeX=gameX(x);marqueeY=gameY(y);return true;}
         if(!isDragging())return false;
+        dragTo(gameX(x),gameY(y));return true;
+    }
+    /** Moves the dragged selection to a pointer position in game coordinates, with snapping and viewport clamping. */
+    private void dragTo(double x,double y){
         Rect union=HudGroupLayout.union(dragStart.values());int dx=(int)Math.round(x-downX),dy=(int)Math.round(y-downY);
-        if(!dragMoved&&dx==0&&dy==0)return true;
+        if(!dragMoved&&dx==0&&dy==0)return;
         var targets=renderedBounds.entrySet().stream().filter(entry->!dragStart.containsKey(entry.getKey())&&attracts(entry.getKey())).map(Map.Entry::getValue).toList();
         var delta=showGrid?HudGroupLayout.snapDelta(union,dx,dy,GRID,SNAP,targets,viewportWidth,viewportHeight):HudGroupLayout.clampDelta(union,dx,dy,viewportWidth,viewportHeight);
         Rect movedSelection=HudGroupLayout.translate(union,delta);int cx=movedSelection.x()+movedSelection.width()/2,cy=movedSelection.y()+movedSelection.height()/2;
         guideX=cx==viewportWidth/2||targets.stream().anyMatch(target->target.x()+target.width()/2==cx)?cx:null;
         guideY=cy==viewportHeight/2||targets.stream().anyMatch(target->target.y()+target.height()/2==cy)?cy:null;
         if(!dragMoved){
-            if(delta.x()==0&&delta.y()==0)return true;
+            if(delta.x()==0&&delta.y()==0)return;
             dragMoved=true;for(var element:dragStart.keySet())element.beginPositionEdit();
         }
         for(var entry:dragStart.entrySet()){Rect moved=HudGroupLayout.translate(entry.getValue(),delta);entry.getKey().setDisplayPosition(moved.x(),moved.y());measuredBounds.put(entry.getKey(),moved);if(renderedBounds.containsKey(entry.getKey()))renderedBounds.put(entry.getKey(),moved);}
-        return true;
     }
-    public boolean mouseReleased(double x,double y,int button){
+    public boolean mouseReleased(double x,double y,int button){return mouseReleased(x,y,button,0);}
+    /** Shift held at the drop (modifier bit 1) groups the dropped HUDs with the HUDs they now touch; a plain drop never groups. */
+    public boolean mouseReleased(double x,double y,int button,int modifiers){
         if(colorPicker.release())return true;
         finishHiddenDrag();if(button!=0)return false;
-        if(marquee){marqueeX=x;marqueeY=y;Rect box=marqueeBounds();marquee=false;if(box.width()>3||box.height()>3){if(!marqueeAdditive)selected.clear();for(var entry:renderedBounds.entrySet())if(box.intersects(entry.getValue()))selected.addAll(groupElements(entry.getKey()));}return true;}
-        if(isDragging()){finishDrag();return true;}return false;
+        if(marquee){marqueeX=gameX(x);marqueeY=gameY(y);Rect box=marqueeBounds();marquee=false;if(box.width()>3||box.height()>3){if(!marqueeAdditive)selected.clear();for(var entry:renderedBounds.entrySet())if(box.intersects(entry.getValue()))selected.addAll(groupElements(entry.getKey()));}return true;}
+        if(isDragging()){finishDrag((modifiers&1)!=0);return true;}return false;
+    }
+    public boolean mouseScrolled(double x,double y,double amount){
+        if(colorPicker.isOpen())return true;
+        if(!list.contains(x,y))return false;
+        listScroll=Math.max(0,Math.min(maxListScroll,listScroll-(int)Math.round(amount*ROW)));return true;
     }
     private Rect marqueeBounds(){return new Rect((int)Math.floor(Math.min(downX,marqueeX)),(int)Math.floor(Math.min(downY,marqueeY)),(int)Math.ceil(Math.abs(marqueeX-downX)),(int)Math.ceil(Math.abs(marqueeY-downY)));}
 
     public boolean keyPressed(int key){return keyPressed(key,0);}
     public boolean keyPressed(int key,int modifiers){
         if(colorPicker.key(key))return true;
+        if(editingSearch){
+            if(key==256||key==257)editingSearch=false;
+            else if(key==259&&!search.isEmpty()){search=search.substring(0,search.offsetByCodePoints(search.length(),-1));listScroll=0;}
+            return true; // letters arrive through charTyped, so A and G stay text while typing
+        }
         if(key==256&&contextOpen){contextOpen=false;return true;}
         if(key==256){close();if(onClose!=null)onClose.run();return true;}
+        if(key==70&&(modifiers&2)!=0){perform("search");return true;}
         if(key==65&&(modifiers&2)==0){perform("previews");return true;}
         if(key==65&&(modifiers&2)!=0){for(var element:renderedBounds.keySet())selected.addAll(groupElements(element));return true;}
         if(key==71&&(modifiers&2)!=0){perform((modifiers&1)!=0?"ungroup":"group");return true;}
         if(key==71){perform("snap");return true;}
         if(key==258&&!controls.isEmpty()){focusedControl=Math.floorMod(focusedControl+((modifiers&1)!=0?-1:1),controls.size());return true;}
-        if((key==257||key==32)&&focusedControl>=0&&focusedControl<controls.size()){var control=controls.get(focusedControl);if(control.enabled)perform(control.id);return true;}
+        if((key==257||key==32)&&focusedControl>=0&&focusedControl<controls.size()){var control=controls.get(focusedControl);if(control.enabled())perform(control.id());return true;}
         if(key==263||key==262||key==265||key==264){
             if(selected.isEmpty()||selected.stream().anyMatch(this::isLocked))return false;
             startDrag(0,0);boolean snap=showGrid;showGrid=false;int step=(modifiers&1)!=0?10:1;
-            mouseDragged(key==263?-step:key==262?step:0,key==265?-step:key==264?step:0,0);showGrid=snap;finishDrag();return true;
+            dragTo(key==263?-step:key==262?step:0,key==265?-step:key==264?step:0);showGrid=snap;finishDrag(false);return true;
         }
         return false;
     }
     private void perform(String id){
-        finishDrag();marquee=false;notice="";
+        finishDrag(false);marquee=false;notice="";
         switch(id){
-            case "select"->multiSelect=!multiSelect;
             case "group"->{if(selectedNames().size()>=2){
-                HudSettings.getInstance().addGroup(selectedNames());multiSelect=false;
+                HudSettings.getInstance().addGroup(selectedNames());
                 if(selected.stream().noneMatch(this::isLocked))stackSelection();
                 // Capture displayed origins now, including auto-anchored HUDs, so resizing before the first drag cannot change the group offsets.
                 for(var element:selected){Rect bounds=measuredBounds.get(element);if(bounds==null)continue;element.beginPositionEdit();try{element.setDisplayPosition(bounds.x(),bounds.y());HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());}finally{element.endPositionEdit();}}
@@ -353,9 +451,8 @@ public class DraggableHudScreen {
             case "ungroup"->{HudSettings.getInstance().ungroup(selectedNames());saveConfig.run();notice="Ungrouped. Each HUD can now be selected separately.";selected.clear();}
             case "lock","unlock"->{for(String name:selectedNames())HudSettings.getInstance().setLocked(name,id.equals("lock"));saveConfig.run();notice=id.equals("lock")?"Position locked. Select this HUD and use Unlock to move it.":"Position unlocked. Drag to move.";}
             case "snap"->showGrid=!showGrid;
-            case "previews"->{showAll=!showAll;finishHiddenDrag();selected.removeIf(element->!isVisible(element)&&HudSettings.getInstance().getGroupIndex(element.getModuleName())<0);renderedBounds.clear();toggles.clear();gears.clear();}
-            case "toolbar"->{dock=switch(dock){case 3->0;case 0->1;case 1->2;default->3;};toolbarPinned=true;}
-            case "collapse"->{collapsed=!collapsed;autoHideDock=true;toolbarPinned=true;dockExitNanos=0;}
+            case "previews"->{showAll=!showAll;listScroll=0;finishHiddenDrag();selected.removeIf(element->!isVisible(element)&&HudSettings.getInstance().getGroupIndex(element.getModuleName())<0);renderedBounds.clear();rows.clear();}
+            case "search"->editingSearch=true;
             case "colors"->colorPicker.openGlobal();
             case "settings"->{if(!selected.isEmpty())onSettings.accept(selected.iterator().next().getModuleName());}
             case "centerX"->center(true,false);
@@ -381,10 +478,10 @@ public class DraggableHudScreen {
         }
     }
     private void savePositions(Collection<HudElement> elements){for(var element:elements)if(element.getModuleName()!=null)HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());}
-    /** Switched-off modules this version can run stay as dimmed previews with their ON button; the rest need All previews. */
-    private boolean isVisible(HudElement element){return element.isAvailable()&&(showAll||element.isEnabled()||canToggle(element));}
+    /** By default only switched-on HUDs are listed and previewed; Show disabled adds the rest, dimmed, so they can be switched on. */
+    private boolean isVisible(HudElement element){return element.isAvailable()&&(showAll||element.isEnabled());}
     private static boolean canToggle(HudElement element){return ModuleSupport.isToggleable(element.getModuleName());}
-    /** Dimmed switched-off previews are not drawn in game, so they only snap or auto-join while All previews is on. */
+    /** Dimmed switched-off previews are not drawn in game, so they only snap or join while Show disabled is on. */
     private boolean attracts(HudElement element){return showAll||element.isEnabled();}
     /** Draw and hit-test order: dimmed switched-off previews first, so live HUDs always sit on top of them and win the click. */
     private List<HudElement> paintOrder(){
@@ -393,6 +490,12 @@ public class DraggableHudScreen {
         for(var element:elements)if(element.isEnabled())order.add(element);
         return order;
     }
+    /** The list: shown HUDs matching the search, by name, so a row never jumps when it is switched on or off. */
+    private List<HudElement> listed(){
+        String query=search.trim().toLowerCase(Locale.ROOT);
+        return HudManager.getInstance().getElements().stream().filter(e->e.getModuleName()!=null&&isVisible(e)&&(query.isEmpty()||e.getModuleName().toLowerCase(Locale.ROOT).contains(query)))
+            .sorted(Comparator.comparing(e->e.getModuleName().toLowerCase(Locale.ROOT))).toList();
+    }
     private boolean isLocked(HudElement element){return HudSettings.getInstance().isLocked(element.getModuleName());}
     private Set<HudElement> groupElements(HudElement element){
         Set<HudElement> members=new LinkedHashSet<>();members.add(element);Set<String> names=HudSettings.getInstance().getGroupMembers(element.getModuleName());
@@ -400,16 +503,23 @@ public class DraggableHudScreen {
     }
     private void finishHiddenDrag(){
         var elements=HudManager.getInstance().getElements();
-        if(isDragging()&&dragStart.keySet().stream().anyMatch(element->!elements.contains(element)||!element.isAvailable()||isLocked(element))){finishDrag();}
+        if(isDragging()&&dragStart.keySet().stream().anyMatch(element->!elements.contains(element)||!element.isAvailable()||isLocked(element))){finishDrag(false);}
         // A fully hidden selection ends its drag, but a disabled member of a visible group moves with that group.
-        if(isDragging()&&dragStart.keySet().stream().noneMatch(this::isVisible))finishDrag();
+        if(isDragging()&&dragStart.keySet().stream().noneMatch(this::isVisible))finishDrag(false);
         selected.removeIf(element->!elements.contains(element)||!element.isAvailable());
     }
-    public boolean charTyped(int codePoint){return colorPicker.type(codePoint);}
-    public void close(){finishDrag();marquee=false;}
-    private void finishDrag(){
+    public boolean charTyped(int codePoint){
+        if(editingSearch){if(codePoint>=32&&codePoint!=127&&search.length()<32){search+=new String(Character.toChars(codePoint));listScroll=0;}return true;}
+        return colorPicker.type(codePoint);
+    }
+    public void close(){finishDrag(false);marquee=false;editingSearch=false;}
+    /**
+     * Ends a drag and saves where every member landed. Only a drop with {@code join} (Shift held) groups: the dropped HUDs join
+     * each HUD they now dock against (edge to edge, aligned), together with that HUD's own group.
+     */
+    private void finishDrag(boolean join){
         if(!isDragging())return;var members=new ArrayList<>(dragStart.keySet());dragStart.clear();boolean moved=dragMoved;dragMoved=false;if(!moved)return;
-        if(showGrid){
+        if(join){
             var names=new LinkedHashSet<String>();for(var member:members)names.add(member.getModuleName());
             var joined=new LinkedHashSet<HudElement>();
             var moving=members.stream().map(measuredBounds::get).filter(Objects::nonNull).toList();
@@ -431,7 +541,8 @@ public class DraggableHudScreen {
                 finally{element.endPositionEdit();}
                 names.add(element.getModuleName());
             }
-            if(names.size()>members.size())HudSettings.getInstance().addGroup(names);
+            if(names.size()>members.size()){HudSettings.getInstance().addGroup(names);notice="Grouped: "+String.join(", ",names);}
+            else notice="Nothing touching to group with. Drop against another HUD's edge while holding Shift.";
         }
         try{for(var element:members)if(element.getModuleName()!=null)HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());saveConfig.run();}
         finally{for(var element:members)element.endPositionEdit();}
