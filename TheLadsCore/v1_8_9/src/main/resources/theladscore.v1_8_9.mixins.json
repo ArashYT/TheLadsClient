@@ -13,6 +13,7 @@
     "EssentialZoomMixin189",
     "GameSettingsMixin",
     "GuiButtonMixin",
+    "GuiContainerMouseTweaksMixin",
     "GuiControlsAccessor",
     "GuiDisconnectedAccessor",
     "GuiIngameForgeMixin",

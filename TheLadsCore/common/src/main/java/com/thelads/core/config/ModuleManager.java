@@ -255,6 +255,7 @@ public class ModuleManager {
         register(new Module("FerriteCore", "Reduce memory used by Minecraft's block and model data."), Module.Category.MECHANIC);
         register(new Module("XaeroMinimap", "Minimap, waypoints and navigation controls."), Module.Category.HUD);
         register(new ShulkerBoxUtilsModule(), Module.Category.MECHANIC);
+        register(new MouseTweaksModule(), Module.Category.MECHANIC);
         Module rawInput = new Module("RawInput", "Raw mouse input directly from hardware bypassing Windows acceleration.");
         rawInput.setEnabled(true);
         register(rawInput, Module.Category.MECHANIC);
