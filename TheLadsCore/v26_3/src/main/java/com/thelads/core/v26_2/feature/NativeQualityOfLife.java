@@ -34,7 +34,6 @@ public final class NativeQualityOfLife {
             if (VoiceChatIntegration.loaded()) ModuleSupport.registerBuiltIn(voice);
             else ModuleSupport.registerUnavailable(voice, "Simple Voice Chat is not installed in this game.");
         NativeClientTools.register();
-        NativeDiscordPresence.register();
         NativeConnectionStatus.register();
         NativeReconnect.register();
         ConnectionTweaks.register();

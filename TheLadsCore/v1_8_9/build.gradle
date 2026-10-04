@@ -67,8 +67,6 @@ dependencies {
     commonLibs('com.google.code.gson:gson:2.11.0') { transitive = false }
     commonLibs 'org.slf4j:slf4j-api:2.0.16'
     compileOnly 'org.slf4j:slf4j-api:2.0.16'
-    // Not bundled: Discord presence on 1.8.9 needs the pure-Java IPC (JNA 5 does not run on 1.8.9's JNA 3.4).
-    commonDowngradeCp 'club.minnced:java-discord-rpc:2.0.1'
 
     // Mod code compiles against the downgraded common, whose records extend JvmDowngrader's stubs.
     compileOnly files(tasks.named('downgradeCommon').flatMap { it.archiveFile })

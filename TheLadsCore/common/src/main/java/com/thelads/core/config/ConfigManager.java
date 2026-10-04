@@ -117,6 +117,7 @@ public class ConfigManager {
             JsonObject modulesJson = json.getAsJsonObject("modules");
             migrateChat(modulesJson);
             migrateDynamicLights(modulesJson);
+            migrateDiscord(modulesJson);
             for (Module module : ModuleManager.getInstance().getModules()) {
                 try {
                     if (module.getName().equals("Nametags") && !modulesJson.has("Nametags") && modulesJson.has("ToggleNametags"))
@@ -228,6 +229,12 @@ public class ConfigManager {
                 HudSettings.getInstance().replaceGroups(groups);
             }
         }
+    }
+
+    /** Before 1.7.1 Discord presence was "Coming soon", so nothing saved for it was the player's choice: it starts from the new defaults. */
+    public static void migrateDiscord(JsonObject modules) {
+        if (modules.get("DiscordRPC") instanceof JsonObject discord && discord.get("options") instanceof JsonObject options
+                && options.has("Share activity")) modules.remove("DiscordRPC");
     }
 
     /** 1.4.5 moved ClientTools "Chat timestamps" and the HideChatIndicators module into Chat options; keeps whatever the user had. */

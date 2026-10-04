@@ -20,12 +20,14 @@ public final class DiscordRpcService implements AutoCloseable {
         void shutdown();
     }
     public record Desired(boolean enabled, String applicationId, DiscordPresence.Privacy privacy, DiscordPresence presence) {}
+    /** Discord takes at most 5 activity updates per 20 seconds; changes in between are coalesced into the latest. */
+    static final long UPDATE_GAP = 5_000;
     private final Supplier<Transport> factory;
     private final LongSupplier time;
     private final boolean automatic;
     private final Object lifecycle = new Object();
     private volatile Desired desired = new Desired(false, "", null, null);
-    private volatile String status = "Off. Activity sharing requires your opt-in.";
+    private volatile String status = "Off.";
     private volatile boolean closed;
     private ScheduledExecutorService worker;
     private Transport transport;
@@ -48,8 +50,8 @@ public final class DiscordRpcService implements AutoCloseable {
     public void submit(Desired request) {
         if (closed) return;
         desired = Objects.requireNonNull(request);
-        if (!request.enabled()) status = "Off. Activity sharing requires your opt-in.";
-        else if (!validApplicationId(request.applicationId())) status = "Add the Lads Discord Application ID to connect.";
+        if (!request.enabled()) status = "Off.";
+        else if (!validApplicationId(request.applicationId())) status = "Discord presence has no application ID.";
         synchronized (lifecycle) {
             if (!closed && automatic && worker == null && eligible(request)) {
                 worker = Executors.newSingleThreadScheduledExecutor(task -> {
@@ -69,7 +71,7 @@ public final class DiscordRpcService implements AutoCloseable {
         long now = time.getAsLong();
         if (!eligible(request)) {
             stop(); retryAt = 0; retryDelay = 5_000;
-            status = !request.enabled() ? "Off. Activity sharing requires your opt-in." : "Add the Lads Discord Application ID to connect.";
+            status = !request.enabled() ? "Off." : "Discord presence has no application ID.";
             return;
         }
         if (transport != null && !applicationId.equals(request.applicationId())) {
@@ -100,8 +102,8 @@ public final class DiscordRpcService implements AutoCloseable {
             }
             if (!request.presence().equals(lastPresence) && now >= nextUpdate) {
                 transport.update(request.presence());
-                lastPresence = request.presence(); lastPrivacy = request.privacy(); nextUpdate = now + 15_000;
-                status = "Connected. Presence submitted to Discord.";
+                lastPresence = request.presence(); lastPrivacy = request.privacy(); nextUpdate = now + UPDATE_GAP;
+                if (!retry) status = "Connected. Presence submitted to Discord.";
             }
         } catch (RuntimeException | LinkageError failure) {
             status = "Discord IPC unavailable. Retrying; Minecraft is unaffected.";

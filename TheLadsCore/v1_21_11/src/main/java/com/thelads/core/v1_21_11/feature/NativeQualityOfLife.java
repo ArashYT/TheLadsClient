@@ -15,8 +15,8 @@ public final class NativeQualityOfLife {
     public static void register() {
         // ChatMixin / ChatIndicatorMixin / ScreenshotChatMixin and BorderlessWindowMixin, as on 26.x.
         ModuleSupport.registerBuiltIn("Chat", "BorderlessFullscreen");
-        // "Soon" card as on 26.x, whose presence tick sends nothing yet; no Discord connection is made.
-        ModuleSupport.registerBuiltIn("DiscordRPC");
+        // 1.21.11 is frozen: Discord presence (1.7.1) was not ported, so no Discord connection is made here.
+        ModuleSupport.registerUnavailable("DiscordRPC", "Discord presence runs on Minecraft 1.8.9, 26.2 and 26.3.");
         // U3 HUD pipeline: the hud mixins (Autohide scope and faded GUI states, SmoothHotbar, BossBar overlay).
         ModuleSupport.registerBuiltIn("RawInput", "Autohide", "SmoothHotbar", "BossBar");
         NativeAutohide.register();

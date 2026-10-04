@@ -372,6 +372,7 @@
                                                         <CheckBox x:Name="CloseToTrayCheckbox" Content="Minimize to system tray when game is running" IsChecked="True" />
                                                         <CheckBox x:Name="KeepLauncherOpenCheckbox" Content="Keep launcher open after launching the game" IsChecked="False" />
                                                         <CheckBox x:Name="KeepClosedOnExitCheckbox" Content="Don't re-open the launcher when the game closes" IsChecked="False" />
+                                                        <CheckBox x:Name="DiscordPresenceCheckbox" Content="Show what I'm doing on Discord (Rich Presence)" IsChecked="True" />
                                                         <CheckBox x:Name="AutoLaunchCheckbox" Content="Auto-launch game when launcher opens" IsChecked="False" />
                                                         <CheckBox x:Name="MultiInstanceCheckbox" Content="Allow launching multiple copies of the same instance" IsChecked="False" />
                                                     </StackPanel>

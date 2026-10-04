@@ -234,7 +234,7 @@ class ModInventoryModelTest {
         assertFalse(exordium.canToggle() || exordium.available());
         assertEquals("Renderer not supported on 26.3.", exordium.blockedReason());
         assertEquals(ModuleSupport.get("PendingThing").description(), model.find("module/PendingThing").blockedReason());
-        assertTrue(model.find("module/DiscordRPC").blockedReason().contains("coming soon"));
+        assertTrue(model.find("module/DiscordRPC").canToggle());
         assertTrue(model.find("module/FPS").canToggle());
     }
 

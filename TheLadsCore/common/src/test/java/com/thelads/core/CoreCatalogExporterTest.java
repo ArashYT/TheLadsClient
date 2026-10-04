@@ -53,7 +53,7 @@ class CoreCatalogExporterTest {
         assertEquals(this.modules.size(), modules.size());
         assertTrue(modules.get("FPS").get("toggleable").getAsBoolean());
         assertEquals("builtIn", modules.get("FPS").get("support").getAsString());
-        assertFalse(modules.get("DiscordRPC").get("toggleable").getAsBoolean(), "Discord RPC stays Coming soon");
+        assertTrue(modules.get("DiscordRPC").get("toggleable").getAsBoolean(), "Discord RPC is a normal module since 1.7.1");
         assertEquals("builtIn", modules.get("DiscordRPC").get("support").getAsString());
         assertFalse(modules.get("Lithium").get("toggleable").getAsBoolean());
         assertEquals("external", modules.get("Lithium").get("support").getAsString());

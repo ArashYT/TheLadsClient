@@ -265,8 +265,8 @@ public final class LadsSettingsScreen {
         int stateY = height < 230 ? 68 : 81 + descriptionH;
         g.drawText("LADS MODULE", x, stateY + 6, ACCENT);
         if (!ModuleSupport.isSettingsOnly(detail.getName()))
-            button(g, "toggle:detail", detail.getName().equals("DiscordRPC") ? "Soon" : detail.isEnabled() ? "ON" : "OFF", new Rect(x + leftW - 52, stateY, 52, 22),
-                () -> { detail.toggle(); changed(detail); }, !detail.getName().equals("DiscordRPC"), mx, my, detail.isEnabled());
+            button(g, "toggle:detail", detail.isEnabled() ? "ON" : "OFF", new Rect(x + leftW - 52, stateY, 52, 22),
+                () -> { detail.toggle(); changed(detail); }, true, mx, my, detail.isEnabled());
         int top = stateY + 30;
         if(detail.getOptions().stream().anyMatch(o -> o instanceof PlayerActionOption)) {
             button(g,"display-actions","Display actions...",new Rect(x,top,leftW,25),
@@ -782,7 +782,7 @@ public final class LadsSettingsScreen {
                 () -> modsPlan = modsModel.plan(List.of(row.rootId()), false), root != null && root.requested() && root.canToggle(), mx, my, false);
             right -= 6;
         } else if (!"platform".equals(row.ownership())) {
-            String state = row.nativeModule() && row.id().equals("DiscordRPC") ? "Soon" : row.requested() ? "ON" : "OFF";
+            String state = row.requested() ? "ON" : "OFF";
             int toggleW = narrow ? 34 : 45;
             right -= toggleW;
             button(g, "mods:toggle:" + row.key(), state, new Rect(right, y + 6, toggleW, 18), () -> toggleModRow(row), row.canToggle(), mx, my, row.requested());
@@ -1205,7 +1205,7 @@ public final class LadsSettingsScreen {
     }
     private void persist() { if (dirty) { ConfigManager.save(); dirty = false; } }
     private List<Option> activeOptions() {
-        if (detail == null || detail.getName().equals("DiscordRPC")) return List.of();
+        if (detail == null) return List.of();
         return detail.getOptions().stream().filter(o -> !(o instanceof PlayerActionOption))
             .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
             .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o)))

@@ -30,10 +30,7 @@ dependencies {
     include 'ca.weblite:java-objc-bridge:1.0.0'
     // Editor API only; the pinned pack supplies Cloth Config as a retained library.
     compileOnly('me.shedaniel.cloth:cloth-config:26.3.158') { transitive = false }
-    // Common classes are merged below. Bundle the Discord binding and its native runtime;
-    // Minecraft supplies JNA, Gson and SLF4J. Loom include dependencies are non-transitive.
-    include 'club.minnced:java-discord-rpc:2.0.1'
-    include 'club.minnced:discord-rpc-release:v3.3.0'
+    // Common classes are merged below. Minecraft supplies Gson and SLF4J.
 }
 
 processResources {
