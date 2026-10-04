@@ -37,7 +37,7 @@ public final class Tooltips189 {
         }
     }
 
-    /** The EnhancedTooltips food line (AppleSkin's food tooltip leaves it to this one when both are on); null for non-food. */
+    /** The EnhancedTooltips food line, also the AppleSkin module's 1.8.9 tooltip (Food189), which leaves it to this one when both are on; null for non-food. */
     static String foodLine(ItemStack stack) {
         if (!(stack.getItem() instanceof ItemFood)) return null;
         ItemFood food = (ItemFood) stack.getItem();

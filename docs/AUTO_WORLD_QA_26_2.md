@@ -16,4 +16,6 @@ Run with `$env:LADS_VERIFY_AUTO_WORLD='1'` and `dotnet run --project TheLadsLaun
 
 Optional `$env:LADS_VERIFY_CAPTURE_MENU='1'` requests an actual mods-menu frame only after every world/title probe passes. The runner creates `.lads-qa-capture-menu`; the harness consumes that explicit request, opens the real Lads settings screen, waits at least 1.5 seconds across completed frames, captures `native-menu-<timestamp>.png`, and restores the prior screen. It requires the menu-capture success marker before shutdown. It does not simulate a physical Right Shift press.
 
+Optional `$env:LADS_VERIFY_CAPTURE_HUDINFO='1'` (26.2, 26.3) requests `.lads-qa-capture-hudinfo` once the world probes pass. The game then photographs the AppleSkin module's previews in survival, food and durability tooltips and several Crosshair Tweaks styles as `screenshots/hudinfo-*.png`, and logs `Lads HUD info capture END`. It restores game mode, difficulty, food, health, held items and options.
+
 These checks establish background execution through the actual Minecraft pipeline. They do not establish physical RSHIFT handling, visible display cadence or visual approval of the resulting scene.
