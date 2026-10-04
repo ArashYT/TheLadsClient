@@ -123,6 +123,8 @@ public record DiscordPresence(String details, String state, long startTimestamp)
         {"Changing skin", "SkinChangerScreen"},
         {"In reconnect settings", "ReconnectOptionsScreen", "ReconnectActionsScreen"},
         {"In the main menu", "TitleExtrasScreen"},
+        // Nested screens are looked up as Outer.Inner first (version suffixes dropped), then by their own, often generic, name.
+        {"Opening a world", "WorldBackup.Prompt", "WorldBackup.Warning"},
     };
     private static final Map<String, String> LABELS = new HashMap<>();
     static { for (String[] row : SCREENS) for (int i = 1; i < row.length; i++) LABELS.put(row[i], row[0]); }
@@ -137,7 +139,9 @@ public record DiscordPresence(String details, String state, long startTimestamp)
         String named = null;
         for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
             String name = c.getSimpleName().replaceFirst("\\d+$", "");
-            String label = LABELS.get(name);
+            Class<?> outer = c.getEnclosingClass();
+            String label = outer == null ? null : LABELS.get(outer.getSimpleName().replaceFirst("\\d+$", "") + "." + name);
+            if (label == null) label = LABELS.get(name);
             if (label != null) return label;
             if (named == null && !name.isEmpty()) named = name;
         }
