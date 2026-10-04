@@ -305,9 +305,8 @@ final class OldAnimationsCapture {
                 server.getFoodData().setFoodLevel(10);
                 server.setGameMode(GameType.SURVIVAL);
             });
-            player.setXRot(90);
-            player.xRotO = 90;
             mc.options.setCameraType(CameraType.FIRST_PERSON);
+            aimAtPlainBlock(player);
             NativeOldAnimations.module().getOptions().forEach(Option::reset);
             NativeQualityOfLife.module("LegacySwing").setEnabled(false);
             return 20;
@@ -318,6 +317,7 @@ final class OldAnimationsCapture {
                 String what = slot == 0 ? "block" : slot == 1 ? "bow" : "eat", tag = (on ? "" : "-off");
                 String state = "1.7 Animations " + (on ? "on" : "off") + ", " + what + " on a block: ";
                 steps.add(mc -> {
+                    if (mc.gui.screen() != null) throw new IllegalStateException(state + mc.gui.screen() + " opened");
                     NativeOldAnimations.module().setEnabled(on);
                     mc.player.getInventory().setSelectedSlot(held);
                     return 10;
@@ -449,6 +449,7 @@ final class OldAnimationsCapture {
             mc.options.keyUse.setDown(false);
             mc.options.keyShift.setDown(false);
             mouseGrabbed(mc, false);
+            if (mc.gui.screen() != null) mc.player.closeContainer();
             mc.player.getAbilities().flying = false;
             mc.player.onUpdateAbilities();
             if (modeBefore != null) {
@@ -477,6 +478,23 @@ final class OldAnimationsCapture {
             return 10;
         });
         return steps;
+    }
+
+    /**
+     * Looks down at a block within reach that has no block entity, so the use key can never open a container (the 26.3 QA player
+     * stands on a shulker box): straight down, else 60 degrees down towards each side.
+     */
+    private static void aimAtPlainBlock(LocalPlayer player) {
+        for (float pitch : new float[]{90, 60})
+            for (float yaw = 0; yaw < 360; yaw += 90) {
+                player.setXRot(pitch);
+                player.xRotO = pitch;
+                player.setYRot(yaw);
+                player.yRotO = yaw;
+                if (player.pick(player.blockInteractionRange(), 1, false) instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK
+                    && player.level().getBlockEntity(hit.getBlockPos()) == null) return;
+            }
+        throw new IllegalStateException("no plain block within reach below the QA player");
     }
 
     /** QA only: the mouse counted as grabbed while the synthetic attack key mines (true), then as it was (false). */
