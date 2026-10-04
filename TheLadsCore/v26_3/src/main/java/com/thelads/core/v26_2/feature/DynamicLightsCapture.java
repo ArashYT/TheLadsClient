@@ -113,16 +113,18 @@ final class DynamicLightsCapture {
         Minecraft mc = Minecraft.getInstance();
         if (!moved && mc.level.getBlockState(stand).is(Blocks.SMOOTH_STONE)) {
             moved = true;
-            command(mc, String.format(Locale.ROOT, "tp %s %d.5 %d %d.5 %.1f 50", mc.player.getUUID(), stand.getX(), stand.getY() + 1, stand.getZ(), yawBefore));
+            command(mc, String.format(Locale.ROOT, "tp %s %.1f %d %.1f %.1f 50", mc.player.getUUID(), stand.getX() + 0.5, stand.getY() + 1, stand.getZ() + 0.5, yawBefore));
         }
         long time = Math.floorMod(mc.level.getDefaultClockTime(), 24000L);
         boolean night = Math.abs(time - 18000) <= 1000;
-        boolean placed = Math.abs(mc.player.getX() - (stand.getX() + 0.5)) < 0.5 && Math.abs(mc.player.getZ() - (stand.getZ() + 0.5)) < 0.5
-            && Math.abs(mc.player.getY() - (stand.getY() + 1)) < 0.6 && mc.level.getBlockState(stand).is(Blocks.SMOOTH_STONE);
+        // Standing on the stand's stone (anywhere on its 15 x 15 blocks: the client may carry the player a little after the teleport).
+        BlockPos under = BlockPos.containing(mc.player.getX(), mc.player.getY() - 0.2, mc.player.getZ());
+        boolean placed = under.getY() == stand.getY() && Math.abs(under.getX() - stand.getX()) <= 7 && Math.abs(under.getZ() - stand.getZ()) <= 7
+            && Math.abs(mc.player.getY() - (stand.getY() + 1)) < 0.6 && mc.level.getBlockState(under).is(Blocks.SMOOTH_STONE);
         boolean dry = !mc.player.isInWater() && !mc.player.isUnderWater();
         if (!(night && placed && dry) && now < sceneDeadline) return;
-        check(night && placed && dry, "scene: clock time " + time + " (midnight 18000), dark outside " + mc.level.isDarkOutside() + ", on the dry stand at "
-            + stand.toShortString() + " " + placed + ", in water " + !dry);
+        check(night && placed && dry, "scene: clock time " + time + " (midnight 18000), dark outside " + mc.level.isDarkOutside() + ", on the stand at "
+            + stand.toShortString() + " " + placed + " (standing on " + under.toShortString() + "), in water " + !dry);
         sceneReady = true;
         due = now + 2 * SETTLE;
     }
