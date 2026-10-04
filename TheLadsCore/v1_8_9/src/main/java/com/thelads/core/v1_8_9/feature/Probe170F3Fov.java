@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -136,6 +137,8 @@ final class Probe170F3Fov {
         ItemStack held = mc.thePlayer.getCurrentEquippedItem();
         check(held != null && held.getItem() == Items.bow, "Custom FOV: the bow reached the client's hand");
         if (mc.thePlayer.getItemInUse() == null) {
+            // Held use key: runTick stops using an item whose key is up.
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), true);
             mc.thePlayer.setItemInUse(held, held.getMaxItemUseDuration());
             return CoreProbe.retry(30);
         }
@@ -147,6 +150,7 @@ final class Probe170F3Fov {
     private static boolean bowDone(Minecraft mc) throws Exception {
         world(mc, "bow drawn", CustomFovModule.BOW, 1);
         mc.thePlayer.clearItemInUse();
+        KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
         final ItemStack held = heldBefore;
         server(mc, player -> player.inventory.setInventorySlotContents(player.inventory.currentItem, held));
         for (Option option : fov().getOptions()) option.load(SAVED.get(option));
