@@ -113,7 +113,8 @@ public final class ModInventoryModel {
             String name = module.getName(), support = ModuleSupport.support(name);
             if (support.equals("external")) continue;
             boolean builtIn = support.equals("builtIn"), toggleable = ModuleSupport.isToggleable(name);
-            String reason = toggleable ? null : builtIn ? "Discord Rich Presence is coming soon." : ModuleSupport.get(name).description();
+            String reason = toggleable ? null : ModuleSupport.isSettingsOnly(name) ? "Always on; open its settings from its card in the Lads menu."
+                : builtIn ? "Discord Rich Presence is coming soon." : ModuleSupport.get(name).description();
             top.add(new Row(name, name, null, null, "nativeModule", builtIn ? "installed" : "unavailable", builtIn && module.isEnabled(),
                 module.isEnabled(), builtIn, null, false, toggleable, reason, false, null, null, name, null, true, List.of(), List.of(), List.of()));
         }

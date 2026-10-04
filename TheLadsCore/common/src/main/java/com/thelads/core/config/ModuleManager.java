@@ -249,6 +249,7 @@ public class ModuleManager {
         register(disableNarrator);
 
         register(new SignalLossModule());
+        register(new FlashbackModule());
 
         Module decentScreenshot = new Module("BetterScreenshots", "Better screenshot saving and GUI.");
         decentScreenshot.setEnabled(true);
