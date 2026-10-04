@@ -55,6 +55,7 @@ class HudGeometryTest {
         saved=ConfigManager.toJson();oldBridge=LadsGameBridge.get();oldElements=new ArrayList<>(HudManager.getInstance().getElements());
         HudSettings.getInstance().getPositions().clear();HudSettings.getInstance().getGroups().clear();HudSettings.getInstance().getLocked().clear();
         for(var module:ModuleManager.getInstance().getModules()){module.setEnabled(true);module.getOptions().forEach(Option::reset);}
+        cycle("ArmorHUD","Style",1); // the List style; Hotbar Slots: ArmorSlotsHudTest
         game=new Game();graphics=new Graphics();LadsGameBridge.set(game);
     }
     @AfterEach void restore(){ConfigManager.applyJson(saved);LadsGameBridge.set(oldBridge);HudManager.getInstance().getElements().clear();HudManager.getInstance().getElements().addAll(oldElements);}

@@ -11,6 +11,8 @@ import java.util.List;
 public class ArmorHudElement extends HudElement {
     private static final List<ArmorPiece> EDITOR_SAMPLE = List.of(new ArmorPiece("Helmet", 120, 165),
             new ArmorPiece("Chestplate", 200, 240));
+    /** Hotbar Slots: four 20 px slots plus the frame's 1 px edges. */
+    private static final int SLOTS_WIDTH = 82;
     private List<ArmorPiece> cachedArmor;
     private List<String> cachedLines = List.of();
     private int cachedMode = -1;
@@ -25,12 +27,24 @@ public class ArmorHudElement extends HudElement {
 
     @Override
     public void render(LadsGraphics g) {
-        renderArmor(g, false);
+        if (slotsStyle()) renderSlots(g, false); else renderArmor(g, false);
     }
 
     @Override
     public void renderEditor(LadsGraphics g) {
-        renderArmor(g, true);
+        if (slotsStyle()) renderSlots(g, true); else renderArmor(g, true);
+    }
+
+    /** The default style since 1.7.0: helmet to boots in four vanilla hotbar slots, each empty one a faint silhouette. */
+    private boolean slotsStyle() {
+        return optCycle("Style", 0) == 0;
+    }
+
+    private void renderSlots(LadsGraphics g, boolean editor) {
+        boolean preview = editor && g.getGame().getArmor().isEmpty();
+        if (!preview && g.getGame().getArmor().isEmpty()) return;
+        g.drawHotbarSlots(x, y, 4);
+        for (int slot = 0; slot < 4; slot++) g.drawArmorSlot(slot, x + 3 + slot * 20, y + 3, preview);
     }
 
     private void renderArmor(LadsGraphics g, boolean editor) {
@@ -58,6 +72,11 @@ public class ArmorHudElement extends HudElement {
 
     @Override
     public void prepareRender(LadsGraphics g, boolean editor) {
+        if (slotsStyle()) {
+            width = SLOTS_WIDTH;
+            height = 22;
+            return;
+        }
         List<ArmorPiece> armor = g.getGame().getArmor();
         boolean preview = editor && armor.isEmpty();
         updateLines(preview ? EDITOR_SAMPLE : armor, preview);
@@ -100,14 +119,22 @@ public class ArmorHudElement extends HudElement {
         for (String line : lines) width = Math.max(width, g.textWidth(line) + 28);
     }
 
+    /** Hotbar Slots attached to the hotbar: its row, 6 px left of the offhand slot (on 1.8.9, the same spot). */
     @Override
     public int getDisplayX(LadsGraphics g) {
-        return optBool("Attach to hotbar", true) ? g.getScaledWidth() / 2 + 96 : super.getDisplayX(g);
+        if (!optBool("Attach to hotbar", true)) return super.getDisplayX(g);
+        return slotsStyle() ? g.getScaledWidth() / 2 - 91 - 29 - 6 - getRenderWidth() : g.getScaledWidth() / 2 + 96;
     }
 
     @Override
     public int getDisplayY(LadsGraphics g) {
-        return optBool("Attach to hotbar", true) ? g.getScaledHeight() - getRenderHeight() - 4 - g.hotbarLift() : super.getDisplayY(g);
+        if (!optBool("Attach to hotbar", true)) return super.getDisplayY(g);
+        return g.getScaledHeight() - getRenderHeight() - (slotsStyle() ? 0 : 4) - g.hotbarLift();
+    }
+
+    @Override
+    protected boolean followsOrganizedDefault() {
+        return !(slotsStyle() && optBool("Attach to hotbar", true));
     }
 
     @Override

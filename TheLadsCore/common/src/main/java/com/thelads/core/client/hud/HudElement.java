@@ -38,12 +38,15 @@ public abstract class HudElement {
         if(naturalWidth>=0){width=naturalWidth;naturalWidth=-1;}
         prepareRender(g, editor);
         int dx=getDisplayX(g),dy=getDisplayY(g);
-        if (organizedDefaults && !editingPosition && HudSettings.getInstance().getPosition(moduleName)==null) {
+        if (organizedDefaults && followsOrganizedDefault() && !editingPosition && HudSettings.getInstance().getPosition(moduleName)==null) {
             int[] origin=HudDefaults.origin(moduleName,g.getScaledWidth(),g.getScaledHeight(),getRenderWidth(),getRenderHeight());
             if(origin!=null){dx=origin[0];dy=origin[1];}
         }
         return new HudGroupLayout.Rect(dx,dy,getRenderWidth(),getRenderHeight());
     }
+
+    /** False while the element places itself by default (getDisplayX/Y) instead of at its HudDefaults origin. */
+    protected boolean followsOrganizedDefault() { return true; }
 
     /** False for catalog entries that have no implemented HUD renderer. */
     public boolean isAvailable() { return true; }

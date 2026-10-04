@@ -99,6 +99,10 @@
     "AutohideItemMixin",
     "AutohideItemRenderMixin",
     "AutohidePictureMixin",
+    "PictureInPictureReplayMixin",
+    "ChatTextShadowMixin",
+    "VoiceChatHudMixin",
+    "VoiceChatHudMixin$Group",
     "WindowIconMixin",
     "LoadingOverlayMixin"
   ]

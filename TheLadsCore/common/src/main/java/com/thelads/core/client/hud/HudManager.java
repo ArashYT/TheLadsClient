@@ -54,6 +54,8 @@ public class HudManager {
         add(new PotionHudElement(), "Potion Effects");
         add(new PaperdollHudElement(), "Paperdoll");
         add(new XaeroMinimapHudElement(), "Minimap");
+        add(new VoiceChatHudElement(), "Voice Chat");
+        add(new VoiceGroupHudElement(), "Voice Chat Group");
 
         scoreboardElement = new ScoreboardHudElement();
         add(scoreboardElement, "Scoreboard");

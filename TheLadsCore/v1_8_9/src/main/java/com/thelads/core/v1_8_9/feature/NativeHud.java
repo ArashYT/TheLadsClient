@@ -11,6 +11,7 @@ import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import com.thelads.core.v1_8_9.gui.DraggableHudScreen189;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.entity.boss.BossStatus;
 import net.minecraftforge.client.GuiIngameForge;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -46,6 +47,13 @@ public final class NativeHud {
     /** The Lads Scoreboard replaces vanilla's sidebar and Edit HUD hides it, as ScoreboardMixin does on 1.21.x; otherwise other mods' choice stands. */
     @SubscribeEvent
     public void overlayStart(RenderGameOverlayEvent.Pre event) {
+        if (event.type == RenderGameOverlayEvent.ElementType.BOSSHEALTH) {
+            // The Lads Boss Bar replaces vanilla's (two bars before 1.7.0). Vanilla counts the bar's lifetime down as it draws it.
+            if (!Options189.enabled("BossBar")) return;
+            if (BossStatus.bossName != null && BossStatus.statusBarTime > 0) --BossStatus.statusBarTime;
+            event.setCanceled(true);
+            return;
+        }
         if (event.type != RenderGameOverlayEvent.ElementType.ALL) return;
         boolean hide = Minecraft.getMinecraft().currentScreen instanceof DraggableHudScreen189 || ScoreboardHudElement.shouldReplaceVanillaScoreboard();
         if (hide || hidSidebar) GuiIngameForge.renderObjective = !hide;
@@ -61,10 +69,15 @@ public final class NativeHud {
         GlStateManager.disableDepth();
         GlStateManager.enableTexture2D();
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        // Autohide fades the Lads HUD with the hotbar (Autohide189).
+        Autohide189.flush();
+        float shown = Autohide189.shown;
+        boolean faded = shown > 0 && shown < 1 && Autohide189.begin();
         try {
-            HudManager.getInstance().render(new GuiLadsAdapter(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight()));
+            if (shown > 0) HudManager.getInstance().render(new GuiLadsAdapter(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight()));
             frames++;
         } finally {
+            if (faded) Autohide189.end(shown, event.resolution.getScaledWidth_double(), event.resolution.getScaledHeight_double());
             GlStateManager.resetColor();
             GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
             GlStateManager.disableLighting();

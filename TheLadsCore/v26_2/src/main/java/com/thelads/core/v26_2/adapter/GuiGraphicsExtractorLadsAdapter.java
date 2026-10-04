@@ -77,6 +77,39 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         if(!stack.isEmpty()){g.item(stack,x,y);g.itemDecorations(font,stack,x,y);}
     }
 
+    private static final Identifier HOTBAR = Identifier.withDefaultNamespace("hud/hotbar");
+    private static final Identifier[] EMPTY_ARMOR = {Identifier.withDefaultNamespace("container/slot/helmet"),
+        Identifier.withDefaultNamespace("container/slot/chestplate"), Identifier.withDefaultNamespace("container/slot/leggings"),
+        Identifier.withDefaultNamespace("container/slot/boots")};
+
+    @Override public void drawSprite(String sprite, int x, int y, int size) {
+        g.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.parse(sprite), x, y, size, size);
+    }
+
+    @Override public void drawHotbarSlots(int x, int y, int slots) {
+        int width = 1 + slots * 20;
+        g.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR, 182, 22, 0, 0, x, y, width, 22);
+        g.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR, 182, 22, 181, 0, x + width, y, 1, 22);
+    }
+
+    @Override public void drawArmorSlot(int slot, int x, int y, boolean preview) {
+        var equipment = new net.minecraft.world.entity.EquipmentSlot[]{net.minecraft.world.entity.EquipmentSlot.HEAD,
+            net.minecraft.world.entity.EquipmentSlot.CHEST, net.minecraft.world.entity.EquipmentSlot.LEGS, net.minecraft.world.entity.EquipmentSlot.FEET};
+        var player = Minecraft.getInstance().player;
+        net.minecraft.world.item.ItemStack stack = net.minecraft.world.item.ItemStack.EMPTY;
+        if (preview) {
+            // The editor sample: a worn helmet, no chestplate, leggings and boots.
+            var items = new net.minecraft.world.item.Item[]{net.minecraft.world.item.Items.TURTLE_HELMET, null,
+                net.minecraft.world.item.Items.IRON_LEGGINGS, net.minecraft.world.item.Items.GOLDEN_BOOTS};
+            if (items[slot] != null) {
+                stack = new net.minecraft.world.item.ItemStack(items[slot]);
+                if (slot != 2) stack.setDamageValue(stack.getMaxDamage() * (slot == 0 ? 9 : 2) / 10);
+            }
+        } else if (player != null) stack = player.getItemBySlot(equipment[slot]);
+        if (stack.isEmpty()) g.blitSprite(RenderPipelines.GUI_TEXTURED, EMPTY_ARMOR[slot], x, y, 16, 16, 0.35f);
+        else { g.item(stack, x, y); g.itemDecorations(font, stack, x, y); }
+    }
+
     @Override public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
         com.thelads.core.v26_2.feature.paperdoll.NativePaperDoll.render(g, x, y, width, height, editor);
     }
