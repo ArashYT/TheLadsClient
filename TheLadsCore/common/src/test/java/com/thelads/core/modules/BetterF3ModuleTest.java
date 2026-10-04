@@ -66,6 +66,14 @@ class BetterF3ModuleTest {
     }
 
     @Test
+    void wrappedKeyHelpIsHiddenWithItsFirstLine() {
+        List<String> column = List.of("Mem: 52% 1073/2048MiB", "Allocated: 62% 1280MiB", "Off-Heap: +423MB", "",
+            "Debug charts: [F3+1] Profiler hidden; [F3+2] FPS + TPS hidden;", "[F3+3] Ping hidden; [F3+4] Lightmap hidden", "To edit: press [F3+F6]");
+        assertEquals(List.of("Mem: 52% 1073/2048MiB", "Off-Heap: +423MB"), texts(f3().arrange(column)),
+            "a labelled line after a hidden one stays; the unlabelled second help line goes with the first");
+    }
+
+    @Test
     void labelsTakeTheSectionColourValuesWhiteAndFpsItsSpeed() {
         List<Line> left = f3().arrange(LEFT_189);
         Line version = left.get(0), fps = left.get(1), xyz = left.get(3);
