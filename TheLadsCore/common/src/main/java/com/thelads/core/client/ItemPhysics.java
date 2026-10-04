@@ -10,8 +10,8 @@ public final class ItemPhysics {
     public static final float FLAT = 0.0625f;
     /** Gap under a resting item: no z-fighting with the ground, too small to see. */
     static final float LIFT = 0.01f;
-    /** How far a floating item is drawn above its entity: it floats 0.1 deep, and its face then lies just above the surface. */
-    static final float FLOAT = 0.12f;
+    /** A floating item is drawn this far above the surface, and only while it floats less than SURFACE deep (a sinking one goes on). */
+    static final float FLOAT = 0.02f, SURFACE = 0.3f;
     /** Degrees of tumble per block travelled in the air. */
     static final float SPIN = 40;
     private static final float DEG = (float) Math.PI / 180;
@@ -40,15 +40,22 @@ public final class ItemPhysics {
             this.seed = yaw = yawO = seed;
         }
 
-        /** One client tick: {@code moved} is how far the item travelled last tick, in blocks. */
-        public void tick(double moved, boolean onGround, boolean inFluid) {
+        /**
+         * One client tick.
+         *
+         * @param moved how far the item travelled last tick, in blocks
+         * @param depth how deep the item's bottom is in water or lava (0: in neither)
+         */
+        public void tick(double moved, boolean onGround, double depth) {
+            boolean inFluid = depth > 0;
             yawO = yaw;
             pitchO = pitch;
             afloatO = afloat;
-            afloat += ((inFluid && !onGround ? 1 : 0) - afloat) * 0.3f;  // eases up onto the surface and back down
+            float surface = inFluid && !onGround && depth < SURFACE ? (float) depth + FLOAT : 0;
+            afloat += (surface - afloat) * 0.3f;                 // drawn on the surface: eases up and back down
             age++;
             float rested = Math.round(pitch / rest) * rest;
-            if (inFluid) {                                    // afloat: turn slowly and rock on the surface
+            if (inFluid && !onGround) {                       // afloat (or sinking): turn slowly and rock
                 yaw += 0.8f;
                 settle(rested + 8 * (float) Math.sin(age * 0.12f + seed));
             } else if (onGround) settle(rested);              // landed: ease onto the nearest face, no snap
@@ -66,8 +73,8 @@ public final class ItemPhysics {
 
         public float pitch(float partial) { return pitchO + (pitch - pitchO) * partial; }
 
-        /** Extra height for place(): up to FLOAT while the item floats (in a fluid, off the bottom). */
-        public float raise(float partial) { return (afloatO + (afloat - afloatO) * partial) * FLOAT; }
+        /** Extra height for place(): the item floats this deep, and is drawn lying on the surface instead. */
+        public float raise(float partial) { return afloatO + (afloat - afloatO) * partial; }
     }
 
     /**

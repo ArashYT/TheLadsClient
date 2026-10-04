@@ -46,7 +46,7 @@ final class ItemPhysicsCapture {
     private static final List<ItemStack> INVENTORY = new ArrayList<>();
     private static int step = -1, wait, checks, failures, frames, sample;
     private static String pendingFrame;
-    private static boolean frameBusy, enabledBefore, hideGuiBefore;
+    private static boolean frameBusy, enabledBefore, hideGuiBefore, flyingBefore;
     private static long modifiedBefore;
     private static double[] posBefore;
     private static float yawBefore, pitchBefore;
@@ -202,6 +202,7 @@ final class ItemPhysicsCapture {
             modeBefore = mc.gameMode.getPlayerMode();
             cameraBefore = mc.options.getCameraType();
             hideGuiBefore = mc.gui.hud.isHidden();
+            flyingBefore = mc.player.getAbilities().flying;
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             mc.level.setRainLevel(0);
             mc.level.setThunderLevel(0);
@@ -522,7 +523,8 @@ final class ItemPhysicsCapture {
         });
         steps.add(mc -> { pendingFrame = "settings"; return 2; });
         steps.add(mc -> { mc.gui.setScreen(null); return 5; });
-        // Despawn time: 1 minute and 10 minutes. The game is frozen between exact sprints, so the items age only by the sprinted ticks.
+        // Despawn time: 1 minute and 10 minutes. The game is frozen and only these two items are ticked, an exact number of times
+        // (no server sprint: the world's clock stays where it was).
         steps.add(mc -> {
             frozen(true);
             module().despawn.setValue(1);
@@ -531,29 +533,21 @@ final class ItemPhysicsCapture {
         });
         steps.add(mc -> {
             module().despawn.setValue(10);
-            onServer(player -> {
-                FACTS.put("despawn-10", spawn(player.level(), Items.LAPIS_LAZULI, 1, 9.5, 1.1, 0.5, 0, 0, 0).getId());
-                player.level().getServer().tickRateManager().requestGameToSprint(1190);
-            });
-            return 5;
+            onServer(player -> FACTS.put("despawn-10", spawn(player.level(), Items.LAPIS_LAZULI, 1, 9.5, 1.1, 0.5, 0, 0, 0).getId()));
+            return 2;
         });
-        steps.add(mc -> sprinting(mc) ? -1 : 2);
-        steps.add(mc -> { despawned("after-1190"); return 4; });
+        steps.add(mc -> { aged("after-1190", 1190); return 4; });
         steps.add(mc -> {
             check(Boolean.TRUE.equals(FACTS.get("after-1190-1")), "1-minute despawn: the item is still there after 1190 ticks");
-            onServer(player -> player.level().getServer().tickRateManager().requestGameToSprint(20));
-            return 5;
+            aged("after-1210", 20);
+            return 4;
         });
-        steps.add(mc -> sprinting(mc) ? -1 : 2);
-        steps.add(mc -> { despawned("after-1210"); return 4; });
         steps.add(mc -> {
             check(Boolean.FALSE.equals(FACTS.get("after-1210-1")), "1-minute despawn: gone after 1210 ticks");
             check(Boolean.TRUE.equals(FACTS.get("after-1210-10")), "10-minute despawn: still there");
-            onServer(player -> player.level().getServer().tickRateManager().requestGameToSprint(4900));
-            return 5;
+            aged("after-6110", 4900);
+            return 4;
         });
-        steps.add(mc -> sprinting(mc) ? -1 : 2);
-        steps.add(mc -> { despawned("after-6110"); return 4; });
         steps.add(mc -> {
             check(Boolean.TRUE.equals(FACTS.get("after-6110-10")), "10-minute despawn: still there after 6110 ticks, past vanilla's 6000");
             frozen(false);
@@ -569,8 +563,9 @@ final class ItemPhysicsCapture {
             OPTIONS.forEach(Option::load);
             module.setEnabled(enabledBefore);
             module.setLastModified(modifiedBefore);
-            mc.player.getAbilities().flying = false;
+            mc.player.getAbilities().flying = flyingBefore; // as found: the QA player may hover where the world probes expect it
             mc.player.onUpdateAbilities();
+            mc.player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
             if (posBefore != null) {
                 double[] at = posBefore;
                 GameType mode = modeBefore;
@@ -596,14 +591,14 @@ final class ItemPhysicsCapture {
         return steps;
     }
 
-    private static boolean sprinting(Minecraft mc) {
-        return mc.getSingleplayerServer().tickRateManager().isSprinting();
-    }
-
-    private static void despawned(String name) {
+    /** Server thread: the two despawn items live this many more ticks of their own; then whether each is still there. */
+    private static void aged(String name, int ticks) {
         onServer(player -> {
-            FACTS.put(name + "-1", player.level().getEntity((Integer) FACTS.get("despawn-1")) instanceof ItemEntity item && item.isAlive());
-            FACTS.put(name + "-10", player.level().getEntity((Integer) FACTS.get("despawn-10")) instanceof ItemEntity item && item.isAlive());
+            Entity one = player.level().getEntity((Integer) FACTS.get("despawn-1")), ten = player.level().getEntity((Integer) FACTS.get("despawn-10"));
+            for (int tick = 0; tick < ticks; tick++)
+                for (Entity item : new Entity[]{one, ten}) if (item != null && item.isAlive()) item.tick();
+            FACTS.put(name + "-1", one != null && one.isAlive());
+            FACTS.put(name + "-10", ten != null && ten.isAlive());
         });
     }
 
