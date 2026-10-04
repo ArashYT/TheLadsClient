@@ -76,6 +76,7 @@ public final class HudProbe {
     private static final List<String> FIXTURE = Arrays.asList("CPS", "Day", "FPS", "Health");
     private static GlWatch watch;
     private static long frames, openedAt;
+    private static int mark = -1;
     private static int cpsBefore;
     private static ItemStack[] armor;
     private static ScoreObjective objective, sidebar;
@@ -218,6 +219,7 @@ public final class HudProbe {
     }
 
     private static boolean editorShown(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
         DraggableHudScreen ui = editor.ui();
         check(NativeHud.frames == frames, "the in-game Lads HUD pauses while the editor draws its previews");
         check(!GuiIngameForge.renderObjective, "vanilla's sidebar is hidden while editing");
@@ -307,6 +309,7 @@ public final class HudProbe {
     }
 
     private static boolean contextMenu(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
         List<DraggableHudScreen.Control> items = editor.ui().contextControls();
         check(ids(items).equals(Arrays.asList("settings", "lock", "centerX", "centerY", "centerBoth", "group", "ungroup", "stack", "toggle")),
             "a right click opens the context menu " + ids(items));
@@ -370,6 +373,7 @@ public final class HudProbe {
     }
 
     private static boolean allShown(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
         check(editor.ui().isShowingAll() && editor.ui().boundsFor("FPS") != null && editor.ui().listedNames().contains("Memory"),
             "Show disabled lists and previews the switched-off HUDs " + editor.ui().listedNames());
         screenshot(mc, "c2-editor-all");
@@ -388,43 +392,43 @@ public final class HudProbe {
         check(!editor.ui().isShowingAll() && editor.ui().listedNames().equals(switchedOn()), "Show disabled off: only the switched-on HUDs again");
         Rect day = bounds("Day"), health = bounds("Health");
         int[] from = center(health);
-        mouse(0, true, sx(from[0]), sy(from[1]));
-        for (int i = 1; i <= 4; i++) mouse(-1, false, sx(from[0] + (day.x() + 1 - health.x()) * i / 4.0), sy(from[1] + (day.bottom() + 2 - health.y()) * i / 4.0));
+        hold(sx(from[0]), sy(from[1]));
+        for (int i = 1; i <= 4; i++) moveTo(sx(from[0] + (day.x() + 1 - health.x()) * i / 4.0), sy(from[1] + (day.bottom() + 2 - health.y()) * i / 4.0));
         return after(2);
     }
 
     private static boolean plainDocked(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
         Rect day = bounds("Day"), health = bounds("Health");
         check(editor.ui().isDragging() && health.y() == day.bottom() && health.x() == day.x(), "snapping docks Health under Day during the drag " + health + " / " + day);
         screenshot(mc, "c2-editor-dragging");
-        mouse(0, false, sx(center(health)[0]), sy(center(health)[1]));
+        editor.ui().mouseReleased(sx(center(health)[0]), sy(center(health)[1]), 0, 0);
         return after(2);
     }
 
     private static boolean plainDropped(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
         Rect day = bounds("Day"), health = bounds("Health");
         check(!editor.ui().isDragging() && HudSettings.getInstance().getGroupMembers("Health") == null && groupsOnDisk() == 0,
             "a plain drop docks Health without grouping it");
         check(health.y() == day.bottom() && saved("Health", health), "and saves it where the preview shows it " + health);
         screenshot(mc, "c2-editor-plain-drop");
-        // The same drop with Shift: press and moves through LWJGL, the release with Shift through the editor (see shiftDropped).
+        // The same drop with Shift (see shiftDropped).
         int[] from = center(health);
-        mouse(0, true, sx(from[0]), sy(from[1]));
-        mouse(-1, false, sx(from[0]), sy(from[1] + 30));
-        mouse(-1, false, sx(from[0]), sy(from[1]));
+        hold(sx(from[0]), sy(from[1]));
+        moveTo(sx(from[0]), sy(from[1] + 30));
+        moveTo(sx(from[0]), sy(from[1]));
         return after(2);
     }
 
     /**
      * Synthetic LWJGL key events cannot hold Shift (GuiScreen.isShiftKeyDown reads the device state, which Display.update
-     * refreshes from the real keyboard), so this release goes to the editor with the Shift bit DraggableHudScreen189 passes
-     * for a held Shift. The queued LWJGL release that follows is a no-op for the finished drag.
+     * refreshes from the real keyboard), so this release carries the Shift bit DraggableHudScreen189 passes for a held Shift.
      */
     private static boolean shiftDropped(Minecraft mc) throws Exception {
         check(editor.ui().isDragging(), "the Shift drop's drag is in progress");
         int[] at = center(bounds("Health"));
-        editor.ui().mouseReleased(editor.ui().screenX(at[0]), editor.ui().screenY(at[1]), 0, 1);
-        mouse(0, false, sx(at[0]), sy(at[1]));
+        editor.ui().mouseReleased(sx(at[0]), sy(at[1]), 0, 1);
         return after(2);
     }
 
@@ -439,20 +443,24 @@ public final class HudProbe {
     }
 
     private static boolean shiftCaptured(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
         screenshot(mc, "c2-editor-shift-group");
         check(control(editor.ui().controls(), "snap").label().equals("Snap: off"), "snapping is off for the unfinished drag");
         // Escape during a drag: pressed and moved, never released.
         before = bounds("Day");
         int[] from = center(before);
-        mouse(0, true, sx(from[0]), sy(from[1]));
-        mouse(-1, false, sx(from[0] + 25), sy(from[1]));
+        hold(sx(from[0]), sy(from[1]));
+        moveTo(sx(from[0] + 25), sy(from[1]));
         expected = new int[] {(int) Math.round((sx(from[0] + 25) - sx(from[0])) / editor.ui().previewScale()), 0};
         return after(2);
     }
 
     private static boolean dragging(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the capture below shows this state
         check(editor.ui().isDragging() && bounds("Day").x() == before.x() + expected[0] && saved("Day", before),
             "Day follows an unfinished drag, not saved yet (from " + before + " to " + bounds("Day") + ", dragging " + editor.ui().isDragging() + ")");
+        // The layout Escape keeps, as the preview shows it: c2-hud-after-edit shows the same in game.
+        screenshot(mc, "c2-editor-before-escape");
         tap(Keyboard.KEY_ESCAPE, (char) 27);
         return after(2);
     }
@@ -487,6 +495,17 @@ public final class HudProbe {
         return true;
     }
 
+    /**
+     * True once a frame has been drawn since this step first ran. After a slow tick (a PNG or config save) the game loop runs the
+     * missed ticks back to back, so a step can run before the last input's result was ever drawn and capture the previous frame.
+     */
+    private static boolean framed() {
+        if (mark < 0) mark = watch.frames;
+        if (watch.frames <= mark) return false;
+        mark = -1;
+        return true;
+    }
+
     /** Ends the recording (also when the probe fails). */
     static void stop() {
         GuiLadsAdapter.recording = null;
@@ -496,6 +515,13 @@ public final class HudProbe {
     /** GUI pixel of a game GUI position inside the editor's preview. */
     private static int sx(double gameX) { return (int) Math.round(editor.ui().screenX(gameX)); }
     private static int sy(double gameY) { return (int) Math.round(editor.ui().screenY(gameY)); }
+
+    /**
+     * A drag held across ticks (for a capture, a Shift release or Escape) goes to the editor directly: GuiScreen never sees the
+     * press, so a real pointer crossing the window meanwhile cannot move it. Quick drags (drag) go through LWJGL in one tick.
+     */
+    private static void hold(int x, int y) { editor.ui().mouseClicked(x, y, 0, 0); }
+    private static void moveTo(int x, int y) { editor.ui().mouseDragged(x, y, 0); }
 
     private static void clickGame(int[] game) throws Exception {
         click(sx(game[0]), sy(game[1]));
