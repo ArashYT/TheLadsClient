@@ -5,6 +5,7 @@ import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.retry;
 
 import com.thelads.core.client.WorldCheats;
+import com.thelads.core.client.killbanner.KillBannerStyle;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -37,6 +38,9 @@ import org.apache.logging.log4j.Logger;
  * up: lads-qa/screenshots/170-gap-*.png, for item model gaps.</li>
  * <li>killbanner: Rogue's opening for 1 to 5 kills, captured about 150, 250 and 350 ms after each kill
  * (lads-qa/screenshots/170-rogue-k*-*ms.png).</li>
+ * <li>killbanners: every skin's sounds registered with their samples; Base, Reaver, Rogue and one skin of each Kingdom
+ * Archives kind for 1 to 5 kills, headshots and variants, then the settings picker
+ * (lads-qa/screenshots/170-kb-*.png).</li>
  * <li>loading: three rounds of opening the QA world, the Nether and back, a respawn and leaving, each timed from the
  * action to the player in the world with no screen (client ticks, 50 ms apart; opening and leaving block the game, so
  * their own part is exact). The times go to the log ("Lads 1.8.9 load timing").</li>
@@ -102,6 +106,37 @@ final class Probe170Misc {
                         steps.add(mc -> { CoreProbe.screenshot(mc, "170-rogue-k" + k + "-" + at + "ms"); return after(2); });
                     }
                     steps.add(mc -> { KillBanner189.reset(); return after(10); });
+                }
+                steps.add(Probe170Misc::bannerEnd);
+                steps.add(Probe170Misc::leave);
+                break;
+            case "killbanners":
+                steps.addAll(open(QA));
+                steps.add(mc -> { focusSound = true; return true; });
+                steps.add(Probe170Misc::bannerStart);
+                steps.add(Probe170Misc::bannerSounds);
+                for (KillBannerStyle skin : new KillBannerStyle[] {KillBannerStyle.DEFAULT, KillBannerStyle.REAVER, KillBannerStyle.ROGUE,
+                        KillBannerStyle.AEMONDIR, KillBannerStyle.CHAMPIONS2024, KillBannerStyle.PHASEGUARD})
+                    for (int kills = 1; kills <= 5; kills++) bannerShot(steps, skin, 0, kills, false, skin.isAnimated() && kills == 5 ? 3700 : 1000);
+                bannerShot(steps, KillBannerStyle.DEFAULT, 0, 1, true, 600);
+                bannerShot(steps, KillBannerStyle.AEMONDIR, 0, 1, true, 600);
+                for (int variant = 1; variant <= 3; variant++) {
+                    bannerShot(steps, KillBannerStyle.AEMONDIR, variant, 3, false, 1000);
+                    bannerShot(steps, KillBannerStyle.PHASEGUARD, variant, 3, false, 1000);
+                }
+                for (String picker : new String[] {"base", "variants", "search"}) {
+                    steps.add(mc -> {
+                        com.thelads.core.modules.KillBannerModule module = banner();
+                        module.bannerStyle.setIndex(picker.equals("base") ? com.thelads.core.modules.KillBannerModule.BASE
+                            : com.thelads.core.modules.KillBannerModule.styleIndexOf(KillBannerStyle.AEMONDIR));
+                        module.setVariant(KillBannerStyle.AEMONDIR, 2);
+                        com.thelads.core.v1_8_9.gui.LadsSettingsScreen189 settings = new com.thelads.core.v1_8_9.gui.LadsSettingsScreen189(null);
+                        mc.displayGuiScreen(settings);
+                        settings.openModule("KillBanner");
+                        settings.searchKillBanners(picker.equals("search") ? "phase" : "");
+                        return after(20);
+                    });
+                    steps.add(mc -> { CoreProbe.screenshot(mc, "170-kb-picker-" + picker); mc.displayGuiScreen(null); return after(5); });
                 }
                 steps.add(Probe170Misc::bannerEnd);
                 steps.add(Probe170Misc::leave);
@@ -220,6 +255,9 @@ final class Probe170Misc {
         return (com.thelads.core.modules.KillBannerModule) com.thelads.core.config.ModuleManager.getInstance().getModule("KillBanner");
     }
 
+    /** killbanners: sound on, through the real play path (the QA game is muted), so an unknown sound event is logged. */
+    private static boolean focusSound;
+
     private static boolean bannerStart(Minecraft mc) {
         com.thelads.core.modules.KillBannerModule module = banner();
         bannerWas = module.isEnabled();
@@ -228,9 +266,42 @@ final class Probe170Misc {
         module.bannerStyle.setIndex(com.thelads.core.modules.KillBannerModule.ROGUE);
         module.rogueVariant.setIndex(0);
         module.randomize.setIndex(com.thelads.core.modules.KillBannerModule.RANDOM_OFF);
-        module.sound.set(false);
+        module.sound.set(focusSound);
         module.duration.setValue(4);
         return after(10);
+    }
+
+    /** One banner: a fresh streak of {@code kills} kills of a skin and variant, captured {@code ms} after the kill (50 ms ticks). */
+    private static void bannerShot(List<CoreProbe.Step> steps, KillBannerStyle skin, int variant, int kills, boolean headshot, int ms) {
+        steps.add(mc -> {
+            com.thelads.core.modules.KillBannerModule module = banner();
+            module.bannerStyle.setIndex(com.thelads.core.modules.KillBannerModule.styleIndexOf(skin));
+            module.setVariant(skin, variant);
+            module.duration.setValue(6);
+            module.headshotText.set(true);
+            KillBanner189.reset();
+            KillBanner189.trigger(kills, false, headshot);
+            return after(ms / 50);
+        });
+        steps.add(mc -> {
+            CoreProbe.screenshot(mc, "170-kb-" + skin.id + "-v" + variant + "-k" + kills + (headshot ? "-hs" : "") + "-" + ms + "ms");
+            KillBanner189.reset();
+            return after(4);
+        });
+    }
+
+    /** Every skin's sound for 1 to 5 kills is registered with its sample (a missing file leaves the event with no weight). */
+    private static boolean bannerSounds(Minecraft mc) {
+        int events = 0;
+        for (KillBannerStyle skin : KillBannerStyle.values())
+            for (int kills = 1; kills <= 5; kills++) {
+                net.minecraft.util.ResourceLocation id = new net.minecraft.util.ResourceLocation("theladscore", skin.id + "_kill_" + Math.min(kills, skin.soundCount));
+                net.minecraft.client.audio.SoundEventAccessorComposite event = mc.getSoundHandler().getSound(id);
+                if (event == null || event.getWeight() <= 0) check(false, "KillBanner: " + id + " is registered with its sample");
+                events++;
+            }
+        check(true, "KillBanner: " + events + " sounds (" + KillBannerStyle.values().length + " skins, 1 to 5 kills) registered with their samples");
+        return after(2);
     }
 
     private static boolean bannerEnd(Minecraft mc) {

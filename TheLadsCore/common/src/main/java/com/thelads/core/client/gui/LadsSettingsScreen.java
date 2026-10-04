@@ -59,6 +59,8 @@ public final class LadsSettingsScreen {
     private record ModLine(ModInventoryModel.Row row, int depth) {}
     private boolean modsView, detailFromMods;
     private String modsSearch = "", modsStamp = "", modsCounts = "";
+    private String kbSearch = "";
+    private boolean editingKbSearch;
     private ModInventoryModel.Filter modsFilter = ModInventoryModel.Filter.ALL;
     private ModInventoryModel modsModel;
     private ModDependencyPlanner.Plan modsPlan;
@@ -290,64 +292,121 @@ public final class LadsSettingsScreen {
             renderModulePreview(g, detail, previewX, 43, previewW, height - 68, mx, my);
         }
     }
-    private static final String[] SKINS = {"base", "reaver", "rogue"};
     private static final String[] RANDOM_HINTS = {"Every kill shows the banner above.", "Each kill: another variant of the skin.",
         "Each kill: a random skin and variant.", "Each kill: one of the banners ticked below."};
     /** Kill Banner settings as pictures: skin tiles with their one-kill art, their variants, Custom, Randomize and triggers. Returns its height. */
     private int killBannerPicker(LadsGraphics g, KillBannerModule banner, int x, int y, int w, int mx, int my) {
-        int start = y, gap = 4, tileW = (w - 3 * gap) / 4, tileH = Math.max(40, tileW * 3 / 4 + 12);
+        int start = y, gap = 4;
         int style = banner.bannerStyle.getIndex();
-        y = section(g, "SKIN", x, y);
-        String[] names = {"Base", "Reaver", "Rogue", "Custom"};
         KillBannerModule.Pick custom = banner.chosen();
-        for (int i = 0; i < 4; i++) {
-            int index = i;
-            String skin = i < 3 ? SKINS[i] : custom.style() == null ? "base" : custom.style().id;
-            int variant = i == 1 ? banner.reaverVariant.getIndex() : i == 2 ? banner.rogueVariant.getIndex() : i == 3 ? custom.variant() : 0;
-            tile(g, "kb:skin:" + i, names[i], new Rect(x + i * (tileW + gap), y, tileW, tileH), skin, variant, style == i, mx, my,
-                () -> { banner.bannerStyle.setIndex(index); changed(detail); });
+        KillBannerStyle activeStyle = style == KillBannerModule.CUSTOM ? custom.style() : KillBannerModule.skin(style);
+
+        y = section(g, "SKIN (" + KillBannerStyle.values().length + " SKINS)", x, y);
+
+        // Search bar for filtering the 91 skins
+        String searchLabel = editingKbSearch ? inputDisplay() : kbSearch.isEmpty() ? "Search 91 skins..." : kbSearch;
+        button(g, "kb:search", searchLabel, new Rect(x, y, w, 20), this::startKbSearch, true, mx, my, editingKbSearch);
+        y += 24;
+
+        // Four tiles a row, so a skin's four variants fit one row
+        int perRow = 4;
+        int tileW = (w - (perRow - 1) * gap) / perRow;
+        int tileH = Math.max(40, tileW * 3 / 4 + 12);
+
+        String q = kbSearch.trim().toLowerCase(Locale.ROOT);
+        List<KillBannerStyle> visible = new ArrayList<>();
+        for (KillBannerStyle s : KillBannerStyle.values()) {
+            if (q.isEmpty() || s.displayName.toLowerCase(Locale.ROOT).contains(q) || s.id.toLowerCase(Locale.ROOT).contains(q)) {
+                visible.add(s);
+            }
         }
-        y += tileH + 8;
-        if (style == KillBannerModule.REAVER || style == KillBannerModule.ROGUE)
-            y = variantTiles(g, banner, KillBannerModule.skin(style), x, y, tileW, tileH, mx, my);
+
+        // The chosen skin's variants, then Custom's picks, above the skin grid: no scrolling past every skin to reach them
+        if (style != KillBannerModule.CUSTOM && activeStyle != null && activeStyle.variantNames.length > 1) {
+            y = variantTiles(g, banner, activeStyle, x, y, tileW, tileH, mx, my);
+        }
         if (style == KillBannerModule.CUSTOM) {
             y = section(g, "CUSTOM BANNER", x, y);
-            for (int i = 0; i < 3; i++) {
-                int index = i;
-                KillBannerStyle skin = KillBannerModule.skin(i);
-                tile(g, "kb:visual:" + i, names[i], new Rect(x + i * (tileW + gap), y, tileW, tileH), SKINS[i], skin == null ? 0 : banner.variantOf(skin).getIndex(),
-                    banner.customVisual.getIndex() == i, mx, my, () -> { banner.customVisual.setIndex(index); changed(detail); });
+            KillBannerStyle visual = KillBannerModule.visualOrSoundSkin(banner.customVisual.getIndex());
+            if (visual.variantNames.length > 1) y = variantTiles(g, banner, visual, x, y, tileW, tileH, mx, my);
+            int vIdx = 0;
+            for (KillBannerStyle skin : visible) {
+                int col = vIdx % perRow, row = vIdx / perRow;
+                Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
+                int kIdx = skin.ordinal();
+                boolean selected = banner.customVisual.getIndex() == kIdx;
+                int v = banner.getVariant(skin);
+                tile(g, "kb:visual:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
+                    banner.customVisual.setIndex(kIdx);
+                    changed(detail);
+                });
+                vIdx++;
             }
-            y += tileH + 8;
-            KillBannerStyle visual = KillBannerModule.skin(banner.customVisual.getIndex());
-            if (visual != null) y = variantTiles(g, banner, visual, x, y, tileW, tileH, mx, my);
+            y += ((vIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
+
             y = section(g, "CUSTOM SOUND (CLICK TO HEAR)", x, y);
-            for (int i = 0; i < 3; i++) {
-                int index = i;
-                KillBannerStyle skin = KillBannerModule.skin(i);
-                tile(g, "kb:sound:" + i, i == 0 ? "Chime" : names[i], new Rect(x + i * (tileW + gap), y, tileW, tileH), SKINS[i],
-                    skin == null ? 0 : banner.variantOf(skin).getIndex(), banner.customSound.getIndex() == i, mx, my, () -> {
-                        banner.customSound.setIndex(index); changed(detail);
-                        g.getGame().previewKillBannerSound(SKINS[index], (float) banner.volume.getValue());
-                    });
+            int sIdx = 0;
+            for (KillBannerStyle skin : visible) {
+                int col = sIdx % perRow, row = sIdx / perRow;
+                Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
+                int kIdx = skin.ordinal();
+                boolean selected = banner.customSound.getIndex() == kIdx;
+                int v = banner.getVariant(skin);
+                tile(g, "kb:sound:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
+                    banner.customSound.setIndex(kIdx);
+                    changed(detail);
+                    g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
+                });
+                sIdx++;
             }
-            y += tileH + 8;
+            y += ((sIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
+            y = section(g, "SKINS", x, y);
         }
+
+        // Custom Tile + Skin Tiles
+        boolean showCustom = q.isEmpty() || "custom".contains(q);
+        int tileIdx = 0;
+        if (showCustom) {
+            int col = tileIdx % perRow, row = tileIdx / perRow;
+            Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
+            String cSkin = custom.style() == null ? "default" : custom.style().id;
+            tile(g, "kb:skin:custom", "Custom", r, cSkin, custom.variant(), style == KillBannerModule.CUSTOM, mx, my, () -> {
+                banner.bannerStyle.setIndex(KillBannerModule.CUSTOM);
+                changed(detail);
+            });
+            tileIdx++;
+        }
+
+        for (KillBannerStyle skin : visible) {
+            int col = tileIdx % perRow, row = tileIdx / perRow;
+            Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
+            int sIndex = KillBannerModule.styleIndexOf(skin);
+            boolean isSelected = style == sIndex;
+            int v = banner.getVariant(skin);
+            tile(g, "kb:skin:" + skin.id, skin.displayName, r, skin.id, v, isSelected, mx, my, () -> {
+                banner.bannerStyle.setIndex(sIndex);
+                changed(detail);
+                g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
+            });
+            tileIdx++;
+        }
+        y += ((tileIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
+
         y = section(g, "RANDOMIZE", x, y);
         String[] modes = {"Off", "Variant", "Skin + variant", "Chosen"};
-        int perRow = w >= 300 ? 4 : 2, cell = (w - (perRow - 1) * gap) / perRow;
+        int rPerRow = w >= 300 ? 4 : 2, cell = (w - (rPerRow - 1) * gap) / rPerRow;
         for (int i = 0; i < modes.length; i++) {
             int index = i;
-            button(g, "kb:random:" + i, modes[i], new Rect(x + i % perRow * (cell + gap), y + i / perRow * 24, cell, 20),
+            button(g, "kb:random:" + i, modes[i], new Rect(x + i % rPerRow * (cell + gap), y + i / rPerRow * 24, cell, 20),
                 () -> { banner.randomize.setIndex(index); changed(detail); }, true, mx, my, banner.randomize.getIndex() == i);
         }
-        y += (modes.length / perRow) * 24 + 2;
+        y += (modes.length / rPerRow) * 24 + 2;
         g.drawText(fit(g, RANDOM_HINTS[banner.randomize.getIndex()], w), x, y, MUTED);
         y += 14;
         if (banner.randomize.getIndex() == KillBannerModule.RANDOM_CHOSEN) {
             var pool = banner.pool();
-            for (KillBannerStyle skin : KillBannerStyle.values()) {
-                String skinName = skinName(skin);
+            for (KillBannerStyle skin : visible) {
+                String skinName = skin.displayName;
                 for (int v = 0; v < skin.variantNames.length; v++) {
                     int variant = v;
                     Rect r = new Rect(x + v * (tileW + gap), y, tileW, tileH);
@@ -371,14 +430,14 @@ public final class LadsSettingsScreen {
         }
         return y + 22 + 10 - start;
     }
-    private static String skinName(KillBannerStyle skin) { return skin.name().charAt(0) + skin.name().substring(1).toLowerCase(Locale.ROOT); }
+
     private int variantTiles(LadsGraphics g, KillBannerModule banner, KillBannerStyle skin, int x, int y, int tileW, int tileH, int mx, int my) {
-        y = section(g, skin.name() + " VARIANT", x, y);
-        DropdownOption option = banner.variantOf(skin);
+        y = section(g, skin.displayName + " VARIANT", x, y);
+        int curVar = banner.getVariant(skin);
         for (int v = 0; v < skin.variantNames.length; v++) {
             int variant = v;
             tile(g, "kb:variant:" + skin.id + ":" + v, skin.variantNames[v], new Rect(x + v * (tileW + 4), y, tileW, tileH), skin.id, v,
-                option.getIndex() == v, mx, my, () -> { option.setIndex(variant); changed(detail); });
+                curVar == v, mx, my, () -> { banner.setVariant(skin, variant); changed(detail); });
         }
         return y + tileH + 8;
     }
@@ -458,8 +517,8 @@ public final class LadsSettingsScreen {
                 KillBannerModule.Pick pick = banner.chosen();
                 if (!g.drawKillBanner(pick.style() == null ? "base" : pick.style().id, pick.variant(), boxX + 6, boxY + 6, boxW - 12, boxH - 30))
                     g.drawCenteredText("KILL BANNER", centerX, centerY - 4, ACCENT);
-                String caption = pick.style() == null ? "Base" : skinName(pick.style()) + " · " + pick.style().variantNames[pick.variant()];
-                if (pick.soundStyle() != pick.style()) caption += " · " + (pick.soundStyle() == null ? "Chime" : skinName(pick.soundStyle())) + " sound";
+                String caption = pick.style() == null ? "Base" : pick.style().displayName + " · " + pick.style().variantNames[pick.variant()];
+                if (pick.soundStyle() != pick.style()) caption += " · " + (pick.soundStyle() == null ? "Chime" : pick.soundStyle().displayName) + " sound";
                 if (banner.randomize.getIndex() != KillBannerModule.RANDOM_OFF) caption += " · Randomized";
                 g.drawCenteredText(fit(g, caption, boxW - 8), centerX, boxY + boxH - 18, TEXT);
             } else if ("Crosshair".equalsIgnoreCase(name)) {
@@ -1040,7 +1099,7 @@ public final class LadsSettingsScreen {
         boolean ctrl = (modifiers & 2) != 0;
         if (ctrl && key == 70) { if (!finish()) return true; if (!modsView) detail = null; startSearch(); return true; }
         if (key == 256) {
-            if (editingSearch || editingOption != null) { editingSearch = false; editingOption = null; notice = ""; }
+            if (editingSearch || editingOption != null) { editingSearch = editingKbSearch = false; editingOption = null; notice = ""; }
             else if (modsPlan != null) modsPlan = null;
             else if (modsView) closeMods();
             else if (detail != null) back(); else close();
@@ -1116,10 +1175,16 @@ public final class LadsSettingsScreen {
         while (end - start > 1 && g.textWidth(text.substring(start, end)) > width) { if (end > cursor + 1) end--; else start++; }
         return text.substring(start, end);
     }
-    private void startSearch() { editingSearch = true; editingOption = null; editBuffer = modsView ? modsSearch : searchQuery; cursor = editBuffer.length(); selectAll = false; focusId = modsView ? "mods-search" : "search"; }
-    private void applySearch() { if (modsView) { modsSearch = editBuffer; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; } else setSearchQuery(editBuffer); }
-    private void startEdit(Option o) { editingSearch = false; editingOption = o; editBuffer = o instanceof TextOption t ? t.getValue() : String.format("%08X", ((ColorOption)o).getColor()); cursor = editBuffer.length(); selectAll = true; }
+    private void startSearch() { editingKbSearch = false; editingSearch = true; editingOption = null; editBuffer = modsView ? modsSearch : searchQuery; cursor = editBuffer.length(); selectAll = false; focusId = modsView ? "mods-search" : "search"; }
+    private void startKbSearch() { editingKbSearch = true; editingSearch = true; editingOption = null; editBuffer = kbSearch; cursor = editBuffer.length(); selectAll = false; focusId = "kb:search"; }
+    private void applySearch() {
+        if (editingKbSearch) { kbSearch = editBuffer; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; }
+        else if (modsView) { modsSearch = editBuffer; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; }
+        else setSearchQuery(editBuffer);
+    }
+    private void startEdit(Option o) { editingKbSearch = false; editingSearch = false; editingOption = o; editBuffer = o instanceof TextOption t ? t.getValue() : String.format("%08X", ((ColorOption)o).getColor()); cursor = editBuffer.length(); selectAll = true; }
     private boolean commitEdit() {
+        if (editingKbSearch) { kbSearch = editBuffer; editingKbSearch = false; }
         if (editingOption instanceof ColorOption c) {
             try { if (editBuffer.length() != 8) throw new NumberFormatException(); c.setColor(Integer.parseUnsignedInt(editBuffer, 16)); c.setUseGlobal(false); }
             catch (NumberFormatException e) { notice = "Use 8 hex digits: AARRGGBB. Esc cancels."; return false; }
@@ -1145,6 +1210,8 @@ public final class LadsSettingsScreen {
     public void openGlobalColors(){colorPicker.openGlobal();}
     public void openDisplayActions(){if(detail!=null)actions.open(detail.getOptions().stream().filter(o->o instanceof PlayerActionOption).map(o->(PlayerActionOption)o).toList(),()->changed(detail));}
     public void openModule(String name) { Module m=ModuleManager.getInstance().getModule(name); if(m!=null)openDetails(m); }
+    /** QA (kill banner captures): the Kill Banner picker's skin search, as typed. */
+    public void searchKillBanners(String query) { kbSearch = query; }
     private void openDetails(Module m) { if (!ModuleSupport.isBuiltIn(m.getName())) return; detail = m; detailFromMods = false; m.setLastOpenedTime(System.currentTimeMillis()); scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = "back"; notice = ""; }
     private void back() {
         if (!finish()) return;

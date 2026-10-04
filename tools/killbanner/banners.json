@@ -1,0 +1,1582 @@
+{
+  "default": {
+    "id": "default",
+    "name": "DEFAULT",
+    "type": "Default",
+    "radius": 69.0,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "orabyonetap-renegade": {
+    "id": "orabyonetap-renegade",
+    "name": "ORA BY ONETAP - RENEGADE",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": -25.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "rogue": {
+    "id": "rogue",
+    "name": "ROGUE",
+    "type": "Default",
+    "radius": 83.5,
+    "headshotX": 0.0,
+    "headshotY": -17.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "orabyonetap-lawyer": {
+    "id": "orabyonetap-lawyer",
+    "name": "ORA BY ONETAP - LAWYER",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": -25.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "solarstride": {
+    "id": "solarstride",
+    "name": "SOLARSTRIDE",
+    "type": "Default",
+    "radius": 73.5,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "orabyonetap-watch": {
+    "id": "orabyonetap-watch",
+    "name": "ORA BY ONETAP - WATCH",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": -25.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "orabyonetap-raja": {
+    "id": "orabyonetap-raja",
+    "name": "ORA BY ONETAP - RAJA",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": -25.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "orabyonetap-ignition": {
+    "id": "orabyonetap-ignition",
+    "name": "ORA BY ONETAP - IGNITION",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": -25.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "holomeridian": {
+    "id": "holomeridian",
+    "name": "HOLO MERIDIAN",
+    "type": "Default",
+    "radius": 71.0,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "champions2025": {
+    "id": "champions2025",
+    "name": "CHAMPIONS 2025",
+    "type": "BannerSwap",
+    "radius": 60.0,
+    "headshotX": 2.0,
+    "headshotY": 2.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": false,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": false,
+    "soundCount": 5
+  },
+  "blackspyre": {
+    "id": "blackspyre",
+    "name": "BLACKSPYRE",
+    "type": "Default",
+    "radius": 82.5,
+    "headshotX": 1.0,
+    "headshotY": -20.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "aeris": {
+    "id": "aeris",
+    "name": "AERIS",
+    "type": "Default",
+    "radius": 82.5,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "bubblegumdeathwish3": {
+    "id": "bubblegumdeathwish3",
+    "name": "BUBBLEGUM DEATHWISH 3",
+    "type": "Default",
+    "radius": 85.0,
+    "headshotX": 0.6,
+    "headshotY": -4.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "bubblegumdeathwish4": {
+    "id": "bubblegumdeathwish4",
+    "name": "BUBBLEGUM DEATHWISH 4",
+    "type": "Default",
+    "radius": 85.0,
+    "headshotX": 8.0,
+    "headshotY": 4.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "bubblegumdeathwish": {
+    "id": "bubblegumdeathwish",
+    "name": "BUBBLEGUM DEATHWISH",
+    "type": "Default",
+    "radius": 85.0,
+    "headshotX": 0.0,
+    "headshotY": 3.25,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "bubblegumdeathwish2": {
+    "id": "bubblegumdeathwish2",
+    "name": "BUBBLEGUM DEATHWISH 2",
+    "type": "Default",
+    "radius": 85.0,
+    "headshotX": -1.0,
+    "headshotY": -16.5,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "blackthorn": {
+    "id": "blackthorn",
+    "name": "BLACKTHORN",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "mystbloom-v25": {
+    "id": "mystbloom-v25",
+    "name": "MYSTBLOOM, V25",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": -29.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "reaverv26": {
+    "id": "reaverv26",
+    "name": "REAVER, V26",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": -10.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "ayakashi": {
+    "id": "ayakashi",
+    "name": "AYAKASHI",
+    "type": "Default",
+    "radius": 85.0,
+    "headshotX": -0.3,
+    "headshotY": -18.5,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 6
+  },
+  "dolmirsrevenge": {
+    "id": "dolmirsrevenge",
+    "name": "DOLMIR'S REVENGE",
+    "type": "Default",
+    "radius": 76.5,
+    "headshotX": 2.0,
+    "headshotY": -5.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "neptunev25": {
+    "id": "neptunev25",
+    "name": "NEPTUNE, V25",
+    "type": "Default",
+    "radius": 77.5,
+    "headshotX": 0.0,
+    "headshotY": 18.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "preludetochaosv25": {
+    "id": "preludetochaosv25",
+    "name": "PRELUDE TO CHAOS, V25",
+    "type": "Default",
+    "radius": 85.0,
+    "headshotX": 0.0,
+    "headshotY": -18.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "phaseguard": {
+    "id": "phaseguard",
+    "name": "PHASEGUARD",
+    "type": "Phaseguard",
+    "radius": 81.5,
+    "headshotX": 0.5,
+    "headshotY": -2.5,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "vct2025": {
+    "id": "vct2025",
+    "name": "VCT 2025",
+    "type": "Default",
+    "radius": 83.0,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "splashx": {
+    "id": "splashx",
+    "name": "SPLASHX",
+    "type": "Default",
+    "radius": 81.5,
+    "headshotX": 2.0,
+    "headshotY": -15.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "divergence": {
+    "id": "divergence",
+    "name": "DIVERGENCE",
+    "type": "Default",
+    "radius": 73.5,
+    "headshotX": -4.74726,
+    "headshotY": -3.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "exo": {
+    "id": "exo",
+    "name": "EX.O",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 1.0,
+    "headshotY": -6.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "helix": {
+    "id": "helix",
+    "name": "HELIX",
+    "type": "Default",
+    "radius": 78.5,
+    "headshotX": 1.0,
+    "headshotY": -21.5,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "bolt": {
+    "id": "bolt",
+    "name": "BOLT",
+    "type": "Default",
+    "radius": 82.5,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "mystbloom": {
+    "id": "mystbloom",
+    "name": "MYSTBLOOM",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": -29.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "cyrax": {
+    "id": "cyrax",
+    "name": "CYRAX",
+    "type": "Default",
+    "radius": 107.5,
+    "headshotX": 1.0,
+    "headshotY": -14.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "arcanecollectorsset": {
+    "id": "arcanecollectorsset",
+    "name": "ARCANE COLLECTOR'S SET",
+    "type": "Default",
+    "radius": 79.5,
+    "headshotX": 0.0,
+    "headshotY": -1.5,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "vct": {
+    "id": "vct",
+    "name": "VCT",
+    "type": "Default",
+    "radius": 83.0,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "singularityep9": {
+    "id": "singularityep9",
+    "name": "SINGULARITY, EP 9",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": -10.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "doombringer": {
+    "id": "doombringer",
+    "name": "DOOMBRINGER",
+    "type": "Default",
+    "radius": 69.0,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "champions2024": {
+    "id": "champions2024",
+    "name": "CHAMPIONS 2024",
+    "type": "BannerSwap",
+    "radius": 60.0,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": false,
+    "hasRing": false,
+    "hasEmblem": true,
+    "hasPip": false,
+    "soundCount": 5
+  },
+  "araxysep9": {
+    "id": "araxysep9",
+    "name": "ARAXYS, EP 9",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": -12.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "kuronami": {
+    "id": "kuronami",
+    "name": "KURONAMI",
+    "type": "Default",
+    "radius": 90.0,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "aemondir": {
+    "id": "aemondir",
+    "name": "AEMONDIR",
+    "type": "Default",
+    "radius": 77.0,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "rgx11zproep9": {
+    "id": "rgx11zproep9",
+    "name": "RGX 11Z PRO, EP 9",
+    "type": "Default",
+    "radius": 73.5,
+    "headshotX": 0.85,
+    "headshotY": -21.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "sovereignep8": {
+    "id": "sovereignep8",
+    "name": "SOVEREIGN, EP 8",
+    "type": "Default",
+    "radius": 77.5,
+    "headshotX": 0.0,
+    "headshotY": -26.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "nocturnum": {
+    "id": "nocturnum",
+    "name": "NOCTURNUM",
+    "type": "Default",
+    "radius": 78.0,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "evoridreamwings": {
+    "id": "evoridreamwings",
+    "name": "EVORI DREAMWINGS",
+    "type": "Default",
+    "radius": 81.5,
+    "headshotX": 1.0,
+    "headshotY": 4.7,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "primordium": {
+    "id": "primordium",
+    "name": "PRIMORDIUM",
+    "type": "Default",
+    "radius": 76.0,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "xerofang": {
+    "id": "xerofang",
+    "name": "XER\u00d8FANG",
+    "type": "Default",
+    "radius": 82.5,
+    "headshotX": 0.0,
+    "headshotY": -25.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "res-knockout": {
+    "id": "res-knockout",
+    "name": "R.E.S - K.NOCK O.UT!!",
+    "type": "Default",
+    "radius": 73.5,
+    "headshotX": 2.0,
+    "headshotY": 16.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "imperium": {
+    "id": "imperium",
+    "name": "IMPERIUM",
+    "type": "Default",
+    "radius": 88.0,
+    "headshotX": 0.0,
+    "headshotY": -22.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "neofrontier": {
+    "id": "neofrontier",
+    "name": "NEO FRONTIER",
+    "type": "Default",
+    "radius": 76.0,
+    "headshotX": 0.0,
+    "headshotY": -29.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "overdrive": {
+    "id": "overdrive",
+    "name": "OVERDRIVE",
+    "type": "Default",
+    "radius": 67.0,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "res-dancefever": {
+    "id": "res-dancefever",
+    "name": "R.E.S - DANCE FEVER",
+    "type": "Default",
+    "radius": 73.5,
+    "headshotX": -1.0,
+    "headshotY": -31.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "res-bazookabadger": {
+    "id": "res-bazookabadger",
+    "name": "R.E.S - BAZOOKA BADGER",
+    "type": "Default",
+    "radius": 73.5,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "oniep6": {
+    "id": "oniep6",
+    "name": "ONI, EP 6",
+    "type": "Default",
+    "radius": 86.0,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "champions2023": {
+    "id": "champions2023",
+    "name": "CHAMPIONS 2023",
+    "type": "Default",
+    "radius": 67.0,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "valianthero": {
+    "id": "valianthero",
+    "name": "VALIANT HERO",
+    "type": "Default",
+    "radius": 78.0,
+    "headshotX": 0.0,
+    "headshotY": -22.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "preludetochaos": {
+    "id": "preludetochaos",
+    "name": "PRELUDE TO CHAOS",
+    "type": "Default",
+    "radius": 85.0,
+    "headshotX": 0.0,
+    "headshotY": -18.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "neptune": {
+    "id": "neptune",
+    "name": "NEPTUNE",
+    "type": "Default",
+    "radius": 77.5,
+    "headshotX": 0.0,
+    "headshotY": 18.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "sentinelsoflightep7": {
+    "id": "sentinelsoflightep7",
+    "name": "SENTINELS OF LIGHT, EP 7",
+    "type": "Default",
+    "radius": 64.0,
+    "headshotX": 0.0,
+    "headshotY": -15.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "cryostasis": {
+    "id": "cryostasis",
+    "name": "CRYOSTASIS",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": -25.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "gaiasvengeanceep7": {
+    "id": "gaiasvengeanceep7",
+    "name": "GAIA'S VENGEANCE, EP 7",
+    "type": "Default",
+    "radius": 69.0,
+    "headshotX": -2.0,
+    "headshotY": -20.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "magepunkep6": {
+    "id": "magepunkep6",
+    "name": "MAGEPUNK, EP 6",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "araxys": {
+    "id": "araxys",
+    "name": "ARAXYS",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": -12.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "reaverep5": {
+    "id": "reaverep5",
+    "name": "REAVER, EP 5",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": -10.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "champions2022": {
+    "id": "champions2022",
+    "name": "CHAMPIONS 2022",
+    "type": "Default",
+    "radius": 67.0,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "ionep5": {
+    "id": "ionep5",
+    "name": "ION, EP 5",
+    "type": "Default",
+    "radius": 67.5,
+    "headshotX": 0.0,
+    "headshotY": -30.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "gaiasvengeance": {
+    "id": "gaiasvengeance",
+    "name": "GAIA'S VENGEANCE",
+    "type": "Default",
+    "radius": 69.0,
+    "headshotX": -2.0,
+    "headshotY": -20.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "magepunkep3": {
+    "id": "magepunkep3",
+    "name": "MAGEPUNK, EP 3",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "protocol781-a": {
+    "id": "protocol781-a",
+    "name": "PROTOCOL 781-A",
+    "type": "Default",
+    "radius": 71.5,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "rgx11zproep4": {
+    "id": "rgx11zproep4",
+    "name": "RGX 11Z PRO, EP 4",
+    "type": "Default",
+    "radius": 73.5,
+    "headshotX": 0.85,
+    "headshotY": -21.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "spectrum": {
+    "id": "spectrum",
+    "name": "SPECTRUM",
+    "type": "Default",
+    "radius": 67.5,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 6
+  },
+  "forsaken": {
+    "id": "forsaken",
+    "name": "FORSAKEN",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": -15.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "champions2021": {
+    "id": "champions2021",
+    "name": "CHAMPIONS 2021",
+    "type": "Default",
+    "radius": 67.0,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "radiantcrisis001": {
+    "id": "radiantcrisis001",
+    "name": "RADIANT CRISIS 001",
+    "type": "Default",
+    "radius": 67.5,
+    "headshotX": 0.0,
+    "headshotY": -19.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "reaver": {
+    "id": "reaver",
+    "name": "REAVER",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": -10.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "rgx11zpro": {
+    "id": "rgx11zpro",
+    "name": "RGX 11Z PRO",
+    "type": "Default",
+    "radius": 73.5,
+    "headshotX": 0.85,
+    "headshotY": -21.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "chronovoid": {
+    "id": "chronovoid",
+    "name": "CHRONOVOID",
+    "type": "Default",
+    "radius": 75.0,
+    "headshotX": 0.0,
+    "headshotY": -2.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "recon": {
+    "id": "recon",
+    "name": "RECON",
+    "type": "Default",
+    "radius": 68.0,
+    "headshotX": 0.0,
+    "headshotY": -22.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "oni": {
+    "id": "oni",
+    "name": "ONI",
+    "type": "Default",
+    "radius": 86.0,
+    "headshotX": 0.0,
+    "headshotY": -20.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "glitchpop20": {
+    "id": "glitchpop20",
+    "name": "GLITCHPOP 2.0",
+    "type": "Default",
+    "radius": 86.0,
+    "headshotX": 0.0,
+    "headshotY": -10.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "ruination": {
+    "id": "ruination",
+    "name": "RUINATION",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": -23.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "glitchpop": {
+    "id": "glitchpop",
+    "name": "GLITCHPOP",
+    "type": "Default",
+    "radius": 86.0,
+    "headshotX": 0.0,
+    "headshotY": -10.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "origin": {
+    "id": "origin",
+    "name": "ORIGIN",
+    "type": "Default",
+    "radius": 77.5,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "prime20": {
+    "id": "prime20",
+    "name": "PRIME//2.0",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": -17.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "sentinelsoflight": {
+    "id": "sentinelsoflight",
+    "name": "SENTINELS OF LIGHT",
+    "type": "Default",
+    "radius": 64.0,
+    "headshotX": 0.0,
+    "headshotY": -15.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "singularity": {
+    "id": "singularity",
+    "name": "SINGULARITY",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": -10.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "prime": {
+    "id": "prime",
+    "name": "PRIME",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": -17.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "magepunk": {
+    "id": "magepunk",
+    "name": "MAGEPUNK",
+    "type": "Default",
+    "radius": 72.5,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "ion": {
+    "id": "ion",
+    "name": "ION",
+    "type": "Default",
+    "radius": 67.5,
+    "headshotX": 0.0,
+    "headshotY": -30.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "blastx": {
+    "id": "blastx",
+    "name": "BLASTX",
+    "type": "Default",
+    "radius": 70.0,
+    "headshotX": 0.0,
+    "headshotY": 0.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "elderflame": {
+    "id": "elderflame",
+    "name": "ELDERFLAME",
+    "type": "Default",
+    "radius": 72.0,
+    "headshotX": 0.0,
+    "headshotY": -17.0,
+    "variants": [
+      "Default"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  },
+  "sovereign": {
+    "id": "sovereign",
+    "name": "SOVEREIGN",
+    "type": "Default",
+    "radius": 77.5,
+    "headshotX": 0.0,
+    "headshotY": -26.0,
+    "variants": [
+      "DEFAULT",
+      "VARIANT 1",
+      "VARIANT 2",
+      "VARIANT 3"
+    ],
+    "hasFrame": true,
+    "hasRing": true,
+    "hasEmblem": true,
+    "hasPip": true,
+    "soundCount": 5
+  }
+}
