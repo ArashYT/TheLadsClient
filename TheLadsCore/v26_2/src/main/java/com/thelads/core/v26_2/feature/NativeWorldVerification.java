@@ -110,6 +110,11 @@ public final class NativeWorldVerification {
                 LOGGER.info("Lads auto-world QA OPEN: {}", SAVE);
                 mc.createWorldOpenFlows().openWorld(SAVE, () -> fail("world open cancelled or returned to menu", null));
             } else if (mc.level != null && mc.player != null) {
+                // A QA run that ended with its player dead reopens on the death screen: respawn, as the 1.8.9 self-test does.
+                if (mc.player.isDeadOrDying() && mc.gui.screen() instanceof net.minecraft.client.gui.screens.DeathScreen) {
+                    mc.player.respawn();
+                    mc.setScreenAndShow(null);
+                }
                 // Remove only Minecraft's ordinary pause screen. Never accept confirmation, error or upgrade dialogs.
                 if (mc.gui.screen() != null && mc.gui.screen().getClass() == PauseScreen.class && menuScreen == null) mc.setScreenAndShow(null);
                 if (worldReady() && !readyLogged) {

@@ -40,7 +40,7 @@ final class RaisedDollProbe189 {
         RaisedDollProbe189::sneak, RaisedDollProbe189::hover, RaisedDollProbe189::fly, RaisedDollProbe189::eat, RaisedDollProbe189::faded,
         RaisedDollProbe189::editor, RaisedDollProbe189::done);
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
-    private static boolean raisedWas, dollWas, started;
+    private static boolean raisedWas, dollWas, started, swapped;
     private static int[] positionWas;
     private static int gameModeWas, slot;
     private static ItemStack heldWas;
@@ -67,7 +67,7 @@ final class RaisedDollProbe189 {
         raised().getOptions().forEach(Option::reset);
         raised().setEnabled(true);
         doll().setEnabled(false);
-        command(mc, "gamemode 0 " + mc.thePlayer.getName()); // hearts and hunger sit on the hotbar
+        survival(mc); // hearts and hunger sit on the hotbar
         return after(40);
     }
 
@@ -148,11 +148,13 @@ final class RaisedDollProbe189 {
         mc.thePlayer.capabilities.isFlying = false;
         mc.thePlayer.sendPlayerAbilities();
         bool(doll(), "Using Items", true);
+        survival(mc); // 1.8.9's creative players cannot eat
         slot = mc.thePlayer.inventory.currentItem;
         heldWas = mc.thePlayer.inventory.getCurrentItem();
         hold(mc, new ItemStack(Items.golden_apple));
+        swapped = true;
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), true);
-        return after(12);
+        return after(20);
     }
 
     private static boolean eat(Minecraft mc) {
@@ -188,9 +190,25 @@ final class RaisedDollProbe189 {
         return after(1);
     }
 
+    /** Survival, with nothing in the QA world able to hurt the player meanwhile. */
+    private static void survival(Minecraft mc) {
+        command(mc, "effect " + mc.thePlayer.getName() + " 11 60 255 true"); // resistance
+        command(mc, "effect " + mc.thePlayer.getName() + " 12 60 0 true"); // fire resistance
+        command(mc, "gamemode 0 " + mc.thePlayer.getName());
+    }
+
+    /** The held slot on the server (in order with the commands, in any game mode), which sends it to the client. */
     private static void hold(Minecraft mc, ItemStack stack) {
-        mc.thePlayer.inventory.setInventorySlotContents(slot, stack);
-        mc.playerController.sendSlotPacket(stack, 36 + slot); // creative: the server holds the same item
+        final MinecraftServer server = mc.getIntegratedServer();
+        final java.util.UUID id = mc.thePlayer.getUniqueID();
+        final ItemStack copy = ItemStack.copyItemStack(stack);
+        final int held = slot;
+        server.addScheduledTask(() -> {
+            net.minecraft.entity.player.EntityPlayerMP player = server.getConfigurationManager().getPlayerByUUID(id);
+            if (player == null) return;
+            player.inventory.setInventorySlotContents(held, copy);
+            player.inventoryContainer.detectAndSendChanges();
+        });
     }
 
     /** Puts everything back (also when an earlier check failed). */
@@ -206,8 +224,10 @@ final class RaisedDollProbe189 {
         if (positionWas == null) HudSettings.getInstance().getPositions().remove("Paperdoll");
         else HudSettings.getInstance().setPosition("Paperdoll", positionWas[0], positionWas[1]);
         if (mc.thePlayer != null && mc.getIntegratedServer() != null) {
-            if (heldWas != null || mc.thePlayer.inventory.getCurrentItem() != null && mc.thePlayer.inventory.getCurrentItem().getItem() == Items.golden_apple) hold(mc, heldWas);
+            if (swapped) hold(mc, heldWas);
+            swapped = false;
             command(mc, "gamemode " + gameModeWas + " " + mc.thePlayer.getName());
+            command(mc, "effect " + mc.thePlayer.getName() + " clear");
         }
         ConfigManager.save();
     }
