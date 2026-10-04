@@ -80,6 +80,7 @@ final class RaisedDollProbe189 {
 
     private static boolean chatOpen(Minecraft mc) {
         check(mc.currentScreen instanceof GuiChat && Raised189.hotbar() == 16, "Raised: with chat open the hotbar group clears the chat box (2 + Distance 14)");
+        check(Raised189.chat() == 12, "Raised: with chat open chat moves 12 px up, so the raised hotbar does not cover its newest line");
         screenshot(mc, "raised-2-chat-open");
         mc.displayGuiScreen(null);
         number(raised(), "Hotbar", 12);
