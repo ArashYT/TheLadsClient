@@ -645,7 +645,10 @@ try
     qaLines.AddRange(qaForced);
     File.WriteAllLines(qaOptions, qaLines);
     var stopwatch = Stopwatch.StartNew();
+    // 26.3 (SDL) shows its window without activating it; QaWindowGuard covers 1.8.9 and 26.2 (and moves every game window).
+    if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") != "1") process.StartInfo.Environment["SDL_WINDOW_ACTIVATE_WHEN_SHOWN"] = "0";
     process.Start();
+    QaWindowGuard.Watch(process);
     GameSession.Attach(process, directory, loadedMods, message => { lock (sessionMessages) sessionMessages.Add(message); }, shared,
         () => { exitHandled.TrySetResult(); return Task.CompletedTask; });
     process.BeginOutputReadLine();

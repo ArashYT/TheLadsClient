@@ -105,6 +105,7 @@ internal static class ModpackQa
                 var started = Stopwatch.StartNew();
                 game = await ModpackLauncher.LaunchAsync(data, instance, session, settings, java, http, Progress(Say), ct);
                 Say($"Started PID {game.Id}: {game.StartInfo.FileName}");
+                QaWindowGuard.Watch(game);
                 bool window = false, title = false;
                 TimeSpan titleAt = default;
                 while (started.Elapsed < TimeSpan.FromMinutes(10) && !game.HasExited)
