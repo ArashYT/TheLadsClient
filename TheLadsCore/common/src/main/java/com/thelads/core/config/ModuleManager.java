@@ -188,6 +188,13 @@ public class ModuleManager {
 
         register(new AutoReconnectModule(), Module.Category.SERVER);
 
+        Module packets = new Module("IgnorePacketErrors", "Stay connected when the server sends a packet the client can't read or handle: it is skipped and logged "
+            + "instead of disconnecting with Network Protocol Error. Warning: a skipped packet can leave the world out of sync (missing blocks, "
+            + "entities or inventory changes) until you rejoin, and a broken or hostile server can keep you connected; turn it off on servers you "
+            + "don't trust. Timeouts, kicks and lost connections still disconnect.");
+        packets.setEnabled(true);
+        register(packets, Module.Category.SERVER);
+
         register(new DiscordRpcModule(), Module.Category.SERVER);
 
         Module sb = new Module("Scoreboard", "Resize, reposition and restyle the scoreboard sidebar.");

@@ -1,78 +1,61 @@
-# Native AutoReconnect — 26.2
+# AutoReconnect and the other multiplayer remakes (1.7.0)
 
-## 2026-09-10 source integration and validation
+1.7.0 replaced the earlier AutoReconnect port, whose screen and connection hooks were adapted from the
+LGPL AutoReconnect mod, with Lads code written from the feature description only (the mod's Modrinth page:
+reconnect after an unintended disconnect, by default after 3, 10, 30 and 60 seconds, configurable, with
+messages or commands after an automatic reconnect). No upstream source, class or file was used. The LGPL
+notice, its licence copy and the `META-INF/lads-sources/reconnect` source bundle were removed with it.
 
-Reference: AutoReconnect **3.103.0+26.2-fabric**, project `PRy8Khga`, version
-`vHDagTHf`, exact upstream tag commit
-`2b61223824f38d8bdbef697ed28a012acf9b7409` at
-<https://github.com/TerminalMC/AutoReconnect>. The tagged source was inspected,
-including configuration, all three reconnect strategies, screen lifecycle,
-commands, reason filters and post-reconnect messaging. The reference checkout
-is preserved under `artifacts/verification/native-mods-26.2/autoreconnect-reference-3.103.0`.
+## AutoReconnect (module `AutoReconnect`, 1.8.9, 26.2, 26.3)
 
-The native replacement is compiled into Lads Core and has no runtime dependency
-on the external AutoReconnect classes. It registers only when `autoreconnectrf`
-is absent. The production 26.2 manifest retired the upstream entry after the
-41-check transformed runtime probe passed. Enable AutoReconnect in the Lads menu
-to use its native engine; existing Lads module preferences are
-not silently enabled.
+- `common` `ReconnectSession` is the whole state machine: the target (server address or world folder), the
+  account it was joined with, the countdown (`ReconnectPlan`), the reason filter (`ReconnectFilters`) and the
+  join actions (`ReconnectActions`). Unit tests: `ReconnectSessionTest`, `ReconnectBehaviorTest`.
+- 26.x (`NativeReconnect`): servers are remembered in `ConnectScreen.startConnecting` (server list, direct
+  connect, quick play, transfers); local worlds on Fabric's join event. Fabric's screen events add Reconnect
+  and Cancel reconnect under the disconnect screen's last button; Escape cancels a running countdown.
+- 1.8.9 (`AutoReconnect189`): servers as their `GuiConnecting` opens, local worlds once joined, buttons and
+  Escape through Forge's screen events. Realms do not accept 1.8.9; its chat is unsigned.
+- Realms are no longer reconnected on 26.x (the old port did); servers and local worlds are.
+- Kicks and bans never count down by default: the reason key list skips kicks, bans, whitelist, duplicate
+  login, outdated client/server, spam and idle kicks, and the default text patterns skip reasons containing
+  "banned", "kicked" or "white-list" (servers and 1.8.9 send most kicks as plain text). Login, session,
+  consent and transfer reasons never retry. Timeouts, lost connections, full or closed servers do retry.
+- Settings keep their module options (Retry Initial Failures, Repeat Last Delay, Reason Filter, Enable Reconnect
+  Actions, Match Action IDs as Regex, Sign Configured Commands) and the lists in
+  `config/theladscore/reconnect.json`. 1.6.0 files load (old key names are read) and are saved with the new
+  names. The import of the external mod's own `autoreconnectrf.json` and the `/ladsreconnect` command were
+  dropped.
+- Stands down when `autoreconnectrf` is loaded.
 
-| Reference feature | Lads native implementation |
-|---|---|
-| Per-attempt delay sequence `[3,10,30,60]` | Native list editor; empty disables automatic attempts; finite sequence gives the attempt limit |
-| Infinite attempts | Repeat Last Delay repeats only the final configured delay |
-| Retry initial failures | Separate setting, off by default |
-| Reason key substring / localized regex matching | Both editable lists; Except Matches / Only Matches modes; nested translatable reason keys are inspected |
-| Normal server reconnect | Captured attempted address, copied ServerData and transfer state; never writes the saved server list |
-| Local-world reconnect | Actual world folder ID; verifies it still exists; uses vanilla world-opening flow and world-list return parent |
-| Realms reconnect | Copied Realm metadata; invokes vanilla GetServerDetailsTask and Realm connection screens |
-| Manual reconnect / countdown / cancel | Actual disconnect-screen widgets; first Escape cancels countdown, second returns to parent; no background scheduler races |
-| Main-menu / identity changes | Clear countdown, target and queued actions; ordinary manual disconnect cannot trigger a retry after return to menus |
-| Context-specific post-reconnect messages | Separate staged profile editor; server address, Realm name or world folder; exact or whole-regex ID matching; multiple matching profiles |
-| Delay before and between messages | Connection/account-bound client-thread queue; positive fractional seconds; deterministic ordering |
-| Plain chat / signed or unattended commands | Native packet-listener methods, only after successful automatic reconnect and explicit configuration plus global/profile activation |
-| Client command settings / diagnostic disconnect | `/ladsreconnect` and compatibility alias `/autoreconnectrf`; explicit `disconnect` subcommand retains the reference diagnostic workflow |
-| Existing configuration | Read-only import of `autoreconnectrf.json` into `theladscore/reconnect.json`; atomic native saves; source file remains byte-for-byte unchanged |
+## IgnorePacketErrors (module, on by default; 1.8.9, 26.2, 26.3)
 
-Intentional boundaries:
+Replaces Network Protocol Disconnect (`netprodis`). A play packet from the server that can't be decoded is
+dropped with the rest of its frame (`PacketDecodeGuardMixin`, 1.8.9 `MessageDeserializerMixin`), and a play
+packet whose handler throws is logged and skipped (`PacketErrorGuardMixin`, 1.8.9 `NetworkManagerMixin` for
+handlers on the network thread; 1.8.9 already only logs handler errors on the game thread). Timeouts, closed
+or reset connections, kicks, frame/decompression errors and any `Error` still disconnect
+(`PacketErrorPolicy`, unit-tested). The first three skips log a stack trace, later ones one line. The module
+description warns that a skipped packet can leave the world out of sync. Stands down when `netprodis` is loaded.
 
-- Automatic attempts never retry recognized login/session/authentication,
-  code-of-conduct consent, invalid-public-key, or transfer-handoff reasons, even
-  if a user filter would match. No credential refresh or login automation runs.
-- Global reconnect actions default off; every new and imported profile defaults
-  disabled. Import preserves message contents without executing them. A user
-  must explicitly configure and enable actions in Lads. Disabling the setting,
-  disconnecting, changing accounts or editing configuration clears queued work.
-- Config limits are 100 retry delays (1–86,400 seconds each), 128 entries per
-  reason list, 64 action profiles, 100 messages per profile, and 4 MiB per native
-  config file. Action delay is 0.1–3,600 seconds; vanilla chat/command length
-  limits apply. Invalid oversized messages are disabled, never truncated into
-  a different command. Original imported files remain available in full.
-- Realms and local-world retry implementations use verified 26.2 APIs. A
-  successful authenticated remote reconnect, Realms reconnect, local-world
-  reopen, and actual sent post-reconnect message are **not claimed** by the
-  isolated tests below. The QA harness never opens a connection/world or sends
-  chat/actions; it uses a counter as the reconnect target and local mock sinks.
+## Chat signing (Chat > Hide Signing Indicators, 26.2 and 26.3)
 
-Validation at this source checkpoint:
+Not a module. On by default and independent of the Chat module's own switch: chat lines show no signing
+indicator or "not secure" icon, and the "Chat messages can't be verified" toast is dropped. Signatures and
+reports are untouched. Stands down when `chatsigninghider` is loaded. 1.8.9 chat has no signing.
 
-- `:v26_2:compileJava` passed with all reconnect helpers/editors/mixins.
-- `:common:test --tests com.thelads.core.client.ReconnectBehaviorTest` passed
-  **18 tests**, including finite/infinite timing, repeated ticks, cancellation,
-  negative/wrapping monotonic clocks, reason matching, protected auth reasons,
-  exact/regex context matching, connection/account separation, action disabling,
-  message length behavior, deterministic queue ordering, and ActionOption's
-  safe non-serialized callbacks.
-- `NativeReconnectProbe` is wired for `-Dthelads.verifyIntegrations=true` in the
-  isolated artifacts/verification game directory. It exercises transformed
-  disconnect controls/Escape/resize, mock dispatch, actual editor callbacks,
-  imported-config preservation, native disk round trips, and safe malformed
-  inputs. Both [native world checkpoints](NATIVE_RUNTIME_CHECKPOINT_26_2.md)
-  recorded `Lads native reconnect probe END: 41 checks passed, 0 failed`.
+## Ctrl+R refreshes the server list (1.8.9, 26.2, 26.3)
 
-License and source: the capture/layout mixin integration adapts LGPL-3.0-only
-upstream hooks, with original author notices retained. Exact license, incorporated
-GPL terms and attribution are in `assets/theladscore/licenses`; corresponding
-modified/native helper source and mixin resources are embedded in
-`META-INF/lads-sources/reconnect`. The implementation uses its own timing,
-configuration and GUI code rather than shipping a concealed upstream mod JAR.
+Not a module. Ctrl+R on the multiplayer screen runs the screen's own refresh (as its Refresh button and F5),
+never while a text field has focus (26.x; 1.8.9's list has none). 26.3 matches the R by keyboard layout.
+
+## QA
+
+- 26.x title probe (`NativeReconnectProbe`, `-Dthelads.verifyIntegrations`): disconnect screen buttons,
+  countdown, Escape, kick reasons, Cancel and the delays editor with a mock target.
+- 26.x in-world capture (`ServerFeaturesCapture`, `LADS_VERIFY_CAPTURE_SERVER=1` with `LADS_VERIFY_AUTO_WORLD=1`)
+  and the 1.8.9 self-test (`ProbeServer170`): an undecodable frame through the real decoder, a failing
+  packet through the real connection while staying connected, then with IgnorePacketErrors off the same
+  packet disconnects the QA world and AutoReconnect counts down and reopens it; a refused local port is
+  re-dialled twice and stops at the retry limit; Ctrl+R rebuilds the server list. Evidence for 1.7.0 is in
+  `artifacts/1.7.0/remake/server/`.

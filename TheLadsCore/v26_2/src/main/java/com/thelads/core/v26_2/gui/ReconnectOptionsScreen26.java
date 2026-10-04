@@ -1,7 +1,7 @@
 package com.thelads.core.v26_2.gui;
 
 import com.thelads.core.v26_2.feature.NativeReconnect;
-import com.thelads.core.v26_2.feature.ReconnectSettings;
+import com.thelads.core.client.ReconnectSettings;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -22,8 +22,8 @@ public final class ReconnectOptionsScreen26 extends Screen {
     public ReconnectOptionsScreen26(Screen parent) {
         super(Component.literal("Reconnect delays and filters")); this.parent = parent;
         draft = NativeReconnect.settings().copy();
-        delayText = String.join(", ", draft.delays.stream().map(String::valueOf).toList());
-        keyText = String.join("\n", draft.conditionKeys); patternText = String.join("\n", draft.conditionPatterns);
+        delayText = String.join(", ", draft.retryDelays.stream().map(String::valueOf).toList());
+        keyText = String.join("\n", draft.reasonKeys); patternText = String.join("\n", draft.reasonPatterns);
     }
     @Override protected void init() {
         span = Math.min(620, width - 32); left = (width - span) / 2;
@@ -49,7 +49,7 @@ public final class ReconnectOptionsScreen26 extends Screen {
             List<String> keys = lines(keyText), patterns = lines(patternText);
             if (keys.size() > 128 || patterns.size() > 128) throw new IllegalArgumentException("Use at most 128 entries in each filter list.");
             for (String expression : patterns) Pattern.compile(expression);
-            draft.delays = parsed; draft.conditionKeys = keys; draft.conditionPatterns = patterns;
+            draft.retryDelays = parsed; draft.reasonKeys = keys; draft.reasonPatterns = patterns;
             NativeReconnect.replaceSettings(draft); minecraft.gui.setScreen(parent);
         } catch (RuntimeException invalid) { error = invalid instanceof NumberFormatException ? "Enter whole seconds separated by commas." : invalid.getMessage(); }
     }
