@@ -35,6 +35,7 @@ import org.apache.logging.log4j.Logger;
  * <li>cheats-reset: the QA world back to no cheats, the new world deleted.</li>
  * <li>gaps: a sword, stick and bow held against the sky (1.7 Animations off), then the three dropped on the ground close
  * up: lads-qa/screenshots/170-gap-*.png, for item model gaps.</li>
+ * <li>inventory: the inventories with and without potion effects, centred (ProbeInventory).</li>
  * <li>killbanner: Rogue's opening for 1 to 5 kills, captured about 150, 250 and 350 ms after each kill
  * (lads-qa/screenshots/170-rogue-k*-*ms.png).</li>
  * <li>loading: three rounds of opening the QA world, the Nether and back, a respawn and leaving, each timed from the
@@ -89,6 +90,11 @@ final class Probe170Misc {
                 steps.add(Probe170Misc::gapDropped);
                 steps.add(mc -> { CoreProbe.screenshot(mc, "170-gap-dropped"); return after(5); });
                 steps.add(Probe170Misc::gapEnd);
+                steps.add(Probe170Misc::leave);
+                break;
+            case "inventory":
+                steps.addAll(open(QA));
+                steps.addAll(ProbeInventory.steps());
                 steps.add(Probe170Misc::leave);
                 break;
             case "killbanner":
