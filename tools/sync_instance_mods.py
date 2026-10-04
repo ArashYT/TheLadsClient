@@ -53,13 +53,17 @@ KNOWN = {'autoreconnectrf': 'PRy8Khga', 'clientsort': 'K0AkAin6',
 # shipped; lock() lists them (like every mod that leaves a pack, NATIVE ones included) under "retired" with every
 # hash Lads shipped, so launchers retire those copies even without an installed-mod receipt.
 # GoodMC left in 1.2.3; it is not a native replacement, so it must not go into NATIVE. 1.4.6 dropped Gamma Utils,
-# Motion Blur (Plus) with its Satin library, Sound Physics Remastered and Client Sort.
+# Motion Blur (Plus) with its Satin library, Sound Physics Remastered and Client Sort. 1.7.0 dropped NoPackCompatCheck
+# (No Resource Pack Warnings covers it) from 26.2 and 26.3.
 REMOVED = {'goodmc': 'hwir46QE', 'gammautils': 'wdLuzzEP', 'motionblur': 'fWundlde', 'motionblurplus': 'Qbkde6rq',
-           'satin': 'fRbqPLg4', 'sound_physics_remastered': 'qyVF9oeo', 'clientsort': 'K0AkAin6'}
+           'satin': 'fRbqPLg4', 'sound_physics_remastered': 'qyVF9oeo', 'clientsort': 'K0AkAin6',
+           'nopackcompatcheck': '1agMh8Z8'}
+# A frozen pack keeps a mod that left the others (1.21.11 has been frozen since 1.6.0).
+KEPT = {'1.21.11': {'nopackcompatcheck'}}
 
 
-def removed(mod_id, project_id):
-    return mod_id in REMOVED or project_id in REMOVED.values()
+def removed(mod_id, project_id, game):
+    return mod_id not in KEPT.get(game, ()) and (mod_id in REMOVED or project_id in REMOVED.values())
 
 
 def api(path, body=None):
@@ -192,7 +196,7 @@ def lock(game, rows):
     old = json.loads(target.read_text(encoding='utf8')) if target.exists() else {'mods': []}
     # Preserve previous client features outside the instance's inventory.
     for mod in old['mods']:
-        if mod['modId'] not in NATIVE[game] and not removed(mod['modId'], mod['projectId']) and mod['projectId'] not in selected:
+        if mod['modId'] not in NATIVE[game] and not removed(mod['modId'], mod['projectId'], game) and mod['projectId'] not in selected:
             version = api('version/' + mod['versionId'])
             if version and game in version['game_versions']:
                 selected[mod['projectId']] = version
@@ -231,7 +235,7 @@ def lock(game, rows):
     if len({e['modId'] for e in entries}) != len(entries):
         raise ValueError('Duplicate Fabric mod IDs for ' + game)
     # A dependency or a fork can reintroduce a removed or native mod; fail before writing instead of shipping it again.
-    shipped = [e['modId'] for e in entries if removed(e['modId'], e['projectId']) or e['modId'] in NATIVE[game]
+    shipped = [e['modId'] for e in entries if removed(e['modId'], e['projectId'], game) or e['modId'] in NATIVE[game]
                or any(e['modId'] == r['modId'] or e['projectId'] == r['projectId'] for r in old.get('retired', []))]
     if shipped:
         raise ValueError('Retired mods would ship again for ' + game + ': ' + ', '.join(shipped)
@@ -270,9 +274,9 @@ def main():
         if row['id'] not in unique or row['modrinth']:
             unique[row['id']] = row
     # Removed mods get no coverage rows even while the source instance still contains them.
-    surveyed = [row for row in unique.values() if not removed(row['id'], row['project'])]
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        rows = list(pool.map(survey, [(row, game) for game in GAMES for row in surveyed]))
+        rows = list(pool.map(survey, [(row, game) for game in GAMES for row in unique.values()
+                                      if not removed(row['id'], row['project'], game)]))
     for game in GAMES:
         print(game, {status: sum(r['game'] == game and r['status'] == status for r in rows) for status in ['native', 'modrinth', 'unavailable']}, flush=True)
         for r in rows:
