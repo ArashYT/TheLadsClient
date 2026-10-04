@@ -38,12 +38,14 @@ import net.minecraft.util.IChatComponent;
  * server and back; the tester's chat, server lines with rank prefixes and colour codes (for the tester and, long enough to wrap,
  * for the own player), a similar unknown name and a plain line arrive as chat packets (Forge's chat event renames Lads nicknames
  * first). Each message's head and where it goes (Position Before name, the default: just before the sender's name) are checked
- * on its chat lines, then 170-chatheads-1-closed, -2-open (GuiChat), -3-startofline (Position Start of line, Keep text aligned)
- * and -4-off (module off: 1.8.9's own chat) are saved. Everything is put back.
+ * on its chat lines, then 170-chatheads-1-closed, -2-open (GuiChat), -3-startofline (Position Start of line, Keep text aligned),
+ * -5-noshadow (the Chat module's Text Shadow off), -6-scrolledback (150 newer lines, a refresh, then Infinite History lays the
+ * own messages out again as the chat scrolls back to them) and -4-off (module off: 1.8.9's own chat) are saved. Everything is put back.
  */
 final class ChatHeadsProbe189 {
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(ChatHeadsProbe189::start, ChatHeadsProbe189::closed,
-        ChatHeadsProbe189::open, ChatHeadsProbe189::aligned, ChatHeadsProbe189::off, ChatHeadsProbe189::restored);
+        ChatHeadsProbe189::open, ChatHeadsProbe189::aligned, ChatHeadsProbe189::noShadow, ChatHeadsProbe189::scrolledBack,
+        ChatHeadsProbe189::off, ChatHeadsProbe189::restored);
     private static final GameProfile TESTER = new GameProfile(UUID.fromString("6f3b2c1a-0d4e-4f5a-9b8c-7d6e5f4a3b2c"), "Lads_Tester");
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<Option, JsonElement>();
     private static final Map<Module, Boolean> ENABLED = new LinkedHashMap<Module, Boolean>();
@@ -128,10 +130,46 @@ final class ChatHeadsProbe189 {
         return after(20);
     }
 
-    private static boolean aligned(Minecraft mc) {
+    private static boolean aligned(Minecraft mc) throws Exception {
         screenshot(mc, "170-chatheads-3-startofline");
+        List<ChatLine> lines = lines(mc.ingameGUI.getChatGUI());
+        expect(lines, "a long plugin line from me", mc.getNetHandler().getPlayerInfo(mc.thePlayer.getUniqueID()));
         ((DropdownOption) module(ChatHeads.NAME).getOption(ChatHeads.POSITION)).setIndex(0);
         ((BoolOption) module(ChatHeads.NAME).getOption(ChatHeads.ALIGNED)).set(false);
+        ((BoolOption) module("Chat").getOption("Text Shadow")).set(false);
+        return after(20);
+    }
+
+    /** Text Shadow off, then (Infinite History) 150 newer lines: the own messages are laid out again only when scrolled back to. */
+    private static boolean noShadow(Minecraft mc) throws Exception {
+        screenshot(mc, "170-chatheads-5-noshadow");
+        ((BoolOption) module("Chat").getOption("Text Shadow")).set(true);
+        for (int i = 1; i <= 150; i++) receive(mc, new ChatComponentText("Server line " + i));
+        mc.ingameGUI.getChatGUI().refreshChat();
+        Chat189.History history = (Chat189.History) mc.ingameGUI.getChatGUI();
+        int own = ownFirstLines(mc); // only drawn lines are marked first
+        check(own == 0 && history.ladsDrawnLines() < history.ladsMessages(), "a refresh lays out only the newest lines, not the own messages ("
+            + history.ladsDrawnLines() + " lines of " + history.ladsMessages() + " messages, " + own + " own first lines)");
+        mc.ingameGUI.getChatGUI().scroll(1000);
+        return after(20);
+    }
+
+    private static int ownFirstLines(Minecraft mc) throws Exception {
+        NetworkPlayerInfo own = mc.getNetHandler().getPlayerInfo(mc.thePlayer.getUniqueID());
+        int first = 0;
+        for (ChatLine line : lines(mc.ingameGUI.getChatGUI())) if (((ChatHeads189.Line) line).ladsFirst() && ((ChatHeads189.Line) line).ladsHead() == own) first++;
+        return first;
+    }
+
+    private static boolean scrolledBack(Minecraft mc) throws Exception {
+        List<ChatLine> lines = lines(mc.ingameGUI.getChatGUI());
+        int first = ownFirstLines(mc);
+        check(first == 2, "scrolled back, each of the own player's two messages is laid out again with its head on one first line (" + first + ")");
+        expectAt(lines, "my own chat", mc.getSession().getUsername());
+        expectAt(lines, "[Admin]", "Testy");
+        expectAt(lines, "[VIP+]", mc.getSession().getUsername());
+        screenshot(mc, "170-chatheads-6-scrolledback");
+        mc.ingameGUI.getChatGUI().resetScroll();
         mc.displayGuiScreen(null);
         module(ChatHeads.NAME).setEnabled(false);
         return after(20);
