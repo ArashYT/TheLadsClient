@@ -38,6 +38,7 @@ public class LadsSettingsScreen26 extends Screen {
     public void openGlobalColors(){ui.openGlobalColors();}
     public void openDisplayActions(){ui.openDisplayActions();}
     public void openModule(String name) { ui.openModule(name); }
+    public void searchKillBanners(String query) { ui.searchKillBanners(query); }
     /** Opens the Installed mods view (also used by the QA capture chain). */
     public void openMods() { ui.openMods(); }
     public boolean isModsViewOpen() { return ui.isModsViewOpen(); }
