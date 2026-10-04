@@ -4,7 +4,6 @@ import com.thelads.core.client.gui.DraggableHudScreen;
 import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.config.*;
 import com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter;
-import com.thelads.core.v26_2.feature.paperdoll.PaperDollRenderState;
 import com.thelads.core.v26_2.gui.DraggableHudScreen26;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -57,11 +56,11 @@ final class Version134HudProbe {
             var color=GuiTextRenderState.class.getDeclaredField("color");color.setAccessible(true);
             state.forEachText(text->{try{int alpha=color.getInt(text)>>>24;faded[1]|=alpha>0&&alpha<255;}catch(IllegalAccessException failure){throw new IllegalStateException(failure);}});
             state.forEachItem(item->faded[2]|=((FadedItem)(Object)item).ladsOpacity()>0&&((FadedItem)(Object)item).ladsOpacity()<1);
-            state.forEachPictureInPicture(picture->{if(picture instanceof GuiEntityRenderState entity){int alpha=((PaperDollRenderState)entity.renderState()).ladsPaperDollAlpha();faded[3]|=alpha>0&&alpha<255;}});
+            state.forEachPictureInPicture(picture->{if(picture instanceof GuiEntityRenderState){Float alpha=NativeAutohide.PICTURES.get(picture);faded[3]|=alpha!=null&&alpha>0&&alpha<1;}});
             check(faded[0],"Lads plate carries partial alpha into GUI render state");
             check(faded[1],"Lads text carries partial alpha into deferred text state");
             check(faded[2],"Lads armor carries partial alpha into deferred item state");
-            check(faded[3],"Lads paper doll carries partial alpha into its entity state");
+            check(faded[3],"Lads paper doll picture keeps the partial alpha for its blit");
             // 1.4.0: Xaero's minimap fades and hides with the HUD; its HUD element runs in the Autohide scope and its picture blits at that opacity.
             if(MinimapIntegration.available()){
                 // Fabric resolves HUD element replacements while the HUD renders; this probe can run before the first in-world HUD frame.
@@ -95,7 +94,7 @@ final class Version134HudProbe {
             NativeAutohide.renderLadsHud(graphics);check(count(state)==0,"editor suppresses duplicate live HUD pass");
             controller.render(new GuiGraphicsExtractorLadsAdapter(graphics),-1,-1);
             check(count(state)>0,"editor controls and previews remain visible while Autohide is enabled");
-            boolean[] opaqueDoll={false};state.forEachPictureInPicture(picture->{if(picture instanceof GuiEntityRenderState entity)opaqueDoll[0]|=((PaperDollRenderState)entity.renderState()).ladsPaperDollAlpha()==255;});
+            boolean[] opaqueDoll={false};state.forEachPictureInPicture(picture->{if(picture instanceof GuiEntityRenderState)opaqueDoll[0]|=!NativeAutohide.PICTURES.containsKey(picture);});
             check(opaqueDoll[0],"editor paper doll preview retains full opacity");controller.close();
             org.slf4j.LoggerFactory.getLogger("TheLadsCore").info("Lads 1.3.4 HUD probe END: {} passed, 0 failed; live fade and opaque editor render states",passed);
             return passed;

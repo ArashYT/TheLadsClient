@@ -25,13 +25,11 @@ public final class PlayerActions {
             .sorted(Comparator.comparing(java.lang.reflect.Method::getName)).forEach(m->register("State: "+words(m.getName().substring(2).replaceAll("([a-z])([A-Z])","$1 $2")),p->{try{return (boolean)m.invoke(p);}catch(ReflectiveOperationException|RuntimeException e){return false;}}));
     }
     private static String words(String s){return Character.toUpperCase(s.charAt(0))+s.substring(1);}
-    static boolean active(Player player,boolean recentlyRiding) {
-        boolean any=false;
-        var module=ModuleManager.getInstance().getModule("Paperdoll");
-        for(var o:module.getOptions()) if(o instanceof PlayerActionOption action) {
-            boolean active=switch(action.getName()) {
+    /** Whether the named trigger (a Paperdoll PlayerActionOption) is happening for this player now. */
+    public static boolean happening(Player player,String name) {
+        return switch(name) {
                 case "Sprinting"->player.isSprinting();case "Swimming"->player.isSwimming();case "Crawling"->player.isVisuallyCrawling();
-                case "Crouching"->!recentlyRiding&&player.isCrouching();case "Creative Flying"->player.getAbilities().flying;
+                case "Crouching"->player.isCrouching();case "Creative Flying"->player.getAbilities().flying;
                 case "Elytra Gliding"->player.isFallFlying();case "Riding"->player.isPassenger()||player.getPose().name().equals("SITTING");
                 case "Spin Attacking"->player.isAutoSpinAttack();case "Using Items"->player.isUsingItem();
                 case "Walking"->player.getDeltaMovement().horizontalDistanceSqr()>.0001;
@@ -39,10 +37,7 @@ public final class PlayerActions {
                 case "Jumping"->!player.onGround()&&player.getDeltaMovement().y>0;case "Falling"->!player.onGround()&&player.getDeltaMovement().y<-.08;
                 case "Sleeping"->player.isSleeping();case "Climbing"->player.onClimbable();case "In Water"->player.isInWater();case "On Fire"->player.isOnFire();
                 case "Attacking"->player.isSwinging();case "Blocking"->player.isBlocking();case "Hurt"->player.hurtTime>0;case "Dead"->!player.isAlive();case "Spectating"->player.isSpectator();
-                default->states.containsKey(action)&&states.get(action).test(player);
+                default->{var detector=states.get(ModuleManager.getInstance().getModule("Paperdoll").getOption(name));yield detector!=null&&detector.test(player);}
             };
-            action.detect(active);any|=action.get()&&active;
-        }
-        return any;
     }
 }

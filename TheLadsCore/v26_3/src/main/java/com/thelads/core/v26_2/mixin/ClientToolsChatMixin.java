@@ -73,6 +73,10 @@ public abstract class ClientToolsChatMixin {
     @Inject(method = RENDER, at = @At("RETURN"), require = 1)
     private void ladsEndChat(CallbackInfo ci) { ladsGraphics = null; }
 
+    /** Raised: chat lays out above a shorter screen, so it is drawn, hovered and clicked that much higher. */
+    @ModifyVariable(method = RENDER, at = @At("HEAD"), argsOnly = true, ordinal = 0, require = 1)
+    private int ladsRaiseChat(int screenHeight) { return screenHeight - com.thelads.core.v26_2.feature.Raised26.chat(); }
+
     /** Only the newest message's lines slide and fade in, inside the chat's own pose; nothing else on the HUD moves. */
     @ModifyArg(method = "forEachLine", at = @At(value = "INVOKE", target = LINE), index = 2, require = 1)
     private float ladsAnimateLine(GuiMessage.Line line, int index, float alpha) {
