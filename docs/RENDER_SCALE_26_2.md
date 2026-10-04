@@ -24,6 +24,8 @@ Dynamic scaling stops adapting while paused, unfocused or minimized and ignores 
 
 The composite uses Minecraft's unblended fullscreen pipeline and sampler cache; it does not inject raw OpenGL calls or replace Sodium terrain code. The bundled Sodium renderer's hooks were inspected against this boundary. Actual coexistence still requires the runtime test below. Resize/fullscreen changes dispose the old world target, and the next world frame creates the correct dimensions. Disable, world unload and shutdown release owned textures. Shutdown does not recreate vanilla attachments.
 
+`SkyRenderer` keeps the main target it was created with, so `RenderScaleSkyMixin` points its passes at the current main target: without it the sky disc, sun, moon and stars went to the native target under the composite, and under an Iris shader pack they were drawn at the native viewport inside the scaled target. Iris sizes its own targets from `GameRenderer.mainRenderTarget()`, so with a shader pack its whole pipeline runs at the scaled resolution: with a GPU-heavy QA pack at 1280x720, 66 FPS at 100% became 118 FPS (the QA cap is 120) at 50%.
+
 Exordium remains separate and unavailable: correctly caching GUI layers requires invalidation for input, chat, tooltip/item rendering, animation, blur, resize and resource reload. A whole-game FPS limit is not an implementation of that feature.
 
 ## Verification
@@ -34,6 +36,7 @@ Exordium remains separate and unavailable: correctly caching GUI layers requires
 - The probe waits for an unpaused world with no screen, then runs six short stages: 50% linear, 50% nearest, 150% supersampling, disabled, 100%, and bounded dynamic scaling. Interactive runs require focus. The strictly isolated [automatic world harness](AUTO_WORLD_QA_26_2.md) can also verify the GPU behind a locked desktop. Opening a screen during an active probe reports failure and ends the temporary override.
 - Checks inspect actual color/depth/outline dimensions, native GUI/presentation restoration, repeated world composites, target disposal and dynamic bounds. A separate GPU readback checks red/blue pixels to prove full-target coverage and distinct linear/nearest sampling.
 - Both [native world checkpoints](NATIVE_RUNTIME_CHECKPOINT_26_2.md) recorded `Lads render scale probe END: 61 passed, 0 failed`, with over 200 world frames per stage. A failure prints `Lads render scale probe FAILED`. The probe also checks the persistent outline attachment outside the frame graph; its transient public getter is not used for lifecycle management.
+- `LADS_VERIFY_CAPTURE_RESOLUTION=1` (auto-world runs) photographs native, 50% Linear/Nearest/Smooth/Sharp, the Balanced preset and 200% as `screenshots/resolution-*.png` with each stage's FPS, GPU frame time and world target size in the log (`ResolutionCapture`; 1.8.9: `Probe170r` in its core self-test, `lads-qa/screenshots/170-resolution-*.png`).
 - Physical window resize, fullscreen and visual comparison of text sharpness should also be checked in the QA game. GPU readback and attachment checks are not a frame-rate benchmark.
 
 No verification flag is needed for normal use. This implementation targets Minecraft 26.2; later releases need a separate renderer compatibility check.
