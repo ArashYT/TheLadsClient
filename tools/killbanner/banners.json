@@ -209,7 +209,7 @@
   },
   "bubblegumdeathwish3": {
     "id": "bubblegumdeathwish3",
-    "name": "BUBBLEGUM DEATHWISH",
+    "name": "BUBBLEGUM DEATHWISH 3",
     "type": "Default",
     "radius": 85.0,
     "headshotX": 0.6,
@@ -225,7 +225,7 @@
   },
   "bubblegumdeathwish4": {
     "id": "bubblegumdeathwish4",
-    "name": "BUBBLEGUM DEATHWISH",
+    "name": "BUBBLEGUM DEATHWISH 4",
     "type": "Default",
     "radius": 85.0,
     "headshotX": 8.0,
@@ -257,7 +257,7 @@
   },
   "bubblegumdeathwish2": {
     "id": "bubblegumdeathwish2",
-    "name": "BUBBLEGUM DEATHWISH",
+    "name": "BUBBLEGUM DEATHWISH 2",
     "type": "Default",
     "radius": 85.0,
     "headshotX": -1.0,
@@ -384,7 +384,7 @@
   },
   "preludetochaosv25": {
     "id": "preludetochaosv25",
-    "name": "PRELUDE TO CHAOS",
+    "name": "PRELUDE TO CHAOS, V25",
     "type": "Default",
     "radius": 85.0,
     "headshotX": 0.0,
