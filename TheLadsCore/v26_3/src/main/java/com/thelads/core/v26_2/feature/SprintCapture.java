@@ -113,7 +113,9 @@ final class SprintCapture {
                     sp.getFoodData().setFoodLevel(20);
                     sp.setHealth(sp.getMaxHealth());
                     ServerLevel level = sp.level();
-                    for (int x = -3; x <= 3; x++) for (int z = -3; z <= 40; z++) for (int y = -1; y <= 3; y++)
+                    // Placed water flows on 26.x (its fluid tick is scheduled whatever the flags): it spreads 7 blocks from the
+                    // water phase's x -2..2, z 3..40, so QA's floor and recorded air reach that far and all of it goes back.
+                    for (int x = -9; x <= 9; x++) for (int z = -4; z <= 47; z++) for (int y = -1; y <= 3; y++)
                         set(level, origin.offset(x, y, z), y < 0 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
                 });
                 wait = 20;
@@ -403,7 +405,7 @@ final class SprintCapture {
         server(sp -> sp.teleportTo(sp.level(), origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5, java.util.Set.of(), 0, 0, false));
     }
 
-    /** Server thread: one block, remembering what was there first (flag 2: no neighbour updates, so water stays put). */
+    /** Server thread: one block, remembering what was there first (flag 2: no neighbour updates; water still flows, see the floor). */
     private static void set(ServerLevel level, BlockPos pos, BlockState state) {
         synchronized (BLOCKS) { BLOCKS.putIfAbsent(pos.immutable(), level.getBlockState(pos)); }
         level.setBlock(pos, state, 2);
