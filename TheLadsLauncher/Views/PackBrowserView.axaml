@@ -2,9 +2,9 @@
   <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
     <WrapPanel>
       <TextBlock Text="Install to" Foreground="#A0A1AA" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,8" />
-      <ComboBox x:Name="TargetBox" Width="340" Height="34" Margin="0,0,8,8" SelectionChanged="Target_Changed" ToolTip.Tip="A Lads version (worlds and packs are shared by every Lads version) or a modpack instance" />
+      <ComboBox x:Name="TargetBox" Classes="notranslate" Width="340" Height="34" Margin="0,0,8,8" SelectionChanged="Target_Changed" ToolTip.Tip="A Lads version (worlds and packs are shared by every Lads version) or a modpack instance" />
       <TextBlock x:Name="WorldLabel" Text="World" IsVisible="False" Foreground="#A0A1AA" FontSize="13" VerticalAlignment="Center" Margin="4,0,8,8" />
-      <ComboBox x:Name="WorldBox" Width="200" Height="34" Margin="0,0,8,8" IsVisible="False" SelectionChanged="World_Changed" />
+      <ComboBox x:Name="WorldBox" Classes="notranslate" Width="200" Height="34" Margin="0,0,8,8" IsVisible="False" SelectionChanged="World_Changed" />
       <Button Classes="action" Content="Open folder" Height="34" Padding="12,0" Margin="0,0,8,8" HorizontalContentAlignment="Center" Click="OpenFolder_Click" />
       <Button Classes="action" Content="Refresh" Height="34" Padding="12,0" Margin="0,0,8,8" HorizontalContentAlignment="Center" Click="Refresh_Click" />
     </WrapPanel>

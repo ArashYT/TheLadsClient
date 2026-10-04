@@ -6,7 +6,7 @@
     </StackPanel>
     <WrapPanel Grid.Row="1" Margin="0,18,0,12">
       <TextBox x:Name="Search" PlaceholderText="Search worlds or instances…" Width="230" Margin="0,0,8,8" TextChanged="FilterChanged" />
-      <ComboBox x:Name="Location" Width="170" Margin="0,0,8,8" SelectionChanged="SelectionChanged" />
+      <ComboBox x:Name="Location" Classes="notranslate" Width="170" Margin="0,0,8,8" SelectionChanged="SelectionChanged" />
       <ComboBox x:Name="Version" Width="140" Margin="0,0,8,8" SelectionChanged="SelectionChanged" />
       <Button Content="Add instance folder" Click="AddInstance" Margin="0,0,8,8" />
       <Button Content="Refresh" Click="Refresh" Margin="0,0,8,8" />

@@ -84,7 +84,7 @@ public partial class SkinsView : UserControl
         foreach (var skin in Library.Skins)
         {
             var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-            text.Children.Add(new TextBlock { Text = skin.Name, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 170 });
+            text.Children.Add(new TextBlock { Text = skin.Name, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 170 }.Untranslated());
             text.Children.Add(new TextBlock { Text = skin.Model == "slim" ? "Slim" : "Classic", FontSize = 11, Foreground = Muted });
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
             row.Children.Add(Preview(skin, skin.Model, 1.5));
@@ -286,8 +286,8 @@ public partial class SkinsView : UserControl
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto") };
             row.Children.Add(Preview(skin, combo.Model, 1));
             var text = new StackPanel { Spacing = 2, Margin = new Thickness(10, 0), VerticalAlignment = VerticalAlignment.Center };
-            text.Children.Add(new TextBlock { Text = combo.Name, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
-            text.Children.Add(new TextBlock { Text = $"{skin.Name} · {(combo.Model == "slim" ? "Slim" : "Classic")} · {combo.CapeName ?? "No cape"}", FontSize = 11, Foreground = Muted, TextTrimming = TextTrimming.CharacterEllipsis });
+            text.Children.Add(new TextBlock { Text = combo.Name, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated());
+            text.Children.Add(new TextBlock { Text = $"{skin.Name} · {(combo.Model == "slim" ? "Slim" : "Classic")} · {combo.CapeName ?? "No cape"}", FontSize = 11, Foreground = Muted, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated());
             Grid.SetColumn(text, 1);
             row.Children.Add(text);
             var apply = new Button { Content = "Apply", Classes = { "action" }, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -349,7 +349,7 @@ public partial class SkinsView : UserControl
         var art = new Border { Width = 30, Height = 48, Background = Brush.Parse("#121315"), CornerRadius = new CornerRadius(2), HorizontalAlignment = HorizontalAlignment.Center };
         var panel = new StackPanel { Spacing = 4, Width = 78 };
         panel.Children.Add(art);
-        panel.Children.Add(new TextBlock { Text = cape == null ? "No cape" : cape.Name, FontSize = 11, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center });
+        panel.Children.Add(new TextBlock { Text = cape == null ? "No cape" : cape.Name, FontSize = 11, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center }.Untranslated(cape != null));
         if (cape?.Active == true) panel.Children.Add(new TextBlock { Text = "WEARING", Classes = { "caption" }, FontSize = 8, HorizontalAlignment = HorizontalAlignment.Center });
         if (cape != null) _ = FillCapeAsync(art, cape.Url);
         return new ListBoxItem { Content = panel, Tag = cape, Padding = new Thickness(6) };
