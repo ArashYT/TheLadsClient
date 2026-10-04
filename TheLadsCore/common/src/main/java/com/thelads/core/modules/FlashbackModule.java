@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Lads additions to Flashback (26.x): the folder replays are saved to, and faster exports. Flashback itself records, plays
+ * Lads additions to Flashback (26.x): the folder replays are saved to, and export options. Flashback itself records, plays
  * back and exports; a settings entry with no on/off switch.
  */
 public final class FlashbackModule extends Module {
@@ -28,7 +28,8 @@ public final class FlashbackModule extends Module {
     public final BoolOption gpuEncoder = addOption(new BoolOption("OpenH264 to GPU", false));
 
     public FlashbackModule() {
-        super(NAME, "Where Flashback saves replays (blank: its own folder) and how fast it exports.");
+        super(NAME, "Where Flashback saves replays (blank: its own folder), how hard PNG exports are compressed, and whether OpenH264 "
+            + "video exports use the graphics card's encoder.");
         setEnabled(true);
     }
 

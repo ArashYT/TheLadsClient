@@ -114,6 +114,7 @@
     "LoadingOverlayMixin",
     "DisconnectedScreenAccess",
     "ReconnectTargetMixin",
+    "ReconnectRealmsMixin",
     "PacketDecodeGuardMixin",
     "PacketErrorGuardMixin",
     "SecureChatToastMixin",

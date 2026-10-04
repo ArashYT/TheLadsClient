@@ -13,15 +13,18 @@ import net.minecraftforge.fml.common.Loader;
 
 /**
  * Chat Heads on 1.8.9 (GuiNewChatMixin, ChatLineMixin). 1.8.9 chat does not name its sender, so a message's head is the tab-list
- * player ChatHeads.sender finds in it as it arrives; the message and its drawn lines keep it, so re-wrapping (refreshChat) keeps
- * the head even after that player left. The first line draws the head; every line of the message is moved right after it.
+ * player ChatHeads.match finds in it as it arrives; the message and its drawn lines keep it and where the name starts, so
+ * re-wrapping (refreshChat) keeps the head even after that player left. Before name: the first line draws the head just before
+ * the sender's name and moves the rest of that line. Start of line: the first line draws the head at its start and every line of
+ * the message moves right after it.
  */
 public final class ChatHeads189 {
-    /** A ChatLine's sender (ChatLineMixin), and whether this drawn line is its message's first. */
+    /** A ChatLine's sender (ChatLineMixin), where the sender's name starts, and whether this drawn line is its message's first. */
     public interface Line {
         NetworkPlayerInfo ladsHead();
+        int ladsAt();
         boolean ladsFirst();
-        void ladsHead(NetworkPlayerInfo head, boolean first);
+        void ladsHead(NetworkPlayerInfo head, int at, boolean first);
     }
 
     private static Boolean active;
@@ -33,8 +36,8 @@ public final class ChatHeads189 {
         return active;
     }
 
-    /** The tab-list player a new message is from, or null. */
-    public static NetworkPlayerInfo sender(IChatComponent message) {
+    /** The tab-list player a new message is from and where their name starts, or null. */
+    public static ChatHeads.Match<NetworkPlayerInfo> sender(IChatComponent message) {
         Minecraft mc = Minecraft.getMinecraft();
         if (message == null || !active() || !ChatHeads.enabled() || !ChatHeads.byName() || mc.getNetHandler() == null) return null;
         Map<String, NetworkPlayerInfo> names = new HashMap<String, NetworkPlayerInfo>();
@@ -43,7 +46,7 @@ public final class ChatHeads189 {
             IChatComponent display = info.getDisplayName();
             ChatHeads.names(names, info, info.getGameProfile().getName(), display == null ? null : display.getUnformattedText(), nicknames);
         }
-        return ChatHeads.sender(message.getUnformattedText(), names);
+        return ChatHeads.match(message.getUnformattedText(), names);
     }
 
     /** Chat pixels a line's text moves right (and its message wraps narrower). */

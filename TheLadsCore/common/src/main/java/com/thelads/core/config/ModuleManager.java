@@ -190,7 +190,9 @@ public class ModuleManager {
         chatMod.addOption(new BoolOption("Screenshot Link Buttons", true));
         chatMod.setEnabled(true);
         register(chatMod, Module.Category.HUD);
-        Module chatHeads = new Module(com.thelads.core.client.ChatHeads.NAME, "The sender's head before chat messages: from signed chat, or from player names in the tab list.");
+        Module chatHeads = new Module(com.thelads.core.client.ChatHeads.NAME, "The sender's head in chat, just before their name or at the start of the line: "
+            + "from signed chat, or from player names in the tab list. Keep text aligned applies to Start of line.");
+        chatHeads.addOption(new DropdownOption(com.thelads.core.client.ChatHeads.POSITION, 0, com.thelads.core.client.ChatHeads.POSITIONS));
         chatHeads.addOption(new BoolOption(com.thelads.core.client.ChatHeads.BY_NAME, true));
         chatHeads.addOption(new BoolOption(com.thelads.core.client.ChatHeads.ALIGNED, false));
         chatHeads.setEnabled(true);
