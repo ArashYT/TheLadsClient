@@ -113,7 +113,7 @@ final class NativeQualityProbe {
             passed += NativeKillBannerProbe.run();
             passed += NativeOldAnimationsProbe.run();
             passed += NativeShulkerProbe.run();
-            passed += com.thelads.core.v26_2.feature.food.NativeFoodProbe.run();
+            passed += com.thelads.core.v26_2.feature.food.FoodProbe.run();
             passed += NativeShulkerParityProbe.run();
             passed += NativeRequestProbe.run();
             LoggerFactory.getLogger("TheLadsCore").info("Lads native feature probe END: {} passed, 0 failed", passed);

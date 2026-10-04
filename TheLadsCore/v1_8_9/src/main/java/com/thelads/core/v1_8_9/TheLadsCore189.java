@@ -10,7 +10,8 @@ import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.Clumps189;
 import com.thelads.core.v1_8_9.feature.CoreProbe;
 import com.thelads.core.v1_8_9.feature.Crosshair189;
-import com.thelads.core.v1_8_9.feature.FoodOverlay189;
+import com.thelads.core.v1_8_9.feature.Durability189;
+import com.thelads.core.v1_8_9.feature.Food189;
 import com.thelads.core.v1_8_9.feature.KillBanner189;
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.NativeMenuKey;
@@ -45,7 +46,7 @@ public class TheLadsCore189 {
         {"BetterF3", "BetterF3"}, {"BetterStats", "Better Statistics Screen"},
         {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroMinimap", "Xaero's Minimap"}, {"XaeroWorldmap", "Xaero's World Map"},
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
-        {"EnhancedToolbars", "Durability Tooltip"}, {"Raised", "Raised"}};
+        {"Raised", "Raised"}};
 
     private static String windowTitle = "The Lads Client";
 
@@ -81,7 +82,8 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new Tooltips189());
         MinecraftForge.EVENT_BUS.register(new Clumps189());
         MinecraftForge.EVENT_BUS.register(new SignalLoss189());
-        MinecraftForge.EVENT_BUS.register(new FoodOverlay189());
+        MinecraftForge.EVENT_BUS.register(new Food189());
+        MinecraftForge.EVENT_BUS.register(new Durability189());
         MinecraftForge.EVENT_BUS.register(new RenderScale189());
         Screenshots189.register();
         MinecraftForge.EVENT_BUS.register(this);
@@ -89,7 +91,7 @@ public class TheLadsCore189 {
     }
 
     public static final String[] GAMEPLAY_MODULES = {
-        "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", "RenderScale", "BetterScreenshots",
+        "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", "RenderScale", "BetterScreenshots", "EnhancedToolbars",
         "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
         "RawInput", "BorderlessFullscreen",
@@ -110,8 +112,8 @@ public class TheLadsCore189 {
         // Chat189 through GuiNewChatMixin, as 1.21.11 ChatMixin.
         {"Chat", "Minecraft 1.8.9 chat is unsigned, so Hide Signing Indicators has nothing to hide."},
         // Crosshair189 through Forge's crosshair overlay event, as 26.x NativeCrosshair.
-        {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Dynamic "
-            + "Attack Gap, Item Cooldown and spyglass options have nothing to show."},
+        {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Item Cooldown "
+            + "and spyglass options have nothing to show; Dynamic Attack Gap follows the arm swing."},
         // Reconnect189 through Forge's screen events, GuiDisconnectedAccessor and MinecraftMixin, as 26.x NativeReconnect.
         {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9, so it reconnects to servers and local worlds; 1.8.9 chat is unsigned, "
             + "so Sign Configured Commands has nothing to sign, and it sends at most 100 characters per action message."},

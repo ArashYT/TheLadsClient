@@ -3,6 +3,7 @@ package com.thelads.core.v26_2.feature;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import com.thelads.core.config.ModuleSupport;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -22,12 +23,15 @@ public final class NativeTooltips {
     }
 
     public static List<Component> append(ItemStack stack, List<Component> original, TooltipFlag flag) {
-        boolean durability = enabled("EnhancedToolbars") && bool("EnhancedToolbars", "Detailed Durability", true);
+        // A loaded Durability Tooltip jar keeps the job (EnhancedToolbars is then not built in).
+        boolean durability = enabled("EnhancedToolbars") && ModuleSupport.isBuiltIn("EnhancedToolbars") && bool("EnhancedToolbars", "Detailed Durability", true);
         boolean details = enabled("EnhancedTooltips");
-        if (stack.isEmpty() || original.isEmpty() || (!durability && !details)) return original;
+        if (stack.isEmpty() || original.isEmpty()) return original;
         TooltipDisplay display = stack.getOrDefault(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT);
-        if (display.hideTooltip()) return original;
+        Component foodLine = display.hideTooltip() ? null : com.thelads.core.v26_2.feature.food.NativeFood.tooltipLine(stack, display);
+        if ((!durability && !details && foodLine == null) || display.hideTooltip()) return original;
         List<Component> lines = new ArrayList<>(original);
+        if (foodLine != null) lines.add(foodLine);
         if (durability) NativeDurabilityTooltip.append(stack, display, lines);
         if (details) {
             if (bool("EnhancedTooltips", "Show Item ID", true) && !flag.isAdvanced())

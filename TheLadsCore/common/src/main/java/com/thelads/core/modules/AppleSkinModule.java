@@ -7,7 +7,7 @@ import com.thelads.core.config.SliderOption;
 
 public class AppleSkinModule extends Module {
     public AppleSkinModule() {
-        super("AppleSkin", "Adds food saturation and exhaustion to the HUD.");
+        super("AppleSkin", "Hunger, saturation and health a held food restores, saturation and exhaustion on the hunger bar, food values in tooltips.");
         addOption(new BoolOption("Show Saturation", true));
         addOption(new BoolOption("Show Food Values", true));
         addOption(new BoolOption("Show Exhaustion", true));
