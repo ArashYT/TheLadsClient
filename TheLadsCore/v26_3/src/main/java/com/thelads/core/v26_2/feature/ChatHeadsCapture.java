@@ -5,6 +5,7 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.thelads.core.client.ChatHeads;
 import com.thelads.core.config.BoolOption;
+import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.HudSettings;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
@@ -37,14 +38,15 @@ import org.slf4j.LoggerFactory;
  * QA only (auto-world run with -Dthelads.verifyChatHeads=true): Chat Heads in the QA world, with the Chat module's timestamps on.
  * A second player, Lads_Tester (Lads nickname "Testy"), joins the client's tab list. Then: own chat sent to the integrated server
  * (signed, back with the sender), the tester's signed chat, server lines with rank prefixes and colour codes for the tester and for
- * the own player (long enough to wrap), a similar unknown name and a plain server line. Each message's head is checked, then
- * chatheads-1-closed, -2-open (chat screen), -3-aligned (Keep text aligned), -4-hudcap (HUD FPS cap 20: replayed HUD frames) and
+ * the own player (long enough to wrap), a similar unknown name and a plain server line. Each message's head and where it goes
+ * (Position Before name, the default: just before the sender's name) are checked, then chatheads-1-closed, -2-open (chat
+ * screen), -3-startofline (Position Start of line with Keep text aligned), -4-hudcap (HUD FPS cap 20: replayed HUD frames) and
  * -5-off (module off, vanilla chat) are saved. Everything is put back. With a chat_heads jar loaded it checks that Lads stood down.
  */
 final class ChatHeadsCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final long PHASE = 1_500_000_000L;
-    private static final String[] SHOTS = {"chatheads-1-closed", "chatheads-2-open", "chatheads-3-aligned", "chatheads-4-hudcap", "chatheads-5-off"};
+    private static final String[] SHOTS = {"chatheads-1-closed", "chatheads-2-open", "chatheads-3-startofline", "chatheads-4-hudcap", "chatheads-5-off"};
     private static final GameProfile TESTER = new GameProfile(UUID.fromString("6f3b2c1a-0d4e-4f5a-9b8c-7d6e5f4a3b2c"), "Lads_Tester");
     private static final List<String> FAILURES = new ArrayList<>();
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
@@ -130,8 +132,12 @@ final class ChatHeadsCapture {
         try {
             switch (step) {
                 case 0 -> mc.setScreenAndShow(new ChatScreen("", false));
-                case 1 -> ((BoolOption) heads.getOption(ChatHeads.ALIGNED)).set(true);
+                case 1 -> {
+                    ((DropdownOption) heads.getOption(ChatHeads.POSITION)).setIndex(1);
+                    ((BoolOption) heads.getOption(ChatHeads.ALIGNED)).set(true);
+                }
                 case 2 -> {
+                    ((DropdownOption) heads.getOption(ChatHeads.POSITION)).setIndex(0);
                     ((BoolOption) heads.getOption(ChatHeads.ALIGNED)).set(false);
                     mc.setScreenAndShow(null);
                     HudSettings.getInstance().setHudFpsCapEnabled(true);
@@ -171,6 +177,11 @@ final class ChatHeadsCapture {
             expect(messages, "a long plugin line from me", own);
             expect(messages, "Lads_Tester2 joined", null);
             expect(messages, "Server restarting", null);
+            check(ChatHeads.beforeName(), "Position defaults to Before name");
+            expectAt(messages, "my own chat", mc.getUser().getName());
+            expectAt(messages, "second player's signed chat", "Testy", TESTER.name());
+            expectAt(messages, "plugin chat with a rank", "Testy");
+            expectAt(messages, "a long plugin line from me", mc.getUser().getName());
         } catch (Exception failure) { fail("heads: " + failure); }
     }
 
@@ -180,6 +191,20 @@ final class ChatHeadsCapture {
             Supplier<PlayerSkin> head = ((NativeChatHeads.Sender) (Object) message).lads$head();
             String actual = head == null ? null : texture(head);
             check(java.util.Objects.equals(actual, texture), "\"" + message.content().getString() + "\" has head " + actual + " (expected " + texture + ")");
+            return;
+        }
+        fail("no chat message containing \"" + text + "\"");
+    }
+
+    /** Before name: the head goes just before the first of {@code names}, after any timestamp and rank (code points, formatting skipped). */
+    private static void expectAt(List<GuiMessage> messages, String text, String... names) {
+        for (GuiMessage message : messages) {
+            String plain = message.content().getString().replaceAll("(?s)§.", "");
+            if (!plain.contains(text)) continue;
+            int at = ((NativeChatHeads.Sender) (Object) message).lads$at(), expected = Integer.MAX_VALUE;
+            for (String name : names) if (plain.indexOf(name) >= 0) expected = Math.min(expected, plain.indexOf(name));
+            String name = names[0];
+            check(expected > 0 && expected < plain.length() && at == plain.codePointCount(0, expected), "\"" + plain + "\": head before " + name + " at " + at + " (expected " + expected + ")");
             return;
         }
         fail("no chat message containing \"" + text + "\"");

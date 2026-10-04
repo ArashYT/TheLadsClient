@@ -1,10 +1,14 @@
 package com.thelads.core.v26_2.feature.food;
 
+import com.thelads.core.client.AppleSkinSync;
 import com.thelads.core.client.FoodPreview;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.v26_2.feature.NativeQualityOfLife;
 import com.thelads.core.v26_2.feature.food.mixin.FoodDataAccess;
 import java.util.Arrays;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -32,9 +36,11 @@ import net.minecraft.world.level.gamerules.GameRules;
 /**
  * The AppleSkin module, written for Lads: what a held food would restore (hunger, saturation and health, pulsing), the current
  * saturation as gold outlines on the hunger icons, exhaustion as a band behind them, food values in tooltips and an F3 line.
- * Singleplayer and LAN hosts read the integrated server's own player, so every value is exact. Other servers send hunger, and
- * saturation only with a health or hunger change, never exhaustion: there saturation is the last value received, exhaustion
- * is not drawn and health estimates assume none. It never changes food, health or packets. A loaded AppleSkin jar keeps the job.
+ * Singleplayer and LAN hosts read the integrated server's own player, so every value is exact. A server running AppleSkin's
+ * server side sends exact saturation and exhaustion (and the natural regeneration rule) on AppleSkin's channels (AppleSkinSync),
+ * which are used there. Other servers send hunger, and saturation only with a health or hunger change, never exhaustion: there
+ * saturation is the last value received, exhaustion is not drawn and health estimates assume none. It never changes food, health
+ * or packets. A loaded AppleSkin jar keeps the job (and the channels).
  */
 public final class NativeFood {
     static final String MODULE = "AppleSkin";
@@ -46,6 +52,11 @@ public final class NativeFood {
     private static boolean active;
     /** QA only: a fixed preview opacity in place of the pulse. */
     public static Float qaPulse;
+    /** QA only: read as on a remote server, even in the QA world (AppleSkinSyncCapture). */
+    static boolean qaRemote;
+    /** What a server running AppleSkin sent since the last join; NaN or null until it sends one. */
+    private static volatile float syncedSaturation = Float.NaN, syncedExhaustion = Float.NaN;
+    private static volatile Boolean syncedRegeneration;
     // Where vanilla drew this frame's hunger icons (y by slot) and heart containers (by heart index): previews sit exactly on them.
     private static int foodRight, heartsTop, heartsRowHeight, heartsLeft;
     private static final int[] foodY = new int[10];
@@ -60,9 +71,30 @@ public final class NativeFood {
             var player = Minecraft.getInstance().player;
             if (!on() || player == null) return;
             ServerPlayer own = serverPlayer(player);
-            FoodData data = own != null ? own.getFoodData() : player.getFoodData();
-            lines.addLine(FoodPreview.debugLine(data.getFoodLevel(), data.getSaturationLevel(), exhaustion(own), own != null));
+            lines.addLine(FoodPreview.debugLine(foodData(player, own).getFoodLevel(), saturation(player, own), exhaustion(own), exhaustionKnown(own)));
         });
+        for (String channel : new String[] {AppleSkinSync.SATURATION, AppleSkinSync.EXHAUSTION, AppleSkinSync.NATURAL_REGENERATION}) {
+            var type = AppleSkinPayload.type(channel);
+            PayloadTypeRegistry.clientboundPlay().register(type, AppleSkinPayload.codec(type));
+            ClientPlayNetworking.registerGlobalReceiver(type, (payload, context) -> receive(channel, payload.data()));
+        }
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> resetSync());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> resetSync());
+    }
+
+    /** An AppleSkin server payload's bytes; a value that cannot be the player's is ignored. */
+    static void receive(String channel, byte[] data) {
+        switch (channel) {
+            case AppleSkinSync.SATURATION -> { float value = AppleSkinSync.decodeFloat(data, AppleSkinSync.MAX_SATURATION); if (!Float.isNaN(value)) syncedSaturation = value; }
+            case AppleSkinSync.EXHAUSTION -> { float value = AppleSkinSync.decodeFloat(data, AppleSkinSync.MAX_EXHAUSTION); if (!Float.isNaN(value)) syncedExhaustion = value; }
+            default -> { Boolean value = AppleSkinSync.decodeBoolean(data); if (value != null) syncedRegeneration = value; }
+        }
+    }
+
+    /** A new connection (or none): nothing from an AppleSkin server yet. */
+    static void resetSync() {
+        syncedSaturation = syncedExhaustion = Float.NaN;
+        syncedRegeneration = null;
     }
 
     public static boolean on() { return active && NativeQualityOfLife.enabled(MODULE); }
@@ -71,9 +103,27 @@ public final class NativeFood {
     /** The integrated server's copy of the local player (singleplayer, LAN host); null on other servers. */
     static ServerPlayer serverPlayer(Player player) {
         var server = Minecraft.getInstance().getSingleplayerServer();
-        return server == null ? null : server.getPlayerList().getPlayer(player.getUUID());
+        return server == null || qaRemote ? null : server.getPlayerList().getPlayer(player.getUUID());
     }
-    static float exhaustion(ServerPlayer own) { return own == null ? 0 : ((FoodDataAccess) own.getFoodData()).lads$exhaustion(); }
+    private static FoodData foodData(Player player, ServerPlayer own) { return own != null ? own.getFoodData() : player.getFoodData(); }
+    /** Exact on the integrated server and on AppleSkin servers; elsewhere the last value vanilla sent. */
+    static float saturation(Player player, ServerPlayer own) {
+        float synced = syncedSaturation;
+        return own != null || Float.isNaN(synced) ? foodData(player, own).getSaturationLevel() : synced;
+    }
+    /** 0 where it is not known (exhaustionKnown false). */
+    static float exhaustion(ServerPlayer own) {
+        if (own != null) return ((FoodDataAccess) own.getFoodData()).lads$exhaustion();
+        float synced = syncedExhaustion;
+        return Float.isNaN(synced) ? 0 : synced;
+    }
+    static boolean exhaustionKnown(ServerPlayer own) { return own != null || !Float.isNaN(syncedExhaustion); }
+    /** The natural regeneration game rule: the integrated server's, an AppleSkin server's, else assumed on. */
+    static boolean naturalRegeneration(ServerPlayer own) {
+        if (own != null) return own.level().getGameRules().get(GameRules.NATURAL_HEALTH_REGENERATION);
+        Boolean synced = syncedRegeneration;
+        return synced == null || synced;
+    }
 
     /** The food eating would use now: the main hand, else the off hand ("Offhand Food"); null when neither can be eaten. */
     static ItemStack heldFood(Player player) {
@@ -115,7 +165,7 @@ public final class NativeFood {
         Arrays.fill(foodY, top);
         if (!on() || !option("Show Exhaustion")) return;
         ServerPlayer own = serverPlayer(player);
-        if (own == null) return;
+        if (!exhaustionKnown(own)) return;
         int width = Math.round(81 * Mth.clamp(exhaustion(own), 0, FoodPreview.MAX_EXHAUSTION) / FoodPreview.MAX_EXHAUSTION);
         if (width > 0) graphics.fill(right - width, top, right, top + 9, 0x50FFFFFF);
     }
@@ -130,9 +180,8 @@ public final class NativeFood {
     public static void afterFood(GuiGraphicsExtractor graphics, Player player, int top, int right) {
         if (!on()) return;
         ServerPlayer own = serverPlayer(player);
-        FoodData data = own != null ? own.getFoodData() : player.getFoodData();
-        int food = data.getFoodLevel();
-        float saturation = data.getSaturationLevel();
+        int food = foodData(player, own).getFoodLevel();
+        float saturation = saturation(player, own);
         boolean outlines = option("Show Saturation");
         if (outlines) outline(graphics, right, 0, saturation, 0xFFFFFFFF);
         ItemStack held = heldFood(player);
@@ -182,10 +231,9 @@ public final class NativeFood {
         if (held == null) return;
         var values = held.get(DataComponents.FOOD);
         ServerPlayer own = serverPlayer(player);
-        FoodData data = own != null ? own.getFoodData() : player.getFoodData();
-        int food = FoodPreview.foodAfter(data.getFoodLevel(), values.nutrition());
-        float saturation = FoodPreview.saturationAfter(data.getSaturationLevel(), values.saturation(), food);
-        boolean regeneration = own == null || own.level().getGameRules().get(GameRules.NATURAL_HEALTH_REGENERATION);
+        int food = FoodPreview.foodAfter(foodData(player, own).getFoodLevel(), values.nutrition());
+        float saturation = FoodPreview.saturationAfter(saturation(player, own), values.saturation(), food);
+        boolean regeneration = naturalRegeneration(own);
         float gain = (regeneration ? FoodPreview.regenerated(food, saturation, exhaustion(own), maxHealth - player.getHealth(), false) : 0)
             + regenerationEffect(held);
         int after = Mth.ceil(Math.min(maxHealth, player.getHealth() + gain)), hearts = Math.min(Mth.ceil(maxHealth / 2), heartX.length);

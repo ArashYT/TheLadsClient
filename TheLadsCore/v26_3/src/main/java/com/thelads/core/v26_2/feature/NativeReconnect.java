@@ -1,5 +1,7 @@
 package com.thelads.core.v26_2.feature;
 
+import com.mojang.realmsclient.RealmsMainScreen;
+import com.mojang.realmsclient.dto.RealmsServer;
 import com.thelads.core.client.ReconnectSession;
 import com.thelads.core.client.ReconnectSettings;
 import com.thelads.core.config.ModuleSupport;
@@ -36,8 +38,9 @@ import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.LoggerFactory;
 
 /**
- * AutoReconnect on 26.x: ReconnectSession fed by the server connect hook (ReconnectTargetMixin), Fabric's join event (local
- * worlds), the disconnect screen's init (Reconnect and Cancel buttons) and the client tick (countdown, join actions).
+ * AutoReconnect on 26.x: ReconnectSession fed by the server connect hook (ReconnectTargetMixin), the Realms connect hook
+ * (ReconnectRealmsMixin), Fabric's join event (local worlds), the disconnect screen's init (Reconnect and Cancel buttons) and the
+ * client tick (countdown, join actions).
  */
 public final class NativeReconnect {
     private static final ReconnectSession SESSION = new ReconnectSession();
@@ -75,6 +78,18 @@ public final class NativeReconnect {
         if (!active() || server == null) return;
         SESSION.begin(server.ip, () -> ConnectScreen.startConnecting(new JoinMultiplayerScreen(new TitleScreen()), Minecraft.getInstance(),
             address, server, false, transfer), account());
+    }
+
+    /**
+     * RealmsConnect.connect: a Realm being joined. A retry joins it again the way the Realms screen does (which wakes the Realm and
+     * asks for its current address); that join reaches here again later, so the same Realm keeps its session and attempt count.
+     * Join actions match the Realm's name.
+     */
+    public static void connectingRealm(RealmsServer server) {
+        if (!active() || server == null) return;
+        String name = server.name == null || server.name.isBlank() ? "Realm " + server.id : server.name;
+        if (name.equals(SESSION.target())) return;
+        SESSION.begin(name, () -> RealmsMainScreen.play(server, new RealmsMainScreen(new TitleScreen()), true), account());
     }
 
     private static void joined(Minecraft mc, ClientPacketListener connection) {
