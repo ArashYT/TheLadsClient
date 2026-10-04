@@ -8,6 +8,7 @@
     "defaultRequire": 1
   },
   "client": [
+    "AbstractClientPlayerMixin",
     "EntityRendererAccessor",
     "EntityRendererMixin",
     "EssentialZoomMixin189",
