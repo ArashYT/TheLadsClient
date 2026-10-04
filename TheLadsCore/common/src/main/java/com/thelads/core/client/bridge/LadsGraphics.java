@@ -60,6 +60,12 @@ public interface LadsGraphics {
 
     default void drawBossBars(int x,int y,int max,boolean names,boolean preview) {}
 
+    /**
+     * HUD editor: this frame's game view (the world and the vanilla HUD, without the Lads HUD) scaled into the box.
+     * False where no world is shown or the version cannot copy it; the editor then keeps its plain backdrop.
+     */
+    default boolean drawGameView(int x, int y, int width, int height) { return false; }
+
     int getScaledWidth();
 
     int getScaledHeight();

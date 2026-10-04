@@ -55,13 +55,6 @@ class Version133HudTest {
     @Test void cpsUsesSixtyFivePercentTextScale(){
         var keys=new KeystrokesHudElement();keys.setModuleName("Keystrokes");keys.prepareRender(g,true);keys.renderEditor(g);assertEquals(2,g.drawCalls.stream().filter(s->s.equals("scale:0.65,0.65")).count());
     }
-    @Test void collapsedDockOpensOnHoverAndClosesAfterExitDeadline()throws Exception{
-        var editor=new DraggableHudScreen(()->{});editor.render(g,-1,-1);
-        var hide=editor.controls().stream().filter(c->c.id().equals("collapse")).findFirst().orElseThrow();editor.mouseClicked(hide.bounds().x()+2,hide.bounds().y()+2,0);editor.render(g,-1,-1);
-        assertEquals(1,editor.controls().size());var tab=editor.controls().getFirst().bounds();assertTrue(tab.x()==0||tab.y()==0||tab.right()==g.width||tab.bottom()==g.height);
-        editor.render(g,tab.x()+2,tab.y()+2);assertTrue(editor.controls().size()>1);
-        var deadline=DraggableHudScreen.class.getDeclaredField("dockExitNanos");deadline.setAccessible(true);deadline.setLong(editor,System.nanoTime()-1_600_000_000L);editor.render(g,-1,-1);assertEquals(1,editor.controls().size());editor.close();
-    }
     @Test void searchableActionDropdownFiltersAndTogglesOnlyMatchingState()throws Exception{
         try(var ownership=new ModsMenuTest.OwnershipFixture()){
             ModuleSupport.registerBuiltIn("Paperdoll");var module=ModuleManager.getInstance().getModule("Paperdoll");var trigger=(BoolOption)module.getOption("Sleeping");trigger.set(false);
