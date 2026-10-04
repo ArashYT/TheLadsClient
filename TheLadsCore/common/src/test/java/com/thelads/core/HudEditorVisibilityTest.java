@@ -269,18 +269,26 @@ class HudEditorVisibilityTest {
     }
 
     @Test
-    void gridToggleRemainsIndependentOfPreviewMode() {
+    void snapGridShowsOnlyWhileDraggingAndStaysIndependentOfPreviewMode() {
         ProbeHud disabled = add("Disabled", false, 100, 100);
-        editor.keyPressed(71);
         render();
-        assertEquals(0, disabled.renders);
-        assertFalse(graphics.fills.stream().anyMatch(fill -> fill.color() == 0x15FFFFFF));
-        graphics.clearFrame();
+        assertFalse(graphics.fills.stream().anyMatch(fill -> fill.color() == 0x15FFFFFF), "a calm preview while not dragging");
+        editor.keyPressed(71);
         editor.keyPressed(65);
-        editor.keyPressed(71);
         render();
-        assertEquals(1, disabled.renders);
-        assertTrue(graphics.fills.stream().anyMatch(fill -> fill.color() == 0x15FFFFFF));
+        click(110, 110);
+        move(130, 130);
+        graphics.clearFrame();
+        render();
+        assertEquals(2, disabled.renders);
+        assertFalse(graphics.fills.stream().anyMatch(fill -> fill.color() == 0x15FFFFFF), "snap off: no grid");
+        editor.keyPressed(71); // finishes the drag, as any toolbar action does
+        click(130, 130);
+        move(160, 160);
+        graphics.clearFrame();
+        render();
+        assertTrue(graphics.fills.stream().anyMatch(fill -> fill.color() == 0x15FFFFFF), "snap on: grid while dragging");
+        release(160, 160);
     }
 
     @Test

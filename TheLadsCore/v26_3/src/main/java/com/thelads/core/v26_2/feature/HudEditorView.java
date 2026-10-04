@@ -31,7 +31,7 @@ public final class HudEditorView {
         }
         wanted = true;
         // Opaque: the world target's alpha is not coverage. Render targets are bottom-up, hence v from 1 to 0.
-        mc.gameRenderer.gameRenderState().guiRenderState.addBlitToCurrentLayer(new BlitRenderState(RenderPipelines.GUI_OPAQUE_TEXTURED_BACKGROUND,
+        mc.gameRenderer.gameRenderState().guiRenderState.addGuiElement(new BlitRenderState(RenderPipelines.GUI_OPAQUE_TEXTURED_BACKGROUND,
             TextureSetup.singleTexture(copy.getColorTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR)),
             new Matrix3x2f(g.pose()), x, y, x + width, y + height, 0, 1, 1, 0, -1, null));
         g.pose().pushMatrix();

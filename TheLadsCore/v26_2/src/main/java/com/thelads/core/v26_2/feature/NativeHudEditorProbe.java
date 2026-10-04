@@ -228,7 +228,8 @@ final class NativeHudEditorProbe implements AutoCloseable {
             }
             case 12 -> {
                 // The edited layout in game: the editor closes; the next frames draw the Lads HUD itself.
-                for (String name : FIXTURE) check(saved(name, bounds(name)), name + " is saved where the preview shows it");
+                // FPS keeps its saved 10000,10 and is only clamped on screen, in game as in the preview.
+                for (String name : List.of("CPS", "Day", "Health")) check(saved(name, bounds(name)), name + " is saved where the preview shows it");
                 LoggerFactory.getLogger("TheLadsCore").info("Lads HUD editor layout before the in-game capture: CPS {} Day {} Health {} FPS {}",
                     bounds("CPS"), bounds("Day"), bounds("Health"), bounds("FPS"));
                 inGame = true;
