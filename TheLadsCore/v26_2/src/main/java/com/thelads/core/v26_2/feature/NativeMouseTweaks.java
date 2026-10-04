@@ -44,18 +44,28 @@ public final class NativeMouseTweaks implements MouseTweaksModule.Menu<Slot, Ite
         return ModuleManager.getInstance().getModule(MouseTweaksModule.NAME) instanceof MouseTweaksModule mt && mt.isEnabled() ? mt : null;
     }
 
+    /**
+     * The slot under the mouse, or null when the tweak must leave it alone. On creative's inventory tab only the player's own
+     * slots count: the tab also lists its Destroy Item slot, where any click wipes the whole cursor stack.
+     */
+    private static Slot slotAt(AbstractContainerScreen<?> screen, double x, double y) {
+        Slot slot = ((Screen) screen).lads$slotAt(x, y);
+        boolean playerSlot = slot != null && slot.container instanceof Inventory;
+        return screen instanceof CreativeModeInventoryScreen && !playerSlot ? null : slot;
+    }
+
     /** True: the press is the tweak's and the screen must not handle it. {@code button}: 0 left, 1 right. */
     public static boolean press(AbstractContainerScreen<?> screen, MouseButtonEvent event, int button) {
         MouseTweaksModule mt = module(screen);
         dragScreen = screen;
-        return mt != null && mt.press(new NativeMouseTweaks(screen), button, ((Screen) screen).lads$slotAt(event.x(), event.y()));
+        return mt != null && mt.press(new NativeMouseTweaks(screen), button, slotAt(screen, event.x(), event.y()));
     }
 
     public static void drag(AbstractContainerScreen<?> screen, MouseButtonEvent event, int button) {
         MouseTweaksModule mt = module(screen);
         if (mt == null || screen != dragScreen) return;
         boolean shift = event.hasShiftDown() || Minecraft.getInstance().hasShiftDown(); // shift may come after the press
-        mt.drag(new NativeMouseTweaks(screen), button, ((Screen) screen).lads$slotAt(event.x(), event.y()), shift);
+        mt.drag(new NativeMouseTweaks(screen), button, slotAt(screen, event.x(), event.y()), shift);
     }
 
     public static boolean release(AbstractContainerScreen<?> screen, int button) {
@@ -65,7 +75,7 @@ public final class NativeMouseTweaks implements MouseTweaksModule.Menu<Slot, Ite
 
     public static boolean scroll(AbstractContainerScreen<?> screen, double x, double y, double amount) {
         MouseTweaksModule mt = module(screen);
-        Slot slot = ((Screen) screen).lads$slotAt(x, y);
+        Slot slot = slotAt(screen, x, y);
         return mt != null && amount != 0 && (slot == null || !((Screen) screen).lads$itemScrolls(slot))
             && mt.scroll(new NativeMouseTweaks(screen), slot, amount > 0);
     }

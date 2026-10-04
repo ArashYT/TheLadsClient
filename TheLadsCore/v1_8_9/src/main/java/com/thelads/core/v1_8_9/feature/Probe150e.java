@@ -174,7 +174,7 @@ final class Probe150e {
             Options189.module("EnhancedToolbars").setEnabled(true);
             ((DropdownOption) Options189.module("EnhancedToolbars").getOption("Durability Style")).setIndex(pose - 2);
             List<String> lines = stack.getTooltip(mc.thePlayer, true);
-            String expected = new String[] {"361", "\u2588", "Severely damaged"}[pose - 2];
+            String expected = new String[] {"361", "23%", "About to break"}[pose - 2]; // 361 of 1561 uses left
             check(!lines.contains("Durability: 361 / 1561") && String.join("\n", lines).contains(expected),
                 "EnhancedToolbars on 1.8.9: style " + (pose - 2) + " replaces the advanced durability line " + lines);
         }

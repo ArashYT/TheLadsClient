@@ -44,6 +44,7 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketType;
 import net.minecraft.network.protocol.PacketUtils;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
+import net.minecraft.network.protocol.game.ClientboundStartConfigurationPacket;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.GamePacketTypes;
 import net.minecraft.network.protocol.game.GameProtocols;
@@ -169,6 +170,8 @@ final class ServerFeaturesCapture {
         check(PacketErrorPolicy.skippedCount() == skippedBefore + 1, "IgnorePacketErrors: the failing packet was logged and skipped");
         check(mc.getConnection() != null && mc.getConnection().getConnection().isConnected() && mc.level != null && mc.gui.screen() == null,
             "IgnorePacketErrors: still connected and playing after the failing packet");
+        check(!ConnectionTweaks.skipFailedHandler(ClientboundStartConfigurationPacket.INSTANCE, new IllegalStateException("Lads QA")),
+            "IgnorePacketErrors: a failed protocol switch (start configuration) still gets vanilla's error");
         return true;
     }
 
