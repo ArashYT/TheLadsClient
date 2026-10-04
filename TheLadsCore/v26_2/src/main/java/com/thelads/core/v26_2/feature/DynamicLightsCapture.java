@@ -45,7 +45,7 @@ final class DynamicLightsCapture {
         new Shot("burning-off", false, Scene.BURNING), new Shot("burning-on", true, Scene.BURNING)};
     private static final long SETTLE = 1_500_000_000L, MEASURE = 8_000_000_000L;
     private static final int FIRST_ID = Integer.MAX_VALUE - 512;
-    private static final ItemStack TORCH = new ItemStack(Items.TORCH);
+    private static ItemStack torch; // made once a world is up: an ItemStack needs the item components bound
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
     private static final List<String> FAILURES = new ArrayList<>();
     private static final double[] BRIGHTNESS = new double[SHOTS.length];
@@ -70,6 +70,7 @@ final class DynamicLightsCapture {
         if (!Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS)) return;
         try { Files.delete(request); } catch (Exception failure) { LOGGER.error("Lads dynamic lights capture FAILED: request", failure); return; }
         Minecraft mc = Minecraft.getInstance();
+        torch = new ItemStack(Items.TORCH);
         DynamicLightsModule module = module();
         Module fullbright = NativeQualityOfLife.module("Fullbright");
         enabledBefore = module.isEnabled();
@@ -123,7 +124,7 @@ final class DynamicLightsCapture {
                 + String.format("%.1f > %.1f", BRIGHTNESS[i], BRIGHTNESS[i - 1]) + ")");
         clearScene();
         Minecraft mc = Minecraft.getInstance();
-        mc.player.setItemSlot(EquipmentSlot.MAINHAND, TORCH);
+        mc.player.setItemSlot(EquipmentSlot.MAINHAND, torch);
         orbit = new ItemEntity(mc.level, mc.player.getX(), mc.player.getY() + 0.5, mc.player.getZ(), new ItemStack(Items.TORCH), 0, 0, 0);
         orbit.setNoGravity(true);
         orbit.setId(FIRST_ID + 3);
@@ -177,7 +178,7 @@ final class DynamicLightsCapture {
         Vec3 look = player.getViewVector(1);
         Vec3 ahead = new Vec3(look.x, 0, look.z).normalize().scale(2.5).add(player.position());
         switch (shot.scene()) {
-            case HELD -> player.setItemSlot(EquipmentSlot.MAINHAND, TORCH);
+            case HELD -> player.setItemSlot(EquipmentSlot.MAINHAND, torch);
             case DROPPED -> {
                 dropped = new ItemEntity(mc.level, ahead.x, ahead.y + 0.25, ahead.z, new ItemStack(Items.GLOWSTONE), 0, 0, 0);
                 dropped.setNoGravity(true);
@@ -199,8 +200,8 @@ final class DynamicLightsCapture {
     private static void hold() {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
-        boolean torch = step >= SHOTS.length || SHOTS[step].scene() == Scene.HELD;
-        ItemStack expected = torch ? TORCH : ItemStack.EMPTY;
+        boolean held = step >= SHOTS.length || SHOTS[step].scene() == Scene.HELD;
+        ItemStack expected = held ? torch : ItemStack.EMPTY;
         if (player.getItemBySlot(EquipmentSlot.MAINHAND) != expected) player.setItemSlot(EquipmentSlot.MAINHAND, expected);
         if (player.getItemBySlot(EquipmentSlot.OFFHAND) != ItemStack.EMPTY) player.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
         if (burning != null) {

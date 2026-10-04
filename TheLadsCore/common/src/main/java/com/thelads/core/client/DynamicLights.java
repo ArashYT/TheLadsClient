@@ -10,6 +10,7 @@ import java.util.Arrays;
  * sections around a source that appeared, went, changed or moved far enough are rebuilt.
  */
 public final class DynamicLights {
+    private static final float[] NONE = {}; // before WORLD, whose fields start from it
     public static final DynamicLights WORLD = new DynamicLights();
     /** More sources than this in one tick are left out: every light lookup visits each one. */
     public static final int MAX_SOURCES = 64;
@@ -17,7 +18,6 @@ public final class DynamicLights {
     /** Rebuild the chunk sections in this box (section coordinates, inclusive). */
     public interface Rebuild { void sections(int minX, int minY, int minZ, int maxX, int maxY, int maxZ); }
 
-    private static final float[] NONE = {};
     /** What the lookups read: x, y, z, luminance of each source. Replaced, never changed in place. */
     private volatile float[] lit = NONE;
     private volatile float reach = 15;

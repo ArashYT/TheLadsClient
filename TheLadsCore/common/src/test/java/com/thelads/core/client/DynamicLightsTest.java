@@ -17,6 +17,7 @@ class DynamicLightsTest {
 
     @Test void lightFadesEvenlyToNothingAtTheRadius() {
         assertEquals(0, lights.at(0, 64, 0), "no sources, no light");
+        assertEquals(0, DynamicLights.WORLD.at(0, 64, 0), "the shared field starts empty too");
         tick(15, 0.25f, 1, new double[] {1, 0.5, 64.5, 0.5, 14});
         assertEquals(14, lights.at(0, 64, 0), "the source's own block gets its luminance");
         assertEquals(7, lights.at(7, 64, 0), "half way out: 14 * (1 - 7/15) = 7.47");
