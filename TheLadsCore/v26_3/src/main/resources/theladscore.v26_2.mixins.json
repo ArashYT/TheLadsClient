@@ -101,6 +101,8 @@
     "BorderlessWindowMixin",
     "WindowIconMixin",
     "LoadingOverlayMixin",
-    "CheatsMixin"
+    "CheatsMixin",
+    "ItemModelGapsMixin",
+    "SodiumItemModelGapsMixin"
   ]
 }
