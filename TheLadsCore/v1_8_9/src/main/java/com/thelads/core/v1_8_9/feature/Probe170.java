@@ -312,14 +312,16 @@ final class Probe170 {
 
     private static boolean timings(Minecraft mc) {
         StringBuilder line = new StringBuilder();
+        boolean rounds = true;
         for (java.util.Map.Entry<String, List<Long>> entry : TIMES.entrySet()) {
             long sum = 0;
             for (long ms : entry.getValue()) sum += ms;
+            rounds &= entry.getValue().size() == 3;
             line.append(line.length() == 0 ? "" : "; ").append(entry.getKey()).append(' ').append(entry.getValue()).append(" ms, mean ")
                 .append(sum / entry.getValue().size());
         }
         LOG.info("Lads 1.8.9 load timing summary: {}", line);
-        check(TIMES.size() == 6, "every world switch was timed three times");
+        check(TIMES.size() == 5 && rounds, "every world switch was timed three times"); // open, Nether, Overworld, respawn, leave
         return true;
     }
 
