@@ -1,17 +1,31 @@
 package com.thelads.core.v26_2.feature;
 
+import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
+import com.mojang.renderpearl.api.pipeline.ColorTargetState;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.renderpearl.api.textures.FilterMode;
 import java.util.Optional;
+import java.util.stream.Stream;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.BindGroupLayouts;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 import com.thelads.core.client.RenderScalePolicy;
+import com.thelads.core.config.ModuleManager;
+import com.thelads.core.modules.BetterResolutionModule;
 import com.thelads.core.v26_2.mixin.RenderScaleTargetsAccessorMixin;
 
 /** A render-thread-owned world attachment. The vanilla presentation/GUI target is never resized here. */
 public final class NativeRenderScale {
+    /** Better Resolution stands down while its upstream jar is loaded (any id it may use). */
+    private static final boolean EXTERNAL = Stream.of("betterresolution", "better_resolution", "better-resolution")
+        .anyMatch(FabricLoader.getInstance()::isModLoaded);
+    private static final RenderPipeline SMOOTH = upscale(false), SHARP = upscale(true);
+    private static boolean upscaleFailed;
     private final RenderScalePolicy policy = new RenderScalePolicy();
     private RenderTarget world;
     private RenderTarget scaledOutline;
@@ -26,6 +40,7 @@ public final class NativeRenderScale {
         Minecraft mc = Minecraft.getInstance();
         settings = settings();
         settings = NativeRenderScaleProbe.settings(this, settings, rendersWorld);
+        settings = ResolutionCapture.settings(this, settings);
         boolean active = rendersWorld && mc != null && mc.getWindow() != null && ready(destination)
             && !mc.getWindow().isIconified();
         effectiveScale = policy.frame(settings, System.nanoTime(), active && settings.enabled() && !mc.isPaused()
@@ -65,23 +80,52 @@ public final class NativeRenderScale {
 
     public void composite(RenderTarget destination) {
         if (!usedThisFrame || !ready(world) || !ready(destination)) return;
-        blit(world, destination, settings.nearest());
+        blit(world, destination, settings.method());
         completedWorldFrames++;
     }
 
     /** Shared by the world pass and the opt-in GPU pixel readback checks. */
-    static void blit(RenderTarget source, RenderTarget destination, boolean nearest) {
+    static void blit(RenderTarget source, RenderTarget destination, int method) {
         try (var pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
             () -> "Lads world resolution composite", destination.getColorTextureView(), Optional.empty())) {
-            // Vanilla's unblended fullscreen triangle. No vertex buffer, shader replacement,
-            // raw GL state, or Sodium-specific render backend is needed.
-            pass.setPipeline(RenderSystem.getCompiledPipeline(RenderPipelines.TRACY_BLIT));
+            // Vanilla's unblended fullscreen triangle. No vertex buffer, raw GL state,
+            // or Sodium-specific render backend is needed.
+            pass.setPipeline(compiled(method));
             RenderSystem.bindDefaultUniforms(pass);
             pass.setUniform("InSampler", source.getColorTextureView(), RenderSystem.getSamplerCache()
-                .getClampToEdge(nearest ? FilterMode.NEAREST : FilterMode.LINEAR));
+                .getClampToEdge(method == RenderScalePolicy.NEAREST ? FilterMode.NEAREST : FilterMode.LINEAR));
             pass.draw(3, 1, 0, 0);
         }
     }
+
+    /** Smooth and Sharp: vanilla's fullscreen triangle with Better Resolution's fragment shader (core/world_upscale.fsh). */
+    private static RenderPipeline upscale(boolean sharp) {
+        var builder = RenderPipeline.builder()
+            .withLocation(Identifier.fromNamespaceAndPath("theladscore", "pipeline/world_" + (sharp ? "sharp" : "smooth")))
+            .withVertexShader("core/screenquad")
+            .withFragmentShader(Identifier.fromNamespaceAndPath("theladscore", "core/world_upscale"))
+            .withBindGroupLayout(BindGroupLayouts.GLOBALS)
+            .withBindGroupLayout(BindGroupLayouts.IN_SAMPLER)
+            .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+            .withColorTargetState(ColorTargetState.DEFAULT);
+        if (sharp) builder.withShaderDefine("LADS_SHARP");
+        return builder.build();
+    }
+
+    /** The method's compiled pass. Linear, Nearest and a shader that does not compile (logged once) use vanilla's blit. */
+    static com.mojang.renderpearl.api.pipeline.CompiledRenderPipeline compiled(int method) {
+        RenderPipeline custom = method == RenderScalePolicy.SMOOTH ? SMOOTH : method == RenderScalePolicy.SHARP ? SHARP : null;
+        var pass = custom == null || upscaleFailed ? null : RenderSystem.getCompiledPipelineNullable(custom);
+        if (custom != null && pass == null && !upscaleFailed) {
+            upscaleFailed = true;
+            org.slf4j.LoggerFactory.getLogger("TheLadsCore").error("Better Resolution: the {} shader did not compile; using Linear", custom.getLocation());
+        }
+        return pass != null ? pass : RenderSystem.getCompiledPipeline(RenderPipelines.TRACY_BLIT);
+    }
+
+    /** QA: whether Smooth and Sharp compiled (blit falls back to Linear otherwise). */
+    static boolean upscaleReady() { return compiled(RenderScalePolicy.SMOOTH) != compiled(RenderScalePolicy.LINEAR)
+        && compiled(RenderScalePolicy.SHARP) != compiled(RenderScalePolicy.LINEAR); }
 
     public void endFrame(RenderTarget destination, boolean renderedWorld, boolean succeeded) {
         NativeRenderScaleProbe.endFrame(this, destination, renderedWorld, succeeded);
@@ -133,13 +177,6 @@ public final class NativeRenderScale {
     public long completedWorldFrames() { return completedWorldFrames; }
 
     private static RenderScalePolicy.Settings settings() {
-        int target = switch (NativeQualityOfLife.choice("RenderScale", "Target FPS", 1)) {
-            case 0 -> 30; case 1 -> 60; case 2 -> 90; case 3 -> 120; case 4 -> 144; default -> 0;
-        };
-        return new RenderScalePolicy.Settings(NativeQualityOfLife.enabled("RenderScale"),
-            NativeQualityOfLife.choice("RenderScale", "Preset", 0), NativeQualityOfLife.number("RenderScale", "Scale", 100),
-            NativeQualityOfLife.choice("RenderScale", "Algorithm", 0) == 1,
-            NativeQualityOfLife.bool("RenderScale", "Dynamic Resolution", false), target,
-            NativeQualityOfLife.number("RenderScale", "Min Scale", 50));
+        return ((BetterResolutionModule) ModuleManager.getInstance().getModule(BetterResolutionModule.NAME)).settings(EXTERNAL);
     }
 }

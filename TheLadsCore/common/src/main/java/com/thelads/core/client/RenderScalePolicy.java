@@ -2,7 +2,9 @@ package com.thelads.core.client;
 
 /** Pure sizing and cadence policy; never changes a window, GUI scale, or frame limiter. */
 public final class RenderScalePolicy {
-    public record Settings(boolean enabled, int preset, double percent, boolean nearest,
+    /** Better Resolution's Algorithm choices, in the order 1.6.0 saved them. */
+    public static final int LINEAR = 0, NEAREST = 1, SMOOTH = 2, SHARP = 3;
+    public record Settings(boolean enabled, int preset, double percent, int method,
                            boolean dynamic, int target, double minimum) {
         public double maximumScale() {
             return switch (preset) {

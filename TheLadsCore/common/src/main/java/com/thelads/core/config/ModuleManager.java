@@ -204,15 +204,7 @@ public class ModuleManager {
         register(tab, Module.Category.HUD);
 
 
-        Module rs = new Module("RenderScale", "Scale world rendering while the HUD and menus stay at native resolution.");
-        rs.addOption(new DropdownOption("Preset", 0, "Custom", "Ultra Performance", "Balanced", "Quality", "Super Sampling"));
-        rs.addOption(new SliderOption("Scale", 100, 50, 200, 25));
-        rs.addOption(new DropdownOption("Algorithm", 0, "Linear", "Nearest"));
-        rs.addOption(new BoolOption("Dynamic Resolution", false));
-        rs.addOption(new DropdownOption("Target FPS", 1, "30", "60", "90", "120", "144", "Unlimited"));
-        rs.addOption(new SliderOption("Min Scale", 50, 50, 100, 25));
-        rs.setEnabled(true);
-        register(rs);
+        register(new BetterResolutionModule());
 
         register(new XaeroWorldMapModule(), Module.Category.SERVER);
         register(new JeiModule());

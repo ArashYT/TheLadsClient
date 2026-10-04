@@ -1,4 +1,6 @@
-# Native RenderScale — Minecraft 26.2
+# Better Resolution (native RenderScale) — Minecraft 26.2
+
+1.7.0 renamed the RenderScale module to **Better Resolution** (module id `BetterResolution`); saved RenderScale settings carry over, and the same pipeline runs on 26.2, 26.3 and 1.8.9. It is Lads' own remake of the Better Resolution mod's features: no upstream code. It stands down while an external Better Resolution jar is loaded.
 
 Lads renders the world into its own color/depth target at the selected resolution, then composites that image into Minecraft's original target before the HUD and menus render. Window size, GUI scale, mouse coordinates and the presentation target remain native. The world pass includes terrain, entities, particles, weather, the held item, outlines and spectator post effects.
 
@@ -8,8 +10,8 @@ Lads renders the world into its own color/depth target at the selected resolutio
 | --- | --- |
 | Enabled | Applies world scaling. Disabled releases the extra target and restores the native outline attachment. |
 | Preset | Custom uses Scale; Ultra Performance is 50%, Balanced 75%, Quality 85%, Super Sampling 150%. |
-| Scale | Custom world width and height, 50–200%. Half resolution uses one quarter of the native pixel count; 200% uses four times the pixels. |
-| Algorithm | Linear blends adjacent source pixels; Nearest preserves individual source pixels. Both run in a GPU fullscreen pass. |
+| Scale | Custom world width and height, 50–200% in 5% steps; greyed out unless the preset is Custom. Half resolution uses one quarter of the native pixel count; 200% uses four times the pixels. |
+| Algorithm | Smooth (default for new settings) is a ringing-free bicubic reconstruction that also blends along strong edges, softening stair steps; Sharp holds world pixels flat with a narrow blend between them plus contrast-adaptive sharpening (no blur); Linear blends adjacent source pixels; Nearest preserves individual source pixels. All run in one GPU fullscreen pass; Smooth and Sharp share `assets/theladscore/shaders/include/world_upscale.glsl` and fall back to Linear if their shader cannot compile. |
 | Dynamic Resolution | Adapts between Min Scale and the selected preset/custom ceiling using smoothed elapsed frame cadence. Changes are limited to five percentage points per second with a dead band around the target. |
 | Target FPS | The adaptive resolution target: 30, 60, 90, 120 or 144. Unlimited uses a fixed selected scale. This control does not set Minecraft's frame limiter. |
 | Min Scale | Dynamic lower bound, clamped to the selected ceiling. Default 50%. Older saved minimum values remain respected. |
