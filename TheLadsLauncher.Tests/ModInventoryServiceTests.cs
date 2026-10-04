@@ -235,6 +235,25 @@ public sealed class ModInventoryServiceTests : IDisposable
         Assert.Equal((0, 0, elsewhere.Count), (inventory.Counts.EnabledFiles, inventory.Counts.DisabledFiles, inventory.Counts.Unavailable));
     }
 
+    // 1.7.0: jars Lads Core now remakes leave the 26.x packs as retired entries (so installed copies are retired); frozen 1.21.11 keeps them.
+    [Theory]
+    [InlineData("asynclogger")] [InlineData("betterf3")] [InlineData("chat_heads")] [InlineData("configureddefaults")] [InlineData("customfov")]
+    [InlineData("jasione")] [InlineData("lambdynlights")] [InlineData("mousetweaks")] [InlineData("netprodis")] [InlineData("libjf")]
+    public void RemadeModsAreRetiredOn26xAndKeptOn12111(string id)
+    {
+        var mods = Path.Combine(AppContext.BaseDirectory, "game-mods");
+        foreach (var version in new[] { "26.2", "26.3" })
+        {
+            var manifest = ClientModInstallerManifest(Path.Combine(mods, version, "client-mods.json"))!;
+            Assert.DoesNotContain(manifest.Mods, m => m.ModId == id);
+            // betterf3 never shipped for 26.3.
+            if (id == "betterf3" && version == "26.3") continue;
+            var retired = Assert.Single(manifest.Retired!, r => r.ModId == id);
+            Assert.NotEmpty(retired.Sha512!);
+        }
+        Assert.Contains(ClientModInstallerManifest(Path.Combine(mods, "1.21.11", "client-mods.json"))!.Mods, m => m.ModId == id);
+    }
+
     // T17: the installer retires nothing for a version without a Lads manifest, so its receipt jars are ordinary, switchable jars.
     [Fact]
     public async Task WithoutAManifestReceiptJarsAreNotShownAsRetired()
