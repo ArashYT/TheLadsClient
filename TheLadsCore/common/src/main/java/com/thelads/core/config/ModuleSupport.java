@@ -27,6 +27,11 @@ public final class ModuleSupport {
         registerBuiltIn(name);
         STATUS.put(name, new Status(true, "Built in", "Included in The Lads Client. Changes apply immediately. " + limits));
     }
+    /** Built in and set up once while the game starts, so a toggle takes effect after a restart. */
+    public static void registerBuiltInRestart(String name) {
+        registerBuiltIn(name);
+        STATUS.put(name, new Status(true, "Built in", "Included in The Lads Client. Changes apply after a restart."));
+    }
     public static void registerExternal(String name, String modName, boolean installed) {
         BUILT_IN.remove(name);
         EXTERNAL_IDS.remove(name);

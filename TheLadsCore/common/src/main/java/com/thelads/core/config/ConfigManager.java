@@ -260,6 +260,18 @@ public class ConfigManager {
         }
     }
 
+    /** A module's saved on/off, read before modules exist: for features set up once at startup (Jasione). */
+    public static boolean savedEnabled(String module, boolean fallback) {
+        File configFile = getConfigFile();
+        if (!configFile.exists()) return fallback;
+        try (InputStreamReader reader = new InputStreamReader(new FileInputStream(configFile), StandardCharsets.UTF_8)) {
+            JsonElement enabled = legacy(GSON.fromJson(reader, JsonObject.class), "modules", module, "enabled");
+            return enabled == null ? fallback : enabled.getAsBoolean();
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
     public static synchronized void save() {
         File configFile = getConfigFile();
         if (configFile.getParentFile() != null) {

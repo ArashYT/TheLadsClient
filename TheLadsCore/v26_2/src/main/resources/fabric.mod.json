@@ -25,6 +25,9 @@
     "client": [
       "com.thelads.core.v26_2.TheLadsCoreClient26"
     ],
+    "preLaunch": [
+      "com.thelads.core.v26_2.LadsPreLaunch"
+    ],
     "main": [
       "com.thelads.core.v26_2.embedded.EmbeddedModsMain"
     ],
