@@ -60,14 +60,22 @@ public final class CoreProbe {
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     static {
-        STEPS.addAll(Probe160s.STEPS);
-        STEPS.addAll(HudProbe.STEPS);
-        STEPS.addAll(Probe145.STEPS);
-        STEPS.addAll(Probe150e.STEPS);
-        STEPS.addAll(Probe150.STEPS);
-        STEPS.addAll(Probe151.STEPS);
-        STEPS.addAll(Probe160.STEPS);
-        STEPS.addAll(Probe145.PACING);
+        // -Dthelads.verify189Only=raised (the harness's LADS_VERIFY_189_ONLY): straight into the QA world for Raised and the paper doll.
+        if ("raised".equals(System.getProperty("thelads.verify189Only"))) {
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll(RaisedDollProbe189.STEPS);
+        } else {
+            STEPS.addAll(Probe160s.STEPS);
+            STEPS.addAll(HudProbe.STEPS);
+            STEPS.addAll(Probe145.STEPS);
+            STEPS.addAll(Probe150e.STEPS);
+            STEPS.addAll(Probe150.STEPS);
+            STEPS.addAll(Probe151.STEPS);
+            STEPS.addAll(Probe160.STEPS);
+            STEPS.addAll(RaisedDollProbe189.STEPS);
+            STEPS.addAll(Probe145.PACING);
+        }
         STEPS.add(CoreProbe::leaveWorld);
         STEPS.add(CoreProbe::leftWorld);
     }
@@ -103,6 +111,7 @@ public final class CoreProbe {
         Probe151.stop();
         Probe160.stop();
         Probe160s.stop();
+        RaisedDollProbe189.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -224,6 +233,17 @@ public final class CoreProbe {
         check(inVerificationSandbox(game) && inVerificationSandbox(saves) && com.thelads.core.shared.SharedContentPaths.redirectEnabled()
             && saves.equals(com.thelads.core.shared.SharedContentPaths.savesDir().toRealPath()), "the QA world goes into the sandbox's shared saves (" + saves + ")");
         LOG.info("Lads 1.8.9 core probe: opening the QA world '{}' in {}", WORLD, saves);
+        mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(0L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT));
+        return true;
+    }
+
+    /** The --only path: the title step's unfocused-window guard, the sandbox check and the QA world. */
+    private static boolean quickWorld(Minecraft mc) throws Exception {
+        title = mc.currentScreen;
+        pauseOnLostFocus = mc.gameSettings.pauseOnLostFocus;
+        mc.gameSettings.pauseOnLostFocus = false;
+        Path game = mc.mcDataDir.toPath().toRealPath(), saves = Files.createDirectories(game.resolve("saves")).toRealPath();
+        check(inVerificationSandbox(game) && inVerificationSandbox(saves), "the QA world goes into the sandbox (" + saves + ")");
         mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(0L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT));
         return true;
     }

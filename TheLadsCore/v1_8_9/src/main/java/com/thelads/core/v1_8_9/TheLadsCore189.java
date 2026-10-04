@@ -45,7 +45,7 @@ public class TheLadsCore189 {
         {"BetterF3", "BetterF3"}, {"BetterStats", "Better Statistics Screen"},
         {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroMinimap", "Xaero's Minimap"}, {"XaeroWorldmap", "Xaero's World Map"},
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
-        {"EnhancedToolbars", "Durability Tooltip"}, {"Raised", "Raised"}};
+        {"EnhancedToolbars", "Durability Tooltip"}};
 
     private static String windowTitle = "The Lads Client";
 
@@ -83,6 +83,8 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new SignalLoss189());
         MinecraftForge.EVENT_BUS.register(new FoodOverlay189());
         MinecraftForge.EVENT_BUS.register(new RenderScale189());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.Raised189());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PaperDoll189());
         Screenshots189.register();
         MinecraftForge.EVENT_BUS.register(this);
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
@@ -93,6 +95,8 @@ public class TheLadsCore189 {
         "Fullbright", "ToggleSprint", "ToggleSneak", "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
         "RawInput", "BorderlessFullscreen",
+        // Raised189: Forge's overlay events and the GuiIngame, GuiIngameForge and GuiNewChat mixins.
+        "Raised",
         // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC: the "Soon" card, as on the other versions, whose
         // presence sends nothing yet (no Discord connection is made).
         "Threads", "DiscordRPC",
@@ -138,6 +142,7 @@ public class TheLadsCore189 {
         NativeMenuKey.tick();
         Minecraft mc = Minecraft.getMinecraft();
         OldAnimations189.tick(mc);
+        com.thelads.core.v1_8_9.feature.PaperDoll189.tick(mc);
         Zoom189.tick(mc);
         if (mc.thePlayer != null) {
             com.thelads.core.config.Module fullbright = com.thelads.core.config.ModuleManager.getInstance().getModule("Fullbright");

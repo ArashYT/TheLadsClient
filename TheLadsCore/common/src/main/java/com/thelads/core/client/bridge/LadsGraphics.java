@@ -64,7 +64,7 @@ public interface LadsGraphics {
 
     int getScaledHeight();
 
-    /** Pixels the hotbar is lifted above the screen bottom (Hovering Hotbar); hotbar-attached elements follow it. */
+    /** Pixels the hotbar is lifted above the screen bottom (Raised, Hovering Hotbar); hotbar-attached elements follow it. */
     default int hotbarLift() { return 0; }
 
     default LadsGameBridge getGame() {

@@ -78,7 +78,7 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     }
 
     @Override public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
-        com.thelads.core.v26_2.feature.paperdoll.NativePaperDoll.render(g, x, y, width, height, editor);
+        com.thelads.core.v26_2.feature.paperdoll.PaperDoll26.render(g, x, y, width, height, editor);
     }
 
     @Override
@@ -182,6 +182,6 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
 
     @Override
     public int hotbarLift() {
-        return com.thelads.core.v26_2.embedded.hoveringhotbar.HoveringHotbar.hotbarLift();
+        return com.thelads.core.v26_2.embedded.hoveringhotbar.HoveringHotbar.hotbarLift() + com.thelads.core.v26_2.feature.Raised26.hotbar();
     }
 }

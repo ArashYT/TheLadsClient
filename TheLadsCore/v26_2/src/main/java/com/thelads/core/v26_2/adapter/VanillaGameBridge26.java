@@ -15,7 +15,7 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     @Override public int[] minimapSize(){return com.thelads.core.v26_2.feature.MinimapIntegration.size();}
     @Override public void positionMinimap(int x,int y){com.thelads.core.v26_2.feature.MinimapIntegration.position(x,y);}
     @Override public boolean hasPaperDollRenderer() {
-        return com.thelads.core.v26_2.feature.paperdoll.NativePaperDoll.active();
+        return com.thelads.core.v26_2.feature.paperdoll.PaperDoll26.active();
     }
     private final GameTimeText gameTimeText = new GameTimeText();
     private static final net.minecraft.world.entity.EquipmentSlot[] ARMOR_SLOTS = {

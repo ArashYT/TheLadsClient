@@ -53,15 +53,6 @@ processResources {
     filesMatching("fabric.mod.json") {
         expand "version": project.version
     }
-    // The complete modified MPL-covered native files are available to every binary recipient.
-    from('src/main/java') {
-        include 'com/thelads/core/v26_2/feature/paperdoll/**'
-        into 'assets/theladscore/sources/paperdoll/v26_2'
-    }
-    from('src/main/java') {
-        include 'com/thelads/core/v26_2/feature/raised/**'
-        into 'META-INF/lads-sources/raised'
-    }
     from('src/main/java') {
         include 'com/thelads/core/v26_2/feature/*Reconnect*.java'
         include 'com/thelads/core/v26_2/gui/Reconnect*.java'
