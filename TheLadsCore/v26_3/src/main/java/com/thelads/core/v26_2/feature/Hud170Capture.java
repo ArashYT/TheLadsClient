@@ -45,7 +45,7 @@ final class Hud170Capture {
     private static String shot;
     private static boolean capturing, capWas;
     private static int limitWas;
-    private static Object svcStates;
+    private static Object svcStates, svcOnboarded;
 
     private Hud170Capture() {}
 
@@ -117,8 +117,16 @@ final class Hud170Capture {
                     at(800, "hud170-chat-scrolled");
                 }
                 case 1 -> {
-                    int scrolled = field(mc.gui.hud.getChat(), "chatScrollbarPos");
+                    var chat = mc.gui.hud.getChat();
+                    int scrolled = field(chat, "chatScrollbarPos");
                     check(scrolled == 130, "Infinite History: the chat scrolls 130 lines up, past the old 100-line cap (" + scrolled + ")");
+                    chat.rescaleChat(); // as a window resize: lays out only the lines near the newest message
+                    int laidOut = lines(chat, "trimmedMessages"), kept = lines(chat, "allMessages");
+                    check(laidOut < kept && laidOut >= chat.getLinesPerPage(), "Infinite History: a rescale lays out " + laidOut + " of " + kept + " messages' lines");
+                    chat.scrollChat(140);
+                    check(field(chat, "chatScrollbarPos") > laidOut - chat.getLinesPerPage(), "Infinite History: scrolling up lays out older messages as it goes ("
+                        + field(chat, "chatScrollbarPos") + ", " + lines(chat, "trimmedMessages") + " lines)");
+                    chat.resetChatScroll();
                     mc.setScreenAndShow(null);
                     HudSettings.getInstance().setHudFpsCapEnabled(true);
                     HudSettings.getInstance().setHudFpsLimit(30);
@@ -156,14 +164,19 @@ final class Hud170Capture {
                     VoiceChatState real = VoiceChatIntegration.state();
                     LOGGER.info("Lads HUD 1.7.0 capture: Simple Voice Chat loaded {}, state {}", VoiceChatIntegration.loaded(), real);
                     check(!VoiceChatIntegration.loaded() || real != null, "Voice Chat: Simple Voice Chat's HUD state reads through reflection");
+                    // Simple Voice Chat shows no HUD icons (its own or, mirroring it, ours) until its onboarding is done: done, in memory.
+                    svcOnboarded = svcSetting("onboardingFinished", true);
                     svcStates = svc("de.maxhenkel.voicechat.voice.client.ClientManager", "getPlayerStateManager");
                     if (svcStates != null) svcStates.getClass().getMethod("setDisabled", boolean.class).invoke(svcStates, true);
                     VoiceChatIntegration.suppressed = 0;
                     at(1500, "hud170-voice-svc");
                 }
                 case 9 -> {
-                    LOGGER.info("Lads HUD 1.7.0 capture: deafened, Simple Voice Chat state {}, its own icon held back {} times",
-                        VoiceChatIntegration.state(), VoiceChatIntegration.suppressed);
+                    VoiceChatState deafened = VoiceChatIntegration.state();
+                    check(!VoiceChatIntegration.loaded() || deafened != null && "voicechat:icons/speaker_off".equals(deafened.icon())
+                        && VoiceChatIntegration.suppressed > 0, "Voice Chat: deafened, the Lads element shows " + deafened
+                        + " and Simple Voice Chat's own icon is held back (" + VoiceChatIntegration.suppressed + " times)");
+                    restoreOnboarding(); // before setDisabled saves Simple Voice Chat's config
                     if (svcStates != null) svcStates.getClass().getMethod("setDisabled", boolean.class).invoke(svcStates, false);
                     VoiceChatIntegration.qa = new VoiceChatState("voicechat:icons/microphone",
                         List.of(new VoiceMember("Steve", "8667ba71-b85a-4004-af54-457a9734eed7", true, false),
@@ -181,6 +194,7 @@ final class Hud170Capture {
     private static void finish() {
         step = 99;
         VoiceChatIntegration.qa = null;
+        restoreOnboarding();
         OPTIONS.forEach(Option::load);
         ENABLED.forEach(Module::setEnabled);
         HudSettings.getInstance().setHudFpsCapEnabled(capWas);
@@ -215,6 +229,29 @@ final class Hud170Capture {
         var field = owner.getClass().getDeclaredField(name);
         field.setAccessible(true);
         return field.getInt(owner);
+    }
+
+    private static int lines(Object owner, String name) throws ReflectiveOperationException {
+        var field = owner.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        return ((java.util.List<?>) field.get(owner)).size();
+    }
+
+    /** Sets a Simple Voice Chat client setting in memory; its previous value, or null without Simple Voice Chat. */
+    private static Object svcSetting(String name, Object value) {
+        try {
+            Object config = Class.forName("de.maxhenkel.voicechat.VoicechatClient").getField("CLIENT_CONFIG").get(null);
+            Object entry = config.getClass().getField(name).get(config);
+            Class<?> type = Class.forName("de.maxhenkel.voicechat.configbuilder.entry.ConfigEntry");
+            Object previous = type.getMethod("get").invoke(entry);
+            type.getMethod("set", Object.class).invoke(entry, value);
+            return previous;
+        } catch (ReflectiveOperationException | RuntimeException absent) { return null; }
+    }
+
+    private static void restoreOnboarding() {
+        if (svcOnboarded != null) svcSetting("onboardingFinished", svcOnboarded);
+        svcOnboarded = null;
     }
 
     private static Object svc(String type, String method) {
