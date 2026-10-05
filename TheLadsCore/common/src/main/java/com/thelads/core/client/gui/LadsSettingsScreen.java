@@ -941,6 +941,7 @@ public final class LadsSettingsScreen {
                 button(g, id, "", track, () -> {}, free, mx, my, false);
                 if (controls.size() > first) controls.set(first, new Control(id, s.getName() + ", " + s.display(), track, () -> {}, free));
                 int fillW = (int)((track.width - 8) * (value - min) / Math.max(.001, max - min));
+                g.fill(track.x + 4, track.y + 10, track.x + track.width - 4, track.y + 13, LadsPalette.BORDER);
                 g.fill(track.x + 4, track.y + 10, track.x + 4 + fillW, track.y + 13, ACCENT);
                 button(g, id + ":field", editingOption == option ? inputWindow(g, field.width - 10) : s.display(), field, () -> startEdit(s), free, mx, my, editingOption == option);
             } else {

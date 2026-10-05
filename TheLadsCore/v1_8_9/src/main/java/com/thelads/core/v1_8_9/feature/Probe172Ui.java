@@ -51,7 +51,6 @@ import org.lwjgl.input.Keyboard;
  */
 final class Probe172Ui {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
-    private static final boolean DEFER = "defer".equals(System.getenv("LADS_VERIFY_UI_CONTROL"));
     private static final List<String> FIXTURE = Arrays.asList("CPS", "Day", "FPS", "Health");
     static final List<CoreProbe.Step> STEPS = new ArrayList<CoreProbe.Step>();
     private static final Map<Module, Boolean> enabledWere = new LinkedHashMap<Module, Boolean>();
@@ -76,11 +75,10 @@ final class Probe172Ui {
 
     static {
         STEPS.add(Probe172Ui::setup);
-        if (!DEFER) {
-            hudEditor();
-            moduleReset();
-        }
-        fullbright();
+        hudEditor();
+        moduleReset();
+        fullbright(true);
+        fullbright(false);
         STEPS.add(Probe172Ui::finish);
     }
 
@@ -93,8 +91,7 @@ final class Probe172Ui {
         for (Set<String> group : settings.getGroups()) groupsWere.add(new HashSet<String>(group));
         lockedWere = new HashSet<String>(settings.getLocked());
         for (HudElement element : HudManager.getInstance().getElements()) elementsWere.put(element, new int[] {element.getX(), element.getY()});
-        Fullbright189.qaDefer = DEFER;
-        LOG.info("Lads UI capture BEGIN: real LWJGL input events{}", DEFER ? " (CONTROL: the lightmap is left to the game's own tick)" : "");
+        LOG.info("Lads UI capture BEGIN: real LWJGL input events, in-process");
         return after(1);
     }
 
@@ -170,6 +167,7 @@ final class Probe172Ui {
             menu.openModule("CPS");
             return after(20);
         });
+        STEPS.add(mc -> { CoreProbe.wheel(300, 200, -30); return after(15); }); // Reset options sits below the last option
         STEPS.add(mc -> {
             check(size() == 150 && ui().controlBounds("reset") != null, "the CPS page shows Size 150 and its Reset options button");
             screenshot(mc, "ui172-module-1-before");
@@ -208,29 +206,34 @@ final class Probe172Ui {
     }
 
     // ---- 3. Fullbright, menu open ----
-    private static void fullbright() {
+    /** {@code control}: the lightmap is not told it is out of date (the game before 1.7.2); the world must stay as it was under the open menu. */
+    private static void fullbright(final boolean control) {
+        final String tag = control ? "ui172-fb-control-" : "ui172-fb-";
         STEPS.add(mc -> {
-            WorldServer world = mc.getIntegratedServer().worldServerForDimension(0);
-            timeWas = world.getWorldTime();
-            mc.getIntegratedServer().addScheduledTask(() -> world.setWorldTime(18000));
+            Fullbright189.qaDefer = control;
+            if (control) {
+                final WorldServer world = mc.getIntegratedServer().worldServerForDimension(0);
+                timeWas = world.getWorldTime();
+                mc.getIntegratedServer().addScheduledTask(() -> world.setWorldTime(18000));
+            }
             Options189.module("Fullbright").setEnabled(true);
             gamma().setValue(0);
             menu = new LadsSettingsScreen189(null);
             mc.displayGuiScreen(menu);
             menu.openModule("Fullbright");
-            return after(60);
+            return after(control ? 60 : 20);
         });
         STEPS.add(mc -> {
             check(ui().gameViewBounds() != null, "the Fullbright page draws the live world in its preview");
-            check(mc.getIntegratedServer() != null && mc.getIntegratedServer().worldServerForDimension(0).getWorldTime() % 24000L > 16500, "the QA world is at night");
-            shot(mc, "ui172-fb-p000");
+            check(mc.getIntegratedServer().worldServerForDimension(0).getWorldTime() % 24000L > 16500, "the QA world is at night");
+            shot(mc, tag + "p000");
             return after(1);
         });
         for (final int percent : new int[] {30, 65, 100, 0}) {
             STEPS.add(mc -> { drag(percent); return after(3); });
             STEPS.add(mc -> {
                 check(gamma().getValue() == percent && mc.currentScreen == menu, "the slider dragged to " + percent + "% stands at " + gamma().getValue() + " and the menu is still open");
-                shot(mc, String.format(Locale.ROOT, "ui172-fb-p%03d", percent) + (percent == 0 ? "-again" : ""));
+                shot(mc, tag + String.format(Locale.ROOT, "p%03d", percent) + (percent == 0 ? "-again" : ""));
                 return after(1);
             });
         }
@@ -241,11 +244,11 @@ final class Probe172Ui {
                 dragX = track.x() + 4;
                 mouse(0, true, (int) dragX, track.y() + track.height() / 2);
                 dragOk = true;
+                dragValues.clear();
                 dragStep = 1;
                 return retry(1);
             }
-            double value = gamma().getValue();
-            dragOk &= value % 5 == 0;
+            dragOk &= gamma().getValue() % 5 == 0;
             dragValues.add(gamma().display());
             if (dragX < track.x() + track.width() - 4) {
                 dragX += 2;
@@ -253,6 +256,7 @@ final class Probe172Ui {
                 return retry(0);
             }
             mouse(0, false, (int) dragX, track.y() + track.height() / 2);
+            dragStep = 0;
             LOG.info("Lads UI capture slider positions along one drag: {}", dragValues.toString().replace(",", ""));
             check(dragOk && dragValues.size() > 5, "every position of a drag from 0 to 100 was a multiple of 5 (" + dragValues.size() + " positions)");
             return after(3);
@@ -260,7 +264,7 @@ final class Probe172Ui {
         STEPS.add(mc -> { typed("40"); return after(3); });
         STEPS.add(mc -> {
             check(gamma().getValue() == 40, "40 typed in the field (Enter) is 40%");
-            shot(mc, "ui172-fb-typed-040");
+            shot(mc, tag + "typed-040");
             typed("67");
             return after(3);
         });
@@ -268,21 +272,23 @@ final class Probe172Ui {
         STEPS.add(mc -> { check(gamma().getValue() == 65, "250 typed (out of range) is refused: the value stays 65%"); typed("abc"); return after(3); });
         STEPS.add(mc -> {
             check(gamma().getValue() == 65 && !ui().isEditingText(), "letters typed are ignored and the value stays 65%");
-            if (!DEFER) {
-                double l0 = luma.get("ui172-fb-p000"), l30 = luma.get("ui172-fb-p030"), l65 = luma.get("ui172-fb-p065"), l100 = luma.get("ui172-fb-p100");
-                LOG.info("Lads UI capture world brightness (mean of the preview, 0-255) 0%: {} 30%: {} 65%: {} 100%: {}", f(l0), f(l30), f(l65), f(l100));
-                check(l30 > l0 + 3 && l65 >= l30 && l100 >= l65 && l100 > l0 + 15, "the world under the open menu follows the slider: brighter at each higher setting");
-                check(Math.abs(luma.get("ui172-fb-p000-again") - l0) < 2, "back at 0% the world is as dark as at the start");
-                return after(1);
+            double l0 = luma.get(tag + "p000"), l30 = luma.get(tag + "p030"), l65 = luma.get(tag + "p065"), l100 = luma.get(tag + "p100");
+            LOG.info("Lads UI capture {} world under the open menu (mean of the preview, 0-255) 0%: {} 30%: {} 65%: {} 100%: {}", control ? "CONTROL" : "LIVE", f(l0), f(l30), f(l65), f(l100));
+            if (control) {
+                check(Math.abs(l100 - l0) < 2 && Math.abs(l65 - l0) < 2, "CONTROL: without the fix the world under the open menu stays as it was at every setting");
+                mc.displayGuiScreen(null);
+                return after(60);
             }
-            check(Math.abs(luma.get("ui172-fb-p100") - luma.get("ui172-fb-p000")) < 2, "CONTROL: the world under the open menu did not change at any setting");
-            mc.displayGuiScreen(null);
-            return after(60);
+            check(l30 > l0 + 3 && l65 >= l30 && l100 >= l65 && l100 > l0 + 15, "the world under the open menu follows the slider: brighter at each higher setting");
+            check(Math.abs(luma.get(tag + "p000-again") - l0) < 2, "back at 0% the world is as dark as at the start");
+            return after(1);
         });
-        STEPS.add(mc -> {
-            if (!DEFER) return after(1);
-            worldShot(mc, "ui172-fb-menu-closed");
-            check(lastLuma > luma.get("ui172-fb-p000") + 15, "CONTROL: after the menu closed the world is brighter: " + f(lastLuma));
+        if (control) STEPS.add(mc -> {
+            // the menu is closed and the game ran again: the game's own tick marks the lightmap out of date
+            worldShot(mc, tag + "menu-closed");
+            LOG.info("Lads UI capture CONTROL after the menu closed and the game ran again: the world measures {} (it measured {} under the menu)", f(lastLuma), f(luma.get(tag + "p000")));
+            check(lastLuma > luma.get(tag + "p000") + 15, "CONTROL: only after the menu closed did the world follow the slider (65%)");
+            Fullbright189.qaDefer = false;
             return after(1);
         });
     }
