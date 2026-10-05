@@ -1,0 +1,32 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.feature.async.mixin",
+  "plugin": "com.thelads.core.v26_2.feature.async.AsyncMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "ChunkMapAsyncMixin",
+    "EntityAsyncMixin",
+    "EntitySectionCallbackAsyncMixin",
+    "EntitySectionManagerAsyncMixin",
+    "LevelAsyncMixin",
+    "LevelRandomAccessor",
+    "LevelTicksAsyncMixin",
+    "LivingEntityAsyncMixin",
+    "MobAsyncMixin",
+    "NeighborUpdaterAsyncMixin",
+    "PathNavigationAsyncMixin",
+    "PathTypeCacheAsyncMixin",
+    "PoiManagerAsyncMixin",
+    "SectionStorageAsyncMixin",
+    "ServerChunkCacheAsyncMixin",
+    "ServerLevelAsyncMixin",
+    "ServerPlayerAsyncMixin",
+    "SharedStateAsyncMixins$Criteria",
+    "SharedStateAsyncMixins$GameEvents",
+    "SharedStateAsyncMixins$LootSequences",
+    "SharedStateAsyncMixins$SectionLists"
+  ],
+  "client": [],
+  "injectors": { "defaultRequire": 1 }
+}
