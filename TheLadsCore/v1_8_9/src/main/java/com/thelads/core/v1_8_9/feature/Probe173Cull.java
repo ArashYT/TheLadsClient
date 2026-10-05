@@ -42,8 +42,8 @@ import org.apache.logging.log4j.Logger;
  * 40 named armour stands, 15 cows and 25 chests behind it. (1) Six fixed views photographed with the module off and on
  * (lads-qa/screenshots/cull-*.png; artifacts compare them pixel by pixel) and the culled draws counted; (2) eight seconds of
  * fast turning and strafing round the wall's end with every culled draw audited against the current camera alone (none may be
- * visible from it); (3) uncapped at render distance 8 and 12 (sandbox only, run alone), module off and on in turn: FPS
- * and the work per frame with the crowd hidden, the crowd in view, and 3000+ particles behind the camera. Everything is put back.
+ * visible from it); (3) module off and on in turn, at the QA cap (or, LADS_CULL_UNCAPPED=1 in a run alone, uncapped at
+ * render distance 8 and 12): FPS and the work per frame with the crowd hidden, the crowd in view, and 3000+ particles behind the camera. Everything is put back.
  */
 final class Probe173Cull {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
@@ -213,6 +213,8 @@ final class Probe173Cull {
      * Runs alternate off, on, off, on, off, on; medians per state.
      */
     private static final Object[][] BENCH = {{8, "front", false}, {12, "front", false}, {8, "over", false}, {8, "front", true}};
+    /** LADS_CULL_UNCAPPED=1 (a run alone, in the final benchmark): FPS unlimited at render distance 8 and 12; otherwise the QA cap. */
+    private static final boolean UNCAPPED = "1".equals(System.getenv("LADS_CULL_UNCAPPED"));
     private static final int RUNS = 6, RUN_TICKS = 160, WARM_TICKS = 40;
     private static final Map<String, List<double[]>> RESULTS = new LinkedHashMap<String, List<double[]>>();
     private static Probe170r.GpuTimer gpu;
@@ -220,7 +222,8 @@ final class Probe173Cull {
     private static boolean bench(Minecraft mc, int scene) {
         if ("0".equals(System.getenv("LADS_CULL_BENCH"))) return true; // views and motion only
         Object[] b = BENCH[scene];
-        String sceneName = "rd" + b[0] + "-" + b[1] + ((Boolean) b[2] ? "-particles" : "");
+        if (!UNCAPPED && scene == 1) return true; // render distance 12 only uncapped
+        String sceneName = (UNCAPPED ? "rd" + b[0] : "capped") + "-" + b[1] + ((Boolean) b[2] ? "-particles" : "");
         if (step == RUNS) {
             for (String state : new String[] {"off", "on"}) {
                 List<double[]> runs = RESULTS.get(sceneName + "-" + state);
@@ -233,7 +236,7 @@ final class Probe173Cull {
                     median.addProperty(keys[k], values[values.length / 2]);
                 }
                 report.add(sceneName + "-" + state + "-median", median);
-                LOG.info("Lads cull QA bench {} {} (median of {} runs, uncapped): {}", sceneName, state, runs.size(), median);
+                LOG.info("Lads cull QA bench {} {} (median of {} runs{}): {}", sceneName, state, runs.size(), UNCAPPED ? ", uncapped" : ", at the QA cap", median);
             }
             step = 0;
             return after(1);
@@ -241,10 +244,12 @@ final class Probe173Cull {
         Object[] v = b[1].equals("over") ? VIEWS[4] : VIEWS[0];
         boolean on = step % 2 == 1, particles = (Boolean) b[2];
         if (ticks == 0) {
-            mc.gameSettings.renderDistanceChunks = (Integer) b[0];
-            mc.gameSettings.limitFramerate = 260; // unlimited
-            mc.gameSettings.enableVsync = false;
-            org.lwjgl.opengl.Display.setVSyncEnabled(false);
+            if (UNCAPPED) { // otherwise the harness's cap and render distance
+                mc.gameSettings.renderDistanceChunks = (Integer) b[0];
+                mc.gameSettings.limitFramerate = 260; // unlimited
+                mc.gameSettings.enableVsync = false;
+                org.lwjgl.opengl.Display.setVSyncEnabled(false);
+            }
             if (gpu == null) { gpu = new Probe170r.GpuTimer(); MinecraftForge.EVENT_BUS.register(gpu); }
             Options189.module(EntityCulling189.MODULE).setEnabled(on);
             frames.pin(px + (Double) v[1], gy + (Double) v[2], pz + (Double) v[3], (Float) v[4], (Float) v[5]);
