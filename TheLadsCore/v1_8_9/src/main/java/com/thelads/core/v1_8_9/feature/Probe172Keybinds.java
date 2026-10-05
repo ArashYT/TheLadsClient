@@ -580,23 +580,51 @@ final class Probe172Keybinds {
         } catch (ReflectiveOperationException ignored) {}
     }
 
-    /** Back to back until the game is killed: Minecraft's saveOptions, then the same lines written as vanilla wrote them. */
+    /**
+     * Back to back until the game is killed: Minecraft's saveOptions, then the same lines written as vanilla wrote them. Meanwhile
+     * another thread reads both files as fast as it can and counts the reads that found a cut-off file (what a kill at that
+     * moment leaves behind).
+     */
     private static boolean storm(Minecraft mc) throws Exception {
         File plain = new File(mc.mcDataDir, "lads-qa/options-plain.txt");
+        if (saves == 0) mc.gameSettings.saveOptions(); // the file as Minecraft writes it (the harness adds lines it drops)
+        List<String> lines = Files.readAllLines(options(mc).toPath(), Charset.defaultCharset());
         if (saves == 0) {
             plain.getParentFile().mkdirs();
-            LOG.info("Lads 1.8.9 keybinds probe: saving options back to back until killed ({} lines)", saved(mc).size());
+            int whole = lines.size();
+            Thread reader = new Thread(() -> {
+                while (true) {
+                    int n = lineCount(options(mc));
+                    if (n < 0) unreadable++; else if (n < whole) optionsCut++;
+                    reads++;
+                    n = lineCount(plain);
+                    if (n >= 0 && n < whole) plainCut++;
+                }
+            }, "Lads QA options reader");
+            reader.setDaemon(true);
+            reader.start();
+            LOG.info("Lads 1.8.9 keybinds probe: saving options back to back until killed ({} lines)", whole);
         }
-        List<String> lines = Files.readAllLines(options(mc).toPath(), Charset.defaultCharset());
         long end = System.nanoTime() + 40_000_000L;
         while (System.nanoTime() < end) {
             mc.gameSettings.saveOptions();
             PrintWriter writer = new PrintWriter(new FileWriter(plain));
             for (String line : lines) writer.println(line);
             writer.close();
-            if (++saves % 2000 == 0) LOG.info("Lads 1.8.9 keybinds probe: {} saves", saves);
+            if (++saves % 2000 == 0) LOG.info("Lads 1.8.9 keybinds probe: {} saves; {} reads of each file: options.txt cut off {} times "
+                + "(unreadable {} times), the vanilla-style copy cut off {} times", saves, reads, optionsCut, unreadable, plainCut);
         }
         return CoreProbe.retry(0);
+    }
+
+    private static volatile long reads, optionsCut, unreadable, plainCut;
+
+    private static int lineCount(File file) {
+        try {
+            return Files.readAllLines(file.toPath(), Charset.defaultCharset()).size();
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     private static void press(String label) throws Exception {

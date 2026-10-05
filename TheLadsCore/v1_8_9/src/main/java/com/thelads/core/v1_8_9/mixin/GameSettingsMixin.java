@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.LockSupport;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.client.settings.KeyBinding;
 import org.apache.commons.lang3.ArrayUtils;
@@ -63,10 +65,28 @@ public abstract class GameSettingsMixin {
         try {
             if (writer.checkError()) throw new IOException("writing " + temp + " failed");
             ladsKeepUnloadedKeys(temp);
-            Files.move(temp.toPath(), optionsFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            ladsReplace(temp);
         } catch (IOException e) {
             LogManager.getLogger("TheLadsCore-1.8.9").error("Failed to save options; options.txt keeps the last saved ones", e);
         }
+    }
+
+    /**
+     * options.txt.tmp over options.txt in one step. Windows refuses that while another program has options.txt open (a virus scan,
+     * a sync tool): tried again for up to 100 ms, then written into options.txt as vanilla does, so a change is never lost.
+     */
+    private void ladsReplace(File temp) throws IOException {
+        for (int attempt = 0; attempt < 20; attempt++) {
+            try {
+                Files.move(temp.toPath(), optionsFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                return;
+            } catch (AccessDeniedException e) {
+                LockSupport.parkNanos(5_000_000L);
+            }
+        }
+        LogManager.getLogger("TheLadsCore-1.8.9").warn("options.txt stayed in use by another program; saved into it in place");
+        Files.write(optionsFile.toPath(), Files.readAllBytes(temp.toPath()));
+        Files.delete(temp.toPath());
     }
 
     /** The key binds of a mod that did not load this time (Essential is downloaded at launch) stay for when it loads again. */
