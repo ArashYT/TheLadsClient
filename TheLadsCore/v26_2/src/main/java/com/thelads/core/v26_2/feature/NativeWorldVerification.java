@@ -263,6 +263,7 @@ public final class NativeWorldVerification {
         }
         chatCapture(target);
         KillBannerCapture.frame(target, gameDirectory);
+        KillStreakCapture.frame(target, gameDirectory);
         OldAnimationsCapture.frame(target, gameDirectory);
         ZoomCapture.frame(target, gameDirectory);
         SkinLayersCapture.frame(target, gameDirectory);
