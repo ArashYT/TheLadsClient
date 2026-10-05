@@ -4,6 +4,7 @@ import com.thelads.core.client.killbanner.KillBannerStyle;
 import com.thelads.core.client.killbanner.KillDetector;
 import com.thelads.core.config.ColorOption;
 import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.IntTextOption;
 import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.BoolOption;
@@ -66,6 +67,10 @@ public class KillBannerModule extends Module {
     public final SliderOption volume = new SliderOption("Volume", .6, 0, 1, .05);
     public final SliderOption duration = new SliderOption("Duration", 2, 1, 5, .25);
     public final SliderOption size = new SliderOption("Size", 100, 50, 150, 10);
+    /** Seconds without a kill before the streak starts again at 1 (1.7.1 and older: a fixed 8 seconds, not a setting). */
+    public final IntTextOption streakReset = new IntTextOption("Streak Reset (seconds)", 45, 1, 600);
+    /** The streak never runs out: only your death, a new world or leaving the server starts it again. */
+    public final BoolOption unlimitedStreak = new BoolOption("Unlimited Streak", false);
     private final Random random = new Random();
     private Pick last;
 
@@ -91,6 +96,13 @@ public class KillBannerModule extends Module {
         addOption(volume);
         addOption(duration);
         addOption(size);
+        addOption(streakReset);
+        addOption(unlimitedStreak);
+    }
+
+    /** How long a streak waits for its next kill, in nanoseconds; negative: forever (Unlimited Streak). */
+    public long streakWindow() {
+        return unlimitedStreak.get() ? -1 : streakReset.get() * 1_000_000_000L;
     }
 
     /** Options the Kill Banner picker draws itself, so the settings list leaves them out (Text Color: only the old Base label used it). */

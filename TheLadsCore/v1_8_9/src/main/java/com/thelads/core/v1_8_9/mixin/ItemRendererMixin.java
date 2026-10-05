@@ -91,7 +91,7 @@ public abstract class ItemRendererMixin {
             return;
         }
         EntityPlayerSP player = mc.thePlayer;
-        float shown = OldAnimations189.MODULE.swingShown(OldAnimations189.PLATFORM, ladsUse, player.getSwingProgress(partialTicks));
+        float shown = OldAnimations189.swingShown(ladsUse, player.getSwingProgress(partialTicks));
         OldAnimations189.usedSwing = Math.max(OldAnimations189.usedSwing, shown);
         if (!ladsReplay) {
             transformFirstPersonItem(equip, shown); // 1.8.9's bow draw follows, with 1.7's swing while using

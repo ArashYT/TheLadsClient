@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace TheLadsLauncher.Services;
 
@@ -101,7 +102,7 @@ public static class GameOptionsService
         ["key.keyboard.f16"] = 103,
         ["key.keyboard.f17"] = 104,
         ["key.keyboard.f18"] = 105,
-        ["key.keyboard.f19"] = 106,
+        ["key.keyboard.f19"] = 113,
         ["key.keyboard.keypad.enter"] = 156,
         ["key.keyboard.right.control"] = 157,
         ["key.keyboard.keypad.divide"] = 181,
@@ -118,13 +119,15 @@ public static class GameOptionsService
         ["key.keyboard.page.down"] = 209,
         ["key.keyboard.insert"] = 210,
         ["key.keyboard.delete"] = 211,
-        // Mouse buttons: in LWJGL2 mouse buttons are negative offsets: Button 0 = -100, Button 1 = -99, Button 2 = -98, Button 3 = -97, Button 4 = -96
+        // Mouse buttons: 1.8.9 stores button b as b - 100 (left -100). The side buttons and any further ones: see TranslateKeybindToTarget.
         ["key.mouse.left"] = -100,
         ["key.mouse.right"] = -99,
-        ["key.mouse.middle"] = -98,
-        ["key.mouse.4"] = -97,
-        ["key.mouse.5"] = -96
+        ["key.mouse.middle"] = -98
     };
+
+    /// <summary>Next to an options.txt the launcher syncs: the shared (or Lunar) values it took at the last launch. A launch takes
+    /// only what changed there since, so it never undoes a key bind or setting the player changed in that game meanwhile.</summary>
+    public const string TakenOptionsFile = "lads-options-taken.txt";
 
     private static readonly Dictionary<int, string> Lwjgl2ToModern =
         ModernToLwjgl2.GroupBy(kvp => kvp.Value).ToDictionary(g => g.Key, g => g.First().Key);
@@ -181,26 +184,25 @@ public static class GameOptionsService
         return sb.ToString();
     }
 
-    public static string TranslateKeybindToTarget(string keyName, string value, bool targetIs18)
+    /// <summary>A key bind as the target version stores it: 1.8.9 an LWJGL2 code (mouse button b is b - 100), the others a key
+    /// name ("key.mouse.4" is button 3). Null when the target has no code or name for it.</summary>
+    public static string? TranslateKeybindToTarget(string keyName, string value, bool targetIs18)
     {
         if (targetIs18)
         {
-            // Modern to LWJGL2 int
-            if (int.TryParse(value, out int existingInt)) return existingInt.ToString();
+            if (int.TryParse(value, out _)) return value;
             if (ModernToLwjgl2.TryGetValue(value, out int lwjglCode)) return lwjglCode.ToString();
-            return value;
+            return value.StartsWith("key.mouse.", StringComparison.Ordinal) && int.TryParse(value[10..], out int number) && number is >= 4 and <= 100
+                ? (number - 101).ToString() : null;
         }
-        else
-        {
-            // LWJGL2 int to Modern string
-            if (int.TryParse(value, out int lwjglCode) && Lwjgl2ToModern.TryGetValue(lwjglCode, out string? modernKey))
-            {
-                return modernKey;
-            }
-            return value;
-        }
+        if (!int.TryParse(value, out int code)) return value;
+        if (Lwjgl2ToModern.TryGetValue(code, out string? modernKey)) return modernKey;
+        return code is >= -97 and < 0 ? "key.mouse." + (code + 101) : null;
     }
 
+    /// <summary>Before a launch: the shared (or Lunar) settings and key binds into the game's options.txt. Only the ones changed there
+    /// since the last launch (<see cref="TakenOptionsFile"/>) replace the game's own; any setting the game lacks is filled in.
+    /// A key bind the target has no code or name for keeps the game's own.</summary>
     public static void SyncToInstance(string sharedFile, string instanceFile, string mcVersion)
     {
         if (!File.Exists(sharedFile))
@@ -212,55 +214,44 @@ public static class GameOptionsService
             return;
         }
 
-        var sharedText = File.ReadAllText(sharedFile);
-        var sharedMap = ParseOptions(sharedText);
-        if (sharedMap.Count == 0 && !string.IsNullOrWhiteSpace(sharedText))
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(instanceFile))!);
-            File.WriteAllText(instanceFile, sharedText);
-            return;
-        }
-
+        var sharedMap = ParseOptions(File.ReadAllText(sharedFile));
         bool targetIs18 = IsLegacy18(mcVersion);
         var instanceMap = File.Exists(instanceFile) ? ParseOptions(File.ReadAllText(instanceFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var takenFile = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(instanceFile))!, TakenOptionsFile);
+        // None yet (the first launch since 1.7.2): the game's own values stay.
+        var taken = File.Exists(takenFile) ? ParseOptions(File.ReadAllText(takenFile)) : null;
 
-        // Merge shared settings and controls without overwriting version-exclusive settings
+        bool updated = false;
         foreach (var kvp in sharedMap)
         {
-            if (kvp.Key.StartsWith("key_", StringComparison.OrdinalIgnoreCase))
-            {
-                instanceMap[kvp.Key] = TranslateKeybindToTarget(kvp.Key, kvp.Value, targetIs18);
-            }
-            else if (SharedSettingsKeys.Contains(kvp.Key) || !instanceMap.ContainsKey(kvp.Key))
-            {
-                instanceMap[kvp.Key] = kvp.Value;
-            }
+            bool keybind = kvp.Key.StartsWith("key_", StringComparison.OrdinalIgnoreCase);
+            bool changed = taken != null && (keybind || SharedSettingsKeys.Contains(kvp.Key))
+                && !(taken.TryGetValue(kvp.Key, out var was) && was == kvp.Value);
+            if (!changed && instanceMap.ContainsKey(kvp.Key)) continue;
+            if ((keybind ? TranslateKeybindToTarget(kvp.Key, kvp.Value, targetIs18) : kvp.Value) is not { } value
+                || instanceMap.TryGetValue(kvp.Key, out var had) && had == value) continue;
+            instanceMap[kvp.Key] = value;
+            updated = true;
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(instanceFile))!);
-        File.WriteAllText(instanceFile, SerializeOptions(instanceMap));
+        if (updated) WriteAtomically(instanceFile, SerializeOptions(instanceMap));
+        WriteAtomically(takenFile, SerializeOptions(sharedMap));
     }
 
+    /// <summary>After a game: its settings and key binds (in key names) into the shared copy. 1.8.9's own formats never go there,
+    /// and a 1.8.9 key code without a key name leaves the shared bind as it was.</summary>
     public static void SyncFromInstance(string instanceFile, string sharedFile, string mcVersion)
     {
         if (!File.Exists(instanceFile)) return;
-        var instanceText = File.ReadAllText(instanceFile);
-        var instanceMap = ParseOptions(instanceText);
+        var instanceMap = ParseOptions(File.ReadAllText(instanceFile));
         bool sourceIs18 = IsLegacy18(mcVersion);
-        if (instanceMap.Count == 0 && !string.IsNullOrWhiteSpace(instanceText) && !sourceIs18)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(sharedFile))!);
-            File.WriteAllText(sharedFile, instanceText);
-            return;
-        }
-
         var sharedMap = File.Exists(sharedFile) ? ParseOptions(File.ReadAllText(sharedFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var kvp in instanceMap)
         {
             if (kvp.Key.StartsWith("key_", StringComparison.OrdinalIgnoreCase))
             {
-                sharedMap[kvp.Key] = TranslateKeybindToTarget(kvp.Key, kvp.Value, false); // Store modern representation in shared
+                if (TranslateKeybindToTarget(kvp.Key, kvp.Value, false) is { } modern) sharedMap[kvp.Key] = modern;
             }
             else if (!sourceIs18 || SharedSettingsKeys.Contains(kvp.Key))
             {
@@ -269,7 +260,13 @@ public static class GameOptionsService
             }
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(sharedFile))!);
-        File.WriteAllText(sharedFile, SerializeOptions(sharedMap));
+        WriteAtomically(sharedFile, SerializeOptions(sharedMap));
+    }
+
+    // A crash or a closed launcher mid-write leaves the old file whole, never a cut-off one. An unchanged file is not rewritten.
+    private static void WriteAtomically(string file, string text)
+    {
+        if (!File.Exists(file) || File.ReadAllText(file) != text)
+            LockFiles.WriteAtomicallyAsync(file, Encoding.UTF8.GetBytes(text)).GetAwaiter().GetResult();
     }
 }

@@ -43,7 +43,8 @@ public final class HudCache189 {
             return false;
         }
         int width = g.getScaledWidth(), height = g.getScaledHeight();
-        if (HudFrameCap.due(System.nanoTime(), width, height) || !built) {
+        long now = System.nanoTime();
+        if (HudFrameCap.due(now, width, height) || !built) {
             BUFFER.newFrame(); // it can begin inside Autohide's capture
             if (!BUFFER.begin()) {
                 free();
@@ -55,7 +56,8 @@ public final class HudCache189 {
             HudFrameCap.wholeHud = true; // HudManager draws, the cap is here
             blend();
             try {
-                HudManager.getInstance().render(new Split(mc.fontRendererObj, width, height));
+                // Recorded and replayed into the cache: what it draws tells HudFrameCap whether the HUD animates (60 builds a second).
+                HudManager.getInstance().renderMarked(new Split(mc.fontRendererObj, width, height), now);
                 built = true;
             } finally {
                 HudFrameCap.wholeHud = false;

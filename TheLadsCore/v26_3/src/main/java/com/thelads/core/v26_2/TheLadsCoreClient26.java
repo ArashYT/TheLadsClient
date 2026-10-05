@@ -46,6 +46,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.clumps.NativeClumps.initialize();
         com.thelads.core.v26_2.feature.NativeItemPhysics.initialize();
         com.thelads.core.v26_2.feature.NativeDynamicLights.initialize();
+        com.thelads.core.v26_2.feature.async.AsyncTicking.initialize();
         com.thelads.core.v26_2.feature.GoodMcAttackSpeedReset.register();
         com.thelads.core.v26_2.feature.NativeCheats.register();
         com.thelads.core.v26_2.embedded.EmbeddedMods.clientInit();

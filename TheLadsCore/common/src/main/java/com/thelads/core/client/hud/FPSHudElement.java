@@ -30,7 +30,8 @@ public class FPSHudElement extends TextHudElement {
             target = fps;
             lastSample = now;
         }
-        displayed += (target - displayed) * (smooth ? 0.10 : 1.0);
+        // 10% of the way each time it is drawn; a capped build stands for several draws (HudFrameCap.steps), so it keeps its pace.
+        displayed += (target - displayed) * (smooth ? 1 - Math.pow(0.9, HudFrameCap.steps()) : 1.0);
 
         int mode = optCycle("Display", 0);
         int gameVal = (int) Math.round(displayed);

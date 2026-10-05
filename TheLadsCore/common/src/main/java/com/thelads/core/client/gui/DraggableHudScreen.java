@@ -36,6 +36,7 @@ public class DraggableHudScreen {
     private int contextX,contextY;
     private boolean contextOpen;
     private final ColorPicker colorPicker = new ColorPicker();
+    private final ConfirmDialog confirm = new ConfirmDialog();
     public void setOnSettings(java.util.function.Consumer<String> action){onSettings=action;}
     private final Set<HudElement> selected=new LinkedHashSet<>();
     private final Map<HudElement,Rect> measuredBounds=new IdentityHashMap<>();
@@ -59,6 +60,8 @@ public class DraggableHudScreen {
     public DraggableHudScreen(){this(ConfigManager::save);}
     public DraggableHudScreen(Runnable saveConfig){this.saveConfig=Objects.requireNonNull(saveConfig);}
     public void setOnClose(Runnable action){onClose=action;}
+    /** The reset confirmation (QA reads its bounds and clicks them). */
+    public ConfirmDialog confirmDialog(){return confirm;}
     public Set<String> selectedNames(){var names=new LinkedHashSet<String>();for(var element:selected)if(element.getModuleName()!=null)names.add(element.getModuleName());return Set.copyOf(names);}
     /** Game GUI bounds of a HUD drawn in the last preview (the position it has in game), or null. */
     public Rect boundsFor(String name){for(var entry:renderedBounds.entrySet())if(Objects.equals(name,entry.getKey().getModuleName()))return entry.getValue();return null;}
@@ -108,6 +111,7 @@ public class DraggableHudScreen {
         graphics.drawText(MenuGraphics.fit(graphics,status,width-2*GAP),GAP,height-STATUS+3,LadsPalette.MUTED,false);
         if(contextOpen)drawContext(graphics,mouseX,mouseY);
         colorPicker.render(graphics,mouseX,mouseY);
+        confirm.render(graphics,mouseX,mouseY);
     }
 
     /** Toolbar across the top, element list on the left, and the largest preview with the game's aspect ratio in the rest. */
@@ -308,6 +312,7 @@ public class DraggableHudScreen {
 
     public boolean mouseClicked(double x,double y,int button){return mouseClicked(x,y,button,0);}
     public boolean mouseClicked(double x,double y,int button,int modifiers){
+        if(confirm.isOpen())return confirm.click(x,y,button);
         if(colorPicker.click(x,y,button))return true;
         finishHiddenDrag();
         if(contextOpen){
@@ -375,6 +380,7 @@ public class DraggableHudScreen {
         for(var element:members){Rect bounds=measuredBounds.get(element);if(bounds!=null)dragStart.put(element,bounds);}
     }
     public boolean mouseDragged(double x,double y,int button){
+        if(confirm.isOpen())return true;
         if(colorPicker.move(x,y))return true;
         finishHiddenDrag();if(button!=0)return false;
         if(marquee){marqueeX=gameX(x);marqueeY=gameY(y);return true;}
@@ -399,12 +405,14 @@ public class DraggableHudScreen {
     public boolean mouseReleased(double x,double y,int button){return mouseReleased(x,y,button,0);}
     /** Shift held at the drop (modifier bit 1) groups the dropped HUDs with the HUDs they now touch; a plain drop never groups. */
     public boolean mouseReleased(double x,double y,int button,int modifiers){
+        if(confirm.isOpen())return true;
         if(colorPicker.release())return true;
         finishHiddenDrag();if(button!=0)return false;
         if(marquee){marqueeX=gameX(x);marqueeY=gameY(y);Rect box=marqueeBounds();marquee=false;if(box.width()>3||box.height()>3){if(!marqueeAdditive)selected.clear();for(var entry:renderedBounds.entrySet())if(box.intersects(entry.getValue()))selected.addAll(groupElements(entry.getKey()));}return true;}
         if(isDragging()){finishDrag((modifiers&1)!=0);return true;}return false;
     }
     public boolean mouseScrolled(double x,double y,double amount){
+        if(confirm.isOpen())return true;
         if(colorPicker.isOpen())return true;
         if(!list.contains(x,y))return false;
         listScroll=Math.max(0,Math.min(maxListScroll,listScroll-(int)Math.round(amount*ROW)));return true;
@@ -413,6 +421,7 @@ public class DraggableHudScreen {
 
     public boolean keyPressed(int key){return keyPressed(key,0);}
     public boolean keyPressed(int key,int modifiers){
+        if(confirm.isOpen())return confirm.key(key);
         if(colorPicker.key(key))return true;
         if(editingSearch){
             if(key==256||key==257)editingSearch=false;
@@ -458,7 +467,7 @@ public class DraggableHudScreen {
             case "centerX"->center(true,false);
             case "centerY"->center(false,true);
             case "centerBoth"->center(true,true);
-            case "reset"->{HudSettings.getInstance().clearPositions();selected.clear();saveConfig.run();}
+            case "reset"->confirm.open("Reset every HUD element to its default position? Groups and locks are cleared too.",()->{HudSettings.getInstance().clearPositions();selected.clear();saveConfig.run();});
             case "done"->{close();if(onClose!=null)onClose.run();}
             default->{}
         }
@@ -509,10 +518,11 @@ public class DraggableHudScreen {
         selected.removeIf(element->!elements.contains(element)||!element.isAvailable());
     }
     public boolean charTyped(int codePoint){
+        if(confirm.isOpen())return true;
         if(editingSearch){if(codePoint>=32&&codePoint!=127&&search.length()<32){search+=new String(Character.toChars(codePoint));listScroll=0;}return true;}
         return colorPicker.type(codePoint);
     }
-    public void close(){finishDrag(false);marquee=false;editingSearch=false;}
+    public void close(){finishDrag(false);marquee=false;editingSearch=false;confirm.close();}
     /**
      * Ends a drag and saves where every member landed. Only a drop with {@code join} (Shift held) groups: the dropped HUDs join
      * each HUD they now dock against (edge to edge, aligned), together with that HUD's own group.

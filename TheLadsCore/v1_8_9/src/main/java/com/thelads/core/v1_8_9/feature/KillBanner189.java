@@ -8,13 +8,18 @@ import com.thelads.core.client.killbanner.KillBanners;
 import com.thelads.core.client.killbanner.KillDetector;
 import com.thelads.core.config.HudSettings;
 import com.thelads.core.modules.KillBannerModule;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.ISound;
 import net.minecraft.client.audio.PositionedSound;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.client.network.NetworkPlayerInfo;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -24,6 +29,8 @@ import net.minecraft.entity.boss.EntityWither;
 import net.minecraft.entity.item.EntityArmorStand;
 import net.minecraft.entity.monster.EntityGuardian;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.IChatComponent;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
@@ -40,7 +47,10 @@ import org.lwjgl.opengl.GL11;
  * KillBanner on 1.8.9, as 26.x NativeKillBanner: banners the moment the client sees a kill (KillDetector), the death of a player,
  * mob or boss the local player hit last, or a server's kill message. Signals: Forge's attack event (the local player's hits),
  * NetHandlerPlayClientMixin (death status and zero health) and Forge's chat event (chat and system lines, not the action bar),
- * all on the client thread. 1.8.9 sends no damage events, so only the local player's own blows credit a kill.
+ * all on the client thread. 1.8.9 sends no damage events, so only the local player's own blows credit a death; a player
+ * knocked off or shot also counts through the server's kill message. Kills queue their banners (KillBannerTimeline); each client
+ * tick starts the next one whose turn has come. The streak ends on death (the death screen, or a server's message that the
+ * player died), in a new world (dimension, Hypixel's next game) or on another server.
  */
 public final class KillBanner189 {
     private static final KillBannerTimeline BANNER = KillBanners.TIMELINE;
@@ -48,6 +58,7 @@ public final class KillBanner189 {
     /** The last banner failure logged: one line for each different one, not one a frame. */
     private static String failureLogged = "";
     private static NetHandlerPlayClient trackedConnection;
+    private static WorldClient trackedWorld;
     private static int lastLabelDelta;
     private static boolean lastLabelPreview;
     private static String label = "";
@@ -78,9 +89,19 @@ public final class KillBanner189 {
         KillBannerArt189.sweep();
         Minecraft mc = Minecraft.getMinecraft();
         if (!eligible()) { reset(); return; }
-        if (trackedConnection != mc.getNetHandler()) { reset(); trackedConnection = mc.getNetHandler(); }
+        if (trackedConnection != mc.getNetHandler() || trackedWorld != mc.theWorld) {
+            reset();
+            trackedConnection = mc.getNetHandler();
+            trackedWorld = mc.theWorld;
+        }
         if (!mc.thePlayer.isEntityAlive()) BANNER.clear();
         KillBannerModule module = module();
+        if (module != null) {
+            long now = System.nanoTime();
+            String sound = KillBanners.poll(module, now);
+            if (BANNER.age(now) == 0) prefetch(module); // a queued banner started now: its frames start decoding
+            play(sound, (float) module.volume.getValue());
+        }
         KillBannerModule.Pick pick = module != null ? module.chosen() : null;
         if (pick == null) return;
         if (pick.style() != null) KillBannerArt189.warm(pick.style(), pick.variant());
@@ -112,7 +133,8 @@ public final class KillBanner189 {
         boolean head = hit != null && hit.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && hit.entityHit == event.target
             && hit.hitVec != null && hit.hitVec.yCoord >= event.target.posY + event.target.height * .75;
         EntityLivingBase victim = victim(event.target);
-        if (victim != null) KillBanners.DETECTOR.hitByMe(victim.getEntityId(), names(victim), kind(victim), head, System.nanoTime());
+        // A click on a body still falling over is no new hit: the death already counted.
+        if (victim != null && victim.getHealth() > 0) KillBanners.DETECTOR.hitByMe(victim.getEntityId(), names(victim), kind(victim), head, System.nanoTime());
     }
 
     /** A death status, or a health update to zero (NetHandlerPlayClientMixin). */
@@ -120,12 +142,35 @@ public final class KillBanner189 {
         if (entity != null && eligible()) kill(KillBanners.DETECTOR.died(entity.getEntityId(), System.nanoTime()));
     }
 
-    /** A chat or system line (1.8.9 cannot tell plugin messages from player chat), not the action bar; as the server sent it. */
+    /**
+     * A chat or system line (1.8.9 cannot tell plugin messages from player chat), not the action bar; as the server sent it:
+     * a kill, or the player's own death (it ends the streak). A vanilla death message is read by its translation key and names,
+     * so it counts in any client language.
+     */
     @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
     public void chat(ClientChatReceivedEvent event) {
         Minecraft mc = Minecraft.getMinecraft();
         if (event.type == 2 || event.message == null || !eligible()) return;
-        kill(KillBanners.DETECTOR.chat(event.message.getUnformattedText(), names(mc.thePlayer), System.nanoTime()));
+        Set<String> me = names(mc.thePlayer);
+        String text = null;
+        if (event.message instanceof ChatComponentTranslation) {
+            ChatComponentTranslation death = (ChatComponentTranslation) event.message;
+            List<String> args = new ArrayList<String>();
+            for (Object arg : death.getFormatArgs()) args.add(arg instanceof IChatComponent ? ((IChatComponent) arg).getUnformattedText() : String.valueOf(arg));
+            text = KillDetector.deathLine(death.getKey(), args);
+        }
+        if (text == null) text = event.message.getUnformattedText();
+        if (KillDetector.myDeath(text, me)) BANNER.endStreak();
+        kill(KillBanners.DETECTOR.chat(text, me, KillBanner189::players, System.nanoTime()));
+    }
+
+    /** The other players in the world: a kill message may name one the client saw no hit on (an arrow, a knock into the void). */
+    private static Map<Integer, Set<String>> players() {
+        Minecraft mc = Minecraft.getMinecraft();
+        Map<Integer, Set<String>> players = new HashMap<Integer, Set<String>>();
+        for (EntityPlayer player : mc.theWorld.playerEntities)
+            if (player != mc.thePlayer) players.put(player.getEntityId(), names(player));
+        return players;
     }
 
     private static void kill(KillDetector.Kill kill) {
@@ -166,6 +211,7 @@ public final class KillBanner189 {
 
     static void reset() {
         trackedConnection = null;
+        trackedWorld = null;
         KillBanners.reset();
     }
 
@@ -183,7 +229,7 @@ public final class KillBanner189 {
     static void trigger(int kills, boolean preview, boolean headshot, KillBannerModule.Pick pick) {
         KillBannerModule module = module();
         if (!eligible() || module == null) return;
-        trackedConnection = Minecraft.getMinecraft().getNetHandler();
+        bindCurrent();
         String sound = KillBanners.show(module, kills, preview, headshot, pick, System.nanoTime());
         prefetch(module);
         play(sound, (float) module.volume.getValue());
@@ -197,6 +243,12 @@ public final class KillBanner189 {
     /** QA: false once the strip frame the last draw wanted was the one drawn (always for stills). */
     static boolean stale() {
         return KillBannerArt189.stale();
+    }
+
+    /** QA: binds the current connection and world now, so the next tick does not reset a banner fired on purpose. */
+    static void bindCurrent() {
+        trackedConnection = Minecraft.getMinecraft().getNetHandler();
+        trackedWorld = Minecraft.getMinecraft().theWorld;
     }
 
     /** QA: the banner on screen stays this many seconds after its kill (KillBannerTimeline.freeze). */

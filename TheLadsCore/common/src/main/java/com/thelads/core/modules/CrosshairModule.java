@@ -61,13 +61,13 @@ public class CrosshairModule extends Module {
         addOption(new BoolOption("Show in Spectator", false));
         addOption(new BoolOption("Remove Blend First Person", false));
         addOption(new BoolOption("Remove Blend Third Person", false));
-        addOption(new SliderOption("Opacity First Person", 100, 0, 100, 1));
-        addOption(new SliderOption("Opacity Third Person", 100, 0, 100, 1));
+        addOption(new SliderOption("Opacity First Person", 100, 0, 100, 1).percent());
+        addOption(new SliderOption("Opacity Third Person", 100, 0, 100, 1).percent());
         addOption(new BoolOption("Disable Attack Indicator", false));
         addOption(new BoolOption("Remove Attack Blend First Person", false));
         addOption(new BoolOption("Remove Attack Blend Third Person", false));
-        addOption(new SliderOption("Attack Opacity First Person", 100, 0, 100, 1));
-        addOption(new SliderOption("Attack Opacity Third Person", 100, 0, 100, 1));
+        addOption(new SliderOption("Attack Opacity First Person", 100, 0, 100, 1).percent());
+        addOption(new SliderOption("Attack Opacity Third Person", 100, 0, 100, 1).percent());
         addOption(new BoolOption("Debug Attack Indicator", false));
         addOption(drawingEditor);
     }
