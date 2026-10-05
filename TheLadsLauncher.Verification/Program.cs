@@ -148,6 +148,9 @@ bool hud170CaptureVerification = autoWorldVerification && !capabilities.Forge &&
 // Fabric versions: runs of consecutive frames with the HUD hidden, the HUD FPS cap off and on, every HUD element in view (HudFlickerCapture).
 // 1.8.9: LADS_VERIFY_189_ONLY=hudflicker (Probe172HudFlicker).
 bool hudFlickerCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_HUDFLICKER") == "1";
+// Fabric versions: the reset questions (HUD editor, module page) and Fullbright's slider with its menu open, through the real screens (UiCapture).
+// 1.8.9: LADS_VERIFY_189_ONLY=ui (Probe172Ui). LADS_VERIFY_UI_CONTROL=defer runs the Fullbright part without the live lightmap update.
+bool uiCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_UI") == "1";
 // Fabric versions: Item Physics in a QA arena (ItemPhysicsCapture). 1.8.9's self-test runs the same checks: LADS_VERIFY_189_ONLY=itemphysics.
 bool itemPhysicsCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ITEMPHYSICS") == "1";
 // Fabric versions: the survival and creative inventories with and without potion effects, centred (InventoryCapture). 1.8.9: LADS_VERIFY_189_FOCUS=inventory (ProbeInventory).
@@ -328,6 +331,8 @@ string hud170CaptureRequest = Path.Combine(directory, ".lads-qa-capture-hud170")
 if (autoWorldVerification && File.Exists(hud170CaptureRequest)) File.Delete(hud170CaptureRequest);
 string hudFlickerCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hudflicker");
 if (autoWorldVerification && File.Exists(hudFlickerCaptureRequest)) File.Delete(hudFlickerCaptureRequest);
+string uiCaptureRequest = Path.Combine(directory, ".lads-qa-capture-ui");
+if (autoWorldVerification && File.Exists(uiCaptureRequest)) File.Delete(uiCaptureRequest);
 string itemPhysicsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-itemphysics");
 if (autoWorldVerification && File.Exists(itemPhysicsCaptureRequest)) File.Delete(itemPhysicsCaptureRequest);
 string inventoryCaptureRequest = Path.Combine(directory, ".lads-qa-capture-inventory");
@@ -377,7 +382,7 @@ var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<strin
 var failedCaptures = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:",
     "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
-    "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
+    "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
     "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
@@ -394,6 +399,7 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(sprintCaptureVerification, "Lads sprint capture END:")
     && Settled(hud170CaptureVerification, "Lads HUD 1.7.0 capture END:")
     && Settled(hudFlickerCaptureVerification, "Lads HUD flicker capture END:")
+    && Settled(uiCaptureVerification, "Lads UI capture END:")
     && Settled(itemPhysicsCaptureVerification, "Lads item physics capture END:")
     && Settled(inventoryCaptureVerification, "Lads inventory capture END:")
     && Settled(serverCaptureVerification, "Lads server features capture END:")
@@ -604,7 +610,8 @@ try
         // =hudflicker: only runs of frames with the HUD FPS cap off and on (Probe172HudFlicker).
         // =anim: only swing while using items and the damage tilt (Probe172Anim).
         // =keybinds: side mouse buttons and lasting key binds, the phase in <game>\.lads-qa-keybinds (Probe172Keybinds).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave" or "hudflicker" or "anim" or "keybinds") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =ui: only the reset questions and Fullbright's slider (Probe172Ui).
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave" or "hudflicker" or "anim" or "keybinds" or "ui") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
     }
     else
     {
@@ -699,7 +706,7 @@ try
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
                 "Lads kill streak capture END:",
                 "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
-                "Lads HUD flicker capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
+                "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
                 "Lads server features capture END:", "Lads F3/FOV capture END:",
                 "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:", "Lads resolution capture END:",
                 "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:" })
@@ -845,6 +852,7 @@ try
                     (sprintCaptureVerification, sprintCaptureRequest, "Walk Toggle Sprint & Sneak through the QA world and log every tick's sprint packets."),
                     (hud170CaptureVerification, hud170CaptureRequest, "Capture the 1.7.0 HUD changes in the QA world."),
                     (hudFlickerCaptureVerification, hudFlickerCaptureRequest, "Capture runs of frames with the HUD FPS cap off and on."),
+                    (uiCaptureVerification, uiCaptureRequest, "Answer the reset questions and drag Fullbright's slider with its menu open."),
                     (itemPhysicsCaptureVerification, itemPhysicsCaptureRequest, "Drop items in an Item Physics arena and capture its frames."),
                     (inventoryCaptureVerification, inventoryCaptureRequest, "Capture the inventories with and without potion effects in the QA world."),
                     (serverCaptureVerification, serverCaptureRequest, "Check the multiplayer features in the QA world and capture their frames."),
@@ -979,6 +987,8 @@ try
             "The requested 1.7.0 HUD capture did not pass. Inspect production-smoke.log.");
         Require(!hudFlickerCaptureVerification || passedMarkers.ContainsKey("Lads HUD flicker capture END:"),
             "The requested HUD flicker frames were not all captured. Inspect production-smoke.log.");
+        Require(!uiCaptureVerification || passedMarkers.ContainsKey("Lads UI capture END:"),
+            "The requested reset-question and Fullbright capture did not pass. Inspect production-smoke.log.");
         Require(!itemPhysicsCaptureVerification || passedMarkers.ContainsKey("Lads item physics capture END:"),
             "The requested Item Physics capture did not pass. Inspect production-smoke.log.");
         Require(!inventoryCaptureVerification || passedMarkers.ContainsKey("Lads inventory capture END:"),

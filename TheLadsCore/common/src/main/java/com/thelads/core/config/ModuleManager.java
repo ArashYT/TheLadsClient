@@ -152,7 +152,6 @@ public class ModuleManager {
 
         // Gameplay toggle modules
         FullbrightModule fb = new FullbrightModule();
-        fb.addOption(new SliderOption("Brightness Multiplier", 1.0, 1.0, 10.0, 0.5));
         register(fb, Module.Category.MECHANIC);
 
         register(new ToggleSprintModule(), Module.Category.MECHANIC);

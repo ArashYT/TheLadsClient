@@ -42,12 +42,13 @@ public final class LadsSettingsScreen {
     private boolean reducedMotion;
     private final ColorPicker colorPicker = new ColorPicker();
     private final ActionDropdown actions = new ActionDropdown();
+    private final ConfirmDialog confirm = new ConfirmDialog();
     private double displayedScroll;
     private int renderScroll;
     private List<Module> filtered = List.of();
     private Module detail;
     private Option editingOption, dragging;
-    private Rect dragTrack;
+    private Rect dragTrack, gameView;
     private boolean editingSearch, selectAll;
     private String editBuffer = "";
     private int cursor;
@@ -108,6 +109,12 @@ public final class LadsSettingsScreen {
     /** Bounds of a control drawn by the last render (e.g. "search", "option:Size"), or null; QA drives real input at them. */
     public Rect controlBounds(String id) { return controls.stream().filter(c -> c.id.equals(id)).map(Control::rect).findFirst().orElse(null); }
     public int getScrollOffset() { return scrollOffset; }
+    /** Where the last frame drew the live game view (GUI pixels), or null (QA measures the world there). */
+    public Rect gameViewBounds() { return gameView; }
+    /** True while the open page draws the live game view in its preview (Fullbright): 1.8.9 copies the framebuffer before the menu paints. */
+    public boolean showsGameView() { return detail != null && "Fullbright".equalsIgnoreCase(detail.getName()); }
+    /** The reset confirmation (QA reads its bounds and clicks them). */
+    public ConfirmDialog confirmDialog() { return confirm; }
     public List<String> visibleModuleNames() { return getFilteredModules().stream().map(Module::getName).toList(); }
 
     public void render(LadsGraphics g, int mouseX, int mouseY) {
@@ -120,7 +127,7 @@ public final class LadsSettingsScreen {
         if (Math.abs(scrollOffset - displayedScroll) < .2) displayedScroll = scrollOffset;
         renderScroll = (int)Math.round(displayedScroll);
         if (hoverStates.size() > 1024) hoverStates.clear();
-        width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear(); tipModule = null;
+        width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear(); tipModule = null; gameView = null;
         g.fill(0, 0, width, height, BG);
         int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 340 ? 118 : 0;
         g.fill(0, 0, width, 2, ACCENT);
@@ -150,7 +157,8 @@ public final class LadsSettingsScreen {
         colorPicker.render(g, mouseX, mouseY);
         actions.render(g, mouseX, mouseY);
         renderHudFpsDialog(g, mouseX, mouseY);
-        boolean overlay = colorPicker.isOpen() || actions.isOpen() || fpsDialogOpen;
+        confirm.render(g, mouseX, mouseY);
+        boolean overlay = colorPicker.isOpen() || actions.isOpen() || fpsDialogOpen || confirm.isOpen();
         if (tip.update(overlay || tipModule == null ? null : tipModule.getName(), now)) tooltip(g, tipModule.getDescription(), mouseX, mouseY);
     }
     /** Description tooltip beside the pointer, kept on screen and drawn last so it sits above the frame. */
@@ -289,7 +297,10 @@ public final class LadsSettingsScreen {
         int resetY = top + picker + options.size() * rowH - renderScroll;
         if (resetY < top + viewport.height && resetY + 24 > top)
             button(g, "reset", "Reset options", new Rect(x, resetY + 4, Math.min(130, leftW - 8), 24),
-                () -> { detail.getOptions().forEach(Option::reset); changed(detail); notice = "Options reset"; }, true, mx, my, false);
+                () -> {
+                    Module module = detail;
+                    confirm.open("Reset every " + module.getName() + " option to its default?", () -> { module.getOptions().forEach(Option::reset); changed(module); notice = "Options reset"; });
+                }, true, mx, my, false);
         g.disableScissor(); scrollbar(g);
 
         if (wide && previewW >= 80) {
@@ -539,9 +550,18 @@ public final class LadsSettingsScreen {
                 g.fill(centerX, centerY, centerX + 1, centerY + 1, 0xFFFFFFFF);
                 g.drawCenteredText("Crosshair Reticle", centerX, centerY + 24, MUTED);
             } else if ("Fullbright".equalsIgnoreCase(name)) {
-                round(g, centerX - 40, centerY - 25, 80, 50, 0x30FFFFFF);
-                g.drawCenteredText("GAMMA BOOST", centerX, centerY - 10, ACCENT);
-                g.drawCenteredText(m.isEnabled() ? "Max 1000% (Daylight)" : "Standard Gamma", centerX, centerY + 6, TEXT);
+                // The live world, so a change shows while it is made; versions that cannot copy it keep the card.
+                if (g.drawGameView(boxX + 2, boxY + 2, boxW - 4, boxH - 4)) {
+                    gameView = new Rect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+                    String live = m.isEnabled() && m.getOption("Gamma") instanceof SliderOption gamma ? "Fullbright " + gamma.display() : "Fullbright off";
+                    int labelW = g.textWidth(live) + 10;
+                    round(g, centerX - labelW / 2, boxY + boxH - 18, labelW, 14, 0xC0000000);
+                    g.drawCenteredText(live, centerX, boxY + boxH - 14, TEXT, false);
+                } else {
+                    round(g, centerX - 40, centerY - 25, 80, 50, 0x30FFFFFF);
+                    g.drawCenteredText("GAMMA BOOST", centerX, centerY - 10, ACCENT);
+                    g.drawCenteredText(m.isEnabled() ? "Brighter than Brightness 100%" : "Standard Gamma", centerX, centerY + 6, TEXT);
+                }
             } else if ("Zoom".equalsIgnoreCase(name)) {
                 round(g, centerX - 36, centerY - 36, 72, 72, 0x40FFFFFF);
                 round(g, centerX - 32, centerY - 32, 64, 64, CARD);
@@ -901,7 +921,9 @@ public final class LadsSettingsScreen {
         Rect r = new Rect(x + w - controlW - 6, y + 7, controlW, 23);
         String id = "option:" + option.getName();
         if (option instanceof ActionOption action) {
-            button(g, id, action.getLabel(), r, () -> leave(action::run), action.isAvailable(), mx, my, false);
+            button(g, id, action.getLabel(), r, () -> {
+                if (action.getConfirm() == null) leave(action::run); else confirm.open(action.getConfirm(), () -> leave(action::run));
+            }, action.isAvailable(), mx, my, false);
         } else if (option instanceof BoolOption b) {
             button(g, id, b.get() ? "ON" : "OFF", r, () -> { b.toggle(); changed(detail); }, true, mx, my, b.get());
         } else if (option instanceof DropdownOption d) {
@@ -912,9 +934,21 @@ public final class LadsSettingsScreen {
             double value = option instanceof SliderOption s ? s.getValue() : ((DoubleOption)option).get();
             // Better Resolution's Scale only counts with the Custom preset: shown greyed and not draggable.
             boolean free = !(detail instanceof BetterResolutionModule resolution && resolution.locked(option));
-            button(g, id, String.format(Locale.ROOT, "%.2f", value).replaceAll("\\.?0+$", ""), r, () -> {}, free, mx, my, false);
-            int fillW = (int)((controlW - 8) * (value - min) / Math.max(.001, max - min));
-            g.fill(r.x + 4, r.y + 20, r.x + 4 + fillW, r.y + 22, ACCENT);
+            if (option instanceof SliderOption s && s.isEditable()) {
+                // The slider, and beside it the value as a text field: click it, type a whole number, Enter.
+                Rect track = new Rect(r.x, r.y, r.width - 50, r.height), field = new Rect(r.x + r.width - 46, r.y, 46, r.height);
+                int first = controls.size();
+                button(g, id, "", track, () -> {}, free, mx, my, false);
+                if (controls.size() > first) controls.set(first, new Control(id, s.getName() + ", " + s.display(), track, () -> {}, free));
+                int fillW = (int)((track.width - 8) * (value - min) / Math.max(.001, max - min));
+                g.fill(track.x + 4, track.y + 10, track.x + track.width - 4, track.y + 13, LadsPalette.BORDER);
+                g.fill(track.x + 4, track.y + 10, track.x + 4 + fillW, track.y + 13, ACCENT);
+                button(g, id + ":field", editingOption == option ? inputWindow(g, field.width - 10) : s.display(), field, () -> startEdit(s), free, mx, my, editingOption == option);
+            } else {
+                button(g, id, SliderOption.format(value), r, () -> {}, free, mx, my, false);
+                int fillW = (int)((controlW - 8) * (value - min) / Math.max(.001, max - min));
+                g.fill(r.x + 4, r.y + 20, r.x + 4 + fillW, r.y + 22, ACCENT);
+            }
         } else if (option instanceof ColorOption c) {
             button(g, id, editingOption == option ? inputDisplay() : String.format("%08X", c.getColor()), new Rect(r.x, r.y, r.width - 58, r.height), () -> colorPicker.open(option.getName(), c.getColor(), value -> { c.setColor(value); c.setUseGlobal(false); changed(detail); }), true, mx, my, false);
             button(g, id + ":global", c.isUseGlobal() ? "Global" : "Own", new Rect(r.x + r.width - 54, r.y, 54, r.height), () -> { c.setUseGlobal(!c.isUseGlobal()); changed(detail); }, true, mx, my, c.isUseGlobal());
@@ -972,6 +1006,7 @@ public final class LadsSettingsScreen {
     }
     public boolean mouseClicked(double x, double y, int button) {
         tip.dismiss();
+        if (confirm.isOpen()) return confirm.click(x, y, button);
         if (actions.click(x,y,button)) return true;
         if (colorPicker.click(x, y, button)) return true;
         if (fpsDialogOpen) {
@@ -1051,6 +1086,7 @@ public final class LadsSettingsScreen {
         commitEdit(); return true;
     }
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
+        if (confirm.isOpen()) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); return true; }
         if (colorPicker.move(x, y)) return true;
         refreshCapabilities();
@@ -1059,6 +1095,7 @@ public final class LadsSettingsScreen {
         return true;
     }
     public boolean mouseReleased(double x, double y, int button) {
+        if (confirm.isOpen()) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); draggingFpsSlider = false; return true; }
         if (colorPicker.release()) return true;
         refreshCapabilities();
@@ -1075,12 +1112,14 @@ public final class LadsSettingsScreen {
         dirty = true; detail.touch(); persist();
     }
     public boolean mouseScrolled(double x, double y, double amount) {
+        if (confirm.isOpen()) return true;
         if (actions.wheel(amount)) return true;
         if (colorPicker.isOpen()) return true;
         if (!viewport.contains(x, y)) return false;
         tip.dismiss(); scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int)(amount * 28))); return true;
     }
     public boolean keyPressed(int key, int modifiers) {
+        if (confirm.isOpen()) return confirm.key(key);
         if (actions.key(key,modifiers)) return true;
         if (colorPicker.key(key)) return true;
         if (fpsDialogOpen) {
@@ -1122,7 +1161,7 @@ public final class LadsSettingsScreen {
                 return true;
             }
             if (ctrl && key == 65) { selectAll = true; return true; }
-            if (key == 257) { commitEdit(); return true; }
+            if (key == 257 || key == 335) { commitEdit(); return true; }
             if (key == 263) { if (cursor > 0) cursor = editBuffer.offsetByCodePoints(cursor, -1); selectAll = false; return true; }
             if (key == 262) { if (cursor < editBuffer.length()) cursor = editBuffer.offsetByCodePoints(cursor, 1); selectAll = false; return true; }
             if (key == 268) { cursor = 0; selectAll = false; return true; }
@@ -1159,6 +1198,7 @@ public final class LadsSettingsScreen {
         return false;
     }
     public boolean charTyped(int codePoint) {
+        if (confirm.isOpen()) return true;
         if (actions.type(codePoint)) return true;
         if (colorPicker.type(codePoint)) return true;
         if (fpsDialogOpen) {
@@ -1170,8 +1210,9 @@ public final class LadsSettingsScreen {
         }
         if (!editingSearch && editingOption == null || Character.isISOControl(codePoint) || !Character.isValidCodePoint(codePoint)) return false;
         String text = new String(Character.toChars(codePoint));
+        if (editingOption instanceof SliderOption && !(codePoint >= '0' && codePoint <= '9' || codePoint == '-')) return true;
         if (selectAll) { editBuffer = ""; cursor = 0; selectAll = false; }
-        if (editBuffer.length() + text.length() <= (editingSearch ? 64 : editingOption instanceof ColorOption ? 8 : 512)) {
+        if (editBuffer.length() + text.length() <= (editingSearch ? 64 : editingOption instanceof ColorOption ? 8 : editingOption instanceof SliderOption ? 9 : 512)) {
             editBuffer = editBuffer.substring(0, cursor) + text + editBuffer.substring(cursor); cursor += text.length();
             if (editingSearch) applySearch();
         }
@@ -1192,18 +1233,25 @@ public final class LadsSettingsScreen {
         else if (modsView) { modsSearch = editBuffer; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; }
         else setSearchQuery(editBuffer);
     }
-    private void startEdit(Option o) { editingKbSearch = false; editingSearch = false; editingOption = o; editBuffer = o instanceof TextOption t ? t.getValue() : String.format("%08X", ((ColorOption)o).getColor()); cursor = editBuffer.length(); selectAll = true; }
+    private void startEdit(Option o) { editingKbSearch = false; editingSearch = false; editingOption = o; editBuffer = o instanceof TextOption t ? t.getValue() : o instanceof SliderOption s ? SliderOption.format(s.getValue()) : String.format("%08X", ((ColorOption)o).getColor()); cursor = editBuffer.length(); selectAll = true; }
     private boolean commitEdit() {
+        String rejected = "";
         if (editingKbSearch) { kbSearch = editBuffer; editingKbSearch = false; }
         if (editingOption instanceof ColorOption c) {
             try { if (editBuffer.length() != 8) throw new NumberFormatException(); c.setColor(Integer.parseUnsignedInt(editBuffer, 16)); c.setUseGlobal(false); }
             catch (NumberFormatException e) { notice = "Use 8 hex digits: AARRGGBB. Esc cancels."; return false; }
         } else if (editingOption instanceof TextOption t) t.setValue(editBuffer);
+        else if (editingOption instanceof SliderOption s) {
+            // A whole number in range (rounded to the step); anything else leaves the value as it was and says so.
+            var typed = s.parse(editBuffer);
+            if (typed.isPresent()) s.setValue(typed.getAsDouble());
+            else rejected = "Not a whole number from " + SliderOption.format(s.getMin()) + " to " + SliderOption.format(s.getMax()) + ": kept " + s.display();
+        }
         // A number field keeps its value for anything else, and says so.
-        String kept = editingOption instanceof com.thelads.core.config.IntTextOption n && !n.valid(editBuffer)
-            ? n.getName() + ": a whole number from " + n.getMin() + " to " + n.getMax() + ", so it stays " + n.getValue() + "." : "";
+        if (rejected.isEmpty() && editingOption instanceof com.thelads.core.config.IntTextOption n && !n.valid(editBuffer))
+            rejected = n.getName() + ": a whole number from " + n.getMin() + " to " + n.getMax() + ", so it stays " + n.getValue() + ".";
         if (editingOption != null) changed(detail);
-        editingOption = null; editingSearch = false; selectAll = false; notice = kept; return true;
+        editingOption = null; editingSearch = false; selectAll = false; notice = rejected; return true;
     }
     private void category(String cat) { if (!finish()) return; currentCategory = cat; detail = null; modsView = detailFromMods = false; modsPlan = null; invalidate(); }
     private void invalidate() { filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = ""; }
