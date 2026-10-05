@@ -13,6 +13,9 @@ public class Module {
     private long lastModified;
     private long lastOpenedTime;
     private final List<Option> options = new ArrayList<>();
+    /** getOption runs per HUD element, chat line and tile entity every frame: a hash lookup, rebuilt when options were added. */
+    private java.util.Map<String, Option> byName;
+    private int indexed = -1;
     private Category category = Category.ALL;
 
     public Module(String name, String description) {
@@ -35,12 +38,14 @@ public class Module {
     }
 
     public Option getOption(String name) {
-        for (Option o : options) {
-            if (o.getName().equals(name)) {
-                return o;
-            }
+        java.util.Map<String, Option> map = byName;
+        if (map == null || indexed != options.size()) {
+            map = new java.util.HashMap<>();
+            for (Option o : options) map.putIfAbsent(o.getName(), o); // the first of equal names, as a scan finds it
+            indexed = options.size();
+            byName = map;
         }
-        return null;
+        return map.get(name);
     }
 
     public String getName() {

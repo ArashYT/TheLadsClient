@@ -9,6 +9,7 @@ import com.thelads.core.config.SliderOption;
 import java.util.List;
 
 public class ScoreboardHudElement extends HudElement {
+    private static final java.util.regex.Pattern COLOR_CODE = java.util.regex.Pattern.compile("§.");
     private static final int MAX_ROWS = 15;
     private static final int PADDING = 4;
     private static final int VALUE_GAP = 10;
@@ -77,7 +78,7 @@ public class ScoreboardHudElement extends HudElement {
             if (v == null || v.trim().isEmpty()) return false;
             try {
                 // 26.x values carry the sidebar's section-sign colour codes ("§r§c15").
-                vals[i] = Integer.parseInt(v.replaceAll("§.", "").trim());
+                vals[i] = Integer.parseInt(COLOR_CODE.matcher(v).replaceAll("").trim());
             } catch (NumberFormatException e) {
                 return false;
             }

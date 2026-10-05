@@ -31,6 +31,7 @@ public final class NativeHud {
         "Paperdoll", "BossBar", "Autohide", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates"};
     /** QA only (CoreProbe): frames in which HudManager drew the Lads HUD. */
     public static long frames;
+    private static final GuiLadsAdapter graphics = new GuiLadsAdapter(null, 0, 0);
     /** QA only (Probe172HudFlicker): the time those frames spent in HudManager. */
     static long hudNanos;
     /** QA only: SmoothHotbar's last offset of the selected-slot frame from its slot, in GUI pixels. */
@@ -67,7 +68,7 @@ public final class NativeHud {
         Minecraft mc = Minecraft.getMinecraft();
         if (event.type != RenderGameOverlayEvent.ElementType.ALL || mc.currentScreen instanceof DraggableHudScreen189) return;
         // 2D over everything, as on the other versions. Blending and depth go back as found, the rest to the state Forge ends its overlay with.
-        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND), depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        boolean blend = GlState189.blend(), depth = GlState189.depth();
         GlStateManager.disableDepth();
         GlStateManager.enableTexture2D();
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
@@ -77,7 +78,10 @@ public final class NativeHud {
         boolean faded = shown > 0 && shown < 1 && Autohide189.begin();
         try {
             long start = System.nanoTime();
-            if (shown > 0) HudManager.getInstance().render(new GuiLadsAdapter(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight()));
+            if (shown > 0) {
+                graphics.reset(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
+                HudManager.getInstance().render(graphics);
+            }
             hudNanos += System.nanoTime() - start;
             frames++;
         } finally {
