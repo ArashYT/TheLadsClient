@@ -45,11 +45,16 @@ public final class NativeKillBanner {
     private NativeKillBanner() {}
 
     public static void tick() {
+        KillBannerArt.sweep();
         if (NativeKillBannerPreview.tick()) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (!eligible()) { reset(); return; }
         if (trackedConnection != minecraft.getConnection()) { reset(); trackedConnection = minecraft.getConnection(); }
         if (!minecraft.player.isAlive()) BANNER.clear();
+        if (NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module) {
+            KillBannerModule.Pick pick = module.chosen();
+            if (pick.style() != null) KillBannerArt.warm(pick.style(), pick.variant());
+        }
     }
 
     /** MultiPlayerGameMode.attack: a hit whose crosshair point lands on the top quarter of the target's box is a head hit. */
@@ -132,8 +137,13 @@ public final class NativeKillBanner {
     }
 
     static void trigger(int kills, boolean preview, boolean headshot) {
+        if (NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module) trigger(kills, preview, headshot, module.chosen());
+    }
+
+    /** QA: a banner of this pick (a random skin's, say), with its sound. */
+    static void trigger(int kills, boolean preview, boolean headshot, KillBannerModule.Pick pick) {
         if (!eligible() || !(NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module)) return;
-        play(module, KillBanners.show(module, kills, preview, headshot, module.chosen(), System.nanoTime()));
+        play(module, KillBanners.show(module, kills, preview, headshot, pick, System.nanoTime()));
     }
 
     private static void play(KillBannerModule module, String sound) {
@@ -147,6 +157,16 @@ public final class NativeKillBanner {
         try {
             KillBannerStyle style = KillBannerStyle.fromId(skin);
             KillBannerArt.thumb(g, style, variant, x, y, w, h);
+            return true;
+        } catch (RuntimeException failure) {
+            return false;
+        }
+    }
+
+    /** The Kill Banner settings preview: the skin's banners for 1 to 5 kills in turn, {@code clock} seconds into the loop. */
+    public static boolean drawPreview(GuiGraphicsExtractor g, String skin, int variant, int x, int y, int w, int h, double clock) {
+        try {
+            KillBannerArt.preview(g, KillBannerStyle.fromId(skin), variant, x, y, w, h, clock);
             return true;
         } catch (RuntimeException failure) {
             return false;
@@ -174,11 +194,16 @@ public final class NativeKillBanner {
             renderBase(graphics, minecraft, module, age);
             return;
         }
-        KillBannerStrip strip = style.strip(BANNER.sequence());
-        KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(),
-            BANNER.headshot() && module.headshotText.get());
-        if (frame == null) return;
-        KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), strip, frame, (float) module.size.getValue() / 100f);
+        boolean headshot = BANNER.headshot() && module.headshotText.get();
+        float size = (float) module.size.getValue() / 100f;
+        if (style.isAnimated()) {
+            KillBannerStrip strip = style.strip(BANNER.sequence());
+            KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot);
+            if (frame != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), strip, frame, size);
+        } else {
+            KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot);
+            if (layers != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), layers, size);
+        }
     }
 
     private static void renderBase(GuiGraphicsExtractor graphics, Minecraft minecraft, KillBannerModule module, double age) {
