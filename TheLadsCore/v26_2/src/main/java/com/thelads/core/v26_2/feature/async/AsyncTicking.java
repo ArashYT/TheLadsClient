@@ -3,10 +3,17 @@ package com.thelads.core.v26_2.feature.async;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
+import com.sun.jna.Platform;
+import com.sun.jna.platform.win32.BaseTSD;
+import com.sun.jna.platform.win32.Kernel32;
 import com.thelads.core.modules.AsyncModule;
+import com.thelads.core.modules.AsyncSelfCheck;
 import com.thelads.core.modules.AsyncTickPlan;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -53,7 +60,7 @@ import org.slf4j.LoggerFactory;
  * entity add/move/remove and client block updates are queued and applied on the main thread when the phase ends, block,
  * tick, POI, stat, advancement, game-event and loot-sequence writes take one lock, chunks are read without loading, and
  * the level random is thread safe. Any exception or unsafe access logs once and turns parallel ticking off until the
- * next world.
+ * next world. A self-check per dimension (AsyncSelfCheck) keeps parallel ticking only while it is faster than normal ticking.
  */
 public final class AsyncTicking {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsAsync");
@@ -64,10 +71,18 @@ public final class AsyncTicking {
     private static boolean active;
     private static ExecutorService pool;
     private static int poolSize;
+    /** Server thread only: each dimension's self-check, from the first tick Async could run there until the server stops. */
+    private static final Map<ServerLevel, AsyncSelfCheck> CHECKS = new HashMap<>();
+    private static int usableCores;
+    private static long coresCheckedAt;
     /** QA counters. */
     static final AtomicLong PARALLEL_TICKS = new AtomicLong(), PARALLEL_ENTITIES = new AtomicLong(), REGIONS = new AtomicLong(), PHASES = new AtomicLong();
     /** QA: time spent in the entity loop of every dimension, Async on or off. */
     static final AtomicLong LOOP_NANOS = new AtomicLong();
+    /** QA: self-check switches (parallel ticking benched, and back). */
+    static final AtomicLong BENCHED = new AtomicLong(), RESUMED = new AtomicLong();
+    /** QA: each worker task first sleeps this long, as if the OS kept it waiting for a busy core (simulated outside CPU load). */
+    static volatile long qaStallNanos;
 
     private AsyncTicking() {}
 
@@ -76,8 +91,8 @@ public final class AsyncTicking {
         if (active || FabricLoader.getInstance().isModLoaded("async")) return;
         active = true;
         ModuleSupport.registerBuiltIn(AsyncModule.NAME);
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> fallback = null);
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> shutdown());
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> { fallback = null; CHECKS.clear(); });
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> { shutdown(); CHECKS.clear(); });
         AsyncStressProbe.initialize();
     }
 
@@ -115,7 +130,7 @@ public final class AsyncTicking {
 
     private static void tick(ServerLevel level, EntityTickList list, Consumer<Entity> action, Operation<Void> original) {
         AsyncModule module = ModuleManager.getInstance().getModule(AsyncModule.NAME) instanceof AsyncModule async ? async : null;
-        int threads = module == null ? 1 : module.threads(Runtime.getRuntime().availableProcessors());
+        int threads = module == null ? 1 : module.threads(usableCores());
         // An active profiler (F3 profiling, /debug) is one per thread: its records would be torn apart.
         if (!active || module == null || !module.isEnabled() || threads < 2 || fallback != null
             || level.getServer().isDedicatedServer() || Profiler.get() != InactiveProfiler.INSTANCE) {
@@ -125,6 +140,56 @@ public final class AsyncTicking {
         List<Entity> entities = new ArrayList<>();
         list.forEach(entities::add);
         if (entities.size() < module.minEntities()) { original.call(list, action); return; }
+        AsyncSelfCheck check = CHECKS.computeIfAbsent(level, key -> new AsyncSelfCheck());
+        long start = System.nanoTime();
+        if (check.parallel()) tickParallel(entities, action, threads);
+        else original.call(list, action);
+        AsyncSelfCheck.Change change = check.record(System.nanoTime() - start, entities.size());
+        if (change == AsyncSelfCheck.Change.BENCHED) {
+            BENCHED.incrementAndGet();
+            LOGGER.info("Lads Async: parallel entity ticking was not faster in {} ({}); ticking normally, trying again in {} minutes",
+                level.dimension().identifier(), compared(check), check.backoffTicks() / 1200);
+        } else if (change == AsyncSelfCheck.Change.RESUMED) {
+            RESUMED.incrementAndGet();
+            LOGGER.info("Lads Async: parallel entity ticking is faster again in {} ({}); back on", level.dimension().identifier(), compared(check));
+        }
+    }
+
+    private static String compared(AsyncSelfCheck check) {
+        return String.format(Locale.ROOT, "%.1f ms parallel vs %.1f ms normal per 1000 entities", check.lastParallel() / 1000, check.lastNormal() / 1000);
+    }
+
+    /** QA: whether the self-check has parallel ticking switched off in this dimension. */
+    static boolean benched(ServerLevel level) {
+        AsyncSelfCheck check = CHECKS.get(level);
+        return check != null && check.benched();
+    }
+
+    /**
+     * Cores this game may run on. On Windows Java counts every core even when the process is limited to a few (affinity set by
+     * the user or another program), so the process affinity mask is read too; elsewhere availableProcessors already follows it.
+     */
+    static int usableCores() {
+        long now = System.nanoTime();
+        if (usableCores > 0 && now - coresCheckedAt < 30_000_000_000L) return usableCores;
+        int cores = Runtime.getRuntime().availableProcessors();
+        try {
+            if (Platform.isWindows()) {
+                BaseTSD.ULONG_PTRByReference process = new BaseTSD.ULONG_PTRByReference(), system = new BaseTSD.ULONG_PTRByReference();
+                if (Kernel32.INSTANCE.GetProcessAffinityMask(Kernel32.INSTANCE.GetCurrentProcess(), process, system)) {
+                    int allowed = Long.bitCount(process.getValue().longValue());
+                    if (allowed > 0) cores = Math.min(cores, allowed);
+                }
+            }
+        } catch (Throwable ignored) {
+            // no JNA or no answer: availableProcessors
+        }
+        usableCores = cores;
+        coresCheckedAt = now;
+        return cores;
+    }
+
+    private static void tickParallel(List<Entity> entities, Consumer<Entity> action, int threads) {
         AsyncTickPlan<Entity> plan = AsyncTickPlan.of(entities, AsyncTicking::mayRunInParallel,
             entity -> entity.chunkPosition().x(), entity -> entity.chunkPosition().z());
         for (Entity entity : plan.sequential) action.accept(entity);
@@ -142,6 +207,8 @@ public final class AsyncTicking {
                 List<Entity> region = regions.get(i);
                 int index = i;
                 tasks.add(() -> {
+                    long stall = qaStallNanos;
+                    if (stall > 0) java.util.concurrent.locks.LockSupport.parkNanos(stall);
                     for (Entity entity : region) {
                         if (fallback != null) break;
                         try { action.accept(entity); } catch (Throwable failure) { fail(entity, failure); }
