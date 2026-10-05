@@ -31,7 +31,7 @@ class OldAnimationsModuleTest {
         assertInstanceOf(OldAnimationsModule.class, registered);
         assertEquals("Gameplay", LadsSettingsScreen.categoryOf(registered));
         var module = new OldAnimationsModule();
-        assertFalse(module.isEnabled(), "visual modules start off, like LegacySwing and OldDamageTilt");
+        assertFalse(module.isEnabled(), "visual modules start off, like LegacySwing");
         assertEquals(Feature.values().length, module.getOptions().size(), "one toggle per option");
         var names = new HashSet<String>();
         for (Feature feature : Feature.values()) {
