@@ -4,9 +4,12 @@ import static com.thelads.core.v1_8_9.feature.CoreProbe.after;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.screenshot;
 
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef.LPARAM;
 import com.sun.jna.platform.win32.WinDef.WPARAM;
+import com.sun.jna.win32.StdCallLibrary;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.modules.ToggleSprintModule;
 import com.thelads.core.modules.ZoomModule;
@@ -86,7 +89,7 @@ final class Probe172Keybinds {
         steps.add(Probe172Keybinds::start);
         if ("bind".equals(PHASE)) {
             steps.addAll(Arrays.<CoreProbe.Step>asList(Probe172Keybinds::shipped, Probe172Keybinds::shippedSeen, Probe172Keybinds::hooked,
-                Probe172Keybinds::hookedSeen, Probe172Keybinds::openControls, Probe172Keybinds::reset, Probe172Keybinds::confirmReset, Probe172Keybinds::resetSaved,
+                Probe172Keybinds::hookedSeen, mc -> real(mc, false), mc -> realSeen(mc, false), mc -> real(mc, true), mc -> realSeen(mc, true), Probe172Keybinds::openControls, Probe172Keybinds::reset, Probe172Keybinds::confirmReset, Probe172Keybinds::resetSaved,
                 Probe172Keybinds::bindDrop, Probe172Keybinds::bindZoom, Probe172Keybinds::bindZoomed,
                 mc -> bindKey(mc, mc.gameSettings.keyBindJump, Keyboard.KEY_V, 'v'), mc -> bound(mc, mc.gameSettings.keyBindJump, Keyboard.KEY_V),
                 mc -> bindKey(mc, Toggles189.TOGGLE_SPRINT, Keyboard.KEY_G, 'g'), mc -> bound(mc, Toggles189.TOGGLE_SPRINT, Keyboard.KEY_G),
@@ -233,6 +236,50 @@ final class Probe172Keybinds {
         return after(2);
     }
 
+    /** user32's legacy input calls: real OS input, as a mouse and keyboard make it. */
+    public interface Input extends StdCallLibrary {
+        void keybd_event(byte key, byte scan, int flags, Pointer extra);
+        void mouse_event(int flags, int dx, int dy, int data, Pointer extra);
+    }
+
+    /**
+     * Owner away only (LADS_VERIFY_FOCUS=1, exclusive QA lock): Mouse 4 pressed with Shift held through Windows' own input
+     * (keybd_event and mouse_event), so Windows writes the message and its flags itself; first without the hook, then with it.
+     * Only while the QA window is focused and holds the mouse (the cursor is on it): elsewhere the side button would go to
+     * another program.
+     */
+    private static boolean real(Minecraft mc, boolean hooked) {
+        if (!Display.isActive() || !Mouse.isGrabbed()) {
+            LOG.info("Lads 1.8.9 keybinds probe: real OS input skipped: the QA window is not focused with the mouse in it");
+            return after(1);
+        }
+        if (!hooked) SideButtons189.remove();
+        EVENTS.seen.clear();
+        Input input = (Input) Native.loadLibrary("user32", Input.class);
+        input.keybd_event((byte) 0x10, (byte) 0, 0, null); // Shift down
+        try {
+            input.mouse_event(0x80, 0, 0, 1, null); // XBUTTON1 down
+            input.mouse_event(0x100, 0, 0, 1, null); // XBUTTON1 up
+        } finally {
+            input.keybd_event((byte) 0x10, (byte) 0, 2, null); // Shift up
+        }
+        return after(5);
+    }
+
+    private static boolean realSeen(Minecraft mc, boolean hooked) throws Exception {
+        if (!Display.isActive() || !Mouse.isGrabbed()) return after(1);
+        List<String> seen = new ArrayList<>(EVENTS.seen);
+        if (!hooked) {
+            boolean stuck = Mouse.isButtonDown(4);
+            side(2, false, 0);
+            SideButtons189.install();
+            check(seen.equals(Arrays.asList("Mouse 5", "release Mouse 4")) && stuck,
+                "Keybinds: real input, LWJGL as shipped: Mouse 4 with Shift held arrives as Mouse 5, which stays down " + seen);
+        } else check(seen.equals(Arrays.asList("Mouse 4", "release Mouse 4")) && !Mouse.isButtonDown(3) && !Mouse.isButtonDown(4),
+            "Keybinds: real input with the hook: Mouse 4 with Shift held arrives as Mouse 4 " + seen);
+        return after(3);
+    }
+
     private static boolean openControls(Minecraft mc) {
         mc.displayGuiScreen(new GuiControls(null, mc.gameSettings));
         return after(10);
@@ -284,6 +331,8 @@ final class Probe172Keybinds {
     }
 
     private static boolean bindKey(Minecraft mc, KeyBinding key, int code, char typed) throws Exception {
+        check(mc.currentScreen instanceof ControlsScreen189, "Keybinds: Controls is open");
+        controls = (ControlsScreen189) mc.currentScreen;
         controls.buttonId = key;
         CoreProbe.tap(code, typed);
         return after(3);
@@ -299,13 +348,15 @@ final class Probe172Keybinds {
     private static boolean names(Minecraft mc) throws Exception {
         check("Button 4".equals(GameSettings.getKeyDisplayString(MOUSE4)) && "Button 5".equals(GameSettings.getKeyDisplayString(MOUSE5)),
             "Keybinds: the side buttons are named Button 4 and Button 5");
+        controls.search().setFocused(true); // the Reset All click left it
         for (char c : "key:button".toCharArray()) CoreProbe.tap(c == ':' ? Keyboard.KEY_SEMICOLON : Keyboard.getKeyIndex(String.valueOf(Character.toUpperCase(c))), c);
         return after(5);
     }
 
     private static boolean namesShown(Minecraft mc) throws Exception {
         List<KeyBinding> shown = controls.shownKeys();
-        check(shown.contains(mc.gameSettings.keyBindDrop) && shown.contains(Zoom189.ZOOM), "Keybinds: the Controls search 'key:button' lists Drop and "
+        check("key:button".equals(controls.search().getText()) && shown.contains(mc.gameSettings.keyBindDrop) && shown.contains(Zoom189.ZOOM)
+            && !shown.contains(mc.gameSettings.keyBindForward), "Keybinds: the Controls search 'key:button' lists Drop and "
             + "Lads Zoom on the side buttons (" + shown.size() + " binds on mouse buttons)");
         screenshot(mc, "172-controls-side-buttons");
         mc.displayGuiScreen(null);
