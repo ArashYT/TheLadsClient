@@ -62,12 +62,18 @@ final class Probe172HudFlicker {
         "BossBar", "KillBanner", "Item Physics", "Chat Heads", "Raised", "Autohide", "PingHUD", "Memory", "Speed", "Day", "Time", "XP",
         "Biome", "Direction", "Health", "Hunger", "TexturePacks", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress",
         "PortalCoordinates"};
-    private static final int FRAMES = 36, HIDDEN = 4, CAP = 10, BENCH_SECONDS = 6;
-    static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe172HudFlicker::setup,
-        mc -> run(mc, "hud-hidden"), mc -> run(mc, "hud-off"), mc -> run(mc, "hud-on"), mc -> run(mc, "hud-replay"),
-        mc -> run(mc, "hud-nofont"), mc -> run(mc, "hud-after"),
-        mc -> run(mc, "bench-nofont"), mc -> run(mc, "bench-off"), mc -> run(mc, "bench-replay"), mc -> run(mc, "bench-on"),
-        mc -> run(mc, "f3-hidden"), mc -> run(mc, "f3-off"), mc -> run(mc, "f3-on"), mc -> run(mc, "f3-after"), Probe172HudFlicker::restore);
+    private static final int FRAMES = 36, HIDDEN = 4, CAP = 10, BENCH_SECONDS = 5;
+    static final List<CoreProbe.Step> STEPS = new ArrayList<CoreProbe.Step>();
+    static {
+        STEPS.add(Probe172HudFlicker::setup);
+        List<String> runs = new ArrayList<String>(Arrays.asList("hud-hidden", "hud-off", "hud-on", "hud-replay", "hud-nofont", "hud-after"));
+        // Benchmark: three rounds, each in another order, so warm-up and the PC's other load fall on every setting.
+        String[][] rounds = {{"nofont", "off", "replay", "on"}, {"on", "replay", "off", "nofont"}, {"off", "on", "nofont", "replay"}};
+        for (int round = 0; round < rounds.length; round++) for (String setting : rounds[round]) runs.add("bench-" + (round + 1) + "-" + setting);
+        runs.addAll(Arrays.asList("f3-hidden", "f3-off", "f3-on", "f3-after"));
+        for (final String name : runs) STEPS.add(mc -> run(mc, name));
+        STEPS.add(Probe172HudFlicker::restore);
+    }
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<Option, JsonElement>();
     private static final Map<Module, Boolean> enabledWere = new LinkedHashMap<Module, Boolean>();
     private static final JsonObject report = new JsonObject();
