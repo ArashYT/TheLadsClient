@@ -56,19 +56,19 @@ import org.lwjgl.opengl.GL12;
 /**
  * QA only (LADS_VERIFY_189_ONLY=rx): RenderTweaks189 A/B in the QA world. Two scenes in front of a stone backdrop: "signs" (200
  * wall signs, four formatted lines each) and "crowd" (45 armour stands with name tags and 40 players in teams, all in
- * leather/iron/diamond armour, half enchanted). Uncapped FPS (benchmark exception: sandbox only) at render distance 8 and 12,
- * tweaks off and on in turn, 6 rounds of 4 s: average FPS, 1 % low, p50/p99 frame ms, render-thread CPU and GPU ms per frame.
+ * leather/iron/diamond armour, half enchanted). Uncapped FPS at render distance 8 and 12 (benchmark exception: sandbox only, run
+ * with no other QA game), tweaks off and on in turn, 8 rounds of 4 s: medians of FPS, the work per frame (RenderTickEvent START to
+ * END: p50/p99/max ms and render-thread CPU ms) and GPU ms.
  * Visual parity: the world (before the HUD and hand) read back with the tweaks off and on must match pixel for pixel, also after
  * sign lines changed. Per-call costs and correctness checks for each path. Results: lads-qa/rx/rx.json and lads-qa/rx/*.png.
  * Everything built, spawned and changed is put back.
  */
 final class Probe173Rx {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
-    private static final int ROUNDS = 6, SETTLE_MS = 1000, MEASURE_MS = 4000, PLAYERS = 40;
-    private static final int[] DISTANCES = {8, 12};
+    private static final int ROUNDS = 8, SETTLE_MS = 1000, MEASURE_MS = 4000, PLAYERS = 40;
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe173Rx::setup, Probe173Rx::built,
-        mc -> parity(mc, "signs", 0), mc -> bench(mc, "signs", 0), mc -> bench(mc, "signs", 1), Probe173Rx::editSigns, mc -> parity(mc, "signs-edited", 0),
-        mc -> parity(mc, "crowd", 180), mc -> bench(mc, "crowd", 0), mc -> bench(mc, "crowd", 1), Probe173Rx::calls, Probe173Rx::restore);
+        mc -> parity(mc, "signs", 0), mc -> bench(mc, "signs", 8), mc -> bench(mc, "signs", 12), Probe173Rx::editSigns, mc -> parity(mc, "signs-edited", 0),
+        mc -> parity(mc, "crowd", 180), mc -> bench(mc, "crowd", 8), mc -> bench(mc, "crowd", 12), Probe173Rx::calls, Probe173Rx::restore);
     private static final JsonObject report = new JsonObject();
     private static final List<BlockPos> placed = new ArrayList<BlockPos>();
     private static final List<EntityArmorStand> stands = new ArrayList<EntityArmorStand>();
@@ -81,18 +81,18 @@ final class Probe173Rx {
     private static long roundStart;
     private static Frames frames;
     private static Probe170r.GpuTimer gpu;
-    private static final double[][] results = new double[2][]; // per mode: sums of fps, low1, p50, p99, cpu, gpu over rounds
+    private static final List<List<double[]>> results = new ArrayList<List<double[]>>(); // per mode: each round's stats
 
     private Probe173Rx() {}
 
     private static boolean setup(Minecraft mc) {
-        limitWas = mc.gameSettings.limitFramerate;
-        distanceWas = mc.gameSettings.renderDistanceChunks;
         cloudsWas = mc.gameSettings.clouds;
         enabledWas = RenderTweaks189.enabled;
+        limitWas = mc.gameSettings.limitFramerate;
+        distanceWas = mc.gameSettings.renderDistanceChunks;
+        mc.gameSettings.limitFramerate = 260; // unlimited: benchmark exception, sandbox only, run alone; put back in restore
         bobbingWas = mc.gameSettings.viewBobbing;
         mc.gameSettings.viewBobbing = false;
-        mc.gameSettings.limitFramerate = 260; // unlimited (benchmark exception, sandbox only); put back in restore
         mc.gameSettings.clouds = 0; // clouds drift between the parity frames (OptiFine has its own switch: Off is 3)
         ofCloudsWas = ofClouds(mc, 3);
         x0 = MathHelper.floor_double(mc.thePlayer.posX);
@@ -200,7 +200,6 @@ final class Probe173Rx {
     private static boolean parity(Minecraft mc, String name, float facing) throws Exception {
         look(mc, facing);
         if (frames.capture == null) {
-            mc.gameSettings.renderDistanceChunks = 8;
             frames.capture = name;
             frames.shots.clear();
             frames.due = System.nanoTime() + 3_000_000_000L; // chunks, entities, the flying FOV change
@@ -255,16 +254,20 @@ final class Probe173Rx {
         mc.displayGuiScreen(on ? new net.minecraft.client.gui.GuiScreen() {} : null); // a screen that pauses singleplayer
     }
 
-    /** Uncapped A/B at one render distance: rounds alternate off/on, each settles then measures. */
-    private static boolean bench(Minecraft mc, String scene, int distanceIndex) {
+    /**
+     * Uncapped A/B at one render distance (benchmark exception: sandbox only, the game alone): rounds alternate off/on, each
+     * settles 1 s then measures 4 s; per mode the median over its rounds of FPS and of the work per frame.
+     */
+    private static boolean bench(Minecraft mc, String scene, int distance) {
         look(mc, scene.equals("crowd") ? 180 : 0);
         long now = System.nanoTime();
         if (round < 0) {
-            mc.gameSettings.renderDistanceChunks = DISTANCES[distanceIndex];
-            results[0] = new double[6];
-            results[1] = new double[6];
+            results.clear();
+            results.add(new ArrayList<double[]>());
+            results.add(new ArrayList<double[]>());
             round = 0;
-            startRound(now + 4_000_000_000L); // the first round also waits for the new render distance's chunks
+            mc.gameSettings.renderDistanceChunks = distance;
+            startRound(now + 4_000_000_000L); // the first round also waits for the render distance's chunks
             return retry(1);
         }
         if (now < roundStart + (SETTLE_MS + MEASURE_MS) * 1_000_000L) {
@@ -273,22 +276,31 @@ final class Probe173Rx {
         }
         double[] stats = frames.end(gpu.milliseconds());
         int mode = round % 2;
-        for (int i = 0; i < stats.length; i++) results[mode][i] += stats[i] / (ROUNDS / 2);
-        LOG.info("Lads rx {} RD{} round {} tweaks {}: {}", scene, DISTANCES[distanceIndex], round + 1, mode == 1 ? "on" : "off", line(stats));
+        results.get(mode).add(stats);
+        LOG.info("Lads rx {} RD{} round {} tweaks {}: {}", scene, distance, round + 1, mode == 1 ? "on" : "off", line(stats));
         if (++round < ROUNDS) { startRound(now); return retry(1); }
         JsonObject result = new JsonObject();
+        double[][] medians = new double[2][];
         for (int m = 0; m < 2; m++) {
+            medians[m] = new double[KEYS.length];
             JsonObject o = new JsonObject();
-            String[] keys = {"avgFps", "low1Fps", "p50Ms", "p99Ms", "cpuMsPerFrame", "gpuMsPerFrame"};
-            for (int i = 0; i < keys.length; i++) o.addProperty(keys[i], Math.round(results[m][i] * 100) / 100.0);
+            for (int i = 0; i < KEYS.length; i++) {
+                double[] values = new double[results.get(m).size()];
+                for (int r = 0; r < values.length; r++) values[r] = results.get(m).get(r)[i];
+                Arrays.sort(values);
+                medians[m][i] = values.length % 2 == 1 ? values[values.length / 2] : (values[values.length / 2 - 1] + values[values.length / 2]) / 2;
+                o.addProperty(KEYS[i], Math.round(medians[m][i] * 1000) / 1000.0);
+            }
             result.add(m == 1 ? "on" : "off", o);
         }
-        report.add(scene + "-rd" + DISTANCES[distanceIndex], result);
-        LOG.info("Lads rx {} RD{} RESULT off: {} | on: {}", scene, DISTANCES[distanceIndex], line(results[0]), line(results[1]));
+        report.add(scene + "-rd" + distance, result);
+        LOG.info("Lads rx {} RD{} RESULT (medians of {} rounds each) off: {} | on: {}", scene, distance, ROUNDS / 2, line(medians[0]), line(medians[1]));
         round = -1;
         RenderTweaks189.enabled = true;
         return after(5);
     }
+
+    private static final String[] KEYS = {"fps", "workP50Ms", "workP99Ms", "workMaxMs", "workCpuMs", "gpuMs"};
 
     private static void startRound(long now) {
         RenderTweaks189.enabled = round % 2 == 1;
@@ -297,7 +309,7 @@ final class Probe173Rx {
     }
 
     private static String line(double[] s) {
-        return String.format(Locale.ROOT, "%.1f FPS, 1%% low %.1f, p50 %.2f ms, p99 %.2f ms, CPU %.2f ms, GPU %.2f ms", s[0], s[1], s[2], s[3], s[4], s[5]);
+        return String.format(Locale.ROOT, "%.1f FPS, work p50 %.3f ms, p99 %.3f ms, max %.3f ms, CPU %.3f ms, GPU %.3f ms per frame", s[0], s[1], s[2], s[3], s[4], s[5]);
     }
 
     /** Ten signs get a new second line: the drawn text must follow (parity-signs-edited after this). */
@@ -372,15 +384,15 @@ final class Probe173Rx {
 
     private interface Work { void run(); }
 
-    /** Nanoseconds per call {"off": .., "on": ..}: 20k warm-up runs then 100k timed, each mode. */
+    /** Nanoseconds per call {"off": .., "on": ..}: 5k warm-up runs then 20k timed, each mode. */
     private static JsonObject nanos(Work work, int callsPerRun) {
         JsonObject o = new JsonObject();
         for (int mode = 0; mode < 2; mode++) {
             RenderTweaks189.enabled = mode == 1;
-            for (int i = 0; i < 20_000; i++) work.run();
+            for (int i = 0; i < 5_000; i++) work.run();
             long start = System.nanoTime();
-            for (int i = 0; i < 100_000; i++) work.run();
-            o.addProperty(mode == 1 ? "on" : "off", Math.round((System.nanoTime() - start) / (100_000.0 * callsPerRun) * 10) / 10.0);
+            for (int i = 0; i < 20_000; i++) work.run();
+            o.addProperty(mode == 1 ? "on" : "off", Math.round((System.nanoTime() - start) / (20_000.0 * callsPerRun) * 10) / 10.0);
         }
         RenderTweaks189.enabled = true;
         return o;
@@ -433,44 +445,46 @@ final class Probe173Rx {
         ImageIO.write(image, "png", new File(folder, name + ".png"));
     }
 
-    /** Frame times (RenderTickEvent START to START), render-thread CPU, and the parity read-backs (RenderWorldLastEvent). */
+    /**
+     * Work per frame: RenderTickEvent START to END (the world and HUD drawn, before Display.update and the frame cap's sync),
+     * wall time and render-thread CPU time; frames per second; and the parity read-backs (RenderWorldLastEvent).
+     */
     public static final class Frames {
-        final long[] times = new long[200_000];
+        final long[] work = new long[100_000], cpu = new long[100_000];
         final List<int[]> shots = new ArrayList<int[]>();
         int count, wait, width, height, tries;
-        long last, cpu0, due;
+        long start, startCpu, begun, due;
         boolean measuring;
         String capture;
         private IntBuffer buffer;
 
         void begin() {
             count = 0;
+            begun = System.nanoTime();
             measuring = true;
-            cpu0 = THREADS.getCurrentThreadCpuTime();
         }
 
-        /** avg FPS, 1 % low FPS, p50 ms, p99 ms, CPU ms per frame, GPU ms per frame. */
+        /** FPS, work p50/p99/max ms, mean work CPU ms, GPU ms per frame. */
         double[] end(double gpuMs) {
             measuring = false;
-            long[] sorted = Arrays.copyOf(times, count);
+            long[] sorted = Arrays.copyOf(work, count);
             Arrays.sort(sorted);
-            long total = 0;
-            for (long t : sorted) total += t;
-            long worst = 0;
-            int n = Math.max(1, count / 100);
-            for (int i = count - n; i < count; i++) worst += sorted[i];
-            return new double[] {count / (total / 1e9), n / (worst / 1e9), sorted[count / 2] / 1e6, sorted[Math.min(count - 1, (int) (count * 0.99))] / 1e6,
-                (cpuSinceBegin() / 1e6) / Math.max(1, count), gpuMs};
+            long cpuTotal = 0;
+            for (int i = 0; i < count; i++) cpuTotal += cpu[i];
+            int n = Math.max(1, count);
+            return new double[] {count / ((System.nanoTime() - begun) / 1e9), sorted[count / 2] / 1e6, sorted[Math.min(count - 1, (int) (count * 0.99))] / 1e6,
+                sorted[Math.max(0, count - 1)] / 1e6, cpuTotal / 1e6 / n, gpuMs};
         }
-
-        private long cpuSinceBegin() { return THREADS.getCurrentThreadCpuTime() - cpu0; } // called on the render thread
 
         @SubscribeEvent
         public void frame(TickEvent.RenderTickEvent event) {
-            if (event.phase != TickEvent.Phase.START) return;
-            long now = System.nanoTime();
-            if (measuring && last != 0 && count < times.length) times[count++] = now - last;
-            last = now;
+            if (event.phase == TickEvent.Phase.START) {
+                start = System.nanoTime();
+                startCpu = THREADS.getCurrentThreadCpuTime();
+            } else if (measuring && start != 0 && count < work.length) {
+                work[count] = System.nanoTime() - start;
+                cpu[count++] = THREADS.getCurrentThreadCpuTime() - startCpu;
+            }
         }
 
         @SubscribeEvent
