@@ -145,8 +145,8 @@ public class TheLadsCore189 {
         {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9, so it reconnects to servers and local worlds; 1.8.9 chat is unsigned, "
             + "so Sign Configured Commands has nothing to sign, and it sends at most 100 characters per action message."},
         // KillBanner189 through Forge's attack and chat events and NetHandlerPlayClientMixin, as 26.x NativeKillBanner.
-        {"KillBanner", "Minecraft 1.8.9 sends no damage events, so a kill counts when your own blow, or a server kill message after it, "
-            + "finishes the target; arrows and other indirect kills do not."},
+        {"KillBanner", "Minecraft 1.8.9 sends no damage events, so a mob or boss counts when your own blow finishes it; a player you "
+            + "shoot or knock off counts through the server's kill message."},
         // DynamicLights189 through OptiFine's GameSettings.ofDynamicLights, as 26.x NativeDynamicLights.
         {"DynamicLights", "On Minecraft 1.8.9 it switches OptiFine's Dynamic Lights (Off, Fast or Fancy), which light up held items, burning "
             + "and glowing entities and dropped items with no radius, entity or underwater settings."}

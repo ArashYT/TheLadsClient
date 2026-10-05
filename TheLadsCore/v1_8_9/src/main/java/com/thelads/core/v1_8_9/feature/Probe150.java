@@ -240,7 +240,7 @@ final class Probe150 {
         MinecraftForge.EVENT_BUS.post(new AttackEntityEvent(mc.thePlayer, victim));
         MinecraftForge.EVENT_BUS.post(new ClientChatReceivedEvent((byte) 1, new ChatComponentText("LadsQaVictim was slain by " + mc.thePlayer.getName())));
         mc.theWorld.removeEntityFromWorld(-1501);
-        check(KillBanners.TIMELINE.sequence() == 2, "KillBanner: a hit player's kill message in chat is the second kill (" + KillBanners.TIMELINE.sequence() + ")");
+        check(KillBanners.TIMELINE.streak() == 2, "KillBanner: a hit player's kill message in chat is the second kill (" + KillBanners.TIMELINE.streak() + ")");
         LadsSettingsScreen189 settings = new LadsSettingsScreen189(null);
         mc.displayGuiScreen(settings);
         settings.openModule("KillBanner");

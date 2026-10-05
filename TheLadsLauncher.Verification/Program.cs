@@ -121,6 +121,9 @@ bool menuCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE
 bool hudCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_HUD") == "1";
 // 1.21.x and 26.x: every Kill Banner skin, variant and kill count fired in the QA world and photographed (KillBannerCapture).
 bool bannerCaptureVerification = autoWorldVerification && capabilities.KillBanner && Env("LADS_VERIFY_CAPTURE_KILLBANNER") == "1";
+// Fabric versions: the kill streak in the QA world: rapid kills (banners 1 to 5, none dropped), server kill messages, the streak
+// timer, Unlimited and death (KillStreakCapture). 1.8.9: LADS_VERIFY_189_FOCUS=killstreak (Probe172KillStreak).
+bool killStreakCaptureVerification = autoWorldVerification && capabilities.KillBanner && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_KILLSTREAK") == "1";
 // Fabric versions: the 1.7 Animations poses (sword block, bow, rod, eating, 2D dropped item, red armour) photographed (OldAnimationsCapture).
 bool oldAnimCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_OLDANIM") == "1";
 // Fabric versions: the 1.7.2 animation lane (swing while using items, damage tilt), tick-driven so it works minimized (Anim172Capture).
@@ -306,6 +309,8 @@ string hudCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hud");
 if (autoWorldVerification && File.Exists(hudCaptureRequest)) File.Delete(hudCaptureRequest);
 string bannerCaptureRequest = Path.Combine(directory, ".lads-qa-capture-killbanner");
 if (autoWorldVerification && File.Exists(bannerCaptureRequest)) File.Delete(bannerCaptureRequest);
+string killStreakCaptureRequest = Path.Combine(directory, ".lads-qa-capture-killstreak");
+if (autoWorldVerification && File.Exists(killStreakCaptureRequest)) File.Delete(killStreakCaptureRequest);
 string oldAnimCaptureRequest = Path.Combine(directory, ".lads-qa-capture-oldanim");
 if (autoWorldVerification && File.Exists(oldAnimCaptureRequest)) File.Delete(oldAnimCaptureRequest);
 string anim172CaptureRequest = Path.Combine(directory, ".lads-qa-capture-anim172");
@@ -367,7 +372,7 @@ var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<strin
 // failure no longer ends the run before the other requested captures have finished. The run still fails (nativeProbeFailed, Require).
 var failedCaptures = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:",
-    "Lads kill banner capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
+    "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
     "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
     "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:"];
@@ -377,6 +382,7 @@ bool CapturesSettled(bool resolutionRequested) =>
     Settled(menuCaptureVerification, "Lads menu capture END:", "Lads mods view capture END:")
     && Settled(hudCaptureVerification, "Lads HUD capture END:", "Lads HUD editor probe END:")
     && Settled(bannerCaptureVerification, "Lads kill banner capture END:")
+    && Settled(killStreakCaptureVerification, "Lads kill streak capture END:")
     && Settled(oldAnimCaptureVerification, "Lads 1.7 animations capture END:")
     && Settled(anim172CaptureVerification, "Lads anim 1.7.2 capture END:")
     && Settled(zoomCaptureVerification, "Lads zoom capture END:")
@@ -685,6 +691,7 @@ try
             foreach (string marker in requiredWorldProbes)
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
+                "Lads kill streak capture END:",
                 "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
                 "Lads HUD flicker capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
                 "Lads server features capture END:", "Lads F3/FOV capture END:",
@@ -815,6 +822,7 @@ try
             {
                 foreach (var (asked, request, text) in new[] {
                     (bannerCaptureVerification, bannerCaptureRequest, "Fire every kill banner skin in the QA world and capture its frames."),
+                    (killStreakCaptureVerification, killStreakCaptureRequest, "Kill pigs in quick succession and check the kill streak in the QA world."),
                     (oldAnimCaptureVerification, oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames."),
                     (anim172CaptureVerification, anim172CaptureRequest, "Check swing while using items and the damage tilt in the QA world."),
                     (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames."),
@@ -942,6 +950,8 @@ try
             "The requested Kill Banner frames were not all captured.");
         Require(!anim172CaptureVerification || passedMarkers.ContainsKey("Lads anim 1.7.2 capture END:"),
             "The requested 1.7.2 swing while using and damage tilt checks did not pass. Inspect production-smoke.log.");
+        Require(!killStreakCaptureVerification || passedMarkers.ContainsKey("Lads kill streak capture END:"),
+            "The requested kill streak capture did not pass. Inspect production-smoke.log.");
         Require(!oldAnimCaptureVerification || passedMarkers.ContainsKey("Lads 1.7 animations capture END:"),
             "The requested 1.7 Animations frames were not all captured.");
         Require(!zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:"),

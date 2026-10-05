@@ -1199,8 +1199,11 @@ public final class LadsSettingsScreen {
             try { if (editBuffer.length() != 8) throw new NumberFormatException(); c.setColor(Integer.parseUnsignedInt(editBuffer, 16)); c.setUseGlobal(false); }
             catch (NumberFormatException e) { notice = "Use 8 hex digits: AARRGGBB. Esc cancels."; return false; }
         } else if (editingOption instanceof TextOption t) t.setValue(editBuffer);
+        // A number field keeps its value for anything else, and says so.
+        String kept = editingOption instanceof com.thelads.core.config.IntTextOption n && !n.valid(editBuffer)
+            ? n.getName() + ": a whole number from " + n.getMin() + " to " + n.getMax() + ", so it stays " + n.getValue() + "." : "";
         if (editingOption != null) changed(detail);
-        editingOption = null; editingSearch = false; selectAll = false; notice = ""; return true;
+        editingOption = null; editingSearch = false; selectAll = false; notice = kept; return true;
     }
     private void category(String cat) { if (!finish()) return; currentCategory = cat; detail = null; modsView = detailFromMods = false; modsPlan = null; invalidate(); }
     private void invalidate() { filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = ""; }
