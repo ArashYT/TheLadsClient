@@ -95,4 +95,30 @@ class OcclusionTest {
         for (int i = 0; i < 3; i++) assertEquals(cam[i], out[i], 1e-5);
         assertFalse(Occlusion.cameraOf(new float[16], out));
     }
+
+    @Test void anItemIsNeverHiddenByTheFloorItRestsOn() {
+        // A flat floor (cells y <= 3); items resting on it at 2.2 to 6 blocks, also sunk 0.05 into it (Item Physics lays them
+        // flat), seen standing (eye 1.62 up) and sneaking (1.54), with and without culling's margins, from all round.
+        Cells floor = new Cells().box(-20, 0, -20, 20, 3, 20);
+        for (double distance : new double[] {2.2, 2.8, 3.5, 5, 6})
+            for (double sink : new double[] {0, 0.05})
+                for (double eyeY : new double[] {4 + 1.62, 4 + 1.54})
+                    for (int angle = 0; angle < 360; angle += 45) {
+                        double x = 0.5 + distance * Math.cos(Math.toRadians(angle)), z = 0.5 + distance * Math.sin(Math.toRadians(angle));
+                        double[] raw = {x - 0.125, 4 - sink, z - 0.125, x + 0.125, 4.25 - sink, z + 0.125};
+                        double[] margins = {raw[0] - 0.75, raw[1] - 0.1, raw[2] - 0.75, raw[3] + 0.75, raw[4] + 0.75, raw[5] + 0.75};
+                        String at = "item " + distance + " away at " + angle + " degrees, sunk " + sink + ", eye " + eyeY;
+                        assertTrue(visible(floor, 0.5, eyeY, 0.5, 0.5, raw), at);
+                        assertTrue(visible(floor, 0.5, eyeY, 0.5, 0.5, margins), at + ", with margins");
+                        assertTrue(visible(floor, 0.5, eyeY, 0.5, 0, raw), at + ", from the eye alone");
+                    }
+    }
+
+    @Test void anItemOnALedgeAboveTheEyeIsSeenOverItsEdgeOnly() {
+        // A 4-high ledge (cells y 4..7, x >= 3, top at 8) above a standing eye (5.62): an item at its edge is seen over the edge;
+        // one deep on top is not. (Close under a thin layer's surface the eroded edges let grazing lines through: drawn, never hidden.)
+        Cells ledge = new Cells().box(-20, 0, -20, 20, 3, 20).box(3, 4, -20, 20, 7, 20);
+        assertTrue(visible(ledge, 0.5, 5.62, 0.5, 0.5, 3.0, 8.0, 0.4, 3.25, 8.25, 0.6), "at the edge");
+        assertFalse(visible(ledge, 0.5, 5.62, 0.5, 0.5, 9.0, 8.0, 0.4, 9.25, 8.25, 0.6), "six blocks in");
+    }
 }

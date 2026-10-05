@@ -21,6 +21,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityArmorStand;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.passive.EntityCow;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
@@ -48,18 +49,99 @@ import org.apache.logging.log4j.Logger;
 final class Probe173Cull {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final int PLAYERS = 100, STANDS = 40, COWS = 15, CHESTS = 25;
-    static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe173Cull::setup, Probe173Cull::views,
+    static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe173Cull::floor, Probe173Cull::setup, Probe173Cull::views,
         Probe173Cull::motion, mc -> bench(mc, 0), mc -> bench(mc, 1), mc -> bench(mc, 2), mc -> bench(mc, 3), Probe173Cull::restore);
     private static final JsonObject report = new JsonObject();
     private static final Map<Module, Boolean> hudWas = new LinkedHashMap<Module, Boolean>();
     private static final List<BlockPos> placed = new ArrayList<BlockPos>();
     private static final List<EntityOtherPlayerMP> crowd = new ArrayList<EntityOtherPlayerMP>();
+    private static int difficultyWas;
     private static int px, gy, pz, renderWas, limitWas, cloudsWas, ofCloudsWas = -1, step, ticks;
     private static boolean cullWas, vsyncWas;
     private static double homeX, homeY, homeZ;
     private static Frames frames;
 
     private Probe173Cull() {}
+
+    /**
+     * Dropped items lying on what they rest on: the bare floor, a bottom slab, a carpet; with Item Physics off and on (items
+     * lie flat, sunk into the floor's top); 2.2 to 6 blocks ahead; looking level, 35, 70 and 89 degrees down and in third
+     * person. None may ever be culled: nothing stands between the eye and them.
+     */
+    private static final double[] FLOOR_DIST = {2.2, 2.8, 3.5, 5, 6};
+    private static final float[][] FLOOR_VIEWS = {{0, 0}, {35, 0}, {70, 0}, {89, 0}, {35, 1}};
+    private static final net.minecraft.item.Item[] FLOOR_ITEMS = {Items.apple, Items.bread, Items.diamond, Items.stick, Items.arrow};
+    private static int floorCase, floorView, floorCulls;
+    private static final List<BlockPos> FLOOR_BLOCKS = new ArrayList<BlockPos>();
+
+    private static boolean floor(Minecraft mc) {
+        if (floorCase == 6) {
+            Options189.module(com.thelads.core.modules.ItemPhysicsModule.NAME).setEnabled(false);
+            mc.gameSettings.thirdPersonView = 0;
+            check(floorCulls == 0, "dropped items on a floor, slab or carpet, 2.2 to 6 blocks ahead, are never culled (" + floorCulls + " culled draws)");
+            return after(5);
+        }
+        int surface = floorCase % 3;
+        boolean physics = floorCase >= 3;
+        if (ticks == 0) {
+            if (floorCase == 0) {
+                px = (int) Math.floor(mc.thePlayer.posX);
+                pz = (int) Math.floor(mc.thePlayer.posZ);
+                gy = mc.theWorld.getHeight(new BlockPos(px, 0, pz)).getY();
+                Options189.module(EntityCulling189.MODULE).setEnabled(true);
+            }
+            Options189.module(com.thelads.core.modules.ItemPhysicsModule.NAME).setEnabled(physics);
+            onServer(mc, player -> {
+                World world = player.worldObj;
+                for (Entity e : new ArrayList<Entity>(world.loadedEntityList)) if (e instanceof EntityItem) e.setDead(); // a past run's
+                for (int i = 0; i < FLOOR_DIST.length; i++) {
+                    BlockPos at = new BlockPos(px + 0.5 + FLOOR_DIST[i], gy, pz + 0.5 + (i % 2 == 0 ? -0.3 : 0.3));
+                    if (surface > 0 && world.isAirBlock(at)) {
+                        world.setBlockState(at, surface == 1 ? Blocks.stone_slab.getDefaultState() : Blocks.carpet.getDefaultState());
+                        FLOOR_BLOCKS.add(at);
+                    }
+                    EntityItem item = new EntityItem(world, px + 0.5 + FLOOR_DIST[i], gy + 0.7, pz + 0.5 + (i % 2 == 0 ? -0.3 : 0.3), new ItemStack(FLOOR_ITEMS[i]));
+                    item.motionX = item.motionY = item.motionZ = 0;
+                    item.setInfinitePickupDelay();
+                    item.getEntityData().setBoolean("ladsCullQa", true);
+                    world.spawnEntityInWorld(item);
+                }
+                player.playerNetServerHandler.setPlayerLocation(px + 0.5, gy, pz + 0.5, -90, 0);
+            });
+        }
+        ticks++;
+        float[] view = FLOOR_VIEWS[floorView];
+        mc.thePlayer.rotationYaw = mc.thePlayer.prevRotationYaw = -90;
+        mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = view[0];
+        mc.gameSettings.thirdPersonView = (int) view[1];
+        int start = floorView == 0 ? 30 : 6; // items fall and settle first
+        if (ticks == start) {
+            EntityCulling189.WATCH.clear();
+            for (Entity e : mc.theWorld.loadedEntityList) if (e instanceof EntityItem) EntityCulling189.WATCH.add(e);
+            EntityCulling189.watchCulls = 0;
+        }
+        if (ticks < start + 10) return retry(1);
+        String name = new String[] {"floor", "slab", "carpet"}[surface] + (physics ? " Item Physics" : "") + ", pitch " + (int) view[0]
+            + (view[1] > 0 ? " third person" : "");
+        StringBuilder where = new StringBuilder();
+        for (Entity e : EntityCulling189.WATCH)
+            where.append(String.format(java.util.Locale.ROOT, " %.2f/%.3f", e.posX - px - 0.5, e.posY - gy));
+        LOG.info("Lads cull QA floor {}: {} items, {} culled draws; item x/y offsets{}", name, EntityCulling189.WATCH.size(), EntityCulling189.watchCulls, where);
+        if (EntityCulling189.watchCulls > 0) for (Entity e : EntityCulling189.WATCH) LOG.info("Lads cull QA floor {}: {}", name, EntityCulling189.explain(e));
+        check(EntityCulling189.WATCH.size() == FLOOR_DIST.length, "floor case " + name + ": every dropped item is there");
+        floorCulls += EntityCulling189.watchCulls;
+        EntityCulling189.WATCH.clear();
+        ticks = 0;
+        if (++floorView < FLOOR_VIEWS.length) { ticks = 1; return retry(1); }
+        floorView = 0;
+        floorCase++;
+        onServer(mc, player -> {
+            for (Entity e : new ArrayList<Entity>(player.worldObj.loadedEntityList)) if (e instanceof EntityItem) e.setDead();
+            for (BlockPos pos : FLOOR_BLOCKS) player.worldObj.setBlockToAir(pos);
+            FLOOR_BLOCKS.clear();
+        });
+        return retry(5); // the next case
+    }
 
     private static boolean setup(Minecraft mc) {
         Module culling = Options189.module(EntityCulling189.MODULE);
@@ -110,6 +192,7 @@ final class Probe173Cull {
             }
             player.playerNetServerHandler.setPlayerLocation(px + 0.5, gy, pz + 0.5, -90, 0);
         });
+        difficultyWas = mc.theWorld.getDifficulty().getDifficultyId();
         for (String command : new String[] {"time set 6000", "gamerule doDaylightCycle false", "weather clear 100000", "difficulty 0"}) command(mc, command);
         for (int i = 0; i < PLAYERS; i++) { // facing the wall, half of them armed and armoured
             EntityOtherPlayerMP fake = new EntityOtherPlayerMP(mc.theWorld, new GameProfile(UUID.randomUUID(), "Crowd" + i));
@@ -172,6 +255,10 @@ final class Probe173Cull {
         entry.addProperty("culledBlockEntitiesPerFrame", tiles);
         report.add(name, entry);
         LOG.info("Lads cull QA view {}: {} entities and {} block entities culled per frame, {}", name, entities, tiles, entry);
+        if (on && !crowd.isEmpty()) LOG.info("Lads cull QA view {}: first crowd player {}", name, EntityCulling189.explain(crowd.get(0)));
+        if (EntityCulling189.lastChange != null) LOG.info("Lads cull QA view " + name + ": last block change", EntityCulling189.lastChange);
+        EntityCulling189.lastChange = null;
+        EntityCulling189.traceChanges = true;
         if (!on) check(entities == 0 && tiles == 0, "Entity Culling off culls nothing (" + name + ")");
         else if (v[0].equals("front")) check(entities >= 0.75 * (PLAYERS + STANDS + COWS) && tiles >= CHESTS * 0.75,
             "the crowd and chests behind the wall are culled from the front (" + entities + " entities, " + tiles + " block entities per frame)");
@@ -290,6 +377,7 @@ final class Probe173Cull {
 
     private static boolean restore(Minecraft mc) throws Exception {
         MinecraftForge.EVENT_BUS.unregister(frames);
+        EntityCulling189.traceChanges = false;
         if (gpu != null) { MinecraftForge.EVENT_BUS.unregister(gpu); gpu.close(); gpu = null; }
         Options189.module(EntityCulling189.MODULE).setEnabled(cullWas);
         hudWas.forEach(Module::setEnabled);
@@ -308,6 +396,7 @@ final class Probe173Cull {
             player.playerNetServerHandler.setPlayerLocation(homeX, homeY, homeZ, -90, 0);
         });
         command(mc, "gamerule doDaylightCycle true");
+        command(mc, "difficulty " + difficultyWas); // the next runs' QA world as it was
         File folder = new File(mc.mcDataDir, "lads-qa/cull");
         folder.mkdirs();
         Files.write(new File(folder, "cull.json").toPath(), report.toString().getBytes(StandardCharsets.UTF_8));
