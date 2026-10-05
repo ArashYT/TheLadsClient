@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.v1_8_9.feature.Borderless189;
+import com.thelads.core.v1_8_9.feature.FrameWork189;
 import com.thelads.core.v1_8_9.feature.ItemPhysics189;
 import com.thelads.core.v1_8_9.feature.OldAnimations189;
 import com.thelads.core.v1_8_9.feature.WorldBackup189;
@@ -18,7 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** F11 and the fullscreen option: borderless with the BorderlessFullscreen module, and a window that stays resizable after fullscreen.
  * Opening a world a newer version saved asks for a backup first (WorldBackup189).
  * 1.7 Animations: the use key blocks, draws a bow or eats while the attack key mines a block, as in 1.7 (1.8 waits for the mining).
- * Item Physics: with right-click pickup on, the use key on a dropped item picks it up. */
+ * Item Physics: with right-click pickup on, the use key on a dropped item picks it up.
+ * QA (Probe173Perf): each frame's work up to Display.update (FrameWork189). */
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
     @Shadow private boolean fullscreen;
@@ -48,6 +50,16 @@ public abstract class MinecraftMixin {
         if (!ItemPhysics189.pickUp((Minecraft) (Object) this)) return;
         rightClickDelayTimer = 4;
         ci.cancel();
+    }
+
+    @Inject(method = "runGameLoop", at = @At("HEAD"), require = 0)
+    private void ladsFrameStart(CallbackInfo ci) {
+        FrameWork189.start();
+    }
+
+    @Inject(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;updateDisplay()V"), require = 0)
+    private void ladsFrameWork(CallbackInfo ci) {
+        FrameWork189.end();
     }
 
     @Inject(method = "launchIntegratedServer", at = @At("HEAD"), cancellable = true, require = 1)
