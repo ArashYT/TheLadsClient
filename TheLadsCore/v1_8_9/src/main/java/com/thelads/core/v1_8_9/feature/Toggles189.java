@@ -71,11 +71,11 @@ public final class Toggles189 {
         Minecraft mc = Minecraft.getMinecraft();
         if (code == 0 || mc.currentScreen != null || mc.thePlayer == null) return;
         if (code == sprintCode()) {
-            if (down && !sprintHeld && toggles().pressSprint()) ConfigManager.save();
+            if (down && !sprintHeld && toggles().pressSprint()) ConfigManager.saveLater();
             sprintHeld = down;
         }
         if (code == sneakCode()) {
-            if (down && !sneakHeld && toggles().pressSneak()) ConfigManager.save();
+            if (down && !sneakHeld && toggles().pressSneak()) ConfigManager.saveLater();
             sneakHeld = down;
         }
     }

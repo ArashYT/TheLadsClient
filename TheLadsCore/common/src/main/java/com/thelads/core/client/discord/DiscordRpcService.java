@@ -41,8 +41,9 @@ public final class DiscordRpcService implements AutoCloseable {
     DiscordRpcService(Supplier<Transport> factory, LongSupplier time, boolean automatic) {
         this.factory = factory; this.time = time; this.automatic = automatic;
     }
+    private static final java.util.regex.Pattern APPLICATION_ID = java.util.regex.Pattern.compile("[1-9][0-9]{16,19}");
     public static boolean validApplicationId(String id) {
-        if (id == null || !id.matches("[1-9][0-9]{16,19}")) return false;
+        if (id == null || !APPLICATION_ID.matcher(id).matches()) return false;
         try { Long.parseUnsignedLong(id); return true; } catch (NumberFormatException invalid) { return false; }
     }
     public String status() { return status; }
