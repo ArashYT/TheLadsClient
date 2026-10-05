@@ -131,6 +131,7 @@ public final class NativeWorldVerification {
             boolean captureReady = readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null;
             // In-world captures run one at a time: each may tick while it is the one running or none is.
             KillBannerCapture.tick(gameDirectory, captureReady && (KillBannerCapture.busy() || !captureBusy()));
+            KillStreakCapture.tick(gameDirectory, captureReady && (KillStreakCapture.busy() || !captureBusy()));
             OldAnimationsCapture.tick(gameDirectory, captureReady && (OldAnimationsCapture.busy() || !captureBusy()));
             Anim172Capture.tick(gameDirectory, captureReady && (Anim172Capture.busy() || !captureBusy()));
             ZoomCapture.tick(gameDirectory, captureReady && (ZoomCapture.busy() || !captureBusy()));
@@ -263,6 +264,7 @@ public final class NativeWorldVerification {
         }
         chatCapture(target);
         KillBannerCapture.frame(target, gameDirectory);
+        KillStreakCapture.frame(target, gameDirectory);
         OldAnimationsCapture.frame(target, gameDirectory);
         Anim172Capture.frame(target, gameDirectory);
         ZoomCapture.frame(target, gameDirectory);
@@ -413,7 +415,7 @@ public final class NativeWorldVerification {
     }
     /** True while any in-world QA capture is running. */
     static boolean captureBusy() {
-        return HudInfoCapture.busy() || KillBannerCapture.busy() || OldAnimationsCapture.busy() || Anim172Capture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
+        return HudInfoCapture.busy() || KillBannerCapture.busy() || KillStreakCapture.busy() || OldAnimationsCapture.busy() || Anim172Capture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
             ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
             SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy();
