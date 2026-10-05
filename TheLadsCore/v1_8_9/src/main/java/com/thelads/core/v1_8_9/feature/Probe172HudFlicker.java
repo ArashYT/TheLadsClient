@@ -341,7 +341,7 @@ final class Probe172HudFlicker {
         server.addScheduledTask(() -> task.run(server.getConfigurationManager().getPlayerByUUID(id)));
     }
 
-    private static void command(Minecraft mc, String command) {
+    static void command(Minecraft mc, String command) {
         MinecraftServer server = mc.getIntegratedServer();
         server.addScheduledTask(() -> server.getCommandManager().executeCommand(server, command));
     }
