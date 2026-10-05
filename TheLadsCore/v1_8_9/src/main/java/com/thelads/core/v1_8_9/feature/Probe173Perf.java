@@ -57,9 +57,9 @@ import org.lwjgl.opengl.GL11;
  * S-empty, S-crowd (100 armour stands and players with nametags, 70 behind a stone
  * wall), S-items (300 dropped items, Item Physics on), S-hud (every HUD module, a 15-line scoreboard, chat spam), S-banner
  * (the Reaver kill banner looping), S-particles (500 crits and 10 explosions a tick) and S-swap (10 world leave/joins: their times and
- * the heap after a full GC). At the QA settings (60 FPS cap, render distance 4, the window minimized) it measures the ms of work per
- * frame: avg/p50/p99/max of each frame's work up to Display.update (FrameWork189), the render thread's CPU ms per frame, GPU ms per
- * frame (Probe170r.GpuTimer), GC time and allocation rate, plus FPS and 1 % low (KillBanner189's frame times) for stutter.
+ * the heap after a full GC). Uncapped at render distance 8 or 12 (the harness's LADS_VERIFY_PERF_RD): average FPS, 1 % and 0.1 % lows
+ * and p50/p99/max frame ms (KillBanner189's frame times), the ms of work per frame up to Display.update (FrameWork189: avg, p50, p99,
+ * max), the render thread's CPU ms per frame, GPU ms per frame (Probe170r.GpuTimer), GC time and allocation rate.
  * Results in lads-qa/perf/perf.json, a screenshot per scene in lads-qa/screenshots/perf-*.png; every setting the scenes change
  * is put back.
  */
@@ -308,8 +308,8 @@ final class Probe173Perf {
             for (Object entity : mc.theWorld.loadedEntityList) if (entity instanceof EntityItem) items++;
             check(items == 300, "perf items: 300 dropped items in the world, none merged (" + items + ")");
         }
-        KillBanner189.recordFrames(SECONDS * 300); // the QA cap is 60 FPS; room for an uncapped menu frame or two
-        FrameWork189.record(SECONDS * 300);
+        KillBanner189.recordFrames(SECONDS * 3000); // up to 3000 FPS uncapped
+        FrameWork189.record(SECONDS * 3000);
         gpu = new Probe170r.GpuTimer();
         MinecraftForge.EVENT_BUS.register(gpu);
         loadSum = loadSamples = 0;
@@ -342,8 +342,8 @@ final class Probe173Perf {
     }
 
     /**
-     * From frame times (ns, start to start: FPS and stutter at the 60 FPS cap; 1 % low is the mean FPS of the slowest 1 % of frames)
-     * and each frame's work (ns, FrameWork189: the main figure under the cap).
+     * From frame times (ns, start to start: FPS, the 1 % and 0.1 % lows, which are the mean FPS of the slowest 1 % and 0.1 % of
+     * frames, and percentiles) and each frame's work (ns, FrameWork189: up to Display.update, so no swap and no frame-limit sleep).
      */
     static JsonObject stats(long[] times, long[] work) {
         long[] sorted = times.clone(), doing = work.clone();
@@ -356,6 +356,9 @@ final class Probe173Perf {
         s.addProperty("frames", sorted.length);
         s.addProperty("avgFps", round(sorted.length / (total / 1e9)));
         s.addProperty("low1Fps", round(lowFps(sorted, 0.01)));
+        s.addProperty("low01Fps", round(lowFps(sorted, 0.001)));
+        s.addProperty("p50Ms", round(percentile(sorted, 0.50) / 1e6));
+        s.addProperty("p99Ms", round(percentile(sorted, 0.99) / 1e6));
         s.addProperty("frameMaxMs", round(sorted[sorted.length - 1] / 1e6));
         s.addProperty("workAvgMs", round(busy / 1e6 / doing.length));
         s.addProperty("workP50Ms", round(percentile(doing, 0.50) / 1e6));
