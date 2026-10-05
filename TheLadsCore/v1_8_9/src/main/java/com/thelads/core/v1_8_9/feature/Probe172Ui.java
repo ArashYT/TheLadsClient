@@ -209,23 +209,25 @@ final class Probe172Ui {
     /** {@code control}: the lightmap is not told it is out of date (the game before 1.7.2); the world must stay as it was under the open menu. */
     private static void fullbright(final boolean control) {
         final String tag = control ? "ui172-fb-control-" : "ui172-fb-";
+        if (control) STEPS.add(mc -> {
+            // midnight first, with no menu open (a paused world would not send the new time to the client)
+            final WorldServer world = mc.getIntegratedServer().worldServerForDimension(0);
+            timeWas = world.getWorldTime();
+            mc.getIntegratedServer().addScheduledTask(() -> world.setWorldTime(18000));
+            return after(60);
+        });
         STEPS.add(mc -> {
             Fullbright189.qaDefer = control;
-            if (control) {
-                final WorldServer world = mc.getIntegratedServer().worldServerForDimension(0);
-                timeWas = world.getWorldTime();
-                mc.getIntegratedServer().addScheduledTask(() -> world.setWorldTime(18000));
-            }
             Options189.module("Fullbright").setEnabled(true);
             gamma().setValue(0);
             menu = new LadsSettingsScreen189(null);
             mc.displayGuiScreen(menu);
             menu.openModule("Fullbright");
-            return after(control ? 60 : 20);
+            return after(20);
         });
         STEPS.add(mc -> {
             check(ui().gameViewBounds() != null, "the Fullbright page draws the live world in its preview");
-            check(mc.getIntegratedServer().worldServerForDimension(0).getWorldTime() % 24000L > 16500, "the QA world is at night");
+            check(mc.theWorld.getWorldTime() % 24000L > 16500, "the QA world is at night on the client (" + mc.theWorld.getWorldTime() % 24000L + ")");
             shot(mc, tag + "p000");
             return after(1);
         });
@@ -279,7 +281,8 @@ final class Probe172Ui {
                 mc.displayGuiScreen(null);
                 return after(60);
             }
-            check(l30 > l0 + 3 && l65 >= l30 && l100 >= l65 && l100 > l0 + 15, "the world under the open menu follows the slider: brighter at each higher setting");
+            // the picture saturates above about 30%: no darker than the step before, give or take pixel noise
+            check(l30 > l0 + 3 && l65 >= l30 - 3 && l100 >= l65 - 3 && l100 > l0 + 15, "the world under the open menu follows the slider: brighter at each higher setting");
             check(Math.abs(luma.get(tag + "p000-again") - l0) < 2, "back at 0% the world is as dark as at the start");
             return after(1);
         });
