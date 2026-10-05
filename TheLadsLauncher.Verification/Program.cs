@@ -583,6 +583,9 @@ try
         // The 1.8.9 Core's one QA switch: its self-test (Lads menu on the title screen, in its own QA world and from the
         // pause-menu button, the 1.8.9 bridge, the launcher catalog). Every flag below is the Fabric Core's.
         if (autoWorldVerification) AddJvm("-Dthelads.verify189Core=true");
+        // The 1.8.9 unfocused FPS cap (60) would hold the never-focused QA windows below the 120 FPS the probes expect; LADS_VERIFY_UNFOCUSED_CAP=1 tests it
+        // (never in the uncapped benchmark).
+        if (perf189 || Env("LADS_VERIFY_UNFOCUSED_CAP") != "1") AddJvm("-Dthelads.noUnfocusedCap=true");
         if (focus189 != null) AddJvm("-Dthelads.verify189Focus=" + focus189);
         if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
         if (f3FovCaptureVerification) AddJvm("-Dthelads.verify189F3Fov=true");
@@ -590,7 +593,8 @@ try
         // =itemphysics: only Item Physics (Probe170ItemPhysics); =raised: only Raised and the paper doll (RaisedDollProbe189);
         // =leave: only the QA world's final leave after its server stopped first (the 1.7.0 freeze regression check).
         // =hudflicker: only runs of frames with the HUD FPS cap off and on (Probe172HudFlicker). =170hud: the 1.7.0 HUD and Autohide checks without Sprint input. =perf: the 1.7.3 benchmark (Probe173Perf).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =quick: the 1.7.3 quick wins' per-frame costs (Probe173Quick); =unfocusedcap: the unfocused FPS cap (Probe173Cap).
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
         if (perf189)
         {
             string perfFolder = Path.Combine(directory, "lads-qa", "perf");

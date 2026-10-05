@@ -14,7 +14,6 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.network.NetworkManager;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import org.lwjgl.opengl.GL11;
 
 /**
  * SignalLoss on 1.8.9: the shared SignalLossPolicy fed by the time the server connection last received a packet
@@ -64,7 +63,7 @@ public final class SignalLoss189 {
         int x = position == 0 ? 10 : position == 2 ? guiWidth - width - 10 : (guiWidth - width) / 2;
         float eased = 1 - (1 - frame.progress()) * (1 - frame.progress());
         int hiddenY = -height - 17, y = Math.round(hiddenY + (10 - hiddenY) * eased);
-        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND);
+        boolean blend = GlState189.blend();
         if (module.background.get()) Gui.drawRect(x - 6, y - 6, x + width + 6, y + height + 6,
             module.backgroundColor.isUseGlobal() ? HudSettings.getInstance().getGlobalBackground() : module.backgroundColor.getColor());
         font.drawStringWithShadow(warning, x, y, module.textColor.isUseGlobal() ? HudSettings.getInstance().getGlobalColor() : module.textColor.getColor());

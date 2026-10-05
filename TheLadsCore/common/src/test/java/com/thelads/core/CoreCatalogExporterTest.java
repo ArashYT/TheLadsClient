@@ -86,6 +86,7 @@ class CoreCatalogExporterTest {
         });
         Path file = dir.resolve(CoreCatalogExporter.FILE_NAME);
         CoreCatalogExporter.exportIfChanged();
+        CoreCatalogExporter.flush();
         JsonObject catalog = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
         assertEquals(1, catalog.get("schema").getAsInt());
         assertEquals("1.0", catalog.get("coreVersion").getAsString());
@@ -95,9 +96,11 @@ class CoreCatalogExporterTest {
 
         Files.delete(file);
         CoreCatalogExporter.exportIfChanged();
+        CoreCatalogExporter.flush();
         assertFalse(Files.exists(file), "an unchanged revision is not rewritten on every tick");
         ModuleSupport.registerBuiltIn("Minimap");
         CoreCatalogExporter.exportIfChanged();
+        CoreCatalogExporter.flush();
         assertTrue(Files.exists(file), "a late registration rewrites the catalog");
     }
 }

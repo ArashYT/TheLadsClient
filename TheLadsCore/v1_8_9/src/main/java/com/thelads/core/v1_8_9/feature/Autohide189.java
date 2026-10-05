@@ -74,6 +74,7 @@ public final class Autohide189 {
             long now = System.nanoTime();
             if (shown > 0 && shown < 1) faded = now;
             else if (BUFFER.allocated() && now - faded > FREE_AFTER) BUFFER.free();
+            BUFFER.newFrame();
         } else if (FADED.contains(event.type)) {
             end(null);
             if (shown <= 0) event.setCanceled(true);

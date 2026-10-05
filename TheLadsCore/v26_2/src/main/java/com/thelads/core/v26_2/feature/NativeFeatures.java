@@ -93,11 +93,11 @@ public final class NativeFeatures {
         if (sneakToggleKey().matchesMouse(event)) sneakKey(down);
     }
     private static void sprintKey(boolean down) {
-        if (down && !sprintHeld && toggles().pressSprint()) ConfigManager.save();
+        if (down && !sprintHeld && toggles().pressSprint()) ConfigManager.saveLater();
         sprintHeld = down;
     }
     private static void sneakKey(boolean down) {
-        if (down && !sneakHeld && toggles().pressSneak()) ConfigManager.save();
+        if (down && !sneakHeld && toggles().pressSneak()) ConfigManager.saveLater();
         sneakHeld = down;
     }
     /**

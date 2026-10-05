@@ -14,6 +14,10 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,19 +30,51 @@ public final class CoreCatalogExporter {
     public static final String FILE_NAME = "lads-core-catalog.json";
     private static final Logger LOG = LoggerFactory.getLogger("TheLadsCore");
     private static long writtenRevision = Long.MIN_VALUE;
+    private static final ExecutorService WRITER = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "Lads catalog writer");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private static Future<?> pending;
+    private static boolean hooked;
 
     private CoreCatalogExporter() {}
 
-    /** Cheap when nothing changed; a failed write is logged once per revision instead of on every tick. */
+    /**
+     * Cheap when nothing changed; a failed write is logged once per revision instead of on every tick. The JSON is built here and
+     * written by a background thread (a toggle changes the revision, and this used to hitch the game thread on the disk).
+     */
     public static void exportIfChanged() {
         long revision = ModuleSupport.revision();
         if (revision == writtenRevision) return;
         writtenRevision = revision;
         Path file = ClientPaths.getBaseDir().resolve(FILE_NAME);
+        String text = new GsonBuilder().setPrettyPrinting().serializeNulls().create()
+            .toJson(toJson(loadedVersion(ModDependencyPlanner.CORE_ID), loadedVersion("minecraft"), ModuleManager.getInstance().getModules()));
+        synchronized (WRITER) {
+            if (!hooked) {
+                hooked = true;
+                Runtime.getRuntime().addShutdownHook(new Thread(CoreCatalogExporter::flush, "Lads catalog flush"));
+            }
+            pending = WRITER.submit(() -> {
+                try {
+                    ModStateStore.writeAtomically(file, text);
+                } catch (IOException e) {
+                    LOG.error("Could not write {} for The Lads Launcher; its Mods page keeps the previous Lads module list: {}", file, e.toString());
+                }
+            });
+        }
+    }
+
+    /** Waits for the write {@link #exportIfChanged} started (at exit, and in tests). */
+    public static void flush() {
+        Future<?> last;
+        synchronized (WRITER) { last = pending; }
+        if (last == null) return;
         try {
-            write(file, loadedVersion(ModDependencyPlanner.CORE_ID), loadedVersion("minecraft"), ModuleManager.getInstance().getModules());
-        } catch (IOException e) {
-            LOG.error("Could not write {} for The Lads Launcher; its Mods page keeps the previous Lads module list: {}", file, e.toString());
+            last.get(5, TimeUnit.SECONDS);
+        } catch (Exception late) {
+            LOG.warn("The launcher catalog write did not finish: {}", late.toString());
         }
     }
 
