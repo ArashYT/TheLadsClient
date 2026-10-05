@@ -552,7 +552,7 @@ try
     }
     var session = AccountIdentity.CreateOfflineSession("LadsQA");
     await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
-    await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:60\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
+    await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
     Console.WriteLine("Installing production dependencies...");
     process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
     {
@@ -712,10 +712,9 @@ try
     process.ErrorDataReceived += WriteLine;
     if (capabilities.Forge && File.Exists(gameLog)) File.Delete(gameLog); // only this run's lines are read
     // QA instances are muted and kept light (owner's standing rule): the owner may be using the computer meanwhile.
-    // 60 FPS cap (owner, 2026-10-05: they play while QA runs; VSync off so the cap is what applies), render/simulation distance 4,
-    // GUI scale 2 (1.8.9 ignores simulationDistance);
+    // 120 FPS cap (VSync off so the cap is what applies), render/simulation distance 4, GUI scale 2 (1.8.9 ignores simulationDistance);
     // pauseOnLostFocus off: a pause menu when the owner clicks away would stop the integrated server and the probes' input.
-    string[] qaForced = { "soundCategory_master:0.0", "maxFps:60", "enableVsync:false", "renderDistance:4", "simulationDistance:4", "guiScale:2",
+    string[] qaForced = { "soundCategory_master:0.0", "maxFps:120", "enableVsync:false", "renderDistance:4", "simulationDistance:4", "guiScale:2",
         "pauseOnLostFocus:false" };
     string qaOptions = Path.Combine(directory, "options.txt");
     var qaLines = File.Exists(qaOptions)
