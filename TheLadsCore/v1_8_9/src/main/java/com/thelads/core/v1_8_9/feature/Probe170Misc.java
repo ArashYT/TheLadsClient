@@ -331,7 +331,7 @@ final class Probe170Misc {
             module.bannerStyle.setIndex(KillBannerModule.styleIndexOf(chosen ? skin : KillBannerStyle.DEFAULT));
             KillBanner189.reset();
             KillBanner189.recordFrames(1500);
-            return after(chosen ? 60 : 8); // the chosen skin's art loads on these ticks, before the kill
+            return after(chosen ? 60 : 15); // (15: 30+ frames at the 60 FPS QA cap) the chosen skin's art loads on these ticks, before the kill
         });
         steps.add(mc -> {
             triggerFrame = KillBanner189.frameCount;
