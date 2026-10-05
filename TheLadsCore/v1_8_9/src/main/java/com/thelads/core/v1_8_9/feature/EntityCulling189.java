@@ -163,6 +163,7 @@ public final class EntityCulling189 {
         if (!hidden(((Cullable) entity).ladsCullGen(), originX, originY, originZ)) return false;
         culled++;
         if (audit) auditEntity(entity);
+        if (!WATCH.isEmpty() && WATCH.contains(entity)) watchCulls++;
         return true;
     }
 
@@ -287,6 +288,9 @@ public final class EntityCulling189 {
         // Where it is drawn between ticks (back to the last tick's position) and where it is heading while the pass is trusted,
         // then room for held items, capes, cosmetics, the name tag and the shadow.
         double dx = entity.posX - entity.lastTickPosX, dy = entity.posY - entity.lastTickPosY, dz = entity.posZ - entity.lastTickPosZ;
+        // Before its first tick a new entity's last-tick position is still 0, 0, 0 (vanilla's render fixes that only when it draws):
+        // that, or a teleport, is no motion to stretch a box over. Drawn until it has a real last tick.
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8 || Math.abs(dz) > 8) return false;
         return !Occlusion.visible(grid, eyes, eyeCount,
             box.minX + Math.min(-Math.max(0, dx), AHEAD * dx) - SIDE, box.minY + Math.min(-Math.max(0, dy), AHEAD * dy) - DOWN,
             box.minZ + Math.min(-Math.max(0, dz), AHEAD * dz) - SIDE, box.maxX + Math.max(-Math.min(0, dx), AHEAD * dx) + SIDE,
@@ -376,4 +380,35 @@ public final class EntityCulling189 {
     }
 
     static double[] cameraForQa() { return camera; }
+
+    /** QA: entities whose culled draws are counted in watchCulls (render thread only). */
+    static final java.util.Set<Entity> WATCH = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<Entity, Boolean>());
+    static int watchCulls;
+
+    /** QA: the camera, both passes (eye, age, holding), and what this frame's camera alone and with its cube say of the entity. */
+    static String explain(Entity entity) {
+        double[] eye = camera;
+        Snapshot snap = snapshot;
+        long now = System.nanoTime();
+        StringBuilder out = new StringBuilder();
+        out.append(String.format(java.util.Locale.ROOT, "camera %s, entity box %s, stamp %d, frame %d, cameraFrame %d",
+            eye == null ? "none" : String.format(java.util.Locale.ROOT, "%.3f %.3f %.3f", eye[0], eye[1], eye[2]),
+            entity.getEntityBoundingBox(), ((Cullable) entity).ladsCullGen(), frame, cameraFrame));
+        for (Pass p : new Pass[] {done, running})
+            if (p != null) out.append(String.format(java.util.Locale.ROOT, "; pass %d eye %.3f %.3f %.3f age %d ms holds %b", p.gen, p.x, p.y, p.z,
+                (now - p.start) / 1_000_000, eye != null && p.holds(eye, now)));
+        if (eye != null && snap != null) {
+            Grid grid = new Grid();
+            grid.snap = snap;
+            grid.sx = Integer.MIN_VALUE;
+            double[] eyes = new double[27];
+            int n = Occlusion.eyes(grid, eye[0], eye[1], eye[2], EYE_CUBE, eyes);
+            out.append("; eyes ").append(n).append(", hidden now ").append(n > 0 && hidden(grid, entity, eye, eyes, n));
+            out.append("; changed sections ").append(CHANGED.size());
+            int settled = 0;
+            for (Chunk chunk : snap.chunks) if (chunk != null) settled++;
+            out.append(", settled chunks ").append(settled).append('/').append(snap.chunks.length);
+        }
+        return out.toString();
+    }
 }

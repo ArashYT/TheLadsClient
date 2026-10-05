@@ -23,8 +23,9 @@ public abstract class WorldCullMixin {
         if (isRemote) EntityCulling189.blocksChanged(pos.getX() - 1, pos.getY() - 1, pos.getZ() - 1, pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1);
     }
 
+    /** A chunk's blocks arriving (or arriving again): the whole column. Light updates mark single columns and move no block. */
     @Inject(method = "markBlockRangeForRenderUpdate(IIIIII)V", at = @At("HEAD"), require = 1)
     private void ladsRangeChanged(int x1, int y1, int z1, int x2, int y2, int z2, CallbackInfo ci) {
-        if (isRemote) EntityCulling189.blocksChanged(x1, y1, z1, x2, y2, z2);
+        if (isRemote && x2 - x1 >= 15 && z2 - z1 >= 15) EntityCulling189.blocksChanged(x1, y1, z1, x2, y2, z2);
     }
 }
