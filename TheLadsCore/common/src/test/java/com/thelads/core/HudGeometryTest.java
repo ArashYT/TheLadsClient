@@ -151,20 +151,24 @@ class HudGeometryTest {
         assertEquals(12,HudFrameCap.steps(),"120 FPS under a 10 FPS cap: each build stands for 12 frames");
         HudFrameCap.reset();assertEquals(1,HudFrameCap.steps());HudSettings.getInstance().setHudFpsCapEnabled(false);
     }
-    @Test void hudFpsCapBuildsAt60WhileTheHudChanges(){
-        // A 10 FPS cap at 120 FPS: a HUD that changes between builds is built every other frame (60 FPS) until it has stayed the
-        // same for a quarter of a second, then every 12th frame again.
+    @Test void hudFpsCapBuildsAt60WhileTheHudAnimates(){
+        // A 10 FPS cap at 120 FPS. For a second a tooltip fades (the same thing drawn at another opacity each build): built every other
+        // frame (60 FPS). Then only content changes (a counter's number, each build) and a chat line is pushed up once (at 2 s): 10
+        // builds a second, plus one early build that sees the push not go on.
         HudSettings.getInstance().setHudFpsCapEnabled(true);HudSettings.getInstance().setHudFpsLimit(10);HudFrameCap.reset();
-        long frame=8_333_334L,t=0;int print=0;var builds=new ArrayList<Long>();
-        for(int i=0;i<240;i++,t+=frame){
+        long frame=8_333_334L,t=0;var builds=new ArrayList<Long>();
+        for(int i=0;i<360;i++,t+=frame){
             if(!HudFrameCap.due(t,640,360))continue;
             builds.add(t);
-            HudFrameCap.built(t<1_000_000_000L?print++:print,t); // animating for the first second, then still
+            HudFrameCap.draw(1,t<1_000_000_000L?builds.size():0); // the tooltip, fading for a second
+            HudFrameCap.draw(1000+builds.size(),0); // the counter: a new number in the same place
+            HudFrameCap.draw(2,t<2_000_000_000L?0:9); // the chat line
+            HudFrameCap.built(t);
         }
         long animating=builds.stream().filter(b->b>100_000_000L&&b<1_000_000_000L).count();
         long still=builds.stream().filter(b->b>=1_300_000_000L).count();
-        assertTrue(animating>=50&&animating<=56,"about 60 builds a second while it changes: "+animating);
-        assertTrue(still>=6&&still<=8,"back to 10 a second when still: "+still);
+        assertTrue(animating>=50&&animating<=56,"about 60 builds a second while it fades: "+animating);
+        assertTrue(still>=17&&still<=19,"10 a second for new content, one more for the push: "+still);
         HudFrameCap.reset();HudSettings.getInstance().setHudFpsCapEnabled(false);
     }
     @Test void hudFpsCapRecordsEveryGraphicsCall() throws Exception{

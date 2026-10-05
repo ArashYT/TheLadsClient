@@ -83,9 +83,8 @@ public class HudManager {
             if (HudFrameCap.due(now, g.getScaledWidth(), g.getScaledHeight())) {
                 cachedHud.clear();
                 recordHudFrame();
-                RecordingGraphics recording = new RecordingGraphics(g, cachedHud);
-                renderElements(recording);
-                HudFrameCap.built(recording.fingerprint(), now);
+                renderElements(new RecordingGraphics(g, cachedHud));
+                HudFrameCap.built(now);
             }
             for (var op : cachedHud) op.accept(g);
             return;
