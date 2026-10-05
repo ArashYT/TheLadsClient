@@ -53,6 +53,14 @@ public interface LadsGraphics {
      */
     default boolean drawKillBanner(String skin, int variant, int x, int y, int width, int height) { return false; }
 
+    /**
+     * The Kill Banner settings preview: the skin's banner for 1 to 5 kills in turn, playing ({@code clock} seconds into the
+     * loop), fitted into the box. Where a version cannot play it, the settled picker art.
+     */
+    default boolean drawKillBannerPreview(String skin, int variant, int x, int y, int width, int height, double clock) {
+        return drawKillBanner(skin, variant, x, y, width, height);
+    }
+
     /** Render the actual local player with the native entity renderer, when available. */
     default void drawPlayerModel(int x, int y, int width, int height, boolean editor) {}
 

@@ -48,6 +48,10 @@ public final class KillBanner189 {
     private static String label = "";
     /** QA only (Probe150): banner frames and picker thumbnails drawn. */
     public static long frames, thumbs;
+    /** QA only (Probe170Misc): each frame's time (ns) while a probe records them. */
+    static long[] frameTimes;
+    static int frameCount;
+    private static long lastFrame;
 
     private static KillBannerModule module() {
         return Options189.module("KillBanner") instanceof KillBannerModule ? (KillBannerModule) Options189.module("KillBanner") : null;
@@ -62,10 +66,29 @@ public final class KillBanner189 {
     @SubscribeEvent
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
+        KillBannerArt189.sweep();
         Minecraft mc = Minecraft.getMinecraft();
         if (!eligible()) { reset(); return; }
         if (trackedConnection != mc.getNetHandler()) { reset(); trackedConnection = mc.getNetHandler(); }
         if (!mc.thePlayer.isEntityAlive()) BANNER.clear();
+        KillBannerModule module = module();
+        KillBannerModule.Pick pick = module != null ? module.chosen() : null;
+        if (pick != null && pick.style() != null) KillBannerArt189.warm(pick.style(), pick.variant());
+    }
+
+    @SubscribeEvent
+    public void frame(TickEvent.RenderTickEvent event) {
+        if (frameTimes == null || event.phase != TickEvent.Phase.START) return;
+        long now = System.nanoTime();
+        if (lastFrame != 0 && frameCount < frameTimes.length) frameTimes[frameCount++] = now - lastFrame;
+        lastFrame = now;
+    }
+
+    /** QA: records the next {@code frames} frame times (null stops). */
+    static void recordFrames(int frames) {
+        frameTimes = frames > 0 ? new long[frames] : null;
+        frameCount = 0;
+        lastFrame = 0;
     }
 
     /** The local player's attack (sent before Forge's event, so a cancelled event still hit): a crosshair point on the top quarter is a head hit. */
@@ -134,9 +157,20 @@ public final class KillBanner189 {
 
     static void trigger(int kills, boolean preview, boolean headshot) {
         KillBannerModule module = module();
+        if (module != null) trigger(kills, preview, headshot, module.chosen());
+    }
+
+    /** QA: a banner of this pick (a random skin's, say), with its sound. */
+    static void trigger(int kills, boolean preview, boolean headshot, KillBannerModule.Pick pick) {
+        KillBannerModule module = module();
         if (!eligible() || module == null) return;
         trackedConnection = Minecraft.getMinecraft().getNetHandler();
-        play(KillBanners.show(module, kills, preview, headshot, module.chosen(), System.nanoTime()), (float) module.volume.getValue());
+        play(KillBanners.show(module, kills, preview, headshot, pick, System.nanoTime()), (float) module.volume.getValue());
+    }
+
+    /** QA: the banner on screen stays this many seconds after its kill (KillBannerTimeline.freeze). */
+    static void freeze(double age) {
+        BANNER.freeze(age);
     }
 
     /** "theladscore:<skin>_kill_<n>" from the Kill Banner sounds.json, "" the plain chime (1.8.9's orb pickup), at the module's volume. */
@@ -175,6 +209,22 @@ public final class KillBanner189 {
         }
     }
 
+    /** The Kill Banner settings preview (LadsGraphics.drawKillBannerPreview): the skin's banners for 1 to 5 kills in turn. */
+    public static boolean drawPreview(String skin, int variant, int x, int y, int w, int h, double clock) {
+        try {
+            KillBannerArt189.begin();
+            try {
+                KillBannerArt189.preview(KillBannerStyle.fromId(skin), variant, x, y, w, h, clock);
+            } finally {
+                KillBannerArt189.end();
+            }
+            thumbs++;
+            return true;
+        } catch (RuntimeException failure) {
+            return false;
+        }
+    }
+
     /** After Forge's whole overlay, as the other versions draw at the HUD's end; F1 skips 1.8.9's overlay, hiding it as on 26.x. */
     @SubscribeEvent
     public void overlay(RenderGameOverlayEvent.Post event) {
@@ -202,10 +252,18 @@ public final class KillBanner189 {
             renderBase(module, age, width, height);
             return;
         }
-        KillBannerStrip strip = style.strip(BANNER.sequence());
-        KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), BANNER.headshot() && module.headshotText.get());
-        if (frame == null) return;
-        KillBannerArt189.draw(width, height, style, pick.variant(), BANNER.sequence(), strip, frame, (float) module.size.getValue() / 100f);
+        boolean headshot = BANNER.headshot() && module.headshotText.get();
+        float size = (float) module.size.getValue() / 100f;
+        if (style.isAnimated()) {
+            KillBannerStrip strip = style.strip(BANNER.sequence());
+            KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot);
+            if (frame == null) return;
+            KillBannerArt189.draw(width, height, style, pick.variant(), BANNER.sequence(), strip, frame, size);
+        } else {
+            KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot);
+            if (layers == null) return;
+            KillBannerArt189.draw(width, height, style, pick.variant(), BANNER.sequence(), layers, size);
+        }
         frames++;
     }
 
