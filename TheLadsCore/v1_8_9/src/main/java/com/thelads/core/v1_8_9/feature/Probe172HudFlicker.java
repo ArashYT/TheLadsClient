@@ -48,8 +48,8 @@ import org.lwjgl.opengl.GL12;
  * QA only (LADS_VERIFY_189_ONLY=hudflicker): does any HUD drawing flicker under the HUD FPS cap? In survival with the Lads HUD
  * elements, title, subtitle, action bar, boss bar, scoreboard, chat with heads, a kill banner, Item Physics' throw bar and an
  * Essential notification on screen, then again with F3, it saves runs of consecutive frames to lads-qa/screenshots/hudflicker: the
- * HUD hidden (reference), the cap off (control) and the cap on at 10 FPS, each with the elements' rectangles and the Lads HUD's cost
- * per frame (hudflicker.json). On 1.8.9 the cap covers the Lads HUD only. artifacts/1.7.2/hudfps/flicker.py checks that every
+ * HUD hidden (reference), the cap off (control), the cap on at 10 FPS and the HUD hidden again (the view stayed still), with the
+ * elements' rectangles and the Lads HUD's cost per frame (hudflicker.json). On 1.8.9 the cap covers the Lads HUD only. artifacts/1.7.2/hudfps/flicker.py checks that every
  * element is in every frame. Everything is put back.
  */
 final class Probe172HudFlicker {
@@ -58,8 +58,8 @@ final class Probe172HudFlicker {
         "BossBar", "KillBanner", "Item Physics", "Chat Heads", "Autohide"};
     private static final int FRAMES = 36, HIDDEN = 4, CAP = 10;
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe172HudFlicker::setup,
-        mc -> run(mc, "hud-hidden"), mc -> run(mc, "hud-off"), mc -> run(mc, "hud-on"),
-        mc -> run(mc, "f3-hidden"), mc -> run(mc, "f3-off"), mc -> run(mc, "f3-on"), Probe172HudFlicker::restore);
+        mc -> run(mc, "hud-hidden"), mc -> run(mc, "hud-off"), mc -> run(mc, "hud-on"), mc -> run(mc, "hud-after"),
+        mc -> run(mc, "f3-hidden"), mc -> run(mc, "f3-off"), mc -> run(mc, "f3-on"), mc -> run(mc, "f3-after"), Probe172HudFlicker::restore);
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<Option, JsonElement>();
     private static final Map<Module, Boolean> enabledWere = new LinkedHashMap<Module, Boolean>();
     private static final JsonObject report = new JsonObject();
@@ -70,6 +70,8 @@ final class Probe172HudFlicker {
     private static String run;
     private static Frames frames;
     private static ItemStack handWas;
+    private static double pinX, pinY, pinZ;
+    private static float pinYaw;
 
     private Probe172HudFlicker() {}
 
@@ -86,7 +88,11 @@ final class Probe172HudFlicker {
         capWas = HudSettings.getInstance().isHudFpsCapEnabled();
         limitWas = HudSettings.getInstance().getHudFpsLimit();
         f3Was = mc.gameSettings.showDebugInfo;
-        mc.thePlayer.rotationPitch = 90; // the ground: a still background
+        pinX = mc.thePlayer.posX;
+        pinY = mc.thePlayer.posY;
+        pinZ = mc.thePlayer.posZ;
+        pinYaw = mc.thePlayer.rotationYaw;
+        pin(mc);
         onServer(mc, player -> {
             handWas = player.inventory.getCurrentItem();
             player.inventory.mainInventory[player.inventory.currentItem] = null; // the throw bar charges, nothing is thrown
@@ -105,10 +111,10 @@ final class Probe172HudFlicker {
 
     /** One run of frames: set up on the first call, then waits until the frames are in. */
     private static boolean run(Minecraft mc, String name) {
-        KeyBinding.setKeyBindState(mc.gameSettings.keyBindDrop.getKeyCode(), true); // Item Physics' throw bar keeps charging
+        pin(mc);
         if (!name.equals(run)) {
             run = name;
-            boolean hidden = name.endsWith("-hidden");
+            boolean hidden = name.endsWith("-hidden") || name.endsWith("-after");
             mc.gameSettings.hideGUI = hidden;
             mc.gameSettings.showDebugInfo = !hidden && name.startsWith("f3");
             HudSettings.getInstance().setHudFpsCapEnabled(name.endsWith("-on"));
@@ -120,6 +126,18 @@ final class Probe172HudFlicker {
         if (!frames.done()) return retry(1);
         LOG.info("Lads HUD flicker capture {}: {} frames", name, frames.count);
         return after(1);
+    }
+
+    /** Every tick: the player stays put, looking straight down (a still background), and Item Physics' throw bar keeps charging. */
+    private static void pin(Minecraft mc) {
+        mc.thePlayer.setPosition(pinX, pinY, pinZ);
+        mc.thePlayer.prevPosX = mc.thePlayer.lastTickPosX = pinX;
+        mc.thePlayer.prevPosY = mc.thePlayer.lastTickPosY = pinY;
+        mc.thePlayer.prevPosZ = mc.thePlayer.lastTickPosZ = pinZ;
+        mc.thePlayer.motionX = mc.thePlayer.motionY = mc.thePlayer.motionZ = 0;
+        mc.thePlayer.rotationYaw = mc.thePlayer.prevRotationYaw = pinYaw;
+        mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = 90;
+        KeyBinding.setKeyBindState(mc.gameSettings.keyBindDrop.getKeyCode(), true);
     }
 
     /** Elements that time out are shown again before each run: chat, titles, action bar, kill banner, Essential. */
@@ -160,7 +178,7 @@ final class Probe172HudFlicker {
             if (ImageIO.write(image, "png", new File(folder, names.get(i) + ".png"))) saved++;
         }
         Files.write(new File(folder, "hudflicker.json").toPath(), report.toString().getBytes(StandardCharsets.UTF_8));
-        check(saved == 2 * (HIDDEN + 2 * FRAMES), "HUD flicker: every frame of every run saved (" + saved + ")");
+        check(saved == 2 * (2 * HIDDEN + 2 * FRAMES), "HUD flicker: every frame of every run saved (" + saved + ")");
         LOG.info("Lads HUD flicker capture END: {} passed, 0 failed; frames in lads-qa/screenshots/hudflicker", saved);
         pending.clear();
         return after(5);

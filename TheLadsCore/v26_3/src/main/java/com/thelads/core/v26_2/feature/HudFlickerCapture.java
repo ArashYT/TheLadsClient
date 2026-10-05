@@ -45,9 +45,9 @@ import org.slf4j.LoggerFactory;
  * flicker under the HUD FPS cap? With everything this QA world can put on the HUD (Lads HUD elements, Jade on a crafting table,
  * Xaero's minimap, title, subtitle, action bar, boss bar, scoreboard, chat with heads, subtitles, effects, Item Physics' throw bar,
  * a kill banner, voice chat sample, toasts, an Essential notification, Flashback recording), then again with F3, it saves runs of
- * consecutive frames to screenshots/hudflicker: the HUD hidden (reference), the cap off (control) and the cap on at 10 FPS, each
- * with the elements' rectangles and the HUD's cost per frame (hudflicker-*.json). artifacts/1.7.2/hudfps/flicker.py checks that every
- * element is in every frame. Everything is put back.
+ * consecutive frames to screenshots/hudflicker: the HUD hidden (reference), the cap off (control), the cap on at 10 FPS and the HUD
+ * hidden again (the view stayed still), with the elements' rectangles and the HUD's cost per frame (hudflicker.json).
+ * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Everything is put back.
  */
 final class HudFlickerCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -69,6 +69,9 @@ final class HudFlickerCapture {
     private static ItemStack handWas = ItemStack.EMPTY;
     private static BlockPos below;
     private static BlockState belowWas;
+    private static double pinX, pinY, pinZ, fovEffectWas;
+    private static float pinYaw;
+    private static String gameModeWas;
     private static Path gameDir;
 
     private HudFlickerCapture() {}
@@ -76,7 +79,7 @@ final class HudFlickerCapture {
     static boolean busy() { return step >= 0 && step < 99; }
 
     static void tick(Path game, boolean ready) {
-        if (busy()) { Minecraft.getInstance().options.keyDrop.setDown(true); return; } // keeps Item Physics' throw bar charging
+        if (busy()) { pin(Minecraft.getInstance()); return; }
         if (step >= 0 || !ready) return;
         Path request = game.resolve(".lads-qa-capture-hudflicker");
         if (!Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS)) return;
@@ -99,10 +102,16 @@ final class HudFlickerCapture {
         VoiceChatIntegration.qa = new VoiceChatState("voicechat:icons/microphone",
             List.of(new VoiceMember("Steve", "8667ba71-b85a-4004-af54-457a9734eed7", true, false),
                 new VoiceMember("Alex", "ec561538-f3fd-461d-aff5-086b22154bce", false, true)));
-        // Still, flying, looking straight down at a crafting table (Jade's tooltip); an empty hand, so the throw never fires.
-        mc.player.getAbilities().flying = true;
-        mc.player.setDeltaMovement(0, 0, 0);
-        mc.player.setXRot(90);
+        // In survival (health, food, AppleSkin), standing still on a crafting table and looking straight down at it (Jade's tooltip;
+        // a still background for every frame, no FOV effects); an empty hand, so the throw never fires.
+        pinX = mc.player.getX();
+        pinY = mc.player.getY();
+        pinZ = mc.player.getZ();
+        pinYaw = mc.player.getYRot();
+        pin(mc);
+        fovEffectWas = mc.options.fovEffectScale().get();
+        mc.options.fovEffectScale().set(0.0);
+        gameModeWas = mc.gameMode.getPlayerMode().getName();
         below = mc.player.blockPosition().below();
         handWas = mc.player.getMainHandItem().copy();
         var server = mc.getSingleplayerServer();
@@ -117,7 +126,7 @@ final class HudFlickerCapture {
         for (String command : new String[] {"scoreboard objectives add ladsflicker dummy {\"text\":\"Flicker QA\",\"color\":\"gold\"}",
             "scoreboard objectives setdisplay sidebar ladsflicker", "scoreboard players set Alpha ladsflicker 2", "scoreboard players set Beta ladsflicker 1",
             "bossbar add lads:flicker \"QA Boss\"", "bossbar set lads:flicker players @a", "bossbar set lads:flicker value 60",
-            "effect give @a minecraft:luck 600 0 true"}) command(command);
+            "effect give @a minecraft:luck 600 0 true", "gamemode survival @a"}) command(command);
         startRecording();
         LOGGER.info("Lads HUD flicker capture BEGIN: {} frames per run, cap {} FPS, phases {}", FRAMES, CAP, String.join(",", PHASES));
         step = 0;
@@ -161,10 +170,10 @@ final class HudFlickerCapture {
     private static void next() {
         Minecraft mc = Minecraft.getInstance();
         try {
-            int phase = step / 3;
+            int phase = step / 4;
             if (phase >= PHASES.length) { finish(); return; }
             String p = PHASES[phase];
-            switch (step++ % 3) {
+            switch (step++ % 4) {
                 case 0 -> { // the HUD hidden: the reference every element is compared with
                     mc.debugEntries.setOverlayVisible(false);
                     mc.gui.toastManager().clear();
@@ -179,11 +188,18 @@ final class HudFlickerCapture {
                     refresh(mc);
                     measure(p + "-off");
                 }
-                default -> { // the cap on
+                case 2 -> { // the cap on
                     HudSettings.getInstance().setHudFpsCapEnabled(true);
                     HudSettings.getInstance().setHudFpsLimit(CAP);
                     refresh(mc);
                     measure(p + "-on");
+                }
+                default -> { // the HUD hidden again: the view did not move (flicker.py compares it with the first)
+                    mc.debugEntries.setOverlayVisible(false);
+                    mc.gui.toastManager().clear();
+                    if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
+                    HudSettings.getInstance().setHudFpsCapEnabled(false);
+                    run(p + "-after", HIDDEN, 800);
                 }
             }
         } catch (Throwable failure) {
@@ -322,6 +338,7 @@ final class HudFlickerCapture {
         HudSettings.getInstance().setHudFpsCapEnabled(capWas);
         HudSettings.getInstance().setHudFpsLimit(limitWas);
         mc.options.showSubtitles().set(subtitlesWas);
+        mc.options.fovEffectScale().set(fovEffectWas);
         var server = mc.getSingleplayerServer();
         var id = mc.player.getUUID();
         ItemStack hand = handWas;
@@ -331,7 +348,8 @@ final class HudFlickerCapture {
             if (belowWas != null) player.level().setBlockAndUpdate(below, belowWas);
             player.setItemSlot(EquipmentSlot.MAINHAND, hand);
         });
-        for (String command : new String[] {"bossbar remove lads:flicker", "scoreboard objectives remove ladsflicker", "effect clear @a minecraft:luck"}) command(command);
+        for (String command : new String[] {"bossbar remove lads:flicker", "scoreboard objectives remove ladsflicker", "effect clear @a minecraft:luck",
+            "gamemode " + gameModeWas + " @a"}) command(command);
         // The last frames are still being written: END once they are on disk.
         Thread waiter = new Thread(() -> {
             long until = System.nanoTime() + 30_000_000_000L;
@@ -340,6 +358,16 @@ final class HudFlickerCapture {
         }, "Lads HUD flicker capture");
         waiter.setDaemon(true);
         waiter.start();
+    }
+
+    /** Every tick of the capture: the player stays where and as it was put, and Item Physics' throw bar keeps charging. */
+    private static void pin(Minecraft mc) {
+        mc.player.setPos(pinX, pinY, pinZ);
+        mc.player.setDeltaMovement(0, 0, 0);
+        mc.player.setYRot(pinYaw);
+        mc.player.setXRot(90);
+        mc.player.setOldPosAndRot();
+        mc.options.keyDrop.setDown(true);
     }
 
     private static void startRecording() {
