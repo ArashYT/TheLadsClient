@@ -78,12 +78,13 @@ public final class Probe172Anim {
     private static final StringBuilder TILT_CSV = new StringBuilder("hit,source,module,directional,intensity,yawUsed,roll,nod,expected\n");
     private static final List<String> SENT = Collections.synchronizedList(new ArrayList<String>());
     private static final Map<String, String> PACKETS = new TreeMap<String, String>();
+    private static final Map<String, Integer> EATEN = new TreeMap<String, Integer>();
     private static volatile boolean counting;
     private static Channel channel;
     private static ItemStack[] mainWas;
     private static double[] posWas;
     private static float yawWas, pitchWas;
-    private static int slotWas, viewWas, difficultyWas, sample, tick, useStart, foodWas, arrowsWas;
+    private static int slotWas, viewWas, difficultyWas, sample, tick, useStart, foodWas, arrowsWas, arrowEntities;
     private static String spawningWas;
     private static LadsSettingsScreen189 settings;
 
@@ -265,11 +266,13 @@ public final class Probe172Anim {
                 if (use.equals("eat")) {
                     if (count(mc, 2) == foodWas && held < 60) return retry(0);
                     key(mc.gameSettings.keyBindUseItem, false);
-                    check(count(mc, 2) == foodWas - 1 && held >= 32 && held <= 35, state + "one beef eaten after " + held + " ticks (32 to eat)");
+                    check(count(mc, 2) == foodWas - 1 && held >= 32 && held <= 38, state + "one beef eaten after " + held + " ticks (32 to eat, then the server's word)");
+                    EATEN.put(tag, held);
                     LOG.info("Lads 1.7.2 swing while using: {} eaten after {} ticks", use + tag, held);
                     return after(10);
                 }
                 if (use.equals("bow") && held < 25) return retry(0);
+                arrowEntities = mc.theWorld.getEntitiesWithinAABB(EntityArrow.class, mc.thePlayer.getEntityBoundingBox().expand(40, 20, 40)).size();
                 key(mc.gameSettings.keyBindUseItem, false);
                 return after(8);
             },
@@ -277,9 +280,10 @@ public final class Probe172Anim {
                 check(!mc.thePlayer.isUsingItem(), state + "the use ended when the key came up");
                 if (use.equals("bow")) {
                     List<EntityArrow> arrows = mc.theWorld.getEntitiesWithinAABB(EntityArrow.class, mc.thePlayer.getEntityBoundingBox().expand(40, 20, 40));
-                    double speed = arrows.isEmpty() ? 0 : Math.sqrt(arrows.get(0).motionX * arrows.get(0).motionX + arrows.get(0).motionY
-                        * arrows.get(0).motionY + arrows.get(0).motionZ * arrows.get(0).motionZ);
-                    check(arrows.size() == 1 && count(mc, 8) == arrowsWas - 1, state + "the released bow shot one arrow (speed " + speed
+                    double speed = 0; // the new arrow is the one in flight
+                    for (EntityArrow arrow : arrows) speed = Math.max(speed, Math.sqrt(arrow.motionX * arrow.motionX + arrow.motionY * arrow.motionY
+                        + arrow.motionZ * arrow.motionZ));
+                    check(arrows.size() == arrowEntities + 1 && count(mc, 8) == arrowsWas - 1, state + "the released bow shot one arrow (speed " + speed
                         + ", arrows " + arrowsWas + " -> " + count(mc, 8) + ")");
                     onServer(mc, player -> {
                         for (EntityArrow arrow : player.worldObj.getEntitiesWithinAABB(EntityArrow.class, player.getEntityBoundingBox().expand(80, 40, 80)))
@@ -296,6 +300,7 @@ public final class Probe172Anim {
         for (String use : new String[]{"eat", "bow", "block"})
             check(PACKETS.get(use).equals(PACKETS.get(use + "-off")), use + ": 1.7 Animations on and off sent the same packet kinds around the click "
                 + PACKETS.get(use) + " / " + PACKETS.get(use + "-off"));
+        check(EATEN.size() == 2 && Math.abs(EATEN.get("") - EATEN.get("-off")) <= 1, "the beef took as long with 1.7 Animations on as off " + EATEN);
         Files.write(new File(mc.mcDataDir, "lads-qa/172-swing.csv").toPath(), SWING.toString().getBytes(StandardCharsets.UTF_8));
         LOG.info("Lads 1.7.2 swing while using samples:\n{}", SWING);
         return after(0);
