@@ -14,7 +14,9 @@ public final class UnfocusedFpsCap189 {
     public static final String NAME = "UnfocusedFpsCap";
     private static final String LIMIT = "FPS limit";
     /** The QA harness sets this so its (never focused) game windows keep the FPS the probes and benchmarks ask for. */
-    private static final boolean QA_BYPASS = Boolean.getBoolean("thelads.noUnfocusedCap");
+    static boolean bypass = Boolean.getBoolean("thelads.noUnfocusedCap");
+    /** QA only (Probe173Cap): count the window as unfocused, which a QA window the owner does not click cannot be made to be. */
+    static boolean forceUnfocused;
 
     private UnfocusedFpsCap189() {}
 
@@ -29,7 +31,7 @@ public final class UnfocusedFpsCap189 {
 
     /** Minecraft's frame rate limit for this frame, given the one it would use. */
     public static int limit(int vanilla) {
-        if (QA_BYPASS || Display.isActive()) return vanilla;
+        if (bypass || (Display.isActive() && !forceUnfocused)) return vanilla;
         Module module = ModuleManager.getInstance().getModule(NAME);
         if (module == null || !module.isEnabled()) return vanilla;
         return Math.min(vanilla, (int) Options189.number(NAME, LIMIT, 60));

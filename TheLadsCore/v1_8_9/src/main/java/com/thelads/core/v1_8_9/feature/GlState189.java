@@ -22,6 +22,12 @@ public final class GlState189 {
         else if (capability == GL11.GL_ALPHA_TEST && alpha == null) alpha = state;
     }
 
+    /** QA (Probe173Cap): all three switches were handed over, and agree with the driver right now. */
+    static boolean agreesWithDriver() {
+        return blend != null && depth != null && alpha != null && blend.on() == GL11.glIsEnabled(GL11.GL_BLEND)
+            && depth.on() == GL11.glIsEnabled(GL11.GL_DEPTH_TEST) && alpha.on() == GL11.glIsEnabled(GL11.GL_ALPHA_TEST);
+    }
+
     public static boolean blend() { return blend != null ? blend.on() : GL11.glIsEnabled(GL11.GL_BLEND); }
 
     public static boolean depth() { return depth != null ? depth.on() : GL11.glIsEnabled(GL11.GL_DEPTH_TEST); }
