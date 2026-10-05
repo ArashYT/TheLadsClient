@@ -10,6 +10,7 @@ import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL11;
 
 /**
@@ -36,7 +37,8 @@ public final class HudCache189 {
     /** Draws the Lads HUD through the cache; false when it is not used (cap off, no framebuffers) and HudManager draws it. */
     static boolean render(GuiLadsAdapter g) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (!HudFrameCap.enabled() || g.getGame() == null || !g.getGame().isIngame() || qaOff) {
+        // Before HudFrameCap.due: without framebuffers HudManager's replay needs this frame's build.
+        if (!HudFrameCap.enabled() || g.getGame() == null || !g.getGame().isIngame() || qaOff || !OpenGlHelper.isFramebufferEnabled()) {
             free();
             return false;
         }
