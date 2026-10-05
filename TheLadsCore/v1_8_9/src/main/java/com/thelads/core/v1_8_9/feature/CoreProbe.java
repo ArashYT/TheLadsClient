@@ -512,7 +512,7 @@ public final class CoreProbe {
         if (SkinLayers189.LOADED) expected.add("SkinLayers");
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
-        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 4 /* DisableNarrator, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
+        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 5 /* DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
             && pending == modules.size() - unavailable - builtIn - external, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, "
             + external + " external, " + pending + " pending");
         mc.displayGuiScreen(null); // Back to Game: the HUD checks run in gameplay
