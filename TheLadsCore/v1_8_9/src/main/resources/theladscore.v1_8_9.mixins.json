@@ -14,6 +14,9 @@
     "EntityPlayerSPAccessor",
     "EntityPlayerSPMixin",
     "EntityItemMixin",
+    "EntityCullMixin",
+    "EntityFXAccessor",
+    "EffectRendererMixin",
     "EntityRendererMixin",
     "EssentialZoomMixin189",
     "FontRendererMixin",
@@ -63,6 +66,7 @@
     "RenderEntityItemMixin",
     "RenderFishMixin",
     "RenderPlayerMixin",
+    "RenderManagerCullMixin",
     "ResourcePackRepositoryMixin",
     "ScaledResolutionMixin",
     "ScreenShotHelperMixin",
@@ -71,6 +75,8 @@
     "SplashProgressMixin",
     "TileEntityMixin",
     "TileEntitySignRendererMixin",
+    "TileEntityCullMixin",
+    "WorldCullMixin",
     "WorldSwitchMixin"
   ]
 }
