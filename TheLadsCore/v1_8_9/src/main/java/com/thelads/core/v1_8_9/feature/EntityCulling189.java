@@ -102,7 +102,7 @@ public final class EntityCulling189 {
     private static boolean shadowLooked;
     /** QA (Probe173Cull): culled draws, and culled draws the current camera alone would have shown, counted when auditing. */
     static volatile boolean audit;
-    static int culled, culledTiles, wrong, shadowDraws;
+    static int culled, culledTiles, wrong, shadowDraws, drawnFrames, trustedFrames;
     /** QA: finished passes and the time they took (culling thread). */
     static volatile long passNanos;
     static volatile int passes;
@@ -199,6 +199,8 @@ public final class EntityCulling189 {
         Pass d = done, r = running;
         if (d != null) { doneGen = d.gen; doneOk = d.holds(eye, now); }
         if (r != null) { runGen = r.gen; runOk = r.holds(eye, now); }
+        drawnFrames++;
+        if (doneOk || runOk) trustedFrames++;
     }
 
     /** OptiFine's shadow pass draws entities from the sun: the camera's culling must not apply there. */
