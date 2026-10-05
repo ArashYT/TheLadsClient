@@ -3,36 +3,34 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 /// <summary>
-/// Keeps QA games out of the owner's way: every new game window goes to the monitor OBS is on (else LADS_VERIFY_MONITOR,
-/// a 1-based screen number, else the first secondary screen) without being activated, and when a new game window takes
-/// focus while the owner is using the PC, focus goes back to the window they were in. Runs that need the game in front
-/// (synthetic input, raw mouse, F11/borderless captures) set LADS_VERIFY_FOCUS=1 to keep today's behaviour.
-/// Not minimized: a minimized 26.x game stops rendering, so its captures would be empty.
+/// Keeps QA games out of the owner's way (owner, 2026-10-05: "I want to play"): every QA game runs at below-normal priority,
+/// and every game window is minimized without being activated and kept minimized; when a new game window takes focus while
+/// the owner is using the PC, focus goes back to the window they were in. LADS_VERIFY_FOCUS=1 (runs that need the game in
+/// front) skips the window handling but not the priority; the owner asked that such runs wait until they say so.
 /// </summary>
 static class QaWindowGuard
 {
     public static void Watch(Process game)
     {
-        if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") == "1") return;
-        new Thread(() => Loop(game)) { IsBackground = true, Name = "QA window guard" }.Start();
+        bool focus = Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") == "1";
+        new Thread(() => Loop(game, focus)) { IsBackground = true, Name = "QA window guard" }.Start();
     }
 
-    private static void Loop(Process game)
+    private static void Loop(Process game, bool focus)
     {
-        Rectangle target = TargetArea();
         var firstSeen = new Dictionary<IntPtr, long>();
         IntPtr owners = GameWindow(GetForegroundWindow()) ? IntPtr.Zero : GetForegroundWindow();
         try
         {
             while (!game.HasExited)
             {
+                // GameSession raises startup priority and later sets Normal: a QA game stays below normal the whole run.
+                if (game.PriorityClass != ProcessPriorityClass.BelowNormal) game.PriorityClass = ProcessPriorityClass.BelowNormal;
+                if (focus) { Thread.Sleep(250); continue; }
                 foreach (IntPtr window in Windows(game.Id))
                 {
-                    if (firstSeen.ContainsKey(window)) continue;
-                    firstSeen[window] = Environment.TickCount64;
-                    // A window as big as a screen is fullscreen/borderless under test: leave it where the game put it.
-                    if (GetWindowRect(window, out var r) && !CoversScreen(r))
-                        SetWindowPos(window, IntPtr.Zero, target.X + 40, target.Y + 40, 0, 0, SwpNoSize | SwpNoZOrder | SwpNoActivate);
+                    firstSeen.TryAdd(window, Environment.TickCount64);
+                    if (!IsIconic(window)) ShowWindow(window, SwShowMinNoActive);
                 }
                 IntPtr front = GetForegroundWindow();
                 if (front != IntPtr.Zero && !GameWindow(front)) owners = front;
@@ -42,21 +40,8 @@ static class QaWindowGuard
                 Thread.Sleep(25);
             }
         }
-        catch (InvalidOperationException) { } // the game process went away mid-check
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception) { } // the game went away mid-check
     }
-
-    private static Rectangle TargetArea()
-    {
-        Screen[] screens = Screen.AllScreens;
-        IntPtr obs = Process.GetProcessesByName("obs64").Select(p => p.MainWindowHandle).FirstOrDefault(h => h != IntPtr.Zero);
-        if (obs != IntPtr.Zero) return Screen.FromHandle(obs).WorkingArea;
-        if (int.TryParse(Environment.GetEnvironmentVariable("LADS_VERIFY_MONITOR"), out int n) && n >= 1 && n <= screens.Length)
-            return screens[n - 1].WorkingArea;
-        return (screens.FirstOrDefault(s => !s.Primary) ?? Screen.PrimaryScreen ?? screens[0]).WorkingArea;
-    }
-
-    private static bool CoversScreen(RectNative r) =>
-        Screen.AllScreens.Any(s => r.Right - r.Left >= s.Bounds.Width && r.Bottom - r.Top >= s.Bounds.Height);
 
     /// <summary>LWJGL 2 (1.8.9), GLFW (26.2) and SDL (26.3) game windows, so other QA games never count as the owner's window.</summary>
     private static bool GameWindow(IntPtr window)
@@ -94,8 +79,7 @@ static class QaWindowGuard
         finally { AttachThreadInput(self, gameThread, false); }
     }
 
-    private const uint SwpNoSize = 0x1, SwpNoZOrder = 0x4, SwpNoActivate = 0x10;
-    [StructLayout(LayoutKind.Sequential)] private struct RectNative { public int Left, Top, Right, Bottom; }
+    private const int SwShowMinNoActive = 7;
     [StructLayout(LayoutKind.Sequential)] private struct LastInputInfo { public uint Size, Time; }
     private delegate bool EnumProc(IntPtr window, IntPtr parameter);
     [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc callback, IntPtr parameter);
@@ -105,8 +89,8 @@ static class QaWindowGuard
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr window, StringBuilder name, int capacity);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
-    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out RectNative rect);
-    [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr window, int command);
     [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint attach, uint to, bool join);
     [DllImport("user32.dll")] private static extern bool GetLastInputInfo(ref LastInputInfo info);
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
