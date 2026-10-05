@@ -176,6 +176,7 @@ public final class EntityCulling189 {
 
     /** RenderManager.renderEntityStatic: true to draw only the name tag. {@code originX..} is where the world is drawn from. */
     public static boolean skip(Entity entity, boolean outlines, double originX, double originY, double originZ) {
+        ((Cullable) entity).ladsSeen(frame); // QA (explain): the world pass reached it this frame
         if (!enabled || outlines) return false;
         if (inShadowPass()) { shadowDraws++; return false; }
         if (!hidden(((Cullable) entity).ladsCullGen(), originX, originY, originZ)) return false;
@@ -420,6 +421,7 @@ public final class EntityCulling189 {
         out.append(String.format(java.util.Locale.ROOT, "camera %s, entity box %s, stamp %d, frame %d, cameraFrame %d",
             eye == null ? "none" : String.format(java.util.Locale.ROOT, "%.3f %.3f %.3f", eye[0], eye[1], eye[2]),
             entity.getEntityBoundingBox(), ((Cullable) entity).ladsCullGen(), frame, cameraFrame));
+        out.append(", last reached renderEntityStatic in frame ").append(((Cullable) entity).ladsSeen()).append(", culled draws so far ").append(culled);
         for (Pass p : new Pass[] {done, running})
             if (p != null) out.append(String.format(java.util.Locale.ROOT, "; pass %d eye %.3f %.3f %.3f age %d ms holds %b", p.gen, p.x, p.y, p.z,
                 (now - p.start) / 1_000_000, eye != null && p.holds(eye, now)));
