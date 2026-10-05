@@ -9,7 +9,7 @@ import com.thelads.core.config.HudSettings;
  */
 public final class HudFrameCap {
     private static long last;
-    private static int width, height;
+    private static int width, height, frames, steps = 1;
     /** True while a version rebuilds the whole HUD under this cap. */
     public static boolean wholeHud;
 
@@ -20,10 +20,21 @@ public final class HudFrameCap {
         return !settings.isHudFpsUnlimited() && settings.getHudFpsLimit() > 0;
     }
 
-    /** Whether this frame rebuilds the HUD: at the cap rate, and at once after a resize or {@link #reset()}. */
+    /**
+     * How many frames the current build stands for: the frames since the last build, this one included (1 while the HUD is built every
+     * frame). An animation that moves a step each time it is drawn moves this many steps, so it keeps its pace under the cap.
+     */
+    public static int steps() {
+        return steps;
+    }
+
+    /** Whether this frame rebuilds the HUD: at the cap rate, and at once after a resize or {@link #reset()}. Called once per frame. */
     public static boolean due(long now, int scaledWidth, int scaledHeight) {
+        frames++;
         long interval = 1_000_000_000L / Math.max(1, HudSettings.getInstance().getHudFpsLimit()), since = now - last;
         if (last != 0 && since < interval && scaledWidth == width && scaledHeight == height) return false;
+        steps = frames;
+        frames = 0;
         // Keep the cadence on schedule (vsync frames rarely land exactly on it) unless a whole interval was missed.
         last = last != 0 && since >= interval && since < 2 * interval ? last + interval : now;
         width = scaledWidth;
@@ -34,5 +45,7 @@ public final class HudFrameCap {
     /** The next frame rebuilds: the cap was off, or a build failed part-way. */
     public static void reset() {
         last = 0;
+        frames = 0;
+        steps = 1;
     }
 }
