@@ -87,7 +87,7 @@ public static class GameControls
     public static string DisplayName(string stored)
     {
         if (IsUnbound(stored)) return "Not bound";
-        var name = int.TryParse(stored, out var code) ? GameOptionsService.TranslateKeybindToTarget("", stored, false) : stored;
+        var name = int.TryParse(stored, out var code) ? GameOptionsService.TranslateKeybindToTarget("", stored, false) ?? stored : stored;
         if (name == stored && int.TryParse(stored, out _)) return "Key code " + code;
         if (name.StartsWith("key.mouse.", StringComparison.Ordinal))
             return name[10..] switch { "left" => "Left Button", "right" => "Right Button", "middle" => "Middle Button", var n => "Mouse " + n };
