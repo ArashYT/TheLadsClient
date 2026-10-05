@@ -5,7 +5,9 @@ import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.retry;
 
 import com.thelads.core.client.WorldCheats;
+import com.thelads.core.client.killbanner.KillBannerPlayer;
 import com.thelads.core.client.killbanner.KillBannerStyle;
+import com.thelads.core.modules.KillBannerModule;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -39,9 +41,11 @@ import org.apache.logging.log4j.Logger;
  * <li>inventory: the inventories with and without potion effects, centred (ProbeInventory).</li>
  * <li>killbanner: Rogue's opening for 1 to 5 kills, captured about 150, 250 and 350 ms after each kill
  * (lads-qa/screenshots/170-rogue-k*-*ms.png).</li>
- * <li>killbanners: every skin's sounds registered with their samples; Base, Reaver, Rogue and one skin of each Kingdom
- * Archives kind for 1 to 5 kills, headshots and variants, then the settings picker
- * (lads-qa/screenshots/170-kb-*.png).</li>
+ * <li>killbanners: every skin's sounds registered with their samples; frame times around real kills (a random skin whose
+ * art is not loaded yet, the same again, the chosen skin, Reaver's 4 kills); Base, Reaver, Rogue and Kingdom Archives
+ * skins of every kind held at set frames after 1, 3 and 5 kills, cropped to the banner
+ * (lads-qa/screenshots/kb172/kb-&lt;skin&gt;-v&lt;variant&gt;-k&lt;kills&gt;-f&lt;frame&gt;.png); then the settings picker and its playing
+ * preview (lads-qa/screenshots/170-kb-picker-*.png).</li>
  * <li>loading: three rounds of opening the QA world, the Nether and back, a respawn and leaving, each timed from the
  * action to the player in the world with no screen (client ticks, 50 ms apart; opening and leaving block the game, so
  * their own part is exact). The times go to the log ("Lads 1.8.9 load timing").</li>
@@ -121,29 +125,36 @@ final class Probe170Misc {
                 steps.add(mc -> { focusSound = true; return true; });
                 steps.add(Probe170Misc::bannerStart);
                 steps.add(Probe170Misc::bannerSounds);
-                for (KillBannerStyle skin : new KillBannerStyle[] {KillBannerStyle.DEFAULT, KillBannerStyle.REAVER, KillBannerStyle.ROGUE,
-                        KillBannerStyle.AEMONDIR, KillBannerStyle.CHAMPIONS2024, KillBannerStyle.PHASEGUARD})
-                    for (int kills = 1; kills <= 5; kills++) bannerShot(steps, skin, 0, kills, false, skin.isAnimated() && kills == 5 ? 3700 : 1000);
-                bannerShot(steps, KillBannerStyle.DEFAULT, 0, 1, true, 600);
-                bannerShot(steps, KillBannerStyle.AEMONDIR, 0, 1, true, 600);
-                for (int variant = 1; variant <= 3; variant++) {
-                    bannerShot(steps, KillBannerStyle.AEMONDIR, variant, 3, false, 1000);
-                    bannerShot(steps, KillBannerStyle.PHASEGUARD, variant, 3, false, 1000);
-                }
-                for (String picker : new String[] {"base", "variants", "search"}) {
+                bannerTiming(steps, "random-cold-kuronami-k3", KillBannerStyle.KURONAMI, 3, false);
+                bannerTiming(steps, "random-again-kuronami-k3", KillBannerStyle.KURONAMI, 3, false);
+                bannerTiming(steps, "chosen-glitchpop-k1", KillBannerStyle.GLITCHPOP, 1, true);
+                bannerTiming(steps, "chosen-reaver-k4", KillBannerStyle.REAVER, 4, true); // its 4-kill frames: read before the kill (chosen)
+                bannerTiming(steps, "chosen-champions2025-k2", KillBannerStyle.CHAMPIONS2025, 2, true);
+                Object[][] skins = {{KillBannerStyle.DEFAULT, 0}, {KillBannerStyle.REAVER, 0}, {KillBannerStyle.ROGUE, 0}, {KillBannerStyle.AEMONDIR, 0},
+                    {KillBannerStyle.CHAMPIONS2024, 0}, {KillBannerStyle.PHASEGUARD, 1}, {KillBannerStyle.ONI, 0}, {KillBannerStyle.VCT, 0},
+                    {KillBannerStyle.BOLT, 0}, {KillBannerStyle.GLITCHPOP, 0}, {KillBannerStyle.XEROFANG, 2}};
+                for (Object[] skin : skins)
+                    for (int kills : new int[] {1, 3, 5}) bannerSequence(steps, (KillBannerStyle) skin[0], (Integer) skin[1], kills);
+                bannerSequence(steps, KillBannerStyle.AEMONDIR, 2, 3);
+                bannerHeld(steps, KillBannerStyle.AEMONDIR, 0, 1, true, 30, 3);
+                bannerHeld(steps, KillBannerStyle.REAVER, 0, 1, true, 30, 3);
+                bannerHeld(steps, KillBannerStyle.CHAMPIONS2024, 0, 1, true, 30, 3);
+                for (String picker : new String[] {"base", "variants", "search", "preview-oni-1", "preview-oni-2", "preview-oni-3", "preview-rogue"}) {
                     steps.add(mc -> {
                         com.thelads.core.modules.KillBannerModule module = banner();
-                        module.bannerStyle.setIndex(picker.equals("base") ? com.thelads.core.modules.KillBannerModule.BASE
-                            : com.thelads.core.modules.KillBannerModule.styleIndexOf(KillBannerStyle.AEMONDIR));
+                        module.bannerStyle.setIndex(picker.equals("base") ? KillBannerModule.BASE : picker.equals("preview-rogue") ? KillBannerModule.ROGUE
+                            : KillBannerModule.styleIndexOf(picker.startsWith("preview-oni") ? KillBannerStyle.ONI : KillBannerStyle.AEMONDIR));
                         module.setVariant(KillBannerStyle.AEMONDIR, 2);
                         com.thelads.core.v1_8_9.gui.LadsSettingsScreen189 settings = new com.thelads.core.v1_8_9.gui.LadsSettingsScreen189(null);
                         mc.displayGuiScreen(settings);
                         settings.openModule("KillBanner");
                         settings.searchKillBanners(picker.equals("search") ? "phase" : "");
-                        return after(20);
+                        // The preview plays: Oni a moment later each time.
+                        return after(picker.startsWith("preview-oni-") ? 18 + 14 * (picker.charAt(12) - '1') : 20);
                     });
                     steps.add(mc -> { CoreProbe.screenshot(mc, "170-kb-picker-" + picker); mc.displayGuiScreen(null); return after(5); });
                 }
+                steps.add(mc -> { check(bannerSaved == bannerShots, "KillBanner: " + bannerSaved + " of " + bannerShots + " held banner frames saved"); return true; });
                 steps.add(Probe170Misc::bannerEnd);
                 steps.add(Probe170Misc::leave);
                 break;
@@ -277,22 +288,98 @@ final class Probe170Misc {
         return after(10);
     }
 
-    /** One banner: a fresh streak of {@code kills} kills of a skin and variant, captured {@code ms} after the kill (50 ms ticks). */
-    private static void bannerShot(List<CoreProbe.Step> steps, KillBannerStyle skin, int variant, int kills, boolean headshot, int ms) {
+    private static int bannerShots, bannerSaved, triggerFrame;
+
+    /**
+     * Frame times around a real kill of this skin: {@code chosen}, the module's choice (its art kept loaded), else a random
+     * pick whose art nothing loaded before. Logged as "Lads 1.8.9 kill banner frame times".
+     */
+    private static void bannerTiming(List<CoreProbe.Step> steps, String name, KillBannerStyle skin, int kills, boolean chosen) {
         steps.add(mc -> {
-            com.thelads.core.modules.KillBannerModule module = banner();
-            module.bannerStyle.setIndex(com.thelads.core.modules.KillBannerModule.styleIndexOf(skin));
+            KillBannerModule module = banner();
+            module.sound.set(true); // the real play path (the QA game is muted)
+            module.duration.setValue(2);
+            module.bannerStyle.setIndex(KillBannerModule.styleIndexOf(chosen ? skin : KillBannerStyle.DEFAULT));
+            KillBanner189.reset();
+            KillBanner189.recordFrames(600);
+            return after(8); // the chosen skin's art loads on these ticks, before the kill
+        });
+        steps.add(mc -> {
+            triggerFrame = KillBanner189.frameCount;
+            KillBanner189.trigger(kills, false, false, chosen ? banner().chosen() : new KillBannerModule.Pick(skin, 0, skin));
+            return after(30);
+        });
+        steps.add(mc -> {
+            long[] times = KillBanner189.frameTimes;
+            int end = KillBanner189.frameCount;
+            KillBanner189.recordFrames(0);
+            KillBanner189.reset();
+            check(triggerFrame >= 30 && end > triggerFrame + 30, "KillBanner frame times " + name + ": frames recorded (" + triggerFrame + ", " + end + ")");
+            int slowest = triggerFrame + 1;
+            for (int i = triggerFrame + 1; i < end; i++) if (times[i] > times[slowest]) slowest = i;
+            long[] before = Arrays.copyOfRange(times, triggerFrame - 30, triggerFrame), after = Arrays.copyOfRange(times, triggerFrame + 1, end);
+            Arrays.sort(before);
+            Arrays.sort(after);
+            LOG.info(String.format("Lads 1.8.9 kill banner frame times %s: before the kill max %.1f ms (median %.1f), the kill's frame %.1f ms,"
+                + " its banner max %.1f ms (%d frames after the kill's) (median %.1f)", name, before[before.length - 1] / 1e6, before[before.length / 2] / 1e6,
+                times[triggerFrame] / 1e6, after[after.length - 1] / 1e6, slowest - triggerFrame, after[after.length / 2] / 1e6));
+            return after(5);
+        });
+    }
+
+    /** The banner's frames, as 26.x KillBannerCapture: its opening, (an ace's turn), settled, and three moments of its way out. */
+    private static void bannerSequence(List<CoreProbe.Step> steps, KillBannerStyle skin, int variant, int kills) {
+        double seconds = kills == 5 ? 5 : 3;
+        int total = (int) Math.round(seconds * 60), intro, exit;
+        if (skin.isAnimated()) {
+            com.thelads.core.client.killbanner.KillBannerStrip strip = skin.strip(kills);
+            intro = strip.introEnd + 1;
+            exit = (int) Math.round(KillBannerPlayer.minimumSeconds(strip) * 60) - intro;
+        } else {
+            intro = (int) Math.round(KillBannerPlayer.stillSeconds(kills) * 60) - 16;
+            exit = 16;
+        }
+        List<Integer> frames = new ArrayList<>(Arrays.asList(2, 5, 9, 12, 16, 22, 30, 40, 52, 66, 80));
+        if (kills == 5) frames.addAll(Arrays.asList(110, 140, 160, 185, 200));
+        frames.add(intro + 10);
+        for (float at : new float[] {.2f, .5f, .8f}) frames.add(total - exit + Math.round(exit * at));
+        for (int frame : frames) bannerHeld(steps, skin, variant, kills, false, frame, seconds);
+    }
+
+    /** One banner held {@code frame} frames (60 fps) after its kill, saved cropped to the banner. */
+    private static void bannerHeld(List<CoreProbe.Step> steps, KillBannerStyle skin, int variant, int kills, boolean headshot, int frame, double seconds) {
+        bannerShots++;
+        steps.add(mc -> {
+            KillBannerModule module = banner();
+            module.sound.set(false); // hundreds of held frames: the frame-time runs play the sounds
+            module.bannerStyle.setIndex(KillBannerModule.styleIndexOf(skin));
             module.setVariant(skin, variant);
-            module.duration.setValue(6);
+            module.duration.setValue(seconds);
             module.headshotText.set(true);
             KillBanner189.reset();
             KillBanner189.trigger(kills, false, headshot);
-            return after(ms / 50);
+            KillBanner189.freeze(frame / 60.0 + 1 / 240.0); // a quarter frame in, as a 60 fps frame shows it
+            return after(2);
+        });
+        String whole = "kb172-whole-" + bannerShots;
+        steps.add(mc -> {
+            CoreProbe.screenshot(mc, whole); // 1.8.9 saves only whole screenshots: save one, keep the banner's part
+            return true;
         });
         steps.add(mc -> {
-            CoreProbe.screenshot(mc, "170-kb-" + skin.id + "-v" + variant + "-k" + kills + (headshot ? "-hs" : "") + "-" + ms + "ms");
+            File file = new File(mc.mcDataDir, "lads-qa/screenshots/" + whole + ".png");
+            java.awt.image.BufferedImage image = null;
+            try { if (file.isFile()) image = javax.imageio.ImageIO.read(file); } catch (java.io.IOException partial) { /* still being written */ }
+            if (image == null) return retry(1); // Lads Screenshots writes it on its own thread
+            if (!file.delete()) file.deleteOnExit(); // Lads Screenshots may still be reading it for its toast
+            int w = image.getWidth(), h = image.getHeight();
+            int x0 = Math.round(w * .5f - h * .3f), y0 = Math.round(h * .594f), cw = Math.min(w - x0, Math.round(h * .6f)), ch = Math.min(h - y0, Math.round(h * .37f));
+            File out = new File(mc.mcDataDir, String.format("lads-qa/screenshots/kb172/kb-%s-v%d-k%d%s-f%03d.png", skin.id, variant, kills, headshot ? "-hs" : "", frame));
+            out.getParentFile().mkdirs();
+            javax.imageio.ImageIO.write(image.getSubimage(x0, y0, cw, ch), "png", out);
+            bannerSaved++;
             KillBanner189.reset();
-            return after(4);
+            return after(1);
         });
     }
 
