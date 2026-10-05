@@ -140,6 +140,12 @@ public class GuiLadsAdapter implements LadsGraphics {
         return text != null ? font.getStringWidth(text) : 0;
     }
 
+    /** Changes on a resource reload or a Unicode/bidi switch (FontCache189), so the HUD keeps measured text widths until then. */
+    @Override
+    public Object textMetricsKey() {
+        return com.thelads.core.v1_8_9.feature.FontCache189.metricsKey(font);
+    }
+
     @Override
     public int fontHeight() {
         return font.FONT_HEIGHT;
