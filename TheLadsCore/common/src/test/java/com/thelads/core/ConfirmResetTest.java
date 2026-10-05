@@ -231,4 +231,27 @@ class ConfirmResetTest {
         click(menu, menu.controlBounds("option:Brightness Multiplier"));
         assertEquals(40, gamma.getValue(), "clicking away applies a valid number");
     }
+
+    @Test void flashbacksResetButtonAsksBeforeItRunsItsAction() {
+        var flashback = (com.thelads.core.modules.FlashbackModule) ModuleManager.getInstance().getModule(com.thelads.core.modules.FlashbackModule.NAME);
+        int[] ran = {0};
+        flashback.defaultFolder.setAction(() -> ran[0]++);
+        ModuleSupport.registerBuiltIn(flashback.getName());
+        var menu = new LadsSettingsScreen();
+        menu.openModule(flashback.getName());
+        var g = new Screen();
+        g.frame(menu);
+        click(menu, menu.controlBounds("option:Default folder"));
+        g.frame(menu);
+        assertTrue(menu.confirmDialog().isOpen());
+        assertTrue(g.texts.stream().anyMatch(t -> t.startsWith("Reset the Flashback replay folder")));
+        assertEquals(0, ran[0], "asking runs nothing");
+        click(menu, menu.confirmDialog().cancelBounds());
+        assertEquals(0, ran[0], "Cancel runs nothing");
+        g.frame(menu);
+        click(menu, menu.controlBounds("option:Default folder"));
+        assertTrue(menu.keyPressed(257, 0));
+        assertEquals(1, ran[0], "Enter runs it");
+        flashback.defaultFolder.setAction(null);
+    }
 }
