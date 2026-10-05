@@ -50,7 +50,9 @@ import org.slf4j.LoggerFactory;
  * hidden again (the view stayed still), with the elements' rectangles and the HUD's cost per frame (hudflicker.json).
  * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Then the pace of HUD animations: Jade's fade-in and
  * fade-out, the spyglass zoom-in, the vignette darkening at nightfall and the Lads FPS counter's smoothing, each timed with the cap
- * off, at 30 and at 10 FPS (from the moment it starts until a HUD build shows its end; hudflicker.json "pace"). Everything is put back.
+ * off, at 30 and at 10 FPS (from the moment it starts until a HUD build shows its end), with how often the HUD was built meanwhile;
+ * a second of a kill banner, and a second of a HUD that does not change (the FPS counter off), with the HUD's builds per second and
+ * cost (hudflicker.json "pace"). Everything is put back.
  */
 final class HudFlickerCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -82,10 +84,10 @@ final class HudFlickerCapture {
     // Pace: how long HUD animations take with the cap off, at 30 and at 10 FPS, from the moment each starts until a frame that built
     // the HUD shows its end. With the cap they should take as long as without, give or take one HUD frame.
     private static final int[] PACE_CAPS = {0, 30, 10};
-    private static final String[] PACE = {"jade-in", "jade-out", "spyglass", "vignette", "fps-smoothing"};
+    private static final String[] PACE = {"static", "jade-in", "jade-out", "spyglass", "vignette", "fps-smoothing", "kill-banner"};
     private static final int PACE_REPEATS = 2;
-    private static int pace = -1, paceStage, paceBuilds, paceBuildsAtStart;
-    private static long paceReady, paceStart, paceDeadline, dayTimeWas;
+    private static int pace = -1, paceStage, paceBuilds, paceBuildsAtStart, paceChangesAtStart, paceFrames;
+    private static long paceReady, paceStart, paceDeadline, dayTimeWas, paceNanosAtStart;
     private static float pinPitch = 90;
     private static boolean jadeAnimationWas;
 
@@ -463,7 +465,12 @@ final class HudFlickerCapture {
                     mc.options.keyUse.setDown(false);
                     pinPitch = anim.equals("jade-out") ? 90 : -90; // up at the sky, or down at the crafting table
                     hand(anim.equals("spyglass") ? new ItemStack(net.minecraft.world.item.Items.SPYGLASS) : ItemStack.EMPTY);
-                    if (anim.equals("vignette")) command("time set day");
+                    if (anim.equals("vignette") || anim.equals("static")) command("time set day");
+                    if (anim.equals("static")) mc.gui.hud.vignetteBrightness = 0; // settled at daylight (it eases 1% a tick, a slow animation)
+                    if (anim.equals("kill-banner") || anim.equals("static")) pinPitch = 90; // Jade on the table, still
+                    NativeKillBanner.timeline().clear(); // the last trial's banner (5 s) would still be animating
+                    mc.gui.hud.getChat().clearMessages(false); // and its commands' chat lines would fade out (an animation) 10 s later
+                    NativeQualityOfLife.module("FPS").setEnabled(!anim.equals("static")); // a counter that keeps changing
                     paceReady = now + 1_500_000_000L;
                     paceDeadline = now + 15_000_000_000L;
                     paceStage = 1;
@@ -473,6 +480,7 @@ final class HudFlickerCapture {
                         case "jade-in" -> !jadeTarget && jade.showHideAlpha == 0;
                         case "jade-out" -> jadeTarget && jade.showHideAlpha >= 1;
                         case "spyglass" -> !mc.player.isScoping() && scope(mc) == 0.5f;
+                        case "kill-banner", "static" -> jadeTarget && jade.showHideAlpha >= 1;
                         default -> true;
                     };
                     if (now < paceReady || !ready && now < paceDeadline) return;
@@ -481,10 +489,15 @@ final class HudFlickerCapture {
                         case "jade-out" -> pinPitch = -90;
                         case "spyglass" -> mc.options.keyUse.setDown(true);
                         case "vignette" -> { mc.gui.hud.vignetteBrightness = 0; command("time set midnight"); }
+                        case "kill-banner" -> { NativeKillBanner.bindCurrent(); NativeKillBanner.timeline().clear(); NativeKillBanner.trigger(1, false); }
+                        case "static" -> {}
                         default -> fps(0);
                     }
-                    paceStart = anim.equals("fps-smoothing") ? now : 0;
+                    paceStart = anim.equals("fps-smoothing") || anim.equals("kill-banner") || anim.equals("static") ? now : 0;
                     paceBuildsAtStart = HudCapture.qaBuilds;
+                    paceChangesAtStart = changes();
+                    paceNanosAtStart = HudCapture.qaNanos;
+                    paceFrames = 0;
                     paceDeadline = now + 12_000_000_000L;
                     paceStage = 2;
                 }
@@ -494,24 +507,31 @@ final class HudFlickerCapture {
                         case "jade-out" -> !jadeTarget;
                         case "spyglass" -> mc.player.isScoping();
                         default -> mc.gui.hud.vignetteBrightness > 0.005f;
-                    }) { paceStart = now; paceBuildsAtStart = HudCapture.qaBuilds; }
-                    boolean end = paceStart > 0 && built && switch (anim) {
-                        case "jade-in" -> jade.showHideAlpha >= 1;
-                        case "jade-out" -> jade.showHideAlpha < 0.1f;
-                        case "spyglass" -> scope(mc) >= 1.125f - 0.00625f; // 99% of the way from 0.5
-                        case "vignette" -> mc.gui.hud.vignetteBrightness >= 0.4f;
-                        default -> fpsDone();
+                    }) { paceStart = now; paceBuildsAtStart = HudCapture.qaBuilds; paceChangesAtStart = changes(); paceNanosAtStart = HudCapture.qaNanos; paceFrames = 0; }
+                    if (paceStart > 0) paceFrames++;
+                    boolean end = paceStart > 0 && switch (anim) {
+                        case "jade-in" -> built && jade.showHideAlpha >= 1;
+                        case "jade-out" -> built && jade.showHideAlpha < 0.1f;
+                        case "spyglass" -> built && scope(mc) >= 1.125f - 0.00625f; // 99% of the way from 0.5
+                        case "vignette" -> built && mc.gui.hud.vignetteBrightness >= 0.4f;
+                        case "kill-banner", "static" -> now - paceStart >= 1_000_000_000L; // a second of it
+                        default -> built && fpsDone();
                     };
                     if (!end && now < paceDeadline) return;
                     String key = (cap == 0 ? "cap off" : "cap " + cap) + " " + anim;
-                    String result = end ? String.format(java.util.Locale.ROOT, "%.0f ms, %d HUD builds", (now - paceStart) / 1e6,
-                        HudCapture.qaBuilds - paceBuildsAtStart) : "did not end within 12 s" + (paceStart == 0 ? " (did not start)" : "");
+                    double seconds = (now - paceStart) / 1e9;
+                    int builds = HudCapture.qaBuilds - paceBuildsAtStart, changes = changes() < 0 ? -1 : changes() - paceChangesAtStart;
+                    String result = end ? String.format(java.util.Locale.ROOT, "%.0f ms, %d HUD builds (%.0f a second, %s changed the HUD), %d frames, HUD %.0f us per frame",
+                        seconds * 1000, builds, builds / Math.max(seconds, 1e-3), changes < 0 ? "?" : String.valueOf(changes), paceFrames,
+                        (HudCapture.qaNanos - paceNanosAtStart) / 1e3 / Math.max(1, paceFrames))
+                        : "did not end within 12 s" + (paceStart == 0 ? " (did not start)" : "");
                     JsonObject results = report().getAsJsonObject("pace");
                     if (!results.has(key)) results.add(key, new JsonArray());
                     results.getAsJsonArray(key).add(result);
                     LOGGER.info("Lads HUD pace capture {}: {}", key, result);
                     if (!end) failed++;
                     mc.options.keyUse.setDown(false);
+                    NativeKillBanner.timeline().clear();
                     pace++;
                     paceStage = 0;
                 }
@@ -522,6 +542,12 @@ final class HudFlickerCapture {
             pace++;
             paceStage = 0;
         }
+    }
+
+    /** HudFrameCap.changes where this build has it (builds that drew something new), or -1. */
+    private static int changes() {
+        try { return com.thelads.core.client.hud.HudFrameCap.class.getField("changes").getInt(null); }
+        catch (ReflectiveOperationException absent) { return -1; }
     }
 
     private static void hand(ItemStack item) {
