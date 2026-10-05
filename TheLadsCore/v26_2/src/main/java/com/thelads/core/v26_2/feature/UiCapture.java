@@ -63,7 +63,7 @@ final class UiCapture {
     private static List<Step> steps;
     private static Set<String> locked;
     private static int step = -1, passed, frames, ticks, resumeFrames, resumeTicks, saves, skippedShots, takenShots;
-    private static int framesAtLastTick;
+    private static int lastFrameTick;
     private static boolean rendering, shotRunning, restored, dragStepsOk;
     private static String pendingShot;
     private static int shotDeadline;
@@ -110,8 +110,7 @@ final class UiCapture {
     /** One step per client tick, once the frames (or, with no frames drawn, the ticks) it waits for have passed and its screenshot is settled. */
     private static void advance() {
         ticks++;
-        rendering = frames > framesAtLastTick;
-        framesAtLastTick = frames;
+        rendering = frames > 0 && ticks - lastFrameTick < 10; // frames come about three to a tick; none for half a second: the window draws none
         Minecraft mc = Minecraft.getInstance();
         if (!rendering) layout(mc); // no frame draws the screen: lay it out here, so its controls have bounds
         if (pendingShot != null && !shotRunning && ticks >= shotDeadline) {
@@ -463,6 +462,7 @@ final class UiCapture {
     static void frame(RenderTarget target, Path game) {
         if (!busy()) return;
         frames++;
+        lastFrameTick = ticks;
         if (pendingShot == null || shotRunning || frames < resumeFrames) return;
         String name = pendingShot;
         shotRunning = true;
@@ -506,7 +506,7 @@ final class UiCapture {
         if (!restored) restore(mc);
         step = 999;
         String how = "reset questions answered by click, Esc and Enter; Fullbright followed through the open menu (control and live); " + takenShots + " frames saved, "
-            + skippedShots + " skipped (minimized window draws none)";
+            + skippedShots + " skipped (none are skipped unless the window draws no frames)";
         if (FAILURES.isEmpty()) LOGGER.info("Lads UI capture END: {} passed, 0 failed; {}", passed, how);
         else LOGGER.error("Lads UI capture END: {} passed, {} failed: {}", passed, FAILURES.size(), FAILURES);
     }
