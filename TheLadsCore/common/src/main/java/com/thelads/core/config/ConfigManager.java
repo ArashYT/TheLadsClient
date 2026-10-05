@@ -118,6 +118,7 @@ public class ConfigManager {
             migrateChat(modulesJson);
             migrateDynamicLights(modulesJson);
             migrateDiscord(modulesJson);
+            migrateDamageTilt(modulesJson);
             for (Module module : ModuleManager.getInstance().getModules()) {
                 try {
                     if (module.getName().equals("Nametags") && !modulesJson.has("Nametags") && modulesJson.has("ToggleNametags"))
@@ -235,6 +236,12 @@ public class ConfigManager {
     public static void migrateDiscord(JsonObject modules) {
         if (modules.get("DiscordRPC") instanceof JsonObject discord && discord.get("options") instanceof JsonObject options
                 && options.has("Share activity")) modules.remove("DiscordRPC");
+    }
+
+    /** Before 1.7.2 OldDamageTilt's Intensity was a choice (Subtle, Normal, Strong); now it is a percentage: Subtle 50, else 100. */
+    static void migrateDamageTilt(JsonObject modules) {
+        if (!(legacy(modules, "OldDamageTilt", "options") instanceof JsonObject options) || options.has("Directional")) return;
+        if (options.get("Intensity") != null) options.addProperty("Intensity", number(options.get("Intensity")) == 0 ? 50 : 100);
     }
 
     /** 1.4.5 moved ClientTools "Chat timestamps" and the HideChatIndicators module into Chat options; keeps whatever the user had. */

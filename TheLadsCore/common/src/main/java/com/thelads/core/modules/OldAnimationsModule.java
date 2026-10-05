@@ -29,8 +29,8 @@ public final class OldAnimationsModule extends Module {
         HELD_ITEMS("1.7 held item positions", "In first person swords, tools and other flat items are held where 1.7 held them, "
             + "so they no longer jump in size when a 1.7 pose starts.", null),
         EAT_DRINK("1.7 eating and drinking", "In first person food and potions move as in 1.7 while you eat or drink.", null),
-        SWING_WHILE_USING("Swing while using items", "Attacking while you draw a bow still shows the swing, as in 1.7. "
-            + "Eating and drinking show only their own pose.", null),
+        SWING_WHILE_USING("Swing while using items", "Attacking while you eat, drink or draw a bow swings your arm over the use, "
+            + "as in 1.7. Only drawn: the use goes on and nothing extra is sent to the server.", null),
         RED_ARMOUR("Red armour on hurt", "Armour turns red with the player when hurt, as in 1.7.", null),
         INSTANT_SNEAK("Instant sneak camera", "The camera reaches sneak height within one tick, as in 1.7, and eases back up.", null),
         NO_HEART_FLASH("No heart flashing", "Health hearts do not flash when you take damage.", null),
@@ -91,14 +91,25 @@ public final class OldAnimationsModule extends Module {
         return isEnabled() && feature.appliesTo(platform) && toggles.get(feature).get();
     }
 
-    /**
-     * The swing to pass to OldAnimations.hand: 1.7 kept the swing turn while blocking and drawing a bow, 1.8 dropped it. Eating and
-     * drinking show only their own pose, so clicking while you eat never swings the food.
-     */
+    /** {@link #swingShown(Platform, Use, float, boolean)} with no attack during the use (1.21.11). */
     public float swingShown(Platform platform, Use use, float swing) {
+        return swingShown(platform, use, swing, false);
+    }
+
+    /**
+     * The swing to pass to OldAnimations.hand: 1.7 kept the swing turn while blocking and drawing a bow, 1.8 dropped it. Food and
+     * drink show a swing only once the player attacked during this use ({@code attacked}): a swing left over from mining or an
+     * earlier hit never swings the food by itself.
+     */
+    public float swingShown(Platform platform, Use use, float swing, boolean attacked) {
         if (use == Use.NONE) return swing;
-        if (use == Use.EAT_DRINK) return 0;
+        if (use == Use.EAT_DRINK && !attacked) return 0;
         return active(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING, platform) ? swing : 0;
+    }
+
+    /** Swing while using items: the attack key pressed during this use swings the arm (drawn only; 1.8 and later drop the click). */
+    public boolean swingOnAttack(Platform platform, Use use) {
+        return use != null && use != Use.NONE && swingShown(platform, use, 1, true) > 0;
     }
 
     /**

@@ -27,6 +27,11 @@ import net.minecraft.item.ItemSign;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.Vec3;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.InputEvent;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 
 /**
  * 1.7 Animations on 1.8.9 (OldAnimationsModule, built in through TheLadsCore189.GAMEPLAY_MODULES). The mixins ask this class and
@@ -53,11 +58,51 @@ public final class OldAnimations189 {
     public static float usedSwing;
     private static Entity eyeEntity;
     private static float eyeBefore, eye;
+    /** Swing while using items: the attack key was pressed during the current use (cleared once no item is in use). */
+    static boolean attacked;
 
     private OldAnimations189() {}
 
     public static void register() {
         MODULE.setPlatform(PLATFORM);
+        MinecraftForge.EVENT_BUS.register(new OldAnimations189());
+    }
+
+    /** The swing a first-person hand in this use shows (ItemRendererMixin): food swings only after an attack during the use. */
+    public static float swingShown(Use use, float swing) {
+        return MODULE.swingShown(PLATFORM, use, swing, attacked);
+    }
+
+    // Swing while using items and Blockhitting: the attack key's press as runTick's input loop reads it (Forge's InputEvent), before
+    // runTick drops every attack press while an item is in use.
+    @SubscribeEvent
+    public void mouse(InputEvent.MouseInputEvent event) {
+        if (Mouse.getEventButtonState() && Mouse.getEventButton() - 100 == Minecraft.getMinecraft().gameSettings.keyBindAttack.getKeyCode())
+            attackPressed(Minecraft.getMinecraft());
+    }
+
+    @SubscribeEvent
+    public void key(InputEvent.KeyInputEvent event) {
+        int key = Keyboard.getEventKey() == 0 ? Keyboard.getEventCharacter() + 256 : Keyboard.getEventKey(); // KeyBinding's code
+        if (Keyboard.getEventKeyState() && !Keyboard.isRepeatEvent() && key == Minecraft.getMinecraft().gameSettings.keyBindAttack.getKeyCode())
+            attackPressed(Minecraft.getMinecraft());
+    }
+
+    /** An attack press while an item is in use: the arm swings over the use, drawn only (no packet, no attack), as in 1.7. */
+    static void attackPressed(Minecraft mc) {
+        EntityPlayerSP player = mc.thePlayer;
+        if (player == null || mc.currentScreen != null || !player.isUsingItem() || !MODULE.swingOnAttack(PLATFORM, use(player, player.getItemInUse())))
+            return;
+        attacked = true;
+        swing(player);
+    }
+
+    /** EntityLivingBase.swingItem without EntityPlayerSP's packet; 3 is its restart at half a swing (6 ticks, without haste). */
+    private static void swing(EntityPlayerSP player) {
+        if (player.isSwingInProgress && player.swingProgressInt < 3 && player.swingProgressInt >= 0) return;
+        player.swingProgressInt = -1;
+        player.isSwingInProgress = true;
+        hit(Hook.SWING);
     }
 
     public static boolean active(Feature feature) {
@@ -123,7 +168,8 @@ public final class OldAnimations189 {
     /**
      * Every client tick (END). Instant sneak camera: 1.7's per-tick eye height for the view entity. Blockhitting and Swing while
      * using items: 1.7 swung the arm while the attack key was held on a block during a use (1.8 dropped that), so the swing shows
-     * on the blocking sword or the bow (never the food: swingShown). Drawn only: no packet, no block damage, so servers see 1.8.9 play.
+     * on the blocking sword or the bow (on food only after an attack press during the use: swingShown). Drawn only: no packet, no
+     * block damage, so servers see 1.8.9 play.
      */
     public static void tick(Minecraft mc) {
         Entity view = mc.getRenderViewEntity();
@@ -135,16 +181,12 @@ public final class OldAnimations189 {
         eyeEntity = view;
 
         EntityPlayerSP player = mc.thePlayer;
+        if (player == null || !player.isUsingItem()) attacked = false; // a new use starts without an attack
         if (player == null || mc.currentScreen != null || !player.isUsingItem() || !mc.gameSettings.keyBindAttack.isKeyDown()
             || mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK) return;
         Use use = use(player, player.getItemInUse());
-        if (use == null || MODULE.swingShown(PLATFORM, use, 1) == 0) return;
-        // EntityLivingBase.swingItem without EntityPlayerSP's packet; 3 is its restart at half a swing (6 ticks, without haste).
-        if (!player.isSwingInProgress || player.swingProgressInt >= 3 || player.swingProgressInt < 0) {
-            player.swingProgressInt = -1;
-            player.isSwingInProgress = true;
-            hit(Hook.SWING);
-        }
+        if (use == null || MODULE.swingShown(PLATFORM, use, 1, attacked) == 0) return;
+        swing(player);
     }
 
     /** The camera's eye height (EntityRenderer.orientCamera): with Instant sneak camera, 1.7's per-tick height, interpolated. */

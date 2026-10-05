@@ -33,6 +33,7 @@
     "NarratorShortcutMixin",
     "ChatIndicatorMixin",
     "DamageTiltMixin",
+    "DamageTiltPacketsMixin",
     "DynamicLightsBlockMixin",
     "DynamicLightsEntityMixin",
     "ItemTooltipMixin",
