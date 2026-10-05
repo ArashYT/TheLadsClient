@@ -87,6 +87,10 @@ public final class CoreProbe {
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe170Sprint.STEPS);
             STEPS.addAll(Probe170Hud.STEPS);
+        } else if ("rx".equals(only)) { // 1.7.3 rendering tweaks: A/B frame times, visual parity, per-call costs (Probe173Rx)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe173Rx.STEPS);
         } else if ("hudflicker".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
