@@ -134,13 +134,10 @@ string? cheatsPhase = autoWorldVerification && !capabilities.Forge ? Env("LADS_V
 if (cheatsPhase is not (null or "set" or "check" or "off")) throw new ArgumentException("LADS_VERIFY_CHEATS must be set, check or off.");
 string? focus189 = autoWorldVerification && capabilities.Forge ? Env("LADS_VERIFY_189_FOCUS") : null;
 if (focus189 != null && !Regex.IsMatch(focus189, @"\A[a-z0-9-]{1,40}\z")) throw new ArgumentException("LADS_VERIFY_189_FOCUS must be a plain step list name.");
-// 1.8.9 benchmark (LADS_VERIFY_189_ONLY=perf, Probe173Perf): the one QA run allowed uncapped (FPS unlimited, VSync off) at render
-// distance LADS_VERIFY_PERF_RD (user-approved exception, sandbox only); LADS_VERIFY_PERF_SECONDS per scene (default 60, at most 90);
-// LADS_VERIFY_PERF_JFR=1 also records a Flight Recording to lads-qa\perf\perf.jfr.
+// 1.8.9 benchmark (LADS_VERIFY_189_ONLY=perf, Probe173Perf): ms of work per frame at the QA settings (60 FPS cap, render distance 4);
+// LADS_VERIFY_PERF_SECONDS per scene (default 60, at most 90); LADS_VERIFY_PERF_JFR=1 also records lads-qa\perf\perf.jfr.
 bool perf189 = autoWorldVerification && capabilities.Forge && Env("LADS_VERIFY_189_ONLY") == "perf";
-int perfRenderDistance = perf189 ? int.Parse(Env("LADS_VERIFY_PERF_RD") ?? "8") : 4;
-if (perfRenderDistance is < 2 or > 16) throw new ArgumentException("LADS_VERIFY_PERF_RD must be 2 to 16.");
-if (!perf189 && (Env("LADS_VERIFY_PERF_RD") ?? Env("LADS_VERIFY_PERF_SECONDS") ?? Env("LADS_VERIFY_PERF_JFR")) != null)
+if (!perf189 && (Env("LADS_VERIFY_PERF_SECONDS") ?? Env("LADS_VERIFY_PERF_JFR")) != null)
     throw new ArgumentException("LADS_VERIFY_PERF_* needs a 1.8.9 --title run with LADS_VERIFY_AUTO_WORLD=1 and LADS_VERIFY_189_ONLY=perf.");
 string? perfSeconds = perf189 ? Env("LADS_VERIFY_PERF_SECONDS") : null;
 if (perfSeconds != null && !Regex.IsMatch(perfSeconds, @"\A[1-9][0-9]?\z")) throw new ArgumentException("LADS_VERIFY_PERF_SECONDS must be 1 to 99.");
@@ -562,7 +559,7 @@ try
     }
     var session = AccountIdentity.CreateOfflineSession("LadsQA");
     await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
-    await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
+    await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:60\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
     Console.WriteLine("Installing production dependencies...");
     process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
     {
@@ -729,11 +726,11 @@ try
     process.ErrorDataReceived += WriteLine;
     if (capabilities.Forge && File.Exists(gameLog)) File.Delete(gameLog); // only this run's lines are read
     // QA instances are muted and kept light (owner's standing rule): the owner may be using the computer meanwhile.
-    // 120 FPS cap (VSync off so the cap is what applies), render/simulation distance 4, GUI scale 2 (1.8.9 ignores simulationDistance);
+    // 60 FPS cap (owner, 2026-10-05: they play while QA runs; VSync off so the cap is what applies), render/simulation distance 4,
+    // GUI scale 2 (1.8.9 ignores simulationDistance);
     // pauseOnLostFocus off: a pause menu when the owner clicks away would stop the integrated server and the probes' input.
-    // The 1.8.9 benchmark alone runs uncapped (maxFps 260 is Unlimited) at its own render distance (perf189 above).
-    string[] qaForced = { "soundCategory_master:0.0", perf189 ? "maxFps:260" : "maxFps:120", "enableVsync:false", $"renderDistance:{perfRenderDistance}",
-        "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false" };
+    string[] qaForced = { "soundCategory_master:0.0", "maxFps:60", "enableVsync:false", "renderDistance:4", "simulationDistance:4", "guiScale:2",
+        "pauseOnLostFocus:false" };
     string qaOptions = Path.Combine(directory, "options.txt");
     var qaLines = File.Exists(qaOptions)
         ? File.ReadAllLines(qaOptions).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList()
@@ -746,7 +743,6 @@ try
     if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") != "1") process.StartInfo.Environment["SDL_WINDOW_ACTIVATE_WHEN_SHOWN"] = "0";
     process.Start();
     QaWindowGuard.Watch(process);
-    if (perf189) Console.WriteLine("Benchmark: " + PerfProcess.Steady(process));
     GameSession.Attach(process, directory, loadedMods, message => { lock (sessionMessages) sessionMessages.Add(message); }, shared,
         () => { exitHandled.TrySetResult(); return Task.CompletedTask; });
     process.BeginOutputReadLine();
@@ -1354,28 +1350,5 @@ sealed class FabricModList : LoadedModList
         Declared = int.Parse(start.Groups[1].Value);
         inList = true;
         return true;
-    }
-}
-
-/// <summary>
-/// The 1.8.9 benchmark's game (LADS_VERIFY_189_ONLY=perf): Windows 11 gives a window that is not in front EcoQoS, which on a
-/// hybrid CPU moves its threads to the efficiency cores, so the numbers depended on which window the owner had in front. The
-/// game gets execution-speed throttling off (high QoS) and above-normal priority instead.
-/// </summary>
-static class PerfProcess
-{
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-    private struct PowerThrottling { public uint Version, ControlMask, StateMask; }
-
-    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool SetProcessInformation(IntPtr process, int informationClass, ref PowerThrottling information, int size);
-
-    public static string Steady(Process game)
-    {
-        // ProcessPowerThrottling (4), PROCESS_POWER_THROTTLING_EXECUTION_SPEED (1) controlled and off.
-        var throttling = new PowerThrottling { Version = 1, ControlMask = 1, StateMask = 0 };
-        bool qos = SetProcessInformation(game.Handle, 4, ref throttling, System.Runtime.InteropServices.Marshal.SizeOf<PowerThrottling>());
-        game.PriorityClass = ProcessPriorityClass.AboveNormal;
-        return $"EcoQoS {(qos ? "off" : "unchanged (error " + System.Runtime.InteropServices.Marshal.GetLastWin32Error() + ")")}, priority {game.PriorityClass}";
     }
 }
