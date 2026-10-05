@@ -3,10 +3,11 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 /// <summary>
-/// Keeps QA games out of the owner's way (owner, 2026-10-05: "I want to play"): every QA game runs at below-normal priority,
-/// and every game window is minimized without being activated and kept minimized; when a new game window takes focus while
-/// the owner is using the PC, focus goes back to the window they were in. LADS_VERIFY_FOCUS=1 (runs that need the game in
-/// front) skips the window handling but not the priority; the owner asked that such runs wait until they say so.
+/// Places QA games for the owner (2026-10-05: "dont do minimized sessions do 1 on each monitor"): each game claims a free monitor
+/// (a machine-wide claim, shared by every worktree's harness) and its window goes there without being activated; with every
+/// monitor taken it shares the last one. Games run at High priority (owner: "do high priority QA Tests"). When a new game window
+/// takes focus while the owner is using the PC, focus goes back to the window they were in. Runs that need the game in front
+/// (synthetic input, raw mouse, F11/borderless captures) set LADS_VERIFY_FOCUS=1: no placement or focus give-back.
 /// </summary>
 static class QaWindowGuard
 {
@@ -18,19 +19,24 @@ static class QaWindowGuard
 
     private static void Loop(Process game, bool focus)
     {
+        string? claim = null;
+        Rectangle target = focus ? Rectangle.Empty : ClaimMonitor(game.Id, out claim);
         var firstSeen = new Dictionary<IntPtr, long>();
         IntPtr owners = GameWindow(GetForegroundWindow()) ? IntPtr.Zero : GetForegroundWindow();
         try
         {
             while (!game.HasExited)
             {
-                // GameSession raises startup priority and later sets Normal: a QA game stays below normal the whole run.
-                if (game.PriorityClass != ProcessPriorityClass.BelowNormal) game.PriorityClass = ProcessPriorityClass.BelowNormal;
+                // GameSession sets Realtime for startup, then Normal: a QA game runs at High the whole time.
+                if (game.PriorityClass != ProcessPriorityClass.High) game.PriorityClass = ProcessPriorityClass.High;
                 if (focus) { Thread.Sleep(250); continue; }
                 foreach (IntPtr window in Windows(game.Id))
                 {
-                    firstSeen.TryAdd(window, Environment.TickCount64);
-                    if (!IsIconic(window)) ShowWindow(window, SwShowMinNoActive);
+                    if (firstSeen.ContainsKey(window)) continue;
+                    firstSeen[window] = Environment.TickCount64;
+                    // A window as big as a screen is fullscreen/borderless under test: leave it where the game put it.
+                    if (GetWindowRect(window, out var r) && !CoversScreen(r))
+                        SetWindowPos(window, IntPtr.Zero, target.X + 40, target.Y + 40, 0, 0, SwpNoSize | SwpNoZOrder | SwpNoActivate);
                 }
                 IntPtr front = GetForegroundWindow();
                 if (front != IntPtr.Zero && !GameWindow(front)) owners = front;
@@ -41,7 +47,45 @@ static class QaWindowGuard
             }
         }
         catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception) { } // the game went away mid-check
+        finally { if (claim != null) try { Directory.Delete(claim, true); } catch (IOException) { } }
     }
+
+    /// <summary>Claims the first monitor no live QA game holds (%TEMP%\lads-qa-monitors\N holds the game's PID).</summary>
+    private static Rectangle ClaimMonitor(int pid, out string? claim)
+    {
+        Screen[] screens = Screen.AllScreens.OrderBy(s => s.Bounds.X).ThenBy(s => s.Bounds.Y).ToArray();
+        string root = Path.Combine(Path.GetTempPath(), "lads-qa-monitors");
+        Directory.CreateDirectory(root);
+        for (int i = 0; i < screens.Length; i++)
+        {
+            string dir = Path.Combine(root, (i + 1).ToString());
+            string owner = Path.Combine(dir, "pid");
+            if (Directory.Exists(dir) && !(File.Exists(owner) && int.TryParse(File.ReadAllText(owner), out int held) && Alive(held)))
+                try { Directory.Delete(dir, true); } catch (IOException) { continue; } // stale claim of a game that is gone
+            try
+            {
+                if (Directory.Exists(dir)) continue;
+                Directory.CreateDirectory(dir); // not atomic between harnesses: the PID check below settles a race
+                File.WriteAllText(owner, pid.ToString());
+                Thread.Sleep(50);
+                if (File.ReadAllText(owner) != pid.ToString()) continue;
+                claim = dir;
+                return screens[i].WorkingArea;
+            }
+            catch (IOException) { }
+        }
+        claim = null;
+        return screens[^1].WorkingArea;
+    }
+
+    private static bool Alive(int pid)
+    {
+        try { return !Process.GetProcessById(pid).HasExited; }
+        catch (ArgumentException) { return false; }
+    }
+
+    private static bool CoversScreen(RectNative r) =>
+        Screen.AllScreens.Any(s => r.Right - r.Left >= s.Bounds.Width && r.Bottom - r.Top >= s.Bounds.Height);
 
     /// <summary>LWJGL 2 (1.8.9), GLFW (26.2) and SDL (26.3) game windows, so other QA games never count as the owner's window.</summary>
     private static bool GameWindow(IntPtr window)
@@ -79,7 +123,8 @@ static class QaWindowGuard
         finally { AttachThreadInput(self, gameThread, false); }
     }
 
-    private const int SwShowMinNoActive = 7;
+    private const uint SwpNoSize = 0x1, SwpNoZOrder = 0x4, SwpNoActivate = 0x10;
+    [StructLayout(LayoutKind.Sequential)] private struct RectNative { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] private struct LastInputInfo { public uint Size, Time; }
     private delegate bool EnumProc(IntPtr window, IntPtr parameter);
     [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc callback, IntPtr parameter);
@@ -89,8 +134,8 @@ static class QaWindowGuard
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr window, StringBuilder name, int capacity);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
-    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
-    [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr window, int command);
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out RectNative rect);
+    [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint attach, uint to, bool join);
     [DllImport("user32.dll")] private static extern bool GetLastInputInfo(ref LastInputInfo info);
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
