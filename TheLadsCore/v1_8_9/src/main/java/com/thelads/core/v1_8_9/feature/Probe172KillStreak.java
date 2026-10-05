@@ -38,7 +38,7 @@ import org.apache.logging.log4j.Logger;
 /**
  * QA only: the kill streak in the 1.8.9 QA world, as 26.x KillStreakCapture (CoreProbe focus "killstreak", from the harness's
  * LADS_VERIFY_189_FOCUS=killstreak; no synthetic input). Five pigs finished by the player's own blows (PlayerControllerMP.attackEntity)
- * in one client tick, then one tick apart: the banner (Base, whose label reads the count) must show 1 to 5 in turn
+ * in one client tick, then one tick apart: the banner must show 1 to 5 in turn
  * (lads-qa/screenshots/ks-&lt;run&gt;-&lt;n&gt;-k&lt;count&gt;.png, every tick in lads-qa/screenshots/killstreak-trace.csv). Then server kill
  * messages through NetHandlerPlayClient.handleChat, the streak timer typed as 3 s, Unlimited and the player's death.
  */
@@ -130,7 +130,7 @@ final class Probe172KillStreak {
         steps.add(mc -> { begin("death"); attack(mc, PIGS.get(0)); return true; });
         steps.add(mc -> sample(mc, 10));
         steps.add(mc -> {
-            check(streak() == 1, "KillStreak: a kill before dying (streak " + streak() + ")");
+            check(streak() == 3, "KillStreak: Unlimited Streak: a third kill before dying (streak " + streak() + ")");
             final UUID id = mc.thePlayer.getUniqueID();
             mc.getIntegratedServer().addScheduledTask(() -> mc.getIntegratedServer().getConfigurationManager().getPlayerByUUID(id)
                 .attackEntityFrom(DamageSource.outOfWorld, Float.MAX_VALUE));
@@ -148,7 +148,7 @@ final class Probe172KillStreak {
         steps.add(mc -> sample(mc, 10));
         steps.add(mc -> {
             check(streak() == 1, "KillStreak: after respawning the next kill starts at 1 (streak " + streak() + ")");
-            end(Arrays.asList(1, 1), "the death run's banners");
+            end(Arrays.asList(3, 1), "the death run's banners");
             return true;
         });
         steps.add(Probe172KillStreak::finish);
@@ -166,7 +166,7 @@ final class Probe172KillStreak {
         for (Option option : module.getOptions()) option.reset();
         module.setEnabled(true);
         module.mobs.set(true);
-        module.bannerStyle.setIndex(KillBannerModule.BASE); // its label reads the kill count
+        module.bannerStyle.setIndex(KillBannerModule.BASE);
         module.duration.setValue(2);
         check(module.streakReset.get() == 45 && module.streakWindow() == 45_000_000_000L, "KillStreak: Streak Reset starts at 45 seconds");
         began = System.nanoTime();
@@ -267,7 +267,7 @@ final class Probe172KillStreak {
         return true;
     }
 
-    /** The banner traced, and a picture of each new banner about 0.1 s in (Base has faded in). */
+    /** The banner traced, and a picture of each new banner about 0.2 s in (its kill pips are in). */
     private static void observe(Minecraft mc) {
         if (run == null) return;
         KillBannerTimeline banner = KillBanners.TIMELINE;
@@ -278,7 +278,7 @@ final class Probe172KillStreak {
         if (sequence > 0 && (sequence != lastSequence || age < lastAge)) { SHOWN.add(sequence); picture = true; }
         lastSequence = sequence;
         lastAge = age;
-        if (picture && age >= .1) {
+        if (picture && age >= .2) {
             CoreProbe.screenshot(mc, "ks-" + run + "-" + SHOWN.size() + "-k" + sequence);
             picture = false;
             pictures++;
