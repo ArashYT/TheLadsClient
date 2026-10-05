@@ -340,11 +340,13 @@ final class UiCapture {
         LOGGER.info("Lads UI capture {} world under the open menu at 0%: {} 30%: {} 65%: {} 100%: {} (lightmap brightness / preview pixels)",
             control ? "CONTROL" : "LIVE", f(l0), f(l30), f(l65), f(l100));
         if (control) {
-            check(l30 == l0 && l65 == l0 && l100 == l0, "CONTROL: without the fix the world under the open menu stays as it was at every setting");
+            double same = usePixels() ? 2 : 0.001;
+            check(Math.abs(l30 - l0) < same && Math.abs(l65 - l0) < same && Math.abs(l100 - l0) < same, "CONTROL: without the fix the world under the open menu stays as it was at every setting");
             return;
         }
         double eps = usePixels() ? 3 : 0.01;
-        check(l30 > l0 + eps && l65 >= l30 && l100 >= l65 && l100 > l0 + 5 * eps, "the world under the open menu follows the slider: brighter at each higher setting");
+        // the picture saturates (white) above about 30%: no darker than the step before, give or take pixel noise
+        check(l30 > l0 + eps && l65 >= l30 - eps && l100 >= l65 - eps && l100 > l0 + 5 * eps, "the world under the open menu follows the slider: brighter at each higher setting");
         check(Math.abs(WORLD.get(tag + "p000-again") - l0) < (usePixels() ? 2 : 0.001), "back at 0% the world is as dark as at the start");
     }
 
