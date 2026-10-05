@@ -67,7 +67,8 @@ public final class CoreProbe {
     static {
         // Focused QA paths, each straight into the QA world: LADS_VERIFY_189_ONLY (the harness passes it as -Dthelads.verify189Only)
         // =itemphysics (Probe170ItemPhysics), =170 (Toggle Sprint & Sneak, then the HUD checks), =raised (Raised and the paper
-        // doll, RaisedDollProbe189), =hudflicker (runs of frames with the HUD FPS cap off and on, Probe172HudFlicker) or =leave (only the
+        // doll, RaisedDollProbe189), =hudflicker (runs of frames with the HUD FPS cap off and on, Probe172HudFlicker), =ui (the reset
+        // questions and Fullbright's slider, Probe172Ui) or =leave (only the
         // final leave, the 1.7.0 freeze regression check);
         // -Dthelads.verifyChatHeads=true (ChatHeadsProbe189) and -Dthelads.verify189F3Fov=true (Probe170F3Fov).
         String only = System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY"));
@@ -91,6 +92,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe172HudFlicker.STEPS);
+        } else if ("ui".equals(only)) {
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe172Ui.STEPS);
         } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
@@ -154,6 +159,7 @@ public final class CoreProbe {
     private static void finish() {
         finished = true;
         HudProbe.stop();
+        Probe172Ui.stop();
         Probe151.stop();
         Probe160.stop();
         ChatHeadsProbe189.stop(Minecraft.getMinecraft());

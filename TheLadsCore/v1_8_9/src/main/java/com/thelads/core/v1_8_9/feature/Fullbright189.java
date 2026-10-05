@@ -13,6 +13,8 @@ import net.minecraft.client.Minecraft;
  */
 public final class Fullbright189 {
     private static float original = Float.NaN;
+    /** QA only (Probe172Ui's control run): the lightmap is left to the game's own tick again, as before 1.7.2. */
+    static volatile boolean qaDefer;
 
     private Fullbright189() {}
 
@@ -31,6 +33,6 @@ public final class Fullbright189 {
 
     private static void set(Minecraft mc, float gamma) {
         mc.gameSettings.gammaSetting = gamma;
-        ((EntityRendererAccessor) mc.entityRenderer).ladsLightmapDirty(true);
+        if (!qaDefer) ((EntityRendererAccessor) mc.entityRenderer).ladsLightmapDirty(true);
     }
 }
