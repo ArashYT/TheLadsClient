@@ -1,5 +1,6 @@
 package com.thelads.core.v26_2.mixin;
 
+import com.thelads.core.client.DamageTilt;
 import com.thelads.core.v26_2.feature.NativeQualityOfLife;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.state.OptionsRenderState;
@@ -8,23 +9,24 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-/** Keep vanilla timing/death animations; restore the pre-directional damage angle. */
+/**
+ * Damage tilt (the OldDamageTilt module, common DamageTilt), as 1.8.9's EntityRendererMixin: vanilla's timing and death roll stay. The
+ * tilt turns by the hit's direction (Directional; DamageTiltPacketsMixin pairs it with the hurt, so fall damage gets the fixed tilt
+ * instead of vanilla's stale hurtDir) or the old fixed way, and Intensity scales Minecraft's own Damage Tilt setting.
+ */
 @Mixin(GameRenderer.class)
 public class DamageTiltMixin {
     @Redirect(method = "bobHurt", at = @At(value = "FIELD",
         target = "Lnet/minecraft/client/renderer/state/level/CameraEntityRenderState;hurtDir:F"), require = 1)
-    private float lads$classicAngle(CameraEntityRenderState state) {
-        return NativeQualityOfLife.enabled("OldDamageTilt") ? 0 : state.hurtDir;
+    private float lads$direction(CameraEntityRenderState state) {
+        if (!NativeQualityOfLife.enabled(DamageTilt.MODULE)) return state.hurtDir;
+        return DamageTilt.CLIENT.cameraYaw(NativeQualityOfLife.module(DamageTilt.MODULE), System.currentTimeMillis());
     }
 
     @Redirect(method = "bobHurt", at = @At(value = "FIELD",
         target = "Lnet/minecraft/client/renderer/state/OptionsRenderState;damageTiltStrength:D"), require = 1)
     private double lads$intensity(OptionsRenderState state) {
-        if (!NativeQualityOfLife.enabled("OldDamageTilt")) return state.damageTiltStrength;
-        return state.damageTiltStrength * switch (NativeQualityOfLife.choice("OldDamageTilt", "Intensity", 1)) {
-            case 0 -> .5;
-            case 2 -> 1.5;
-            default -> 1;
-        };
+        if (!NativeQualityOfLife.enabled(DamageTilt.MODULE)) return state.damageTiltStrength;
+        return state.damageTiltStrength * DamageTilt.strength(NativeQualityOfLife.module(DamageTilt.MODULE));
     }
 }

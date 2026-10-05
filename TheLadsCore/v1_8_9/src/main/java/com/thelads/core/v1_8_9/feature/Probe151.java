@@ -615,17 +615,17 @@ final class Probe151 {
         return mc.theWorld.getEntitiesWithinAABB(EntityItem.class, mc.thePlayer.getEntityBoundingBox().expand(8, 4, 8));
     }
 
-    private static boolean holds(ItemStack stack, Item item) {
+    static boolean holds(ItemStack stack, Item item) {
         return stack != null && stack.getItem() == item;
     }
 
     /** Hotbar slot; PlayerControllerMP sends the change on the next tick. */
-    private static void select(Minecraft mc, int slot) {
+    static void select(Minecraft mc, int slot) {
         mc.thePlayer.inventory.currentItem = slot;
     }
 
     /** Held or released as if by the player: runTick and the movement input read the key binding's state. */
-    private static void key(KeyBinding key, boolean down) {
+    static void key(KeyBinding key, boolean down) {
         KeyBinding.setKeyBindState(key.getKeyCode(), down);
     }
 
@@ -635,7 +635,7 @@ final class Probe151 {
         return copy;
     }
 
-    private static NBTTagCompound food(int level, float saturation) {
+    static NBTTagCompound food(int level, float saturation) {
         NBTTagCompound food = new NBTTagCompound();
         food.setInteger("foodLevel", level);
         food.setInteger("foodTickTimer", 0);
@@ -656,9 +656,9 @@ final class Probe151 {
         player.setGameType(WorldSettings.GameType.SURVIVAL);
     }
 
-    private interface ServerTask { void run(EntityPlayerMP player); }
+    interface ServerTask { void run(EntityPlayerMP player); }
 
-    private static void onServer(Minecraft mc, ServerTask task) {
+    static void onServer(Minecraft mc, ServerTask task) {
         MinecraftServer server = mc.getIntegratedServer();
         java.util.UUID id = mc.thePlayer.getUniqueID();
         server.addScheduledTask(() -> task.run(server.getConfigurationManager().getPlayerByUUID(id)));

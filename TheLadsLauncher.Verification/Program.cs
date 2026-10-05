@@ -123,6 +123,9 @@ bool hudCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_
 bool bannerCaptureVerification = autoWorldVerification && capabilities.KillBanner && Env("LADS_VERIFY_CAPTURE_KILLBANNER") == "1";
 // Fabric versions: the 1.7 Animations poses (sword block, bow, rod, eating, 2D dropped item, red armour) photographed (OldAnimationsCapture).
 bool oldAnimCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_OLDANIM") == "1";
+// Fabric versions: the 1.7.2 animation lane (swing while using items, damage tilt), tick-driven so it works minimized (Anim172Capture).
+// 1.8.9: LADS_VERIFY_189_ONLY=anim (Probe172Anim).
+bool anim172CaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ANIM172") == "1";
 // Fabric versions: Lads Zoom through the real key and scroll handlers, photographed, with every frame's FOV in zoom-fov.csv (ZoomCapture).
 // 1.8.9's self-test (Probe160) always runs the same checks.
 bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ZOOM") == "1";
@@ -305,6 +308,8 @@ string bannerCaptureRequest = Path.Combine(directory, ".lads-qa-capture-killbann
 if (autoWorldVerification && File.Exists(bannerCaptureRequest)) File.Delete(bannerCaptureRequest);
 string oldAnimCaptureRequest = Path.Combine(directory, ".lads-qa-capture-oldanim");
 if (autoWorldVerification && File.Exists(oldAnimCaptureRequest)) File.Delete(oldAnimCaptureRequest);
+string anim172CaptureRequest = Path.Combine(directory, ".lads-qa-capture-anim172");
+if (autoWorldVerification && File.Exists(anim172CaptureRequest)) File.Delete(anim172CaptureRequest);
 string zoomCaptureRequest = Path.Combine(directory, ".lads-qa-capture-zoom");
 if (autoWorldVerification && File.Exists(zoomCaptureRequest)) File.Delete(zoomCaptureRequest);
 string skinLayersCaptureRequest = Path.Combine(directory, ".lads-qa-capture-skinlayers");
@@ -362,7 +367,7 @@ var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<strin
 // failure no longer ends the run before the other requested captures have finished. The run still fails (nativeProbeFailed, Require).
 var failedCaptures = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:",
-    "Lads kill banner capture END:", "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
+    "Lads kill banner capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
     "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
     "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:"];
@@ -373,6 +378,7 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(hudCaptureVerification, "Lads HUD capture END:", "Lads HUD editor probe END:")
     && Settled(bannerCaptureVerification, "Lads kill banner capture END:")
     && Settled(oldAnimCaptureVerification, "Lads 1.7 animations capture END:")
+    && Settled(anim172CaptureVerification, "Lads anim 1.7.2 capture END:")
     && Settled(zoomCaptureVerification, "Lads zoom capture END:")
     && Settled(skinLayersCaptureVerification, "Lads skin layers capture END:")
     && Settled(sprintCaptureVerification, "Lads sprint capture END:")
@@ -585,7 +591,8 @@ try
         // =itemphysics: only Item Physics (Probe170ItemPhysics); =raised: only Raised and the paper doll (RaisedDollProbe189);
         // =leave: only the QA world's final leave after its server stopped first (the 1.7.0 freeze regression check).
         // =hudflicker: only runs of frames with the HUD FPS cap off and on (Probe172HudFlicker).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave" or "hudflicker") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =anim: only swing while using items and the damage tilt (Probe172Anim).
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave" or "hudflicker" or "anim") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
     }
     else
     {
@@ -678,7 +685,7 @@ try
             foreach (string marker in requiredWorldProbes)
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
-                "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
+                "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
                 "Lads HUD flicker capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
                 "Lads server features capture END:", "Lads F3/FOV capture END:",
                 "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:", "Lads resolution capture END:",
@@ -810,6 +817,7 @@ try
                 foreach (var (asked, request, text) in new[] {
                     (bannerCaptureVerification, bannerCaptureRequest, "Fire every kill banner skin in the QA world and capture its frames."),
                     (oldAnimCaptureVerification, oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames."),
+                    (anim172CaptureVerification, anim172CaptureRequest, "Check swing while using items and the damage tilt in the QA world."),
                     (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames."),
                     (skinLayersCaptureVerification, skinLayersCaptureRequest, "Photograph the player's 3D skin layers with SkinLayers on and off."),
                     (sprintCaptureVerification, sprintCaptureRequest, "Walk Toggle Sprint & Sneak through the QA world and log every tick's sprint packets."),
@@ -933,6 +941,8 @@ try
             "The requested HUD editor interaction checks and native frame capture did not complete.");
         Require(!bannerCaptureVerification || passedMarkers.ContainsKey("Lads kill banner capture END:"),
             "The requested Kill Banner frames were not all captured.");
+        Require(!anim172CaptureVerification || passedMarkers.ContainsKey("Lads anim 1.7.2 capture END:"),
+            "The requested 1.7.2 swing while using and damage tilt checks did not pass. Inspect production-smoke.log.");
         Require(!oldAnimCaptureVerification || passedMarkers.ContainsKey("Lads 1.7 animations capture END:"),
             "The requested 1.7 Animations frames were not all captured.");
         Require(!zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:"),
