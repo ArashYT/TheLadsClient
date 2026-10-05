@@ -53,33 +53,32 @@ final class NativeKillBannerProbe {
             require(NativeKillBanner.timeline().age(System.nanoTime()) >= 0 && NativeKillBanner.timeline().sequence() == 1,
                 "the banner starts inside the death packet's handler (same frame)"); passed++;
             death(zombie);
-            require(NativeKillBanner.timeline().sequence() == 1, "a repeated death event is one kill"); passed++;
+            require(NativeKillBanner.timeline().streak() == 1, "a repeated death event is one kill"); passed++;
 
             Entity other = spawn(EntityTypes.ZOMBIE, next++);
             NativeKillBanner.attacked(other);
             minecraft.getConnection().handleDamageEvent(new ClientboundDamageEventPacket(other.getId(),
                 level.damageSources().generic().typeHolder(), zombie.getId(), zombie.getId(), Optional.empty()));
             death(other);
-            require(NativeKillBanner.timeline().sequence() == 1, "someone else's last hit takes the credit"); passed++;
+            require(NativeKillBanner.timeline().streak() == 1, "someone else's last hit takes the credit"); passed++;
 
             Entity mine = spawn(EntityTypes.ZOMBIE, next++);
             minecraft.getConnection().handleDamageEvent(new ClientboundDamageEventPacket(mine.getId(),
                 level.damageSources().generic().typeHolder(), minecraft.player.getId(), minecraft.player.getId(), Optional.empty()));
-            long before = System.nanoTime();
             death(mine);
-            require(NativeKillBanner.timeline().sequence() == 2 && NativeKillBanner.timeline().age(System.nanoTime()) <= (System.nanoTime() - before) / 1e9,
-                "a projectile-style hit (damage event naming the player) credits the kill; the animation restarts on it"); passed++;
+            require(NativeKillBanner.timeline().streak() == 2 && NativeKillBanner.timeline().queued() == 1,
+                "a projectile-style hit (damage event naming the player) credits the kill; its banner waits for the one opening"); passed++;
 
             module.mobs.set(false);
             Entity skipped = spawn(EntityTypes.ZOMBIE, next++);
             NativeKillBanner.attacked(skipped);
             death(skipped);
-            require(NativeKillBanner.timeline().sequence() == 2, "Mobs unticked: no banner for a mob"); passed++;
+            require(NativeKillBanner.timeline().streak() == 2, "Mobs unticked: no banner for a mob"); passed++;
 
             Entity boss = spawn(EntityTypes.WITHER, next++);
             NativeKillBanner.attacked(boss);
             death(boss);
-            require(NativeKillBanner.timeline().sequence() == 3, "a boss kill counts while Bosses is ticked"); passed++;
+            require(NativeKillBanner.timeline().streak() == 3, "a boss kill counts while Bosses is ticked"); passed++;
 
             RemotePlayer victim = new RemotePlayer(level, new GameProfile(UUID.randomUUID(), "LadsQAVictim"));
             victim.setId(next++);
@@ -89,11 +88,11 @@ final class NativeKillBannerProbe {
             NativeKillBanner.attacked(victim);
             chat("[MVP+] LadsQAVictim: gg " + me);
             chat("You were killed by LadsQAVictim.");
-            require(NativeKillBanner.timeline().sequence() == 3, "player chat and the player's own death are not kills"); passed++;
+            require(NativeKillBanner.timeline().streak() == 0, "player chat is no kill; the player's own death (a server message) ends the streak"); passed++;
             chat("LadsQAVictim was killed by " + me + ". FINAL KILL!");
-            require(NativeKillBanner.timeline().sequence() == 4, "a plugin server's kill message is a player kill (Hypixel style)"); passed++;
+            require(NativeKillBanner.timeline().streak() == 1, "a plugin server's kill message is a player kill (Hypixel style), a new streak"); passed++;
             death(victim);
-            require(NativeKillBanner.timeline().sequence() == 4, "the same kill's death event does not count twice"); passed++;
+            require(NativeKillBanner.timeline().streak() == 1, "the same kill's death event does not count twice"); passed++;
 
             require(minecraft.getResourceManager().getResource(Identifier.fromNamespaceAndPath("theladscore", "textures/gui/base_kill_banner.png")).isPresent(), "base_kill_banner resource loads"); passed++;
             passed += assets();
