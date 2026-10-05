@@ -263,6 +263,16 @@ final class Probe151 {
                     mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = 35; // the apple stays in view
                     return retry(1);
                 }
+                if (on && OldAnimations189.hits(Hook.DROP) == 0) { // what the render saw, for a failure below
+                    StringBuilder seen = new StringBuilder();
+                    for (EntityItem item : items(mc))
+                        seen.append(String.format(java.util.Locale.ROOT, " [%.2f %.2f %.2f cullGen %d]", item.posX, item.posY, item.posZ,
+                            ((EntityCulling189.Cullable) item).ladsCullGen()));
+                    org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").warn(
+                        "Lads 1.8.9 dropped apple not drawn: player {} {} {} yaw {} pitch {}, view {}, culled draws {}, Entity Culling {}, items{}",
+                        mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch,
+                        mc.gameSettings.thirdPersonView, EntityCulling189.culled, Options189.enabled(EntityCulling189.MODULE), seen);
+                }
                 dropWait = 0;
                 hooks(on, "dropped apple", Hook.DROP);
                 screenshot(mc, "151-dropped-2d" + tag);
