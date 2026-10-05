@@ -72,6 +72,7 @@ final class Probe172HudFlicker {
         for (int round = 0; round < rounds.length; round++) for (String setting : rounds[round]) runs.add("bench-" + (round + 1) + "-" + setting);
         runs.addAll(Arrays.asList("f3-hidden", "f3-off", "f3-on", "f3-after"));
         for (final String name : runs) STEPS.add(mc -> run(mc, name));
+        STEPS.add(Probe172HudFlicker::fontBench);
         STEPS.add(Probe172HudFlicker::restore);
     }
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<Option, JsonElement>();
@@ -224,6 +225,42 @@ final class Probe172HudFlicker {
         } catch (ReflectiveOperationException absent) {
             // a build without that cache
         }
+    }
+
+    /**
+     * The text cache on its own: sidebar-like lines drawn with shadow and measured, cache off and on in turn (four rounds), CPU time
+     * per string with the GPU finished before and after (glFinish), so its GL work counts too.
+     */
+    private static boolean fontBench(Minecraft mc) {
+        net.minecraft.client.gui.FontRenderer font = mc.fontRendererObj;
+        String[] lines = new String[20];
+        for (int i = 0; i < lines.length; i++) lines[i] = (i % 3 == 0 ? "§c" : i % 3 == 1 ? "§eLine " : "§bPlayer§f") + i + " §712345";
+        mc.entityRenderer.setupOverlayRendering();
+        StringBuilder out = new StringBuilder();
+        for (int round = 0; round < 4; round++) {
+            boolean off = round % 2 == 0;
+            qaOff("FontCache189", off);
+            long draw = 0, measure = 0;
+            for (int iteration = 0; iteration < 22; iteration++) {
+                GL11.glFinish();
+                long start = System.nanoTime();
+                for (int rep = 0; rep < 25; rep++) for (int i = 0; i < lines.length; i++) font.drawStringWithShadow(lines[i], 4, 4 + i * 9, 0xFFFFFFFF);
+                GL11.glFinish();
+                long drawn = System.nanoTime();
+                int sum = 0;
+                for (int rep = 0; rep < 25; rep++) for (String line : lines) sum += font.getStringWidth(line);
+                long measured = System.nanoTime();
+                if (iteration >= 2 && sum > 0) { draw += drawn - start; measure += measured - drawn; } // the first two warm up (and compile)
+            }
+            int strings = 20 * 25 * lines.length;
+            out.append(String.format(java.util.Locale.ROOT, "%s%s: draw %.2f us, width %.3f us", out.length() > 0 ? "; " : "", off ? "off" : "on",
+                draw / 1e3 / strings, measure / 1e3 / strings));
+        }
+        qaOff("FontCache189", false);
+        LOG.info("Lads HUD bench text cache per string (shadowed draw / width): {}", out);
+        if (!report.has("bench")) report.add("bench", new JsonObject());
+        report.getAsJsonObject("bench").addProperty("text-cache", out.toString());
+        return after(1);
     }
 
     private static boolean restore(Minecraft mc) throws Exception {
@@ -401,12 +438,19 @@ final class Probe172HudFlicker {
             if (count == 0 && name.endsWith("-off")) rects(mc, name.substring(0, name.indexOf('-')));
             width = mc.displayWidth;
             height = mc.displayHeight;
-            int textureWidth = mc.getFramebuffer().framebufferTextureWidth, textureHeight = mc.getFramebuffer().framebufferTextureHeight;
+            // Without framebuffers (OptiFine Fast Render) the frame is in the back buffer.
+            boolean framebuffer = net.minecraft.client.renderer.OpenGlHelper.isFramebufferEnabled();
+            int textureWidth = framebuffer ? mc.getFramebuffer().framebufferTextureWidth : width;
+            int textureHeight = framebuffer ? mc.getFramebuffer().framebufferTextureHeight : height;
             if (buffer == null || buffer.capacity() < textureWidth * textureHeight) buffer = BufferUtils.createIntBuffer(textureWidth * textureHeight);
             buffer.clear();
             GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
-            GlStateManager.bindTexture(mc.getFramebuffer().framebufferTexture);
-            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+            if (framebuffer) {
+                GlStateManager.bindTexture(mc.getFramebuffer().framebufferTexture);
+                GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+            } else {
+                GL11.glReadPixels(0, 0, width, height, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+            }
             int[] pixels = new int[width * height];
             for (int y = 0; y < height; y++) { buffer.position(y * textureWidth); buffer.get(pixels, y * width, width); }
             pending.add(pixels);
