@@ -51,11 +51,11 @@ public abstract class EntityRendererMixin {
         return module.isEnabled() ? DamageTilt.CLIENT.cameraYaw(module, System.currentTimeMillis()) : entity.attackedAtYaw;
     }
 
-    /** Damage tilt: Intensity scales the 14° tilt (0 is none); the death roll stays 1.8.9's. */
+    /** Damage tilt: Intensity scales the 14° tilt (0 is none; held at 0 while the hit's knockback is on its way); the death roll stays 1.8.9's. */
     @ModifyConstant(method = "hurtCameraEffect", constant = @Constant(floatValue = 14.0F), require = 1, allow = 1)
     private float ladsTiltIntensity(float degrees) {
         Module module = ModuleManager.getInstance().getModule(DamageTilt.MODULE);
-        return module.isEnabled() ? degrees * DamageTilt.strength(module) : degrees;
+        return module.isEnabled() ? degrees * DamageTilt.CLIENT.cameraStrength(module, System.currentTimeMillis()) : degrees;
     }
 
     @Inject(method = "hurtCameraEffect", at = @At("TAIL"), require = 1)

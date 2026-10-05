@@ -70,6 +70,7 @@ public final class Probe172Anim {
     public static boolean recording;
     private static final FloatBuffer MATRIX = BufferUtils.createFloatBuffer(16);
     private static float roll, nod;
+    private static int frames;
     private static final OldAnimationsModule ANIMATIONS = OldAnimations189.MODULE;
     private static final Module TILT = ModuleManager.getInstance().getModule(DamageTilt.MODULE);
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<Option, JsonElement>();
@@ -120,6 +121,7 @@ public final class Probe172Anim {
 
     /** EntityRendererMixin, at hurtCameraEffect's end: the model-view matrix is the hurt rotation alone (it starts from identity). */
     public static void tiltFrame() {
+        frames++;
         MATRIX.clear();
         GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, MATRIX);
         float r = degrees(MATRIX.get(1)), n = degrees(-MATRIX.get(9)); // the image of X's y (roll), of -Z's y (the view tipping down)
@@ -133,6 +135,11 @@ public final class Probe172Anim {
 
     /** A sword, bow, beef and arrows, survival and hungry; 1.7 Animations on with every option, Legacy Swing off; packets counted. */
     private static boolean setup(Minecraft mc) throws Exception {
+        // The tilt module as thelads_config.json gave it at startup (LADS_QA_TILT_EXPECT: "enabled,directional,intensity" to check).
+        String loaded = TILT.isEnabled() + "," + ((BoolOption) TILT.getOption(DamageTilt.DIRECTIONAL)).get() + ","
+            + ((SliderOption) TILT.getOption(DamageTilt.INTENSITY)).getIntValue(), expected = System.getenv("LADS_QA_TILT_EXPECT");
+        LOG.info("Lads 1.7.2 damage tilt as loaded: enabled,directional,intensity = {}", loaded);
+        if (expected != null) check(expected.equals(loaded), "the damage tilt loaded from this config as " + loaded + " (expected " + expected + ")");
         for (Module module : new Module[]{ANIMATIONS, TILT, ModuleManager.getInstance().getModule("LegacySwing")}) {
             enabledWere.put(module, module.isEnabled());
             for (Option option : module.getOptions()) optionsWere.put(option, option.save());
@@ -329,8 +336,12 @@ public final class Probe172Anim {
             return after(10);
         });
         STEPS.add(mc -> {
-            check(Math.abs(mc.thePlayer.rotationYaw) < 1e-3 && mc.thePlayer.hurtTime == 0, name + ": facing south, not hurt");
+            if (mc.thePlayer.hurtTime > 0 && ++waited[0] < 60) return retry(0); // still showing an earlier hurt
+            String before = "yaw " + mc.thePlayer.rotationYaw + ", hurtTime " + mc.thePlayer.hurtTime + ", health " + mc.thePlayer.getHealth();
+            look(mc, 0, 0);
+            check(mc.thePlayer.hurtTime == 0, name + ": facing south, not hurt (" + before + ")");
             roll = nod = 0;
+            frames = 0;
             recording = true;
             waited[0] = 0;
             // facing south (yaw 0): +X is the player's left, +Z ahead
@@ -364,7 +375,9 @@ public final class Probe172Anim {
             TILT_CSV.append(hit).append(',').append(source).append(',').append(module).append(',').append(directional).append(',').append(intensity)
                 .append(',').append(Float.isNaN(yaw) ? "unknown" : String.format(Locale.ROOT, "%.1f", yaw)).append(',')
                 .append(String.format(Locale.ROOT, "%.2f,%.2f", roll, nod)).append(',').append(expected).append('\n');
-            String measured = String.format(Locale.ROOT, "roll %.2f, nod %.2f, hit yaw %s", roll, nod, Float.isNaN(yaw) ? "unknown" : String.format(Locale.ROOT, "%.1f", yaw));
+            String measured = String.format(Locale.ROOT, "roll %.2f, nod %.2f, hit yaw %s; %d frames, knockback %s", roll, nod,
+                Float.isNaN(yaw) ? "unknown" : String.format(Locale.ROOT, "%.1f", yaw), frames,
+                DamageTilt.CLIENT.pairDelay() == Long.MIN_VALUE ? "not paired" : DamageTilt.CLIENT.pairDelay() + " ms after the hurt");
             float full = 14f * intensity / 100, main = expected.startsWith("roll") ? roll : nod, other = expected.startsWith("roll") ? nod : roll;
             if (expected.equals("none")) check(Math.abs(roll) < 0.01f && Math.abs(nod) < 0.01f, name + ": Intensity 0 does not tilt (" + measured + ")");
             else check(Math.signum(main) == (expected.endsWith("+") ? 1 : -1) && Math.abs(main) > full * 0.75f && Math.abs(main) < full * 1.02f

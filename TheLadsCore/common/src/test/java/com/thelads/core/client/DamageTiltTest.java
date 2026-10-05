@@ -50,6 +50,7 @@ class DamageTiltTest {
         Module module = ModuleManager.getInstance().getModule(DamageTilt.MODULE);
         BoolOption directional = (BoolOption) module.getOption(DamageTilt.DIRECTIONAL);
         SliderOption intensity = (SliderOption) module.getOption(DamageTilt.INTENSITY);
+        assertTrue(module.isEnabled(), "on by default since 1.7.2");
         assertTrue(directional.get(), "directional by default");
         assertEquals(1, DamageTilt.strength(module), "100% by default: Minecraft's own tilt");
         DamageTilt tilt = new DamageTilt();
@@ -61,6 +62,23 @@ class DamageTiltTest {
             assertEquals(0, tilt.cameraYaw(module, 10), "Directional off: the old fixed tilt");
             directional.set(true);
             assertEquals(0, tilt.cameraYaw(module, DamageTilt.KEEP_MS + 1), "unknown direction: the fixed tilt");
+            // A hurt whose direction has not come yet holds the tilt a moment instead of leaning the fixed way first.
+            DamageTilt late = new DamageTilt();
+            assertEquals(1, late.cameraStrength(module, 0), "nothing to wait for before any hurt");
+            late.hurt(1000);
+            assertEquals(0, late.cameraStrength(module, 1020), "1.8.9's knockback is still on its way");
+            late.direction(90, 1030);
+            assertEquals(1, late.cameraStrength(module, 1030), "it came: the tilt goes on towards it");
+            late.hurt(3000);
+            late.direction(Float.NaN, 3000); // fall damage: its velocity packet carries no push
+            assertEquals(1, late.cameraStrength(module, 3000), "an answer without a direction: the fixed tilt at once");
+            late.hurt(5000);
+            assertEquals(0, late.cameraStrength(module, 5000 + DamageTilt.WAIT_MS - 1));
+            assertEquals(1, late.cameraStrength(module, 5000 + DamageTilt.WAIT_MS), "no answer at all: the fixed tilt after the wait");
+            directional.set(false);
+            late.hurt(9000);
+            assertEquals(1, late.cameraStrength(module, 9000), "Directional off never waits");
+            directional.set(true);
             intensity.setValue(50);
             assertEquals(0.5f, DamageTilt.strength(module));
             intensity.setValue(0);
@@ -72,21 +90,42 @@ class DamageTiltTest {
         }
     }
 
-    @Test void theOldIntensityChoiceBecomesAPercentage() {
+    /** 1.7.1 configs upgrade with Directional off; the module comes on unless the player changed it; Intensity becomes a percentage. */
+    @Test void olderConfigsUpgradeAsTheOwnerChose() {
         Module module = ModuleManager.getInstance().getModule(DamageTilt.MODULE);
+        BoolOption directional = (BoolOption) module.getOption(DamageTilt.DIRECTIONAL);
         SliderOption intensity = (SliderOption) module.getOption(DamageTilt.INTENSITY);
+        boolean enabledWas = module.isEnabled();
+        long modifiedWas = module.getLastModified();
         try {
-            for (int[] choice : new int[][]{{0, 50}, {1, 100}, {2, 100}}) {
-                ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"OldDamageTilt\":{\"enabled\":true,\"options\":{\"Intensity\":"
-                    + choice[0] + "}}}}").getAsJsonObject());
-                assertEquals(choice[1], intensity.getValue(), "1.7.1 choice " + choice[0]);
+            //        saved 1.7.1 entry (enabled, Intensity choice, lastModified)        expected: on, Directional, Intensity
+            Object[][] cases = {
+                {"\"enabled\":true,\"options\":{\"Intensity\":1},\"lastModified\":1790000000000", true, false, 100.0}, // had it on
+                {"\"enabled\":false,\"options\":{\"Intensity\":1},\"lastModified\":0", true, false, 100.0},          // never touched
+                {"\"enabled\":false,\"options\":{\"Intensity\":1}", true, false, 100.0},                               // no lastModified
+                {"\"enabled\":false,\"options\":{\"Intensity\":0},\"lastModified\":1790000000000", false, false, 50.0},// switched off
+                {"\"enabled\":true,\"options\":{\"Intensity\":2},\"lastModified\":1790000000000", true, false, 100.0}, // Strong
+                {"\"enabled\":false,\"options\":{\"Directional\":true,\"Intensity\":35},\"lastModified\":0", false, true, 35.0}, // 1.7.2 save
+                {null, true, true, 100.0}};                                                                              // no entry: fresh
+            for (Object[] c : cases) {
+                fresh(module);
+                ConfigManager.applyJson(JsonParser.parseString(c[0] == null ? "{\"modules\":{}}"
+                    : "{\"modules\":{\"OldDamageTilt\":{" + c[0] + "}}}").getAsJsonObject());
+                assertEquals(c[1], module.isEnabled(), "module on/off after " + c[0]);
+                assertEquals(c[2], directional.get(), "Directional after " + c[0]);
+                assertEquals((double) c[3], intensity.getValue(), "Intensity after " + c[0]);
             }
-            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"OldDamageTilt\":{\"options\":{\"Directional\":false,\"Intensity\":35}}}}")
-                .getAsJsonObject());
-            assertEquals(35, intensity.getValue(), "a 1.7.2 save is a percentage already");
         } finally {
-            module.getOptions().forEach(Option::reset);
-            module.setEnabled(false);
+            fresh(module);
+            module.setEnabled(enabledWas);
+            module.setLastModified(modifiedWas);
         }
+    }
+
+    /** The module as a fresh start registers it: on, every option at its default, never changed. */
+    private static void fresh(Module module) {
+        module.getOptions().forEach(Option::reset);
+        module.setEnabled(true);
+        module.setLastModified(0);
     }
 }

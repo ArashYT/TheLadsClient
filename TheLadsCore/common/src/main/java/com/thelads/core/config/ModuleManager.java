@@ -163,11 +163,13 @@ public class ModuleManager {
         register(new DynamicLightsModule(), Module.Category.MECHANIC);
 
         // DamageTilt: the hurt tilt leans by the hit's direction (Directional) or the old fixed way, scaled by Intensity (26.x: on
-        // top of Minecraft's own Damage Tilt setting). Off, each version keeps its vanilla tilt.
+        // top of Minecraft's own Damage Tilt setting). On by default since 1.7.2 (ConfigManager.migrateDamageTilt upgrades older
+        // configs). Off, each version keeps its vanilla tilt.
         Module odt = new Module(com.thelads.core.client.DamageTilt.MODULE, "Hurt camera tilt: towards the hit (Directional) or the old "
             + "fixed way. Intensity 0 turns it off.");
         odt.addOption(new BoolOption(com.thelads.core.client.DamageTilt.DIRECTIONAL, true));
         odt.addOption(new SliderOption(com.thelads.core.client.DamageTilt.INTENSITY, 100, 0, 100, 5));
+        odt.setEnabled(true);
         register(odt, Module.Category.MECHANIC);
 
         Module swing = new Module("LegacySwing", "Xbox 360 mining and hand swing matching the supplied Legacy Console showcase.");
