@@ -3,6 +3,7 @@ package com.thelads.core.v1_8_9.mixin;
 import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.ItemPhysics189;
 import com.thelads.core.v1_8_9.feature.OldAnimations189;
+import com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189;
 import com.thelads.core.v1_8_9.feature.WorldBackup189;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -14,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** F11 and the fullscreen option: borderless with the BorderlessFullscreen module, and a window that stays resizable after fullscreen.
  * Opening a world a newer version saved asks for a backup first (WorldBackup189).
@@ -24,6 +26,17 @@ public abstract class MinecraftMixin {
     @Shadow private boolean fullscreen;
     @Shadow public EntityPlayerSP thePlayer;
     @Shadow private int rightClickDelayTimer;
+    @Shadow public net.minecraft.client.multiplayer.WorldClient theWorld;
+    @Shadow public net.minecraft.client.gui.GuiScreen currentScreen;
+    @Shadow public net.minecraft.client.settings.GameSettings gameSettings;
+
+    /** Unfocused FPS cap: vanilla's limit (30 in a menu without a world, else the option), lowered while the window is not focused. */
+    @Inject(method = "getLimitFramerate", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsUnfocusedCap(CallbackInfoReturnable<Integer> cir) {
+        int vanilla = theWorld == null && currentScreen != null ? 30 : gameSettings.limitFramerate;
+        int limit = UnfocusedFpsCap189.limit(vanilla);
+        if (limit != vanilla) cir.setReturnValue(limit);
+    }
 
     @Inject(method = "toggleFullscreen", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBorderless(CallbackInfo ci) {

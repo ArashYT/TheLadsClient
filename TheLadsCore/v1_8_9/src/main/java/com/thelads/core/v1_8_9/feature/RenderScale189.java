@@ -40,6 +40,8 @@ public final class RenderScale189 {
     private static int textureLimit;
     /** Smooth's and Sharp's programs once built; 0 where they cannot run. */
     private static int[] programs;
+    /** The programs' uniform locations, looked up once: {world, texel} for Smooth, then for Sharp. */
+    private static final int[] UNIFORMS = new int[4];
     private static Method optifineShaders;
     private static boolean optifineChecked;
     /** QA only: composited world frames, and the world framebuffer's size in the last one. */
@@ -55,12 +57,13 @@ public final class RenderScale189 {
         }
         started = false;
         RenderScalePolicy.Settings settings = settings();
-        boolean rendersWorld = mc.theWorld != null && !mc.skipRenderWorld && Display.isVisible() && OpenGlHelper.isFramebufferEnabled()
+        // settings.enabled() first: with Better Resolution off nothing below (OptiFine's isShaders by reflection included) runs.
+        boolean rendersWorld = settings.enabled() && mc.theWorld != null && !mc.skipRenderWorld && Display.isVisible() && OpenGlHelper.isFramebufferEnabled()
             && !mc.gameSettings.anaglyph && !shaders() && !(mc.thePlayer != null && mc.thePlayer.isSpectator()
             && mc.gameSettings.keyBindSpectatorOutlines.isKeyDown());
-        double scale = policy.frame(settings, System.nanoTime(), rendersWorld && settings.enabled() && !mc.isGamePaused() && Display.isActive());
+        double scale = policy.frame(settings, System.nanoTime(), rendersWorld && !mc.isGamePaused() && Display.isActive());
         method = settings.method();
-        active = rendersWorld && settings.enabled() && Math.abs(scale - 1) >= .0001;
+        active = rendersWorld && Math.abs(scale - 1) >= .0001;
         if (!active) {
             release(mc);
             return;
@@ -94,7 +97,7 @@ public final class RenderScale189 {
     private void composite(Minecraft mc) {
         bound = false;
         mc.getFramebuffer().bindFramebuffer(true);
-        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND), alpha = GL11.glIsEnabled(GL11.GL_ALPHA_TEST), depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        boolean blend = GlState189.blend(), alpha = GlState189.alpha(), depth = GlState189.depth();
         mc.entityRenderer.disableLightmap();
         GlStateManager.disableFog();
         GlStateManager.disableBlend();
@@ -105,8 +108,9 @@ public final class RenderScale189 {
         int program = program(method);
         if (program != 0) {
             GL20.glUseProgram(program);
-            GL20.glUniform1i(GL20.glGetUniformLocation(program, "world"), 0);
-            GL20.glUniform2f(GL20.glGetUniformLocation(program, "texel"), 1f / world.framebufferTextureWidth, 1f / world.framebufferTextureHeight);
+            int slot = method == RenderScalePolicy.SHARP ? 2 : 0;
+            GL20.glUniform1i(UNIFORMS[slot], 0);
+            GL20.glUniform2f(UNIFORMS[slot + 1], 1f / world.framebufferTextureWidth, 1f / world.framebufferTextureHeight);
         }
         world.framebufferRenderExt(mc.displayWidth, mc.displayHeight, false);
         if (program != 0) GL20.glUseProgram(0);
@@ -136,7 +140,14 @@ public final class RenderScale189 {
     /** The method's program, built on first use; 0 for Linear and Nearest (the framebuffer's own filter) and where it cannot run. */
     static int program(int method) {
         if (method != RenderScalePolicy.SMOOTH && method != RenderScalePolicy.SHARP) return 0;
-        if (programs == null) programs = GLContext.getCapabilities().OpenGL20 ? new int[]{compile(false), compile(true)} : new int[2];
+        if (programs == null) {
+            programs = GLContext.getCapabilities().OpenGL20 ? new int[]{compile(false), compile(true)} : new int[2];
+            for (int i = 0; i < 2; i++) {
+                if (programs[i] == 0) continue;
+                UNIFORMS[2 * i] = GL20.glGetUniformLocation(programs[i], "world");
+                UNIFORMS[2 * i + 1] = GL20.glGetUniformLocation(programs[i], "texel");
+            }
+        }
         return programs[method == RenderScalePolicy.SHARP ? 1 : 0];
     }
 

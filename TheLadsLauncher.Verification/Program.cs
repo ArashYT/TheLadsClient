@@ -573,6 +573,8 @@ try
         // The 1.8.9 Core's one QA switch: its self-test (Lads menu on the title screen, in its own QA world and from the
         // pause-menu button, the 1.8.9 bridge, the launcher catalog). Every flag below is the Fabric Core's.
         if (autoWorldVerification) AddJvm("-Dthelads.verify189Core=true");
+        // The 1.8.9 unfocused FPS cap (60) would hold the never-focused QA windows below the 120 FPS the probes expect; LADS_VERIFY_UNFOCUSED_CAP=1 tests it.
+        if (Env("LADS_VERIFY_UNFOCUSED_CAP") != "1") AddJvm("-Dthelads.noUnfocusedCap=true");
         if (focus189 != null) AddJvm("-Dthelads.verify189Focus=" + focus189);
         if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
         if (f3FovCaptureVerification) AddJvm("-Dthelads.verify189F3Fov=true");
