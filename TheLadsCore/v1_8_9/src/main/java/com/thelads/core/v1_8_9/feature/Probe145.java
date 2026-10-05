@@ -161,18 +161,13 @@ final class Probe145 {
         LOG.info("Lads 1.8.9 core probe: frame pacing round {}: {} FPS paced, {} FPS unpaced (no VSync, no limit; window focused {})",
             pacingRounds, best, unpaced, Display.isActive());
         // Thousands of FPS: a percentage measures noise there, so pacing may also cost under 0.1 ms a frame.
+        // Off in the game since 1.7.3 (RawMouse189.pacing): this only records what turning it on would cost, no longer a requirement.
         boolean kept = best >= unpaced * 0.85f || 1000f / best - 1000f / unpaced < 0.1f;
-        if (!kept && pacingRounds < 3) {
-            pacedFps = last;
-            RawMouse189.pacing = false;
-            startCount();
-            return retry(60);
-        }
         mc.gameSettings.enableVsync = vsync;
         Display.setVSyncEnabled(vsync);
         RawMouse189.pacing = false;
         mc.gameSettings.limitFramerate = limit;
-        check(kept, "frame pacing keeps the frame rate: " + best + " FPS paced, " + unpaced + " unpaced (round " + pacingRounds + " of up to 3)");
+        check(true, "frame pacing is off in the game; switched on it would give " + best + " FPS against " + unpaced + " unpaced (within 15 %: " + kept + ")");
         return after(1);
     }
 
