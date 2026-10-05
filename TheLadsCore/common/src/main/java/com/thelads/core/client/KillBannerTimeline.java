@@ -11,6 +11,7 @@ public final class KillBannerTimeline {
     private boolean preview;
     private boolean headshot;
     private KillBannerModule.Pick pick;
+    private double frozen = Double.NaN;
 
     public void trigger(int kills, long now, boolean isPreview) {
         trigger(kills, now, isPreview, false);
@@ -32,15 +33,21 @@ public final class KillBannerTimeline {
         preview = isPreview;
         headshot = head;
         pick = shown;
+        frozen = Double.NaN;
     }
-    public double age(long now) { return showing && now >= started ? (now - started) / 1_000_000_000d : -1; }
+    public double age(long now) {
+        if (showing && !Double.isNaN(frozen)) return frozen;
+        return showing && now >= started ? (now - started) / 1_000_000_000d : -1;
+    }
+    /** QA: the banner stays {@code age} seconds after its kill until the next kill or clear (NaN plays it again). */
+    public void freeze(double age) { frozen = age; }
     public int sequence() { return sequence; }
     public int delta() { return delta; }
     public boolean preview() { return preview; }
     public boolean headshot() { return headshot; }
     /** What the current banner shows, or null to follow the module's current choice. */
     public KillBannerModule.Pick pick() { return pick; }
-    public void clear() { showing = false; sequence = delta = 0; preview = headshot = false; pick = null; }
+    public void clear() { showing = false; sequence = delta = 0; preview = headshot = false; pick = null; frozen = Double.NaN; }
 
     public static double opacity(double age, double duration) {
         if (age < 0 || !Double.isFinite(age) || !Double.isFinite(duration) || age >= duration) return 0;

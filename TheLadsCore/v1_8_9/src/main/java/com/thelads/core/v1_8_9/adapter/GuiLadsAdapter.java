@@ -223,6 +223,11 @@ public class GuiLadsAdapter implements LadsGraphics {
     }
 
     @Override
+    public boolean drawKillBannerPreview(String skin, int variant, int x, int y, int width, int height, double clock) {
+        return com.thelads.core.v1_8_9.feature.KillBanner189.drawPreview(skin, variant, x, y, width, height, clock);
+    }
+
+    @Override
     public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
         com.thelads.core.v1_8_9.feature.PaperDoll189.render(x, y, width, height, editor, this.width);
     }
