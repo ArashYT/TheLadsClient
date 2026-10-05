@@ -42,20 +42,20 @@ import org.apache.logging.log4j.Logger;
  * 40 named armour stands, 15 cows and 25 chests behind it. (1) Six fixed views photographed with the module off and on
  * (lads-qa/screenshots/cull-*.png; artifacts compare them pixel by pixel) and the culled draws counted; (2) eight seconds of
  * fast turning and strafing round the wall's end with every culled draw audited against the current camera alone (none may be
- * visible from it); (3) the work per frame at the QA cap (60 FPS), module off and on in turn: crowd hidden, crowd in
- * view, and 3000+ particles behind the camera. Everything is put back.
+ * visible from it); (3) uncapped at render distance 8 and 12 (sandbox only, run alone), module off and on in turn: FPS
+ * and the work per frame with the crowd hidden, the crowd in view, and 3000+ particles behind the camera. Everything is put back.
  */
 final class Probe173Cull {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final int PLAYERS = 100, STANDS = 40, COWS = 15, CHESTS = 25;
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe173Cull::setup, Probe173Cull::views,
-        Probe173Cull::motion, mc -> bench(mc, 0), mc -> bench(mc, 1), mc -> bench(mc, 2), Probe173Cull::restore);
+        Probe173Cull::motion, mc -> bench(mc, 0), mc -> bench(mc, 1), mc -> bench(mc, 2), mc -> bench(mc, 3), Probe173Cull::restore);
     private static final JsonObject report = new JsonObject();
     private static final Map<Module, Boolean> hudWas = new LinkedHashMap<Module, Boolean>();
     private static final List<BlockPos> placed = new ArrayList<BlockPos>();
     private static final List<EntityOtherPlayerMP> crowd = new ArrayList<EntityOtherPlayerMP>();
-    private static int px, gy, pz, cloudsWas, ofCloudsWas = -1, step, ticks;
-    private static boolean cullWas;
+    private static int px, gy, pz, renderWas, limitWas, cloudsWas, ofCloudsWas = -1, step, ticks;
+    private static boolean cullWas, vsyncWas;
     private static double homeX, homeY, homeZ;
     private static Frames frames;
 
@@ -67,6 +67,9 @@ final class Probe173Cull {
         cullWas = culling.isEnabled();
         for (Module module : ModuleManager.getInstance().getModules()) // a still HUD (FPS, clocks and Autohide change between shots)
             if (module.getCategory() == Module.Category.HUD && module.isEnabled()) { hudWas.put(module, true); module.setEnabled(false); }
+        renderWas = mc.gameSettings.renderDistanceChunks;
+        limitWas = mc.gameSettings.limitFramerate;
+        vsyncWas = mc.gameSettings.enableVsync;
         cloudsWas = mc.gameSettings.clouds;
         mc.gameSettings.clouds = 0;
         try { // OptiFine's own Clouds option (3: off) decides over vanilla's
@@ -152,6 +155,7 @@ final class Probe173Cull {
         }
         if (++ticks == 20) {
             EntityCulling189.culled = 0; EntityCulling189.culledTiles = 0; frames.count = 0;
+            EntityCulling189.drawnFrames = 0; EntityCulling189.trustedFrames = 0;
             EntityCulling189.passes = 0; EntityCulling189.passNanos = 0;
         }
         if (ticks < 40) return retry(1);
@@ -160,6 +164,9 @@ final class Probe173Cull {
         capture(mc, name);
         JsonObject entry = new JsonObject();
         entry.addProperty("cullPassMs", EntityCulling189.passNanos / 1e6 / Math.max(1, EntityCulling189.passes));
+        entry.addProperty("frames", frames.count);
+        entry.addProperty("worldFrames", EntityCulling189.drawnFrames);
+        entry.addProperty("trustedFrames", EntityCulling189.trustedFrames);
         entry.addProperty("culledEntitiesPerFrame", entities);
         entry.addProperty("culledBlockEntitiesPerFrame", tiles);
         report.add(name, entry);
@@ -199,11 +206,12 @@ final class Probe173Cull {
     }
 
     /**
-     * View and particles behind the camera. At the QA cap (60 FPS, render distance as the harness sets it) frame rates say
-     * nothing, so each run measures the work per frame: render-thread ms from RenderTickEvent START to END (world, entities,
-     * particles, HUD; not the tick or the swap) and GPU ms. Runs alternate off, on, off, on, off, on; medians per state.
+     * Render distance, view and particles behind the camera, uncapped (FPS unlimited, VSync off: the user's benchmark
+     * exception, sandbox only, run alone). Each run measures FPS and 1% low from frame-to-frame times, the work per frame
+     * (render-thread ms from RenderTickEvent START to END: world, entities, particles, HUD; not the tick or the swap) and GPU ms.
+     * Runs alternate off, on, off, on, off, on; medians per state.
      */
-    private static final Object[][] BENCH = {{"front", false}, {"over", false}, {"front", true}};
+    private static final Object[][] BENCH = {{8, "front", false}, {12, "front", false}, {8, "over", false}, {8, "front", true}};
     private static final int RUNS = 6, RUN_TICKS = 160, WARM_TICKS = 40;
     private static final Map<String, List<double[]>> RESULTS = new LinkedHashMap<String, List<double[]>>();
     private static Probe170r.GpuTimer gpu;
@@ -211,12 +219,12 @@ final class Probe173Cull {
     private static boolean bench(Minecraft mc, int scene) {
         if ("0".equals(System.getenv("LADS_CULL_BENCH"))) return true; // views and motion only
         Object[] b = BENCH[scene];
-        String sceneName = b[0] + ((Boolean) b[1] ? "-particles" : "");
+        String sceneName = "rd" + b[0] + "-" + b[1] + ((Boolean) b[2] ? "-particles" : "");
         if (step == RUNS) {
             for (String state : new String[] {"off", "on"}) {
                 List<double[]> runs = RESULTS.get(sceneName + "-" + state);
                 JsonObject median = new JsonObject();
-                String[] keys = {"workP50Ms", "workP99Ms", "workMaxMs", "workMeanMs", "gpuMs"};
+                String[] keys = {"workP50Ms", "workP99Ms", "workMaxMs", "workMeanMs", "gpuMs", "avgFps", "low1Fps"};
                 for (int k = 0; k < keys.length; k++) {
                     double[] values = new double[runs.size()];
                     for (int i = 0; i < values.length; i++) values[i] = runs.get(i)[k];
@@ -224,21 +232,25 @@ final class Probe173Cull {
                     median.addProperty(keys[k], values[values.length / 2]);
                 }
                 report.add(sceneName + "-" + state + "-median", median);
-                LOG.info("Lads cull QA bench {} {} (median of {} runs, ms of work per frame at the 60 cap): {}", sceneName, state, runs.size(), median);
+                LOG.info("Lads cull QA bench {} {} (median of {} runs, uncapped): {}", sceneName, state, runs.size(), median);
             }
             step = 0;
             return after(1);
         }
-        Object[] v = b[0].equals("over") ? VIEWS[4] : VIEWS[0];
-        boolean on = step % 2 == 1, particles = (Boolean) b[1];
+        Object[] v = b[1].equals("over") ? VIEWS[4] : VIEWS[0];
+        boolean on = step % 2 == 1, particles = (Boolean) b[2];
         if (ticks == 0) {
+            mc.gameSettings.renderDistanceChunks = (Integer) b[0];
+            mc.gameSettings.limitFramerate = 260; // unlimited
+            mc.gameSettings.enableVsync = false;
+            org.lwjgl.opengl.Display.setVSyncEnabled(false);
             if (gpu == null) { gpu = new Probe170r.GpuTimer(); MinecraftForge.EVENT_BUS.register(gpu); }
             Options189.module(EntityCulling189.MODULE).setEnabled(on);
             frames.pin(px + (Double) v[1], gy + (Double) v[2], pz + (Double) v[3], (Float) v[4], (Float) v[5]);
         }
         if (particles) for (int i = 0; i < 150; i++) // behind the camera (it looks east)
             mc.theWorld.spawnParticle(EnumParticleTypes.REDSTONE, px - 8 + Math.random() * 6, gy + Math.random() * 6, pz - 6 + Math.random() * 12, 0, 0, 0);
-        int warm = step == 0 ? WARM_TICKS * 2 : WARM_TICKS;
+        int warm = step == 0 ? WARM_TICKS * 3 : WARM_TICKS; // the first run of a scene also waits for chunks
         if (++ticks == warm) {
             frames.record();
             gpu.reset();
@@ -256,12 +268,14 @@ final class Probe173Cull {
         entry.addProperty("workMaxMs", work[2]);
         entry.addProperty("workMeanMs", work[3]);
         entry.addProperty("gpuMs", gpu.milliseconds());
+        entry.addProperty("avgFps", work[6]);
+        entry.addProperty("low1Fps", work[7]);
         if (particles) { entry.addProperty("particlesDrawn", Particles189.drawn); entry.addProperty("particlesSkipped", Particles189.skipped); }
         if (on) entry.addProperty("cullPassMs", EntityCulling189.passNanos / 1e6 / Math.max(1, EntityCulling189.passes));
         report.add(name, entry);
         String key = sceneName + "-" + (on ? "on" : "off");
         if (!RESULTS.containsKey(key)) RESULTS.put(key, new ArrayList<double[]>());
-        RESULTS.get(key).add(new double[] {work[0], work[1], work[2], work[3], gpu.milliseconds()});
+        RESULTS.get(key).add(new double[] {work[0], work[1], work[2], work[3], gpu.milliseconds(), work[6], work[7]});
         LOG.info("Lads cull QA bench {}: {}", name, entry);
         ticks = 0;
         step++;
@@ -274,6 +288,10 @@ final class Probe173Cull {
         Options189.module(EntityCulling189.MODULE).setEnabled(cullWas);
         hudWas.forEach(Module::setEnabled);
         mc.gameSettings.clouds = cloudsWas;
+        mc.gameSettings.renderDistanceChunks = renderWas;
+        mc.gameSettings.limitFramerate = limitWas;
+        mc.gameSettings.enableVsync = vsyncWas;
+        org.lwjgl.opengl.Display.setVSyncEnabled(vsyncWas);
         if (ofCloudsWas >= 0) mc.gameSettings.getClass().getField("ofClouds").setInt(mc.gameSettings, ofCloudsWas);
         for (int i = 0; i < crowd.size(); i++) mc.theWorld.removeEntityFromWorld(-20000 - i);
         crowd.clear();
@@ -329,18 +347,28 @@ final class Probe173Cull {
 
         void pin(double x, double y, double z, float yaw, float pitch) { this.x = x; this.y = y; this.z = z; this.yaw = yaw; this.pitch = pitch; }
 
-        void record() { times.clear(); recording = true; }
+        private final List<Long> gaps = new ArrayList<Long>();
+        private long lastStart;
 
-        /** Work per frame (START to END): p50, p99, max and mean ms, unused, frame count. */
+        void record() { times.clear(); gaps.clear(); lastStart = 0; recording = true; }
+
+        /** Work per frame (START to END): p50, p99, max and mean ms, unused, frame count; then average FPS and 1% low FPS. */
         double[] stats() {
             recording = false;
             long[] t = new long[times.size()];
             long total = 0;
             for (int i = 0; i < t.length; i++) { t[i] = times.get(i); total += t[i]; }
             Arrays.sort(t);
-            if (t.length == 0) return new double[6];
+            if (t.length == 0) return new double[8];
+            long[] g = new long[gaps.size()];
+            long gapTotal = 0;
+            for (int i = 0; i < g.length; i++) { g[i] = gaps.get(i); gapTotal += g[i]; }
+            Arrays.sort(g);
+            int worst = Math.max(1, g.length / 100);
+            long worstSum = 0;
+            for (int i = g.length - worst; i < g.length; i++) worstSum += g[i];
             return new double[] {t[t.length / 2] / 1e6, t[Math.min(t.length - 1, (int) (t.length * 0.99))] / 1e6, t[t.length - 1] / 1e6,
-                total / 1e6 / t.length, 0, t.length};
+                total / 1e6 / t.length, 0, t.length, g.length * 1e9 / Math.max(1, gapTotal), worst * 1e9 / Math.max(1, worstSum)};
         }
 
         @SubscribeEvent
@@ -354,6 +382,8 @@ final class Probe173Cull {
             Minecraft mc = Minecraft.getMinecraft();
             if (mc.thePlayer == null) return;
             long now = System.nanoTime();
+            if (recording && lastStart != 0) gaps.add(now - lastStart);
+            lastStart = now;
             start = now;
             count++;
             double px = x, py = y, pz = z;
