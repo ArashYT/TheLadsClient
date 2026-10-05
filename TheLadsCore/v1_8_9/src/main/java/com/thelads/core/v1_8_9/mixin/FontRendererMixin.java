@@ -12,19 +12,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * The text cache (FontCache189): string widths and display lists of drawn strings. OptiFine replaces this class (HD fonts,
- * custom colours); these hooks sit on methods it keeps, and the cache records whatever its renderString draws. Injected at HEAD
- * only (Mixin 0.7); a hook calls the original method again with its flag set to measure or draw for real.
+ * The string width cache (FontCache189). OptiFine replaces this class (HD fonts, custom colours); these hooks sit on methods it
+ * keeps. Injected at HEAD only (Mixin 0.7); the hook calls the original method again with its flag set to measure for real.
  */
 @Mixin(FontRenderer.class)
-public abstract class FontRendererMixin implements FontCache189.Holder, FontCache189.Draw {
-    @Shadow protected float posX;
-    @Shadow protected float posY;
+public abstract class FontRendererMixin implements FontCache189.Holder {
     @Unique private FontCache189 ladsPlain, ladsUnicode;
-    @Unique private boolean ladsMeasuring, ladsDrawing;
+    @Unique private boolean ladsMeasuring;
 
     @Shadow public abstract int getStringWidth(String text);
-    @Shadow private int renderString(String text, float x, float y, int color, boolean dropShadow) { return 0; }
 
     @Override
     public FontCache189 ladsCache() {
@@ -45,29 +41,6 @@ public abstract class FontRendererMixin implements FontCache189.Holder, FontCach
             cache.putWidth(text, width);
         }
         cir.setReturnValue(width);
-    }
-
-    @Inject(method = "renderString", at = @At("HEAD"), cancellable = true)
-    private void ladsDraw(String text, float x, float y, int color, boolean dropShadow, CallbackInfoReturnable<Integer> cir) {
-        if (ladsDrawing) return;
-        FontCache189 cache = ladsCache();
-        if (!cache.cacheable(text)) return;
-        float advance = cache.render(text, x, y, color, dropShadow, this);
-        if (Float.isNaN(advance)) return;
-        posX = x + advance;
-        posY = y;
-        cir.setReturnValue((int) posX);
-    }
-
-    @Override
-    public float ladsDrawAtOrigin(String text, int color, boolean dropShadow) {
-        ladsDrawing = true;
-        try {
-            renderString(text, 0, 0, color, dropShadow);
-            return posX;
-        } finally {
-            ladsDrawing = false;
-        }
     }
 
     @Inject(method = "onResourceManagerReload", at = @At("HEAD"))

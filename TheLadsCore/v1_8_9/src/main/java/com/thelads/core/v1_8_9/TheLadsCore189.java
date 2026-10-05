@@ -176,7 +176,6 @@ public class TheLadsCore189 {
         if (event.phase != TickEvent.Phase.END) return;
         NativeMenuKey.tick();
         Minecraft mc = Minecraft.getMinecraft();
-        com.thelads.core.v1_8_9.feature.FontCache189.tick();
         if (mc.theWorld == null) { // window-size HUD buffers go back out of a world
             com.thelads.core.v1_8_9.feature.HudCache189.free();
             com.thelads.core.v1_8_9.feature.Autohide189.free();
