@@ -121,8 +121,14 @@ bool menuCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE
 bool hudCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_HUD") == "1";
 // 1.21.x and 26.x: every Kill Banner skin, variant and kill count fired in the QA world and photographed (KillBannerCapture).
 bool bannerCaptureVerification = autoWorldVerification && capabilities.KillBanner && Env("LADS_VERIFY_CAPTURE_KILLBANNER") == "1";
+// Fabric versions: the kill streak in the QA world: rapid kills (banners 1 to 5, none dropped), server kill messages, the streak
+// timer, Unlimited and death (KillStreakCapture). 1.8.9: LADS_VERIFY_189_FOCUS=killstreak (Probe172KillStreak).
+bool killStreakCaptureVerification = autoWorldVerification && capabilities.KillBanner && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_KILLSTREAK") == "1";
 // Fabric versions: the 1.7 Animations poses (sword block, bow, rod, eating, 2D dropped item, red armour) photographed (OldAnimationsCapture).
 bool oldAnimCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_OLDANIM") == "1";
+// Fabric versions: the 1.7.2 animation lane (swing while using items, damage tilt), tick-driven so it works minimized (Anim172Capture).
+// 1.8.9: LADS_VERIFY_189_ONLY=anim (Probe172Anim).
+bool anim172CaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ANIM172") == "1";
 // Fabric versions: Lads Zoom through the real key and scroll handlers, photographed, with every frame's FOV in zoom-fov.csv (ZoomCapture).
 // 1.8.9's self-test (Probe160) always runs the same checks.
 bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ZOOM") == "1";
@@ -152,6 +158,9 @@ bool hud170CaptureVerification = autoWorldVerification && !capabilities.Forge &&
 // Fabric versions: runs of consecutive frames with the HUD hidden, the HUD FPS cap off and on, every HUD element in view (HudFlickerCapture).
 // 1.8.9: LADS_VERIFY_189_ONLY=hudflicker (Probe172HudFlicker).
 bool hudFlickerCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_HUDFLICKER") == "1";
+// Fabric versions: the reset questions (HUD editor, module page) and Fullbright's slider with its menu open, through the real screens (UiCapture).
+// 1.8.9: LADS_VERIFY_189_ONLY=ui (Probe172Ui). LADS_VERIFY_UI_CONTROL=defer runs the Fullbright part without the live lightmap update.
+bool uiCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_UI") == "1";
 // Fabric versions: Item Physics in a QA arena (ItemPhysicsCapture). 1.8.9's self-test runs the same checks: LADS_VERIFY_189_ONLY=itemphysics.
 bool itemPhysicsCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ITEMPHYSICS") == "1";
 // Fabric versions: the survival and creative inventories with and without potion effects, centred (InventoryCapture). 1.8.9: LADS_VERIFY_189_FOCUS=inventory (ProbeInventory).
@@ -181,6 +190,8 @@ bool resolutionCaptureVerification = autoWorldVerification && !capabilities.Forg
 bool lightsCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_LIGHTS") == "1";
 // 26.x: Flashback Settings records into a Lads replay folder and times stock vs Lads exports of the same clip (FlashbackExportProbe).
 bool flashbackVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_FLASHBACK") == "1";
+// 26.x: Async stress test (AsyncStressProbe): ~1700 mobs plus items in pens, tick time with Async off and on, behaviour checks.
+bool asyncStressVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_ASYNC") == "1";
 // 26.x: AppleSkin server payloads (saturation, exhaustion, natural regeneration) injected in the QA world (AppleSkinSyncCapture).
 bool appleSkinSyncVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_APPLESKIN_SYNC") == "1";
 if (autoWorldVerification && dirName != version + "-title")
@@ -311,8 +322,12 @@ string hudCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hud");
 if (autoWorldVerification && File.Exists(hudCaptureRequest)) File.Delete(hudCaptureRequest);
 string bannerCaptureRequest = Path.Combine(directory, ".lads-qa-capture-killbanner");
 if (autoWorldVerification && File.Exists(bannerCaptureRequest)) File.Delete(bannerCaptureRequest);
+string killStreakCaptureRequest = Path.Combine(directory, ".lads-qa-capture-killstreak");
+if (autoWorldVerification && File.Exists(killStreakCaptureRequest)) File.Delete(killStreakCaptureRequest);
 string oldAnimCaptureRequest = Path.Combine(directory, ".lads-qa-capture-oldanim");
 if (autoWorldVerification && File.Exists(oldAnimCaptureRequest)) File.Delete(oldAnimCaptureRequest);
+string anim172CaptureRequest = Path.Combine(directory, ".lads-qa-capture-anim172");
+if (autoWorldVerification && File.Exists(anim172CaptureRequest)) File.Delete(anim172CaptureRequest);
 string zoomCaptureRequest = Path.Combine(directory, ".lads-qa-capture-zoom");
 if (autoWorldVerification && File.Exists(zoomCaptureRequest)) File.Delete(zoomCaptureRequest);
 string skinLayersCaptureRequest = Path.Combine(directory, ".lads-qa-capture-skinlayers");
@@ -326,6 +341,8 @@ string hud170CaptureRequest = Path.Combine(directory, ".lads-qa-capture-hud170")
 if (autoWorldVerification && File.Exists(hud170CaptureRequest)) File.Delete(hud170CaptureRequest);
 string hudFlickerCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hudflicker");
 if (autoWorldVerification && File.Exists(hudFlickerCaptureRequest)) File.Delete(hudFlickerCaptureRequest);
+string uiCaptureRequest = Path.Combine(directory, ".lads-qa-capture-ui");
+if (autoWorldVerification && File.Exists(uiCaptureRequest)) File.Delete(uiCaptureRequest);
 string itemPhysicsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-itemphysics");
 if (autoWorldVerification && File.Exists(itemPhysicsCaptureRequest)) File.Delete(itemPhysicsCaptureRequest);
 string inventoryCaptureRequest = Path.Combine(directory, ".lads-qa-capture-inventory");
@@ -344,17 +361,23 @@ string resolutionCaptureRequest = Path.Combine(directory, ".lads-qa-capture-reso
 if (autoWorldVerification && File.Exists(resolutionCaptureRequest)) File.Delete(resolutionCaptureRequest);
 string lightsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-lights");
 if (autoWorldVerification && File.Exists(lightsCaptureRequest)) File.Delete(lightsCaptureRequest);
+string asyncStressRequest = Path.Combine(directory, ".lads-qa-async");
+if (autoWorldVerification && File.Exists(asyncStressRequest)) File.Delete(asyncStressRequest);
 string appleSkinSyncRequest = Path.Combine(directory, ".lads-qa-appleskin-sync");
 if (autoWorldVerification && File.Exists(appleSkinSyncRequest)) File.Delete(appleSkinSyncRequest);
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed",
         ".lads-qa-flashback", ".lads-qa-flashback-done", ".lads-qa-flashback-failed" })
         File.Delete(Path.Combine(directory, flag));
-using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification || perf189 ? 20 : 10));
+using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification || perf189 ? 20 : asyncStressVerification ? 16 : 10));
 var ct = timeout.Token;
 
 Process? process = null;
 var exitHandled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+string? optionsSync = Env("LADS_VERIFY_OPTIONS_SYNC");
+if (optionsSync is not (null or "1" or "prepare")) throw new ArgumentException("LADS_VERIFY_OPTIONS_SYNC must be 1 or prepare.");
+string sharedOptions = new PathService(launcherData).SharedOptionsFile;
+string? lunarOptions = capabilities.Forge ? GameOptionsService.LunarOptions18() : null;
 var sessionMessages = new List<string>();
 var runStartUtc = DateTime.UtcNow;
 string logPath = Path.Combine(directory, "production-smoke.log");
@@ -368,22 +391,25 @@ var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<strin
 // failure no longer ends the run before the other requested captures have finished. The run still fails (nativeProbeFailed, Require).
 var failedCaptures = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:",
-    "Lads kill banner capture END:", "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
-    "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
+    "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
+    "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
-    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:"];
+    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
 bool Settled(bool requested, params string[] ends) => !requested || ends.All(passedMarkers.ContainsKey) || ends.Any(failedCaptures.ContainsKey);
 bool CapturesSettled(bool resolutionRequested) =>
     Settled(menuCaptureVerification, "Lads menu capture END:", "Lads mods view capture END:")
     && Settled(hudCaptureVerification, "Lads HUD capture END:", "Lads HUD editor probe END:")
     && Settled(bannerCaptureVerification, "Lads kill banner capture END:")
+    && Settled(killStreakCaptureVerification, "Lads kill streak capture END:")
     && Settled(oldAnimCaptureVerification, "Lads 1.7 animations capture END:")
+    && Settled(anim172CaptureVerification, "Lads anim 1.7.2 capture END:")
     && Settled(zoomCaptureVerification, "Lads zoom capture END:")
     && Settled(skinLayersCaptureVerification, "Lads skin layers capture END:")
     && Settled(sprintCaptureVerification, "Lads sprint capture END:")
     && Settled(hud170CaptureVerification, "Lads HUD 1.7.0 capture END:")
     && Settled(hudFlickerCaptureVerification, "Lads HUD flicker capture END:")
+    && Settled(uiCaptureVerification, "Lads UI capture END:")
     && Settled(itemPhysicsCaptureVerification, "Lads item physics capture END:")
     && Settled(inventoryCaptureVerification, "Lads inventory capture END:")
     && Settled(serverCaptureVerification, "Lads server features capture END:")
@@ -393,6 +419,7 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(mouseTweaksCaptureVerification, "Lads mouse tweaks capture END:")
     && Settled(resolutionRequested, "Lads resolution capture END:")
     && Settled(lightsCaptureVerification, "Lads dynamic lights capture END:")
+    && Settled(asyncStressVerification, "Lads async stress probe END:")
     && Settled(appleSkinSyncVerification, "Lads AppleSkin sync capture END:");
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
@@ -431,7 +458,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads HUD 1.7.0 capture FAILED", "Lads item physics capture FAILED", "Lads inventory capture FAILED",
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
     "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
-    "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED",
+    "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
     "Lads AppleSkin sync capture FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
@@ -562,7 +589,8 @@ try
     }
     var session = AccountIdentity.CreateOfflineSession("LadsQA");
     await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
-    await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
+    // A fresh options.txt every run, except with LADS_VERIFY_OPTIONS_SYNC: the game keeps its own, as players do (qaForced still applies).
+    if (optionsSync == null) await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
     Console.WriteLine("Installing production dependencies...");
     process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
     {
@@ -596,7 +624,10 @@ try
         // =quick: the 1.7.3 quick wins' per-frame costs (Probe173Quick); =unfocusedcap: the unfocused FPS cap (Probe173Cap).
         // =rx: the 1.7.3 rendering tweaks off and on, uncapped at render distance 8 and 12 (run alone), pixel parity, per-call costs (Probe173Rx).
         // =cull: only Entity Culling in a crowd behind a wall, including uncapped frame times at render distance 8 and 12 (Probe173Cull).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =anim: only swing while using items and the damage tilt (Probe172Anim).
+        // =keybinds: side mouse buttons and lasting key binds, the phase in <game>\.lads-qa-keybinds (Probe172Keybinds).
+        // =ui: only the reset questions and Fullbright's slider (Probe172Ui).
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "anim" or "keybinds" or "ui") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
         if (perf189)
         {
             string perfFolder = Path.Combine(directory, "lads-qa", "perf");
@@ -697,11 +728,12 @@ try
             foreach (string marker in requiredWorldProbes)
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
-                "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
-                "Lads HUD flicker capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
+                "Lads kill streak capture END:",
+                "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
+                "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
                 "Lads server features capture END:", "Lads F3/FOV capture END:",
                 "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:", "Lads resolution capture END:",
-                "Lads dynamic lights capture END:", "Lads AppleSkin sync capture END:" })
+                "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -739,8 +771,17 @@ try
     // pauseOnLostFocus off: a pause menu when the owner clicks away would stop the integrated server and the probes' input.
     // The 1.8.9 benchmark alone runs uncapped (maxFps 260 is Unlimited) at its own render distance (perf189 above).
     string[] qaForced = { "soundCategory_master:0.0", perf189 ? "maxFps:260" : "maxFps:120", "enableVsync:false", "renderDistance:" + perfRenderDistance,
-        "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false" };
+        "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false", "fullscreen:false" };
     string qaOptions = Path.Combine(directory, "options.txt");
+    // LADS_VERIFY_OPTIONS_SYNC=1: the launcher's options.txt sync around the game, as ProfileService does for a profile that is not
+    // isolated (1.8.9: Lunar's 1.8 profile when the Lunar sandbox has one, else the shared copy; back to the shared copy after the
+    // exit); =prepare: only the one before the game, as when the launcher missed the game's exit.
+    if (optionsSync != null)
+    {
+        GameOptionsService.SyncToInstance(lunarOptions ?? sharedOptions, qaOptions, version);
+        CopyIfExists(qaOptions, Path.Combine(evidence, "options-after-launcher-sync.txt"));
+        summary.Add($"Options sync ({optionsSync}): {lunarOptions ?? sharedOptions} -> {qaOptions}");
+    }
     var qaLines = File.Exists(qaOptions)
         ? File.ReadAllLines(qaOptions).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList()
         : new List<string>();
@@ -761,7 +802,7 @@ try
     // Title runs without the 26.x auto-world end once every check the harness asserts has passed (they never did before, so
     // 1.21.x waited the full 540 s); the stop is a Kill, as for every non-auto-world run.
     bool earlyTitleExit = titleVerification && !autoWorldVerification;
-    while (stopwatch.Elapsed < TimeSpan.FromSeconds(perf189 ? 1140 : titleVerification ? 540 : 180) && !process.HasExited)
+    while (stopwatch.Elapsed < TimeSpan.FromSeconds(perf189 ? 1140 : titleVerification ? (asyncStressVerification ? 900 : 540) : 180) && !process.HasExited)
     {
         process.Refresh();
         if (!windowFound && process.MainWindowHandle != IntPtr.Zero)
@@ -828,12 +869,15 @@ try
             {
                 foreach (var (asked, request, text) in new[] {
                     (bannerCaptureVerification, bannerCaptureRequest, "Fire every kill banner skin in the QA world and capture its frames."),
+                    (killStreakCaptureVerification, killStreakCaptureRequest, "Kill pigs in quick succession and check the kill streak in the QA world."),
                     (oldAnimCaptureVerification, oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames."),
+                    (anim172CaptureVerification, anim172CaptureRequest, "Check swing while using items and the damage tilt in the QA world."),
                     (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames."),
                     (skinLayersCaptureVerification, skinLayersCaptureRequest, "Photograph the player's 3D skin layers with SkinLayers on and off."),
                     (sprintCaptureVerification, sprintCaptureRequest, "Walk Toggle Sprint & Sneak through the QA world and log every tick's sprint packets."),
                     (hud170CaptureVerification, hud170CaptureRequest, "Capture the 1.7.0 HUD changes in the QA world."),
                     (hudFlickerCaptureVerification, hudFlickerCaptureRequest, "Capture runs of frames with the HUD FPS cap off and on."),
+                    (uiCaptureVerification, uiCaptureRequest, "Answer the reset questions and drag Fullbright's slider with its menu open."),
                     (itemPhysicsCaptureVerification, itemPhysicsCaptureRequest, "Drop items in an Item Physics arena and capture its frames."),
                     (inventoryCaptureVerification, inventoryCaptureRequest, "Capture the inventories with and without potion effects in the QA world."),
                     (serverCaptureVerification, serverCaptureRequest, "Check the multiplayer features in the QA world and capture their frames."),
@@ -842,6 +886,7 @@ try
                     (raisedCaptureVerification, raisedCaptureRequest, "Capture Raised and the paper doll in the QA world."),
                     (mouseTweaksCaptureVerification, mouseTweaksCaptureRequest, "Drive Lads Mouse Tweaks in a QA chest and capture its frames."),
                     (lightsCaptureVerification, lightsCaptureRequest, "Light the QA world at midnight with Dynamic Lights and capture its frames."),
+                    (asyncStressVerification, asyncStressRequest, "Stress Async with a pen of mobs in the QA world."),
                     (appleSkinSyncVerification, appleSkinSyncRequest, "Inject AppleSkin server payloads in the QA world and capture the food bar.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
@@ -951,6 +996,10 @@ try
             "The requested HUD editor interaction checks and native frame capture did not complete.");
         Require(!bannerCaptureVerification || passedMarkers.ContainsKey("Lads kill banner capture END:"),
             "The requested Kill Banner frames were not all captured.");
+        Require(!anim172CaptureVerification || passedMarkers.ContainsKey("Lads anim 1.7.2 capture END:"),
+            "The requested 1.7.2 swing while using and damage tilt checks did not pass. Inspect production-smoke.log.");
+        Require(!killStreakCaptureVerification || passedMarkers.ContainsKey("Lads kill streak capture END:"),
+            "The requested kill streak capture did not pass. Inspect production-smoke.log.");
         Require(!oldAnimCaptureVerification || passedMarkers.ContainsKey("Lads 1.7 animations capture END:"),
             "The requested 1.7 Animations frames were not all captured.");
         Require(!zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:"),
@@ -963,6 +1012,8 @@ try
             "The requested 1.7.0 HUD capture did not pass. Inspect production-smoke.log.");
         Require(!hudFlickerCaptureVerification || passedMarkers.ContainsKey("Lads HUD flicker capture END:"),
             "The requested HUD flicker frames were not all captured. Inspect production-smoke.log.");
+        Require(!uiCaptureVerification || passedMarkers.ContainsKey("Lads UI capture END:"),
+            "The requested reset-question and Fullbright capture did not pass. Inspect production-smoke.log.");
         Require(!itemPhysicsCaptureVerification || passedMarkers.ContainsKey("Lads item physics capture END:"),
             "The requested Item Physics capture did not pass. Inspect production-smoke.log.");
         Require(!inventoryCaptureVerification || passedMarkers.ContainsKey("Lads inventory capture END:"),
@@ -983,6 +1034,8 @@ try
             "The requested Better Resolution capture did not pass. Inspect production-smoke.log.");
         Require(!lightsCaptureVerification || passedMarkers.ContainsKey("Lads dynamic lights capture END:"),
             "The requested Dynamic Lights capture did not pass. Inspect production-smoke.log.");
+        Require(!asyncStressVerification || passedMarkers.ContainsKey("Lads async stress probe END:"),
+            "The requested Async stress probe did not pass. Inspect production-smoke.log.");
         Require(!appleSkinSyncVerification || passedMarkers.ContainsKey("Lads AppleSkin sync capture END:"),
             "The requested AppleSkin server payload capture did not pass. Inspect production-smoke.log.");
     }
@@ -1022,6 +1075,9 @@ if (Env("LADS_VERIFY_V133") == "1" && (process == null || !IsRunning(process)))
 // Exit path: GameSession removes the running marker and reconciles the fallback server list, then signals here.
 if (process != null && HasStarted(process))
 {
+    CopyIfExists(Path.Combine(directory, "options.txt"), Path.Combine(evidence, "options-after-game.txt"));
+    if (optionsSync == "1" && lunarOptions == null) GameOptionsService.SyncFromInstance(Path.Combine(directory, "options.txt"), sharedOptions, version);
+    CopyIfExists(sharedOptions, Path.Combine(evidence, "shared-options-after.txt"));
     bool handled = await Task.WhenAny(exitHandled.Task, Task.Delay(TimeSpan.FromSeconds(30))) == exitHandled.Task;
     if (!handled) failures.Add("GameSession's exit handler did not finish within 30 s (running marker removal and fallback server-list reconcile).");
     bool markerGone = !File.Exists(RunningGameMarker.PathFor(directory));

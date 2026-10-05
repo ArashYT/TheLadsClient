@@ -99,6 +99,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.EntityCulling189());
         Screenshots189.register();
         com.thelads.core.v1_8_9.feature.MouseTweaks189.register();
+        com.thelads.core.v1_8_9.feature.SideButtons189.install();
         MinecraftForge.EVENT_BUS.register(this);
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
@@ -150,8 +151,8 @@ public class TheLadsCore189 {
         {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9, so it reconnects to servers and local worlds; 1.8.9 chat is unsigned, "
             + "so Sign Configured Commands has nothing to sign, and it sends at most 100 characters per action message."},
         // KillBanner189 through Forge's attack and chat events and NetHandlerPlayClientMixin, as 26.x NativeKillBanner.
-        {"KillBanner", "Minecraft 1.8.9 sends no damage events, so a kill counts when your own blow, or a server kill message after it, "
-            + "finishes the target; arrows and other indirect kills do not."},
+        {"KillBanner", "Minecraft 1.8.9 sends no damage events, so a mob or boss counts when your own blow finishes it; a player you "
+            + "shoot or knock off counts through the server's kill message."},
         // DynamicLights189 through OptiFine's GameSettings.ofDynamicLights, as 26.x NativeDynamicLights.
         {"DynamicLights", "On Minecraft 1.8.9 it switches OptiFine's Dynamic Lights (Off, Fast or Fancy), which light up held items, burning "
             + "and glowing entities and dropped items with no radius, entity or underwater settings."}
@@ -174,6 +175,7 @@ public class TheLadsCore189 {
         for (String[] module : MOD_BACKED)
             ModuleSupport.registerUnavailable(module[0], "Built on " + module[1] + ", which The Lads Client does not include for Minecraft 1.8.9.");
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
+        ModuleSupport.registerUnavailable("Async", "Parallel entity ticking is built for the Minecraft 26.x server; 1.8.9 ticks entities on one thread.");
         ModuleSupport.registerUnavailable("ShulkerBoxUtils", "Minecraft 1.8.9 has no shulker boxes; they were added in Minecraft 1.11.");
         for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
             ModuleSupport.registerUnavailable(voice, "Simple Voice Chat does not exist for Minecraft 1.8.9.");
@@ -204,12 +206,7 @@ public class TheLadsCore189 {
         SkinLayers189.tick(mc);
         com.thelads.core.v1_8_9.feature.Cheats189.tick(mc);
         com.thelads.core.v1_8_9.feature.Toggles189.tick(mc);
-        if (mc.thePlayer != null) {
-            com.thelads.core.config.Module fullbright = com.thelads.core.config.ModuleManager.getInstance().getModule("Fullbright");
-            if (fullbright != null && fullbright.isEnabled() && mc.gameSettings.gammaSetting < 15.0f) {
-                mc.gameSettings.gammaSetting = 100.0f;
-            }
-        }
+        com.thelads.core.v1_8_9.feature.Fullbright189.tick(mc);
 
         try {
             String title = org.lwjgl.opengl.Display.getTitle();

@@ -69,7 +69,8 @@ public final class CoreProbe {
         // =itemphysics (Probe170ItemPhysics), =170 (Toggle Sprint & Sneak, then the HUD checks), =raised (Raised and the paper
         // doll, RaisedDollProbe189), =hudflicker (runs of frames with the HUD FPS cap off and on, Probe172HudFlicker), =perf (the 1.7.3
         // benchmark scenes in a fresh perf world, Probe173Perf), =cull (Entity Culling in a crowd behind a wall: views off and on, an
-        // audited fast-motion run and uncapped frame times, Probe173Cull) or =leave (only the
+        // audited fast-motion run and uncapped frame times, Probe173Cull), =anim (swing while using items and damage tilt, Probe172Anim),
+        // =ui (the reset questions and Fullbright's slider, Probe172Ui) or =leave (only the
         // final leave, the 1.7.0 freeze regression check);
         // -Dthelads.verifyChatHeads=true (ChatHeadsProbe189) and -Dthelads.verify189F3Fov=true (Probe170F3Fov).
         String only = System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY"));
@@ -97,6 +98,15 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe173Cull.STEPS);
+        } else if ("anim".equals(only)) {
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe172Anim.STEPS);
+        } else if ("keybinds".equals(only)) {
+            STEPS.clear();
+            STEPS.add(CoreProbe::titleShown);
+            if (!"storm".equals(Probe172Keybinds.PHASE)) STEPS.addAll(Arrays.<Step>asList(CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe172Keybinds.steps());
         } else if ("hudflicker".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
@@ -113,6 +123,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe173Quick.STEPS);
+        } else if ("ui".equals(only)) {
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe172Ui.STEPS);
         } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
@@ -176,6 +190,7 @@ public final class CoreProbe {
     private static void finish() {
         finished = true;
         HudProbe.stop();
+        Probe172Ui.stop();
         Probe151.stop();
         Probe160.stop();
         ChatHeadsProbe189.stop(Minecraft.getMinecraft());
@@ -188,6 +203,8 @@ public final class CoreProbe {
         Probe170ItemPhysics.stop();
         ProbeServer170.stop();
         RaisedDollProbe189.stop();
+        Probe172Anim.stop();
+        Probe172Keybinds.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
@@ -534,7 +551,7 @@ public final class CoreProbe {
         if (SkinLayers189.LOADED) expected.add("SkinLayers");
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
-        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 4 /* DisableNarrator, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
+        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 5 /* DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
             && pending == modules.size() - unavailable - builtIn - external, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, "
             + external + " external, " + pending + " pending");
         mc.displayGuiScreen(null); // Back to Game: the HUD checks run in gameplay

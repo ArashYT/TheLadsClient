@@ -50,6 +50,8 @@ public final class NativeKillBanner {
         if (!eligible()) { reset(); return; }
         if (trackedConnection != minecraft.getConnection()) { reset(); trackedConnection = minecraft.getConnection(); }
         if (!minecraft.player.isAlive()) BANNER.clear();
+        // Kills queue their banners (KillBannerTimeline): the next one starts when its turn comes.
+        if (NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module) play(module, KillBanners.poll(module, System.nanoTime()));
     }
 
     /** MultiPlayerGameMode.attack: a hit whose crosshair point lands on the top quarter of the target's box is a head hit. */

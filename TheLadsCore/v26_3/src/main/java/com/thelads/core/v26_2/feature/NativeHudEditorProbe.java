@@ -246,6 +246,7 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 mc.setScreenAndShow(screen);
                 // Capture the organized defaults with every HUD previewed, restoring the fixture on close.
                 button("reset");
+                key(257, 0); // Enter answers the "Are you sure you want to reset?" question
                 button("previews");
                 for (Module module : modules.keySet()) module.getOptions().forEach(Option::reset);
                 readyAt = System.nanoTime() + 500_000_000L;
@@ -310,7 +311,7 @@ final class NativeHudEditorProbe implements AutoCloseable {
         return ((mods & 1) != 0 ? InputConstants.MOD_SHIFT : 0) | ((mods & 2) != 0 ? InputConstants.MOD_CONTROL : 0);
     }
     private void key(int code, int modifiers) {
-        int physical = switch (code) { case 71 -> InputConstants.KEY_G; case 263 -> InputConstants.KEY_LEFT; case 264 -> InputConstants.KEY_DOWN; default -> throw new IllegalArgumentException("Unknown QA key"); };
+        int physical = switch (code) { case 71 -> InputConstants.KEY_G; case 257 -> InputConstants.KEY_RETURN; case 263 -> InputConstants.KEY_LEFT; case 264 -> InputConstants.KEY_DOWN; default -> throw new IllegalArgumentException("Unknown QA key"); };
         screen.keyPressed(new KeyEvent(physical, code == 71 ? 'g' : 0, nativeModifiers(modifiers)));
     }
     private boolean saved(String name, Rect bounds) {

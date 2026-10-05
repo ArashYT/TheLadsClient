@@ -79,10 +79,12 @@ public class HudManager {
         if (g == null || (g.getGame() != null && g.getGame().isHudHidden())) return;
         if (!HudFrameCap.wholeHud && g.getGame() != null && g.getGame().isIngame() && HudFrameCap.enabled()) {
             // Capped: rebuild at the cap rate and draw the last build on every frame, so the HUD never blinks out.
-            if (HudFrameCap.due(System.nanoTime(), g.getScaledWidth(), g.getScaledHeight())) {
+            long now = System.nanoTime();
+            if (HudFrameCap.due(now, g.getScaledWidth(), g.getScaledHeight())) {
                 cachedHud.clear();
                 recordHudFrame();
                 renderElements(new RecordingGraphics(g, cachedHud));
+                HudFrameCap.built(now);
             }
             for (var op : cachedHud) op.accept(g);
             return;
@@ -91,6 +93,17 @@ public class HudManager {
         cachedHud.clear();
         recordHudFrame();
         renderElements(g);
+    }
+
+    /**
+     * A version's own capped build of the Lads HUD (1.8.9's framebuffer cache, HudCache189): drawn into g, with what it draws reported
+     * to HudFrameCap so animations raise the build rate as on the recorded path.
+     */
+    public void renderMarked(LadsGraphics g, long now) {
+        List<java.util.function.Consumer<LadsGraphics>> ops = new ArrayList<>();
+        render(new RecordingGraphics(g, ops));
+        for (var op : ops) op.accept(g);
+        HudFrameCap.built(now);
     }
 
     private void renderElements(LadsGraphics g) {

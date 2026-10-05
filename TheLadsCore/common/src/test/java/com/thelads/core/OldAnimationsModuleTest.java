@@ -31,7 +31,7 @@ class OldAnimationsModuleTest {
         assertInstanceOf(OldAnimationsModule.class, registered);
         assertEquals("Gameplay", LadsSettingsScreen.categoryOf(registered));
         var module = new OldAnimationsModule();
-        assertFalse(module.isEnabled(), "visual modules start off, like LegacySwing and OldDamageTilt");
+        assertFalse(module.isEnabled(), "visual modules start off, like LegacySwing");
         assertEquals(Feature.values().length, module.getOptions().size(), "one toggle per option");
         var names = new HashSet<String>();
         for (Feature feature : Feature.values()) {
@@ -105,8 +105,17 @@ class OldAnimationsModuleTest {
             assertEquals(0, module.swingShown(Platform.V1_8_9, use, 0.5f), use + " without " + gate + " is 1.8");
             module.option(gate).set(true);
         }
-        for (Platform platform : Platform.values())
-            assertEquals(0, module.swingShown(platform, Use.EAT_DRINK, 0.5f), "eating and drinking never swing the food, " + platform);
+        for (Platform platform : Platform.values()) {
+            assertEquals(0, module.swingShown(platform, Use.EAT_DRINK, 0.5f), "food never swings by itself, " + platform);
+            assertEquals(0.5f, module.swingShown(platform, Use.EAT_DRINK, 0.5f, true), "an attack while eating swings, " + platform);
+            for (Use use : Use.values()) assertEquals(use != Use.NONE, module.swingOnAttack(platform, use), use + " swings on attack");
+            assertFalse(module.swingOnAttack(platform, null), "a use 1.7 never had (a spyglass) keeps vanilla");
+        }
+        module.option(Feature.SWING_WHILE_USING).set(false);
+        assertEquals(0, module.swingShown(Platform.MODERN, Use.EAT_DRINK, 0.5f, true), "Swing while using items off: no swing over food");
+        assertFalse(module.swingOnAttack(Platform.MODERN, Use.EAT_DRINK));
+        assertTrue(module.swingOnAttack(Platform.MODERN, Use.BLOCK), "blocking follows Blockhitting");
+        module.option(Feature.SWING_WHILE_USING).set(true);
         for (Use use : new Use[]{Use.BLOCK, Use.BOW, Use.EAT_DRINK}) assertTrue(module.useWhileMining(use), use + " starts while mining");
         assertFalse(module.useWhileMining(Use.NONE), "an item without a use waits, as in 1.8");
         assertFalse(module.useWhileMining(null), "a use 1.7 never drew (a spyglass) waits, as in 1.8");
@@ -138,6 +147,7 @@ class OldAnimationsModuleTest {
         assertEquals(0.2f, module.equipScale(Platform.MODERN, 0.2f));
         module.setEnabled(false);
         assertEquals(0, module.swingShown(Platform.MODERN, Use.BLOCK, 0.5f), "module off is vanilla");
+        assertFalse(module.swingOnAttack(Platform.MODERN, Use.EAT_DRINK), "module off: the click while eating stays dropped");
         assertFalse(module.iconPlacement(Platform.MODERN, Use.BOW, Held.BOW));
         assertFalse(module.useWhileMining(Use.BLOCK), "module off: the use waits for the mining, as in 1.8");
     }

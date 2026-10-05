@@ -245,6 +245,7 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 mc.setScreenAndShow(screen);
                 // Capture the organized defaults with every HUD previewed, restoring the fixture on close.
                 button("reset");
+                key(257, 0); // Enter answers the "Are you sure you want to reset?" question
                 button("previews");
                 for (Module module : modules.keySet()) module.getOptions().forEach(Option::reset);
                 readyAt = System.nanoTime() + 500_000_000L;

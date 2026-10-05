@@ -23,7 +23,7 @@ public class PaperdollModule extends Module {
         addOption(new SliderOption("Default Rotation", 15, 0, 45, 1));
         addOption(new SliderOption("Maximum Yaw", 30, 0, 90, 1));
         addOption(new SliderOption("Maximum Pitch", 30, 0, 90, 1));
-        addOption(new SliderOption("Model Opacity", 100, 5, 100, 5));
+        addOption(new SliderOption("Model Opacity", 100, 5, 100, 5).percent());
         addOption(new PlayerActionOption("Sprinting", true));
         addOption(new PlayerActionOption("Swimming", true));
         addOption(new PlayerActionOption("Crawling", false));

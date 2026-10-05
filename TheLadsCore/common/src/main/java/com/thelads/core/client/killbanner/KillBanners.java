@@ -17,17 +17,24 @@ public final class KillBanners {
     }
 
     /**
-     * Shows the banner for a kill the moment it is seen. Returns the sound to play for this kill (every kill plays its own,
-     * so quick kills stack while the animation restarts on the newest): "theladscore:&lt;skin&gt;_kill_&lt;n&gt;", "" for the
-     * plain chime, or null when nothing plays (the kind is off, or sound is off).
+     * A kill, the moment it is seen: it counts toward the streak and its banner queues (KillBannerTimeline). Returns the sound
+     * of a banner that started now, as {@link #poll} does.
      */
     public static String fire(KillBannerModule module, KillDetector.Kill kill, long now) {
         if (kill == null || !module.counts(kill.kind())) return null;
-        KillBannerModule.Pick pick = module.next();
-        TIMELINE.trigger(1, now, false, kill.headshot(), pick);
+        TIMELINE.kill(now, module.streakWindow(), kill.headshot(), module.next());
+        return poll(module, now);
+    }
+
+    /**
+     * Each client tick (and right after a kill): starts the next queued banner when its turn has come. Returns its sound (each
+     * banner plays its own): "theladscore:&lt;skin&gt;_kill_&lt;n&gt;", "" for the plain chime, or null when nothing plays.
+     */
+    public static String poll(KillBannerModule module, long now) {
+        if (!TIMELINE.next(now)) return null;
         // A capped HUD rebuilds on the next frame instead of its next due one, so the banner is not late.
         HudFrameCap.reset();
-        return sound(module, pick);
+        return sound(module, TIMELINE.pick());
     }
 
     /** A preview or QA banner with a set look. */

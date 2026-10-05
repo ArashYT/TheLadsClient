@@ -55,6 +55,8 @@ public final class NativeOldAnimations {
     /** Both arms' rotations as the 1.7 sword block left them, re-applied after other model mods (NotEnoughAnimations). */
     private static final float[] BLOCKING_ARMS = new float[6];
     private static Object blockingModel;
+    /** Swing while using items: the attack key was pressed during the current use (cleared once no item is in use). */
+    static boolean attacked;
     private NativeOldAnimations() {}
 
     /** Extraction flags carried on every entity render state (OldAnimationsStateMixin). */
@@ -101,7 +103,7 @@ public final class NativeOldAnimations {
         else {
             pose.popPose(); // back to the arm origin (submitArmWithItem's own push), dropping vanilla's use transforms
             pose.pushPose();
-            float shown = module.swingShown(MODERN, use, swing);
+            float shown = module.swingShown(MODERN, use, swing, attacked);
             OldAnimations.hand(out, side, equip, shown, use, player.getUseItemRemainingTicks(), partial, item.getUseDuration(player));
             if (shown > 0) APPLIED.add(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING);
         }
@@ -142,13 +144,32 @@ public final class NativeOldAnimations {
     public static boolean useWhileMining(LivingEntity player) {
         OldAnimationsModule module = module();
         if (module == null || player == null) return false;
-        for (InteractionHand hand : InteractionHand.values()) {
-            ItemUseAnimation animation = player.getItemInHand(hand).getUseAnimation();
-            Use use = animation == ItemUseAnimation.EAT || animation == ItemUseAnimation.DRINK ? Use.EAT_DRINK
-                : animation == ItemUseAnimation.BOW ? Use.BOW : animation == ItemUseAnimation.BLOCK ? Use.BLOCK : null;
-            if (module.useWhileMining(use)) return true;
-        }
+        for (InteractionHand hand : InteractionHand.values()) if (module.useWhileMining(action(player.getItemInHand(hand)))) return true;
         return false;
+    }
+
+    /**
+     * Swing while using items and Blockhitting (Minecraft.handleKeybinds, ClientTickMixin): the attack key was pressed while an item
+     * is in use. Vanilla drops that click; with the option on, the main arm swings over the use as an attack would, on this client
+     * only (LivingEntity.swing without LocalPlayer's packet): the use goes on and the server sees what vanilla sends, nothing.
+     */
+    public static void attackClicked(LocalPlayer player) {
+        OldAnimationsModule module = module();
+        if (module == null || !player.isUsingItem() || !module.swingOnAttack(MODERN, action(player.getUseItem()))) return;
+        attacked = true;
+        player.swing(InteractionHand.MAIN_HAND, false);
+    }
+
+    /** Every client tick: a new use starts without an attack. */
+    public static void tick(LocalPlayer player) {
+        if (player == null || !player.isUsingItem()) attacked = false;
+    }
+
+    /** The 1.7 pose an item's use draws, or null for a use 1.7 never had. */
+    private static Use action(ItemStack item) {
+        ItemUseAnimation animation = item.getUseAnimation();
+        return animation == ItemUseAnimation.EAT || animation == ItemUseAnimation.DRINK ? Use.EAT_DRINK
+            : animation == ItemUseAnimation.BOW ? Use.BOW : animation == ItemUseAnimation.BLOCK ? Use.BLOCK : null;
     }
 
     /** The 26.x trigger for the 1.7 sword block: a sword in the main hand while the off hand blocks with a shield. */
