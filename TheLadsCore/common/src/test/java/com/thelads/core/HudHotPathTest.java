@@ -111,6 +111,23 @@ class HudHotPathTest {
         assertEquals(16, graphics.widthCalls); assertEquals(16, graphics.texts.size());
     }
 
+    /** 1.7.3: a bridge keeps one snapshot per tick; with the same font, later frames draw it without measuring again. */
+    @Test void scoreboardKeepsMeasurementsAcrossFramesUntilSnapshotOrFontChanges() {
+        Object[] key = {new Object()};
+        var keyed = new Graphics() { @Override public Object textMetricsKey() { return key[0]; } };
+        var element = element("Scoreboard");
+        element.prepareRender(keyed, false); element.render(keyed);
+        assertEquals(5, keyed.widthCalls);
+        keyed.clear(); element.prepareRender(keyed, false); element.render(keyed);
+        assertEquals(0, keyed.widthCalls); assertEquals(List.of("Server objective", "Player", "123", "Team", "456"), keyed.texts);
+        game.board = new LadsGameBridge.ScoreboardSnapshot("Server objective", List.of(new LadsGameBridge.ScoreLine("Player", "1234")));
+        keyed.clear(); element.prepareRender(keyed, false); element.render(keyed);
+        assertEquals(3, keyed.widthCalls);
+        key[0] = new Object(); // a resource reload
+        keyed.clear(); element.prepareRender(keyed, false); element.render(keyed);
+        assertEquals(3, keyed.widthCalls);
+    }
+
     @Test void scoreboardNextFrameAndDirectRenderObserveNewServerData() {
         var element = element("Scoreboard");
         assertTrue(renderText(element).contains("123"));
