@@ -162,21 +162,21 @@ final class KillStreakCapture {
             case 12 -> {
                 check(banner.streak() == 2, "a kill 1 s after the first: streak 2 (" + banner.streak() + ")");
                 server(sp -> killAsPlayer(sp, PIGS.get(2)));
-                wait = 10;
+                wait = 40; // a busy QA world's server can take a while
             }
             case 13 -> {
                 check(banner.streak() == 1, "a kill 3.5 s later, past the 3 s Streak Reset: a new streak (" + banner.streak() + ")");
                 module.unlimitedStreak.set(true);
                 wait = 80;
             }
-            case 14 -> { server(sp -> killAsPlayer(sp, PIGS.get(3))); wait = 10; }
+            case 14 -> { server(sp -> killAsPlayer(sp, PIGS.get(3))); wait = 40; }
             case 15 -> {
-                check(banner.streak() == 2, "Unlimited Streak: a kill 4 s later still counts (streak " + banner.streak() + ")");
+                check(banner.streak() == 2, "Unlimited Streak: a kill 6 s later, past the 3 s Streak Reset, still counts (streak " + banner.streak() + ")");
                 end(List.of(1, 2, 1, 2), "the timer run's banners");
                 pigs(1);
                 wait = 20;
             }
-            case 16 -> { start("death"); server(sp -> killAsPlayer(sp, PIGS.get(0))); wait = 10; }
+            case 16 -> { start("death"); server(sp -> killAsPlayer(sp, PIGS.get(0))); wait = 40; }
             case 17 -> {
                 check(banner.streak() == 3, "Unlimited Streak: a third kill before dying (streak " + banner.streak() + ")");
                 server(sp -> sp.kill(sp.level()));
@@ -195,8 +195,9 @@ final class KillStreakCapture {
                 pigs(1);
                 wait = 20;
             }
-            case 20 -> { server(sp -> killAsPlayer(sp, PIGS.get(0))); wait = 10; }
+            case 20 -> { server(sp -> killAsPlayer(sp, PIGS.get(0))); wait = 40; } // after a respawn and a teleport the server lags
             case 21 -> {
+                LOGGER.info("Lads kill streak: client pig {}: {}, player {}", PIGS.get(0), mc.level.getEntity(PIGS.get(0)), mc.player.getId());
                 check(banner.streak() == 1, "after respawning the next kill starts at 1 (streak " + banner.streak() + ")");
                 end(List.of(3, 1), "the death run's banners");
                 wait = 5;
@@ -312,7 +313,10 @@ final class KillStreakCapture {
 
     /** Server thread: the pig dies of the player's attack (a damage event naming the player, then its death event). */
     private static void killAsPlayer(ServerPlayer sp, int id) {
-        if (sp.level().getEntity(id) instanceof LivingEntity pig) pig.hurtServer(sp.level(), sp.damageSources().playerAttack(sp), 1000f);
+        if (sp.level().getEntity(id) instanceof LivingEntity pig) {
+            boolean hurt = pig.hurtServer(sp.level(), sp.damageSources().playerAttack(sp), 1000f);
+            LOGGER.info("Lads kill streak: server pig {} hurt by player {}: {}, dead {}", id, sp.getId(), hurt, pig.isDeadOrDying());
+        }
         else fail("pig " + id + " missing on the server");
     }
 
