@@ -110,12 +110,13 @@ final class Probe145 {
             RawMouse189.pacing, Display.isActive(), Mouse.isGrabbed());
         check(helper.rawLive || (helper.deltaX == 37 && helper.deltaY == -11),
             "with Raw Input on and no JInput mouse moving, the camera turns by LWJGL's deltas (37, -11): " + helper.deltaX + ", " + helper.deltaY);
-        check(RawMouse189.pacing, "frame pacing is on (GL 3.2 fences)");
+        check(!RawMouse189.pacing, "frame pacing is off by default");
         return after(1);
     }
 
     /** Frame pacing's cost: the frame rate without VSync or a limit, with and without pacing. */
     private static boolean pacedStart(Minecraft mc) {
+        RawMouse189.pacing = true; // off in the game; the A/B below switches it on
         vsync = mc.gameSettings.enableVsync;
         limit = mc.gameSettings.limitFramerate;
         mc.gameSettings.enableVsync = false;
@@ -169,6 +170,7 @@ final class Probe145 {
         }
         mc.gameSettings.enableVsync = vsync;
         Display.setVSyncEnabled(vsync);
+        RawMouse189.pacing = false;
         mc.gameSettings.limitFramerate = limit;
         check(kept, "frame pacing keeps the frame rate: " + best + " FPS paced, " + unpaced + " unpaced (round " + pacingRounds + " of up to 3)");
         return after(1);

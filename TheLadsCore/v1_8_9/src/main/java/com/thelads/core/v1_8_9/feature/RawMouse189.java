@@ -41,7 +41,8 @@ public final class RawMouse189 extends MouseHelper {
     private int lwjglOnly;
     private float carryX, carryY;
     private static GLSync previousFrame;
-    static boolean pacing = true;
+    /** Off since 1.7.3: waiting on the GPU every frame cost frame rate for a small input-latency gain; Probe145 switches it on to A/B. */
+    static boolean pacing = false;
 
     private RawMouse189() {}
 
