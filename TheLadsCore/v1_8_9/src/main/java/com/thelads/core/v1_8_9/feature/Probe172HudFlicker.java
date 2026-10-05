@@ -51,7 +51,9 @@ import org.lwjgl.opengl.GL12;
  * HUD, chat, scoreboard, throw bar), it saves runs of consecutive frames to lads-qa/screenshots/hudflicker: the HUD hidden
  * (reference), the cap off (control), the cap on at 10 FPS and the HUD hidden again (the view stayed still), with the elements'
  * rectangles and the Lads HUD's cost per frame (hudflicker.json). On 1.8.9 the cap covers the Lads HUD only.
- * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Everything is put back.
+ * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Then the pace of the Lads HUD's one animation that
+ * steps each time it is drawn, the FPS counter's smoothing: timed with the cap off, at 30 and at 10 FPS (hudflicker.json "pace").
+ * Everything is put back.
  */
 final class Probe172HudFlicker {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
@@ -60,7 +62,9 @@ final class Probe172HudFlicker {
     private static final int FRAMES = 36, HIDDEN = 4, CAP = 10;
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe172HudFlicker::setup,
         mc -> run(mc, "hud-hidden"), mc -> run(mc, "hud-off"), mc -> run(mc, "hud-on"), mc -> run(mc, "hud-after"),
-        mc -> run(mc, "f3-hidden"), mc -> run(mc, "f3-off"), mc -> run(mc, "f3-on"), mc -> run(mc, "f3-after"), Probe172HudFlicker::restore);
+        mc -> run(mc, "f3-hidden"), mc -> run(mc, "f3-off"), mc -> run(mc, "f3-on"), mc -> run(mc, "f3-after"),
+        mc -> pace(mc, 0), mc -> pace(mc, 0), mc -> pace(mc, 30), mc -> pace(mc, 30), mc -> pace(mc, 10), mc -> pace(mc, 10),
+        Probe172HudFlicker::restore);
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<Option, JsonElement>();
     private static final Map<Module, Boolean> enabledWere = new LinkedHashMap<Module, Boolean>();
     private static final JsonObject report = new JsonObject();
@@ -69,6 +73,7 @@ final class Probe172HudFlicker {
     private static boolean capWas, f3Was;
     private static int limitWas, width, height, difficultyWas;
     private static String run;
+    private static int paces;
     private static Frames frames;
     private static ItemStack handWas, headWas, feetWas;
     private static double pinX, pinY, pinZ, homeX, homeY, homeZ;
@@ -163,6 +168,32 @@ final class Probe172HudFlicker {
         }
         if (!frames.done()) return retry(1);
         LOG.info("Lads HUD flicker capture {}: {} frames", name, frames.count);
+        return after(1);
+    }
+
+    /**
+     * One pace trial: the FPS counter's smoothed value set to 0 and timed until a frame shows it within 10% of the game's FPS, with the
+     * cap at this value (0: off). With the cap it should take as long as without, give or take one HUD frame.
+     */
+    private static boolean pace(Minecraft mc, int cap) throws Exception {
+        pin(mc);
+        if (frames.paceResult == null && !frames.pacing) {
+            mc.gameSettings.hideGUI = false;
+            mc.gameSettings.showDebugInfo = false;
+            HudSettings.getInstance().setHudFpsCapEnabled(cap > 0);
+            if (cap > 0) HudSettings.getInstance().setHudFpsLimit(cap);
+            frames.pace(System.nanoTime() + 1_500_000_000L);
+            return retry(1);
+        }
+        if (frames.paceResult == null) return retry(1);
+        String key = (cap == 0 ? "cap off" : "cap " + cap) + " fps-smoothing";
+        if (!report.has("pace")) report.add("pace", new JsonObject());
+        if (!report.getAsJsonObject("pace").has(key)) report.getAsJsonObject("pace").add(key, new JsonArray());
+        report.getAsJsonObject("pace").getAsJsonArray(key).add(new com.google.gson.JsonPrimitive(frames.paceResult));
+        LOG.info("Lads HUD pace capture {}: {}", key, frames.paceResult);
+        check(!frames.paceResult.startsWith("did not"), "HUD pace: " + key + " ended (" + frames.paceResult + ")");
+        frames.paceResult = null;
+        paces++;
         return after(1);
     }
 
@@ -293,9 +324,35 @@ final class Probe172HudFlicker {
         }
 
         boolean done() { return count >= wanted; }
+        private boolean pacing;
+        private long paceAt, paceStart;
+        private String paceResult;
+
+        void pace(long at) { pacing = true; paceAt = at; paceStart = 0; name = null; }
+
+        /** Each finished frame of a pace trial: start it after the settle time, then time it (the counter moves only when the HUD is built). */
+        private void pace() {
+            long now = System.nanoTime();
+            if (now < paceAt) return;
+            try {
+                Object fps = null;
+                for (HudElement element : HudManager.getInstance().getElements()) if (element instanceof com.thelads.core.client.hud.FPSHudElement) fps = element;
+                java.lang.reflect.Field displayed = com.thelads.core.client.hud.FPSHudElement.class.getDeclaredField("displayed");
+                java.lang.reflect.Field target = com.thelads.core.client.hud.FPSHudElement.class.getDeclaredField("target");
+                displayed.setAccessible(true);
+                target.setAccessible(true);
+                if (paceStart == 0) { displayed.setDouble(fps, 0); paceStart = now; return; }
+                double goal = target.getDouble(fps);
+                if (goal > 0 && displayed.getDouble(fps) >= 0.9 * goal) paceResult = String.format(java.util.Locale.ROOT, "%.0f ms", (now - paceStart) / 1e6);
+                else if (now - paceStart > 12_000_000_000L) paceResult = "did not end within 12 s";
+                else return;
+            } catch (Exception failure) { paceResult = "did not run: " + failure; }
+            pacing = false;
+        }
 
         @SubscribeEvent
         public void frame(TickEvent.RenderTickEvent event) {
+            if (event.phase == TickEvent.Phase.END && pacing) { pace(); return; }
             if (event.phase != TickEvent.Phase.END || name == null || done()) return;
             long now = System.nanoTime();
             if (measure && now >= due - 1_100_000_000L && measureEnd == 0) {
