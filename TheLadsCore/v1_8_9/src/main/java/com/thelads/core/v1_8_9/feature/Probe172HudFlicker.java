@@ -52,14 +52,21 @@ import org.lwjgl.opengl.GL12;
  * (reference), the cap off (control), the cap on at 10 FPS and the HUD hidden again (the view stayed still), with the elements'
  * rectangles and the Lads HUD's cost per frame (hudflicker.json). On 1.8.9 the cap covers the Lads HUD only.
  * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Everything is put back.
+ * 1.7.3: every Lads HUD module and a 15-line scoreboard in "hud"; two more "hud" runs for pixel parity, the cap on through the
+ * pre-1.7.3 replay (no framebuffer cache) and the cap off without the text cache; then uncapped benchmark runs ("bench-*", FPS
+ * limit off in the sandbox only: average FPS, 1% low, p99 frame time, Lads HUD cost). Caches a build lacks are left alone.
  */
 final class Probe172HudFlicker {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final String[] MODULES = {"FPS", "Coordinates", "Keystrokes", "CPS", "Paperdoll", "ArmorHUD", "Potion Effects", "Scoreboard",
-        "BossBar", "KillBanner", "Item Physics", "Chat Heads", "Raised", "Autohide"};
-    private static final int FRAMES = 36, HIDDEN = 4, CAP = 10;
+        "BossBar", "KillBanner", "Item Physics", "Chat Heads", "Raised", "Autohide", "PingHUD", "Memory", "Speed", "Day", "Time", "XP",
+        "Biome", "Direction", "Health", "Hunger", "TexturePacks", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress",
+        "PortalCoordinates"};
+    private static final int FRAMES = 36, HIDDEN = 4, CAP = 10, BENCH_SECONDS = 6;
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe172HudFlicker::setup,
-        mc -> run(mc, "hud-hidden"), mc -> run(mc, "hud-off"), mc -> run(mc, "hud-on"), mc -> run(mc, "hud-after"),
+        mc -> run(mc, "hud-hidden"), mc -> run(mc, "hud-off"), mc -> run(mc, "hud-on"), mc -> run(mc, "hud-replay"),
+        mc -> run(mc, "hud-nofont"), mc -> run(mc, "hud-after"),
+        mc -> run(mc, "bench-nofont"), mc -> run(mc, "bench-off"), mc -> run(mc, "bench-replay"), mc -> run(mc, "bench-on"),
         mc -> run(mc, "f3-hidden"), mc -> run(mc, "f3-off"), mc -> run(mc, "f3-on"), mc -> run(mc, "f3-after"), Probe172HudFlicker::restore);
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<Option, JsonElement>();
     private static final Map<Module, Boolean> enabledWere = new LinkedHashMap<Module, Boolean>();
@@ -67,7 +74,7 @@ final class Probe172HudFlicker {
     private static final List<int[]> pending = new ArrayList<int[]>();
     private static final List<String> names = new ArrayList<String>();
     private static boolean capWas, f3Was;
-    private static int limitWas, width, height, difficultyWas;
+    private static int limitWas, width, height, difficultyWas, fpsWas;
     private static String run;
     private static Frames frames;
     private static ItemStack handWas, headWas, feetWas;
@@ -129,6 +136,9 @@ final class Probe172HudFlicker {
         for (String command : new String[] {"gamemode 0 @a", "scoreboard objectives add ladsflicker dummy Flicker QA",
             "scoreboard objectives setdisplay sidebar ladsflicker", "scoreboard players set Alpha ladsflicker 2", "scoreboard players set Beta ladsflicker 1",
             "effect @a 3 600 0 true", "difficulty 0"}) command(mc, command);
+        // 1.7.3: a full sidebar (15 lines), as on a server
+        for (int i = 3; i <= 15; i++) command(mc, "scoreboard players set Line" + (i < 10 ? "0" : "") + i + " ladsflicker " + i);
+        fpsWas = mc.gameSettings.limitFramerate;
         frames = new Frames();
         MinecraftForge.EVENT_BUS.register(frames);
         LOG.info("Lads HUD flicker capture BEGIN: {} frames per run, cap {} FPS (the Lads HUD)", FRAMES, CAP);
@@ -147,18 +157,23 @@ final class Probe172HudFlicker {
                 BossStatus.statusBarTime = 100_000;
                 mc.ingameGUI.setRecordPlaying("", false);
             }
-            boolean hidden = name.endsWith("-hidden") || name.endsWith("-after");
+            boolean hidden = name.endsWith("-hidden") || name.endsWith("-after"), bench = name.startsWith("bench-");
             mc.gameSettings.hideGUI = hidden;
             mc.gameSettings.showDebugInfo = !hidden && name.startsWith("f3");
-            HudSettings.getInstance().setHudFpsCapEnabled(name.endsWith("-on"));
+            HudSettings.getInstance().setHudFpsCapEnabled(name.endsWith("-on") || name.endsWith("-replay"));
             HudSettings.getInstance().setHudFpsLimit(CAP);
-            // Chat once per scene, on its own (lines fade 10 s after they came; new ones would move the old ones).
-            if (name.endsWith("-off")) {
+            qaOff("HudCache189", name.endsWith("-replay"));
+            qaOff("FontCache189", name.endsWith("-nofont"));
+            // Benchmark runs only (sandbox, user-approved for 1.7.3): no FPS limit.
+            mc.gameSettings.limitFramerate = bench ? (int) net.minecraft.client.settings.GameSettings.Options.FRAMERATE_LIMIT.getValueMax() : fpsWas;
+            // Chat fresh for each run, on its own (lines fade 10 s after they came; new ones would move the old ones).
+            if (!hidden && !name.startsWith("f3") || name.equals("f3-off")) {
                 mc.ingameGUI.getChatGUI().clearChatMessages();
                 for (int i = 1; i <= 3; i++) mc.thePlayer.sendChatMessage("Flicker QA chat " + i);
             }
             if (!hidden) refresh(mc, name.startsWith("f3"));
-            frames.start(name, hidden ? HIDDEN : FRAMES, hidden ? 800 : 1600, !hidden);
+            if (bench) frames.bench(name, BENCH_SECONDS);
+            else frames.start(name, hidden ? HIDDEN : FRAMES, hidden ? 800 : 1600, !hidden);
             return retry(1);
         }
         if (!frames.done()) return retry(1);
@@ -194,8 +209,22 @@ final class Probe172HudFlicker {
         } catch (Throwable absent) { LOG.info("Lads HUD flicker capture: no Essential notification ({})", absent.toString()); }
     }
 
+    /** QA switch of a 1.7.3 cache (absent in older builds): off for this run. */
+    private static void qaOff(String cache, boolean off) {
+        try {
+            java.lang.reflect.Field field = Class.forName("com.thelads.core.v1_8_9.feature." + cache).getDeclaredField("qaOff");
+            field.setAccessible(true);
+            field.setBoolean(null, off);
+        } catch (ReflectiveOperationException absent) {
+            // a build without that cache
+        }
+    }
+
     private static boolean restore(Minecraft mc) throws Exception {
         MinecraftForge.EVENT_BUS.unregister(frames);
+        qaOff("HudCache189", false);
+        qaOff("FontCache189", false);
+        mc.gameSettings.limitFramerate = fpsWas;
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindDrop.getKeyCode(), false);
         mc.gameSettings.hideGUI = false;
         mc.gameSettings.showDebugInfo = f3Was;
@@ -225,7 +254,7 @@ final class Probe172HudFlicker {
             if (ImageIO.write(image, "png", new File(folder, names.get(i) + ".png"))) saved++;
         }
         Files.write(new File(folder, "hudflicker.json").toPath(), report.toString().getBytes(StandardCharsets.UTF_8));
-        check(saved == 2 * (2 * HIDDEN + 2 * FRAMES), "HUD flicker: every frame of every run saved (" + saved + ")");
+        check(saved == 2 * (2 * HIDDEN + 2 * FRAMES) + 2 * FRAMES, "HUD flicker: every frame of every run saved (" + saved + ")");
         LOG.info("Lads HUD flicker capture END: {} passed, 0 failed; frames in lads-qa/screenshots/hudflicker", saved);
         pending.clear();
         return after(5);
@@ -279,9 +308,52 @@ final class Probe172HudFlicker {
     public static final class Frames {
         private String name;
         private int wanted, count, measured;
-        private long due, measureEnd, nanos0, frames0, start;
+        private long due, measureEnd, nanos0, frames0, start, last;
         private boolean measure;
         private IntBuffer buffer;
+        /** Benchmark: frame times (ns) over the run, no frames saved. */
+        private long[] times;
+        private int timed;
+
+        void bench(String name, int seconds) {
+            this.name = name;
+            wanted = 1;
+            count = 0;
+            measure = false;
+            times = new long[seconds * 4000];
+            timed = 0;
+            due = System.nanoTime() + 1_500_000_000L; // settle
+            measureEnd = due + seconds * 1_000_000_000L;
+            last = 0;
+        }
+
+        private void benchFrame(long now) {
+            if (now < due) return;
+            if (last == 0) {
+                last = now;
+                nanos0 = NativeHud.hudNanos;
+                frames0 = NativeHud.frames;
+                return;
+            }
+            if (timed < times.length) times[timed++] = now - last;
+            last = now;
+            if (now < measureEnd && timed < times.length) return;
+            long[] sorted = Arrays.copyOf(times, timed);
+            Arrays.sort(sorted);
+            long total = 0;
+            for (long t : sorted) total += t;
+            int lows = Math.max(1, timed / 100);
+            long worst = 0;
+            for (int i = timed - lows; i < timed; i++) worst += sorted[i];
+            String line = String.format(java.util.Locale.ROOT, "%d frames, avg %.1f FPS, 1%% low %.1f FPS, p50 %.2f ms, p99 %.2f ms, max %.2f ms, Lads HUD %.1f us per frame",
+                timed, timed / (total / 1e9), lows / (worst / 1e9), sorted[timed / 2] / 1e6, sorted[Math.min(timed - 1, timed * 99 / 100)] / 1e6,
+                sorted[timed - 1] / 1e6, (NativeHud.hudNanos - nanos0) / 1e3 / Math.max(1, NativeHud.frames - frames0));
+            LOG.info("Lads HUD bench {}: {}", name, line);
+            if (!report.has("bench")) report.add("bench", new JsonObject());
+            report.getAsJsonObject("bench").addProperty(name, line);
+            times = null;
+            count = wanted;
+        }
 
         void start(String name, int wanted, long settleMs, boolean measure) {
             this.name = name;
@@ -298,6 +370,10 @@ final class Probe172HudFlicker {
         public void frame(TickEvent.RenderTickEvent event) {
             if (event.phase != TickEvent.Phase.END || name == null || done()) return;
             long now = System.nanoTime();
+            if (times != null) {
+                benchFrame(now);
+                return;
+            }
             if (measure && now >= due - 1_100_000_000L && measureEnd == 0) {
                 measureEnd = now + 1_000_000_000L;
                 start = now;
