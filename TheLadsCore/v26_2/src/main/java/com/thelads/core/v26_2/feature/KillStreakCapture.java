@@ -44,9 +44,10 @@ final class KillStreakCapture {
     private static final List<String> FAILURES = new ArrayList<>();
     private static final List<JsonElement> OPTIONS = new ArrayList<>();
     private static final List<Integer> PIGS = Collections.synchronizedList(new ArrayList<>());
+    private static final List<Integer> ALL_PIGS = Collections.synchronizedList(new ArrayList<>());
     private static final List<Integer> SHOWN = new ArrayList<>();
     private static final StringBuilder TRACE = new StringBuilder("ms,run,streak,queued,sequence,age\n");
-    private static int step = -1, wait, passed, lastSequence, pictures;
+    private static int step = -1, wait, passed, lastSequence, pictures, pigsWanted, held;
     private static double lastAge = -1;
     private static boolean enabledBefore, picture, capturing;
     private static long modifiedBefore, began;
@@ -65,6 +66,17 @@ final class KillStreakCapture {
         }
         if (step > LAST) return;
         observe();
+        // Another world probe's screen pauses the integrated server (its spawns and kills then reach the client late): hold the
+        // next step until the game runs again and the client has every new pig, alive.
+        Minecraft mc = Minecraft.getInstance();
+        boolean blocked = mc.isPaused() || mc.gui.screen() != null && !(mc.gui.screen() instanceof DeathScreen) || pigsWanted > 0 && !pigsReady(mc);
+        if (!blocked) { held = 0; pigsWanted = 0; }
+        else if (wait <= 1) {
+            if (++held < 600) { wait = 1; return; }
+            fail("step " + step + " waited 30 s for the game to unpause or for its pigs");
+            held = 0;
+            pigsWanted = 0;
+        }
         if (--wait > 0) return;
         try {
             run(Minecraft.getInstance(), game, step++);
@@ -243,6 +255,7 @@ final class KillStreakCapture {
     /** {@code count} new pigs (no AI) in a ring 1.5 blocks round the player, their ids in PIGS once the server made them. */
     private static void pigs(int count) {
         PIGS.clear();
+        pigsWanted = count;
         server(sp -> {
             for (int i = 0; i < count; i++) {
                 var pig = EntityTypes.PIG.create(sp.level(), EntitySpawnReason.COMMAND);
@@ -251,8 +264,17 @@ final class KillStreakCapture {
                 pig.setNoAi(true);
                 sp.level().addFreshEntity(pig);
                 PIGS.add(pig.getId());
+                ALL_PIGS.add(pig.getId());
             }
         });
+    }
+
+    private static boolean pigsReady(Minecraft mc) {
+        synchronized (PIGS) {
+            if (PIGS.size() < pigsWanted) return false;
+            for (int id : PIGS) if (!(mc.level.getEntity(id) instanceof LivingEntity pig) || !pig.isAlive()) return false;
+        }
+        return true;
     }
 
     /** Server thread: the pig dies of the player's attack (a damage event naming the player, then its death event). */
@@ -314,6 +336,7 @@ final class KillStreakCapture {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.screen() instanceof DeathScreen) { mc.player.respawn(); mc.gui.setScreen(null); }
         run = null;
+        server(sp -> { synchronized (ALL_PIGS) { for (int id : ALL_PIGS) if (sp.level().getEntity(id) instanceof Entity pig) pig.discard(); } });
         KillBannerModule module = module();
         for (int i = 0; i < OPTIONS.size(); i++) module.getOptions().get(i).load(OPTIONS.get(i));
         module.setEnabled(enabledBefore);
