@@ -77,7 +77,8 @@ final class Anim172Capture {
     private static final List<Step> STEPS = new ArrayList<>();
     private static int step = -1, wait, checks, failures, sample, useStart, foodWas, arrowsWas, slotBefore, waited, arrowEntities;
     private static float maxSwing, xRotBefore, yRotBefore;
-    private static boolean drawn, hurtSeen;
+    private static boolean drawn;
+    private static int hurtTicks;
     private static double[] posBefore, platform;
     private static GameType modeBefore;
     private static Difficulty difficultyBefore;
@@ -214,6 +215,12 @@ final class Anim172Capture {
     /** Survival on a 3x3 stone platform 40 blocks up, with a sword, bow, beef, arrows and a shield; 1.7 Animations on, packets counted. */
     private static int setup(Minecraft mc) throws Exception {
         LocalPlayer player = mc.player;
+        // The tilt module as thelads_config.json gave it at startup (LADS_QA_TILT_EXPECT: "enabled,directional,intensity" to check).
+        Module loadedTilt = NativeQualityOfLife.module(DamageTilt.MODULE);
+        String loaded = loadedTilt.isEnabled() + "," + ((BoolOption) loadedTilt.getOption(DamageTilt.DIRECTIONAL)).get() + ","
+            + ((SliderOption) loadedTilt.getOption(DamageTilt.INTENSITY)).getIntValue(), expected = System.getenv("LADS_QA_TILT_EXPECT");
+        LOGGER.info("Lads 1.7.2 damage tilt as loaded: enabled,directional,intensity = {}", loaded);
+        if (expected != null) check(expected.equals(loaded), "the damage tilt loaded from this config as " + loaded + " (expected " + expected + ")");
         OldAnimationsModule animations = NativeOldAnimations.module();
         for (Module module : new Module[]{animations, NativeQualityOfLife.module("LegacySwing"), NativeQualityOfLife.module(DamageTilt.MODULE)}) {
             ENABLED.put(module, module.isEnabled());
@@ -387,7 +394,7 @@ final class Anim172Capture {
         STEPS.add(mc -> {
             check(Math.abs(mc.player.getYRot()) < 1e-3 && mc.player.hurtTime == 0, name + ": facing south, not hurt");
             waited = 0;
-            hurtSeen = false;
+            hurtTicks = 0;
             // facing south (yaw 0): +X is the player's left, +Z ahead
             double dx = hit.equals("left") ? 1 : hit.equals("right") ? -1 : 0, dz = hit.equals("front") ? 1 : hit.equals("back") ? -1 : 0;
             onServer(server -> {
@@ -411,11 +418,11 @@ final class Anim172Capture {
         STEPS.add(mc -> {
             LocalPlayer player = mc.player;
             player.setDeltaMovement(0, player.getDeltaMovement().y, 0); // the knockback would carry the player off the platform
-            if (player.hurtTime == 0 && !hurtSeen) {
+            if (player.hurtTime == 0 && hurtTicks == 0) {
                 if (++waited > 60) throw new IllegalStateException(name + ": the hit never reached the client");
                 return -1;
             }
-            if (!hurtSeen) { hurtSeen = true; return -1; } // the hurt animation's direction arrives with the hurt: read it a tick later
+            if (++hurtTicks < 3) return -1; // two ticks in: past the wait for a direction that never comes (fall damage)
             float yaw = DamageTilt.CLIENT.yaw(System.currentTimeMillis()), hurtDir = player.getHurtDir();
             tiltAtPeak(mc, hurtDir);
             pendingFrame = "tilt-" + name; // the next frames draw the hurt near its peak

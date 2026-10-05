@@ -238,10 +238,21 @@ public class ConfigManager {
                 && options.has("Share activity")) modules.remove("DiscordRPC");
     }
 
-    /** Before 1.7.2 OldDamageTilt's Intensity was a choice (Subtle, Normal, Strong); now it is a percentage: Subtle 50, else 100. */
+    /**
+     * 1.7.2 turns OldDamageTilt on by default with Directional on; a config from before (no Directional saved) upgrades as the owner
+     * chose: Directional off, so the tilt keeps leaning the fixed way; the module on unless the player ever changed it (lastModified 0
+     * or missing, as in migrateDynamicLights: an "enabled" saved without a change is only the old default); Intensity, a choice before
+     * (Subtle, Normal, Strong), becomes a percentage: Subtle 50, else 100.
+     */
     static void migrateDamageTilt(JsonObject modules) {
-        if (!(legacy(modules, "OldDamageTilt", "options") instanceof JsonObject options) || options.has("Directional")) return;
+        if (!(modules.get("OldDamageTilt") instanceof JsonObject tilt)) return;
+        if (!(tilt.get("options") instanceof JsonObject)) tilt.add("options", new JsonObject());
+        JsonObject options = tilt.getAsJsonObject("options");
+        if (options.has("Directional")) return;
+        options.addProperty("Directional", false);
         if (options.get("Intensity") != null) options.addProperty("Intensity", number(options.get("Intensity")) == 0 ? 50 : 100);
+        JsonElement changed = tilt.get("lastModified");
+        if (changed == null || changed.isJsonPrimitive() && changed.getAsJsonPrimitive().isNumber() && changed.getAsLong() == 0) tilt.remove("enabled");
     }
 
     /** 1.4.5 moved ClientTools "Chat timestamps" and the HideChatIndicators module into Chat options; keeps whatever the user had. */

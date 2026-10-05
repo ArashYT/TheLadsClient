@@ -18,7 +18,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class DamageTiltPacketsMixin {
     @Inject(method = "handleDamageEvent", at = @At("TAIL"), require = 1)
     private void lads$hurt(ClientboundDamageEventPacket packet, CallbackInfo callback) {
-        if (own(packet.entityId())) DamageTilt.CLIENT.hurt(System.currentTimeMillis());
+        if (!own(packet.entityId())) return;
+        long now = System.currentTimeMillis();
+        DamageTilt.CLIENT.hurt(now);
+        DamageTilt.CLIENT.direction(Float.NaN, now); // a hit's direction comes in the same batch (handleHurtAnimation) or never: no wait
     }
 
     @Inject(method = "handleHurtAnimation", at = @At("TAIL"), require = 1)
