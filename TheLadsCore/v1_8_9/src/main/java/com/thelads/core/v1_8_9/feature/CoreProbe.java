@@ -68,7 +68,8 @@ public final class CoreProbe {
         // Focused QA paths, each straight into the QA world: LADS_VERIFY_189_ONLY (the harness passes it as -Dthelads.verify189Only)
         // =itemphysics (Probe170ItemPhysics), =170 (Toggle Sprint & Sneak, then the HUD checks), =raised (Raised and the paper
         // doll, RaisedDollProbe189), =hudflicker (runs of frames with the HUD FPS cap off and on, Probe172HudFlicker), =perf (the 1.7.3
-        // benchmark scenes in a fresh perf world, Probe173Perf) or =leave (only the
+        // benchmark scenes in a fresh perf world, Probe173Perf), =cull (Entity Culling in a crowd behind a wall: views off and on, an
+        // audited fast-motion run and uncapped frame times, Probe173Cull) or =leave (only the
         // final leave, the 1.7.0 freeze regression check);
         // -Dthelads.verifyChatHeads=true (ChatHeadsProbe189) and -Dthelads.verify189F3Fov=true (Probe170F3Fov).
         String only = System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY"));
@@ -92,6 +93,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe173Rx.STEPS);
+        } else if ("cull".equals(only)) {
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe173Cull.STEPS);
         } else if ("hudflicker".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));

@@ -595,7 +595,8 @@ try
         // =hudflicker: only runs of frames with the HUD FPS cap off and on (Probe172HudFlicker). =170hud: the 1.7.0 HUD and Autohide checks without Sprint input. =perf: the 1.7.3 benchmark (Probe173Perf).
         // =quick: the 1.7.3 quick wins' per-frame costs (Probe173Quick); =unfocusedcap: the unfocused FPS cap (Probe173Cap).
         // =rx: the 1.7.3 rendering tweaks off and on, uncapped at render distance 8 and 12 (run alone), pixel parity, per-call costs (Probe173Rx).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =cull: only Entity Culling in a crowd behind a wall, including uncapped frame times at render distance 8 and 12 (Probe173Cull).
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
         if (perf189)
         {
             string perfFolder = Path.Combine(directory, "lads-qa", "perf");

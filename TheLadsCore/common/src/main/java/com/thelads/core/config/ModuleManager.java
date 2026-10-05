@@ -40,6 +40,9 @@ public class ModuleManager {
         particles.addOption(new SliderOption("Particles per tick", 64, 8, 512, 8));
         particles.addOption(new SliderOption("Distance", 48, 16, 128, 8));
         register(particles, Module.Category.MECHANIC);
+        var culling = new Module("EntityCulling", "Skip drawing entities and block entities hidden behind solid blocks. Name tags still show through walls.");
+        culling.setEnabled(true);
+        register(culling, Module.Category.MECHANIC);
 
         // Behaviour modules
         register(new PingViewModule(), Module.Category.SERVER);
