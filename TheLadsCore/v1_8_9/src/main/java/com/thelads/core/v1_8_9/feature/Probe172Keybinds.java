@@ -73,7 +73,7 @@ final class Probe172Keybinds {
     private static final Events EVENTS = new Events();
     private static ControlsScreen189 controls;
     private static KeyBinding essential, optiFine;
-    private static boolean focusWas, started, toggledWas;
+    private static boolean focusWas, started, toggledWas, realRan, zoomWas, sprintWas;
     private static int heldBefore;
     private static float baseFov;
     private static long saves;
@@ -89,12 +89,12 @@ final class Probe172Keybinds {
         steps.add(Probe172Keybinds::start);
         if ("bind".equals(PHASE)) {
             steps.addAll(Arrays.<CoreProbe.Step>asList(Probe172Keybinds::shipped, Probe172Keybinds::shippedSeen, Probe172Keybinds::hooked,
-                Probe172Keybinds::hookedSeen, mc -> real(mc, false), mc -> realSeen(mc, false), mc -> real(mc, true), mc -> realSeen(mc, true), Probe172Keybinds::openControls, Probe172Keybinds::reset, Probe172Keybinds::confirmReset, Probe172Keybinds::resetSaved,
+                Probe172Keybinds::hookedSeen, mc -> real(mc, false), mc -> realSeen(mc, false), mc -> real(mc, true), mc -> realSeen(mc, true), Probe172Keybinds::openControls, Probe172Keybinds::reset, Probe172Keybinds::pressReset, Probe172Keybinds::confirmReset, Probe172Keybinds::resetSaved,
                 Probe172Keybinds::bindDrop, Probe172Keybinds::bindZoom, Probe172Keybinds::bindZoomed,
                 mc -> bindKey(mc, mc.gameSettings.keyBindJump, Keyboard.KEY_V, 'v'), mc -> bound(mc, mc.gameSettings.keyBindJump, Keyboard.KEY_V),
-                mc -> bindKey(mc, Toggles189.TOGGLE_SPRINT, Keyboard.KEY_G, 'g'), mc -> bound(mc, Toggles189.TOGGLE_SPRINT, Keyboard.KEY_G),
-                mc -> optiFine == null ? after(1) : bindKey(mc, optiFine, Keyboard.KEY_Z, 'z'),
-                mc -> optiFine == null ? after(1) : bound(mc, optiFine, Keyboard.KEY_Z),
+                mc -> bindKey(mc, Toggles189.TOGGLE_SPRINT, Keyboard.KEY_J, 'j'), mc -> bound(mc, Toggles189.TOGGLE_SPRINT, Keyboard.KEY_J),
+                mc -> optiFine == null ? after(1) : bindKey(mc, optiFine, Keyboard.KEY_N, 'n'),
+                mc -> optiFine == null ? after(1) : bound(mc, optiFine, Keyboard.KEY_N),
                 mc -> essential == null ? after(1) : bindKey(mc, essential, Keyboard.KEY_K, 'k'),
                 mc -> essential == null ? after(1) : bound(mc, essential, Keyboard.KEY_K),
                 Probe172Keybinds::names, Probe172Keybinds::namesShown, Probe172Keybinds::inWorld));
@@ -105,7 +105,7 @@ final class Probe172Keybinds {
         steps.addAll(Arrays.<CoreProbe.Step>asList(Probe172Keybinds::drop, Probe172Keybinds::dropped, Probe172Keybinds::dropUp,
             Probe172Keybinds::zoom, Probe172Keybinds::zoomed, Probe172Keybinds::zoomUp));
         if ("bind".equals(PHASE)) steps.addAll(Arrays.<CoreProbe.Step>asList(Probe172Keybinds::toggle, Probe172Keybinds::toggled,
-            Probe172Keybinds::essentialDown, Probe172Keybinds::essentialUp, Probe172Keybinds::optiFineDown, Probe172Keybinds::optiFineUp,
+            Probe172Keybinds::essentialDown, Probe172Keybinds::essentialUp, Probe172Keybinds::essentialReleased, Probe172Keybinds::optiFineDown, Probe172Keybinds::optiFineUp,
             Probe172Keybinds::writeExpected));
         if ("hold".equals(PHASE)) steps.addAll(Arrays.<CoreProbe.Step>asList(Probe172Keybinds::openControls,
             mc -> bindKey(mc, mc.gameSettings.keyBindChat, Keyboard.KEY_Y, 'y'), mc -> bound(mc, mc.gameSettings.keyBindChat, Keyboard.KEY_Y),
@@ -188,12 +188,15 @@ final class Probe172Keybinds {
             String category = key.getKeyCategory().toLowerCase(Locale.ROOT);
             if (!category.contains("essential")) continue;
             essentials.add(key.getKeyDescription() + "=" + key.getKeyCode());
-            if (essential == null && !key.getKeyDescription().toLowerCase(Locale.ROOT).contains("zoom")) essential = key;
+            // Chat Peek: a hold key that opens nothing (Essential's other keys open its screens).
+            if ("Chat Peek".equals(key.getKeyDescription())) essential = key;
         }
         LOG.info("Lads 1.8.9 keybinds probe: phase {}; OptiFine zoom {}; Essential keys {}; SideButtons189 hook {}", PHASE,
             optiFine == null ? "absent" : optiFine.getKeyCode(), essentials, SideButtons189.hook != null);
         check(SideButtons189.hook != null, "Keybinds: SideButtons189's message hook is on the client thread");
         Zoom189.synthetic = true; // the QA window is not focused
+        zoomWas = Zoom189.zoom().isEnabled();
+        Zoom189.zoom().setEnabled(true); // Lads Zoom on, as by default
         return after(5);
     }
 
@@ -243,14 +246,19 @@ final class Probe172Keybinds {
     }
 
     /**
-     * Owner away only (LADS_VERIFY_FOCUS=1, exclusive QA lock): Mouse 4 pressed with Shift held through Windows' own input
-     * (keybd_event and mouse_event), so Windows writes the message and its flags itself; first without the hook, then with it.
-     * Only while the QA window is focused and holds the mouse (the cursor is on it): elsewhere the side button would go to
-     * another program.
+     * Only when the run asks for it (LADS_VERIFY_FOCUS=1, a run that may take focus: the exclusive QA lock, nobody at the PC):
+     * Mouse 4 pressed with Shift held through Windows' own input (keybd_event and mouse_event), so Windows writes the message and
+     * its flags itself; first without the hook, then with it. And only while the QA window is focused and holds the mouse (the
+     * cursor is on it): elsewhere the side button would go to another program.
      */
+    private static boolean realInput() {
+        return "1".equals(System.getenv("LADS_VERIFY_FOCUS")) && Display.isActive() && Mouse.isGrabbed();
+    }
+
     private static boolean real(Minecraft mc, boolean hooked) {
-        if (!Display.isActive() || !Mouse.isGrabbed()) {
-            LOG.info("Lads 1.8.9 keybinds probe: real OS input skipped: the QA window is not focused with the mouse in it");
+        realRan = realInput();
+        if (!realRan) {
+            if (!hooked) LOG.info("Lads 1.8.9 keybinds probe: real OS input skipped (needs LADS_VERIFY_FOCUS=1 and the QA window focused)");
             return after(1);
         }
         if (!hooked) SideButtons189.remove();
@@ -267,7 +275,7 @@ final class Probe172Keybinds {
     }
 
     private static boolean realSeen(Minecraft mc, boolean hooked) throws Exception {
-        if (!Display.isActive() || !Mouse.isGrabbed()) return after(1);
+        if (!realRan) return after(1);
         List<String> seen = new ArrayList<>(EVENTS.seen);
         if (!hooked) {
             boolean stuck = Mouse.isButtonDown(4);
@@ -291,6 +299,10 @@ final class Probe172Keybinds {
         // Something off its default, so Reset All has work to do.
         mc.gameSettings.keyBindDrop.setKeyCode(Keyboard.KEY_B);
         KeyBinding.resetKeyBindingArrayAndHash();
+        return after(3); // Controls enables Reset All when it draws a key off its default
+    }
+
+    private static boolean pressReset(Minecraft mc) throws Exception {
         press(I18n.format("controls.resetAll"));
         return after(5);
     }
@@ -449,6 +461,8 @@ final class Probe172Keybinds {
     private static boolean toggle(Minecraft mc) throws Exception {
         mc.gameSettings.setOptionKeyBinding(Toggles189.TOGGLE_SPRINT, MOUSE5);
         KeyBinding.resetKeyBindingArrayAndHash();
+        sprintWas = Toggles189.toggles().isEnabled();
+        Toggles189.toggles().setEnabled(true); // the module on, for this test
         toggledWas = Toggles189.toggles().isSprintToggled();
         side(2, true, MK_SHIFT);
         side(2, false, MK_SHIFT);
@@ -459,15 +473,17 @@ final class Probe172Keybinds {
         ToggleSprintModule toggles = Toggles189.toggles();
         check(toggles.isSprintToggled() != toggledWas, "Keybinds: Toggle Sprint on Mouse 5 toggles sprint (" + toggles.isSprintToggled() + ")");
         if (toggles.isSprintToggled() != toggledWas && toggles.pressSprint()) ConfigManager.save();
+        toggles.setEnabled(sprintWas);
         Zoom189.zoom().release();
-        mc.gameSettings.setOptionKeyBinding(Toggles189.TOGGLE_SPRINT, Keyboard.KEY_G);
+        mc.gameSettings.setOptionKeyBinding(Toggles189.TOGGLE_SPRINT, Keyboard.KEY_J);
         KeyBinding.resetKeyBindingArrayAndHash();
         return after(2);
     }
 
-    /** Essential's key on Mouse 5 for a moment (when Essential is loaded). */
+    /** Essential's key on Mouse 5 for a moment (when Essential is loaded); Lads Zoom off it meanwhile: 1.8.9 gives a key code to one binding. */
     private static boolean essentialDown(Minecraft mc) throws Exception {
         if (essential == null) return after(1);
+        mc.gameSettings.setOptionKeyBinding(Zoom189.ZOOM, 0);
         mc.gameSettings.setOptionKeyBinding(essential, MOUSE5);
         KeyBinding.resetKeyBindingArrayAndHash();
         side(2, true, MK_LBUTTON);
@@ -478,16 +494,21 @@ final class Probe172Keybinds {
         if (essential == null) return after(1);
         check(essential.isKeyDown(), "Keybinds: Essential's " + essential.getKeyDescription() + " on Mouse 5 is down while Mouse 5 is held");
         side(2, false, MK_LBUTTON);
-        Zoom189.zoom().release();
-        mc.gameSettings.setOptionKeyBinding(essential, Keyboard.KEY_K);
-        KeyBinding.resetKeyBindingArrayAndHash();
         return after(3);
+    }
+
+    private static boolean essentialReleased(Minecraft mc) throws Exception {
+        if (essential == null) return after(1);
+        check(!essential.isKeyDown(), "Keybinds: Essential's key let go with Mouse 5");
+        mc.gameSettings.setOptionKeyBinding(essential, Keyboard.KEY_K);
+        mc.gameSettings.setOptionKeyBinding(Zoom189.ZOOM, MOUSE5);
+        KeyBinding.resetKeyBindingArrayAndHash();
+        return after(2);
     }
 
     /** OptiFine's zoom on Mouse 4 for a moment, with Lads Zoom off (with it on, Lads Zoom is the only zoom). */
     private static boolean optiFineDown(Minecraft mc) throws Exception {
         if (optiFine == null) return after(1);
-        check(!essential(mc), "Keybinds: Essential's key let go with Mouse 5");
         ZoomModule zoom = Zoom189.zoom();
         zoom.setEnabled(false);
         mc.gameSettings.setOptionKeyBinding(optiFine, MOUSE4);
@@ -496,8 +517,6 @@ final class Probe172Keybinds {
         side(1, true, MK_CONTROL | MK_LBUTTON);
         return after(3);
     }
-
-    private static boolean essential(Minecraft mc) { return essential != null && essential.isKeyDown(); }
 
     private static boolean optiFineUp(Minecraft mc) throws Exception {
         if (optiFine == null) return after(1);
@@ -513,7 +532,7 @@ final class Probe172Keybinds {
         if (optiFine != null && "bind".equals(PHASE)) {
             float back = ((EntityRendererAccessor) mc.entityRenderer).ladsFov(1, true);
             check(!GameSettings.isKeyDown(optiFine) && Math.abs(back - baseFov) < 1e-2, "Keybinds: releasing Mouse 4 ends OptiFine's zoom (FOV " + back + ")");
-            mc.gameSettings.setOptionKeyBinding(optiFine, Keyboard.KEY_Z);
+            mc.gameSettings.setOptionKeyBinding(optiFine, Keyboard.KEY_N);
             KeyBinding.resetKeyBindingArrayAndHash();
             Zoom189.zoom().setEnabled(true);
         }
@@ -553,6 +572,7 @@ final class Probe172Keybinds {
         Minecraft mc = Minecraft.getMinecraft();
         MinecraftForge.EVENT_BUS.unregister(EVENTS);
         Zoom189.synthetic = false;
+        Zoom189.zoom().setEnabled(zoomWas);
         mc.inGameHasFocus = focusWas;
         SideButtons189.install();
         try {
