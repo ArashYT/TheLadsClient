@@ -139,6 +139,9 @@ if (focus189 != null && !Regex.IsMatch(focus189, @"\A[a-z0-9-]{1,40}\z")) throw 
 bool sprintCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_SPRINT") == "1";
 // Fabric versions: the 1.7.0 HUD lane in the QA world (Hud170Capture). 1.8.9's self-test runs the same checks (Probe170Hud).
 bool hud170CaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_HUD170") == "1";
+// Fabric versions: runs of consecutive frames with the HUD hidden, the HUD FPS cap off and on, every HUD element in view (HudFlickerCapture).
+// 1.8.9: LADS_VERIFY_189_ONLY=hudflicker (Probe172HudFlicker).
+bool hudFlickerCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_HUDFLICKER") == "1";
 // Fabric versions: Item Physics in a QA arena (ItemPhysicsCapture). 1.8.9's self-test runs the same checks: LADS_VERIFY_189_ONLY=itemphysics.
 bool itemPhysicsCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ITEMPHYSICS") == "1";
 // Fabric versions: the survival and creative inventories with and without potion effects, centred (InventoryCapture). 1.8.9: LADS_VERIFY_189_FOCUS=inventory (ProbeInventory).
@@ -313,6 +316,8 @@ string sprintCaptureRequest = Path.Combine(directory, ".lads-qa-capture-sprint")
 if (autoWorldVerification && File.Exists(sprintCaptureRequest)) File.Delete(sprintCaptureRequest);
 string hud170CaptureRequest = Path.Combine(directory, ".lads-qa-capture-hud170");
 if (autoWorldVerification && File.Exists(hud170CaptureRequest)) File.Delete(hud170CaptureRequest);
+string hudFlickerCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hudflicker");
+if (autoWorldVerification && File.Exists(hudFlickerCaptureRequest)) File.Delete(hudFlickerCaptureRequest);
 string itemPhysicsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-itemphysics");
 if (autoWorldVerification && File.Exists(itemPhysicsCaptureRequest)) File.Delete(itemPhysicsCaptureRequest);
 string inventoryCaptureRequest = Path.Combine(directory, ".lads-qa-capture-inventory");
@@ -358,7 +363,7 @@ var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<strin
 var failedCaptures = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:",
     "Lads kill banner capture END:", "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
-    "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
+    "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
     "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
@@ -372,6 +377,7 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(skinLayersCaptureVerification, "Lads skin layers capture END:")
     && Settled(sprintCaptureVerification, "Lads sprint capture END:")
     && Settled(hud170CaptureVerification, "Lads HUD 1.7.0 capture END:")
+    && Settled(hudFlickerCaptureVerification, "Lads HUD flicker capture END:")
     && Settled(itemPhysicsCaptureVerification, "Lads item physics capture END:")
     && Settled(inventoryCaptureVerification, "Lads inventory capture END:")
     && Settled(serverCaptureVerification, "Lads server features capture END:")
@@ -551,7 +557,7 @@ try
     }
     var session = AccountIdentity.CreateOfflineSession("LadsQA");
     await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
-    await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
+    await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:60\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
     Console.WriteLine("Installing production dependencies...");
     process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
     {
@@ -578,10 +584,13 @@ try
         // LADS_VERIFY_189_ONLY=170: only the 1.7.0 in-world checks (Probe170Sprint, Probe170Hud), straight in the QA world;
         // =itemphysics: only Item Physics (Probe170ItemPhysics); =raised: only Raised and the paper doll (RaisedDollProbe189);
         // =leave: only the QA world's final leave after its server stopped first (the 1.7.0 freeze regression check).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =hudflicker: only runs of frames with the HUD FPS cap off and on (Probe172HudFlicker).
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave" or "hudflicker") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
     }
     else
     {
+        // A crash at startup exits with its log (the run fails) instead of opening Fabric Loader's error window on the user's screen.
+        AddJvm("-Dfabric.noGui=true");
         // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
         if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
         else AddJvm("-Dthelads.verifyIntegrations=true");
@@ -670,7 +679,7 @@ try
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
                 "Lads 1.7 animations capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
-                "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
+                "Lads HUD flicker capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
                 "Lads server features capture END:", "Lads F3/FOV capture END:",
                 "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:", "Lads resolution capture END:",
                 "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:" })
@@ -707,9 +716,10 @@ try
     process.ErrorDataReceived += WriteLine;
     if (capabilities.Forge && File.Exists(gameLog)) File.Delete(gameLog); // only this run's lines are read
     // QA instances are muted and kept light (owner's standing rule): the owner may be using the computer meanwhile.
-    // 120 FPS cap (VSync off so the cap is what applies), render/simulation distance 4, GUI scale 2 (1.8.9 ignores simulationDistance);
+    // 60 FPS cap (owner, 2026-10-05: they play while QA runs; VSync off so the cap is what applies), render/simulation distance 4,
+    // GUI scale 2 (1.8.9 ignores simulationDistance);
     // pauseOnLostFocus off: a pause menu when the owner clicks away would stop the integrated server and the probes' input.
-    string[] qaForced = { "soundCategory_master:0.0", "maxFps:120", "enableVsync:false", "renderDistance:4", "simulationDistance:4", "guiScale:2",
+    string[] qaForced = { "soundCategory_master:0.0", "maxFps:60", "enableVsync:false", "renderDistance:4", "simulationDistance:4", "guiScale:2",
         "pauseOnLostFocus:false" };
     string qaOptions = Path.Combine(directory, "options.txt");
     var qaLines = File.Exists(qaOptions)
@@ -717,6 +727,7 @@ try
         : new List<string>();
     qaLines.AddRange(qaForced);
     File.WriteAllLines(qaOptions, qaLines);
+    QaDiscord.ForceOff(directory); // QA games never show on the owner's Discord (Essential's activity status, Lads DiscordRPC)
     var stopwatch = Stopwatch.StartNew();
     // 26.3 (SDL) shows its window without activating it; QaWindowGuard covers 1.8.9 and 26.2 (and moves every game window).
     if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") != "1") process.StartInfo.Environment["SDL_WINDOW_ACTIVATE_WHEN_SHOWN"] = "0";
@@ -803,6 +814,7 @@ try
                     (skinLayersCaptureVerification, skinLayersCaptureRequest, "Photograph the player's 3D skin layers with SkinLayers on and off."),
                     (sprintCaptureVerification, sprintCaptureRequest, "Walk Toggle Sprint & Sneak through the QA world and log every tick's sprint packets."),
                     (hud170CaptureVerification, hud170CaptureRequest, "Capture the 1.7.0 HUD changes in the QA world."),
+                    (hudFlickerCaptureVerification, hudFlickerCaptureRequest, "Capture runs of frames with the HUD FPS cap off and on."),
                     (itemPhysicsCaptureVerification, itemPhysicsCaptureRequest, "Drop items in an Item Physics arena and capture its frames."),
                     (inventoryCaptureVerification, inventoryCaptureRequest, "Capture the inventories with and without potion effects in the QA world."),
                     (serverCaptureVerification, serverCaptureRequest, "Check the multiplayer features in the QA world and capture their frames."),
@@ -931,6 +943,8 @@ try
             "The requested Toggle Sprint & Sneak capture did not pass. Inspect production-smoke.log.");
         Require(!hud170CaptureVerification || passedMarkers.ContainsKey("Lads HUD 1.7.0 capture END:"),
             "The requested 1.7.0 HUD capture did not pass. Inspect production-smoke.log.");
+        Require(!hudFlickerCaptureVerification || passedMarkers.ContainsKey("Lads HUD flicker capture END:"),
+            "The requested HUD flicker frames were not all captured. Inspect production-smoke.log.");
         Require(!itemPhysicsCaptureVerification || passedMarkers.ContainsKey("Lads item physics capture END:"),
             "The requested Item Physics capture did not pass. Inspect production-smoke.log.");
         Require(!inventoryCaptureVerification || passedMarkers.ContainsKey("Lads inventory capture END:"),

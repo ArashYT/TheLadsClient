@@ -31,6 +31,8 @@ public final class NativeHud {
         "Paperdoll", "BossBar", "Autohide", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates"};
     /** QA only (CoreProbe): frames in which HudManager drew the Lads HUD. */
     public static long frames;
+    /** QA only (Probe172HudFlicker): the time those frames spent in HudManager. */
+    static long hudNanos;
     /** QA only: SmoothHotbar's last offset of the selected-slot frame from its slot, in GUI pixels. */
     public static float selectionOffset;
     private static final FrameAnimation SELECTION = new FrameAnimation();
@@ -74,7 +76,9 @@ public final class NativeHud {
         float shown = Autohide189.shown;
         boolean faded = shown > 0 && shown < 1 && Autohide189.begin();
         try {
+            long start = System.nanoTime();
             if (shown > 0) HudManager.getInstance().render(new GuiLadsAdapter(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight()));
+            hudNanos += System.nanoTime() - start;
             frames++;
         } finally {
             if (faded) Autohide189.end(shown, event.resolution.getScaledWidth_double(), event.resolution.getScaledHeight_double());
