@@ -131,6 +131,7 @@ public final class NativeWorldVerification {
             boolean captureReady = readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null;
             // In-world captures run one at a time: each may tick while it is the one running or none is.
             KillBannerCapture.tick(gameDirectory, captureReady && (KillBannerCapture.busy() || !captureBusy()));
+            KillStreakCapture.tick(gameDirectory, captureReady && (KillStreakCapture.busy() || !captureBusy()));
             OldAnimationsCapture.tick(gameDirectory, captureReady && (OldAnimationsCapture.busy() || !captureBusy()));
             ZoomCapture.tick(gameDirectory, captureReady && (ZoomCapture.busy() || !captureBusy()));
             SkinLayersCapture.tick(gameDirectory, captureReady && (SkinLayersCapture.busy() || !captureBusy()));
@@ -411,7 +412,7 @@ public final class NativeWorldVerification {
     }
     /** True while any in-world QA capture is running. */
     static boolean captureBusy() {
-        return HudInfoCapture.busy() || KillBannerCapture.busy() || OldAnimationsCapture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
+        return HudInfoCapture.busy() || KillBannerCapture.busy() || KillStreakCapture.busy() || OldAnimationsCapture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
             ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
             SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy();

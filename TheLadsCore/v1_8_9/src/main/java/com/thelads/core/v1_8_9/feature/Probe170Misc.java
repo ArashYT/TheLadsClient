@@ -46,6 +46,7 @@ import org.apache.logging.log4j.Logger;
  * skins of every kind held at set frames after 1, 3 and 5 kills, cropped to the banner
  * (lads-qa/screenshots/kb172/kb-&lt;skin&gt;-v&lt;variant&gt;-k&lt;kills&gt;-f&lt;frame&gt;.png); then the settings picker and its playing
  * preview (lads-qa/screenshots/170-kb-picker-*.png).</li>
+ * <li>killstreak: rapid kills, server kill messages, the streak timer, Unlimited and death (Probe172KillStreak).</li>
  * <li>loading: three rounds of opening the QA world, the Nether and back, a respawn and leaving, each timed from the
  * action to the player in the world with no screen (client ticks, 50 ms apart; opening and leaving block the game, so
  * their own part is exact). The times go to the log ("Lads 1.8.9 load timing").</li>
@@ -156,6 +157,11 @@ final class Probe170Misc {
                 }
                 steps.add(mc -> { check(bannerSaved == bannerShots, "KillBanner: " + bannerSaved + " of " + bannerShots + " held banner frames saved"); return true; });
                 steps.add(Probe170Misc::bannerEnd);
+                steps.add(Probe170Misc::leave);
+                break;
+            case "killstreak":
+                steps.addAll(open(QA));
+                steps.addAll(Probe172KillStreak.steps());
                 steps.add(Probe170Misc::leave);
                 break;
             case "loading":
