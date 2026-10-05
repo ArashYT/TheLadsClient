@@ -221,16 +221,20 @@ public static class GameOptionsService
         // None yet (the first launch since 1.7.2): the game's own values stay.
         var taken = File.Exists(takenFile) ? ParseOptions(File.ReadAllText(takenFile)) : null;
 
+        bool updated = false;
         foreach (var kvp in sharedMap)
         {
             bool keybind = kvp.Key.StartsWith("key_", StringComparison.OrdinalIgnoreCase);
             bool changed = taken != null && (keybind || SharedSettingsKeys.Contains(kvp.Key))
                 && !(taken.TryGetValue(kvp.Key, out var was) && was == kvp.Value);
             if (!changed && instanceMap.ContainsKey(kvp.Key)) continue;
-            if ((keybind ? TranslateKeybindToTarget(kvp.Key, kvp.Value, targetIs18) : kvp.Value) is { } value) instanceMap[kvp.Key] = value;
+            if ((keybind ? TranslateKeybindToTarget(kvp.Key, kvp.Value, targetIs18) : kvp.Value) is not { } value
+                || instanceMap.TryGetValue(kvp.Key, out var had) && had == value) continue;
+            instanceMap[kvp.Key] = value;
+            updated = true;
         }
 
-        WriteAtomically(instanceFile, SerializeOptions(instanceMap));
+        if (updated) WriteAtomically(instanceFile, SerializeOptions(instanceMap));
         WriteAtomically(takenFile, SerializeOptions(sharedMap));
     }
 
@@ -259,7 +263,10 @@ public static class GameOptionsService
         WriteAtomically(sharedFile, SerializeOptions(sharedMap));
     }
 
-    // A crash or a closed launcher mid-write leaves the old file whole, never a cut-off one.
-    private static void WriteAtomically(string file, string text) =>
-        LockFiles.WriteAtomicallyAsync(file, Encoding.UTF8.GetBytes(text)).GetAwaiter().GetResult();
+    // A crash or a closed launcher mid-write leaves the old file whole, never a cut-off one. An unchanged file is not rewritten.
+    private static void WriteAtomically(string file, string text)
+    {
+        if (!File.Exists(file) || File.ReadAllText(file) != text)
+            LockFiles.WriteAtomicallyAsync(file, Encoding.UTF8.GetBytes(text)).GetAwaiter().GetResult();
+    }
 }
