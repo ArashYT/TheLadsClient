@@ -49,7 +49,7 @@ public final class KillBanner189 {
     /** QA only (Probe150): banner frames and picker thumbnails drawn. */
     public static long frames, thumbs;
     /** QA only (Probe170Misc): each frame's time (ns) while a probe records them. */
-    static long[] frameTimes;
+    static long[] frameTimes, renderTimes;
     static int frameCount;
     private static long lastFrame;
 
@@ -87,6 +87,7 @@ public final class KillBanner189 {
     /** QA: records the next {@code frames} frame times (null stops). */
     static void recordFrames(int frames) {
         frameTimes = frames > 0 ? new long[frames] : null;
+        renderTimes = frames > 0 ? new long[frames] : null;
         frameCount = 0;
         lastFrame = 0;
     }
@@ -232,6 +233,7 @@ public final class KillBanner189 {
         if (event.type != RenderGameOverlayEvent.ElementType.ALL || !eligible() || module == null) return;
         double age = BANNER.age(System.nanoTime());
         if (age < 0) return;
+        long started = System.nanoTime(); // QA only: what the banner costs a frame (renderTimes)
         // Blending and depth go back as found, as NativeHud leaves them.
         boolean blend = GL11.glIsEnabled(GL11.GL_BLEND), depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
         GlStateManager.disableDepth();
@@ -242,6 +244,7 @@ public final class KillBanner189 {
             KillBannerArt189.end();
             if (!blend) GlStateManager.disableBlend();
             if (depth) GlStateManager.enableDepth();
+            if (renderTimes != null && frameCount < renderTimes.length) renderTimes[frameCount] = System.nanoTime() - started;
         }
     }
 
