@@ -176,6 +176,7 @@ final class Anim172Capture {
         STEPS.clear();
         STEPS.add(Anim172Capture::setup);
         STEPS.add(mc -> {
+            if (platform == null) throw new IllegalStateException("the QA platform was not built (see the server log)");
             check(platform != null && Math.abs(mc.player.getY() - platform[1]) < 0.01 && mc.gameMode.getPlayerMode() == GameType.SURVIVAL,
                 "survival on the QA platform with a sword, bow, beef, arrows and a shield");
             return 0;
@@ -244,11 +245,16 @@ final class Anim172Capture {
             server.getFoodData().setFoodLevel(10);
             server.setGameMode(GameType.SURVIVAL);
             var level = server.level();
-            var base = BlockPos.containing(posBefore[0], posBefore[1], posBefore[2]).above(40);
-            for (int dx = -1; dx <= 1; dx++)
-                for (int dz = -1; dz <= 1; dz++)
-                    for (int dy = 0; dy <= 2; dy++)
-                        if (!level.getBlockState(base.offset(dx, dy, dz)).isAir()) throw new IllegalStateException("no room for the QA platform at " + base);
+            BlockPos base = null; // 40 blocks up, or higher where a hill or tree is in the way
+            for (int up = 40; base == null && up <= 160; up += 20) {
+                BlockPos at = BlockPos.containing(posBefore[0], posBefore[1], posBefore[2]).above(up);
+                boolean room = at.getY() + 2 < level.getMaxY();
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dz = -1; dz <= 1; dz++)
+                        for (int dy = 0; dy <= 2; dy++) room &= level.getBlockState(at.offset(dx, dy, dz)).isAir();
+                if (room) base = at;
+            }
+            if (base == null) throw new IllegalStateException("no room for the QA platform above " + posBefore[1]);
             PLATFORM.clear();
             for (int dx = -1; dx <= 1; dx++)
                 for (int dz = -1; dz <= 1; dz++) {
