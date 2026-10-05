@@ -56,7 +56,7 @@ import org.lwjgl.opengl.GL12;
 final class Probe172HudFlicker {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final String[] MODULES = {"FPS", "Coordinates", "Keystrokes", "CPS", "Paperdoll", "ArmorHUD", "Potion Effects", "Scoreboard",
-        "BossBar", "KillBanner", "Item Physics", "Chat Heads", "Autohide"};
+        "BossBar", "KillBanner", "Item Physics", "Chat Heads", "Raised", "Autohide"};
     private static final int FRAMES = 36, HIDDEN = 4, CAP = 10;
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe172HudFlicker::setup,
         mc -> run(mc, "hud-hidden"), mc -> run(mc, "hud-off"), mc -> run(mc, "hud-on"), mc -> run(mc, "hud-after"),
@@ -74,6 +74,8 @@ final class Probe172HudFlicker {
     private static double pinX, pinY, pinZ, homeX, homeY, homeZ;
     private static net.minecraft.util.BlockPos below;
     private static net.minecraft.block.state.IBlockState belowWas;
+    /** The floor put under the table where there was air: taken away again. */
+    private static final List<net.minecraft.util.BlockPos> FLOOR = new ArrayList<net.minecraft.util.BlockPos>();
     private static float pinYaw;
 
     private Probe172HudFlicker() {}
@@ -94,8 +96,8 @@ final class Probe172HudFlicker {
         capWas = HudSettings.getInstance().isHudFpsCapEnabled();
         limitWas = HudSettings.getInstance().getHudFpsLimit();
         f3Was = mc.gameSettings.showDebugInfo;
-        // Standing still on a crafting table 30 blocks above the ground, looking straight down: a background that stays the same in
-        // every frame. The table goes and the player goes back afterwards.
+        // Standing still on a crafting table 30 blocks above the ground over a stone floor, looking straight down: a background that
+        // stays the same in every frame. Table and floor go and the player goes back afterwards.
         homeX = mc.thePlayer.posX;
         homeY = mc.thePlayer.posY;
         homeZ = mc.thePlayer.posZ;
@@ -116,6 +118,12 @@ final class Probe172HudFlicker {
             player.inventory.armorInventory[0] = new ItemStack(net.minecraft.init.Items.iron_boots);
             belowWas = player.worldObj.getBlockState(below);
             player.worldObj.setBlockState(below, net.minecraft.init.Blocks.crafting_table.getDefaultState());
+            for (int dx = -6; dx <= 6; dx++) for (int dz = -6; dz <= 6; dz++) {
+                net.minecraft.util.BlockPos floor = below.add(dx, -1, dz);
+                if (!player.worldObj.isAirBlock(floor)) continue;
+                player.worldObj.setBlockState(floor, net.minecraft.init.Blocks.stone.getDefaultState());
+                FLOOR.add(floor);
+            }
             player.playerNetServerHandler.setPlayerLocation(pinX, pinY, pinZ, pinYaw, 90);
         });
         for (String command : new String[] {"gamemode 0 @a", "scoreboard objectives add ladsflicker dummy Flicker QA",
@@ -144,8 +152,11 @@ final class Probe172HudFlicker {
             mc.gameSettings.showDebugInfo = !hidden && name.startsWith("f3");
             HudSettings.getInstance().setHudFpsCapEnabled(name.endsWith("-on"));
             HudSettings.getInstance().setHudFpsLimit(CAP);
-            // Chat once per scene (it stays 10 s): new lines between the runs would only move the old ones.
-            if (name.endsWith("-off")) for (int i = 1; i <= 3; i++) mc.thePlayer.sendChatMessage("Flicker QA chat " + i);
+            // Chat once per scene, on its own (lines fade 10 s after they came; new ones would move the old ones).
+            if (name.endsWith("-off")) {
+                mc.ingameGUI.getChatGUI().clearChatMessages();
+                for (int i = 1; i <= 3; i++) mc.thePlayer.sendChatMessage("Flicker QA chat " + i);
+            }
             if (!hidden) refresh(mc, name.startsWith("f3"));
             frames.start(name, hidden ? HIDDEN : FRAMES, hidden ? 800 : 1600, !hidden);
             return retry(1);
@@ -200,6 +211,7 @@ final class Probe172HudFlicker {
             player.inventory.armorInventory[3] = headWas;
             player.inventory.armorInventory[0] = feetWas;
             if (belowWas != null) player.worldObj.setBlockState(below, belowWas);
+            for (net.minecraft.util.BlockPos floor : FLOOR) player.worldObj.setBlockToAir(floor);
             player.playerNetServerHandler.setPlayerLocation(homeX, homeY, homeZ, pinYaw, 0);
         });
         for (String command : new String[] {"scoreboard objectives remove ladsflicker", "effect @a clear", "gamemode 1 @a", "difficulty " + difficultyWas}) command(mc, command);
