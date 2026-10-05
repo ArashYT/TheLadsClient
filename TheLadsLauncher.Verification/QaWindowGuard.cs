@@ -20,7 +20,8 @@ static class QaWindowGuard
     private static void Loop(Process game, bool focus)
     {
         string? claim = null;
-        Rectangle target = focus ? Rectangle.Empty : ClaimMonitor(game.Id, out claim);
+        bool second = false;
+        Rectangle target = focus ? Rectangle.Empty : ClaimMonitor(game.Id, out claim, out second);
         var firstSeen = new Dictionary<IntPtr, long>();
         IntPtr owners = GameWindow(GetForegroundWindow()) ? IntPtr.Zero : GetForegroundWindow();
         try
@@ -35,8 +36,12 @@ static class QaWindowGuard
                     if (firstSeen.ContainsKey(window)) continue;
                     firstSeen[window] = Environment.TickCount64;
                     // A window as big as a screen is fullscreen/borderless under test: leave it where the game put it.
+                    // The second game on a monitor goes to its bottom-right corner, the first to its top-left.
                     if (GetWindowRect(window, out var r) && !CoversScreen(r))
-                        SetWindowPos(window, IntPtr.Zero, target.X + 40, target.Y + 40, 0, 0, SwpNoSize | SwpNoZOrder | SwpNoActivate);
+                        SetWindowPos(window, IntPtr.Zero,
+                            second ? Math.Max(target.X, target.Right - (r.Right - r.Left) - 20) : target.X + 20,
+                            second ? Math.Max(target.Y, target.Bottom - (r.Bottom - r.Top) - 20) : target.Y + 20,
+                            0, 0, SwpNoSize | SwpNoZOrder | SwpNoActivate);
                 }
                 IntPtr front = GetForegroundWindow();
                 if (front != IntPtr.Zero && !GameWindow(front)) owners = front;
@@ -51,12 +56,14 @@ static class QaWindowGuard
     }
 
     /// <summary>Claims the first monitor no live QA game holds (%TEMP%\lads-qa-monitors\N holds the game's PID).</summary>
-    private static Rectangle ClaimMonitor(int pid, out string? claim)
+    /// Two places per monitor (owner: "do more than one instance QA test at a time"): claims 1..M are each monitor's first place,
+    /// M+1..2M its second.
+    private static Rectangle ClaimMonitor(int pid, out string? claim, out bool second)
     {
         Screen[] screens = Screen.AllScreens.OrderBy(s => s.Bounds.X).ThenBy(s => s.Bounds.Y).ToArray();
         string root = Path.Combine(Path.GetTempPath(), "lads-qa-monitors");
         Directory.CreateDirectory(root);
-        for (int i = 0; i < screens.Length; i++)
+        for (int i = 0; i < screens.Length * PerMonitor; i++)
         {
             string dir = Path.Combine(root, (i + 1).ToString());
             string owner = Path.Combine(dir, "pid");
@@ -70,13 +77,17 @@ static class QaWindowGuard
                 Thread.Sleep(50);
                 if (File.ReadAllText(owner) != pid.ToString()) continue;
                 claim = dir;
-                return screens[i].WorkingArea;
+                second = i >= screens.Length;
+                return screens[i % screens.Length].WorkingArea;
             }
             catch (IOException) { }
         }
         claim = null;
+        second = true;
         return screens[^1].WorkingArea;
     }
+
+    private const int PerMonitor = 2;
 
     private static bool Alive(int pid)
     {
