@@ -24,6 +24,7 @@ import net.minecraft.client.gui.GuiSlot;
 import net.minecraft.client.gui.GuiYesNo;
 import net.minecraft.client.gui.GuiYesNoCallback;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.settings.GameSettings;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.Sys;
 import org.lwjgl.input.Keyboard;
@@ -110,7 +111,7 @@ public final class ScreenshotsScreen189 extends GuiScreen implements GuiYesNoCal
         drawCenteredString(fontRendererObj, "Screenshots (" + files.size() + ")", width / 2, 12, 0xFFFFFF);
         int left = 8 + listWidth + 8, right = width - 8, top = 32, bottom = height - 48;
         File file = selectedFile();
-        if (file == null) drawCenteredString(fontRendererObj, "No screenshots yet: press " + Keyboard.getKeyName(mc.gameSettings.keyBindScreenshot.getKeyCode())
+        if (file == null) drawCenteredString(fontRendererObj, "No screenshots yet: press " + GameSettings.getKeyDisplayString(mc.gameSettings.keyBindScreenshot.getKeyCode())
             + " in game.", (left + right) / 2, (top + bottom) / 2, 0xAAAAAA);
         else if (previewShown() && right - left > 10 && bottom - top > 30) {
             // Fit the image into the preview area above its name line, keeping its aspect ratio.

@@ -137,7 +137,7 @@ public partial class ControlsSettingsView : UserControl
             + (profile.IsIsolated ? " This profile keeps its own game settings." : " Shared with every profile that is not isolated.");
         bool running = RunningGameMarker.IsRunning(PathService.Instance.GetProfileDirectory(profile));
         WarningNote.Text = running ? $"Minecraft ({profile.Name}) is running. Close it to change these settings: the game saves its own when it closes."
-            : _legacy && !profile.IsIsolated && lunar != null ? "Minecraft 1.8.9 takes key binds, field of view, sensitivity and GUI scale from Lunar Client at every launch. Make this profile isolated (Profiles) to keep the ones set here."
+            : _legacy && !profile.IsIsolated && lunar != null ? "Minecraft 1.8.9 also follows Lunar Client: a key bind, field of view, sensitivity or GUI scale you change in Lunar's 1.8 profile replaces the one set here at the next launch."
             : "";
         WarningNote.IsVisible = WarningNote.Text.Length > 0;
         GameCard.IsEnabled = KeysCard.IsEnabled = !running;

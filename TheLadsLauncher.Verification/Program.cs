@@ -359,6 +359,10 @@ var ct = timeout.Token;
 
 Process? process = null;
 var exitHandled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+string? optionsSync = Env("LADS_VERIFY_OPTIONS_SYNC");
+if (optionsSync is not (null or "1" or "prepare")) throw new ArgumentException("LADS_VERIFY_OPTIONS_SYNC must be 1 or prepare.");
+string sharedOptions = new PathService(launcherData).SharedOptionsFile;
+string? lunarOptions = capabilities.Forge ? GameOptionsService.LunarOptions18() : null;
 var sessionMessages = new List<string>();
 var runStartUtc = DateTime.UtcNow;
 string logPath = Path.Combine(directory, "production-smoke.log");
@@ -569,7 +573,8 @@ try
     }
     var session = AccountIdentity.CreateOfflineSession("LadsQA");
     await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
-    await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
+    // A fresh options.txt every run, except with LADS_VERIFY_OPTIONS_SYNC: the game keeps its own, as players do (qaForced still applies).
+    if (optionsSync == null) await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
     Console.WriteLine("Installing production dependencies...");
     process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
     {
@@ -598,7 +603,8 @@ try
         // =leave: only the QA world's final leave after its server stopped first (the 1.7.0 freeze regression check).
         // =hudflicker: only runs of frames with the HUD FPS cap off and on (Probe172HudFlicker).
         // =anim: only swing while using items and the damage tilt (Probe172Anim).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave" or "hudflicker" or "anim") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =keybinds: side mouse buttons and lasting key binds, the phase in <game>\.lads-qa-keybinds (Probe172Keybinds).
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave" or "hudflicker" or "anim" or "keybinds") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
     }
     else
     {
@@ -733,8 +739,17 @@ try
     // 120 FPS cap (VSync off so the cap is what applies), render/simulation distance 4, GUI scale 2 (1.8.9 ignores simulationDistance);
     // pauseOnLostFocus off: a pause menu when the owner clicks away would stop the integrated server and the probes' input.
     string[] qaForced = { "soundCategory_master:0.0", "maxFps:120", "enableVsync:false", "renderDistance:4", "simulationDistance:4", "guiScale:2",
-        "pauseOnLostFocus:false" };
+        "pauseOnLostFocus:false", "fullscreen:false" };
     string qaOptions = Path.Combine(directory, "options.txt");
+    // LADS_VERIFY_OPTIONS_SYNC=1: the launcher's options.txt sync around the game, as ProfileService does for a profile that is not
+    // isolated (1.8.9: Lunar's 1.8 profile when the Lunar sandbox has one, else the shared copy; back to the shared copy after the
+    // exit); =prepare: only the one before the game, as when the launcher missed the game's exit.
+    if (optionsSync != null)
+    {
+        GameOptionsService.SyncToInstance(lunarOptions ?? sharedOptions, qaOptions, version);
+        CopyIfExists(qaOptions, Path.Combine(evidence, "options-after-launcher-sync.txt"));
+        summary.Add($"Options sync ({optionsSync}): {lunarOptions ?? sharedOptions} -> {qaOptions}");
+    }
     var qaLines = File.Exists(qaOptions)
         ? File.ReadAllLines(qaOptions).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList()
         : new List<string>();
@@ -1025,6 +1040,9 @@ if (Env("LADS_VERIFY_V133") == "1" && (process == null || !IsRunning(process)))
 // Exit path: GameSession removes the running marker and reconciles the fallback server list, then signals here.
 if (process != null && HasStarted(process))
 {
+    CopyIfExists(Path.Combine(directory, "options.txt"), Path.Combine(evidence, "options-after-game.txt"));
+    if (optionsSync == "1" && lunarOptions == null) GameOptionsService.SyncFromInstance(Path.Combine(directory, "options.txt"), sharedOptions, version);
+    CopyIfExists(sharedOptions, Path.Combine(evidence, "shared-options-after.txt"));
     bool handled = await Task.WhenAny(exitHandled.Task, Task.Delay(TimeSpan.FromSeconds(30))) == exitHandled.Task;
     if (!handled) failures.Add("GameSession's exit handler did not finish within 30 s (running marker removal and fallback server-list reconcile).");
     bool markerGone = !File.Exists(RunningGameMarker.PathFor(directory));

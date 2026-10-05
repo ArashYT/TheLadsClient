@@ -116,8 +116,28 @@ public sealed class GameControlsTests
         Assert.Equal("Left Shift", GameControls.DisplayName("key.keyboard.left.shift"));
         Assert.Equal("Keypad 5", GameControls.DisplayName("key.keyboard.keypad.5"));
         Assert.Equal("Mouse 4", GameControls.DisplayName("-97"));
+        Assert.Equal("Mouse 6", GameControls.DisplayName("-95"));
+        Assert.Equal("Key code 508", GameControls.DisplayName("508"));
         Assert.Equal("0.75", GameControls.SensitivityStored(150));
         Assert.Equal(32, GameControls.Int("99", 12, 2, 32));
+    }
+
+    /// <summary>1.8.9 codes and key names both ways: every mouse button (button b is b - 100), LWJGL's F19, and null where the
+    /// other side has no equivalent, so a sync keeps the bind it has.</summary>
+    [Fact]
+    public void KeyBindsTranslateBetween189CodesAndKeyNames()
+    {
+        foreach (var (name, code) in new[] { ("key.mouse.left", "-100"), ("key.mouse.middle", "-98"), ("key.mouse.4", "-97"), ("key.mouse.5", "-96"),
+                     ("key.mouse.8", "-93"), ("key.keyboard.f19", "113"), ("key.keyboard.unknown", "0"), ("key.keyboard.w", "17") })
+        {
+            Assert.Equal(code, GameOptionsService.TranslateKeybindToTarget("", name, true));
+            Assert.Equal(name, GameOptionsService.TranslateKeybindToTarget("", code, false));
+        }
+        Assert.Null(GameOptionsService.TranslateKeybindToTarget("", "key.keyboard.world.1", true));
+        Assert.Null(GameOptionsService.TranslateKeybindToTarget("", "key.mouse.200", true));
+        Assert.Null(GameOptionsService.TranslateKeybindToTarget("", "508", false)); // a character key 1.8.9 stores as character + 256
+        Assert.Equal("-97", GameOptionsService.TranslateKeybindToTarget("", "-97", true));
+        Assert.Equal("key.keyboard.world.1", GameOptionsService.TranslateKeybindToTarget("", "key.keyboard.world.1", false));
     }
 
     [Fact]
