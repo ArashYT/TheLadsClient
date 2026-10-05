@@ -142,6 +142,15 @@ class HudGeometryTest {
         assertTrue(game.biomeReads>reads);
         game.ingame=false;HudSettings.getInstance().setHudFpsCapEnabled(false);
     }
+    @Test void hudFpsCapRecordsEveryGraphicsCall() throws Exception{
+        // A LadsGraphics method left to its default under the cap drops its drawing from the replayed build (it shows on build
+        // frames only) or measures the default instead of the game (1.8.9: the Armor HUD ignored Raised's lift with the cap on).
+        var recording=Class.forName("com.thelads.core.client.hud.RecordingGraphics");
+        for(var method:com.thelads.core.client.bridge.LadsGraphics.class.getMethods()){
+            if(method.isDefault()&&(method.getName().equals("drawText")||method.getName().equals("drawCenteredText"))&&method.getParameterCount()==4)continue; // shadow default, then the recorded call
+            assertDoesNotThrow(()->recording.getDeclaredMethod(method.getName(),method.getParameterTypes()),method.toString());
+        }
+    }
     @Test void disabledGroupMemberKeepsLiveAndEditorClampingIdentical(){
         var active=element("CPS");var hidden=element("Day");
         active.setPosition(580,300);hidden.setPosition(700,350);module("Day").setEnabled(false);
