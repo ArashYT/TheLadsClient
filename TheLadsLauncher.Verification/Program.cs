@@ -134,10 +134,13 @@ string? cheatsPhase = autoWorldVerification && !capabilities.Forge ? Env("LADS_V
 if (cheatsPhase is not (null or "set" or "check" or "off")) throw new ArgumentException("LADS_VERIFY_CHEATS must be set, check or off.");
 string? focus189 = autoWorldVerification && capabilities.Forge ? Env("LADS_VERIFY_189_FOCUS") : null;
 if (focus189 != null && !Regex.IsMatch(focus189, @"\A[a-z0-9-]{1,40}\z")) throw new ArgumentException("LADS_VERIFY_189_FOCUS must be a plain step list name.");
-// 1.8.9 benchmark (LADS_VERIFY_189_ONLY=perf, Probe173Perf): ms of work per frame at the QA settings (60 FPS cap, render distance 4);
-// LADS_VERIFY_PERF_SECONDS per scene (default 60, at most 90); LADS_VERIFY_PERF_JFR=1 also records lads-qa\perf\perf.jfr.
+// 1.8.9 benchmark (LADS_VERIFY_189_ONLY=perf, Probe173Perf): the one QA run allowed uncapped (FPS unlimited, VSync off) at render
+// distance LADS_VERIFY_PERF_RD, 8 or 12 (user-approved exception, sandbox only, run alone); LADS_VERIFY_PERF_SECONDS per scene
+// (default 60, at most 90); LADS_VERIFY_PERF_JFR=1 also records lads-qa\perf\perf.jfr.
 bool perf189 = autoWorldVerification && capabilities.Forge && Env("LADS_VERIFY_189_ONLY") == "perf";
-if (!perf189 && (Env("LADS_VERIFY_PERF_SECONDS") ?? Env("LADS_VERIFY_PERF_JFR")) != null)
+string perfRenderDistance = perf189 ? Env("LADS_VERIFY_PERF_RD") ?? "8" : "4";
+if (perfRenderDistance is not ("4" or "8" or "12")) throw new ArgumentException("LADS_VERIFY_PERF_RD must be 8 or 12 (or 4, the QA default).");
+if (!perf189 && (Env("LADS_VERIFY_PERF_RD") ?? Env("LADS_VERIFY_PERF_SECONDS") ?? Env("LADS_VERIFY_PERF_JFR")) != null)
     throw new ArgumentException("LADS_VERIFY_PERF_* needs a 1.8.9 --title run with LADS_VERIFY_AUTO_WORLD=1 and LADS_VERIFY_189_ONLY=perf.");
 string? perfSeconds = perf189 ? Env("LADS_VERIFY_PERF_SECONDS") : null;
 if (perfSeconds != null && !Regex.IsMatch(perfSeconds, @"\A[1-9][0-9]?\z")) throw new ArgumentException("LADS_VERIFY_PERF_SECONDS must be 1 to 99.");
@@ -728,8 +731,9 @@ try
     // QA instances are muted and kept light (owner's standing rule): the owner may be using the computer meanwhile.
     // 120 FPS cap (VSync off so the cap is what applies), render/simulation distance 4, GUI scale 2 (1.8.9 ignores simulationDistance);
     // pauseOnLostFocus off: a pause menu when the owner clicks away would stop the integrated server and the probes' input.
-    string[] qaForced = { "soundCategory_master:0.0", "maxFps:120", "enableVsync:false", "renderDistance:4", "simulationDistance:4", "guiScale:2",
-        "pauseOnLostFocus:false" };
+    // The 1.8.9 benchmark alone runs uncapped (maxFps 260 is Unlimited) at its own render distance (perf189 above).
+    string[] qaForced = { "soundCategory_master:0.0", perf189 ? "maxFps:260" : "maxFps:120", "enableVsync:false", "renderDistance:" + perfRenderDistance,
+        "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false" };
     string qaOptions = Path.Combine(directory, "options.txt");
     var qaLines = File.Exists(qaOptions)
         ? File.ReadAllLines(qaOptions).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList()
