@@ -119,6 +119,7 @@
     "GuiRendererReplayMixin",
     "DeltaTrackerCapMixin",
     "HudScopeMixin",
+    "GuiTextRenderStateAccessor",
     "ChatTextShadowMixin",
     "VoiceChatHudMixin",
     "VoiceChatHudMixin$Group",
