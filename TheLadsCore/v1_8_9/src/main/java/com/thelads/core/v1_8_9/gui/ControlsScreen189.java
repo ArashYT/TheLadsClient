@@ -79,6 +79,7 @@ public final class ControlsScreen189 extends GuiControls {
         } else {
             super.actionPerformed(button);
             if (button.id != RESET) return;
+            mc.gameSettings.saveOptions(); // vanilla's Reset All saves nothing: a crash or Escape before the next save lost it
             confirmingReset = false;
             button.displayString = I18n.format("controls.resetAll");
             refresh();

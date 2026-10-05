@@ -244,7 +244,8 @@ public class Minecraft189Tests
     }
 
     /// <summary>With Lunar installed, 1.8.9 takes its settings from Lunar's 1.8 profile (modern key names, translated) and
-    /// Lunar's optionsof.txt once; Lunar's files are only read, and nothing goes back to the launcher's shared copy.</summary>
+    /// Lunar's optionsof.txt once; later launches take only what changed in Lunar, so the game's own changes stay. Lunar's files
+    /// are only read, and nothing goes back to the launcher's shared copy.</summary>
     [Fact]
     public async Task Minecraft189UsesLunarsSettingsWhenInstalledAndNeverWritesThere()
     {
@@ -264,15 +265,68 @@ public class Minecraft189Tests
         Assert.Equal(("-100", "29", "0.75"), (instance["key_key.attack"], instance["key_key.sprint"], instance["fov"]));
         Assert.Equal("ofFastRender:true\n", File.ReadAllText(optiFine));
 
-        // The game's own changes: OptiFine's are kept (copied once), Lunar's shared settings come back at the next launch.
+        // The game's own changes stay at the next launches: OptiFine's (copied once), and settings and key binds Lunar did not change.
         File.WriteAllText(optiFine, "ofFastRender:false\n");
-        File.WriteAllText(options, "fov:1.0\nkey_key.attack:-99\n");
+        File.WriteAllText(options, "fov:1.0\nkey_key.attack:-99\nkey_key.sprint:-97\nkey_key.drop:-96\n");
         await l.Profiles.SyncProfileToSharedAsync(profile);
         await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
         Assert.Equal("ofFastRender:false\n", File.ReadAllText(optiFine));
-        Assert.Equal(("0.75", "-100"), (GameOptionsService.ParseOptions(File.ReadAllText(options))["fov"], GameOptionsService.ParseOptions(File.ReadAllText(options))["key_key.attack"]));
+        var kept = GameOptionsService.ParseOptions(File.ReadAllText(options));
+        Assert.Equal(("1.0", "-99", "-97", "-96"), (kept["fov"], kept["key_key.attack"], kept["key_key.sprint"], kept["key_key.drop"]));
         Assert.Equal(lunarBefore, LunarTree());
+
+        // What the player changes in Lunar comes at the next launch; a key 1.8.9 has no code for keeps the game's bind.
+        Write(Path.Combine(lunar18, "options.txt"), "version:3700\nlang:en_ca\nfov:0.5\nkey_key.attack:key.mouse.left\n"
+            + "key_key.sprint:key.mouse.6\nkey_key.drop:key.keyboard.world.1\n");
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        var taken = GameOptionsService.ParseOptions(File.ReadAllText(options));
+        Assert.Equal(("0.5", "-99", "-95", "-96"), (taken["fov"], taken["key_key.attack"], taken["key_key.sprint"], taken["key_key.drop"]));
         Assert.Equal(Launcher.SharedOptions, File.ReadAllText(l.Paths.SharedOptionsFile));
+    }
+
+    /// <summary>A launch never undoes the game's own key binds: not when the launcher missed the game's exit (closed, killed or
+    /// crashed meanwhile), not for mouse buttons, and not for key codes without a key name. Another version's later change still
+    /// comes, and nothing 26.x cannot read reaches its options.txt.</summary>
+    [Fact]
+    public async Task KeyBindsSurviveLaunchesWithoutTheExitSyncAndAcrossVersions()
+    {
+        using var l = new Launcher();
+        var legacy = l.Profiles.GetProfile("1.8.9")!;
+        var modern = l.Profiles.GetProfile("26.3")!;
+        var options189 = Path.Combine(l.Game189, "options.txt");
+        var options263 = Path.Combine(l.Paths.GetProfileDirectory(modern), "options.txt");
+        Dictionary<string, string> Read(string file) => GameOptionsService.ParseOptions(File.ReadAllText(file));
+        File.WriteAllText(l.Paths.SharedOptionsFile, "version:4671\nfov:0.0\nkey_key.drop:key.keyboard.q\nkey_key.pickItem:key.mouse.middle\n"
+            + "key_key.jump:key.keyboard.space\nkey_key.chat:key.keyboard.t\n");
+        await l.Profiles.PrepareProfileEnvironmentAsync(legacy, null);
+        await l.Profiles.PrepareProfileEnvironmentAsync(modern, null);
+
+        // 1.8.9 saves side buttons, a key and a key without a name (character + 256); then the launcher misses its exit, twice.
+        File.WriteAllText(options189, "fov:0.5\nkey_key.drop:-97\nkey_key.pickItem:-96\nkey_key.jump:47\nkey_key.chat:508\n");
+        await l.Profiles.PrepareProfileEnvironmentAsync(legacy, null);
+        await l.Profiles.PrepareProfileEnvironmentAsync(legacy, null);
+        var kept = Read(options189);
+        Assert.Equal(("0.5", "-97", "-96", "47", "508"), (kept["fov"], kept["key_key.drop"], kept["key_key.pickItem"], kept["key_key.jump"], kept["key_key.chat"]));
+
+        // The next exit is seen: names go to the shared copy, the nameless code does not; 26.3 takes them, keeping its own others.
+        File.WriteAllText(options263, File.ReadAllText(options263) + "key_key.swapOffhand:key.mouse.4\n");
+        await l.Profiles.SyncProfileToSharedAsync(legacy);
+        var shared = Read(l.Paths.SharedOptionsFile);
+        Assert.Equal(("key.mouse.4", "key.mouse.5", "key.keyboard.v", "key.keyboard.t"),
+            (shared["key_key.drop"], shared["key_key.pickItem"], shared["key_key.jump"], shared["key_key.chat"]));
+        await l.Profiles.PrepareProfileEnvironmentAsync(modern, null);
+        var modernKeys = Read(options263);
+        Assert.Equal(("key.mouse.4", "key.mouse.5", "key.keyboard.v", "key.keyboard.t", "key.mouse.4"), (modernKeys["key_key.drop"],
+            modernKeys["key_key.pickItem"], modernKeys["key_key.jump"], modernKeys["key_key.chat"], modernKeys["key_key.swapOffhand"]));
+        Assert.DoesNotContain(modernKeys, kvp => kvp.Key.StartsWith("key_", StringComparison.Ordinal) && int.TryParse(kvp.Value, out _));
+
+        // A bind changed in 26.3 comes to 1.8.9 at its next launch; 1.8.9's nameless key stays.
+        File.WriteAllText(options263, File.ReadAllText(options263).Replace("key_key.drop:key.mouse.4", "key_key.drop:key.keyboard.g"));
+        await l.Profiles.SyncProfileToSharedAsync(modern);
+        await l.Profiles.PrepareProfileEnvironmentAsync(legacy, null);
+        var after = Read(options189);
+        Assert.Equal(("34", "-96", "47", "508"), (after["key_key.drop"], after["key_key.pickItem"], after["key_key.jump"], after["key_key.chat"]));
     }
 
     // ------------------------------------------------------------------ Forge mods
