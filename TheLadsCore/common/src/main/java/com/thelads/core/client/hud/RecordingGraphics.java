@@ -45,6 +45,7 @@ final class RecordingGraphics implements LadsGraphics {
     @Override public void drawBossBars(int x, int y, int max, boolean names, boolean preview) { mark("bossBars", x, y, max, names, preview); ops.add(g -> g.drawBossBars(x, y, max, names, preview)); }
     // Screen-only art (the Kill Banner picker, the HUD editor backdrop): recorded like the rest, assumed drawn.
     @Override public boolean drawKillBanner(String skin, int variant, int x, int y, int width, int height) { mark("banner", skin, variant, x, y, width, height); ops.add(g -> g.drawKillBanner(skin, variant, x, y, width, height)); return true; }
+    @Override public boolean drawKillBannerPreview(String skin, int variant, int x, int y, int width, int height, double clock) { mark("bannerPreview", skin, variant, x, y, width, height, clock); ops.add(g -> g.drawKillBannerPreview(skin, variant, x, y, width, height, clock)); return true; }
     @Override public boolean drawGameView(int x, int y, int width, int height) { mark("view", x, y, width, height); ops.add(g -> g.drawGameView(x, y, width, height)); return true; }
 
     @Override public int textWidth(String text) { return target.textWidth(text); }
