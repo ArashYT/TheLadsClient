@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class FontRendererMixin implements FontCache189.Holder, FontCache189.Draw {
     @Shadow protected float posX;
     @Shadow protected float posY;
-    @Unique private FontCache189 ladsCache;
+    @Unique private FontCache189 ladsPlain, ladsUnicode;
     @Unique private boolean ladsMeasuring, ladsDrawing;
 
     @Shadow public abstract int getStringWidth(String text);
@@ -28,8 +28,9 @@ public abstract class FontRendererMixin implements FontCache189.Holder, FontCach
 
     @Override
     public FontCache189 ladsCache() {
-        if (ladsCache == null) ladsCache = new FontCache189((FontRenderer) (Object) this);
-        return ladsCache;
+        FontRenderer font = (FontRenderer) (Object) this;
+        if (font.getUnicodeFlag()) return ladsUnicode != null ? ladsUnicode : (ladsUnicode = new FontCache189(font));
+        return ladsPlain != null ? ladsPlain : (ladsPlain = new FontCache189(font));
     }
 
     @Inject(method = "getStringWidth", at = @At("HEAD"), cancellable = true)
@@ -71,6 +72,7 @@ public abstract class FontRendererMixin implements FontCache189.Holder, FontCach
 
     @Inject(method = "onResourceManagerReload", at = @At("HEAD"))
     private void ladsReload(IResourceManager manager, CallbackInfo ci) {
-        ladsCache().clear();
+        if (ladsPlain != null) ladsPlain.clear();
+        if (ladsUnicode != null) ladsUnicode.clear();
     }
 }

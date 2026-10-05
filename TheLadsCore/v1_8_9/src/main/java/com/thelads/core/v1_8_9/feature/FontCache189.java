@@ -17,12 +17,13 @@ import org.lwjgl.opengl.GL11;
  * string drawn on two frames is compiled into a display list, keyed by text, colour and shadow pass, drawn at the origin and moved
  * into place. What is drawn is exactly what FontRenderer drew (vanilla, Unicode, OptiFine HD and custom fonts and colours alike):
  * the list records its calls. Not cached: obfuscated text (§k, it changes every frame), underline and strikethrough (§n, §m,
- * drawn with other GL state), other threads (Forge's loading screen). Everything is dropped on a resource reload (new font
- * textures) and when the Unicode or bidi setting changes; lists unused for 5 seconds are freed. -Dthelads.fontCache=false turns it
+ * drawn with other GL state), other threads (Forge's loading screen). A font keeps one cache for its normal and one for its Unicode
+ * glyphs (screens switch Unicode on while they draw). Everything is dropped on a resource reload (new font textures) and when the
+ * bidi setting changes; lists unused for 5 seconds are freed. -Dthelads.fontCache=false turns it
  * off; it also stays off next to Patcher, which has its own.
  */
 public final class FontCache189 {
-    /** What the mixin adds to FontRenderer. */
+    /** What the mixin adds to FontRenderer: the cache for its current Unicode setting. */
     public interface Holder {
         FontCache189 ladsCache();
     }
@@ -38,12 +39,11 @@ public final class FontCache189 {
     private final Map<String, Integer> widths = new HashMap<String, Integer>();
     private final Map<Key, Entry> lists = new HashMap<Key, Entry>();
     private final Key probe = new Key();
-    private boolean unicode, bidi;
+    private boolean bidi;
     private Object epoch = new Object();
 
     public FontCache189(FontRenderer font) {
         this.font = font;
-        unicode = font.getUnicodeFlag();
         bidi = font.getBidiFlag();
         synchronized (ALL) { ALL.add(this); }
     }
@@ -83,7 +83,7 @@ public final class FontCache189 {
         widths.put(text, width);
     }
 
-    /** Whether renderString draws this from a list: true once it has been drawn (returned in {@link Draw#end}). */
+    /** Whether renderString may draw this from a list. */
     public boolean cacheable(String text) {
         if (text == null || text.isEmpty() || text.length() > 256 || !usable()) return false;
         for (int i = 0; i < text.length() - 1; i++) {
@@ -115,8 +115,8 @@ public final class FontCache189 {
             // GlStateManager skips a colour or texture it thinks is set: make the list set both itself.
             GlStateManager.resetColor();
             GlStateManager.bindTexture(0);
-            GL11.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
             GL11.glGetError(); // an earlier error must not count as this list's
+            GL11.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
             entry.advance = draw.ladsDrawAtOrigin(text, color, shadow);
             GL11.glEndList();
             entry.texture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
@@ -141,8 +141,7 @@ public final class FontCache189 {
     }
 
     private void checkFlags() {
-        if (font.getUnicodeFlag() == unicode && font.getBidiFlag() == bidi) return;
-        unicode = font.getUnicodeFlag();
+        if (font.getBidiFlag() == bidi) return;
         bidi = font.getBidiFlag();
         clear();
     }
