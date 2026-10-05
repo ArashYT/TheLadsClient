@@ -29,8 +29,9 @@ import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState;
  * ticks) are the time since the last build (DeltaTrackerCapMixin), so anything that advances by them (Jade's fade, its health and
  * progress bars, mods' HUD animations) moves as far as it would have over the frames in between. Vanilla's spyglass zoom eases by a
  * share of the way per frame: it takes each of those frames' steps (HudScopeMixin). The Lads HUD counts the frames
- * (HudFrameCap.steps). And they look smooth: each build's adds make a fingerprint (GuiRenderStateCaptureMixin); while it changes from
- * build to build, HudFrameCap builds the HUD at 60 FPS or more, and the cap applies again once the HUD stays the same.
+ * (HudFrameCap.steps). And they look smooth: each add tells HudFrameCap what it draws and where and how (GuiRenderStateCaptureMixin);
+ * while something keeps moving, resizing, turning, fading or changing colour, the HUD is built at 60 FPS or more. New content (a
+ * number, a timer, a chat line) shows at the cap rate.
  */
 public final class HudCapture {
     private record Op(float opacity, Consumer<GuiRenderState> add) {}
@@ -47,8 +48,6 @@ public final class HudCapture {
     private static float gameSum, realSum, buildGame, buildReal;
     /** A capped build (the HUD or its deferred part) runs now: frame time steps are this build's sums (DeltaTrackerCapMixin). */
     private static boolean catchingUp;
-    /** What this build has drawn so far, as a number: its adds, each with its Autohide opacity. */
-    private static int print;
     private static long buildStart;
     /** QA (Hud170Capture): pictures blitted from their last texture on replayed frames. */
     public static int replayBlits;
@@ -63,11 +62,16 @@ public final class HudCapture {
         boolean lads$blitAgain(PictureInPictureRenderState state, GuiRenderState gui);
     }
 
-    /** One add of the HUD's build; {@code fingerprint} what it draws (only asked for while recording). */
-    public static void record(Consumer<GuiRenderState> op, java.util.function.IntSupplier fingerprint) {
-        if (recording == null) return;
+    /** One add of the HUD's build, if one is being recorded (then the caller tells {@link #drew} what it draws). */
+    public static boolean record(Consumer<GuiRenderState> op) {
+        if (recording == null) return false;
         recording.add(new Op(NativeAutohide.scopeOpacity, op));
-        print = 31 * (31 * print + fingerprint.getAsInt()) + Float.floatToIntBits(NativeAutohide.scopeOpacity);
+        return true;
+    }
+
+    /** What the add just recorded draws, and where and how (HudFrameCap.draw), in its Autohide opacity. */
+    public static void drew(int what, int how) {
+        HudFrameCap.draw(what, 31 * how + Float.floatToIntBits(NativeAutohide.scopeOpacity));
     }
 
     /** A picture's replay, marked so its renderer blits its last texture (GuiRendererReplayMixin). */
@@ -132,7 +136,6 @@ public final class HudCapture {
             buildGame = gameSum;
             buildReal = realSum;
             frames = 0; // the next build counts from the next frame
-            print = 1;
             buildStart = System.nanoTime();
             HudFrameCap.wholeHud = catchingUp = true;
             try {
@@ -156,7 +159,7 @@ public final class HudCapture {
             else if (record) {
                 catchingUp = true;
                 build(DEFERRED, build);
-                HudFrameCap.built(print, buildStart); // the whole build, both parts
+                HudFrameCap.built(buildStart); // the whole build, both parts
             } else build.run();
         } finally {
             catchingUp = false;
