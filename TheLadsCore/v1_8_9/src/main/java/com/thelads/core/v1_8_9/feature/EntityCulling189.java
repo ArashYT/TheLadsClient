@@ -365,7 +365,14 @@ public final class EntityCulling189 {
         int n = Occlusion.eyes(grid, eye[0], eye[1], eye[2], 0, one);
         if (n == 0) { wrong++; return; }
         AxisAlignedBB box = entity.getEntityBoundingBox();
-        if (Occlusion.visible(grid, one, 1, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ)) wrong++;
+        if (!Occlusion.visible(grid, one, 1, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ)) return;
+        if (++wrong > 8) return;
+        Pass d = done, r = running;
+        int gen = ((Cullable) entity).ladsCullGen();
+        Pass by = d != null && d.gen == gen ? d : r;
+        LOG.info("Entity Culling audit: {} culled but seen from camera ({}, {}, {}); box {}; stamped by pass {} from eye ({}, {}, {}), {} ms old",
+            entity.getName(), eye[0], eye[1], eye[2], box, gen, by == null ? 0 : by.x, by == null ? 0 : by.y, by == null ? 0 : by.z,
+            by == null ? -1 : (System.nanoTime() - by.start) / 1_000_000);
     }
 
     static double[] cameraForQa() { return camera; }

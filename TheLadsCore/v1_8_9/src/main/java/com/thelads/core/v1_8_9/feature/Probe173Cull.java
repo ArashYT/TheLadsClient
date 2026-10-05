@@ -133,7 +133,8 @@ final class Probe173Cull {
     /** name, x and y offset, z offset, yaw, pitch. */
     private static final Object[][] VIEWS = {
         {"front", 0.5, 1.0, 0.5, -90f, 0f}, {"left", 0.5, 1.0, 0.5, -60f, 0f}, {"right", 0.5, 1.0, 0.5, -120f, 0f},
-        {"close", 4.5, 1.0, 0.5, -90f, 10f}, {"over", 0.5, 15.0, 0.5, -90f, 35f}, {"edge", 3.5, 1.0, 17.5, -143f, 0f}};
+        {"close", 4.5, 1.0, 0.5, -90f, 10f}, {"over", 0.5, 15.0, 0.5, -90f, 35f}, {"edge", 3.5, 1.0, 17.5, -143f, 0f},
+        {"over2", 0.5, 15.0, 0.5, -90f, 35f}}; // "over" again: how far the crowd's own picture varies between shots
 
     /** Each view with the module off, then on: settle, count culled draws over 20 ticks, photograph. */
     private static boolean views(Minecraft mc) {
@@ -174,7 +175,7 @@ final class Probe173Cull {
         if (!on) check(entities == 0 && tiles == 0, "Entity Culling off culls nothing (" + name + ")");
         else if (v[0].equals("front")) check(entities >= 0.75 * (PLAYERS + STANDS + COWS) && tiles >= CHESTS * 0.75,
             "the crowd and chests behind the wall are culled from the front (" + entities + " entities, " + tiles + " block entities per frame)");
-        else if (v[0].equals("over")) check(entities < 0.1 * (PLAYERS + STANDS + COWS), "seen from above the wall the crowd is drawn (" + entities + " culled)");
+        else if (((String) v[0]).startsWith("over")) check(entities < 0.1 * (PLAYERS + STANDS + COWS), "seen from above the wall the crowd is drawn (" + entities + " culled)");
         ticks = 0;
         step++;
         return retry(1);
