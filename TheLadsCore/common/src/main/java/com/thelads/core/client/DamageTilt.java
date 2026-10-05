@@ -22,10 +22,12 @@ public final class DamageTilt {
     static final double MIN_PUSH = 0.1;
     /** Hurt and its direction are sent in the same server tick. */
     static final long PAIR_MS = 150;
+    /** How long a hurt holds its tilt while no answer about its direction came (a server tick and a little). */
+    static final long WAIT_MS = 60;
     /** A hurt shows for 10 ticks (500 ms); a later health update can restart it, so the direction stays a little longer. */
     static final long KEEP_MS = 1000;
 
-    private long hurtAt = Long.MIN_VALUE / 2, directionAt = Long.MIN_VALUE / 2;
+    private long hurtAt = Long.MIN_VALUE / 2, directionAt = Long.MIN_VALUE / 2, answerAt = Long.MIN_VALUE / 2;
     private float direction = Float.NaN, yaw = Float.NaN;
 
     /** The server reported the player hurt (1.8.9 entity status 2, 26.x damage event or hurt animation). */
@@ -34,8 +36,12 @@ public final class DamageTilt {
         yaw = nowMs - directionAt <= PAIR_MS ? direction : Float.NaN;
     }
 
-    /** The hit's direction as a relative yaw (NaN: none, ignored). */
+    /**
+     * The hit's direction as a relative yaw, or NaN for an answer without one (1.8.9: the velocity packet of fall or fire damage;
+     * 26.x: the damage event, whose hit direction comes in the same batch or never).
+     */
     public void direction(float relativeYaw, long nowMs) {
+        answerAt = nowMs;
         if (Float.isNaN(relativeYaw)) return;
         direction = relativeYaw;
         directionAt = nowMs;
@@ -50,7 +56,25 @@ public final class DamageTilt {
     /** The yaw the camera turns by with the module on: the hit's direction while Directional is on and it is known, else 0. */
     public float cameraYaw(Module module, long nowMs) {
         float known = yaw(nowMs);
-        return Float.isNaN(known) || !(module.getOption(DIRECTIONAL) instanceof BoolOption on && on.get()) ? 0 : known;
+        return Float.isNaN(known) || !directional(module) ? 0 : known;
+    }
+
+    /**
+     * The factor on the tilt with the module on: Intensity, or 0 while a fresh hurt still waits for its answer (Directional on), so
+     * the camera never starts leaning the fixed way and then swings round. 1.8.9 can send the knockback a little after the hurt.
+     */
+    public float cameraStrength(Module module, long nowMs) {
+        boolean waiting = Float.isNaN(yaw) && hurtAt - answerAt > PAIR_MS && nowMs - hurtAt < WAIT_MS && directional(module);
+        return waiting ? 0 : strength(module);
+    }
+
+    /** QA: milliseconds from the last hurt to its direction (negative: the direction came first); Long.MIN_VALUE when none paired. */
+    public long pairDelay() {
+        return Float.isNaN(yaw) ? Long.MIN_VALUE : directionAt - hurtAt;
+    }
+
+    private static boolean directional(Module module) {
+        return module.getOption(DIRECTIONAL) instanceof BoolOption on && on.get();
     }
 
     /**

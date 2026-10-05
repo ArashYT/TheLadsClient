@@ -27,6 +27,6 @@ public class DamageTiltMixin {
         target = "Lnet/minecraft/client/renderer/state/OptionsRenderState;damageTiltStrength:D"), require = 1)
     private double lads$intensity(OptionsRenderState state) {
         if (!NativeQualityOfLife.enabled(DamageTilt.MODULE)) return state.damageTiltStrength;
-        return state.damageTiltStrength * DamageTilt.strength(NativeQualityOfLife.module(DamageTilt.MODULE));
+        return state.damageTiltStrength * DamageTilt.CLIENT.cameraStrength(NativeQualityOfLife.module(DamageTilt.MODULE), System.currentTimeMillis());
     }
 }
