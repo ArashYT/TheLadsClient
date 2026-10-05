@@ -79,10 +79,13 @@ public class HudManager {
         if (g == null || (g.getGame() != null && g.getGame().isHudHidden())) return;
         if (!HudFrameCap.wholeHud && g.getGame() != null && g.getGame().isIngame() && HudFrameCap.enabled()) {
             // Capped: rebuild at the cap rate and draw the last build on every frame, so the HUD never blinks out.
-            if (HudFrameCap.due(System.nanoTime(), g.getScaledWidth(), g.getScaledHeight())) {
+            long now = System.nanoTime();
+            if (HudFrameCap.due(now, g.getScaledWidth(), g.getScaledHeight())) {
                 cachedHud.clear();
                 recordHudFrame();
-                renderElements(new RecordingGraphics(g, cachedHud));
+                RecordingGraphics recording = new RecordingGraphics(g, cachedHud);
+                renderElements(recording);
+                HudFrameCap.built(recording.fingerprint(), now);
             }
             for (var op : cachedHud) op.accept(g);
             return;

@@ -48,7 +48,11 @@ import org.slf4j.LoggerFactory;
  * recording toast, the Lads HUD, chat, scoreboard, minimap, throw bar), in peaceful with no vignette, it saves runs of
  * consecutive frames to screenshots/hudflicker: the HUD hidden (reference), the cap off (control), the cap on at 10 FPS and the HUD
  * hidden again (the view stayed still), with the elements' rectangles and the HUD's cost per frame (hudflicker.json).
- * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Everything is put back.
+ * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Then the pace of HUD animations: Jade's fade-in and
+ * fade-out, the spyglass zoom-in, the vignette darkening at nightfall and the Lads FPS counter's smoothing, each timed with the cap
+ * off, at 30 and at 10 FPS (from the moment it starts until a HUD build shows its end), with how often the HUD was built meanwhile;
+ * a second of a kill banner, and a second of a HUD that does not change (the FPS counter off), with the HUD's builds per second and
+ * cost (hudflicker.json "pace"). Everything is put back.
  */
 final class HudFlickerCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -77,6 +81,15 @@ final class HudFlickerCapture {
     private static float pinYaw;
     private static String gameModeWas;
     private static Path gameDir;
+    // Pace: how long HUD animations take with the cap off, at 30 and at 10 FPS, from the moment each starts until a frame that built
+    // the HUD shows its end. With the cap they should take as long as without, give or take one HUD frame.
+    private static final int[] PACE_CAPS = {0, 30, 10};
+    private static final String[] PACE = {"static", "jade-in", "jade-out", "spyglass", "vignette", "fps-smoothing", "kill-banner"};
+    private static final int PACE_REPEATS = 2;
+    private static int pace = -1, paceStage, paceBuilds, paceBuildsAtStart, paceChangesAtStart, paceFrames;
+    private static long paceReady, paceStart, paceDeadline, dayTimeWas, paceNanosAtStart;
+    private static float pinPitch = 90;
+    private static boolean jadeAnimationWas;
 
     private HudFlickerCapture() {}
 
@@ -161,6 +174,7 @@ final class HudFlickerCapture {
     static void frame(RenderTarget target, Path game) {
         if (!busy()) return;
         long now = System.nanoTime();
+        if (pace >= 0) { pace(now); return; }
         if (measureFrom > 0 && now >= measureFrom) {
             if (measureStart == 0) { measureStart = now; measureFrames = 0; builds0 = HudCapture.qaBuilds; replays0 = HudCapture.qaReplays; nanos0 = HudCapture.qaNanos; }
             else measureFrames++;
@@ -195,7 +209,7 @@ final class HudFlickerCapture {
         Minecraft mc = Minecraft.getInstance();
         try {
             int phase = step / 4;
-            if (phase >= PHASES.length) { finish(); return; }
+            if (phase >= PHASES.length) { startPace(mc); return; }
             String p = PHASES[phase];
             switch (step++ % 4) {
                 case 0 -> { // the HUD hidden: the reference every element is compared with
@@ -381,6 +395,11 @@ final class HudFlickerCapture {
         mc.options.showSubtitles().set(subtitlesWas);
         mc.options.vignette().set(vignetteWas);
         mc.options.fovEffectScale().set(fovEffectWas);
+        mc.options.keyUse.setDown(false);
+        if (pace >= 0) {
+            snownee.jade.api.config.IWailaConfig.get().overlay().setAnimation(jadeAnimationWas);
+            command("time set " + dayTimeWas);
+        }
         var server = mc.getSingleplayerServer();
         var id = mc.player.getUUID();
         ItemStack hand = handWas;
@@ -406,12 +425,172 @@ final class HudFlickerCapture {
         waiter.start();
     }
 
+    private static void startPace(Minecraft mc) {
+        if (mc.gui.hud.isHidden()) mc.gui.hud.toggle();
+        mc.debugEntries.setOverlayVisible(false);
+        mc.gui.hud.clearTitles();
+        NativeQualityOfLife.module("Jade").setEnabled(true);
+        var overlay = snownee.jade.api.config.IWailaConfig.get().overlay();
+        jadeAnimationWas = overlay.getAnimation();
+        overlay.setAnimation(true); // Jade's default
+        mc.options.vignette().set(true); // the game's default
+        dayTimeWas = Math.floorMod(mc.level.getDefaultClockTime(), 24000L);
+        report().add("pace", new JsonObject());
+        pace = 0;
+        paceStage = 0;
+        LOGGER.info("Lads HUD pace capture BEGIN: {} with the cap off, at 30 and at 10 FPS, {} times each", String.join(", ", PACE), PACE_REPEATS);
+    }
+
+    private static JsonObject report() {
+        if (report == null) report = new JsonObject();
+        return report;
+    }
+
+    /** Each frame of the pace runs: set the trial up, wait until it is ready, start it, then time it to its end. */
+    private static void pace(long now) {
+        Minecraft mc = Minecraft.getInstance();
+        int perCap = PACE.length * PACE_REPEATS;
+        if (pace >= PACE_CAPS.length * perCap) { finish(); return; }
+        int cap = PACE_CAPS[pace / perCap];
+        String anim = PACE[pace % PACE.length];
+        boolean built = HudCapture.qaBuilds != paceBuilds;
+        paceBuilds = HudCapture.qaBuilds;
+        var jade = snownee.jade.overlay.OverlayRenderer.animation;
+        boolean jadeTarget = snownee.jade.JadeClient.tickHandler().rootElement != null;
+        try {
+            switch (paceStage) {
+                case 0 -> { // set up: the animation at rest at its start
+                    HudSettings.getInstance().setHudFpsCapEnabled(cap > 0);
+                    if (cap > 0) HudSettings.getInstance().setHudFpsLimit(cap);
+                    mc.options.keyUse.setDown(false);
+                    pinPitch = anim.equals("jade-out") ? 90 : -90; // up at the sky, or down at the crafting table
+                    hand(anim.equals("spyglass") ? new ItemStack(net.minecraft.world.item.Items.SPYGLASS) : ItemStack.EMPTY);
+                    if (anim.equals("vignette") || anim.equals("static")) command("time set day");
+                    if (anim.equals("static")) mc.gui.hud.vignetteBrightness = 0; // settled at daylight (it eases 1% a tick, a slow animation)
+                    if (anim.equals("kill-banner") || anim.equals("static")) pinPitch = 90; // Jade on the table, still
+                    NativeKillBanner.timeline().clear(); // the last trial's banner (5 s) would still be animating
+                    mc.gui.hud.getChat().clearMessages(false); // and its commands' chat lines would fade out (an animation) 10 s later
+                    NativeQualityOfLife.module("FPS").setEnabled(!anim.equals("static")); // a counter that keeps changing
+                    paceReady = now + 1_500_000_000L;
+                    paceDeadline = now + 15_000_000_000L;
+                    paceStage = 1;
+                }
+                case 1 -> { // ready: settled at the start value (or give up after 15 s)
+                    boolean ready = switch (anim) {
+                        case "jade-in" -> !jadeTarget && jade.showHideAlpha == 0;
+                        case "jade-out" -> jadeTarget && jade.showHideAlpha >= 1;
+                        case "spyglass" -> !mc.player.isScoping() && scope(mc) == 0.5f;
+                        case "kill-banner", "static" -> jadeTarget && jade.showHideAlpha >= 1;
+                        default -> true;
+                    };
+                    if (now < paceReady || !ready && now < paceDeadline) return;
+                    switch (anim) { // start
+                        case "jade-in" -> pinPitch = 90;
+                        case "jade-out" -> pinPitch = -90;
+                        case "spyglass" -> mc.options.keyUse.setDown(true);
+                        case "vignette" -> { mc.gui.hud.vignetteBrightness = 0; command("time set midnight"); }
+                        case "kill-banner" -> { NativeKillBanner.bindCurrent(); NativeKillBanner.timeline().clear(); NativeKillBanner.trigger(1, false); }
+                        case "static" -> {}
+                        default -> fps(0);
+                    }
+                    paceStart = anim.equals("fps-smoothing") || anim.equals("kill-banner") || anim.equals("static") ? now : 0;
+                    paceBuildsAtStart = HudCapture.qaBuilds;
+                    paceChangesAtStart = changes();
+                    paceNanosAtStart = HudCapture.qaNanos;
+                    paceFrames = 0;
+                    paceDeadline = now + 12_000_000_000L;
+                    paceStage = 2;
+                }
+                default -> { // timing: from the frame it started to the first HUD build that shows its end
+                    if (paceStart == 0 && switch (anim) {
+                        case "jade-in" -> jadeTarget;
+                        case "jade-out" -> !jadeTarget;
+                        case "spyglass" -> mc.player.isScoping();
+                        default -> mc.gui.hud.vignetteBrightness > 0.005f;
+                    }) { paceStart = now; paceBuildsAtStart = HudCapture.qaBuilds; paceChangesAtStart = changes(); paceNanosAtStart = HudCapture.qaNanos; paceFrames = 0; }
+                    if (paceStart > 0) paceFrames++;
+                    boolean end = paceStart > 0 && switch (anim) {
+                        case "jade-in" -> built && jade.showHideAlpha >= 1;
+                        case "jade-out" -> built && jade.showHideAlpha < 0.1f;
+                        case "spyglass" -> built && scope(mc) >= 1.125f - 0.00625f; // 99% of the way from 0.5
+                        case "vignette" -> built && mc.gui.hud.vignetteBrightness >= 0.4f;
+                        case "kill-banner", "static" -> now - paceStart >= 1_000_000_000L; // a second of it
+                        default -> built && fpsDone();
+                    };
+                    if (!end && now < paceDeadline) return;
+                    String key = (cap == 0 ? "cap off" : "cap " + cap) + " " + anim;
+                    double seconds = (now - paceStart) / 1e9;
+                    int builds = HudCapture.qaBuilds - paceBuildsAtStart, changes = changes() < 0 ? -1 : changes() - paceChangesAtStart;
+                    String result = end ? String.format(java.util.Locale.ROOT, "%.0f ms, %d HUD builds (%.0f a second, %s changed the HUD), %d frames, HUD %.0f us per frame",
+                        seconds * 1000, builds, builds / Math.max(seconds, 1e-3), changes < 0 ? "?" : String.valueOf(changes), paceFrames,
+                        (HudCapture.qaNanos - paceNanosAtStart) / 1e3 / Math.max(1, paceFrames))
+                        : "did not end within 12 s" + (paceStart == 0 ? " (did not start)" : "");
+                    JsonObject results = report().getAsJsonObject("pace");
+                    if (!results.has(key)) results.add(key, new JsonArray());
+                    results.getAsJsonArray(key).add(result);
+                    LOGGER.info("Lads HUD pace capture {}: {}", key, result);
+                    if (!end) failed++;
+                    mc.options.keyUse.setDown(false);
+                    NativeKillBanner.timeline().clear();
+                    pace++;
+                    paceStage = 0;
+                }
+            }
+        } catch (Exception failure) {
+            failed++;
+            LOGGER.error("Lads HUD flicker capture FAILED: pace {}", anim, failure);
+            pace++;
+            paceStage = 0;
+        }
+    }
+
+    /** HudFrameCap.changes where this build has it (builds that drew something new), or -1. */
+    private static int changes() {
+        try { return com.thelads.core.client.hud.HudFrameCap.class.getField("changes").getInt(null); }
+        catch (ReflectiveOperationException absent) { return -1; }
+    }
+
+    private static void hand(ItemStack item) {
+        var server = Minecraft.getInstance().getSingleplayerServer();
+        var id = Minecraft.getInstance().player.getUUID();
+        server.execute(() -> {
+            var player = server.getPlayerList().getPlayer(id);
+            if (player != null && !ItemStack.matches(player.getMainHandItem(), item)) player.setItemSlot(EquipmentSlot.MAINHAND, item.copy());
+        });
+    }
+
+    /** Vanilla's spyglass zoom (Hud.scopeScale): from 0.5 toward 1.125 while scoping. */
+    private static float scope(Minecraft mc) throws ReflectiveOperationException {
+        var field = net.minecraft.client.gui.Hud.class.getDeclaredField("scopeScale");
+        field.setAccessible(true);
+        return field.getFloat(mc.gui.hud);
+    }
+
+    /** The Lads FPS counter's smoothed value (FPSHudElement.displayed), set, or whether it is within 10% of its target. */
+    private static void fps(double value) throws ReflectiveOperationException { fpsField("displayed").setDouble(fpsElement(), value); }
+
+    private static boolean fpsDone() throws ReflectiveOperationException {
+        double target = fpsField("target").getDouble(fpsElement()), displayed = fpsField("displayed").getDouble(fpsElement());
+        return target > 0 && displayed >= 0.9 * target;
+    }
+
+    private static Object fpsElement() {
+        for (var element : HudManager.getInstance().getElements()) if (element instanceof com.thelads.core.client.hud.FPSHudElement) return element;
+        throw new IllegalStateException("no FPS element");
+    }
+
+    private static java.lang.reflect.Field fpsField(String name) throws ReflectiveOperationException {
+        var field = com.thelads.core.client.hud.FPSHudElement.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return field;
+    }
+
     /** Every tick of the capture: the player stays where and as it was put, and Item Physics' throw bar keeps charging. */
     private static void pin(Minecraft mc) {
         mc.player.setPos(pinX, pinY, pinZ);
         mc.player.setDeltaMovement(0, 0, 0);
         mc.player.setYRot(pinYaw);
-        mc.player.setXRot(90);
+        mc.player.setXRot(pinPitch);
         mc.player.setOldPosAndRot();
         mc.options.keyDrop.setDown(true);
     }
