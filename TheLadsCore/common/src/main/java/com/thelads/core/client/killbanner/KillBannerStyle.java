@@ -154,7 +154,11 @@ public enum KillBannerStyle {
     public final String[] variantNames;
     public final int[][] variants;
     private final KillBannerStrip[] strips = new KillBannerStrip[5];
+    private final Object[] stripLocks = {new Object(), new Object(), new Object(), new Object(), new Object()};
     private int[] accents;
+    /** asset() paths asked for every frame, built once. */
+    private String frameAsset, ringAsset, heartAsset, tintAsset;
+    private String[] emblemAssets, pipAssets, swapAssets;
 
     KillBannerStyle(String id, String displayName, Type type, float anchorX, float anchorY, float ring, float markY, float markSize, float labelY,
                     boolean heart, boolean hasFrame, boolean hasRing, boolean hasEmblem, boolean hasPip, int soundCount,
@@ -200,22 +204,41 @@ public enum KillBannerStyle {
         return "/assets/theladscore/killbanner/" + SHARED.getProperty(file, file);
     }
 
+    // The accessors below run in the draw path of a banner: the strings are built on first use and kept (a race only builds one twice).
     public String frameAsset() {
-        return asset("frame.png");
+        String s = frameAsset;
+        return s != null ? s : (frameAsset = asset("frame.png"));
     }
 
     public String ringAsset() {
-        return asset("ring.png");
+        String s = ringAsset;
+        return s != null ? s : (ringAsset = asset("ring.png"));
+    }
+
+    public String heartAsset() {
+        String s = heartAsset;
+        return s != null ? s : (heartAsset = asset("heart.png"));
+    }
+
+    public String tintAsset() {
+        String s = tintAsset;
+        return s != null ? s : (tintAsset = asset("tint.png"));
     }
 
     public String emblemAsset(int variant) {
         int v = Math.max(0, Math.min(variantNames.length - 1, variant));
-        return asset(v == 0 ? "emblem.png" : "emblem_v" + v + ".png");
+        String[] all = emblemAssets;
+        if (all == null) emblemAssets = all = new String[variantNames.length];
+        String s = all[v];
+        return s != null ? s : (all[v] = asset(v == 0 ? "emblem.png" : "emblem_v" + v + ".png"));
     }
 
     public String pipAsset(int variant) {
         int v = Math.max(0, Math.min(variantNames.length - 1, variant));
-        return asset(v == 0 ? "pip.png" : "pip_v" + v + ".png");
+        String[] all = pipAssets;
+        if (all == null) pipAssets = all = new String[variantNames.length];
+        String s = all[v];
+        return s != null ? s : (all[v] = asset(v == 0 ? "pip.png" : "pip_v" + v + ".png"));
     }
 
     /** The colour the skin's drawn animation glows in for a variant (its pip's colour), RGB; white when it has none. */
@@ -234,23 +257,46 @@ public enum KillBannerStyle {
 
     public String swapAsset(int kills) {
         int k = Math.max(1, Math.min(5, kills));
-        return asset("k" + k + ".png");
+        String[] all = swapAssets;
+        if (all == null) swapAssets = all = new String[5];
+        String s = all[k - 1];
+        return s != null ? s : (all[k - 1] = asset("k" + k + ".png"));
     }
 
-    /** Frames for 1 to 5 kills (only used when isAnimated() is true). */
-    public synchronized KillBannerStrip strip(int kills) {
+    /** Frames for 1 to 5 kills (only used when isAnimated() is true). Reading one does not hold up the others. */
+    public KillBannerStrip strip(int kills) {
         if (!isAnimated()) return null;
         int k = Math.max(1, Math.min(5, kills));
-        if (strips[k - 1] == null) {
-            String path = asset("k" + k + ".lkb");
-            try (InputStream in = KillBannerStyle.class.getResourceAsStream(path)) {
-                if (in == null) throw new IOException(path + " is missing");
-                strips[k - 1] = KillBannerStrip.read(in);
-            } catch (IOException failure) {
-                throw new IllegalStateException("Kill banner frames unavailable: " + path, failure);
+        synchronized (stripLocks[k - 1]) {
+            if (strips[k - 1] == null) {
+                String path = asset("k" + k + ".lkb");
+                try (InputStream in = KillBannerStyle.class.getResourceAsStream(path)) {
+                    if (in == null) throw new IOException(path + " is missing");
+                    strips[k - 1] = KillBannerStrip.read(in);
+                } catch (IOException failure) {
+                    throw new IllegalStateException("Kill banner frames unavailable: " + path, failure);
+                }
             }
+            return strips[k - 1];
         }
-        return strips[k - 1];
+    }
+
+    /** The strip for this kill count if it is already read, else null (never reads). */
+    public KillBannerStrip loadedStrip(int kills) {
+        if (!isAnimated()) return null;
+        int k = Math.max(1, Math.min(5, kills));
+        synchronized (stripLocks[k - 1]) {
+            return strips[k - 1];
+        }
+    }
+
+    /** Lets go of the strips read so far (their packed frames and native inflaters); strip(kills) reads them again. */
+    public void release() {
+        for (int i = 0; i < strips.length; i++)
+            synchronized (stripLocks[i]) {
+                if (strips[i] != null) strips[i].release();
+                strips[i] = null;
+            }
     }
 
     /** Recolours the accent in place (used for Reaver and Rogue). */
