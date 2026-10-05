@@ -100,6 +100,7 @@ internal static class ModpackQa
                 lines.RemoveAll(l => l.StartsWith("soundCategory_master:") || l.StartsWith("fullscreen:") || l.StartsWith("onboardAccessibility:"));
                 lines.AddRange(new[] { "soundCategory_master:0.0", "fullscreen:false", "onboardAccessibility:false" });
                 File.WriteAllLines(optionsFile, lines);
+                QaDiscord.ForceOff(instance.GameDirectory); // never on the owner's Discord
                 string log = Path.Combine(instance.GameDirectory, "logs", "latest.log");
                 if (File.Exists(log)) File.Delete(log);
                 var started = Stopwatch.StartNew();
