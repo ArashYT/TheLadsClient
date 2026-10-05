@@ -93,6 +93,7 @@ final class Probe173Cull {
             Options189.module(com.thelads.core.modules.ItemPhysicsModule.NAME).setEnabled(physics);
             onServer(mc, player -> {
                 World world = player.worldObj;
+                for (Entity e : new ArrayList<Entity>(world.loadedEntityList)) if (e instanceof EntityItem) e.setDead(); // a past run's
                 for (int i = 0; i < FLOOR_DIST.length; i++) {
                     BlockPos at = new BlockPos(px + 0.5 + FLOOR_DIST[i], gy, pz + 0.5 + (i % 2 == 0 ? -0.3 : 0.3));
                     if (surface > 0 && world.isAirBlock(at)) {
@@ -255,6 +256,9 @@ final class Probe173Cull {
         report.add(name, entry);
         LOG.info("Lads cull QA view {}: {} entities and {} block entities culled per frame, {}", name, entities, tiles, entry);
         if (on && !crowd.isEmpty()) LOG.info("Lads cull QA view {}: first crowd player {}", name, EntityCulling189.explain(crowd.get(0)));
+        if (EntityCulling189.lastChange != null) LOG.info("Lads cull QA view " + name + ": last block change", EntityCulling189.lastChange);
+        EntityCulling189.lastChange = null;
+        EntityCulling189.traceChanges = true;
         if (!on) check(entities == 0 && tiles == 0, "Entity Culling off culls nothing (" + name + ")");
         else if (v[0].equals("front")) check(entities >= 0.75 * (PLAYERS + STANDS + COWS) && tiles >= CHESTS * 0.75,
             "the crowd and chests behind the wall are culled from the front (" + entities + " entities, " + tiles + " block entities per frame)");
@@ -373,6 +377,7 @@ final class Probe173Cull {
 
     private static boolean restore(Minecraft mc) throws Exception {
         MinecraftForge.EVENT_BUS.unregister(frames);
+        EntityCulling189.traceChanges = false;
         if (gpu != null) { MinecraftForge.EVENT_BUS.unregister(gpu); gpu.close(); gpu = null; }
         Options189.module(EntityCulling189.MODULE).setEnabled(cullWas);
         hudWas.forEach(Module::setEnabled);
