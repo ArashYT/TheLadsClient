@@ -78,7 +78,8 @@ final class Probe173Perf {
     private static String running;
     private static boolean frozen;
     private static long warmEnd, measureEnd, start, cpu0, gcMs0, gcCount0, alloc0;
-    private static int ticks;
+    private static int ticks, loadSamples;
+    private static double loadSum;
     private static float pitch;
     private static Probe170r.GpuTimer gpu;
 
@@ -144,7 +145,10 @@ final class Probe173Perf {
                 begin(mc, name);
                 measureEnd = System.nanoTime() + SECONDS * 1_000_000_000L;
             }
-            if (measureEnd == 0 || now < measureEnd) return retry(0);
+            if (measureEnd == 0 || now < measureEnd) {
+                if (measureEnd != 0 && ticks % 20 == 0) sampleLoad();
+                return retry(0);
+            }
             end(mc, name);
             teardown(mc, name);
             running = null;
@@ -305,6 +309,7 @@ final class Probe173Perf {
         KillBanner189.recordFrames(SECONDS * 3000); // up to 3000 FPS
         gpu = new Probe170r.GpuTimer();
         MinecraftForge.EVENT_BUS.register(gpu);
+        loadSum = loadSamples = 0;
         start = System.nanoTime();
         cpu0 = ManagementFactory.getThreadMXBean().getCurrentThreadCpuTime();
         alloc0 = allocated();
@@ -327,6 +332,7 @@ final class Probe173Perf {
         s.addProperty("gcCount", gc[1] - gcCount0);
         s.addProperty("allocMBps", round(alloc / 1048576.0 / (elapsed / 1e9)));
         s.addProperty("debugFps", Minecraft.getDebugFPS());
+        s.addProperty("sysCpuPct", round(loadSamples == 0 ? -1 : loadSum / loadSamples * 100)); // the whole machine, this game included
         gpu.close();
         scenes.add(name, s);
         LOG.info("Lads 1.8.9 perf {}: {}", name, s);
@@ -367,6 +373,15 @@ final class Probe173Perf {
         long ms = 0, count = 0;
         for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) { ms += Math.max(0, bean.getCollectionTime()); count += Math.max(0, bean.getCollectionCount()); }
         return new long[] {ms, count};
+    }
+
+    /** The whole machine's CPU load once a second while measuring: anything else running (a build, another game) shows here. */
+    private static void sampleLoad() {
+        java.lang.management.OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
+        double load = os instanceof com.sun.management.OperatingSystemMXBean ? ((com.sun.management.OperatingSystemMXBean) os).getSystemCpuLoad() : -1;
+        if (load < 0) return;
+        loadSum += load;
+        loadSamples++;
     }
 
     /** Bytes the render thread allocated so far (HotSpot), or 0. */

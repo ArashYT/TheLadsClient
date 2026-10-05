@@ -746,6 +746,7 @@ try
     if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") != "1") process.StartInfo.Environment["SDL_WINDOW_ACTIVATE_WHEN_SHOWN"] = "0";
     process.Start();
     QaWindowGuard.Watch(process);
+    if (perf189) Console.WriteLine("Benchmark: " + PerfProcess.Steady(process));
     GameSession.Attach(process, directory, loadedMods, message => { lock (sessionMessages) sessionMessages.Add(message); }, shared,
         () => { exitHandled.TrySetResult(); return Task.CompletedTask; });
     process.BeginOutputReadLine();
@@ -1353,5 +1354,28 @@ sealed class FabricModList : LoadedModList
         Declared = int.Parse(start.Groups[1].Value);
         inList = true;
         return true;
+    }
+}
+
+/// <summary>
+/// The 1.8.9 benchmark's game (LADS_VERIFY_189_ONLY=perf): Windows 11 gives a window that is not in front EcoQoS, which on a
+/// hybrid CPU moves its threads to the efficiency cores, so the numbers depended on which window the owner had in front. The
+/// game gets execution-speed throttling off (high QoS) and above-normal priority instead.
+/// </summary>
+static class PerfProcess
+{
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct PowerThrottling { public uint Version, ControlMask, StateMask; }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetProcessInformation(IntPtr process, int informationClass, ref PowerThrottling information, int size);
+
+    public static string Steady(Process game)
+    {
+        // ProcessPowerThrottling (4), PROCESS_POWER_THROTTLING_EXECUTION_SPEED (1) controlled and off.
+        var throttling = new PowerThrottling { Version = 1, ControlMask = 1, StateMask = 0 };
+        bool qos = SetProcessInformation(game.Handle, 4, ref throttling, System.Runtime.InteropServices.Marshal.SizeOf<PowerThrottling>());
+        game.PriorityClass = ProcessPriorityClass.AboveNormal;
+        return $"EcoQoS {(qos ? "off" : "unchanged (error " + System.Runtime.InteropServices.Marshal.GetLastWin32Error() + ")")}, priority {game.PriorityClass}";
     }
 }
