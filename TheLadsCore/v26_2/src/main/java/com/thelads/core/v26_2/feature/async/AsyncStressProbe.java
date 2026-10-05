@@ -103,6 +103,7 @@ final class AsyncStressProbe {
 
     private static final class Round {
         double cowWalked, villagerWalked, nearWalked, farWalked, mspt, p95, entityMs;
+        long benched, resumed; // Async self-check switches during the round
         /** Walkers in the middle pen, persistent cows [0] and villagers [1]: blocks walked, samples, samples on the move. */
         final double[] path = new double[2];
         final int[] samples = new int[2], moving = new int[2];
@@ -150,8 +151,9 @@ final class AsyncStressProbe {
             Module physics = ModuleManager.getInstance().getModule(ItemPhysicsModule.NAME);
             physicsBefore = physics.isEnabled();
             physics.setEnabled(true); // its item rules run in the item tick, on worker threads with Async on
-            int cores = Runtime.getRuntime().availableProcessors();
-            REPORT.add("cores " + cores + ", Async worker threads " + module.threads(cores) + ", min entities " + module.minEntities());
+            int cores = AsyncTicking.usableCores();
+            REPORT.add("cores " + Runtime.getRuntime().availableProcessors() + ", this game may use " + cores + ", Async worker threads " + module.threads(cores)
+                + ", min entities " + module.minEntities());
             onServer(server, () -> { build(server); return null; });
             next(20);
             return;
@@ -159,15 +161,26 @@ final class AsyncStressProbe {
         if (step == 10) { // two more minutes with Async on and everything still on the platform
             module.setEnabled(true);
             AsyncTicking.LOOP_NANOS.set(0);
+            LONG.benched = AsyncTicking.BENCHED.get();
+            LONG.resumed = AsyncTicking.RESUMED.get();
             startTiming();
             next(ENDURANCE);
             return;
         }
         if (step == 11) {
             stopTiming(LONG);
-            REPORT.add(String.format(Locale.ROOT, "Async on for %d s more: %d server ticks, mean %.1f ms (entity loop %.1f ms), p95 %.1f ms, %d entities on the platform",
-                ENDURANCE, LONG.ticks, LONG.mspt, LONG.entityMs, LONG.p95, onServer(server, () -> level(server).getEntitiesOfClass(Entity.class, platform()).size())));
+            LONG.benched = AsyncTicking.BENCHED.get() - LONG.benched;
+            LONG.resumed = AsyncTicking.RESUMED.get() - LONG.resumed;
+            boolean benchedNow = onServer(server, () -> AsyncTicking.benched(level(server)));
+            REPORT.add(String.format(Locale.ROOT, "Async on for %d s more: %d server ticks, mean %.1f ms (entity loop %.1f ms), p95 %.1f ms, %d entities on the platform;"
+                + " self-check: benched %d, back on %d, %s at the end", ENDURANCE, LONG.ticks, LONG.mspt, LONG.entityMs, LONG.p95,
+                onServer(server, () -> level(server).getEntitiesOfClass(Entity.class, platform()).size()), LONG.benched, LONG.resumed,
+                benchedNow ? "ticking normally" : "ticking in parallel"));
+            REPORT.add("self-check in the whole run: parallel ticking benched " + AsyncTicking.BENCHED.get() + " times, back on " + AsyncTicking.RESUMED.get() + " times");
             check(LONG.ticks > ENDURANCE * 10, "the server keeps ticking with Async on for " + ENDURANCE + " s (" + LONG.ticks + " ticks)");
+            double offMspt = (ROUNDS[0].mspt + ROUNDS[2].mspt) / 2;
+            check(LONG.mspt <= offMspt * 1.15, String.format(Locale.ROOT, "server tick time is no worse with Async on for %d s more (%.1f ms, %.1f and %.1f ms off)",
+                ENDURANCE, LONG.mspt, ROUNDS[0].mspt, ROUNDS[2].mspt));
             onServer(server, () -> { server.setDifficulty(Difficulty.PEACEFUL, true); return null; }); // peaceful despawning with Async on
             next(4);
             return;
@@ -187,6 +200,8 @@ final class AsyncStressProbe {
             case 0 -> { // fresh behaviour subjects, then 30 s of tick times and walking
                 module.setEnabled(ASYNC[r]);
                 if (ASYNC[r]) { AsyncTicking.PARALLEL_TICKS.set(0); AsyncTicking.PHASES.set(0); AsyncTicking.REGIONS.set(0); AsyncTicking.PARALLEL_ENTITIES.set(0); }
+                round.benched = AsyncTicking.BENCHED.get();
+                round.resumed = AsyncTicking.RESUMED.get();
                 positions = onServer(server, () -> { setupRound(server, r); return positions(server); });
                 AsyncTicking.LOOP_NANOS.set(0);
                 LAST.clear();
@@ -202,6 +217,8 @@ final class AsyncStressProbe {
             }
             default -> { // soak and behaviour results
                 onServer(server, () -> { soakResults(server, r); roundResults(server, r); clearSoak(server); return null; });
+                round.benched = AsyncTicking.BENCHED.get() - round.benched;
+                round.resumed = AsyncTicking.RESUMED.get() - round.resumed;
                 if (r == 2) compare();
                 next(5);
             }
@@ -213,8 +230,9 @@ final class AsyncStressProbe {
         long ticks = AsyncTicking.PARALLEL_TICKS.get(), phases = AsyncTicking.PHASES.get();
         for (int r = 0; r < 3; r++) {
             Round round = ROUNDS[r];
-            REPORT.add(String.format(Locale.ROOT, "round %d, Async %s: %d server ticks, mean %.1f ms (entity loop %.1f ms), p95 %.1f ms", r + 1,
-                ASYNC[r] ? "on" : "off", round.ticks, round.mspt, round.entityMs, round.p95));
+            REPORT.add(String.format(Locale.ROOT, "round %d, Async %s: %d server ticks, mean %.1f ms (entity loop %.1f ms), p95 %.1f ms%s", r + 1,
+                ASYNC[r] ? "on" : "off", round.ticks, round.mspt, round.entityMs, round.p95,
+                ASYNC[r] ? "; self-check: benched " + round.benched + ", back on " + round.resumed : ""));
             REPORT.add(String.format(Locale.ROOT, "  in 30 s persistent cows walked %.1f blocks each (on the move in %.0f%% of half-second samples, %.0f%% got 3+ blocks"
                 + " from their start), villagers %.1f blocks (%.0f%%, %.0f%%); non-persistent cows got 3+ blocks away: %.0f%% of %d within 32 blocks of the player,"
                 + " %.0f%% of %d farther (%d of those idle by vanilla's rule, no-action time 100+)", round.distance(0), round.movingShare(0) * 100, round.cowWalked * 100,

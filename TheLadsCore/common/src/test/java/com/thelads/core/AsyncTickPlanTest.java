@@ -54,10 +54,12 @@ class AsyncTickPlanTest {
         return Math.max(Math.abs(a.cx - b.cx), Math.abs(a.cz - b.cz)) * 16 - 16;
     }
 
-    @Test void threadsLeaveOneCoreForRendering() {
+    @Test void threadsLeaveCoresForRenderAndServerThreads() {
         var module = new AsyncModule();
         assertTrue(module.isEnabled(), "on by default (1.7.0 decision); it still falls back to normal ticking on its own");
-        assertEquals(7, module.threads(8));
+        assertEquals(6, module.threads(8));
+        assertEquals(2, module.threads(4));
+        assertEquals(1, module.threads(2));
         assertEquals(1, module.threads(1));
         ((com.thelads.core.config.DropdownOption) module.getOption("Threads")).setIndex(3);
         assertEquals(4, module.threads(8));
