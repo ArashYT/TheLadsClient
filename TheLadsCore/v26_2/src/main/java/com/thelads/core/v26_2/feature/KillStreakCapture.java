@@ -12,12 +12,16 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.DeathScreen;
 import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,6 +29,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +52,9 @@ final class KillStreakCapture {
     private static final List<JsonElement> OPTIONS = new ArrayList<>();
     private static final List<Integer> PIGS = Collections.synchronizedList(new ArrayList<>());
     private static final List<Integer> ALL_PIGS = Collections.synchronizedList(new ArrayList<>());
+    private static final Map<BlockPos, BlockState> BLOCKS = new LinkedHashMap<>();
+    private static Vec3 home;
+    private static BlockPos floor;
     private static final List<Integer> SHOWN = new ArrayList<>();
     private static final StringBuilder TRACE = new StringBuilder("ms,run,streak,queued,sequence,age\n");
     private static int step = -1, wait, passed, lastSequence, pictures, pigsWanted, held;
@@ -109,6 +119,7 @@ final class KillStreakCapture {
                 began = System.nanoTime();
                 NativeKillBanner.reset();
                 NativeKillBanner.bindCurrent();
+                platform();
                 pigs(5);
                 wait = 20;
             }
@@ -180,6 +191,7 @@ final class KillStreakCapture {
             case 19 -> {
                 if (mc.gui.screen() instanceof DeathScreen) mc.gui.setScreen(null);
                 check(mc.player != null && mc.player.isAlive(), "QA respawned");
+                platform();
                 pigs(1);
                 wait = 20;
             }
@@ -250,6 +262,27 @@ final class KillStreakCapture {
         player.setPos(mc.player.getX(), mc.player.getY(), mc.player.getZ() + 3);
         mc.level.addEntity(player);
         return player;
+    }
+
+    /**
+     * The player on a 7x7 stone floor in open sky (y 200, above where they stand), built once and put back at the end: the QA
+     * world's spawn can be a cave, where pigs next to the player suffocate in its walls.
+     */
+    private static void platform() {
+        server(sp -> {
+            var level = sp.level();
+            if (home == null) home = sp.position();
+            if (floor == null) {
+                floor = BlockPos.containing(sp.getX(), 200, sp.getZ());
+                for (int x = -3; x <= 3; x++) for (int z = -3; z <= 3; z++) for (int y = -1; y <= 2; y++) {
+                    BlockPos pos = floor.offset(x, y, z);
+                    BLOCKS.putIfAbsent(pos, level.getBlockState(pos));
+                    level.setBlock(pos, y < 0 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState(), 2);
+                }
+            }
+            sp.resetFallDistance();
+            sp.teleportTo(level, floor.getX() + .5, floor.getY(), floor.getZ() + .5, Set.of(), sp.getYRot(), 30, false);
+        });
     }
 
     /** {@code count} new pigs (no AI) in a ring 1.5 blocks round the player, their ids in PIGS once the server made them. */
@@ -336,7 +369,11 @@ final class KillStreakCapture {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.screen() instanceof DeathScreen) { mc.player.respawn(); mc.gui.setScreen(null); }
         run = null;
-        server(sp -> { synchronized (ALL_PIGS) { for (int id : ALL_PIGS) if (sp.level().getEntity(id) instanceof Entity pig) pig.discard(); } });
+        server(sp -> {
+            synchronized (ALL_PIGS) { for (int id : ALL_PIGS) if (sp.level().getEntity(id) instanceof Entity pig) pig.discard(); }
+            BLOCKS.forEach((pos, state) -> sp.level().setBlock(pos, state, 2));
+            if (home != null) { sp.resetFallDistance(); sp.teleportTo(sp.level(), home.x, home.y, home.z, Set.of(), sp.getYRot(), sp.getXRot(), false); }
+        });
         KillBannerModule module = module();
         for (int i = 0; i < OPTIONS.size(); i++) module.getOptions().get(i).load(OPTIONS.get(i));
         module.setEnabled(enabledBefore);
