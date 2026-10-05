@@ -36,6 +36,8 @@ public class LadsSettingsScreen26 extends Screen {
     }
 
     public void openGlobalColors(){ui.openGlobalColors();}
+    /** The shared menu this screen draws and routes input to (QA reads its bounds and state). */
+    public LadsSettingsScreen ui() { return ui; }
     public void openDisplayActions(){ui.openDisplayActions();}
     public void openModule(String name) { ui.openModule(name); }
     public void searchKillBanners(String query) { ui.searchKillBanners(query); }

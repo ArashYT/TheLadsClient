@@ -148,6 +148,8 @@ public final class NativeFeatures {
             ? fullbright.effectiveGamma() : -1;
     }
     private static double lastGamma = Double.NaN;
+    /** QA only (UiCapture's control run): the lightmap is left to vanilla's tick again, as before 1.7.2. */
+    static volatile boolean qaDeferGamma;
     /**
      * FullbrightMixin, once per frame: whether Fullbright's gamma (on/off or the slider) differs from the last frame's. The lightmap
      * only rebuilds when vanilla's tick says so, and that tick does not run while a menu pauses the game or when BadOptimizations
@@ -157,6 +159,6 @@ public final class NativeFeatures {
         double now = fullbrightGamma();
         boolean changed = Double.compare(now, lastGamma) != 0;
         lastGamma = now;
-        return changed;
+        return changed && !qaDeferGamma;
     }
 }

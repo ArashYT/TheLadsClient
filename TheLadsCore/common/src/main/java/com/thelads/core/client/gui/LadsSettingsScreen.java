@@ -48,7 +48,7 @@ public final class LadsSettingsScreen {
     private List<Module> filtered = List.of();
     private Module detail;
     private Option editingOption, dragging;
-    private Rect dragTrack;
+    private Rect dragTrack, gameView;
     private boolean editingSearch, selectAll;
     private String editBuffer = "";
     private int cursor;
@@ -109,6 +109,8 @@ public final class LadsSettingsScreen {
     /** Bounds of a control drawn by the last render (e.g. "search", "option:Size"), or null; QA drives real input at them. */
     public Rect controlBounds(String id) { return controls.stream().filter(c -> c.id.equals(id)).map(Control::rect).findFirst().orElse(null); }
     public int getScrollOffset() { return scrollOffset; }
+    /** Where the last frame drew the live game view (GUI pixels), or null (QA measures the world there). */
+    public Rect gameViewBounds() { return gameView; }
     /** True while the open page draws the live game view in its preview (Fullbright): 1.8.9 copies the framebuffer before the menu paints. */
     public boolean showsGameView() { return detail != null && "Fullbright".equalsIgnoreCase(detail.getName()); }
     /** The reset confirmation (QA reads its bounds and clicks them). */
@@ -125,7 +127,7 @@ public final class LadsSettingsScreen {
         if (Math.abs(scrollOffset - displayedScroll) < .2) displayedScroll = scrollOffset;
         renderScroll = (int)Math.round(displayedScroll);
         if (hoverStates.size() > 1024) hoverStates.clear();
-        width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear(); tipModule = null;
+        width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear(); tipModule = null; gameView = null;
         g.fill(0, 0, width, height, BG);
         int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 340 ? 118 : 0;
         g.fill(0, 0, width, 2, ACCENT);
@@ -550,6 +552,7 @@ public final class LadsSettingsScreen {
             } else if ("Fullbright".equalsIgnoreCase(name)) {
                 // The live world, so a change shows while it is made; versions that cannot copy it keep the card.
                 if (g.drawGameView(boxX + 2, boxY + 2, boxW - 4, boxH - 4)) {
+                    gameView = new Rect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
                     String live = m.isEnabled() && m.getOption("Gamma") instanceof SliderOption gamma ? "Fullbright " + gamma.display() : "Fullbright off";
                     int labelW = g.textWidth(live) + 10;
                     round(g, centerX - labelW / 2, boxY + boxH - 18, labelW, 14, 0xC0000000);

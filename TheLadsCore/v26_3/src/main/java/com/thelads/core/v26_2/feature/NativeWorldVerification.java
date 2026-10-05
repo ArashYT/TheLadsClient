@@ -137,6 +137,7 @@ public final class NativeWorldVerification {
             SprintCapture.tick(gameDirectory, captureReady && (SprintCapture.busy() || !captureBusy()));
             Hud170Capture.tick(gameDirectory, captureReady && (Hud170Capture.busy() || !captureBusy()));
             HudFlickerCapture.tick(gameDirectory, captureReady && (HudFlickerCapture.busy() || !captureBusy()));
+            UiCapture.tick(gameDirectory, captureReady && (UiCapture.busy() || !captureBusy()));
             ItemPhysicsCapture.tick(gameDirectory, captureReady && (ItemPhysicsCapture.busy() || !captureBusy()));
             InventoryCapture.tick(gameDirectory, captureReady && (InventoryCapture.busy() || !captureBusy()));
             CheatsProbe.tick(gameDirectory, captureReady);
@@ -268,6 +269,7 @@ public final class NativeWorldVerification {
         SprintCapture.frame(target, gameDirectory);
         Hud170Capture.frame(target, gameDirectory);
         HudFlickerCapture.frame(target, gameDirectory);
+        UiCapture.frame(target, gameDirectory);
         ItemPhysicsCapture.frame(target, gameDirectory);
         InventoryCapture.frame(target, gameDirectory);
         ServerFeaturesCapture.frame(target, gameDirectory);
@@ -414,7 +416,7 @@ public final class NativeWorldVerification {
         return HudInfoCapture.busy() || KillBannerCapture.busy() || OldAnimationsCapture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
             ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
-            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy();
+            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();
