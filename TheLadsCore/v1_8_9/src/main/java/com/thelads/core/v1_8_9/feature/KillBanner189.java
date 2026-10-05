@@ -56,6 +56,8 @@ public final class KillBanner189 {
     /** QA only (Probe170Misc): each frame's time (ns) while a probe records them. */
     static long[] frameTimes, renderTimes;
     static int frameCount;
+    /** QA: the next banner draws fail as a missing asset would (the overlay must skip it, not crash). */
+    static boolean qaBreak;
     /** QA: an opaque RGB drawn over the frame behind the banner, so held frames of different runs compare pixel for pixel (0: none). */
     static int backdrop;
     private static long lastFrame;
@@ -187,6 +189,11 @@ public final class KillBanner189 {
         play(sound, (float) module.volume.getValue());
     }
 
+    /** QA: a banner is on screen. */
+    static boolean showing() {
+        return BANNER.age(System.nanoTime()) >= 0;
+    }
+
     /** QA: false once the strip frame the last draw wanted was the one drawn (always for stills). */
     static boolean stale() {
         return KillBannerArt189.stale();
@@ -270,7 +277,7 @@ public final class KillBanner189 {
             String what = String.valueOf(failure.getMessage());
             if (!what.equals(failureLogged)) {
                 failureLogged = what;
-                LOGGER.error("Lads kill banner skipped: its art could not be drawn", failure);
+                LOGGER.warn("Lads kill banner skipped: its art could not be drawn", failure);
             }
         } finally {
             KillBannerArt189.end();
@@ -295,6 +302,7 @@ public final class KillBanner189 {
     }
 
     private static void render(KillBannerModule module, double age, int width, int height) {
+        if (qaBreak) throw new IllegalStateException("QA: kill banner art unavailable");
         KillBannerModule.Pick pick = KillBanners.shown(module);
         KillBannerStyle style = pick.style();
         if (style == null) {

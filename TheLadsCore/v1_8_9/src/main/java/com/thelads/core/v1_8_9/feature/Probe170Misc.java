@@ -162,6 +162,14 @@ final class Probe170Misc {
                     steps.add(mc -> { CoreProbe.screenshot(mc, "170-kb-picker-" + picker); mc.displayGuiScreen(null); return after(5); });
                 }
                 } // held frames
+                if (focus.equals("killtiming")) { // a banner whose art cannot be drawn is skipped and cleared (once logged), not a crash
+                    steps.add(mc -> { KillBanner189.reset(); KillBanner189.qaBreak = true; KillBanner189.trigger(1, false, false); return after(6); });
+                    steps.add(mc -> {
+                        KillBanner189.qaBreak = false;
+                        check(!KillBanner189.showing(), "KillBanner: a banner whose art fails is skipped and cleared, the game goes on");
+                        return true;
+                    });
+                }
                 if (focus.equals("killtiming")) { // art not drawn for a minute is let go: textures, feeds and the strips with their inflaters
                     steps.add(mc -> { banner().bannerStyle.setIndex(KillBannerModule.BASE); return after(1400); });
                     steps.add(mc -> {
