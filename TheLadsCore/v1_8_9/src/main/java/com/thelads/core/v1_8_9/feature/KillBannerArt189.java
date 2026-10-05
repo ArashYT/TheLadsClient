@@ -1,17 +1,29 @@
 package com.thelads.core.v1_8_9.feature;
 
+import com.thelads.core.client.killbanner.KillBannerFeed;
 import com.thelads.core.client.killbanner.KillBannerPlayer;
 import com.thelads.core.client.killbanner.KillBannerStrip;
 import com.thelads.core.client.killbanner.KillBannerStyle;
+import com.thelads.core.modules.KillBannerModule;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.imageio.ImageIO;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.lwjgl.BufferUtils;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.WorldRenderer;
@@ -24,6 +36,9 @@ import org.lwjgl.opengl.GL12;
  * 26.x KillBannerArt on 1.8.9: Reaver's and Rogue's recoloured frames (KillBannerPlayer.Frame) or a Kingdom Archives skin's
  * layers in motion (KillBannerPlayer.Layers) where Valorant puts them, with their overlays, as DynamicTextures (linearly
  * sampled: the banner is drawn at fractional scales) on Tessellator quads. Art is let go a minute after it was last drawn.
+ * <p>Nothing here decodes on the render thread while a banner plays: warm() has a worker read the strips and decode the PNGs, thumbnails
+ * and recoloured way-out layers, which are uploaded a few a tick; the strip frames come recoloured from a KillBannerFeed and are
+ * uploaded as they are with one glTexSubImage2D.
  */
 final class KillBannerArt189 {
     static final class Sprite {
@@ -32,23 +47,67 @@ final class KillBannerArt189 {
         long used;
         Sprite(DynamicTexture texture, int width, int height) { this.texture = texture; this.width = width; this.height = height; }
     }
-    private static final class Live {
-        Sprite sprite;
-        KillBannerStrip strip;
-        int frame = -1, variant = -1;
-        byte[] copy;
+    /** Straight pixels ready for a texture, made off the render thread. */
+    private static final class Pixels {
+        final int[] argb;
+        final int width, height;
+        int[] box;
+        Pixels(int[] argb, int width, int height) { this.argb = argb; this.width = width; this.height = height; }
+    }
+    /** What an animated skin keeps in use (let go together, a minute after it was last drawn): its frame texture and what shows in it, the feed, way-out layers and thumbnails. */
+    private static final class Art {
+        final KillBannerStyle style;
+        final Sprite[] exit, thumb; // exit: [(kills - 1) * variants + variant] * 2 + (icon ? 1 : 0)
+        int[] box;
+        long used;
+        boolean freed;
+        int prepared = -1;
+        Sprite live;
+        KillBannerFeed feed;
+        KillBannerStrip shownStrip;
+        int shownVariant = -1, shownFrame = -1;
+        Art(KillBannerStyle style) {
+            this.style = style;
+            int variants = style.variants == null ? 1 : style.variants.length;
+            exit = new Sprite[5 * variants * 2];
+            thumb = new Sprite[variants];
+        }
+        int variant(int variant) { return Math.max(0, Math.min(thumb.length - 1, variant)); }
+        int exitSlot(int kills, int variant, boolean icon) { return ((Math.min(5, kills) - 1) * thumb.length + variant(variant)) * 2 + (icon ? 1 : 0); }
+        void free() {
+            freed = true;
+            if (live != null) live.texture.deleteGlTexture();
+            if (feed != null) feed.release();
+            for (Sprite s : exit) if (s != null) s.texture.deleteGlTexture();
+            for (Sprite s : thumb) if (s != null) s.texture.deleteGlTexture();
+            style.release();
+        }
     }
     private static final String DIR = "/assets/theladscore/killbanner/", GLOW = DIR + "glow.png", SHADOW = DIR + "shadow.png",
         MARK = DIR + "mark.png", MARK_THIN = DIR + "mark_thin.png", HEADSHOT = DIR + "headshot.png", HS_MARK = DIR + "hs_mark.png";
     private static final Map<String, Sprite> SPRITES = new HashMap<>();
-    private static final Map<KillBannerStyle, Live> LIVE = new EnumMap<>(KillBannerStyle.class);
-    private static final Map<KillBannerStyle, int[]> BOUNDS = new EnumMap<>(KillBannerStyle.class);
+    private static final Map<KillBannerStyle, Art> ART = new EnumMap<>(KillBannerStyle.class);
+    /** Sprites asked of the worker and not stored yet (a path that failed stays: it is not asked again, the first draw says why). */
+    private static final Set<String> PENDING = new HashSet<>();
+    /** What the worker finished, for the client thread to turn into textures. */
+    private static final Queue<Runnable> READY = new ConcurrentLinkedQueue<>();
+    private static final ExecutorService LOADER = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "Lads kill banner art");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private static final Logger LOGGER = LogManager.getLogger("TheLadsCore");
+    /** Textures made a client tick from what the worker finished. */
+    private static final int UPLOADS_A_TICK = 3;
     private static final int[] PHASEGUARD_COLORS = { 0xED6D3B, 0x008BBD, 0x68BD42, 0xD6D642 };
     private static final long IDLE = 60_000_000_000L;
     /** One spray particle (KillBannerPlayer.particle). */
     private static final float[] PARTICLE = new float[6];
     static final String BASE = "/assets/theladscore/textures/gui/base_kill_banner.png";
-    private static long now, swept, warmed;
+    private static long now, swept;
+    private static ByteBuffer upload;
+    /** QA: the strip frame wanted was not ready at the last draw (the previous one stays up). */
+    private static boolean stale;
 
     private KillBannerArt189() {}
 
@@ -65,6 +124,7 @@ final class KillBannerArt189 {
     /** The banner with its ring centre at x, y and k GUI pixels a cell pixel. */
     private static void strip(KillBannerStyle style, int variant, int kills, KillBannerStrip strip, KillBannerPlayer.Frame f, float x, float y, float k) {
         now = System.nanoTime();
+        stale = false;
         GlStateManager.pushMatrix();
         try {
             GlStateManager.translate(x, y, 0.0F);
@@ -78,10 +138,13 @@ final class KillBannerArt189 {
             if (f.drawnExit()) {
                 quad(exitLayer(style, kills, variant, strip, false), 0, 0, 1, argb(0xFFFFFF, f.restAlpha()));
                 if (f.iconAlpha() > 0) iconLayer(style, exitLayer(style, kills, variant, strip, true), f.iconScale(), argb(0xFFFFFF, f.iconAlpha()));
-            } else quad(frame(style, variant, strip, f.stripFrame()), 0, 0, 1, -1);
+            } else {
+                Sprite cell = frame(style, variant, strip, f.stripFrame());
+                if (cell != null) quad(cell, 0, 0, 1, -1);
+            }
             GlStateManager.translate(0.0F, f.iconY(), 0.0F); // the overlays sit on the icon, wherever the strip has it
-            if (f.heartAlpha() > 0) iconLayer(style, sprite(style.asset("heart.png")), f.iconScale(), argb(0xFFFFFF, f.heartAlpha()));
-            if (f.strobe() > 0) iconLayer(style, sprite(style.asset("tint.png")), f.iconScale(), argb(KillBannerPlayer.STROBE_RED & 0xFFFFFF, f.strobe()));
+            if (f.heartAlpha() > 0) iconLayer(style, sprite(style.heartAsset()), f.iconScale(), argb(0xFFFFFF, f.heartAlpha()));
+            if (f.strobe() > 0) iconLayer(style, sprite(style.tintAsset()), f.iconScale(), argb(KillBannerPlayer.STROBE_RED & 0xFFFFFF, f.strobe()));
             if (f.markSize() > 0) {
                 float cx = style.anchorX, cy = style.anchorY + style.markY * f.iconScale();
                 mark(sprite(MARK_THIN), cx, cy, f.markSize(), f.markColor(), f.markThinAlpha());
@@ -100,6 +163,7 @@ final class KillBannerArt189 {
     /** As 26.x KillBannerArt.still: a Kingdom Archives skin's layers in motion with its ring centre at x, y, k GUI pixels a cell pixel. */
     private static void still(KillBannerStyle style, int variant, int kills, KillBannerPlayer.Layers l, float x, float y, float k) {
         now = System.nanoTime();
+        stale = false;
         GlStateManager.pushMatrix();
         try {
             GlStateManager.translate(x, y, 0.0F);
@@ -196,17 +260,16 @@ final class KillBannerArt189 {
     static void thumb(KillBannerStyle style, int variant, int x, int y, int w, int h) {
         now = System.nanoTime();
         if (style.isAnimated()) {
-            KillBannerStrip strip = style.strip(1);
-            String key = style.id + "/thumb/" + variant;
-            Sprite cell = SPRITES.get(key);
-            if (cell == null) {
-                byte[] rgba = strip.frame(strip.introEnd).clone();
-                style.recolor(rgba, variant);
-                SPRITES.put(key, cell = texture(rgba, strip.width, strip.height));
+            Art art = art(style);
+            int v = art.variant(variant);
+            Sprite cell = art.thumb[v];
+            if (cell == null) { // not the chosen skin's (warm() has that one): made now
+                Pixels pixels = thumbPixels(style, variant);
+                art.thumb[v] = cell = texture(pixels);
+                art.box = pixels.box;
             }
             cell.used = now;
-            int[] box = BOUNDS.get(style);
-            if (box == null) BOUNDS.put(style, box = bounds(strip.frame(strip.introEnd), strip.width, strip.height));
+            int[] box = art.box;
             float k = Math.min(w / (float) box[2], h / (float) box[3]);
             GlStateManager.pushMatrix();
             try {
@@ -214,7 +277,7 @@ final class KillBannerArt189 {
                 GlStateManager.scale(k, k, 1.0F);
                 GlStateManager.translate(-box[0], -box[1], 0.0F);
                 quad(cell, 0, 0, 1, -1);
-                if (style.heart) iconLayer(style, sprite(style.asset("heart.png")), 1, -1);
+                if (style.heart) iconLayer(style, sprite(style.heartAsset()), 1, -1);
                 mark(sprite(MARK), style.anchorX, style.anchorY + style.markY, style.markSize, KillBannerPlayer.MARK_RED, 1);
             } finally {
                 GlStateManager.popMatrix();
@@ -268,29 +331,86 @@ final class KillBannerArt189 {
     }
 
     /**
-     * Loads the skin's art now (each client tick for the chosen skin), so its first kill does not wait for it and it is kept;
-     * Reaver's and Rogue's frames one kill count a tick.
+     * Gets the skin's art ready (each client tick for the chosen skin, and for the base banner see warmBase), so its first kill does
+     * not wait for it and it is kept: a worker reads the strips and decodes the PNGs, the sprites it finishes become textures here,
+     * a few a tick. Art is asked for once and is not asked for again while it is loading.
      */
     static void warm(KillBannerStyle style, int variant) {
         now = System.nanoTime();
-        sprite(SHADOW);
-        sprite(MARK);
-        sprite(MARK_THIN);
+        poll();
+        for (String path : plan(style, variant)) request(path);
+        if (!style.isAnimated()) return;
+        Art art = art(style);
+        for (Sprite s : art.exit) if (s != null) s.used = now;
+        for (Sprite s : art.thumb) if (s != null) s.used = now;
+        if (art.prepared != variant) {
+            art.prepared = variant;
+            prepare(art, variant);
+        }
+    }
+
+    /** The base banner's one sprite, ready ahead of the first kill. */
+    static void warmBase() {
+        now = System.nanoTime();
+        poll();
+        request(BASE);
+    }
+
+    /**
+     * A kill of this look has just been seen: points the feed at its strip and has the worker start decoding, so the frames are
+     * there when the first one is drawn (if the strip is not read yet, the first draw reads it).
+     */
+    static void prefetch(KillBannerModule.Pick pick, int kills) {
+        KillBannerStyle style = pick == null ? null : pick.style();
+        if (style == null || !style.isAnimated()) return;
+        KillBannerStrip strip = style.loadedStrip(kills);
+        if (strip == null) return;
+        now = System.nanoTime();
+        Art art = art(style);
+        if (art.feed == null) art.feed = new KillBannerFeed(style);
+        art.feed.target(strip, pick.variant());
+        art.feed.get(0, 0);
+    }
+
+    /** QA: false once the strip frame the last draw wanted was the one drawn. */
+    static boolean stale() {
+        return stale;
+    }
+
+    /** QA: animated skins holding art (frame texture, feed, thumbnails, way-out layers, strips). */
+    static int held() {
+        return ART.size();
+    }
+
+    /** The sprites a skin's banner draws, for a variant (built once). */
+    private static final Map<KillBannerStyle, String[][]> PLANS = new EnumMap<>(KillBannerStyle.class);
+
+    private static String[] plan(KillBannerStyle style, int variant) {
+        String[][] byVariant = PLANS.get(style);
+        if (byVariant == null) PLANS.put(style, byVariant = new String[style.variantNames.length][]);
+        int v = Math.max(0, Math.min(byVariant.length - 1, variant));
+        if (byVariant[v] != null) return byVariant[v];
+        java.util.List<String> paths = new java.util.ArrayList<>();
+        paths.add(SHADOW);
+        paths.add(MARK);
+        paths.add(MARK_THIN);
+        paths.add(HEADSHOT);
         if (style.isAnimated()) {
-            sprite(style.asset("tint.png"));
-            if (style.heart) sprite(style.asset("heart.png"));
-            style.strip(1 + (int) (warmed++ % 5));
-            return;
+            paths.add(style.tintAsset());
+            if (style.heart) paths.add(style.heartAsset());
+        } else {
+            paths.add(GLOW);
+            paths.add(HS_MARK);
+            if (style.type == KillBannerStyle.Type.BANNER_SWAP) {
+                for (int kills = 1; kills <= 5; kills++) paths.add(style.swapAsset(kills));
+            } else {
+                if (style.hasFrame) paths.add(style.frameAsset());
+                if (style.hasRing) paths.add(style.ringAsset());
+                if (style.hasEmblem) paths.add(style.emblemAsset(v));
+                if (style.hasPip) paths.add(style.pipAsset(v));
+            }
         }
-        sprite(GLOW);
-        if (style.type == KillBannerStyle.Type.BANNER_SWAP) {
-            for (int kills = 1; kills <= 5; kills++) sprite(style.swapAsset(kills));
-            return;
-        }
-        if (style.hasFrame) sprite(style.frameAsset());
-        if (style.hasRing) sprite(style.ringAsset());
-        if (style.hasEmblem) sprite(style.emblemAsset(variant));
-        if (style.hasPip) sprite(style.pipAsset(variant));
+        return byVariant[v] = paths.toArray(new String[0]);
     }
 
     /** Lets go of art not drawn for a minute; looks every ten seconds (each client tick calls it). */
@@ -304,6 +424,83 @@ final class KillBannerArt189 {
             s.texture.deleteGlTexture();
             it.remove();
         }
+        for (Iterator<Art> it = ART.values().iterator(); it.hasNext(); ) {
+            Art art = it.next();
+            if (time - art.used < IDLE) continue;
+            art.free(); // the frame texture, feed, way-out layers, thumbnails and the strips with their inflaters
+            it.remove();
+        }
+        if (ART.isEmpty()) upload = null;
+    }
+
+    /** Textures from what the worker has finished (a few a tick, each is a texture upload). */
+    private static void poll() {
+        Runnable ready;
+        for (int i = 0; i < UPLOADS_A_TICK && (ready = READY.poll()) != null; i++) ready.run();
+    }
+
+    private static Art art(KillBannerStyle style) {
+        Art art = ART.get(style);
+        if (art == null) ART.put(style, art = new Art(style));
+        art.used = now;
+        return art;
+    }
+
+    /** Has the worker decode a sprite unless it is loaded or on its way. */
+    private static void request(String path) {
+        Sprite sprite = SPRITES.get(path);
+        if (sprite != null) {
+            sprite.used = now;
+            return;
+        }
+        if (!PENDING.add(path)) return;
+        LOADER.execute(() -> {
+            try {
+                Pixels pixels = decode(path);
+                READY.add(() -> {
+                    PENDING.remove(path);
+                    if (!SPRITES.containsKey(path)) SPRITES.put(path, texture(pixels)); // a draw may have loaded it first
+                });
+            } catch (Throwable failure) {
+                LOGGER.warn("Lads kill banner art not loaded ahead: {}", failure.toString());
+            }
+        });
+    }
+
+    /** Worker: an animated skin's strips, the chosen variant's thumbnail and its way-out layers. */
+    private static void prepare(Art art, int variant) {
+        KillBannerStyle style = art.style;
+        LOADER.execute(() -> {
+            try {
+                KillBannerStrip first = style.strip(1);
+                for (int kills = 2; kills <= 5; kills++) style.strip(kills);
+                Pixels thumb = thumbPixels(style, variant);
+                READY.add(() -> {
+                    if (art.freed) return;
+                    if (art.live == null) {
+                        art.live = liveTexture(first.width, first.height);
+                        write(art.live, new byte[first.width * first.height * 4]); // the upload buffer and the GL path are warm before the first kill
+                    }
+                    int v = art.variant(variant);
+                    if (art.thumb[v] == null) art.thumb[v] = texture(thumb);
+                    art.box = thumb.box;
+                });
+                for (int kills = 1; kills <= 5; kills++) {
+                    KillBannerStrip strip = style.strip(kills);
+                    if (strip.exitFrames != 0) continue; // Rogue's way out is in its frames
+                    for (int part = 0; part < 2; part++) {
+                        boolean icon = part == 1;
+                        int slot = art.exitSlot(kills, variant, icon);
+                        Pixels pixels = exitPixels(style, strip, variant, icon);
+                        READY.add(() -> {
+                            if (!art.freed && art.exit[slot] == null) art.exit[slot] = texture(pixels);
+                        });
+                    }
+                }
+            } catch (Throwable failure) {
+                LOGGER.warn("Lads kill banner {} not prepared ahead: {}", style.id, failure.toString());
+            }
+        });
     }
 
     /** x, y, width and height of the frame's visible pixels. */
@@ -396,75 +593,116 @@ final class KillBannerArt189 {
     static Sprite sprite(String path) {
         Sprite sprite = SPRITES.get(path);
         if (sprite == null) {
-            try (InputStream in = KillBannerArt189.class.getResourceAsStream(path)) {
-                if (in == null) throw new IOException(path + " is missing");
-                BufferedImage image = ImageIO.read(in);
-                sprite = linear(new DynamicTexture(image), image.getWidth(), image.getHeight());
-            } catch (IOException failure) {
-                throw new IllegalStateException("Kill banner art unavailable: " + path, failure);
-            }
-            SPRITES.put(path, sprite);
+            SPRITES.put(path, sprite = texture(decode(path)));
         }
         sprite.used = now;
         return sprite;
+    }
+
+    /** A PNG of the mod's assets as texture pixels. */
+    private static Pixels decode(String path) {
+        try (InputStream in = KillBannerArt189.class.getResourceAsStream(path)) {
+            if (in == null) throw new IOException(path + " is missing");
+            BufferedImage image = ImageIO.read(in);
+            int w = image.getWidth(), h = image.getHeight();
+            return new Pixels(image.getRGB(0, 0, w, h, null, 0, w), w, h);
+        } catch (IOException failure) {
+            throw new IllegalStateException("Kill banner art unavailable: " + path, failure);
+        }
     }
 
     /** Reaver's settled icon or the rest of its banner, recoloured, for the drawn way out. */
     private static Sprite exitLayer(KillBannerStyle style, int kills, int variant, KillBannerStrip strip, boolean icon) {
-        String key = style.id + "/k" + Math.min(5, kills) + "/" + variant + (icon ? "/icon" : "/rest");
-        Sprite sprite = SPRITES.get(key);
-        if (sprite == null) {
-            try {
-                BufferedImage image = ImageIO.read(new ByteArrayInputStream(icon ? strip.exitIcon : strip.exitRest));
-                int w = image.getWidth(), h = image.getHeight();
-                byte[] rgba = new byte[w * h * 4];
-                for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-                    int c = image.getRGB(x, y), o = (y * w + x) * 4;
-                    rgba[o] = (byte) (c >> 16); rgba[o + 1] = (byte) (c >> 8); rgba[o + 2] = (byte) c; rgba[o + 3] = (byte) (c >>> 24);
-                }
-                style.recolor(rgba, variant);
-                SPRITES.put(key, sprite = texture(rgba, w, h));
-            } catch (IOException failure) {
-                throw new IllegalStateException("Kill banner way-out art unavailable: " + key, failure);
-            }
-        }
+        Art art = art(style);
+        int slot = art.exitSlot(kills, variant, icon);
+        Sprite sprite = art.exit[slot];
+        if (sprite == null) art.exit[slot] = sprite = texture(exitPixels(style, strip, variant, icon)); // warm() has not got here yet
         sprite.used = now;
         return sprite;
     }
 
-    /** The style's frame texture, rewritten when the frame, the strip or the variant changes. */
+    private static Pixels exitPixels(KillBannerStyle style, KillBannerStrip strip, int variant, boolean icon) {
+        try {
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(icon ? strip.exitIcon : strip.exitRest));
+            int w = image.getWidth(), h = image.getHeight();
+            byte[] rgba = new byte[w * h * 4];
+            for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+                int c = image.getRGB(x, y), o = (y * w + x) * 4;
+                rgba[o] = (byte) (c >> 16); rgba[o + 1] = (byte) (c >> 8); rgba[o + 2] = (byte) c; rgba[o + 3] = (byte) (c >>> 24);
+            }
+            style.recolor(rgba, variant);
+            return pack(rgba, w, h);
+        } catch (IOException failure) {
+            throw new IllegalStateException("Kill banner way-out art unavailable: " + style.id + (icon ? "/icon" : "/rest"), failure);
+        }
+    }
+
+    /** The picker's settled one-kill frame in a variant, with the box of its visible pixels. */
+    private static Pixels thumbPixels(KillBannerStyle style, int variant) {
+        KillBannerStrip strip = style.strip(1);
+        byte[] rgba = new byte[strip.width * strip.height * 4];
+        strip.frame(strip.introEnd, rgba);
+        int[] box = bounds(rgba, strip.width, strip.height);
+        style.recolor(rgba, variant);
+        Pixels pixels = pack(rgba, strip.width, strip.height);
+        pixels.box = box;
+        return pixels;
+    }
+
+    /** The style's frame texture with the strip frame in it: the feed's recoloured pixels, uploaded when the frame changes. */
     private static Sprite frame(KillBannerStyle style, int variant, KillBannerStrip strip, int index) {
-        Live live = LIVE.get(style);
-        if (live == null) LIVE.put(style, live = new Live());
-        if (live.sprite == null) { // one cell size a style
-            live.copy = new byte[strip.width * strip.height * 4];
-            live.sprite = new Sprite(new DynamicTexture(strip.width, strip.height), strip.width, strip.height);
-            live.frame = -1;
+        Art art = art(style);
+        index = Math.max(0, Math.min(strip.frames - 1, index));
+        if (art.live == null) art.live = liveTexture(strip.width, strip.height); // one cell size a style
+        if (art.feed == null) art.feed = new KillBannerFeed(style);
+        art.feed.target(strip, variant);
+        if (art.shownStrip != strip || art.shownVariant != variant || art.shownFrame != index) {
+            // The render thread never waits for the worker: a frame not decoded yet leaves the last one up (or none, at a banner's very start).
+            byte[] pixels = art.feed.get(index, 0);
+            if (pixels != null) {
+                write(art.live, pixels);
+                art.shownStrip = strip;
+                art.shownVariant = variant;
+                art.shownFrame = index;
+            } else {
+                stale = true;
+                if (art.shownStrip != strip || art.shownVariant != variant) return null; // nothing of this banner to show yet
+            }
         }
-        if (live.strip != strip || live.frame != index || live.variant != variant) {
-            System.arraycopy(strip.frame(index), 0, live.copy, 0, live.copy.length);
-            style.recolor(live.copy, variant);
-            write(live.sprite.texture, live.copy);
-            live.strip = strip;
-            live.frame = index;
-            live.variant = variant;
-        }
-        return live.sprite;
+        return art.live;
     }
 
-    private static Sprite texture(byte[] rgba, int w, int h) {
-        DynamicTexture texture = new DynamicTexture(w, h);
-        write(texture, rgba);
-        return new Sprite(texture, w, h);
+    private static Sprite liveTexture(int w, int h) {
+        return linear(new DynamicTexture(w, h), w, h);
     }
 
-    /** Straight RGBA bytes into the texture's ARGB pixels, uploaded linearly sampled. */
-    private static void write(DynamicTexture texture, byte[] rgba) {
-        int[] pixels = texture.getTextureData();
-        for (int i = 0, o = 0; i < pixels.length; i++, o += 4)
-            pixels[i] = (rgba[o + 3] & 255) << 24 | (rgba[o] & 255) << 16 | (rgba[o + 1] & 255) << 8 | rgba[o + 2] & 255;
+    private static Sprite texture(Pixels pixels) {
+        DynamicTexture texture = new DynamicTexture(pixels.width, pixels.height);
+        System.arraycopy(pixels.argb, 0, texture.getTextureData(), 0, pixels.argb.length);
         texture.updateDynamicTexture();
-        linear(texture, 0, 0);
+        return linear(texture, pixels.width, pixels.height);
+    }
+
+    /** Straight RGBA bytes as the texture's ARGB pixels. */
+    private static Pixels pack(byte[] rgba, int w, int h) {
+        int[] argb = new int[w * h];
+        for (int i = 0, o = 0; i < argb.length; i++, o += 4)
+            argb[i] = (rgba[o + 3] & 255) << 24 | (rgba[o] & 255) << 16 | (rgba[o + 1] & 255) << 8 | rgba[o + 2] & 255;
+        return new Pixels(argb, w, h);
+    }
+
+    /** Straight RGBA bytes into the whole texture, as they are (the filtering set at its making stays). */
+    private static void write(Sprite cell, byte[] rgba) {
+        int size = cell.width * cell.height * 4;
+        if (upload == null || upload.capacity() < size) upload = BufferUtils.createByteBuffer(size);
+        upload.clear();
+        upload.put(rgba, 0, size);
+        upload.flip();
+        GlStateManager.bindTexture(cell.texture.getGlTextureId());
+        GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 0);
+        GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);
+        GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 0);
+        GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, cell.width, cell.height, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, upload);
     }
 
     /** 1.8.9's upload leaves nearest sampling and repeat: the banner wants linear and clamped edges. */
