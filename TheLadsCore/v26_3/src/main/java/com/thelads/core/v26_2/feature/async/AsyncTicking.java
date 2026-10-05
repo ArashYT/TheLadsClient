@@ -81,6 +81,8 @@ public final class AsyncTicking {
     static final AtomicLong LOOP_NANOS = new AtomicLong();
     /** QA: self-check switches (parallel ticking benched, and back). */
     static final AtomicLong BENCHED = new AtomicLong(), RESUMED = new AtomicLong();
+    /** QA: each worker task first sleeps this long, as if the OS kept it waiting for a busy core (simulated outside CPU load). */
+    static volatile long qaStallNanos;
 
     private AsyncTicking() {}
 
@@ -205,6 +207,8 @@ public final class AsyncTicking {
                 List<Entity> region = regions.get(i);
                 int index = i;
                 tasks.add(() -> {
+                    long stall = qaStallNanos;
+                    if (stall > 0) java.util.concurrent.locks.LockSupport.parkNanos(stall);
                     for (Entity entity : region) {
                         if (fallback != null) break;
                         try { action.accept(entity); } catch (Throwable failure) { fail(entity, failure); }

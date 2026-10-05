@@ -70,7 +70,8 @@ import org.slf4j.LoggerFactory;
  * Async off, on, off: 30 s of server tick times and walking, then a 60 s soak with dropped items, bread for the villagers to
  * pick up, experience orbs, loving cows, villagers fenced next to a composter and a cramming column. The on round is compared
  * with both off rounds, so drift over time is not mistaken for Async. Then Async runs on for two more minutes, peaceful must
- * despawn every husk, and Async must never have fallen back. Everything placed or spawned is removed and settings restored.
+ * despawn every husk, and Async must never have fallen back. Last, worker threads are made to wait 5 ms per phase (simulated
+ * outside CPU load): Async's self-check must switch to normal ticking, after which ticks are no slower than with Async off. Everything placed or spawned is removed and settings restored.
  */
 final class AsyncStressProbe {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -89,7 +90,10 @@ final class AsyncStressProbe {
     private static final Set<UUID> EXISTING = new HashSet<>(), NEAR = new HashSet<>();
     private static final List<UUID> FLOATING = new ArrayList<>(), SINKING = new ArrayList<>(), GOLEMS = new ArrayList<>();
     private static final Round[] ROUNDS = {new Round(), new Round(), new Round()};
-    private static final Round LONG = new Round();
+    private static final Round LONG = new Round(), STALLED = new Round();
+    private static final long STALL_NANOS = 5_000_000;
+    /** Server ticks from the simulated load's start until the self-check benched parallel ticking (-1: not yet). */
+    private static volatile int stallTicks = -1, benchedAfter = -1;
     private static int step = -1, passed, floor;
     private static long due, tickStart;
     private static boolean timing, enabledBefore, physicsBefore, griefingBefore, spawningBefore;
@@ -125,6 +129,10 @@ final class AsyncStressProbe {
         });
         ServerTickEvents.START_SERVER_TICK.register(server -> tickStart = System.nanoTime());
         ServerTickEvents.END_SERVER_TICK.register(server -> {
+            if (stallTicks >= 0) {
+                stallTicks++;
+                if (benchedAfter < 0 && AsyncTicking.benched(level(server))) benchedAfter = stallTicks;
+            }
             if (!timing) return;
             synchronized (TICKS) { TICKS.add(System.nanoTime() - tickStart); }
             Round round = sampled;
@@ -132,7 +140,7 @@ final class AsyncStressProbe {
         });
     }
 
-    /** Step 0 builds; round r takes steps 1 + 3r (measure), 2 + 3r (soak), 3 + 3r (results); 10 and 11 the long run; 12 ends. */
+    /** Step 0 builds; round r takes steps 1 + 3r (measure), 2 + 3r (soak), 3 + 3r (results); 10 and 11 the long run; 11 to 13 the simulated load; 14 ends. */
     private static void tick(Minecraft mc) throws Exception {
         if (step < 0) {
             if (!NativeWorldVerification.worldReady() || mc.gui.screen() != null || mc.getSingleplayerServer() == null) return;
@@ -142,7 +150,7 @@ final class AsyncStressProbe {
             LOGGER.info("Lads async stress probe BEGIN: {} villagers, {} husks, {} cows on the integrated server, Async off, on, off", VILLAGERS, HUSKS, COWS);
             step = 0;
         }
-        if (step > 12 || System.nanoTime() < due) return;
+        if (step > 14 || System.nanoTime() < due) return;
         MinecraftServer server = mc.getSingleplayerServer();
         AsyncModule module = (AsyncModule) ModuleManager.getInstance().getModule(AsyncModule.NAME);
         if (step == 0) {
@@ -181,11 +189,37 @@ final class AsyncStressProbe {
             double offMspt = (ROUNDS[0].mspt + ROUNDS[2].mspt) / 2;
             check(LONG.mspt <= offMspt * 1.15, String.format(Locale.ROOT, "server tick time is no worse with Async on for %d s more (%.1f ms, %.1f and %.1f ms off)",
                 ENDURANCE, LONG.mspt, ROUNDS[0].mspt, ROUNDS[2].mspt));
+            // simulated outside load: wait for the self-check (it samples every 30 s and needs two slower samples)
+            AsyncTicking.qaStallNanos = STALL_NANOS;
+            STALLED.benched = AsyncTicking.BENCHED.get();
+            stallTicks = 0;
+            next(60);
+            return;
+        }
+        if (step == 12) { // then 30 s of tick times with Async still on, the workers still held back
+            STALLED.benched = AsyncTicking.BENCHED.get() - STALLED.benched;
+            check(STALLED.benched >= 1 && benchedAfter > 0, "Async's self-check switches to normal ticking when parallel ticking is slower (workers held back "
+                + STALL_NANOS / 1_000_000 + " ms per phase; benched after " + benchedAfter + " ticks)");
+            AsyncTicking.LOOP_NANOS.set(0);
+            startTiming();
+            next(30);
+            return;
+        }
+        if (step == 13) {
+            stopTiming(STALLED);
+            AsyncTicking.qaStallNanos = 0;
+            stallTicks = -1;
+            double offMspt = (ROUNDS[0].mspt + ROUNDS[2].mspt) / 2;
+            REPORT.add(String.format(Locale.ROOT, "simulated outside load (workers held back %d ms per phase): self-check benched parallel ticking after %d ticks; "
+                + "the next 30 s: %d server ticks, mean %.1f ms (entity loop %.1f ms), p95 %.1f ms", STALL_NANOS / 1_000_000, benchedAfter, STALLED.ticks, STALLED.mspt,
+                STALLED.entityMs, STALLED.p95));
+            check(STALLED.mspt <= offMspt * 1.15, String.format(Locale.ROOT, "with the self-check ticking normally under that load, ticks are no slower than Async off "
+                + "(%.1f ms, %.1f and %.1f ms off)", STALLED.mspt, ROUNDS[0].mspt, ROUNDS[2].mspt));
             onServer(server, () -> { server.setDifficulty(Difficulty.PEACEFUL, true); return null; }); // peaceful despawning with Async on
             next(4);
             return;
         }
-        if (step == 12) {
+        if (step == 14) {
             onServer(server, () -> {
                 check(level(server).getEntitiesOfClass(Zombie.class, platform()).isEmpty(), "peaceful despawns every husk (checkDespawn on worker threads)");
                 return null;
@@ -474,6 +508,8 @@ final class AsyncStressProbe {
         if (step == 99) return;
         step = 99;
         timing = false;
+        AsyncTicking.qaStallNanos = 0;
+        stallTicks = -1;
         MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
         Module module = ModuleManager.getInstance().getModule(AsyncModule.NAME);
         if (module != null) module.setEnabled(enabledBefore);
