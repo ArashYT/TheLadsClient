@@ -275,6 +275,8 @@ final class Probe150e {
     /** Ten 3-XP orbs 12 blocks away (out of the player's 8-block pull), spawned on the integrated server. */
     private static boolean clumpsSpawn(Minecraft mc) {
         onServer(mc, player -> {
+            // Orbs an earlier, interrupted run left in the saved QA world would count as unmerged ones.
+            for (EntityXPOrb old : player.worldObj.getEntitiesWithinAABB(EntityXPOrb.class, player.getEntityBoundingBox().expand(24, 12, 24))) old.setDead();
             for (int i = 0; i < 10; i++)
                 player.worldObj.spawnEntityInWorld(new EntityXPOrb(player.worldObj, player.posX + 12, player.posY + 1, player.posZ, 3));
         });

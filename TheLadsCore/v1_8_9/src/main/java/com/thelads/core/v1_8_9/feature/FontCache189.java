@@ -49,9 +49,13 @@ public final class FontCache189 {
         return enabled;
     }
 
-    /** Whether the cache works here: on, and on the client thread. */
+    /**
+     * Whether the cache works here: on the client thread, and on. The thread comes first: Forge's loading screen measures its text on
+     * its own thread before the mods are found, when Loader.isModLoaded (in enabled) throws and would end the loading screen.
+     */
     public boolean on() {
-        return !qaOff && enabled() && Minecraft.getMinecraft() != null && Minecraft.getMinecraft().isCallingFromMinecraftThread();
+        Minecraft mc = Minecraft.getMinecraft();
+        return !qaOff && mc != null && mc.isCallingFromMinecraftThread() && enabled();
     }
 
     /** A cached width, or -1 (measure, then {@link #putWidth}). */
