@@ -45,12 +45,13 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
 /**
- * QA only (LADS_VERIFY_189_ONLY=hudflicker): does any HUD drawing flicker under the HUD FPS cap? In survival with the Lads HUD
- * elements, title, subtitle, action bar, boss bar, scoreboard, chat with heads, a kill banner, Item Physics' throw bar and an
- * Essential notification on screen, then again with F3, it saves runs of consecutive frames to lads-qa/screenshots/hudflicker: the
- * HUD hidden (reference), the cap off (control), the cap on at 10 FPS and the HUD hidden again (the view stayed still), with the
- * elements' rectangles and the Lads HUD's cost per frame (hudflicker.json). On 1.8.9 the cap covers the Lads HUD only. artifacts/1.7.2/hudfps/flicker.py checks that every
- * element is in every frame. Everything is put back.
+ * QA only (LADS_VERIFY_189_ONLY=hudflicker): does any HUD drawing flicker under the HUD FPS cap? In survival and peaceful, in two
+ * scenes that do not overlap each other's elements, "hud" (the Lads HUD elements with the paper doll, action bar, scoreboard, chat
+ * with heads, Item Physics' throw bar, an Essential notification) and "f3" (F3, title, subtitle, boss bar, a kill banner, the Lads
+ * HUD, chat, scoreboard, throw bar), it saves runs of consecutive frames to lads-qa/screenshots/hudflicker: the HUD hidden
+ * (reference), the cap off (control), the cap on at 10 FPS and the HUD hidden again (the view stayed still), with the elements'
+ * rectangles and the Lads HUD's cost per frame (hudflicker.json). On 1.8.9 the cap covers the Lads HUD only.
+ * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Everything is put back.
  */
 final class Probe172HudFlicker {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
@@ -66,7 +67,7 @@ final class Probe172HudFlicker {
     private static final List<int[]> pending = new ArrayList<int[]>();
     private static final List<String> names = new ArrayList<String>();
     private static boolean capWas, f3Was;
-    private static int limitWas, width, height;
+    private static int limitWas, width, height, difficultyWas;
     private static String run;
     private static Frames frames;
     private static ItemStack handWas;
@@ -83,8 +84,11 @@ final class Probe172HudFlicker {
             if (module == null) continue;
             enabledWere.put(module, module.isEnabled());
             for (Option option : module.getOptions()) optionsWere.put(option, option.save());
+            if (!name.equals("Autohide")) module.getOptions().forEach(Option::reset); // defaults: the paper doll at its HUD position
             module.setEnabled(!name.equals("Autohide"));
         }
+        if (Options189.module("Paperdoll") != null) ((com.thelads.core.config.BoolOption) Options189.module("Paperdoll").getOption("Always Display")).set(true);
+        difficultyWas = mc.theWorld.getDifficulty().getDifficultyId(); // no mobs moving below the camera
         if (Options189.module("Item Physics") instanceof ItemPhysicsModule) ((ItemPhysicsModule) Options189.module("Item Physics")).charged.set(true);
         if (Options189.module("KillBanner") instanceof KillBannerModule) ((KillBannerModule) Options189.module("KillBanner")).duration.setValue(5);
         capWas = HudSettings.getInstance().isHudFpsCapEnabled();
@@ -112,10 +116,7 @@ final class Probe172HudFlicker {
         });
         for (String command : new String[] {"gamemode 0 @a", "scoreboard objectives add ladsflicker dummy Flicker QA",
             "scoreboard objectives setdisplay sidebar ladsflicker", "scoreboard players set Alpha ladsflicker 2", "scoreboard players set Beta ladsflicker 1",
-            "effect @a 3 600 0 true"}) command(mc, command);
-        BossStatus.bossName = "QA Boss";
-        BossStatus.healthScale = 0.6f;
-        BossStatus.statusBarTime = 100_000;
+            "effect @a 3 600 0 true", "difficulty 0"}) command(mc, command);
         frames = new Frames();
         MinecraftForge.EVENT_BUS.register(frames);
         LOG.info("Lads HUD flicker capture BEGIN: {} frames per run, cap {} FPS (the Lads HUD)", FRAMES, CAP);
@@ -127,12 +128,19 @@ final class Probe172HudFlicker {
         pin(mc);
         if (!name.equals(run)) {
             run = name;
+            if (name.equals("f3-hidden")) { // the second scene: what would cover the first one's elements
+                command(mc, "effect @a clear");
+                BossStatus.bossName = "QA Boss";
+                BossStatus.healthScale = 0.6f;
+                BossStatus.statusBarTime = 100_000;
+                mc.ingameGUI.setRecordPlaying("", false);
+            }
             boolean hidden = name.endsWith("-hidden") || name.endsWith("-after");
             mc.gameSettings.hideGUI = hidden;
             mc.gameSettings.showDebugInfo = !hidden && name.startsWith("f3");
             HudSettings.getInstance().setHudFpsCapEnabled(name.endsWith("-on"));
             HudSettings.getInstance().setHudFpsLimit(CAP);
-            if (!hidden) refresh(mc);
+            if (!hidden) refresh(mc, name.startsWith("f3"));
             frames.start(name, hidden ? HIDDEN : FRAMES, hidden ? 800 : 1600, !hidden);
             return retry(1);
         }
@@ -153,14 +161,17 @@ final class Probe172HudFlicker {
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindDrop.getKeyCode(), true);
     }
 
-    /** Elements that time out are shown again before each run: chat, titles, action bar, kill banner, Essential. */
-    private static void refresh(Minecraft mc) {
+    /** Elements that time out are shown again before each run: chat, and the scene's titles and kill banner, or action bar and Essential. */
+    private static void refresh(Minecraft mc, boolean f3) {
         for (int i = 1; i <= 3; i++) mc.thePlayer.sendChatMessage("Flicker QA chat " + i);
-        mc.ingameGUI.displayTitle(null, null, 0, 1200, 0);
-        mc.ingameGUI.displayTitle(null, "QA Subtitle", -1, -1, -1);
-        mc.ingameGUI.displayTitle("QA Title", null, -1, -1, -1);
+        if (f3) {
+            mc.ingameGUI.displayTitle(null, null, 0, 1200, 0);
+            mc.ingameGUI.displayTitle(null, "QA Subtitle", -1, -1, -1);
+            mc.ingameGUI.displayTitle("QA Title", null, -1, -1, -1);
+            KillBanner189.trigger(1, false);
+            return;
+        }
         mc.ingameGUI.setRecordPlaying("QA Action Bar", false);
-        KillBanner189.trigger(1, false);
         try {
             Object notifications = Class.forName("gg.essential.api.EssentialAPI").getMethod("getNotifications").invoke(null);
             notifications.getClass().getMethod("push", String.class, String.class).invoke(notifications, "QA notification", "HUD FPS cap flicker check");
@@ -184,7 +195,7 @@ final class Probe172HudFlicker {
             if (belowWas != null) player.worldObj.setBlockState(below, belowWas);
             player.playerNetServerHandler.setPlayerLocation(homeX, homeY, homeZ, pinYaw, 0);
         });
-        for (String command : new String[] {"scoreboard objectives remove ladsflicker", "effect @a clear", "gamemode 1 @a"}) command(mc, command);
+        for (String command : new String[] {"scoreboard objectives remove ladsflicker", "effect @a clear", "gamemode 1 @a", "difficulty " + difficultyWas}) command(mc, command);
         File folder = new File(mc.mcDataDir, "lads-qa/screenshots/hudflicker");
         folder.mkdirs();
         int saved = 0;
@@ -218,9 +229,12 @@ final class Probe172HudFlicker {
         int action = mc.fontRendererObj.getStringWidth("QA Action Bar");
         rect(rects, "Crosshair", w / 2 - 8, h / 2 - 8, 16, 16, s);
         rect(rects, "Item Physics throw bar", w / 2 - 8, h / 2 + 9, 16, 2, s);
-        rect(rects, "Title", w / 2 - title * 2 - 4, h / 2 - 42, title * 4 + 8, 40, s);
-        rect(rects, "Subtitle", w / 2 - subtitle - 4, h / 2 + 8, subtitle * 2 + 8, 22, s);
-        rect(rects, "Action bar", w / 2 - action / 2 - 4, h - 76 - lift, action + 8, 16, s);
+        if (phase.equals("f3")) {
+            rect(rects, "Title", w / 2 - title * 2 - 4, h / 2 - 42, title * 4 + 8, 40, s);
+            rect(rects, "Subtitle", w / 2 - subtitle - 4, h / 2 + 8, subtitle * 2 + 8, 22, s);
+        } else {
+            rect(rects, "Action bar", w / 2 - action / 2 - 4, h - 76 - lift, action + 8, 16, s);
+        }
         rect(rects, "Hotbar", w / 2 - 91, h - 22 - lift, 182, 22, s);
         rect(rects, "Health, armour, food, XP", w / 2 - 91, h - 52 - lift, 182, 30, s);
         rect(rects, "Chat", 0, h - 48 - lift - 3 * 9, Math.min(w / 2, mc.ingameGUI.getChatGUI().getChatWidth() + 24), 3 * 9 + 10, s);

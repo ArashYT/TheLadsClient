@@ -42,9 +42,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * QA only (auto-world, ".lads-qa-capture-hudflicker" from the harness's LADS_VERIFY_CAPTURE_HUDFLICKER): does any HUD drawing
- * flicker under the HUD FPS cap? With everything this QA world can put on the HUD (Lads HUD elements, Jade on a crafting table,
- * Xaero's minimap, title, subtitle, action bar, boss bar, scoreboard, chat with heads, subtitles, effects, Item Physics' throw bar,
- * a kill banner, voice chat sample, toasts, an Essential notification, Flashback recording), then again with F3, it saves runs of
+ * flicker under the HUD FPS cap? In two scenes that do not overlap each other's elements, "hud" (Lads HUD elements, the paper doll,
+ * Jade on a crafting table, Xaero's minimap, action bar, scoreboard, chat with heads, subtitles, effects, Item Physics' throw bar,
+ * voice chat sample) and "f3" (F3, title, subtitle, boss bar, a kill banner, toasts, an Essential notification, Flashback's
+ * recording toast, the Lads HUD, chat, scoreboard, minimap, throw bar), in peaceful with no vignette, it saves runs of
  * consecutive frames to screenshots/hudflicker: the HUD hidden (reference), the cap off (control), the cap on at 10 FPS and the HUD
  * hidden again (the view stayed still), with the elements' rectangles and the HUD's cost per frame (hudflicker.json).
  * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Everything is put back.
@@ -63,7 +64,8 @@ final class HudFlickerCapture {
     private static long due, measureFrom, measureTo;
     private static String name;
     private static JsonObject report;
-    private static boolean capWas, subtitlesWas;
+    private static boolean capWas, subtitlesWas, vignetteWas;
+    private static String difficultyWas;
     private static int limitWas, measureFrames, builds0, replays0;
     private static long nanos0, measureStart;
     private static ItemStack handWas = ItemStack.EMPTY;
@@ -91,14 +93,19 @@ final class HudFlickerCapture {
             if (m == null) continue;
             ENABLED.put(m, m.isEnabled());
             for (Option option : m.getOptions()) OPTIONS.put(option, option.save().deepCopy());
+            if (!module.equals("Autohide")) m.getOptions().forEach(Option::reset); // defaults: the paper doll at its HUD position
             m.setEnabled(!module.equals("Autohide"));
         }
+        if (NativeQualityOfLife.module("Paperdoll") != null) ((BoolOption) NativeQualityOfLife.module("Paperdoll").getOption("Always Display")).set(true);
         if (NativeQualityOfLife.module("Item Physics") instanceof com.thelads.core.modules.ItemPhysicsModule physics) physics.charged.set(true);
         if (NativeQualityOfLife.module("KillBanner") instanceof com.thelads.core.modules.KillBannerModule banner) banner.duration.setValue(5);
         capWas = HudSettings.getInstance().isHudFpsCapEnabled();
         limitWas = HudSettings.getInstance().getHudFpsLimit();
         subtitlesWas = mc.options.showSubtitles().get();
         mc.options.showSubtitles().set(true);
+        vignetteWas = mc.options.vignette().get(); // a HUD layer over the whole screen that fades at its own pace: off
+        mc.options.vignette().set(false);
+        difficultyWas = mc.level.getDifficulty().getSerializedName(); // no mobs moving below the camera
         VoiceChatIntegration.qa = new VoiceChatState("voicechat:icons/microphone",
             List.of(new VoiceMember("Steve", "8667ba71-b85a-4004-af54-457a9734eed7", true, false),
                 new VoiceMember("Alex", "ec561538-f3fd-461d-aff5-086b22154bce", false, true)));
@@ -132,9 +139,7 @@ final class HudFlickerCapture {
         });
         for (String command : new String[] {"scoreboard objectives add ladsflicker dummy {\"text\":\"Flicker QA\",\"color\":\"gold\"}",
             "scoreboard objectives setdisplay sidebar ladsflicker", "scoreboard players set Alpha ladsflicker 2", "scoreboard players set Beta ladsflicker 1",
-            "bossbar add lads:flicker \"QA Boss\"", "bossbar set lads:flicker players @a", "bossbar set lads:flicker value 60",
-            "effect give @a minecraft:luck 600 0 true", "gamemode survival @a"}) command(command);
-        startRecording();
+            "effect give @a minecraft:luck 600 0 true", "gamemode survival @a", "difficulty peaceful"}) command(command);
         LOGGER.info("Lads HUD flicker capture BEGIN: {} frames per run, cap {} FPS, phases {}", FRAMES, CAP, String.join(",", PHASES));
         step = 0;
         due = System.nanoTime() + 2_000_000_000L;
@@ -182,6 +187,12 @@ final class HudFlickerCapture {
             String p = PHASES[phase];
             switch (step++ % 4) {
                 case 0 -> { // the HUD hidden: the reference every element is compared with
+                    if (p.equals("f3")) { // the second scene: what would cover the first one's elements
+                        for (String command : new String[] {"effect clear @a minecraft:luck", "bossbar add lads:flicker \"QA Boss\"",
+                            "bossbar set lads:flicker players @a", "bossbar set lads:flicker value 60"}) command(command);
+                        NativeQualityOfLife.module("Jade").setEnabled(false);
+                        mc.gui.hud.clearTitles();
+                    }
                     mc.debugEntries.setOverlayVisible(false);
                     mc.gui.toastManager().clear();
                     if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
@@ -192,13 +203,14 @@ final class HudFlickerCapture {
                     if (mc.gui.hud.isHidden()) mc.gui.hud.toggle();
                     mc.debugEntries.setOverlayVisible(p.equals("f3"));
                     HudSettings.getInstance().setHudFpsCapEnabled(false);
-                    refresh(mc);
+                    if (p.equals("f3")) startRecording(); // Flashback's recording toast, live through both runs
+                    refresh(mc, p);
                     measure(p + "-off");
                 }
                 case 2 -> { // the cap on
                     HudSettings.getInstance().setHudFpsCapEnabled(true);
                     HudSettings.getInstance().setHudFpsLimit(CAP);
-                    refresh(mc);
+                    refresh(mc, p);
                     measure(p + "-on");
                 }
                 default -> { // the HUD hidden again: the view did not move (flicker.py compares it with the first)
@@ -216,12 +228,20 @@ final class HudFlickerCapture {
         }
     }
 
-    /** Elements that time out are shown again before each run: chat, subtitles, titles, action bar, toasts, kill banner, Essential. */
-    private static void refresh(Minecraft mc) {
+    /** Elements that time out are shown again before each run: chat, and the scene's subtitles and action bar, or titles, toast, kill banner, Essential. */
+    private static void refresh(Minecraft mc, String scene) {
         for (int i = 1; i <= 3; i++) mc.player.connection.sendChat("Flicker QA chat " + i);
-        mc.gui.hud.setTimes(0, 1200, 0);
-        mc.gui.hud.setTitle(Component.literal("QA Title"));
-        mc.gui.hud.setSubtitle(Component.literal("QA Subtitle"));
+        if (scene.equals("f3")) {
+            mc.gui.hud.setTimes(0, 1200, 0);
+            mc.gui.hud.setTitle(Component.literal("QA Title"));
+            mc.gui.hud.setSubtitle(Component.literal("QA Subtitle"));
+            SystemToast.addOrUpdate(mc.gui.toastManager(), TOAST, Component.literal("QA toast"), Component.literal("HUD FPS cap flicker check"));
+            NativeKillBanner.bindCurrent();
+            NativeKillBanner.timeline().clear();
+            NativeKillBanner.trigger(1, false);
+            essentialNotification();
+            return;
+        }
         mc.gui.hud.setOverlayMessage(Component.literal("QA Action Bar"), false);
         try {
             var field = mc.gui.hud.getClass().getDeclaredField("subtitleOverlay");
@@ -231,11 +251,6 @@ final class HudFlickerCapture {
                 mc.player.getX(), mc.player.getY(), mc.player.getZ());
             overlay.onPlaySound(sound, mc.getSoundManager().getSoundEvent(SoundEvents.ITEM_PICKUP.location()), 16);
         } catch (ReflectiveOperationException | RuntimeException failure) { LOGGER.warn("Lads HUD flicker capture: no subtitle", failure); }
-        SystemToast.addOrUpdate(mc.gui.toastManager(), TOAST, Component.literal("QA toast"), Component.literal("HUD FPS cap flicker check"));
-        NativeKillBanner.bindCurrent();
-        NativeKillBanner.timeline().clear();
-        NativeKillBanner.trigger(1, false);
-        essentialNotification();
     }
 
     private static void run(String run, int frames, long settleMs) {
@@ -295,15 +310,20 @@ final class HudFlickerCapture {
         int title = mc.font.width("QA Title"), subtitle = mc.font.width("QA Subtitle"), action = mc.font.width("QA Action Bar");
         rect(rects, "Crosshair", w / 2 - 8, h / 2 - 8, 16, 16, s);
         rect(rects, "Item Physics throw bar", w / 2 - 8, h / 2 + 9, 16, 2, s);
-        rect(rects, "Title", w / 2 - title * 2 - 4, h / 2 - 42, title * 4 + 8, 40, s);
-        rect(rects, "Subtitle", w / 2 - subtitle - 4, h / 2 + 8, subtitle * 2 + 8, 22, s);
-        rect(rects, "Action bar", w / 2 - action / 2 - 4, h - 76 - lift, action + 8, 16, s);
+        boolean f3 = name.startsWith("f3");
+        if (f3) {
+            rect(rects, "Title", w / 2 - title * 2 - 4, h / 2 - 42, title * 4 + 8, 40, s);
+            rect(rects, "Subtitle", w / 2 - subtitle - 4, h / 2 + 8, subtitle * 2 + 8, 22, s);
+            rect(rects, "Toasts", w - 160, 0, 160, 64, s);
+        } else {
+            rect(rects, "Action bar", w / 2 - action / 2 - 4, h - 76 - lift, action + 8, 16, s);
+            rect(rects, "Subtitles", w - 150, h - 54, 150, 24, s);
+            rect(rects, "Effects", w - 80, 0, 80, 28, s);
+        }
         rect(rects, "Hotbar", w / 2 - 91, h - 22 - lift, 182, 22, s);
         rect(rects, "Health, armour, food, XP", w / 2 - 91, h - 52 - lift, 182, 30, s);
         rect(rects, "Chat", 0, h - 48 - lift - 3 * 9, Math.min(w / 2, ChatComponent.getWidth(mc.options.chatWidth().get()) + 24), 3 * 9 + 10, s);
-        rect(rects, "Subtitles", w - 150, h - 54, 150, 24, s);
-        rect(rects, "Toasts and effects", w - 160, 0, 160, 32, s);
-        if (name.startsWith("f3")) { rect(rects, "F3 left", 0, 0, w / 2, h / 2, s); rect(rects, "F3 right", w / 2, 0, w / 2, h / 2, s); }
+        if (f3) { rect(rects, "F3 left", 0, 0, w / 2, h / 2, s); rect(rects, "F3 right", w / 2, 0, w / 2, h / 2, s); }
         JsonObject phase = new JsonObject();
         phase.addProperty("guiScale", s);
         phase.addProperty("width", mc.getWindow().getWidth());
@@ -345,6 +365,7 @@ final class HudFlickerCapture {
         HudSettings.getInstance().setHudFpsCapEnabled(capWas);
         HudSettings.getInstance().setHudFpsLimit(limitWas);
         mc.options.showSubtitles().set(subtitlesWas);
+        mc.options.vignette().set(vignetteWas);
         mc.options.fovEffectScale().set(fovEffectWas);
         var server = mc.getSingleplayerServer();
         var id = mc.player.getUUID();
@@ -357,7 +378,7 @@ final class HudFlickerCapture {
             player.setItemSlot(EquipmentSlot.MAINHAND, hand);
         });
         for (String command : new String[] {"bossbar remove lads:flicker", "scoreboard objectives remove ladsflicker", "effect clear @a minecraft:luck",
-            "gamemode " + gameModeWas + " @a"}) command(command);
+            "gamemode " + gameModeWas + " @a", "difficulty " + difficultyWas}) command(command);
         // The last frames are still being written: END once they are on disk.
         Thread waiter = new Thread(() -> {
             long until = System.nanoTime() + 30_000_000_000L;
