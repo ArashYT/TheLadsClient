@@ -165,8 +165,8 @@ public class ModuleManager {
 
         // DamageTilt: the hurt tilt leans by the hit's direction (Directional) or the old fixed way, scaled by Intensity (26.x: on
         // top of Minecraft's own Damage Tilt setting). Off, each version keeps its vanilla tilt.
-        Module odt = new Module(com.thelads.core.client.DamageTilt.MODULE, "Damage tilt: the camera tilts by where a hit came from "
-            + "(Directional) or the old fixed way. Intensity sets how far; 0 turns the tilt off.");
+        Module odt = new Module(com.thelads.core.client.DamageTilt.MODULE, "Hurt camera tilt: towards the hit (Directional) or the old "
+            + "fixed way. Intensity 0 turns it off.");
         odt.addOption(new BoolOption(com.thelads.core.client.DamageTilt.DIRECTIONAL, true));
         odt.addOption(new SliderOption(com.thelads.core.client.DamageTilt.INTENSITY, 100, 0, 100, 5));
         register(odt, Module.Category.MECHANIC);
