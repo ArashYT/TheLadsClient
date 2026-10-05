@@ -26,6 +26,9 @@ public final class HudCapture {
     private static boolean recording;
     /** QA (Hud170Capture): pictures blitted from their last texture on replayed frames. */
     public static int replayBlits;
+    /** QA (HudFlickerCapture): HUD builds and replays so far, and the time they took. */
+    public static int qaBuilds, qaReplays;
+    public static long qaNanos;
 
     private HudCapture() {}
 
@@ -44,16 +47,23 @@ public final class HudCapture {
     }
 
     public static void extract(GuiRenderState state, Runnable build) {
+        long start = System.nanoTime();
+        try { extractTimed(state, build); } finally { qaNanos += System.nanoTime() - start; }
+    }
+
+    private static void extractTimed(GuiRenderState state, Runnable build) {
         REPLAYED.clear();
         var mc = Minecraft.getInstance();
         if (mc.level == null || !HudFrameCap.enabled()) {
             OPS.clear();
             HudFrameCap.reset();
+            qaBuilds++;
             build.run();
             return;
         }
         var window = mc.getWindow();
         if (!HudFrameCap.due(System.nanoTime(), window.getGuiScaledWidth(), window.getGuiScaledHeight())) {
+            qaReplays++;
             float scope = NativeAutohide.scopeOpacity;
             try {
                 for (var op : OPS) {
@@ -66,6 +76,7 @@ public final class HudCapture {
             return;
         }
         OPS.clear();
+        qaBuilds++;
         recording = HudFrameCap.wholeHud = true;
         try {
             build.run();
