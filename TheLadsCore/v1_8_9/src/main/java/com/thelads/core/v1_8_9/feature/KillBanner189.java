@@ -32,7 +32,6 @@ import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
-import org.lwjgl.opengl.GL11;
 
 /**
  * KillBanner on 1.8.9, as 26.x NativeKillBanner: banners the moment the client sees a kill (KillDetector), the death of a player,
@@ -233,7 +232,7 @@ public final class KillBanner189 {
         double age = BANNER.age(System.nanoTime());
         if (age < 0) return;
         // Blending and depth go back as found, as NativeHud leaves them.
-        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND), depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        boolean blend = GlState189.blend(), depth = GlState189.depth();
         GlStateManager.disableDepth();
         KillBannerArt189.begin();
         try {

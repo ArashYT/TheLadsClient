@@ -37,6 +37,8 @@ public final class Autohide189 {
     private static Framebuffer buffer;
     private static ElementType capturing;
     private static int previous;
+    /** previous and VIEWPORT are read once per frame: every element ends back on the framebuffer and viewport it began on. */
+    private static boolean queried;
 
     /** QA (Probe170Hud): idle for a minute, at this opacity now. */
     static void idle(float now) {
@@ -79,6 +81,7 @@ public final class Autohide189 {
         if (event.type == ElementType.ALL) {
             end(null);
             shown = update();
+            queried = false;
         } else if (FADED.contains(event.type)) {
             end(null);
             if (shown <= 0) event.setCanceled(true);
@@ -96,9 +99,12 @@ public final class Autohide189 {
         Minecraft mc = Minecraft.getMinecraft();
         if (!OpenGlHelper.isFramebufferEnabled()) return false;
         // Before creating or resizing the buffer, which binds framebuffer 0 when done.
-        previous = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
-        GL11.glGetInteger(GL11.GL_VIEWPORT, VIEWPORT);
-        boolean depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST); // creating the buffer turns depth testing on
+        if (!queried) {
+            queried = true;
+            previous = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
+            GL11.glGetInteger(GL11.GL_VIEWPORT, VIEWPORT);
+        }
+        boolean depth = GlState189.depth(); // creating the buffer turns depth testing on
         if (buffer == null) {
             buffer = new Framebuffer(mc.displayWidth, mc.displayHeight, true);
             buffer.setFramebufferColor(0, 0, 0, 0); // transparent black: the composite is premultiplied
@@ -126,7 +132,7 @@ public final class Autohide189 {
     public static void end(float alpha, double width, double height) {
         OpenGlHelper.glBindFramebuffer(OpenGlHelper.GL_FRAMEBUFFER, previous);
         GL11.glViewport(VIEWPORT.get(0), VIEWPORT.get(1), VIEWPORT.get(2), VIEWPORT.get(3));
-        boolean depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        boolean depth = GlState189.depth();
         GlStateManager.disableDepth();
         GlStateManager.disableAlpha();
         GlStateManager.enableTexture2D();
