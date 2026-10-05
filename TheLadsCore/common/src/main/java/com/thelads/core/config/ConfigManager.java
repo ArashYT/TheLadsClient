@@ -11,6 +11,9 @@ import com.thelads.core.modules.ToggleSprintModule;
 import com.thelads.core.client.util.ClientPaths;
 
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.HashSet;
 import java.util.Set;
 import java.io.File;
@@ -28,6 +31,11 @@ import java.nio.file.AtomicMoveNotSupportedException;
 public class ConfigManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static File testConfigFile = null;
+    private static final java.util.concurrent.atomic.AtomicLong sequence = new java.util.concurrent.atomic.AtomicLong();
+    private static final Object LATER = new Object();
+    private static String latestJson;
+    private static long latestOrder, writtenOrder;
+    private static ScheduledExecutorService writer;
 
     public static void setTestConfigFile(File file) {
         testConfigFile = file;
@@ -345,7 +353,53 @@ public class ConfigManager {
         }
     }
 
-    public static synchronized void save() {
+    /** Writes the config now. Anything {@link #saveLater} still holds is older than this snapshot and is dropped. */
+    public static void save() {
+        String json = GSON.toJson(toJson());
+        write(json, sequence.incrementAndGet());
+    }
+
+    /**
+     * For changes made while playing (Toggle Sprint/Sneak): the state is serialised now, on the calling thread, and written by a
+     * background thread half a second later, so a burst of toggles costs one disk write and none of it on the render thread.
+     * {@link #flush} (also run at JVM exit) writes whatever is still waiting.
+     */
+    public static void saveLater() {
+        String json = GSON.toJson(toJson());
+        long order = sequence.incrementAndGet();
+        synchronized (LATER) {
+            boolean waiting = latestJson != null;
+            latestJson = json;
+            latestOrder = order;
+            if (waiting) return;
+            if (writer == null) {
+                writer = Executors.newSingleThreadScheduledExecutor(task -> {
+                    Thread thread = new Thread(task, "Lads config writer");
+                    thread.setDaemon(true);
+                    return thread;
+                });
+                Runtime.getRuntime().addShutdownHook(new Thread(ConfigManager::flush, "Lads config flush"));
+            }
+            writer.schedule(ConfigManager::flush, 500, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    /** Writes the config {@link #saveLater} is holding, if any. */
+    public static void flush() {
+        String json;
+        long order;
+        synchronized (LATER) {
+            json = latestJson;
+            order = latestOrder;
+            latestJson = null;
+        }
+        if (json != null) write(json, order);
+    }
+
+    /** Atomic replace; a snapshot older than one already written is skipped, so a late background write never undoes a newer save. */
+    private static synchronized void write(String json, long order) {
+        if (order < writtenOrder) return;
+        writtenOrder = order;
         File configFile = getConfigFile();
         if (configFile.getParentFile() != null) {
             configFile.getParentFile().mkdirs();
@@ -354,7 +408,7 @@ public class ConfigManager {
         try {
             Path destination = configFile.toPath().toAbsolutePath();
             temporary = Files.createTempFile(destination.getParent(), ".lads-config-", ".tmp");
-            Files.writeString(temporary, GSON.toJson(toJson()), StandardCharsets.UTF_8);
+            Files.writeString(temporary, json, StandardCharsets.UTF_8);
             try {
                 Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             } catch (AtomicMoveNotSupportedException unsupported) {
