@@ -3,7 +3,6 @@ package com.thelads.core.v1_21_11.feature;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
-import com.thelads.core.config.SliderOption;
 import com.thelads.core.modules.FullbrightModule;
 import com.thelads.core.modules.ToggleSprintModule;
 import com.thelads.core.modules.ZoomModule;
@@ -117,7 +116,6 @@ public final class NativeFeatures {
     public static double fullbrightGamma() {
         if (!(module("Fullbright") instanceof FullbrightModule fullbright) || !fullbright.isEnabled()
             || Minecraft.getInstance().level == null) return -1;
-        double multiplier = fullbright.getOption("Brightness Multiplier") instanceof SliderOption value ? value.getValue() : 1;
-        return fullbright.getGamma() * multiplier;
+        return fullbright.effectiveGamma();
     }
 }

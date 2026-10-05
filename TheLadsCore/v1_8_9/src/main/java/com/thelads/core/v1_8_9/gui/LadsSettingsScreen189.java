@@ -14,6 +14,7 @@ import org.lwjgl.input.Mouse;
 public class LadsSettingsScreen189 extends GuiScreen {
     private final GuiScreen parent;
     private final LadsSettingsScreen ui = new LadsSettingsScreen();
+    private final GameView189 view = new GameView189();
     private int lastX, lastY;
 
     public LadsSettingsScreen189(GuiScreen parent) {
@@ -42,11 +43,16 @@ public class LadsSettingsScreen189 extends GuiScreen {
     @Override
     public void onGuiClosed() {
         Keyboard.enableRepeatEvents(false);
+        view.release();
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        ui.render(new GuiLadsAdapter(fontRendererObj, width, height), mouseX, mouseY);
+        // The world is copied before the menu paints over it, and only while a page shows it (Fullbright's preview).
+        final boolean captured = ui.showsGameView() && view.capture(mc);
+        ui.render(new GuiLadsAdapter(fontRendererObj, width, height) {
+            @Override public boolean drawGameView(int x, int y, int w, int h) { return captured && view.draw(x, y, w, h); }
+        }, mouseX, mouseY);
     }
 
     /** A key press for the menu (LWJGL 2 code); true when the menu used it. */

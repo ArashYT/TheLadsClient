@@ -3,7 +3,6 @@ package com.thelads.core.v26_2.feature;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
-import com.thelads.core.config.SliderOption;
 import com.thelads.core.modules.FullbrightModule;
 import com.thelads.core.modules.ToggleSprintModule;
 import com.thelads.core.modules.ZoomModule;
@@ -139,13 +138,25 @@ public final class NativeFeatures {
         return zoom().sensitivity();
     }
     public static float gamma(float vanilla) {
-        if (module("Fullbright") instanceof FullbrightModule fullbright && fullbright.isEnabled()
-            && Minecraft.getInstance().level != null) {
-            double multiplier = fullbright.getOption("Brightness Multiplier") instanceof SliderOption value
-                ? value.getValue() : 1;
-            // Replace only the lightmap gamma input; effects and the saved vanilla option remain native.
-            return (float) Math.max(vanilla, fullbright.getGamma() * multiplier);
-        }
-        return vanilla;
+        // Replace only the lightmap gamma input; effects and the saved vanilla option remain native.
+        double fullbright = fullbrightGamma();
+        return fullbright < 0 ? vanilla : (float) Math.max(vanilla, fullbright);
+    }
+    /** The gamma Fullbright gives the lightmap (slider and multiplier), or -1 while it is off. */
+    private static double fullbrightGamma() {
+        return module("Fullbright") instanceof FullbrightModule fullbright && fullbright.isEnabled() && Minecraft.getInstance().level != null
+            ? fullbright.effectiveGamma() : -1;
+    }
+    private static double lastGamma = Double.NaN;
+    /**
+     * FullbrightMixin, once per frame: whether Fullbright's gamma (on/off or the slider) differs from the last frame's. The lightmap
+     * only rebuilds when vanilla's tick says so, and that tick does not run while a menu pauses the game or when BadOptimizations
+     * finds none of vanilla's inputs changed, so without this a change showed only after the menu closed.
+     */
+    public static boolean gammaChanged() {
+        double now = fullbrightGamma();
+        boolean changed = Double.compare(now, lastGamma) != 0;
+        lastGamma = now;
+        return changed;
     }
 }

@@ -184,12 +184,7 @@ public class TheLadsCore189 {
         SkinLayers189.tick(mc);
         com.thelads.core.v1_8_9.feature.Cheats189.tick(mc);
         com.thelads.core.v1_8_9.feature.Toggles189.tick(mc);
-        if (mc.thePlayer != null) {
-            com.thelads.core.config.Module fullbright = com.thelads.core.config.ModuleManager.getInstance().getModule("Fullbright");
-            if (fullbright != null && fullbright.isEnabled() && mc.gameSettings.gammaSetting < 15.0f) {
-                mc.gameSettings.gammaSetting = 100.0f;
-            }
-        }
+        com.thelads.core.v1_8_9.feature.Fullbright189.tick(mc);
 
         try {
             String title = org.lwjgl.opengl.Display.getTitle();
