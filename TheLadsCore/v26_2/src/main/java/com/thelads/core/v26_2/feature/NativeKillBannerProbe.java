@@ -45,9 +45,10 @@ final class NativeKillBannerProbe {
             NativeKillBanner.reset();
             NativeKillBanner.bindCurrent();
 
-            Entity zombie = spawn(EntityTypes.ZOMBIE, next++);
-            death(zombie);
+            death(spawn(EntityTypes.ZOMBIE, next++));
             require(NativeKillBanner.timeline().age(System.nanoTime()) < 0, "a death the player had no part in is not a kill"); passed++;
+            // A dead body takes no new hit (KillDetector: the death already counted), so the kill is another zombie's.
+            Entity zombie = spawn(EntityTypes.ZOMBIE, next++);
             NativeKillBanner.attacked(zombie);
             death(zombie);
             require(NativeKillBanner.timeline().age(System.nanoTime()) >= 0 && NativeKillBanner.timeline().sequence() == 1,

@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  * QA world. Five pigs killed by the player in one server tick, then five killed by the player's own attacks one client tick
  * apart: the banner must show 1, 2, 3, 4, 5 in turn, none dropped (the banner state every client tick in
  * screenshots/killstreak/killstreak-trace.csv, a banner lasts at least 5 ticks so each one is seen; and, when the game renders
- * frames, a picture of each banner 0.15 s in: screenshots/killstreak/ks-&lt;run&gt;-&lt;n&gt;-k&lt;count&gt;.png). Then server kill messages in
+ * frames, a picture of each banner 0.2 s in: screenshots/killstreak/ks-&lt;run&gt;-&lt;n&gt;-k&lt;count&gt;.png). Then server kill messages in
  * many servers' formats through the real chat packet handler (each counts, the decoys do not), the streak timer typed as 3 s
  * (a kill 3.5 s later starts again at 1), Unlimited (4 s later still counts) and the player's death (the next kill starts at 1).
  * Module options, pigs and stand-ins are put back.
@@ -91,7 +91,7 @@ final class KillStreakCapture {
                 module.getOptions().forEach(Option::reset);
                 module.setEnabled(true);
                 module.mobs.set(true);
-                module.bannerStyle.setIndex(KillBannerModule.BASE); // its label reads the kill count
+                module.bannerStyle.setIndex(KillBannerModule.BASE);
                 module.duration.setValue(2);
                 check(module.streakReset.get() == 45 && module.streakWindow() == 45_000_000_000L, "Streak Reset starts at 45 seconds");
                 began = System.nanoTime();
@@ -155,7 +155,7 @@ final class KillStreakCapture {
             }
             case 16 -> { start("death"); server(sp -> killAsPlayer(sp, PIGS.get(0))); wait = 10; }
             case 17 -> {
-                check(banner.streak() == 1, "a kill before dying (streak " + banner.streak() + ")");
+                check(banner.streak() == 3, "Unlimited Streak: a third kill before dying (streak " + banner.streak() + ")");
                 server(sp -> sp.kill(sp.level()));
                 wait = 20;
             }
@@ -174,7 +174,7 @@ final class KillStreakCapture {
             case 20 -> { server(sp -> killAsPlayer(sp, PIGS.get(0))); wait = 10; }
             case 21 -> {
                 check(banner.streak() == 1, "after respawning the next kill starts at 1 (streak " + banner.streak() + ")");
-                end(List.of(1, 1), "the death run's banners");
+                end(List.of(3, 1), "the death run's banners");
                 wait = 5;
             }
             default -> finish(game);
@@ -290,9 +290,9 @@ final class KillStreakCapture {
         lastAge = age;
     }
 
-    /** Each rendered frame: a picture of a new banner once it is 0.15 s in (Base has faded in); a minimized game has none. */
+    /** Each rendered frame: a picture of a new banner 0.2 s in (its kill pips are in); a minimized game renders none. */
     static void frame(RenderTarget target, Path game) {
-        if (run == null || !picture || capturing || NativeKillBanner.timeline().age(System.nanoTime()) < .15) return;
+        if (run == null || !picture || capturing || NativeKillBanner.timeline().age(System.nanoTime()) < .2) return;
         picture = false;
         capturing = true;
         String name = "ks-" + run + "-" + SHOWN.size() + "-k" + NativeKillBanner.timeline().sequence();
