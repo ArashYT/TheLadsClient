@@ -155,7 +155,7 @@ final class Probe170F3Fov {
     private static boolean bowDrawn(Minecraft mc) {
         server(mc, player -> player.removePotionEffect(Potion.moveSpeed.id));
         ItemStack held = mc.thePlayer.getCurrentEquippedItem();
-        check(held != null && held.getItem() == Items.bow, "Custom FOV: the bow reached the client's hand");
+        check(held != null && held.getItem() == Items.bow, "Custom FOV: the bow reached the client's hand (slot " + mc.thePlayer.inventory.currentItem + ": " + held + ")");
         if (mc.thePlayer.getItemInUse() == null) {
             // Held use key: runTick stops using an item whose key is up.
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), true);
