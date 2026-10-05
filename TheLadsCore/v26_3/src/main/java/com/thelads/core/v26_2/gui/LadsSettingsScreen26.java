@@ -36,6 +36,8 @@ public class LadsSettingsScreen26 extends Screen {
     }
 
     public void openGlobalColors(){ui.openGlobalColors();}
+    /** The shared menu this screen draws and routes input to (QA reads its bounds and state). */
+    public LadsSettingsScreen ui() { return ui; }
     public void openDisplayActions(){ui.openDisplayActions();}
     public void openModule(String name) { ui.openModule(name); }
     public void searchKillBanners(String query) { ui.searchKillBanners(query); }
@@ -66,7 +68,12 @@ public class LadsSettingsScreen26 extends Screen {
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
         minecraft.textInputManager().onTextInputFocusChange(this, ui.isEditingText());
         ui.setReducedMotion(minecraft.options.screenEffectScale().get() <= 0);
-        ui.render(new GuiGraphicsExtractorLadsAdapter(g, this.font), mouseX, mouseY);
+        ui.render(new GuiGraphicsExtractorLadsAdapter(g, this.font) {
+            // Fullbright's preview shows the live world (no HUD), so a gamma change is seen as it is made.
+            @Override public boolean drawGameView(int x, int y, int width, int height) {
+                return com.thelads.core.v26_2.feature.HudEditorView.draw(g, x, y, width, height, false);
+            }
+        }, mouseX, mouseY);
         super.extractRenderState(g, mouseX, mouseY, delta);
     }
 
@@ -110,7 +117,7 @@ public class LadsSettingsScreen26 extends Screen {
         return super.mouseDragged(event, deltaX, deltaY);
     }
 
-    @Override public void removed() { minecraft.textInputManager().stopTextInput(this); super.removed(); }
+    @Override public void removed() { minecraft.textInputManager().stopTextInput(this); com.thelads.core.v26_2.feature.HudEditorView.release(); super.removed(); }
 
     /** Save through the common UI's existing close path; no separate menu state. */
     public void closeFromMenuKey() { ui.close(); }

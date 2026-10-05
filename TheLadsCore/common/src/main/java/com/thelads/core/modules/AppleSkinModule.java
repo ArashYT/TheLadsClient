@@ -17,6 +17,6 @@ public class AppleSkinModule extends Module {
         addOption(new BoolOption("Tooltips Always Visible", true));
         addOption(new BoolOption("Offhand Food", true));
         addOption(new BoolOption("Vanilla Animations", true));
-        addOption(new SliderOption("Overlay Opacity", 65, 0, 100, 5));
+        addOption(new SliderOption("Overlay Opacity", 65, 0, 100, 5).percent());
     }
 }
