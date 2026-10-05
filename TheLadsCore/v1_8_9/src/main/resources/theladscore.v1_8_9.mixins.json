@@ -65,6 +65,7 @@
     "SkinLayersGateMixin189",
     "SplashProgressMixin",
     "TileEntityMixin",
+    "TileEntitySignRendererMixin",
     "WorldSwitchMixin"
   ]
 }
