@@ -68,7 +68,7 @@ final class HudFlickerCapture {
     private static String difficultyWas;
     private static int limitWas, measureFrames, builds0, replays0;
     private static long nanos0, measureStart;
-    private static ItemStack handWas = ItemStack.EMPTY;
+    private static ItemStack handWas = ItemStack.EMPTY, headWas = ItemStack.EMPTY, feetWas = ItemStack.EMPTY;
     private static BlockPos below;
     private static BlockState belowWas;
     private static double pinX, pinY, pinZ, homeX, homeY, homeZ, fovEffectWas;
@@ -136,6 +136,10 @@ final class HudFlickerCapture {
             player.level().setBlockAndUpdate(below, Blocks.CRAFTING_TABLE.defaultBlockState());
             player.teleportTo(pinX, pinY, pinZ);
             player.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+            headWas = player.getItemBySlot(EquipmentSlot.HEAD).copy(); // something for the Armor HUD to show
+            feetWas = player.getItemBySlot(EquipmentSlot.FEET).copy();
+            player.setItemSlot(EquipmentSlot.HEAD, new ItemStack(net.minecraft.world.item.Items.IRON_HELMET));
+            player.setItemSlot(EquipmentSlot.FEET, new ItemStack(net.minecraft.world.item.Items.IRON_BOOTS));
         });
         for (String command : new String[] {"scoreboard objectives add ladsflicker dummy {\"text\":\"Flicker QA\",\"color\":\"gold\"}",
             "scoreboard objectives setdisplay sidebar ladsflicker", "scoreboard players set Alpha ladsflicker 2", "scoreboard players set Beta ladsflicker 1",
@@ -204,6 +208,8 @@ final class HudFlickerCapture {
                     mc.debugEntries.setOverlayVisible(p.equals("f3"));
                     HudSettings.getInstance().setHudFpsCapEnabled(false);
                     if (p.equals("f3")) startRecording(); // Flashback's recording toast, live through both runs
+                    // Chat once per scene (it stays 10 s): new lines between the runs would only move the old ones.
+                    for (int i = 1; i <= 3; i++) mc.player.connection.sendChat("Flicker QA chat " + i);
                     refresh(mc, p);
                     measure(p + "-off");
                 }
@@ -228,9 +234,8 @@ final class HudFlickerCapture {
         }
     }
 
-    /** Elements that time out are shown again before each run: chat, and the scene's subtitles and action bar, or titles, toast, kill banner, Essential. */
+    /** Elements that time out are shown again before each run: the scene's subtitles and action bar, or titles, toast, kill banner, Essential. */
     private static void refresh(Minecraft mc, String scene) {
-        for (int i = 1; i <= 3; i++) mc.player.connection.sendChat("Flicker QA chat " + i);
         if (scene.equals("f3")) {
             mc.gui.hud.setTimes(0, 1200, 0);
             mc.gui.hud.setTitle(Component.literal("QA Title"));
@@ -294,7 +299,7 @@ final class HudFlickerCapture {
         var adapter = new GuiGraphicsExtractorLadsAdapter(new GuiGraphicsExtractor(mc, new GuiRenderState(), 0, 0), mc.font);
         int lift = adapter.hotbarLift();
         for (var element : HudManager.getInstance().getElements()) {
-            if (!element.isEnabled() || !element.isAvailable()) continue;
+            if (!element.isEnabled() || !element.isAvailable() || !name.startsWith("f3") && element.getModuleName().equals("BossBar")) continue;
             var bounds = element.measureBounds(adapter, false);
             var placed = HudGroupLayout.translate(bounds, HudGroupLayout.clampDelta(bounds, 0, 0, w, h));
             rect(rects, "Lads " + element.getModuleName(), placed.x(), placed.y(), placed.width(), placed.height(), s);
@@ -376,6 +381,8 @@ final class HudFlickerCapture {
             if (belowWas != null) player.level().setBlockAndUpdate(below, belowWas);
             player.teleportTo(homeX, homeY, homeZ);
             player.setItemSlot(EquipmentSlot.MAINHAND, hand);
+            player.setItemSlot(EquipmentSlot.HEAD, headWas);
+            player.setItemSlot(EquipmentSlot.FEET, feetWas);
         });
         for (String command : new String[] {"bossbar remove lads:flicker", "scoreboard objectives remove ladsflicker", "effect clear @a minecraft:luck",
             "gamemode " + gameModeWas + " @a", "difficulty " + difficultyWas}) command(command);
