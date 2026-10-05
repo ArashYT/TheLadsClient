@@ -22,7 +22,7 @@ public final class FlashbackModule extends Module {
 
     public final TextOption replayFolder = addOption(new TextOption("Replay folder", ""));
     public final ActionOption browse = addOption(new ActionOption("Choose replay folder", "Browse..."));
-    public final ActionOption defaultFolder = addOption(new ActionOption("Default folder", "Reset"));
+    public final ActionOption defaultFolder = addOption(new ActionOption("Default folder", "Reset").confirm("Reset the Flashback replay folder to its default?"));
     public final SliderOption pngCompression = addOption(new SliderOption("PNG compression", 6, 0, 9, 1));
     // Off by default: on the Lads test PC (24 threads, RTX 4060 Ti) NVENC exports were slower than OpenH264. For CPU-bound exports.
     public final BoolOption gpuEncoder = addOption(new BoolOption("OpenH264 to GPU", false));

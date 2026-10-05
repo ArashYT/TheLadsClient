@@ -39,6 +39,11 @@ public final class HudEditorView {
     private HudEditorView() {}
 
     public static boolean draw(GuiGraphicsExtractor g, int x, int y, int width, int height) {
+        return draw(g, x, y, width, height, true);
+    }
+
+    /** {@code hud}: also the vanilla HUD, as the HUD editor shows it; without it, the world alone (Fullbright's preview). */
+    public static boolean draw(GuiGraphicsExtractor g, int x, int y, int width, int height, boolean hud) {
         var mc = Minecraft.getInstance();
         RenderTarget main = mc.gameRenderer.mainRenderTarget();
         if (mc.level == null || !NativeRenderScale.ready(main)) return false;
@@ -51,6 +56,7 @@ public final class HudEditorView {
         mc.gameRenderer.gameRenderState().guiRenderState.addGuiElement(new BlitRenderState(RenderPipelines.GUI_OPAQUE_TEXTURED_BACKGROUND,
             TextureSetup.singleTexture(copy.getColorTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR)),
             new Matrix3x2f(g.pose()), x, y, x + width, y + height, 0, 1, 1, 0, -1, null));
+        if (!hud) return true;
         g.pose().pushMatrix();
         try {
             g.pose().translate(x, y);
