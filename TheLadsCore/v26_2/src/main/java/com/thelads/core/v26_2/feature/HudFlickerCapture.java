@@ -51,8 +51,9 @@ import org.slf4j.LoggerFactory;
  * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Then the pace of HUD animations: Jade's fade-in and
  * fade-out, the spyglass zoom-in, the vignette darkening at nightfall and the Lads FPS counter's smoothing, each timed with the cap
  * off, at 30 and at 10 FPS (from the moment it starts until a HUD build shows its end), with how often the HUD was built meanwhile;
- * a second of a kill banner, and a second of a HUD that does not change (the FPS counter off), with the HUD's builds per second and
- * cost (hudflicker.json "pace"). Everything is put back.
+ * a second of a kill banner, of a subtitle fading, and of a HUD where only numbers change (the FPS counter and an effect timer), with
+ * the HUD's builds per second, the builds in which something moved or faded, and the HUD's cost (hudflicker.json "pace"). Everything
+ * is put back.
  */
 final class HudFlickerCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -84,7 +85,7 @@ final class HudFlickerCapture {
     // Pace: how long HUD animations take with the cap off, at 30 and at 10 FPS, from the moment each starts until a frame that built
     // the HUD shows its end. With the cap they should take as long as without, give or take one HUD frame.
     private static final int[] PACE_CAPS = {0, 30, 10};
-    private static final String[] PACE = {"static", "jade-in", "jade-out", "spyglass", "vignette", "fps-smoothing", "kill-banner"};
+    private static final String[] PACE = {"counters", "jade-in", "jade-out", "spyglass", "vignette", "fps-smoothing", "kill-banner", "subtitle"};
     private static final int PACE_REPEATS = 2;
     private static int pace = -1, paceStage, paceBuilds, paceBuildsAtStart, paceChangesAtStart, paceFrames;
     private static long paceReady, paceStart, paceDeadline, dayTimeWas, paceNanosAtStart;
@@ -271,10 +272,21 @@ final class HudFlickerCapture {
             return;
         }
         mc.gui.hud.setOverlayMessage(Component.literal("QA Action Bar"), false);
+        subtitle(mc, true);
+    }
+
+    /** A new "Item plops" subtitle (it fades to grey over 3 s), or none left on screen. */
+    private static void subtitle(Minecraft mc, boolean show) {
         try {
             var field = mc.gui.hud.getClass().getDeclaredField("subtitleOverlay");
             field.setAccessible(true);
             var overlay = (net.minecraft.client.gui.components.SubtitleOverlay) field.get(mc.gui.hud);
+            if (!show) {
+                var list = overlay.getClass().getDeclaredField("subtitles");
+                list.setAccessible(true);
+                ((java.util.List<?>) list.get(overlay)).clear();
+                return;
+            }
             var sound = new SimpleSoundInstance(SoundEvents.ITEM_PICKUP, SoundSource.NEUTRAL, 1, 1, RandomSource.create(),
                 mc.player.getX(), mc.player.getY(), mc.player.getZ());
             overlay.onPlaySound(sound, mc.getSoundManager().getSoundEvent(SoundEvents.ITEM_PICKUP.location()), 16);
@@ -435,6 +447,7 @@ final class HudFlickerCapture {
         overlay.setAnimation(true); // Jade's default
         mc.options.vignette().set(true); // the game's default
         dayTimeWas = Math.floorMod(mc.level.getDefaultClockTime(), 24000L);
+        command("effect give @a minecraft:luck 600 0 true"); // an effect timer on screen in every trial (cleared again at the end)
         report().add("pace", new JsonObject());
         pace = 0;
         paceStage = 0;
@@ -465,12 +478,13 @@ final class HudFlickerCapture {
                     mc.options.keyUse.setDown(false);
                     pinPitch = anim.equals("jade-out") ? 90 : -90; // up at the sky, or down at the crafting table
                     hand(anim.equals("spyglass") ? new ItemStack(net.minecraft.world.item.Items.SPYGLASS) : ItemStack.EMPTY);
-                    if (anim.equals("vignette") || anim.equals("static")) command("time set day");
-                    if (anim.equals("static")) mc.gui.hud.vignetteBrightness = 0; // settled at daylight (it eases 1% a tick, a slow animation)
-                    if (anim.equals("kill-banner") || anim.equals("static")) pinPitch = 90; // Jade on the table, still
+                    boolean still = anim.equals("counters") || anim.equals("kill-banner") || anim.equals("subtitle");
+                    if (anim.equals("vignette") || anim.equals("counters")) command("time set day");
+                    if (anim.equals("counters")) mc.gui.hud.vignetteBrightness = 0; // settled at daylight (it eases 1% a tick, a slow animation)
+                    if (still) pinPitch = 90; // Jade on the table, still
                     NativeKillBanner.timeline().clear(); // the last trial's banner (5 s) would still be animating
                     mc.gui.hud.getChat().clearMessages(false); // and its commands' chat lines would fade out (an animation) 10 s later
-                    NativeQualityOfLife.module("FPS").setEnabled(!anim.equals("static")); // a counter that keeps changing
+                    subtitle(mc, false); // and a subtitle (the spyglass's, the last trial's) fade for 3 s
                     paceReady = now + 1_500_000_000L;
                     paceDeadline = now + 15_000_000_000L;
                     paceStage = 1;
@@ -480,7 +494,7 @@ final class HudFlickerCapture {
                         case "jade-in" -> !jadeTarget && jade.showHideAlpha == 0;
                         case "jade-out" -> jadeTarget && jade.showHideAlpha >= 1;
                         case "spyglass" -> !mc.player.isScoping() && scope(mc) == 0.5f;
-                        case "kill-banner", "static" -> jadeTarget && jade.showHideAlpha >= 1;
+                        case "kill-banner", "counters", "subtitle" -> jadeTarget && jade.showHideAlpha >= 1;
                         default -> true;
                     };
                     if (now < paceReady || !ready && now < paceDeadline) return;
@@ -490,10 +504,11 @@ final class HudFlickerCapture {
                         case "spyglass" -> mc.options.keyUse.setDown(true);
                         case "vignette" -> { mc.gui.hud.vignetteBrightness = 0; command("time set midnight"); }
                         case "kill-banner" -> { NativeKillBanner.bindCurrent(); NativeKillBanner.timeline().clear(); NativeKillBanner.trigger(1, false); }
-                        case "static" -> {}
+                        case "counters" -> {}
+                        case "subtitle" -> subtitle(mc, true);
                         default -> fps(0);
                     }
-                    paceStart = anim.equals("fps-smoothing") || anim.equals("kill-banner") || anim.equals("static") ? now : 0;
+                    paceStart = switch (anim) { case "fps-smoothing", "kill-banner", "counters", "subtitle" -> now; default -> 0; };
                     paceBuildsAtStart = HudCapture.qaBuilds;
                     paceChangesAtStart = changes();
                     paceNanosAtStart = HudCapture.qaNanos;
@@ -514,14 +529,14 @@ final class HudFlickerCapture {
                         case "jade-out" -> built && jade.showHideAlpha < 0.1f;
                         case "spyglass" -> built && scope(mc) >= 1.125f - 0.00625f; // 99% of the way from 0.5
                         case "vignette" -> built && mc.gui.hud.vignetteBrightness >= 0.4f;
-                        case "kill-banner", "static" -> now - paceStart >= 1_000_000_000L; // a second of it
+                        case "kill-banner", "counters", "subtitle" -> now - paceStart >= 1_000_000_000L; // a second of it
                         default -> built && fpsDone();
                     };
                     if (!end && now < paceDeadline) return;
                     String key = (cap == 0 ? "cap off" : "cap " + cap) + " " + anim;
                     double seconds = (now - paceStart) / 1e9;
                     int builds = HudCapture.qaBuilds - paceBuildsAtStart, changes = changes() < 0 ? -1 : changes() - paceChangesAtStart;
-                    String result = end ? String.format(java.util.Locale.ROOT, "%.0f ms, %d HUD builds (%.0f a second, %s changed the HUD), %d frames, HUD %.0f us per frame",
+                    String result = end ? String.format(java.util.Locale.ROOT, "%.0f ms, %d HUD builds (%.0f a second, %s moved or faded something), %d frames, HUD %.0f us per frame",
                         seconds * 1000, builds, builds / Math.max(seconds, 1e-3), changes < 0 ? "?" : String.valueOf(changes), paceFrames,
                         (HudCapture.qaNanos - paceNanosAtStart) / 1e3 / Math.max(1, paceFrames))
                         : "did not end within 12 s" + (paceStart == 0 ? " (did not start)" : "");
@@ -544,7 +559,7 @@ final class HudFlickerCapture {
         }
     }
 
-    /** HudFrameCap.changes where this build has it (builds that drew something new), or -1. */
+    /** HudFrameCap.changes where this build has it (builds in which something moved, resized, faded or changed colour), or -1. */
     private static int changes() {
         try { return com.thelads.core.client.hud.HudFrameCap.class.getField("changes").getInt(null); }
         catch (ReflectiveOperationException absent) { return -1; }

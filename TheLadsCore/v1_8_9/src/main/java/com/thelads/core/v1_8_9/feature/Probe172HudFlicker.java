@@ -66,7 +66,8 @@ final class Probe172HudFlicker {
         mc -> run(mc, "hud-hidden"), mc -> run(mc, "hud-off"), mc -> run(mc, "hud-on"), mc -> run(mc, "hud-after"),
         mc -> run(mc, "f3-hidden"), mc -> run(mc, "f3-off"), mc -> run(mc, "f3-on"), mc -> run(mc, "f3-after"),
         mc -> pace(mc, 0), mc -> pace(mc, 0), mc -> pace(mc, 30), mc -> pace(mc, 30), mc -> pace(mc, 10), mc -> pace(mc, 10),
-        mc -> still(mc, 0), mc -> still(mc, 30), mc -> still(mc, 10),
+        mc -> still(mc, 0, false), mc -> still(mc, 30, false), mc -> still(mc, 10, false),
+        mc -> still(mc, 0, true), mc -> still(mc, 30, true), mc -> still(mc, 10, true),
         Probe172HudFlicker::restore);
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<Option, JsonElement>();
     private static final Map<Module, Boolean> enabledWere = new LinkedHashMap<Module, Boolean>();
@@ -200,20 +201,21 @@ final class Probe172HudFlicker {
         return after(1);
     }
 
-    /** A second of a Lads HUD that does not change (the FPS counter off): its builds per second and cost, with the cap at this value. */
-    private static boolean still(Minecraft mc, int cap) throws Exception {
+    /**
+     * A second of the Lads HUD where only numbers change (the FPS counter, an effect timer), or with the FPS counter sliding a pixel a
+     * frame ({@code moving}): its builds per second, the builds in which something moved, and its cost, with the cap at this value.
+     */
+    private static boolean still(Minecraft mc, int cap, boolean moving) throws Exception {
         pin(mc);
-        Module fps = Options189.module("FPS");
         if (frames.paceResult == null && !frames.pacing) {
-            fps.setEnabled(false);
+            command(mc, "effect @a 3 600 0 true"); // haste: a timer in the Lads potion effects (cleared in restore)
             HudSettings.getInstance().setHudFpsCapEnabled(cap > 0);
             if (cap > 0) HudSettings.getInstance().setHudFpsLimit(cap);
-            frames.still(System.nanoTime() + 1_500_000_000L);
+            frames.still(System.nanoTime() + 1_500_000_000L, moving);
             return retry(1);
         }
         if (frames.paceResult == null) return retry(1);
-        fps.setEnabled(true);
-        String key = (cap == 0 ? "cap off" : "cap " + cap) + " static";
+        String key = (cap == 0 ? "cap off" : "cap " + cap) + (moving ? " moving" : " counters");
         if (!report.has("pace")) report.add("pace", new JsonObject());
         if (!report.getAsJsonObject("pace").has(key)) report.getAsJsonObject("pace").add(key, new JsonArray());
         report.getAsJsonObject("pace").getAsJsonArray(key).add(new com.google.gson.JsonPrimitive(frames.paceResult));
@@ -222,9 +224,9 @@ final class Probe172HudFlicker {
         return after(1);
     }
 
-    /** HudFrameCap.builds where this build has it (Lads HUD builds), or -1. */
-    static int builds() {
-        try { return com.thelads.core.client.hud.HudFrameCap.class.getField("builds").getInt(null); }
+    /** HudFrameCap.builds (Lads HUD builds) or .changes (builds in which something moved or faded) where this build has it, or -1. */
+    static int count(String field) {
+        try { return com.thelads.core.client.hud.HudFrameCap.class.getField(field).getInt(null); }
         catch (ReflectiveOperationException absent) { return -1; }
     }
 
@@ -355,22 +357,23 @@ final class Probe172HudFlicker {
         }
 
         boolean done() { return count >= wanted; }
-        private boolean pacing, still;
+        private boolean pacing, still, moving;
         private long paceAt, paceStart, paceNanos;
-        private int paceBuilds, paceFrames;
+        private int paceBuilds, paceChanges, paceFrames, movedX, movedY;
+        private int[] movedWas;
         private String paceResult;
 
-        void pace(long at) { pacing = true; still = false; paceAt = at; paceStart = 0; name = null; }
+        void pace(long at) { pacing = true; still = moving = false; paceAt = at; paceStart = 0; name = null; }
 
-        void still(long at) { pace(at); still = true; }
+        void still(long at, boolean move) { pace(at); still = true; moving = move; }
 
-        /** The Lads HUD's builds and frames since the start, and its cost per frame. */
+        /** The Lads HUD's builds (and the ones in which something moved) and frames since the start, and its cost per frame. */
         private String rate(long now) {
             double seconds = (now - paceStart) / 1e9;
-            int built = builds() < 0 ? -1 : builds() - paceBuilds;
-            return String.format(java.util.Locale.ROOT, "%.0f ms, %s Lads HUD builds (%s a second), %d frames, Lads HUD %.0f us per frame",
+            int built = count("builds") < 0 ? -1 : count("builds") - paceBuilds, moved = count("changes") < 0 ? -1 : count("changes") - paceChanges;
+            return String.format(java.util.Locale.ROOT, "%.0f ms, %s Lads HUD builds (%s a second, %s moved or faded something), %d frames, Lads HUD %.0f us per frame",
                 seconds * 1000, built < 0 ? "?" : String.valueOf(built), built < 0 ? "?" : String.format(java.util.Locale.ROOT, "%.0f", built / seconds),
-                paceFrames, (NativeHud.hudNanos - paceNanos) / 1e3 / Math.max(1, paceFrames));
+                moved < 0 ? "?" : String.valueOf(moved), paceFrames, (NativeHud.hudNanos - paceNanos) / 1e3 / Math.max(1, paceFrames));
         }
 
         /** Each finished frame of a pace trial: start it after the settle time, then time it (the counter moves only when the HUD is built). */
@@ -384,19 +387,29 @@ final class Probe172HudFlicker {
                 java.lang.reflect.Field target = com.thelads.core.client.hud.FPSHudElement.class.getDeclaredField("target");
                 displayed.setAccessible(true);
                 target.setAccessible(true);
+                String module = ((HudElement) fps).getModuleName();
                 if (paceStart == 0) {
                     if (!still) displayed.setDouble(fps, 0);
+                    if (moving) {
+                        movedWas = HudSettings.getInstance().getPosition(module);
+                        movedX = ((HudElement) fps).getX();
+                        movedY = ((HudElement) fps).getY();
+                    }
                     paceStart = now;
-                    paceBuilds = builds();
+                    paceBuilds = count("builds");
+                    paceChanges = count("changes");
                     paceNanos = NativeHud.hudNanos;
                     paceFrames = 0;
                     return;
                 }
                 paceFrames++;
+                if (moving) HudSettings.getInstance().setPosition(module, movedX + paceFrames % 40, movedY); // slides right, a pixel a frame
                 double goal = target.getDouble(fps);
                 if (still) {
                     if (now - paceStart < 1_000_000_000L) return;
                     paceResult = rate(now);
+                    if (moving && movedWas != null) HudSettings.getInstance().setPosition(module, movedWas[0], movedWas[1]);
+                    else if (moving) HudSettings.getInstance().getPositions().remove(module); // back to its default place
                 } else if (goal > 0 && displayed.getDouble(fps) >= 0.9 * goal) paceResult = rate(now);
                 else if (now - paceStart > 12_000_000_000L) paceResult = "did not end within 12 s";
                 else return;
