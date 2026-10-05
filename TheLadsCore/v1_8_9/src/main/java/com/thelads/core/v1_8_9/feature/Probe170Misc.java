@@ -121,15 +121,22 @@ final class Probe170Misc {
                 steps.add(Probe170Misc::leave);
                 break;
             case "killbanners":
+            case "killtiming": // the frame-time rows only
                 steps.addAll(open(QA));
                 steps.add(mc -> { focusSound = true; return true; });
                 steps.add(Probe170Misc::bannerStart);
-                steps.add(Probe170Misc::bannerSounds);
+                if (focus.equals("killbanners")) steps.add(Probe170Misc::bannerSounds);
                 bannerTiming(steps, "random-cold-kuronami-k3", KillBannerStyle.KURONAMI, 3, false);
                 bannerTiming(steps, "random-again-kuronami-k3", KillBannerStyle.KURONAMI, 3, false);
                 bannerTiming(steps, "chosen-glitchpop-k1", KillBannerStyle.GLITCHPOP, 1, true);
                 bannerTiming(steps, "chosen-reaver-k4", KillBannerStyle.REAVER, 4, true); // its 4-kill frames: read before the kill (chosen)
                 bannerTiming(steps, "chosen-champions2025-k2", KillBannerStyle.CHAMPIONS2025, 2, true);
+                bannerTiming(steps, "chosen-reaver-k1-whole", KillBannerStyle.REAVER, 1, true, 90);
+                bannerTiming(steps, "chosen-reaver-k5-whole", KillBannerStyle.REAVER, 5, true, 130);
+                bannerTiming(steps, "chosen-rogue-k1-whole", KillBannerStyle.ROGUE, 1, true, 90);
+                bannerTiming(steps, "chosen-rogue-k4-whole", KillBannerStyle.ROGUE, 4, true, 90);
+                bannerTiming(steps, "chosen-aemondir-k3-whole", KillBannerStyle.AEMONDIR, 3, true, 90);
+                if (focus.equals("killbanners")) {
                 Object[][] skins = {{KillBannerStyle.DEFAULT, 0}, {KillBannerStyle.REAVER, 0}, {KillBannerStyle.ROGUE, 0}, {KillBannerStyle.AEMONDIR, 0},
                     {KillBannerStyle.CHAMPIONS2024, 0}, {KillBannerStyle.PHASEGUARD, 1}, {KillBannerStyle.ONI, 0}, {KillBannerStyle.VCT, 0},
                     {KillBannerStyle.BOLT, 0}, {KillBannerStyle.GLITCHPOP, 0}, {KillBannerStyle.XEROFANG, 2}};
@@ -153,6 +160,23 @@ final class Probe170Misc {
                         return after(picker.startsWith("preview-oni-") ? 18 + 14 * (picker.charAt(12) - '1') : 20);
                     });
                     steps.add(mc -> { CoreProbe.screenshot(mc, "170-kb-picker-" + picker); mc.displayGuiScreen(null); return after(5); });
+                }
+                } // held frames
+                if (focus.equals("killtiming")) { // a banner whose art cannot be drawn is skipped and cleared (once logged), not a crash
+                    steps.add(mc -> { KillBanner189.reset(); KillBanner189.qaBreak = true; KillBanner189.trigger(1, false, false); return after(6); });
+                    steps.add(mc -> {
+                        KillBanner189.qaBreak = false;
+                        check(!KillBanner189.showing(), "KillBanner: a banner whose art fails is skipped and cleared, the game goes on");
+                        return true;
+                    });
+                }
+                if (focus.equals("killtiming")) { // art not drawn for a minute is let go: textures, feeds and the strips with their inflaters
+                    steps.add(mc -> { banner().bannerStyle.setIndex(KillBannerModule.BASE); return after(1400); });
+                    steps.add(mc -> {
+                        check(KillBannerArt189.held() == 0, "KillBanner: a minute after the last banner no animated skin holds art (" + KillBannerArt189.held() + ")");
+                        check(KillBannerStyle.REAVER.loadedStrip(1) == null && KillBannerStyle.ROGUE.loadedStrip(5) == null, "KillBanner: Reaver's and Rogue's strips are released");
+                        return true;
+                    });
                 }
                 steps.add(mc -> { check(bannerSaved == bannerShots, "KillBanner: " + bannerSaved + " of " + bannerShots + " held banner frames saved"); return true; });
                 steps.add(Probe170Misc::bannerEnd);
@@ -295,22 +319,27 @@ final class Probe170Misc {
      * pick whose art nothing loaded before. Logged as "Lads 1.8.9 kill banner frame times".
      */
     private static void bannerTiming(List<CoreProbe.Step> steps, String name, KillBannerStyle skin, int kills, boolean chosen) {
+        bannerTiming(steps, name, skin, kills, chosen, 30);
+    }
+
+    /** As above, for {@code ticks} client ticks after the kill (90 covers a whole Reaver or Rogue banner, its way out included). */
+    private static void bannerTiming(List<CoreProbe.Step> steps, String name, KillBannerStyle skin, int kills, boolean chosen, int ticks) {
         steps.add(mc -> {
             KillBannerModule module = banner();
             module.sound.set(true); // the real play path (the QA game is muted)
             module.duration.setValue(2);
             module.bannerStyle.setIndex(KillBannerModule.styleIndexOf(chosen ? skin : KillBannerStyle.DEFAULT));
             KillBanner189.reset();
-            KillBanner189.recordFrames(600);
-            return after(8); // the chosen skin's art loads on these ticks, before the kill
+            KillBanner189.recordFrames(1500);
+            return after(chosen ? 60 : 15); // (15: 30+ frames at the 60 FPS QA cap) the chosen skin's art loads on these ticks, before the kill
         });
         steps.add(mc -> {
             triggerFrame = KillBanner189.frameCount;
             KillBanner189.trigger(kills, false, false, chosen ? banner().chosen() : new KillBannerModule.Pick(skin, 0, skin));
-            return after(30);
+            return after(ticks);
         });
         steps.add(mc -> {
-            long[] times = KillBanner189.frameTimes;
+            long[] times = KillBanner189.frameTimes, drawn = KillBanner189.renderTimes;
             int end = KillBanner189.frameCount;
             KillBanner189.recordFrames(0);
             KillBanner189.reset();
@@ -323,8 +352,29 @@ final class Probe170Misc {
             LOG.info(String.format("Lads 1.8.9 kill banner frame times %s: before the kill max %.1f ms (median %.1f), the kill's frame %.1f ms,"
                 + " its banner max %.1f ms (%d frames after the kill's) (median %.1f)", name, before[before.length - 1] / 1e6, before[before.length / 2] / 1e6,
                 times[triggerFrame] / 1e6, after[after.length - 1] / 1e6, slowest - triggerFrame, after[after.length / 2] / 1e6));
+            // What the banner's own drawing cost the render thread, frames with a banner on screen only.
+            long[] cost = new long[end - triggerFrame];
+            int n = 0;
+            for (int i = triggerFrame; i < end; i++) if (drawn[i] > 0) cost[n++] = drawn[i];
+            cost = Arrays.copyOf(cost, n);
+            Arrays.sort(cost);
+            if (n > 0) LOG.info(String.format("Lads 1.8.9 kill banner draw cost %s: %d frames, max %.2f ms, p99 %.2f ms, p90 %.2f ms, median %.2f ms, mean %.2f ms, total %.1f ms, first frame %.2f ms",
+                name, n, cost[n - 1] / 1e6, cost[Math.min(n - 1, n * 99 / 100)] / 1e6, cost[Math.min(n - 1, n * 90 / 100)] / 1e6, cost[n / 2] / 1e6,
+                Arrays.stream(cost).sum() / 1e6 / n, Arrays.stream(cost).sum() / 1e6, firstCost(drawn, triggerFrame, end) / 1e6));
+            StringBuilder spikes = new StringBuilder();
+            for (int i = triggerFrame; i < end && spikes.length() < 240; i++)
+                if (times[i] > 20_000_000L) spikes.append(String.format(" +%d:%.1fms(draw %.2f)", i - triggerFrame, times[i] / 1e6, drawn[i] / 1e6));
+            if (spikes.length() > 0) LOG.info("Lads 1.8.9 kill banner frames over 20 ms in " + name + ":" + spikes);
+            int worst = triggerFrame;
+            for (int i = triggerFrame; i < end; i++) if (drawn[i] > drawn[worst]) worst = i;
+            LOG.info(String.format("Lads 1.8.9 kill banner slowest draw in %s: +%d frames after the kill, %.2f ms", name, worst - triggerFrame, drawn[worst] / 1e6));
             return after(5);
         });
+    }
+
+    private static long firstCost(long[] drawn, int from, int end) {
+        for (int i = from; i < end; i++) if (drawn[i] > 0) return drawn[i];
+        return 0;
     }
 
     /** The banner's frames, as 26.x KillBannerCapture: its opening, (an ace's turn), settled, and three moments of its way out. */
@@ -357,10 +407,12 @@ final class Probe170Misc {
             module.duration.setValue(seconds);
             module.headshotText.set(true);
             KillBanner189.reset();
+            KillBanner189.backdrop = 0x808080; // the same flat grey behind every held frame, run to run
             KillBanner189.trigger(kills, false, headshot);
             KillBanner189.freeze(frame / 60.0 + 1 / 240.0); // a quarter frame in, as a 60 fps frame shows it
             return after(2);
         });
+        steps.add(mc -> KillBanner189.stale() ? retry(1) : true); // the strip frame is decoded off the render thread: wait for the one frozen
         String whole = "kb172-whole-" + bannerShots;
         steps.add(mc -> {
             CoreProbe.screenshot(mc, whole); // 1.8.9 saves only whole screenshots: save one, keep the banner's part
@@ -401,6 +453,7 @@ final class Probe170Misc {
         com.thelads.core.modules.KillBannerModule module = banner();
         for (int i = 0; i < BANNER_WAS.size(); i++) module.getOptions().get(i).load(BANNER_WAS.get(i));
         module.setEnabled(bannerWas);
+        KillBanner189.backdrop = 0;
         KillBanner189.reset();
         return after(5);
     }

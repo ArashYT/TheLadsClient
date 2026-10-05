@@ -32,6 +32,8 @@ import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 
 /**
@@ -42,6 +44,9 @@ import org.lwjgl.opengl.GL11;
  */
 public final class KillBanner189 {
     private static final KillBannerTimeline BANNER = KillBanners.TIMELINE;
+    private static final Logger LOGGER = LogManager.getLogger("TheLadsCore");
+    /** The last banner failure logged: one line for each different one, not one a frame. */
+    private static String failureLogged = "";
     private static NetHandlerPlayClient trackedConnection;
     private static int lastLabelDelta;
     private static boolean lastLabelPreview;
@@ -49,8 +54,12 @@ public final class KillBanner189 {
     /** QA only (Probe150): banner frames and picker thumbnails drawn. */
     public static long frames, thumbs;
     /** QA only (Probe170Misc): each frame's time (ns) while a probe records them. */
-    static long[] frameTimes;
+    static long[] frameTimes, renderTimes;
     static int frameCount;
+    /** QA: the next banner draws fail as a missing asset would (the overlay must skip it, not crash). */
+    static boolean qaBreak;
+    /** QA: an opaque RGB drawn over the frame behind the banner, so held frames of different runs compare pixel for pixel (0: none). */
+    static int backdrop;
     private static long lastFrame;
 
     private static KillBannerModule module() {
@@ -73,7 +82,9 @@ public final class KillBanner189 {
         if (!mc.thePlayer.isEntityAlive()) BANNER.clear();
         KillBannerModule module = module();
         KillBannerModule.Pick pick = module != null ? module.chosen() : null;
-        if (pick != null && pick.style() != null) KillBannerArt189.warm(pick.style(), pick.variant());
+        if (pick == null) return;
+        if (pick.style() != null) KillBannerArt189.warm(pick.style(), pick.variant());
+        else KillBannerArt189.warmBase();
     }
 
     @SubscribeEvent
@@ -87,6 +98,7 @@ public final class KillBanner189 {
     /** QA: records the next {@code frames} frame times (null stops). */
     static void recordFrames(int frames) {
         frameTimes = frames > 0 ? new long[frames] : null;
+        renderTimes = frames > 0 ? new long[frames] : null;
         frameCount = 0;
         lastFrame = 0;
     }
@@ -119,7 +131,14 @@ public final class KillBanner189 {
     private static void kill(KillDetector.Kill kill) {
         KillBannerModule module = module();
         if (kill == null || module == null) return;
-        play(KillBanners.fire(module, kill, System.nanoTime()), (float) module.volume.getValue());
+        String sound = KillBanners.fire(module, kill, System.nanoTime());
+        prefetch(module);
+        play(sound, (float) module.volume.getValue());
+    }
+
+    /** A banner has just started: its frames start decoding now. */
+    private static void prefetch(KillBannerModule module) {
+        if (BANNER.age(System.nanoTime()) >= 0) KillBannerArt189.prefetch(KillBanners.shown(module), BANNER.sequence());
     }
 
     /** The living entity a hit lands on: the Ender Dragon for its parts. */
@@ -165,7 +184,19 @@ public final class KillBanner189 {
         KillBannerModule module = module();
         if (!eligible() || module == null) return;
         trackedConnection = Minecraft.getMinecraft().getNetHandler();
-        play(KillBanners.show(module, kills, preview, headshot, pick, System.nanoTime()), (float) module.volume.getValue());
+        String sound = KillBanners.show(module, kills, preview, headshot, pick, System.nanoTime());
+        prefetch(module);
+        play(sound, (float) module.volume.getValue());
+    }
+
+    /** QA: a banner is on screen. */
+    static boolean showing() {
+        return BANNER.age(System.nanoTime()) >= 0;
+    }
+
+    /** QA: false once the strip frame the last draw wanted was the one drawn (always for stills). */
+    static boolean stale() {
+        return KillBannerArt189.stale();
     }
 
     /** QA: the banner on screen stays this many seconds after its kill (KillBannerTimeline.freeze). */
@@ -232,20 +263,46 @@ public final class KillBanner189 {
         if (event.type != RenderGameOverlayEvent.ElementType.ALL || !eligible() || module == null) return;
         double age = BANNER.age(System.nanoTime());
         if (age < 0) return;
+        long started = System.nanoTime(); // QA only: what the banner costs a frame (renderTimes)
         // Blending and depth go back as found, as NativeHud leaves them.
         boolean blend = GL11.glIsEnabled(GL11.GL_BLEND), depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
         GlStateManager.disableDepth();
         KillBannerArt189.begin();
+        if (backdrop != 0) drawBackdrop(event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
         try {
             render(module, age, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
+        } catch (RuntimeException | LinkageError failure) {
+            // A missing or corrupt asset: this banner is skipped (and logged once), the game goes on.
+            BANNER.clear();
+            String what = String.valueOf(failure.getMessage());
+            if (!what.equals(failureLogged)) {
+                failureLogged = what;
+                LOGGER.warn("Lads kill banner skipped: its art could not be drawn", failure);
+            }
         } finally {
             KillBannerArt189.end();
             if (!blend) GlStateManager.disableBlend();
             if (depth) GlStateManager.enableDepth();
+            if (renderTimes != null && frameCount < renderTimes.length) renderTimes[frameCount] = System.nanoTime() - started;
         }
     }
 
+    private static void drawBackdrop(int width, int height) {
+        net.minecraft.client.renderer.Tessellator tessellator = net.minecraft.client.renderer.Tessellator.getInstance();
+        net.minecraft.client.renderer.WorldRenderer buffer = tessellator.getWorldRenderer();
+        GlStateManager.disableTexture2D();
+        GlStateManager.color((backdrop >> 16 & 255) / 255f, (backdrop >> 8 & 255) / 255f, (backdrop & 255) / 255f, 1.0F);
+        buffer.begin(GL11.GL_QUADS, net.minecraft.client.renderer.vertex.DefaultVertexFormats.POSITION);
+        buffer.pos(0, height, 0).endVertex();
+        buffer.pos(width, height, 0).endVertex();
+        buffer.pos(width, 0, 0).endVertex();
+        buffer.pos(0, 0, 0).endVertex();
+        tessellator.draw();
+        GlStateManager.enableTexture2D();
+    }
+
     private static void render(KillBannerModule module, double age, int width, int height) {
+        if (qaBreak) throw new IllegalStateException("QA: kill banner art unavailable");
         KillBannerModule.Pick pick = KillBanners.shown(module);
         KillBannerStyle style = pick.style();
         if (style == null) {

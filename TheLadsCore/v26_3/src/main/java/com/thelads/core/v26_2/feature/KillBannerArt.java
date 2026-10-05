@@ -40,6 +40,7 @@ final class KillBannerArt {
         KillBannerStrip strip;
         int frame = -1, variant = -1;
         byte[] copy;
+        long used;
     }
     private static final String DIR = "/assets/theladscore/killbanner/", GLOW = DIR + "glow.png", SHADOW = DIR + "shadow.png",
         MARK = DIR + "mark.png", MARK_THIN = DIR + "mark_thin.png", HEADSHOT = DIR + "headshot.png", HS_MARK = DIR + "hs_mark.png";
@@ -326,6 +327,14 @@ final class KillBannerArt {
             textures.release(s.id);
             return true;
         });
+        // The frame texture, the bounds and the strips (packed frames, inflaters) of a skin not drawn for a minute.
+        LIVE.entrySet().removeIf(e -> {
+            if (time - e.getValue().used < IDLE) return false;
+            textures.release(e.getValue().id);
+            BOUNDS.remove(e.getKey());
+            e.getKey().release();
+            return true;
+        });
     }
 
     /** x, y, width and height of the frame's visible pixels. */
@@ -437,6 +446,7 @@ final class KillBannerArt {
     /** The style's frame texture, rewritten when the frame, the strip or the variant changes. */
     private static Identifier frame(KillBannerStyle style, int variant, KillBannerStrip strip, int index) {
         Live live = LIVE.computeIfAbsent(style, s -> new Live());
+        live.used = now;
         if (live.texture == null) { // one cell size a style
             live.copy = new byte[strip.width * strip.height * 4];
             NativeImage image = new NativeImage(strip.width, strip.height, true);

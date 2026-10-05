@@ -18,7 +18,7 @@ public final class KillBannerStrip {
     public final byte[] exitIcon, exitRest;
     private final byte[] packed, iconY;
     private final byte[] frame, delta;
-    private final Inflater inflater = new Inflater();
+    private Inflater inflater; // made when decoding starts, ended when the last frame is out and by release()
     private int decoded = -1;
 
     private KillBannerStrip(int width, int height, int frames, int introEnd, int exitFrames, byte[] iconY, byte[] packed,
@@ -63,11 +63,16 @@ public final class KillBannerStrip {
         return read(new ByteArrayInputStream(data));
     }
 
-    /** RGBA bytes of frame index (row-major, straight alpha). Moving forward is cheap; going back restarts the stream. */
+    /**
+     * RGBA bytes of frame index (row-major, straight alpha), the strip's own buffer: valid until the next call, so another thread
+     * should use {@link #frame(int, byte[])}. Moving forward is cheap; going back restarts the stream (one deflate stream,
+     * so frame N needs frames 0..N-1 first; KillBannerFeed does this off the render thread).
+     */
     public synchronized byte[] frame(int index) {
         index = Math.max(0, Math.min(frames - 1, index));
         if (index < decoded || decoded < 0) {
-            inflater.reset();
+            if (inflater == null) inflater = new Inflater();
+            else inflater.reset();
             inflater.setInput(packed);
             java.util.Arrays.fill(frame, (byte) 0);
             decoded = -1;
@@ -87,6 +92,23 @@ public final class KillBannerStrip {
         } catch (DataFormatException failure) {
             throw new IllegalStateException("Corrupt kill banner strip", failure);
         }
+        if (decoded == frames - 1) endInflater(); // the stream is spent: its native memory goes now, a rewind makes a new one
         return frame;
+    }
+
+    /** frame(index) copied into out (width * height * 4 bytes); safe while another thread decodes this strip. */
+    public synchronized void frame(int index, byte[] out) {
+        System.arraycopy(frame(index), 0, out, 0, frame.length);
+    }
+
+    /** Ends the native inflater (it is made again if a frame is asked for later). */
+    public synchronized void release() {
+        endInflater();
+        decoded = -1;
+    }
+
+    private void endInflater() {
+        if (inflater != null) inflater.end();
+        inflater = null;
     }
 }
