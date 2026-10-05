@@ -41,6 +41,7 @@ import org.apache.logging.log4j.Logger;
  */
 final class Probe150e {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
+    private static String spawningWas;
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe150e::farBlockEntities, Probe150e::tooltips,
         Probe150e::appleStart, Probe150e::appleShown, Probe150e::rottenShown, Probe150e::saturationShown, Probe150e::goldenShown,
         Probe150e::appleDone, Probe150e::tooltipShown, Probe150e::tooltipShown, Probe150e::tooltipShown, Probe150e::tooltipShown,
@@ -104,6 +105,12 @@ final class Probe150e {
         slot = mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem];
         mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem] = new ItemStack(Items.apple);
         onServer(mc, player -> {
+            // Superflat spawns slimes, which can kill the survival player mid-check: hostile mobs go and stop spawning until appleDone.
+            net.minecraft.world.GameRules rules = player.worldObj.getGameRules();
+            if (spawningWas == null) spawningWas = rules.getString("doMobSpawning");
+            rules.setOrCreateGameRule("doMobSpawning", "false");
+            for (Object entity : player.worldObj.loadedEntityList)
+                if (entity instanceof net.minecraft.entity.monster.IMob) ((net.minecraft.entity.Entity) entity).setDead();
             player.setGameType(WorldSettings.GameType.SURVIVAL);
             player.getFoodStats().readNBT(food(14, 3.5f, 2.5f));
             player.setHealth(9);
@@ -234,6 +241,8 @@ final class Probe150e {
             player.getFoodStats().readNBT(food(20, 5, 0));
             player.setHealth(player.getMaxHealth());
             player.setGameType(WorldSettings.GameType.CREATIVE);
+            if (spawningWas != null) player.worldObj.getGameRules().setOrCreateGameRule("doMobSpawning", spawningWas);
+            spawningWas = null;
         });
         Food189.qaPulse = null;
         restore("AppleSkin");

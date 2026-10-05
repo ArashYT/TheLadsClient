@@ -240,6 +240,8 @@ final class Probe151 {
             mc -> {
                 check(mc.thePlayer.fishEntity == null, state + "the line is reeled in");
                 select(mc, 4);
+                // Again here: a real mouse moving a focused QA window can have turned the camera since the sequence began.
+                mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = 35;
                 double yaw = Math.toRadians(mc.thePlayer.rotationYaw);
                 double x = mc.thePlayer.posX - Math.sin(yaw) * 2.3, y = mc.thePlayer.posY + 0.2, z = mc.thePlayer.posZ + Math.cos(yaw) * 2.3;
                 onServer(mc, player -> {
@@ -257,7 +259,10 @@ final class Probe151 {
             mc -> {
                 check(!items(mc).isEmpty(), state + "the integrated server dropped an apple in view");
                 // Its render hook counts frames: a loaded PC can render none in 3 ticks (every hook at 0), so on waits up to 2 s more.
-                if (on && OldAnimations189.hits(Hook.DROP) == 0 && ++dropWait < 40) return retry(1);
+                if (on && OldAnimations189.hits(Hook.DROP) == 0 && ++dropWait < 40) {
+                    mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = 35; // the apple stays in view
+                    return retry(1);
+                }
                 dropWait = 0;
                 hooks(on, "dropped apple", Hook.DROP);
                 screenshot(mc, "151-dropped-2d" + tag);

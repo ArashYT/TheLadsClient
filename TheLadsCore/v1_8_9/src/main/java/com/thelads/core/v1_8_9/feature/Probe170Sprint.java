@@ -2,6 +2,7 @@ package com.thelads.core.v1_8_9.feature;
 
 import static com.thelads.core.v1_8_9.feature.CoreProbe.after;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
+import static com.thelads.core.v1_8_9.feature.CoreProbe.retry;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.screenshot;
 
 import com.google.gson.JsonElement;
@@ -55,6 +56,7 @@ final class Probe170Sprint {
     private static final Map<BlockPos, IBlockState> blocksWere = new LinkedHashMap<>();
     private static SprintTrace trace;
     private static boolean wasEnabled, started;
+    private static int saveWaits;
     private static long modifiedWas;
     private static String spawningWas;
     private static BlockPos origin;
@@ -73,8 +75,13 @@ final class Probe170Sprint {
         },
         mc -> {
             check(toggles().isSprintToggled(), "Sprint: a tap of the Sprint key (Toggle Sprint unbound) toggles sprint on");
+            return after(1);
+        },
+        mc -> {
+            // Written off the game thread half a second after the last change (ConfigManager.saveLater, 1.7.3).
             String config = new String(Files.readAllBytes(ClientPaths.getConfigFile().toPath()), StandardCharsets.UTF_8);
-            check(config.contains("\"Sprint toggled\": true"), "Sprint: the toggle is saved in thelads_config.json at once");
+            if (!config.contains("\"Sprint toggled\": true") && ++saveWaits < 40) return retry(1);
+            check(config.contains("\"Sprint toggled\": true"), "Sprint: the toggle is saved in thelads_config.json within 2 s, off the game thread");
             trace.phase("run");
             hold(mc.gameSettings.keyBindForward, true);
             return after(30);
