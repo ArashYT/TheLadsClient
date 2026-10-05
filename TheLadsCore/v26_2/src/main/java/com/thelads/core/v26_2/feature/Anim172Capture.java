@@ -75,13 +75,14 @@ final class Anim172Capture {
     /** One step per tick; its return: ticks to wait, or -1 to run it again next tick. */
     private interface Step { int run(Minecraft mc) throws Exception; }
     private static final List<Step> STEPS = new ArrayList<>();
-    private static int step = -1, wait, checks, failures, sample, useStart, foodWas, arrowsWas, slotBefore, waited;
+    private static int step = -1, wait, checks, failures, sample, useStart, foodWas, arrowsWas, slotBefore, waited, arrowEntities;
     private static float maxSwing, xRotBefore, yRotBefore;
     private static boolean drawn, hurtSeen;
     private static double[] posBefore, platform;
     private static GameType modeBefore;
     private static Difficulty difficultyBefore;
     private static int foodBefore;
+    private static int timeBefore = Integer.MIN_VALUE;
     private static CameraType cameraBefore;
     private static float roll, nod;
     private static final List<ItemStack> INVENTORY = new ArrayList<>();
@@ -93,6 +94,7 @@ final class Anim172Capture {
     private static final StringBuilder TILT = new StringBuilder("hit,source,module,directional,intensity,hurtDir,yawUsed,roll,nod,expected\n");
     private static final List<String> SENT = Collections.synchronizedList(new ArrayList<>());
     private static final Map<String, String> PACKETS = new TreeMap<>();
+    private static final Map<String, Integer> EATEN = new TreeMap<>();
     private static volatile boolean counting;
     private static Channel channel;
     private static volatile String pendingFrame;
@@ -184,6 +186,7 @@ final class Anim172Capture {
             for (String use : new String[]{"eat", "bow", "block"})
                 check(PACKETS.get(use).equals(PACKETS.get(use + "-off")), use + ": 1.7 Animations on and off sent the same packet kinds around the "
                     + "click " + PACKETS.get(use) + " / " + PACKETS.get(use + "-off"));
+            check(EATEN.size() == 2 && Math.abs(EATEN.get("") - EATEN.get("-off")) <= 1, "the beef took as long with 1.7 Animations on as off " + EATEN);
             Files.createDirectories(mc.gameDirectory.toPath().resolve("lads-qa"));
             Files.writeString(mc.gameDirectory.toPath().resolve("lads-qa").resolve("172-swing.csv"), SWING.toString());
             LOGGER.info("Lads 1.7.2 swing while using samples:\n{}", SWING);
@@ -255,6 +258,12 @@ final class Anim172Capture {
                 }
             platform = new double[]{base.getX() + 0.5, base.getY() + 1, base.getZ() + 0.5};
             server.teleportTo(platform[0], platform[1], platform[2]);
+            try { // noon, so the frames show the hand
+                var commands = server.level().getServer().getCommands().getDispatcher();
+                var source = server.level().getServer().createCommandSourceStack().withSuppressedOutput();
+                timeBefore = commands.execute("time query time", source);
+                commands.execute("time set noon", source);
+            } catch (Exception failure) { LOGGER.warn("Lads anim 1.7.2 capture: the clock stays as it is", failure); }
         });
         Connection connection = mc.getConnection().getConnection();
         var field = Connection.class.getDeclaredField("channel");
@@ -330,11 +339,13 @@ final class Anim172Capture {
             if (use.equals("eat")) {
                 if (mc.player.getInventory().getItem(2).getCount() == foodWas && held < 60) return -1;
                 mc.options.keyUse.setDown(false);
-                check(mc.player.getInventory().getItem(2).getCount() == foodWas - 1 && held >= 32 && held <= 35,
-                    state + "one beef eaten after " + held + " ticks (32 to eat)");
+                check(mc.player.getInventory().getItem(2).getCount() == foodWas - 1 && held >= 32 && held <= 38,
+                    state + "one beef eaten after " + held + " ticks (32 to eat, then the server's word)");
+                EATEN.put(tag, held);
                 return 10;
             }
             if (use.equals("bow") && held < 25) return -1;
+            arrowEntities = mc.level.getEntitiesOfClass(Arrow.class, mc.player.getBoundingBox().inflate(40, 20, 40)).size();
             mc.options.keyUse.setDown(false);
             return 8;
         });
@@ -342,8 +353,8 @@ final class Anim172Capture {
             check(!mc.player.isUsingItem(), state + "the use ended when the key came up");
             if (use.equals("bow")) {
                 List<Arrow> arrows = mc.level.getEntitiesOfClass(Arrow.class, mc.player.getBoundingBox().inflate(40, 20, 40));
-                check(arrows.size() == 1 && mc.player.getInventory().getItem(9).getCount() == arrowsWas - 1, state + "the released bow shot one arrow (speed "
-                    + (arrows.isEmpty() ? 0 : arrows.get(0).getDeltaMovement().length()) + ", arrows " + arrowsWas + " -> "
+                check(arrows.size() == arrowEntities + 1 && mc.player.getInventory().getItem(9).getCount() == arrowsWas - 1, state + "the released bow shot one arrow (speed "
+                    + arrows.stream().mapToDouble(arrow -> arrow.getDeltaMovement().length()).max().orElse(0) + ", arrows " + arrowsWas + " -> "
                     + mc.player.getInventory().getItem(9).getCount() + ")");
                 onServer(server -> server.level().getEntitiesOfClass(Arrow.class, server.getBoundingBox().inflate(80, 40, 80)).forEach(Arrow::discard));
             }
@@ -462,6 +473,7 @@ final class Anim172Capture {
             Difficulty difficulty = difficultyBefore;
             int food = foodBefore;
             ItemStack offhand = offhandBefore;
+            int time = timeBefore;
             onServer(server -> {
                 PLATFORM.forEach(server.level()::setBlockAndUpdate); // the platform goes, as found
                 PLATFORM.clear();
@@ -475,6 +487,10 @@ final class Anim172Capture {
                 }
                 server.setHealth(server.getMaxHealth());
                 server.teleportTo(at[0], at[1], at[2]);
+                if (time != Integer.MIN_VALUE) try {
+                    server.level().getServer().getCommands().getDispatcher().execute("time set " + time,
+                        server.level().getServer().createCommandSourceStack().withSuppressedOutput());
+                } catch (Exception failure) { LOGGER.warn("Lads anim 1.7.2 capture: the clock could not be put back to {}", time, failure); }
             });
             mc.player.getInventory().setSelectedSlot(slotBefore);
             look(mc.player, yRotBefore, xRotBefore);
