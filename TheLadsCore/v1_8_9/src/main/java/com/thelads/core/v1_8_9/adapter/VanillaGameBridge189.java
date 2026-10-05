@@ -252,11 +252,31 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         return armor;
     }
 
-    /** The sidebar the player sees (team-colour slot first), top line first, as GuiIngame draws it (15 highest, "#" hidden). */
+    private Object scoreboardPlayer;
+    private int scoreboardTick;
+    private ScoreboardSnapshot scoreboardSnapshot;
+
+    /**
+     * The sidebar the player sees (team-colour slot first), top line first, as GuiIngame draws it (15 highest, "#" hidden). Built
+     * once per tick (it is read several times a frame); an unchanged sidebar keeps its snapshot, so the HUD keeps its measurements.
+     */
     @Override
     public ScoreboardSnapshot getScoreboard() {
         Minecraft mc = mc();
-        if (!isIngame()) return null;
+        if (!isIngame()) {
+            scoreboardPlayer = null;
+            scoreboardSnapshot = null;
+            return null;
+        }
+        if (scoreboardPlayer == mc.thePlayer && scoreboardTick == mc.thePlayer.ticksExisted) return scoreboardSnapshot;
+        scoreboardPlayer = mc.thePlayer;
+        scoreboardTick = mc.thePlayer.ticksExisted;
+        ScoreboardSnapshot next = buildScoreboard(mc);
+        if (next == null || !next.equals(scoreboardSnapshot)) scoreboardSnapshot = next;
+        return scoreboardSnapshot;
+    }
+
+    private static ScoreboardSnapshot buildScoreboard(Minecraft mc) {
         Scoreboard board = mc.theWorld.getScoreboard();
         ScorePlayerTeam team = board.getPlayersTeam(mc.thePlayer.getName());
         ScoreObjective objective = null;

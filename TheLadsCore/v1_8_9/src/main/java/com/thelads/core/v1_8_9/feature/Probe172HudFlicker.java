@@ -52,22 +52,37 @@ import org.lwjgl.opengl.GL12;
  * (reference), the cap off (control), the cap on at 10 FPS and the HUD hidden again (the view stayed still), with the elements'
  * rectangles and the Lads HUD's cost per frame (hudflicker.json). On 1.8.9 the cap covers the Lads HUD only.
  * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Everything is put back.
+ * 1.7.3: every Lads HUD module and a 15-line scoreboard in "hud"; two more "hud" runs for pixel parity, the cap on through the
+ * pre-1.7.3 replay (no framebuffer cache) and the cap off without the text cache; then benchmark runs at the QA FPS cap in three
+ * interleaved rounds ("bench-*": frame times and the Lads HUD's work per frame) and a text cache microbenchmark. Caches a build lacks
+ * are left alone.
  */
 final class Probe172HudFlicker {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final String[] MODULES = {"FPS", "Coordinates", "Keystrokes", "CPS", "Paperdoll", "ArmorHUD", "Potion Effects", "Scoreboard",
-        "BossBar", "KillBanner", "Item Physics", "Chat Heads", "Raised", "Autohide"};
-    private static final int FRAMES = 36, HIDDEN = 4, CAP = 10;
-    static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe172HudFlicker::setup,
-        mc -> run(mc, "hud-hidden"), mc -> run(mc, "hud-off"), mc -> run(mc, "hud-on"), mc -> run(mc, "hud-after"),
-        mc -> run(mc, "f3-hidden"), mc -> run(mc, "f3-off"), mc -> run(mc, "f3-on"), mc -> run(mc, "f3-after"), Probe172HudFlicker::restore);
+        "BossBar", "KillBanner", "Item Physics", "Chat Heads", "Raised", "Autohide", "PingHUD", "Memory", "Speed", "Day", "Time", "XP",
+        "Biome", "Direction", "Health", "Hunger", "TexturePacks", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress",
+        "PortalCoordinates"};
+    private static final int FRAMES = 36, HIDDEN = 4, CAP = 10, BENCH_SECONDS = 5;
+    static final List<CoreProbe.Step> STEPS = new ArrayList<CoreProbe.Step>();
+    static {
+        STEPS.add(Probe172HudFlicker::setup);
+        List<String> runs = new ArrayList<String>(Arrays.asList("hud-hidden", "hud-off", "hud-on", "hud-replay", "hud-nofont", "hud-after"));
+        // Benchmark: three rounds, each in another order, so warm-up and the PC's other load fall on every setting.
+        String[][] rounds = {{"nofont", "off", "replay", "on"}, {"on", "replay", "off", "nofont"}, {"off", "on", "nofont", "replay"}};
+        for (int round = 0; round < rounds.length; round++) for (String setting : rounds[round]) runs.add("bench-" + (round + 1) + "-" + setting);
+        runs.addAll(Arrays.asList("f3-hidden", "f3-off", "f3-on", "f3-after"));
+        for (final String name : runs) STEPS.add(mc -> run(mc, name));
+        STEPS.add(Probe172HudFlicker::fontBench);
+        STEPS.add(Probe172HudFlicker::restore);
+    }
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<Option, JsonElement>();
     private static final Map<Module, Boolean> enabledWere = new LinkedHashMap<Module, Boolean>();
     private static final JsonObject report = new JsonObject();
     private static final List<int[]> pending = new ArrayList<int[]>();
     private static final List<String> names = new ArrayList<String>();
     private static boolean capWas, f3Was;
-    private static int limitWas, width, height, difficultyWas;
+    private static int limitWas, width, height, difficultyWas, fpsWas;
     private static String run;
     private static Frames frames;
     private static ItemStack handWas, headWas, feetWas;
@@ -129,6 +144,9 @@ final class Probe172HudFlicker {
         for (String command : new String[] {"gamemode 0 @a", "scoreboard objectives add ladsflicker dummy Flicker QA",
             "scoreboard objectives setdisplay sidebar ladsflicker", "scoreboard players set Alpha ladsflicker 2", "scoreboard players set Beta ladsflicker 1",
             "effect @a 3 600 0 true", "difficulty 0"}) command(mc, command);
+        // 1.7.3: a full sidebar (15 lines), as on a server
+        for (int i = 3; i <= 15; i++) command(mc, "scoreboard players set Line" + (i < 10 ? "0" : "") + i + " ladsflicker " + i);
+        fpsWas = mc.gameSettings.limitFramerate;
         frames = new Frames();
         MinecraftForge.EVENT_BUS.register(frames);
         LOG.info("Lads HUD flicker capture BEGIN: {} frames per run, cap {} FPS (the Lads HUD)", FRAMES, CAP);
@@ -147,18 +165,23 @@ final class Probe172HudFlicker {
                 BossStatus.statusBarTime = 100_000;
                 mc.ingameGUI.setRecordPlaying("", false);
             }
-            boolean hidden = name.endsWith("-hidden") || name.endsWith("-after");
+            boolean hidden = name.endsWith("-hidden") || name.endsWith("-after"), bench = name.startsWith("bench-");
             mc.gameSettings.hideGUI = hidden;
             mc.gameSettings.showDebugInfo = !hidden && name.startsWith("f3");
-            HudSettings.getInstance().setHudFpsCapEnabled(name.endsWith("-on"));
+            HudSettings.getInstance().setHudFpsCapEnabled(name.endsWith("-on") || name.endsWith("-replay"));
             HudSettings.getInstance().setHudFpsLimit(CAP);
-            // Chat once per scene, on its own (lines fade 10 s after they came; new ones would move the old ones).
-            if (name.endsWith("-off")) {
+            qaOff("HudCache189", name.endsWith("-replay"));
+            qaOff("FontCache189", name.endsWith("-nofont"));
+            // Benchmark runs keep the QA FPS cap (uncapped runs were withdrawn while the owner plays): the Lads HUD's work per frame counts.
+            mc.gameSettings.limitFramerate = fpsWas;
+            // Chat fresh for each run, on its own (lines fade 10 s after they came; new ones would move the old ones).
+            if (!hidden && !name.startsWith("f3") || name.equals("f3-off")) {
                 mc.ingameGUI.getChatGUI().clearChatMessages();
                 for (int i = 1; i <= 3; i++) mc.thePlayer.sendChatMessage("Flicker QA chat " + i);
             }
             if (!hidden) refresh(mc, name.startsWith("f3"));
-            frames.start(name, hidden ? HIDDEN : FRAMES, hidden ? 800 : 1600, !hidden);
+            if (bench) frames.bench(name, BENCH_SECONDS);
+            else frames.start(name, hidden ? HIDDEN : FRAMES, hidden ? 800 : 1600, !hidden);
             return retry(1);
         }
         if (!frames.done()) return retry(1);
@@ -194,8 +217,58 @@ final class Probe172HudFlicker {
         } catch (Throwable absent) { LOG.info("Lads HUD flicker capture: no Essential notification ({})", absent.toString()); }
     }
 
+    /** QA switch of a 1.7.3 cache (absent in older builds): off for this run. */
+    private static void qaOff(String cache, boolean off) {
+        try {
+            java.lang.reflect.Field field = Class.forName("com.thelads.core.v1_8_9.feature." + cache).getDeclaredField("qaOff");
+            field.setAccessible(true);
+            field.setBoolean(null, off);
+        } catch (ReflectiveOperationException absent) {
+            // a build without that cache
+        }
+    }
+
+    /**
+     * The text cache on its own: sidebar-like lines drawn with shadow and measured, cache off and on in turn (four rounds), CPU time
+     * per string with the GPU finished before and after (glFinish), so its GL work counts too.
+     */
+    private static boolean fontBench(Minecraft mc) {
+        net.minecraft.client.gui.FontRenderer font = mc.fontRendererObj;
+        String[] lines = new String[20];
+        for (int i = 0; i < lines.length; i++) lines[i] = (i % 3 == 0 ? "§c" : i % 3 == 1 ? "§eLine " : "§bPlayer§f") + i + " §712345";
+        mc.entityRenderer.setupOverlayRendering();
+        StringBuilder out = new StringBuilder();
+        for (int round = 0; round < 4; round++) {
+            boolean off = round % 2 == 0;
+            qaOff("FontCache189", off);
+            long draw = 0, measure = 0;
+            for (int iteration = 0; iteration < 22; iteration++) {
+                GL11.glFinish();
+                long start = System.nanoTime();
+                for (int rep = 0; rep < 25; rep++) for (int i = 0; i < lines.length; i++) font.drawStringWithShadow(lines[i], 4, 4 + i * 9, 0xFFFFFFFF);
+                GL11.glFinish();
+                long drawn = System.nanoTime();
+                int sum = 0;
+                for (int rep = 0; rep < 25; rep++) for (String line : lines) sum += font.getStringWidth(line);
+                long measured = System.nanoTime();
+                if (iteration >= 2 && sum > 0) { draw += drawn - start; measure += measured - drawn; } // the first two warm up (and compile)
+            }
+            int strings = 20 * 25 * lines.length;
+            out.append(String.format(java.util.Locale.ROOT, "%s%s: draw %.2f us, width %.3f us", out.length() > 0 ? "; " : "", off ? "off" : "on",
+                draw / 1e3 / strings, measure / 1e3 / strings));
+        }
+        qaOff("FontCache189", false);
+        LOG.info("Lads HUD bench text cache per string (shadowed draw / width): {}", out);
+        if (!report.has("bench")) report.add("bench", new JsonObject());
+        report.getAsJsonObject("bench").addProperty("text-cache", out.toString());
+        return after(1);
+    }
+
     private static boolean restore(Minecraft mc) throws Exception {
         MinecraftForge.EVENT_BUS.unregister(frames);
+        qaOff("HudCache189", false);
+        qaOff("FontCache189", false);
+        mc.gameSettings.limitFramerate = fpsWas;
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindDrop.getKeyCode(), false);
         mc.gameSettings.hideGUI = false;
         mc.gameSettings.showDebugInfo = f3Was;
@@ -225,7 +298,7 @@ final class Probe172HudFlicker {
             if (ImageIO.write(image, "png", new File(folder, names.get(i) + ".png"))) saved++;
         }
         Files.write(new File(folder, "hudflicker.json").toPath(), report.toString().getBytes(StandardCharsets.UTF_8));
-        check(saved == 2 * (2 * HIDDEN + 2 * FRAMES), "HUD flicker: every frame of every run saved (" + saved + ")");
+        check(saved == 2 * (2 * HIDDEN + 2 * FRAMES) + 2 * FRAMES, "HUD flicker: every frame of every run saved (" + saved + ")");
         LOG.info("Lads HUD flicker capture END: {} passed, 0 failed; frames in lads-qa/screenshots/hudflicker", saved);
         pending.clear();
         return after(5);
@@ -279,9 +352,52 @@ final class Probe172HudFlicker {
     public static final class Frames {
         private String name;
         private int wanted, count, measured;
-        private long due, measureEnd, nanos0, frames0, start;
+        private long due, measureEnd, nanos0, frames0, start, last;
         private boolean measure;
         private IntBuffer buffer;
+        /** Benchmark: frame times (ns) over the run, no frames saved. */
+        private long[] times;
+        private int timed;
+
+        void bench(String name, int seconds) {
+            this.name = name;
+            wanted = 1;
+            count = 0;
+            measure = false;
+            times = new long[seconds * 4000];
+            timed = 0;
+            due = System.nanoTime() + 1_500_000_000L; // settle
+            measureEnd = due + seconds * 1_000_000_000L;
+            last = 0;
+        }
+
+        private void benchFrame(long now) {
+            if (now < due) return;
+            if (last == 0) {
+                last = now;
+                nanos0 = NativeHud.hudNanos;
+                frames0 = NativeHud.frames;
+                return;
+            }
+            if (timed < times.length) times[timed++] = now - last;
+            last = now;
+            if (now < measureEnd && timed < times.length) return;
+            long[] sorted = Arrays.copyOf(times, timed);
+            Arrays.sort(sorted);
+            long total = 0;
+            for (long t : sorted) total += t;
+            int lows = Math.max(1, timed / 100);
+            long worst = 0;
+            for (int i = timed - lows; i < timed; i++) worst += sorted[i];
+            String line = String.format(java.util.Locale.ROOT, "%d frames, avg %.1f FPS, 1%% low %.1f FPS, p50 %.2f ms, p99 %.2f ms, max %.2f ms, Lads HUD %.1f us per frame",
+                timed, timed / (total / 1e9), lows / (worst / 1e9), sorted[timed / 2] / 1e6, sorted[Math.min(timed - 1, timed * 99 / 100)] / 1e6,
+                sorted[timed - 1] / 1e6, (NativeHud.hudNanos - nanos0) / 1e3 / Math.max(1, NativeHud.frames - frames0));
+            LOG.info("Lads HUD bench {}: {}", name, line);
+            if (!report.has("bench")) report.add("bench", new JsonObject());
+            report.getAsJsonObject("bench").addProperty(name, line);
+            times = null;
+            count = wanted;
+        }
 
         void start(String name, int wanted, long settleMs, boolean measure) {
             this.name = name;
@@ -298,6 +414,10 @@ final class Probe172HudFlicker {
         public void frame(TickEvent.RenderTickEvent event) {
             if (event.phase != TickEvent.Phase.END || name == null || done()) return;
             long now = System.nanoTime();
+            if (times != null) {
+                benchFrame(now);
+                return;
+            }
             if (measure && now >= due - 1_100_000_000L && measureEnd == 0) {
                 measureEnd = now + 1_000_000_000L;
                 start = now;
@@ -319,12 +439,19 @@ final class Probe172HudFlicker {
             if (count == 0 && name.endsWith("-off")) rects(mc, name.substring(0, name.indexOf('-')));
             width = mc.displayWidth;
             height = mc.displayHeight;
-            int textureWidth = mc.getFramebuffer().framebufferTextureWidth, textureHeight = mc.getFramebuffer().framebufferTextureHeight;
+            // Without framebuffers (OptiFine Fast Render) the frame is in the back buffer.
+            boolean framebuffer = net.minecraft.client.renderer.OpenGlHelper.isFramebufferEnabled();
+            int textureWidth = framebuffer ? mc.getFramebuffer().framebufferTextureWidth : width;
+            int textureHeight = framebuffer ? mc.getFramebuffer().framebufferTextureHeight : height;
             if (buffer == null || buffer.capacity() < textureWidth * textureHeight) buffer = BufferUtils.createIntBuffer(textureWidth * textureHeight);
             buffer.clear();
             GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
-            GlStateManager.bindTexture(mc.getFramebuffer().framebufferTexture);
-            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+            if (framebuffer) {
+                GlStateManager.bindTexture(mc.getFramebuffer().framebufferTexture);
+                GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+            } else {
+                GL11.glReadPixels(0, 0, width, height, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+            }
             int[] pixels = new int[width * height];
             for (int y = 0; y < height; y++) { buffer.position(y * textureWidth); buffer.get(pixels, y * width, width); }
             pending.add(pixels);

@@ -77,7 +77,10 @@ public final class NativeHud {
         boolean faded = shown > 0 && shown < 1 && Autohide189.begin();
         try {
             long start = System.nanoTime();
-            if (shown > 0) HudManager.getInstance().render(new GuiLadsAdapter(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight()));
+            if (shown > 0) {
+                GuiLadsAdapter g = new GuiLadsAdapter(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
+                if (!HudCache189.render(g)) HudManager.getInstance().render(g);
+            }
             hudNanos += System.nanoTime() - start;
             frames++;
         } finally {
