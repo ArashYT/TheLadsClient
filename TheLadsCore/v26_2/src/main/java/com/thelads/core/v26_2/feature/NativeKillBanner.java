@@ -8,13 +8,19 @@ import com.thelads.core.client.killbanner.KillBanners;
 import com.thelads.core.client.killbanner.KillDetector;
 import com.thelads.core.config.HudSettings;
 import com.thelads.core.modules.KillBannerModule;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -33,12 +39,15 @@ import net.minecraft.world.phys.HitResult;
 /**
  * Kill banners the moment the client sees a kill (KillDetector): the death of a player, mob or boss the local player hit last,
  * or a plugin server's kill message. Hooks: KillBannerAttackMixin (attacks) and KillBannerPacketsMixin (damage and death
- * events, health, server chat), all on the client thread as the packet is handled.
+ * events, health, server chat), all on the client thread as the packet is handled. Kills queue their banners
+ * (KillBannerTimeline); each client tick starts the next one whose turn has come. The streak ends on death (the death
+ * screen, or a server's message that the player died), in a new world (dimension, Hypixel's next game) or on another server.
  */
 public final class NativeKillBanner {
     private static final Identifier BASE = Identifier.fromNamespaceAndPath("theladscore", "textures/gui/base_kill_banner.png");
     private static final KillBannerTimeline BANNER = KillBanners.TIMELINE;
     private static ClientPacketListener trackedConnection;
+    private static ClientLevel trackedLevel;
     private static int lastLabelDelta;
     private static boolean lastLabelPreview;
     private static String label = "";
@@ -49,9 +58,14 @@ public final class NativeKillBanner {
         if (NativeKillBannerPreview.tick()) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (!eligible()) { reset(); return; }
-        if (trackedConnection != minecraft.getConnection()) { reset(); trackedConnection = minecraft.getConnection(); }
+        if (trackedConnection != minecraft.getConnection() || trackedLevel != minecraft.level) {
+            reset();
+            trackedConnection = minecraft.getConnection();
+            trackedLevel = minecraft.level;
+        }
         if (!minecraft.player.isAlive()) BANNER.clear();
         if (NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module) {
+            play(module, KillBanners.poll(module, System.nanoTime()));
             KillBannerModule.Pick pick = module.chosen();
             if (pick.style() != null) KillBannerArt.warm(pick.style(), pick.variant());
         }
@@ -63,7 +77,8 @@ public final class NativeKillBanner {
         boolean head = Minecraft.getInstance().hitResult instanceof EntityHitResult hit && hit.getType() == HitResult.Type.ENTITY
             && hit.getEntity() == target && hit.getLocation().y >= target.getY() + target.getBbHeight() * .75;
         LivingEntity victim = victim(target);
-        if (victim != null) KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
+        // A click on a body still falling over is no new hit: the death already counted.
+        if (victim != null && !victim.isDeadOrDying()) KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
     }
 
     /** A damage event: its cause (the attacker, or a projectile's owner) is the local player, someone else, or nobody. */
@@ -81,14 +96,31 @@ public final class NativeKillBanner {
         if (entity != null && eligible()) kill(KillBanners.DETECTOR.died(entity.getId(), System.nanoTime()));
     }
 
-    /** A server (system) chat line, not the action bar. */
+    /**
+     * A server (system) chat line, not the action bar: a kill, or the player's own death (it ends the streak). A vanilla death
+     * message is read by its translation key and names, so it counts in any client language.
+     */
     public static void chat(Component message) {
         Minecraft minecraft = Minecraft.getInstance();
         if (message == null || !eligible()) return;
-        var info = minecraft.getConnection().getPlayerInfo(minecraft.player.getUUID());
-        Set<String> me = KillDetector.names(minecraft.player.getGameProfile().name(),
-            info != null && info.getTabListDisplayName() != null ? info.getTabListDisplayName().getString() : minecraft.player.getDisplayName().getString());
-        kill(KillBanners.DETECTOR.chat(message.getString(), me, System.nanoTime()));
+        Set<String> me = names(minecraft.player);
+        String text = null;
+        if (message.getContents() instanceof TranslatableContents death) {
+            List<String> args = new ArrayList<>();
+            for (Object arg : death.getArgs()) args.add(arg instanceof Component part ? part.getString() : String.valueOf(arg));
+            text = KillDetector.deathLine(death.getKey(), args);
+        }
+        if (text == null) text = message.getString();
+        if (KillDetector.myDeath(text, me)) BANNER.endStreak();
+        kill(KillBanners.DETECTOR.chat(text, me, NativeKillBanner::players, System.nanoTime()));
+    }
+
+    /** The other players in the world: a kill message may name one the client saw no hit on (a knock into the void). */
+    private static Map<Integer, Set<String>> players() {
+        Map<Integer, Set<String>> players = new HashMap<>();
+        for (Player player : Minecraft.getInstance().level.players())
+            if (player != Minecraft.getInstance().player) players.put(player.getId(), names(player));
+        return players;
     }
 
     private static void kill(KillDetector.Kill kill) {
@@ -123,11 +155,14 @@ public final class NativeKillBanner {
 
     /** QA: binds the current connection now, so the next tick does not reset a banner fired on purpose. */
     static void bindCurrent() {
-        if (eligible()) trackedConnection = Minecraft.getInstance().getConnection();
+        if (!eligible()) return;
+        trackedConnection = Minecraft.getInstance().getConnection();
+        trackedLevel = Minecraft.getInstance().level;
     }
 
     static void reset() {
         trackedConnection = null;
+        trackedLevel = null;
         KillBanners.reset();
     }
 
