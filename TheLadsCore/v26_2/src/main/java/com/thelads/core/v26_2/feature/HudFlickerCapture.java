@@ -69,7 +69,7 @@ final class HudFlickerCapture {
     private static ItemStack handWas = ItemStack.EMPTY;
     private static BlockPos below;
     private static BlockState belowWas;
-    private static double pinX, pinY, pinZ, fovEffectWas;
+    private static double pinX, pinY, pinZ, homeX, homeY, homeZ, fovEffectWas;
     private static float pinYaw;
     private static String gameModeWas;
     private static Path gameDir;
@@ -102,17 +102,23 @@ final class HudFlickerCapture {
         VoiceChatIntegration.qa = new VoiceChatState("voicechat:icons/microphone",
             List.of(new VoiceMember("Steve", "8667ba71-b85a-4004-af54-457a9734eed7", true, false),
                 new VoiceMember("Alex", "ec561538-f3fd-461d-aff5-086b22154bce", false, true)));
-        // In survival (health, food, AppleSkin), standing still on a crafting table and looking straight down at it (Jade's tooltip;
-        // a still background for every frame, no FOV effects); an empty hand, so the throw never fires.
-        pinX = mc.player.getX();
-        pinY = mc.player.getY();
-        pinZ = mc.player.getZ();
+        // In survival (health, food, AppleSkin), standing still on a crafting table 30 blocks above the ground, looking straight down
+        // at it (Jade's tooltip): a background that stays the same in every frame (no water, mobs or particles at the camera, no
+        // FOV effects); an empty hand, so the throw never fires. The table goes and the player goes back afterwards.
+        homeX = mc.player.getX();
+        homeY = mc.player.getY();
+        homeZ = mc.player.getZ();
+        int x = net.minecraft.util.Mth.floor(homeX), z = net.minecraft.util.Mth.floor(homeZ);
+        int y = mc.level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, x, z) + 30;
+        pinX = x + 0.5;
+        pinY = y;
+        pinZ = z + 0.5;
         pinYaw = mc.player.getYRot();
         pin(mc);
         fovEffectWas = mc.options.fovEffectScale().get();
         mc.options.fovEffectScale().set(0.0);
         gameModeWas = mc.gameMode.getPlayerMode().getName();
-        below = mc.player.blockPosition().below();
+        below = new BlockPos(x, y - 1, z);
         handWas = mc.player.getMainHandItem().copy();
         var server = mc.getSingleplayerServer();
         var id = mc.player.getUUID();
@@ -121,6 +127,7 @@ final class HudFlickerCapture {
             if (player == null) return;
             belowWas = player.level().getBlockState(below);
             player.level().setBlockAndUpdate(below, Blocks.CRAFTING_TABLE.defaultBlockState());
+            player.teleportTo(pinX, pinY, pinZ);
             player.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         });
         for (String command : new String[] {"scoreboard objectives add ladsflicker dummy {\"text\":\"Flicker QA\",\"color\":\"gold\"}",
@@ -346,6 +353,7 @@ final class HudFlickerCapture {
             var player = server.getPlayerList().getPlayer(id);
             if (player == null) return;
             if (belowWas != null) player.level().setBlockAndUpdate(below, belowWas);
+            player.teleportTo(homeX, homeY, homeZ);
             player.setItemSlot(EquipmentSlot.MAINHAND, hand);
         });
         for (String command : new String[] {"bossbar remove lads:flicker", "scoreboard objectives remove ladsflicker", "effect clear @a minecraft:luck",

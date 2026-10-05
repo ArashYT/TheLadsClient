@@ -70,7 +70,9 @@ final class Probe172HudFlicker {
     private static String run;
     private static Frames frames;
     private static ItemStack handWas;
-    private static double pinX, pinY, pinZ;
+    private static double pinX, pinY, pinZ, homeX, homeY, homeZ;
+    private static net.minecraft.util.BlockPos below;
+    private static net.minecraft.block.state.IBlockState belowWas;
     private static float pinYaw;
 
     private Probe172HudFlicker() {}
@@ -88,14 +90,25 @@ final class Probe172HudFlicker {
         capWas = HudSettings.getInstance().isHudFpsCapEnabled();
         limitWas = HudSettings.getInstance().getHudFpsLimit();
         f3Was = mc.gameSettings.showDebugInfo;
-        pinX = mc.thePlayer.posX;
-        pinY = mc.thePlayer.posY;
-        pinZ = mc.thePlayer.posZ;
+        // Standing still on a crafting table 30 blocks above the ground, looking straight down: a background that stays the same in
+        // every frame. The table goes and the player goes back afterwards.
+        homeX = mc.thePlayer.posX;
+        homeY = mc.thePlayer.posY;
+        homeZ = mc.thePlayer.posZ;
+        int x = net.minecraft.util.MathHelper.floor_double(homeX), z = net.minecraft.util.MathHelper.floor_double(homeZ);
+        int y = mc.theWorld.getHeight(new net.minecraft.util.BlockPos(x, 0, z)).getY() + 30;
+        pinX = x + 0.5;
+        pinY = y;
+        pinZ = z + 0.5;
         pinYaw = mc.thePlayer.rotationYaw;
+        below = new net.minecraft.util.BlockPos(x, y - 1, z);
         pin(mc);
         onServer(mc, player -> {
             handWas = player.inventory.getCurrentItem();
             player.inventory.mainInventory[player.inventory.currentItem] = null; // the throw bar charges, nothing is thrown
+            belowWas = player.worldObj.getBlockState(below);
+            player.worldObj.setBlockState(below, net.minecraft.init.Blocks.crafting_table.getDefaultState());
+            player.playerNetServerHandler.setPlayerLocation(pinX, pinY, pinZ, pinYaw, 90);
         });
         for (String command : new String[] {"gamemode 0 @a", "scoreboard objectives add ladsflicker dummy Flicker QA",
             "scoreboard objectives setdisplay sidebar ladsflicker", "scoreboard players set Alpha ladsflicker 2", "scoreboard players set Beta ladsflicker 1",
@@ -166,7 +179,11 @@ final class Probe172HudFlicker {
         HudSettings.getInstance().setHudFpsCapEnabled(capWas);
         HudSettings.getInstance().setHudFpsLimit(limitWas);
         final ItemStack hand = handWas;
-        onServer(mc, player -> player.inventory.mainInventory[player.inventory.currentItem] = hand);
+        onServer(mc, player -> {
+            player.inventory.mainInventory[player.inventory.currentItem] = hand;
+            if (belowWas != null) player.worldObj.setBlockState(below, belowWas);
+            player.playerNetServerHandler.setPlayerLocation(homeX, homeY, homeZ, pinYaw, 0);
+        });
         for (String command : new String[] {"scoreboard objectives remove ladsflicker", "effect @a clear", "gamemode 1 @a"}) command(mc, command);
         File folder = new File(mc.mcDataDir, "lads-qa/screenshots/hudflicker");
         folder.mkdirs();
