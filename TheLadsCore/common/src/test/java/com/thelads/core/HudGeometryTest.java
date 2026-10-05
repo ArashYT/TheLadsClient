@@ -142,6 +142,15 @@ class HudGeometryTest {
         assertTrue(game.biomeReads>reads);
         game.ingame=false;HudSettings.getInstance().setHudFpsCapEnabled(false);
     }
+    @Test void hudFpsCapBuildStandsForTheFramesSinceTheLastOne(){
+        // An animation that moves a step per draw takes HudFrameCap.steps() steps per capped build, so it keeps its pace.
+        HudSettings.getInstance().setHudFpsCapEnabled(true);HudSettings.getInstance().setHudFpsLimit(10);HudFrameCap.reset();
+        assertTrue(HudFrameCap.due(1_000_000_000L,640,360));assertEquals(1,HudFrameCap.steps());
+        long t=1_000_000_000L;
+        do t+=8_333_334L; while(!HudFrameCap.due(t,640,360)); // 120 FPS
+        assertEquals(12,HudFrameCap.steps(),"120 FPS under a 10 FPS cap: each build stands for 12 frames");
+        HudFrameCap.reset();assertEquals(1,HudFrameCap.steps());HudSettings.getInstance().setHudFpsCapEnabled(false);
+    }
     @Test void hudFpsCapRecordsEveryGraphicsCall() throws Exception{
         // A LadsGraphics method left to its default under the cap drops its drawing from the replayed build (it shows on build
         // frames only) or measures the default instead of the game (1.8.9: the Armor HUD ignored Raised's lift with the cap on).

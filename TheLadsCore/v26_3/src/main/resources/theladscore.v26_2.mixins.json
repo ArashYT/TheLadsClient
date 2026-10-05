@@ -117,6 +117,8 @@
     "AutohidePictureMixin",
     "PictureInPictureReplayMixin",
     "GuiRendererReplayMixin",
+    "DeltaTrackerCapMixin",
+    "HudScopeMixin",
     "ChatTextShadowMixin",
     "VoiceChatHudMixin",
     "VoiceChatHudMixin$Group",
