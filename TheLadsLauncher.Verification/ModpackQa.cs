@@ -103,7 +103,14 @@ internal static class ModpackQa
                 string log = Path.Combine(instance.GameDirectory, "logs", "latest.log");
                 if (File.Exists(log)) File.Delete(log);
                 var started = Stopwatch.StartNew();
-                game = await ModpackLauncher.LaunchAsync(data, instance, session, settings, java, http, Progress(Say), ct);
+                // ModpackLauncher.LaunchAsync, plus: a loader crash at startup exits with its log instead of opening Fabric Loader's
+                // error window on the user's screen (the property is Fabric's; other loaders ignore it).
+                game = await ModpackLauncher.PrepareAsync(data, instance, session, settings, java, http, Progress(Say), ct);
+                if (game.StartInfo.ArgumentList.Count > 0) game.StartInfo.ArgumentList.Insert(0, "-Dfabric.noGui=true");
+                else game.StartInfo.Arguments = "-Dfabric.noGui=true " + game.StartInfo.Arguments;
+                game.Start();
+                instance.LastPlayedUtc = DateTime.UtcNow;
+                Modpacks.Save(instance);
                 Say($"Started PID {game.Id}: {game.StartInfo.FileName}");
                 QaWindowGuard.Watch(game);
                 bool window = false, title = false;

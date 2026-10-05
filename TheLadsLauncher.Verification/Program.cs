@@ -584,6 +584,8 @@ try
     }
     else
     {
+        // A crash at startup exits with its log (the run fails) instead of opening Fabric Loader's error window on the user's screen.
+        AddJvm("-Dfabric.noGui=true");
         // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
         if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
         else AddJvm("-Dthelads.verifyIntegrations=true");
