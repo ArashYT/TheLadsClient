@@ -2,13 +2,14 @@ package com.thelads.core.client;
 
 import com.thelads.core.client.killbanner.KillBannerPlayer;
 import com.thelads.core.client.killbanner.KillBannerStyle;
+import com.thelads.core.client.killbanner.KillBannerTemplate;
 import java.io.InputStream;
 import java.util.Properties;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** The Kingdom Archives skins' drawn animation (KillBannerPlayer.layers): its timing and easing. */
+/** The still skins' animation (KillBannerPlayer.layers): Rogue's measured motion (KillBannerTemplate) on their layers. */
 class KillBannerMotionTest {
     private static final KillBannerStyle SKIN = KillBannerStyle.AEMONDIR;
 
@@ -17,30 +18,68 @@ class KillBannerMotionTest {
     }
 
     @Test
-    void theEmblemDropsInThenTheFrameRingAndPipsLand() {
-        var start = at(SKIN, 1, 1, 2);
-        assertTrue(start.emblemY() < -20 && start.emblemScale() < 1, "the emblem starts small and above its place");
-        assertEquals(0, start.frameAlpha());
-        assertEquals(0, start.pipAlpha());
-        assertTrue(at(SKIN, 1, 3, 2).emblemScale() > 1.05f, "it overshoots its size");
-        var sat = at(SKIN, 1, 9, 2);
-        assertEquals(0, sat.emblemY(), .01f);
-        assertEquals(1, sat.emblemScale(), .001f);
-        assertTrue(at(SKIN, 1, 7, 2).frameAlpha() == 0 && at(SKIN, 1, 7, 2).ringAlpha() == 0, "nothing but the emblem before frame 8");
-        var landing = at(SKIN, 1, 12, 2);
-        assertTrue(landing.frameScale() > 1 && landing.ringScale() < 1 && landing.pipScale() > 1 && landing.pipRadius() > 1,
-            "the frame zooms in, the ring opens out, the pips fly in");
-        assertTrue(landing.pipFlare() > .9f, "the pips flare as the mark lands");
-        var settled = at(SKIN, 1, 30, 2);
-        assertEquals(1, settled.frameAlpha());
-        assertEquals(1, settled.ringAlpha());
-        assertEquals(1, settled.pipAlpha());
-        assertEquals(1, settled.frameScale(), .001f);
-        assertEquals(1, settled.ringScale(), .001f);
-        assertEquals(1, settled.pipScale(), .001f);
-        assertEquals(1, settled.pipRadius(), .001f);
-        assertEquals(0, settled.pipFlare());
-        assertEquals(0, settled.burstAlpha());
+    void theTemplateIsRoguesFrames() {
+        // What tools/killbanner/gen_template.py measured from the shipped Rogue strips: their lengths and their way out.
+        int[] introEnd = {51, 81, 88, 77, 222}, exit = {16, 16, 16, 16, 14};
+        for (int kills = 1; kills <= 5; kills++) {
+            KillBannerTemplate t = KillBannerTemplate.of(kills);
+            assertEquals(introEnd[kills - 1], t.introEnd, "k" + kills + " holds where Rogue's strip holds");
+            assertEquals(exit[kills - 1], t.exit, "k" + kills + " leaves as Rogue's strip leaves");
+            assertEquals(t.introEnd + 1 + t.exit, t.iconAlpha.length);
+            assertEquals(0, t.iconAlpha[0], "nothing in the first frame");
+            assertEquals(1, t.iconAlpha[2], "the icon pops in at frame 2");
+            assertEquals(1, t.iconAlpha[t.introEnd]);
+            assertEquals(1, t.ringAlpha[t.introEnd]);
+            assertEquals(1, t.frameAlpha[t.introEnd]);
+            assertEquals(1, t.pipAlpha[t.introEnd]);
+            assertEquals(0, t.iconAlpha[t.introEnd + t.exit - 1], "the icon is gone by the last frame");
+        }
+        assertEquals(0, KillBannerTemplate.of(1).sprayCount, "one kill throws no droplets");
+        for (int kills = 2; kills <= 5; kills++) assertTrue(KillBannerTemplate.of(kills).sprayCount >= 8, kills + " kills throw droplets");
+        assertEquals(KillBannerTemplate.of(5), KillBannerTemplate.of(9), "past five kills: the ace");
+    }
+
+    @Test
+    void theIconPopsInAndJumpsThenTheFrameAndTheRingFadeIn() {
+        assertEquals(0, at(SKIN, 1, 1, 2).emblemAlpha(), "nothing yet");
+        var popped = at(SKIN, 1, 2, 2);
+        assertEquals(1, popped.emblemAlpha());
+        assertEquals(1, popped.emblemScale(), .001f);
+        assertEquals(0, popped.emblemY(), .001f, "it pops in at its place");
+        assertEquals(0, popped.frameAlpha());
+        assertEquals(0, popped.ringAlpha());
+        var up = at(SKIN, 1, 4, 2);
+        assertTrue(up.emblemY() < -25 && up.emblemScale() < .9f, "then jumps up, a little smaller: " + up.emblemY() + ", " + up.emblemScale());
+        var back = at(SKIN, 1, 9, 2);
+        assertEquals(0, back.emblemY(), .001f);
+        assertEquals(1, back.emblemScale(), .001f);
+        assertTrue(at(SKIN, 1, 8, 2).frameAlpha() > 0 && at(SKIN, 1, 8, 2).frameAlpha() < .2f, "the frame starts fading in at frame 8");
+        assertEquals(1, at(SKIN, 1, 15, 2).frameAlpha(), "and is there by frame 15");
+        assertTrue(at(SKIN, 1, 15, 2).ringAlpha() < .05f, "the ring is not there yet");
+        assertTrue(at(SKIN, 1, 30, 2).ringAlpha() > .2f && at(SKIN, 1, 30, 2).ringAlpha() < .6f, "it fades in from frame 24");
+        assertEquals(1, at(SKIN, 1, 40, 2).ringAlpha());
+        assertEquals(1, at(SKIN, 1, 40, 2).ringScale(), .001f, "in place");
+        assertEquals(1, at(SKIN, 1, 40, 2).frameScale(), .001f);
+    }
+
+    @Test
+    void thePipsFadeInOutsideGlowAndSlideIn() {
+        var early = at(SKIN, 1, 5, 2);
+        assertTrue(early.pipAlpha() > .3f && early.pipAlpha() < .9f, "a dim pip from the start: " + early.pipAlpha());
+        assertTrue(early.pipRadius() > 1.1f, "sitting out from its place: " + early.pipRadius());
+        assertEquals(0, early.pipFlare(), "no glow yet");
+        assertEquals(1, at(SKIN, 1, 11, 2).pipAlpha());
+        var peak = at(SKIN, 1, 14, 2);
+        assertTrue(peak.pipFlare() > .5f, "the glow peaks as the mark lands: " + peak.pipFlare());
+        assertTrue(peak.pipRadius() > 1.1f);
+        var sliding = at(SKIN, 1, 40, 2);
+        assertTrue(sliding.pipRadius() > 1.02f && sliding.pipRadius() < 1.15f, "sliding in with the ring: " + sliding.pipRadius());
+        assertEquals(0, sliding.pipFlare());
+        assertEquals(1, at(SKIN, 1, 52, 2).pipRadius(), .001f, "in place when settled");
+        assertEquals(0, at(SKIN, 1, 52, 2).pipSpin(), .001f);
+        var turned = at(SKIN, 5, 200, 5);
+        assertTrue(Math.abs(turned.pipSpin()) > 300, "the ace's pips go round the ring: " + turned.pipSpin());
+        assertEquals(0, at(SKIN, 3, 200, 5).pipSpin(), .001f, "three kills' pips stay");
     }
 
     @Test
@@ -51,49 +90,46 @@ class KillBannerMotionTest {
             for (double f = .5; f < 60 * KillBannerPlayer.stillSeconds(kills); f += .5) {
                 var now = at(SKIN, kills, f, 3);
                 if (now == null) break;
-                assertEquals(before.emblemY(), now.emblemY(), 6, "k" + kills + " emblem at " + f);
-                assertEquals(before.frameScale(), now.frameScale(), .05, "k" + kills + " frame at " + f);
-                assertEquals(before.pipSpin(), now.pipSpin(), 12, "k" + kills + " spin at " + f);
+                assertEquals(before.emblemY(), now.emblemY(), 8, "k" + kills + " emblem at " + f);
+                assertEquals(before.emblemScale(), now.emblemScale(), .08, "k" + kills + " emblem size at " + f);
+                assertEquals(before.ringAlpha(), now.ringAlpha(), .3, "k" + kills + " ring at " + f); // it goes in 3 frames on the way out
+                assertEquals(before.pipSpin(), now.pipSpin(), 16, "k" + kills + " spin at " + f); // the ace's pips peak at 30 degrees a frame
                 before = now;
             }
         }
     }
 
     @Test
-    void moreKillsMoveMore() {
-        assertTrue(at(SKIN, 1, 40, 2).spray() < 0, "one kill throws no spray (as in Reaver's and Rogue's footage)");
+    void moreKillsThrowDroplets() {
+        assertTrue(at(SKIN, 1, 40, 2).spray() < 0, "one kill throws no spray (as in Rogue's footage)");
         assertEquals(0, KillBannerPlayer.sprayCount(1));
         for (int kills = 2; kills <= 5; kills++) {
-            assertTrue(at(SKIN, kills, 40, 5).spray() > 0, kills + " kills throw a spray");
-            assertTrue(KillBannerPlayer.sprayCount(kills) > KillBannerPlayer.sprayCount(kills - 1) || kills == 2);
-            assertTrue(at(SKIN, kills, 71, 5).glintAlpha() > .9f, kills + " kills: a glint runs round the ring");
+            int start = KillBannerTemplate.of(kills).sprayStart;
+            assertTrue(at(SKIN, kills, start - 1, 5).spray() < 0);
+            assertEquals(0, at(SKIN, kills, start, 5).spray(), 1e-6, kills + " kills throw a spray from frame " + start);
+            assertTrue(KillBannerPlayer.sprayCount(kills) >= 8 && KillBannerPlayer.sprayCount(kills) <= 36);
         }
-        assertEquals(0, at(SKIN, 1, 71, 2).glintAlpha());
         assertTrue(KillBannerPlayer.stillSeconds(5) > 3 && KillBannerPlayer.stillSeconds(1) < 1.2, "the ace plays longest");
-        // The ace's pips turn once round and end where they began.
-        assertEquals(0, at(SKIN, 4, 150, 5).pipSpin());
-        float turning = at(SKIN, 5, 155, 5).pipSpin();
-        assertTrue(turning > 90 && turning < 270, "half way round at " + turning);
-        assertEquals(360, at(SKIN, 5, 200, 5).pipSpin(), .01f);
-        assertTrue(at(SKIN, 5, 120, 5).glintAlpha() > 0, "the ace's glint keeps running");
     }
 
     @Test
     void holdsForTheDurationThenLeavesLikeRogue() {
         double seconds = 3;
-        int exit = (int) Math.round(seconds * 60) - 16;
+        int exit = (int) Math.round(seconds * 60) - KillBannerTemplate.of(1).exit;
         var held = at(SKIN, 1, exit - 1, seconds);
         assertEquals(1, held.frameAlpha());
         assertEquals(1, held.emblemShade());
+        assertEquals(1, held.emblemScale(), .001f);
         // The frame goes first, then the emblem shrinks and darkens, then the ring, then the pips.
         var going = at(SKIN, 1, exit + 4, seconds);
         assertEquals(0, going.frameAlpha());
-        assertTrue(going.emblemScale() < 1 && going.emblemShade() < 1 && going.emblemAlpha() > .9f);
+        assertTrue(going.emblemScale() < .9f && going.emblemAlpha() > .9f, "the emblem shrinks first: " + going.emblemScale());
         assertEquals(1, going.ringAlpha());
+        assertEquals(1, going.pipAlpha());
         var late = at(SKIN, 1, exit + 13, seconds);
-        assertEquals(0, late.emblemAlpha());
-        assertEquals(0, late.ringAlpha());
-        assertTrue(late.pipAlpha() > 0, "the pips go last");
+        assertTrue(late.emblemScale() < .65f && late.emblemShade() < .5f && late.emblemAlpha() < .5f, "then darkens and fades");
+        assertTrue(late.ringAlpha() < .2f, "the ring goes");
+        assertEquals(1, late.pipAlpha(), "the pips go last");
         assertNull(at(SKIN, 1, exit + 16, seconds), "then it is gone");
         assertNotNull(at(SKIN, 1, 60 * KillBannerPlayer.stillSeconds(1) - 1, .5), "a short duration still plays it all");
         assertNull(KillBannerPlayer.layers(SKIN, 1, -1, 2, false));
@@ -110,6 +146,7 @@ class KillBannerMotionTest {
         var settled = at(SKIN, 1, 45, 2);
         assertEquals(SKIN.markSize, settled.markSize(), .05f);
         assertEquals(KillBannerPlayer.MARK_RED, settled.markColor());
+        assertTrue(settled.shadowAlpha() > .4f, "the dark backdrop behind the banner");
         assertEquals(1, KillBannerPlayer.layers(SKIN, 1, 45 / 60.0, 2, true).labelAlpha(), "HEADSHOT for a head kill");
     }
 
@@ -118,7 +155,6 @@ class KillBannerMotionTest {
         KillBannerStyle swap = KillBannerStyle.CHAMPIONS2024;
         assertEquals(0, at(swap, 3, 5, 2).tier(), "the two-kill art first");
         assertEquals(1, at(swap, 3, 14, 2).tier(), "then the three-kill art");
-        assertTrue(at(swap, 3, 11, 2).emblemScale() > 1.05f, "with a punch");
         assertEquals(1, at(swap, 1, 5, 2).tier(), "one kill has nothing before it");
         assertEquals(1, at(SKIN, 3, 5, 2).tier());
     }

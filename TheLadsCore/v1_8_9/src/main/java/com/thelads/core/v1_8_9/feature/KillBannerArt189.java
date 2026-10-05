@@ -171,7 +171,6 @@ final class KillBannerArt189 {
             int accent = style.accent(variant), shade = grey(l.emblemShade());
             float r = style.ring, ey = l.emblemY();
             if (l.shadowAlpha() > 0) centred(sprite(SHADOW), 0, 0, r * 3.7f / sprite(SHADOW).width, argb(0, l.shadowAlpha()));
-            if (l.burstAlpha() > 0) glow(0, ey, r * 2.6f * l.burstScale(), accent, l.burstAlpha());
             if (style.type == KillBannerStyle.Type.BANNER_SWAP) {
                 float s = 1.25f * l.emblemScale();
                 if (l.tier() < 1) centred(sprite(style.swapAsset(kills - 1)), 0, ey, s, argb(shade, l.emblemAlpha() * (1 - l.tier())));
@@ -190,20 +189,14 @@ final class KillBannerArt189 {
                     for (int i = 0; i < count; i++) {
                         float deg = 360f / count * (i + 1) + (count == 2 ? 90 : 0) + l.pipSpin(), rad = (float) Math.toRadians(deg);
                         float px = -r * l.pipRadius() * (float) Math.sin(rad), py = -r * l.pipRadius() * (float) Math.cos(rad);
-                        if (l.pipFlare() > 0) glow(px, py, pip.width * 2.4f * l.pipScale(), accent, l.pipFlare());
+                        if (l.pipFlare() > 0) glow(px, py, pip.width * 2.4f, accent, l.pipFlare());
                         GlStateManager.pushMatrix();
                         GlStateManager.translate(px, py, 0.0F);
                         GlStateManager.rotate(-deg, 0.0F, 0.0F, 1.0F);
-                        centred(pip, 0, 0, l.pipScale(), argb(0xFFFFFF, l.pipAlpha()));
+                        centred(pip, 0, 0, 1, argb(0xFFFFFF, l.pipAlpha()));
                         GlStateManager.popMatrix();
                     }
                 }
-            }
-            if (l.glintAlpha() > 0) for (int j = 0; j < 6; j++) { // a bright point with a fading tail, round the ring
-                double a = Math.toRadians(l.glintAngle() - j * 7);
-                float gx = r * (float) Math.sin(a), gy = -r * (float) Math.cos(a), fade = l.glintAlpha() * (1 - j / 6f);
-                glow(gx, gy, r * (.8f - .08f * j), accent, fade);
-                glow(gx, gy, r * (.35f - .04f * j), 0xFFFFFF, fade);
             }
             if (l.spray() >= 0) {
                 Sprite dot = sprite(GLOW);
