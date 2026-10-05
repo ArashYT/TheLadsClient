@@ -87,6 +87,11 @@ public final class CoreProbe {
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe170Sprint.STEPS);
             STEPS.addAll(Probe170Hud.STEPS);
+        } else if ("keybinds".equals(only)) {
+            STEPS.clear();
+            STEPS.add(CoreProbe::titleShown);
+            if (!"storm".equals(Probe172Keybinds.PHASE)) STEPS.addAll(Arrays.<Step>asList(CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe172Keybinds.steps());
         } else if ("hudflicker".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
@@ -166,6 +171,7 @@ public final class CoreProbe {
         Probe170ItemPhysics.stop();
         ProbeServer170.stop();
         RaisedDollProbe189.stop();
+        Probe172Keybinds.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 
