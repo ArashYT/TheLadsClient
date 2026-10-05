@@ -130,6 +130,11 @@ final class Probe170Misc {
                 bannerTiming(steps, "chosen-glitchpop-k1", KillBannerStyle.GLITCHPOP, 1, true);
                 bannerTiming(steps, "chosen-reaver-k4", KillBannerStyle.REAVER, 4, true); // its 4-kill frames: read before the kill (chosen)
                 bannerTiming(steps, "chosen-champions2025-k2", KillBannerStyle.CHAMPIONS2025, 2, true);
+                bannerTiming(steps, "chosen-reaver-k1-whole", KillBannerStyle.REAVER, 1, true, 90);
+                bannerTiming(steps, "chosen-reaver-k5-whole", KillBannerStyle.REAVER, 5, true, 130);
+                bannerTiming(steps, "chosen-rogue-k1-whole", KillBannerStyle.ROGUE, 1, true, 90);
+                bannerTiming(steps, "chosen-rogue-k4-whole", KillBannerStyle.ROGUE, 4, true, 90);
+                bannerTiming(steps, "chosen-aemondir-k3-whole", KillBannerStyle.AEMONDIR, 3, true, 90);
                 Object[][] skins = {{KillBannerStyle.DEFAULT, 0}, {KillBannerStyle.REAVER, 0}, {KillBannerStyle.ROGUE, 0}, {KillBannerStyle.AEMONDIR, 0},
                     {KillBannerStyle.CHAMPIONS2024, 0}, {KillBannerStyle.PHASEGUARD, 1}, {KillBannerStyle.ONI, 0}, {KillBannerStyle.VCT, 0},
                     {KillBannerStyle.BOLT, 0}, {KillBannerStyle.GLITCHPOP, 0}, {KillBannerStyle.XEROFANG, 2}};
@@ -295,22 +300,27 @@ final class Probe170Misc {
      * pick whose art nothing loaded before. Logged as "Lads 1.8.9 kill banner frame times".
      */
     private static void bannerTiming(List<CoreProbe.Step> steps, String name, KillBannerStyle skin, int kills, boolean chosen) {
+        bannerTiming(steps, name, skin, kills, chosen, 30);
+    }
+
+    /** As above, for {@code ticks} client ticks after the kill (90 covers a whole Reaver or Rogue banner, its way out included). */
+    private static void bannerTiming(List<CoreProbe.Step> steps, String name, KillBannerStyle skin, int kills, boolean chosen, int ticks) {
         steps.add(mc -> {
             KillBannerModule module = banner();
             module.sound.set(true); // the real play path (the QA game is muted)
             module.duration.setValue(2);
             module.bannerStyle.setIndex(KillBannerModule.styleIndexOf(chosen ? skin : KillBannerStyle.DEFAULT));
             KillBanner189.reset();
-            KillBanner189.recordFrames(600);
+            KillBanner189.recordFrames(1500);
             return after(8); // the chosen skin's art loads on these ticks, before the kill
         });
         steps.add(mc -> {
             triggerFrame = KillBanner189.frameCount;
             KillBanner189.trigger(kills, false, false, chosen ? banner().chosen() : new KillBannerModule.Pick(skin, 0, skin));
-            return after(30);
+            return after(ticks);
         });
         steps.add(mc -> {
-            long[] times = KillBanner189.frameTimes;
+            long[] times = KillBanner189.frameTimes, drawn = KillBanner189.renderTimes;
             int end = KillBanner189.frameCount;
             KillBanner189.recordFrames(0);
             KillBanner189.reset();
@@ -323,8 +333,21 @@ final class Probe170Misc {
             LOG.info(String.format("Lads 1.8.9 kill banner frame times %s: before the kill max %.1f ms (median %.1f), the kill's frame %.1f ms,"
                 + " its banner max %.1f ms (%d frames after the kill's) (median %.1f)", name, before[before.length - 1] / 1e6, before[before.length / 2] / 1e6,
                 times[triggerFrame] / 1e6, after[after.length - 1] / 1e6, slowest - triggerFrame, after[after.length / 2] / 1e6));
+            // What the banner's own drawing cost the render thread, frames with a banner on screen only.
+            long[] cost = new long[end - triggerFrame];
+            int n = 0;
+            for (int i = triggerFrame; i < end; i++) if (drawn[i] > 0) cost[n++] = drawn[i];
+            cost = Arrays.copyOf(cost, n);
+            Arrays.sort(cost);
+            if (n > 0) LOG.info(String.format("Lads 1.8.9 kill banner draw cost %s: %d frames, max %.2f ms, p99 %.2f ms, median %.2f ms, mean %.2f ms, first frame %.2f ms",
+                name, n, cost[n - 1] / 1e6, cost[Math.min(n - 1, n * 99 / 100)] / 1e6, cost[n / 2] / 1e6, Arrays.stream(cost).sum() / 1e6 / n, firstCost(drawn, triggerFrame, end) / 1e6));
             return after(5);
         });
+    }
+
+    private static long firstCost(long[] drawn, int from, int end) {
+        for (int i = from; i < end; i++) if (drawn[i] > 0) return drawn[i];
+        return 0;
     }
 
     /** The banner's frames, as 26.x KillBannerCapture: its opening, (an ace's turn), settled, and three moments of its way out. */
