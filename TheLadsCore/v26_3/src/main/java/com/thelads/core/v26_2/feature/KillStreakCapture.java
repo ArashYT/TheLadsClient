@@ -2,6 +2,7 @@ package com.thelads.core.v26_2.feature;
 
 import com.google.gson.JsonElement;
 import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.thelads.core.client.KillBannerTimeline;
 import com.thelads.core.config.Option;
 import com.thelads.core.modules.KillBannerModule;
@@ -31,8 +32,8 @@ import org.slf4j.LoggerFactory;
  * QA only (auto-world, ".lads-qa-capture-killstreak" from the harness's LADS_VERIFY_CAPTURE_KILLSTREAK): the kill streak in the
  * QA world. Five pigs killed by the player in one server tick, then five killed by the player's own attacks one client tick
  * apart: the banner must show 1, 2, 3, 4, 5 in turn, none dropped (the banner state every client tick in
- * screenshots/killstreak/killstreak-trace.csv: QA games run minimized, where 26.x renders no frames to photograph; a banner
- * lasts at least 5 ticks, so each one is seen). Then server kill messages in
+ * screenshots/killstreak/killstreak-trace.csv, a banner lasts at least 5 ticks so each one is seen; and, when the game renders
+ * frames, a picture of each banner 0.15 s in: screenshots/killstreak/ks-&lt;run&gt;-&lt;n&gt;-k&lt;count&gt;.png). Then server kill messages in
  * many servers' formats through the real chat packet handler (each counts, the decoys do not), the streak timer typed as 3 s
  * (a kill 3.5 s later starts again at 1), Unlimited (4 s later still counts) and the player's death (the next kill starts at 1).
  * Module options, pigs and stand-ins are put back.
@@ -45,9 +46,9 @@ final class KillStreakCapture {
     private static final List<Integer> PIGS = Collections.synchronizedList(new ArrayList<>());
     private static final List<Integer> SHOWN = new ArrayList<>();
     private static final StringBuilder TRACE = new StringBuilder("ms,run,streak,queued,sequence,age\n");
-    private static int step = -1, wait, passed, lastSequence;
+    private static int step = -1, wait, passed, lastSequence, pictures;
     private static double lastAge = -1;
-    private static boolean enabledBefore;
+    private static boolean enabledBefore, picture, capturing;
     private static long modifiedBefore, began;
     private static String run;
     private KillStreakCapture() {}
@@ -282,10 +283,31 @@ final class KillStreakCapture {
         TRACE.append(String.format(java.util.Locale.ROOT, "%.1f,%s,%d,%d,%d,%.3f%n", (now - began) / 1e6, run, banner.streak(), banner.queued(), sequence, age));
         if (sequence > 0 && (sequence != lastSequence || age < lastAge)) {
             SHOWN.add(sequence);
+            picture = true;
             LOGGER.info("Lads kill streak banner: {} #{} shows {} (streak {}, {} waiting)", run, SHOWN.size(), sequence, banner.streak(), banner.queued());
         }
         lastSequence = sequence;
         lastAge = age;
+    }
+
+    /** Each rendered frame: a picture of a new banner once it is 0.15 s in (Base has faded in); a minimized game has none. */
+    static void frame(RenderTarget target, Path game) {
+        if (run == null || !picture || capturing || NativeKillBanner.timeline().age(System.nanoTime()) < .15) return;
+        picture = false;
+        capturing = true;
+        String name = "ks-" + run + "-" + SHOWN.size() + "-k" + NativeKillBanner.timeline().sequence();
+        try {
+            Path output = game.resolve("screenshots").resolve("killstreak").resolve(name + ".png");
+            Files.createDirectories(output.getParent());
+            net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
+                try { image.writeToFile(output); pictures++; LOGGER.info("Lads kill streak frame {}", output); }
+                catch (Exception failure) { LOGGER.warn("Lads kill streak frame {} not saved", name, failure); }
+                finally { image.close(); Minecraft.getInstance().execute(() -> capturing = false); }
+            });
+        } catch (Exception failure) {
+            LOGGER.warn("Lads kill streak frame {} not saved", name, failure);
+            capturing = false;
+        }
     }
 
     private static void finish(Path game) {
@@ -304,7 +326,7 @@ final class KillStreakCapture {
         }
         catch (Exception failure) { fail("killstreak-trace.csv: " + failure); }
         step = LAST + 1;
-        if (FAILURES.isEmpty()) LOGGER.info("Lads kill streak capture END: {} checks passed, 0 failed", passed);
+        if (FAILURES.isEmpty()) LOGGER.info("Lads kill streak capture END: {} checks passed, {} banners pictured, 0 failed", passed, pictures);
         else LOGGER.error("Lads kill streak capture FAILED: {} | {} checks passed", String.join(" | ", FAILURES), passed);
     }
 
