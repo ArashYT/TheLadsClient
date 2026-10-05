@@ -70,7 +70,7 @@ final class Probe172HudFlicker {
     private static int limitWas, width, height, difficultyWas;
     private static String run;
     private static Frames frames;
-    private static ItemStack handWas;
+    private static ItemStack handWas, headWas, feetWas;
     private static double pinX, pinY, pinZ, homeX, homeY, homeZ;
     private static net.minecraft.util.BlockPos below;
     private static net.minecraft.block.state.IBlockState belowWas;
@@ -110,6 +110,10 @@ final class Probe172HudFlicker {
         onServer(mc, player -> {
             handWas = player.inventory.getCurrentItem();
             player.inventory.mainInventory[player.inventory.currentItem] = null; // the throw bar charges, nothing is thrown
+            headWas = player.inventory.armorInventory[3]; // something for the Armor HUD to show
+            feetWas = player.inventory.armorInventory[0];
+            player.inventory.armorInventory[3] = new ItemStack(net.minecraft.init.Items.iron_helmet);
+            player.inventory.armorInventory[0] = new ItemStack(net.minecraft.init.Items.iron_boots);
             belowWas = player.worldObj.getBlockState(below);
             player.worldObj.setBlockState(below, net.minecraft.init.Blocks.crafting_table.getDefaultState());
             player.playerNetServerHandler.setPlayerLocation(pinX, pinY, pinZ, pinYaw, 90);
@@ -140,6 +144,8 @@ final class Probe172HudFlicker {
             mc.gameSettings.showDebugInfo = !hidden && name.startsWith("f3");
             HudSettings.getInstance().setHudFpsCapEnabled(name.endsWith("-on"));
             HudSettings.getInstance().setHudFpsLimit(CAP);
+            // Chat once per scene (it stays 10 s): new lines between the runs would only move the old ones.
+            if (name.endsWith("-off")) for (int i = 1; i <= 3; i++) mc.thePlayer.sendChatMessage("Flicker QA chat " + i);
             if (!hidden) refresh(mc, name.startsWith("f3"));
             frames.start(name, hidden ? HIDDEN : FRAMES, hidden ? 800 : 1600, !hidden);
             return retry(1);
@@ -161,9 +167,8 @@ final class Probe172HudFlicker {
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindDrop.getKeyCode(), true);
     }
 
-    /** Elements that time out are shown again before each run: chat, and the scene's titles and kill banner, or action bar and Essential. */
+    /** Elements that time out are shown again before each run: the scene's titles and kill banner, or action bar and Essential. */
     private static void refresh(Minecraft mc, boolean f3) {
-        for (int i = 1; i <= 3; i++) mc.thePlayer.sendChatMessage("Flicker QA chat " + i);
         if (f3) {
             mc.ingameGUI.displayTitle(null, null, 0, 1200, 0);
             mc.ingameGUI.displayTitle(null, "QA Subtitle", -1, -1, -1);
@@ -192,6 +197,8 @@ final class Probe172HudFlicker {
         final ItemStack hand = handWas;
         onServer(mc, player -> {
             player.inventory.mainInventory[player.inventory.currentItem] = hand;
+            player.inventory.armorInventory[3] = headWas;
+            player.inventory.armorInventory[0] = feetWas;
             if (belowWas != null) player.worldObj.setBlockState(below, belowWas);
             player.playerNetServerHandler.setPlayerLocation(homeX, homeY, homeZ, pinYaw, 0);
         });
@@ -220,7 +227,7 @@ final class Probe172HudFlicker {
         int lift = adapter.hotbarLift();
         JsonObject rects = new JsonObject();
         for (HudElement element : HudManager.getInstance().getElements()) {
-            if (!element.isEnabled() || !element.isAvailable()) continue;
+            if (!element.isEnabled() || !element.isAvailable() || !phase.equals("f3") && element.getModuleName().equals("BossBar")) continue;
             HudGroupLayout.Rect bounds = element.measureBounds(adapter, false);
             HudGroupLayout.Rect placed = HudGroupLayout.translate(bounds, HudGroupLayout.clampDelta(bounds, 0, 0, w, h));
             rect(rects, "Lads " + element.getModuleName(), placed.x(), placed.y(), placed.width(), placed.height(), s);
