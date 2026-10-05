@@ -83,10 +83,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe170ItemPhysics.STEPS);
-        } else if ("170".equals(only)) {
+        } else if ("170".equals(only) || "170hud".equals(only)) { // 170hud: the HUD checks only (no synthetic input)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
-            STEPS.addAll(Probe170Sprint.STEPS);
+            if ("170".equals(only)) STEPS.addAll(Probe170Sprint.STEPS);
             STEPS.addAll(Probe170Hud.STEPS);
         } else if ("hudflicker".equals(only)) {
             STEPS.clear();

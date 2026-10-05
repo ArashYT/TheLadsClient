@@ -18,7 +18,9 @@ public class ScoreboardHudElement extends HudElement {
     private int titleWidth;
     private boolean measuredHideValues;
     private LadsGraphics preparedGraphics;
-    private ScoreboardSnapshot preparedSnapshot;
+    /** What the widths above were measured for: the snapshot (bridges keep one per tick) and the font metrics. */
+    private ScoreboardSnapshot measuredSnapshot;
+    private Object measuredKey;
 
     public ScoreboardHudElement() {
         this.x = 200;
@@ -56,9 +58,18 @@ public class ScoreboardHudElement extends HudElement {
     @Override
     public void prepareRender(LadsGraphics g, boolean editor) {
         ScoreboardSnapshot snapshot = liveSnapshot(g);
-        preparedSnapshot = editor && !hasObjective(snapshot) ? EDITOR_SAMPLE : snapshot;
-        measure(g, preparedSnapshot);
+        ensureMeasured(g, editor && !hasObjective(snapshot) ? EDITOR_SAMPLE : snapshot);
         preparedGraphics = g;
+    }
+
+    /** Measures again only for another snapshot, font or Hide setting: the same lines are not re-measured every frame. */
+    private void ensureMeasured(LadsGraphics g, ScoreboardSnapshot snapshot) {
+        Object key = g.textMetricsKey();
+        if (snapshot == measuredSnapshot && measuredHideValues == shouldHideValues(snapshot)
+                && (g == preparedGraphics || key != null && key == measuredKey)) return;
+        measure(g, snapshot);
+        measuredSnapshot = snapshot;
+        measuredKey = key;
     }
 
     private boolean shouldHideValues(ScoreboardSnapshot snapshot) {
@@ -77,7 +88,7 @@ public class ScoreboardHudElement extends HudElement {
             if (v == null || v.trim().isEmpty()) return false;
             try {
                 // 26.x values carry the sidebar's section-sign colour codes ("§r§c15").
-                vals[i] = Integer.parseInt(v.replaceAll("§.", "").trim());
+                vals[i] = Integer.parseInt(stripCodes(v).trim());
             } catch (NumberFormatException e) {
                 return false;
             }
@@ -88,6 +99,17 @@ public class ScoreboardHudElement extends HudElement {
             if (vals[i] - vals[i - 1] != diff) return false;
         }
         return true;
+    }
+
+    /** The text without its section-sign codes ("§r§c15" is "15"), without a regex per line per frame. */
+    private static String stripCodes(String value) {
+        if (value.indexOf('§') < 0) return value;
+        StringBuilder out = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            if (value.charAt(i) == '§') i++;
+            else out.append(value.charAt(i));
+        }
+        return out.toString();
     }
 
     private void measure(LadsGraphics g, ScoreboardSnapshot snapshot) {
@@ -115,19 +137,16 @@ public class ScoreboardHudElement extends HudElement {
 
     private void renderSnapshot(LadsGraphics g, boolean editor) {
         // Clearing/replacing an objective must be visible even between preparation and drawing.
-        // Native bridges already cache this snapshot; only repeat measurement if it changed.
+        // Native bridges cache this snapshot per tick; only repeat measurement if it changed.
         ScoreboardSnapshot snapshot = liveSnapshot(g);
         if (editor && !hasObjective(snapshot)) snapshot = EDITOR_SAMPLE;
-        if (preparedGraphics != g || preparedSnapshot != snapshot
-                || measuredHideValues != shouldHideValues(snapshot))
-            measure(g, snapshot);
+        ensureMeasured(g, snapshot);
         preparedGraphics = null;
-        preparedSnapshot = null;
         if (!hasObjective(snapshot)) return;
         drawBackground(g);
         // Its own shadow option, on by default, whatever the global HUD shadow (1.7.0).
         boolean shadow = optBool("Text Shadow", true);
-        boolean hideValues = shouldHideValues(snapshot);
+        boolean hideValues = measuredHideValues;
         boolean light = optCycle("Background", 0) == 2;
         // The sidebar's own colours (formatting codes over white names and red scores), as vanilla draws them, unless Custom Text Color.
         int textColor = light ? 0xFF202020 : optBool("Custom Text Color", false) ? resolveColor() : 0xFFFFFFFF;
