@@ -53,7 +53,7 @@ import org.slf4j.LoggerFactory;
 final class HudFlickerCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final String[] MODULES = {"FPS", "Coordinates", "Keystrokes", "CPS", "Paperdoll", "ArmorHUD", "Potion Effects", "Scoreboard",
-        "BossBar", "Voice Chat", "Voice Chat Group", "Minimap", "Jade", "KillBanner", "Item Physics", "Chat Heads", "Autohide"};
+        "BossBar", "Voice Chat", "Voice Chat Group", "Minimap", "Jade", "KillBanner", "Item Physics", "Chat Heads", "Raised", "Autohide"};
     private static final String[] PHASES = {"hud", "f3"};
     private static final int FRAMES = 36, HIDDEN = 4, CAP = 10;
     private static final SystemToast.SystemToastId TOAST = new SystemToast.SystemToastId(20_000L);
@@ -71,6 +71,8 @@ final class HudFlickerCapture {
     private static ItemStack handWas = ItemStack.EMPTY, headWas = ItemStack.EMPTY, feetWas = ItemStack.EMPTY;
     private static BlockPos below;
     private static BlockState belowWas;
+    /** The floor put under the table where there was air: taken away again. */
+    private static final List<BlockPos> FLOOR = new java.util.ArrayList<>();
     private static double pinX, pinY, pinZ, homeX, homeY, homeZ, fovEffectWas;
     private static float pinYaw;
     private static String gameModeWas;
@@ -109,9 +111,9 @@ final class HudFlickerCapture {
         VoiceChatIntegration.qa = new VoiceChatState("voicechat:icons/microphone",
             List.of(new VoiceMember("Steve", "8667ba71-b85a-4004-af54-457a9734eed7", true, false),
                 new VoiceMember("Alex", "ec561538-f3fd-461d-aff5-086b22154bce", false, true)));
-        // In survival (health, food, AppleSkin), standing still on a crafting table 30 blocks above the ground, looking straight down
-        // at it (Jade's tooltip): a background that stays the same in every frame (no water, mobs or particles at the camera, no
-        // FOV effects); an empty hand, so the throw never fires. The table goes and the player goes back afterwards.
+        // In survival (health, food, AppleSkin), standing still on a crafting table 30 blocks above the ground over a stone floor,
+        // looking straight down at it (Jade's tooltip): a background that stays the same in every frame (no water, kelp, mobs or
+        // particles, no FOV effects); an empty hand, so the throw never fires. Table and floor go and the player goes back afterwards.
         homeX = mc.player.getX();
         homeY = mc.player.getY();
         homeZ = mc.player.getZ();
@@ -134,6 +136,12 @@ final class HudFlickerCapture {
             if (player == null) return;
             belowWas = player.level().getBlockState(below);
             player.level().setBlockAndUpdate(below, Blocks.CRAFTING_TABLE.defaultBlockState());
+            for (int dx = -6; dx <= 6; dx++) for (int dz = -6; dz <= 6; dz++) {
+                BlockPos floor = below.offset(dx, -1, dz);
+                if (!player.level().getBlockState(floor).isAir()) continue;
+                player.level().setBlockAndUpdate(floor, Blocks.SMOOTH_STONE.defaultBlockState());
+                FLOOR.add(floor);
+            }
             player.teleportTo(pinX, pinY, pinZ);
             player.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
             headWas = player.getItemBySlot(EquipmentSlot.HEAD).copy(); // something for the Armor HUD to show
@@ -208,7 +216,8 @@ final class HudFlickerCapture {
                     mc.debugEntries.setOverlayVisible(p.equals("f3"));
                     HudSettings.getInstance().setHudFpsCapEnabled(false);
                     if (p.equals("f3")) startRecording(); // Flashback's recording toast, live through both runs
-                    // Chat once per scene (it stays 10 s): new lines between the runs would only move the old ones.
+                    // Chat once per scene, on its own (lines fade 10 s after they came; new ones would move the old ones).
+                    mc.gui.hud.getChat().clearMessages(false);
                     for (int i = 1; i <= 3; i++) mc.player.connection.sendChat("Flicker QA chat " + i);
                     refresh(mc, p);
                     measure(p + "-off");
@@ -379,6 +388,7 @@ final class HudFlickerCapture {
             var player = server.getPlayerList().getPlayer(id);
             if (player == null) return;
             if (belowWas != null) player.level().setBlockAndUpdate(below, belowWas);
+            for (BlockPos floor : FLOOR) player.level().setBlockAndUpdate(floor, Blocks.AIR.defaultBlockState());
             player.teleportTo(homeX, homeY, homeZ);
             player.setItemSlot(EquipmentSlot.MAINHAND, hand);
             player.setItemSlot(EquipmentSlot.HEAD, headWas);
