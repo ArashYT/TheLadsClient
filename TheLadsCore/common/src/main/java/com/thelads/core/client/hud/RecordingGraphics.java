@@ -36,11 +36,15 @@ final class RecordingGraphics implements LadsGraphics {
     @Override public void drawArmorSlot(int slot, int x, int y, boolean preview) { ops.add(g -> g.drawArmorSlot(slot, x, y, preview)); }
     @Override public void drawSprite(String sprite, int x, int y, int size) { ops.add(g -> g.drawSprite(sprite, x, y, size)); }
     @Override public void drawBossBars(int x, int y, int max, boolean names, boolean preview) { ops.add(g -> g.drawBossBars(x, y, max, names, preview)); }
+    // Screen-only art (the Kill Banner picker, the HUD editor backdrop): recorded like the rest, assumed drawn.
+    @Override public boolean drawKillBanner(String skin, int variant, int x, int y, int width, int height) { ops.add(g -> g.drawKillBanner(skin, variant, x, y, width, height)); return true; }
+    @Override public boolean drawGameView(int x, int y, int width, int height) { ops.add(g -> g.drawGameView(x, y, width, height)); return true; }
 
     @Override public int textWidth(String text) { return target.textWidth(text); }
     @Override public Object textMetricsKey() { return target.textMetricsKey(); }
     @Override public int fontHeight() { return target.fontHeight(); }
     @Override public int getScaledWidth() { return target.getScaledWidth(); }
     @Override public int getScaledHeight() { return target.getScaledHeight(); }
+    @Override public int hotbarLift() { return target.hotbarLift(); }
     @Override public LadsGameBridge getGame() { return target.getGame(); }
 }

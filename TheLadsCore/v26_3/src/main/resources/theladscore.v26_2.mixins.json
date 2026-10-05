@@ -116,7 +116,7 @@
     "AutohideItemRenderMixin",
     "AutohidePictureMixin",
     "PictureInPictureReplayMixin",
-    "XaeroMinimapReplayMixin",
+    "GuiRendererReplayMixin",
     "ChatTextShadowMixin",
     "VoiceChatHudMixin",
     "VoiceChatHudMixin$Group",
