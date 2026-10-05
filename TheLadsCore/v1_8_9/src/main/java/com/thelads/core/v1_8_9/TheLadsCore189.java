@@ -95,6 +95,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new RenderScale189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.Raised189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PaperDoll189());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.EntityCulling189());
         Screenshots189.register();
         com.thelads.core.v1_8_9.feature.MouseTweaks189.register();
         MinecraftForge.EVENT_BUS.register(this);
@@ -125,7 +126,10 @@ public class TheLadsCore189 {
         // RenderFish and GuiIngameForge mixins; the menu hides No attack-cooldown dip and Low Shield, which 1.8.9 has nothing for.
         OldAnimationsModule.NAME,
         // ItemPhysics189 through the EntityItem, RenderEntityItem and Minecraft mixins and Forge's item events.
-        com.thelads.core.modules.ItemPhysicsModule.NAME
+        com.thelads.core.modules.ItemPhysicsModule.NAME,
+        // EntityCulling189 through the RenderManager, TileEntityRendererDispatcher and World mixins; Particles189 (ParticleBudget and
+        // the particle frustum test) through EffectRendererMixin.
+        com.thelads.core.v1_8_9.feature.EntityCulling189.MODULE
     };
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
@@ -179,6 +183,7 @@ public class TheLadsCore189 {
         OldAnimations189.tick(mc);
         com.thelads.core.v1_8_9.feature.PaperDoll189.tick(mc);
         com.thelads.core.v1_8_9.feature.DynamicLights189.tick(mc);
+        com.thelads.core.v1_8_9.feature.EntityCulling189.tick(mc);
         Zoom189.tick(mc);
         SkinLayers189.tick(mc);
         com.thelads.core.v1_8_9.feature.Cheats189.tick(mc);
