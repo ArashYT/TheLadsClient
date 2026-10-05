@@ -73,8 +73,8 @@ final class KillBannerCapture {
             intro = strip.introEnd + 1;
             exit = (int) Math.round(KillBannerPlayer.minimumSeconds(strip) * 60) - intro;
         } else {
-            intro = (int) Math.round(KillBannerPlayer.stillSeconds(kills) * 60) - 16;
-            exit = 16;
+            intro = com.thelads.core.client.killbanner.KillBannerTemplate.of(kills).introEnd + 1;
+            exit = com.thelads.core.client.killbanner.KillBannerTemplate.of(kills).exit;
         }
         List<Integer> frames = new ArrayList<>(Arrays.asList(2, 5, 9, 12, 16, 22, 30, 40, 52, 66, 80));
         if (kills == 5) frames.addAll(Arrays.asList(110, 140, 160, 185, 200));
