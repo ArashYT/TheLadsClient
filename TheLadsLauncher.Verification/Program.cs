@@ -134,6 +134,16 @@ string? cheatsPhase = autoWorldVerification && !capabilities.Forge ? Env("LADS_V
 if (cheatsPhase is not (null or "set" or "check" or "off")) throw new ArgumentException("LADS_VERIFY_CHEATS must be set, check or off.");
 string? focus189 = autoWorldVerification && capabilities.Forge ? Env("LADS_VERIFY_189_FOCUS") : null;
 if (focus189 != null && !Regex.IsMatch(focus189, @"\A[a-z0-9-]{1,40}\z")) throw new ArgumentException("LADS_VERIFY_189_FOCUS must be a plain step list name.");
+// 1.8.9 benchmark (LADS_VERIFY_189_ONLY=perf, Probe173Perf): the one QA run allowed uncapped (FPS unlimited, VSync off) at render
+// distance LADS_VERIFY_PERF_RD (user-approved exception, sandbox only); LADS_VERIFY_PERF_SECONDS per scene (default 60, at most 90);
+// LADS_VERIFY_PERF_JFR=1 also records a Flight Recording to lads-qa\perf\perf.jfr.
+bool perf189 = autoWorldVerification && capabilities.Forge && Env("LADS_VERIFY_189_ONLY") == "perf";
+int perfRenderDistance = perf189 ? int.Parse(Env("LADS_VERIFY_PERF_RD") ?? "8") : 4;
+if (perfRenderDistance is < 2 or > 16) throw new ArgumentException("LADS_VERIFY_PERF_RD must be 2 to 16.");
+if (!perf189 && (Env("LADS_VERIFY_PERF_RD") ?? Env("LADS_VERIFY_PERF_SECONDS") ?? Env("LADS_VERIFY_PERF_JFR")) != null)
+    throw new ArgumentException("LADS_VERIFY_PERF_* needs a 1.8.9 --title run with LADS_VERIFY_AUTO_WORLD=1 and LADS_VERIFY_189_ONLY=perf.");
+string? perfSeconds = perf189 ? Env("LADS_VERIFY_PERF_SECONDS") : null;
+if (perfSeconds != null && !Regex.IsMatch(perfSeconds, @"\A[1-9][0-9]?\z")) throw new ArgumentException("LADS_VERIFY_PERF_SECONDS must be 1 to 99.");
 // Fabric versions: Toggle Sprint & Sneak in the QA world (walls, hits, hunger, items, water, sneaking, flying, death, keys), every tick's
 // sprint packets in sprint-trace.csv (SprintCapture). 1.8.9's self-test runs the same checks (Probe170Sprint).
 bool sprintCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_SPRINT") == "1";
@@ -340,7 +350,7 @@ if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed",
         ".lads-qa-flashback", ".lads-qa-flashback-done", ".lads-qa-flashback-failed" })
         File.Delete(Path.Combine(directory, flag));
-using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification ? 20 : 10));
+using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification || perf189 ? 20 : 10));
 var ct = timeout.Token;
 
 Process? process = null;
@@ -579,8 +589,16 @@ try
         // LADS_VERIFY_189_ONLY=170: only the 1.7.0 in-world checks (Probe170Sprint, Probe170Hud), straight in the QA world;
         // =itemphysics: only Item Physics (Probe170ItemPhysics); =raised: only Raised and the paper doll (RaisedDollProbe189);
         // =leave: only the QA world's final leave after its server stopped first (the 1.7.0 freeze regression check).
-        // =hudflicker: only runs of frames with the HUD FPS cap off and on (Probe172HudFlicker).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave" or "hudflicker") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =hudflicker: only runs of frames with the HUD FPS cap off and on (Probe172HudFlicker). =perf: the 1.7.3 benchmark (Probe173Perf).
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        if (perf189)
+        {
+            string perfFolder = Path.Combine(directory, "lads-qa", "perf");
+            Directory.CreateDirectory(perfFolder);
+            File.Delete(Path.Combine(perfFolder, "perf.json")); // only this run's results
+            if (perfSeconds != null) AddJvm("-Dthelads.perfSeconds=" + perfSeconds);
+            if (Env("LADS_VERIFY_PERF_JFR") == "1") AddJvm("-XX:StartFlightRecording=settings=profile,filename=" + Path.Combine(perfFolder, "perf.jfr"));
+        }
     }
     else
     {
@@ -713,8 +731,9 @@ try
     // QA instances are muted and kept light (owner's standing rule): the owner may be using the computer meanwhile.
     // 120 FPS cap (VSync off so the cap is what applies), render/simulation distance 4, GUI scale 2 (1.8.9 ignores simulationDistance);
     // pauseOnLostFocus off: a pause menu when the owner clicks away would stop the integrated server and the probes' input.
-    string[] qaForced = { "soundCategory_master:0.0", "maxFps:120", "enableVsync:false", "renderDistance:4", "simulationDistance:4", "guiScale:2",
-        "pauseOnLostFocus:false" };
+    // The 1.8.9 benchmark alone runs uncapped (maxFps 260 is Unlimited) at its own render distance (perf189 above).
+    string[] qaForced = { "soundCategory_master:0.0", perf189 ? "maxFps:260" : "maxFps:120", "enableVsync:false", $"renderDistance:{perfRenderDistance}",
+        "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false" };
     string qaOptions = Path.Combine(directory, "options.txt");
     var qaLines = File.Exists(qaOptions)
         ? File.ReadAllLines(qaOptions).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList()
@@ -736,7 +755,7 @@ try
     // Title runs without the 26.x auto-world end once every check the harness asserts has passed (they never did before, so
     // 1.21.x waited the full 540 s); the stop is a Kill, as for every non-auto-world run.
     bool earlyTitleExit = titleVerification && !autoWorldVerification;
-    while (stopwatch.Elapsed < TimeSpan.FromSeconds(titleVerification ? 540 : 180) && !process.HasExited)
+    while (stopwatch.Elapsed < TimeSpan.FromSeconds(perf189 ? 1140 : titleVerification ? 540 : 180) && !process.HasExited)
     {
         process.Refresh();
         if (!windowFound && process.MainWindowHandle != IntPtr.Zero)
