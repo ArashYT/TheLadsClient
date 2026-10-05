@@ -5049,7 +5049,7 @@ public partial class MainWindow : Window
                         }
                     }
                     if (!found) lines.Add("fullscreen:true");
-                    System.IO.File.WriteAllText(optFile, string.Join('\n', lines));
+                    await LockFiles.WriteAtomicallyAsync(optFile, System.Text.Encoding.UTF8.GetBytes(string.Join('\n', lines)));
                 }
                 catch (Exception ex) { Log($"[Launch] Could not set fullscreen in options.txt: {ex.Message}"); }
             }
