@@ -53,8 +53,9 @@ import org.lwjgl.opengl.GL12;
  * rectangles and the Lads HUD's cost per frame (hudflicker.json). On 1.8.9 the cap covers the Lads HUD only.
  * artifacts/1.7.2/hudfps/flicker.py checks that every element is in every frame. Everything is put back.
  * 1.7.3: every Lads HUD module and a 15-line scoreboard in "hud"; two more "hud" runs for pixel parity, the cap on through the
- * pre-1.7.3 replay (no framebuffer cache) and the cap off without the text cache; then uncapped benchmark runs ("bench-*", FPS
- * limit off in the sandbox only: average FPS, 1% low, p99 frame time, Lads HUD cost). Caches a build lacks are left alone.
+ * pre-1.7.3 replay (no framebuffer cache) and the cap off without the text cache; then benchmark runs at the QA FPS cap in three
+ * interleaved rounds ("bench-*": frame times and the Lads HUD's work per frame) and a text cache microbenchmark. Caches a build lacks
+ * are left alone.
  */
 final class Probe172HudFlicker {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
@@ -171,8 +172,8 @@ final class Probe172HudFlicker {
             HudSettings.getInstance().setHudFpsLimit(CAP);
             qaOff("HudCache189", name.endsWith("-replay"));
             qaOff("FontCache189", name.endsWith("-nofont"));
-            // Benchmark runs only (sandbox, user-approved for 1.7.3): no FPS limit.
-            mc.gameSettings.limitFramerate = bench ? (int) net.minecraft.client.settings.GameSettings.Options.FRAMERATE_LIMIT.getValueMax() : fpsWas;
+            // Benchmark runs keep the QA FPS cap (uncapped runs were withdrawn while the owner plays): the Lads HUD's work per frame counts.
+            mc.gameSettings.limitFramerate = fpsWas;
             // Chat fresh for each run, on its own (lines fade 10 s after they came; new ones would move the old ones).
             if (!hidden && !name.startsWith("f3") || name.equals("f3-off")) {
                 mc.ingameGUI.getChatGUI().clearChatMessages();
