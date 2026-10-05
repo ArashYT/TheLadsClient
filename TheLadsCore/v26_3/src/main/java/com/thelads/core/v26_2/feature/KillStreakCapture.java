@@ -84,6 +84,9 @@ final class KillStreakCapture {
                 modifiedBefore = module.getLastModified();
                 for (Option option : module.getOptions()) OPTIONS.add(option.save().deepCopy());
                 LOGGER.info("Lads kill streak capture BEGIN: rapid kills, server kill messages, the streak timer, Unlimited and death; no kill statistic changed");
+                // The detection probe (synthetic packets about client-only stand-ins) also runs here: requested-features runs skip it.
+                int detection = NativeKillBannerProbe.run();
+                check(detection > 0, "the kill banner detection probe passed (" + detection + " checks)");
                 module.getOptions().forEach(Option::reset);
                 module.setEnabled(true);
                 module.mobs.set(true);
