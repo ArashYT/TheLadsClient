@@ -37,9 +37,9 @@ class OcclusionTest {
 
     @Test void peekingRoundACornerCountsTheWholeCubeAroundTheEye() {
         // The wall ends at z = 1 (cells z <= 0) right beside the eye, which stands 0.3 behind that end: half a block sideways
-        // the line past the end reaches the box.
+        // the line past the end reaches the box; from the eye the lines cross the wall's end cell deeper than DEPTH.
         Cells corner = new Cells().box(2, 60, -20, 2, 75, 0);
-        double[] box = {20, 64, 1.0, 21, 66, 1.4};
+        double[] box = {20, 64, -0.8, 21, 66, -0.4};
         assertFalse(visible(corner, 0.5, 65.6, 0.7, 0, box), "hidden from the eye alone");
         assertTrue(visible(corner, 0.5, 65.6, 0.7, 0.5, box), "visible from a step inside the cube: not culled");
     }
@@ -62,10 +62,13 @@ class OcclusionTest {
 
     @Test void theWalkChecksEveryCellOnTheSegment() {
         Cells one = new Cells().box(3, 0, 3, 3, 0, 3);
-        assertTrue(Occlusion.blocked(one, 0.5, 0.5, 0.5, 5.5, 0.5, 5.5), "diagonal through the cell");
+        assertTrue(Occlusion.blocked(one, 0.5, 0.5, 0.5, 5.5, 0.5, 5.5), "diagonal through the cell's core");
         assertFalse(Occlusion.blocked(one, 0.5, 0.5, 0.5, 5.5, 0.5, 0.5), "beside it");
-        assertTrue(Occlusion.blocked(one, 5.5, 0.5, 5.5, 3.5, 0.5, 3.5), "ending inside it");
+        assertFalse(Occlusion.blocked(one, 5.5, 0.5, 5.5, 3.9, 0.5, 3.9), "a lone block's edges are eroded: only its core blocks");
+        assertTrue(Occlusion.blocked(new Cells().box(2, 0, 2, 4, 0, 4), 5.5, 0.5, 5.5, 3.5, 0.5, 3.5), "ending inside a slab");
         assertFalse(Occlusion.blocked(one, 3.5, 0.5, 3.5, 6.5, 0.5, 6.5), "starting inside it");
+        assertFalse(Occlusion.blocked(one, 0.5, 0.5, 3.1, 5.5, 0.5, 3.1), "grazing its open side");
+        assertTrue(Occlusion.blocked(new Cells().box(3, 0, 2, 3, 0, 4), 0.5, 0.5, 3.1, 5.5, 0.5, 3.1), "the same line through a wall");
         assertTrue(Occlusion.blocked(new Cells().box(-3, -1, -3, -3, -1, -3), -0.5, -0.5, -0.5, -5.5, -0.5, -5.5), "negative coordinates");
     }
 

@@ -57,7 +57,9 @@ public final class EntityCulling189 {
     /** Half-size of the cube around the eye a pass checks; its answer holds while the camera stays inside it. */
     static final double EYE_CUBE = 0.5;
     private static final double NEAR = 2, FAR = 128, MAX_SIZE = 6, SIDE = 0.75, UP = 0.75, DOWN = 0.1, BLOCK_MARGIN = 0.25;
-    private static final long FRESH = 100_000_000L, CHANGED_FOR = 1_000_000_000L, CHUNK_SETTLE = 2_000_000_000L;
+    /** A pass is trusted this long after it started; boxes reach as far as their entity moves in that time (5 ticks). */
+    private static final long FRESH = 250_000_000L, CHANGED_FOR = 1_000_000_000L, CHUNK_SETTLE = 2_000_000_000L;
+    private static final double AHEAD = 5;
     private static final int RADIUS = 9, SEEN_FRAMES = 600;
 
     /** One pass: its number, the eye it checked from and when it started. */
@@ -280,13 +282,13 @@ public final class EntityCulling189 {
         AxisAlignedBB box = entity.getEntityBoundingBox();
         if (box == null || box.maxX - box.minX > MAX_SIZE || box.maxY - box.minY > MAX_SIZE || box.maxZ - box.minZ > MAX_SIZE) return false;
         if (!inRange(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ, eye)) return false;
-        // Where it is drawn between ticks (from the last tick's position) and where it is heading, then room for held items,
-        // capes, cosmetics, the name tag and the shadow.
+        // Where it is drawn between ticks (back to the last tick's position) and where it is heading while the pass is trusted,
+        // then room for held items, capes, cosmetics, the name tag and the shadow.
         double dx = entity.posX - entity.lastTickPosX, dy = entity.posY - entity.lastTickPosY, dz = entity.posZ - entity.lastTickPosZ;
         return !Occlusion.visible(grid, eyes, eyeCount,
-            box.minX + Math.min(0, Math.min(-dx, 2 * dx)) - SIDE, box.minY + Math.min(0, Math.min(-dy, 2 * dy)) - DOWN,
-            box.minZ + Math.min(0, Math.min(-dz, 2 * dz)) - SIDE, box.maxX + Math.max(0, Math.max(-dx, 2 * dx)) + SIDE,
-            box.maxY + Math.max(0, Math.max(-dy, 2 * dy)) + UP, box.maxZ + Math.max(0, Math.max(-dz, 2 * dz)) + SIDE);
+            box.minX + Math.min(-Math.max(0, dx), AHEAD * dx) - SIDE, box.minY + Math.min(-Math.max(0, dy), AHEAD * dy) - DOWN,
+            box.minZ + Math.min(-Math.max(0, dz), AHEAD * dz) - SIDE, box.maxX + Math.max(-Math.min(0, dx), AHEAD * dx) + SIDE,
+            box.maxY + Math.max(-Math.min(0, dy), AHEAD * dy) + UP, box.maxZ + Math.max(-Math.min(0, dz), AHEAD * dz) + SIDE);
     }
 
     private static boolean hidden(Grid grid, TileEntity tile, double[] eye, double[] eyes, int eyeCount) {

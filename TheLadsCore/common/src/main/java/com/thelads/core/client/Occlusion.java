@@ -12,6 +12,8 @@ public final class Occlusion {
 
     /** Sample spacing on the box faces: an opening in a grid of full cubes is at least one block wide. */
     static final double STEP = 0.5;
+    /** Erosion of opaque edges: at least half a sample cell's diagonal (0.354 for STEP 0.5). */
+    static final double DEPTH = 0.375;
     private static final double INSIDE = 1e-4;
 
     private Occlusion() {}
@@ -69,7 +71,11 @@ public final class Occlusion {
         return false;
     }
 
-    /** Whether the segment crosses an opaque cell after the one it starts in (voxel walk, one cell per step). */
+    /**
+     * Whether the segment is blocked: it crosses an opaque cell (after the one it starts in) deep inside the opaque mass, at
+     * least {@link #DEPTH} from any face shared with an open cell. Eroding the edges this way makes a sight line that slips past
+     * an edge between two face samples still count as seen through the nearest sample's line.
+     */
     static boolean blocked(Grid grid, double x0, double y0, double z0, double x1, double y1, double z1) {
         int x = floor(x0), y = floor(y0), z = floor(z0);
         int steps = Math.abs(floor(x1) - x) + Math.abs(floor(y1) - y) + Math.abs(floor(z1) - z);
@@ -82,12 +88,33 @@ public final class Occlusion {
         double ty = dy == 0 ? Double.POSITIVE_INFINITY : (dy > 0 ? y + 1 - y0 : y0 - y) * tdy;
         double tz = dz == 0 ? Double.POSITIVE_INFINITY : (dz > 0 ? z + 1 - z0 : z0 - z) * tdz;
         for (int i = 0; i < steps; i++) {
-            if (tx < ty && tx < tz) { x += sx; tx += tdx; }
-            else if (ty < tz) { y += sy; ty += tdy; }
-            else { z += sz; tz += tdz; }
-            if (grid.opaque(x, y, z)) return true;
+            double enter;
+            if (tx < ty && tx < tz) { enter = tx; x += sx; tx += tdx; }
+            else if (ty < tz) { enter = ty; y += sy; ty += tdy; }
+            else { enter = tz; z += sz; tz += tdz; }
+            if (!grid.opaque(x, y, z)) continue;
+            // The depth along the run through the cell is a minimum of linear pieces: it peaks at an end, where the run
+            // crosses a centre plane, or (rarely, then we under-count) where two faces are equally near.
+            double leave = Math.min(1, Math.min(tx, Math.min(ty, tz)));
+            if (deepAt(grid, x, y, z, x0, y0, z0, dx, dy, dz, enter) || deepAt(grid, x, y, z, x0, y0, z0, dx, dy, dz, leave)
+                || deepAt(grid, x, y, z, x0, y0, z0, dx, dy, dz, (enter + leave) / 2)) return true;
+            double cx = dx == 0 ? -1 : (x + 0.5 - x0) / dx, cy = dy == 0 ? -1 : (y + 0.5 - y0) / dy, cz = dz == 0 ? -1 : (z + 0.5 - z0) / dz;
+            if (cx > enter && cx < leave && deepAt(grid, x, y, z, x0, y0, z0, dx, dy, dz, cx)
+                || cy > enter && cy < leave && deepAt(grid, x, y, z, x0, y0, z0, dx, dy, dz, cy)
+                || cz > enter && cz < leave && deepAt(grid, x, y, z, x0, y0, z0, dx, dy, dz, cz)) return true;
         }
         return false;
+    }
+
+    private static boolean deepAt(Grid grid, int x, int y, int z, double x0, double y0, double z0, double dx, double dy, double dz, double t) {
+        return deep(grid, x, y, z, x0 + dx * t - x, y0 + dy * t - y, z0 + dz * t - z);
+    }
+
+    /** Whether (fx, fy, fz) inside opaque cell (x, y, z) is at least DEPTH from every face it shares with an open cell. */
+    private static boolean deep(Grid grid, int x, int y, int z, double fx, double fy, double fz) {
+        return !(fx < DEPTH && !grid.opaque(x - 1, y, z) || fx > 1 - DEPTH && !grid.opaque(x + 1, y, z)
+            || fy < DEPTH && !grid.opaque(x, y - 1, z) || fy > 1 - DEPTH && !grid.opaque(x, y + 1, z)
+            || fz < DEPTH && !grid.opaque(x, y, z - 1) || fz > 1 - DEPTH && !grid.opaque(x, y, z + 1));
     }
 
     /**
