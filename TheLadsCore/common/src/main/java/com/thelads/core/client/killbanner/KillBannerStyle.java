@@ -123,6 +123,8 @@ public enum KillBannerStyle {
     private static final Map<String, KillBannerStyle> BY_ID = new HashMap<>();
     /** Identical art kept once: "skin/file.png" to the copy shipped (tools/killbanner/dedupe_assets.py). */
     private static final Properties SHARED = new Properties();
+    /** Each Kingdom Archives skin's accent colour per variant, "RRGGBB,..." (tools/killbanner/gen_anim_data.py). */
+    private static final Properties ACCENT = new Properties();
 
     static {
         for (KillBannerStyle style : values()) {
@@ -132,6 +134,10 @@ public enum KillBannerStyle {
         BY_ID.put("base", DEFAULT);
         try (InputStream in = KillBannerStyle.class.getResourceAsStream("/assets/theladscore/killbanner/shared.properties")) {
             if (in != null) SHARED.load(in);
+        } catch (IOException ignored) {
+        }
+        try (InputStream in = KillBannerStyle.class.getResourceAsStream("/assets/theladscore/killbanner/accent.properties")) {
+            if (in != null) ACCENT.load(in);
         } catch (IOException ignored) {
         }
     }
@@ -148,6 +154,7 @@ public enum KillBannerStyle {
     public final String[] variantNames;
     public final int[][] variants;
     private final KillBannerStrip[] strips = new KillBannerStrip[5];
+    private int[] accents;
 
     KillBannerStyle(String id, String displayName, Type type, float anchorX, float anchorY, float ring, float markY, float markSize, float labelY,
                     boolean heart, boolean hasFrame, boolean hasRing, boolean hasEmblem, boolean hasPip, int soundCount,
@@ -209,6 +216,20 @@ public enum KillBannerStyle {
     public String pipAsset(int variant) {
         int v = Math.max(0, Math.min(variantNames.length - 1, variant));
         return asset(v == 0 ? "pip.png" : "pip_v" + v + ".png");
+    }
+
+    /** The colour the skin's drawn animation glows in for a variant (its pip's colour), RGB; white when it has none. */
+    public int accent(int variant) {
+        int[] colours = accents;
+        if (colours == null) {
+            String[] hex = ACCENT.getProperty(id, "FFFFFF").split(",");
+            colours = new int[hex.length];
+            for (int i = 0; i < hex.length; i++) {
+                try { colours[i] = Integer.parseInt(hex[i].trim(), 16); } catch (NumberFormatException failure) { colours[i] = 0xFFFFFF; }
+            }
+            accents = colours;
+        }
+        return colours[Math.max(0, Math.min(colours.length - 1, variant))];
     }
 
     public String swapAsset(int kills) {

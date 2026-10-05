@@ -519,8 +519,12 @@ public final class LadsSettingsScreen {
 
             if (m instanceof KillBannerModule banner) {
                 KillBannerModule.Pick pick = banner.chosen();
-                if (!g.drawKillBanner(pick.style() == null ? "base" : pick.style().id, pick.variant(), boxX + 6, boxY + 6, boxW - 12, boxH - 30))
-                    g.drawCenteredText("KILL BANNER", centerX, centerY - 4, ACCENT);
+                // The banner plays, kills 1 to 5 in turn; its spray stays inside the box.
+                g.enableScissor(boxX + 2, boxY + 2, boxX + boxW - 2, boxY + boxH - 2);
+                boolean drawn = g.drawKillBannerPreview(pick.style() == null ? "base" : pick.style().id, pick.variant(),
+                    boxX + 6, boxY + 6, boxW - 12, boxH - 30, System.nanoTime() / 1e9);
+                g.disableScissor();
+                if (!drawn) g.drawCenteredText("KILL BANNER", centerX, centerY - 4, ACCENT);
                 String caption = pick.style() == null ? "Base" : pick.style().displayName + " · " + pick.style().variantNames[pick.variant()];
                 if (pick.soundStyle() != pick.style()) caption += " · " + (pick.soundStyle() == null ? "Chime" : pick.soundStyle().displayName) + " sound";
                 if (banner.randomize.getIndex() != KillBannerModule.RANDOM_OFF) caption += " · Randomized";
