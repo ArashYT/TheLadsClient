@@ -63,6 +63,7 @@ final class Probe151 {
     private static final StringBuilder BOB = new StringBuilder();
     private static long legacyFrames;
     private static int slotWas, viewWas, dropWait;
+    private static boolean dropRebuilt;
     private static float pitchWas;
     private static ItemStack[] mainWas, armourWas;
     private static LadsSettingsScreen189 settings;
@@ -267,12 +268,28 @@ final class Probe151 {
                     StringBuilder seen = new StringBuilder();
                     for (EntityItem item : items(mc))
                         seen.append(String.format(java.util.Locale.ROOT, " [%.2f %.2f %.2f cullGen %d]", item.posX, item.posY, item.posZ,
-                            ((EntityCulling189.Cullable) item).ladsCullGen()));
+                            ((EntityCulling189.Cullable) item).ladsCullGen())).append(" {").append(EntityCulling189.explain(item)).append('}');
+                    for (EntityItem item : items(mc)) {
+                        net.minecraft.world.chunk.Chunk chunk = mc.theWorld.getChunkFromBlockCoords(new net.minecraft.util.BlockPos(item));
+                        int section = Math.max(0, Math.min(15, net.minecraft.util.MathHelper.floor_double(item.posY / 16)));
+                        seen.append(String.format(java.util.Locale.ROOT, " (chunk %d,%d section %d lists it: %b; in the loaded list: %b; addedToChunk %b)",
+                            chunk.xPosition, chunk.zPosition, section, chunk.getEntityLists()[section].contains(item), mc.theWorld.loadedEntityList.contains(item),
+                            item.addedToChunk));
+                    }
                     org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").warn(
                         "Lads 1.8.9 dropped apple not drawn: player {} {} {} yaw {} pitch {}, view {}, culled draws {}, Entity Culling {}, items{}",
                         mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch,
                         mc.gameSettings.thirdPersonView, EntityCulling189.culled, Options189.enabled(EntityCulling189.MODULE), seen);
+                    if (!dropRebuilt) { // does the world renderer's entity list just need rebuilding (OptiFine keeps one per visible chunk)?
+                        dropRebuilt = true;
+                        mc.renderGlobal.setDisplayListEntitiesDirty();
+                        dropWait = 30;
+                        return retry(1);
+                    }
                 }
+                if (dropRebuilt) org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").warn(
+                    "Lads 1.8.9 dropped apple after the world renderer's entity lists were rebuilt: DROP={}", OldAnimations189.hits(Hook.DROP));
+                dropRebuilt = false;
                 dropWait = 0;
                 hooks(on, "dropped apple", Hook.DROP);
                 screenshot(mc, "151-dropped-2d" + tag);

@@ -171,6 +171,8 @@ final class Probe145 {
         return after(1);
     }
 
+    private static int hotbarWait;
+
     private static boolean hotbarStart(Minecraft mc) {
         hotbar = mc.thePlayer.inventory.mainInventory.clone();
         mc.thePlayer.inventory.mainInventory[0] = new ItemStack(Items.diamond_sword);
@@ -180,6 +182,9 @@ final class Probe145 {
     }
 
     private static boolean hotbarGlide(Minecraft mc) {
+        // The frame glides from the slot the last run left selected; on a loaded PC that can take more than the 5 ticks above.
+        if (NativeHud.selectionOffset != 0 && ++hotbarWait < 40) return retry(1);
+        hotbarWait = 0;
         check(NativeHud.selectionOffset == 0, "SmoothHotbar: the frame rests on slot 1");
         mc.thePlayer.inventory.currentItem = 8;
         return after(1);

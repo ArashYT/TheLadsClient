@@ -85,8 +85,13 @@ public final class EntityCulling189 {
     private static volatile Snapshot snapshot;
     private static volatile boolean enabled;
     private static volatile int frame;
-    /** Chunk sections whose blocks changed lately (their new state may not be drawn yet): counted as open air for a second. */
-    private static final Map<Long, Long> CHANGED = new ConcurrentHashMap<Long, Long>();
+    /**
+     * Blocks that changed lately (their new state may not be drawn yet) count as open air for a second: whole chunk sections
+     * when a chunk's data arrives, single blocks when one is placed or broken. SECTIONS: section key -> time, and whether only
+     * some of its blocks (in BLOCKS) changed.
+     */
+    private static final Map<Long, long[]> SECTIONS = new ConcurrentHashMap<Long, long[]>();
+    private static final Map<Long, Long> BLOCKS = new ConcurrentHashMap<Long, Long>();
     // Culling thread -> render thread.
     private static volatile Pass done, running;
     // Render thread only.
@@ -132,7 +137,8 @@ public final class EntityCulling189 {
             tableWorld = world;
             opaque = opaqueTable();
             FIRST_SEEN.clear();
-            CHANGED.clear();
+            SECTIONS.clear();
+            BLOCKS.clear();
         }
         long now = System.nanoTime();
         int size = RADIUS * 2 + 1, x0 = (int) Math.floor(view.posX / 16) - RADIUS, z0 = (int) Math.floor(view.posZ / 16) - RADIUS;
@@ -145,24 +151,38 @@ public final class EntityCulling189 {
             else if (now - seen > CHUNK_SETTLE) chunks[i * size + j] = chunk;
         }
         snapshot = new Snapshot(world, chunks, x0, z0, size, opaque);
-        for (Map.Entry<Long, Long> entry : CHANGED.entrySet()) if (now - entry.getValue() > CHANGED_FOR) CHANGED.remove(entry.getKey());
+        for (Map.Entry<Long, long[]> entry : SECTIONS.entrySet()) if (now - entry.getValue()[0] > CHANGED_FOR) SECTIONS.remove(entry.getKey());
+        for (Map.Entry<Long, Long> entry : BLOCKS.entrySet()) if (now - entry.getValue() > CHANGED_FOR) BLOCKS.remove(entry.getKey());
     }
 
-    /** World.markBlockForUpdate / markBlockRangeForRenderUpdate on the client: those sections are not trusted for a second. */
+    /** World.markBlockRangeForRenderUpdate on the client for a whole chunk (its data arrived): its sections count as open air. */
     public static void blocksChanged(int x1, int y1, int z1, int x2, int y2, int z2) {
         if (!enabled) return;
+        if (traceChanges) lastChange = new Throwable("blocks changed " + x1 + " " + y1 + " " + z1 + " .. " + x2 + " " + y2 + " " + z2);
         long now = System.nanoTime();
         for (int x = x1 >> 4; x <= x2 >> 4; x++) for (int y = Math.max(0, y1 >> 4); y <= Math.min(15, y2 >> 4); y++)
-            for (int z = z1 >> 4; z <= z2 >> 4; z++) CHANGED.put(section(x, y, z), now);
+            for (int z = z1 >> 4; z <= z2 >> 4; z++) SECTIONS.put(section(x, y, z), new long[] {now, 1});
+    }
+
+    /** World.markBlockForUpdate on the client (a block placed, broken or changed): that block counts as open air. */
+    public static void blockChanged(int x, int y, int z) {
+        if (!enabled || y < 0 || y > 255) return;
+        if (traceChanges) lastChange = new Throwable("block changed " + x + " " + y + " " + z);
+        long now = System.nanoTime();
+        BLOCKS.put(cell(x, y, z), now);
+        long[] was = SECTIONS.get(section(x >> 4, y >> 4, z >> 4));
+        SECTIONS.put(section(x >> 4, y >> 4, z >> 4), new long[] {Math.max(now, was == null ? 0 : was[0]), was != null && was[1] == 1 && now - was[0] <= CHANGED_FOR ? 1 : 0});
     }
 
     /** RenderManager.renderEntityStatic: true to draw only the name tag. {@code originX..} is where the world is drawn from. */
     public static boolean skip(Entity entity, boolean outlines, double originX, double originY, double originZ) {
+        ((Cullable) entity).ladsSeen(frame); // QA (explain): the world pass reached it this frame
         if (!enabled || outlines) return false;
         if (inShadowPass()) { shadowDraws++; return false; }
         if (!hidden(((Cullable) entity).ladsCullGen(), originX, originY, originZ)) return false;
         culled++;
         if (audit) auditEntity(entity);
+        if (!WATCH.isEmpty() && WATCH.contains(entity)) watchCulls++;
         return true;
     }
 
@@ -287,6 +307,9 @@ public final class EntityCulling189 {
         // Where it is drawn between ticks (back to the last tick's position) and where it is heading while the pass is trusted,
         // then room for held items, capes, cosmetics, the name tag and the shadow.
         double dx = entity.posX - entity.lastTickPosX, dy = entity.posY - entity.lastTickPosY, dz = entity.posZ - entity.lastTickPosZ;
+        // Before its first tick a new entity's last-tick position is still 0, 0, 0 (vanilla's render fixes that only when it draws):
+        // that, or a teleport, is no motion to stretch a box over. Drawn until it has a real last tick.
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8 || Math.abs(dz) > 8) return false;
         return !Occlusion.visible(grid, eyes, eyeCount,
             box.minX + Math.min(-Math.max(0, dx), AHEAD * dx) - SIDE, box.minY + Math.min(-Math.max(0, dy), AHEAD * dy) - DOWN,
             box.minZ + Math.min(-Math.max(0, dz), AHEAD * dz) - SIDE, box.maxX + Math.max(-Math.min(0, dx), AHEAD * dx) + SIDE,
@@ -325,18 +348,21 @@ public final class EntityCulling189 {
     }
 
     private static long section(int x, int y, int z) { return ((long) x & 0x3FFFFFF) << 30 | ((long) z & 0x3FFFFFF) << 4 | (y & 15); }
+    private static long cell(int x, int y, int z) { return ((long) x & 0x3FFFFFF) << 34 | ((long) z & 0x3FFFFFF) << 8 | (y & 255); }
 
     /** The snapshot's cells, one 16x16x16 section cached at a time. Unknown, unsettled or changed sections are open air. */
     private static final class Grid implements Occlusion.Grid {
         Snapshot snap;
         int sx, sy, sz;
         char[] data;
+        /** The cached section has single changed blocks (looked up in BLOCKS). */
+        boolean someChanged;
 
         public boolean opaque(int x, int y, int z) {
             if (y < 0 || y > 255) return false;
             int cx = x >> 4, cy = y >> 4, cz = z >> 4;
             if (cx != sx || cy != sy || cz != sz) { sx = cx; sy = cy; sz = cz; data = load(cx, cy, cz); }
-            if (data == null) return false;
+            if (data == null || someChanged && BLOCKS.containsKey(cell(x, y, z))) return false;
             int id = data[(y & 15) << 8 | (z & 15) << 4 | (x & 15)];
             return snap.opaque[id];
         }
@@ -345,7 +371,9 @@ public final class EntityCulling189 {
             int i = cx - snap.x0, j = cz - snap.z0;
             if (i < 0 || j < 0 || i >= snap.size || j >= snap.size) return null;
             Chunk chunk = snap.chunks[i * snap.size + j];
-            if (chunk == null || CHANGED.containsKey(EntityCulling189.section(cx, cy, cz))) return null;
+            long[] changed = SECTIONS.get(EntityCulling189.section(cx, cy, cz));
+            someChanged = changed != null && changed[1] == 0;
+            if (chunk == null || changed != null && changed[1] == 1) return null;
             ExtendedBlockStorage storage = chunk.getBlockStorageArray()[cy];
             return storage == null ? null : storage.getData();
         }
@@ -376,4 +404,39 @@ public final class EntityCulling189 {
     }
 
     static double[] cameraForQa() { return camera; }
+
+    /** QA: entities whose culled draws are counted in watchCulls (render thread only). */
+    static final java.util.Set<Entity> WATCH = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<Entity, Boolean>());
+    static int watchCulls;
+    /** QA: where the last block change came from, while traceChanges is on. */
+    static volatile boolean traceChanges;
+    static volatile Throwable lastChange;
+
+    /** QA: the camera, both passes (eye, age, holding), and what this frame's camera alone and with its cube say of the entity. */
+    static String explain(Entity entity) {
+        double[] eye = camera;
+        Snapshot snap = snapshot;
+        long now = System.nanoTime();
+        StringBuilder out = new StringBuilder();
+        out.append(String.format(java.util.Locale.ROOT, "camera %s, entity box %s, stamp %d, frame %d, cameraFrame %d",
+            eye == null ? "none" : String.format(java.util.Locale.ROOT, "%.3f %.3f %.3f", eye[0], eye[1], eye[2]),
+            entity.getEntityBoundingBox(), ((Cullable) entity).ladsCullGen(), frame, cameraFrame));
+        out.append(", last reached renderEntityStatic in frame ").append(((Cullable) entity).ladsSeen()).append(", culled draws so far ").append(culled);
+        for (Pass p : new Pass[] {done, running})
+            if (p != null) out.append(String.format(java.util.Locale.ROOT, "; pass %d eye %.3f %.3f %.3f age %d ms holds %b", p.gen, p.x, p.y, p.z,
+                (now - p.start) / 1_000_000, eye != null && p.holds(eye, now)));
+        if (eye != null && snap != null) {
+            Grid grid = new Grid();
+            grid.snap = snap;
+            grid.sx = Integer.MIN_VALUE;
+            double[] eyes = new double[27];
+            int n = Occlusion.eyes(grid, eye[0], eye[1], eye[2], EYE_CUBE, eyes);
+            out.append("; eyes ").append(n).append(", hidden now ").append(n > 0 && hidden(grid, entity, eye, eyes, n));
+            out.append("; changed sections ").append(SECTIONS.size()).append(", blocks ").append(BLOCKS.size());
+            int settled = 0;
+            for (Chunk chunk : snap.chunks) if (chunk != null) settled++;
+            out.append(", settled chunks ").append(settled).append('/').append(snap.chunks.length);
+        }
+        return out.toString();
+    }
 }
