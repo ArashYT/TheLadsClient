@@ -44,6 +44,7 @@ public final class HudCache189 {
         }
         int width = g.getScaledWidth(), height = g.getScaledHeight();
         if (HudFrameCap.due(System.nanoTime(), width, height) || !built) {
+            BUFFER.newFrame(); // it can begin inside Autohide's capture
             if (!BUFFER.begin()) {
                 free();
                 return false;

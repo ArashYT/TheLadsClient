@@ -67,6 +67,7 @@ public class TheLadsCore189 {
             org.lwjgl.opengl.Display.setTitle(windowTitle);
         } catch (Throwable ignored) {}
         LadsGameBridge.set(new VanillaGameBridge189());
+        com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189.register();
         ConfigManager.load();
         registerStatuses();
         com.thelads.core.v1_8_9.feature.Nametags189.register();
@@ -105,7 +106,7 @@ public class TheLadsCore189 {
         "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", BetterResolutionModule.NAME, "BetterScreenshots", "EnhancedToolbars",
         "Fullbright", com.thelads.core.modules.ToggleSprintModule.NAME, "Zoom", "LegacySwing",
         "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
-        "RawInput", "BorderlessFullscreen",
+        "RawInput", "BorderlessFullscreen", com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189.NAME,
         // Raised189: Forge's overlay events and the GuiIngame, GuiIngameForge and GuiNewChat mixins.
         "Raised",
         // MouseTweaks189 through GuiContainerMouseTweaksMixin and Forge's mouse input event, as 26.x NativeMouseTweaks.
@@ -152,6 +153,16 @@ public class TheLadsCore189 {
             + "and glowing entities and dropped items with no radius, entity or underwater settings."}
     };
 
+    private static int glErrorOffs;
+
+    /** Vanilla's per-frame glGetError calls (Minecraft.checkGLError) go once the game has started; asserted every tick in case a mod turns them back on. */
+    private static void glErrorChecks(Minecraft mc) {
+        com.thelads.core.v1_8_9.mixin.MinecraftGlErrorsAccessor errors = (com.thelads.core.v1_8_9.mixin.MinecraftGlErrorsAccessor) mc;
+        if (!errors.ladsGlErrors()) return;
+        errors.ladsSetGlErrors(false);
+        if (++glErrorOffs <= 3) LOGGER.info("GL error checking switched off (vanilla asks the driver for errors after most render steps), time {}", glErrorOffs);
+    }
+
     static void registerStatuses() {
         ModuleSupport.registerBuiltIn(NativeHud.MODULES);
         ModuleSupport.registerBuiltIn(GAMEPLAY_MODULES);
@@ -180,6 +191,7 @@ public class TheLadsCore189 {
             com.thelads.core.v1_8_9.feature.HudCache189.free();
             com.thelads.core.v1_8_9.feature.Autohide189.free();
         }
+        glErrorChecks(mc);
         OldAnimations189.tick(mc);
         com.thelads.core.v1_8_9.feature.PaperDoll189.tick(mc);
         com.thelads.core.v1_8_9.feature.DynamicLights189.tick(mc);

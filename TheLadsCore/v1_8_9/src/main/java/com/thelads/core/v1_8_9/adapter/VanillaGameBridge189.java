@@ -25,6 +25,20 @@ import net.minecraftforge.fml.common.versioning.ArtifactVersion;
 /** Game state for the HUD modules, read from 1.8.9's client; values 1.8.9 cannot provide keep the interface defaults. */
 public class VanillaGameBridge189 implements LadsGameBridge {
     private static Minecraft mc() { return Minecraft.getMinecraft(); }
+    /** HUD texts rebuilt only when their numbers change, and potion names translated once (I18n.format runs String.format). */
+    private long reachCents = -1, clockTicks = -1;
+    private String reachText, clockText;
+    private final java.util.Map<String, String> effectNames = new java.util.HashMap<>();
+
+    private String effectLanguage;
+
+    private String effectName(String key) {
+        String language = mc().gameSettings.language;
+        if (!java.util.Objects.equals(language, effectLanguage)) { effectLanguage = language; effectNames.clear(); }
+        String name = effectNames.get(key);
+        if (name == null) effectNames.put(key, name = I18n.format(key));
+        return name;
+    }
 
     @Override
     public boolean isIngame() {
@@ -107,7 +121,12 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         if (mc.objectMouseOver.typeOfHit == net.minecraft.util.MovingObjectPosition.MovingObjectType.ENTITY
             && mc.objectMouseOver.entityHit != null && mc.objectMouseOver.hitVec != null) {
             double dist = mc.thePlayer.getPositionEyes(1.0f).distanceTo(mc.objectMouseOver.hitVec);
-            return String.format(java.util.Locale.ROOT, "Reach: %.2fm", dist);
+            long cents = Math.round(dist * 100);
+            if (cents != reachCents || reachText == null) { // formatted when the 2 decimals change, not every frame
+                reachCents = cents;
+                reachText = "Reach: " + cents / 100 + (cents % 100 < 10 ? ".0" : ".") + cents % 100 + "m";
+            }
+            return reachText;
         }
         return "Reach: --";
     }
@@ -143,7 +162,12 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     public String getGameTime() {
         if (mc().theWorld == null) return "12:00";
         long time = (mc().theWorld.getWorldTime() + 6000L) % 24000L;
-        return String.format("%02d:%02d", time / 1000L, (time % 1000L) * 60L / 1000L);
+        if (time != clockTicks || clockText == null) {
+            clockTicks = time;
+            long hour = time / 1000L, minute = (time % 1000L) * 60L / 1000L;
+            clockText = (hour < 10 ? "0" : "") + hour + (minute < 10 ? ":0" : ":") + minute;
+        }
+        return clockText;
     }
 
     @Override
@@ -204,16 +228,14 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     public boolean isKeyDown(String keyName) {
         Minecraft mc = mc();
         if (mc.gameSettings == null) return false;
-        switch (keyName.toUpperCase()) {
-            case "W": return mc.gameSettings.keyBindForward.isKeyDown();
-            case "S": return mc.gameSettings.keyBindBack.isKeyDown();
-            case "A": return mc.gameSettings.keyBindLeft.isKeyDown();
-            case "D": return mc.gameSettings.keyBindRight.isKeyDown();
-            case "SPACE": return mc.gameSettings.keyBindJump.isKeyDown();
-            case "LMB": return mc.gameSettings.keyBindAttack.isKeyDown();
-            case "RMB": return mc.gameSettings.keyBindUseItem.isKeyDown();
-            default: return false;
-        }
+        if (keyName.equalsIgnoreCase("W")) return mc.gameSettings.keyBindForward.isKeyDown();
+        if (keyName.equalsIgnoreCase("S")) return mc.gameSettings.keyBindBack.isKeyDown();
+        if (keyName.equalsIgnoreCase("A")) return mc.gameSettings.keyBindLeft.isKeyDown();
+        if (keyName.equalsIgnoreCase("D")) return mc.gameSettings.keyBindRight.isKeyDown();
+        if (keyName.equalsIgnoreCase("SPACE")) return mc.gameSettings.keyBindJump.isKeyDown();
+        if (keyName.equalsIgnoreCase("LMB")) return mc.gameSettings.keyBindAttack.isKeyDown();
+        if (keyName.equalsIgnoreCase("RMB")) return mc.gameSettings.keyBindUseItem.isKeyDown();
+        return false;
     }
 
     /** Localized effect names ("Speed (30s)"), as on the other versions. */
@@ -222,7 +244,7 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         if (mc().thePlayer == null) return Collections.emptyList();
         List<String> effects = new ArrayList<>();
         for (PotionEffect effect : mc().thePlayer.getActivePotionEffects())
-            effects.add(I18n.format(effect.getEffectName()) + " (" + (effect.getDuration() / 20) + "s)");
+            effects.add(effectName(effect.getEffectName()) + " (" + (effect.getDuration() / 20) + "s)");
         return effects;
     }
 

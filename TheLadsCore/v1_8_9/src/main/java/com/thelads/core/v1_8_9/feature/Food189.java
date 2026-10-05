@@ -183,7 +183,7 @@ public final class Food189 {
     /** One icon part from a {@code size}-pixel square texture, then the HUD's state back: icons.png bound, white, blending as found. */
     private static void icon(ResourceLocation texture, int alpha, int x, int y, int u, int v, int width, int size) {
         Minecraft mc = Minecraft.getMinecraft();
-        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND);
+        boolean blend = GlState189.blend();
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         GlStateManager.color(1, 1, 1, alpha / 255f);

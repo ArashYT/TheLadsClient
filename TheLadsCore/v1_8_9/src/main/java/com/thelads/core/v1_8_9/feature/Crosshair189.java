@@ -265,7 +265,7 @@ public final class Crosshair189 {
     }
 
     private static void item(ItemStack stack, int x, int y) {
-        boolean depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        boolean depth = GlState189.depth();
         GlStateManager.enableDepth();
         RenderHelper.enableGUIStandardItemLighting();
         Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(stack, x, y);

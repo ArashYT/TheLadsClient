@@ -48,6 +48,8 @@
     "LayerArmorBaseMixin",
     "LayerHeldItemMixin",
     "MinecraftMixin",
+    "MinecraftGlErrorsAccessor",
+    "BooleanStateMixin",
     "MovementInputFromOptionsMixin",
     "ModelBipedMixin",
     "NetworkManagerMixin",

@@ -21,6 +21,8 @@ final class HudBuffer189 {
     private final boolean depth;
     private Framebuffer buffer;
     private int previous;
+    /** previous and viewport are read once until newFrame(): every capture in a frame begins on the same framebuffer and viewport. */
+    private boolean queried;
 
     HudBuffer189(boolean depth) {
         this.depth = depth;
@@ -30,9 +32,12 @@ final class HudBuffer189 {
         Minecraft mc = Minecraft.getMinecraft();
         if (!OpenGlHelper.isFramebufferEnabled()) return false;
         // Before creating or resizing the buffer, which binds framebuffer 0 when done.
-        previous = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
-        GL11.glGetInteger(GL11.GL_VIEWPORT, viewport);
-        boolean depthTest = GL11.glIsEnabled(GL11.GL_DEPTH_TEST); // creating the buffer turns depth testing on
+        if (!queried) {
+            queried = true;
+            previous = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
+            GL11.glGetInteger(GL11.GL_VIEWPORT, viewport);
+        }
+        boolean depthTest = GlState189.depth(); // creating the buffer turns depth testing on
         if (buffer == null) {
             buffer = new Framebuffer(mc.displayWidth, mc.displayHeight, depth);
             buffer.setFramebufferColor(0, 0, 0, 0); // transparent black: the composite is premultiplied
@@ -45,6 +50,11 @@ final class HudBuffer189 {
         return true;
     }
 
+    /** The next begin() reads the framebuffer and viewport to return to again. */
+    void newFrame() {
+        queried = false;
+    }
+
     /** Back to the framebuffer and viewport drawn before begin(). */
     void end() {
         OpenGlHelper.glBindFramebuffer(OpenGlHelper.GL_FRAMEBUFFER, previous);
@@ -53,7 +63,7 @@ final class HudBuffer189 {
 
     /** The captured pixels blended in at alpha over the scaled GUI area. */
     void draw(float alpha, double width, double height) {
-        boolean depthTest = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        boolean depthTest = GlState189.depth();
         GlStateManager.disableDepth();
         GlStateManager.disableAlpha();
         GlStateManager.enableTexture2D();

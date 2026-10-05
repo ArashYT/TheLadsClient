@@ -265,7 +265,7 @@ public final class KillBanner189 {
         if (age < 0) return;
         long started = System.nanoTime(); // QA only: what the banner costs a frame (renderTimes)
         // Blending and depth go back as found, as NativeHud leaves them.
-        boolean blend = GL11.glIsEnabled(GL11.GL_BLEND), depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        boolean blend = GlState189.blend(), depth = GlState189.depth();
         GlStateManager.disableDepth();
         KillBannerArt189.begin();
         if (backdrop != 0) drawBackdrop(event.resolution.getScaledWidth(), event.resolution.getScaledHeight());

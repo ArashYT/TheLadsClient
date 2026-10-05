@@ -25,12 +25,25 @@ import org.lwjgl.opengl.GL11;
 public class GuiLadsAdapter implements LadsGraphics {
     /** QA only (CoreProbe): every text and item drawn while non-null. */
     public static List<String> recording;
-    private final FontRenderer font;
-    private final int width, height;
+    private FontRenderer font;
+    private int width, height;
     /** Nested scissors intersect, as GuiGraphics' scissor stack does on the other versions. */
     private final Deque<int[]> scissors = new ArrayDeque<>();
+    /** Per frame, not per scissor: the scale factor does not change inside one HUD pass (cleared by reset). */
+    private ScaledResolution resolution;
+    private static final java.util.Map<String, ResourceLocation> TEXTURES = new java.util.HashMap<>();
+    private static final java.util.Map<String, UUID> UUIDS = new java.util.HashMap<>(), NAME_UUIDS = new java.util.HashMap<>();
+    /** drawTexturedModalRect only reads zLevel (0) from it. */
+    private static final Gui GUI = new Gui();
 
     public GuiLadsAdapter(FontRenderer font, int width, int height) {
+        reset(font, width, height);
+    }
+
+    /** The same adapter for the next frame (the Lads HUD keeps one instead of allocating one per frame). */
+    public void reset(FontRenderer font, int width, int height) {
+        scissors.clear();
+        resolution = null;
         this.font = font != null ? font : Minecraft.getMinecraft().fontRendererObj;
         this.width = width;
         this.height = height;
@@ -115,7 +128,7 @@ public class GuiLadsAdapter implements LadsGraphics {
         GlStateManager.color(1.0f, 1.0f, 1.0f, 0.3f);
         // 1.8.9's silhouettes are near-black (made for the light inventory slot): GL_BLEND draws 1 - texel, a light silhouette, as on 26.x.
         GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_BLEND);
-        new Gui().drawTexturedModalRect(x, y, mc.getTextureMapBlocks().getAtlasSprite(net.minecraft.item.ItemArmor.EMPTY_SLOT_NAMES[slot]), 16, 16);
+        GUI.drawTexturedModalRect(x, y, mc.getTextureMapBlocks().getAtlasSprite(net.minecraft.item.ItemArmor.EMPTY_SLOT_NAMES[slot]), 16, 16);
         GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
     }
@@ -188,10 +201,29 @@ public class GuiLadsAdapter implements LadsGraphics {
         else GL11.glDisable(GL11.GL_SCISSOR_TEST);
     }
 
+    private ScaledResolution resolution() {
+        if (resolution == null) resolution = new ScaledResolution(Minecraft.getMinecraft());
+        return resolution;
+    }
+
+    /** The skin owner's id: the uuid text parsed once, or the offline id of the name. */
+    private static UUID parseId(String username, String uuid) throws java.io.UnsupportedEncodingException {
+        boolean real = uuid != null && !uuid.trim().isEmpty();
+        String key = real ? uuid : String.valueOf(username);
+        java.util.Map<String, UUID> cache = real ? UUIDS : NAME_UUIDS;
+        UUID id = cache.get(key);
+        if (id == null) {
+            if (cache.size() > 256) cache.clear();
+            id = real ? UUID.fromString(uuid) : UUID.nameUUIDFromBytes(key.getBytes("UTF-8"));
+            cache.put(key, id);
+        }
+        return id;
+    }
+
     /** GUI rectangle to window pixels; OpenGL's scissor origin is the bottom-left corner. */
-    private static void apply(int[] box) {
+    private void apply(int[] box) {
         Minecraft mc = Minecraft.getMinecraft();
-        int scale = new ScaledResolution(mc).getScaleFactor();
+        int scale = resolution().getScaleFactor();
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
         GL11.glScissor(box[0] * scale, mc.displayHeight - box[3] * scale,
             Math.max(0, box[2] - box[0]) * scale, Math.max(0, box[3] - box[1]) * scale);
@@ -199,7 +231,10 @@ public class GuiLadsAdapter implements LadsGraphics {
 
     @Override
     public void blit(String texture, int x, int y, int u, int v, int width, int height) {
-        Minecraft.getMinecraft().getTextureManager().bindTexture(new ResourceLocation(texture != null ? texture : "minecraft:textures/gui/icons.png"));
+        String path = texture != null ? texture : "minecraft:textures/gui/icons.png";
+        ResourceLocation location = TEXTURES.get(path);
+        if (location == null) TEXTURES.put(path, location = new ResourceLocation(path));
+        Minecraft.getMinecraft().getTextureManager().bindTexture(location);
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
         Gui.drawModalRectWithCustomSizedTexture(x, y, u, v, width, height, 256.0f, 256.0f);
     }
@@ -209,7 +244,7 @@ public class GuiLadsAdapter implements LadsGraphics {
     public void drawHead(String username, String uuid, int x, int y, int size) {
         try {
             Minecraft mc = Minecraft.getMinecraft();
-            UUID id = uuid != null && !uuid.trim().isEmpty() ? UUID.fromString(uuid) : UUID.nameUUIDFromBytes(String.valueOf(username).getBytes("UTF-8"));
+            UUID id = parseId(username, uuid);
             ResourceLocation skin = mc.thePlayer != null && id.equals(mc.thePlayer.getUniqueID())
                 ? mc.thePlayer.getLocationSkin() : DefaultPlayerSkin.getDefaultSkin(id);
             mc.getTextureManager().bindTexture(skin);
