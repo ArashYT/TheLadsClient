@@ -33,6 +33,8 @@ public final class NativeQualityOfLife {
         for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
             if (VoiceChatIntegration.loaded()) ModuleSupport.registerBuiltIn(voice);
             else ModuleSupport.registerUnavailable(voice, "Simple Voice Chat is not installed in this game.");
+        // The Entity Culling switch is the 1.8.9 Core's own culling; 26.x culls hidden entities by itself, with no switch.
+        ModuleSupport.registerUnavailable("EntityCulling", "Only for Minecraft 1.8.9: this version already skips drawing hidden entities by itself.");
         NativeClientTools.register();
         NativeConnectionStatus.register();
         NativeReconnect.register();
