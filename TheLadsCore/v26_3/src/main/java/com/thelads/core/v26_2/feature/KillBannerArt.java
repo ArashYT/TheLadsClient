@@ -3,6 +3,7 @@ package com.thelads.core.v26_2.feature;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.renderpearl.api.textures.FilterMode;
+import com.thelads.core.client.killbanner.KillBannerFx;
 import com.thelads.core.client.killbanner.KillBannerPlayer;
 import com.thelads.core.client.killbanner.KillBannerStrip;
 import com.thelads.core.client.killbanner.KillBannerStyle;
@@ -43,7 +44,7 @@ final class KillBannerArt {
         byte[] copy;
         long used;
     }
-    private static final String DIR = "/assets/theladscore/killbanner/", GLOW = DIR + "glow.png", SHADOW = DIR + "shadow.png",
+    private static final String DIR = "/assets/theladscore/killbanner/", SHADOW = DIR + "shadow.png",
         MARK = DIR + "mark.png", MARK_THIN = DIR + "mark_thin.png", HEADSHOT = DIR + "headshot.png", HS_MARK = DIR + "hs_mark.png",
         LABEL_BOX = DIR + "label_box.png";
     private static final Map<String, Sprite> SPRITES = new HashMap<>();
@@ -51,8 +52,6 @@ final class KillBannerArt {
     private static final Map<KillBannerStyle, int[]> BOUNDS = new EnumMap<>(KillBannerStyle.class);
     private static final int[] PHASEGUARD_COLORS = { 0xED6D3B, 0x008BBD, 0x68BD42, 0xD6D642 };
     private static final long IDLE = 60_000_000_000L;
-    /** One spray particle (KillBannerPlayer.particle). */
-    private static final float[] PARTICLE = new float[6];
     private static long now, swept, warmed;
 
     private KillBannerArt() {}
@@ -125,7 +124,7 @@ final class KillBannerArt {
 
     /**
      * A Kingdom Archives skin (its art in its own pixels) with its ring centre at x, y and k GUI pixels a cell pixel: the frame,
-     * ring, emblem and a pip for each kill as they move in, the glow, glint and spray in the skin's accent colour, the kill
+     * ring, emblem and a pip for each kill as they move in, the game's FX flipbooks in the skin's colour behind them, the kill
      * mark and the HEADSHOT label. A Banner Swap skin's art for this kill count turns out of the previous one's.
      */
     private static void still(GuiGraphicsExtractor g, KillBannerStyle style, int variant, int kills, KillBannerPlayer.Layers l,
@@ -139,13 +138,14 @@ final class KillBannerArt {
             int accent = style.accent(variant), shade = grey(l.emblemShade());
             float r = style.ring, ey = l.emblemY(), es = l.emblemScale() * (mark ? l.emblemFlick() : 1);
             if (l.shadowAlpha() > 0) centred(g, sprite(SHADOW), 0, 0, r * 3.7f / sprite(SHADOW).width(), argb(0, l.shadowAlpha()));
+            if (l.fx() >= 0) fx(g, style, variant, kills, l.fx(), accent);
             if (style.type == KillBannerStyle.Type.BANNER_SWAP) {
                 float s = 1.25f * es;
                 if (l.tier() < 1) centred(g, sprite(style.swapAsset(kills - 1)), 0, ey, s, argb(shade, l.emblemAlpha() * (1 - l.tier())));
                 centred(g, sprite(style.swapAsset(kills)), 0, ey, s, argb(shade, l.emblemAlpha() * l.tier()));
             } else {
-                if (style.hasFrame) centred(g, sprite(style.frameAsset()), 0, 0, l.frameScale(), argb(0xFFFFFF, l.frameAlpha()));
-                if (style.hasRing) centred(g, sprite(style.ringAsset()), 0, 0, l.ringScale(), argb(0xFFFFFF, l.ringAlpha()));
+                if (style.hasFrame) centred(g, sprite(style.frameAsset(variant)), 0, 0, l.frameScale(), argb(0xFFFFFF, l.frameAlpha()));
+                if (style.hasRing) centred(g, sprite(style.ringAsset(variant)), 0, 0, l.ringScale(), argb(0xFFFFFF, l.ringAlpha()));
                 if (style.hasEmblem) {
                     int base = style.type == KillBannerStyle.Type.PHASEGUARD ? PHASEGUARD_COLORS[Math.max(0, Math.min(3, variant))] : 0xFFFFFF;
                     int color = multiply(mix(base, KillBannerPlayer.STROBE_RED & 0xFFFFFF, mark ? l.strobe() : 0), shade);
@@ -172,18 +172,6 @@ final class KillBannerArt {
                     }
                 }
             }
-            if (l.spray() >= 0) {
-                Sprite dot = sprite(GLOW);
-                for (int i = 0, n = KillBannerPlayer.sprayCount(style, kills); i < n; i++) {
-                    if (!KillBannerPlayer.particle(i, l.spray(), PARTICLE)) continue;
-                    pose.pushMatrix();
-                    pose.translate(PARTICLE[0] * r, PARTICLE[1] * r + ey);
-                    pose.rotate(PARTICLE[5]);
-                    pose.scale(PARTICLE[2] * r * 2 / dot.width(), PARTICLE[3] * r * 2 / dot.height());
-                    centred(g, dot, 0, 0, 1, argb(accent, PARTICLE[4]));
-                    pose.popMatrix();
-                }
-            }
             if (mark && l.markSize() > 0) {
                 float cy = style.markY * es + ey;
                 mark(g, sprite(MARK_THIN), 0, cy, l.markSize(), l.markColor(), l.markThinAlpha());
@@ -200,6 +188,44 @@ final class KillBannerArt {
         } finally {
             pose.popMatrix();
         }
+    }
+
+    /**
+     * The game's FX flipbooks behind the banner's art, {@code seconds} after its FX event, in the skin's colour: on an ace the
+     * four X sparks, on every kill the hero flame behind the emblem, from two kills the tier flipbook left (mirrored) and
+     * right, on an ace the large sparks over them.
+     */
+    private static void fx(GuiGraphicsExtractor g, KillBannerStyle style, int variant, int kills, float seconds, int accent) {
+        if (kills >= 5) {
+            for (int i = 0; i < 4; i++) {
+                float sx = i == 0 || i == 3 ? -1 : 1, sy = i < 2 ? -1 : 1, angle = i == 0 ? -45 : i == 1 ? 45 : i == 2 ? 135 : -135;
+                cell(g, KillBannerFx.X_SPARKS, seconds, sx * KillBannerFx.X_OFFSET, sy * KillBannerFx.X_OFFSET, KillBannerFx.X_W, KillBannerFx.X_H, angle, false, accent);
+            }
+        }
+        cell(g, KillBannerFx.FLAME, seconds, 0, KillBannerFx.FLAME_Y, KillBannerFx.FLAME_W, KillBannerFx.FLAME_H, 0, false, accent);
+        KillBannerFx.Book tier = KillBannerFx.tier(style, variant, kills);
+        if (tier != null) {
+            cell(g, tier, seconds, -KillBannerFx.TIER_SIZE / 2, 0, KillBannerFx.TIER_SIZE, KillBannerFx.TIER_SIZE, 0, true, accent);
+            cell(g, tier, seconds, KillBannerFx.TIER_SIZE / 2, 0, KillBannerFx.TIER_SIZE, KillBannerFx.TIER_SIZE, 0, false, accent);
+        }
+        if (kills >= 5) cell(g, KillBannerFx.LARGE_SPARKS, seconds, 0, 0, KillBannerFx.LARGE_SIZE, KillBannerFx.LARGE_SIZE, 0, false, accent);
+    }
+
+    /** A flipbook's frame at {@code seconds}: its atlas cell stretched into a box (art px) centred at cx, cy, turned by {@code angle} degrees clockwise, mirrored when {@code flip}. */
+    private static void cell(GuiGraphicsExtractor g, KillBannerFx.Book book, float seconds, float cx, float cy, float w, float h, float angle, boolean flip, int rgb) {
+        if (book == null) return;
+        int c = book.cell(seconds);
+        if (c < 0) return;
+        Sprite atlas = sprite(book.asset());
+        var pose = g.pose();
+        pose.pushMatrix();
+        pose.translate(cx, cy);
+        if (angle != 0) pose.rotate((float) Math.toRadians(angle));
+        pose.scale((flip ? -1 : 1) * w / book.cellW(), h / book.cellH());
+        pose.translate(-book.cellW() / 2f, -book.cellH() / 2f);
+        g.blit(RenderPipelines.GUI_TEXTURED, atlas.id(), 0, 0, (c % book.cols()) * book.cellW(), (c / book.cols()) * book.cellH(),
+            book.cellW(), book.cellH(), atlas.width(), atlas.height(), argb(rgb, 1));
+        pose.popMatrix();
     }
 
     /**
@@ -232,7 +258,7 @@ final class KillBannerArt {
         if (l == null) return;
         float extent;
         if (style.type == KillBannerStyle.Type.BANNER_SWAP) extent = 1.25f * sprite(style.swapAsset(1)).width();
-        else if (style.hasFrame) extent = Math.max(sprite(style.frameAsset()).width(), sprite(style.frameAsset()).height());
+        else if (style.hasFrame) extent = Math.max(sprite(style.frameAsset(variant)).width(), sprite(style.frameAsset(variant)).height());
         else extent = style.ring * 2.6f;
         still(g, style, variant, kills, l, x + w / 2f, y + h / 2f, Math.min(w, h) * .9f / (extent * KillBannerStyle.ART_SCALE), markOn(), labelOn());
     }
@@ -282,7 +308,7 @@ final class KillBannerArt {
             return;
         }
 
-        Sprite frame = style.hasFrame ? sprite(style.frameAsset()) : null;
+        Sprite frame = style.hasFrame ? sprite(style.frameAsset(variant)) : null;
         float bw = frame != null ? frame.width() : style.ring * 2.5f;
         float bh = frame != null ? frame.height() : style.ring * 2.5f;
         float k = Math.min(w / bw, h / bh);
@@ -293,7 +319,7 @@ final class KillBannerArt {
             pose.scale(k, k);
             if (frame != null) quad(g, frame, -frame.width() / 2f, -frame.height() / 2f, 1f, -1);
             if (style.hasRing) {
-                Sprite ring = sprite(style.ringAsset());
+                Sprite ring = sprite(style.ringAsset(variant));
                 quad(g, ring, -ring.width() / 2f, -ring.height() / 2f, 1f, -1);
             }
             if (style.hasEmblem) {
@@ -328,7 +354,6 @@ final class KillBannerArt {
             style.strip(1 + (int) (warmed++ % 5));
             return;
         }
-        sprite(GLOW);
         if (style.type == KillBannerStyle.Type.BANNER_SWAP) {
             for (int kills = 1; kills <= 5; kills++) sprite(style.swapAsset(kills));
             return;

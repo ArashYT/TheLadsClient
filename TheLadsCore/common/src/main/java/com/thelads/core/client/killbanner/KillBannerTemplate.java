@@ -18,8 +18,6 @@ public final class KillBannerTemplate {
     public final int introEnd, exit;
     /** The frame the kill mark lands and the headshot flicker starts (the game's slices-and-FX event). */
     public final int mark;
-    /** The frame droplets first fly and how many; count 0: none for this kill count. */
-    public final int sprayStart, sprayCount;
     /** Where the pips settle: a multiple of the skin's pip radius (its Kingdom Archives layout, the game's slice radius). */
     public final float orbit;
     /** The pips' settled angles, degrees clockwise from the top on screen; null: the usual spacing. */
@@ -37,9 +35,6 @@ public final class KillBannerTemplate {
         introEnd = Integer.parseInt(data.getProperty(prefix + "introEnd").trim());
         exit = Integer.parseInt(data.getProperty(prefix + "exit").trim());
         mark = Integer.parseInt(data.getProperty(prefix + "mark", String.valueOf(KillBannerStyle.MARK_FRAME)).trim());
-        String[] spray = data.getProperty(prefix + "spray", "0,0").split(",");
-        sprayStart = Integer.parseInt(spray[0].trim());
-        sprayCount = Integer.parseInt(spray[1].trim());
         this.orbit = orbit;
         String angles = data.getProperty(prefix + "pip.angles");
         pipAngles = angles == null || angles.isBlank() ? null : floats(angles);

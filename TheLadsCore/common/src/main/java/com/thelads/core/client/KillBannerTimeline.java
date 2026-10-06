@@ -5,14 +5,10 @@ import java.util.ArrayDeque;
 
 /**
  * The kill streak and the banner on screen. Every kill counts toward the streak the moment it is seen; its banner queues, so
- * kills that land together (the same tick, or while a banner is still opening) still show 1, 2, 3... in turn. As in Valorant,
- * the next kill's banner replaces the one playing straight away, but no sooner than {@link #GAP} after that one started.
+ * kills that land together (the same tick) still show 1, 2, 3... in turn, a frame each. As in Valorant, the next kill's
+ * banner replaces the one playing at once.
  */
 public final class KillBannerTimeline {
-    /** Kills that land together still show one banner each, this far apart: long enough to see each count land. */
-    public static final long GAP = 250_000_000L;
-    /** A banner the next kill cuts short leaves for this long (its way out's first frames) before the next one starts. */
-    public static final long CUT = 130_000_000L;
     private record Queued(int sequence, boolean head, KillBannerModule.Pick pick) {}
     private final ArrayDeque<Queued> queue = new ArrayDeque<>();
     private boolean showing;
@@ -34,17 +30,9 @@ public final class KillBannerTimeline {
         if (queue.size() < 5) queue.addLast(new Queued(Math.min(5, streak), head, shown));
     }
 
-    /**
-     * Starts the next queued banner once the one playing has had {@link #GAP} and then left for {@link #CUT}; true when
-     * one started (play its sound).
-     */
+    /** Starts the next queued banner, replacing the one on screen at once; true when one started (play its sound). */
     public boolean next(long now) {
         if (queue.isEmpty()) return false;
-        if (showing && !preview) {
-            if (now - started < GAP) return false;
-            if (cutAt < 0) { cutAt = now; return false; } // the banner on screen starts leaving now
-            if (now - cutAt < CUT) return false;
-        }
         Queued next = queue.removeFirst();
         show(next.sequence(), now, false, next.head(), next.pick());
         return true;

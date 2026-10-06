@@ -276,7 +276,7 @@ class KillDetectorTest {
             variants.add(pick.variant());
             previous = pick;
         }
-        assertEquals(4, variants.size());
+        assertEquals(5, variants.size(), "Reaver: its four and the EP 5 one");
 
         module.randomize.setIndex(KillBannerModule.RANDOM_SKIN);
         Set<KillBannerStyle> skins = new HashSet<>();

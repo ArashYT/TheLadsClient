@@ -196,7 +196,18 @@ public class KillBannerModule extends Module {
         int index = bannerStyle.getIndex();
         KillBannerStyle style = index == CUSTOM ? visualOrSoundSkin(customVisual.getIndex()) : skin(index);
         KillBannerStyle soundStyle = index == CUSTOM ? visualOrSoundSkin(customSound.getIndex()) : style;
-        return new Pick(style, getVariant(style), soundStyle);
+        return pick(style, getVariant(style), soundStyle);
+    }
+
+    /** A pick with a skin folded into another (an older saved choice) resolved to that skin and the matching variant. */
+    public static Pick pick(KillBannerStyle style, int variant, KillBannerStyle soundStyle) {
+        if (style != null && style.mergedInto() != null) {
+            variant += style.variantOffset();
+            if (soundStyle == style) soundStyle = style.mergedInto();
+            style = style.mergedInto();
+        }
+        if (soundStyle != null && soundStyle.mergedInto() != null) soundStyle = soundStyle.mergedInto();
+        return new Pick(style, variant, soundStyle);
     }
 
     /** The banner for the next kill: the chosen one, or a random one (never the same twice in a row when there is a choice). */
@@ -209,7 +220,7 @@ public class KillBannerModule extends Module {
                     pool.add(new Pick(chosen.style(), v, bannerStyle.getIndex() == CUSTOM ? chosen.soundStyle() : chosen.style()));
             }
             case RANDOM_SKIN -> {
-                for (KillBannerStyle style : KillBannerStyle.values())
+                for (KillBannerStyle style : KillBannerStyle.shown())
                     for (int v = 0; v < style.variantNames.length; v++) pool.add(new Pick(style, v, style));
             }
             case RANDOM_CHOSEN -> {
@@ -219,7 +230,7 @@ public class KillBannerModule extends Module {
                     KillBannerStyle style = KillBannerStyle.byId(entry.substring(0, colon));
                     if (style == null) continue;
                     try {
-                        pool.add(new Pick(style, Integer.parseInt(entry.substring(colon + 1)), style));
+                        pool.add(pick(style, Integer.parseInt(entry.substring(colon + 1)), style));
                     } catch (NumberFormatException ignored) {}
                 }
             }

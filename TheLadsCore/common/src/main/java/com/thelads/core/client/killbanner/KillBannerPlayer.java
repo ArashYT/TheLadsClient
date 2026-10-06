@@ -1,7 +1,5 @@
 package com.thelads.core.client.killbanner;
 
-import java.util.Random;
-
 /**
  * What a skin banner draws at a moment, from Valorant footage: the skin's frames, a dark backdrop, the kill mark
  * (a lattice that lands large and shrinks onto the icon), the icon's red strobe, the emblem's red cavity (Reaver) and
@@ -24,27 +22,8 @@ public final class KillBannerPlayer {
     /** Reaver's frames stop settled; its way out is drawn: the icon goes (14 frames), the frame stays, then fades. */
     static final int ICON_OUT = 14, FRAME_HOLD = 38, DRAWN_EXIT = 54;
     public static final int MARK_RED = 0xFFC41626, STROBE_RED = 0xFFE2122C;
-    /** The spray slows (per second) and falls (ring radii per second squared). */
-    static final float DRAG = 2.5f, FALL = 1.6f;
-    /** Per spray particle: start x, y and velocity x, y (ring radii, per second), width, length (radii), delay, life (s). */
-    private static final float[] SPRAY = new float[36 * 8];
     /** The picker preview holds each banner a second, then leaves a short gap before the next kill count. */
     static final double PREVIEW_HOLD = 1, PREVIEW_GAP = .4;
-
-    static {
-        Random random = new Random(1729); // the same spray every time
-        for (int i = 0, o = 0; i < 36; i++, o += 8) {
-            float side = i % 2 == 0 ? 1 : -1, width = .06f + .07f * random.nextFloat();
-            SPRAY[o] = side * .5f * random.nextFloat();
-            SPRAY[o + 1] = .1f + .5f * random.nextFloat();
-            SPRAY[o + 2] = side * (2f + 4.5f * random.nextFloat());
-            SPRAY[o + 3] = -2.2f + 2.6f * random.nextFloat();
-            SPRAY[o + 4] = width;
-            SPRAY[o + 5] = width * (2.2f + 1.2f * random.nextFloat());
-            SPRAY[o + 6] = .15f * random.nextFloat();
-            SPRAY[o + 7] = .35f + .4f * random.nextFloat();
-        }
-    }
 
     /** iconY: cell pixels the strip's icon sits below its settled place; everything drawn over the banner follows it. */
     public record Frame(int stripFrame, float iconAlpha, float iconScale, float restAlpha, float shadowAlpha,
@@ -62,13 +41,13 @@ public final class KillBannerPlayer {
      * hover texture at pipFlare (the game lights every pip as the banner arrives), both at pipAlpha and pipScale.
      * emblemShade darkens the emblem on the way out; emblemFlick is the pulse of the headshot flicker (drawn with the mark);
      * headshot is whether the kill was one (the skin's headshot badge, where it has one, stands in for its emblem); tier is
-     * how far a Banner Swap skin has turned from the previous kill's art into this kill's; spray is seconds into the spray
-     * ({@link #particle}), negative before it.
+     * how far a Banner Swap skin has turned from the previous kill's art into this kill's; fx is seconds since the game's FX
+     * event (the flipbooks of {@link KillBannerFx} play from it), negative before it.
      */
     public record Layers(float emblemAlpha, float emblemScale, float emblemY, float emblemShade, float emblemFlick,
                          float frameAlpha, float frameScale, float ringAlpha, float ringScale,
                          float pipAlpha, float pipUp, float pipScale, float pipRadius, float pipOrbit, float[] pipDegrees, float pipSpin,
-                         float pipFlare, float tier, float spray,
+                         float pipFlare, float tier, float fx,
                          float shadowAlpha, float strobe, float markSize, float markThinAlpha, float markAlpha, int markColor,
                          boolean headshot, float labelAlpha) {}
 
@@ -117,7 +96,7 @@ public final class KillBannerPlayer {
             float settled = t.pipAngles != null && i < t.pipAngles.length ? -t.pipAngles[i] : 360f / count * (i + 1) + (count == 2 ? 90 : 0);
             pipDegrees[i] = settled + pipSpin;
         }
-        float spray = t.sprayCount > 0 && f >= t.sprayStart ? (f - t.sprayStart) / 60 : -1;
+        float fx = f >= t.mark ? (f - t.mark) / 60 : -1; // the game's FX event: the flipbooks play from the mark, in real time
 
         float leaving = e >= 0 ? 1 - smooth(0, exit, e) : 1;
         int m = t.mark, mt = (int) Math.floor(f) - m;
@@ -137,32 +116,11 @@ public final class KillBannerPlayer {
         }
         float label = headshot ? smooth(m - 4, m + 4, f) * (e >= 0 ? 1 - smooth(0, 8, e) : 1) : 0;
         return new Layers(emblemAlpha, emblemScale, emblemY, shade, flick, frameAlpha, frameScale, ringAlpha, ringScale,
-            pipAlpha, pipUp, pipScale, pipRadius, t.orbit, pipDegrees, pipSpin, pipFlare, tier, spray,
+            pipAlpha, pipUp, pipScale, pipRadius, t.orbit, pipDegrees, pipSpin, pipFlare, tier, fx,
             shadow, strobe * emblemAlpha, size, thin, solid, color, headshot, label);
     }
 
-    /** Spray particles a banner for this many kills throws (droplets: none for one kill). */
-    public static int sprayCount(KillBannerStyle style, int kills) {
-        return Math.min(36, KillBannerTemplate.of(style, kills).sprayCount);
-    }
 
-    /**
-     * Spray particle {@code i} {@code spray} seconds into the spray, in ring radii from the emblem's centre: {@code out} gets
-     * x, y, length, width, alpha and its angle of flight (radians). False while it is not showing.
-     */
-    public static boolean particle(int i, float spray, float[] out) {
-        int o = i * 8;
-        float t = spray - SPRAY[o + 6], life = SPRAY[o + 7];
-        if (t <= 0 || t >= life) return false;
-        float drag = (float) Math.exp(-DRAG * t), travel = (1 - drag) / DRAG, vx = SPRAY[o + 2], vy = SPRAY[o + 3];
-        out[0] = SPRAY[o] + vx * travel;
-        out[1] = SPRAY[o + 1] + vy * travel + .5f * FALL * t * t;
-        out[2] = SPRAY[o + 5];
-        out[3] = SPRAY[o + 4];
-        out[4] = Math.min(1, t / .04f) * (1 - smooth(.6f * life, life, t));
-        out[5] = (float) Math.atan2(vy * drag + FALL * t, vx * drag);
-        return true;
-    }
 
     /** The picker preview at {@code clock} seconds: which kill count it shows (1 to 5 in turn, then again). */
     public static int previewKills(KillBannerStyle style, double clock) {

@@ -38,8 +38,6 @@ class KillBannerMotionTest {
             assertEquals(0, t.ringAlpha[t.introEnd + t.exit], .01f, "and so is the wheel");
             assertSame(t, KillBannerTemplate.of(SKIN, kills), "every skin plays the game's motion");
         }
-        assertEquals(0, KillBannerTemplate.of(1).sprayCount, "one kill has no FX tier");
-        for (int kills = 2; kills <= 5; kills++) assertEquals(KillBannerTemplate.of(kills).mark, KillBannerTemplate.of(kills).sprayStart, "the FX fire with the slices");
         assertEquals(KillBannerTemplate.of(5), KillBannerTemplate.of(9), "past five kills: the ace");
         assertSame(KillBannerTemplate.of(3), KillBannerTemplate.of(KillBannerStyle.REAVER, 3), "the strips keep the shared timing");
     }
@@ -119,15 +117,11 @@ class KillBannerMotionTest {
     }
 
     @Test
-    void moreKillsFireTheFx() {
-        assertTrue(at(SKIN, 1, 40, 2).spray() < 0, "one kill has no FX tier");
-        assertEquals(0, KillBannerPlayer.sprayCount(SKIN, 1));
-        for (int kills = 2; kills <= 5; kills++) {
-            int start = KillBannerTemplate.of(kills).sprayStart;
-            assertTrue(at(SKIN, kills, start - 1, 5).spray() < 0);
-            assertEquals(0, at(SKIN, kills, start, 5).spray(), 1e-6, kills + " kills throw a spray from frame " + start);
-            assertTrue(KillBannerPlayer.sprayCount(SKIN, kills) >= 8 && KillBannerPlayer.sprayCount(SKIN, kills) <= 36);
-        }
+    void theFxPlayFromTheMark() {
+        assertTrue(at(SKIN, 1, LIT - 1, 2).fx() < 0, "nothing before the game's FX event");
+        assertEquals(0, at(SKIN, 1, LIT, 2).fx(), 1e-6, "the flipbooks start with the mark");
+        assertEquals(.5, at(SKIN, 1, LIT + 30, 2).fx(), 1e-6, "in real time");
+        assertEquals(0, at(SKIN, 5, 30, 8).fx(), 1e-6, "the ace's at its 0.3-speed mark");
         assertEquals(7.05, KillBannerPlayer.stillSeconds(SKIN, 5), .01, "the ace plays at 0.3 speed");
         assertEquals(2.12, KillBannerPlayer.stillSeconds(SKIN, 1), .01);
     }
@@ -195,25 +189,6 @@ class KillBannerMotionTest {
         assertEquals(1, at(swap, 3, LIT + 3, 2).tier(), "then the three-kill art as the mark lands");
         assertEquals(1, at(swap, 1, 5, 2).tier(), "one kill has nothing before it");
         assertEquals(1, at(SKIN, 3, 5, 2).tier());
-    }
-
-    @Test
-    void theSprayFliesOutAndFades() {
-        float[] p = new float[6];
-        int shown = 0;
-        for (int i = 0; i < KillBannerPlayer.sprayCount(SKIN, 5); i++) {
-            assertFalse(KillBannerPlayer.particle(i, 0, p), "nothing at its start");
-            assertFalse(KillBannerPlayer.particle(i, 1, p), "all gone after a second");
-            for (float t = .02f; t < 1; t += .02f) {
-                if (!KillBannerPlayer.particle(i, t, p)) continue;
-                shown++;
-                assertTrue(Math.abs(p[0]) < 3 && p[1] > -1.5 && p[1] < 2, "particle " + i + " stays near the banner: " + p[0] + ", " + p[1]);
-                assertTrue(p[4] >= 0 && p[4] <= 1 && p[2] > p[3] && p[3] > 0);
-            }
-        }
-        assertTrue(shown > 300);
-        // Both ways: even particles to the right, odd to the left.
-        assertTrue(KillBannerPlayer.particle(0, .3f, p) && p[0] > 0 && KillBannerPlayer.particle(1, .3f, p) && p[0] < 0);
     }
 
     @Test

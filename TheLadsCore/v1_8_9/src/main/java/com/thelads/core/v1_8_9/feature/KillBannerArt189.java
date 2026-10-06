@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.feature;
 
 import com.thelads.core.client.killbanner.KillBannerFeed;
+import com.thelads.core.client.killbanner.KillBannerFx;
 import com.thelads.core.client.killbanner.KillBannerPlayer;
 import com.thelads.core.client.killbanner.KillBannerStrip;
 import com.thelads.core.client.killbanner.KillBannerStyle;
@@ -83,7 +84,7 @@ final class KillBannerArt189 {
             style.release();
         }
     }
-    private static final String DIR = "/assets/theladscore/killbanner/", GLOW = DIR + "glow.png", SHADOW = DIR + "shadow.png",
+    private static final String DIR = "/assets/theladscore/killbanner/", SHADOW = DIR + "shadow.png",
         MARK = DIR + "mark.png", MARK_THIN = DIR + "mark_thin.png", HEADSHOT = DIR + "headshot.png", HS_MARK = DIR + "hs_mark.png",
         LABEL_BOX = DIR + "label_box.png";
     private static final Map<String, Sprite> SPRITES = new HashMap<>();
@@ -102,8 +103,6 @@ final class KillBannerArt189 {
     private static final int UPLOADS_A_TICK = 3;
     private static final int[] PHASEGUARD_COLORS = { 0xED6D3B, 0x008BBD, 0x68BD42, 0xD6D642 };
     private static final long IDLE = 60_000_000_000L;
-    /** One spray particle (KillBannerPlayer.particle). */
-    private static final float[] PARTICLE = new float[6];
     static final String BASE = "/assets/theladscore/textures/gui/base_kill_banner.png";
     private static long now, swept;
     private static ByteBuffer upload;
@@ -178,13 +177,14 @@ final class KillBannerArt189 {
             int accent = style.accent(variant), shade = grey(l.emblemShade());
             float r = style.ring, ey = l.emblemY(), es = l.emblemScale() * (mark ? l.emblemFlick() : 1);
             if (l.shadowAlpha() > 0) centred(sprite(SHADOW), 0, 0, r * 3.7f / sprite(SHADOW).width, argb(0, l.shadowAlpha()));
+            if (l.fx() >= 0) fx(style, variant, kills, l.fx(), accent);
             if (style.type == KillBannerStyle.Type.BANNER_SWAP) {
                 float s = 1.25f * es;
                 if (l.tier() < 1) centred(sprite(style.swapAsset(kills - 1)), 0, ey, s, argb(shade, l.emblemAlpha() * (1 - l.tier())));
                 centred(sprite(style.swapAsset(kills)), 0, ey, s, argb(shade, l.emblemAlpha() * l.tier()));
             } else {
-                if (style.hasFrame) centred(sprite(style.frameAsset()), 0, 0, l.frameScale(), argb(0xFFFFFF, l.frameAlpha()));
-                if (style.hasRing) centred(sprite(style.ringAsset()), 0, 0, l.ringScale(), argb(0xFFFFFF, l.ringAlpha()));
+                if (style.hasFrame) centred(sprite(style.frameAsset(variant)), 0, 0, l.frameScale(), argb(0xFFFFFF, l.frameAlpha()));
+                if (style.hasRing) centred(sprite(style.ringAsset(variant)), 0, 0, l.ringScale(), argb(0xFFFFFF, l.ringAlpha()));
                 if (style.hasEmblem) {
                     int base = style.type == KillBannerStyle.Type.PHASEGUARD ? PHASEGUARD_COLORS[Math.max(0, Math.min(3, variant))] : 0xFFFFFF;
                     int color = multiply(mix(base, KillBannerPlayer.STROBE_RED & 0xFFFFFF, mark ? l.strobe() : 0), shade);
@@ -209,18 +209,6 @@ final class KillBannerArt189 {
                         if (l.pipFlare() > 0) centred(hover, 0, 0, l.pipScale(), argb(lit, l.pipAlpha() * l.pipFlare()));
                         GlStateManager.popMatrix();
                     }
-                }
-            }
-            if (l.spray() >= 0) {
-                Sprite dot = sprite(GLOW);
-                for (int i = 0, n = KillBannerPlayer.sprayCount(style, kills); i < n; i++) {
-                    if (!KillBannerPlayer.particle(i, l.spray(), PARTICLE)) continue;
-                    GlStateManager.pushMatrix();
-                    GlStateManager.translate(PARTICLE[0] * r, PARTICLE[1] * r + ey, 0.0F);
-                    GlStateManager.rotate((float) Math.toDegrees(PARTICLE[5]), 0.0F, 0.0F, 1.0F);
-                    GlStateManager.scale(PARTICLE[2] * r * 2 / dot.width, PARTICLE[3] * r * 2 / dot.height, 1.0F);
-                    centred(dot, 0, 0, 1, argb(accent, PARTICLE[4]));
-                    GlStateManager.popMatrix();
                 }
             }
             if (mark && l.markSize() > 0) {
@@ -270,7 +258,7 @@ final class KillBannerArt189 {
         if (l == null) return;
         float extent;
         if (style.type == KillBannerStyle.Type.BANNER_SWAP) extent = 1.25f * sprite(style.swapAsset(1)).width;
-        else if (style.hasFrame) extent = Math.max(sprite(style.frameAsset()).width, sprite(style.frameAsset()).height);
+        else if (style.hasFrame) extent = Math.max(sprite(style.frameAsset(variant)).width, sprite(style.frameAsset(variant)).height);
         else extent = style.ring * 2.6f;
         still(style, variant, kills, l, x + w / 2f, y + h / 2f, Math.min(w, h) * .9f / (extent * KillBannerStyle.ART_SCALE), markOn(), labelOn());
     }
@@ -319,7 +307,7 @@ final class KillBannerArt189 {
             return;
         }
 
-        Sprite frame = style.hasFrame ? sprite(style.frameAsset()) : null;
+        Sprite frame = style.hasFrame ? sprite(style.frameAsset(variant)) : null;
         float bw = frame != null ? frame.width : style.ring * 2.5f;
         float bh = frame != null ? frame.height : style.ring * 2.5f;
         float k = Math.min(w / bw, h / bh);
@@ -329,7 +317,7 @@ final class KillBannerArt189 {
             GlStateManager.scale(k, k, 1.0F);
             if (frame != null) quad(frame, -frame.width / 2f, -frame.height / 2f, 1f, -1);
             if (style.hasRing) {
-                Sprite ring = sprite(style.ringAsset());
+                Sprite ring = sprite(style.ringAsset(variant));
                 quad(ring, -ring.width / 2f, -ring.height / 2f, 1f, -1);
             }
             if (style.hasEmblem) {
@@ -419,7 +407,6 @@ final class KillBannerArt189 {
             paths.add(style.tintAsset());
             if (style.heart) paths.add(style.heartAsset());
         } else {
-            paths.add(GLOW);
             paths.add(HS_MARK);
             if (style.type == KillBannerStyle.Type.BANNER_SWAP) {
                 for (int kills = 1; kills <= 5; kills++) paths.add(style.swapAsset(kills));
@@ -581,6 +568,48 @@ final class KillBannerArt189 {
 
     private static void quad(Sprite s, float x, float y, float scale, int color) {
         blit(s, x, y, s.width * scale, s.height * scale, color);
+    }
+
+    /** As 26.x KillBannerArt.fx: the game's FX flipbooks behind the banner's art, {@code seconds} after its FX event, in the skin's colour. */
+    private static void fx(KillBannerStyle style, int variant, int kills, float seconds, int accent) {
+        if (kills >= 5) {
+            for (int i = 0; i < 4; i++) {
+                float sx = i == 0 || i == 3 ? -1 : 1, sy = i < 2 ? -1 : 1, angle = i == 0 ? -45 : i == 1 ? 45 : i == 2 ? 135 : -135;
+                cell(KillBannerFx.X_SPARKS, seconds, sx * KillBannerFx.X_OFFSET, sy * KillBannerFx.X_OFFSET, KillBannerFx.X_W, KillBannerFx.X_H, angle, false, accent);
+            }
+        }
+        cell(KillBannerFx.FLAME, seconds, 0, KillBannerFx.FLAME_Y, KillBannerFx.FLAME_W, KillBannerFx.FLAME_H, 0, false, accent);
+        KillBannerFx.Book tier = KillBannerFx.tier(style, variant, kills);
+        if (tier != null) {
+            cell(tier, seconds, -KillBannerFx.TIER_SIZE / 2, 0, KillBannerFx.TIER_SIZE, KillBannerFx.TIER_SIZE, 0, true, accent);
+            cell(tier, seconds, KillBannerFx.TIER_SIZE / 2, 0, KillBannerFx.TIER_SIZE, KillBannerFx.TIER_SIZE, 0, false, accent);
+        }
+        if (kills >= 5) cell(KillBannerFx.LARGE_SPARKS, seconds, 0, 0, KillBannerFx.LARGE_SIZE, KillBannerFx.LARGE_SIZE, 0, false, accent);
+    }
+
+    /** A flipbook's frame at {@code seconds}: its atlas cell stretched into a box (art px) centred at cx, cy, turned by {@code angle} degrees clockwise, mirrored when {@code flip}. */
+    private static void cell(KillBannerFx.Book book, float seconds, float cx, float cy, float w, float h, float angle, boolean flip, int rgb) {
+        if (book == null) return;
+        int c = book.cell(seconds);
+        if (c < 0) return;
+        Sprite atlas = sprite(book.asset());
+        float u0 = (c % book.cols()) * book.cellW() / (float) atlas.width, v0 = (c / book.cols()) * book.cellH() / (float) atlas.height;
+        float u1 = u0 + book.cellW() / (float) atlas.width, v1 = v0 + book.cellH() / (float) atlas.height;
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(cx, cy, 0.0F);
+        if (angle != 0) GlStateManager.rotate(angle, 0.0F, 0.0F, 1.0F);
+        if (flip) GlStateManager.scale(-1.0F, 1.0F, 1.0F);
+        GlStateManager.bindTexture(atlas.texture.getGlTextureId());
+        GlStateManager.color((rgb >> 16 & 255) / 255f, (rgb >> 8 & 255) / 255f, (rgb & 255) / 255f, 1f);
+        Tessellator tessellator = Tessellator.getInstance();
+        WorldRenderer buffer = tessellator.getWorldRenderer();
+        buffer.begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION_TEX);
+        buffer.pos(-w / 2, h / 2, 0).tex(u0, v1).endVertex();
+        buffer.pos(w / 2, h / 2, 0).tex(u1, v1).endVertex();
+        buffer.pos(w / 2, -h / 2, 0).tex(u1, v0).endVertex();
+        buffer.pos(-w / 2, -h / 2, 0).tex(u0, v0).endVertex();
+        tessellator.draw();
+        GlStateManager.popMatrix();
     }
 
     /** The sprite centred on x, y. */

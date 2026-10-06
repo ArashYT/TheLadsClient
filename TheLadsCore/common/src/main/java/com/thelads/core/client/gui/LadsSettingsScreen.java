@@ -327,16 +327,16 @@ public final class LadsSettingsScreen {
 
         String q = kbSearch.trim().toLowerCase(Locale.ROOT);
         List<KillBannerStyle> visible = new ArrayList<>();
-        for (KillBannerStyle s : KillBannerStyle.values()) {
+        for (KillBannerStyle s : KillBannerStyle.shown()) {
             if (q.isEmpty() || s.displayName.toLowerCase(Locale.ROOT).contains(q) || s.id.toLowerCase(Locale.ROOT).contains(q)) {
                 visible.add(s);
             }
         }
 
-        y = kbSection(g, "skins", "SKINS (" + KillBannerStyle.values().length + ")", x, y, w, mx, my);
+        y = kbSection(g, "skins", "SKINS (" + KillBannerStyle.shown().size() + ")", x, y, w, mx, my);
         if (kbOpen.contains("skins")) {
             // Search bar for filtering the 91 skins
-            String searchLabel = editingKbSearch ? inputDisplay() : kbSearch.isEmpty() ? "Search 91 skins..." : kbSearch;
+            String searchLabel = editingKbSearch ? inputDisplay() : kbSearch.isEmpty() ? "Search " + KillBannerStyle.shown().size() + " skins..." : kbSearch;
             button(g, "kb:search", searchLabel, new Rect(x, y, w, 20), this::startKbSearch, true, mx, my, editingKbSearch);
             y += 24;
             // Custom Tile + Skin Tiles
