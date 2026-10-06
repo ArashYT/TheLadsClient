@@ -1,32 +1,29 @@
 package com.thelads.core.client;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import com.thelads.core.client.killbanner.KillBannerStyle;
-import com.thelads.core.client.killbanner.KillBannerTemplate;
 import org.junit.jupiter.api.Test;
 
-/** The HEADSHOT banner's box colour: measured from the skin's preview where it showed one, guessed from the accent otherwise. */
+import static org.junit.jupiter.api.Assertions.*;
+
+/** The HEADSHOT label's box: the skin's PrimaryColor, as the game tints its headshot background and its pips. */
 class KillBannerHeadshotTest {
-    @Test void aGuessedBoxIsADarkerDullerAccent() {
-        assertEquals(0x804242, KillBannerStyle.guessBox(0xFF0000), "red at half saturation and brightness");
-        assertEquals(0x42805A, KillBannerStyle.guessBox(0x00FF63), "a green");
-        assertEquals(0x4A4A4A, KillBannerStyle.guessBox(0xFFFFFF), "white has no hue: dark grey");
-        assertEquals(0x4A4A4A, KillBannerStyle.guessBox(0x303030));
+    @Test
+    void everySkinsBoxIsItsPipColour() {
+        for (KillBannerStyle style : KillBannerStyle.values())
+            for (int v = 0; v < style.variantNames.length; v++)
+                assertEquals(style.accent(v), style.headshotBox(v), style.id + " v" + v);
+        assertEquals(0x70EF5F, KillBannerStyle.ONI.headshotBox(0));
+        assertEquals(0xC80000, KillBannerStyle.REAVER.headshotBox(1), "Reaver's red variant");
+        assertEquals(.3f, KillBannerStyle.HEADSHOT_BOX_ALPHA, "drawn at the game's 0.3 over the backdrop");
     }
 
-    @Test void everySkinHasABoxColour() {
-        for (KillBannerStyle style : KillBannerStyle.values()) {
-            int box = style.headshotBox(0);
-            assertTrue(box >= 0 && box <= 0xFFFFFF, style.id);
-            int max = Math.max((box >> 16) & 255, Math.max((box >> 8) & 255, box & 255));
-            assertTrue(max <= 0xD0, style.id + ": a box dark enough for white text, " + Integer.toHexString(box)); // some previews show near-black boxes
-        }
-    }
-
-    @Test void animatedSkinsGuessFromTheirAccent() {
-        assertEquals(-1, KillBannerTemplate.headshotBox(KillBannerStyle.REAVER), "Reaver's strips carry no measured box");
-        assertEquals(KillBannerStyle.guessBox(KillBannerStyle.REAVER.accent(0)), KillBannerStyle.REAVER.headshotBox(0));
+    @Test
+    void theOptionalArtIsOnlyWhereTheGameHasIt() {
+        assertNotNull(KillBannerStyle.ONI.pipUpAsset(0), "Oni ships its Up pip texture");
+        assertNull(KillBannerStyle.ONI.headshotEmblemAsset(0), "and has no headshot badge");
+        assertNotNull(KillBannerStyle.HOLOMERIDIAN.headshotEmblemAsset(0), "Holo Meridian (Sea of Stars) swaps its emblem on a headshot");
+        assertNotNull(KillBannerStyle.HOLOMERIDIAN.headshotEmblemAsset(3));
+        assertNotNull(KillBannerStyle.ONIEP6.pipUpAsset(0), "a skin on shared art finds its donor's");
+        assertNull(KillBannerStyle.CHAMPIONS2024.pipUpAsset(0), "a Banner Swap skin has no pips");
     }
 }

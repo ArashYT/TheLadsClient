@@ -89,9 +89,10 @@ class KillBannerArtTest {
         assertEquals(style.markSize, settled.markSize(), .05f);
         assertEquals(KillBannerPlayer.MARK_RED, settled.markColor(), "settled red");
         assertEquals(0, settled.strobe());
-        // The strobe peaks every 6 frames (100 ms).
-        assertEquals(1f, KillBannerPlayer.at(style, strip, (m + 5.5) / 60.0, 2, false).strobe());
-        assertEquals(1f, KillBannerPlayer.at(style, strip, (m + 11.5) / 60.0, 2, false).strobe());
+        // The game's flicker: red as the mark lands, then every 6 frames (100 ms).
+        assertEquals(1f, KillBannerPlayer.at(style, strip, (m + .5) / 60.0, 2, false).strobe());
+        assertEquals(1f, KillBannerPlayer.at(style, strip, (m + 6.5) / 60.0, 2, false).strobe());
+        assertEquals(0f, KillBannerPlayer.at(style, strip, (m + 3.5) / 60.0, 2, false).strobe());
     }
 
     @Test

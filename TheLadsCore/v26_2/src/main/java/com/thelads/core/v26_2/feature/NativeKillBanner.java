@@ -239,15 +239,16 @@ public final class NativeKillBanner {
             renderBase(graphics, minecraft, module, age);
             return;
         }
-        boolean headshot = BANNER.headshot() && module.headshotBanner.get(), mark = module.killMark.get();
+        // As the game: the kill mark and its flicker belong to a headshot; the HEADSHOT label is the client's option on top.
+        boolean headshot = BANNER.headshot(), mark = headshot && module.killMark.get(), label = module.headshotBanner.get();
         float size = (float) module.size.getValue() / 100f;
         if (style.isAnimated()) {
             KillBannerStrip strip = style.strip(BANNER.sequence());
             KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot, BANNER.cutAge());
-            if (frame != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), strip, frame, size, mark);
+            if (frame != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), strip, frame, size, mark, label);
         } else {
             KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot, BANNER.cutAge());
-            if (layers != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), layers, size, mark);
+            if (layers != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), layers, size, mark, label);
         }
     }
 

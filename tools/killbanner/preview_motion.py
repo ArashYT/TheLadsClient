@@ -62,6 +62,7 @@ class Art:
         self.ring = mv.art(skin, 'ring.png') if b['hasRing'] else None
         self.frame = mv.art(skin, 'frame.png') if b['hasFrame'] else None
         self.pip = mv.art(skin, 'pip.png') if b['hasPip'] else None
+        self.pip_up = mv.art(skin, 'pip_up.png') if b['hasPip'] else None
         colours = mv.ACCENT.get(skin, 'FFFFFF').split(',')
         c = int(colours[0], 16)
         self.accent = ((c >> 16) & 255, (c >> 8) & 255, c & 255)
@@ -111,17 +112,21 @@ def draw(art, b, count, orbit, f):
     elif art.emblem is not None:
         put(card, art.img(art.emblem, S * g['icon.scale']), cx, ey, g['icon.alpha'], g['icon.shade'])
     if art.pip is not None and g['pip.alpha'] > 0:
-        r = art.radius * S * orbit * g['pip.radius']
-        overlay = Image.new('RGBA', card.size, (0, 0, 0, 0))
-        d = ImageDraw.Draw(overlay)
+        # the game template keeps pip.radius in art px outward; measured files kept a multiple of the radius
+        r = art.radius * S * orbit + g['pip.radius'] * S if b.get('radius_px') else art.radius * S * orbit * g['pip.radius']
+        lit = tuple(int(255 * .75 + c * .25) for c in art.accent)
         for theta in mv.pip_layout(count):
             a = theta + g['pip.spin']
             px, py = cx + r * math.sin(math.radians(a)), cy - r * math.cos(math.radians(a))
-            if g['pip.flare'] > .02:
-                gr = 12 + 10 * g['pip.flare']
-                d.ellipse((px - gr, py - gr, px + gr, py + gr), fill=art.accent + (int(110 * g['pip.flare'] * g['pip.alpha']),))
-            put(card, art.img(art.pip, S, a), px, py, g['pip.alpha'])
-        card.alpha_composite(overlay)
+            if art.pip_up is not None and g['pip.up'] > 0:
+                put(card, art.img(art.pip_up, S * g['pip.scale'], a), px, py, g['pip.alpha'] * g['pip.up'])
+            if g['pip.flare'] > .004:
+                hover = art.img(art.pip, S * g['pip.scale'], a)
+                if art.pip_up is not None:
+                    t = np.asarray(hover).astype(np.float32)
+                    t[:, :, :3] *= np.array(lit, dtype=np.float32) / 255
+                    hover = Image.fromarray(np.clip(t, 0, 255).astype(np.uint8), 'RGBA')
+                put(card, hover, px, py, g['pip.alpha'] * (g['pip.flare'] if art.pip_up is not None else 1))
     return np.asarray(card.convert('RGB'))
 
 
@@ -135,7 +140,9 @@ def preview(skin, out):
     summary = json.loads((HERE / 'out' / 'motion' / 'summary.json').read_text(encoding='utf-8'))
     entry = summary.get(skin)
     path = MOTION / f'{skin}.properties'
-    if not entry or not path.exists():
+    if not path.exists():
+        path = mv.ASSETS / 'template.properties'  # the game's motion, shared by every skin
+    if not entry:
         return skin, 'no measurement'
     data, orbit, _ = am.load(path)
     video = FOLDER / entry['video']
