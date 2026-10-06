@@ -20,6 +20,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+cv2.setNumThreads(1)  # one thread a process: batches stay light next to the owner's game
 from PIL import Image, ImageDraw
 
 HERE = Path(__file__).resolve().parent
