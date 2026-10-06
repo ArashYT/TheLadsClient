@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** The still skins' animation (KillBannerPlayer.layers): Rogue's measured motion (KillBannerTemplate) on their layers. */
+/** The still skins' animation (KillBannerPlayer.layers): measured motion (KillBannerTemplate) on their layers. */
 class KillBannerMotionTest {
-    private static final KillBannerStyle SKIN = KillBannerStyle.AEMONDIR;
+    private static final KillBannerStyle SKIN = KillBannerStyle.DEFAULT; // Base has no preview video: it plays the shared (Rogue) motion
 
     private static KillBannerPlayer.Layers at(KillBannerStyle style, int kills, double frame, double seconds) {
         return KillBannerPlayer.layers(style, kills, frame / 60, seconds, false);
@@ -37,6 +37,21 @@ class KillBannerMotionTest {
         assertEquals(0, KillBannerTemplate.of(1).sprayCount, "one kill throws no droplets");
         for (int kills = 2; kills <= 5; kills++) assertTrue(KillBannerTemplate.of(kills).sprayCount >= 8, kills + " kills throw droplets");
         assertEquals(KillBannerTemplate.of(5), KillBannerTemplate.of(9), "past five kills: the ace");
+    }
+
+    @Test
+    void aSkinWithAPreviewPlaysItsOwnMotion() {
+        assertFalse(KillBannerTemplate.hasOwn(SKIN), "Base has no preview video");
+        assertSame(KillBannerTemplate.of(1), KillBannerTemplate.of(SKIN, 1));
+        assertTrue(KillBannerTemplate.hasOwn(KillBannerStyle.AEMONDIR), "Aemondir was measured from its preview");
+        KillBannerTemplate ace = KillBannerTemplate.of(KillBannerStyle.AEMONDIR, 5);
+        assertTrue(ace.introEnd > 150, "its ace keeps moving while its pips go round: " + ace.introEnd);
+        assertTrue(ace.mark > 11, "its ace lands the mark later than its other banners: " + ace.mark);
+        assertEquals(11, KillBannerTemplate.of(KillBannerStyle.AEMONDIR, 1).mark);
+        assertTrue(ace.orbit > 1.02f && ace.orbit < 1.2f, "its pips sit a little outside the Kingdom Archives layout: " + ace.orbit);
+        var turned = at(KillBannerStyle.AEMONDIR, 5, ace.introEnd, 5);
+        assertEquals(5, turned.pipDegrees().length);
+        assertSame(KillBannerTemplate.of(KillBannerStyle.REAVER, 3), KillBannerTemplate.of(3), "the strips keep the shared timing");
     }
 
     @Test
@@ -87,7 +102,7 @@ class KillBannerMotionTest {
         // No jumps between 120 fps frames, so it reads as motion, not a cut.
         for (int kills = 1; kills <= 5; kills++) {
             var before = at(SKIN, kills, 0, 3);
-            for (double f = .5; f < 60 * KillBannerPlayer.stillSeconds(kills); f += .5) {
+            for (double f = .5; f < 60 * KillBannerPlayer.stillSeconds(SKIN, kills); f += .5) {
                 var now = at(SKIN, kills, f, 3);
                 if (now == null) break;
                 assertEquals(before.emblemY(), now.emblemY(), 8, "k" + kills + " emblem at " + f);
@@ -102,14 +117,14 @@ class KillBannerMotionTest {
     @Test
     void moreKillsThrowDroplets() {
         assertTrue(at(SKIN, 1, 40, 2).spray() < 0, "one kill throws no spray (as in Rogue's footage)");
-        assertEquals(0, KillBannerPlayer.sprayCount(1));
+        assertEquals(0, KillBannerPlayer.sprayCount(SKIN, 1));
         for (int kills = 2; kills <= 5; kills++) {
             int start = KillBannerTemplate.of(kills).sprayStart;
             assertTrue(at(SKIN, kills, start - 1, 5).spray() < 0);
             assertEquals(0, at(SKIN, kills, start, 5).spray(), 1e-6, kills + " kills throw a spray from frame " + start);
-            assertTrue(KillBannerPlayer.sprayCount(kills) >= 8 && KillBannerPlayer.sprayCount(kills) <= 36);
+            assertTrue(KillBannerPlayer.sprayCount(SKIN, kills) >= 8 && KillBannerPlayer.sprayCount(SKIN, kills) <= 36);
         }
-        assertTrue(KillBannerPlayer.stillSeconds(5) > 3 && KillBannerPlayer.stillSeconds(1) < 1.2, "the ace plays longest");
+        assertTrue(KillBannerPlayer.stillSeconds(SKIN, 5) > 3 && KillBannerPlayer.stillSeconds(SKIN, 1) < 1.2, "the ace plays longest");
     }
 
     @Test
@@ -131,7 +146,12 @@ class KillBannerMotionTest {
         assertTrue(late.ringAlpha() < .2f, "the ring goes");
         assertEquals(1, late.pipAlpha(), "the pips go last");
         assertNull(at(SKIN, 1, exit + 16, seconds), "then it is gone");
-        assertNotNull(at(SKIN, 1, 60 * KillBannerPlayer.stillSeconds(1) - 1, .5), "a short duration still plays it all");
+        assertNotNull(at(SKIN, 1, 60 * KillBannerPlayer.stillSeconds(SKIN, 1) - 1, .5), "a short duration still plays it all");
+        var cut = KillBannerPlayer.layers(SKIN, 1, 30 / 60.0, 2, false, 28 / 60.0);
+        var kept = KillBannerPlayer.layers(SKIN, 1, 30 / 60.0, 2, false, -1);
+        assertTrue(cut.frameAlpha() < kept.frameAlpha(), "cut short at frame 28 by the next kill: at 30 it is two frames into its way out");
+        assertNull(KillBannerPlayer.layers(SKIN, 1, 45 / 60.0, 2, false, 28 / 60.0), "and gone when that is over");
+        assertNotNull(KillBannerPlayer.layers(SKIN, 1, 45 / 60.0, 2, false, -1), "not cut: still there");
         assertNull(KillBannerPlayer.layers(SKIN, 1, -1, 2, false));
         assertNull(KillBannerPlayer.layers(SKIN, 1, Double.NaN, 2, false));
     }
@@ -163,7 +183,7 @@ class KillBannerMotionTest {
     void theSprayFliesOutAndFades() {
         float[] p = new float[6];
         int shown = 0;
-        for (int i = 0; i < KillBannerPlayer.sprayCount(5); i++) {
+        for (int i = 0; i < KillBannerPlayer.sprayCount(SKIN, 5); i++) {
             assertFalse(KillBannerPlayer.particle(i, 0, p), "nothing at its start");
             assertFalse(KillBannerPlayer.particle(i, 1, p), "all gone after a second");
             for (float t = .02f; t < 1; t += .02f) {
@@ -180,18 +200,18 @@ class KillBannerMotionTest {
 
     @Test
     void thePreviewPlaysEveryKillCountInTurn() {
-        assertEquals(1, KillBannerPlayer.previewKills(0));
-        assertEquals(0, KillBannerPlayer.previewAge(0), 1e-9);
+        assertEquals(1, KillBannerPlayer.previewKills(SKIN, 0));
+        assertEquals(0, KillBannerPlayer.previewAge(SKIN, 0), 1e-9);
         double t = 0;
         for (int kills = 1; kills <= 5; kills++) {
-            assertEquals(kills, KillBannerPlayer.previewKills(t + .1));
-            assertEquals(.1, KillBannerPlayer.previewAge(t + .1), 1e-6);
-            double shown = KillBannerPlayer.previewSeconds(kills);
+            assertEquals(kills, KillBannerPlayer.previewKills(SKIN, t + .1));
+            assertEquals(.1, KillBannerPlayer.previewAge(SKIN, t + .1), 1e-6);
+            double shown = KillBannerPlayer.previewSeconds(SKIN, kills);
             assertNotNull(KillBannerPlayer.layers(SKIN, kills, shown - .05, shown, false));
             assertNull(KillBannerPlayer.layers(SKIN, kills, shown + .05, shown, false), "a gap before the next");
             t += shown + .4;
         }
-        assertEquals(1, KillBannerPlayer.previewKills(t + .1), "and round again");
+        assertEquals(1, KillBannerPlayer.previewKills(SKIN, t + .1), "and round again");
     }
 
     @Test

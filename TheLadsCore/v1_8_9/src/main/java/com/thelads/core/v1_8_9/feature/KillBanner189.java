@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.ISound;
@@ -29,10 +30,13 @@ import net.minecraft.entity.boss.EntityWither;
 import net.minecraft.entity.item.EntityArmorStand;
 import net.minecraft.entity.monster.EntityGuardian;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.projectile.EntityArrow;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.IChatComponent;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.Vec3;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
@@ -95,6 +99,7 @@ public final class KillBanner189 {
             trackedWorld = mc.theWorld;
         }
         if (!mc.thePlayer.isEntityAlive()) BANNER.clear();
+        arrows(mc);
         KillBannerModule module = module();
         if (module != null) {
             long now = System.nanoTime();
@@ -131,10 +136,59 @@ public final class KillBanner189 {
         if (event.entityPlayer != mc.thePlayer || !eligible()) return;
         MovingObjectPosition hit = mc.objectMouseOver;
         boolean head = hit != null && hit.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && hit.entityHit == event.target
-            && hit.hitVec != null && hit.hitVec.yCoord >= event.target.posY + event.target.height * .75;
+            && hit.hitVec != null && KillDetector.headHit(hit.hitVec.yCoord, event.target.posY, event.target.height);
         EntityLivingBase victim = victim(event.target);
         // A click on a body still falling over is no new hit: the death already counted.
         if (victim != null && victim.getHealth() > 0) KillBanners.DETECTOR.hitByMe(victim.getEntityId(), names(victim), kind(victim), head, System.nanoTime());
+    }
+
+    /** Each arrow of the local player's in flight by entity id: where it was last tick (KillBannerArrows on 26.x). */
+    private static final Map<Integer, Vec3> flying = new HashMap<Integer, Vec3>();
+    /** Arrows that already hit someone: one hit an arrow. */
+    private static final Set<Integer> landed = new HashSet<Integer>();
+
+    /**
+     * Headshots from arrows: where one of the local player's arrows crosses a living entity's box this tick is where it hit,
+     * and a hit in the top quarter of the box is a head hit (1.8.9 sends no damage events, so this is the only word on it).
+     */
+    private static void arrows(Minecraft mc) {
+        Set<Integer> seen = new HashSet<Integer>();
+        for (Object o : mc.theWorld.loadedEntityList) {
+            if (!(o instanceof EntityArrow)) continue;
+            EntityArrow arrow = (EntityArrow) o;
+            if (arrow.shootingEntity != mc.thePlayer) continue;
+            int id = arrow.getEntityId();
+            seen.add(id);
+            if (landed.contains(id)) continue;
+            Vec3 at = new Vec3(arrow.posX, arrow.posY, arrow.posZ);
+            Vec3 before = flying.put(id, at);
+            if (arrow.motionX * arrow.motionX + arrow.motionY * arrow.motionY + arrow.motionZ * arrow.motionZ < 1e-6) continue; // stuck in the ground, or not moving yet
+            Vec3 from = before != null ? before : at;
+            Vec3 to = at.addVector(arrow.motionX * 1.5, arrow.motionY * 1.5, arrow.motionZ * 1.5);
+            AxisAlignedBB sweep = new AxisAlignedBB(Math.min(from.xCoord, to.xCoord), Math.min(from.yCoord, to.yCoord), Math.min(from.zCoord, to.zCoord),
+                Math.max(from.xCoord, to.xCoord), Math.max(from.yCoord, to.yCoord), Math.max(from.zCoord, to.zCoord)).expand(.5, .5, .5);
+            EntityLivingBase victim = null;
+            double hitY = 0, nearest = Double.MAX_VALUE;
+            for (EntityLivingBase candidate : mc.theWorld.getEntitiesWithinAABB(EntityLivingBase.class, sweep)) {
+                if (candidate == mc.thePlayer || !candidate.isEntityAlive()) continue;
+                MovingObjectPosition hit = candidate.getEntityBoundingBox().expand(.3, .3, .3).calculateIntercept(from, to);
+                if (hit == null || hit.hitVec == null) continue;
+                double d = from.squareDistanceTo(hit.hitVec);
+                if (d < nearest) {
+                    nearest = d;
+                    victim = candidate;
+                    hitY = hit.hitVec.yCoord;
+                }
+            }
+            if (victim != null) {
+                landed.add(id);
+                EntityLivingBase target = victim(victim);
+                if (target != null && target.getHealth() > 0)
+                    KillBanners.DETECTOR.hitByMe(target.getEntityId(), names(target), kind(target), KillDetector.headHit(hitY, victim.posY, victim.height), System.nanoTime());
+            }
+        }
+        flying.keySet().retainAll(seen);
+        landed.retainAll(seen);
     }
 
     /** A death status, or a health update to zero (NetHandlerPlayClientMixin). */
@@ -361,17 +415,17 @@ public final class KillBanner189 {
             renderBase(module, age, width, height);
             return;
         }
-        boolean headshot = BANNER.headshot() && module.headshotText.get();
+        boolean headshot = BANNER.headshot() && module.headshotBanner.get(), mark = module.killMark.get();
         float size = (float) module.size.getValue() / 100f;
         if (style.isAnimated()) {
             KillBannerStrip strip = style.strip(BANNER.sequence());
-            KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot);
+            KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot, BANNER.cutAge());
             if (frame == null) return;
-            KillBannerArt189.draw(width, height, style, pick.variant(), BANNER.sequence(), strip, frame, size);
+            KillBannerArt189.draw(width, height, style, pick.variant(), BANNER.sequence(), strip, frame, size, mark);
         } else {
-            KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot);
+            KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot, BANNER.cutAge());
             if (layers == null) return;
-            KillBannerArt189.draw(width, height, style, pick.variant(), BANNER.sequence(), layers, size);
+            KillBannerArt189.draw(width, height, style, pick.variant(), BANNER.sequence(), layers, size, mark);
         }
         frames++;
     }

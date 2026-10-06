@@ -8,31 +8,44 @@ using System.Text;
 /// monitor taken it shares the last one. Games run at High priority (owner: "do high priority QA Tests"). When a new game window
 /// takes focus while the owner is using the PC, focus goes back to the window they were in. Runs that need the game in front
 /// (synthetic input, raw mouse, F11/borderless captures) set LADS_VERIFY_FOCUS=1: no placement or focus give-back.
+/// LADS_VERIFY_PLAYING=1 (the owner is playing and streaming, 2026-10-05): below-normal priority the whole run, no monitor
+/// claim, and the game window stays out of sight without being activated: a 1.8.9 window minimized (it still renders), a
+/// 26.x window parked far off every screen (minimized, it would stop rendering and its captures would be empty).
 /// </summary>
 static class QaWindowGuard
 {
     public static void Watch(Process game)
     {
         bool focus = Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") == "1";
-        new Thread(() => Loop(game, focus)) { IsBackground = true, Name = "QA window guard" }.Start();
+        bool playing = Environment.GetEnvironmentVariable("LADS_VERIFY_PLAYING") == "1";
+        new Thread(() => Loop(game, focus, playing)) { IsBackground = true, Name = "QA window guard" }.Start();
     }
 
-    private static void Loop(Process game, bool focus)
+    private static void Loop(Process game, bool focus, bool playing)
     {
         string? claim = null;
         bool second = false;
-        Rectangle target = focus ? Rectangle.Empty : ClaimMonitor(game.Id, out claim, out second);
+        Rectangle target = focus || playing ? Rectangle.Empty : ClaimMonitor(game.Id, out claim, out second);
+        ProcessPriorityClass wanted = playing ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High;
         var firstSeen = new Dictionary<IntPtr, long>();
         IntPtr owners = GameWindow(GetForegroundWindow()) ? IntPtr.Zero : GetForegroundWindow();
         try
         {
             while (!game.HasExited)
             {
-                // GameSession sets Realtime for startup, then Normal: a QA game runs at High the whole time.
-                if (game.PriorityClass != ProcessPriorityClass.High) game.PriorityClass = ProcessPriorityClass.High;
+                // GameSession sets Realtime for startup, then Normal: a QA game runs at High (below normal while the owner plays) the whole time.
+                if (game.PriorityClass != wanted) game.PriorityClass = wanted;
                 if (focus) { Thread.Sleep(250); continue; }
                 foreach (IntPtr window in Windows(game.Id))
                 {
+                    if (playing)
+                    {
+                        firstSeen.TryAdd(window, Environment.TickCount64);
+                        if (Lwjgl2(window)) { if (!IsIconic(window)) ShowWindow(window, SwShowMinNoActive); }
+                        else if (GetWindowRect(window, out var at) && at.Left > -20000)
+                            SetWindowPos(window, IntPtr.Zero, -30000, 0, 0, 0, SwpNoSize | SwpNoZOrder | SwpNoActivate);
+                        continue;
+                    }
                     if (firstSeen.ContainsKey(window)) continue;
                     firstSeen[window] = Environment.TickCount64;
                     // A window as big as a screen is fullscreen/borderless under test: leave it where the game put it.
@@ -98,6 +111,14 @@ static class QaWindowGuard
     private static bool CoversScreen(RectNative r) =>
         Screen.AllScreens.Any(s => r.Right - r.Left >= s.Bounds.Width && r.Bottom - r.Top >= s.Bounds.Height);
 
+    /// <summary>A 1.8.9 (LWJGL 2) game window: it keeps rendering minimized.</summary>
+    private static bool Lwjgl2(IntPtr window)
+    {
+        var name = new StringBuilder(64);
+        GetClassName(window, name, name.Capacity);
+        return name.ToString() == "LWJGL";
+    }
+
     /// <summary>LWJGL 2 (1.8.9), GLFW (26.2) and SDL (26.3) game windows, so other QA games never count as the owner's window.</summary>
     private static bool GameWindow(IntPtr window)
     {
@@ -144,6 +165,9 @@ static class QaWindowGuard
     [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr window);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr window, StringBuilder name, int capacity);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr window, int command);
+    private const int SwShowMinNoActive = 7;
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out RectNative rect);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int cx, int cy, uint flags);

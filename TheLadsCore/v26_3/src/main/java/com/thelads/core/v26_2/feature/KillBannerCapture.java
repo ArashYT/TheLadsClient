@@ -73,8 +73,8 @@ final class KillBannerCapture {
             intro = strip.introEnd + 1;
             exit = (int) Math.round(KillBannerPlayer.minimumSeconds(strip) * 60) - intro;
         } else {
-            intro = com.thelads.core.client.killbanner.KillBannerTemplate.of(kills).introEnd + 1;
-            exit = com.thelads.core.client.killbanner.KillBannerTemplate.of(kills).exit;
+            intro = com.thelads.core.client.killbanner.KillBannerTemplate.of(style, kills).introEnd + 1;
+            exit = com.thelads.core.client.killbanner.KillBannerTemplate.of(style, kills).exit;
         }
         List<Integer> frames = new ArrayList<>(Arrays.asList(2, 5, 9, 12, 16, 22, 30, 40, 52, 66, 80));
         if (kills == 5) frames.addAll(Arrays.asList(110, 140, 160, 185, 200));
@@ -244,7 +244,7 @@ final class KillBannerCapture {
         }
         Shot s = SHOTS.get(shot);
         module.sound.set(false); // hundreds of held frames: the frame-time runs play the sounds
-        module.headshotText.set(true);
+        module.headshotBanner.set(true);
         module.bannerStyle.setIndex(KillBannerModule.styleIndexOf(s.style()));
         module.setVariant(s.style(), s.variant());
         module.duration.setValue(s.seconds());

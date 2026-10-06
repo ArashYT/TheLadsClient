@@ -6,6 +6,7 @@ import com.mojang.blaze3d.textures.FilterMode;
 import com.thelads.core.client.killbanner.KillBannerPlayer;
 import com.thelads.core.client.killbanner.KillBannerStrip;
 import com.thelads.core.client.killbanner.KillBannerStyle;
+import com.thelads.core.modules.KillBannerModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.EnumMap;
@@ -43,7 +44,8 @@ final class KillBannerArt {
         long used;
     }
     private static final String DIR = "/assets/theladscore/killbanner/", GLOW = DIR + "glow.png", SHADOW = DIR + "shadow.png",
-        MARK = DIR + "mark.png", MARK_THIN = DIR + "mark_thin.png", HEADSHOT = DIR + "headshot.png", HS_MARK = DIR + "hs_mark.png";
+        MARK = DIR + "mark.png", MARK_THIN = DIR + "mark_thin.png", HEADSHOT = DIR + "headshot.png", HS_MARK = DIR + "hs_mark.png",
+        LABEL_BOX = DIR + "label_box.png";
     private static final Map<String, Sprite> SPRITES = new HashMap<>();
     private static final Map<KillBannerStyle, Live> LIVE = new EnumMap<>(KillBannerStyle.class);
     private static final Map<KillBannerStyle, int[]> BOUNDS = new EnumMap<>(KillBannerStyle.class);
@@ -57,13 +59,18 @@ final class KillBannerArt {
 
     /** Reaver's or Rogue's frame at Valorant's place and size: the ring centre at 79.4% of the screen height, 1.15 px a cell pixel at 1080p. */
     static void draw(GuiGraphicsExtractor g, KillBannerStyle style, int variant, int kills, KillBannerStrip strip,
-                     KillBannerPlayer.Frame f, float size) {
-        strip(g, style, variant, kills, strip, f, g.guiWidth() / 2f, g.guiHeight() * .794f, scale(g, size));
+                     KillBannerPlayer.Frame f, float size, boolean mark) {
+        strip(g, style, variant, kills, strip, f, g.guiWidth() / 2f, g.guiHeight() * .794f, scale(g, size), mark);
     }
 
-    /** A Kingdom Archives skin's layers, at the same place and size. */
-    static void draw(GuiGraphicsExtractor g, KillBannerStyle style, int variant, int kills, KillBannerPlayer.Layers l, float size) {
-        still(g, style, variant, kills, l, g.guiWidth() / 2f, g.guiHeight() * .794f, scale(g, size));
+    /** A Kingdom Archives skin's layers, at the same place and size; {@code mark} off leaves out the kill mark and its red strobe. */
+    static void draw(GuiGraphicsExtractor g, KillBannerStyle style, int variant, int kills, KillBannerPlayer.Layers l, float size, boolean mark) {
+        still(g, style, variant, kills, l, g.guiWidth() / 2f, g.guiHeight() * .794f, scale(g, size), mark);
+    }
+
+    /** The Kill Mark option, for the settings preview. */
+    private static boolean markOn() {
+        return !(NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module) || module.killMark.get();
     }
 
     private static float scale(GuiGraphicsExtractor g, float size) {
@@ -72,7 +79,7 @@ final class KillBannerArt {
 
     /** The banner with its ring centre at x, y and k GUI pixels a cell pixel. */
     private static void strip(GuiGraphicsExtractor g, KillBannerStyle style, int variant, int kills, KillBannerStrip strip,
-                              KillBannerPlayer.Frame f, float x, float y, float k) {
+                              KillBannerPlayer.Frame f, float x, float y, float k, boolean mark) {
         now = System.nanoTime();
         var pose = g.pose();
         pose.pushMatrix();
@@ -95,18 +102,14 @@ final class KillBannerArt {
             }
             pose.translate(0, f.iconY()); // the overlays sit on the icon, wherever the strip has it
             if (f.heartAlpha() > 0) iconLayer(g, style, sprite(style.asset("heart.png")), f.iconScale(), argb(0xFFFFFF, f.heartAlpha()));
-            if (f.strobe() > 0) iconLayer(g, style, sprite(style.asset("tint.png")), f.iconScale(),
+            if (mark && f.strobe() > 0) iconLayer(g, style, sprite(style.asset("tint.png")), f.iconScale(),
                 argb(KillBannerPlayer.STROBE_RED & 0xFFFFFF, f.strobe()));
-            if (f.markSize() > 0) {
+            if (mark && f.markSize() > 0) {
                 float cx = style.anchorX, cy = style.anchorY + style.markY * f.iconScale();
                 mark(g, sprite(MARK_THIN), cx, cy, f.markSize(), f.markColor(), f.markThinAlpha());
                 mark(g, sprite(MARK), cx, cy, f.markSize(), f.markColor(), f.markAlpha());
             }
-            if (f.labelAlpha() > 0) {
-                Sprite label = sprite(HEADSHOT);
-                float s = style.ring * 1.45f / label.width();
-                quad(g, label, style.anchorX - label.width() * s / 2, style.anchorY + style.labelY, s, argb(0xFFFFFF, f.labelAlpha()));
-            }
+            if (f.labelAlpha() > 0) label(g, style, variant, style.anchorX, style.anchorY + style.labelY, f.labelAlpha());
         } finally {
             pose.popMatrix();
         }
@@ -118,7 +121,7 @@ final class KillBannerArt {
      * mark and the HEADSHOT label. A Banner Swap skin's art for this kill count turns out of the previous one's.
      */
     private static void still(GuiGraphicsExtractor g, KillBannerStyle style, int variant, int kills, KillBannerPlayer.Layers l,
-                              float x, float y, float k) {
+                              float x, float y, float k, boolean mark) {
         now = System.nanoTime();
         var pose = g.pose();
         pose.pushMatrix();
@@ -137,15 +140,16 @@ final class KillBannerArt {
                 if (style.hasRing) centred(g, sprite(style.ringAsset()), 0, 0, l.ringScale(), argb(0xFFFFFF, l.ringAlpha()));
                 if (style.hasEmblem) {
                     int base = style.type == KillBannerStyle.Type.PHASEGUARD ? PHASEGUARD_COLORS[Math.max(0, Math.min(3, variant))] : 0xFFFFFF;
-                    int color = multiply(mix(base, KillBannerPlayer.STROBE_RED & 0xFFFFFF, l.strobe()), shade);
+                    int color = multiply(mix(base, KillBannerPlayer.STROBE_RED & 0xFFFFFF, mark ? l.strobe() : 0), shade);
                     centred(g, sprite(style.emblemAsset(variant)), 0, ey, l.emblemScale(), argb(color, l.emblemAlpha()));
                 }
                 if (style.hasPip && l.pipAlpha() > 0) {
                     Sprite pip = sprite(style.pipAsset(variant));
-                    int count = Math.max(1, Math.min(6, kills));
-                    for (int i = 0; i < count; i++) {
-                        float deg = 360f / count * (i + 1) + (count == 2 ? 90 : 0) + l.pipSpin(), rad = (float) Math.toRadians(deg);
-                        float px = -r * l.pipRadius() * (float) Math.sin(rad), py = -r * l.pipRadius() * (float) Math.cos(rad);
+                    float orbit = r * l.pipOrbit() * l.pipRadius();
+                    float[] degrees = l.pipDegrees();
+                    for (int i = 0; i < degrees.length; i++) {
+                        float deg = degrees[i], rad = (float) Math.toRadians(deg);
+                        float px = -orbit * (float) Math.sin(rad), py = -orbit * (float) Math.cos(rad);
                         if (l.pipFlare() > 0) glow(g, px, py, pip.width() * 2.4f, accent, l.pipFlare());
                         pose.pushMatrix();
                         pose.translate(px, py);
@@ -157,7 +161,7 @@ final class KillBannerArt {
             }
             if (l.spray() >= 0) {
                 Sprite dot = sprite(GLOW);
-                for (int i = 0, n = KillBannerPlayer.sprayCount(kills); i < n; i++) {
+                for (int i = 0, n = KillBannerPlayer.sprayCount(style, kills); i < n; i++) {
                     if (!KillBannerPlayer.particle(i, l.spray(), PARTICLE)) continue;
                     pose.pushMatrix();
                     pose.translate(PARTICLE[0] * r, PARTICLE[1] * r + ey);
@@ -167,35 +171,47 @@ final class KillBannerArt {
                     pose.popMatrix();
                 }
             }
-            if (l.markSize() > 0) {
+            if (mark && l.markSize() > 0) {
                 float cy = style.markY * l.emblemScale() + ey;
                 mark(g, sprite(MARK_THIN), 0, cy, l.markSize(), l.markColor(), l.markThinAlpha());
                 mark(g, sprite(MARK), 0, cy, l.markSize(), l.markColor(), l.markAlpha());
             }
             if (l.labelAlpha() > 0) {
-                Sprite hsMark = sprite(HS_MARK);
-                quad(g, hsMark, -hsMark.width() / 2f, style.markY * l.emblemScale() + ey - hsMark.height() / 2f, 1f,
-                    argb(KillBannerPlayer.MARK_RED & 0xFFFFFF, l.labelAlpha()));
-                Sprite label = sprite(HEADSHOT);
-                float s = style.ring * 1.45f / label.width();
-                quad(g, label, -label.width() * s / 2f, style.labelY, s, argb(0xFFFFFF, l.labelAlpha()));
+                if (mark) {
+                    Sprite hsMark = sprite(HS_MARK);
+                    quad(g, hsMark, -hsMark.width() / 2f, style.markY * l.emblemScale() + ey - hsMark.height() / 2f, 1f,
+                        argb(KillBannerPlayer.MARK_RED & 0xFFFFFF, l.labelAlpha()));
+                }
+                label(g, style, variant, 0, style.labelY, l.labelAlpha());
             }
         } finally {
             pose.popMatrix();
         }
     }
 
+    /**
+     * The HEADSHOT banner as Valorant's old one: the skin's box (105 x 27 px at 1080p, its top labelY under the ring centre,
+     * in the colour its preview showed or a guess from its accent) with HEADSHOT in white across it.
+     */
+    private static void label(GuiGraphicsExtractor g, KillBannerStyle style, int variant, float cx, float top, float alpha) {
+        Sprite box = sprite(LABEL_BOX), text = sprite(HEADSHOT);
+        float w = style.ring * 1.45f, h = w * 27 / 105f;
+        quad(g, box, cx - w / 2, top, w / box.width(), argb(style.headshotBox(variant), alpha));
+        float s = h * .5f / text.height();
+        quad(g, text, cx - text.width() * s / 2, top + (h - text.height() * s) / 2, s, argb(0xFFFFFF, alpha));
+    }
+
     /** The settings preview: the skin's banners for 1 to 5 kills in turn ({@code clock} seconds), fitted into the box. */
     static void preview(GuiGraphicsExtractor g, KillBannerStyle style, int variant, int x, int y, int w, int h, double clock) {
-        int kills = KillBannerPlayer.previewKills(clock);
-        double age = KillBannerPlayer.previewAge(clock), seconds = KillBannerPlayer.previewSeconds(kills);
+        int kills = KillBannerPlayer.previewKills(style, clock);
+        double age = KillBannerPlayer.previewAge(style, clock), seconds = KillBannerPlayer.previewSeconds(style, kills);
         if (style.isAnimated()) {
             KillBannerStrip strip = style.strip(kills);
             KillBannerPlayer.Frame f = KillBannerPlayer.at(style, strip, age, seconds, false);
             if (f == null) return;
             float k = Math.min(w / (float) strip.width, h / (float) strip.height);
             strip(g, style, variant, kills, strip, f, x + w / 2f + (style.anchorX - strip.width / 2f) * k,
-                y + h / 2f + (style.anchorY - strip.height / 2f) * k, k);
+                y + h / 2f + (style.anchorY - strip.height / 2f) * k, k, markOn());
             return;
         }
         KillBannerPlayer.Layers l = KillBannerPlayer.layers(style, kills, age, seconds, false);
@@ -204,7 +220,7 @@ final class KillBannerArt {
         if (style.type == KillBannerStyle.Type.BANNER_SWAP) extent = 1.25f * sprite(style.swapAsset(1)).width();
         else if (style.hasFrame) extent = Math.max(sprite(style.frameAsset()).width(), sprite(style.frameAsset()).height());
         else extent = style.ring * 2.6f;
-        still(g, style, variant, kills, l, x + w / 2f, y + h / 2f, Math.min(w, h) * .9f / (extent * KillBannerStyle.ART_SCALE));
+        still(g, style, variant, kills, l, x + w / 2f, y + h / 2f, Math.min(w, h) * .9f / (extent * KillBannerStyle.ART_SCALE), markOn());
     }
 
     /** Kill Banner picker art: the skin's settled one-kill frame in a variant, with its emblem and kill mark, cropped and fitted into the box. */

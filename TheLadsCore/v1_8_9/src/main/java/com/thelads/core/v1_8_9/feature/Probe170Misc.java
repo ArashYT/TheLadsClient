@@ -392,8 +392,8 @@ final class Probe170Misc {
             intro = strip.introEnd + 1;
             exit = (int) Math.round(KillBannerPlayer.minimumSeconds(strip) * 60) - intro;
         } else {
-            intro = com.thelads.core.client.killbanner.KillBannerTemplate.of(kills).introEnd + 1;
-            exit = com.thelads.core.client.killbanner.KillBannerTemplate.of(kills).exit;
+            intro = com.thelads.core.client.killbanner.KillBannerTemplate.of(skin, kills).introEnd + 1;
+            exit = com.thelads.core.client.killbanner.KillBannerTemplate.of(skin, kills).exit;
         }
         List<Integer> frames = new ArrayList<>(Arrays.asList(2, 5, 9, 12, 16, 22, 30, 40, 52, 66, 80));
         if (kills == 5) frames.addAll(Arrays.asList(110, 140, 160, 185, 200));
@@ -411,7 +411,7 @@ final class Probe170Misc {
             module.bannerStyle.setIndex(KillBannerModule.styleIndexOf(skin));
             module.setVariant(skin, variant);
             module.duration.setValue(seconds);
-            module.headshotText.set(true);
+            module.headshotBanner.set(true);
             KillBanner189.reset();
             KillBanner189.backdrop = 0x808080; // the same flat grey behind every held frame, run to run
             KillBanner189.trigger(kills, false, headshot);

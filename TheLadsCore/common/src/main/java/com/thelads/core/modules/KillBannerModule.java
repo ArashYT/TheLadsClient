@@ -47,6 +47,7 @@ public class KillBannerModule extends Module {
         return choices;
     }
 
+    public static final int HEADSHOTS_HEAD_HITS = 0, HEADSHOTS_EVERY_KILL = 1;
     public final DropdownOption bannerStyle = new DropdownOption("Style", REAVER, createStyleChoices());
     public final DropdownOption reaverVariant = new DropdownOption("Reaver Variant", 0, "Base", "Red", "Black", "White");
     public final DropdownOption rogueVariant = new DropdownOption("Rogue Variant", 0, "Base", "Green", "Red", "Blue");
@@ -60,8 +61,12 @@ public class KillBannerModule extends Module {
     public final BoolOption players = new BoolOption("Players", true);
     public final BoolOption mobs = new BoolOption("Mobs", false);
     public final BoolOption bosses = new BoolOption("Bosses", true);
-    // A new name: the old "Headshot Text" (on) stays behind in saved configs, so the label starts hidden for everyone.
-    public final BoolOption headshotText = new BoolOption("HEADSHOT Text", false);
+    /** Headshots: "Head hits" (an arrow in the head that kills, or the crosshair on the head at the last hit) or every kill. */
+    public final DropdownOption headshots = new DropdownOption("Headshots", HEADSHOTS_HEAD_HITS, "Head hits", "Every kill");
+    /** The HEADSHOT banner on a headshot kill: the skin's box under the banner (a new name, so it starts on for everyone). */
+    public final BoolOption headshotBanner = new BoolOption("Headshot Banner", true);
+    /** The kill mark: the red X on the emblem and its red strobe as the kill lands. */
+    public final BoolOption killMark = new BoolOption("Kill Mark", true);
     public final ColorOption textColor = new ColorOption("Text Color", false, 0xFFFF0000); // the Base style's label
     public final BoolOption sound = new BoolOption("Sound", true);
     public final SliderOption volume = new SliderOption("Volume", .6, 0, 1, .05);
@@ -90,7 +95,9 @@ public class KillBannerModule extends Module {
         addOption(players);
         addOption(mobs);
         addOption(bosses);
-        addOption(headshotText);
+        addOption(headshots);
+        addOption(headshotBanner);
+        addOption(killMark);
         addOption(textColor);
         addOption(sound);
         addOption(volume);

@@ -64,6 +64,7 @@ public final class NativeKillBanner {
             trackedLevel = minecraft.level;
         }
         if (!minecraft.player.isAlive()) BANNER.clear();
+        KillBannerArrows.tick(minecraft);
         if (NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module) {
             play(module, KillBanners.poll(module, System.nanoTime()));
             KillBannerModule.Pick pick = module.chosen();
@@ -75,10 +76,19 @@ public final class NativeKillBanner {
     public static void attacked(Entity target) {
         if (!eligible()) return;
         boolean head = Minecraft.getInstance().hitResult instanceof EntityHitResult hit && hit.getType() == HitResult.Type.ENTITY
-            && hit.getEntity() == target && hit.getLocation().y >= target.getY() + target.getBbHeight() * .75;
+            && hit.getEntity() == target && KillDetector.headHit(hit.getLocation().y, target.getY(), target.getBbHeight());
         LivingEntity victim = victim(target);
         // A click on a body still falling over is no new hit: the death already counted.
         if (victim != null && !victim.isDeadOrDying()) KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
+    }
+
+    /** One of the local player's arrows crossed {@code target}'s box at {@code hitY} (KillBannerArrows): a hit, in the head when up top. */
+    static void arrowHit(Entity target, double hitY) {
+        if (!eligible()) return;
+        LivingEntity victim = victim(target);
+        if (victim == null || victim.isDeadOrDying()) return;
+        boolean head = KillDetector.headHit(hitY, target.getY(), target.getBbHeight());
+        KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
     }
 
     /** A damage event: its cause (the attacker, or a projectile's owner) is the local player, someone else, or nobody. */
@@ -229,15 +239,15 @@ public final class NativeKillBanner {
             renderBase(graphics, minecraft, module, age);
             return;
         }
-        boolean headshot = BANNER.headshot() && module.headshotText.get();
+        boolean headshot = BANNER.headshot() && module.headshotBanner.get(), mark = module.killMark.get();
         float size = (float) module.size.getValue() / 100f;
         if (style.isAnimated()) {
             KillBannerStrip strip = style.strip(BANNER.sequence());
-            KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot);
-            if (frame != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), strip, frame, size);
+            KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot, BANNER.cutAge());
+            if (frame != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), strip, frame, size, mark);
         } else {
-            KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot);
-            if (layers != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), layers, size);
+            KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot, BANNER.cutAge());
+            if (layers != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), layers, size, mark);
         }
     }
 

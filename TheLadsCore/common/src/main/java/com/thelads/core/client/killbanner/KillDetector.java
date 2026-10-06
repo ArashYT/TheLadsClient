@@ -62,6 +62,11 @@ public final class KillDetector {
 
     public void reset() { byId.clear(); }
 
+    /** A hit at {@code hitY} on a target whose box stands from {@code footY} up {@code height}: in its top quarter it is a head hit. */
+    public static boolean headHit(double hitY, double footY, double height) {
+        return hitY >= footY + height * .75;
+    }
+
     /** The local player hit {@code id} (an attack, or a damage event that names the local player as its cause). */
     public void hitByMe(int id, Collection<String> names, Kind kind, boolean head, long now) {
         forget(now);

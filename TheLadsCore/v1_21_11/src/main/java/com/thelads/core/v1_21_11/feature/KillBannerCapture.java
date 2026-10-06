@@ -43,7 +43,7 @@ final class KillBannerCapture {
         enabledBefore = module.isEnabled();
         modifiedBefore = module.getLastModified();
         soundBefore = module.sound.get();
-        headshotBefore = module.headshotText.get();
+        headshotBefore = module.headshotBanner.get();
         styleBefore = module.bannerStyle.getIndex();
         reaverBefore = module.reaverVariant.getIndex();
         rogueBefore = module.rogueVariant.getIndex();
@@ -92,7 +92,7 @@ final class KillBannerCapture {
         KillBannerModule module = module();
         module.setEnabled(enabledBefore);
         module.sound.set(soundBefore);
-        module.headshotText.set(headshotBefore);
+        module.headshotBanner.set(headshotBefore);
         module.bannerStyle.setIndex(styleBefore);
         module.reaverVariant.setIndex(reaverBefore);
         module.rogueVariant.setIndex(rogueBefore);
@@ -122,7 +122,7 @@ final class KillBannerCapture {
         int[] s = SHOTS[step];
         module.setEnabled(true);
         module.sound.set(false);
-        module.headshotText.set(true);
+        module.headshotBanner.set(true);
         module.bannerStyle.setIndex(s[0]);
         (s[0] == 1 ? module.reaverVariant : module.rogueVariant).setIndex(s[1]);
         module.duration.setValue(s[5] / 10.0);

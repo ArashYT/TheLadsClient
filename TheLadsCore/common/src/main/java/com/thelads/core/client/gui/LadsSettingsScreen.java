@@ -310,20 +310,17 @@ public final class LadsSettingsScreen {
     private static final String[] RANDOM_HINTS = {"Every kill shows the banner above.", "Each kill: another variant of the skin.",
         "Each kill: a random skin and variant.", "Each kill: one of the banners ticked below."};
     /** Kill Banner settings as pictures: skin tiles with their one-kill art, their variants, Custom, Randomize and triggers. Returns its height. */
+    /** The Kill Banner picker's open sections; the skins by default, the customising closed (kept for the session). */
+    private static final java.util.Set<String> kbOpen = new java.util.HashSet<>(java.util.List.of("skins"));
+
+    /** Kill Banner settings as pictures: skin tiles with their one-kill art, Custom, Randomize and triggers, each section a
+     * dropdown. The chosen skin's variants are under the preview on the right. Returns its height. */
     private int killBannerPicker(LadsGraphics g, KillBannerModule banner, int x, int y, int w, int mx, int my) {
         int start = y, gap = 4;
         int style = banner.bannerStyle.getIndex();
         KillBannerModule.Pick custom = banner.chosen();
-        KillBannerStyle activeStyle = style == KillBannerModule.CUSTOM ? custom.style() : KillBannerModule.skin(style);
 
-        y = section(g, "SKIN (" + KillBannerStyle.values().length + " SKINS)", x, y);
-
-        // Search bar for filtering the 91 skins
-        String searchLabel = editingKbSearch ? inputDisplay() : kbSearch.isEmpty() ? "Search 91 skins..." : kbSearch;
-        button(g, "kb:search", searchLabel, new Rect(x, y, w, 20), this::startKbSearch, true, mx, my, editingKbSearch);
-        y += 24;
-
-        // Four tiles a row, so a skin's four variants fit one row
+        // Four tiles a row
         int perRow = 4;
         int tileW = (w - (perRow - 1) * gap) / perRow;
         int tileH = Math.max(40, tileW * 3 / 4 + 12);
@@ -336,133 +333,163 @@ public final class LadsSettingsScreen {
             }
         }
 
-        // The chosen skin's variants, then Custom's picks, above the skin grid: no scrolling past every skin to reach them
-        if (style != KillBannerModule.CUSTOM && activeStyle != null && activeStyle.variantNames.length > 1) {
-            y = variantTiles(g, banner, activeStyle, x, y, tileW, tileH, mx, my);
-        }
-        if (style == KillBannerModule.CUSTOM) {
-            y = section(g, "CUSTOM BANNER", x, y);
-            KillBannerStyle visual = KillBannerModule.visualOrSoundSkin(banner.customVisual.getIndex());
-            if (visual.variantNames.length > 1) y = variantTiles(g, banner, visual, x, y, tileW, tileH, mx, my);
-            int vIdx = 0;
-            for (KillBannerStyle skin : visible) {
-                int col = vIdx % perRow, row = vIdx / perRow;
+        y = kbSection(g, "skins", "SKINS (" + KillBannerStyle.values().length + ")", x, y, w, mx, my);
+        if (kbOpen.contains("skins")) {
+            // Search bar for filtering the 91 skins
+            String searchLabel = editingKbSearch ? inputDisplay() : kbSearch.isEmpty() ? "Search 91 skins..." : kbSearch;
+            button(g, "kb:search", searchLabel, new Rect(x, y, w, 20), this::startKbSearch, true, mx, my, editingKbSearch);
+            y += 24;
+            // Custom Tile + Skin Tiles
+            boolean showCustom = q.isEmpty() || "custom".contains(q);
+            int tileIdx = 0;
+            if (showCustom) {
+                int col = tileIdx % perRow, row = tileIdx / perRow;
                 Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
-                int kIdx = skin.ordinal();
-                boolean selected = banner.customVisual.getIndex() == kIdx;
-                int v = banner.getVariant(skin);
-                tile(g, "kb:visual:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
-                    banner.customVisual.setIndex(kIdx);
+                String cSkin = custom.style() == null ? "default" : custom.style().id;
+                tile(g, "kb:skin:custom", "Custom", r, cSkin, custom.variant(), style == KillBannerModule.CUSTOM, mx, my, () -> {
+                    banner.bannerStyle.setIndex(KillBannerModule.CUSTOM);
+                    kbOpen.add("custombanner"); // the choices Custom needs open with it
+                    kbOpen.add("customsound");
                     changed(detail);
-                });
-                vIdx++;
+                }, true);
+                tileIdx++;
             }
-            y += ((vIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
-
-            y = section(g, "CUSTOM SOUND (CLICK TO HEAR)", x, y);
-            int sIdx = 0;
             for (KillBannerStyle skin : visible) {
-                int col = sIdx % perRow, row = sIdx / perRow;
+                int col = tileIdx % perRow, row = tileIdx / perRow;
                 Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
-                int kIdx = skin.ordinal();
-                boolean selected = banner.customSound.getIndex() == kIdx;
+                int sIndex = KillBannerModule.styleIndexOf(skin);
+                boolean isSelected = style == sIndex;
                 int v = banner.getVariant(skin);
-                tile(g, "kb:sound:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
-                    banner.customSound.setIndex(kIdx);
+                tile(g, "kb:skin:" + skin.id, skin.displayName, r, skin.id, v, isSelected, mx, my, () -> {
+                    banner.bannerStyle.setIndex(sIndex);
                     changed(detail);
                     g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
-                });
-                sIdx++;
+                }, true);
+                tileIdx++;
             }
-            y += ((sIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
-            y = section(g, "SKINS", x, y);
+            y += ((tileIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
         }
 
-        // Custom Tile + Skin Tiles
-        boolean showCustom = q.isEmpty() || "custom".contains(q);
-        int tileIdx = 0;
-        if (showCustom) {
-            int col = tileIdx % perRow, row = tileIdx / perRow;
-            Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
-            String cSkin = custom.style() == null ? "default" : custom.style().id;
-            tile(g, "kb:skin:custom", "Custom", r, cSkin, custom.variant(), style == KillBannerModule.CUSTOM, mx, my, () -> {
-                banner.bannerStyle.setIndex(KillBannerModule.CUSTOM);
-                changed(detail);
-            });
-            tileIdx++;
-        }
-
-        for (KillBannerStyle skin : visible) {
-            int col = tileIdx % perRow, row = tileIdx / perRow;
-            Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
-            int sIndex = KillBannerModule.styleIndexOf(skin);
-            boolean isSelected = style == sIndex;
-            int v = banner.getVariant(skin);
-            tile(g, "kb:skin:" + skin.id, skin.displayName, r, skin.id, v, isSelected, mx, my, () -> {
-                banner.bannerStyle.setIndex(sIndex);
-                changed(detail);
-                g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
-            });
-            tileIdx++;
-        }
-        y += ((tileIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
-
-        y = section(g, "RANDOMIZE", x, y);
-        String[] modes = {"Off", "Variant", "Skin + variant", "Chosen"};
-        int rPerRow = w >= 300 ? 4 : 2, cell = (w - (rPerRow - 1) * gap) / rPerRow;
-        for (int i = 0; i < modes.length; i++) {
-            int index = i;
-            button(g, "kb:random:" + i, modes[i], new Rect(x + i % rPerRow * (cell + gap), y + i / rPerRow * 24, cell, 20),
-                () -> { banner.randomize.setIndex(index); changed(detail); }, true, mx, my, banner.randomize.getIndex() == i);
-        }
-        y += (modes.length / rPerRow) * 24 + 2;
-        g.drawText(fit(g, RANDOM_HINTS[banner.randomize.getIndex()], w), x, y, MUTED);
-        y += 14;
-        if (banner.randomize.getIndex() == KillBannerModule.RANDOM_CHOSEN) {
-            var pool = banner.pool();
-            for (KillBannerStyle skin : visible) {
-                String skinName = skin.displayName;
-                for (int v = 0; v < skin.variantNames.length; v++) {
-                    int variant = v;
-                    Rect r = new Rect(x + v * (tileW + gap), y, tileW, tileH);
-                    boolean on = pool.contains(skin.id + ":" + v);
-                    tile(g, "kb:pool:" + skin.id + ":" + v, v == 0 ? skinName : skin.variantNames[v], r, skin.id, v, on, mx, my,
-                        () -> { banner.togglePool(skin, variant); changed(detail); });
-                    if (r.y + r.height > viewport.y && r.y < viewport.y + viewport.height) checkmark(g, r.x + r.width - 13, r.y + 3, on);
+        if (style == KillBannerModule.CUSTOM) {
+            y = kbSection(g, "custombanner", "CUSTOM BANNER", x, y, w, mx, my);
+            if (kbOpen.contains("custombanner")) {
+                int vIdx = 0;
+                for (KillBannerStyle skin : visible) {
+                    int col = vIdx % perRow, row = vIdx / perRow;
+                    Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
+                    int kIdx = skin.ordinal();
+                    boolean selected = banner.customVisual.getIndex() == kIdx;
+                    int v = banner.getVariant(skin);
+                    tile(g, "kb:visual:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
+                        banner.customVisual.setIndex(kIdx);
+                        changed(detail);
+                    }, true);
+                    vIdx++;
                 }
-                y += tileH + gap;
+                y += ((vIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
             }
-            y += 4;
+            y = kbSection(g, "customsound", "CUSTOM SOUND (CLICK TO HEAR)", x, y, w, mx, my);
+            if (kbOpen.contains("customsound")) {
+                int sIdx = 0;
+                for (KillBannerStyle skin : visible) {
+                    int col = sIdx % perRow, row = sIdx / perRow;
+                    Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
+                    int kIdx = skin.ordinal();
+                    boolean selected = banner.customSound.getIndex() == kIdx;
+                    int v = banner.getVariant(skin);
+                    tile(g, "kb:sound:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
+                        banner.customSound.setIndex(kIdx);
+                        changed(detail);
+                        g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
+                    }, true);
+                    sIdx++;
+                }
+                y += ((sIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
+            }
         }
-        y = section(g, "SHOW A BANNER FOR", x, y);
-        BoolOption[] kinds = {banner.players, banner.mobs, banner.bosses};
-        int checkW = (w - 2 * gap) / 3;
-        for (int i = 0; i < kinds.length; i++) {
-            BoolOption kind = kinds[i];
-            Rect r = new Rect(x + i * (checkW + gap), y, checkW, 22);
-            button(g, "kb:kind:" + kind.getName(), "    " + kind.getName(), r, () -> { kind.toggle(); changed(detail); }, true, mx, my, false);
-            if (r.y + r.height > viewport.y && r.y < viewport.y + viewport.height) checkmark(g, r.x + 7, r.y + 6, kind.get());
+
+        y = kbSection(g, "randomize", "RANDOMIZE", x, y, w, mx, my);
+        if (kbOpen.contains("randomize")) {
+            String[] modes = {"Off", "Variant", "Skin + variant", "Chosen"};
+            int rPerRow = w >= 300 ? 4 : 2, cell = (w - (rPerRow - 1) * gap) / rPerRow;
+            for (int i = 0; i < modes.length; i++) {
+                int index = i;
+                button(g, "kb:random:" + i, modes[i], new Rect(x + i % rPerRow * (cell + gap), y + i / rPerRow * 24, cell, 20),
+                    () -> { banner.randomize.setIndex(index); changed(detail); }, true, mx, my, banner.randomize.getIndex() == i);
+            }
+            y += (modes.length / rPerRow) * 24 + 2;
+            g.drawText(fit(g, RANDOM_HINTS[banner.randomize.getIndex()], w), x, y, MUTED);
+            y += 14;
+            if (banner.randomize.getIndex() == KillBannerModule.RANDOM_CHOSEN) {
+                var pool = banner.pool();
+                for (KillBannerStyle skin : visible) {
+                    String skinName = skin.displayName;
+                    for (int v = 0; v < skin.variantNames.length; v++) {
+                        int variant = v;
+                        Rect r = new Rect(x + v * (tileW + gap), y, tileW, tileH);
+                        boolean on = pool.contains(skin.id + ":" + v);
+                        tile(g, "kb:pool:" + skin.id + ":" + v, v == 0 ? skinName : skin.variantNames[v], r, skin.id, v, on, mx, my,
+                            () -> { banner.togglePool(skin, variant); changed(detail); }, true);
+                        if (r.y + r.height > viewport.y && r.y < viewport.y + viewport.height) checkmark(g, r.x + r.width - 13, r.y + 3, on);
+                    }
+                    y += tileH + gap;
+                }
+                y += 4;
+            }
         }
-        return y + 22 + 10 - start;
+
+        y = kbSection(g, "kinds", "SHOW A BANNER FOR", x, y, w, mx, my);
+        if (kbOpen.contains("kinds")) {
+            BoolOption[] kinds = {banner.players, banner.mobs, banner.bosses};
+            int checkW = (w - 2 * gap) / 3;
+            for (int i = 0; i < kinds.length; i++) {
+                BoolOption kind = kinds[i];
+                Rect r = new Rect(x + i * (checkW + gap), y, checkW, 22);
+                button(g, "kb:kind:" + kind.getName(), "    " + kind.getName(), r, () -> { kind.toggle(); changed(detail); }, true, mx, my, false);
+                if (r.y + r.height > viewport.y && r.y < viewport.y + viewport.height) checkmark(g, r.x + 7, r.y + 6, kind.get());
+            }
+            y += 22;
+        }
+        return y + 10 - start;
     }
 
-    private int variantTiles(LadsGraphics g, KillBannerModule banner, KillBannerStyle skin, int x, int y, int tileW, int tileH, int mx, int my) {
-        y = section(g, skin.displayName + " VARIANT", x, y);
+    /** A picker section's header, a dropdown: click to open or close it. Returns the y below it. */
+    private int kbSection(LadsGraphics g, String key, String label, int x, int y, int w, int mx, int my) {
+        boolean open = kbOpen.contains(key);
+        Rect r = new Rect(x, y, w, 18);
+        if (r.y + r.height > viewport.y && r.y < viewport.y + viewport.height) {
+            String id = "kb:sec:" + key;
+            boolean hover = r.contains(mx, my) && viewport.contains(mx, my);
+            float progress = animate(id, hover || focusId.equals(id));
+            round(g, r.x, r.y, r.width, r.height, mix(PANEL, LadsPalette.HOVER, progress));
+            if (focusId.equals(id)) round(g, r.x, r.y, r.width, r.height, LadsPalette.PRIMARY_HOVER);
+            g.drawText((open ? "[-] " : "[+] ") + label, r.x + 6, r.y + 5, ACCENT);
+            controls.add(new Control(id, label, r, () -> { if (!kbOpen.remove(key)) kbOpen.add(key); }, true));
+        }
+        return y + 22;
+    }
+
+    /** The chosen skin's variants as tiles under the preview (not in the scrolling list). Returns the y below them. */
+    private int variantTiles(LadsGraphics g, KillBannerModule banner, KillBannerStyle skin, int x, int y, int w, int mx, int my) {
+        int gap = 4, perRow = Math.min(4, skin.variantNames.length);
+        int tileW = (w - (perRow - 1) * gap) / perRow, tileH = Math.max(36, Math.min(60, tileW * 3 / 4 + 12));
+        g.drawText(fit(g, skin.displayName + " VARIANT", w), x, y, ACCENT);
+        y += 13;
         int curVar = banner.getVariant(skin);
         for (int v = 0; v < skin.variantNames.length; v++) {
             int variant = v;
-            tile(g, "kb:variant:" + skin.id + ":" + v, skin.variantNames[v], new Rect(x + v * (tileW + 4), y, tileW, tileH), skin.id, v,
-                curVar == v, mx, my, () -> { banner.setVariant(skin, variant); changed(detail); });
+            tile(g, "kbv:variant:" + skin.id + ":" + v, skin.variantNames[v], new Rect(x + v % perRow * (tileW + gap), y + v / perRow * (tileH + gap), tileW, tileH), skin.id, v,
+                curVar == v, mx, my, () -> { banner.setVariant(skin, variant); changed(detail); }, false);
         }
-        return y + tileH + 8;
+        return y + ((skin.variantNames.length + perRow - 1) / perRow) * (tileH + gap);
     }
     private static int section(LadsGraphics g, String label, int x, int y) {
         g.drawText(label, x, y, ACCENT);
         return y + 13;
     }
-    private void tile(LadsGraphics g, String id, String label, Rect r, String skin, int variant, boolean selected, int mx, int my, Runnable action) {
-        if (r.y + r.height <= viewport.y || r.y >= viewport.y + viewport.height) return;
-        boolean hover = r.contains(mx, my) && viewport.contains(mx, my);
+    private void tile(LadsGraphics g, String id, String label, Rect r, String skin, int variant, boolean selected, int mx, int my, Runnable action, boolean scrolled) {
+        if (scrolled && (r.y + r.height <= viewport.y || r.y >= viewport.y + viewport.height)) return;
+        boolean hover = r.contains(mx, my) && (!scrolled || viewport.contains(mx, my));
         float progress = animate(id, hover || focusId.equals(id));
         round(g, r.x, r.y, r.width, r.height, selected ? ACCENT : focusId.equals(id) ? LadsPalette.PRIMARY_HOVER : LadsPalette.BORDER);
         round(g, r.x + 1, r.y + 1, r.width - 2, r.height - 2, mix(CARD, LadsPalette.HOVER, progress));
@@ -530,16 +557,29 @@ public final class LadsSettingsScreen {
 
             if (m instanceof KillBannerModule banner) {
                 KillBannerModule.Pick pick = banner.chosen();
+                // The chosen skin's variants sit under the banner (Custom: its banner skin's), so no scrolling to reach them.
+                KillBannerStyle varSkin = banner.bannerStyle.getIndex() == KillBannerModule.CUSTOM
+                    ? KillBannerModule.visualOrSoundSkin(banner.customVisual.getIndex()) : pick.style();
+                int varH = 0;
+                if (varSkin != null && varSkin.variantNames.length > 1) {
+                    int perRow = Math.min(4, varSkin.variantNames.length), tileW = (boxW - 8 - (perRow - 1) * 4) / perRow;
+                    varH = 13 + ((varSkin.variantNames.length + perRow - 1) / perRow) * (Math.max(36, Math.min(60, tileW * 3 / 4 + 12)) + 4) + 4;
+                }
+                int bannerH = Math.max(40, boxH - varH);
                 // The banner plays, kills 1 to 5 in turn; its spray stays inside the box.
-                g.enableScissor(boxX + 2, boxY + 2, boxX + boxW - 2, boxY + boxH - 2);
+                g.enableScissor(boxX + 2, boxY + 2, boxX + boxW - 2, boxY + bannerH - 2);
                 boolean drawn = g.drawKillBannerPreview(pick.style() == null ? "base" : pick.style().id, pick.variant(),
-                    boxX + 6, boxY + 6, boxW - 12, boxH - 30, System.nanoTime() / 1e9);
+                    boxX + 6, boxY + 6, boxW - 12, bannerH - 30, System.nanoTime() / 1e9);
                 g.disableScissor();
-                if (!drawn) g.drawCenteredText("KILL BANNER", centerX, centerY - 4, ACCENT);
+                if (!drawn) g.drawCenteredText("KILL BANNER", centerX, boxY + bannerH / 2 - 4, ACCENT);
                 String caption = pick.style() == null ? "Base" : pick.style().displayName + " · " + pick.style().variantNames[pick.variant()];
                 if (pick.soundStyle() != pick.style()) caption += " · " + (pick.soundStyle() == null ? "Chime" : pick.soundStyle().displayName) + " sound";
                 if (banner.randomize.getIndex() != KillBannerModule.RANDOM_OFF) caption += " · Randomized";
-                g.drawCenteredText(fit(g, caption, boxW - 8), centerX, boxY + boxH - 18, TEXT);
+                g.drawCenteredText(fit(g, caption, boxW - 8), centerX, boxY + bannerH - 18, TEXT);
+                if (varH > 0) {
+                    g.fill(boxX + 6, boxY + bannerH + 1, boxX + boxW - 6, boxY + bannerH + 2, LadsPalette.BORDER);
+                    variantTiles(g, banner, varSkin, boxX + 4, boxY + bannerH + 6, boxW - 8, mx, my);
+                }
             } else if ("Crosshair".equalsIgnoreCase(name)) {
                 int chColor = m.isEnabled() ? ACCENT : TEXT;
                 int chSize = 7, chGap = 3;

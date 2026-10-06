@@ -178,7 +178,7 @@ public final class NativeKillBanner {
         }
         KillBannerStrip strip = style.strip(BANNER.sequence());
         KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(),
-            BANNER.headshot() && module.headshotText.get());
+            BANNER.headshot() && module.headshotBanner.get());
         if (frame == null) return;
         KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), strip, frame, (float) module.size.getValue() / 100f);
     }
