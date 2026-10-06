@@ -11,10 +11,12 @@ import java.util.ArrayDeque;
 public final class KillBannerTimeline {
     /** Kills that land together still show one banner each, this far apart: long enough to see each count land. */
     public static final long GAP = 250_000_000L;
+    /** A banner the next kill cuts short leaves for this long (its way out's first frames) before the next one starts. */
+    public static final long CUT = 130_000_000L;
     private record Queued(int sequence, boolean head, KillBannerModule.Pick pick) {}
     private final ArrayDeque<Queued> queue = new ArrayDeque<>();
     private boolean showing;
-    private long started, lastKill;
+    private long started, lastKill, cutAt = -1;
     private int sequence, streak;
     private boolean preview;
     private boolean headshot;
@@ -32,12 +34,25 @@ public final class KillBannerTimeline {
         if (queue.size() < 5) queue.addLast(new Queued(Math.min(5, streak), head, shown));
     }
 
-    /** Starts the next queued banner once the one playing has had {@link #GAP}; true when one started (play its sound). */
+    /**
+     * Starts the next queued banner once the one playing has had {@link #GAP} and then left for {@link #CUT}; true when
+     * one started (play its sound).
+     */
     public boolean next(long now) {
-        if (queue.isEmpty() || showing && !preview && now - started < GAP) return false;
+        if (queue.isEmpty()) return false;
+        if (showing && !preview) {
+            if (now - started < GAP) return false;
+            if (cutAt < 0) { cutAt = now; return false; } // the banner on screen starts leaving now
+            if (now - cutAt < CUT) return false;
+        }
         Queued next = queue.removeFirst();
         show(next.sequence(), now, false, next.head(), next.pick());
         return true;
+    }
+
+    /** Seconds into the banner on screen the next kill cut it short (it leaves from then on), or -1 while nothing has. */
+    public double cutAge() {
+        return showing && cutAt >= 0 ? (cutAt - started) / 1_000_000_000d : -1;
     }
 
     public void trigger(int kills, long now, boolean isPreview) {
@@ -62,6 +77,7 @@ public final class KillBannerTimeline {
         headshot = head;
         pick = shown;
         frozen = Double.NaN;
+        cutAt = -1;
     }
 
     public double age(long now) {
@@ -84,7 +100,7 @@ public final class KillBannerTimeline {
     public void endStreak() { streak = 0; }
     /** Death, a new world or server, or the module off: no banner, no streak, nothing queued. */
     public void clear() {
-        showing = false; sequence = streak = 0; preview = headshot = false; pick = null; frozen = Double.NaN;
+        showing = false; sequence = streak = 0; preview = headshot = false; pick = null; frozen = Double.NaN; cutAt = -1;
         queue.clear();
     }
 

@@ -2,6 +2,7 @@ package com.thelads.core.client;
 
 import com.thelads.core.client.killbanner.KillBannerStyle;
 import com.thelads.core.client.killbanner.KillDetector;
+import com.thelads.core.client.killbanner.KillBanners;
 import com.thelads.core.client.killbanner.KillDetector.Kind;
 import com.thelads.core.modules.KillBannerModule;
 import java.util.ArrayList;
@@ -293,7 +294,31 @@ class KillDetectorTest {
         assertEquals(module.chosen(), module.next(), "an empty pool falls back to the chosen banner");
     }
 
-    @Test void headshotLabelStartsHidden() {
-        assertFalse(new KillBannerModule().headshotText.get());
+    @Test void headshotOptionsStartOn() {
+        KillBannerModule module = new KillBannerModule();
+        assertTrue(module.headshotBanner.get(), "the HEADSHOT banner shows from the start");
+        assertTrue(module.killMark.get(), "and so does the kill mark");
+        assertEquals(KillBannerModule.HEADSHOTS_HEAD_HITS, module.headshots.getIndex(), "headshots mean head hits");
+    }
+
+    @Test void headHitsAreTheTopQuarterOfTheBox() {
+        assertTrue(KillDetector.headHit(65.5, 64, 1.8), "the top quarter of a player");
+        assertFalse(KillDetector.headHit(65.3, 64, 1.8), "the chest");
+        assertTrue(KillDetector.headHit(64.4, 64, .5), "a short mob's top");
+    }
+
+    @Test void everyKillCanBeAHeadshot() {
+        KillBannerModule module = new KillBannerModule();
+        KillBanners.reset();
+        long now = 1_000_000_000L;
+        KillBanners.fire(module, new KillDetector.Kill(KillDetector.Kind.PLAYER, "bob", false), now); // starts the banner at once
+        assertEquals(1, KillBanners.TIMELINE.sequence());
+        assertFalse(KillBanners.TIMELINE.headshot(), "a body shot in Head hits mode");
+        KillBanners.reset();
+        module.headshots.setIndex(KillBannerModule.HEADSHOTS_EVERY_KILL);
+        KillBanners.fire(module, new KillDetector.Kill(KillDetector.Kind.PLAYER, "bob", false), now);
+        assertEquals(1, KillBanners.TIMELINE.sequence());
+        assertTrue(KillBanners.TIMELINE.headshot(), "every kill in Every kill mode");
+        KillBanners.reset();
     }
 }

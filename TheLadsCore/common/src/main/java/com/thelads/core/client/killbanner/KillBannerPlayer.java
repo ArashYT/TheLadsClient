@@ -6,7 +6,7 @@ import java.util.Random;
  * What a skin banner draws at a moment, from Valorant footage: the skin's frames, a dark backdrop, the kill mark
  * (a lattice that lands large and shrinks onto the icon), the icon's red strobe, the emblem's red cavity (Reaver) and
  * the HEADSHOT label. Reaver and Rogue play their measured frames ({@link #at}); the Kingdom Archives skins, which are
- * still layers, move those layers exactly as Rogue's frames move ({@link #layers}, {@link KillBannerTemplate}).
+ * still layers, move those layers as their own Valorant preview shows ({@link #layers}, {@link KillBannerTemplate}).
  * Pure timing; the adapters draw it.
  */
 public final class KillBannerPlayer {
@@ -49,24 +49,24 @@ public final class KillBannerPlayer {
     }
 
     /**
-     * A still skin (KillBannerStyle.Type.COMPOSITE, PHASEGUARD or BANNER_SWAP) at a moment, Rogue's measured motion on its
-     * layers. Scales are about the ring centre, emblemY is in art pixels (up is negative), pipRadius is in ring radii,
-     * pipSpin is degrees the pips have turned (the adapters' angle runs the other way round, so clockwise is negative here).
-     * emblemShade darkens the emblem on the way out; pipFlare is the glow behind each pip as it arrives; tier is how far a
-     * Banner Swap skin has turned from the previous kill's art into this kill's; spray is seconds into the spray
-     * ({@link #particle}), negative before it.
+     * A still skin (KillBannerStyle.Type.COMPOSITE, PHASEGUARD or BANNER_SWAP) at a moment: its measured motion on its layers.
+     * Scales are about the ring centre, emblemY is in art pixels (up is negative). The pips sit at pipOrbit times the skin's
+     * pip radius, times pipRadius as they slide in, each at pipDegrees[i] in the adapters' angle (0 is the top, running
+     * anticlockwise on screen), their turn included; pipSpin is that turn alone. emblemShade darkens the emblem on the way out;
+     * pipFlare is the glow behind each pip as it arrives; tier is how far a Banner Swap skin has turned from the previous kill's
+     * art into this kill's; spray is seconds into the spray ({@link #particle}), negative before it.
      */
     public record Layers(float emblemAlpha, float emblemScale, float emblemY, float emblemShade,
                          float frameAlpha, float frameScale, float ringAlpha, float ringScale,
-                         float pipAlpha, float pipRadius, float pipSpin, float pipFlare, float tier, float spray,
+                         float pipAlpha, float pipRadius, float pipOrbit, float[] pipDegrees, float pipSpin, float pipFlare, float tier, float spray,
                          float shadowAlpha, float strobe, float markSize, float markThinAlpha, float markAlpha, int markColor,
                          float labelAlpha) {}
 
     private KillBannerPlayer() {}
 
-    /** Seconds a still skin's banner for this many kills takes with no hold: as long as Rogue's. */
-    public static double stillSeconds(int kills) {
-        return KillBannerTemplate.of(kills).seconds();
+    /** Seconds a still skin's banner for this many kills takes with no hold. */
+    public static double stillSeconds(KillBannerStyle style, int kills) {
+        return KillBannerTemplate.of(style, kills).seconds();
     }
 
     /**
@@ -74,15 +74,21 @@ public final class KillBannerPlayer {
      * its motion leaves). Null once it is gone. Motion runs on fractional frames, so it is smooth above 60 fps.
      */
     public static Layers layers(KillBannerStyle style, int kills, double age, double seconds, boolean headshot) {
+        return layers(style, kills, age, seconds, headshot, -1);
+    }
+
+    /** As above; {@code cut} seconds after its kill the next kill cut the banner short, so it leaves from then on (negative: it was not). */
+    public static Layers layers(KillBannerStyle style, int kills, double age, double seconds, boolean headshot, double cut) {
         if (age < 0 || !Double.isFinite(age)) return null;
         int k = Math.max(1, Math.min(5, kills));
-        KillBannerTemplate t = KillBannerTemplate.of(k);
+        KillBannerTemplate t = KillBannerTemplate.of(style, k);
         float f = (float) (age * 60);
         int intro = t.introEnd + 1, exit = t.exit;
         int hold = Math.max(0, (int) Math.round(seconds * 60) - intro - exit);
         float e = f - intro - hold;
+        if (cut >= 0 && cut * 60 < intro + hold) e = f - (float) (cut * 60); // cut short by the next kill: it leaves from the cut on
         if (e >= exit) return null;
-        // Which of Rogue's frames this moment plays: the intro up to the settled one, which holds, then the way out.
+        // Which measured frame this moment plays: the intro up to the settled one, which holds, then the way out.
         float tf = e < 0 ? Math.min(f, t.introEnd) : t.introEnd + 1 + e;
 
         float emblemAlpha = KillBannerTemplate.at(t.iconAlpha, tf), emblemScale = KillBannerTemplate.at(t.iconScale, tf);
@@ -94,10 +100,16 @@ public final class KillBannerPlayer {
         float ringAlpha = KillBannerTemplate.at(t.ringAlpha, tf), ringScale = KillBannerTemplate.at(t.ringScale, tf);
         float pipAlpha = KillBannerTemplate.at(t.pipAlpha, tf), pipRadius = KillBannerTemplate.at(t.pipRadius, tf);
         float pipFlare = FLARE * KillBannerTemplate.at(t.pipFlare, tf), pipSpin = -KillBannerTemplate.at(t.pipSpin, tf);
+        int count = Math.max(1, Math.min(6, kills));
+        float[] pipDegrees = new float[count];
+        for (int i = 0; i < count; i++) {
+            float settled = t.pipAngles != null && i < t.pipAngles.length ? -t.pipAngles[i] : 360f / count * (i + 1) + (count == 2 ? 90 : 0);
+            pipDegrees[i] = settled + pipSpin;
+        }
         float spray = t.sprayCount > 0 && f >= t.sprayStart ? (f - t.sprayStart) / 60 : -1;
 
         float leaving = e >= 0 ? 1 - smooth(0, exit, e) : 1;
-        int m = KillBannerStyle.MARK_FRAME, mt = (int) Math.floor(f) - m;
+        int m = t.mark, mt = (int) Math.floor(f) - m;
         float shadow = .5f * smooth(m - 8, m, f) * leaving;
         float strobe = mt >= 0 && mt < STROBE.length ? STROBE[mt] : 0;
         float size = 0, thin = 0, solid = 0;
@@ -111,13 +123,13 @@ public final class KillBannerPlayer {
         }
         float label = headshot ? smooth(m - 4, m + 4, f) * (e >= 0 ? 1 - smooth(0, 8, e) : 1) : 0;
         return new Layers(emblemAlpha, emblemScale, emblemY, shade, frameAlpha, frameScale, ringAlpha, ringScale,
-            pipAlpha, pipRadius, pipSpin, pipFlare, tier, spray,
+            pipAlpha, pipRadius, t.orbit, pipDegrees, pipSpin, pipFlare, tier, spray,
             shadow, strobe * emblemAlpha, size, thin, solid, color, label);
     }
 
-    /** Spray particles a banner for this many kills throws (Rogue's droplets: none for one kill). */
-    public static int sprayCount(int kills) {
-        return Math.min(36, KillBannerTemplate.of(kills).sprayCount);
+    /** Spray particles a banner for this many kills throws (droplets: none for one kill). */
+    public static int sprayCount(KillBannerStyle style, int kills) {
+        return Math.min(36, KillBannerTemplate.of(style, kills).sprayCount);
     }
 
     /**
@@ -139,26 +151,26 @@ public final class KillBannerPlayer {
     }
 
     /** The picker preview at {@code clock} seconds: which kill count it shows (1 to 5 in turn, then again). */
-    public static int previewKills(double clock) {
-        return (int) preview(clock, true);
+    public static int previewKills(KillBannerStyle style, double clock) {
+        return (int) preview(style, clock, true);
     }
 
     /** The picker preview at {@code clock} seconds: how far into its banner it is (past its duration: the gap, nothing shown). */
-    public static double previewAge(double clock) {
-        return preview(clock, false);
+    public static double previewAge(KillBannerStyle style, double clock) {
+        return preview(style, clock, false);
     }
 
     /** How long the picker preview shows a kill count's banner: its motion and a second's hold. */
-    public static double previewSeconds(int kills) {
-        return stillSeconds(kills) + PREVIEW_HOLD;
+    public static double previewSeconds(KillBannerStyle style, int kills) {
+        return stillSeconds(style, kills) + PREVIEW_HOLD;
     }
 
-    private static double preview(double clock, boolean kills) {
+    private static double preview(KillBannerStyle style, double clock, boolean kills) {
         double cycle = 0;
-        for (int k = 1; k <= 5; k++) cycle += previewSeconds(k) + PREVIEW_GAP;
+        for (int k = 1; k <= 5; k++) cycle += previewSeconds(style, k) + PREVIEW_GAP;
         double t = ((clock % cycle) + cycle) % cycle;
         for (int k = 1; k < 5; k++) {
-            double length = previewSeconds(k) + PREVIEW_GAP;
+            double length = previewSeconds(style, k) + PREVIEW_GAP;
             if (t < length) return kills ? k : t;
             t -= length;
         }
@@ -178,6 +190,11 @@ public final class KillBannerPlayer {
      * what its frames leave). Null once it is gone.
      */
     public static Frame at(KillBannerStyle style, KillBannerStrip strip, double age, double seconds, boolean headshot) {
+        return at(style, strip, age, seconds, headshot, -1);
+    }
+
+    /** As above; {@code cut} seconds after its kill the next kill cut the banner short, so it leaves from then on (negative: it was not). */
+    public static Frame at(KillBannerStyle style, KillBannerStrip strip, double age, double seconds, boolean headshot, double cut) {
         if (age < 0 || !Double.isFinite(age)) return null;
         int f = (int) Math.floor(age * 60);
         if (strip == null) {
@@ -213,6 +230,7 @@ public final class KillBannerPlayer {
         int intro = strip.introEnd + 1, exit = exitLength(strip);
         int hold = Math.max(0, (int) Math.round(seconds * 60) - intro - exit);
         int e = f - intro - hold;
+        if (cut >= 0 && cut * 60 < intro + hold) e = f - (int) Math.round(cut * 60); // cut short by the next kill: it leaves from the cut on
         if (e >= exit) return null;
 
         int stripFrame = Math.min(f, strip.introEnd);

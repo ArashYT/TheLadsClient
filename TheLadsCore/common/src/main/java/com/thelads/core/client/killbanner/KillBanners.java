@@ -22,7 +22,8 @@ public final class KillBanners {
      */
     public static String fire(KillBannerModule module, KillDetector.Kill kill, long now) {
         if (kill == null || !module.counts(kill.kind())) return null;
-        TIMELINE.kill(now, module.streakWindow(), kill.headshot(), module.next());
+        boolean headshot = kill.headshot() || module.headshots.getIndex() == KillBannerModule.HEADSHOTS_EVERY_KILL;
+        TIMELINE.kill(now, module.streakWindow(), headshot, module.next());
         return poll(module, now);
     }
 

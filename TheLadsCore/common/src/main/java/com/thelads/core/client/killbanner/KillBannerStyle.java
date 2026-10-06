@@ -255,6 +255,34 @@ public enum KillBannerStyle {
         return colours[Math.max(0, Math.min(colours.length - 1, variant))];
     }
 
+    /**
+     * The HEADSHOT label's box colour (RGB): as the skin's preview showed it (Valorant's old headshot banner), else
+     * a darker, duller shade of the variant's accent, the best guess for a skin whose preview never had one.
+     */
+    public int headshotBox(int variant) {
+        int measured = KillBannerTemplate.headshotBox(this);
+        return measured >= 0 ? measured : guessBox(accent(variant));
+    }
+
+    /** A HEADSHOT box colour for an accent (RGB): its hue at half saturation and brightness; a grey accent gives dark grey. */
+    public static int guessBox(int accent) {
+        int r = (accent >> 16) & 255, g = (accent >> 8) & 255, b = accent & 255;
+        int max = Math.max(r, Math.max(g, b)), min = Math.min(r, Math.min(g, b));
+        if (max - min < 40) return 0x4A4A4A;
+        float h = max == r ? (g - b) / (float) (max - min) : max == g ? 2 + (b - r) / (float) (max - min) : 4 + (r - g) / (float) (max - min);
+        if (h < 0) h += 6;
+        float v = .5f, c = v * .48f, x = c * (1 - Math.abs(h % 2 - 1)), m = v - c;
+        float[] rgb = switch ((int) h) {
+            case 0 -> new float[] {c, x, 0};
+            case 1 -> new float[] {x, c, 0};
+            case 2 -> new float[] {0, c, x};
+            case 3 -> new float[] {0, x, c};
+            case 4 -> new float[] {x, 0, c};
+            default -> new float[] {c, 0, x};
+        };
+        return (Math.round((rgb[0] + m) * 255) << 16) | (Math.round((rgb[1] + m) * 255) << 8) | Math.round((rgb[2] + m) * 255);
+    }
+
     public String swapAsset(int kills) {
         int k = Math.max(1, Math.min(5, kills));
         String[] all = swapAssets;
