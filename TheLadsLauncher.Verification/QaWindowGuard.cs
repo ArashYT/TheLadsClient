@@ -9,8 +9,8 @@ using System.Text;
 /// takes focus while the owner is using the PC, focus goes back to the window they were in. Runs that need the game in front
 /// (synthetic input, raw mouse, F11/borderless captures) set LADS_VERIFY_FOCUS=1: no placement or focus give-back.
 /// LADS_VERIFY_PLAYING=1 (the owner is playing and streaming, 2026-10-05): below-normal priority the whole run, no monitor
-/// claim, and the game window stays out of sight without being activated: a 1.8.9 window minimized (it still renders), a
-/// 26.x window parked far off every screen (minimized, it would stop rendering and its captures would be empty).
+/// claim, and every game window is parked far off every screen without being activated (minimized, a game stops
+/// rendering or its framebuffer shrinks, and captures come out empty).
 /// </summary>
 static class QaWindowGuard
 {
@@ -40,9 +40,10 @@ static class QaWindowGuard
                 {
                     if (playing)
                     {
+                        // Parked far off every screen, never minimized: a minimized game's framebuffer can shrink to a pixel
+                        // (1.8.9 did, mid-capture), while an off-screen window keeps its size and keeps rendering.
                         firstSeen.TryAdd(window, Environment.TickCount64);
-                        if (Lwjgl2(window)) { if (!IsIconic(window)) ShowWindow(window, SwShowMinNoActive); }
-                        else if (GetWindowRect(window, out var at) && at.Left > -20000)
+                        if (GetWindowRect(window, out var at) && at.Left > -20000)
                             SetWindowPos(window, IntPtr.Zero, -30000, 0, 0, 0, SwpNoSize | SwpNoZOrder | SwpNoActivate);
                         continue;
                     }
