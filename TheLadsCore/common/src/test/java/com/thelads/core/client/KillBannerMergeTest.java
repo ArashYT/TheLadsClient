@@ -40,7 +40,7 @@ class KillBannerMergeTest {
         // Reaver's EP 5 variant (Reaver 2.0) keeps its own frame and ring; RGX 11z Pro EP 4 shares RGX's
         assertEquals(KillBannerStyle.REAVER.frameAsset(), KillBannerStyle.REAVER.frameAsset(0));
         assertNotEquals(KillBannerStyle.REAVER.frameAsset(), KillBannerStyle.REAVER.frameAsset(4));
-        assertNotEquals(KillBannerStyle.REAVER.ringAsset(), KillBannerStyle.REAVER.ringAsset(4));
+        assertEquals(KillBannerStyle.REAVER.ringAsset(), KillBannerStyle.REAVER.ringAsset(4), "both rings are the game's Dragon ring (one shared file)");
         assertEquals(KillBannerStyle.RGX11ZPRO.frameAsset(), KillBannerStyle.RGX11ZPRO.frameAsset(1));
         assertEquals(KillBannerStyle.ION.ringAsset(), KillBannerStyle.ION.ringAsset(3), "the same line keeps its ring");
     }
