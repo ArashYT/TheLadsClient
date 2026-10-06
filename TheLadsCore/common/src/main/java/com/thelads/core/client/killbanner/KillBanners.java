@@ -49,7 +49,7 @@ public final class KillBanners {
         if (!module.sound.get() || module.volume.getValue() <= 0) return null;
         if (pick.soundStyle() == null) return "";
         int seq = Math.max(1, Math.min(pick.soundStyle().soundCount, TIMELINE.sequence()));
-        return "theladscore:" + pick.soundStyle().id + "_kill_" + seq;
+        return "theladscore:" + pick.soundStyle().soundId(pick.soundStyle() == pick.style() ? pick.variant() : 0) + "_kill_" + seq;
     }
 
     /** What the banner on screen shows: its kill's pick, else the module's current choice. */

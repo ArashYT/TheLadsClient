@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** The kill streak, its banner queue (KillBannerTimeline, KillBanners) and the streak settings. */
 class NativeKillBannerTest {
-    private static final long S = 1_000_000_000L, GAP = KillBannerTimeline.GAP, CUT = KillBannerTimeline.CUT;
+    private static final long S = 1_000_000_000L;
     private static final KillBannerModule.Pick PICK = new KillBannerModule.Pick(null, 0, null);
 
     /** Shows what the queue lets through from {@code from}, a tick (50 ms) at a time, for {@code seconds}: each banner's kill count. */
@@ -30,21 +30,17 @@ class NativeKillBannerTest {
         assertEquals(0, t.queued());
     }
 
-    @Test void theNextKillInterruptsThePlayingBanner() {
+    @Test void theNextKillReplacesThePlayingBannerAtOnce() {
         var t = new KillBannerTimeline();
         t.kill(S, 45 * S, false, PICK);
         assertTrue(t.next(S) && t.sequence() == 1);
+        assertFalse(t.next(S + 50_000_000L), "nothing queued: banner 1 plays on");
         t.kill(S + 100_000_000L, 45 * S, true, PICK); // two ticks later, while banner 1 is still opening
-        assertFalse(t.next(S + 100_000_000L), "banner 1 gets its moment");
-        assertFalse(t.next(S + GAP), "then it starts leaving");
-        assertEquals(GAP / 1e9, t.cutAge(), 1e-9, "cut short at the gap: its way out starts there");
-        assertFalse(t.next(S + GAP + CUT - 10_000_000L));
-        assertTrue(t.next(S + GAP + CUT) && t.sequence() == 2 && t.headshot(), "then banner 2 replaces it");
-        assertEquals(0, t.age(S + GAP + CUT), 1e-9, "playing from its start");
-        assertEquals(-1, t.cutAge(), 1e-9, "not cut while no kill has");
+        assertTrue(t.next(S + 100_000_000L) && t.sequence() == 2 && t.headshot(), "banner 2 replaces it at once, as in the game");
+        assertEquals(0, t.age(S + 100_000_000L), 1e-9, "playing from its start");
+        assertEquals(-1, t.cutAge(), 1e-9, "nothing is cut short");
         t.kill(3 * S, 45 * S, false, PICK);
-        assertFalse(t.next(3 * S), "a later kill: the playing banner leaves first");
-        assertTrue(t.next(3 * S + CUT) && t.sequence() == 3, "then the new one");
+        assertTrue(t.next(3 * S) && t.sequence() == 3, "a later kill: the new one, straight away");
     }
 
     @Test void streakTimesOutUnlessUnlimitedAndEndsOnDeath() {
@@ -94,7 +90,7 @@ class NativeKillBannerTest {
         assertEquals(5, t.sequence(), "capped without overflow");
     }
 
-    /** Through KillBanners: each banner plays its own sound when it shows, kill_1 then kill_2 then kill_3. */
+    /** Through KillBanners: each banner plays its own sound when it shows, kill_1 then kill_2 then kill_3 (at once, as the game replaces banners). */
     @Test void eachQueuedBannerPlaysItsSoundOnItsTurn() {
         var module = new KillBannerModule();
         module.mobs.set(true);
@@ -106,7 +102,7 @@ class NativeKillBannerTest {
             String sound = KillBanners.poll(module, now);
             if (sound != null) sounds.add(sound);
         }
-        assertEquals(java.util.Arrays.asList("theladscore:reaver_kill_1", null, null, "theladscore:reaver_kill_2", "theladscore:reaver_kill_3"), sounds);
+        assertEquals(java.util.Arrays.asList("theladscore:reaver_kill_1", "theladscore:reaver_kill_2", "theladscore:reaver_kill_3"), sounds);
         KillBanners.reset();
     }
 

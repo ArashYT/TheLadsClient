@@ -208,7 +208,6 @@ def main():
         lines.append(f'k{count}.introEnd={intro_end}')
         lines.append(f'k{count}.exit={exit_f}')
         lines.append(f'k{count}.mark={f_lit}')
-        lines.append(f'k{count}.spray={"0,0" if count == 1 else f"{f_lit},34"}')
         for c in CHANNELS:
             lines.append(f'k{count}.{c}=' + ','.join(f'{v:.3f}'.rstrip('0').rstrip('.') if abs(v) > 5e-4 else '0' for v in rows[c]))
         settle = next((f for f in range(n) if count > 1 and f > f_spin and rows['pip.spin'][f] == goal), None)

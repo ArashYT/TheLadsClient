@@ -12,8 +12,8 @@ import java.util.Properties;
  */
 public enum KillBannerStyle {
     DEFAULT("default", "DEFAULT", Type.COMPOSITE, 0f, 0f, 69.0f, -20.0f, 38f, 81.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1"}, null),
-    REAVER("reaver", "Reaver", Type.ANIMATED_STRIP, 128.3f, 99.9f, 43.6f, -5f, 26f, 56f, true, true, false, true, true, 5, 165, 230, new int[] {197, 255, 166}, new String[] {"Base", "Red", "Black", "White"}, new int[][] {{195, 255, 152}, {249, 247, 155}, {250, 229, 132}, {104, 161, 201}}),
-    ROGUE("rogue", "Rogue", Type.ANIMATED_STRIP, 157.7f, 106.1f, 48.2f, -11.5f, 30f, 66f, false, true, false, true, true, 5, 232, 20, new int[] {8, 255, 166}, new String[] {"Base", "Green", "Red", "Blue"}, new int[][] {{251, 232, 157}, {76, 224, 195}, {28, 203, 166}, {157, 204, 213}}),
+    REAVER("reaver", "REAVER", Type.COMPOSITE, 0f, 0f, 70.0f, -10.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3", "EP 5"}, null),
+    ROGUE("rogue", "ROGUE", Type.COMPOSITE, 0f, 0f, 83.5f, -17.0f, 38f, 95.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     AEMONDIR("aemondir", "AEMONDIR", Type.COMPOSITE, 0f, 0f, 77.0f, -20.0f, 38f, 89.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     AERIS("aeris", "AERIS", Type.COMPOSITE, 0f, 0f, 82.5f, 0.0f, 38f, 94.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     ARAXYS("araxys", "ARAXYS", Type.COMPOSITE, 0f, 0f, 72.5f, -12.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
@@ -24,11 +24,11 @@ public enum KillBannerStyle {
     BLACKTHORN("blackthorn", "BLACKTHORN", Type.COMPOSITE, 0f, 0f, 70.0f, -20.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     BLASTX("blastx", "BLASTX", Type.COMPOSITE, 0f, 0f, 70.0f, 0.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     BOLT("bolt", "BOLT", Type.COMPOSITE, 0f, 0f, 82.5f, 0.0f, 38f, 94.5f, false, true, false, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
-    BUBBLEGUMDEATHWISH("bubblegumdeathwish", "BUBBLEGUM DEATHWISH", Type.COMPOSITE, 0f, 0f, 85.0f, 3.2f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    BUBBLEGUMDEATHWISH("bubblegumdeathwish", "BUBBLEGUM DEATHWISH", Type.COMPOSITE, 0f, 0f, 85.0f, 3.2f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     BUBBLEGUMDEATHWISH2("bubblegumdeathwish2", "BUBBLEGUM DEATHWISH 2", Type.COMPOSITE, 0f, 0f, 85.0f, -16.5f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     BUBBLEGUMDEATHWISH3("bubblegumdeathwish3", "BUBBLEGUM DEATHWISH 3", Type.COMPOSITE, 0f, 0f, 85.0f, -4.0f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     BUBBLEGUMDEATHWISH4("bubblegumdeathwish4", "BUBBLEGUM DEATHWISH 4", Type.COMPOSITE, 0f, 0f, 85.0f, 4.0f, 38f, 97.0f, false, true, false, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
-    CHAMPIONS2021("champions2021", "CHAMPIONS 2021", Type.COMPOSITE, 0f, 0f, 67.0f, 0.0f, 38f, 79.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    CHAMPIONS2021("champions2021", "CHAMPIONS", Type.COMPOSITE, 0f, 0f, 67.0f, 0.0f, 38f, 79.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"2021", "2022", "2023"}, null),
     CHAMPIONS2022("champions2022", "CHAMPIONS 2022", Type.COMPOSITE, 0f, 0f, 67.0f, 0.0f, 38f, 79.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     CHAMPIONS2023("champions2023", "CHAMPIONS 2023", Type.COMPOSITE, 0f, 0f, 67.0f, 0.0f, 38f, 79.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     CHAMPIONS2024("champions2024", "CHAMPIONS 2024", Type.BANNER_SWAP, 0f, 0f, 60.0f, 0.0f, 38f, 72.0f, false, false, false, true, false, 5, 0, 0, null, new String[] {"Default"}, null),
@@ -43,17 +43,17 @@ public enum KillBannerStyle {
     EVORIDREAMWINGS("evoridreamwings", "EVORI DREAMWINGS", Type.COMPOSITE, 0f, 0f, 81.5f, 4.7f, 38f, 93.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     EXO("exo", "EX.O", Type.COMPOSITE, 0f, 0f, 72.5f, -6.0f, 38f, 84.5f, false, true, false, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     FORSAKEN("forsaken", "FORSAKEN", Type.COMPOSITE, 0f, 0f, 70.0f, -15.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
-    GAIASVENGEANCE("gaiasvengeance", "GAIA'S VENGEANCE", Type.COMPOSITE, 0f, 0f, 69.0f, -20.0f, 38f, 81.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    GAIASVENGEANCE("gaiasvengeance", "GAIA'S VENGEANCE", Type.COMPOSITE, 0f, 0f, 69.0f, -20.0f, 38f, 81.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default", "EP 7", "EP 7 VARIANT 1", "EP 7 VARIANT 2", "EP 7 VARIANT 3"}, null),
     GAIASVENGEANCEEP7("gaiasvengeanceep7", "GAIA'S VENGEANCE, EP 7", Type.COMPOSITE, 0f, 0f, 69.0f, -20.0f, 38f, 81.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
-    GLITCHPOP("glitchpop", "GLITCHPOP", Type.COMPOSITE, 0f, 0f, 86.0f, -10.0f, 38f, 98.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    GLITCHPOP("glitchpop", "GLITCHPOP", Type.COMPOSITE, 0f, 0f, 86.0f, -10.0f, 38f, 98.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default", "2.0"}, null),
     GLITCHPOP20("glitchpop20", "GLITCHPOP 2.0", Type.COMPOSITE, 0f, 0f, 86.0f, -10.0f, 38f, 98.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     HELIX("helix", "HELIX", Type.COMPOSITE, 0f, 0f, 78.5f, -21.5f, 38f, 90.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     HOLOMERIDIAN("holomeridian", "HOLO MERIDIAN", Type.COMPOSITE, 0f, 0f, 71.0f, 0.0f, 38f, 83.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     IMPERIUM("imperium", "IMPERIUM", Type.COMPOSITE, 0f, 0f, 88.0f, -22.0f, 38f, 100.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
-    ION("ion", "ION", Type.COMPOSITE, 0f, 0f, 67.5f, -30.0f, 38f, 79.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    ION("ion", "ION", Type.COMPOSITE, 0f, 0f, 67.5f, -30.0f, 38f, 79.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default", "EP 5", "EP 5 VARIANT 1", "EP 5 VARIANT 2", "EP 5 VARIANT 3"}, null),
     IONEP5("ionep5", "ION, EP 5", Type.COMPOSITE, 0f, 0f, 67.5f, -30.0f, 38f, 79.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     KURONAMI("kuronami", "KURONAMI", Type.COMPOSITE, 0f, 0f, 90.0f, -20.0f, 38f, 102.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
-    MAGEPUNK("magepunk", "MAGEPUNK", Type.COMPOSITE, 0f, 0f, 72.5f, 0.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    MAGEPUNK("magepunk", "MAGEPUNK", Type.COMPOSITE, 0f, 0f, 72.5f, 0.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default", "EP 3", "EP 6", "EP 6 VARIANT 1", "EP 6 VARIANT 2", "EP 6 VARIANT 3"}, null),
     MAGEPUNKEP3("magepunkep3", "MAGEPUNK, EP 3", Type.COMPOSITE, 0f, 0f, 72.5f, 0.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     MAGEPUNKEP6("magepunkep6", "MAGEPUNK, EP 6", Type.COMPOSITE, 0f, 0f, 72.5f, 0.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     MYSTBLOOM("mystbloom", "MYSTBLOOM", Type.COMPOSITE, 0f, 0f, 70.0f, -29.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
@@ -64,7 +64,7 @@ public enum KillBannerStyle {
     NOCTURNUM("nocturnum", "NOCTURNUM", Type.COMPOSITE, 0f, 0f, 78.0f, -20.0f, 38f, 90.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     ONI("oni", "ONI", Type.COMPOSITE, 0f, 0f, 86.0f, -20.0f, 38f, 98.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     ONIEP6("oniep6", "ONI, EP 6", Type.COMPOSITE, 0f, 0f, 86.0f, -20.0f, 38f, 98.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
-    ORABYONETAP_IGNITION("orabyonetap-ignition", "ORA BY ONETAP - IGNITION", Type.COMPOSITE, 0f, 0f, 72.5f, -25.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    ORABYONETAP_IGNITION("orabyonetap-ignition", "ORA BY ONETAP", Type.COMPOSITE, 0f, 0f, 72.5f, -25.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"IGNITION", "LAWYER", "RAJA", "RENEGADE", "WATCH"}, null),
     ORABYONETAP_LAWYER("orabyonetap-lawyer", "ORA BY ONETAP - LAWYER", Type.COMPOSITE, 0f, 0f, 72.5f, -25.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     ORABYONETAP_RAJA("orabyonetap-raja", "ORA BY ONETAP - RAJA", Type.COMPOSITE, 0f, 0f, 72.5f, -25.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     ORABYONETAP_RENEGADE("orabyonetap-renegade", "ORA BY ONETAP - RENEGADE", Type.COMPOSITE, 0f, 0f, 72.5f, -25.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
@@ -72,9 +72,9 @@ public enum KillBannerStyle {
     ORIGIN("origin", "ORIGIN", Type.COMPOSITE, 0f, 0f, 77.5f, 0.0f, 38f, 89.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     OVERDRIVE("overdrive", "OVERDRIVE", Type.COMPOSITE, 0f, 0f, 67.0f, -20.0f, 38f, 79.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     PHASEGUARD("phaseguard", "PHASEGUARD", Type.PHASEGUARD, 0f, 0f, 81.5f, -2.5f, 38f, 93.5f, false, true, false, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
-    PRELUDETOCHAOS("preludetochaos", "PRELUDE TO CHAOS", Type.COMPOSITE, 0f, 0f, 85.0f, -18.0f, 38f, 97.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    PRELUDETOCHAOS("preludetochaos", "PRELUDE TO CHAOS", Type.COMPOSITE, 0f, 0f, 85.0f, -18.0f, 38f, 97.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default", "V25", "V25 VARIANT 1", "V25 VARIANT 2", "V25 VARIANT 3"}, null),
     PRELUDETOCHAOSV25("preludetochaosv25", "PRELUDE TO CHAOS, V25", Type.COMPOSITE, 0f, 0f, 85.0f, -18.0f, 38f, 97.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
-    PRIME("prime", "PRIME", Type.COMPOSITE, 0f, 0f, 72.5f, -17.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    PRIME("prime", "PRIME", Type.COMPOSITE, 0f, 0f, 72.5f, -17.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default", "2.0"}, null),
     PRIME20("prime20", "PRIME//2.0", Type.COMPOSITE, 0f, 0f, 72.5f, -17.0f, 38f, 84.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     PRIMORDIUM("primordium", "PRIMORDIUM", Type.COMPOSITE, 0f, 0f, 76.0f, -20.0f, 38f, 88.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     PROTOCOL781_A("protocol781-a", "PROTOCOL 781-A", Type.COMPOSITE, 0f, 0f, 71.5f, 0.0f, 38f, 83.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
@@ -82,19 +82,19 @@ public enum KillBannerStyle {
     REAVEREP5("reaverep5", "REAVER, EP 5", Type.COMPOSITE, 0f, 0f, 70.0f, -10.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     REAVERV26("reaverv26", "REAVER, V26", Type.COMPOSITE, 0f, 0f, 70.0f, -10.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     RECON("recon", "RECON", Type.COMPOSITE, 0f, 0f, 68.0f, -22.0f, 38f, 80.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
-    RES_BAZOOKABADGER("res-bazookabadger", "R.E.S - BAZOOKA BADGER", Type.COMPOSITE, 0f, 0f, 73.5f, -20.0f, 38f, 85.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    RES_BAZOOKABADGER("res-bazookabadger", "R.E.S", Type.COMPOSITE, 0f, 0f, 73.5f, -20.0f, 38f, 85.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"BAZOOKA BADGER", "DANCE FEVER", "K.NOCK O.UT!!"}, null),
     RES_DANCEFEVER("res-dancefever", "R.E.S - DANCE FEVER", Type.COMPOSITE, 0f, 0f, 73.5f, -31.0f, 38f, 85.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     RES_KNOCKOUT("res-knockout", "R.E.S - K.NOCK O.UT!!", Type.COMPOSITE, 0f, 0f, 73.5f, 16.0f, 38f, 85.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
-    RGX11ZPRO("rgx11zpro", "RGX 11Z PRO", Type.COMPOSITE, 0f, 0f, 73.5f, -21.0f, 38f, 85.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    RGX11ZPRO("rgx11zpro", "RGX 11Z PRO", Type.COMPOSITE, 0f, 0f, 73.5f, -21.0f, 38f, 85.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default", "EP 4", "EP 9", "EP 9 VARIANT 1", "EP 9 VARIANT 2", "EP 9 VARIANT 3"}, null),
     RGX11ZPROEP4("rgx11zproep4", "RGX 11Z PRO, EP 4", Type.COMPOSITE, 0f, 0f, 73.5f, -21.0f, 38f, 85.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
     RGX11ZPROEP9("rgx11zproep9", "RGX 11Z PRO, EP 9", Type.COMPOSITE, 0f, 0f, 73.5f, -21.0f, 38f, 85.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     RUINATION("ruination", "RUINATION", Type.COMPOSITE, 0f, 0f, 70.0f, -23.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
-    SENTINELSOFLIGHT("sentinelsoflight", "SENTINELS OF LIGHT", Type.COMPOSITE, 0f, 0f, 64.0f, -15.0f, 38f, 76.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    SENTINELSOFLIGHT("sentinelsoflight", "SENTINELS OF LIGHT", Type.COMPOSITE, 0f, 0f, 64.0f, -15.0f, 38f, 76.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default", "EP 7", "EP 7 VARIANT 1", "EP 7 VARIANT 2", "EP 7 VARIANT 3"}, null),
     SENTINELSOFLIGHTEP7("sentinelsoflightep7", "SENTINELS OF LIGHT, EP 7", Type.COMPOSITE, 0f, 0f, 64.0f, -15.0f, 38f, 76.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
-    SINGULARITY("singularity", "SINGULARITY", Type.COMPOSITE, 0f, 0f, 70.0f, -10.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default"}, null),
+    SINGULARITY("singularity", "SINGULARITY", Type.COMPOSITE, 0f, 0f, 70.0f, -10.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"Default", "EP 9", "EP 9 VARIANT 1", "EP 9 VARIANT 2", "EP 9 VARIANT 3"}, null),
     SINGULARITYEP9("singularityep9", "SINGULARITY, EP 9", Type.COMPOSITE, 0f, 0f, 70.0f, -10.0f, 38f, 82.0f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     SOLARSTRIDE("solarstride", "SOLARSTRIDE", Type.COMPOSITE, 0f, 0f, 73.5f, -20.0f, 38f, 85.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
-    SOVEREIGN("sovereign", "SOVEREIGN", Type.COMPOSITE, 0f, 0f, 77.5f, -26.0f, 38f, 89.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
+    SOVEREIGN("sovereign", "SOVEREIGN", Type.COMPOSITE, 0f, 0f, 77.5f, -26.0f, 38f, 89.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3", "EP 8", "EP 8 VARIANT 1", "EP 8 VARIANT 2", "EP 8 VARIANT 3"}, null),
     SOVEREIGNEP8("sovereignep8", "SOVEREIGN, EP 8", Type.COMPOSITE, 0f, 0f, 77.5f, -26.0f, 38f, 89.5f, false, true, true, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
     SPECTRUM("spectrum", "SPECTRUM", Type.COMPOSITE, 0f, 0f, 67.5f, 0.0f, 38f, 79.5f, false, true, true, true, true, 6, 0, 0, null, new String[] {"Default"}, null),
     SPLASHX("splashx", "SPLASHX", Type.COMPOSITE, 0f, 0f, 81.5f, -15.0f, 38f, 93.5f, false, true, false, true, true, 5, 0, 0, null, new String[] {"DEFAULT", "VARIANT 1", "VARIANT 2", "VARIANT 3"}, null),
@@ -125,6 +125,8 @@ public enum KillBannerStyle {
     private static final Properties SHARED = new Properties();
     /** Each skin's PrimaryColor per variant from the game's KillBannerData, "RRGGBB,..." (tools/killbanner/game_data.py). */
     private static final Properties ACCENT = new Properties();
+    /** Skins folded into another as its variants: "id=target,offset" and "target.sounds=..." (tools/killbanner/merge_skins.py). */
+    private static final Properties MERGED = new Properties();
 
     static {
         for (KillBannerStyle style : values()) {
@@ -138,6 +140,10 @@ public enum KillBannerStyle {
         }
         try (InputStream in = KillBannerStyle.class.getResourceAsStream("/assets/theladscore/killbanner/accent.properties")) {
             if (in != null) ACCENT.load(in);
+        } catch (IOException ignored) {
+        }
+        try (InputStream in = KillBannerStyle.class.getResourceAsStream("/assets/theladscore/killbanner/merged.properties")) {
+            if (in != null) MERGED.load(in);
         } catch (IOException ignored) {
         }
     }
@@ -158,7 +164,7 @@ public enum KillBannerStyle {
     private int[] accents;
     /** asset() paths asked for every frame, built once. */
     private String frameAsset, ringAsset, heartAsset, tintAsset;
-    private String[] emblemAssets, pipAssets, swapAssets, pipUpAssets, hsEmblemAssets;
+    private String[] emblemAssets, pipAssets, swapAssets, pipUpAssets, hsEmblemAssets, frameAssets, ringAssets, soundIds;
 
     KillBannerStyle(String id, String displayName, Type type, float anchorX, float anchorY, float ring, float markY, float markSize, float labelY,
                     boolean heart, boolean hasFrame, boolean hasRing, boolean hasEmblem, boolean hasPip, int soundCount,
@@ -199,6 +205,40 @@ public enum KillBannerStyle {
         return type == Type.ANIMATED_STRIP;
     }
 
+    /** The skin this one was folded into as extra variants (a later episode of the same line, a bundle's sibling), or null. */
+    public KillBannerStyle mergedInto() {
+        String into = MERGED.getProperty(id);
+        return into == null ? null : byId(into.split(",")[0]);
+    }
+
+    /** Where this folded skin's variants start among {@link #mergedInto()}'s. */
+    public int variantOffset() {
+        String into = MERGED.getProperty(id);
+        return into == null ? 0 : Integer.parseInt(into.split(",")[1].trim());
+    }
+
+    /** True for a skin folded into another: it stays for saved configs but is not offered. */
+    public boolean hidden() {
+        return MERGED.containsKey(id);
+    }
+
+    /** The skins offered to choose from: every one not folded into another. */
+    public static java.util.List<KillBannerStyle> shown() {
+        java.util.List<KillBannerStyle> out = new java.util.ArrayList<>();
+        for (KillBannerStyle s : values()) if (!s.hidden()) out.add(s);
+        return out;
+    }
+
+    /** The skin whose sounds this variant plays ("theladscore:<id>_kill_<n>"): a folded episode keeps its own. */
+    public String soundId(int variant) {
+        String[] ids = soundIds;
+        if (ids == null) {
+            String list = MERGED.getProperty(id + ".sounds");
+            soundIds = ids = list == null ? new String[] {id} : list.split(",");
+        }
+        return ids[Math.max(0, Math.min(ids.length - 1, variant))].trim();
+    }
+
     public String asset(String name) {
         String file = id + "/" + name;
         return "/assets/theladscore/killbanner/" + SHARED.getProperty(file, file);
@@ -210,9 +250,21 @@ public enum KillBannerStyle {
         return s != null ? s : (frameAsset = asset("frame.png"));
     }
 
+    /** The frame for a variant: its own (a folded episode's) where it has one, else the skin's. */
+    public String frameAsset(int variant) {
+        String own = variant > 0 ? optional(frameAssets, v -> frameAssets = v, variant, "frame") : null;
+        return own != null ? own : frameAsset();
+    }
+
     public String ringAsset() {
         String s = ringAsset;
         return s != null ? s : (ringAsset = asset("ring.png"));
+    }
+
+    /** The ring for a variant: its own where it has one, else the skin's. */
+    public String ringAsset(int variant) {
+        String own = variant > 0 ? optional(ringAssets, v -> ringAssets = v, variant, "ring") : null;
+        return own != null ? own : ringAsset();
     }
 
     public String heartAsset() {

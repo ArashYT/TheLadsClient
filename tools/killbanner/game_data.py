@@ -80,7 +80,8 @@ def main():
     # a skin with no art folder of its own draws another skin's art (shared.properties): it takes that skin's data
     donor = {skin: shared[f'{skin}/emblem.png'].split('/')[0] for skin in counts if not (ASSETS / skin).is_dir() and f'{skin}/emblem.png' in shared}
     shared_lines = []
-    accents, table, missing = [], ['| skin | variant | game data | colour | radius | headshot offset | pip Up | headshot badge |', '|---|---|---|---|---|---|---|---|'], []
+    fx_lines = []
+    accents, table, missing = [], ['| skin | variant | game data | colour | radius | headshot offset | pip Up | headshot badge | FX |', '|---|---|---|---|---|---|---|---|---|'], []
     for skin, n in counts.items():
         classes = []
         for v in range(n):
@@ -99,7 +100,7 @@ def main():
                 classes.append(None)
                 continue
             classes.append(cls)
-        colours = []
+        colours, fx_rows = [], []
         last = None
         for v, cls in enumerate(classes):
             r = data[cls]['resolved'] if cls else {}
@@ -124,8 +125,13 @@ def main():
                     copied.append(dst.name)
                     if skin in donor:
                         shared_lines.append(f'{skin}/{file}={donor[skin]}/{file}')
-            table.append(f'| {skin} | {v} | {cls} | {colour} | {radius} | {off} | {up if up else ""} | {badge if badge else ""} |')
+            fx = r.get('FlipBookFX') or []
+            fx = [((x.get('ObjectName', '') if isinstance(x, dict) else str(x)).split("'")[1].rsplit('.', 1)[-1] if "'" in str(x) else str(x)).lower() for x in fx]
+            fx_rows.append(','.join(fx) if fx and fx != ['baset1_fx', 'baset2_fx', 'baset3_fx'] else '')
+            table.append(f'| {skin} | {v} | {cls} | {colour} | {radius} | {off} | {up if up else ""} | {badge if badge else ""} | {",".join(fx)} |')
         accents.append(f'{skin}={",".join(colours)}')
+        if any(fx_rows):
+            fx_lines.append(f'{skin}=' + '|'.join(fx_rows))
     (ASSETS / 'accent.properties').write_text(
         '# Each kill banner skin\'s PrimaryColor per variant, from the game\'s own KillBannerData (tools/killbanner/game_data.py):\n'
         '# the colour of its pips\' hover, its FX and its HEADSHOT box.\n' + '\n'.join(accents) + '\n', encoding='utf-8')
@@ -133,6 +139,10 @@ def main():
     new = [l for l in shared_lines if l.split('=')[0] not in shared]
     if new:
         (ASSETS / 'shared.properties').write_text(text + '\n' + '\n'.join(sorted(new)) + '\n', encoding='utf-8')
+    (ASSETS / 'fx-skins.properties').write_text(
+        '# Skins whose KillBannerData plays other FX flipbooks than the Base tiers (tools/killbanner/game_data.py): per variant' + chr(10)
+        + '# (| between variants) the tier 1, 2 and 3 flipbooks of killbanner/fx.properties; an empty variant plays the Base tiers.' + chr(10)
+        + chr(10).join(fx_lines) + chr(10), encoding='utf-8')
     (HERE / 'out/game-data.md').write_text('# Kill banner skins: the game data each one plays with\n\n' + '\n'.join(table) + '\n'
                                            + ('\nMissing: ' + ', '.join(missing) + '\n' if missing else ''), encoding='utf-8')
     print(f'{len(accents)} skins; missing: {missing}')
