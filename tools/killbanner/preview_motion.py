@@ -5,6 +5,7 @@ kill. Writes an MP4 (60 fps) and a contact sheet per skin.
 python preview_motion.py [--only skin,skin] [--out DIR] [--workers N]
 """
 import argparse
+import os
 import json
 import math
 from concurrent.futures import ProcessPoolExecutor
@@ -16,6 +17,11 @@ from PIL import Image, ImageDraw
 
 import audit_motion as am
 import measure_video as mv
+
+# The sheet's frames (KB_PICKS=9,12,...) and cell size (KB_CELL=520,320), for close looks at a moment.
+PICKS = [int(x) for x in os.environ.get('KB_PICKS', '0,3,6,9,12,16,20,26,32,40,50,60,75,90,110,140,170,200').split(',') if x.strip()]
+CELL_W, CELL_H = [int(x) for x in os.environ.get('KB_CELL', '260,160').split(',')]
+FX_DIR = mv.ASSETS / 'fx'
 
 HERE = Path(__file__).resolve().parent
 FOLDER = Path('G:/Val skins Previews')
@@ -80,6 +86,86 @@ class Art:
         return self.cache[key]
 
 
+def props(path):
+    out = {}
+    for line in path.read_text(encoding='utf-8').splitlines():
+        if '=' in line and not line.startswith('#'):
+            k, v = line.split('=', 1)
+            out[k.strip()] = v.strip()
+    return out
+
+
+FX = {}
+for k, v in props(mv.ASSETS / 'fx.properties').items():
+    name, key = k.rsplit('.', 1)
+    FX.setdefault(name, {})[key] = v
+FX_SKINS = props(mv.ASSETS / 'fx-skins.properties')
+FX_ATLAS = {}
+FLAME_W, FLAME_H, FLAME_Y, TIER_SIZE, LARGE_SIZE, X_W, X_H, X_OFFSET = 199, 224, -30, 256, 300, 80, 250, 100
+FX_DELAY = .05   # the game's sprite timer shows a flipbook's first frame 3 frames (50 ms) after the FX event (measured on Oni's preview)
+
+
+def fx_tier(skin, count):
+    if count < 2:
+        return None
+    tier = 2 if count >= 5 else 1 if count >= 4 else 0
+    names = ['baset1_fx', 'baset2_fx', 'baset3_fx']
+    own = FX_SKINS.get(skin)
+    if own:
+        first = own.split('|')[0].strip()
+        if first:
+            names = [n.strip() for n in first.split(',')]
+    return names[min(tier, len(names) - 1)]
+
+
+def fx_cell(card, art, name, seconds, cx, cy, w, h, angle=0, flip=False):
+    """One flipbook frame as the client draws it: the atlas cell stretched into a box (art px) centred at cx, cy from the
+    ring centre, turned clockwise by angle, mirrored when flip, tinted the skin's colour."""
+    book = FX.get(name)
+    if book is None or seconds < 0:
+        return
+    frames = [int(x) for x in book['frames'].split(',')]
+    i = int((seconds - FX_DELAY) * float(book['fps']))
+    if i < 0:
+        return
+    if i >= len(frames) or frames[i] < 0:
+        return
+    if name not in FX_ATLAS:
+        FX_ATLAS[name] = Image.open(FX_DIR / f'{name}.png').convert('RGBA')
+    atlas = FX_ATLAS[name]
+    cw, ch = [int(x) for x in book['cell'].split(',')]
+    cols = int(book['cols'])
+    c = frames[i]
+    cell = atlas.crop(((c % cols) * cw, (c // cols) * ch, (c % cols) * cw + cw, (c // cols) * ch + ch))
+    a = np.asarray(cell).astype(np.float32)
+    a[:, :, :3] *= np.array(art.accent, dtype=np.float32) / 255
+    cell = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), 'RGBA')
+    cell = cell.resize((max(1, round(w * S)), max(1, round(h * S))), Image.BILINEAR)
+    if flip:
+        cell = cell.transpose(Image.FLIP_LEFT_RIGHT)
+    if angle:
+        cell = cell.rotate(-angle, resample=Image.BICUBIC, expand=True)
+    put(card, cell, mv.CX + cx * S, mv.CY + cy * S)
+
+
+def draw_fx(card, art, skin, count, f, mark):
+    seconds = (f - mark) / 60
+    if seconds < 0:
+        return
+    if count >= 5:
+        for i in range(4):
+            sx, sy = (-1 if i in (0, 3) else 1), (-1 if i < 2 else 1)
+            angle = (-45, 45, 135, -135)[i]
+            fx_cell(card, art, 'fb_x_sparks', seconds, sx * X_OFFSET, sy * X_OFFSET, X_W, X_H, angle)
+    fx_cell(card, art, 'fb_heroflame', seconds, 0, FLAME_Y, FLAME_W, FLAME_H)
+    tier = fx_tier(skin, count)
+    if tier:
+        fx_cell(card, art, tier, seconds, -TIER_SIZE / 2, 0, TIER_SIZE, TIER_SIZE, flip=True)
+        fx_cell(card, art, tier, seconds, TIER_SIZE / 2, 0, TIER_SIZE, TIER_SIZE)
+    if count >= 5:
+        fx_cell(card, art, 'fb_large_sparks', seconds, 0, 0, LARGE_SIZE, LARGE_SIZE)
+
+
 def channel(b, c, f):
     """A channel at banner frame f (60 fps): the intro, then it holds settled (the preview's own hold)."""
     v = b[c]
@@ -98,10 +184,12 @@ def put(card, im, x, y, alpha=1.0, shade=1.0):
     card.alpha_composite(im, (round(x - im.width / 2), round(y - im.height / 2)))
 
 
-def draw(art, b, count, orbit, f):
+def draw(art, b, count, orbit, f, skin=None):
     card = Image.new('RGBA', (mv.CW, mv.CH), (38, 38, 42, 255))
     g = {c: channel(b, c, f) for c in am.CHANNELS}
     cx, cy = mv.CX, mv.CY
+    if skin and 'mark' in b:
+        draw_fx(card, art, skin, count, f, b['mark'])
     if art.frame is not None:
         put(card, art.img(art.frame, S * g['frame.scale']), cx, cy, g['frame.alpha'])
     if art.ring is not None:
@@ -171,7 +259,7 @@ def preview(skin, out):
     out.mkdir(parents=True, exist_ok=True)
     writer = cv2.VideoWriter(str(out / f'preview-{skin}.mp4'), cv2.VideoWriter_fourcc(*'mp4v'), 60, (mv.CW * 2, mv.CH))
     sheet_rows = []
-    picks_all = [0, 3, 6, 9, 12, 16, 20, 26, 32, 40, 50, 60, 75, 90, 110, 140, 170, 200]
+    picks_all = PICKS
     for begin, c, length in jobs:
         picks = [p for p in picks_all if p < length]
         row_v, row_o = [], []
@@ -181,16 +269,16 @@ def preview(skin, out):
                 break
             v = frames[vf]
             v = np.vstack([v[DY:], np.repeat(v[-1:], DY, axis=0)])  # centred on the real banner centre
-            o = draw(art, data[c], c, orbit, f)
+            o = draw(art, data[c], c, orbit, f, skin)
             pair = np.hstack([label(v, f'{skin} k{c} f{f} video'), label(o, 'ours')])
             writer.write(cv2.cvtColor(pair, cv2.COLOR_RGB2BGR))
             if f in picks:
-                row_v.append(cv2.resize(label(v, f'k{c} f{f}'), (260, 160), interpolation=cv2.INTER_AREA))
-                row_o.append(cv2.resize(o, (260, 160), interpolation=cv2.INTER_AREA))
+                row_v.append(cv2.resize(label(v, f'k{c} f{f}'), (CELL_W, CELL_H), interpolation=cv2.INTER_AREA))
+                row_o.append(cv2.resize(o, (CELL_W, CELL_H), interpolation=cv2.INTER_AREA))
         if row_v:
             while len(row_v) < len(picks_all):
-                row_v.append(np.zeros((160, 260, 3), np.uint8))
-                row_o.append(np.zeros((160, 260, 3), np.uint8))
+                row_v.append(np.zeros((CELL_H, CELL_W, 3), np.uint8))
+                row_o.append(np.zeros((CELL_H, CELL_W, 3), np.uint8))
             sheet_rows.append(np.hstack(row_v))
             sheet_rows.append(np.hstack(row_o))
     writer.release()

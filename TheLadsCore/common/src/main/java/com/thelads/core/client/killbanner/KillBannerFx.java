@@ -18,13 +18,21 @@ public final class KillBannerFx {
     public record Book(String name, float fps, int cellW, int cellH, int cols, int[] frames) {
         public String asset() { return "/assets/theladscore/killbanner/fx/" + name + ".png"; }
         public float seconds() { return frames.length / fps; }
-        /** The cell {@code seconds} into the flipbook, or -1 before it starts, on a blank frame or once it is over. */
+        /**
+         * The cell {@code seconds} after the FX event, or -1 before the flipbook's first frame, on a blank frame or once it is
+         * over. The game's sprite widget shows the first frame a timer tick after the event, not at once: measured against
+         * Oni's preview footage, every frame lands {@link #FIRST_TICK} after its event-relative time ({@code frame / fps}).
+         */
         public int cell(float seconds) {
-            if (seconds < 0) return -1;
-            int f = (int) (seconds * fps);
+            float t = seconds - FIRST_TICK;
+            if (t < 0) return -1;
+            int f = (int) (t * fps);
             return f < frames.length ? frames[f] : -1;
         }
     }
+
+    /** Seconds from the FX event to a flipbook's first frame: the sprite widget's first timer tick (measured: 3 frames at 60 fps). */
+    public static final float FIRST_TICK = .05f;
 
     /** Boxes (art px) and places (art px from the ring centre) the game gives its FX widgets. */
     public static final float FLAME_W = 199, FLAME_H = 224, FLAME_Y = -30, TIER_SIZE = 256, LARGE_SIZE = 300, X_W = 80, X_H = 250, X_OFFSET = 100;
