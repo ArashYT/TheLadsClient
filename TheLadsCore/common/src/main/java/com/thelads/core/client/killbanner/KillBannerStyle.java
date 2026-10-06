@@ -118,7 +118,7 @@ public enum KillBannerStyle {
      * Cell pixels per Kingdom Archives art pixel (frame, ring, emblem, pip and swap art, and the composite skins' geometry):
      * their Reaver and Rogue frames laid over the measured strips match at this scale.
      */
-    public static final float ART_SCALE = .73f;
+    public static final float ART_SCALE = .76f;
 
     private static final Map<String, KillBannerStyle> BY_ID = new HashMap<>();
     /** Identical art kept once: "skin/file.png" to the copy shipped (tools/killbanner/dedupe_assets.py). */

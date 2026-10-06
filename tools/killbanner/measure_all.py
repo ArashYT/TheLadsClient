@@ -87,6 +87,10 @@ def main():
         if not good:
             summary[skin] = None
             continue
+        good = [vr for vr in good if vr[1]['emblem'] >= .2]  # an emblem the matcher barely told from the background: no trust in the motion
+        if not good:
+            summary[skin] = None
+            continue
         video, best = max(good, key=lambda vr: (len(vr[1]['measured']), vr[1]['emblem']))
         src = Path(best['scratch']) / f'{skin}.properties'
         dst = mv.ASSETS / 'motion' / f'{skin}.properties'
