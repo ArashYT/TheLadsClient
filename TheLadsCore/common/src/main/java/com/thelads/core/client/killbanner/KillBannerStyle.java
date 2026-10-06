@@ -123,7 +123,7 @@ public enum KillBannerStyle {
     private static final Map<String, KillBannerStyle> BY_ID = new HashMap<>();
     /** Identical art kept once: "skin/file.png" to the copy shipped (tools/killbanner/dedupe_assets.py). */
     private static final Properties SHARED = new Properties();
-    /** Each Kingdom Archives skin's accent colour per variant, "RRGGBB,..." (tools/killbanner/gen_anim_data.py). */
+    /** Each skin's PrimaryColor per variant from the game's KillBannerData, "RRGGBB,..." (tools/killbanner/game_data.py). */
     private static final Properties ACCENT = new Properties();
 
     static {
@@ -158,7 +158,7 @@ public enum KillBannerStyle {
     private int[] accents;
     /** asset() paths asked for every frame, built once. */
     private String frameAsset, ringAsset, heartAsset, tintAsset;
-    private String[] emblemAssets, pipAssets, swapAssets;
+    private String[] emblemAssets, pipAssets, swapAssets, pipUpAssets, hsEmblemAssets;
 
     KillBannerStyle(String id, String displayName, Type type, float anchorX, float anchorY, float ring, float markY, float markSize, float labelY,
                     boolean heart, boolean hasFrame, boolean hasRing, boolean hasEmblem, boolean hasPip, int soundCount,
@@ -256,31 +256,36 @@ public enum KillBannerStyle {
     }
 
     /**
-     * The HEADSHOT label's box colour (RGB): as the skin's preview showed it (Valorant's old headshot banner), else
-     * a darker, duller shade of the variant's accent, the best guess for a skin whose preview never had one.
+     * The HEADSHOT label's box colour (RGB): the skin's PrimaryColor in that variant, as the game tints its headshot
+     * background (HS_Bg, at {@link #HEADSHOT_BOX_ALPHA}) and its pips.
      */
     public int headshotBox(int variant) {
-        int measured = KillBannerTemplate.headshotBox(this);
-        return measured >= 0 ? measured : guessBox(accent(variant));
+        return accent(variant);
     }
 
-    /** A HEADSHOT box colour for an accent (RGB): its hue at half saturation and brightness; a grey accent gives dark grey. */
-    public static int guessBox(int accent) {
-        int r = (accent >> 16) & 255, g = (accent >> 8) & 255, b = accent & 255;
-        int max = Math.max(r, Math.max(g, b)), min = Math.min(r, Math.min(g, b));
-        if (max - min < 40) return 0x4A4A4A;
-        float h = max == r ? (g - b) / (float) (max - min) : max == g ? 2 + (b - r) / (float) (max - min) : 4 + (r - g) / (float) (max - min);
-        if (h < 0) h += 6;
-        float v = .5f, c = v * .48f, x = c * (1 - Math.abs(h % 2 - 1)), m = v - c;
-        float[] rgb = switch ((int) h) {
-            case 0 -> new float[] {c, x, 0};
-            case 1 -> new float[] {x, c, 0};
-            case 2 -> new float[] {0, c, x};
-            case 3 -> new float[] {0, x, c};
-            case 4 -> new float[] {x, 0, c};
-            default -> new float[] {c, 0, x};
-        };
-        return (Math.round((rgb[0] + m) * 255) << 16) | (Math.round((rgb[1] + m) * 255) << 8) | Math.round((rgb[2] + m) * 255);
+    /** The game draws the HEADSHOT box as the skin's colour at this opacity over the banner's dark backdrop. */
+    public static final float HEADSHOT_BOX_ALPHA = .3f;
+
+    /** The pip's Up texture for a variant (the game's KillWheel_Slice_Default, under the coloured hover), or null when the skin ships none. */
+    public String pipUpAsset(int variant) {
+        return optional(pipUpAssets, v -> pipUpAssets = v, variant, "pip_up");
+    }
+
+    /** The skin's headshot badge for a variant (the game's HeadShot_Badge, in the emblem's place on a headshot), or null when it has none. */
+    public String headshotEmblemAsset(int variant) {
+        return optional(hsEmblemAssets, v -> hsEmblemAssets = v, variant, "emblem_hs");
+    }
+
+    /** An asset a skin may lack: its path once it is known to exist, else null ("" marks a known absence). */
+    private String optional(String[] all, java.util.function.Consumer<String[]> keep, int variant, String name) {
+        int v = Math.max(0, Math.min(variantNames.length - 1, variant));
+        if (all == null) keep.accept(all = new String[variantNames.length]);
+        String s = all[v];
+        if (s == null) {
+            String path = asset(v == 0 ? name + ".png" : name + "_v" + v + ".png");
+            all[v] = s = KillBannerStyle.class.getResource(path) != null ? path : "";
+        }
+        return s.isEmpty() ? null : s;
     }
 
     public String swapAsset(int kills) {

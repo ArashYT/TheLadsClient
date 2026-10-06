@@ -12,7 +12,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 MOTION = HERE.parents[1] / 'TheLadsCore/common/src/main/resources/assets/theladscore/killbanner/motion'
 CHANNELS = ['icon.alpha', 'icon.scale', 'icon.y', 'icon.shade', 'ring.alpha', 'ring.scale', 'frame.alpha', 'frame.scale',
-            'pip.alpha', 'pip.radius', 'pip.flare', 'pip.spin']
+            'pip.alpha', 'pip.up', 'pip.scale', 'pip.radius', 'pip.flare', 'pip.spin']
 
 
 def load(path):
@@ -39,6 +39,11 @@ def load(path):
             b['spray'] = value
         else:
             b[name] = np.array([float(x) for x in value.split(',')])
+    for b in data.values():  # older measured files: no Up layer, no pip size, radius as a multiple
+        n = len(b['icon.alpha'])
+        b.setdefault('pip.up', np.zeros(n))
+        b.setdefault('pip.scale', np.ones(n))
+        b.setdefault('radius_px', 'pip.up' in b)
     return data, orbit, box
 
 

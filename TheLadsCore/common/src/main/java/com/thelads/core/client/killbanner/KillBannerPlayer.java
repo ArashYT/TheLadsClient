@@ -10,14 +10,20 @@ import java.util.Random;
  * Pure timing; the adapters draw it.
  */
 public final class KillBannerPlayer {
-    /** The icon's red strobe per frame from MARK_FRAME: four pulses 6 frames (100 ms) apart, measured in both skins. */
-    static final float[] STROBE = {.85f, .27f, .01f, .06f, .38f, 1f, .79f, .25f, .01f, .06f, .40f, 1f, .79f, .27f, .02f,
-        .05f, .39f, .97f, .66f, .22f};
+    /**
+     * The icon's red strobe per frame from the mark: the game's HeadshotFlicker (its emblem red, white, red... every 3
+     * frames, eased, four red pulses 6 frames apart; tools/killbanner/game_template.py prints it from the export).
+     */
+    static final float[] STROBE = {1f, .74f, .26f, 0f, .26f, .74f, 1f, .74f, .26f, 0f, .26f, .74f, 1f, .74f, .26f, 0f, .26f,
+        .74f, 1f, .74f, .26f, 0f};
+    /** The emblem's size over the same frames: it pulses with each red flash, smaller each time. */
+    static final float[] FLICKER_SCALE = {1.155f, 1.115f, 1.040f, 1f, 1.027f, 1.079f, 1.106f, 1.079f, 1.027f, 1f, 1.020f, 1.056f,
+        1.076f, 1.056f, 1.020f, 1f, 1.013f, 1.036f, 1.049f, 1.036f, 1.013f, 1f};
+    /** The headshot reticle lands at twice its size and shrinks onto the emblem over this many frames (0.25 s). */
+    static final int RETICLE_FRAMES = 15;
     /** Reaver's frames stop settled; its way out is drawn: the icon goes (14 frames), the frame stays, then fades. */
     static final int ICON_OUT = 14, FRAME_HOLD = 38, DRAWN_EXIT = 54;
     public static final int MARK_RED = 0xFFC41626, STROBE_RED = 0xFFE2122C;
-    /** The pips' arrival glow at its peak: Rogue's pips give about a sixth more light then, as a soft halo. */
-    static final float FLARE = .6f;
     /** The spray slows (per second) and falls (ring radii per second squared). */
     static final float DRAG = 2.5f, FALL = 1.6f;
     /** Per spray particle: start x, y and velocity x, y (ring radii, per second), width, length (radii), delay, life (s). */
@@ -49,18 +55,22 @@ public final class KillBannerPlayer {
     }
 
     /**
-     * A still skin (KillBannerStyle.Type.COMPOSITE, PHASEGUARD or BANNER_SWAP) at a moment: its measured motion on its layers.
+     * A still skin (KillBannerStyle.Type.COMPOSITE, PHASEGUARD or BANNER_SWAP) at a moment: the game's motion on its layers.
      * Scales are about the ring centre, emblemY is in art pixels (up is negative). The pips sit at pipOrbit times the skin's
      * pip radius, times pipRadius as they slide in, each at pipDegrees[i] in the adapters' angle (0 is the top, running
-     * anticlockwise on screen), their turn included; pipSpin is that turn alone. emblemShade darkens the emblem on the way out;
-     * pipFlare is the glow behind each pip as it arrives; tier is how far a Banner Swap skin has turned from the previous kill's
-     * art into this kill's; spray is seconds into the spray ({@link #particle}), negative before it.
+     * anticlockwise on screen), their turn included; pipSpin is that turn alone. Each pip is its Up texture at pipUp under its
+     * hover texture at pipFlare (the game lights every pip as the banner arrives), both at pipAlpha and pipScale.
+     * emblemShade darkens the emblem on the way out; emblemFlick is the pulse of the headshot flicker (drawn with the mark);
+     * headshot is whether the kill was one (the skin's headshot badge, where it has one, stands in for its emblem); tier is
+     * how far a Banner Swap skin has turned from the previous kill's art into this kill's; spray is seconds into the spray
+     * ({@link #particle}), negative before it.
      */
-    public record Layers(float emblemAlpha, float emblemScale, float emblemY, float emblemShade,
+    public record Layers(float emblemAlpha, float emblemScale, float emblemY, float emblemShade, float emblemFlick,
                          float frameAlpha, float frameScale, float ringAlpha, float ringScale,
-                         float pipAlpha, float pipRadius, float pipOrbit, float[] pipDegrees, float pipSpin, float pipFlare, float tier, float spray,
+                         float pipAlpha, float pipUp, float pipScale, float pipRadius, float pipOrbit, float[] pipDegrees, float pipSpin,
+                         float pipFlare, float tier, float spray,
                          float shadowAlpha, float strobe, float markSize, float markThinAlpha, float markAlpha, int markColor,
-                         float labelAlpha) {}
+                         boolean headshot, float labelAlpha) {}
 
     private KillBannerPlayer() {}
 
@@ -95,11 +105,12 @@ public final class KillBannerPlayer {
         float emblemY = KillBannerTemplate.at(t.iconY, tf) / KillBannerStyle.ART_SCALE, shade = KillBannerTemplate.at(t.iconShade, tf);
         // A Banner Swap skin has one picture a kill count and no pips: it shows the previous kill's and turns into this
         // kill's as the mark lands.
-        float tier = style.type == KillBannerStyle.Type.BANNER_SWAP && k > 1 ? smooth(9, 13, f) : 1;
+        float tier = style.type == KillBannerStyle.Type.BANNER_SWAP && k > 1 ? smooth(t.mark - 2, t.mark + 2, f) : 1;
         float frameAlpha = KillBannerTemplate.at(t.frameAlpha, tf), frameScale = KillBannerTemplate.at(t.frameScale, tf);
         float ringAlpha = KillBannerTemplate.at(t.ringAlpha, tf), ringScale = KillBannerTemplate.at(t.ringScale, tf);
-        float pipAlpha = KillBannerTemplate.at(t.pipAlpha, tf), pipRadius = KillBannerTemplate.at(t.pipRadius, tf);
-        float pipFlare = FLARE * KillBannerTemplate.at(t.pipFlare, tf), pipSpin = -KillBannerTemplate.at(t.pipSpin, tf);
+        float pipAlpha = KillBannerTemplate.at(t.pipAlpha, tf), pipUp = KillBannerTemplate.at(t.pipUp, tf);
+        float pipScale = KillBannerTemplate.at(t.pipScale, tf), pipRadius = 1 + KillBannerTemplate.at(t.pipRadius, tf) / style.ring;
+        float pipFlare = KillBannerTemplate.at(t.pipFlare, tf), pipSpin = -KillBannerTemplate.at(t.pipSpin, tf);
         int count = Math.max(1, Math.min(6, kills));
         float[] pipDegrees = new float[count];
         for (int i = 0; i < count; i++) {
@@ -111,20 +122,23 @@ public final class KillBannerPlayer {
         float leaving = e >= 0 ? 1 - smooth(0, exit, e) : 1;
         int m = t.mark, mt = (int) Math.floor(f) - m;
         float shadow = .5f * smooth(m - 8, m, f) * leaving;
+        // The game's headshot flicker from the mark: the emblem flashes red and pulses, the X over it flashes white against
+        // the red, and the reticle lands at twice its size and shrinks onto it.
         float strobe = mt >= 0 && mt < STROBE.length ? STROBE[mt] : 0;
+        float flick = mt >= 0 && mt < FLICKER_SCALE.length ? FLICKER_SCALE[mt] : 1;
         float size = 0, thin = 0, solid = 0;
         int color = MARK_RED;
         if (mt >= 0) {
-            size = style.markSize * (1 + 1.4f * (float) Math.exp(-mt / 1.5)) * emblemScale;
-            float arriving = 1 - smooth(0, 3, mt);
-            thin = .75f * arriving * emblemAlpha;
-            solid = (1 - arriving) * emblemAlpha;
-            color = mix(MARK_RED, 0xFFFFFFFF, mt > 1 ? smooth(.05f, .45f, strobe) : 1);
+            float landed = smooth(0, RETICLE_FRAMES, f - m);
+            size = style.markSize * (2 - landed) * emblemScale;
+            thin = .75f * (1 - landed) * emblemAlpha;
+            solid = smooth(0, 3, f - m) * emblemAlpha;
+            color = mix(MARK_RED, 0xFFFFFFFF, strobe);
         }
         float label = headshot ? smooth(m - 4, m + 4, f) * (e >= 0 ? 1 - smooth(0, 8, e) : 1) : 0;
-        return new Layers(emblemAlpha, emblemScale, emblemY, shade, frameAlpha, frameScale, ringAlpha, ringScale,
-            pipAlpha, pipRadius, t.orbit, pipDegrees, pipSpin, pipFlare, tier, spray,
-            shadow, strobe * emblemAlpha, size, thin, solid, color, label);
+        return new Layers(emblemAlpha, emblemScale, emblemY, shade, flick, frameAlpha, frameScale, ringAlpha, ringScale,
+            pipAlpha, pipUp, pipScale, pipRadius, t.orbit, pipDegrees, pipSpin, pipFlare, tier, spray,
+            shadow, strobe * emblemAlpha, size, thin, solid, color, headshot, label);
     }
 
     /** Spray particles a banner for this many kills throws (droplets: none for one kill). */
