@@ -25,13 +25,16 @@ class KillBannerFxTest {
     }
 
     @Test
-    void aFlipbookPlaysOneShotAFramePerTick() {
+    void aFlipbookPlaysOneShotAFramePerTickFromItsFirstTimerTick() {
         var t1 = KillBannerFx.book("baset1_fx");
+        float d = KillBannerFx.FIRST_TICK;
+        assertEquals(.05f, d, 1e-6, "the game shows the first frame 50 ms after the FX event (measured on Oni's preview)");
         assertEquals(-1, t1.cell(-.1f), "not yet");
-        assertEquals(t1.frames()[0], t1.cell(0));
-        assertEquals(t1.frames()[10], t1.cell(10 / 40f + .001f), "frame 10 a quarter second in");
-        assertEquals(t1.frames()[48], t1.cell(48 / 40f + .001f));
-        assertEquals(-1, t1.cell(t1.seconds()), "over after its last frame");
+        assertEquals(-1, t1.cell(d - .001f), "nothing until the first timer tick");
+        assertEquals(t1.frames()[0], t1.cell(d));
+        assertEquals(t1.frames()[10], t1.cell(d + 10 / 40f + .001f), "frame 10 a quarter second after that");
+        assertEquals(t1.frames()[48], t1.cell(d + 48 / 40f + .001f));
+        assertEquals(-1, t1.cell(d + t1.seconds()), "over after its last frame");
         assertEquals(1.225, t1.seconds(), .001);
     }
 
