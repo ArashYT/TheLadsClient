@@ -30,7 +30,7 @@ try {
         if ($LASTEXITCODE -ne 0 -or $tagCommit -ne $commit) { throw "Create $tag on the current commit and push it before releasing." }
         $remoteTag = @(git ls-remote origin "refs/tags/$tag" "refs/tags/$tag^{}")
         if ($LASTEXITCODE -ne 0 -or -not ($remoteTag | Where-Object { $_ -match "^$commit\s" })) { throw 'The release tag must point to this commit on origin.' }
-        & gh release view $tag --repo $repo *> $null
+        cmd /c "gh release view $tag --repo $repo >nul 2>&1"
         if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists. Choose a new version; never replace published packages." }
     }
 

@@ -25,7 +25,7 @@ public partial class ModpacksView : UserControl
 {
     private static readonly HttpClient Http = ModrinthModpacks.CreateClient();
     private static readonly string[] LoaderNames = { "Fabric", "Quilt", "Forge", "NeoForge", "Vanilla" }; // order of Modpacks.Loaders
-    private static readonly string[] GameVersions = { "26.3", "26.2", "1.21.11", "1.21.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5", "1.12.2", "1.8.9" };
+    private static readonly string[] GameVersions = GameVersionPolicy.ModrinthGameVersions;
     private static readonly (string Label, string Index)[] BrowseSorts =
         { ("Most downloads", "downloads"), ("Relevance", "relevance"), ("Most follows", "follows"), ("Newest", "newest"), ("Recently updated", "updated") };
     private static readonly Dictionary<string, Bitmap?> RemoteIcons = new();
@@ -53,7 +53,8 @@ public partial class ModpacksView : UserControl
         BrowseLoader.ItemsSource = new[] { "All loaders" }.Concat(LoaderNames.Take(4)).ToArray();
         BrowseSort.ItemsSource = BrowseSorts.Select(s => s.Label).ToArray();
         CreateLoader.ItemsSource = LoaderNames;
-        MineSort.SelectedIndex = MineLoader.SelectedIndex = BrowseVersion.SelectedIndex = BrowseLoader.SelectedIndex = BrowseSort.SelectedIndex = CreateLoader.SelectedIndex = 0;
+        CreateVersion.ItemsSource = GameVersions;
+        MineSort.SelectedIndex = MineLoader.SelectedIndex = BrowseVersion.SelectedIndex = BrowseLoader.SelectedIndex = BrowseSort.SelectedIndex = CreateLoader.SelectedIndex = CreateVersion.SelectedIndex = 0;
         _ready = true;
     }
 
@@ -225,7 +226,7 @@ public partial class ModpacksView : UserControl
 
     private async void CreateConfirm_Click(object? sender, RoutedEventArgs e)
     {
-        string name = (CreateName.Text ?? "").Trim(), version = (CreateVersion.Text ?? "").Trim();
+        string name = (CreateName.Text ?? "").Trim(), version = (CreateVersion.SelectedItem as string ?? CreateVersion.Text ?? "26.3").Trim();
         string loader = Modpacks.Loaders[Math.Max(0, CreateLoader.SelectedIndex)];
         if (name.Length == 0) { CreateStatus.Text = "Give the modpack a name."; return; }
         try { GameVersionPolicy.ValidateMinecraftVersion(version); }
@@ -584,6 +585,20 @@ public partial class ModpacksView : UserControl
         RenderAllContent();
     }
 
+    private ContentKind AddContentKind => _addContentType switch
+    {
+        "resourcepack" => ContentKind.ResourcePack,
+        "shader" => ContentKind.Shader,
+        "datapack" => ContentKind.DataPack,
+        _ => ContentKind.Mod
+    };
+
+    private ContentCatalog Catalog()
+    {
+        var settings = LauncherSettings.Load();
+        return new ContentCatalog(Http, settings.ModrinthApiUrl, settings.CurseForgeApiUrl, settings.CurseForgeApiKey);
+    }
+
     private void OpenAddContent(string projectType, string title, string targetDir)
     {
         if (_selected is not { } i) return;
@@ -594,8 +609,25 @@ public partial class ModpacksView : UserControl
         AddContentSearchBox.Text = "";
         AddContentResults.Children.Clear();
         AddContentStatus.Text = "";
+
+        if (AddContentKind == ContentKind.Shader)
+            AddContentCategory.ItemsSource = new[] { "All categories", "Realistic", "Fantasy", "Performance", "Vibrant", "Cel-shaded", "Vanilla-like" };
+        else if (AddContentKind == ContentKind.DataPack)
+            AddContentCategory.ItemsSource = new[] { "All categories", "Adventure", "Magic", "Technology", "Utility", "Worldgen", "Minigame" };
+        else if (AddContentKind == ContentKind.ResourcePack)
+            AddContentCategory.ItemsSource = new[] { "All categories", "16x", "32x", "64x", "128x", "Faithful", "Realistic", "Medieval", "Vanilla-like" };
+        else
+            AddContentCategory.ItemsSource = new[] { "All categories", "Adventure", "Cursed", "Decoration", "Economy", "Equipment", "Food", "Game Mechanics", "Magic", "Management", "Minigame", "Mobs", "Optimization", "Social", "Storage", "Technology", "Transportation", "Utility", "Worldgen" };
+        AddContentCategory.SelectedIndex = 0;
+
         AddContentPanel.IsVisible = true;
         _ = SearchAddContentAsync("");
+    }
+
+    private void AddContentFilter_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!AddContentPanel.IsVisible || _selected == null) return;
+        _ = SearchAddContentAsync(AddContentSearchBox.Text ?? "");
     }
 
     private void AddContentBack_Click(object? sender, RoutedEventArgs e)
@@ -612,18 +644,23 @@ public partial class ModpacksView : UserControl
         if (_selected is not { } i) return;
         _addContentSearchCts?.Cancel();
         var cts = _addContentSearchCts = new CancellationTokenSource();
-        AddContentStatus.Text = "Searching Modrinth...";
+        string provider = (AddContentProvider?.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
+        AddContentStatus.Text = $"Searching {provider}...";
         AddContentResults.Children.Clear();
         try
         {
-            var hits = await ModrinthModpacks.SearchContentAsync(Http, query, _addContentType, i.McVersion, i.Loader, "relevance", 0, cts.Token);
+            string? sort = (AddContentSort?.SelectedItem as ComboBoxItem)?.Content as string;
+            string? cat = AddContentCategory?.SelectedItem as string;
+            if (cat == "All categories") cat = null;
+
+            var hits = await Catalog().SearchAsync(provider, AddContentKind, query, i.McVersion, i.Loader, cat, sort, cts.Token);
             if (cts.IsCancellationRequested) return;
             if (hits.Count == 0)
             {
-                AddContentStatus.Text = "No compatible results found on Modrinth for this Minecraft version and loader.";
+                AddContentStatus.Text = $"No compatible results found on {provider} for this Minecraft version and loader.";
                 return;
             }
-            AddContentStatus.Text = $"Found {hits.Count} results:";
+            AddContentStatus.Text = $"Found {hits.Count} results on {provider}:";
             foreach (var hit in hits)
             {
                 AddContentResults.Children.Add(CreateAddContentResultRow(hit));
@@ -636,7 +673,7 @@ public partial class ModpacksView : UserControl
         }
     }
 
-    private Control CreateAddContentResultRow(ModpackHit hit)
+    private Control CreateAddContentResultRow(ModSearchItem hit)
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         var icon = new Border { Width = 56, Height = 56, CornerRadius = new CornerRadius(6), ClipToBounds = true, Background = new SolidColorBrush(Color.Parse("#2A2B31")), VerticalAlignment = VerticalAlignment.Top };
@@ -646,12 +683,12 @@ public partial class ModpacksView : UserControl
         var text = new StackPanel { Spacing = 2, Margin = new Thickness(12, 0, 12, 0) };
         var title = new TextBlock { TextWrapping = TextWrapping.Wrap, Inlines = new Avalonia.Controls.Documents.InlineCollection
         {
-            new Avalonia.Controls.Documents.Run(hit.Title) { FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White },
+            new Avalonia.Controls.Documents.Run(hit.Name) { FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White },
             new Avalonia.Controls.Documents.Run("  by " + hit.Author) { FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")) }
         } }.Untranslated();
         text.Children.Add(title);
-        text.Children.Add(new TextBlock { Text = hit.Description, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = new SolidColorBrush(Color.Parse("#C9CAD1")), FontSize = 11 });
-        text.Children.Add(new TextBlock { Text = $"{Downloads(hit.Downloads)} downloads  ·  {string.Join(", ", hit.Loaders.Select(LoaderName))}", FontSize = 10, Foreground = new SolidColorBrush(Color.Parse("#8F919B")) });
+        text.Children.Add(new TextBlock { Text = hit.Summary, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = new SolidColorBrush(Color.Parse("#C9CAD1")), FontSize = 11 });
+        text.Children.Add(new TextBlock { Text = $"{Downloads(hit.DownloadCount)} downloads  ·  {hit.Provider}", FontSize = 10, Foreground = new SolidColorBrush(Color.Parse("#8F919B")) });
         Grid.SetColumn(text, 1);
         grid.Children.Add(text);
 
@@ -664,9 +701,12 @@ public partial class ModpacksView : UserControl
             installBtn.Content = "Installing...";
             try
             {
-                string savedFile = await ModrinthModpacks.DownloadLatestFileAsync(Http, hit.ProjectId, _addContentType, instance.McVersion, instance.Loader, _addContentTargetDir, CancellationToken.None);
+                var file = await Catalog().LatestFileAsync(hit, AddContentKind, instance.McVersion, instance.Loader);
+                if (file == null) throw new InvalidOperationException($"No release found for Minecraft {instance.McVersion} and loader {instance.Loader}.");
+                Directory.CreateDirectory(_addContentTargetDir);
+                string savedFile = await Catalog().InstallAsync(file, _addContentTargetDir, SharedContentService.Instance);
                 installBtn.Content = "✓ Installed";
-                ManageStatus.Text = $"Installed {savedFile}!";
+                ManageStatus.Text = $"Installed {Path.GetFileName(savedFile)}!";
             }
             catch (Exception ex)
             {

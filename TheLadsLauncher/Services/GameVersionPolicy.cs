@@ -13,6 +13,62 @@ public static class GameVersionPolicy
     public const string ForgeMinecraftVersion = "1.8.9", ForgeBuild = "11.15.1.2318";
     public const string ForgeVersionId = "1.8.9-forge1.8.9-11.15.1.2318-1.8.9";
 
+    /// <summary>Compares Minecraft versions descending: 26.x or newer at the top (sorted numerically), then 1.21.x, down to 1.8.9.</summary>
+    public static int CompareDescending(string? v1, string? v2)
+    {
+        if (string.Equals(v1, v2, StringComparison.OrdinalIgnoreCase)) return 0;
+        if (string.IsNullOrWhiteSpace(v1)) return 1;
+        if (string.IsNullOrWhiteSpace(v2)) return -1;
+
+        var parts1 = v1.Split(new[] { '.', '-', '+' }, StringSplitOptions.RemoveEmptyEntries);
+        var parts2 = v2.Split(new[] { '.', '-', '+' }, StringSplitOptions.RemoveEmptyEntries);
+
+        int maxLen = Math.Max(parts1.Length, parts2.Length);
+        for (int i = 0; i < maxLen; i++)
+        {
+            string s1 = i < parts1.Length ? parts1[i] : "";
+            string s2 = i < parts2.Length ? parts2[i] : "";
+            bool isNum1 = int.TryParse(s1, out int n1);
+            bool isNum2 = int.TryParse(s2, out int n2);
+
+            if (isNum1 && isNum2)
+            {
+                if (n1 != n2) return n2.CompareTo(n1); // descending: higher numbers first
+            }
+            else if (isNum1 != isNum2)
+            {
+                return isNum1 ? -1 : 1;
+            }
+            else
+            {
+                int cmp = string.Compare(s2, s1, StringComparison.OrdinalIgnoreCase);
+                if (cmp != 0) return cmp;
+            }
+        }
+        return string.Compare(v2, v1, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>All release versions supported for modpacks and searches on Modrinth, sorted newest/highest first.</summary>
+    public static readonly string[] ModrinthGameVersions = new[]
+    {
+        "26.3", "26.2", "26.1.2", "26.1.1", "26.1",
+        "1.21.11", "1.21.10", "1.21.9", "1.21.8", "1.21.7", "1.21.6", "1.21.5", "1.21.4", "1.21.3", "1.21.2", "1.21.1", "1.21",
+        "1.20.6", "1.20.5", "1.20.4", "1.20.3", "1.20.2", "1.20.1", "1.20",
+        "1.19.4", "1.19.3", "1.19.2", "1.19.1", "1.19",
+        "1.18.2", "1.18.1", "1.18",
+        "1.17.1", "1.17",
+        "1.16.5", "1.16.4", "1.16.3", "1.16.2", "1.16.1", "1.16",
+        "1.15.2", "1.15.1", "1.15",
+        "1.14.4", "1.14.3", "1.14.2", "1.14.1", "1.14",
+        "1.13.2", "1.13.1", "1.13",
+        "1.12.2", "1.12.1", "1.12",
+        "1.11.2", "1.11.1", "1.11",
+        "1.10.2", "1.10.1", "1.10",
+        "1.9.4", "1.9.3", "1.9.2", "1.9.1", "1.9",
+        "1.8.9", "1.8.8", "1.8.7", "1.8",
+        "1.7.10"
+    };
+
     public static bool RequiresBundledCore(string minecraftVersion) =>
         minecraftVersion is "1.21.11" or "26.2" or "26.3" or ForgeMinecraftVersion;
 

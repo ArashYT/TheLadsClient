@@ -13,6 +13,29 @@
       <Setter Property="Background" Value="#24252B" />
       <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
     </Style>
+    <Style Selector="TabItem">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="#B2B4C2" />
+      <Setter Property="Background" Value="#1C1D22" />
+      <Setter Property="BorderBrush" Value="#2D2E36" />
+      <Setter Property="BorderThickness" Value="1,1,1,0" />
+      <Setter Property="CornerRadius" Value="6,6,0,0" />
+      <Setter Property="Padding" Value="20,10" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="TabItem:pointerover">
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Background" Value="#2A2B33" />
+      <Setter Property="BorderBrush" Value="#3F404D" />
+    </Style>
+    <Style Selector="TabItem:selected">
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Background" Value="#24252D" />
+      <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
+      <Setter Property="BorderThickness" Value="1,2,1,0" />
+    </Style>
   </UserControl.Styles>
   <Grid>
     <!-- My Modpacks and Browse -->
@@ -162,7 +185,7 @@
           <TextBlock Classes="caption" Text="NAME" />
           <TextBox x:Name="CreateName" PlaceholderText="My modpack" />
           <TextBlock Classes="caption" Text="MINECRAFT VERSION" />
-          <TextBox x:Name="CreateVersion" Text="26.3" />
+          <ComboBox x:Name="CreateVersion" HorizontalAlignment="Stretch" />
           <TextBlock Classes="caption" Text="LOADER" />
           <ComboBox x:Name="CreateLoader" HorizontalAlignment="Stretch" />
           <TextBlock Text="The newest loader version for that Minecraft version is used. Add mods to its mods folder (Open folder)." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" />
@@ -186,9 +209,21 @@
           </StackPanel>
           <Button Grid.Column="2" Classes="action" Content="Done" Height="34" Click="AddContentBack_Click" />
         </Grid>
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,14,0,14">
-          <TextBox x:Name="AddContentSearchBox" PlaceholderText="Search Modrinth..." KeyDown="AddContentSearch_KeyDown" />
-          <Button Grid.Column="1" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="AddContentSearch_Click" />
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,14,0,14">
+          <TextBox x:Name="AddContentSearchBox" PlaceholderText="Search content..." KeyDown="AddContentSearch_KeyDown" />
+          <ComboBox x:Name="AddContentProvider" Grid.Column="1" Width="120" Height="34" SelectedIndex="0" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
+            <ComboBoxItem Content="Modrinth" />
+            <ComboBoxItem Content="CurseForge" />
+          </ComboBox>
+          <ComboBox x:Name="AddContentSort" Grid.Column="2" Width="130" Height="34" SelectedIndex="0" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
+            <ComboBoxItem Content="Most downloads" />
+            <ComboBoxItem Content="Relevance" />
+            <ComboBoxItem Content="Most follows" />
+            <ComboBoxItem Content="Newest" />
+            <ComboBoxItem Content="Recently updated" />
+          </ComboBox>
+          <ComboBox x:Name="AddContentCategory" Grid.Column="3" Width="130" Height="34" SelectedIndex="0" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed" />
+          <Button Grid.Column="4" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="AddContentSearch_Click" />
         </Grid>
         <Grid Grid.Row="2" RowDefinitions="Auto,*">
           <TextBlock x:Name="AddContentStatus" Foreground="#A0A1AA" Margin="0,0,0,8" />

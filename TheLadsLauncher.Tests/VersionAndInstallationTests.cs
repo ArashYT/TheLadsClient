@@ -252,4 +252,29 @@ public class VersionAndInstallationTests
         using var writer = new StreamWriter(zip.CreateEntry("fabric.mod.json").Open());
         writer.Write(JsonSerializer.Serialize(new { schemaVersion = 1, id, version = "test", depends = new { minecraft = version } }));
     }
+
+    [Fact]
+    public void VersionSortingOrderIsStrictlyDescending()
+    {
+        var unsorted = new[] { "1.8.9", "1.21.11", "26.2", "26.3", "26.1.2", "27.0", "1.7.10", "1.20.1", "26.1" };
+        var list = unsorted.ToList();
+        list.Sort(GameVersionPolicy.CompareDescending);
+
+        Assert.Equal(new[] { "27.0", "26.3", "26.2", "26.1.2", "26.1", "1.21.11", "1.20.1", "1.8.9", "1.7.10" }, list);
+    }
+
+    [Fact]
+    public void ModrinthGameVersionsAreSortedDescending()
+    {
+        var versions = GameVersionPolicy.ModrinthGameVersions;
+        Assert.NotEmpty(versions);
+        Assert.Equal("26.3", versions[0]);
+        Assert.Equal("1.7.10", versions[^1]);
+
+        for (int i = 0; i < versions.Length - 1; i++)
+        {
+            int cmp = GameVersionPolicy.CompareDescending(versions[i], versions[i + 1]);
+            Assert.True(cmp <= 0, $"{versions[i]} should rank before or equal to {versions[i + 1]} in descending order");
+        }
+    }
 }
