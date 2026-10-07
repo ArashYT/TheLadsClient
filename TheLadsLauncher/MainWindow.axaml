@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui" xmlns:local="using:TheLadsLauncher.Controls" xmlns:views="using:TheLadsLauncher.Views" xmlns:models="using:TheLadsLauncher.Models" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.MainWindow" Title="The Lads Client" Width="1152" Height="720" MinWidth="960" MinHeight="600" Background="#17181B" Icon="avares://TheLadsLauncher/Assets/icon.ico" WindowStartupLocation="CenterScreen" ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="44" WindowDecorations="BorderOnly">
+<Window xmlns="https://github.com/avaloniaui" xmlns:local="using:TheLadsLauncher.Controls" xmlns:views="using:TheLadsLauncher.Views" xmlns:models="using:TheLadsLauncher.Models" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.MainWindow" Title="The Lads Client" Width="1280" Height="720" MinWidth="960" MinHeight="540" Background="#17181B" Icon="avares://TheLadsLauncher/Assets/icon.ico" WindowStartupLocation="CenterScreen" ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="44" WindowDecorations="BorderOnly">
     <Window.Resources>
         <DataTemplate x:Key="ModListItemTemplate">
             <Border Classes="modcard" Background="#1D1E22" CornerRadius="4" Padding="16,12" BorderBrush="#303137" BorderThickness="1" Margin="0,0,0,8">
@@ -346,7 +346,7 @@
                     </Grid>
                     <Grid x:Name="SettingsPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,*,Auto">
                         <TextBlock Text="Settings" FontSize="26" FontWeight="SemiBold" Margin="0,0,0,16" />
-                        <TabControl Grid.Row="1">
+                        <TabControl Grid.Row="1" x:Name="SettingsTabControl" Classes="pills">
                             <TabItem Header="General">
                                 <ScrollViewer Margin="0,16,0,16">
                                     <StackPanel Spacing="16">
@@ -503,33 +503,7 @@
                         <TextBlock x:Name="SettingsSaveStatus" Grid.Row="2" VerticalAlignment="Center" Foreground="#A4BAA7" FontSize="12" Text="Changes save automatically" />
                     </Grid>
                     <Grid x:Name="ModsPage" IsVisible="False" Margin="28,24,28,24" DragDrop.AllowDrop="True" RowDefinitions="*,Auto">
-                        <TabControl x:Name="ModsSubTabControl">
-                            <TabControl.Styles>
-                                <Style Selector="TabItem">
-                                    <Setter Property="FontSize" Value="18" />
-                                    <Setter Property="FontWeight" Value="Bold" />
-                                    <Setter Property="Foreground" Value="#B2B4C2" />
-                                    <Setter Property="Background" Value="#1C1D22" />
-                                    <Setter Property="BorderBrush" Value="#2D2E36" />
-                                    <Setter Property="BorderThickness" Value="1,1,1,0" />
-                                    <Setter Property="CornerRadius" Value="6,6,0,0" />
-                                    <Setter Property="Padding" Value="26,14" />
-                                    <Setter Property="MinHeight" Value="48" />
-                                    <Setter Property="Margin" Value="0,0,6,0" />
-                                    <Setter Property="Cursor" Value="Hand" />
-                                </Style>
-                                <Style Selector="TabItem:pointerover">
-                                    <Setter Property="Foreground" Value="White" />
-                                    <Setter Property="Background" Value="#2A2B33" />
-                                    <Setter Property="BorderBrush" Value="#3F404D" />
-                                </Style>
-                                <Style Selector="TabItem:selected">
-                                    <Setter Property="Foreground" Value="White" />
-                                    <Setter Property="Background" Value="#24252D" />
-                                    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
-                                    <Setter Property="BorderThickness" Value="1,3,1,0" />
-                                </Style>
-                            </TabControl.Styles>
+                        <TabControl x:Name="ModsSubTabControl" Classes="pills">
                             <TabItem x:Name="ModsInstalledTab" Header="Installed Mods">
                                 <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="0,12,0,0">
                                     <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,10">

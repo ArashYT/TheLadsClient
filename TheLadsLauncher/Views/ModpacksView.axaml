@@ -13,30 +13,6 @@
       <Setter Property="Background" Value="#24252B" />
       <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
     </Style>
-    <Style Selector="TabItem">
-      <Setter Property="FontSize" Value="18" />
-      <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="Foreground" Value="#B2B4C2" />
-      <Setter Property="Background" Value="#1C1D22" />
-      <Setter Property="BorderBrush" Value="#2D2E36" />
-      <Setter Property="BorderThickness" Value="1,1,1,0" />
-      <Setter Property="CornerRadius" Value="6,6,0,0" />
-      <Setter Property="Padding" Value="26,14" />
-      <Setter Property="MinHeight" Value="48" />
-      <Setter Property="Margin" Value="0,0,6,0" />
-      <Setter Property="Cursor" Value="Hand" />
-    </Style>
-    <Style Selector="TabItem:pointerover">
-      <Setter Property="Foreground" Value="White" />
-      <Setter Property="Background" Value="#2A2B33" />
-      <Setter Property="BorderBrush" Value="#3F404D" />
-    </Style>
-    <Style Selector="TabItem:selected">
-      <Setter Property="Foreground" Value="White" />
-      <Setter Property="Background" Value="#24252D" />
-      <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
-      <Setter Property="BorderThickness" Value="1,3,1,0" />
-    </Style>
   </UserControl.Styles>
   <Grid>
     <!-- My Modpacks and Browse -->
@@ -45,7 +21,7 @@
         <TextBlock Text="Modpacks" FontSize="22" FontWeight="Bold" />
         <TextBlock Text="Modrinth modpacks as separate instances: their own mods, worlds and settings. They never use the Lads profiles' mods or Lads Core." Foreground="#A0A1AA" TextWrapping="Wrap" />
       </StackPanel>
-      <TabControl x:Name="Tabs" Grid.Row="1" Margin="0,10,0,0" SelectionChanged="Tabs_Changed">
+      <TabControl x:Name="Tabs" Classes="pills" Padding="0" Grid.Row="1" Margin="0,12,0,0" SelectionChanged="Tabs_Changed">
         <TabItem x:Name="MineTab" Header="My Modpacks" />
         <TabItem x:Name="BrowseTab" Header="Browse" />
       </TabControl>
@@ -93,7 +69,7 @@
         </StackPanel>
       </Grid>
       <TextBlock x:Name="ManageStatus" Grid.Row="1" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,14,0,0" />
-      <TabControl x:Name="InstanceTabs" Grid.Row="2" Margin="0,10,0,0" SelectionChanged="InstanceTabs_SelectionChanged">
+      <TabControl x:Name="InstanceTabs" Classes="pills" Grid.Row="2" Margin="0,16,0,0" SelectionChanged="InstanceTabs_SelectionChanged">
         <!-- Overview Tab -->
         <TabItem x:Name="TabOverview" Header="Overview">
           <ScrollViewer Margin="0,12,0,0">
