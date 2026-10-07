@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:TheLadsLauncher.Views"
+             xmlns:controls="clr-namespace:TheLadsLauncher.Controls"
              x:Class="TheLadsLauncher.Views.SkinsView">
   <UserControl.Styles>
     <Style Selector="Border.card">
@@ -35,15 +36,26 @@
         <StackPanel Spacing="14">
           <Border Classes="card">
             <Grid ColumnDefinitions="Auto,*">
-              <Border x:Name="SelectedPreview" Width="80" Height="160" Background="#121315" CornerRadius="4" />
-              <StackPanel Grid.Column="1" Margin="18,0,0,0" Spacing="8">
+              <StackPanel>
+                <Border Background="#121315" CornerRadius="8" Padding="6" BorderBrush="#2A2B31" BorderThickness="1"
+                        ToolTip.Tip="Drag to rotate • Scroll to zoom • Double-click to reset">
+                  <controls:SkinModel3D x:Name="Player3D" Width="220" Height="300" />
+                </Border>
+                <Border x:Name="SelectedPreview" IsVisible="False" />
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
+                  <CheckBox x:Name="Layers3DCheck" Content="3D Skin Layers" IsChecked="True" FontSize="11" VerticalAlignment="Center" />
+                  <Button Grid.Column="2" Classes="action" Content="Reset View" FontSize="11" Padding="8,4" Click="ResetView_Click" />
+                </Grid>
+                <TextBlock Text="Drag to rotate · Scroll to zoom" Foreground="#767884" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Margin="20,0,0,0" Spacing="8">
                 <TextBlock Text="SELECTED SKIN" Classes="caption" />
                 <TextBox x:Name="SkinName" PlaceholderText="Name" LostFocus="SkinName_LostFocus" />
                 <StackPanel Orientation="Horizontal" Spacing="14">
                   <RadioButton x:Name="ClassicModel" GroupName="SkinModel" Content="Classic (wide arms)" IsChecked="True" IsCheckedChanged="Model_Changed" />
                   <RadioButton x:Name="SlimModel" GroupName="SkinModel" Content="Slim (thin arms)" IsCheckedChanged="Model_Changed" />
                 </StackPanel>
-                <WrapPanel>
+                <WrapPanel Margin="0,4,0,0">
                   <Button x:Name="ApplySkinBtn" Classes="launch" Content="Apply skin" Foreground="White" FontWeight="Bold" Padding="18,8" Margin="0,0,8,8" Click="ApplySkin_Click" />
                   <Button x:Name="EditSkinBtn" Classes="action" Content="Open in editor" Padding="12,8" Margin="0,0,8,8" Click="EditSkin_Click" />
                   <Button x:Name="DeleteSkinBtn" Classes="danger" Content="Delete" Padding="12,8" Margin="0,0,8,8" Click="DeleteSkin_Click" />

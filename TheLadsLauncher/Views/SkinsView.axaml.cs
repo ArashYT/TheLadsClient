@@ -37,6 +37,14 @@ public partial class SkinsView : UserControl
         InitializeComponent();
         Editor.SkinSaved += async (_, png) => await AddAsync(() => Task.FromResult((png, "Edited " + DateTime.Now.ToString("yyyy-MM-dd HH.mm"), Model())));
         Editor.LogMessage += (_, text) => Status.Text = text;
+        Layers3DCheck.IsCheckedChanged += (_, _) => Player3D.Layers3D = Layers3DCheck.IsChecked == true;
+        CapeList.SelectionChanged += async (_, _) =>
+        {
+            var cape = (CapeList.SelectedItem as ListBoxItem)?.Tag as ProfileCape;
+            if (cape == null) { Player3D.SetCape(null); return; }
+            var tex = await TextureAsync(cape.Url);
+            Player3D.SetCape(tex != null ? TheLadsLauncher.Controls.SkinModel3D.ReadPixels(tex) : null);
+        };
     }
 
     private SkinLibrary Library => _library ??= new SkinLibrary(PathService.Instance.BaseDirectory);
@@ -109,8 +117,38 @@ public partial class SkinsView : UserControl
         ClassicModel.IsChecked = skin?.Model != "slim";
         _rendering = false;
         SelectedPreview.Child = skin == null ? null : Preview(skin, skin.Model, 5);
+        Update3DPreview(skin);
         DeleteSkinBtn.Content = "Delete";
         SetEnabled();
+    }
+
+    private void ResetView_Click(object? sender, RoutedEventArgs e) => Player3D.ResetView();
+
+    private void Update3DPreview(SavedSkin? skin)
+    {
+        if (skin == null)
+        {
+            Player3D.SetSkin(null, false);
+            return;
+        }
+        try
+        {
+            string path = Library.PathOf(skin);
+            if (File.Exists(path))
+            {
+                using var bmp = Decode(File.ReadAllBytes(path));
+                var skinImg = TheLadsLauncher.Controls.SkinModel3D.ReadPixels(bmp);
+                Player3D.SetSkin(skinImg, skin.Model == "slim");
+            }
+            else
+            {
+                Player3D.SetSkin(null, false);
+            }
+        }
+        catch
+        {
+            Player3D.SetSkin(null, false);
+        }
     }
 
     private void SkinList_SelectionChanged(object? sender, SelectionChangedEventArgs e) { if (!_rendering) ShowSelected(); }
