@@ -1,34 +1,110 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.ServersView">
-  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="28,24">
-    <StackPanel Spacing="6">
-      <TextBlock Text="Servers" FontSize="22" FontWeight="Bold" />
-      <TextBlock Text="Find servers and add them to a server list. The global .minecraft list is the one every Lads version shows; a modpack has its own." Foreground="#A0A1AA" TextWrapping="Wrap" />
+  <UserControl.Styles>
+    <!-- Row actions stay quiet until their card is hovered, so a long list reads as servers rather than buttons. -->
+    <Style Selector="Border.server StackPanel.rowActions">
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+    <Style Selector="Border.server:pointerover StackPanel.rowActions">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.icon.small">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.icon.small:disabled">
+      <Setter Property="Opacity" Value="0.3" />
+    </Style>
+    <Style Selector="Button.icon.danger.confirm">
+      <Setter Property="Width" Value="NaN" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="Background" Value="#443033" />
+      <Setter Property="BorderBrush" Value="#7A3D44" />
+      <Setter Property="Foreground" Value="#FFBBBB" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Margin="28,24">
+    <StackPanel Spacing="4">
+      <TextBlock Classes="pageTitle" Text="Servers" />
+      <TextBlock Classes="pageSubtitle" Text="Your saved servers with live status, and popular servers to add. The global list is the one every Lads version shows; a modpack has its own." />
     </StackPanel>
-    <WrapPanel Grid.Row="1" Margin="0,18,0,8">
-      <TextBlock Text="Server list" VerticalAlignment="Center" Margin="0,0,10,8" />
-      <ComboBox x:Name="Target" Classes="notranslate" Width="320" Margin="0,0,8,8" SelectionChanged="TargetChanged" />
-      <Button Content="Refresh" Click="Refresh" Margin="0,0,8,8" />
-    </WrapPanel>
-    <TextBlock x:Name="Status" Grid.Row="2" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,0,0,12" />
-    <Grid Grid.Row="3" ColumnDefinitions="330,24,*">
-      <Grid RowDefinitions="Auto,Auto,*">
-        <Border Background="#202126" CornerRadius="4" Padding="16">
-          <StackPanel Spacing="8">
-            <TextBlock Text="Add a server" FontSize="16" FontWeight="SemiBold" />
-            <TextBox x:Name="AddressBox" PlaceholderText="Address, e.g. play.example.com" TextChanged="AddressChanged" />
-            <TextBox x:Name="NameBox" PlaceholderText="Minecraft Server" />
-            <TextBlock Text="The name fills in from the address until you type one." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" />
-            <Button Content="Add to list" Classes="action" HorizontalAlignment="Left" Click="AddTyped" />
+
+    <!-- Sub-tabs, and the list both of them read and add to. -->
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,16,0,0">
+      <TabControl x:Name="Tabs" Classes="pills" Padding="0" SelectionChanged="TabsChanged">
+        <TabItem x:Name="MineTab" Header="My Servers" />
+        <TabItem x:Name="BrowseTab" Header="Browse" />
+      </TabControl>
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <TextBlock Classes="muted" Text="Server list" VerticalAlignment="Center" />
+        <ComboBox x:Name="Target" Classes="notranslate" Width="300" Height="36" SelectionChanged="TargetChanged" />
+      </StackPanel>
+    </Grid>
+
+    <Grid Grid.Row="2" Margin="0,14,0,0">
+      <Grid x:Name="MineToolbar" ColumnDefinitions="*,Auto,Auto">
+        <TextBox x:Name="MineSearch" Height="36" PlaceholderText="Filter saved servers…" TextChanged="MineSearchChanged" />
+        <Button Grid.Column="1" Classes="action" Height="36" Margin="8,0,0,0" Click="Refresh" ToolTip.Tip="Ping every server again">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon x:Name="RefreshGlyph" Width="13" Height="13" />
+            <TextBlock Text="Refresh" VerticalAlignment="Center" />
           </StackPanel>
-        </Border>
-        <TextBlock x:Name="SavedTitle" Grid.Row="1" Text="Saved servers" FontSize="16" FontWeight="SemiBold" Margin="0,18,0,8" />
-        <ScrollViewer Grid.Row="2"><StackPanel x:Name="SavedRows" Spacing="6" /></ScrollViewer>
+        </Button>
+        <Button x:Name="AddToggle" Grid.Column="2" Classes="launch" Height="36" Padding="16,0" Margin="8,0,0,0" Click="ToggleAdd">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon x:Name="AddGlyph" Width="12" Height="12" />
+            <TextBlock Text="Add server" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
       </Grid>
-      <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*">
-        <TextBlock Text="Find servers" FontSize="16" FontWeight="SemiBold" />
-        <TextBox x:Name="Search" Grid.Row="1" PlaceholderText="Search by name, address or type…" Margin="0,8,0,8" TextChanged="SearchChanged" />
-        <ScrollViewer Grid.Row="2"><StackPanel x:Name="FindRows" Spacing="6" /></ScrollViewer>
+      <Grid x:Name="BrowseToolbar" ColumnDefinitions="*,Auto,Auto,Auto" IsVisible="False">
+        <TextBox x:Name="Search" Height="36" PlaceholderText="Search by name, address or type…" TextChanged="SearchChanged" />
+        <ComboBox x:Name="Category" Grid.Column="1" Width="170" Height="36" Margin="8,0,0,0" SelectionChanged="BrowseFilterChanged" />
+        <ComboBox x:Name="Sort" Grid.Column="2" Width="160" Height="36" Margin="8,0,0,0" SelectionChanged="BrowseFilterChanged" />
+        <Button Grid.Column="3" Classes="action" Height="36" Margin="8,0,0,0" Click="Refresh" ToolTip.Tip="Ping every server again">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon x:Name="RefreshGlyph2" Width="13" Height="13" />
+            <TextBlock Text="Refresh" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
       </Grid>
     </Grid>
+
+    <StackPanel Grid.Row="3">
+      <!-- Add a server: compact inline form under the toolbar. -->
+      <Border x:Name="AddForm" Classes="card" Padding="14" Margin="0,10,0,0" IsVisible="False">
+        <Grid ColumnDefinitions="*,10,240,10,Auto,8,Auto" RowDefinitions="Auto,Auto">
+          <TextBox x:Name="AddressBox" Height="36" PlaceholderText="Server address, e.g. play.example.com" TextChanged="AddressChanged" KeyDown="AddKeyDown" />
+          <TextBox x:Name="NameBox" Grid.Column="2" Height="36" PlaceholderText="Minecraft Server" KeyDown="AddKeyDown" />
+          <Button Grid.Column="4" Classes="launch" Height="36" Padding="18,0" Content="Add" Click="AddTyped" />
+          <Button x:Name="CloseAddButton" Grid.Column="6" Classes="icon" Height="36" Width="36" Click="CloseAdd" ToolTip.Tip="Close" />
+          <TextBlock Grid.Row="1" Grid.ColumnSpan="7" Classes="muted" Margin="2,8,0,0" TextWrapping="Wrap"
+                     Text="The name fills in from the address until you type one. The server goes to the list picked above." />
+        </Grid>
+      </Border>
+      <Grid ColumnDefinitions="Auto,*" Margin="2,12,0,0">
+        <TextBlock x:Name="Summary" Classes="muted" VerticalAlignment="Center" />
+        <TextBlock x:Name="Status" Grid.Column="1" Classes="muted" Foreground="#C9CAD1" TextAlignment="Right" TextTrimming="CharacterEllipsis"
+                   Margin="16,0,0,0" VerticalAlignment="Center" />
+      </Grid>
+    </StackPanel>
+
+    <Panel Grid.Row="4" Margin="0,10,0,0">
+      <ScrollViewer x:Name="MineScroll" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel x:Name="SavedGrid" Spacing="8" />
+      </ScrollViewer>
+      <ScrollViewer x:Name="BrowseScroll" HorizontalScrollBarVisibility="Disabled" SizeChanged="ScrollSizeChanged" IsVisible="False">
+        <UniformGrid x:Name="FindGrid" Columns="1" Margin="0,0,-12,0" VerticalAlignment="Top" />
+      </ScrollViewer>
+      <StackPanel x:Name="Empty" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,60" IsVisible="False">
+        <TextBlock x:Name="EmptyTitle" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock x:Name="EmptyHint" Classes="muted" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="420" />
+        <StackPanel x:Name="EmptyActions" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,10,0,0">
+          <Button Classes="action" Content="Browse servers" Click="ShowBrowse" />
+          <Button Classes="action" Content="Add by address" Click="ToggleAdd" />
+        </StackPanel>
+      </StackPanel>
+    </Panel>
   </Grid>
 </UserControl>
