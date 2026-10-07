@@ -85,4 +85,62 @@ public sealed class WorldCatalogTests : IDisposable
         Assert.Single(WorldCatalogService.Filter(catalog.Worlds, "", "Specific Version", "26.2"));
         Assert.True(File.Exists(Path.Combine(global, "saves", "world", "level.dat")));
     }
+
+    private string RawSave(string folder, NbtCompound data)
+    {
+        string game = Path.Combine(_root, "meta");
+        string directory = Path.Combine(game, "saves", folder);
+        Directory.CreateDirectory(directory);
+        File.WriteAllBytes(Path.Combine(directory, "level.dat"), Nbt.Write(new NbtCompound { ["Data"] = data }));
+        return directory;
+    }
+
+    [Fact]
+    public void ReadsGameModeHardcoreCheatsIconAndLegacyVersion()
+    {
+        // 26.x: hardcore lives in difficulty_settings; a Version{} is present.
+        string modern = RawSave("modern", new NbtCompound
+        {
+            ["LevelName"] = new NbtString("Modern"), ["GameType"] = new NbtNumber(NbtTagType.Int, 1), ["allowCommands"] = new NbtNumber(NbtTagType.Byte, 1),
+            ["Version"] = new NbtCompound { ["Name"] = new NbtString("26.3") }, ["DataVersion"] = new NbtNumber(NbtTagType.Int, 4500),
+            ["difficulty_settings"] = new NbtCompound { ["hardcore"] = new NbtNumber(NbtTagType.Byte, 0) }
+        });
+        File.WriteAllBytes(Path.Combine(modern, "icon.png"), new byte[] { 1 });
+        RawSave("hardcore26", new NbtCompound
+        {
+            ["LevelName"] = new NbtString("Hard 26"), ["GameType"] = new NbtNumber(NbtTagType.Int, 0), ["DataVersion"] = new NbtNumber(NbtTagType.Int, 4500),
+            ["difficulty_settings"] = new NbtCompound { ["hardcore"] = new NbtNumber(NbtTagType.Byte, 1) }
+        });
+        // 1.8.9: no Version{} or DataVersion; hardcore at the top of Data.
+        RawSave("legacy", new NbtCompound
+        {
+            ["LevelName"] = new NbtString("Legacy"), ["GameType"] = new NbtNumber(NbtTagType.Int, 2), ["hardcore"] = new NbtNumber(NbtTagType.Byte, 0),
+            ["allowCommands"] = new NbtNumber(NbtTagType.Byte, 0)
+        });
+        var worlds = WorldCatalogService.Scan(new[] { new WorldSource("Global", "Global .minecraft", Path.Combine(_root, "meta")) }).Worlds.ToDictionary(w => w.Name);
+        Assert.Equal(("Creative", (bool?)true, "26.3"), (worlds["Modern"].GameMode, worlds["Modern"].Cheats, worlds["Modern"].Version));
+        Assert.Equal(Path.Combine(modern, "icon.png"), worlds["Modern"].Icon);
+        Assert.Equal("Hardcore", worlds["Hard 26"].GameMode);
+        Assert.Null(worlds["Hard 26"].Cheats);
+        Assert.Null(worlds["Hard 26"].Icon);
+        Assert.Equal(("Adventure", (bool?)false, WorldCatalogService.LegacyVersion), (worlds["Legacy"].GameMode, worlds["Legacy"].Cheats, worlds["Legacy"].Version));
+    }
+
+    [Fact]
+    public void RelativeTimesAndSizesReadNaturally()
+    {
+        var now = new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc);
+        Assert.Equal("just now", WorldCatalogService.Relative(now.AddSeconds(-20), now));
+        Assert.Equal("1 minute ago", WorldCatalogService.Relative(now.AddMinutes(-1.5), now));
+        Assert.Equal("2 hours ago", WorldCatalogService.Relative(now.AddHours(-2), now));
+        Assert.Equal("yesterday", WorldCatalogService.Relative(now.AddHours(-30), now));
+        Assert.Equal("3 days ago", WorldCatalogService.Relative(now.AddDays(-3), now));
+        Assert.Equal("2 weeks ago", WorldCatalogService.Relative(now.AddDays(-15), now));
+        Assert.Equal("4 months ago", WorldCatalogService.Relative(now.AddDays(-125), now));
+        Assert.Equal("2 years ago", WorldCatalogService.Relative(now.AddDays(-800), now));
+        Assert.Equal("512 B", WorldCatalogService.FormatSize(512));
+        Assert.Equal("12 KB", WorldCatalogService.FormatSize(12 * 1024));
+        Assert.Equal("1.5 MB", WorldCatalogService.FormatSize(1536 * 1024));
+        Assert.Equal("2 GB", WorldCatalogService.FormatSize(2L * 1024 * 1024 * 1024));
+    }
 }
