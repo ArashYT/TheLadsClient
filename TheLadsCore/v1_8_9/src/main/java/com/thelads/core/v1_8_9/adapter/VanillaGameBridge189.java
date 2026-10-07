@@ -238,6 +238,38 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         return false;
     }
 
+    private static String romanNumeral(int value) {
+        switch (value) {
+            case 1: return "I";
+            case 2: return "II";
+            case 3: return "III";
+            case 4: return "IV";
+            case 5: return "V";
+            default: return String.valueOf(value);
+        }
+    }
+
+    @Override
+    public List<PotionEffectInfo> getActivePotions() {
+        if (mc().thePlayer == null) return Collections.emptyList();
+        List<PotionEffectInfo> detailed = new ArrayList<>();
+        for (PotionEffect effect : mc().thePlayer.getActivePotionEffects()) {
+            net.minecraft.potion.Potion potion = effect.getPotionID() < net.minecraft.potion.Potion.potionTypes.length
+                ? net.minecraft.potion.Potion.potionTypes[effect.getPotionID()] : null;
+            String name = effectName(effect.getEffectName());
+            if (effect.getAmplifier() > 0) {
+                name += " " + romanNumeral(effect.getAmplifier() + 1);
+            }
+            int totalSec = effect.getDuration() / 20;
+            String dur = totalSec >= 60 ? String.format("%d:%02d", totalSec / 60, totalSec % 60) : totalSec + "s";
+            int iconIndex = potion != null && potion.hasStatusIcon() ? potion.getStatusIconIndex() : -1;
+            String effectId = potion != null ? potion.getName().replace("potion.", "") : "";
+            int color = potion != null ? potion.getLiquidColor() : 0xFFFFFFFF;
+            detailed.add(new PotionEffectInfo(name, dur, iconIndex, effectId, color));
+        }
+        return detailed;
+    }
+
     /** Localized effect names ("Speed (30s)"), as on the other versions. */
     @Override
     public List<String> getActivePotionEffects() {

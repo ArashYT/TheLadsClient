@@ -133,13 +133,15 @@ public final class TitleExtrasScreen189 extends GuiScreen {
 
     /** A GuiButton as a Lads title button (TitleScreenTheme.renderButton) with the other versions' hover fade. */
     static void drawButton(GuiLadsAdapter g, GuiButton button, String label, String icon, boolean primary, int mouseX, int mouseY, float elapsed) {
-        boolean hovered = mouseX >= button.xPosition && mouseY >= button.yPosition
-            && mouseX < button.xPosition + button.width && mouseY < button.yPosition + button.height;
+        drawButtonAt(g, button, button.xPosition, button.yPosition, button.width, button.height, label, icon, primary, mouseX, mouseY, elapsed);
+    }
+
+    static void drawButtonAt(GuiLadsAdapter g, GuiButton button, int x, int y, int w, int h, String label, String icon, boolean primary, int mouseX, int mouseY, float elapsed) {
+        boolean hovered = mouseX >= x && mouseY >= y && mouseX < x + w && mouseY < y + h;
         float[] hover = HOVER.get(button);
         if (hover == null) HOVER.put(button, hover = new float[1]);
         float target = button.enabled && hovered ? 1 : 0;
         hover[0] = hover[0] < target ? Math.min(target, hover[0] + elapsed * 8) : Math.max(target, hover[0] - elapsed * 8);
-        TitleScreenTheme.renderButton(g, button.xPosition, button.yPosition, button.width, button.height, label, icon, primary, hovered, false,
-            button.enabled, hover[0]);
+        TitleScreenTheme.renderButton(g, x, y, w, h, label, icon, primary, hovered, false, button.enabled, hover[0]);
     }
 }

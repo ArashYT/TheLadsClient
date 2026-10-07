@@ -296,19 +296,47 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     private net.minecraft.client.player.LocalPlayer potionPlayer;
     private int potionTick = Integer.MIN_VALUE;
     private List<String> potions = List.of();
+    private List<PotionEffectInfo> detailedPotions = List.of();
     private java.util.Collection<net.minecraft.server.packs.repository.Pack> packSelection = List.of();
     private List<String> packNames = List.of();
-    @Override public List<String> getActivePotionEffects() {
+
+    private static String romanNumeral(int value) {
+        return switch (value) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            case 5 -> "V";
+            default -> String.valueOf(value);
+        };
+    }
+
+    @Override public List<PotionEffectInfo> getActivePotions() {
         var player = Minecraft.getInstance().player;
-        if (player == null) { potionPlayer = null; potionTick = Integer.MIN_VALUE; return potions = List.of(); }
+        if (player == null) { potionPlayer = null; potionTick = Integer.MIN_VALUE; detailedPotions = List.of(); potions = List.of(); return detailedPotions; }
         if (player != potionPlayer || player.tickCount != potionTick) {
             potionPlayer = player; potionTick = player.tickCount;
             var snapshot = new ArrayList<String>();
-            for (var effect : player.getActiveEffects())
-                snapshot.add(net.minecraft.network.chat.Component.translatable(effect.getEffect().value().getDescriptionId()).getString()
-                    + " (" + (effect.getDuration() / 20) + "s)");
+            var detailed = new ArrayList<PotionEffectInfo>();
+            for (var effect : player.getActiveEffects()) {
+                String name = net.minecraft.network.chat.Component.translatable(effect.getEffect().value().getDescriptionId()).getString();
+                if (effect.getAmplifier() > 0) {
+                    name += " " + romanNumeral(effect.getAmplifier() + 1);
+                }
+                int totalSec = effect.getDuration() / 20;
+                String dur = totalSec >= 60 ? String.format("%d:%02d", totalSec / 60, totalSec % 60) : totalSec + "s";
+                String effectId = effect.getEffect().unwrapKey().map(k -> k.identifier().getPath()).orElse("");
+                detailed.add(new PotionEffectInfo(name, dur, 0, effectId, 0xFFFFFFFF));
+                snapshot.add(name + " (" + totalSec + "s)");
+            }
             potions = List.copyOf(snapshot);
+            detailedPotions = List.copyOf(detailed);
         }
+        return detailedPotions;
+    }
+
+    @Override public List<String> getActivePotionEffects() {
+        getActivePotions();
         return potions;
     }
     @Override public List<String> getActiveResourcePacks() {

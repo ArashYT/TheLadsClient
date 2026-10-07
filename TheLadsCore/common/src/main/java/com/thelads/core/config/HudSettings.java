@@ -62,6 +62,29 @@ public class HudSettings {
     private final List<Integer> fadePlaylist = new ArrayList<>();
     private final Set<String> locked = new HashSet<>();          // locked element names
     private final List<Set<String>> groups = new ArrayList<>();  // groups of element names
+    private final Set<String> excludedModules = new LinkedHashSet<>();
+    private final Set<String> excludedExternalMods = new LinkedHashSet<>();
+
+    public boolean isModuleExempt(String name) { return name != null && excludedModules.contains(name); }
+    public void setModuleExempt(String name, boolean exempt) {
+        if (name == null) return;
+        if (exempt) excludedModules.add(name); else excludedModules.remove(name);
+    }
+    public boolean isExternalModExempt(String modId) { return modId != null && excludedExternalMods.contains(modId); }
+    public void setExternalModExempt(String modId, boolean exempt) {
+        if (modId == null) return;
+        if (exempt) excludedExternalMods.add(modId); else excludedExternalMods.remove(modId);
+    }
+    public Set<String> getExcludedModules() { return excludedModules; }
+    public Set<String> getExcludedExternalMods() { return excludedExternalMods; }
+    public void replaceExcludedModules(Collection<String> names) {
+        excludedModules.clear();
+        if (names != null) for (String n : names) if (validName(n)) excludedModules.add(n);
+    }
+    public void replaceExcludedExternalMods(Collection<String> names) {
+        excludedExternalMods.clear();
+        if (names != null) for (String n : names) if (validName(n)) excludedExternalMods.add(n);
+    }
 
     public static HudSettings getInstance() {
         return INSTANCE;

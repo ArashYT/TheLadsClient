@@ -122,4 +122,36 @@ public static class Modpacks
         if (mod.Enabled == enabled) return;
         File.Move(mod.Path, enabled ? mod.Path[..^".disabled".Length] : mod.Path + ".disabled");
     }
+
+    public static List<ModpackContentItem> Content(ModpackInstance instance, string folder, string type)
+    {
+        var dir = Path.Combine(instance.GameDirectory, folder);
+        if (!System.IO.Directory.Exists(dir)) return new List<ModpackContentItem>();
+        var list = new List<ModpackContentItem>();
+        foreach (var file in System.IO.Directory.EnumerateFileSystemEntries(dir))
+        {
+            string name = Path.GetFileName(file);
+            bool disabled = name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
+            string baseName = disabled ? name[..^".disabled".Length] : name;
+            list.Add(new ModpackContentItem(baseName, file, !disabled, type));
+        }
+        return list.OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    public static void SetContentEnabled(ModpackContentItem item, bool enabled)
+    {
+        if (item.Enabled == enabled) return;
+        string dest = enabled ? item.Path[..^".disabled".Length] : item.Path + ".disabled";
+        if (File.Exists(item.Path)) File.Move(item.Path, dest);
+        else if (System.IO.Directory.Exists(item.Path)) System.IO.Directory.Move(item.Path, dest);
+    }
+
+    public static void DeleteContent(ModpackContentItem item)
+    {
+        if (File.Exists(item.Path)) File.Delete(item.Path);
+        else if (System.IO.Directory.Exists(item.Path)) System.IO.Directory.Delete(item.Path, true);
+    }
 }
+
+public sealed record ModpackContentItem(string Name, string Path, bool Enabled, string Type);
+

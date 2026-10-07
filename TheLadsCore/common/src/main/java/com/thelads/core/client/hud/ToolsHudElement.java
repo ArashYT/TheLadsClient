@@ -39,12 +39,18 @@ public final class ToolsHudElement extends TextHudElement {
                 }
                 yield timerText;
             }
-            case "ItemCounter" -> game.getItemCountText(optCycle("Item", 0));
-            case "ReachDisplay" -> game.getRecentReachText();
-            case "ServerAddress" -> optBool("Hide address", false) ? "Server hidden" : game.getServerAddress();
+            case "ItemCounter" -> {
+                String s = game.getItemCountText(optCycle("Item", 0));
+                yield (editor && (s == null || s.contains(": 0"))) ? "Totems: 2" : s;
+            }
+            case "ReachDisplay" -> {
+                String s = game.getRecentReachText();
+                yield (editor && (s == null || s.contains("--"))) ? "Reach: 3.42m" : s;
+            }
+            case "ServerAddress" -> optBool("Hide address", false) ? "Server hidden" : (editor && ("Singleplayer".equals(game.getServerAddress()) || game.getServerAddress().isEmpty())) ? "mc.thelads.net" : game.getServerAddress();
             case "PortalCoordinates" -> {
                 String target = ClientTools.portal(game.getDimensionId(), game.getPlayerX(), game.getPlayerZ());
-                yield target.isEmpty() ? "Portal: unavailable here" : target;
+                yield target.isEmpty() ? (editor ? "Portal: X: 120, Z: -85" : "Portal: unavailable here") : target;
             }
             default -> "";
         };

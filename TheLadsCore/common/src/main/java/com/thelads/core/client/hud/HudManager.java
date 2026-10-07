@@ -83,16 +83,27 @@ public class HudManager {
             if (HudFrameCap.due(now, g.getScaledWidth(), g.getScaledHeight())) {
                 cachedHud.clear();
                 recordHudFrame();
-                renderElements(new RecordingGraphics(g, cachedHud));
+                renderElements(new RecordingGraphics(g, cachedHud), Boolean.FALSE);
                 HudFrameCap.built(now);
             }
             for (var op : cachedHud) op.accept(g);
+            renderElements(g, Boolean.TRUE);
             return;
         }
         if (!HudFrameCap.wholeHud) HudFrameCap.reset();
         cachedHud.clear();
         recordHudFrame();
-        renderElements(g);
+        renderElements(g, null);
+    }
+
+    private boolean isExempt(HudElement element) {
+        String name = element.getModuleName();
+        if (name == null) return false;
+        if (HudSettings.getInstance().isModuleExempt(name)) return true;
+        var mod = com.thelads.core.config.ModuleManager.getInstance().getModule(name);
+        if (mod instanceof com.thelads.core.modules.HudModule hudMod && hudMod.isIgnoreFpsCap()) return true;
+        if (mod != null && mod.getOption("Ignore HUD FPS Cap") instanceof com.thelads.core.config.BoolOption opt && opt.get()) return true;
+        return false;
     }
 
     /**
@@ -107,6 +118,10 @@ public class HudManager {
     }
 
     private void renderElements(LadsGraphics g) {
+        renderElements(g, null);
+    }
+
+    private void renderElements(LadsGraphics g, Boolean exemptFilter) {
         int screenW = g.getScaledWidth();
         int screenH = g.getScaledHeight();
 
@@ -116,6 +131,7 @@ public class HudManager {
             for (var element : elements) {
                 element.restoreSavedPosition();
                 if (!element.isEnabled() || !element.isAvailable()) continue;
+                if (exemptFilter != null && isExempt(element) != exemptFilter) continue;
                 var bounds = element.measureBounds(g, false);
                 var delta = HudGroupLayout.clampDelta(bounds, 0, 0, screenW, screenH);
                 var placed = HudGroupLayout.translate(bounds, delta);
@@ -154,6 +170,7 @@ public class HudManager {
         // Keep original draw order even when nonadjacent elements belong to one rigid group.
         for (var element : measured.keySet()) {
             if (!element.isEnabled()) continue;
+            if (exemptFilter != null && isExempt(element) != exemptFilter) continue;
             var bounds = placed.get(element);
             element.renderAt(g, bounds.x(), bounds.y(), false);
         }

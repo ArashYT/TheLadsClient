@@ -31,6 +31,10 @@ public abstract class GuiSlotMixin implements SmoothScroll189.Target {
 
     @Inject(method = "drawContainerBackground", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
     private void ladsListBackground(Tessellator tessellator, CallbackInfo ci) {
+        if ((Object) this instanceof net.minecraft.client.gui.ServerSelectionList) {
+            ci.cancel();
+            return;
+        }
         Gui.drawRect(left, top, right, bottom, LadsPalette.PANEL);
         ci.cancel();
     }

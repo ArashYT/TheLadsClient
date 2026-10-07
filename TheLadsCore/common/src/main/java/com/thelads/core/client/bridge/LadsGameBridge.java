@@ -137,6 +137,12 @@ public interface LadsGameBridge {
 
     boolean isKeyDown(String keyName);
 
+    record PotionEffectInfo(String name, String duration, int iconIndex, String effectId, int color) {}
+
+    default List<PotionEffectInfo> getActivePotions() {
+        return Collections.emptyList();
+    }
+
     default List<String> getActivePotionEffects() {
         return Collections.emptyList();
     }

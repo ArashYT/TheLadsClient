@@ -69,34 +69,89 @@
         </StackPanel>
       </Grid>
       <TextBlock x:Name="ManageStatus" Grid.Row="1" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,14,0,0" />
-      <WrapPanel Grid.Row="2" Margin="0,14,0,14">
-        <Border Background="#1B1C20" CornerRadius="8" Padding="14" Margin="0,0,12,12">
-          <StackPanel Spacing="8">
-            <TextBlock Classes="caption" Text="INSTANCE" />
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <TextBox x:Name="NameBox" Width="220" PlaceholderText="Name" />
-              <Button Classes="action" Content="Change icon" Click="Icon_Click" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <NumericUpDown x:Name="RamBox" Width="150" Minimum="0" Maximum="65536" Increment="512" FormatString="0" />
-              <TextBlock Text="MB memory (0 = launcher setting)" Foreground="#A0A1AA" VerticalAlignment="Center" />
-            </StackPanel>
-            <Button Classes="action" Content="Save" Click="Save_Click" />
-          </StackPanel>
-        </Border>
-        <Border x:Name="UpdateCard" Background="#1B1C20" CornerRadius="8" Padding="14" Margin="0,0,12,12">
-          <StackPanel Spacing="8">
-            <TextBlock Classes="caption" Text="PACK VERSION" />
-            <ComboBox x:Name="VersionBox" Width="300" />
-            <TextBlock Text="Updating keeps your worlds, settings you changed and mods you added." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" MaxWidth="300" HorizontalAlignment="Left" />
-            <Button x:Name="UpdateButton" Classes="action" Content="Install this version" Click="Update_Click" />
-          </StackPanel>
-        </Border>
-      </WrapPanel>
-      <Grid Grid.Row="3" RowDefinitions="Auto,*">
-        <TextBlock x:Name="ModsHeader" Classes="caption" Text="MODS" Margin="0,0,0,8" />
-        <ScrollViewer Grid.Row="1"><StackPanel x:Name="ModsList" Spacing="2" /></ScrollViewer>
-      </Grid>
+      <TabControl x:Name="InstanceTabs" Grid.Row="2" Margin="0,10,0,0" SelectionChanged="InstanceTabs_SelectionChanged">
+        <!-- Overview Tab -->
+        <TabItem x:Name="TabOverview" Header="Overview">
+          <ScrollViewer Margin="0,12,0,0">
+            <WrapPanel>
+              <Border Background="#1B1C20" CornerRadius="8" Padding="14" Margin="0,0,12,12">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="caption" Text="INSTANCE SETTINGS" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="NameBox" Width="220" PlaceholderText="Name" />
+                    <Button Classes="action" Content="Change icon" Click="Icon_Click" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <NumericUpDown x:Name="RamBox" Width="150" Minimum="0" Maximum="65536" Increment="512" FormatString="0" />
+                    <TextBlock Text="MB memory (0 = launcher setting)" Foreground="#A0A1AA" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <Button Classes="action" Content="Save" Click="Save_Click" />
+                </StackPanel>
+              </Border>
+              <Border x:Name="UpdateCard" Background="#1B1C20" CornerRadius="8" Padding="14" Margin="0,0,12,12">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="caption" Text="PACK VERSION" />
+                  <ComboBox x:Name="VersionBox" Width="300" />
+                  <TextBlock Text="Updating keeps your worlds, settings you changed and mods you added." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" MaxWidth="300" HorizontalAlignment="Left" />
+                  <Button x:Name="UpdateButton" Classes="action" Content="Install this version" Click="Update_Click" />
+                </StackPanel>
+              </Border>
+            </WrapPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- Mods Tab -->
+        <TabItem x:Name="TabMods" Header="Mods">
+          <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
+              <TextBlock x:Name="ModsHeader" Classes="caption" Text="MODS" VerticalAlignment="Center" />
+              <TextBox x:Name="ModsSearch" Grid.Column="1" Width="200" Margin="8,0,0,0" PlaceholderText="Filter installed mods..." TextChanged="ContentFilter_Changed" />
+              <Button Grid.Column="2" Classes="launch" Content="+ Add Mods" Height="32" Margin="8,0,0,0" Click="AddMods_Click" />
+              <Button Grid.Column="3" Classes="action" Content="+ From file" Height="32" Margin="8,0,0,0" Click="AddModsFromFile_Click" />
+            </Grid>
+            <ScrollViewer Grid.Row="1"><StackPanel x:Name="ModsList" Spacing="4" /></ScrollViewer>
+          </Grid>
+        </TabItem>
+
+        <!-- Resource Packs Tab -->
+        <TabItem x:Name="TabResourcePacks" Header="Resource Packs">
+          <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
+              <TextBlock x:Name="ResourcePacksHeader" Classes="caption" Text="RESOURCE PACKS" VerticalAlignment="Center" />
+              <TextBox x:Name="ResourcePacksSearch" Grid.Column="1" Width="200" Margin="8,0,0,0" PlaceholderText="Filter resource packs..." TextChanged="ContentFilter_Changed" />
+              <Button Grid.Column="2" Classes="launch" Content="+ Add Resource Packs" Height="32" Margin="8,0,0,0" Click="AddResourcePacks_Click" />
+              <Button Grid.Column="3" Classes="action" Content="+ From file" Height="32" Margin="8,0,0,0" Click="AddResourcePacksFromFile_Click" />
+            </Grid>
+            <ScrollViewer Grid.Row="1"><StackPanel x:Name="ResourcePacksList" Spacing="4" /></ScrollViewer>
+          </Grid>
+        </TabItem>
+
+        <!-- Shaders Tab -->
+        <TabItem x:Name="TabShaders" Header="Shaders">
+          <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
+              <TextBlock x:Name="ShadersHeader" Classes="caption" Text="SHADERS" VerticalAlignment="Center" />
+              <TextBox x:Name="ShadersSearch" Grid.Column="1" Width="200" Margin="8,0,0,0" PlaceholderText="Filter shaders..." TextChanged="ContentFilter_Changed" />
+              <Button Grid.Column="2" Classes="launch" Content="+ Add Shaders" Height="32" Margin="8,0,0,0" Click="AddShaders_Click" />
+              <Button Grid.Column="3" Classes="action" Content="+ From file" Height="32" Margin="8,0,0,0" Click="AddShadersFromFile_Click" />
+            </Grid>
+            <ScrollViewer Grid.Row="1"><StackPanel x:Name="ShadersList" Spacing="4" /></ScrollViewer>
+          </Grid>
+        </TabItem>
+
+        <!-- Datapacks Tab -->
+        <TabItem x:Name="TabDatapacks" Header="Datapacks">
+          <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
+              <TextBlock x:Name="DatapacksHeader" Classes="caption" Text="DATAPACKS" VerticalAlignment="Center" />
+              <TextBox x:Name="DatapacksSearch" Grid.Column="1" Width="200" Margin="8,0,0,0" PlaceholderText="Filter datapacks..." TextChanged="ContentFilter_Changed" />
+              <Button Grid.Column="2" Classes="launch" Content="+ Add Datapacks" Height="32" Margin="8,0,0,0" Click="AddDatapacks_Click" />
+              <Button Grid.Column="3" Classes="action" Content="+ From file" Height="32" Margin="8,0,0,0" Click="AddDatapacksFromFile_Click" />
+            </Grid>
+            <ScrollViewer Grid.Row="1"><StackPanel x:Name="DatapacksList" Spacing="4" /></ScrollViewer>
+          </Grid>
+        </TabItem>
+      </TabControl>
     </Grid>
 
     <!-- + Create -->
@@ -118,6 +173,30 @@
           </StackPanel>
         </StackPanel>
       </Border>
+    </Border>
+
+    <!-- Add Content Modal (CurseForge style browser) -->
+    <Border x:Name="AddContentPanel" IsVisible="False" Background="#E60D0E11">
+      <Grid RowDefinitions="Auto,Auto,*" Margin="32,24,32,18">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Button Classes="action" Content="&#8592; Back" Height="34" Click="AddContentBack_Click" />
+          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+            <TextBlock x:Name="AddContentTitle" FontSize="20" FontWeight="Bold" Foreground="White" />
+            <TextBlock x:Name="AddContentSubtitle" FontSize="12" Foreground="#A0A1AA" />
+          </StackPanel>
+          <Button Grid.Column="2" Classes="action" Content="Done" Height="34" Click="AddContentBack_Click" />
+        </Grid>
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,14,0,14">
+          <TextBox x:Name="AddContentSearchBox" PlaceholderText="Search Modrinth..." KeyDown="AddContentSearch_KeyDown" />
+          <Button Grid.Column="1" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="AddContentSearch_Click" />
+        </Grid>
+        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+          <TextBlock x:Name="AddContentStatus" Foreground="#A0A1AA" Margin="0,0,0,8" />
+          <ScrollViewer Grid.Row="1">
+            <StackPanel x:Name="AddContentResults" Spacing="8" />
+          </ScrollViewer>
+        </Grid>
+      </Grid>
     </Border>
   </Grid>
 </UserControl>
