@@ -215,6 +215,8 @@ public class ProfileService : IProfileService
                 await Task.Run(() =>
                 {
                     _pathService.EnsureDirectories();
+                    // Settings → Controls changes made while this game ran, in case the launcher missed its exit.
+                    SharedControls.ApplyPending(targetDir, profile.MinecraftVersion);
                     if (forge) SyncOptionsTo189(targetDir, profile.MinecraftVersion); // 1.8.9 has no renderer choice
                     else
                     {
@@ -270,6 +272,8 @@ public class ProfileService : IProfileService
             await Task.Run(() =>
             {
                 _pathService.EnsureDirectories();
+                // Controls changed while the game ran: Minecraft just wrote its old ones; they must not reach the shared copy.
+                SharedControls.ApplyPending(targetDir, profile.MinecraftVersion);
                 // Settings taken from Lunar never go back: Lunar is only read.
                 if (GameOptionsService.LunarOptions18(LunarRoot) == null)
                     GameOptionsService.SyncFromInstance(Path.Combine(targetDir, "options.txt"), _pathService.SharedOptionsFile, profile.MinecraftVersion);
@@ -283,6 +287,7 @@ public class ProfileService : IProfileService
             await Task.Run(() =>
             {
                 _pathService.EnsureDirectories();
+                SharedControls.ApplyPending(targetDir, profile.MinecraftVersion);
                 GameOptionsService.SyncFromInstance(Path.Combine(targetDir, "options.txt"), _pathService.SharedOptionsFile, profile.MinecraftVersion);
                 SyncFileFromInstance(Path.Combine(targetDir, GraphicsRenderer.OptionsStateFile), SharedRendererOptionsState);
                 var sharedConfig = Path.Combine(_pathService.SharedDirectory, "thelads_config.json");

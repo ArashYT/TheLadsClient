@@ -427,32 +427,25 @@ public partial class MainWindow
             Check("resetSize", (string?)MaximizeBtn.Content == "□" && Math.Abs(Width - DEFAULT_WIDTH) < 1 && Math.Abs(Height - DEFAULT_HEIGHT) < 1,
                 $"maximize button '{MaximizeBtn.Content}', size {Width}x{Height}");
 
-            // Controls: a modern and the 1.8.9 profile, each saved into its own options.txt (unknown lines kept).
+            // Controls: one shared set; a change reaches the modern and the 1.8.9 profile, each in its own format (unknown lines kept).
             NavigateTo("Settings");
             SettingsTab("Controls");
             await Task.Delay(400);
-            var picker = ControlsSettings.FindControl<ComboBox>("ProfilePicker")!;
+            ScrollTop(ControlsSettings.FindControl<Border>("KeysCard")!);
+            await Shot("settings-controls-shared", 300);
+            ControlsSettings.FindControl<Slider>("FovSlider")!.Value = 90;
+            // Jump onto W: the same key as Walk Forwards, which the list must show as a conflict.
+            var rows = ControlsSettings.FindControl<UniformGrid>("KeyRows")!;
+            var jump = rows.Children.OfType<Grid>().First(g => g.Children.OfType<TextBlock>().First().Text == "Jump").Children.OfType<Button>().First();
+            jump.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            ControlsSettings.RaiseEvent(new KeyEventArgs { RoutedEvent = KeyDownEvent, Key = Key.W, PhysicalKey = PhysicalKey.W });
+            await ControlsSettings.FlushAsync();
+            ScrollTo(ControlsSettings.FindControl<Border>("KeysCard")!);
+            await Shot("settings-controls-conflict", 300);
             foreach (var version in new[] { "26.3", "1.8.9" })
             {
                 var profile = _profileService.GetProfiles().First(p => p.MinecraftVersion == version);
-                picker.SelectedItem = picker.Items.OfType<LauncherProfile>().First(p => p.Id == profile.Id);
-                await Task.Delay(300);
-                if (version == "1.8.9")
-                {
-                    // 1.8.9's own set: no simulation distance, GUI scale Auto/Small/Normal/Large.
-                    ScrollTop(ControlsSettings.FindControl<Border>("KeysCard")!);
-                    await Shot("settings-controls-189", 300);
-                }
-                ControlsSettings.FindControl<Slider>("FovSlider")!.Value = 90;
-                // Jump onto W: the same key as Walk Forwards, which the list must show as a conflict.
-                var rows = ControlsSettings.FindControl<UniformGrid>("KeyRows")!;
-                var jump = rows.Children.OfType<Grid>().First(g => g.Children.OfType<TextBlock>().First().Text == "Jump").Children.OfType<Button>().First();
-                jump.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-                ControlsSettings.RaiseEvent(new KeyEventArgs { RoutedEvent = KeyDownEvent, Key = Key.W, PhysicalKey = PhysicalKey.W });
-                await ControlsSettings.FlushAsync();
                 string tag = version == "1.8.9" ? "189" : "modern";
-                ScrollTo(ControlsSettings.FindControl<Border>("KeysCard")!);
-                await Shot($"settings-controls-conflict-{tag}", 300);
                 var text = File.ReadAllText(Path.Combine(_pathService.GetProfileDirectory(profile), "options.txt"));
                 string jumpKey = version == "1.8.9" ? "key_key.jump:17" : "key_key.jump:key.keyboard.w";
                 var lines = text.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
@@ -461,11 +454,12 @@ public partial class MainWindow
             }
             ThemeSelector.SelectedItem = "Halloween";
             FlushSettingsSave();
-            await Shot("settings-controls-conflict-189-halloween", 500);
+            await Shot("settings-controls-conflict-halloween", 500);
             ThemeSelector.SelectedItem = "DarkRed";
             FlushSettingsSave();
 
-            // Nothing is written while the profile's game runs: a sleeping java process (system java) stands in for 26.2's game.
+            // A running profile's options.txt is not written (Minecraft rewrites it on exit): it gets the change when the game closes.
+            // A sleeping java process (system java) stands in for 26.2's game.
             var running = _profileService.GetProfiles().First(p => p.MinecraftVersion == "26.2");
             var runningDir = _pathService.GetProfileDirectory(running);
             var runningOptions = Path.Combine(runningDir, "options.txt");
@@ -477,17 +471,19 @@ public partial class MainWindow
             {
                 RunningGameMarker.Write(runningDir, java.Id, java.StartTime, Array.Empty<string>());
                 string? optionsBefore = File.Exists(runningOptions) ? File.ReadAllText(runningOptions) : null;
-                picker.SelectedItem = picker.Items.OfType<LauncherProfile>().First(p => p.Id == running.Id);
+                ControlsSettings.Reload();
                 await Task.Delay(300);
-                bool cardsLocked = !ControlsSettings.FindControl<Border>("GameCard")!.IsEnabled && ControlsSettings.FindControl<TextBlock>("WarningNote")!.IsVisible;
+                bool noted = ControlsSettings.FindControl<TextBlock>("WarningNote")!.IsVisible;
                 ControlsSettings.FindControl<Slider>("FovSlider")!.Value = 100;
                 await ControlsSettings.FlushAsync();
                 ScrollTop(ControlsSettings.FindControl<Border>("KeysCard")!);
                 await Shot("settings-controls-running", 300);
                 string? optionsAfter = File.Exists(runningOptions) ? File.ReadAllText(runningOptions) : null;
+                var pending = Path.Combine(runningDir, SharedControls.PendingFile);
+                bool deferred = File.Exists(pending) && File.ReadAllText(pending).Contains("fov:0.75");
                 var status = ControlsSettings.FindControl<TextBlock>("StatusLine")!.Text;
-                Check("controls-running", cardsLocked && optionsBefore == optionsAfter && status?.StartsWith("Not saved") == true,
-                    $"cards disabled with warning {cardsLocked}, options.txt unchanged {optionsBefore == optionsAfter}, status '{status}'");
+                Check("controls-running", noted && optionsBefore == optionsAfter && deferred && status?.Contains("when the game closes") == true,
+                    $"running noted {noted}, options.txt unchanged {optionsBefore == optionsAfter}, deferred {deferred}, status '{status}'");
             }
             finally
             {
