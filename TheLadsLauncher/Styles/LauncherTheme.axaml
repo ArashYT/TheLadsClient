@@ -294,6 +294,162 @@
   <Style Selector="TabItem:selected">
     <Setter Property="Foreground" Value="#FFFFFF"/>
   </Style>
+
+  <!-- ═══ 1.8.4 design system ═══════════════════════════════════════════════════════════════
+       Segmented "pills" tabs: a rounded dark track; the chosen tab is a raised chip with a short accent bar.
+       Use <TabControl Classes="pills"> for every sub-tab strip (Mods, Packs, Settings, modpack details, Servers). -->
+  <Style Selector="TabControl.pills">
+    <Setter Property="Padding" Value="0,14,0,0"/>
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Horizontal" Spacing="4"/>
+      </ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <DockPanel>
+          <Border DockPanel.Dock="Top" HorizontalAlignment="Left" Background="#131417" BorderBrush="#2A2B31" BorderThickness="1" CornerRadius="10" Padding="4">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"/>
+          </Border>
+          <ContentPresenter Name="PART_SelectedContentHost" Margin="{TemplateBinding Padding}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                            Content="{TemplateBinding SelectedContent}"
+                            ContentTemplate="{TemplateBinding SelectedContentTemplate}"/>
+        </DockPanel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="TabControl.pills > TabItem">
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="#9EA0AA"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Padding" Value="18,0"/>
+    <Setter Property="MinHeight" Value="38"/>
+    <Setter Property="Height" Value="38"/>
+    <Setter Property="Margin" Value="0"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+          <Panel>
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}"/>
+            <Border Name="PART_PillBar" Height="2" Width="18" CornerRadius="1" Background="{DynamicResource LadsAccent}"
+                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4" IsVisible="False"/>
+          </Panel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="TabControl.pills > TabItem:pointerover">
+    <Setter Property="Background" Value="#1E1F24"/>
+    <Setter Property="Foreground" Value="#E6E7EB"/>
+  </Style>
+  <Style Selector="TabControl.pills > TabItem:selected">
+    <Setter Property="Background" Value="#2A2B33"/>
+    <Setter Property="Foreground" Value="#FFFFFF"/>
+  </Style>
+  <Style Selector="TabControl.pills > TabItem:selected /template/ Border#PART_PillBar">
+    <Setter Property="IsVisible" Value="True"/>
+  </Style>
+  <Style Selector="TabControl.pills > TabItem:selected /template/ Border#PART_LayoutRoot">
+    <Setter Property="BoxShadow" Value="0 1 4 0 #50000000"/>
+  </Style>
+
+  <!-- Page headers. -->
+  <Style Selector="TextBlock.pageTitle">
+    <Setter Property="FontSize" Value="24"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="#FFFFFF"/>
+  </Style>
+  <Style Selector="TextBlock.pageSubtitle">
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="Foreground" Value="#8F919C"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+  </Style>
+  <!-- Small accent heading inside a card ("VIDEO & MOUSE"). -->
+  <Style Selector="TextBlock.sectionTitle">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="LetterSpacing" Value="1.2"/>
+    <Setter Property="Foreground" Value="{DynamicResource LadsAccent}"/>
+  </Style>
+  <Style Selector="TextBlock.muted">
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Foreground" Value="#8F919C"/>
+  </Style>
+  <!-- Cards: the one surface every page uses. Add "interactive" for hover feedback on clickable cards. -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="#1B1C20"/>
+    <Setter Property="BorderBrush" Value="#2A2B31"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="10"/>
+    <Setter Property="Padding" Value="16"/>
+  </Style>
+  <Style Selector="Window.motion Border.card.interactive">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+        <BrushTransition Property="Background" Duration="0:0:0.15"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.card.interactive:pointerover">
+    <Setter Property="Background" Value="#202127"/>
+    <Setter Property="BorderBrush" Value="#3C3D47"/>
+  </Style>
+  <Style Selector="Border.card.selected">
+    <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}"/>
+    <Setter Property="Background" Value="{DynamicResource LadsAccentSubtle}"/>
+  </Style>
+  <!-- Chips: small rounded labels (version, loader, category, "Online"). -->
+  <Style Selector="Border.chip">
+    <Setter Property="Background" Value="#26272D"/>
+    <Setter Property="CornerRadius" Value="999"/>
+    <Setter Property="Padding" Value="8,2"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Border.chip > TextBlock">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="Foreground" Value="#B5B7C0"/>
+  </Style>
+  <Style Selector="Border.chip.accent">
+    <Setter Property="Background" Value="{DynamicResource LadsAccentSubtle}"/>
+  </Style>
+  <Style Selector="Border.chip.accent > TextBlock">
+    <Setter Property="Foreground" Value="#F0A0A0"/>
+  </Style>
+  <Style Selector="Border.chip.good">
+    <Setter Property="Background" Value="#1B2A20"/>
+  </Style>
+  <Style Selector="Border.chip.good > TextBlock">
+    <Setter Property="Foreground" Value="#7FD99A"/>
+  </Style>
+  <!-- Square ghost button for an icon or glyph (copy, open folder, delete). -->
+  <Style Selector="Button.icon">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="#B5B7C0"/>
+    <Setter Property="BorderBrush" Value="#34353B"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Width" Value="32"/>
+    <Setter Property="Height" Value="32"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="CornerRadius" Value="7"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#2A2B31"/>
+    <Setter Property="BorderBrush" Value="#4A4B55"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Button.icon.danger:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#443033"/>
+    <Setter Property="Foreground" Value="#FFBBBB"/>
+  </Style>
+  <!-- ═══ end design system ═══ -->
   <Style Selector="Button.nav.active:pointerover /template/ ContentPresenter">
     <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}"/>
   </Style>

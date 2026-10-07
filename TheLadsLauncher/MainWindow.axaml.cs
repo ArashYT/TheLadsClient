@@ -86,7 +86,7 @@ public partial class MainWindow : Window
     private bool   _lockAspect     = false;
     private bool   _adjustingAspect = false;
     private const  double ASPECT_RATIO   = 16.0 / 9.0;
-    private const  double DEFAULT_WIDTH  = 1152.0;
+    private const  double DEFAULT_WIDTH  = 1280.0; // 16:9 (1280 x 720)
     private const  double DEFAULT_HEIGHT = 720.0;
     private DispatcherTimer _statsTimer;
     private DispatcherTimer _statSmoothTimer;
@@ -277,6 +277,8 @@ public partial class MainWindow : Window
             StartupMining.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
+            int pagePreview = Array.IndexOf(args, "--preview-page");
+            if (pagePreview >= 0 && pagePreview + 2 < args.Length) { await RunPagePreviewAsync(args[pagePreview + 1], Path.GetFullPath(args[pagePreview + 2])); return; }
             int discoveryPreview = Array.IndexOf(args, "--preview-discovery");
             if (discoveryPreview >= 0) { await RunDiscoveryPreviewAsync(Path.GetFullPath(args[discoveryPreview + 1])); return; }
             int productivityPreview = Array.IndexOf(args, "--preview-productivity");
@@ -1563,7 +1565,7 @@ public partial class MainWindow : Window
             double scale = pct / 100.0;
             // Keep all controls reachable at the supported scale settings.
             MinWidth = 960 * scale;
-            MinHeight = 600 * scale;
+            MinHeight = 540 * scale;
             if (UiScaleTransformControl?.LayoutTransform is ScaleTransform st)
             {
                 st.ScaleX = scale;
