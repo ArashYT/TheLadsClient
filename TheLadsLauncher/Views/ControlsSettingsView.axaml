@@ -1,24 +1,82 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TheLadsLauncher.Views.ControlsSettingsView">
     <UserControl.Styles>
-        <Style Selector="TextBlock.label">
-            <Setter Property="Foreground" Value="#CCCCCC" />
-            <Setter Property="FontSize" Value="13" />
+        <!-- The Settings page's row layout (MainWindow's SettingsPage defines the same): label and hint left, control right. -->
+        <Style Selector="TextBlock.settingLabel">
+            <Setter Property="Foreground" Value="#E9E9EA" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+        <Style Selector="TextBlock.settingHint">
+            <Setter Property="Foreground" Value="#8F919C" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,3,0,0" />
+        </Style>
+        <Style Selector="Grid.settingRow">
+            <Setter Property="MinHeight" Value="44" />
+        </Style>
+        <Style Selector="Grid.settingRow > StackPanel.text">
             <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,24,0" />
+        </Style>
+        <Style Selector="Border.settingDivider">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="#25262C" />
+            <Setter Property="Margin" Value="0,10" />
         </Style>
         <Style Selector="TextBlock.value">
             <Setter Property="Foreground" Value="White" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Width" Value="88" />
+            <Setter Property="TextAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Slider.setting">
+            <Setter Property="Width" Value="260" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.keyGroup">
+            <Setter Property="Foreground" Value="#8F919C" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LetterSpacing" Value="0.8" />
+            <Setter Property="Margin" Value="0,6,0,2" />
+        </Style>
+        <Style Selector="TextBlock.keyLabel">
+            <Setter Property="Foreground" Value="#D4D5DA" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.keyTag">
+            <Setter Property="Foreground" Value="#6F717C" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="8,0,8,0" />
+        </Style>
+        <Style Selector="ToggleSwitch">
+            <Setter Property="OnContent" Value="" />
+            <Setter Property="OffContent" Value="" />
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+        <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobBounds">
+            <Setter Property="Background" Value="{DynamicResource LadsAccent}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
+        </Style>
+        <Style Selector="ToggleSwitch:checked:pointerover /template/ Border#SwitchKnobBounds">
+            <Setter Property="Background" Value="{DynamicResource LadsAccentHover}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LadsAccentHover}" />
         </Style>
         <Style Selector="Button.keybind">
-            <Setter Property="Background" Value="#25262A" />
+            <Setter Property="Background" Value="#24252B" />
             <Setter Property="Foreground" Value="#E0E0E4" />
-            <Setter Property="BorderBrush" Value="#3A3B42" />
+            <Setter Property="BorderBrush" Value="#36373E" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
             <Setter Property="Height" Value="30" />
-            <Setter Property="Width" Value="150" />
+            <Setter Property="Width" Value="140" />
+            <Setter Property="Padding" Value="8,0" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
@@ -32,64 +90,99 @@
         </Style>
     </UserControl.Styles>
     <ScrollViewer>
-        <StackPanel Spacing="16">
-            <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
+        <StackPanel Spacing="12" MaxWidth="1040" HorizontalAlignment="Left" Margin="0,0,14,0">
+            <!-- Scope: one set of controls for every Lads Client version. -->
+            <Border x:Name="ScopeCard" Classes="card" Padding="20,16">
+                <Grid ColumnDefinitions="Auto,*">
+                    <Border Width="40" Height="40" CornerRadius="10" Background="{DynamicResource LadsAccentSubtle}" VerticalAlignment="Top" Margin="0,0,14,0">
+                        <Path Data="M 7,11 L 11,7 M 5,9 L 3,11 A 2.8,2.8 0 0 0 7,15 L 9,13 M 13,9 L 15,7 A 2.8,2.8 0 0 0 11,3 L 9,5" Width="18" Height="18" Stretch="Uniform"
+                              Stroke="{DynamicResource LadsAccent}" StrokeThickness="1.6" StrokeLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="6">
+                        <TextBlock x:Name="ScopeTitle" Text="Applies to all Lads Client versions" FontSize="15" FontWeight="SemiBold" Foreground="White" />
+                        <WrapPanel x:Name="VersionChips" Orientation="Horizontal" />
+                        <TextBlock x:Name="SourceNote" Classes="settingHint"
+                                   Text="One set of key binds and video settings for every Lads Client profile, translated for each version (1.8.9 uses its own key codes and skips what it lacks). Modpack instances keep their own." />
+                        <TextBlock x:Name="IsolatedNote" Classes="settingHint notranslate" IsVisible="False" />
+                        <TextBlock x:Name="WarningNote" Foreground="#E0A458" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
+                        <TextBlock x:Name="StatusLine" Foreground="#A4BAA7" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border x:Name="GameCard" Classes="card" Padding="20,16">
+                <StackPanel>
+                    <TextBlock Classes="sectionTitle" Text="VIDEO &amp; MOUSE" Margin="0,0,0,8" />
+                    <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                        <StackPanel Classes="text"><TextBlock Classes="settingLabel" Text="Field of view" /><TextBlock Classes="settingHint" Text="70 is Minecraft's normal view." /></StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <Slider x:Name="FovSlider" Classes="setting" Minimum="30" Maximum="110" TickFrequency="1" IsSnapToTickEnabled="True" />
+                            <TextBlock x:Name="FovValue" Classes="value" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Classes="settingDivider" />
+                    <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                        <StackPanel Classes="text"><TextBlock Classes="settingLabel" Text="Mouse sensitivity" /><TextBlock Classes="settingHint" Text="100% is the default." /></StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <Slider x:Name="SensitivitySlider" Classes="setting" Minimum="0" Maximum="200" TickFrequency="1" IsSnapToTickEnabled="True" />
+                            <TextBlock x:Name="SensitivityValue" Classes="value" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Classes="settingDivider" />
+                    <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                        <StackPanel Classes="text"><TextBlock Classes="settingLabel" Text="Render distance" /><TextBlock Classes="settingHint" Text="How far the world is drawn." /></StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <Slider x:Name="RenderDistanceSlider" Classes="setting" Minimum="2" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True" />
+                            <TextBlock x:Name="RenderDistanceValue" Classes="value" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Classes="settingDivider" />
+                    <Grid x:Name="SimulationPanel" Classes="settingRow" ColumnDefinitions="*,Auto">
+                        <StackPanel Classes="text"><TextBlock Classes="settingLabel" Text="Simulation distance" /><TextBlock Classes="settingHint" Text="How far mobs and crops keep moving. Not in 1.8.9." /></StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <Slider x:Name="SimulationDistanceSlider" Classes="setting" Minimum="5" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True" />
+                            <TextBlock x:Name="SimulationDistanceValue" Classes="value" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Classes="settingDivider" />
+                    <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                        <StackPanel Classes="text"><TextBlock Classes="settingLabel" Text="Max frame rate" /><TextBlock Classes="settingHint" Text="All the way right is unlimited." /></StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                            <Slider x:Name="MaxFpsSlider" Classes="setting" Minimum="10" Maximum="260" TickFrequency="10" IsSnapToTickEnabled="True" />
+                            <TextBlock x:Name="MaxFpsValue" Classes="value" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Classes="settingDivider" />
+                    <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                        <StackPanel Classes="text"><TextBlock Classes="settingLabel" Text="GUI scale" /><TextBlock Classes="settingHint" Text="1.8.9 has Auto, Small (1), Normal (2) and Large (3 and up)." /></StackPanel>
+                        <ComboBox x:Name="GuiScaleBox" Grid.Column="1" Width="160" Height="34" VerticalAlignment="Center" />
+                    </Grid>
+                    <Border Classes="settingDivider" />
+                    <Grid Classes="settingRow" ColumnDefinitions="*,Auto">
+                        <StackPanel Classes="text"><TextBlock Classes="settingLabel" Text="VSync" /><TextBlock Classes="settingHint" Text="Sync the frame rate to the monitor." /></StackPanel>
+                        <ToggleSwitch x:Name="VsyncCheck" Grid.Column="1" VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border x:Name="KeysCard" Classes="card" Padding="20,16">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="PROFILE" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Classes="label" Text="Game settings of" />
-                        <ComboBox x:Name="ProfilePicker" Classes="notranslate" Grid.Column="1" Width="300" Height="36" SelectionChanged="ProfilePicker_SelectionChanged" />
-                    </Grid>
-                    <TextBlock x:Name="SourceNote" Foreground="#868994" FontSize="12" TextWrapping="Wrap" />
-                    <TextBlock x:Name="WarningNote" Foreground="#E0A458" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
-                </StackPanel>
-            </Border>
-            <Border x:Name="GameCard" Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="VIDEO &amp; MOUSE" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
-                    <Grid ColumnDefinitions="*,24,*" RowDefinitions="Auto,Auto,Auto,Auto">
-                        <StackPanel Spacing="2">
-                            <Grid ColumnDefinitions="*,Auto"><TextBlock Classes="label" Text="Field of view" /><TextBlock x:Name="FovValue" Grid.Column="1" Classes="value" /></Grid>
-                            <Slider x:Name="FovSlider" Minimum="30" Maximum="110" TickFrequency="1" IsSnapToTickEnabled="True" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Spacing="2">
-                            <Grid ColumnDefinitions="*,Auto"><TextBlock Classes="label" Text="Mouse sensitivity" /><TextBlock x:Name="SensitivityValue" Grid.Column="1" Classes="value" /></Grid>
-                            <Slider x:Name="SensitivitySlider" Minimum="0" Maximum="200" TickFrequency="1" IsSnapToTickEnabled="True" />
-                        </StackPanel>
-                        <StackPanel Grid.Row="1" Spacing="2">
-                            <Grid ColumnDefinitions="*,Auto"><TextBlock Classes="label" Text="Render distance" /><TextBlock x:Name="RenderDistanceValue" Grid.Column="1" Classes="value" /></Grid>
-                            <Slider x:Name="RenderDistanceSlider" Minimum="2" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True" />
-                        </StackPanel>
-                        <StackPanel x:Name="SimulationPanel" Grid.Row="1" Grid.Column="2" Spacing="2">
-                            <Grid ColumnDefinitions="*,Auto"><TextBlock Classes="label" Text="Simulation distance" /><TextBlock x:Name="SimulationDistanceValue" Grid.Column="1" Classes="value" /></Grid>
-                            <Slider x:Name="SimulationDistanceSlider" Minimum="5" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True" />
-                        </StackPanel>
-                        <StackPanel Grid.Row="2" Spacing="2">
-                            <Grid ColumnDefinitions="*,Auto"><TextBlock Classes="label" Text="Max frame rate" /><TextBlock x:Name="MaxFpsValue" Grid.Column="1" Classes="value" /></Grid>
-                            <Slider x:Name="MaxFpsSlider" Minimum="10" Maximum="260" TickFrequency="10" IsSnapToTickEnabled="True" />
-                        </StackPanel>
-                        <Grid Grid.Row="2" Grid.Column="2" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                            <TextBlock Classes="label" Text="GUI scale" />
-                            <ComboBox x:Name="GuiScaleBox" Grid.Column="1" Width="140" Height="32" />
-                        </Grid>
-                        <CheckBox x:Name="VsyncCheck" Grid.Row="3" Content="VSync (sync the frame rate to the monitor)" Margin="0,8,0,0" />
-                    </Grid>
-                </StackPanel>
-            </Border>
-            <Border x:Name="KeysCard" Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
-                <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Spacing="4">
-                            <TextBlock Text="KEY BINDS" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
-                            <TextBlock Text="Click a key, then press the new key or mouse button. Esc unbinds it." Foreground="#868994" FontSize="12" />
+                            <TextBlock Classes="sectionTitle" Text="KEY BINDS" />
+                            <TextBlock Classes="settingHint" Text="Click a key, then press the new key or mouse button. Esc unbinds it." />
                         </StackPanel>
                         <Button Grid.Column="1" Classes="action" Content="Reset keys" Height="32" Padding="12,0" VerticalAlignment="Top" ToolTip.Tip="Every key bind on this list back to Minecraft's default" Click="ResetKeys_Click" />
                     </Grid>
                     <TextBlock x:Name="ConflictNote" Foreground="#FF8A8A" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
+                    <TextBlock x:Name="KeyGroupAll" Classes="keyGroup" Text="EVERY VERSION" IsVisible="False" />
                     <UniformGrid x:Name="KeyRows" Columns="2" />
+                    <TextBlock x:Name="KeyGroupNewer" Classes="keyGroup" Text="NEWER VERSIONS ONLY" IsVisible="False" />
+                    <UniformGrid x:Name="KeyRowsNewer" Columns="2" />
+                    <TextBlock x:Name="KeyGroupLegacy" Classes="keyGroup" Text="1.8.9 ONLY" IsVisible="False" />
+                    <UniformGrid x:Name="KeyRowsLegacy" Columns="2" />
                 </StackPanel>
             </Border>
-            <TextBlock x:Name="StatusLine" Foreground="#A4BAA7" FontSize="12" TextWrapping="Wrap" />
         </StackPanel>
     </ScrollViewer>
 </UserControl>
