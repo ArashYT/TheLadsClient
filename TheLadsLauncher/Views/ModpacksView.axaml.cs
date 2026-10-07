@@ -626,8 +626,8 @@ public partial class ModpacksView : UserControl
 
     private void AddContentFilter_Changed(object? sender, SelectionChangedEventArgs e)
     {
-        if (!AddContentPanel.IsVisible || _selected == null) return;
-        _ = SearchAddContentAsync(AddContentSearchBox.Text ?? "");
+        if (!_ready || AddContentPanel == null || !AddContentPanel.IsVisible || _selected == null) return;
+        _ = SearchAddContentAsync(AddContentSearchBox?.Text ?? "");
     }
 
     private void AddContentBack_Click(object? sender, RoutedEventArgs e)

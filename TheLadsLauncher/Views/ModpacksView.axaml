@@ -14,14 +14,15 @@
       <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
     </Style>
     <Style Selector="TabItem">
-      <Setter Property="FontSize" Value="15" />
+      <Setter Property="FontSize" Value="18" />
       <Setter Property="FontWeight" Value="Bold" />
       <Setter Property="Foreground" Value="#B2B4C2" />
       <Setter Property="Background" Value="#1C1D22" />
       <Setter Property="BorderBrush" Value="#2D2E36" />
       <Setter Property="BorderThickness" Value="1,1,1,0" />
       <Setter Property="CornerRadius" Value="6,6,0,0" />
-      <Setter Property="Padding" Value="20,10" />
+      <Setter Property="Padding" Value="26,14" />
+      <Setter Property="MinHeight" Value="48" />
       <Setter Property="Margin" Value="0,0,6,0" />
       <Setter Property="Cursor" Value="Hand" />
     </Style>
@@ -34,7 +35,7 @@
       <Setter Property="Foreground" Value="White" />
       <Setter Property="Background" Value="#24252D" />
       <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
-      <Setter Property="BorderThickness" Value="1,2,1,0" />
+      <Setter Property="BorderThickness" Value="1,3,1,0" />
     </Style>
   </UserControl.Styles>
   <Grid>
@@ -211,18 +212,18 @@
         </Grid>
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,14,0,14">
           <TextBox x:Name="AddContentSearchBox" PlaceholderText="Search content..." KeyDown="AddContentSearch_KeyDown" />
-          <ComboBox x:Name="AddContentProvider" Grid.Column="1" Width="120" Height="34" SelectedIndex="0" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
+          <ComboBox x:Name="AddContentProvider" Grid.Column="1" Width="120" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
             <ComboBoxItem Content="Modrinth" />
             <ComboBoxItem Content="CurseForge" />
           </ComboBox>
-          <ComboBox x:Name="AddContentSort" Grid.Column="2" Width="130" Height="34" SelectedIndex="0" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
+          <ComboBox x:Name="AddContentSort" Grid.Column="2" Width="130" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
             <ComboBoxItem Content="Most downloads" />
             <ComboBoxItem Content="Relevance" />
             <ComboBoxItem Content="Most follows" />
             <ComboBoxItem Content="Newest" />
             <ComboBoxItem Content="Recently updated" />
           </ComboBox>
-          <ComboBox x:Name="AddContentCategory" Grid.Column="3" Width="130" Height="34" SelectedIndex="0" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed" />
+          <ComboBox x:Name="AddContentCategory" Grid.Column="3" Width="130" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed" />
           <Button Grid.Column="4" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="AddContentSearch_Click" />
         </Grid>
         <Grid Grid.Row="2" RowDefinitions="Auto,*">

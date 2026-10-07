@@ -282,28 +282,37 @@
                             </Grid>
                         </Border>
                     </Grid>
-                    <Grid x:Name="AccountsPage" IsVisible="False" Margin="28,24,28,24">
-                        <Border Grid.Column="0" Background="#1D1E22" CornerRadius="4" Padding="16" BorderBrush="#303137" BorderThickness="1" Margin="0,0,12,0">
-                            <Grid RowDefinitions="Auto,*,Auto">
-                                <StackPanel Grid.Row="0" Spacing="7" Margin="0,0,0,14">
+                    <Grid x:Name="AccountsPage" IsVisible="False" Margin="28,24,28,24" ColumnDefinitions="330,20,*">
+                        <!-- Left Column: Account Actions -->
+                        <Border Grid.Column="0" Background="#1D1E22" CornerRadius="6" Padding="18" BorderBrush="#303137" BorderThickness="1">
+                            <Grid RowDefinitions="Auto,*">
+                                <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,16">
+                                    <TextBlock Text="Manage Accounts" Foreground="White" FontSize="20" FontWeight="Bold" />
+                                    <TextBlock Text="Add Microsoft or local accounts, switch logins, or sign out." Foreground="#9AA7B8" FontSize="12" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Spacing="10" VerticalAlignment="Top">
+                                    <Button x:Name="AddMicrosoftAccountBtn" Classes="launch" Content="Add Microsoft account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="40" Foreground="White" FontWeight="Bold" FontSize="13" Click="AddMicrosoftAccount_Click" />
+                                    <Button x:Name="AddOfflineAccountBtn" Classes="action" Content="Add local development account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" FontSize="12" Click="AddOfflineAccount_Click" />
+                                    <TextBlock Text="Local accounts support offline development and singleplayer." Foreground="#7E8B9D" FontSize="11" TextWrapping="Wrap" Margin="2,4,2,8" />
+                                    <Separator Background="#2A2B32" Height="1" Margin="0,4,0,4" />
+                                    <Button x:Name="RemoveAccountBtn" Classes="action" Content="Remove Account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="RemoveAccount_Click" />
+                                    <Button x:Name="ClearCacheBtn" Classes="danger" Content="Sign out Microsoft" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="ClearCache_Click" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <!-- Right Column: Select Accounts -->
+                        <Border Grid.Column="2" Background="#1D1E22" CornerRadius="6" Padding="18" BorderBrush="#303137" BorderThickness="1">
+                            <Grid RowDefinitions="Auto,*">
+                                <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,14">
                                     <TextBlock Text="Your accounts" Foreground="White" FontSize="20" FontWeight="Bold" />
                                     <TextBlock Text="Choose a default account for this launcher." Foreground="#9AA7B8" FontSize="12" TextWrapping="Wrap" />
-                                    <Border Background="#141F29" CornerRadius="4" Padding="10">
+                                    <Border Background="#141F29" CornerRadius="4" Padding="10" Margin="0,4,0,0">
                                         <TextBlock x:Name="AccountsSignInStatus" Foreground="#BAD3DE" FontSize="11" TextWrapping="Wrap" />
                                     </Border>
                                 </StackPanel>
                                 <ScrollViewer Grid.Row="1">
                                     <StackPanel x:Name="AccountsListContainer" Spacing="6" />
                                 </ScrollViewer>
-                                <StackPanel Grid.Row="2" Spacing="8" Margin="0,12,0,0">
-                                    <Button x:Name="AddMicrosoftAccountBtn" Classes="launch" Content="Add Microsoft account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="38" Foreground="White" FontWeight="Bold" Click="AddMicrosoftAccount_Click" />
-                                    <Button x:Name="AddOfflineAccountBtn" Classes="action" Content="Add local development account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="34" Click="AddOfflineAccount_Click" />
-                                    <TextBlock Text="Local accounts support offline development and singleplayer." Foreground="#7E8B9D" FontSize="10" TextWrapping="Wrap" />
-                                    <Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto">
-                                        <Button x:Name="RemoveAccountBtn" Classes="action" Content="Remove Account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="34" Margin="0,4,0,0" Click="RemoveAccount_Click" Grid.Row="0" />
-                                        <Button x:Name="ClearCacheBtn" Classes="danger" Content="Sign out Microsoft" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="34" Margin="0,4,0,0" Click="ClearCache_Click" Grid.Row="1" />
-                                    </Grid>
-                                </StackPanel>
                             </Grid>
                         </Border>
                     </Grid>
@@ -497,14 +506,15 @@
                         <TabControl x:Name="ModsSubTabControl">
                             <TabControl.Styles>
                                 <Style Selector="TabItem">
-                                    <Setter Property="FontSize" Value="16" />
+                                    <Setter Property="FontSize" Value="18" />
                                     <Setter Property="FontWeight" Value="Bold" />
                                     <Setter Property="Foreground" Value="#B2B4C2" />
                                     <Setter Property="Background" Value="#1C1D22" />
                                     <Setter Property="BorderBrush" Value="#2D2E36" />
                                     <Setter Property="BorderThickness" Value="1,1,1,0" />
                                     <Setter Property="CornerRadius" Value="6,6,0,0" />
-                                    <Setter Property="Padding" Value="22,12" />
+                                    <Setter Property="Padding" Value="26,14" />
+                                    <Setter Property="MinHeight" Value="48" />
                                     <Setter Property="Margin" Value="0,0,6,0" />
                                     <Setter Property="Cursor" Value="Hand" />
                                 </Style>
@@ -517,7 +527,7 @@
                                     <Setter Property="Foreground" Value="White" />
                                     <Setter Property="Background" Value="#24252D" />
                                     <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
-                                    <Setter Property="BorderThickness" Value="1,2,1,0" />
+                                    <Setter Property="BorderThickness" Value="1,3,1,0" />
                                 </Style>
                             </TabControl.Styles>
                             <TabItem x:Name="ModsInstalledTab" Header="Installed Mods">

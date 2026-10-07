@@ -36,6 +36,7 @@ public final class ReconnectSession {
 
     /** A retry makes sense: there is a target, the same account is signed in, and it was joined once (or initial failures retry). */
     public boolean canRetry(UUID player, boolean retryInitialFailures) {
+        if (HypixelSafetyManager.isHypixelAddress(target)) return false;
         return target != null && account.equals(player) && (joined || retryInitialFailures);
     }
 
@@ -45,6 +46,10 @@ public final class ReconnectSession {
         if (screen == dialog) return;
         dialog = screen;
         reason = reasonText;
+        if (HypixelSafetyManager.isHypixelAddress(target)) {
+            reasonAllowed = false;
+            return;
+        }
         reasonAllowed = ReconnectFilters.allows(reasonKeys, reasonText, lists.reasonKeys, lists.reasonPatterns, onlyMatches);
         if (reasonAllowed) plan.schedule(lists.retryDelays, repeatLastDelay, now);
     }
