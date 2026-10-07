@@ -23,6 +23,7 @@
       </StackPanel>
       <TabControl x:Name="Tabs" Classes="pills" Padding="0" Grid.Row="1" Margin="0,12,0,0" SelectionChanged="Tabs_Changed">
         <TabItem x:Name="MineTab" Header="My Modpacks" />
+        <TabItem x:Name="ExternalTab" Header="External Instances" />
         <TabItem x:Name="BrowseTab" Header="Browse" />
       </TabControl>
       <Grid Grid.Row="2" Margin="0,4,0,14">
@@ -32,6 +33,13 @@
           <TextBox x:Name="MineSearch" Grid.Column="3" Width="210" PlaceholderText="Search my modpacks…" TextChanged="MineFilter_Changed" />
           <ComboBox x:Name="MineSort" Grid.Column="4" Width="160" Margin="8,0,0,0" SelectionChanged="MineFilter_Changed" />
           <ComboBox x:Name="MineLoader" Grid.Column="5" Width="140" Margin="8,0,0,0" SelectionChanged="MineFilter_Changed" />
+        </Grid>
+        <Grid x:Name="ExternalToolbar" ColumnDefinitions="Auto,Auto,*,Auto,Auto" IsVisible="False">
+          <Button Classes="action" Content="+ Add folder" Height="34" Click="AddExternalFolder_Click" />
+          <Button Grid.Column="1" Classes="action" Content="Rescan" Height="34" Margin="8,0,0,0" Click="RescanExternal_Click" />
+          <TextBox x:Name="ExternalSearch" Grid.Column="2" Width="210" HorizontalAlignment="Right" PlaceholderText="Search external instances…" TextChanged="ExternalFilter_Changed" />
+          <ComboBox x:Name="ExternalLauncherFilter" Grid.Column="3" Width="160" Margin="8,0,0,0" SelectionChanged="ExternalFilter_Changed" />
+          <ComboBox x:Name="ExternalSort" Grid.Column="4" Width="160" Margin="8,0,0,0" SelectionChanged="ExternalFilter_Changed" />
         </Grid>
         <Grid x:Name="BrowseToolbar" ColumnDefinitions="*,Auto,Auto,Auto,Auto" IsVisible="False">
           <TextBox x:Name="BrowseSearch" PlaceholderText="Search Modrinth modpacks…" KeyDown="BrowseSearch_KeyDown" />
@@ -44,6 +52,9 @@
       <Grid Grid.Row="3" RowDefinitions="Auto,*">
         <TextBlock x:Name="Status" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,0,0,10" />
         <ScrollViewer x:Name="MineScroll" Grid.Row="1"><WrapPanel x:Name="Cards" /></ScrollViewer>
+        <ScrollViewer x:Name="ExternalScroll" Grid.Row="1" IsVisible="False">
+          <WrapPanel x:Name="ExternalCards" />
+        </ScrollViewer>
         <ScrollViewer x:Name="BrowseScroll" Grid.Row="1" IsVisible="False">
           <StackPanel>
             <StackPanel x:Name="Results" Spacing="8" />
@@ -73,30 +84,66 @@
         <!-- Overview Tab -->
         <TabItem x:Name="TabOverview" Header="Overview">
           <ScrollViewer Margin="0,12,0,0">
-            <WrapPanel>
-              <Border Background="#1B1C20" CornerRadius="8" Padding="14" Margin="0,0,12,12">
-                <StackPanel Spacing="8">
-                  <TextBlock Classes="caption" Text="INSTANCE SETTINGS" />
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="NameBox" Width="220" PlaceholderText="Name" />
-                    <Button Classes="action" Content="Change icon" Click="Icon_Click" />
-                  </StackPanel>
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <NumericUpDown x:Name="RamBox" Width="150" Minimum="0" Maximum="65536" Increment="512" FormatString="0" />
-                    <TextBlock Text="MB memory (0 = launcher setting)" Foreground="#A0A1AA" VerticalAlignment="Center" />
-                  </StackPanel>
-                  <Button Classes="action" Content="Save" Click="Save_Click" />
+            <StackPanel Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+              <!-- Memory Allocation Card -->
+              <Border Classes="card">
+                <StackPanel Spacing="12">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="2">
+                      <TextBlock Classes="sectionTitle" Text="MEMORY ALLOCATION" />
+                      <TextBlock Classes="muted" Text="Dedicated RAM for this instance (0 = uses global launcher setting)." />
+                    </StackPanel>
+                    <Border Grid.Column="1" Classes="chip accent">
+                      <TextBlock x:Name="RamDisplay" FontWeight="Bold" FontSize="13" Text="Default" />
+                    </Border>
+                  </Grid>
+
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                    <Slider x:Name="RamSlider" Minimum="0" Maximum="32" Value="0" SmallChange="0.5" LargeChange="1.0"
+                            ValueChanged="RamSlider_ValueChanged" VerticalAlignment="Center" />
+                    <NumericUpDown x:Name="RamBox" Grid.Column="1" Width="130" Minimum="0" Maximum="65536" Increment="512"
+                                   FormatString="0 MB" Margin="14,0,0,0" ValueChanged="RamBox_ValueChanged" />
+                  </Grid>
+
+                  <WrapPanel Margin="0,2,0,0">
+                    <Button Classes="action" Content="Default (0)" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="0" />
+                    <Button Classes="action" Content="4 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="4096" />
+                    <Button Classes="action" Content="6 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="6144" />
+                    <Button Classes="action" Content="8 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="8192" />
+                    <Button Classes="action" Content="12 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="12288" />
+                    <Button Classes="action" Content="16 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="16384" />
+                  </WrapPanel>
                 </StackPanel>
               </Border>
-              <Border x:Name="UpdateCard" Background="#1B1C20" CornerRadius="8" Padding="14" Margin="0,0,12,12">
-                <StackPanel Spacing="8">
-                  <TextBlock Classes="caption" Text="PACK VERSION" />
-                  <ComboBox x:Name="VersionBox" Width="300" />
-                  <TextBlock Text="Updating keeps your worlds, settings you changed and mods you added." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" MaxWidth="300" HorizontalAlignment="Left" />
-                  <Button x:Name="UpdateButton" Classes="action" Content="Install this version" Click="Update_Click" />
+
+              <!-- Instance Identity Card -->
+              <Border Classes="card">
+                <StackPanel Spacing="12">
+                  <TextBlock Classes="sectionTitle" Text="INSTANCE SETTINGS" />
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                    <TextBox x:Name="NameBox" PlaceholderText="Instance Name" Height="34" VerticalContentAlignment="Center" />
+                    <Button Grid.Column="1" Classes="action" Content="Change icon" Height="34" Margin="8,0,0,0" Click="Icon_Click" />
+                  </Grid>
                 </StackPanel>
               </Border>
-            </WrapPanel>
+
+              <!-- Pack Version / Updates Card (if from Modrinth) -->
+              <Border x:Name="UpdateCard" Classes="card">
+                <StackPanel Spacing="10">
+                  <TextBlock Classes="sectionTitle" Text="PACK VERSION &amp; UPDATES" />
+                  <TextBlock Classes="muted" Text="Updating keeps your worlds, custom options, and manually added mods." />
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                    <ComboBox x:Name="VersionBox" HorizontalAlignment="Stretch" Margin="0,0,8,0" />
+                    <Button x:Name="UpdateButton" Grid.Column="1" Classes="action" Content="Install this version" Click="Update_Click" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <!-- Save Actions -->
+              <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,20">
+                <Button Classes="launch" Content="Save changes" Height="36" Padding="20,0" Click="Save_Click" />
+              </StackPanel>
+            </StackPanel>
           </ScrollViewer>
         </TabItem>
 

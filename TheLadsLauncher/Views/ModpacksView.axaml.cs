@@ -41,6 +41,10 @@ public partial class ModpacksView : UserControl
     private bool _browsed, _importing;
     private readonly bool _ready;
 
+    private ExternalScan? _externalScan;
+    private bool _externalLoaded;
+    private bool _updatingRam;
+
     private static string DataDirectory => PathService.Instance.BaseDirectory;
     private MainWindow? Host => TopLevel.GetTopLevel(this) as MainWindow;
 
@@ -49,12 +53,14 @@ public partial class ModpacksView : UserControl
         InitializeComponent();
         MineSort.ItemsSource = new[] { "Recently played", "Recently created", "Name", "Minecraft version" };
         MineLoader.ItemsSource = new[] { "All loaders" }.Concat(LoaderNames).ToArray();
+        ExternalLauncherFilter.ItemsSource = new[] { "All launchers", "CurseForge", "Modrinth App", "Prism Launcher", "MultiMC" };
+        ExternalSort.ItemsSource = new[] { "Recently played", "Name", "Minecraft version", "Launcher" };
         BrowseVersion.ItemsSource = new[] { "All versions" }.Concat(GameVersions).ToArray();
         BrowseLoader.ItemsSource = new[] { "All loaders" }.Concat(LoaderNames.Take(4)).ToArray();
         BrowseSort.ItemsSource = BrowseSorts.Select(s => s.Label).ToArray();
         CreateLoader.ItemsSource = LoaderNames;
         CreateVersion.ItemsSource = GameVersions;
-        MineSort.SelectedIndex = MineLoader.SelectedIndex = BrowseVersion.SelectedIndex = BrowseLoader.SelectedIndex = BrowseSort.SelectedIndex = CreateLoader.SelectedIndex = CreateVersion.SelectedIndex = 0;
+        MineSort.SelectedIndex = MineLoader.SelectedIndex = ExternalLauncherFilter.SelectedIndex = ExternalSort.SelectedIndex = BrowseVersion.SelectedIndex = BrowseLoader.SelectedIndex = BrowseSort.SelectedIndex = CreateLoader.SelectedIndex = CreateVersion.SelectedIndex = 0;
         _ready = true;
     }
 
@@ -249,17 +255,288 @@ public partial class ModpacksView : UserControl
         finally { CreateConfirm.IsEnabled = true; }
     }
 
+    // ── External Instances ──────────────────────────────────────────────────
+
+    private void ExternalFilter_Changed(object? sender, RoutedEventArgs e) => RenderExternalCards();
+
+    private async Task LoadExternalAsync(bool force = false)
+    {
+        if (_externalLoaded && !force) { RenderExternalCards(); return; }
+        Status.Text = "Scanning for external instances (CurseForge, Modrinth, Prism, MultiMC)...";
+        try
+        {
+            _externalScan = await ExternalInstances.ScanAsync(DataDirectory);
+            _externalLoaded = true;
+            RenderExternalCards();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status.Text = "Failed to scan external instances: " + e.Message;
+        }
+    }
+
+    private void RescanExternal_Click(object? sender, RoutedEventArgs e) => _ = LoadExternalAsync(force: true);
+
+    private async void AddExternalFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is not { } top) return;
+        var folders = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose an instances or launcher data folder" });
+        if (folders.Count == 0) return;
+        string picked = folders[0].Path.LocalPath;
+        var existing = ExternalInstances.LoadCustomFolders(DataDirectory);
+        if (!existing.Contains(picked, StringComparer.OrdinalIgnoreCase))
+        {
+            existing.Add(picked);
+            ExternalInstances.SaveCustomFolders(DataDirectory, existing);
+            await LoadExternalAsync(force: true);
+        }
+    }
+
+    private void RenderExternalCards()
+    {
+        if (!_ready) return;
+        ExternalCards.Children.Clear();
+        if (_externalScan == null) return;
+
+        string query = ExternalSearch.Text ?? "";
+        int launcherIndex = ExternalLauncherFilter.SelectedIndex;
+        ExternalLauncher? targetLauncher = launcherIndex switch
+        {
+            1 => ExternalLauncher.CurseForge,
+            2 => ExternalLauncher.Modrinth,
+            3 => ExternalLauncher.Prism,
+            4 => ExternalLauncher.MultiMC,
+            _ => null
+        };
+
+        var list = _externalScan.Instances.Where(i =>
+            (targetLauncher == null || i.Launcher == targetLauncher) &&
+            (string.IsNullOrWhiteSpace(query) || i.Name.Contains(query, StringComparison.OrdinalIgnoreCase) || (i.McVersion != null && i.McVersion.Contains(query, StringComparison.OrdinalIgnoreCase)))
+        );
+
+        list = ExternalSort.SelectedIndex switch
+        {
+            0 => list.OrderByDescending(i => i.LastPlayedUtc ?? DateTime.MinValue).ThenBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase),
+            1 => list.OrderBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase),
+            2 => list.OrderByDescending(i => Version.TryParse(i.McVersion, out var v) ? v : new Version(0, 0)),
+            3 => list.OrderBy(i => i.Launcher).ThenBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase),
+            _ => list
+        };
+
+        var items = list.ToList();
+        foreach (var inst in items)
+        {
+            ExternalCards.Children.Add(ExternalCard(inst));
+        }
+
+        if (ExternalTab.IsSelected)
+        {
+            if (_externalScan.Instances.Count == 0)
+            {
+                Status.Text = "No external instances found. Click '+ Add folder' to point to your CurseForge, Modrinth, Prism, or MultiMC folders.";
+            }
+            else if (items.Count == 0)
+            {
+                Status.Text = "No external instances match the search filter.";
+            }
+            else
+            {
+                Status.Text = $"{items.Count} external instance{(items.Count == 1 ? "" : "s")} found across {_externalScan.Sources.Count} launcher location{(_externalScan.Sources.Count == 1 ? "" : "s")}.";
+            }
+        }
+    }
+
+    private Control ExternalCard(ExternalInstance instance)
+    {
+        var card = new Border
+        {
+            Classes = { "card" },
+            Width = 260,
+            Margin = new Thickness(0, 0, 16, 16)
+        };
+
+        var root = new StackPanel { Spacing = 10 };
+
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
+        var iconBorder = new Border
+        {
+            Width = 44,
+            Height = 44,
+            CornerRadius = new CornerRadius(6),
+            ClipToBounds = true,
+            Background = new SolidColorBrush(Color.Parse("#25262B")),
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 0, 10, 0)
+        };
+
+        if (instance.IconFile != null && File.Exists(instance.IconFile))
+        {
+            try
+            {
+                using var stream = File.OpenRead(instance.IconFile);
+                iconBorder.Child = new Image { Source = new Bitmap(stream), Stretch = Stretch.UniformToFill };
+            }
+            catch { }
+        }
+        else if (instance.IconUrl != null)
+        {
+            _ = LoadRemoteIconAsync(iconBorder, instance.IconUrl);
+        }
+        else
+        {
+            iconBorder.Child = new TextBlock
+            {
+                Text = instance.Name.Length > 0 ? instance.Name[..1].ToUpperInvariant() : "E",
+                FontWeight = FontWeight.Bold,
+                FontSize = 20,
+                Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+        }
+        header.Children.Add(iconBorder);
+
+        var titleStack = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(titleStack, 1);
+
+        var launcherName = ExternalInstances.LauncherName(instance.Launcher);
+        var chip = new Border
+        {
+            Classes = { "chip" },
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Child = new TextBlock { Text = launcherName, FontSize = 10.5, FontWeight = FontWeight.SemiBold }
+        };
+        titleStack.Children.Add(chip);
+
+        var titleBlock = new TextBlock
+        {
+            Text = instance.Name,
+            FontWeight = FontWeight.SemiBold,
+            FontSize = 14,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        };
+        ToolTip.SetTip(titleBlock, instance.Name);
+        titleStack.Children.Add(titleBlock);
+        header.Children.Add(titleStack);
+        root.Children.Add(header);
+
+        var detailsPanel = new StackPanel { Spacing = 2 };
+        var info = new List<string>();
+        if (!string.IsNullOrEmpty(instance.McVersion))
+            info.Add($"MC {instance.McVersion}");
+        if (!string.IsNullOrEmpty(instance.Loader))
+            info.Add(LoaderName(instance.Loader));
+        if (instance.ModCount > 0)
+            info.Add($"{instance.ModCount} mods");
+
+        if (info.Count > 0)
+        {
+            detailsPanel.Children.Add(new TextBlock
+            {
+                Text = string.Join("  ·  ", info),
+                Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")),
+                FontSize = 11.5
+            });
+        }
+
+        if (instance.LastPlayedUtc is { } lp)
+        {
+            detailsPanel.Children.Add(new TextBlock
+            {
+                Text = $"Last played {RelativeTime(lp)}",
+                Foreground = new SolidColorBrush(Color.Parse("#767884")),
+                FontSize = 11
+            });
+        }
+        root.Children.Add(detailsPanel);
+
+        var actions = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 4, 0, 0) };
+        string? exe = ExternalInstances.FindExecutable(instance.Launcher, instance.DataRoot);
+        bool canLaunch = ExternalInstances.CanLaunch(instance, exe);
+
+        var playBtn = new Button
+        {
+            Classes = { "launch" },
+            Content = instance.Launcher == ExternalLauncher.Modrinth ? "Open App" : "Play",
+            Height = 32,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            IsEnabled = canLaunch || (instance.Launcher == ExternalLauncher.Modrinth && exe != null)
+        };
+
+        if (!playBtn.IsEnabled)
+        {
+            ToolTip.SetTip(playBtn, $"{launcherName} was not found on your system. Please install it or start {instance.Name} directly.");
+            ToolTip.SetShowOnDisabled(playBtn, true);
+        }
+        else
+        {
+            playBtn.Click += (_, _) =>
+            {
+                if (exe == null) return;
+                try
+                {
+                    var startInfo = ExternalInstances.LaunchCommand(instance, exe);
+                    Process.Start(startInfo);
+                    Status.Text = $"Launched {instance.Name} via {launcherName}.";
+                }
+                catch (Exception ex)
+                {
+                    Status.Text = $"Failed to start {instance.Name}: {ex.Message}";
+                }
+            };
+        }
+        actions.Children.Add(playBtn);
+
+        var folderBtn = new Button
+        {
+            Classes = { "icon" },
+            Content = "📁",
+            Margin = new Thickness(8, 0, 0, 0),
+            Height = 32,
+            Width = 32
+        };
+        ToolTip.SetTip(folderBtn, "Open instance directory in File Explorer");
+        Grid.SetColumn(folderBtn, 1);
+        folderBtn.Click += (_, _) =>
+        {
+            string target = Directory.Exists(instance.GameDirectory) ? instance.GameDirectory : instance.Directory;
+            if (Directory.Exists(target)) Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+        };
+        actions.Children.Add(folderBtn);
+
+        root.Children.Add(actions);
+        card.Child = root;
+        return card;
+    }
+
+    private static string RelativeTime(DateTime utc)
+    {
+        var span = DateTime.UtcNow - utc;
+        if (span.TotalMinutes < 1) return "just now";
+        if (span.TotalHours < 1) return $"{(int)span.TotalMinutes}m ago";
+        if (span.TotalDays < 1) return $"{(int)span.TotalHours}h ago";
+        if (span.TotalDays < 7) return $"{(int)span.TotalDays}d ago";
+        return utc.ToLocalTime().ToString("MMM d, yyyy");
+    }
+
     // ── Browse ──────────────────────────────────────────────────────────────
 
     private void Tabs_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (!_ready || e.Source != Tabs) return;
-        bool browse = BrowseTab.IsSelected;
-        MineToolbar.IsVisible = MineScroll.IsVisible = !browse;
-        BrowseToolbar.IsVisible = BrowseScroll.IsVisible = browse;
+        bool isMine = MineTab.IsSelected;
+        bool isExternal = ExternalTab.IsSelected;
+        bool isBrowse = BrowseTab.IsSelected;
+
+        MineToolbar.IsVisible = MineScroll.IsVisible = isMine;
+        ExternalToolbar.IsVisible = ExternalScroll.IsVisible = isExternal;
+        BrowseToolbar.IsVisible = BrowseScroll.IsVisible = isBrowse;
+
         Status.Text = "";
-        if (browse && !_browsed) _ = SearchAsync(more: false);
-        else if (!browse) RenderCards();
+        if (isBrowse && !_browsed) _ = SearchAsync(more: false);
+        else if (isMine) RenderCards();
+        else if (isExternal) _ = LoadExternalAsync();
     }
 
     // --preview-modpacks hooks.
@@ -392,13 +669,55 @@ public partial class ModpacksView : UserControl
             + (string.IsNullOrEmpty(instance.PackVersion) ? "" : $"  ·  pack {instance.PackVersion}") + "  ·  " + Byline(instance)
             + (instance.LastPlayedUtc is { } played ? $"  ·  last played {played.ToLocalTime():g}" : "");
         NameBox.Text = instance.Name;
+        _updatingRam = true;
         RamBox.Value = instance.MaxRamMb;
+        RamSlider.Value = Math.Clamp(instance.MaxRamMb / 1024.0, 0, 32);
+        UpdateRamDisplay(instance.MaxRamMb);
+        _updatingRam = false;
         ManageStatus.Text = "";
         UpdateCard.IsVisible = instance.Source != null;
         VersionBox.ItemsSource = null;
         RenderMods();
         RefreshButtons();
         if (instance.Source != null) _ = LoadVersionsAsync(instance);
+    }
+
+    private void RamSlider_ValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (!_ready || _updatingRam) return;
+        _updatingRam = true;
+        int mb = (int)Math.Round(RamSlider.Value * 1024.0);
+        RamBox.Value = mb;
+        UpdateRamDisplay(mb);
+        _updatingRam = false;
+    }
+
+    private void RamBox_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e)
+    {
+        if (!_ready || _updatingRam) return;
+        _updatingRam = true;
+        int mb = (int)(RamBox.Value ?? 0);
+        RamSlider.Value = Math.Clamp(mb / 1024.0, 0, 32);
+        UpdateRamDisplay(mb);
+        _updatingRam = false;
+    }
+
+    private void RamPreset_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button b && int.TryParse(b.Tag?.ToString(), out int mb))
+        {
+            _updatingRam = true;
+            RamBox.Value = mb;
+            RamSlider.Value = Math.Clamp(mb / 1024.0, 0, 32);
+            UpdateRamDisplay(mb);
+            _updatingRam = false;
+        }
+    }
+
+    private void UpdateRamDisplay(int mb)
+    {
+        if (mb <= 0) RamDisplay.Text = "Default (Settings)";
+        else RamDisplay.Text = $"{(mb / 1024.0):0.#} GB ({mb} MB)";
     }
 
     private void Back_Click(object? sender, RoutedEventArgs e)
