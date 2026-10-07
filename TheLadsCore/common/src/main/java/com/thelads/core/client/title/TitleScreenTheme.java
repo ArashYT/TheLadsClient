@@ -119,8 +119,7 @@ public final class TitleScreenTheme {
             scaledText(g, "THE", brandX, brandY, 2.4f, TEXT);
             scaledText(g, "LADS", brandX - 1, brandY + 27, 4.6f, TEXT);
             g.drawText("C L I E N T", brandX + 2, brandY + 76, ACCENT);
-            g.drawText("Your worlds. Your people.", brandX + 2, brandY + 101, MUTED);
-            g.drawText("Make yourself at home.", brandX + 2, brandY + 115, MUTED);
+            g.drawText("Is the sever up?", brandX + 2, brandY + 101, MUTED);
             g.popPose();
             int panelBottom = l.buttons().isEmpty() ? l.menuY() + 40 : l.buttons().get(l.buttons().size() - 1).y() + l.buttons().get(l.buttons().size() - 1).height();
             roundRect(g, l.menuX() - 12, l.menuY() - 30, l.menuWidth() + 24, panelBottom - l.menuY() + 42, 9, 0xCC130B10);
@@ -132,7 +131,7 @@ public final class TitleScreenTheme {
                 (l.menuWidth() - 28f) / Math.max(1, g.textWidth("THE LADS")),
                 (h < 220 ? 21f : 23f) / g.fontHeight()));
             scaledText(g, "THE LADS", brandX + 27, brandY - 1, brandScale, TEXT);
-            if (h >= 220) g.drawText(fit(g, "C L I E N T  /  MAKE YOURSELF AT HOME", l.menuWidth() - 28), brandX + 28, brandY + 23, MUTED);
+            if (h >= 220) g.drawText(fit(g, "C L I E N T  /  IS THE SEVER UP?", l.menuWidth() - 28), brandX + 28, brandY + 23, MUTED);
         }
         g.fill(16, h - 29, w - 16, h - 28, 0x2944202A);
         String build = com.thelads.core.LadsVersion.clientName() + " (" + version + ")";
@@ -342,7 +341,11 @@ public final class TitleScreenTheme {
         "camera", new String[] {"", "..###.....", "##########", "####..####", "###....###",
                                 "###....###", "####..####", "##########", "##########"},
         "switch", new String[] {"......#...", "......##..", "#########.", "......##..", "......#...",
-                                "...#......", "..##......", ".#########", "..##......", "...#......"});
+                                "...#......", "..##......", ".#########", "..##......", "...#......"},
+        "quit", new String[] {"....##....", "....##....", "..#.##.#..", ".#..##..#.", "#...##...#",
+                              "#........#", "#........#", ".#......#.", "..######..", ".........."},
+        "globe", new String[] {"...####...", ".##.##.##.", "#...##...#", "##########", "##########",
+                               "#...##...#", ".##.##.##.", "...####...", "..........", ".........."});
 
     private static void icon(LadsGraphics g, String kind, int x, int y, int size, int c) {
         String[] rows = PIXEL_ICONS.get(kind);
@@ -403,7 +406,7 @@ public final class TitleScreenTheme {
                     g.fill(cx, ay, cx + t, ay + arm, c);
                 }
             }
-            case "social" -> {
+            case "social", "friends" -> {
                 g.fill(x + 1, y + 1, x + 4, y + 4, c);
                 g.fill(x, y + 5, x + 5, y + 9, c);
                 g.fill(x + 6, y, x + 9, y + 3, c);

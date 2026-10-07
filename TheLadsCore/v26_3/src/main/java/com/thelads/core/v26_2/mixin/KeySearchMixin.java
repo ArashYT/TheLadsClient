@@ -48,8 +48,16 @@ public abstract class KeySearchMixin extends OptionsSubScreen {
         List<KeyBindsList.Entry> filtered=new ArrayList<>();
         KeyBindsList.Entry heading=null;boolean headingAdded=false;
         for(var entry:ladsAll){
-            if(!(entry instanceof KeyEntryAccessor accessor)){heading=entry;headingAdded=false;continue;}
+            if(!(entry instanceof KeyEntryAccessor accessor)){
+                String htext = entry.toString().toLowerCase(Locale.ROOT);
+                if (htext.contains("essential")) { heading = null; continue; }
+                heading=entry;headingAdded=false;continue;
+            }
             var key=accessor.ladsKey();
+            if (key == null) continue;
+            String kname = key.getName().toLowerCase(Locale.ROOT);
+            String kcat = key.getCategory().id().getPath().toLowerCase(Locale.ROOT);
+            if (kname.contains("essential") || kcat.contains("essential")) continue;
             String name=I18n.get(key.getName()),binding=key.getTranslatedKeyMessage().getString();
             String category=key.getCategory().label().getString(),mod=ladsModName(key);
             String text=switch(ladsMode){case 1->name;case 2->binding;case 3->category;case 4->mod;

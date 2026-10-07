@@ -10,5 +10,8 @@ public final class LadsPreLaunch implements PreLaunchEntrypoint {
     public void onPreLaunch() {
         AsyncLogging.install();
         EnumValuesHook.install();
+        try {
+            com.thelads.core.client.util.EssentialConfigEnforcer.enforce(net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir());
+        } catch (Throwable ignored) {}
     }
 }

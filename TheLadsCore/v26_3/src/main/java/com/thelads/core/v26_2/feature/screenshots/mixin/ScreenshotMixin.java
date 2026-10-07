@@ -15,6 +15,12 @@ import org.spongepowered.asm.mixin.injection.At;
 public final class ScreenshotMixin {
     @ModifyExpressionValue(method = "lambda$grab$3", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/chat/MutableComponent;withStyle(Ljava/util/function/UnaryOperator;)Lnet/minecraft/network/chat/MutableComponent;"))
     private static MutableComponent ladsScreenshotLink(MutableComponent original, @Local(argsOnly = true) File file) {
+        try {
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+            if (mc != null && mc.gui != null && mc.gui.toastManager() != null) {
+                mc.execute(() -> mc.gui.toastManager().addToast(new NativeScreenshotToast(file)));
+            }
+        } catch (Throwable ignored) {}
         if (!ScreenshotViewer.active()) return original;
         var styled = original.withStyle(style -> style.withClickEvent(new ScreenshotClickEvent(file)).withHoverEvent(new HoverEvent.ShowText(
             ScreenshotViewerUtils.ofSupplied(() -> ScreenshotViewer.active() && ScreenshotViewer.getInstance().getConfig().getOrFallback(
