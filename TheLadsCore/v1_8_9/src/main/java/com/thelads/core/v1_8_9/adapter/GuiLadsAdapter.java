@@ -239,6 +239,20 @@ public class GuiLadsAdapter implements LadsGraphics {
         Gui.drawModalRectWithCustomSizedTexture(x, y, u, v, width, height, 256.0f, 256.0f);
     }
 
+    @Override
+    public void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) {
+        if (iconIndex >= 0) {
+            int iconX = (iconIndex % 8) * 18;
+            int iconY = 198 + (iconIndex / 8) * 18;
+            ResourceLocation location = TEXTURES.get("minecraft:textures/gui/container/inventory.png");
+            if (location == null) TEXTURES.put("minecraft:textures/gui/container/inventory.png", location = new ResourceLocation("textures/gui/container/inventory.png"));
+            Minecraft.getMinecraft().getTextureManager().bindTexture(location);
+            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+            GlStateManager.enableBlend();
+            Gui.drawScaledCustomSizeModalRect(x, y, iconX, iconY, 18, 18, size, size, 256, 256);
+        }
+    }
+
     /** Face and hat layer of the local player's skin, or the default skin for anyone else. */
     @Override
     public void drawHead(String username, String uuid, int x, int y, int size) {

@@ -5293,14 +5293,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var versions = _profileService.GetProfiles()
-                .Select(p => p.MinecraftVersion)
-                .Where(v => !string.IsNullOrWhiteSpace(v))
-                .Distinct()
-                .ToList();
-            if (!versions.Contains("26.3")) versions.Add("26.3");
-            if (!versions.Contains("26.2")) versions.Add("26.2");
-            if (!versions.Contains("1.8.9")) versions.Add("1.8.9");
+            var versions = new List<string> { "26.3", "26.2", "1.8.9" };
 
             var obj = new JsonObject
             {
@@ -5338,8 +5331,12 @@ public partial class MainWindow : Window
             }
 
             _profileService.SetActiveProfile(targetProfile.Id);
-            ApplyProfile(targetProfile, true);
-            LoadProfilesUI();
+            Dispatcher.UIThread.Post(() =>
+            {
+                ApplyProfile(targetProfile, true);
+                PopulateLaunchProfileSelector();
+                LoadProfilesUI();
+            });
             Log($"[Launcher] Switched active profile to: {targetProfile.Name} ({targetProfile.MinecraftVersion}). Auto-relaunching...");
 
             _ = Dispatcher.UIThread.InvokeAsync(async () =>

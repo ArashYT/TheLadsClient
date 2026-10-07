@@ -89,6 +89,14 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         g.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.parse(sprite), x, y, size, size);
     }
 
+    @Override public void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) {
+        if (effectId != null && !effectId.isEmpty()) {
+            try {
+                g.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.withDefaultNamespace("mob_effect/" + effectId), x, y, size, size);
+            } catch (Throwable ignored) {}
+        }
+    }
+
     @Override public void drawHotbarSlots(int x, int y, int slots) {
         int width = 1 + slots * 20;
         g.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR, 182, 22, 0, 0, x, y, width, 22);

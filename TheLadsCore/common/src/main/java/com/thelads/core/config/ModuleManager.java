@@ -150,6 +150,7 @@ public class ModuleManager {
         hud("Voice Chat Group", "The players in your Simple Voice Chat group; talking players turn green.").setEnabled(true);
 
         HudModule pot = hud("Potion Effects", "Show your active potion effects.");
+        pot.addOption(new BoolOption("Show icon", true));
         pot.addOption(new BoolOption("Show duration", true));
         pot.addOption(new BoolOption("Show when empty", false));
 

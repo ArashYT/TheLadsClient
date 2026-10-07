@@ -111,6 +111,14 @@ public class ConfigManager {
         }
         hud.add("groups", groupsArr);
 
+        JsonArray excMods = new JsonArray();
+        for (String m : HudSettings.getInstance().getExcludedModules()) excMods.add(m);
+        hud.add("excludedModules", excMods);
+
+        JsonArray excExt = new JsonArray();
+        for (String m : HudSettings.getInstance().getExcludedExternalMods()) excExt.add(m);
+        hud.add("excludedExternalMods", excExt);
+
         json.add("hud", hud);
         return json;
     }
@@ -236,6 +244,12 @@ public class ConfigManager {
                     groups.add(readHudNames(group));
                 }
                 HudSettings.getInstance().replaceGroups(groups);
+            }
+            if (hud.has("excludedModules")) {
+                HudSettings.getInstance().replaceExcludedModules(readHudNames(hud.get("excludedModules")));
+            }
+            if (hud.has("excludedExternalMods")) {
+                HudSettings.getInstance().replaceExcludedExternalMods(readHudNames(hud.get("excludedExternalMods")));
             }
         }
     }

@@ -77,6 +77,9 @@ public interface LadsGraphics {
     /** A GUI atlas sprite such as "voicechat:icons/microphone", size by size; nothing where the version has no such sprite. */
     default void drawSprite(String sprite, int x, int y, int size) {}
 
+    /** A mob effect icon next to the potion effect name in PotionHudElement. */
+    default void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) {}
+
     /**
      * HUD editor: this frame's game view (the world and the vanilla HUD, without the Lads HUD) scaled into the box.
      * False where no world is shown or the version cannot copy it; the editor then keeps its plain backdrop.

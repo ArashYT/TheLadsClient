@@ -20,7 +20,33 @@ public class PaperdollHudElement extends HudElement {
     }
 
     @Override
-    public void renderEditor(LadsGraphics g) { g.drawPlayerModel(x, y, width, height, true); }
+    public void renderEditor(LadsGraphics g) {
+        if (g.getGame() != null && g.getGame().hasPlayer()) {
+            g.drawPlayerModel(x, y, width, height, true);
+        } else {
+            drawBackground(g);
+            int pad = 4;
+            int boxX = x + pad, boxY = y + pad, boxW = width - 2 * pad, boxH = height - 2 * pad;
+            int headSize = Math.max(14, Math.min(28, boxH / 4));
+            int headX = boxX + (boxW - headSize) / 2;
+            int headY = boxY + 2;
+            g.drawHead("Steve", "", headX, headY, headSize);
+            int bodyW = headSize;
+            int bodyH = headSize * 6 / 5;
+            int bodyX = headX;
+            int bodyY = headY + headSize + 2;
+            g.fill(bodyX, bodyY, bodyX + bodyW, bodyY + bodyH, 0xAA00AAFF);
+            int armW = headSize / 2;
+            g.fill(bodyX - armW - 2, bodyY, bodyX - 2, bodyY + bodyH, 0xAA0088DD);
+            g.fill(bodyX + bodyW + 2, bodyY, bodyX + bodyW + armW + 2, bodyY + bodyH, 0xAA0088DD);
+            int legW = headSize / 2 - 1;
+            int legH = bodyH;
+            int legY = bodyY + bodyH + 2;
+            g.fill(bodyX, legY, bodyX + legW, legY + legH, 0xAA0000AA);
+            g.fill(bodyX + bodyW - legW, legY, bodyX + bodyW, legY + legH, 0xAA0000AA);
+            g.drawCenteredText("Paperdoll", x + width / 2, y + height - 10, com.thelads.core.client.gui.LadsPalette.TEXT);
+        }
+    }
 
     @Override
     public void prepareRender(LadsGraphics g, boolean editor) {

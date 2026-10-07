@@ -32,10 +32,16 @@ public static class ModrinthModpacks
     public static async Task<List<ModpackHit>> SearchAsync(HttpClient http, string query, string? gameVersion, string? loader, string sort,
         int offset, CancellationToken token, string? projectId = null)
     {
-        var facets = new List<string[]> { new[] { "project_type:modpack" } };
+        return await SearchContentAsync(http, query, "modpack", gameVersion, loader, sort, offset, token, projectId);
+    }
+
+    public static async Task<List<ModpackHit>> SearchContentAsync(HttpClient http, string query, string projectType, string? gameVersion, string? loader, string sort,
+        int offset, CancellationToken token, string? projectId = null)
+    {
+        var facets = new List<string[]> { new[] { "project_type:" + projectType } };
         if (projectId != null) facets.Add(new[] { "project_id:" + projectId });
         if (!string.IsNullOrEmpty(gameVersion)) facets.Add(new[] { "versions:" + gameVersion });
-        if (!string.IsNullOrEmpty(loader)) facets.Add(new[] { "categories:" + loader });
+        if (!string.IsNullOrEmpty(loader) && (projectType == "mod" || projectType == "modpack")) facets.Add(new[] { "categories:" + loader });
         var url = $"{Api}/search?query={Uri.EscapeDataString(query)}&facets={Uri.EscapeDataString(JsonSerializer.Serialize(facets))}&index={sort}&offset={offset}&limit=24";
         using var doc = JsonDocument.Parse(await http.GetStringAsync(url, token));
         return doc.RootElement.GetProperty("hits").EnumerateArray().Select(h => new ModpackHit(
@@ -43,6 +49,44 @@ public static class ModrinthModpacks
             h.TryGetProperty("icon_url", out var icon) && icon.ValueKind == JsonValueKind.String ? icon.GetString() : null,
             h.TryGetProperty("downloads", out var d) ? d.GetInt64() : 0, Strings(h, "versions"),
             Strings(h, "categories").Where(LoaderFilters.Contains).ToList())).ToList();
+    }
+
+    public static async Task<string> DownloadLatestFileAsync(HttpClient http, string projectId, string projectType, string? gameVersion, string? loader, string targetFolder, CancellationToken token)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrEmpty(gameVersion)) query.Add("game_versions=" + Uri.EscapeDataString("[\"" + gameVersion + "\"]"));
+        if (!string.IsNullOrEmpty(loader) && (projectType == "mod" || projectType == "modpack")) query.Add("loaders=" + Uri.EscapeDataString("[\"" + loader + "\"]"));
+        string qs = query.Count > 0 ? "?" + string.Join("&", query) : "";
+        string url = $"{Api}/project/{Uri.EscapeDataString(projectId)}/version{qs}";
+        using var doc = JsonDocument.Parse(await http.GetStringAsync(url, token));
+        var versions = doc.RootElement.EnumerateArray().ToList();
+        if (versions.Count == 0)
+        {
+            // Try without loader constraint as fallback
+            if (!string.IsNullOrEmpty(loader))
+            {
+                string fallbackUrl = $"{Api}/project/{Uri.EscapeDataString(projectId)}/version" + (!string.IsNullOrEmpty(gameVersion) ? $"?game_versions={Uri.EscapeDataString("[\"" + gameVersion + "\"]")}" : "");
+                using var fallbackDoc = JsonDocument.Parse(await http.GetStringAsync(fallbackUrl, token));
+                versions = fallbackDoc.RootElement.EnumerateArray().ToList();
+            }
+            if (versions.Count == 0) throw new InvalidOperationException("No compatible versions found on Modrinth for this Minecraft version.");
+        }
+        var ver = versions[0];
+        var files = ver.GetProperty("files").EnumerateArray().ToList();
+        var file = files.FirstOrDefault(f => f.TryGetProperty("primary", out var p) && p.GetBoolean());
+        if (file.ValueKind == JsonValueKind.Undefined && files.Count > 0) file = files[0];
+        if (file.ValueKind == JsonValueKind.Undefined) throw new InvalidOperationException("No downloadable files found in this version.");
+        string fileUrl = file.GetProperty("url").GetString()!;
+        string fileName = file.GetProperty("filename").GetString()!;
+        Directory.CreateDirectory(targetFolder);
+        string dest = Path.Combine(targetFolder, fileName);
+
+        using var response = await http.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead, token);
+        response.EnsureSuccessStatusCode();
+        await using var input = await response.Content.ReadAsStreamAsync(token);
+        await using var output = new FileStream(dest, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
+        await input.CopyToAsync(output, token);
+        return fileName;
     }
 
     /// <summary>The project's versions that ship a .mrpack, newest first.</summary>
@@ -99,10 +143,16 @@ public static class ModrinthModpacks
         switch (loader)
         {
             case "vanilla": return "";
-            case "fabric": return (await new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(http).GetFirstLoader(gameVersion)).Version
-                ?? throw new InvalidOperationException($"Fabric has no loader for Minecraft {gameVersion}.");
-            case "quilt": return (await new CmlLib.Core.ModLoaders.QuiltMC.QuiltInstaller(http).GetFirstLoader(gameVersion)).Version
-                ?? throw new InvalidOperationException($"Quilt has no loader for Minecraft {gameVersion}.");
+            case "fabric":
+            {
+                var l = await new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(http).GetFirstLoader(gameVersion);
+                return l?.Version ?? throw new InvalidOperationException($"Fabric has no loader for Minecraft {gameVersion}.");
+            }
+            case "quilt":
+            {
+                var l = await new CmlLib.Core.ModLoaders.QuiltMC.QuiltInstaller(http).GetFirstLoader(gameVersion);
+                return l?.Version ?? throw new InvalidOperationException($"Quilt has no loader for Minecraft {gameVersion}.");
+            }
             case "forge":
             {
                 using var doc = JsonDocument.Parse(await http.GetStringAsync("https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json", token));

@@ -31,6 +31,7 @@ public final class LadsSettingsScreen {
     private boolean enabledOnly, favoritesOnly, filterDirty = true, dirty;
     private boolean fpsDialogOpen, editingFps, draggingFpsSlider;
     private Rect fpsSliderTrack;
+    private final Map<String, Rect> fpsExceptionRects = new LinkedHashMap<>();
     private String fpsBuffer = "";
     private long ownershipRevision = -1;
     private int scrollOffset, maxScroll, width = 640, height = 360;
@@ -45,6 +46,9 @@ public final class LadsSettingsScreen {
     private final ConfirmDialog confirm = new ConfirmDialog();
     private double displayedScroll;
     private int renderScroll;
+    private int catalogScrollOffset;
+    private double catalogDisplayedScroll;
+    private int catalogRenderScroll;
     private List<Module> filtered = List.of();
     private Module detail;
     private Option editingOption, dragging;
@@ -100,7 +104,7 @@ public final class LadsSettingsScreen {
     }
     public void refreshCatalog() { filterDirty = true; refreshCapabilities(); }
     public void setClipboardReader(Supplier<String> reader) { clipboardReader = reader; }
-    public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; }
+    public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; catalogScrollOffset = 0; catalogDisplayedScroll = 0; catalogRenderScroll = 0; }
     public String getSearchQuery() { return searchQuery; }
     public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || colorPicker.isOpen() || fpsDialogOpen; }
     public String getCurrentCategory() { return currentCategory; }
@@ -615,10 +619,54 @@ public final class LadsSettingsScreen {
                 round(g, centerX - 55, centerY - 16, 110, 32, CARD);
                 round(g, centerX - 55, centerY - 16, 110, 32, m.isEnabled() ? ACCENT : LadsPalette.BORDER);
                 g.drawCenteredText(m.isEnabled() ? "[ " + name.toUpperCase(Locale.ROOT) + " (KEY) ]" : "[ DISABLED ]", centerX, centerY - 4, m.isEnabled() ? ACCENT : MUTED);
+            } else if ("Nametags".equalsIgnoreCase(name) || "ToggleNametags".equalsIgnoreCase(name)) {
+                round(g, centerX - 50, centerY - 14, 100, 26, 0x80000000);
+                round(g, centerX - 50, centerY - 14, 100, 26, m.isEnabled() ? ACCENT : LadsPalette.BORDER);
+                g.drawCenteredText("[LAD] Steve", centerX, centerY - 10, ACCENT);
+                g.drawCenteredText("20 ❤ · 14m", centerX, centerY + 2, TEXT);
+            } else if ("Hitboxes".equalsIgnoreCase(name)) {
+                round(g, centerX - 30, centerY - 35, 60, 70, 0x20FFFFFF);
+                g.fill(centerX - 30, centerY - 35, centerX + 30, centerY - 34, 0xFFFFFFFF);
+                g.fill(centerX - 30, centerY + 34, centerX + 30, centerY + 35, 0xFFFFFFFF);
+                g.fill(centerX - 30, centerY - 35, centerX - 29, centerY + 35, 0xFFFFFFFF);
+                g.fill(centerX + 29, centerY - 35, centerX + 30, centerY + 35, 0xFFFFFFFF);
+                // Eye line
+                g.fill(centerX - 30, centerY - 12, centerX + 30, centerY - 11, 0xFFFF0000);
+                g.drawCenteredText("Entity Hitbox", centerX, centerY + 10, MUTED);
+            } else if ("DamageTilt".equalsIgnoreCase(name) || "CameraTilt".equalsIgnoreCase(name)) {
+                round(g, centerX - 40, centerY - 20, 80, 40, CARD);
+                g.drawCenteredText("TILT ANGLE", centerX, centerY - 10, ACCENT);
+                g.drawCenteredText("Dynamic Screen Tilt", centerX, centerY + 4, TEXT);
+            } else if ("DynamicLights".equalsIgnoreCase(name)) {
+                round(g, centerX - 45, centerY - 25, 90, 50, CARD);
+                round(g, centerX - 45, centerY - 25, 90, 50, m.isEnabled() ? 0xFFFFAA00 : LadsPalette.BORDER);
+                g.drawCenteredText("DYNAMIC LIGHT", centerX, centerY - 10, 0xFFFFAA00);
+                g.drawCenteredText(m.isEnabled() ? "Handheld Torch Lit" : "Disabled", centerX, centerY + 6, TEXT);
+            } else if ("MotionBlur".equalsIgnoreCase(name)) {
+                round(g, centerX - 45, centerY - 25, 90, 50, CARD);
+                g.drawCenteredText("MOTION BLUR", centerX, centerY - 10, ACCENT);
+                g.drawCenteredText("Frame Blending", centerX, centerY + 6, TEXT);
+            } else if ("DiscordRPC".equalsIgnoreCase(name) || name.toLowerCase(Locale.ROOT).contains("discord")) {
+                round(g, centerX - 60, centerY - 24, 120, 48, CARD);
+                round(g, centerX - 60, centerY - 24, 120, 48, 0xFF5865F2);
+                g.drawCenteredText("Playing The Lads", centerX, centerY - 14, 0xFF5865F2);
+                g.drawCenteredText("In-Game · Server", centerX, centerY, TEXT);
+                g.drawCenteredText("Rich Presence", centerX, centerY + 12, MUTED);
+            } else if ("Chat".equalsIgnoreCase(name) || "ChatFilter".equalsIgnoreCase(name)) {
+                round(g, centerX - 65, centerY - 20, 130, 40, 0x80000000);
+                g.drawText("[Chat] <Player> Hello!", centerX - 60, centerY - 14, TEXT);
+                g.drawText("[Lads] Welcome!", centerX - 60, centerY + 2, ACCENT);
+            } else if ("BetterF3".equalsIgnoreCase(name)) {
+                round(g, centerX - 55, centerY - 25, 110, 50, 0x90000000);
+                g.drawText("Minecraft 1.8.9 / 26.x", centerX - 50, centerY - 18, 0xFF55FF55);
+                g.drawText("FPS: 240 / 144", centerX - 50, centerY - 6, 0xFF55FFFF);
+                g.drawText("Biome: Plains", centerX - 50, centerY + 6, 0xFFFFAA00);
             } else {
-                g.drawModIcon(name.toLowerCase(Locale.ROOT), centerX - 16, centerY - 36, 32);
+                round(g, centerX - 50, centerY - 32, 100, 64, CARD);
+                round(g, centerX - 50, centerY - 32, 100, 64, m.isEnabled() ? ACCENT : LadsPalette.BORDER);
+                g.drawModIcon(name.toLowerCase(Locale.ROOT), centerX - 14, centerY - 26, 28);
                 g.drawCenteredText(fit(g, name, boxW - 12), centerX, centerY + 6, TEXT);
-                g.drawCenteredText(m.getCategory().name(), centerX, centerY + 20, ACCENT);
+                g.drawCenteredText(m.getCategory().name(), centerX, centerY + 18, m.isEnabled() ? ACCENT : MUTED);
             }
 
             g.drawCenteredText(fit(g, "Live Settings Preview", boxW - 4), boxX + boxW / 2, y + h - 14, MUTED);
@@ -758,9 +806,30 @@ public final class LadsSettingsScreen {
 
         g.drawText("60 FPS (Recommended) prevents tearing.", dx + 150, dy + 150, MUTED);
 
+        fpsExceptionRects.clear();
+        g.drawText("EXCEPTIONS (IGNORE FPS CAP)", dx + 12, dy + 175, ACCENT);
+        String[] sampleExempt = new String[]{"Keystrokes", "CPS", "FPS", "ArmorHUD", "Minimap", "Voice Chat"};
+        int chipX = dx + 12;
+        int chipY = dy + 189;
+        int chipH = 18;
+        for (String mod : sampleExempt) {
+            boolean ex = HudSettings.getInstance().isModuleExempt(mod);
+            int chipW = g.textWidth(mod) + 14;
+            if (chipX + chipW > dx + dw - 12) {
+                chipX = dx + 12;
+                chipY += chipH + 4;
+            }
+            Rect cr = new Rect(chipX, chipY, chipW, chipH);
+            fpsExceptionRects.put(mod, cr);
+            boolean ch = cr.contains(mx, my);
+            round(g, chipX, chipY, chipW, chipH, ex ? LadsPalette.PRIMARY : (ch ? LadsPalette.HOVER : CARD));
+            g.drawCenteredText(mod, chipX + chipW / 2, chipY + 4, ex ? TEXT : MUTED);
+            chipX += chipW + 4;
+        }
+
         String rateText = "Current HUD Rate: " + HudManager.getInstance().getMeasuredHudFps() + " FPS";
-        g.drawText(rateText, dx + 12, dy + 185, ACCENT);
-        g.drawText("Updates all HUD modules & vanilla HUD in real time.", dx + 12, dy + 200, MUTED);
+        g.drawText(rateText, dx + 12, dy + 225, ACCENT);
+        g.drawText("Updates all HUD modules & vanilla HUD in real time.", dx + 12, dy + 238, MUTED);
     }
     private void renderMods(LadsGraphics g, int x, int w, int mx, int my) {
         pollModState();
@@ -1100,6 +1169,16 @@ public final class LadsSettingsScreen {
                 commitFpsEdit();
                 return true;
             }
+            for (var entry : fpsExceptionRects.entrySet()) {
+                if (entry.getValue().contains(x, y)) {
+                    String mod = entry.getKey();
+                    boolean next = !HudSettings.getInstance().isModuleExempt(mod);
+                    HudSettings.getInstance().setModuleExempt(mod, next);
+                    ConfigManager.save();
+                    dirty = true;
+                    return true;
+                }
+            }
             if (editingFps) {
                 commitFpsEdit();
             }
@@ -1293,7 +1372,7 @@ public final class LadsSettingsScreen {
         if (editingOption != null) changed(detail);
         editingOption = null; editingSearch = false; selectAll = false; notice = rejected; return true;
     }
-    private void category(String cat) { if (!finish()) return; currentCategory = cat; detail = null; modsView = detailFromMods = false; modsPlan = null; invalidate(); }
+    private void category(String cat) { if (!finish()) return; currentCategory = cat; detail = null; modsView = detailFromMods = false; modsPlan = null; catalogScrollOffset = 0; catalogDisplayedScroll = 0; catalogRenderScroll = 0; invalidate(); }
     private void invalidate() { filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = ""; }
     private void changed(Module m) {
         if (m != null) m.touch(); dirty = true; filterDirty = true; persist();
@@ -1305,7 +1384,12 @@ public final class LadsSettingsScreen {
             .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
             .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o)))
             .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o)))
-            .filter(o -> !(detail instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o))).toList();
+            .filter(o -> !(detail instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o)))
+            .sorted((a, b) -> {
+                if ("Ignore HUD FPS Cap".equals(a.getName())) return 1;
+                if ("Ignore HUD FPS Cap".equals(b.getName())) return -1;
+                return 0;
+            }).toList();
     }
     private Option activeOption(String name) { return activeOptions().stream().filter(o -> o.getName().equals(name)).findFirst().orElse(null); }
     private boolean finish() { if (!commitEdit()) return false; persist(); return true; }
@@ -1314,10 +1398,29 @@ public final class LadsSettingsScreen {
     public void openModule(String name) { Module m=ModuleManager.getInstance().getModule(name); if(m!=null)openDetails(m); }
     /** QA (kill banner captures): the Kill Banner picker's skin search, as typed. */
     public void searchKillBanners(String query) { kbSearch = query; }
-    private void openDetails(Module m) { if (!ModuleSupport.isBuiltIn(m.getName())) return; detail = m; detailFromMods = false; m.setLastOpenedTime(System.currentTimeMillis()); scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = "back"; notice = ""; }
+    private void openDetails(Module m) {
+        if (!ModuleSupport.isBuiltIn(m.getName())) return;
+        if (detail == null) {
+            catalogScrollOffset = scrollOffset;
+            catalogDisplayedScroll = displayedScroll;
+            catalogRenderScroll = renderScroll;
+        }
+        detail = m;
+        detailFromMods = false;
+        m.setLastOpenedTime(System.currentTimeMillis());
+        scrollOffset = 0;
+        displayedScroll = 0;
+        renderScroll = 0;
+        focusId = "back";
+        notice = "";
+    }
     private void back() {
         if (!finish()) return;
-        detail = null; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = "";
+        detail = null;
+        scrollOffset = catalogScrollOffset;
+        displayedScroll = catalogDisplayedScroll;
+        renderScroll = catalogRenderScroll;
+        focusId = "";
         if (detailFromMods) { detailFromMods = false; modsView = true; reloadMods(); }
     }
     private void leave(Runnable action) { if (!finish()) return; action.run(); }

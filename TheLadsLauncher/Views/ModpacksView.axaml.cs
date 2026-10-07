@@ -419,27 +419,265 @@ public partial class ModpacksView : UserControl
         DeleteButton.IsEnabled = UpdateButton.IsEnabled = Idle(i);
     }
 
-    private void RenderMods()
+    private string _addContentType = "mod";
+    private string _addContentTargetDir = "";
+    private CancellationTokenSource? _addContentSearchCts;
+
+    private void InstanceTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        ModsList.Children.Clear();
+        if (_selected == null) return;
+        RenderAllContent();
+    }
+
+    private void ContentFilter_Changed(object? sender, TextChangedEventArgs e)
+    {
+        if (_selected == null) return;
+        RenderAllContent();
+    }
+
+    private void RenderAllContent()
+    {
         if (_selected is not { } i) return;
-        List<ModpackMod> mods;
-        try { mods = Modpacks.Mods(i); }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { ModsHeader.Text = "MODS"; ManageStatus.Text = e.Message; return; }
-        ModsHeader.Text = $"MODS · {mods.Count(m => m.Enabled)} OF {mods.Count} ON";
-        if (mods.Count == 0)
-            ModsList.Children.Add(new TextBlock { Text = i.Loader == "vanilla" ? "Vanilla instances have no mods." : "No mods yet. Use Open folder and put mods in the mods folder.", Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")) });
-        foreach (var mod in mods)
+        RenderContent("mods", "MODS", ModsHeader, ModsList, ModsSearch);
+        RenderContent("resourcepacks", "RESOURCE PACKS", ResourcePacksHeader, ResourcePacksList, ResourcePacksSearch);
+        RenderContent("shaderpacks", "SHADERS", ShadersHeader, ShadersList, ShadersSearch);
+        RenderContent("datapacks", "DATAPACKS", DatapacksHeader, DatapacksList, DatapacksSearch);
+    }
+
+    private void RenderContent(string folder, string typeHeader, TextBlock header, StackPanel list, TextBox searchBox)
+    {
+        list.Children.Clear();
+        if (_selected is not { } i) return;
+        List<ModpackContentItem> items;
+        try { items = Modpacks.Content(i, folder, typeHeader); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { header.Text = typeHeader; ManageStatus.Text = e.Message; return; }
+
+        string filter = (searchBox.Text ?? "").Trim();
+        var visible = string.IsNullOrEmpty(filter)
+            ? items
+            : items.Where(item => item.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        header.Text = $"{typeHeader} · {items.Count(m => m.Enabled)} OF {items.Count} ON";
+        if (visible.Count == 0)
         {
-            var box = new CheckBox { Content = mod.FileName, IsChecked = mod.Enabled, IsEnabled = Idle(i) }.Untranslated();
+            list.Children.Add(new TextBlock
+            {
+                Text = items.Count == 0
+                    ? $"No {typeHeader.ToLowerInvariant()} installed. Use + Add {typeHeader.ToLowerInvariant()} to search Modrinth or + From file to install."
+                    : "No items match your filter.",
+                Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")),
+                Margin = new Thickness(0, 10, 0, 0)
+            });
+            return;
+        }
+
+        foreach (var item in visible)
+        {
+            var rowGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+            var box = new CheckBox
+            {
+                Content = item.Name,
+                IsChecked = item.Enabled,
+                IsEnabled = Idle(i),
+                VerticalAlignment = VerticalAlignment.Center
+            }.Untranslated();
+
             box.IsCheckedChanged += (_, _) =>
             {
-                try { Modpacks.SetModEnabled(mod, box.IsChecked == true); }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { ManageStatus.Text = $"Could not switch {mod.FileName}: {e.Message}"; }
-                RenderMods();
+                try { Modpacks.SetContentEnabled(item, box.IsChecked == true); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { ManageStatus.Text = $"Could not switch {item.Name}: {e.Message}"; }
+                RenderContent(folder, typeHeader, header, list, searchBox);
             };
-            ModsList.Children.Add(box);
+            rowGrid.Children.Add(box);
+
+            var delBtn = new Button
+            {
+                Classes = { "danger" },
+                Content = "✕",
+                Width = 28,
+                Height = 28,
+                Padding = new Thickness(0),
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+            };
+            ToolTip.SetTip(delBtn, "Delete this file");
+            Grid.SetColumn(delBtn, 1);
+            delBtn.Click += async (_, _) =>
+            {
+                if (Host is { } host && !await host.ConfirmModpackAsync("Delete item", $"Delete '{item.Name}' from this modpack?", "Delete")) return;
+                try
+                {
+                    Modpacks.DeleteContent(item);
+                    RenderContent(folder, typeHeader, header, list, searchBox);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { ManageStatus.Text = $"Could not delete {item.Name}: {e.Message}"; }
+            };
+            rowGrid.Children.Add(delBtn);
+
+            var border = new Border
+            {
+                Background = new SolidColorBrush(Color.Parse("#1B1C20")),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 6),
+                Child = rowGrid
+            };
+            list.Children.Add(border);
         }
+    }
+
+    private void RenderMods() => RenderAllContent();
+
+    private void AddMods_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected == null) return;
+        OpenAddContent("mod", "Mods", Path.Combine(_selected.GameDirectory, "mods"));
+    }
+
+    private void AddResourcePacks_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected == null) return;
+        OpenAddContent("resourcepack", "Resource Packs", Path.Combine(_selected.GameDirectory, "resourcepacks"));
+    }
+
+    private void AddShaders_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected == null) return;
+        OpenAddContent("shader", "Shader Packs", Path.Combine(_selected.GameDirectory, "shaderpacks"));
+    }
+
+    private void AddDatapacks_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected == null) return;
+        OpenAddContent("datapack", "Datapacks", Path.Combine(_selected.GameDirectory, "datapacks"));
+    }
+
+    private async void AddModsFromFile_Click(object? sender, RoutedEventArgs e) => await AddFromFileAsync("mods", "jar");
+    private async void AddResourcePacksFromFile_Click(object? sender, RoutedEventArgs e) => await AddFromFileAsync("resourcepacks", "zip");
+    private async void AddShadersFromFile_Click(object? sender, RoutedEventArgs e) => await AddFromFileAsync("shaderpacks", "zip");
+    private async void AddDatapacksFromFile_Click(object? sender, RoutedEventArgs e) => await AddFromFileAsync("datapacks", "zip");
+
+    private async Task AddFromFileAsync(string folder, string ext)
+    {
+        if (_selected is not { } i || TopLevel.GetTopLevel(this) is not { } top) return;
+        var filter = new FilePickerFileType($"{ext.ToUpperInvariant()} files") { Patterns = new[] { $"*.{ext}" } };
+        var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = $"Add {folder} from files",
+            AllowMultiple = true,
+            FileTypeFilter = new[] { filter }
+        });
+        if (files == null || files.Count == 0) return;
+        string targetDir = Path.Combine(i.GameDirectory, folder);
+        Directory.CreateDirectory(targetDir);
+        int copied = 0;
+        foreach (var file in files)
+        {
+            try
+            {
+                string dest = Path.Combine(targetDir, file.Name);
+                File.Copy(file.Path.LocalPath, dest, true);
+                copied++;
+            }
+            catch (Exception ex) { ManageStatus.Text = $"Error copying {file.Name}: {ex.Message}"; }
+        }
+        ManageStatus.Text = $"Installed {copied} file(s) into {folder}.";
+        RenderAllContent();
+    }
+
+    private void OpenAddContent(string projectType, string title, string targetDir)
+    {
+        if (_selected is not { } i) return;
+        _addContentType = projectType;
+        _addContentTargetDir = targetDir;
+        AddContentTitle.Text = $"Add {title}";
+        AddContentSubtitle.Text = $"Automatically searching compatible content for Minecraft {i.McVersion} ({LoaderName(i.Loader)})";
+        AddContentSearchBox.Text = "";
+        AddContentResults.Children.Clear();
+        AddContentStatus.Text = "";
+        AddContentPanel.IsVisible = true;
+        _ = SearchAddContentAsync("");
+    }
+
+    private void AddContentBack_Click(object? sender, RoutedEventArgs e)
+    {
+        AddContentPanel.IsVisible = false;
+        RenderAllContent();
+    }
+
+    private void AddContentSearch_Click(object? sender, RoutedEventArgs e) => _ = SearchAddContentAsync(AddContentSearchBox.Text ?? "");
+    private void AddContentSearch_KeyDown(object? sender, KeyEventArgs e) { if (e.Key == Key.Enter) _ = SearchAddContentAsync(AddContentSearchBox.Text ?? ""); }
+
+    private async Task SearchAddContentAsync(string query)
+    {
+        if (_selected is not { } i) return;
+        _addContentSearchCts?.Cancel();
+        var cts = _addContentSearchCts = new CancellationTokenSource();
+        AddContentStatus.Text = "Searching Modrinth...";
+        AddContentResults.Children.Clear();
+        try
+        {
+            var hits = await ModrinthModpacks.SearchContentAsync(Http, query, _addContentType, i.McVersion, i.Loader, "relevance", 0, cts.Token);
+            if (cts.IsCancellationRequested) return;
+            if (hits.Count == 0)
+            {
+                AddContentStatus.Text = "No compatible results found on Modrinth for this Minecraft version and loader.";
+                return;
+            }
+            AddContentStatus.Text = $"Found {hits.Count} results:";
+            foreach (var hit in hits)
+            {
+                AddContentResults.Children.Add(CreateAddContentResultRow(hit));
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            AddContentStatus.Text = "Search failed: " + ex.Message;
+        }
+    }
+
+    private Control CreateAddContentResultRow(ModpackHit hit)
+    {
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        var icon = new Border { Width = 56, Height = 56, CornerRadius = new CornerRadius(6), ClipToBounds = true, Background = new SolidColorBrush(Color.Parse("#2A2B31")), VerticalAlignment = VerticalAlignment.Top };
+        _ = LoadRemoteIconAsync(icon, hit.IconUrl);
+        grid.Children.Add(icon);
+
+        var text = new StackPanel { Spacing = 2, Margin = new Thickness(12, 0, 12, 0) };
+        var title = new TextBlock { TextWrapping = TextWrapping.Wrap, Inlines = new Avalonia.Controls.Documents.InlineCollection
+        {
+            new Avalonia.Controls.Documents.Run(hit.Title) { FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White },
+            new Avalonia.Controls.Documents.Run("  by " + hit.Author) { FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")) }
+        } }.Untranslated();
+        text.Children.Add(title);
+        text.Children.Add(new TextBlock { Text = hit.Description, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = new SolidColorBrush(Color.Parse("#C9CAD1")), FontSize = 11 });
+        text.Children.Add(new TextBlock { Text = $"{Downloads(hit.Downloads)} downloads  ·  {string.Join(", ", hit.Loaders.Select(LoaderName))}", FontSize = 10, Foreground = new SolidColorBrush(Color.Parse("#8F919B")) });
+        Grid.SetColumn(text, 1);
+        grid.Children.Add(text);
+
+        var installBtn = new Button { Classes = { "launch" }, Content = "Install", Width = 96, Height = 32, HorizontalContentAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(installBtn, 2);
+        installBtn.Click += async (_, _) =>
+        {
+            if (_selected is not { } instance) return;
+            installBtn.IsEnabled = false;
+            installBtn.Content = "Installing...";
+            try
+            {
+                string savedFile = await ModrinthModpacks.DownloadLatestFileAsync(Http, hit.ProjectId, _addContentType, instance.McVersion, instance.Loader, _addContentTargetDir, CancellationToken.None);
+                installBtn.Content = "✓ Installed";
+                ManageStatus.Text = $"Installed {savedFile}!";
+            }
+            catch (Exception ex)
+            {
+                installBtn.IsEnabled = true;
+                installBtn.Content = "Retry";
+                AddContentStatus.Text = $"Installation failed: {ex.Message}";
+            }
+        };
+        grid.Children.Add(installBtn);
+
+        return new Border { Background = new SolidColorBrush(Color.Parse("#1B1C20")), CornerRadius = new CornerRadius(8), Padding = new Thickness(12), Child = grid };
     }
 
     private async void Play_Click(object? sender, RoutedEventArgs e)

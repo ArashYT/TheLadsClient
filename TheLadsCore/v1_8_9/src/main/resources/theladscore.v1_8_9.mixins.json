@@ -77,6 +77,10 @@
     "TileEntitySignRendererMixin",
     "TileEntityCullMixin",
     "WorldCullMixin",
-    "WorldSwitchMixin"
+    "WorldSwitchMixin",
+    "ServerListEntryNormalMixin",
+    "OldServerPingerMixin",
+    "EssentialFirewallMixin189",
+    "GuiMultiplayerMixin189"
   ]
 }
