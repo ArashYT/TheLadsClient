@@ -475,7 +475,9 @@ public class ServerDiscoveryScreen189 extends GuiScreen {
                 if (!server.description.isEmpty()) {
                     fontRendererObj.drawString(server.description, textX, itemY + 17, 0xFFA0A1AA);
                 }
-                fontRendererObj.drawString("Pinging server...", textX, itemY + 29, 0xFF60626D);
+                long animTick = (System.currentTimeMillis() / 360L) % 4L;
+                String dots = animTick == 0 ? "" : animTick == 1 ? "." : animTick == 2 ? ".." : "...";
+                fontRendererObj.drawString("Pinging server" + dots, textX, itemY + 29, 0xFF7E8B9D);
             }
         }
 

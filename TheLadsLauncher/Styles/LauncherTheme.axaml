@@ -285,9 +285,10 @@
     <Setter Property="AllowAutoHide" Value="True"/>
   </Style>
   <Style Selector="TabItem">
-    <Setter Property="FontSize" Value="13"/>
-    <Setter Property="FontWeight" Value="Medium"/>
-    <Setter Property="Padding" Value="12,10"/>
+    <Setter Property="FontSize" Value="16"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Padding" Value="20,12"/>
+    <Setter Property="MinHeight" Value="42"/>
     <Setter Property="Foreground" Value="#A0A1AA"/>
   </Style>
   <Style Selector="TabItem:selected">

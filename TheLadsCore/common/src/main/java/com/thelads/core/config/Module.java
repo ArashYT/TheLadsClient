@@ -56,7 +56,14 @@ public class Module {
         return description;
     }
 
+    public boolean isBlockedByServer() {
+        return com.thelads.core.client.HypixelSafetyManager.isDisallowed(this.name);
+    }
+
     public boolean isEnabled() {
+        if (isBlockedByServer()) {
+            return false;
+        }
         return enabled;
     }
 

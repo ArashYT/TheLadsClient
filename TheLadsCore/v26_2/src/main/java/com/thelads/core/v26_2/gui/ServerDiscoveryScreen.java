@@ -407,7 +407,9 @@ public class ServerDiscoveryScreen extends Screen {
                 if (!server.description().isEmpty()) {
                     g.text(font, server.description(), textX, itemY + 17, 0xFFA0A1AA, false);
                 }
-                g.text(font, "Pinging server...", textX, itemY + 29, 0xFF60626D, false);
+                long animTick = (System.currentTimeMillis() / 360L) % 4L;
+                String dots = animTick == 0 ? "" : animTick == 1 ? "." : animTick == 2 ? ".." : "...";
+                g.text(font, "Pinging server" + dots, textX, itemY + 29, 0xFF7E8B9D, false);
             }
         }
 

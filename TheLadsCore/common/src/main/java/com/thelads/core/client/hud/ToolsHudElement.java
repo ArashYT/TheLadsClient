@@ -17,7 +17,12 @@ public final class ToolsHudElement extends TextHudElement {
     private boolean timerRunning;
     private String timerText = "";
     public ToolsHudElement() { super(70); }
-    @Override public boolean isAvailable() { return ModuleSupport.isBuiltIn(moduleName); }
+    @Override public boolean isAvailable() {
+        if ("ReachDisplay".equalsIgnoreCase(moduleName) && com.thelads.core.client.HypixelSafetyManager.isHypixel()) {
+            return false;
+        }
+        return ModuleSupport.isBuiltIn(moduleName);
+    }
     @Override protected String updateText(LadsGraphics g) {
         var game = g.getGame();
         return switch (moduleName) {

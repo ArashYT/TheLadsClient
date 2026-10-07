@@ -163,7 +163,13 @@ public final class LadsSettingsScreen {
         renderHudFpsDialog(g, mouseX, mouseY);
         confirm.render(g, mouseX, mouseY);
         boolean overlay = colorPicker.isOpen() || actions.isOpen() || fpsDialogOpen || confirm.isOpen();
-        if (tip.update(overlay || tipModule == null ? null : tipModule.getName(), now)) tooltip(g, tipModule.getDescription(), mouseX, mouseY);
+        if (tip.update(overlay || tipModule == null ? null : tipModule.getName(), now)) {
+            String desc = tipModule.getDescription();
+            if (tipModule.isBlockedByServer()) {
+                desc += " [Disabled on Hypixel - Server Rules]";
+            }
+            tooltip(g, desc, mouseX, mouseY);
+        }
     }
     /** Description tooltip beside the pointer, kept on screen and drawn last so it sits above the frame. */
     private void tooltip(LadsGraphics g, String text, int mx, int my) {
@@ -228,12 +234,13 @@ public final class LadsSettingsScreen {
             int cx = x + (i % cols) * (cardW + gap), cy = top + (i / cols) * (cardH + gap) - renderScroll;
             if (cy + cardH <= top || cy >= top + viewport.height) continue;
             String id = "card:" + m.getName();
-            boolean toggleable = ModuleSupport.isToggleable(m.getName()), on = toggleable && m.isEnabled(), focused = focusId.equals(id);
+            boolean blocked = m.isBlockedByServer();
+            boolean toggleable = !blocked && ModuleSupport.isToggleable(m.getName()), on = toggleable && m.isEnabled(), focused = focusId.equals(id);
             boolean cardHovered = new Rect(cx, cy, cardW, cardH).contains(mx, my) && viewport.contains(mx, my);
             if (cardHovered) tipModule = m;
             float hover = animate(id, cardHovered);
-            int base = !toggleable ? CARD : on ? LadsPalette.CARD_ON : LadsPalette.CARD_OFF;
-            int glow = !toggleable ? LadsPalette.DISABLED : on ? LadsPalette.CARD_ON_GLOW : LadsPalette.CARD_OFF_GLOW, fill = mix(base, glow, .14f * hover);
+            int base = blocked ? LadsPalette.CARD_OFF : (!toggleable ? CARD : on ? LadsPalette.CARD_ON : LadsPalette.CARD_OFF);
+            int glow = blocked ? LadsPalette.DISABLED : (!toggleable ? LadsPalette.DISABLED : on ? LadsPalette.CARD_ON_GLOW : LadsPalette.CARD_OFF_GLOW), fill = mix(base, glow, .14f * hover);
             round(g, cx - 1, cy + 2, cardW + 2, cardH + 2, 0x14000000);
             round(g, cx, cy + 1, cardW, cardH + 1, 0x24000000);
             if (toggleable && hover > 0) { // glow: a two-step halo outside the edge
@@ -244,20 +251,24 @@ public final class LadsSettingsScreen {
             round(g, cx, cy, cardW, cardH, mix(base, glow, .35f + .65f * hover));
             round(g, cx + 1, cy + 1, cardW - 2, cardH - 2, fill);
             boolean settingsOnly = ModuleSupport.isSettingsOnly(m.getName());
-            String soon = toggleable || settingsOnly ? "" : "Soon";
+            String soon = blocked ? "Hypixel Block" : (toggleable || settingsOnly ? "" : "Soon");
             if (toggleable) { // state pip, filled when on, so the state is not colour alone
                 round(g, cx + 8, cy + pad + 6, 7, 7, TEXT);
                 if (!on) round(g, cx + 9, cy + pad + 7, 5, 5, fill);
-            } else g.drawText(soon, cx + cardW - 29 - g.textWidth(soon), cy + pad + 6, MUTED);
+            } else g.drawText(soon, cx + cardW - 29 - g.textWidth(soon), cy + pad + 6, blocked ? ACCENT : MUTED);
             g.drawText(fit(g, m.getName(), cardW - 49 - (toggleable ? 0 : g.textWidth(soon) + 4)), cx + 20, cy + pad + 6, toggleable || settingsOnly ? TEXT : MUTED);
             chip(g, "favorite:" + m.getName(), m.isFavorite() ? "*" : "+", new Rect(cx + cardW - 25, cy + pad, 20, 20),
                 () -> { m.setFavorite(!m.isFavorite()); changed(m); }, mx, my, m.isFavorite() ? TEXT : MUTED, false);
             chip(g, "detail:" + m.getName(), "Settings", new Rect(cx + pad, cy + cardH - pad - 23, cardW - 2 * pad, 23), () -> openDetails(m), mx, my, TEXT, true);
             // Added after the star and Settings so those win the click.
-            controls.add(new Control(id, m.getName() + (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon"), new Rect(cx, cy, cardW, cardH), () -> {
-                if (ModuleSupport.isToggleable(m.getName())) { m.toggle(); changed(m); onNarrate.accept(m.getName() + (m.isEnabled() ? ", On" : ", Off")); }
+            controls.add(new Control(id, m.getName() + (blocked ? ", Blocked on Hypixel" : (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon")), new Rect(cx, cy, cardW, cardH), () -> {
+                if (m.isBlockedByServer()) {
+                    notice = m.getName() + " is automatically disabled on Hypixel to comply with server rules.";
+                    onNarrate.accept(notice);
+                }
+                else if (ModuleSupport.isToggleable(m.getName())) { m.toggle(); changed(m); onNarrate.accept(m.getName() + (m.isEnabled() ? ", On" : ", Off")); }
                 else if (ModuleSupport.isSettingsOnly(m.getName())) openDetails(m);
-            }, toggleable || settingsOnly));
+            }, true));
         }
         if (modules.isEmpty()) {
             g.drawText("No matching modules", x + 12, top + 18, TEXT);
@@ -276,10 +287,14 @@ public final class LadsSettingsScreen {
         int descriptionH = height < 230 ? 0 : MenuGraphics.wrap(g, detail.getDescription(), x, 76, leftW, 2, MUTED);
         int stateY = height < 230 ? 68 : 81 + descriptionH;
         g.drawText("LADS MODULE", x, stateY + 6, ACCENT);
-        if (!ModuleSupport.isSettingsOnly(detail.getName()))
+        if (detail.isBlockedByServer()) {
+            button(g, "toggle:detail", "BLOCKED", new Rect(x + leftW - 74, stateY, 74, 22),
+                () -> { notice = detail.getName() + " is automatically disabled on Hypixel to comply with server rules."; }, true, mx, my, false);
+            g.drawText("Disabled on Hypixel (Server Rules)", x, stateY + 28, ACCENT);
+        } else if (!ModuleSupport.isSettingsOnly(detail.getName()))
             button(g, "toggle:detail", detail.isEnabled() ? "ON" : "OFF", new Rect(x + leftW - 52, stateY, 52, 22),
                 () -> { detail.toggle(); changed(detail); }, true, mx, my, detail.isEnabled());
-        int top = stateY + 30;
+        int top = detail.isBlockedByServer() ? stateY + 44 : stateY + 30;
         if(detail.getOptions().stream().anyMatch(o -> o instanceof PlayerActionOption)) {
             button(g,"display-actions","Display actions...",new Rect(x,top,leftW,25),
                 () -> actions.open(detail.getOptions().stream().filter(o -> o instanceof PlayerActionOption).map(o -> (PlayerActionOption)o).toList(), () -> changed(detail)),true,mx,my,false);
