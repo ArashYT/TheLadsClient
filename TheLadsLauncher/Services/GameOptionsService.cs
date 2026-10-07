@@ -141,7 +141,9 @@ public static class GameOptionsService
         "soundCategory_master", "soundCategory_music", "soundCategory_record",
         "soundCategory_weather", "soundCategory_block", "soundCategory_hostile",
         "soundCategory_neutral", "soundCategory_player", "soundCategory_ambient",
-        "soundCategory_voice"
+        "soundCategory_voice",
+        // Settings → Controls edits these for every version at once (SharedControls); a change made in one game follows too.
+        "renderDistance", "simulationDistance", "maxFps", "enableVsync"
     };
 
     public static bool IsLegacy18(string mcVersion) =>
@@ -228,7 +230,8 @@ public static class GameOptionsService
             bool changed = taken != null && (keybind || SharedSettingsKeys.Contains(kvp.Key))
                 && !(taken.TryGetValue(kvp.Key, out var was) && was == kvp.Value);
             if (!changed && instanceMap.ContainsKey(kvp.Key)) continue;
-            if ((keybind ? TranslateKeybindToTarget(kvp.Key, kvp.Value, targetIs18) : kvp.Value) is not { } value
+            // Key binds in the target's format; 1.8.9 has no simulationDistance and its GUI scale stops at Large.
+            if (SharedControls.ToVersion(kvp.Key, kvp.Value, mcVersion) is not { } value
                 || instanceMap.TryGetValue(kvp.Key, out var had) && had == value) continue;
             instanceMap[kvp.Key] = value;
             updated = true;
