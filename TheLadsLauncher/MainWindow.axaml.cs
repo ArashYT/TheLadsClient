@@ -5967,13 +5967,14 @@ public partial class MainWindow : Window
     {
         string activeVersion = ResolveMinecraftVersion();
         var versionList = new List<string> { activeVersion };
-        var commonVersions = new[] { "26.3", "26.2", "1.21.11", "26.1.2", "26.1.1", "26.1", "1.21", "1.20.6", "1.20.4", "1.20.1", "1.19.2", "1.18.2", "1.16.5", "1.8.9" };
+        var commonVersions = GameVersionPolicy.ModrinthGameVersions;
         
         foreach (var v in commonVersions)
         {
             if (!versionList.Contains(v)) versionList.Add(v);
         }
         
+        versionList.Sort(GameVersionPolicy.CompareDescending);
         SearchModMcVersionDropdown.Items.Clear();
         SearchRpMcVersionDropdown.Items.Clear();
         
@@ -5983,8 +5984,13 @@ public partial class MainWindow : Window
             SearchRpMcVersionDropdown.Items.Add(v);
         }
         
-        SearchModMcVersionDropdown.SelectedIndex = 0;
-        SearchRpMcVersionDropdown.SelectedIndex = 0;
+        int sel = versionList.IndexOf(activeVersion);
+        SearchModMcVersionDropdown.SelectedIndex = sel >= 0 ? sel : 0;
+        SearchRpMcVersionDropdown.SelectedIndex = sel >= 0 ? sel : 0;
+        ModCategoryBox.ItemsSource = new[] { "All categories", "Adventure", "Cursed", "Decoration", "Economy", "Equipment", "Food", "Game Mechanics", "Magic", "Management", "Minigame", "Mobs", "Optimization", "Social", "Storage", "Technology", "Transportation", "Utility", "Worldgen" };
+        ModCategoryBox.SelectedIndex = 0;
+        RpCategoryBox.ItemsSource = new[] { "All categories", "16x", "32x", "64x", "128x", "Faithful", "Realistic", "Medieval", "Vanilla-like" };
+        RpCategoryBox.SelectedIndex = 0;
     }
 
     // The browse tabs open with popular mods / resource packs of their source and version (Prism-style), never blank.

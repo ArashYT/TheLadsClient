@@ -24,10 +24,28 @@ public partial class MainWindow
     {
         string provider = (providerBox.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
         string mcVersion = versionBox.SelectedItem as string ?? ResolveMinecraftVersion();
+        string loader = ContentCatalog.ModLoader(mcVersion);
+        string? sort = null;
+        string? category = null;
+
+        if (!isResourcePack)
+        {
+            if (ModLoaderBox?.SelectedItem is ComboBoxItem item && item.Content as string is { } l && l != "All loaders")
+                loader = l.ToLowerInvariant();
+            sort = (ModSortBox?.SelectedItem as ComboBoxItem)?.Content as string;
+            category = ModCategoryBox?.SelectedItem as string;
+        }
+        else
+        {
+            sort = (RpSortBox?.SelectedItem as ComboBoxItem)?.Content as string;
+            category = RpCategoryBox?.SelectedItem as string;
+        }
+        if (category == "All categories") category = null;
+
         try
         {
             var results = await Catalog().SearchAsync(provider, isResourcePack ? ContentKind.ResourcePack : ContentKind.Mod, queryBox.Text ?? "", mcVersion,
-                ContentCatalog.ModLoader(mcVersion));
+                loader, category, sort);
             RenderSearchResults(results, mcVersion, isResourcePack, list);
         }
         catch (Exception ex) // an async void handler: never take the launcher down over a search
@@ -44,11 +62,11 @@ public partial class MainWindow
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0) });
     }
 
-    // A new source or version searches again; before, switching to CurseForge did nothing until you typed.
+    // A new source, version, loader, sort or category searches again
     private void BrowseFilter_Changed(object? sender, SelectionChangedEventArgs e)
     {
         if (ModsPage?.IsVisible != true) return; // startup fills both lists itself
-        if (sender == ModSearchProvider || sender == SearchModMcVersionDropdown)
+        if (sender == ModSearchProvider || sender == SearchModMcVersionDropdown || sender == ModLoaderBox || sender == ModSortBox || sender == ModCategoryBox)
             _ = SearchBrowseAsync(ModSearchBox, ModSearchProvider, SearchModMcVersionDropdown, isResourcePack: false, BrowseModsList);
         else
             _ = SearchBrowseAsync(RpSearchBox, RpSearchProvider, SearchRpMcVersionDropdown, isResourcePack: true, BrowseRpList);

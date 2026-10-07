@@ -71,6 +71,13 @@ public partial class PackBrowserView : UserControl
         _updating = true;
         TargetBox.ItemsSource = targets;
         TargetBox.SelectedItem = targets.FirstOrDefault(t => t.Id == keep) ?? targets.FirstOrDefault();
+        if (Kind == ContentKind.Shader)
+            CategoryBox.ItemsSource = new[] { "All categories", "Realistic", "Fantasy", "Performance", "Vibrant", "Cel-shaded", "Vanilla-like" };
+        else if (Kind == ContentKind.DataPack)
+            CategoryBox.ItemsSource = new[] { "All categories", "Adventure", "Magic", "Technology", "Utility", "Worldgen", "Minigame" };
+        else
+            CategoryBox.ItemsSource = new[] { "All categories", "16x", "32x", "64x", "128x", "Faithful", "Realistic", "Medieval", "Vanilla-like" };
+        CategoryBox.SelectedIndex = 0;
         _updating = false;
         await ShowTargetAsync();
     }
@@ -153,7 +160,10 @@ public partial class PackBrowserView : UserControl
         Status.Text = $"Searching {Source} for {Noun} for Minecraft {target.MinecraftVersion}…";
         try
         {
-            var results = await Catalog().SearchAsync(Source, Kind, SearchBox.Text ?? "", target.MinecraftVersion, target.Loader);
+            string? sort = (SortBox?.SelectedItem as ComboBoxItem)?.Content as string;
+            string? cat = CategoryBox?.SelectedItem as string;
+            if (cat == "All categories") cat = null;
+            var results = await Catalog().SearchAsync(Source, Kind, SearchBox.Text ?? "", target.MinecraftVersion, target.Loader, cat, sort);
             if (generation != _searchGeneration) return; // a newer search owns the list
             foreach (var item in results) ResultsList.Children.Add(ResultRow(item));
             string loader = Kind == ContentKind.Shader ? $" ({(ContentCatalog.ShaderLoader(target.Loader) == "iris" ? "Iris" : "OptiFine")})" : "";
@@ -241,6 +251,7 @@ public partial class PackBrowserView : UserControl
     private async void Target_Changed(object? sender, SelectionChangedEventArgs e) { if (!_updating) await ShowTargetAsync(); }
     private void World_Changed(object? sender, SelectionChangedEventArgs e) { if (!_updating) RenderInstalled(); }
     private async void Source_Changed(object? sender, SelectionChangedEventArgs e) { if (!_updating && Target != null) await SearchAsync(); }
+    private async void Filter_Changed(object? sender, SelectionChangedEventArgs e) { if (!_updating && Target != null) await SearchAsync(); }
     private void Search_TextChanged(object? sender, TextChangedEventArgs e) { _searchTimer.Stop(); _searchTimer.Start(); }
     private async void Refresh_Click(object? sender, RoutedEventArgs e) => await LoadAsync();
 

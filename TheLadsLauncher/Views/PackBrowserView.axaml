@@ -17,12 +17,20 @@
         </ScrollViewer>
       </Grid>
       <Grid Grid.Column="2" RowDefinitions="Auto,*">
-        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,8">
           <TextBox x:Name="SearchBox" Height="34" FontSize="13" Margin="0,0,8,0" TextChanged="Search_TextChanged" />
-          <ComboBox x:Name="SourceBox" Grid.Column="1" Width="120" Height="34" SelectedIndex="0" SelectionChanged="Source_Changed">
+          <ComboBox x:Name="SourceBox" Grid.Column="1" Width="110" Height="34" SelectedIndex="0" Margin="0,0,8,0" SelectionChanged="Source_Changed">
             <ComboBoxItem Content="Modrinth" />
             <ComboBoxItem Content="CurseForge" />
           </ComboBox>
+          <ComboBox x:Name="SortBox" Grid.Column="2" Width="130" Height="34" SelectedIndex="0" Margin="0,0,8,0" SelectionChanged="Filter_Changed">
+            <ComboBoxItem Content="Most downloads" />
+            <ComboBoxItem Content="Relevance" />
+            <ComboBoxItem Content="Most follows" />
+            <ComboBoxItem Content="Newest" />
+            <ComboBoxItem Content="Recently updated" />
+          </ComboBox>
+          <ComboBox x:Name="CategoryBox" Grid.Column="3" Width="130" Height="34" SelectedIndex="0" SelectionChanged="Filter_Changed" />
         </Grid>
         <ScrollViewer Grid.Row="1">
           <StackPanel x:Name="ResultsList" Spacing="6" />
