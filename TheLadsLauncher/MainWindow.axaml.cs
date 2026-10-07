@@ -5056,6 +5056,8 @@ public partial class MainWindow : Window
 
             GameLaunchStatusText.Text = "Launching game...";
             Log("[Launcher] Starting game process...");
+            WriteLadsVersions(gameDirectory, activeProfile.MinecraftVersion);
+            EnforceEssentialSettings(gameDirectory);
             process.Start();
             _runningProcesses[process] = gameDirectory;
             DiscordPresence.GameRunning(gameStarted = true);
@@ -5221,6 +5223,7 @@ public partial class MainWindow : Window
             _runningProcesses.Remove(process);
             DiscordPresence.GameRunning(_runningProcesses.Count > 0);
             ApplyNextAccountRequest(gameDirectory);
+            bool relaunchRequested = ApplyNextVersionRequest(gameDirectory);
             int exitCode = 0;
             try { exitCode = process.ExitCode; }
             catch (InvalidOperationException ex) { Log($"[Launcher] Could not read the game's exit code: {ex.Message}"); }
@@ -5228,7 +5231,7 @@ public partial class MainWindow : Window
             // Cancelled from the startup splash: killed on purpose, so no crash report or auto-relaunch.
             bool cancelled = GameSession.WasCancelled(process);
             // Re-show the launcher when the game closes, unless the user opted out (a cancel always shows it).
-            if (!settings.KeepClosedOnExit || cancelled)
+            if ((!settings.KeepClosedOnExit || cancelled) && !relaunchRequested)
             {
                 this.Show();
                 this.WindowState = WindowState.Normal;
@@ -5284,6 +5287,153 @@ public partial class MainWindow : Window
             File.Delete(requestFile);
         }
         catch (Exception) { Log("[Accounts] Could not apply the game's account selection. Select an account in the launcher."); }
+    }
+
+    private void WriteLadsVersions(string gameDirectory, string currentVersion)
+    {
+        try
+        {
+            var versions = _profileService.GetProfiles()
+                .Select(p => p.MinecraftVersion)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Distinct()
+                .ToList();
+            if (!versions.Contains("26.3")) versions.Add("26.3");
+            if (!versions.Contains("26.2")) versions.Add("26.2");
+            if (!versions.Contains("1.8.9")) versions.Add("1.8.9");
+
+            var obj = new JsonObject
+            {
+                ["current"] = currentVersion,
+                ["versions"] = new JsonArray(versions.Select(v => (JsonNode)JsonValue.Create(v)!).ToArray())
+            };
+            string path = Path.Combine(gameDirectory, "lads_versions.json");
+            File.WriteAllText(path, obj.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch (Exception ex)
+        {
+            Log($"[Launcher] Could not write lads_versions.json: {ex.Message}");
+        }
+    }
+
+    private bool ApplyNextVersionRequest(string gameDirectory)
+    {
+        string requestFile = Path.Combine(gameDirectory, "lads_next_version.json");
+        if (!File.Exists(requestFile)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(requestFile));
+            string targetVersion = doc.RootElement.GetProperty("version").GetString() ?? "";
+            File.Delete(requestFile);
+            if (string.IsNullOrWhiteSpace(targetVersion)) return false;
+
+            Log($"[Launcher] Version switch requested to: {targetVersion}");
+            var targetProfile = _profileService.GetProfiles().FirstOrDefault(p =>
+                string.Equals(p.MinecraftVersion, targetVersion, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p.Name, targetVersion, StringComparison.OrdinalIgnoreCase));
+
+            if (targetProfile == null)
+            {
+                targetProfile = _profileService.CreateProfile(targetVersion, targetVersion, targetVersion.StartsWith("26") ? 25 : 8, false, "");
+            }
+
+            _profileService.SetActiveProfile(targetProfile.Id);
+            ApplyProfile(targetProfile, true);
+            LoadProfilesUI();
+            Log($"[Launcher] Switched active profile to: {targetProfile.Name} ({targetProfile.MinecraftVersion}). Auto-relaunching...");
+
+            _ = Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                await Task.Delay(500);
+                LaunchButton_Click(null, new RoutedEventArgs());
+            });
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log($"[Launcher] Could not apply version switch: {ex.Message}");
+            return false;
+        }
+    }
+
+    private void EnforceEssentialSettings(string gameDirectory)
+    {
+        try
+        {
+            string essentialDir = Path.Combine(gameDirectory, "essential");
+            string configFile = Path.Combine(essentialDir, "config.toml");
+            string onboardingFile = Path.Combine(essentialDir, "onboarding.json");
+
+            if (File.Exists(configFile))
+            {
+                string text = File.ReadAllText(configFile);
+                string updated = text;
+                var list = new (string Section, string Key, string Value)[]
+                {
+                    ("privacy.general", "display_current_server", "true"),
+                    ("general.general", "streamer_mode", "false"),
+                    ("general.general", "telemetry", "false"),
+                    ("general.online_status", "show_essential_indicator_on_nametags", "false"),
+                    ("general.online_status", "show_essential_indicator_on_tab", "false"),
+                    ("general.experience", "show_nameplate_in_third_person", "false"),
+                    ("quality_of_life.nameplate", "show_my_nameplate_in_third-person", "false"),
+                    ("quality_of_life.screenshots", "essential_screenshots", "false"),
+                    ("quality_of_life.screenshots", "vanilla_screenshot_message", "true"),
+                    ("emotes.general", "disable_emotes", "true"),
+                    ("cosmetics.general", "disable_cosmetics", "true"),
+                    ("quality_of_life.discord_integration", "set_activity_status_on_discord", "false")
+                };
+
+                foreach (var (section, key, val) in list)
+                {
+                    string keyPattern = $@"(?m)^([\t ]*{Regex.Escape(key)}[\t ]*=[\t ]*)[^\r\n]*";
+                    if (Regex.IsMatch(updated, keyPattern))
+                    {
+                        updated = Regex.Replace(updated, keyPattern, $"${{1}}{val}");
+                    }
+                    else
+                    {
+                        string newline = updated.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+                        var table = Regex.Match(updated, $@"(?m)^[\t ]*\[[\t ]*{Regex.Escape(section)}[\t ]*\][^\r\n]*");
+                        if (table.Success)
+                        {
+                            updated = updated.Insert(table.Index + table.Length, newline + "\t\t" + $"{key} = {val}");
+                        }
+                        else
+                        {
+                            string separator = updated.Length == 0 || updated.EndsWith('\n') ? "" : newline;
+                            updated = updated + separator + $"[{section}]" + newline + $"\t{key} = {val}" + newline;
+                        }
+                    }
+                }
+                if (updated != text) File.WriteAllText(configFile, updated);
+            }
+
+            if (File.Exists(onboardingFile))
+            {
+                string text = File.ReadAllText(onboardingFile);
+                var root = JsonNode.Parse(text) as JsonObject;
+                if (root != null)
+                {
+                    bool changed = false;
+                    if (root["sent_auto_update_telemetry"]?.GetValue<bool>() != false)
+                    {
+                        root["sent_auto_update_telemetry"] = false;
+                        changed = true;
+                    }
+                    if (root["allow_telemetry"]?.GetValue<bool>() != false)
+                    {
+                        root["allow_telemetry"] = false;
+                        changed = true;
+                    }
+                    if (changed) File.WriteAllText(onboardingFile, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"[Launcher] Could not enforce Essential settings: {ex.Message}");
+        }
     }
 
     // Keeps the startup splash visible until the game window actually exists

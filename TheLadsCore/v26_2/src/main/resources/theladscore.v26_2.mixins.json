@@ -137,6 +137,8 @@
     "PacketDecodeGuardMixin",
     "PacketErrorGuardMixin",
     "SecureChatToastMixin",
-    "ServerListRefresh"
+    "ServerListRefresh",
+    "ServerListBackgroundMixin",
+    "JoinMultiplayerScreenMixin"
   ]
 }

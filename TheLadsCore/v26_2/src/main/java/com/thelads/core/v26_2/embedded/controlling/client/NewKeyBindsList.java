@@ -53,6 +53,9 @@ public class NewKeyBindsList extends CustomList {
         KeyMapping.Category lastCategory = null;
         
         for(KeyMapping keybinding : bindings) {
+            String kname = keybinding.getName().toLowerCase(java.util.Locale.ROOT);
+            String kcat = keybinding.getCategory().id().getPath().toLowerCase(java.util.Locale.ROOT);
+            if (kname.contains("essential") || kcat.contains("essential")) continue;
             KeyMapping.Category category = keybinding.getCategory();
             if(!category.equals(lastCategory)) {
                 lastCategory = category;
@@ -74,10 +77,12 @@ public class NewKeyBindsList extends CustomList {
     }
     
     private boolean shouldShow(Component component) {
-        
         if(component.getContents() instanceof TranslatableContents tc) {
-            return !tc.getKey().endsWith(".hidden");
+            String key = tc.getKey().toLowerCase(java.util.Locale.ROOT);
+            if (key.contains("essential") || key.endsWith(".hidden")) return false;
         }
+        String text = component.getString().toLowerCase(java.util.Locale.ROOT);
+        if (text.contains("essential")) return false;
         return true;
     }
     

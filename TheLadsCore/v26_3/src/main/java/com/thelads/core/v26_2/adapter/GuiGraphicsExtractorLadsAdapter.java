@@ -191,19 +191,41 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     public void drawHead(String username, String uuid, int x, int y, int size) {
         try {
             Minecraft mc = Minecraft.getInstance();
-            PlayerSkin skin = mc.getSkinManager().createLookup(
-                new com.mojang.authlib.GameProfile(
-                    (uuid != null && !uuid.isBlank()) ? java.util.UUID.fromString(uuid) : java.util.UUID.randomUUID(),
-                    username != null ? username : "Player"
-                ),
-                false
-            ).get();
+            java.util.UUID parsedUuid = null;
+            if (uuid != null && !uuid.isBlank()) {
+                String clean = uuid.replace("-", "").trim();
+                if (clean.length() == 32) {
+                    try {
+                        parsedUuid = java.util.UUID.fromString(clean.replaceFirst("(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)", "$1-$2-$3-$4-$5"));
+                    } catch (Exception ignored) {}
+                } else {
+                    try {
+                        parsedUuid = java.util.UUID.fromString(uuid.trim());
+                    } catch (Exception ignored) {}
+                }
+            }
+            if (parsedUuid == null) {
+                parsedUuid = java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + (username != null ? username : "Player")).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(parsedUuid, username != null ? username : "Player");
+            java.util.function.Supplier<PlayerSkin> lookup = mc.getSkinManager().createLookup(profile, false);
+            PlayerSkin skin = lookup != null ? lookup.get() : null;
+            if (skin == null) {
+                skin = net.minecraft.client.resources.DefaultPlayerSkin.get(profile);
+            }
             if (skin != null) {
                 PlayerFaceExtractor.extractRenderState(g, skin, x, y, size);
                 return;
             }
         } catch (Exception ignored) {}
-        fill(x, y, x + size, y + size, 0xFF6C63FF);
+        try {
+            com.mojang.authlib.GameProfile fallback = new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "Player");
+            PlayerSkin skin = net.minecraft.client.resources.DefaultPlayerSkin.get(fallback);
+            if (skin != null) {
+                PlayerFaceExtractor.extractRenderState(g, skin, x, y, size);
+                return;
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override

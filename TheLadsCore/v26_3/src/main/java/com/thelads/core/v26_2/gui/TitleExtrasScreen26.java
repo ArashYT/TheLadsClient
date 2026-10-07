@@ -19,12 +19,19 @@ public final class TitleExtrasScreen26 extends Screen {
     public TitleExtrasScreen26(Screen parent, List<AbstractWidget> actions) {
         super(Component.literal("More"));
         this.parent = parent;
-        var availableActions=new java.util.ArrayList<>(actions);
-        if(parent instanceof net.minecraft.client.gui.screens.TitleScreen && FlashbackScreens.available()
-            &&availableActions.stream().noneMatch(widget->widget.getMessage().getString().equals(Component.translatable("flashback.open_replays").getString())))
-            availableActions.add(Button.builder(Component.literal("Replays"),button->FlashbackScreens.open(this)).bounds(0,0,1,1).build());
-        // Essential's actions have their own row on the title and pause screens.
-        this.actions = availableActions.stream().filter(widget->!widget.getClass().getName().startsWith("gg.essential.")).toList();
+        var availableActions = new java.util.ArrayList<>(actions);
+        // Exclude Essential, Replays, Friends, and Language (which are now directly on the main title screen / header)
+        this.actions = availableActions.stream().filter(widget -> {
+            String className = widget.getClass().getName();
+            if (className.startsWith("gg.essential.")) return false;
+            String text = widget.getMessage() != null ? widget.getMessage().getString() : "";
+            Component msg = widget.getMessage();
+            String key = (msg != null && msg.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents tc) ? tc.getKey() : "";
+            if (key.equals("options.language") || text.equalsIgnoreCase("language")) return false;
+            if (key.equals("flashback.open_replays") || text.equalsIgnoreCase("replays")) return false;
+            if (text.equalsIgnoreCase("friends") || text.equalsIgnoreCase("social")) return false;
+            return true;
+        }).toList();
     }
 
     @Override protected void init() {
