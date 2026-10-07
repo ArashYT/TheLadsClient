@@ -1,0 +1,129 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TheLadsLauncher.Views.FileEditorView">
+    <UserControl.Styles>
+        <!-- The editor surface stays flat and dark in every state (the Fluent focus style would light it up). -->
+        <Style Selector="TextBox.code">
+            <Setter Property="Background" Value="#141518" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+        <Style Selector="TextBox.code:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="#141518" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox.code:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="#141518" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="ToggleButton.icon">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="#34353B" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="ToggleButton.icon:checked /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource LadsAccentSubtle}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LadsAccent}" />
+        </Style>
+        <Style Selector="ToggleButton.icon:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2A2B31" />
+        </Style>
+        <Style Selector="TextBlock.status">
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Foreground" Value="#8F919C" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Styles>
+    <Border Classes="card" Padding="0" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+            <!-- Header: what is open, its state, and the tools for its kind. -->
+            <Border Grid.Row="0" Padding="14,10" BorderBrush="#2A2B31" BorderThickness="0,0,0,1" Background="#1E1F24">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border x:Name="FileIconHost" Width="34" Height="34" CornerRadius="8" Background="#26272D" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center" Spacing="1">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock x:Name="FileNameText" Classes="notranslate" FontSize="14" FontWeight="SemiBold" Foreground="#FFFFFF" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            <Border x:Name="DirtyChip" Classes="chip accent" IsVisible="False" ToolTip.Tip="Unsaved changes">
+                                <TextBlock Text="Modified" />
+                            </Border>
+                            <Border x:Name="KindChip" Classes="chip">
+                                <TextBlock x:Name="KindChipText" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock x:Name="FilePathText" Classes="notranslate" FontSize="11.5" Foreground="#8F919C" TextTrimming="PathSegmentEllipsis" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <StackPanel x:Name="TextTools" Orientation="Horizontal" Spacing="6">
+                            <ToggleButton x:Name="WrapToggle" Classes="icon" ToolTip.Tip="Word wrap" IsCheckedChanged="WrapToggle_Changed" />
+                            <Button x:Name="FindButton" Classes="icon" ToolTip.Tip="Find (Ctrl+F)" Click="Find_Click" />
+                            <Rectangle Width="1" Height="20" Fill="#34353B" Margin="2,0" VerticalAlignment="Center" />
+                            <Button x:Name="RevertButton" Classes="action" Content="Revert" Height="32" Padding="12,0" ToolTip.Tip="Discard your changes and reload the file from disk" Click="Revert_Click" />
+                            <Button x:Name="SaveButton" Classes="launch" Content="Save" Height="32" Padding="16,0" ToolTip.Tip="Save (Ctrl+S)" Click="Save_Click" />
+                        </StackPanel>
+                        <StackPanel x:Name="ImageTools" Orientation="Horizontal" Spacing="6" IsVisible="False">
+                            <Button x:Name="ZoomOutButton" Classes="icon" ToolTip.Tip="Zoom out" Click="ZoomOut_Click" />
+                            <Border Background="#26272D" CornerRadius="7" Height="32" MinWidth="58" Padding="8,0">
+                                <TextBlock x:Name="ZoomText" Text="100%" FontSize="12" Foreground="#D6D6D9" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <Button x:Name="ZoomInButton" Classes="icon" ToolTip.Tip="Zoom in" Click="ZoomIn_Click" />
+                            <Button x:Name="FitButton" Classes="icon" ToolTip.Tip="Fit to window" Click="Fit_Click" />
+                            <Button Classes="action" Content="1:1" Height="32" Padding="10,0" ToolTip.Tip="Actual pixels" Click="ActualSize_Click" />
+                        </StackPanel>
+                        <Rectangle Width="1" Height="20" Fill="#34353B" Margin="2,0" VerticalAlignment="Center" />
+                        <Button x:Name="ExternalButton" Classes="icon" ToolTip.Tip="Open with the default Windows app" Click="OpenExternal_Click" />
+                        <Button x:Name="CloseButton" Classes="icon" ToolTip.Tip="Close (Esc)" Click="Close_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <!-- The game rewrites some files while it runs (options.txt on exit). -->
+            <Border x:Name="WarningBar" Grid.Row="1" IsVisible="False" Background="#2A2419" BorderBrush="#4D3F22" BorderThickness="0,0,0,1" Padding="14,8">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Border x:Name="WarningIconHost" VerticalAlignment="Center" />
+                    <TextBlock x:Name="WarningText" Foreground="#E8C987" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+            <!-- Find (Ctrl+F): Enter = next, Shift+Enter = previous, Esc = close. -->
+            <Border x:Name="FindBar" Grid.Row="2" IsVisible="False" Background="#18191D" BorderBrush="#2A2B31" BorderThickness="0,0,0,1" Padding="14,8">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBox x:Name="FindBox" Width="280" Height="32" MinHeight="32" FontSize="12.5" PlaceholderText="Find in file" TextChanged="FindBox_TextChanged" KeyDown="FindBox_KeyDown" />
+                    <Button x:Name="FindPrevButton" Classes="icon" ToolTip.Tip="Previous match (Shift+Enter)" Click="FindPrev_Click" />
+                    <Button x:Name="FindNextButton" Classes="icon" ToolTip.Tip="Next match (Enter)" Click="FindNext_Click" />
+                    <TextBlock x:Name="FindStatus" Classes="status" Margin="6,0,0,0" />
+                    <Button x:Name="FindCloseButton" Classes="icon" ToolTip.Tip="Close find" Click="FindClose_Click" Margin="6,0,0,0" />
+                </StackPanel>
+            </Border>
+            <Panel Grid.Row="3">
+                <Grid x:Name="TextPane" ColumnDefinitions="Auto,*" Background="#141518">
+                    <Border x:Name="GutterHost" Background="#121316" BorderBrush="#24252B" BorderThickness="0,0,1,0" ClipToBounds="True" MinWidth="44">
+                        <TextBlock x:Name="LineNumbers" Classes="notranslate" FontFamily="Cascadia Mono,Consolas,Courier New" FontSize="13" LineHeight="19" Foreground="#4F515B" TextAlignment="Right" Margin="10,10,10,0" VerticalAlignment="Top" />
+                    </Border>
+                    <TextBox x:Name="Editor" Grid.Column="1" Classes="code notranslate" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                             FontFamily="Cascadia Mono,Consolas,Courier New" FontSize="13" LineHeight="19" Foreground="#E3E4E8" Padding="12,10,12,10"
+                             VerticalContentAlignment="Top" SelectionBrush="#5A3A3D" CaretBrush="#FFFFFF"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                </Grid>
+                <Grid x:Name="ImagePane" IsVisible="False" Background="#0F1012" ClipToBounds="True">
+                    <Image x:Name="Viewer" Stretch="Uniform" StretchDirection="DownOnly" Margin="16" />
+                </Grid>
+                <StackPanel x:Name="MessagePane" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="420">
+                    <Border x:Name="MessageIconHost" HorizontalAlignment="Center" Width="56" Height="56" CornerRadius="14" Background="#202127" />
+                    <TextBlock x:Name="MessageTitle" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" />
+                    <TextBlock x:Name="MessageText" Classes="pageSubtitle" TextAlignment="Center" HorizontalAlignment="Center" />
+                    <Button Classes="action" Content="Open externally" Height="34" Padding="16,0" HorizontalAlignment="Center" Margin="0,6,0,0" Click="OpenExternal_Click" />
+                </StackPanel>
+            </Panel>
+            <Border Grid.Row="4" Padding="14,6" Background="#17181B" BorderBrush="#2A2B31" BorderThickness="0,1,0,0">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock x:Name="StatusLeft" Classes="status notranslate" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="StatusRight" Grid.Column="1" Classes="status notranslate" Margin="16,0,0,0" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>
