@@ -320,25 +320,23 @@
                     <views:ServersView x:Name="ServersPage" IsVisible="False" />
                     <views:ModpacksView x:Name="ModpacksPage" IsVisible="False" />
                     <views:SkinsView x:Name="SkinsPage" IsVisible="False" />
-                    <Grid x:Name="ProfilesPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,*">
-                        <Grid Grid.Row="0" ColumnDefinitions="*" Margin="0,0,0,16" RowDefinitions="Auto,Auto,Auto">
-                            <StackPanel>
-                                <TextBlock Text="Profiles" Foreground="White" FontSize="22" FontWeight="Bold" />
-                                <TextBlock Text="Separate versions and mod collections. Worlds, resource packs, shader packs and servers are always shared from the global .minecraft folder; isolating a profile keeps only its game settings (options.txt, keybinds) separate." Foreground="#A0A1AA" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8" Grid.Row="1" Margin="0,16,0,0">
-                                <Button x:Name="SyncSharedBtn" Classes="action" Content="Sync settings &amp; shared folders" ToolTip.Tip="Syncs game settings (unless the profile is isolated) and links worlds, resource packs, shader packs and the server list to the global .minecraft folder" Height="36" Padding="12,0" Click="SyncSharedSettings_Click" />
-                                <Button x:Name="AddProfileBtn" Classes="launch" Content="New Profile" Height="36" Padding="14,0" Foreground="White" FontWeight="Bold" Click="AddProfile_Click" />
-                                <TextBlock x:Name="ProfilesStatusText" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420" Margin="8,0,0,0" />
-                            </StackPanel>
-                            <Border x:Name="ProfilesSharedNotice" Grid.Row="2" IsVisible="False" Margin="0,12,0,0" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="4" Padding="14,10" />
+                    <Grid x:Name="ProfilesPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,Auto,*">
+                        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,16">
+                            <TextBlock Text="Profiles" Classes="pageTitle" />
+                            <TextBlock Text="Separate versions and mod collections. Worlds, resource packs, shader packs and servers are shared from the global folder; isolating a profile keeps only its game settings separate." Classes="pageSubtitle" />
+                        </StackPanel>
+                        <Grid Grid.Row="1" ColumnDefinitions="*,160,Auto,Auto,Auto" Margin="0,0,0,14">
+                            <TextBox x:Name="ProfileSearch" Height="34" PlaceholderText="Search profiles…" VerticalContentAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox x:Name="ProfileVersionFilter" Grid.Column="1" Height="34" HorizontalAlignment="Stretch" Margin="0,0,8,0" />
+                            <Button x:Name="SyncSharedBtn" Grid.Column="2" Classes="action" Content="Sync Settings" ToolTip.Tip="Syncs game settings and shared folder links" Height="34" Margin="0,0,8,0" Click="SyncSharedSettings_Click" />
+                            <Button Grid.Column="3" Content="Import…" Classes="action" Height="34" ToolTip.Tip="Import settings from another profile or launcher" Margin="0,0,8,0" Click="ImportProfilePreset_Click" />
+                            <Button x:Name="AddProfileBtn" Grid.Column="4" Classes="launch" Content="+ New Profile" Height="34" Padding="16,0" Foreground="White" FontWeight="Bold" Click="AddProfile_Click" />
                         </Grid>
-                        <Grid Grid.Row="1" RowDefinitions="Auto,*">
-                            <Grid ColumnDefinitions="*,150,Auto" Margin="0,0,0,12">
-                                <TextBox x:Name="ProfileSearch" PlaceholderText="Search profiles…" Margin="0,0,8,0" />
-                                <ComboBox x:Name="ProfileVersionFilter" Grid.Column="1" HorizontalAlignment="Stretch" />
-                                <Button Grid.Column="2" Content="Import settings…" Classes="action" Margin="8,0,0,0" Click="ImportProfilePreset_Click" />
-                            </Grid>
+                        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+                            <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,10">
+                                <TextBlock x:Name="ProfilesStatusText" Foreground="#A0A1AA" FontSize="12" TextWrapping="Wrap" />
+                                <Border x:Name="ProfilesSharedNotice" IsVisible="False" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="8" Padding="14,10" />
+                            </StackPanel>
                             <ScrollViewer Grid.Row="1">
                                 <StackPanel x:Name="ProfilesListContainer" Spacing="10" />
                             </ScrollViewer>
@@ -652,45 +650,118 @@
                         </Grid>
                         <TextBox x:Name="LogBox" VerticalContentAlignment="Top" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" Background="#121315" Foreground="#88AA88" FontFamily="Consolas,Courier New" FontSize="12" BorderBrush="#303137" BorderThickness="1" CornerRadius="4" Padding="12" ScrollViewer.VerticalScrollBarVisibility="Auto" />
                     </Grid>
-                    <Grid x:Name="FilesPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,Auto,*">
-                        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
-                            <TextBlock Text="Files" Foreground="White" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
-                            <TextBlock x:Name="FilesPathText" Classes="notranslate" Grid.Column="1" Text="" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" Margin="16,0,16,0" TextTrimming="CharacterEllipsis" />
-                            <Button Grid.Column="2" Classes="launch" Content="Open in Explorer" Height="36" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="FilesOpenExplorer_Click" />
+                    <!-- Files Page -->
+                    <Grid x:Name="FilesPage" IsVisible="False" Margin="28,24,28,24">
+                        <!-- Browser view (folder navigation) -->
+                        <Grid x:Name="FilesBrowser" RowDefinitions="Auto,Auto,*">
+                            <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,12">
+                                <TextBlock Text="Files" Foreground="White" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
+                                <Border x:Name="FilesSharedChip" Grid.Column="1" Classes="chip" Margin="14,0,0,0" IsVisible="False">
+                                    <TextBlock x:Name="FilesSharedChipText" />
+                                </Border>
+                                <TextBlock x:Name="FilesPathText" Classes="notranslate" Grid.Column="2" Text="" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" Margin="16,0,16,0" TextTrimming="CharacterEllipsis" />
+                                <Button Grid.Column="3" Classes="launch" Content="Open in Explorer" Height="36" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="FilesOpenExplorer_Click" />
+                            </Grid>
+                            <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,10">
+                                <Button Grid.Column="0" x:Name="FilesUpBtn" Classes="icon" Margin="0,0,6,0" Click="FilesUp_Click" ToolTip.Tip="Parent folder" />
+                                <Button Grid.Column="1" x:Name="FilesRefreshBtn" Classes="icon" Margin="0,0,12,0" Click="FilesRefresh_Click" ToolTip.Tip="Refresh" />
+                                <WrapPanel Grid.Column="2" x:Name="FilesBreadcrumb" VerticalAlignment="Center" />
+                            </Grid>
+                            <ScrollViewer Grid.Row="2">
+                                <StackPanel x:Name="FilesList" Spacing="3" />
+                            </ScrollViewer>
                         </Grid>
-                        <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,8">
-                            <Button Grid.Column="0" x:Name="FilesUpBtn" Classes="action" Content="Up" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Margin="0,0,8,0" Click="FilesUp_Click" />
-                            <Button Grid.Column="1" Classes="action" Content="Refresh" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Click="FilesRefresh_Click" />
-                        </Grid>
-                        <ScrollViewer Grid.Row="2">
-                            <StackPanel x:Name="FilesList" Spacing="3" />
-                        </ScrollViewer>
+                        <!-- Built-in file editor & image viewer -->
+                        <views:FileEditorView x:Name="FilesEditor" IsVisible="False" />
                     </Grid>
-                    <Grid x:Name="GalleryPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,Auto,*">
-                        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto" Margin="0,0,0,12">
-                            <TextBlock Text="Gallery" Foreground="White" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
-                            <ComboBox x:Name="GallerySortBox" Grid.Column="1" Width="120" Height="34" SelectedIndex="0" Margin="16,0,8,0" SelectionChanged="GallerySort_Changed">
-                                <ComboBoxItem>Newest</ComboBoxItem>
-                                <ComboBoxItem>Oldest</ComboBoxItem>
-                                <ComboBoxItem>Name</ComboBoxItem>
-                                <ComboBoxItem>Favorites</ComboBoxItem>
-                            </ComboBox>
-                            <TextBox x:Name="ImgurIdBox" Grid.Column="2" Width="160" Height="34" FontSize="12" PlaceholderText="Imgur Client ID" VerticalContentAlignment="Center" LostFocus="ImgurId_Changed" />
-                            <TextBlock x:Name="GalleryStatusText" Grid.Column="3" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" Margin="8,0,12,0" TextTrimming="CharacterEllipsis" />
-                            <Button Grid.Column="4" Classes="launch" Content="Open Folder" ToolTip.Tip="Open the shared screenshots folder (every version)" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="GalleryOpenFolder_Click" />
+
+                    <!-- Gallery Page -->
+                    <Grid x:Name="GalleryPage" IsVisible="False" Margin="28,24,28,24">
+                        <Grid RowDefinitions="Auto,Auto,*">
+                            <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="0,0,0,12">
+                                <TextBlock Text="Gallery" Foreground="White" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
+                                <TextBox x:Name="GallerySearchBox" Grid.Column="1" Width="180" Height="34" Margin="16,0,8,0" PlaceholderText="Search screenshots…" TextChanged="GallerySearch_TextChanged" VerticalContentAlignment="Center" />
+                                <ComboBox x:Name="GallerySourceBox" Grid.Column="2" Width="140" Height="34" Margin="0,0,8,0" SelectionChanged="GallerySource_Changed" />
+                                <ComboBox x:Name="GallerySortBox" Grid.Column="3" Width="120" Height="34" SelectedIndex="0" Margin="0,0,8,0" SelectionChanged="GallerySort_Changed">
+                                    <ComboBoxItem>Newest</ComboBoxItem>
+                                    <ComboBoxItem>Oldest</ComboBoxItem>
+                                    <ComboBoxItem>Name</ComboBoxItem>
+                                    <ComboBoxItem>Favorites</ComboBoxItem>
+                                </ComboBox>
+                                <Button x:Name="GallerySourcesBtn" Grid.Column="4" Classes="action" Content="Sources" Height="34" Margin="0,0,8,0">
+                                    <Button.Flyout>
+                                        <Flyout Placement="BottomEdgeAlignedLeft" Opening="GallerySources_Opening">
+                                            <StackPanel Width="320" Spacing="8">
+                                                <TextBlock x:Name="GallerySourcesSummary" Classes="muted" TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <Button Classes="action" Content="+ Add folder" Click="GalleryAddFolder_Click" />
+                                                    <Button Classes="action" Content="Rescan" Click="GalleryRescan_Click" />
+                                                </StackPanel>
+                                                <TextBlock Text="CUSTOM FOLDERS" Classes="sectionTitle" Margin="0,6,0,0" />
+                                                <StackPanel x:Name="GalleryCustomFoldersList" Spacing="4" />
+                                                <Rectangle Height="1" Fill="#2A2B31" Margin="0,4" />
+                                                <TextBlock Text="IMGUR CLIENT ID" Classes="sectionTitle" />
+                                                <TextBox x:Name="ImgurIdBox" Height="32" FontSize="12" PlaceholderText="Imgur Client ID" LostFocus="ImgurId_Changed" />
+                                            </StackPanel>
+                                        </Flyout>
+                                    </Button.Flyout>
+                                </Button>
+                                <TextBlock x:Name="GalleryStatusText" Grid.Column="5" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" Margin="8,0,12,0" TextTrimming="CharacterEllipsis" />
+                                <Button Grid.Column="6" Classes="launch" Content="Open Folder" ToolTip.Tip="Open the shared screenshots folder" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="GalleryOpenFolder_Click" />
+                            </Grid>
+
+                            <!-- Empty state -->
+                            <Border x:Name="GalleryEmptyState" Grid.Row="2" Classes="card" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="32" IsVisible="False">
+                                <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                    <TextBlock x:Name="GalleryEmptyTitle" Text="No screenshots yet" FontSize="16" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="GalleryEmptyHint" Text="Press F2 in game to take screenshots." Classes="muted" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="360" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Scroller with responsive WrapPanel -->
+                            <ScrollViewer x:Name="GalleryScroller" Grid.Row="2" SizeChanged="GalleryScroller_SizeChanged" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel>
+                                    <WrapPanel x:Name="GalleryList" Margin="-6,0,-6,0" />
+                                    <Button x:Name="GalleryLoadMoreBtn" Classes="action" Content="Load more" IsVisible="False" Height="34" FontSize="13" Padding="14,0" Margin="6,12,6,6" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Click="GalleryLoadMore_Click" />
+                                </StackPanel>
+                            </ScrollViewer>
                         </Grid>
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
-                            <Button Classes="action" Content="Rescan" Click="GalleryRescan_Click" Padding="14,7" />
-                            <Button Classes="action" Content="Add folder" Click="GalleryAddFolder_Click" Padding="14,7" />
-                            <Button Classes="action" Content="Remove folder" ToolTip.Tip="Stop listing a folder you added. Its files are not touched." Click="GalleryRemoveFolder_Click" Padding="14,7" />
-                            <TextBlock Text="Modrinth · CurseForge · Prism · Lads" Foreground="#90929D" FontSize="12" VerticalAlignment="Center" Margin="4,0,0,0" />
-                        </StackPanel>
-                        <ScrollViewer Grid.Row="2">
-                            <StackPanel>
-                                <WrapPanel x:Name="GalleryList" />
-                                <Button x:Name="GalleryLoadMoreBtn" Classes="action" Content="Load more" IsVisible="False" Height="34" FontSize="13" Padding="14,0" Margin="6,8,6,6" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Click="GalleryLoadMore_Click" />
-                            </StackPanel>
-                        </ScrollViewer>
+
+                        <!-- Full-screen zoom/pan image viewer overlay -->
+                        <Border x:Name="GalleryViewerOverlay" Background="#EA0C0D10" IsVisible="False" Margin="-28,-24,-28,-24">
+                            <Grid RowDefinitions="Auto,*,Auto">
+                                <!-- Top Bar -->
+                                <Border Background="#D0151619" Padding="20,12" BorderBrush="#25262B" BorderThickness="0,0,0,1">
+                                    <Grid ColumnDefinitions="*,Auto,Auto">
+                                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock x:Name="GalleryViewerTitle" Foreground="White" FontWeight="Bold" FontSize="15" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock x:Name="GalleryViewerMeta" Foreground="#A0A1AA" FontSize="11.5" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="GalleryViewerCounter" Grid.Column="1" Foreground="#8F919C" FontSize="12.5" VerticalAlignment="Center" Margin="16,0,16,0" />
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <Button x:Name="GalleryViewerCopyBtn" Classes="icon" ToolTip.Tip="Copy image to clipboard" Click="GalleryViewerCopy_Click" />
+                                            <Button x:Name="GalleryViewerFolderBtn" Classes="icon" ToolTip.Tip="Show file in Explorer" Click="GalleryViewerFolder_Click" />
+                                            <Button Classes="icon" Content="⛶" ToolTip.Tip="Toggle full screen" Click="GalleryViewerFullscreen_Click" />
+                                            <Button Classes="icon" Content="✕" ToolTip.Tip="Close (Esc)" Click="GalleryViewerClose_Click" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <!-- Image view area with prev/next buttons -->
+                                <Grid Grid.Row="1" ClipToBounds="True">
+                                    <Image x:Name="GalleryViewerImage" Stretch="Uniform"
+                                           PointerPressed="GalleryViewer_PointerPressed"
+                                           PointerMoved="GalleryViewer_PointerMoved"
+                                           PointerReleased="GalleryViewer_PointerReleased"
+                                           PointerWheelChanged="GalleryViewer_Wheel" />
+                                    <Button x:Name="GalleryViewerPrevBtn" Classes="icon" Width="48" Height="48" CornerRadius="24"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center" Margin="16,0,0,0"
+                                            Click="GalleryViewerPrev_Click" ToolTip.Tip="Previous (Left arrow)" />
+                                    <Button x:Name="GalleryViewerNextBtn" Classes="icon" Width="48" Height="48" CornerRadius="24"
+                                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0"
+                                            Click="GalleryViewerNext_Click" ToolTip.Tip="Next (Right arrow)" />
+                                </Grid>
+                            </Grid>
+                        </Border>
                     </Grid>
                     <!-- Usage metrics: a status bar along the bottom of every page. -->
                     <Border Grid.Row="1" Background="#121315" BorderBrush="#303137" BorderThickness="0,1,0,0" Padding="28,8">

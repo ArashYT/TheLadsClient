@@ -662,739 +662,6 @@ public partial class MainWindow : Window
     private void NavLogs_Click(object? sender, RoutedEventArgs e) => NavigateTo("Logs");
 
     // ═══════════════════════════════════════
-    //  FILES EXPLORER
-    // ═══════════════════════════════════════
-
-    private string _filesCurrentDir = "";
-    private string _filesRootDir = "";
-
-    /// <summary>The Files page follows the active profile: back to its game folder on every profile switch.</summary>
-    private void ResetFilesRoot()
-    {
-        _filesRootDir = settings.InstancePath;
-        _filesCurrentDir = settings.InstancePath;
-        if (FilesPage.IsVisible) LoadFiles(_filesRootDir);
-    }
-
-    private static TextBlock FilesNote(string text) => new()
-    {
-        Text = text, Foreground = Brush.Parse("#A0A1AA"), FontSize = 13, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4)
-    };
-
-    private void LoadFiles(string dir)
-    {
-        if (string.IsNullOrWhiteSpace(_filesRootDir))
-            _filesRootDir = settings.InstancePath;
-        if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir) || !SafeFileOps.IsSameOrInside(dir, _filesRootDir))
-            dir = _filesRootDir;
-
-        _filesCurrentDir = dir;
-        bool atRoot = SafeFileOps.PathsEqual(dir, _filesRootDir);
-        FilesUpBtn.IsEnabled = !atRoot;
-        FilesPathText.Text = dir;
-        FilesList.Children.Clear();
-
-        if (!Directory.Exists(dir))
-        {
-            FilesList.Children.Add(FilesNote("This profile has no game files yet. Launch it to create its game folder."));
-            return;
-        }
-
-        try
-        {
-            // Worlds, resource packs and shader packs are links to the shared folders: badge them and say where their content lives.
-            IReadOnlyList<SharedFolderStatus> statuses = SharedContentService.Instance.GetStatus(_filesRootDir);
-            var sharedArea = statuses.FirstOrDefault(s => s.State is SharedFolderState.Shared or SharedFolderState.GlobalFolder
-                && SafeFileOps.IsSameOrInside(dir, s.ProfilePath));
-            if (sharedArea != null) FilesPathText.Text = $"{dir}   (shared with every version: {sharedArea.SharedPath})";
-
-            foreach (var d in Directory.GetDirectories(dir).OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase))
-                FilesList.Children.Add(BuildFileRow(d, true, atRoot ? statuses.FirstOrDefault(s => SafeFileOps.PathsEqual(s.ProfilePath, d)) : null));
-            foreach (var f in Directory.GetFiles(dir).OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase))
-                FilesList.Children.Add(BuildFileRow(f, false, null));
-
-            if (FilesList.Children.Count == 0)
-                FilesList.Children.Add(FilesNote("Empty folder."));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            Log($"[Files] Could not list '{dir}': {ex.Message}");
-            FilesList.Children.Add(FilesNote($"Could not list this folder: {ex.Message}"));
-        }
-    }
-
-    private static (string Label, string Tip)? SharedBadge(SharedFolderStatus status) => status.State switch
-    {
-        SharedFolderState.Shared => ("SHARED", status.Detail),
-        SharedFolderState.GlobalFolder => ("GLOBAL FOLDER", status.Detail),
-        SharedFolderState.SeparateFolder => ("NOT SHARED YET", status.Detail),
-        SharedFolderState.LinkedElsewhere => ("LINKED ELSEWHERE", status.Detail),
-        SharedFolderState.BrokenLink => ("BROKEN LINK", status.Detail),
-        _ => null
-    };
-
-    private Border BuildFileRow(string path, bool isDir, SharedFolderStatus? shared)
-    {
-        string name = Path.GetFileName(path);
-        var row = new Border
-        {
-            Background = new SolidColorBrush(Color.Parse("#1D1E22")),
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(10, 6, 8, 6)
-        };
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto") };
-
-        var icon = new Avalonia.Controls.Shapes.Path
-        {
-            Data = Geometry.Parse(isDir ? "M 1,5 V 3 H 7 L 9,5 H 17 V 15 H 1 Z" : "M 3,1 H 11 L 16,6 V 17 H 3 Z M 11,1 V 6 H 16"),
-            Width = 16, Height = 16, Stretch = Stretch.Uniform, Stroke = Brush.Parse("#9295A0"),
-            StrokeThickness = 1.2, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 10, 0)
-        };
-        Grid.SetColumn(icon, 0);
-        grid.Children.Add(icon);
-
-        var nameText = new TextBlock { Text = name, Foreground = new SolidColorBrush(Color.Parse(isDir ? "#CCCCDD" : "#AAAAAA")), FontSize = 13, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis }.Untranslated();
-        Grid.SetColumn(nameText, 1);
-        grid.Children.Add(nameText);
-
-        if (shared != null && SharedBadge(shared) is { } badge)
-        {
-            var badgeBorder = new Border
-            {
-                Background = new SolidColorBrush(Color.Parse("#303137")), CornerRadius = new CornerRadius(4), Padding = new Thickness(6, 2),
-                Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                Child = new TextBlock { Text = badge.Label, Foreground = new SolidColorBrush(Color.Parse("#E27676")), FontSize = 9, FontWeight = FontWeight.Bold }
-            };
-            Avalonia.Controls.ToolTip.SetTip(badgeBorder, badge.Tip);
-            Grid.SetColumn(badgeBorder, 2);
-            grid.Children.Add(badgeBorder);
-        }
-        else if (!isDir)
-        {
-            string size;
-            try { size = FormatBytes(new FileInfo(path).Length); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { size = "size unknown"; }
-            var sizeText = new TextBlock { Text = size, Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 11, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) };
-            Grid.SetColumn(sizeText, 2);
-            grid.Children.Add(sizeText);
-        }
-
-        var delBtn = new Button { Content = "✕", Classes = { "danger" }, Width = 28, Height = 26, FontSize = 11, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
-        Avalonia.Controls.ToolTip.SetTip(delBtn, "Move to the Recycle Bin");
-        delBtn.Click += async (s, e) => await DeleteFileEntryAsync(path);
-        Grid.SetColumn(delBtn, 3);
-        grid.Children.Add(delBtn);
-
-        row.Child = grid;
-        row.PointerPressed += (s, e) =>
-        {
-            if (isDir) LoadFiles(path);
-            else OpenPath(path);
-        };
-        return row;
-    }
-
-    /// <summary>
-    /// Every delete asks first and goes to the Recycle Bin. Shared-folder links are refused (deleting them would not remove
-    /// content, and deleting through them would remove it for every version); content inside them is confirmed as shared.
-    /// </summary>
-    private async Task DeleteFileEntryAsync(string path)
-    {
-        string name = Path.GetFileName(path);
-        try
-        {
-            if (SafeFileOps.IsLink(path))
-            {
-                await ShowLadsDialogAsync("Shared folder link",
-                    $"'{name}' is a link to '{SafeFileOps.GetLinkTarget(path)}', not a folder of its own. Worlds, resource packs and shader packs are shared by every version, so this link cannot be deleted. Open the shared folder (Home: Worlds, Resource packs, Shader packs) to manage its content.");
-                return;
-            }
-            var shared = SharedContentService.Instance.GetStatus(_filesRootDir).FirstOrDefault(s =>
-                s.State is SharedFolderState.Shared or SharedFolderState.GlobalFolder && SafeFileOps.IsSameOrInside(path, s.ProfilePath));
-            bool confirmed = shared != null
-                ? await ShowLadsDialogAsync("Delete shared content",
-                    $"'{name}' is shared content used by every version (it lives in '{shared.SharedPath}'). Deleting it removes it for all versions. Move it to the Recycle Bin?",
-                    "Move to Recycle Bin", "Cancel", danger: true)
-                : await ShowLadsDialogAsync("Delete", $"Move '{name}' to the Recycle Bin?", "Move to Recycle Bin", "Cancel", danger: true);
-            if (!confirmed) return;
-            await Task.Run(() => SafeFileOps.DeleteToRecycleBin(path));
-            Log($"[Files] Moved to the Recycle Bin: {path}");
-        }
-        catch (Exception ex)
-        {
-            Log($"[Files] Delete failed for '{path}': {ex.Message}");
-            await ShowLadsDialogAsync("Could not delete", ex.Message);
-        }
-        LoadFiles(_filesCurrentDir);
-    }
-
-    private static string FormatBytes(long b)
-    {
-        if (b >= 1024L * 1024 * 1024) return $"{b / (1024.0 * 1024 * 1024):F1} GB";
-        if (b >= 1024L * 1024) return $"{b / (1024.0 * 1024):F1} MB";
-        if (b >= 1024L) return $"{b / 1024.0:F0} KB";
-        return $"{b} B";
-    }
-
-    private void OpenPath(string path)
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException or InvalidOperationException)
-        {
-            Log($"[Files] Open failed for '{path}': {ex.Message}");
-            _ = ShowLadsDialogAsync("Could not open", $"'{path}': {ex.Message}");
-        }
-    }
-
-    private void FilesUp_Click(object? sender, RoutedEventArgs e)
-    {
-        var parent = Directory.GetParent(_filesCurrentDir);
-        if (parent != null) LoadFiles(parent.FullName);
-    }
-
-    private void FilesRefresh_Click(object? sender, RoutedEventArgs e) => LoadFiles(_filesCurrentDir);
-
-    private void FilesOpenExplorer_Click(object? sender, RoutedEventArgs e) => OpenPath(_filesCurrentDir);
-
-    // ═══════════════════════════════════════
-    //  GALLERY
-    // ═══════════════════════════════════════
-
-    // Screenshots are inventoried in place across Lads and other launcher instances.
-    private const int GalleryPageSize = 60;
-    private List<(string Path, DateTime Time)> _galleryFiles = new();
-    private Dictionary<string, ScreenshotEntry> _gallerySources = new(StringComparer.OrdinalIgnoreCase);
-    private CancellationTokenSource? _galleryScanCancellation;
-    private string _galleryScanSummary = "";
-    private int _galleryShown;
-    private int _galleryGeneration;
-    private Task _galleryThumbnails = Task.CompletedTask;
-    private string? _galleryFavoritesError;
-
-    private void NavGallery_Click(object? sender, RoutedEventArgs e) { _ = LoadGalleryAsync(); NavigateTo("Gallery"); }
-    // Reorders the last scan; a scan still running applies the new order when it finishes.
-    private void GallerySort_Changed(object? sender, Avalonia.Controls.SelectionChangedEventArgs e) { if (GalleryPage?.IsVisible == true && _galleryScanCancellation == null) ShowGallerySorted(); }
-    private void ImgurId_Changed(object? sender, RoutedEventArgs e) { settings.ImgurClientId = ImgurIdBox.Text ?? ""; settings.Save(); }
-    private void GalleryOpenFolder_Click(object? sender, RoutedEventArgs e)
-    {
-        var error = OpenFolderCreatingIt(SharedContentService.Instance.ScreenshotsDirectory);
-        if (error != null) GalleryStatusText.Text = error;
-    }
-    private void GalleryLoadMore_Click(object? sender, RoutedEventArgs e) => ShowMoreScreenshots();
-
-    private async Task LoadGalleryAsync()
-    {
-        int generation = ++_galleryGeneration;
-        _galleryScanCancellation?.Cancel();
-        var cancellation = new CancellationTokenSource();
-        _galleryScanCancellation = cancellation;
-        SyncFavoritesWithGame();
-        ClearGalleryCards();
-        if (ImgurIdBox != null) ImgurIdBox.Text = settings.ImgurClientId;
-        GalleryStatusText.Text = "Scanning launcher instances…";
-        var profiles = _profileService.GetProfiles().Select(p => new ScreenshotRoot(_pathService.GetProfileDirectory(p), "Lads · " + p.Name)).ToArray();
-        try
-        {
-            var catalog = await Task.Run(() => CreateScreenshotCatalog().Scan(profiles, cancellation.Token), cancellation.Token);
-            if (generation != _galleryGeneration || _windowClosed) return;
-            _gallerySources = catalog.Entries.ToDictionary(e => e.Path, StringComparer.OrdinalIgnoreCase);
-            _galleryScanSummary = $"{catalog.Folders} folders" + (catalog.Warnings.Count > 0 ? $" · {catalog.Warnings.Count} scan notices" : "");
-            ToolTip.SetTip(GalleryStatusText, catalog.Warnings.Count > 0 ? string.Join("\n", catalog.Warnings) : "Lads, Modrinth, CurseForge, Prism and your added folders. Originals stay in their instance.");
-            foreach (var warning in catalog.Warnings) Log("[Gallery] " + warning);
-            ShowGallerySorted();
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
-        {
-            if (generation != _galleryGeneration) return;
-            _gallerySources = new(StringComparer.OrdinalIgnoreCase); // a later re-sort must not bring back the previous scan
-            GalleryStatusText.Text = _galleryScanSummary = "Screenshot scan failed: " + ex.Message;
-            Log("[Gallery] " + ex.Message);
-        }
-        finally
-        {
-            if (ReferenceEquals(_galleryScanCancellation, cancellation)) _galleryScanCancellation = null;
-            cancellation.Dispose();
-        }
-    }
-
-    /// <summary>Shows the last scan in the chosen order. Sorting and favorites never rescan the disk.</summary>
-    private void ShowGallerySorted()
-    {
-        ++_galleryGeneration; // stops thumbnail loading for the cards being replaced
-        ClearGalleryCards();
-        int sort = GallerySortBox?.SelectedIndex ?? 0;
-        var favorites = new HashSet<string>(settings.GalleryFavorites, StringComparer.OrdinalIgnoreCase);
-        IEnumerable<ScreenshotEntry> files = _gallerySources.Values;
-        files = sort switch
-        {
-            1 => files.OrderBy(f => f.Time),
-            2 => files.OrderBy(f => Path.GetFileName(f.Path), StringComparer.OrdinalIgnoreCase),
-            3 => files.OrderByDescending(f => favorites.Contains(GalleryFavoriteKey(f.Path))).ThenByDescending(f => f.Time),
-            _ => files.OrderByDescending(f => f.Time)
-        };
-        _galleryFiles = files.Select(f => (f.Path, f.Time)).ToList();
-        _galleryShown = 0;
-        if (_galleryFiles.Count == 0)
-        {
-            GalleryStatusText.Text = _galleryFavoritesError ?? _galleryScanSummary;
-            GalleryList.Children.Add(new TextBlock { Text = "No screenshots found. Add a folder for a portable launcher or a custom instance location.", Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 13, Margin = new Thickness(4), TextWrapping = TextWrapping.Wrap });
-            return;
-        }
-        ShowMoreScreenshots();
-    }
-
-    private void ClearGalleryCards()
-    {
-        foreach (var old in GalleryList.GetLogicalDescendants().OfType<Image>()) (old.Source as Bitmap)?.Dispose();
-        GalleryList.Children.Clear();
-        GalleryLoadMoreBtn.IsVisible = false;
-    }
-
-    private ScreenshotCatalogService CreateScreenshotCatalog() => new(SharedContentService.Instance.Root,
-        discoverLaunchers: !Environment.GetCommandLineArgs().Any(a => a.StartsWith("--preview-", StringComparison.Ordinal)));
-
-    private string GalleryFavoriteKey(string path) => _gallerySources.TryGetValue(path, out var entry) && entry.IsExternal ? path : Path.GetFileName(path);
-
-    private void GalleryRescan_Click(object? sender, RoutedEventArgs e) => _ = LoadGalleryAsync();
-
-    private async void GalleryAddFolder_Click(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var chosen = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose a screenshots, instance or launcher folder", AllowMultiple = false });
-            if (chosen.FirstOrDefault()?.TryGetLocalPath() is not { } folder) return;
-            CreateScreenshotCatalog().AddRoot(folder);
-            await LoadGalleryAsync();
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
-        { await ShowLadsDialogAsync("Could not add screenshot folder", ex.Message); }
-    }
-
-    // Lists the folders added with "Add folder"; choosing one stops listing it. Its files stay where they are.
-    private async void GalleryRemoveFolder_Click(object? sender, RoutedEventArgs e)
-    {
-        if (sender is not Button button) return;
-        try
-        {
-            var items = CreateScreenshotCatalog().LoadCustomRoots().Select(root =>
-            {
-                var item = new MenuItem { Header = root.Path }.Untranslated();
-                item.Click += async (_, _) =>
-                {
-                    try
-                    {
-                        CreateScreenshotCatalog().RemoveRoot(root.Path);
-                        await LoadGalleryAsync();
-                    }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
-                    { await ShowLadsDialogAsync("Could not remove screenshot folder", ex.Message); }
-                };
-                return item;
-            }).ToList();
-            if (items.Count == 0) items.Add(new MenuItem { Header = "No added folders", IsEnabled = false });
-            button.ContextMenu = new ContextMenu { ItemsSource = items };
-            button.ContextMenu.Open(button);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
-        { await ShowLadsDialogAsync("Could not read the added screenshot folders", ex.Message); }
-    }
-
-    /// <summary>Adds the next page of cards; their thumbnails are decoded off the UI thread.</summary>
-    private void ShowMoreScreenshots()
-    {
-        var page = _galleryFiles.Skip(_galleryShown).Take(GalleryPageSize).ToList();
-        _galleryShown += page.Count;
-        var cards = new List<(string Path, Image Image, TextBlock Meta)>();
-        foreach (var (path, time) in page)
-        {
-            GalleryList.Children.Add(BuildGalleryCard(path, time, out var image, out var meta));
-            cards.Add((path, image, meta));
-        }
-        int left = _galleryFiles.Count - _galleryShown;
-        GalleryLoadMoreBtn.IsVisible = left > 0;
-        GalleryLoadMoreBtn.Content = $"Load more ({left} left)";
-        GalleryStatusText.Text = $"{_galleryShown} of {_galleryFiles.Count} · {_galleryScanSummary}"
-            + (_galleryFavoritesError != null ? $" · {_galleryFavoritesError}" : "");
-        _galleryThumbnails = LoadGalleryThumbnailsAsync(cards, _galleryGeneration);
-    }
-
-    private async Task LoadGalleryThumbnailsAsync(List<(string Path, Image Image, TextBlock Meta)> cards, int generation)
-    {
-        foreach (var card in cards)
-        {
-            var (bitmap, meta, error) = await Task.Run(() => ReadGalleryThumbnail(card.Path));
-            if (generation != _galleryGeneration)
-            {
-                bitmap?.Dispose();
-                return;
-            }
-            card.Image.Source = bitmap;
-            card.Meta.Text = error ?? meta;
-            card.Meta.IsVisible = card.Meta.Text.Length > 0;
-        }
-    }
-
-    private static (Bitmap? Bitmap, string Meta, string? Error) ReadGalleryThumbnail(string path)
-    {
-        Bitmap? bitmap = null;
-        string? error = null;
-        try
-        {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            bitmap = Bitmap.DecodeToWidth(stream, 340);
-        }
-        catch (Exception ex) // the image decoder throws plain exceptions for damaged files
-        {
-            error = $"Preview unavailable: {ex.Message}";
-        }
-        return (bitmap, ReadScreenshotMeta(path), error);
-    }
-
-    private Border BuildGalleryCard(string path, DateTime time, out Image image, out TextBlock meta)
-    {
-        string name = Path.GetFileName(path);
-        string favoriteKey = GalleryFavoriteKey(path);
-        bool fav = settings.GalleryFavorites.Contains(favoriteKey);
-
-        var card = new Border { Background = new SolidColorBrush(Color.Parse("#14141F")), CornerRadius = new CornerRadius(8), Margin = new Thickness(6), Width = 182, Padding = new Thickness(6) };
-        var stack = new StackPanel { Spacing = 4 };
-
-        image = new Image { Width = 170, Height = 96, Stretch = Avalonia.Media.Stretch.UniformToFill };
-        var imgBorder = new Border { CornerRadius = new CornerRadius(4), ClipToBounds = true, Height = 96, Background = new SolidColorBrush(Color.Parse("#25262A")), Child = image };
-        imgBorder.PointerPressed += (s, e) => ShowGalleryViewer(path);
-        stack.Children.Add(imgBorder);
-
-        stack.Children.Add(new TextBlock { Text = name, Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")), FontSize = 11, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis }.Untranslated());
-        if (_gallerySources.TryGetValue(path, out var source))
-            stack.Children.Add(new TextBlock { Text = source.Source, Foreground = new SolidColorBrush(Color.Parse("#CF8D8D")), FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated());
-        stack.Children.Add(new TextBlock { Text = time.ToString("g"), Foreground = new SolidColorBrush(Color.Parse("#90929D")), FontSize = 10 });
-
-        // Metadata sidecar (written in-game): server/world, coords, biome. Filled in with the thumbnail.
-        meta = new TextBlock { Foreground = new SolidColorBrush(Color.Parse("#7A88B0")), FontSize = 10, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis, IsVisible = false }.Untranslated();
-        stack.Children.Add(meta);
-
-        var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 4, Margin = new Thickness(0, 2, 0, 0) };
-        actions.Children.Add(MiniGalBtn("📋", "Copy image to clipboard", _ => CopyImageToClipboard(path)));
-        actions.Children.Add(MiniGalBtn("🔗", "Upload to Imgur (copies link)", _ => UploadImgur(path)));
-        actions.Children.Add(MiniGalBtn("📂", "Show in folder", _ => OpenFolderSelect(path)));
-        actions.Children.Add(MiniGalBtn(fav ? "★" : "☆", "Favorite", button =>
-        {
-            button.Content = ToggleGalleryFav(favoriteKey) ? "★" : "☆";
-            if (GallerySortBox?.SelectedIndex == 3) ShowGallerySorted();
-        }));
-        if (source?.IsExternal != true)
-            actions.Children.Add(MiniGalBtn("✕", "Move to the Recycle Bin", button => _ = DeleteScreenshotAsync(path)));
-        stack.Children.Add(actions);
-
-        card.Child = stack;
-        return card;
-    }
-
-    private Button MiniGalBtn(string content, string tip, Action<Button> onClick)
-    {
-        var b = new Button { Content = content, Width = 30, Height = 26, FontSize = 12, Padding = new Thickness(0), HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
-        Avalonia.Controls.ToolTip.SetTip(b, tip);
-        b.Click += (s, e) => onClick(b);
-        return b;
-    }
-
-    private static string ReadScreenshotMeta(string pngPath)
-    {
-        string metaPath = pngPath + ".json";
-        try
-        {
-            if (!File.Exists(metaPath)) return "";
-            using var doc = JsonDocument.Parse(File.ReadAllText(metaPath));
-            var root = doc.RootElement;
-            var parts = new List<string>();
-            if (root.TryGetProperty("server", out var sv) && !string.IsNullOrEmpty(sv.GetString()))
-                parts.Add(sv.GetString()!);
-            else if (root.TryGetProperty("world", out var wd) && !string.IsNullOrEmpty(wd.GetString()))
-                parts.Add(wd.GetString()!);
-            if (root.TryGetProperty("x", out var x) && root.TryGetProperty("z", out var z))
-                parts.Add($"{x.GetInt32()}, {z.GetInt32()}");
-            if (root.TryGetProperty("biome", out var bi) && !string.IsNullOrEmpty(bi.GetString()))
-                parts.Add(bi.GetString()?.Replace("minecraft:", "") ?? "");
-            if (root.TryGetProperty("seed", out var sd))
-                parts.Add("seed " + sd.GetInt64());
-            return string.Join("  ·  ", parts);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException)
-        {
-            return $"Details unreadable ({Path.GetFileName(metaPath)}: {ex.Message})";
-        }
-    }
-
-    // Favorites are global (settings), like the shared screenshots folder they name. The active profile's
-    // <game>\config\gallery_favorites.json only mirrors them: nothing else writes that file, and reading it back replaced the
-    // global list with another profile's older copy on every profile switch (favorites were lost).
-    private string GalleryFavoritesMirror => Path.Combine(settings.InstancePath, "config", "gallery_favorites.json");
-
-    private void SyncFavoritesWithGame()
-    {
-        _galleryFavoritesError = null;
-        if (settings.GalleryFavorites.Count > 0 || File.Exists(GalleryFavoritesMirror)) WriteGalleryFavoritesMirror();
-    }
-
-    private void SaveGalleryFavorites()
-    {
-        settings.Save();
-        WriteGalleryFavoritesMirror();
-    }
-
-    private void WriteGalleryFavoritesMirror()
-    {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(GalleryFavoritesMirror)!);
-            File.WriteAllText(GalleryFavoritesMirror, JsonSerializer.Serialize(settings.GalleryFavorites));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            _galleryFavoritesError = $"Favorites are saved, but the copy '{GalleryFavoritesMirror}' could not be written: {ex.Message}";
-            GalleryStatusText.Text = _galleryFavoritesError;
-            Log($"[Gallery] {_galleryFavoritesError}");
-        }
-    }
-
-    /// <summary>Returns whether the screenshot is a favorite now.</summary>
-    private bool ToggleGalleryFav(string name)
-    {
-        bool favorite = !settings.GalleryFavorites.Remove(name);
-        if (favorite) settings.GalleryFavorites.Add(name);
-        SaveGalleryFavorites();
-        return favorite;
-    }
-
-    private async Task DeleteScreenshotAsync(string path)
-    {
-        if (_gallerySources.TryGetValue(path, out var source) && source.IsExternal) return;
-        string name = Path.GetFileName(path);
-        if (!await ShowLadsDialogAsync("Delete screenshot",
-                $"Move '{name}' to the Recycle Bin? Screenshots are shared by every version.", "Move to Recycle Bin", "Cancel", danger: true))
-            return;
-        var profiles = _profileService.GetProfiles().Select(p => _pathService.GetProfileDirectory(p)).ToList();
-        try
-        {
-            var deleted = await Task.Run(() =>
-            {
-                // Lads profiles' copies too (found while the shared file still exists), or the next game exit copies it back.
-                var files = ScreenshotCatalogService.ProfileCopies(path, SharedContentService.Instance.ScreenshotsDirectory, profiles).Append(path).ToList();
-                foreach (string file in files)
-                {
-                    SafeFileOps.DeleteToRecycleBin(file);
-                    string sidecar = file + ".json";
-                    if (File.Exists(sidecar)) SafeFileOps.DeleteToRecycleBin(sidecar);
-                }
-                return files;
-            });
-            Log($"[Gallery] Moved to the Recycle Bin: {string.Join(", ", deleted)}");
-            if (settings.GalleryFavorites.Remove(name)) SaveGalleryFavorites();
-        }
-        catch (Exception ex)
-        {
-            Log($"[Gallery] Delete failed for '{path}': {ex.Message}");
-            await ShowLadsDialogAsync("Could not delete the screenshot", $"'{name}': {ex.Message}");
-        }
-        await LoadGalleryAsync();
-    }
-
-    private string _viewerPath = "";
-    // Gallery viewer zoom/pan state
-    private double _viewerZoom = 1.0;
-    private double _viewerPanX = 0, _viewerPanY = 0;
-    private bool _viewerDragging = false;
-    private Avalonia.Point _viewerLastPointer;
-
-    private void ShowGalleryViewer(string path)
-    {
-        _viewerPath = path;
-        GalleryViewerTitle.Text = Path.GetFileName(path);
-        GalleryViewerMeta.Text = File.GetLastWriteTime(path).ToString("f");
-        try
-        {
-            using var fs = File.OpenRead(path);
-            GalleryViewerImage.Source = new Bitmap(fs);
-        }
-        catch { GalleryViewerImage.Source = null; }
-        ResetViewerZoom();
-        GalleryViewerOverlay.IsVisible = true;
-    }
-
-    // ─── Gallery viewer zoom + pan ───────────────
-    private void ResetViewerZoom()
-    {
-        _viewerZoom = 1.0;
-        _viewerPanX = 0; _viewerPanY = 0;
-        _viewerDragging = false;
-        ApplyViewerTransform();
-    }
-
-    private void ApplyViewerTransform()
-    {
-        if (GalleryViewerImage == null) return;
-        GalleryViewerImage.RenderTransformOrigin = Avalonia.RelativePoint.Center;
-        var g = new TransformGroup();
-        g.Children.Add(new ScaleTransform(_viewerZoom, _viewerZoom));
-        g.Children.Add(new TranslateTransform(_viewerPanX, _viewerPanY));
-        GalleryViewerImage.RenderTransform = g;
-        GalleryViewerImage.Cursor = new Avalonia.Input.Cursor(
-            _viewerZoom > 1.0 ? Avalonia.Input.StandardCursorType.SizeAll : Avalonia.Input.StandardCursorType.Arrow);
-    }
-
-    private void GalleryViewer_Wheel(object? sender, Avalonia.Input.PointerWheelEventArgs e)
-    {
-        double factor = e.Delta.Y > 0 ? 1.15 : 1.0 / 1.15;
-        double newZoom = Math.Clamp(_viewerZoom * factor, 1.0, 8.0);
-        if (Math.Abs(newZoom - _viewerZoom) < 0.0001) return;
-        _viewerZoom = newZoom;
-        if (_viewerZoom <= 1.0) { _viewerPanX = 0; _viewerPanY = 0; } // snap back to centered
-        ApplyViewerTransform();
-        e.Handled = true;
-    }
-
-    private void GalleryViewer_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-    {
-        if (_viewerZoom <= 1.0) return; // only pan when zoomed in
-        _viewerDragging = true;
-        _viewerLastPointer = e.GetPosition(GalleryViewerOverlay);
-        e.Handled = true;
-    }
-
-    private void GalleryViewer_PointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
-    {
-        if (!_viewerDragging) return;
-        var p = e.GetPosition(GalleryViewerOverlay);
-        _viewerPanX += p.X - _viewerLastPointer.X;
-        _viewerPanY += p.Y - _viewerLastPointer.Y;
-        _viewerLastPointer = p;
-        ApplyViewerTransform();
-    }
-
-    private void GalleryViewer_PointerReleased(object? sender, Avalonia.Input.PointerReleasedEventArgs e)
-    {
-        _viewerDragging = false;
-    }
-
-    private void GalleryViewerClose_Click(object? sender, RoutedEventArgs e)
-    {
-        GalleryViewerOverlay.IsVisible = false;
-        GalleryViewerImage.Source = null;
-        _viewerPath = "";
-        ResetViewerZoom();
-    }
-
-    private void GalleryViewerFullscreen_Click(object? sender, RoutedEventArgs e)
-    {
-        this.WindowState = this.WindowState == WindowState.FullScreen
-            ? WindowState.Normal
-            : WindowState.FullScreen;
-    }
-
-    protected override void OnKeyDown(KeyEventArgs e)
-    {
-        if (e.Key == Key.Escape && GalleryViewerOverlay != null && GalleryViewerOverlay.IsVisible)
-        {
-            if (!this.IsActive || this.WindowState == WindowState.Minimized)
-            {
-                base.OnKeyDown(e);
-                return;
-            }
-            GalleryViewerOverlay.IsVisible = false;
-            if (GalleryViewerImage != null)
-            {
-                GalleryViewerImage.Source = null;
-            }
-            _viewerPath = "";
-            e.Handled = true;
-            return;
-        }
-        base.OnKeyDown(e);
-    }
-
-    private void OpenFolderSelect(string path)
-    {
-        try { Process.Start(new ProcessStartInfo { FileName = "explorer.exe", Arguments = "/select,\"" + path + "\"", UseShellExecute = true }); }
-        catch (Exception ex) { Log($"[Gallery] show in folder failed: {ex.Message}"); }
-    }
-
-    private void CopyTextToClipboard(string text)
-    {
-        try
-        {
-            var p = new Process();
-            p.StartInfo.FileName = "clip.exe";
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.RedirectStandardInput = true;
-            p.StartInfo.CreateNoWindow = true;
-            p.Start();
-            p.StandardInput.Write(text);
-            p.StandardInput.Close();
-            p.WaitForExit(1000);
-        }
-        catch (Exception ex) { Log($"[Gallery] copy text failed: {ex.Message}"); }
-    }
-
-    private void CopyImageToClipboard(string path)
-    {
-        try
-        {
-            string safe = path.Replace("'", "''");
-            var p = new Process();
-            p.StartInfo.FileName = "powershell";
-            p.StartInfo.Arguments = "-NoProfile -STA -Command \"Add-Type -AssemblyName System.Windows.Forms,System.Drawing; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('" + safe + "'))\"";
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.CreateNoWindow = true;
-            p.Start();
-            p.WaitForExit(4000);
-            StatusText.Text = "Copied image to clipboard.";
-        }
-        catch (Exception ex) { Log($"[Gallery] copy image failed: {ex.Message}"); }
-    }
-
-    private async void UploadImgur(string path)
-    {
-        if (string.IsNullOrWhiteSpace(settings.ImgurClientId))
-        {
-            StatusText.Text = "Enter an Imgur Client ID in the Gallery toolbar first.";
-            return;
-        }
-        try
-        {
-            StatusText.Text = "Uploading to Imgur...";
-            byte[] bytes = File.ReadAllBytes(path);
-            var req = new HttpRequestMessage(HttpMethod.Post, "https://api.imgur.com/3/image");
-            req.Headers.Add("Authorization", "Client-ID " + settings.ImgurClientId);
-            var form = new MultipartFormDataContent();
-            form.Add(new ByteArrayContent(bytes), "image", Path.GetFileName(path));
-            req.Content = form;
-            var resp = await _httpClient.SendAsync(req);
-            string body = await resp.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(body);
-            if (doc.RootElement.TryGetProperty("data", out var data) && data.TryGetProperty("link", out var linkEl))
-            {
-                string link = linkEl.GetString() ?? "";
-                CopyTextToClipboard(link);
-                StatusText.Text = "Imgur link copied: " + link;
-                Log($"[Gallery] Uploaded: {link}");
-            }
-            else
-            {
-                StatusText.Text = "Imgur upload failed (check your Client ID).";
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = "Imgur upload failed: " + ex.Message;
-        }
-    }
-
-    // ═══════════════════════════════════════
     //  WINDOW CONTROLS
     // ═══════════════════════════════════════
 
@@ -3078,13 +2345,11 @@ public partial class MainWindow : Window
 
             var card = new Border
             {
-                Background = new SolidColorBrush(Color.Parse(isActive ? "#28262A" : "#1D1E22")),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(16, 12),
-                BorderBrush = new SolidColorBrush(Color.Parse(isActive ? "#C44343" : "#303137")),
-                BorderThickness = new Thickness(isActive ? 2 : 0, 0, 0, 1),
-                Margin = new Thickness(0, 0, 0, 8)
+                Classes = { "card" },
+                Padding = new Thickness(18, 14),
+                Margin = new Thickness(0, 0, 0, 10)
             };
+            if (isActive) card.Classes.Add("selected");
 
             var grid = new Grid
             {
@@ -3092,77 +2357,96 @@ public partial class MainWindow : Window
             };
 
             // Left side details
-            var leftStack = new StackPanel { Spacing = 6 };
+            var leftStack = new StackPanel { Spacing = 8 };
 
-            var titlePanel = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 0, 12, 0) };
+            var titlePanel = new WrapPanel { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
             titlePanel.Children.Add(new TextBlock
             {
                 Text = (profile.IsFavorite ? "★ " : "") + profile.Name,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Foreground = Brushes.White,
-                FontSize = 15,
-                FontWeight = FontWeight.Bold
+                FontSize = 16,
+                FontWeight = FontWeight.Bold,
+                Margin = new Thickness(0, 0, 10, 0),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
             }.Untranslated());
 
             if (isActive)
             {
-                titlePanel.Children.Add(new Border
+                var activeChip = new Border
                 {
-                    Background = new SolidColorBrush(Color.Parse("#C44343")),
-                    CornerRadius = new CornerRadius(4),
-                    Padding = new Thickness(6, 2),
-                    Child = new TextBlock
-                    {
-                        Text = "ACTIVE",
-                        Foreground = Brushes.White,
-                        FontSize = 10,
-                        FontWeight = FontWeight.Bold
-                    }
-                });
-                Grid.SetColumn(titlePanel.Children[1], 1);
-                titlePanel.Children[1].Margin = new Thickness(10, 0, 0, 0);
+                    Classes = { "chip", "good" },
+                    Margin = new Thickness(0, 0, 8, 0),
+                    Child = new TextBlock { Text = "CURRENT", FontWeight = FontWeight.Bold, FontSize = 10.5 }
+                };
+                titlePanel.Children.Add(activeChip);
             }
-            leftStack.Children.Add(titlePanel);
 
-            var metaPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 14 };
-            metaPanel.Children.Add(new TextBlock
+            var verChip = new Border
             {
-                Text = $"Minecraft: {profile.MinecraftVersion}",
-                Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")),
-                FontSize = 12
-            });
+                Classes = { "chip" },
+                Margin = new Thickness(0, 0, 8, 0),
+                Child = new TextBlock { Text = $"MC {profile.MinecraftVersion}", FontSize = 11 }
+            };
+            titlePanel.Children.Add(verChip);
+
             if (!string.IsNullOrEmpty(profile.FabricVersion))
             {
-                metaPanel.Children.Add(new TextBlock
+                var loaderChip = new Border
                 {
-                    Text = $"Fabric: {profile.FabricVersion}",
-                    Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")),
-                    FontSize = 12
-                });
+                    Classes = { "chip" },
+                    Margin = new Thickness(0, 0, 8, 0),
+                    Child = new TextBlock { Text = $"Fabric {profile.FabricVersion}", FontSize = 11 }
+                };
+                titlePanel.Children.Add(loaderChip);
             }
-            metaPanel.Children.Add(new TextBlock
+            else if (GameVersionPolicy.UsesForge(profile.MinecraftVersion))
             {
-                Text = $"Java: {profile.JavaMajorVersion}",
-                Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")),
-                FontSize = 12
-            });
-            leftStack.Children.Add(metaPanel);
+                var loaderChip = new Border
+                {
+                    Classes = { "chip" },
+                    Margin = new Thickness(0, 0, 8, 0),
+                    Child = new TextBlock { Text = "Forge", FontSize = 11 }
+                };
+                titlePanel.Children.Add(loaderChip);
+            }
 
-            // Isolate toggle checkbox (a 1.8.9 profile's shared settings come from Lunar Client's 1.8 profile when Lunar is installed)
+            var javaChip = new Border
+            {
+                Classes = { "chip" },
+                Margin = new Thickness(0, 0, 8, 0),
+                Child = new TextBlock { Text = $"Java {profile.JavaMajorVersion}", FontSize = 11 }
+            };
+            titlePanel.Children.Add(javaChip);
+
+            if (profile.IsIsolated)
+            {
+                var isoChip = new Border
+                {
+                    Classes = { "chip", "accent" },
+                    Margin = new Thickness(0, 0, 8, 0),
+                    Child = new TextBlock { Text = "Isolated", FontSize = 11 }
+                };
+                titlePanel.Children.Add(isoChip);
+            }
+
+            leftStack.Children.Add(titlePanel);
+
+            // Isolate toggle checkbox
             bool fromLunar = GameVersionPolicy.UsesForge(profile.MinecraftVersion) && GameOptionsService.LunarOptions18() != null;
             var isolateCheck = new CheckBox
             {
-                Content = new TextBlock { Text = fromLunar ? IsolationText + LunarSettingsText : IsolationText, TextWrapping = TextWrapping.Wrap },
+                Content = new TextBlock { Text = "Isolate game settings (options.txt, keybinds)", FontSize = 12 },
                 IsChecked = profile.IsIsolated,
-                FontSize = 12,
-                Foreground = new SolidColorBrush(Color.Parse("#AAAAAA")),
-                Margin = new Thickness(0, 4, 0, 0)
+                Margin = new Thickness(0, 2, 0, 0)
             };
+            ToolTip.SetTip(isolateCheck, fromLunar ? IsolationText + LunarSettingsText : IsolationText);
             isolateCheck.IsCheckedChanged += (s, e) =>
             {
                 profile.IsIsolated = isolateCheck.IsChecked ?? false;
                 _profileService.SaveProfiles();
                 Log($"[Profiles] Profile '{profile.Name}' isolated set to: {profile.IsIsolated}");
+                LoadProfilesUI();
             };
             leftStack.Children.Add(isolateCheck);
 
@@ -3181,11 +2465,11 @@ public partial class MainWindow : Window
             {
                 var selectBtn = new Button
                 {
-                    Content = "Select Profile",
-                    Classes = { "action" },
+                    Content = "Switch to",
+                    Classes = { "launch" },
                     Height = 34,
-                    Padding = new Thickness(12, 0),
-                    FontSize = 12
+                    Padding = new Thickness(16, 0),
+                    FontSize = 12.5
                 };
                 selectBtn.Click += (s, e) =>
                 {
@@ -3204,7 +2488,7 @@ public partial class MainWindow : Window
                     Content = "Delete",
                     Classes = { "danger" },
                     Height = 34,
-                    Padding = new Thickness(10, 0),
+                    Padding = new Thickness(12, 0),
                     FontSize = 12
                 };
                 deleteBtn.Click += (s, e) =>
@@ -3218,13 +2502,16 @@ public partial class MainWindow : Window
             }
             else
             {
-                var activeBadge = new TextBlock
+                var activeBadge = new Border
                 {
-                    Text = "Selected",
-                    Foreground = new SolidColorBrush(Color.Parse("#BABDC6")),
-                    FontSize = 12,
-                    FontWeight = FontWeight.SemiBold,
-                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                    Classes = { "chip", "good" },
+                    Padding = new Thickness(12, 6),
+                    Child = new TextBlock
+                    {
+                        Text = "Active Profile",
+                        FontWeight = FontWeight.Bold,
+                        FontSize = 12
+                    }
                 };
                 rightStack.Children.Add(activeBadge);
             }
@@ -3884,11 +3171,33 @@ public partial class MainWindow : Window
         Action(toggle);
         if (IsUserJar(entry)) Action(ModActionButton("Delete", "danger", "Move this jar to the Recycle Bin", () => _ = DeleteUserModsAsync(new[] { entry })));
 
-        // Two cards per line (ModsList is a two-column WrapPanel): icon and details on top, the expander and actions below.
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
+        // Two cards per line (ModsList is a two-column WrapPanel): icon and details on top, with selection checkmark in top-right, the expander and actions below.
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         grid.Children.Add(ModIconBox(entry, out var icon));
         Grid.SetColumn(details, 1);
         grid.Children.Add(details);
+
+        CheckBox? select = null;
+        if (IsSelectableMod(entry))
+        {
+            select = new CheckBox
+            {
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                Margin = new Thickness(10, 0, 0, 0)
+            };
+            ToolTip.SetTip(select, "Select for batch action");
+            string key = entry.FilePath ?? entry.Id;
+            select.IsCheckedChanged += (_, _) =>
+            {
+                if (select.IsChecked == true) _selectedMods[key] = entry;
+                else _selectedMods.Remove(key);
+                UpdateModsSelectionBar();
+            };
+            Grid.SetColumn(select, 2);
+            grid.Children.Add(select);
+        }
+
         var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         if (expander != null) footer.Children.Add(expander);
         Grid.SetColumn(actions, 1);
@@ -3900,27 +3209,12 @@ public partial class MainWindow : Window
         var card = new Border
         {
             Background = new SolidColorBrush(Color.Parse("#1D1E22")), BorderBrush = new SolidColorBrush(Color.Parse("#303137")),
-            BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(16, 12), Child = body
+            BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(16, 12),
+            Margin = new Thickness(0, 0, 8, 8), Child = body
         };
 
-        var wrapper = new Grid { ColumnDefinitions = new ColumnDefinitions("28,*"), Margin = new Thickness(0, 0, 8, 8) };
-        CheckBox? select = null;
-        if (IsSelectableMod(entry))
-        {
-            select = new CheckBox { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top, Margin = new Thickness(0, 14, 0, 0) };
-            string key = entry.FilePath ?? entry.Id;
-            select.IsCheckedChanged += (_, _) =>
-            {
-                if (select.IsChecked == true) _selectedMods[key] = entry;
-                else _selectedMods.Remove(key);
-                UpdateModsSelectionBar();
-            };
-            wrapper.Children.Add(select);
-        }
-        Grid.SetColumn(card, 1);
-        wrapper.Children.Add(card);
-        _modRows.Add(new ModRowView(entry, wrapper, toggle, select, children, actionLabels, icon));
-        return wrapper;
+        _modRows.Add(new ModRowView(entry, card, toggle, select, children, actionLabels, icon));
+        return card;
     }
 
     private Control BuildModChildRow(ModInventoryEntry parent, ModInventoryEntry child, int level)
