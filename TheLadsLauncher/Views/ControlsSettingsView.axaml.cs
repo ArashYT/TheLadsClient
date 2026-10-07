@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Globalization;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -16,22 +16,26 @@ using TheLadsLauncher.Services;
 namespace TheLadsLauncher.Views;
 
 /// <summary>
-/// Settings → Controls: field of view, sensitivity, video options and every vanilla key bind of one profile's options.txt.
-/// Changes save on their own (debounced); only changed keys are rewritten, every other line stays as it was. Nothing is
-/// written while that profile's game runs: Minecraft rewrites options.txt when it closes.
+/// Settings → Controls: field of view, sensitivity, video options and every vanilla key bind, as ONE set shared by every Lads
+/// Client profile that is not isolated (<see cref="SharedControls"/>). Values are shown and kept in modern key names whatever the
+/// version; each profile's options.txt gets them in its own format. Changes save on their own (debounced); only changed keys are
+/// rewritten. A profile whose game runs gets the change when it closes: Minecraft rewrites options.txt on exit.
 /// </summary>
 public partial class ControlsSettingsView : UserControl
 {
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
-    // options.txt key -> value as this version stores it, not yet written.
+    // options.txt key -> modern-format value, not yet written.
     private readonly Dictionary<string, string> _pending = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _keyValues = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Button> _keyButtons = new(StringComparer.Ordinal);
     private readonly List<Action> _sliderLabels = new();
     private IReadOnlyList<GameKeyBinding> _keys = Array.Empty<GameKeyBinding>();
-    private LauncherProfile? _profile;
+    private IReadOnlyList<LauncherProfile> _targets = Array.Empty<LauncherProfile>();
     private GameKeyBinding? _listening;
-    private bool _legacy, _loading;
+    private bool _loading;
+
+    /// <summary>Short save state for the Settings page's indicator: "Saving…", "All changes saved" or an error (true).</summary>
+    public event Action<string, bool>? SaveStateChanged;
 
     public ControlsSettingsView()
     {
@@ -42,16 +46,17 @@ public partial class ControlsSettingsView : UserControl
         HookSlider(RenderDistanceSlider, RenderDistanceValue, "renderDistance", v => v + "", v => v + " chunks");
         HookSlider(SimulationDistanceSlider, SimulationDistanceValue, "simulationDistance", v => v + "", v => v + " chunks");
         HookSlider(MaxFpsSlider, MaxFpsValue, "maxFps", v => v + "", v => v >= 260 ? "Unlimited" : v + " fps");
+        GuiScaleBox.ItemsSource = new[] { "Auto", "1", "2", "3", "4", "5", "6" };
         GuiScaleBox.SelectionChanged += (_, _) => { if (GuiScaleBox.SelectedIndex >= 0) Change("guiScale", GuiScaleBox.SelectedIndex + ""); };
         VsyncCheck.IsCheckedChanged += (_, _) => Change("enableVsync", VsyncCheck.IsChecked == true ? "true" : "false");
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         AddHandler(PointerPressedEvent, OnPointerPressed, RoutingStrategies.Tunnel);
     }
 
-    /// <summary>The profile shown, for the QA preview.</summary>
-    public LauncherProfile? Profile => _profile;
+    /// <summary>The profiles the controls apply to, for the QA preview.</summary>
+    public IReadOnlyList<LauncherProfile> Targets => _targets;
 
-    /// <summary>Writes pending changes now (the QA preview, leaving the tab, switching profile).</summary>
+    /// <summary>Writes pending changes now (the QA preview, leaving the tab).</summary>
     public async Task FlushAsync()
     {
         if (!_saveTimer.IsEnabled) return;
@@ -62,13 +67,7 @@ public partial class ControlsSettingsView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        var profiles = ProfileService.Instance.GetProfiles();
-        var keep = _profile?.Id ?? ProfileService.Instance.GetActiveProfile().Id;
-        _loading = true;
-        ProfilePicker.ItemsSource = profiles;
-        ProfilePicker.SelectedItem = profiles.FirstOrDefault(p => p.Id == keep) ?? profiles.FirstOrDefault();
-        _loading = false;
-        if (ProfilePicker.SelectedItem is LauncherProfile profile) Load(profile);
+        if (_pending.Count == 0) Reload();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -78,70 +77,71 @@ public partial class ControlsSettingsView : UserControl
         _ = FlushAsync();
     }
 
-    private async void ProfilePicker_SelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (_loading || ProfilePicker.SelectedItem is not LauncherProfile profile || profile.Id == _profile?.Id) return;
-        await FlushAsync();
-        Load(profile);
-    }
+    private static bool Legacy(LauncherProfile p) => GameOptionsService.IsLegacy18(p.MinecraftVersion);
 
-    private static string OptionsPath(LauncherProfile profile) => Path.Combine(PathService.Instance.GetProfileDirectory(profile), "options.txt");
+    private static Version Order(string minecraftVersion) => Version.TryParse(minecraftVersion, out var v) ? v : new Version(99, 0);
 
-    // Latin-1 maps every byte to one char: lines the launcher does not change are written back byte for byte.
-    private static string ReadText(string path) => File.ReadAllText(path, Encoding.Latin1);
-
-    private void Load(LauncherProfile profile)
+    /// <summary>Re-reads the profiles and the shared controls (the tab opened, a profile was isolated or added).</summary>
+    public void Reload()
     {
         StopListening();
         _pending.Clear();
         _saveTimer.Stop();
-        _profile = profile;
-        Status("");
-        _legacy = GameOptionsService.IsLegacy18(profile.MinecraftVersion);
-        var file = OptionsPath(profile);
-        var lunar = _legacy ? GameOptionsService.LunarOptions18() : null;
-        // Before Minecraft's first save the launch copies the shared settings (1.8.9: Lunar's when installed) into the profile.
-        var source = File.Exists(file) ? file : profile.IsIsolated ? null : lunar ?? PathService.Instance.SharedOptionsFile;
-        GameOptionsFile options;
-        try { options = GameOptionsFile.Parse(source != null && File.Exists(source) ? ReadText(source) : ""); }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            options = GameOptionsFile.Parse("");
-            Status($"Could not read '{source}': {e.Message}", true);
-        }
+        var all = ProfileService.Instance.GetProfiles();
+        _targets = SharedControls.Targets(all);
+        var versions = _targets.Select(p => p.MinecraftVersion).Distinct().OrderByDescending(Order).ToList();
+        var values = SharedControls.Load(PathService.Instance, _targets, ProfileService.Instance.GetActiveProfile().Id);
 
         _loading = true;
-        FovSlider.Value = GameControls.FovDegrees(options.Get("fov"));
-        SensitivitySlider.Value = GameControls.SensitivityPercent(options.Get("mouseSensitivity"));
-        RenderDistanceSlider.Value = GameControls.Int(options.Get("renderDistance"), 12, 2, 32);
-        SimulationDistanceSlider.Value = GameControls.Int(options.Get("simulationDistance"), 12, 5, 32);
-        SimulationPanel.IsVisible = !_legacy;
-        MaxFpsSlider.Value = GameControls.Int(options.Get("maxFps"), 120, 10, 260);
-        GuiScaleBox.ItemsSource = _legacy ? new[] { "Auto", "Small", "Normal", "Large" } : new[] { "Auto", "1", "2", "3", "4", "5", "6" };
-        GuiScaleBox.SelectedIndex = GameControls.Int(options.Get("guiScale"), 0, 0, _legacy ? 3 : 6);
-        VsyncCheck.IsChecked = options.Get("enableVsync") != "false";
-        _keys = GameControls.VanillaKeys(profile.MinecraftVersion);
-        _keyValues.Clear();
-        foreach (var key in _keys)
-        {
-            var stored = options.Get("key_" + key.Id);
-            // Shared and Lunar files name keys; 1.8.9 stores codes.
-            if (stored != null && _legacy && !int.TryParse(stored, out _)) stored = GameControls.ToStored(stored, true);
-            _keyValues[key.Id] = stored ?? GameControls.ToStored(key.Default, _legacy)!;
-        }
+        FovSlider.Value = GameControls.FovDegrees(values.GetValueOrDefault("fov"));
+        SensitivitySlider.Value = GameControls.SensitivityPercent(values.GetValueOrDefault("mouseSensitivity"));
+        RenderDistanceSlider.Value = GameControls.Int(values.GetValueOrDefault("renderDistance"), 12, 2, 32);
+        SimulationDistanceSlider.Value = GameControls.Int(values.GetValueOrDefault("simulationDistance"), 12, 5, 32);
+        MaxFpsSlider.Value = GameControls.Int(values.GetValueOrDefault("maxFps"), 120, 10, 260);
+        GuiScaleBox.SelectedIndex = GameControls.Int(values.GetValueOrDefault("guiScale"), 0, 0, 6);
+        VsyncCheck.IsChecked = values.GetValueOrDefault("enableVsync") != "false";
+        BuildKeyList(versions.Count > 0 ? versions : new List<string> { ProfileService.NewestVersion }, values);
         _loading = false;
         foreach (var label in _sliderLabels) label();
-        BuildKeyRows();
+        RenderKeyRows();
 
-        SourceNote.Text = (File.Exists(file) ? $"Saved in {file}." : $"Minecraft has not saved settings for this profile yet; changes go to {file}.")
-            + (profile.IsIsolated ? " This profile keeps its own game settings." : " Shared with every profile that is not isolated.");
-        bool running = RunningGameMarker.IsRunning(PathService.Instance.GetProfileDirectory(profile));
-        WarningNote.Text = running ? $"Minecraft ({profile.Name}) is running. Close it to change these settings: the game saves its own when it closes."
-            : _legacy && !profile.IsIsolated && lunar != null ? "Minecraft 1.8.9 also follows Lunar Client: a key bind, field of view, sensitivity or GUI scale you change in Lunar's 1.8 profile replaces the one set here at the next launch."
-            : "";
-        WarningNote.IsVisible = WarningNote.Text.Length > 0;
-        GameCard.IsEnabled = KeysCard.IsEnabled = !running;
+        // The scope: every version, then who keeps their own and what follows Lunar.
+        ScopeTitle.Text = _targets.Count > 0 ? "Applies to all Lads Client versions" : "Every profile keeps its own settings";
+        VersionChips.Children.Clear();
+        foreach (var version in versions)
+            VersionChips.Children.Add(new Border { Classes = { "chip" }, Margin = new Thickness(0, 0, 6, 4), Child = new TextBlock { Text = version }.Untranslated() });
+        var isolated = all.Where(p => p.IsIsolated).ToList();
+        IsolatedNote.Text = isolated.Count == 0 ? "" : (_targets.Count == 0 ? "All profiles are isolated, so changes here only update the shared copy new profiles start from. Isolated: " : "Isolated profiles keep their own settings: ")
+            + string.Join(", ", isolated.Select(p => $"{p.Name} ({p.MinecraftVersion})")) + ".";
+        IsolatedNote.IsVisible = isolated.Count > 0;
+        var notes = new List<string>();
+        var running = _targets.Where(p => RunningGameMarker.IsRunning(PathService.Instance.GetProfileDirectory(p))).ToList();
+        if (running.Count > 0)
+            notes.Add($"Minecraft {string.Join(", ", running.Select(p => p.MinecraftVersion).Distinct())} is running: it gets your changes when it closes.");
+        if (_targets.Any(Legacy) && GameOptionsService.LunarOptions18() != null)
+            notes.Add("Minecraft 1.8.9 also follows Lunar Client: a key bind or setting you change in Lunar's 1.8 profile replaces this one at its next launch.");
+        WarningNote.Text = string.Join("\n", notes);
+        WarningNote.IsVisible = notes.Count > 0;
+        Status("");
     }
+
+    /// <summary>Every target version's vanilla keys once, newest version's order first; values in modern names.</summary>
+    private void BuildKeyList(IReadOnlyList<string> versions, IReadOnlyDictionary<string, string> values)
+    {
+        var keys = new List<GameKeyBinding>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var version in versions)
+            foreach (var key in GameControls.VanillaKeys(version))
+                if (seen.Add(key.Id)) keys.Add(key);
+        _keys = keys;
+        _keyValues.Clear();
+        foreach (var key in _keys) _keyValues[key.Id] = values.GetValueOrDefault("key_" + key.Id) ?? key.Default;
+        _keyVersions = _keys.ToDictionary(k => k.Id, k => versions.Where(v => GameControls.VanillaKeys(v).Any(x => x.Id == k.Id)).ToList(), StringComparer.Ordinal);
+        _versions = versions;
+    }
+
+    private Dictionary<string, List<string>> _keyVersions = new(StringComparer.Ordinal);
+    private IReadOnlyList<string> _versions = Array.Empty<string>();
 
     private void HookSlider(Slider slider, TextBlock label, string key, Func<int, string> stored, Func<int, string> text)
     {
@@ -154,76 +154,88 @@ public partial class ControlsSettingsView : UserControl
         };
     }
 
-    private void Change(string key, string stored)
+    private void Change(string key, string modern)
     {
-        if (_loading || _profile == null) return;
-        _pending[key] = stored;
+        if (_loading) return;
+        _pending[key] = modern;
         _saveTimer.Stop();
         _saveTimer.Start();
-        Status("Saving…");
+        SaveStateChanged?.Invoke("Saving…", false);
     }
 
     private async Task SaveAsync()
     {
-        if (_profile is not { } profile || _pending.Count == 0) return;
+        if (_pending.Count == 0) return;
         var edits = new Dictionary<string, string>(_pending, StringComparer.Ordinal);
-        var file = OptionsPath(profile);
-        try
+        var targets = _targets;
+        var result = await Task.Run(() => SharedControls.Save(PathService.Instance, targets, edits));
+        foreach (var (key, value) in edits)
+            if (_pending.TryGetValue(key, out var now) && now == value) _pending.Remove(key);
+        if (result.Errors.Count > 0)
         {
-            if (RunningGameMarker.IsRunning(Path.GetDirectoryName(file)!))
-            {
-                GameCard.IsEnabled = KeysCard.IsEnabled = false;
-                Status($"Not saved: Minecraft ({profile.Name}) is running. Close it and change the setting again.", true);
-                return;
-            }
-            if (SafeFileOps.IsLink(file)) throw new IOException($"'{file}' is a link; the launcher only edits a regular options.txt.");
-            await Task.Run(async () =>
-            {
-                var options = GameOptionsFile.Parse(File.Exists(file) ? ReadText(file) : "");
-                foreach (var (key, value) in edits) options.Set(key, value);
-                await LockFiles.WriteAtomicallyAsync(file, Encoding.Latin1.GetBytes(options.ToString()));
-                // A profile that is not isolated takes the shared settings at launch: they get the change too, as after a game
-                // exits (ProfileService.SyncProfileToSharedAsync). Lunar's 1.8 file is only ever read.
-                if (!profile.IsIsolated && !(_legacy && GameOptionsService.LunarOptions18() != null))
-                    GameOptionsService.SyncFromInstance(file, PathService.Instance.SharedOptionsFile, profile.MinecraftVersion);
-            });
-            foreach (var (key, value) in edits)
-                if (_pending.TryGetValue(key, out var now) && now == value) _pending.Remove(key);
-            if (_profile == profile) Status("All changes saved to " + file);
+            Status("Not saved for " + string.Join("; ", result.Errors), true);
+            SaveStateChanged?.Invoke("Some controls were not saved", true);
+            return;
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            Status("Not saved: " + e.Message, true);
-        }
+        int versions = result.Applied.Concat(result.Deferred).Select(p => p.MinecraftVersion).Distinct().Count();
+        Status($"Saved for {versions} version{(versions == 1 ? "" : "s")}"
+            + (result.Deferred.Count > 0 ? $". {string.Join(", ", result.Deferred.Select(p => p.Name))} get{(result.Deferred.Count == 1 ? "s" : "")} the change when the game closes." : ".")
+            + (_warning != null ? " " + _warning : ""), _warning != null);
+        _warning = null;
+        SaveStateChanged?.Invoke("All changes saved", false);
     }
+
+    // Shown with the next save's result (a bind 1.8.9 cannot store).
+    private string? _warning;
 
     private void Status(string text, bool error = false)
     {
         StatusLine.Text = text;
+        StatusLine.IsVisible = text.Length > 0;
         StatusLine.Foreground = new SolidColorBrush(Color.Parse(error ? "#E27676" : "#A4BAA7"));
     }
 
-    private void BuildKeyRows()
+    private void RenderKeyRows()
     {
-        KeyRows.Children.Clear();
+        foreach (var grid in new[] { KeyRows, KeyRowsNewer, KeyRowsLegacy }) grid.Children.Clear();
         _keyButtons.Clear();
+        bool anyLegacy = _versions.Any(GameOptionsService.IsLegacy18);
+        var modern = _versions.Where(v => !GameOptionsService.IsLegacy18(v)).ToList();
         foreach (var key in _keys)
         {
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 0, 24, 6) };
-            row.Children.Add(new TextBlock { Text = key.Label, Classes = { "label" }, TextTrimming = TextTrimming.CharacterEllipsis });
+            var has = _keyVersions[key.Id];
+            bool common = has.Count == _versions.Count;
+            bool legacyOnly = !common && has.All(GameOptionsService.IsLegacy18);
+            var target = common ? KeyRows : legacyOnly ? KeyRowsLegacy : KeyRowsNewer;
+            // Only some newer versions: say from which one ("26.2+").
+            string? tag = !common && !legacyOnly && has.Count < modern.Count ? has.OrderBy(Order).First() + "+" : null;
+
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(0, 2, 28, 2), MinHeight = 34 };
+            row.Children.Add(new TextBlock { Text = key.Label, Classes = { "keyLabel" }, TextTrimming = TextTrimming.CharacterEllipsis });
+            if (tag != null)
+            {
+                var tagText = new TextBlock { Text = tag, Classes = { "keyTag" } }.Untranslated();
+                Grid.SetColumn(tagText, 1);
+                row.Children.Add(tagText);
+            }
             var button = new Button { Classes = { "keybind", LauncherTranslator.NoTranslate } }; // key names stay as Minecraft shows them
-            Grid.SetColumn(button, 1);
+            Grid.SetColumn(button, 2);
             button.Click += (_, _) => { StopListening(); _listening = key; button.Content = "> press a key <"; button.Classes.Add("listening"); };
             row.Children.Add(button);
             _keyButtons[key.Id] = button;
-            KeyRows.Children.Add(row);
+            target.Children.Add(row);
         }
+        bool newer = KeyRowsNewer.Children.Count > 0, legacy = KeyRowsLegacy.Children.Count > 0;
+        KeyGroupAll.IsVisible = newer || legacy;
+        KeyGroupNewer.IsVisible = KeyRowsNewer.IsVisible = newer;
+        KeyGroupNewer.Text = anyLegacy ? "NOT IN 1.8.9" : "NEWER VERSIONS ONLY";
+        KeyGroupLegacy.IsVisible = KeyRowsLegacy.IsVisible = legacy;
         RefreshKeys();
     }
 
     private void RefreshKeys()
     {
-        var conflicts = GameControls.Conflicts(_keys.Select(k => (k, _keyValues[k.Id])), _legacy);
+        var conflicts = GameControls.Conflicts(_keys.Select(k => (k, _keyValues[k.Id])), false);
         foreach (var key in _keys)
         {
             var button = _keyButtons[key.Id];
@@ -251,14 +263,12 @@ public partial class ControlsSettingsView : UserControl
         if (_listening is not { } key) return;
         StopListening();
         if (modernKey == null) { Status("That key cannot be bound in Minecraft.", true); return; }
-        if (GameControls.ToStored(modernKey, _legacy) is not { } stored)
-        {
-            Status($"Minecraft 1.8.9 has no key code for {GameControls.DisplayName(modernKey)}.", true);
-            return;
-        }
-        _keyValues[key.Id] = stored;
+        _keyValues[key.Id] = modernKey;
         RefreshKeys();
-        Change("key_" + key.Id, stored);
+        Change("key_" + key.Id, modernKey);
+        // 1.8.9 keeps its own bind for a key it has no code for (SharedControls.ToVersion).
+        if (_keyVersions[key.Id].Any(GameOptionsService.IsLegacy18) && GameControls.ToStored(modernKey, true) == null)
+            _warning = $"Minecraft 1.8.9 has no key code for {GameControls.DisplayName(modernKey)}: it keeps its own {key.Label} bind.";
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -288,10 +298,9 @@ public partial class ControlsSettingsView : UserControl
         StopListening();
         foreach (var key in _keys)
         {
-            var stored = GameControls.ToStored(key.Default, _legacy)!;
-            if (_keyValues[key.Id] == stored) continue;
-            _keyValues[key.Id] = stored;
-            Change("key_" + key.Id, stored);
+            if (_keyValues[key.Id] == key.Default) continue;
+            _keyValues[key.Id] = key.Default;
+            Change("key_" + key.Id, key.Default);
         }
         RefreshKeys();
     }
