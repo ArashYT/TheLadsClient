@@ -93,7 +93,7 @@ public class ServerListServiceTests
             {"online":true,"host":"play.cubecraft.net","players":{"online":1460,"max":45000},
              "motd":{"raw":"§bCubeCraft","clean":"  CubeCraft Games  \n  EggWars!  "},"icon":"data:image/png;base64,iVBORw0KGgo="}
             """);
-        Assert.Equal(new ServerStatus(true, 1460, 45000, "CubeCraft Games\nEggWars!", null) with { Icon = mcstatus.Icon }, mcstatus);
+        Assert.Equal((true, 1460, 45000, "CubeCraft Games\nEggWars!", "§bCubeCraft"), (mcstatus.Online, mcstatus.Players, mcstatus.MaxPlayers, mcstatus.Motd, mcstatus.MotdRaw));
         Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }, mcstatus.Icon);
 
         var mcsrvstat = ServerStatusService.Parse("""{"online":true,"players":{"online":33932,"max":200000},"motd":{"clean":["  Hypixel Network  ","  SKYBLOCK &amp; SAFARI "]}}""");
