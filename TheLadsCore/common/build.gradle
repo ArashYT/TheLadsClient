@@ -8,7 +8,12 @@ java {
     }
 }
 
-tasks.withType(JavaCompile).configureEach {
+tasks.named('compileJava', JavaCompile) {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('compileTestJava', JavaCompile) {
     options.release = 21
     options.encoding = 'UTF-8'
 }

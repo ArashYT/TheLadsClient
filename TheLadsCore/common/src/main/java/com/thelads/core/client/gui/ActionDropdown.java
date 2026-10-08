@@ -19,7 +19,7 @@ final class ActionDropdown {
         if(!open)return;
         w=Math.min(440,g.getScaledWidth()-24);h=Math.min(390,g.getScaledHeight()-24);x=(g.getScaledWidth()-w)/2;y=(g.getScaledHeight()-h)/2;
         long now=System.nanoTime();double dt=frame==0?0:Math.min(.1,(now-frame)/1e9);frame=now;
-        int max=Math.max(0,filtered.size()*25-(h-99));offset=Math.clamp(offset,0,max);scroll+=(offset-scroll)*(1-Math.exp(-dt*20));
+        int max=Math.max(0,filtered.size()*25-(h-99));offset=Math.max(0,Math.min(max,offset));scroll+=(offset-scroll)*(1-Math.exp(-dt*20));
         g.fill(0,0,g.getScaledWidth(),g.getScaledHeight(),0xB8000000);round(g,x,y,w,h,PANEL);
         g.drawText("Display actions",x+12,y+11,TEXT);g.drawText("Done",x+w-43,y+11,ACCENT);
         g.fill(x+10,y+30,x+w-10,y+55,CARD);g.drawText(query.isEmpty()?"Search actions or states...":query+"|",x+17,y+38,TEXT);
@@ -50,7 +50,7 @@ final class ActionDropdown {
         if(key==256){open=false;return true;}
         if(key==259&&!query.isEmpty()){query=query.substring(0,query.offsetByCodePoints(query.length(),-1));filter();}
         if(key==65&&(modifiers&2)!=0){query="";filter();}
-        if(key==264||key==265){selected=Math.clamp(selected+(key==264?1:-1),0,Math.max(0,filtered.size()-1));offset=Math.clamp(offset,selected*25-(h-125),selected*25);}
+        if(key==264||key==265){selected=Math.max(0,Math.min(Math.max(0,filtered.size()-1),selected+(key==264?1:-1)));offset=Math.max(selected*25-(h-125),Math.min(selected*25,offset));}
         if((key==257||key==32)&&!filtered.isEmpty()){filtered.get(selected).toggle();changed.run();}
         return true;
     }

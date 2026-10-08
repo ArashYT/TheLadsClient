@@ -41,7 +41,7 @@ public final class SignalLossPolicy {
             if (!visible) warning = recovering = false;
         }
         double elapsed = Math.max(0, (now - lastFrame) / 1_000_000_000.0); lastFrame = now;
-        progress = reducedMotion ? (visible ? 1 : 0) : (float) Math.clamp(progress + (visible ? 1 : -1) * elapsed * 4, 0, 1);
+        progress = reducedMotion ? (visible ? 1 : 0) : (float) Math.max(0.0, Math.min(1.0, progress + (visible ? 1 : -1) * elapsed * 4));
         return new Frame(progress, displayedSeconds, warning && !recovering, recovering);
     }
 }

@@ -287,7 +287,7 @@ public final class AdditionalIntegrations {
         if (step <= 0 || step > Integer.MAX_VALUE) return null;
         for (int i = 2; i < values.size(); i++)
             if (!(values.get(i) instanceof Integer n) || n.longValue() != first + step * i) return null;
-        return new int[]{first, (Integer)values.getLast(), (int)step};
+        return new int[]{first, (Integer)values.get(values.size() - 1), (int)step};
     }
 
     private static Class<?> valueType(Object value) {

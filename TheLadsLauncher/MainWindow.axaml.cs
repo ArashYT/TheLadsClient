@@ -638,6 +638,17 @@ public partial class MainWindow : Window
     private async void NavServers_Click(object? sender, RoutedEventArgs e) { NavigateTo("Servers"); await ServersPage.LoadAsync(); }
 
     private void NavHome_Click(object? sender, RoutedEventArgs e) => NavigateTo("Home");
+    private async void PlaySubTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (PlayStandardPanel == null || ExperiencesPage == null) return;
+        bool isExperiences = PlaySubTabs.SelectedItem == PlayExperiencesTab;
+        PlayStandardPanel.IsVisible = !isExperiences;
+        ExperiencesPage.IsVisible = isExperiences;
+        if (isExperiences)
+        {
+            await ExperiencesPage.LoadAsync();
+        }
+    }
     private void NavProfiles_Click(object? sender, RoutedEventArgs e)
     {
         LoadProfilesUI();
@@ -2579,11 +2590,11 @@ public partial class MainWindow : Window
         {
             string name = nameBox.Text?.Trim() ?? "";
             string version = versionBox.Text?.Trim() ?? "26.3";
-            if (GameVersionPolicy.IsDropped(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"Minecraft {version} is no longer supported (1.8.9, 26.2 or 26.3)"; return; }
+            if (GameVersionPolicy.IsDropped(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"Minecraft {version} is no longer supported (1.8.9, 1.20.1, 26.2 or 26.3)"; return; }
             if (string.IsNullOrEmpty(name)) name = $"Profile {version}";
 
             bool forge = GameVersionPolicy.UsesForge(version); // 1.8.9: Forge and Java 8, never Fabric
-            int javaVer = forge ? GameVersionPolicy.GetRequiredJavaMajor(version) : version.StartsWith("1.21") ? 21 : (version.StartsWith("26") ? 25 : 21);
+            int javaVer = forge ? GameVersionPolicy.GetRequiredJavaMajor(version) : version.StartsWith("1.20") ? 17 : (version.StartsWith("1.21") ? 21 : (version.StartsWith("26") ? 25 : 21));
             var newProfile = new TheLadsLauncher.Models.LauncherProfile
             {
                 Name = name,

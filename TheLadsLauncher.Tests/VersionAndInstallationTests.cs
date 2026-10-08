@@ -9,6 +9,7 @@ namespace TheLadsLauncher.Tests;
 public class VersionAndInstallationTests
 {
     [Theory]
+    [InlineData("1.20.1", 17)]
     [InlineData("1.21.11", 21)]
     [InlineData("26.2", 25)]
     [InlineData("26.3", 25)]
@@ -86,6 +87,10 @@ public class VersionAndInstallationTests
     [InlineData("26.2", "fabric-loader-0.18.0-custom-26.2", "fabric-loader-0.18.0-custom-26.2")]
     [InlineData("26.3", "0.19.5", "0.19.5")]
     [InlineData("26.3", "fabric-loader-0.19.5-26.3", "fabric-loader-0.19.5-26.3")]
+    [InlineData("1.20.1", "0.15.0", "0.16.10")]
+    [InlineData("1.20.1", "0.16.10", "0.16.10")]
+    [InlineData("1.20.1", "fabric-loader-0.15.0-1.20.1", "fabric-loader-0.16.10-1.20.1")]
+    [InlineData("1.20.1", "fabric-loader-0.16.10-1.20.1", "fabric-loader-0.16.10-1.20.1")]
     public void SupportedCoreLoaderMinimumPreservesOtherLoaders(string mc, string loader, string expected)
     {
         using var dir = new TestDirectory();
@@ -131,7 +136,7 @@ public class VersionAndInstallationTests
         File.WriteAllText(Path.Combine(dir.Path, "profiles.json"),
             JsonSerializer.Serialize(new { ActiveProfileId = "1.21.11", Profiles = saved }));
         var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
-        Assert.Equal(4, service.GetProfiles().Count); // the two saved ones plus the 26.3 and 1.8.9 defaults
+        Assert.Equal(5, service.GetProfiles().Count); // the two saved ones plus the 26.3, 1.20.1 and 1.8.9 defaults
         Assert.Equal("existing-world", service.GetProfile("1.21.11")!.CustomGameDir);
         Assert.Equal(saved[0].FabricVersion, service.GetProfile("1.21.11")!.FabricVersion);
         Assert.Equal(saved[1].FabricVersion, service.GetProfile("26.2")!.FabricVersion);

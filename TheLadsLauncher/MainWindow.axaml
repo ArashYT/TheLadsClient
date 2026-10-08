@@ -177,110 +177,117 @@
                     </Grid>
                 </Border>
                 <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="*,Auto">
-                    <Grid x:Name="HomePage" Margin="28,16,28,16" RowDefinitions="Auto,Auto,Auto,Auto">
-                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-                            <TextBlock Text="Play" FontSize="24" FontWeight="SemiBold" />
-                            <Border x:Name="MinecraftVersionPill" Grid.Column="1" VerticalAlignment="Center" BorderBrush="#3A3B42" BorderThickness="1" Padding="10,4" CornerRadius="3">
+                    <Grid x:Name="HomePage" Margin="28,16,28,16" RowDefinitions="Auto,*">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,10">
+                            <TextBlock Text="Play" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,20,0" />
+                            <TabControl x:Name="PlaySubTabs" Grid.Column="1" SelectionChanged="PlaySubTabs_SelectionChanged" VerticalAlignment="Center" Margin="0,-4,0,0">
+                                <TabItem x:Name="PlayStandardTab" Header="Client" />
+                                <TabItem x:Name="PlayExperiencesTab" Header="Experiences" />
+                            </TabControl>
+                            <Border x:Name="MinecraftVersionPill" Grid.Column="3" VerticalAlignment="Center" BorderBrush="#3A3B42" BorderThickness="1" Padding="10,4" CornerRadius="3">
                                 <TextBlock x:Name="MinecraftVersionText" Text="Minecraft" Foreground="#B8B9C2" FontSize="11" />
                             </Border>
                         </Grid>
-                        <Border Grid.Row="1" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" ClipToBounds="True" Height="140">
-                            <!-- The art column is twice the banner height: the 2:1 artwork shows whole instead of being cropped to a strip. -->
-                            <Grid ColumnDefinitions="*,280">
-                                <StackPanel Margin="24,8,0,8" VerticalAlignment="Center" Spacing="4">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <Border Width="14" Height="2" Background="{DynamicResource LadsAccent}" VerticalAlignment="Center" />
-                                        <TextBlock Text="BUILT FOR YOUR GAME" Classes="caption" FontSize="9" />
-                                    </StackPanel>
-                                    <TextBlock Text="THE LADS CLIENT." FontFamily="Bahnschrift SemiCondensed,Inter" FontSize="30" FontWeight="Bold" LetterSpacing="-0.5" />
-                                    <TextBlock Text="Your worlds. Your mods. Your people." Foreground="#999BA5" FontSize="13" />
-                                </StackPanel>
-                                <!-- The Lads artwork fills the right column and fades into the card behind the title. -->
-                                <Border Grid.Column="1" IsHitTestVisible="False">
-                                    <Border.Background>
-                                        <ImageBrush Source="avares://TheLadsLauncher/Assets/artwork.jpg" Stretch="UniformToFill" />
-                                    </Border.Background>
-                                </Border>
-                                <Border Grid.Column="1" IsHitTestVisible="False">
-                                    <Border.Background>
-                                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                                            <GradientStop Color="#FF1D1E22" Offset="0" />
-                                            <GradientStop Color="#001D1E22" Offset="0.42" />
-                                        </LinearGradientBrush>
-                                    </Border.Background>
-                                </Border>
-                                <Canvas x:Name="ParticleCanvas" Grid.ColumnSpan="2" IsHitTestVisible="False" Opacity="0.10" />
-                            </Grid>
-                        </Border>
-                        <Grid Grid.Row="2" ColumnDefinitions="*,*,*" Margin="0,10,0,8">
-                            <Button Classes="shortcut" Click="NavProfiles_Click" Margin="0,0,18,0">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <Path Data="M 2,7 L 10,2 L 18,7 L 10,12 Z M 2,11 L 10,16 L 18,11 M 2,15 L 10,20 L 18,15" Width="17" Height="17" Stretch="Uniform" Stroke="#E0525E" StrokeThickness="1.5" StrokeLineCap="Round" VerticalAlignment="Center" Margin="0,0,12,0" />
-                                    <StackPanel Grid.Column="1" Spacing="4">
-                                        <TextBlock Text="Version profiles" FontWeight="Medium" />
-                                        <TextBlock Text="Switch up your setup" FontSize="11" Foreground="#8F919B" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="&#8599;" Foreground="#8F919B" VerticalAlignment="Center" />
-                                </Grid>
-                            </Button>
-                            <Button Grid.Column="1" Classes="shortcut" Click="NavMods_Click" Margin="0,0,18,0">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <Path Data="M 4,4 H 8 A 2,2 0 0 1 12,4 H 16 V 8 A 2,2 0 0 1 16,12 V 16 H 12 A 2,2 0 0 0 8,16 H 4 V 12 A 2,2 0 0 0 4,8 Z" Width="17" Height="17" Stretch="Uniform" Stroke="#52A5E0" StrokeThickness="1.5" StrokeLineCap="Round" VerticalAlignment="Center" Margin="0,0,12,0" />
-                                    <StackPanel Grid.Column="1" Spacing="4">
-                                        <TextBlock Text="Mods" FontWeight="Medium" />
-                                        <TextBlock Text="Find your next addition" FontSize="11" Foreground="#8F919B" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="&#8599;" Foreground="#8F919B" VerticalAlignment="Center" />
-                                </Grid>
-                            </Button>
-                            <Button Grid.Column="2" Classes="shortcut" Click="NavGallery_Click">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <Path Data="M 3,6 H 6 L 8,3 H 12 L 14,6 H 17 A 2,2 0 0 1 19,8 V 17 A 2,2 0 0 1 17,19 H 3 A 2,2 0 0 1 1,17 V 8 A 2,2 0 0 1 3,6 Z M 10,15 A 3.5,3.5 0 1 0 10,8 A 3.5,3.5 0 1 0 10,15 Z" Width="17" Height="17" Stretch="Uniform" Stroke="#50C878" StrokeThickness="1.5" StrokeLineCap="Round" VerticalAlignment="Center" Margin="0,0,12,0" />
-                                    <StackPanel Grid.Column="1" Spacing="4">
-                                        <TextBlock Text="Screenshots" FontWeight="Medium" />
-                                        <TextBlock Text="The moments you kept" FontSize="11" Foreground="#8F919B" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="&#8599;" Foreground="#8F919B" VerticalAlignment="Center" />
-                                </Grid>
-                            </Button>
-                        </Grid>
-                        <Border Grid.Row="3" BorderBrush="#303137" BorderThickness="0,1,0,1" Padding="0,16,0,14">
-                            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*,220">
-                                <TextBlock Text="PROFILE" Classes="caption" Margin="0,0,0,7" />
-                                <TextBlock Grid.Column="1" Text="PLAYING AS" Classes="caption" Margin="0,0,0,7" />
-                                <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,*,220">
-                                    <ComboBox x:Name="LaunchProfileSelector" Classes="launchPicker notranslate" FontSize="16" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Choose the Minecraft profile to launch" SelectionChanged="LaunchProfileSelector_SelectionChanged" Height="69" HorizontalAlignment="Stretch" Grid.Column="0" Margin="0,0,12,0" />
-                                    <ComboBox x:Name="LaunchAccountSelector" Classes="launchPicker" PlaceholderText="Select an account" FontSize="16" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Launch with this account (does not change your main account)" SelectionChanged="LaunchAccountSelector_SelectionChanged" Height="69" HorizontalAlignment="Stretch" Grid.Column="1" Margin="0,0,16,0">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate x:DataType="models:AccountChoice">
-                                                <StackPanel Orientation="Horizontal" Spacing="12">
-                                                    <Border Width="32" Height="32" CornerRadius="4" ClipToBounds="True" Background="#303137">
-                                                        <Image Source="{Binding Head}" Width="32" Height="32" RenderOptions.BitmapInterpolationMode="None" />
-                                                    </Border>
-                                                    <TextBlock Text="{Binding Label}" Classes="notranslate" VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
-                                    <Button x:Name="LaunchButton" Classes="launch" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Right-click to launch with a different account" Click="LaunchButton_Click" Height="69" Grid.Column="2" MinWidth="220" Margin="0">
-                                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Path Data="M 4,2 L 16,10 L 4,18 Z" Fill="White" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center" />
-                                            <TextBlock Text="Play" FontWeight="Bold" FontSize="22" VerticalAlignment="Center" />
+                        <Grid x:Name="PlayStandardPanel" Grid.Row="1" RowDefinitions="Auto,Auto,Auto">
+                            <Border Grid.Row="0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" ClipToBounds="True" Height="140">
+                                <!-- The art column is twice the banner height: the 2:1 artwork shows whole instead of being cropped to a strip. -->
+                                <Grid ColumnDefinitions="*,280">
+                                    <StackPanel Margin="24,8,0,8" VerticalAlignment="Center" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Border Width="14" Height="2" Background="{DynamicResource LadsAccent}" VerticalAlignment="Center" />
+                                            <TextBlock Text="BUILT FOR YOUR GAME" Classes="caption" FontSize="9" />
                                         </StackPanel>
-                                        <Button.ContextMenu>
-                                            <ContextMenu x:Name="LaunchContextMenu">
-                                                <MenuItem Header="Launch with account:" IsEnabled="False" />
-                                            </ContextMenu>
-                                        </Button.ContextMenu>
-                                    </Button>
+                                        <TextBlock Text="THE LADS CLIENT." FontFamily="Bahnschrift SemiCondensed,Inter" FontSize="30" FontWeight="Bold" LetterSpacing="-0.5" />
+                                        <TextBlock Text="Your worlds. Your mods. Your people." Foreground="#999BA5" FontSize="13" />
+                                    </StackPanel>
+                                    <!-- The Lads artwork fills the right column and fades into the card behind the title. -->
+                                    <Border Grid.Column="1" IsHitTestVisible="False">
+                                        <Border.Background>
+                                            <ImageBrush Source="avares://TheLadsLauncher/Assets/artwork.jpg" Stretch="UniformToFill" />
+                                        </Border.Background>
+                                    </Border>
+                                    <Border Grid.Column="1" IsHitTestVisible="False">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                                <GradientStop Color="#FF1D1E22" Offset="0" />
+                                                <GradientStop Color="#001D1E22" Offset="0.42" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                    <Canvas x:Name="ParticleCanvas" Grid.ColumnSpan="2" IsHitTestVisible="False" Opacity="0.10" />
                                 </Grid>
-                                <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Margin="0,10,0,0" Spacing="5">
-                                    <TextBlock x:Name="StatusText" Text="Ready to play" Foreground="#9C9EA8" FontSize="11" TextWrapping="Wrap" />
-                                    <ProgressBar x:Name="ProgressBar" Height="2" Minimum="0" Maximum="100" Value="0" />
-                                </StackPanel>
-                                <Border x:Name="HomeSharedNotice" Grid.Row="3" Grid.ColumnSpan="3" IsVisible="False" Margin="0,10,0,0" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="4" Padding="12,8" />
+                            </Border>
+                            <Grid Grid.Row="1" ColumnDefinitions="*,*,*" Margin="0,10,0,8">
+                                <Button Classes="shortcut" Click="NavProfiles_Click" Margin="0,0,18,0">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Path Data="M 2,7 L 10,2 L 18,7 L 10,12 Z M 2,11 L 10,16 L 18,11 M 2,15 L 10,20 L 18,15" Width="17" Height="17" Stretch="Uniform" Stroke="#E0525E" StrokeThickness="1.5" StrokeLineCap="Round" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <TextBlock Text="Version profiles" FontWeight="Medium" />
+                                            <TextBlock Text="Switch up your setup" FontSize="11" Foreground="#8F919B" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="&#8599;" Foreground="#8F919B" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Button>
+                                <Button Grid.Column="1" Classes="shortcut" Click="NavMods_Click" Margin="0,0,18,0">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Path Data="M 4,4 H 8 A 2,2 0 0 1 12,4 H 16 V 8 A 2,2 0 0 1 16,12 V 16 H 12 A 2,2 0 0 0 8,16 H 4 V 12 A 2,2 0 0 0 4,8 Z" Width="17" Height="17" Stretch="Uniform" Stroke="#52A5E0" StrokeThickness="1.5" StrokeLineCap="Round" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <TextBlock Text="Mods" FontWeight="Medium" />
+                                            <TextBlock Text="Find your next addition" FontSize="11" Foreground="#8F919B" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="&#8599;" Foreground="#8F919B" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Button>
+                                <Button Grid.Column="2" Classes="shortcut" Click="NavGallery_Click">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Path Data="M 3,6 H 6 L 8,3 H 12 L 14,6 H 17 A 2,2 0 0 1 19,8 V 17 A 2,2 0 0 1 17,19 H 3 A 2,2 0 0 1 1,17 V 8 A 2,2 0 0 1 3,6 Z M 10,15 A 3.5,3.5 0 1 0 10,8 A 3.5,3.5 0 1 0 10,15 Z" Width="17" Height="17" Stretch="Uniform" Stroke="#50C878" StrokeThickness="1.5" StrokeLineCap="Round" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <TextBlock Text="Screenshots" FontWeight="Medium" />
+                                            <TextBlock Text="The moments you kept" FontSize="11" Foreground="#8F919B" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="&#8599;" Foreground="#8F919B" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Button>
                             </Grid>
-                        </Border>
+                            <Border Grid.Row="2" BorderBrush="#303137" BorderThickness="0,1,0,1" Padding="0,16,0,14">
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,*,220">
+                                    <TextBlock Text="PROFILE" Classes="caption" Margin="0,0,0,7" />
+                                    <TextBlock Grid.Column="1" Text="PLAYING AS" Classes="caption" Margin="0,0,0,7" />
+                                    <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,*,220">
+                                        <ComboBox x:Name="LaunchProfileSelector" Classes="launchPicker notranslate" FontSize="16" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Choose the Minecraft profile to launch" SelectionChanged="LaunchProfileSelector_SelectionChanged" Height="69" HorizontalAlignment="Stretch" Grid.Column="0" Margin="0,0,12,0" />
+                                        <ComboBox x:Name="LaunchAccountSelector" Classes="launchPicker" PlaceholderText="Select an account" FontSize="16" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Launch with this account (does not change your main account)" SelectionChanged="LaunchAccountSelector_SelectionChanged" Height="69" HorizontalAlignment="Stretch" Grid.Column="1" Margin="0,0,16,0">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="models:AccountChoice">
+                                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                                        <Border Width="32" Height="32" CornerRadius="4" ClipToBounds="True" Background="#303137">
+                                                            <Image Source="{Binding Head}" Width="32" Height="32" RenderOptions.BitmapInterpolationMode="None" />
+                                                        </Border>
+                                                        <TextBlock Text="{Binding Label}" Classes="notranslate" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <Button x:Name="LaunchButton" Classes="launch" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Right-click to launch with a different account" Click="LaunchButton_Click" Height="69" Grid.Column="2" MinWidth="220" Margin="0">
+                                            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <Path Data="M 4,2 L 16,10 L 4,18 Z" Fill="White" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center" />
+                                                <TextBlock Text="Play" FontWeight="Bold" FontSize="22" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <Button.ContextMenu>
+                                                <ContextMenu x:Name="LaunchContextMenu">
+                                                    <MenuItem Header="Launch with account:" IsEnabled="False" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                        </Button>
+                                    </Grid>
+                                    <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Margin="0,10,0,0" Spacing="5">
+                                        <TextBlock x:Name="StatusText" Text="Ready to play" Foreground="#9C9EA8" FontSize="11" TextWrapping="Wrap" />
+                                        <ProgressBar x:Name="ProgressBar" Height="2" Minimum="0" Maximum="100" Value="0" />
+                                    </StackPanel>
+                                    <Border x:Name="HomeSharedNotice" Grid.Row="3" Grid.ColumnSpan="3" IsVisible="False" Margin="0,10,0,0" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="4" Padding="12,8" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                        <views:ExperiencesView x:Name="ExperiencesPage" Grid.Row="1" IsVisible="False" />
                     </Grid>
                     <Grid x:Name="AccountsPage" IsVisible="False" Margin="28,24,28,24" ColumnDefinitions="330,20,*">
                         <!-- Left Column: Account Actions -->

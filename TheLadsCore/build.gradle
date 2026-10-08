@@ -35,7 +35,7 @@ def build189 = tasks.register('build189', Exec) {
 }
 
 tasks.register('buildAll') {
-    dependsOn ':common:build', ':v1_21_11:build', ':v26_2:build', ':v26_3:build', build189
+    dependsOn ':common:build', ':v1_20_1:build', ':v1_21_11:build', ':v26_2:build', ':v26_3:build', build189
     doLast {
         println "Successfully built all TheLadsCore multi-version artifacts."
     }
@@ -49,10 +49,14 @@ tasks.named('build') {
 tasks.register('deploy', Copy) {
     group = 'distribution'
     description = 'Stage production Core jars in the launcher game-mods packages.'
-    dependsOn ':v1_21_11:remapJar', ':v26_2:jar', ':v26_3:jar', build189
+    dependsOn ':v1_20_1:remapJar', ':v1_21_11:remapJar', ':v26_2:jar', ':v26_3:jar', build189
     into layout.projectDirectory.dir('../TheLadsLauncher/game-mods')
     from(new File(v189, "build/libs/theladscore-${version}.jar")) {
         into '1.8.9'
+        rename { 'theladscore.jar' }
+    }
+    from(providers.provider { project(':v1_20_1').tasks.named('remapJar').get().archiveFile.get() }) {
+        into '1.20.1'
         rename { 'theladscore.jar' }
     }
     from(providers.provider {

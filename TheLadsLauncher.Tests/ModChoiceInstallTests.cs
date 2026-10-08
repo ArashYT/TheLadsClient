@@ -106,7 +106,7 @@ public sealed class ModChoiceInstallTests : IDisposable
         Assert.Equal(own, File.ReadAllBytes(box.Mod("My Mod (1.0).jar")));
     }
 
-    // REQ-E-1: a version the Lads pack does not ship (Create Profile, e.g. 1.20.1) still applies saved choices and checks
+    // REQ-E-1: a version the Lads pack does not ship (Create Profile, e.g. 1.19.2) still applies saved choices and checks
     // dependencies; T17: nothing is retired there (the receipt says nothing about such a version).
     [Fact]
     public async Task WithoutALadsManifestChoicesStillApplyDependenciesAreCheckedAndNothingIsRetired()
@@ -119,7 +119,7 @@ public sealed class ModChoiceInstallTests : IDisposable
         File.WriteAllBytes(box.Mod("mixer.jar"), ModSandbox.Jar("mixer", depends: new() { ["mixinextras"] = ">=0.3.2" })); // Fabric Loader's own
         box.Choose(("sodium", false));
 
-        await box.Install("1.20.1");
+        await box.Install("1.19.2");
 
         Assert.Equal(sodium, File.ReadAllBytes(box.Mod("sodium.jar.disabled")));
         Assert.False(File.Exists(box.Mod("sodium.jar")));
@@ -128,7 +128,7 @@ public sealed class ModChoiceInstallTests : IDisposable
         Assert.Equal(new[] { "aaa" }, box.ReadReceipt().Keys);
 
         File.WriteAllBytes(box.Mod("needy.jar"), ModSandbox.Jar("needy", depends: new() { ["sodium"] = "*" }));
-        var problem = await Assert.ThrowsAsync<ClientModDependencyException>(() => box.Install("1.20.1"));
+        var problem = await Assert.ThrowsAsync<ClientModDependencyException>(() => box.Install("1.19.2"));
         Assert.Equal(new[] { "needy" }, problem.DependentModIds);
         Assert.True(File.Exists(box.Mod("needy.jar")));
     }

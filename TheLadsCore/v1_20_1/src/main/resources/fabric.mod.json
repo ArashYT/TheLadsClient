@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "theladscore",
+  "version": "${version}",
+  "name": "The Lads Core",
+  "description": "The Lads Core multi-version client mod (1.20.1)",
+  "authors": [
+    "The Lads"
+  ],
+  "license": [
+    "CC0-1.0",
+    "MPL-2.0",
+    "MIT",
+    "Unlicense",
+    "LGPL-3.0-or-later",
+    "LGPL-3.0-only",
+    "Apache-2.0",
+    "CC-BY-NC-SA-4.0",
+    "LGPL-2.1-only"
+  ],
+  "icon": "assets/modid/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "com.thelads.core.v1_20_1.TheLadsCoreClient1201"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.14.21",
+    "fabric-api": "*",
+    "minecraft": "1.20.1",
+    "java": ">=17"
+  }
+}

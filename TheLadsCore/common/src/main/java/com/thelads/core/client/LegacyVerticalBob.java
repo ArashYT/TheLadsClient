@@ -21,6 +21,6 @@ public final class LegacyVerticalBob {
         }
         return interpolate(partial);
     }
-    public float interpolate(float partial){return previous+(current-previous)*Math.clamp(partial,0,1);}
+    public float interpolate(float partial){return previous+(current-previous)*Math.max(0f,Math.min(1f,partial));}
     public void reset(){lastTick=Integer.MIN_VALUE;previous=current=0;}
 }

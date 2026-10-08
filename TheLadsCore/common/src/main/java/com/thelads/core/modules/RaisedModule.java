@@ -48,15 +48,17 @@ public class RaisedModule extends Module {
     /** Upward pixels: the summed y offsets of the groups holding the layer, applied up for bottom anchors and down for top ones. */
     static int layoutLift(JsonObject layout, String layer, String defaultAnchor) {
         String anchor = defaultAnchor;
-        if (layout.get("layers") instanceof JsonObject layers && layers.get(layer) instanceof JsonObject entry
-            && entry.get("anchor") instanceof JsonElement name && name.isJsonPrimitive()) anchor = name.getAsString();
+        if (layout.get("layers") instanceof JsonObject layers && layers.get(layer) instanceof JsonObject entry) {
+            JsonElement name = entry.get("anchor");
+            if (name != null && name.isJsonPrimitive()) anchor = name.getAsString();
+        }
         anchor = anchor.toLowerCase(java.util.Locale.ROOT);
         int direction = anchor.startsWith("bottom") ? 1 : anchor.startsWith("top") ? -1 : 0, offset = 0;
         if (layout.get("groups") instanceof JsonObject groups)
             for (var group : groups.entrySet())
                 if (group.getValue() instanceof JsonObject value && value.get("layers") instanceof JsonArray members
                     && members.contains(new JsonPrimitive(layer)) && value.get("offset") instanceof JsonObject move
-                    && move.get("y") instanceof JsonElement y && y.isJsonPrimitive()) offset += y.getAsInt();
+                    && move.get("y") != null && move.get("y").isJsonPrimitive()) offset += move.get("y").getAsInt();
         return offset * direction;
     }
 

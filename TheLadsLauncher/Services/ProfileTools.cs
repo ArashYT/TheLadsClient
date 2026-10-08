@@ -22,7 +22,7 @@ public static class ProfileTools
             .OrderByDescending(p => p.IsFavorite).ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The versions the Play screen offers; profiles for other versions are listed greyed out.</summary>
-    public static readonly string[] PlayableVersions = { "26.3", "26.2", "1.8.9" };
+    public static readonly string[] PlayableVersions = { "26.3", "26.2", "1.20.1", "1.8.9" };
 
     /// <summary>Newest Minecraft version first (1.8.9 last); "Latest Release" ahead of the profile it matches.</summary>
     public static IEnumerable<LauncherProfile> NewestFirst(IEnumerable<LauncherProfile> profiles) =>
@@ -65,7 +65,7 @@ public static class ProfileTools
             || preset.Settings.Sum(p => (long)System.Text.Encoding.UTF8.GetByteCount(p.Value)) > MaximumBytes)
             throw new InvalidDataException("Invalid or unsupported settings preset.");
         if (GameVersionPolicy.IsDropped(preset.MinecraftVersion))
-            throw new InvalidDataException($"Minecraft {preset.MinecraftVersion} is no longer supported; The Lads Client offers 1.8.9, 26.2 and 26.3.");
+            throw new InvalidDataException($"Minecraft {preset.MinecraftVersion} is no longer supported; The Lads Client offers 1.8.9, 1.20.1, 26.2 and 26.3.");
         var profile = NewProfile(preset);
         GameVersionPolicy.ResolveVersionId(profile);
         return preset;

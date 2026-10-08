@@ -19,9 +19,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 AUDIT = ROOT / 'artifacts/mod-audit'
 REFRESH = False
 UPDATE = False
-GAMES = ['1.21.11', '26.2', '26.3']  # 1.8.9 is Forge (its own manifest); 1.21.1 was dropped in 1.6.0
+GAMES = ['1.20.1', '1.21.11', '26.2', '26.3']  # 1.8.9 is Forge (its own manifest); 1.21.1 was dropped in 1.6.0
 # Only replacements implemented by these version adapters may suppress upstream jars.
 NATIVE = {
+    '1.20.1': {'threads': 'ThreadPriorityModule', 'appleskin': 'NativeFood', 'clumps': 'NativeClumps',
+             'dynamic_fps': 'NativeDynamicFps', 'autoreconnectrf': 'NativeReconnect',
+             'chatsigninghider': 'ChatIndicatorMixin', 'classic_minecraft_icon': 'WindowIconMixin'},
     '1.21.11': {'threads': 'ThreadPriorityModule', 'classic_minecraft_icon': 'WindowIconMixin', 'autohidehud': 'NativeAutohide'},
     '26.2': {'threads': 'ThreadPriorityModule', 'appleskin': 'NativeFood', 'clumps': 'NativeClumps',
              'dynamic_fps': 'NativeDynamicFps', 'autoreconnectrf': 'NativeReconnect',
@@ -37,18 +40,19 @@ EMBEDDED = {'entity_texture_features': 'embedded.etf', 'entity_model_features': 
             'lazy_ai_pixelindiedev': 'embedded.lazyai', 'quick-pack': 'embedded.quickpack', 'controlling': 'embedded.controlling',
             'searchables': 'embedded.controlling', 'nbtac': 'embedded.nbtac', 'capes': 'embedded.capes',
             'tooltipstxf': 'embedded.tooltips', 'fixbookgui': 'embedded.fixbookgui', 'hoveringhotbar': 'embedded.hoveringhotbar'}
-for _game, _cushions, _playtime in [('1.21.11', 'optimizedcushionsbackport', 'worldplaytimereborn'),
+for _game, _cushions, _playtime in [('1.20.1', 'optimizedcushionsbackport', 'worldplaytimereborn'),
+                                    ('1.21.11', 'optimizedcushionsbackport', 'worldplaytimereborn'),
                                     ('26.2', 'optimizedcushionsbackport', 'worldplaytimereborn'),
                                     ('26.3', 'optimizedcushions', 'worldplaytimereborn')]:
     NATIVE[_game].update(EMBEDDED, **{_cushions: 'embedded.cushions', _playtime: 'embedded.playtime'})
 # 1.7.0: Lads' own remakes replace these jars on 26.x (1.21.11 is frozen and keeps them). Configured Defaults lives in the launcher.
-for _game in ['26.2', '26.3']:
+for _game in ['1.20.1', '26.2', '26.3']:
     NATIVE[_game].update({'asynclogger': 'AsyncLogging', 'betterf3': 'NativeBetterF3', 'chat_heads': 'NativeChatHeads',
                           'configureddefaults': 'PackDefaults (launcher)', 'customfov': 'NativeCustomFov',
                           'jasione': 'EnumValuesHook', 'lambdynlights': 'NativeDynamicLights', 'mousetweaks': 'NativeMouseTweaks',
                           'netprodis': 'PacketErrorGuardMixin'})
 # Dropped from one game's pack only (modId -> reason); unlike REMOVED, other games keep it.
-DROPPED = {_game: {'libjf': 'Only Jasione used it (libjf:asm); Jasione is native since 1.7.0.'} for _game in ['26.2', '26.3']}
+DROPPED = {_game: {'libjf': 'Only Jasione used it (libjf:asm); Jasione is native since 1.7.0.'} for _game in ['1.20.1', '26.2', '26.3']}
 # Iris 1.10.7 pins Sodium 0.8.7; newer add-ons require Sodium 0.8.14.
 # Original projects supplying a feature instead of the source instance's newer fork, per (game, mod): none since 1.21.1 left.
 COMPATIBLE_PROJECTS = {}

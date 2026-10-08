@@ -94,6 +94,6 @@ public final class KillBannerTimeline {
 
     public static double opacity(double age, double duration) {
         if (age < 0 || !Double.isFinite(age) || !Double.isFinite(duration) || age >= duration) return 0;
-        return Math.clamp(Math.min(age / .12, (duration - age) / .35), 0, 1);
+        return Math.max(0.0, Math.min(1.0, Math.min(age / .12, (duration - age) / .35)));
     }
 }

@@ -1,0 +1,47 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.fabricmc.net/' }
+    maven { url = 'https://maven.shedaniel.me/' }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:1.20.1"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:0.16.10"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:0.92.2+1.20.1"
+
+    implementation project(':common')
+    implementation files('../v26_2/libs/catconfig-mc-26.2-0.2.1.jar', '../v26_2/libs/catconfig-0.3.0.jar')
+    include 'club.minnced:java-discord-rpc:2.0.1'
+    include 'club.minnced:discord-rpc-release:v3.3.0'
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+jar {
+    from(project(':common').sourceSets.main.output)
+}
+
+remapJar {
+    archiveClassifier = 'mc1.20.1'
+}

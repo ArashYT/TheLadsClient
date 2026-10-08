@@ -1,0 +1,88 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TheLadsLauncher.Views.ExperiencesView">
+  <ScrollViewer>
+    <StackPanel Margin="0,6,0,16" Spacing="16">
+      <!-- Section Header -->
+      <StackPanel Spacing="4">
+        <TextBlock Text="Experiences" FontSize="20" FontWeight="Bold" />
+        <TextBlock Text="Official curated modpacks and servers. Each experience runs as a dedicated, fully isolated instance with its own mods, configs, and worlds."
+                   Foreground="#A0A1AA" FontSize="12" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <!-- Zero SMP Card -->
+      <Border Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="8" Padding="20">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
+          <!-- Icon -->
+          <Border Grid.Row="0" Grid.Column="0" Width="80" Height="80" CornerRadius="8" ClipToBounds="True" Background="#26272C" Margin="0,0,20,16" VerticalAlignment="Top">
+            <Image Source="avares://TheLadsLauncher/Assets/zero_smp_icon.png" Width="80" Height="80" Stretch="UniformToFill" />
+          </Border>
+
+          <!-- Title and badges -->
+          <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="Zero SMP" FontSize="22" FontWeight="Bold" />
+              <Border Background="#2A2B32" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                <TextBlock Text="OFFICIAL" Foreground="{DynamicResource LadsAccent}" FontSize="10" FontWeight="Bold" />
+              </Border>
+            </StackPanel>
+
+            <WrapPanel Margin="0,2,0,4">
+              <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
+                <TextBlock Text="Minecraft 1.20.1" Foreground="#B0B2BD" FontSize="11" />
+              </Border>
+              <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
+                <TextBlock Text="Forge 47.4.10" Foreground="#B0B2BD" FontSize="11" />
+              </Border>
+              <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
+                <TextBlock Text="128 Mods" Foreground="#B0B2BD" FontSize="11" />
+              </Border>
+              <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
+                <TextBlock Text="Fabric Connector" Foreground="#52A5E0" FontSize="11" />
+              </Border>
+            </WrapPanel>
+
+            <TextBlock Text="An expansive survival multiplayer modpack featuring Alex's Caves, Create automation, immersive sound physics, dynamic animations, and proximity voice chat. Pre-configured with the official Zero SMP server."
+                       Foreground="#999BA5" FontSize="12" TextWrapping="Wrap" MaxWidth="650" />
+          </StackPanel>
+
+          <!-- Server & Stats Banner -->
+          <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#16171A" BorderBrush="#2C2D33" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,0,0,16">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Ellipse Width="8" Height="8" Fill="#50C878" VerticalAlignment="Center" />
+                <TextBlock Text="Server:" Foreground="#7E808A" FontSize="12" VerticalAlignment="Center" />
+                <TextBlock Text="nikzerosmp.my.pebble.host" Foreground="White" FontSize="12" FontWeight="Medium" VerticalAlignment="Center" />
+              </StackPanel>
+
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Text="Allocated RAM:" Foreground="#7E808A" FontSize="12" VerticalAlignment="Center" />
+                <NumericUpDown x:Name="ZeroSmpRamBox" Width="120" Height="30" Minimum="2048" Maximum="32768" Increment="512" Value="6144" FormatString="0 MB" />
+              </StackPanel>
+
+              <Border Grid.Column="3" x:Name="ZeroSmpStatusBadge" Background="#1D2A1F" BorderBrush="#386B42" BorderThickness="1" CornerRadius="4" Padding="10,4" VerticalAlignment="Center">
+                <TextBlock x:Name="ZeroSmpStatusBadgeText" Text="Installed" Foreground="#85E89D" FontSize="11" FontWeight="SemiBold" />
+              </Border>
+            </Grid>
+          </Border>
+
+          <!-- Status & Progress -->
+          <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Spacing="6" Margin="0,0,0,14">
+            <TextBlock x:Name="ZeroSmpStatusText" Text="Ready to play" Foreground="#9C9EA8" FontSize="12" TextWrapping="Wrap" />
+            <ProgressBar x:Name="ZeroSmpProgressBar" Height="3" Minimum="0" Maximum="100" Value="0" IsVisible="False" />
+          </StackPanel>
+
+          <!-- Action Buttons -->
+          <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto">
+            <Button x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play Zero SMP" Height="46" MinWidth="180" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+              <Button x:Name="ZeroSmpFolderBtn" Classes="action" Content="Open folder" Height="36" Click="ZeroSmpFolder_Click" />
+              <Button x:Name="ZeroSmpReinstallBtn" Classes="action" Content="Reinstall" Height="36" Click="ZeroSmpReinstall_Click" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
