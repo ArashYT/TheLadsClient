@@ -61,6 +61,7 @@ internal static class ZeroSmpQa
         Environment.SetEnvironmentVariable("THELADS_DIR", data);
         Environment.SetEnvironmentVariable(SharedContentService.RootEnvironmentVariable, Path.Combine(verification, "global-sandbox"));
         Environment.SetEnvironmentVariable("LADS_SKIP_UPDATE", "1");
+        Environment.SetEnvironmentVariable(ModpackCoreSync.SkipEnvironmentVariable, "1");
         string realMinecraft = Path.Combine(appData, ".minecraft");
         string tripBefore = Listing(realMinecraft), instanceBefore = Listing(Path.Combine(realSource, "minecraft"));
 

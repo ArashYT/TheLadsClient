@@ -1,0 +1,65 @@
+{
+  "packId": "zero-smp-1.20.1",
+  "version": "1.1.1",
+  "description": "Zero SMP performance tuning: Grassier Grass radius 80, particle deduplication (Particular/Winds/ParticleRain), ModernFix dynamic resources and fast item rendering, prune 3 orphan client jars (Corgilib and Data Anchor stay: the Zero SMP server requires their network channels), and G1GC heap pacing.",
+  "mods": {
+    "add": [],
+    "remove": [
+      "cullleaves-forge-4.1.1+1.20.1.jar",
+      "midnightlib-forge-1.9.2+1.20.1.jar",
+      "player-animation-lib-forge-1.0.2-rc1+1.20.jar"
+    ]
+  },
+  "keybinds": {
+    "defaults": {},
+    "force": {}
+  },
+  "configPatches": [
+    {
+      "file": "config/grassiergrass-client.toml",
+      "format": "toml",
+      "keyValues": {
+        "renderRadius": "80"
+      }
+    },
+    {
+      "file": "config/particular-common.toml",
+      "format": "toml",
+      "keyValues": {
+        "rainRipples": "false",
+        "waterDripRipples": "false"
+      }
+    },
+    {
+      "file": "config/immersivewind.json",
+      "format": "json",
+      "set": {
+        "enableRainHitParticles": false,
+        "enableSplashParticles": false
+      }
+    },
+    {
+      "file": "config/particlerain/config.json",
+      "format": "json",
+      "set": {
+        "perf.maxParticleAmount": 1000
+      }
+    },
+    {
+      "file": "config/modernfix-mixins.properties",
+      "format": "properties",
+      "keyValues": {
+        "mixin.perf.dynamic_resources": "true",
+        "mixin.perf.clear_mixin_classinfo": "true",
+        "mixin.perf.faster_item_rendering": "true"
+      }
+    },
+    {
+      "file": "config/embeddium-options.json",
+      "format": "json",
+      "set": {
+        "performance.chunk_builder_threads": 0
+      }
+    }
+  ]
+}

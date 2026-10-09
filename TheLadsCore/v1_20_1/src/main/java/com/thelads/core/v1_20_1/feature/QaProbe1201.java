@@ -248,12 +248,13 @@ public final class QaProbe1201 {
                 run(mc, step);
                 if (!step[0].equals("wait")) { if (waitTicks == 0) waitTicks = 1; }
                 passed++;
+                if (scriptDone) break;
             } catch (Exception e) {
                 stepFailed(String.join(" ", step), e);
                 waitTicks = 1;
             }
         }
-        if (waitTicks == 0 && pendingShot == null && routine == null && index >= steps.size()) {
+        if (!scriptDone && waitTicks == 0 && pendingShot == null && routine == null && index >= steps.size()) {
             scriptDone = true;
             phase = Phase.DONE;
             LOGGER.info("Lads qa script END: {} passed, {} failed", passed, failedSteps);
@@ -283,7 +284,13 @@ public final class QaProbe1201 {
             case "option" -> option(arg(s, 1), arg(s, 2), rest(s, 3));
             case "dump" -> dump(mc, s.length > 1 ? s[1].toLowerCase(Locale.ROOT) : "state", s.length > 2 ? s[2] : null);
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
-            case "quit" -> { LOGGER.info("Lads qa quit requested"); waitTicks = 5; mc.stop(); }
+            case "quit" -> {
+                LOGGER.info("Lads qa quit requested");
+                scriptDone = true;
+                phase = Phase.DONE;
+                LOGGER.info("Lads qa script END: {} passed, {} failed", passed + 1, failedSteps);
+                mc.stop();
+            }
             default -> {
                 if (!routines.containsKey(verb)) throw new IllegalArgumentException("unknown step '" + verb + "'");
                 routine = routines.get(verb);
