@@ -1,7 +1,7 @@
 {
   "packId": "zero-smp-1.20.1",
   "version": "1.1.0",
-  "description": "Removes 13 duplicate jars replaced by The Lads Client 1.9.0 (Particle Core, Dynamic FPS, Borderless, Zoom, AppleSkin, Clumps, Chat Heads, Controlling, Searchables, Entity Culling, MouseTweaks, Not Enough Animations, 3D Skin Layers). ImmediatelyFast, Entity Texture Features and Entity Model Features stay installed: the 1.20.1 Core has no embedded copy of them yet. Jade, Corgilib and Data Anchor remain installed.",
+  "description": "Removes 16 duplicate jars replaced by The Lads Client 1.9.0 (Particle Core, Dynamic FPS, Borderless, Zoom, AppleSkin, Clumps, Chat Heads, Controlling, Searchables, Entity Culling, MouseTweaks, Not Enough Animations, 3D Skin Layers, ImmediatelyFast, Entity Texture Features, Entity Model Features). The 1.20.1 Core embeds ImmediatelyFast, ETF and EMF, so Fresh Animations and Fresh Moves keep working. Jade, Corgilib and Data Anchor remain installed.",
   "mods": {
     "add": [],
     "remove": [
@@ -17,7 +17,10 @@
       "entityculling-forge-1.11.3-mc1.20.1.jar",
       "MouseTweaks-forge-mc1.20.1-2.25.1.jar",
       "notenoughanimations-forge-1.12.6-mc1.20.1.jar",
-      "skinlayers3d-forge-1.11.3-mc1.20.1.jar"
+      "skinlayers3d-forge-1.11.3-mc1.20.1.jar",
+      "ImmediatelyFast-Forge-1.5.5+1.20.4.jar",
+      "entity_texture_features-7.2.5-1.20.1-forge.jar",
+      "entity_model_features-3.3.11-1.20.1-forge.jar"
     ]
   },
   "keybinds": {
