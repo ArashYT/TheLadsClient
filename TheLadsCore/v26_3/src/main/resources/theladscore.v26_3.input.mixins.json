@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.input.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 0
+  },
+  "client": [
+    "InputLatencyMixins26$Poll",
+    "InputLatencyMixins26$Submit"
+  ]
+}
