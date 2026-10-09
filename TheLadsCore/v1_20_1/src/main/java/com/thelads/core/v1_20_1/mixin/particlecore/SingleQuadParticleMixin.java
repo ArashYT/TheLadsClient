@@ -37,7 +37,7 @@ public abstract class SingleQuadParticleMixin extends Particle {
     private void ladsRender(VertexConsumer buffer, Camera camera, float partialTick, CallbackInfo ci) {
         boolean cull = ParticleCore.culling() && camera == ParticleCore1201.frameCamera;
         boolean fast = ParticleCore.optimized() && !ParticleCore1201.deferVertices();
-        if (!cull && !fast) return;
+        if (!cull && !fast) { if (ParticleCore.timing) ParticleCore.drawn++; return; } // (counted for the QA numbers only)
         Vec3 view = camera.getPosition();
         float px = (float) (Mth.lerp((double) partialTick, this.xo, this.x) - view.x());
         float py = (float) (Mth.lerp((double) partialTick, this.yo, this.y) - view.y());

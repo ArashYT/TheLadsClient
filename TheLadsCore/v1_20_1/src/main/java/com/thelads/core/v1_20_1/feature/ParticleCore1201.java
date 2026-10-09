@@ -43,6 +43,7 @@ public final class ParticleCore1201 {
         ModuleSupport.registerBuiltIn(ParticleCore.MODULE);
         ((ParticleReductionOption) ParticleCore.module().getOption(ParticleCore.RATES)).setCatalog(ParticleCore1201::catalog);
         ClientTickEvents.END_CLIENT_TICK.register(ParticleCore1201::tick);
+        ParticleCoreCapture1201.register(); // QA only: inert without the harness flags
         LOGGER.info("Particle Core ready");
     }
 

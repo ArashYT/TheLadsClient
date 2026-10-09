@@ -3,6 +3,7 @@ package com.thelads.core.v1_20_1.mixin.particlecore;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.thelads.core.client.ParticleCore;
 import com.thelads.core.v1_20_1.feature.ParticleCore1201;
+import com.thelads.core.v1_20_1.feature.ParticleCoreCapture1201;
 import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -22,6 +23,7 @@ public abstract class LevelRendererMixin {
     private void ladsFrustum(PoseStack poseStack, float partialTick, long nanos, boolean outline, Camera camera, GameRenderer gameRenderer,
                              LightTexture lightTexture, Matrix4f projection, CallbackInfo ci) {
         ParticleCore.refresh();
+        ParticleCoreCapture1201.frame(); // QA frame counter (a no-op outside a capture)
         if (!ParticleCore.culling()) { ParticleCore.FRUSTUM.clear(); ParticleCore1201.frameCamera = null; return; }
         projection.get(LADS_PROJECTION);
         poseStack.last().pose().get(LADS_VIEW);
