@@ -78,6 +78,12 @@ public final class PerfProbe1201 {
     private static void presence() {
         LOGGER.info("PERF-PROBE presence onForge={} underConnector={} fabricLoaderVersion={}", ModPresence1201.onForge(), ModPresence1201.underConnector(),
             FabricLoader.getInstance().getModContainer("fabricloader").map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?"));
+        String title = com.thelads.core.client.discord.DiscordPresence.screen(net.minecraft.client.gui.screens.TitleScreen.class);
+        String options = com.thelads.core.client.discord.DiscordPresence.screen(net.minecraft.client.gui.screens.OptionsScreen.class);
+        String pause = com.thelads.core.client.discord.DiscordPresence.screen(net.minecraft.client.gui.screens.PauseScreen.class);
+        boolean labelsOk = "In the main menu".equals(title) && "In the options".equals(options) && "Paused".equals(pause);
+        LOGGER.info("PERF-PROBE discord screen labels: TitleScreen='{}' OptionsScreen='{}' PauseScreen='{}' (class name here: {}) {}", title, options, pause,
+            net.minecraft.client.gui.screens.TitleScreen.class.getSimpleName(), labelsOk ? "PASS" : "FAIL");
         for (String id : PRESENCE_IDS) {
             boolean fabric = FabricLoader.getInstance().isModLoaded(id);
             String where = ModPresence1201.where(id);
@@ -96,6 +102,7 @@ public final class PerfProbe1201 {
         private long phaseStart;
         private long loops0, rendered0;
         private boolean failed;
+        private double rendered1;
         private final StringBuilder summary = new StringBuilder();
         private int unfocusedTarget = 20;
 
@@ -118,6 +125,8 @@ public final class PerfProbe1201 {
                 if (module.getOption("Mode") instanceof DropdownOption mode) mode.setIndex(0); // Aggressive: no 3 s grace
                 if (module.getOption("Unfocused FPS") instanceof SliderOption slider) slider.setValue(unfocusedTarget);
                 if (module.getOption("Hidden FPS") instanceof SliderOption slider) slider.setValue(10);
+                // A QA window may be hovered by the mouse: make that profile visibly slower than the 60 FPS menu limit too.
+                com.thelads.core.v1_20_1.perf.dynamicfps.config.DynamicFPSConfig.INSTANCE.get(PowerState.HOVERED).setFrameRateTarget(30);
                 begin(1, now);
                 LOGGER.info("PERF-PROBE dfps setup: module enabled, Aggressive, Unfocused FPS {}, vanilla cap {}", unfocusedTarget, client.options.framerateLimit().get());
                 return;
@@ -142,13 +151,14 @@ public final class PerfProbe1201 {
             switch (phase) {
                 case 1 -> { // module on, real window state (never focused in QA)
                     int target = DynamicFPSMod.targetFrameRate();
+                    rendered1 = rendered;
                     ok = state != PowerState.FOCUSED && rendered <= target * 1.3 + 2 && rendered >= target * 0.5;
                     LOGGER.info("PERF-PROBE dfps {} {}", line, ok ? "PASS (throttled to the power state's rate)" : "FAIL");
                     DynamicFPSMod.toggleDisabled(); // the key binding's action
                     begin(2, now);
                 }
                 case 2 -> { // disabled by its key: full speed
-                    ok = state == PowerState.FOCUSED && DynamicFPSMod.isDisabled() && rendered > unfocusedTarget * 1.8;
+                    ok = state == PowerState.FOCUSED && DynamicFPSMod.isDisabled() && rendered > Math.max(unfocusedTarget * 1.8, rendered1 * 1.3);
                     LOGGER.info("PERF-PROBE dfps {} {}", line, ok ? "PASS (full speed while disabled)" : "FAIL");
                     DynamicFPSMod.toggleDisabled();
                     DynamicFPSMod.toggleForceLowFPS();
@@ -162,7 +172,7 @@ public final class PerfProbe1201 {
                     begin(4, now);
                 }
                 default -> { // module off: the engine releases the limit
-                    ok = state == PowerState.FOCUSED && rendered > unfocusedTarget * 1.8;
+                    ok = state == PowerState.FOCUSED && rendered > Math.max(unfocusedTarget * 1.8, rendered1 * 1.3);
                     LOGGER.info("PERF-PROBE dfps {} {}", line, ok ? "PASS (module off, vanilla limit)" : "FAIL");
                     module.setEnabled(true);
                     phase = 5;
