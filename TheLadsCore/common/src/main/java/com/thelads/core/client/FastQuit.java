@@ -182,8 +182,16 @@ public final class FastQuit {
         try {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 if (!anySaving()) return;
-                LOGGER.warn("Lads FastQuit: the game is exiting during a background save; waiting for {}", status());
-                if (!awaitAll(EXIT_HOOK_WAIT_MS)) LOGGER.error("Lads FastQuit: {} did not finish within {} s", status(), EXIT_HOOK_WAIT_MS / 1000);
+                // System.out too: the logging system may already be shutting down with the JVM.
+                String waiting = "Lads FastQuit: the game is exiting during a background save; waiting for " + status();
+                LOGGER.warn(waiting);
+                System.out.println(waiting);
+                long start = System.nanoTime();
+                boolean done = awaitAll(EXIT_HOOK_WAIT_MS);
+                String result = done ? "Lads FastQuit: background saves finished before the exit (" + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + " ms)"
+                    : "Lads FastQuit: " + status() + " did not finish within " + EXIT_HOOK_WAIT_MS / 1000 + " s";
+                LOGGER.warn(result);
+                System.out.println(result);
             }, "Lads FastQuit exit"));
         } catch (IllegalStateException alreadyExiting) {
             // the JVM is already shutting down: nothing can be added; the caller's own wait still applies

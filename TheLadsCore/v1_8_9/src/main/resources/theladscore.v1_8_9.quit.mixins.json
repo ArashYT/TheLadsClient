@@ -13,6 +13,7 @@
     "GuiScreenFastQuitAccessor",
     "GuiSelectWorldAccessor",
     "MinecraftFastQuitMixin",
+    "MinecraftServerFastQuitAccessor",
     "SaveFormatFastQuitMixin",
     "WorldListFastQuitMixin"
   ]

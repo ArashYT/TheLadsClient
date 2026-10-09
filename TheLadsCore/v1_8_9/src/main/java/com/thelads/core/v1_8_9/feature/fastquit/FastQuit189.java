@@ -26,12 +26,21 @@ public final class FastQuit189 {
      * Minecraft.loadWorld's "while (!server.isServerStopped()) sleep" loop: true ends it at once, the server saving in the
      * background. Only a plain IntegratedServer while the game keeps running; closing the game waits as vanilla.
      */
+    private static boolean broken;
+
     public static boolean skipServerWait(Minecraft mc, IntegratedServer server, boolean running) {
-        if (!running || !mc.isCallingFromMinecraftThread() || server.getClass() != IntegratedServer.class || !FastQuit.enabled()) return false;
-        Thread thread = server.getServerThread();
-        if (thread == null || !thread.isAlive()) return false;
-        FastQuit.track(worldDir(mc, server.getFolderName()).toPath(), server.getWorldName(), thread);
-        return true;
+        if (broken) return false;
+        try {
+            if (!running || !mc.isCallingFromMinecraftThread() || server.getClass() != IntegratedServer.class || !FastQuit.enabled()) return false;
+            Thread thread = ((com.thelads.core.v1_8_9.feature.fastquit.mixin.MinecraftServerFastQuitAccessor) server).lads$serverThread();
+            if (thread == null || !thread.isAlive()) return false;
+            FastQuit.track(worldDir(mc, server.getFolderName()).toPath(), server.getWorldName(), thread);
+            return true;
+        } catch (Throwable failure) { // never break leaving a world: quits wait as vanilla does from here on
+            broken = true;
+            org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").error("Lads FastQuit: skipped for this quit (vanilla wait)", failure);
+            return false;
+        }
     }
 
     /** Waits for every background save; on the client thread behind the "Saving world" loading screen. Free when nothing is saving. */

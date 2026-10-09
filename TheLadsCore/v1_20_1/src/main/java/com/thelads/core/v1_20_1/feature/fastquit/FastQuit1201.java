@@ -25,12 +25,21 @@ public final class FastQuit1201 {
      * Minecraft.clearLevel's "while (!server.isShutdown())" loop: true ends it at once, the server saving in the background.
      * Only a plain IntegratedServer (not a replay server) while the game keeps running; closing the game waits as vanilla.
      */
+    private static boolean broken;
+
     public static boolean skipServerWait(Minecraft minecraft, IntegratedServer server) {
-        if (!minecraft.isRunning() || !minecraft.isSameThread() || server.getClass() != IntegratedServer.class || !FastQuit.enabled()) return false;
-        Thread thread = server.getRunningThread();
-        if (thread == null || !thread.isAlive()) return false;
-        FastQuit.track(server.getWorldPath(LevelResource.ROOT), server.getWorldData().getLevelName(), thread);
-        return true;
+        if (broken) return false;
+        try {
+            if (!minecraft.isRunning() || !minecraft.isSameThread() || server.getClass() != IntegratedServer.class || !FastQuit.enabled()) return false;
+            Thread thread = server.getRunningThread();
+            if (thread == null || !thread.isAlive()) return false;
+            FastQuit.track(server.getWorldPath(LevelResource.ROOT), server.getWorldData().getLevelName(), thread);
+            return true;
+        } catch (Throwable failure) { // never break leaving a world: quits wait as vanilla does from here on
+            broken = true;
+            org.slf4j.LoggerFactory.getLogger("TheLadsCore").error("Lads FastQuit: skipped for this quit (vanilla wait)", failure);
+            return false;
+        }
     }
 
     /**
