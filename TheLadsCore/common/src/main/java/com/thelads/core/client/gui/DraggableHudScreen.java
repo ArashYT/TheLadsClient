@@ -90,7 +90,10 @@ public class DraggableHudScreen {
     private double gameX(double x){return (x-preview.x())/scale;}
     private double gameY(double y){return (y-preview.y())/scale;}
 
-    public void render(LadsGraphics graphics,int mouseX,int mouseY){
+    public void render(LadsGraphics graphics,int pointerX,int pointerY){
+        // A dialog is modal: the editor under it neither highlights nor reacts to the pointer.
+        boolean modal=confirm.isOpen()||colorPicker.isOpen();
+        int mouseX=modal?-100000:pointerX,mouseY=modal?-100000:pointerY;
         finishHiddenDrag();
         int width=graphics.getScaledWidth(),height=graphics.getScaledHeight();
         if(viewportWidth>0&&(width!=viewportWidth||height!=viewportHeight)){finishDrag(false);marquee=false;}
@@ -109,9 +112,10 @@ public class DraggableHudScreen {
         drawPreview(graphics,mouseX,mouseY);
         String status=notice.isEmpty()?selectionStatus():notice;
         graphics.drawText(MenuGraphics.fit(graphics,status,width-2*GAP),GAP,height-STATUS+3,LadsPalette.MUTED,false);
-        if(contextOpen)drawContext(graphics,mouseX,mouseY);
-        colorPicker.render(graphics,mouseX,mouseY);
-        confirm.render(graphics,mouseX,mouseY);
+        // Menus and dialogs are layers in front of everything before them (see LadsGraphics.overlay).
+        if(contextOpen)graphics.overlay(()->drawContext(graphics,pointerX,pointerY));
+        graphics.overlay(()->colorPicker.render(graphics,pointerX,pointerY));
+        graphics.overlay(()->confirm.render(graphics,pointerX,pointerY));
     }
 
     /** Toolbar across the top, element list on the left, and the largest preview with the game's aspect ratio in the rest. */

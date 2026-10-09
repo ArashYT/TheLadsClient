@@ -38,6 +38,13 @@ public interface LadsGraphics {
 
     void disableScissor();
 
+    /**
+     * Draws a modal layer (dialog, popup, tooltip) so it sits in front of everything drawn before it, text and items included.
+     * Versions that paint in call order just run it; 1.20.1 depth-tests its GUI (text is 0.03 and items 150 in front of the fill
+     * they sit on), so the layer is lifted by 400 like vanilla's tooltips.
+     */
+    default void overlay(Runnable draw) { draw.run(); }
+
     void blit(String texture, int x, int y, int u, int v, int width, int height);
 
     default void drawModIcon(String id, int x, int y, int size) {

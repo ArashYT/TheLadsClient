@@ -32,6 +32,8 @@ final class RecordingGraphics implements LadsGraphics {
     @Override public void scale(float sx, float sy) { mark("scale", null, sx, sy); ops.add(g -> g.scale(sx, sy)); }
     @Override public void enableScissor(int minX, int minY, int maxX, int maxY) { mark("scissor", null, minX, minY, maxX, maxY); ops.add(g -> g.enableScissor(minX, minY, maxX, maxY)); }
     @Override public void disableScissor() { mark("unscissor", null); ops.add(LadsGraphics::disableScissor); }
+    // Menus and dialogs draw through their own graphics, not a recorded HUD build: nothing to replay, the layer just runs.
+    @Override public void overlay(Runnable draw) { draw.run(); }
     @Override public void blit(String texture, int x, int y, int u, int v, int width, int height) { mark("blit", Arrays.asList(texture, u, v), x, y, width, height); ops.add(g -> g.blit(texture, x, y, u, v, width, height)); }
     @Override public void drawModIcon(String id, int x, int y, int size) { mark("icon", id, x, y, size); ops.add(g -> g.drawModIcon(id, x, y, size)); }
     // These draw the game's current state each time they are replayed (the player, armour, boss bars, heads), so they are live anyway.
