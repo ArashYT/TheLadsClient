@@ -1,5 +1,7 @@
 package com.thelads.core.v1_20_1.game.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.client.DamageTilt;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
@@ -9,7 +11,6 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * Damage tilt (the OldDamageTilt module, common DamageTilt), as 1.8.9's EntityRendererMixin: vanilla's timing and death roll stay. The
@@ -17,24 +18,22 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  */
 @Mixin(GameRenderer.class)
 public class DamageTiltMixin {
-    @Redirect(method = "bobHurt", at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/world/entity/LivingEntity;getHurtDir()F"))
-    private float lads$direction(LivingEntity entity) {
+    @WrapOperation(method = "bobHurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getHurtDir()F"))
+    private float lads$direction(LivingEntity entity, Operation<Float> original) {
         Module mod = ModuleManager.getInstance().getModule(DamageTilt.MODULE);
-        if (mod == null || !mod.isEnabled()) return entity.getHurtDir();
+        if (mod == null || !mod.isEnabled()) return original.call(entity);
         float yaw = DamageTilt.CLIENT.cameraYaw(mod, System.currentTimeMillis());
         Gameplay1201.lastTiltYaw = yaw;
         return yaw;
     }
 
-    @Redirect(method = "bobHurt", at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/client/OptionInstance;get()Ljava/lang/Object;"))
-    private Object lads$intensity(OptionInstance<Double> instance) {
-        Double base = instance.get();
+    @WrapOperation(method = "bobHurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/OptionInstance;get()Ljava/lang/Object;"))
+    private Object lads$intensity(OptionInstance<?> instance, Operation<Object> original) {
+        Object base = original.call(instance);
         Module mod = ModuleManager.getInstance().getModule(DamageTilt.MODULE);
-        if (mod == null || !mod.isEnabled() || base == null) return base;
+        if (mod == null || !mod.isEnabled() || !(base instanceof Double value)) return base;
         float strength = DamageTilt.CLIENT.cameraStrength(mod, System.currentTimeMillis());
         Gameplay1201.lastTiltStrength = strength;
-        return base * strength;
+        return value * strength;
     }
 }
