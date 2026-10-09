@@ -137,6 +137,31 @@ public final class GameProbe1201 {
         switch (s[0]) {
             case "wait" -> wait = com.thelads.core.v1_20_1.feature.QaProbe1201.duration(s[1]);
             case "dump" -> com.thelads.core.v1_20_1.feature.QaProbe1201.dump(mc, s.length > 1 ? s[1].toLowerCase(Locale.ROOT) : "state", s.length > 2 ? s[2] : null);
+            case "action" -> { // a module's action option (Background Profiles, Toggle Sprint key ...): what its card button does
+                if (!(module(s[1]).getOption(s[2]) instanceof com.thelads.core.config.ActionOption action) || !action.isAvailable()) throw new IllegalArgumentException("no action " + s[2]);
+                action.run();
+            }
+            case "dfps" -> { // QA: what Lads' Dynamic FPS engine sees right now
+                long handle = mc.getWindow().getWindow();
+                var observer = com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.getWindow();
+                LOGGER.info("Lads game qa dfps: state={} disabled={} target={} observer(focused={} hovered={} iconified={}) glfw(focused={} hovered={} iconified={} visible={}) loops={} rendered={}",
+                    com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.powerState(), com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.isDisabled(),
+                    com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.targetFrameRate(),
+                    observer == null ? "-" : observer.isFocused(), observer == null ? "-" : observer.isHovered(), observer == null ? "-" : observer.isIconified(),
+                    GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_FOCUSED), GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_HOVERED),
+                    GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_ICONIFIED), GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_VISIBLE),
+                    com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.probeLoops, com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.probeRendered);
+            }
+            case "extopen" -> { // QA: the Open settings button of an external mod card (what the Lads menu does for an installed mod)
+                com.thelads.core.v1_20_1.gui.ExternalModSettings1201.open(s[1], mc.screen);
+                LOGGER.info("Lads game qa extopen: {} -> screen {}", s[1], mc.screen == null ? "none" : mc.screen.getClass().getName());
+            }
+            case "focus" -> { // QA: the window loses (off) or gets back (on) the focus and the mouse as far as Dynamic FPS can tell; auto = ask GLFW again
+                Boolean value = switch (s[1]) { case "off" -> Boolean.FALSE; case "on" -> Boolean.TRUE; default -> null; };
+                com.thelads.core.v1_20_1.perf.dynamicfps.feature.state.WindowObserver.qaFocused = value;
+                com.thelads.core.v1_20_1.perf.dynamicfps.feature.state.WindowObserver.qaHovered = value;
+                LOGGER.info("Lads game qa focus: {}", s[1]);
+            }
             case "window" -> { // QA: a real focus loss (hide) or minimise, as a player alt-tabbing causes; show/restore undoes it
                 long handle = mc.getWindow().getWindow();
                 switch (s[1]) { case "hide" -> GLFW.glfwHideWindow(handle); case "show" -> GLFW.glfwShowWindow(handle); case "iconify" -> GLFW.glfwIconifyWindow(handle); case "restore" -> GLFW.glfwRestoreWindow(handle); default -> throw new IllegalArgumentException("window " + s[1]); }
@@ -250,6 +275,7 @@ public final class GameProbe1201 {
                 yield essential == null ? -1 : essential ? 1 : 0;
             }
             case "fps" -> mc.getFps();
+            case "rawmouse" -> GLFW.glfwGetInputMode(mc.getWindow().getWindow(), GLFW.GLFW_RAW_MOUSE_MOTION) == GLFW.GLFW_TRUE ? 1 : 0;
             case "swinging" -> p.swinging ? 1 : 0;
             case "using" -> p.isUsingItem() ? 1 : 0;
             case "resscale" -> com.thelads.core.v1_20_1.game.RenderScale1201.lastScale;
