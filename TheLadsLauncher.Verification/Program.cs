@@ -196,6 +196,10 @@ bool asyncStressVerification = autoWorldVerification && !capabilities.Forge && E
 bool appleSkinSyncVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_APPLESKIN_SYNC") == "1";
 if (autoWorldVerification && dirName != version + "-title")
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
+// Every version: FastQuit's scenarios from the title screen (FastQuitProbe*): LADS_VERIFY_FASTQUIT=run (ends by closing the game during a
+// background save), verify (the next game checks what that save kept, and every region file) or baseline (-Dlads.fastquit=false: vanilla times).
+string? fastQuitPhase = titleVerification && !expectCoreDisabled ? Env("LADS_VERIFY_FASTQUIT") : null;
+if (fastQuitPhase is not (null or "run" or "verify" or "baseline")) throw new ArgumentException("LADS_VERIFY_FASTQUIT must be run, verify or baseline.");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
 if (sharedRole is not (null or "create" or "observe")) throw new ArgumentException("LADS_VERIFY_SHARED_ROLE must be create or observe.");
 if (runId != null && !Regex.IsMatch(runId, @"\A[A-Za-z0-9_-]{1,40}\z")) throw new ArgumentException("LADS_VERIFY_RUN_ID must be 1-40 letters, digits, '-' or '_'.");
@@ -369,7 +373,7 @@ if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed",
         ".lads-qa-flashback", ".lads-qa-flashback-done", ".lads-qa-flashback-failed" })
         File.Delete(Path.Combine(directory, flag));
-using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification || perf189 ? 20 : asyncStressVerification ? 16 : 10));
+using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification || perf189 || fastQuitPhase != null ? 20 : asyncStressVerification ? 16 : 10));
 var ct = timeout.Token;
 
 Process? process = null;
@@ -442,6 +446,7 @@ if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads ch
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
 // The 1.8.9 Core has neither report: its runs are checked from logs\latest.log (Forge's mod list, OptiFine, the title screen).
 var requiredCore = new List<string>();
+if (fastQuitPhase != null) requiredCore.Add("Lads fast quit probe END:");
 bool welcomeVerification = Env("LADS_VERIFY_WELCOME") == "1";
 if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
 // Every version: the Add Server screen names known servers (AddServerProbe), screenshots/addserver-*.png.
@@ -459,7 +464,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
     "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
-    "Lads AppleSkin sync capture FAILED",
+    "Lads AppleSkin sync capture FAILED", "Lads fast quit probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -605,6 +610,8 @@ try
     }
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
+    if (fastQuitPhase != null) AddJvm("-Dthelads.verifyFastQuit=" + fastQuitPhase);
+    if (fastQuitPhase == "baseline") AddJvm("-Dlads.fastquit=false");
     if (addServerVerification) AddJvm("-Dthelads.verifyAddServer=true");
     if (capabilities.Forge)
     {
@@ -643,15 +650,15 @@ try
         AddJvm("-Dfabric.noGui=true");
         // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
         if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
-        else AddJvm("-Dthelads.verifyIntegrations=true");
-        if (!autoWorldVerification) AddJvm("-Dthelads.verifyInput=true");
+        else if (fastQuitPhase == null) AddJvm("-Dthelads.verifyIntegrations=true"); // the FastQuit probe opens its own worlds
+        if (!autoWorldVerification) { if (fastQuitPhase == null) AddJvm("-Dthelads.verifyInput=true"); }
         else
         {
             AddJvm("-Dthelads.verifyAutoWorld=true");
             AddJvm("-Dthelads.verifyDurabilityTooltip=true");
             AddJvm(requestedFeaturesOnly ? "-Dthelads.verifyRequestedFeaturesOnly=true" : "-Dthelads.verifyCrosshair=true");
         }
-        if (titleVerification && !autoWorldVerification) AddJvm("-Dthelads.verifyKillBannerPreview=true");
+        if (titleVerification && !autoWorldVerification && fastQuitPhase == null) AddJvm("-Dthelads.verifyKillBannerPreview=true");
         if (settingsVerification)
         {
             AddJvm("-Dthelads.verifyAllIntegrationWrites=true");
@@ -803,7 +810,7 @@ try
     // Title runs without the 26.x auto-world end once every check the harness asserts has passed (they never did before, so
     // 1.21.x waited the full 540 s); the stop is a Kill, as for every non-auto-world run.
     bool earlyTitleExit = titleVerification && !autoWorldVerification;
-    while (stopwatch.Elapsed < TimeSpan.FromSeconds(perf189 ? 1140 : titleVerification ? (asyncStressVerification ? 900 : 540) : 180) && !process.HasExited)
+    while (stopwatch.Elapsed < TimeSpan.FromSeconds(perf189 ? 1140 : titleVerification ? (asyncStressVerification || fastQuitPhase != null ? 900 : 540) : 180) && !process.HasExited)
     {
         process.Refresh();
         if (!windowFound && process.MainWindowHandle != IntPtr.Zero)
@@ -960,7 +967,7 @@ try
             Require(forgeList.OptiFineTweaker && forgeList.OptiFine != null,
                 @"OptiFine was not loaded (no OptiFine tweaker and FML detection in logs\latest.log)" + (optiFineWarning != null ? ": " + optiFineWarning : "."));
             Require(forgeList.Errors.Count == 0, @"Mixin or coremod errors in logs\latest.log: " + string.Join(" | ", forgeList.Errors.Take(3)));
-            if (!expectCoreDisabled) Require(!exitedOnItsOwn, @"The game exited on its own before the harness stopped it (see logs\latest.log).");
+            if (!expectCoreDisabled && fastQuitPhase != "run") Require(!exitedOnItsOwn, @"The game exited on its own before the harness stopped it (see logs\latest.log).");
             string forgeText = $"Forge (logs\\latest.log): FML loaded {forgeList.LoadedMods?.ToString() ?? "no"} mods, title screen {(forgeTitleAt is { } at ? $"at {at.TotalSeconds:F1}s" : "not reached")}, "
                 + $"OptiFine {(forgeList.OptiFineTweaker ? forgeList.OptiFine ?? "tweaker without FML detection" : "not loaded")}, {forgeList.Errors.Count} mixin or coremod errors";
             Console.WriteLine(forgeText);

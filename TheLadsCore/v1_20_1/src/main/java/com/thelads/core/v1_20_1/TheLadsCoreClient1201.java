@@ -26,6 +26,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         NativeFeatures1201.initialize();
 
         ExternalModSettings1201.register();
+        com.thelads.core.v1_20_1.feature.fastquit.FastQuitProbe1201.initialize();
 
         ModuleSupport.registerBuiltIn("Threads");
         ModuleSupport.registerBuiltInRestart("Jasione");
