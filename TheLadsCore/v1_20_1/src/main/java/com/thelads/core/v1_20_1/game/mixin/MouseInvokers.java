@@ -12,4 +12,8 @@ public interface MouseInvokers {
 
     @Invoker("onScroll")
     void ladsScroll(long window, double horizontal, double vertical);
+
+    /** QA only: a window that is never focused cannot grab the cursor, and the game only mines while the mouse is grabbed. */
+    @org.spongepowered.asm.mixin.gen.Accessor("mouseGrabbed")
+    void ladsGrabbed(boolean grabbed);
 }
