@@ -1,0 +1,262 @@
+package com.thelads.core.v1_20_1.embedded.etf.features.state;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import com.thelads.core.v1_20_1.embedded.etf.ETF;
+import com.thelads.core.v1_20_1.embedded.etf.config.ETFConfig;
+import com.thelads.core.v1_20_1.embedded.etf.features.ETFManager;
+import com.thelads.core.v1_20_1.embedded.etf.utils.ETFRenderLayerWithTexture;
+import com.thelads.core.v1_20_1.embedded.etf.utils.ETFUtils2;
+import com.thelads.core.v1_20_1.embedded.etf.utils.ETFVertexConsumer;
+import com.thelads.core.v1_20_1.embedded.etf.utils.URenderTypeToVertexConsumer;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+
+/**
+ * Global state data for ETF
+ * <p>
+ * Also allows global access to the currently mounted ETFEntityRenderState in the stack
+ */
+public abstract class ETFState {
+
+    private static final Deque<ETFEntityRenderState> stateStack = new ArrayDeque<>(){
+        @Override
+        public void push(ETFEntityRenderState etfEntityRenderState) {
+            super.push(etfEntityRenderState == null ? ETFEntityRenderState.NULL : etfEntityRenderState);
+        }
+
+        @Override
+        public ETFEntityRenderState peek() {
+            var peeked = super.peek();
+            if (peeked == ETFEntityRenderState.NULL) return null;
+            return peeked;
+        }
+    };
+
+
+    public static void mount(@Nullable ETFEntityRenderState state) {
+        if (!RenderSystem.isOnRenderThread()) return; // stacks are render-thread confined, see stateStack
+        var current = state();
+        if (state != null && current == state) return;
+
+        if (current != null) current.deactivate(true);
+        stateStack.push(state);
+        if (state != null) state.activate(true);
+        pushRenderLayerModifyState(true);
+        announceStack("mount");
+    }
+
+    public static void unMount() {
+        if (!RenderSystem.isOnRenderThread()) return; // matches mount()
+        try {
+            var popped = stateStack.peek();
+            if (popped != null) popped.deactivate(false);
+            stateStack.pop();
+            var current = state();
+            if (current != null) current.activate(false);
+        } catch (NoSuchElementException e) {
+            // You'd think the isEmpty() check would avoid this
+        }
+        currentModelPartDepth = 0;
+        popRenderLayerModifyState();
+        announceStack("unmount");
+    }
+
+    public static void mountNone() {
+        mount(null);
+    }
+
+
+    public static @Nullable ETFEntityRenderState state() {
+        if (!RenderSystem.isOnRenderThread()) return null;
+        return stateStack.peek();
+    }
+
+    public static boolean isStateActive() {
+        return state() != null;
+    }
+
+    public static void clear() {
+        var state = state();
+        if (state != null) state.deactivate(false);
+        stateStack.clear();
+        specialPhaseStack.clear();
+        renderLayerModifyStack.clear();
+
+        currentModelPartDepth = 0;
+        onlyRandomizeViaPropertiesFiles = false;
+        isRenderingFeatures = false;
+        allowTexturePatching = false;
+
+//        ETFSubmitData.endInstance();
+        announceStack("clear");
+        stackVerifyHasFailed = false;
+    }
+
+    private static boolean stackVerifyHasFailed = false;
+
+    public static void announceStack(String action) {
+        if (!stackVerifyHasFailed || !ETF.config().getConfig().stackDebugPrinting) return;
+        var str = new StringBuilder();
+        str.append("ETF state stack: \n - action = ").append(action)
+                .append("\n - size = ").append(stateStack.size()).append("\n");
+        int count = 1;
+        for (var state : stateStack) {
+            str.append(" ").append("-".repeat(count++)).append(" ").append(state != null ? state.entityKey() : "null").append("\n");
+        }
+        ETFUtils2.logWarn(str.toString());
+        new Exception().printStackTrace();
+    }
+
+    public static void stackVerify(ETFEntityRenderState shouldBeHere) {
+        if (shouldBeHere == null) {
+            if (ETF.config().getConfig().stackDebugPrinting) ETFUtils2.logWarn("ETFState stack verify called with null, this is likely a bug");
+            stackVerifyHasFailed = true;
+            return;
+        }
+
+        if (state() != shouldBeHere) {
+            boolean log = ETF.config().getConfig().stackDebugPrinting;
+            stackVerifyHasFailed = false;
+            if (log) ETFUtils2.logWarn("ETFState stack is not correct");
+            if (stateStack.contains(shouldBeHere)) {
+                if (log) ETFUtils2.logWarn("ETFState stack is too deep");
+                while (!stateStack.isEmpty() && stateStack.peek() != shouldBeHere) {
+                    if (log) ETFUtils2.logWarn("- unmounting " + stateStack.peek().entityKey() );
+                    unMount();
+                }
+            } else {
+                // Error level failure, the above is somewhat expected if a crash or other mod mixin cancellation occurs
+                // but this is not, this also likely doesn't really fix it
+                ETFUtils2.logError("ETFState stack has popped early");
+                mount(shouldBeHere);
+            }
+            stackVerifyHasFailed = true;
+        }
+    }
+
+    public static void stackVerifyEmpty() {
+        if (!stateStack.isEmpty()) {
+            stackVerifyHasFailed = false;
+            boolean log = ETF.config().getConfig().stackDebugPrinting;
+            if (log) ETFUtils2.logWarn("ETFState stack is not empty on verifyEmpty, clearing stack");
+            while (!stateStack.isEmpty()) {
+                if (log) ETFUtils2.logWarn("- unmounting " + stateStack.peek().entityKey() );
+                unMount();
+            }
+            stackVerifyHasFailed = true;
+        }
+        specialPhaseStack.clear();
+        renderLayerModifyStack.clear();
+    }
+
+
+    public static int currentModelPartDepth = 0;
+
+    public static boolean isRenderingFeatures = false;
+    public static boolean onlyRandomizeViaPropertiesFiles = false;
+    public static boolean allowTexturePatching = false;
+
+    // Stack here probably isn't required, merely a safeguard against early exiting of the phase
+    private static final Deque<Boolean> specialPhaseStack = new ArrayDeque<>();
+    //region specialPhaseStack methods
+    @SuppressWarnings("unused") // EMF uses it
+    public static boolean isIsInSpecialRenderOverlayPhase() {return RenderSystem.isOnRenderThread() && !specialPhaseStack.isEmpty();}
+    public static void startSpecialRenderOverlayPhase() {
+        if (RenderSystem.isOnRenderThread()) specialPhaseStack.push(true);
+    }
+    public static void endSpecialRenderOverlayPhase() {
+        if (RenderSystem.isOnRenderThread()) specialPhaseStack.pollFirst(); // no-op when empty
+    }
+    //endregion
+
+    private static final Deque<Boolean> renderLayerModifyStack = new ArrayDeque<>();
+    //region allowRenderLayerTextureModify methods
+    public static boolean isAllowedToRenderLayerTextureModify() {
+        if (!ETF.config().getConfig().canDoCustomTextures()) return false;
+        if (!RenderSystem.isOnRenderThread()) return true; // same as empty stack
+        Boolean peek = renderLayerModifyStack.peek();
+        return peek == null || peek;
+    }
+    public static void pushRenderLayerModifyState(boolean allow) {
+        if (RenderSystem.isOnRenderThread()) renderLayerModifyStack.push(allow);
+    }
+    public static void popRenderLayerModifyState() {
+        if (RenderSystem.isOnRenderThread()) renderLayerModifyStack.pollFirst(); // no-op when empty
+    }
+    //endregion
+
+    public static RenderType modifyRenderLayerIfRequired(RenderType value) {
+
+        var layer = ETF.config().getConfig().getRenderLayerOverride();
+        if (layer != null
+                && isStateActive()
+                && isAllowedToRenderLayerTextureModify()) {
+            if (!value.isOutline()
+                    && value instanceof ETFRenderLayerWithTexture multiphase) {
+
+                Optional<ResourceLocation> texture = multiphase.etf$getId();
+                if (texture.isPresent()) {
+                    pushRenderLayerModifyState(false);
+
+                    RenderType forReturn = switch (layer) {
+                        case TRANSLUCENT ->
+                                RenderType
+                                        .entityTranslucent(texture.get());
+                        case TRANSLUCENT_CULL ->
+                            RenderType.entityTranslucentCull(texture.get());
+                        case END ->
+                                RenderType
+                                        .endGateway();
+                        case OUTLINE ->
+                                RenderType
+                                        .outline(texture.get());
+                    };
+                    popRenderLayerModifyState();
+                    return forReturn;
+
+                }
+            }
+        }
+        return value;
+    }
+
+    public static void insertETFDataIntoVertexConsumer(URenderTypeToVertexConsumer provider, RenderType renderLayer, VertexConsumer vertexConsumer) {
+        if (vertexConsumer instanceof ETFVertexConsumer etfVertexConsumer) {
+            // need to store etf texture of consumer and original render layer
+            // store provider as well for future actions
+            etfVertexConsumer.etf$initETFVertexConsumer(provider, renderLayer);
+        }
+    }
+
+    public static boolean canRenderInBrightMode() {
+        boolean setForBrightMode = ETFManager.getEmissiveMode() == ETFConfig.EmissiveRenderModes.BRIGHT;
+        if (setForBrightMode) {
+            var currentEntity = state();
+            if (currentEntity != null) {
+                return currentEntity.canRenderBright();
+            } else {
+                // establish default rule
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean shouldEmissiveUseCullingLayer() {
+        var currentEntity = state();
+        if (currentEntity != null) {
+            return currentEntity.isBlockEntity();
+        } else {
+            // establish default rule
+            return true;
+        }
+    }
+}

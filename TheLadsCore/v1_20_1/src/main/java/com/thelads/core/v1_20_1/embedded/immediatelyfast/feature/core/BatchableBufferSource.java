@@ -1,0 +1,263 @@
+/*
+ * This file is part of ImmediatelyFast - https://github.com/RaphiMC/ImmediatelyFast
+ * Copyright (C) 2023-2026 RK_01/RaphiMC and contributors
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+// Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_20_1.embedded.immediatelyfast).
+package com.thelads.core.v1_20_1.embedded.immediatelyfast.feature.core;
+
+import com.google.common.collect.ImmutableMap;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import it.unimi.dsi.fastutil.objects.*;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.Sheets;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.HorseArmorItem;
+import com.thelads.core.v1_20_1.embedded.immediatelyfast.ImmediatelyFast;
+import com.thelads.core.v1_20_1.embedded.immediatelyfast.compat.IrisCompat;
+
+import java.util.*;
+
+public class BatchableBufferSource extends MultiBufferSource.BufferSource implements AutoCloseable {
+
+    /**
+     * A fallback buffer has to be defined because Iris tries to release that buffer, so it can't be null. It should be fine
+     * to reuse/release the buffer multiple times, as it won't ever be written into by minecraft or Iris.
+     */
+    private final static BufferBuilder FALLBACK_BUFFER = new BufferBuilder(0);
+
+    protected final Map<RenderType, ReferenceSet<BufferBuilder>> fallbackBuffers = IrisCompat.IRIS_LOADED ? new Object2ObjectLinkedOpenHashMap<>() : new Reference2ObjectLinkedOpenHashMap<>();
+    protected final Set<RenderType> activeLayers = IrisCompat.IRIS_LOADED ? new ObjectLinkedOpenHashSet<>() : new ReferenceLinkedOpenHashSet<>();
+
+    protected boolean drawFallbackLayersFirst = false;
+
+    public BatchableBufferSource() {
+        this(ImmutableMap.of());
+    }
+
+    public BatchableBufferSource(final Map<RenderType, BufferBuilder> layerBuffers) {
+        this(FALLBACK_BUFFER, layerBuffers);
+    }
+
+    public BatchableBufferSource(final BufferBuilder fallbackBuffer, final Map<RenderType, BufferBuilder> layerBuffers) {
+        super(fallbackBuffer, layerBuffers);
+    }
+
+    @Override
+    public VertexConsumer getBuffer(final RenderType layer) {
+        final Optional<RenderType> newLayer = layer.asOptional();
+        if (!this.drawFallbackLayersFirst) {
+            if (!this.lastState.equals(newLayer)) {
+                if (this.lastState.isPresent() && !this.fixedBuffers.containsKey(this.lastState.get())) {
+                    this.drawFallbackLayersFirst = true;
+                }
+            }
+        }
+        this.lastState = newLayer;
+
+        final BufferBuilder bufferBuilder = this.getOrCreateBufferBuilder(layer);
+        if (bufferBuilder.building() && !layer.canConsolidateConsecutiveGeometry()) {
+            throw new IllegalStateException("Tried to write shared vertices into the same buffer");
+        }
+
+        if (!bufferBuilder.building()) {
+            if (IrisCompat.IRIS_LOADED && !IrisCompat.isRenderingLevel.getAsBoolean()) {
+                IrisCompat.iris$beginWithoutExtending.accept(bufferBuilder, layer.mode(), layer.format());
+            } else {
+                bufferBuilder.begin(layer.mode(), layer.format());
+            }
+            this.activeLayers.add(layer);
+        } else if ((ImmediatelyFast.config.debug_only_use_last_usage_for_batch_ordering || layer.name.contains("immediatelyfast:renderlast")) && this.activeLayers.contains(layer)) { // Fix for https://github.com/RaphiMC/ImmediatelyFast/issues/181
+            this.activeLayers.remove(layer);
+            this.activeLayers.add(layer);
+        }
+        return bufferBuilder;
+    }
+
+    @Override
+    public void endLastBatch() {
+        this.lastState = Optional.empty();
+        this.drawFallbackLayersFirst = false;
+
+        int sortedLayersLength = 0;
+        final RenderType[] sortedLayers = new RenderType[this.activeLayers.size()];
+        for (RenderType layer : this.activeLayers) {
+            if (!this.fixedBuffers.containsKey(layer)) {
+                sortedLayers[sortedLayersLength++] = layer;
+            }
+        }
+        if (sortedLayersLength == 0) {
+            return;
+        }
+
+        Arrays.sort(sortedLayers, (l1, l2) -> Integer.compare(this.getLayerOrder(l1), this.getLayerOrder(l2)));
+        for (int i = 0; i < sortedLayersLength; i++) {
+            this.endBatch(sortedLayers[i]);
+        }
+    }
+
+    @Override
+    public void endBatch() {
+        if (this.activeLayers.isEmpty()) {
+            this.close();
+            return;
+        }
+
+        this.endLastBatch();
+        for (RenderType layer : this.fixedBuffers.keySet()) {
+            this.endBatch(layer);
+        }
+    }
+
+    @Override
+    public void endBatch(final RenderType layer) {
+        if (this.drawFallbackLayersFirst) {
+            this.endLastBatch();
+        }
+
+        if (IrisCompat.IRIS_LOADED && !IrisCompat.isRenderingLevel.getAsBoolean()) {
+            IrisCompat.renderWithExtendedVertexFormat.accept(false);
+        }
+
+        this.activeLayers.remove(layer);
+        for (BufferBuilder bufferBuilder : this.getBufferBuilder(layer)) {
+            if (bufferBuilder != null) {
+                layer.end(bufferBuilder, RenderSystem.getVertexSorting());
+            }
+        }
+        this.fallbackBuffers.remove(layer);
+
+        if (IrisCompat.IRIS_LOADED && !IrisCompat.isRenderingLevel.getAsBoolean()) {
+            IrisCompat.renderWithExtendedVertexFormat.accept(true);
+        }
+    }
+
+    @Override
+    public void close() {
+        this.lastState = Optional.empty();
+        this.drawFallbackLayersFirst = false;
+
+        for (RenderType layer : this.activeLayers) {
+            for (BufferBuilder bufferBuilder : this.getBufferBuilder(layer)) {
+                bufferBuilder.end().release();
+            }
+        }
+
+        this.activeLayers.clear();
+        this.fallbackBuffers.clear();
+    }
+
+    public boolean hasActiveLayers() {
+        return !this.activeLayers.isEmpty();
+    }
+
+    protected BufferBuilder getOrCreateBufferBuilder(final RenderType layer) {
+        if (!layer.canConsolidateConsecutiveGeometry()) {
+            return this.addNewFallbackBuffer(layer);
+        } else if (this.fixedBuffers.containsKey(layer)) {
+            return this.fixedBuffers.get(layer);
+        } else if (this.fallbackBuffers.containsKey(layer)) {
+            return this.fallbackBuffers.get(layer).iterator().next();
+        } else {
+            return this.addNewFallbackBuffer(layer);
+        }
+    }
+
+    protected Set<BufferBuilder> getBufferBuilder(final RenderType layer) {
+        if (this.fallbackBuffers.containsKey(layer)) {
+            return this.fallbackBuffers.get(layer);
+        } else if (this.fixedBuffers.containsKey(layer)) {
+            return Collections.singleton(this.fixedBuffers.get(layer));
+        } else {
+            return Collections.emptySet();
+        }
+    }
+
+    protected BufferBuilder addNewFallbackBuffer(final RenderType layer) {
+        final BufferBuilder bufferBuilder = BufferBuilderPool.get();
+        this.fallbackBuffers.computeIfAbsent(layer, k -> new ReferenceLinkedOpenHashSet<>()).add(bufferBuilder);
+        return bufferBuilder;
+    }
+
+    protected int getLayerOrder(final RenderType layer) {
+        if (layer == null) return Integer.MAX_VALUE;
+
+        int order = 0;
+        if (layer instanceof RenderType.CompositeRenderType multiPhase) {
+            final ResourceLocation textureId = multiPhase.state().textureState.cutoutTexture().orElse(null);
+            if (textureId != null) {
+                if (textureId.getPath().startsWith(HorseArmorItem.TEX_FOLDER)) {
+                    final String horseTexturePath = textureId.getPath().substring(HorseArmorItem.TEX_FOLDER.length());
+                    if (horseTexturePath.startsWith("horse_markings")) {
+                        return 2;
+                    } else if (horseTexturePath.startsWith("armor/")) {
+                        return 3;
+                    } else {
+                        return 1;
+                    }
+                } else if (textureId.getPath().startsWith("textures/entity/villager/")) {
+                    final String villagerTexturePath = textureId.getPath().substring("textures/entity/villager/".length());
+                    if (villagerTexturePath.startsWith("type/")) {
+                        return 2;
+                    } else if (villagerTexturePath.startsWith("profession/")) {
+                        return 3;
+                    } else if (villagerTexturePath.startsWith("profession_level/")) {
+                        return 4;
+                    } else {
+                        return 1;
+                    }
+                } else if (textureId.equals(Sheets.ARMOR_TRIMS_SHEET)) {
+                    order = 1;
+                } else if (layer.name.startsWith("text") || layer.name.startsWith("neoforge_text") || layer.name.startsWith("forge_text")) {
+                    // Draws vanilla text over custom font layers
+                    // Fixes https://github.com/RaphiMC/ImmediatelyFast/issues/81, https://github.com/RaphiMC/ImmediatelyFast/issues/287, https://github.com/RaphiMC/ImmediatelyFast/issues/288
+                    if (textureId.getNamespace().equals("minecraft")) {
+                        order = 2;
+                    } else {
+                        order = 1;
+                    }
+                } else if (textureId.getNamespace().equals("cataclysm")) { // https://github.com/RaphiMC/ImmediatelyFast/issues/371
+                    // Appears to be fixed in 3.00+
+                    if (textureId.getPath().equals("textures/entity/maledictus/phantom_halberd.png")) {
+                        return 2;
+                    } else if (textureId.getPath().equals("textures/entity/maledictus/phantom_halberd_discard.png")) {
+                        return 1;
+                    }
+                } else if (textureId.getNamespace().equals("alexscaves")) { // https://github.com/RaphiMC/ImmediatelyFast/issues/454
+                    if (textureId.getPath().equals("textures/entity/hullbreaker_glow.png")) {
+                        return 2;
+                    } else if (textureId.getPath().equals("textures/entity/hullbreaker.png")) {
+                        return 1;
+                    }
+                    if (textureId.getPath().equals("textures/entity/tremorzilla/tremorzilla_glow_powered.png")) {
+                        return 2;
+                    } else if (textureId.getPath().equals("textures/entity/tremorzilla/tremorzilla.png")) {
+                        return 1;
+                    }
+                }
+            }
+        }
+
+        if (!layer.sortOnUpload) {
+            return order;
+        } else {
+            return 100_000_000 + order;
+        }
+    }
+
+}

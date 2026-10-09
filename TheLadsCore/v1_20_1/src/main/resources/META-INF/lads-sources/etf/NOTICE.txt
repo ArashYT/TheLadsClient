@@ -1,0 +1,18 @@
+Entity Texture Features 7.2.5 for Minecraft 1.20.1 (Fabric), by Traben.
+Licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0-only), see LICENSE beside this file. The GNU GPL v3 that it
+incorporates is reproduced in META-INF/lads-sources/emf/LICENSE.
+Source: https://github.com/Traben-0/Entity_Texture_Features (tag v7.2.5, commit ba6dfecca69672b1b5e91ad5d4c8ae1a5c8476d2).
+
+Modified by The Lads: repackaged into Lads Core.
+- Upstream's multi-version preprocessor was run for its own 1.20.1-fabric target (the inactive branches removed) and the packages
+  were relocated to com.thelads.core.v1_20_1.embedded.etf (traben.tconfig to com.thelads.core.v1_20_1.embedded.etf.tconfig).
+- It runs hidden (no Mod Menu entry, no resource-pack screen button) and stays off while the original entity_texture_features jar is
+  installed, as a Fabric jar or as the Forge jar under Sinytra Connector.
+- Mod checks also see Forge mods under Sinytra Connector, and the embedded EMF counts as installed.
+- The ImmediatelyFast compatibility mixin targets the ImmediatelyFast copy embedded in Lads Core.
+- The access widener entries moved into Core's theladscore.v1_20_1.accesswidener.
+- Config files, resource-pack paths and asset namespaces are unchanged.
+
+The complete modified source is in META-INF/lads-sources/etf/v1_20_1 in this jar (mixin config in META-INF/lads-sources/mixin-configs).
+To use a modified version, change those files in the Lads source tree
+(TheLadsCore/v1_20_1/src/main/java/com/thelads/core/v1_20_1/embedded/etf) and rebuild Core with TheLadsCore/gradlew.bat :v1_20_1:remapJar.

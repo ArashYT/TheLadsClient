@@ -1,0 +1,117 @@
+/*
+ * This file is part of ImmediatelyFast - https://github.com/RaphiMC/ImmediatelyFast
+ * Copyright (C) 2023-2026 RK_01/RaphiMC and contributors
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+// Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_20_1.embedded.immediatelyfast).
+package com.thelads.core.v1_20_1.embedded.immediatelyfast.injection;
+
+import com.thelads.core.v1_20_1.embedded.immediatelyfast.ImmediatelyFast;
+import com.thelads.core.v1_20_1.embedded.immediatelyfast.injection.processors.InjectAboveEverythingProcessor;
+import com.thelads.core.v1_20_1.embedded.immediatelyfast.injection.processors.InjectOnAllReturnsProcessor;
+import com.thelads.core.v1_20_1.embedded.immediatelyfast.service.PlatformService;
+import com.thelads.core.v1_20_1.compat.ModPresence1201;
+import com.thelads.core.v1_20_1.perf.StandDownMixinPlugin1201;
+import org.objectweb.asm.tree.ClassNode;
+import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
+
+// The Lads: stands down while the original immediatelyfast jar is installed (Fabric jar, or the Forge jar under Sinytra
+// Connector), and applies the fabric/ or forge/ mixins of upstream's two loader builds by the loader that is running.
+public class ImmediatelyFastMixinPlugin extends StandDownMixinPlugin1201 {
+
+    @Override
+    protected String feature() {
+        return "ImmediatelyFast";
+    }
+
+    @Override
+    protected String[] originals() {
+        return new String[] {"immediatelyfast"};
+    }
+
+    private String mixinPackage;
+
+    @Override
+    public void onLoad(String mixinPackage) {
+        super.onLoad(mixinPackage);
+        this.mixinPackage = mixinPackage + ".";
+
+        if (this.active()) {
+            ImmediatelyFast.earlyInit();
+        }
+    }
+
+
+    @Override
+    public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (!super.shouldApplyMixin(targetClassName, mixinClassName)) return false;
+        if (!mixinClassName.startsWith(this.mixinPackage)) return false;
+        final boolean forge = ModPresence1201.onForge();
+        if (this.mixinPackage.contains(".immediatelyfast.fabric.") && forge) return false;
+        if (this.mixinPackage.contains(".immediatelyfast.forge.") && !forge) return false;
+
+        final String mixinName = mixinClassName.substring(this.mixinPackage.length());
+        final String packageName = mixinName.substring(0, mixinName.lastIndexOf('.'));
+
+        if (!ImmediatelyFast.config.font_atlas_resizing && packageName.startsWith("font_atlas_resizing")) {
+            return false;
+        }
+        if (!ImmediatelyFast.config.map_atlas_generation && packageName.startsWith("map_atlas_generation")) {
+            return false;
+        }
+        if (!ImmediatelyFast.config.hud_batching && packageName.startsWith("hud_batching")) {
+            return false;
+        }
+        if (!ImmediatelyFast.config.fast_text_lookup && packageName.startsWith("fast_text_lookup")) {
+            return false;
+        }
+        if (!ImmediatelyFast.config.fast_buffer_upload && packageName.startsWith("fast_buffer_upload")) {
+            return false;
+        }
+        if (!ImmediatelyFast.config.experimental_disable_error_checking && packageName.startsWith("disable_error_checking")) {
+            return false;
+        }
+        if (!ImmediatelyFast.config.experimental_sign_text_buffering && packageName.startsWith("sign_text_buffering")) {
+            return false;
+        }
+        if (!ImmediatelyFast.config.experimental_screen_batching && packageName.startsWith("screen_batching")) {
+            return false;
+        }
+
+        if (packageName.startsWith("hud_batching.compat.armorchroma") && PlatformService.INSTANCE.getModVersion("armorchroma").isEmpty()) { // https://github.com/A5b84/armor-chroma-fabric
+            return false;
+        } else if (packageName.startsWith("hud_batching.compat.appleskin") && PlatformService.INSTANCE.getModVersion("appleskin").isEmpty()) { // https://github.com/squeek502/AppleSkin
+            return false;
+        } else if (packageName.startsWith("hud_batching.compat.highlighter") && PlatformService.INSTANCE.getModVersion("highlighter").isEmpty()) { // https://github.com/AHilyard/Highlighter
+            return false;
+        } else if (packageName.startsWith("hud_batching.compat.itemborders") && PlatformService.INSTANCE.getModVersion("itemborders").isEmpty()) { // https://github.com/AHilyard/ItemBorders
+            return false;
+        } else if (packageName.startsWith("core.compat.webdisplays") && PlatformService.INSTANCE.getModVersion("webdisplays").isEmpty()) { // https://github.com/CinemaMod/webdisplays
+            return false;
+        }
+
+        return true;
+    }
+
+
+
+
+    @Override
+    public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+        InjectAboveEverythingProcessor.process(targetClass);
+        InjectOnAllReturnsProcessor.process(targetClass);
+    }
+
+}

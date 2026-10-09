@@ -1,0 +1,17 @@
+ImmediatelyFast 1.5.5+1.20.4 (supports Minecraft 1.20 to 1.20.4) by RK_01/RaphiMC and contributors
+https://github.com/RaphiMC/ImmediatelyFast (tag v1.5.5 on branch 1.20, commit bbec03e029b0ceefafb59bdf2244467247687347)
+Copyright (C) 2023-2026 RK_01/RaphiMC and contributors. GNU LGPL v3 or later, see LICENSE beside this file;
+LGPL-3.0 supplements the GNU GPL v3, whose text is in GPL-3.0.txt beside this file.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_20_1.embedded.immediatelyfast, the public API
+net.raphimc.immediatelyfastapi at com.thelads.core.v1_20_1.embedded.immediatelyfast.api) for Minecraft 1.20.1.
+- Upstream's Yarn names were converted to Mojang names with Fabric Loom's migrateMappings (1.20.4), then built for 1.20.1.
+- The common and Fabric code ship as upstream has them; the Forge build's mixins (ForgeGui HUD batching, Forge text render types,
+  Forge's GuiGraphics.drawString and slot highlight) ship too and are the ones applied when Core runs on Forge under Sinytra Connector;
+  the WebDisplays compatibility mixin and the Forge mod entrypoint are not included.
+- The mixin plugin also stands the copy down while the original ImmediatelyFast jar is installed (Fabric jar, or the Forge jar under
+  Connector), mod checks also see Forge mods, the version string is fixed instead of read from the (absent) mod metadata, the platform
+  service is created directly instead of through ServiceLoader, the two uses of the Reflect library are plain reflection, and the
+  access widener entries moved into Core's theladscore.v1_20_1.accesswidener.
+Config file kept: config/immediatelyfast.json. The complete modified source files ship in this jar under
+META-INF/lads-sources/immediatelyfast/v1_20_1 (mixin configs in META-INF/lads-sources/mixin-configs).

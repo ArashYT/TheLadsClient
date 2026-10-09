@@ -54,6 +54,12 @@
     "theladscore.v1_20_1.embedded.hoveringhotbar.mixins.json",
     "theladscore.v1_20_1.embedded.playtime.mixins.json",
     "theladscore.v1_20_1.embedded.capes.mixins.json",
+    "theladscore.v1_20_1.embedded.etf.mixins.json",
+    "theladscore.v1_20_1.embedded.emf.mixins.json",
+    "theladscore.v1_20_1.embedded.immediatelyfast.mixins.json",
+    "theladscore.v1_20_1.embedded.immediatelyfast.fabric.mixins.json",
+    "theladscore.v1_20_1.embedded.immediatelyfast.forge.mixins.json",
+    "theladscore.v1_20_1.embedded.nbtac.mixins.json",
     "theladscore.v1_20_1.hud.mixins.json",
     "theladscore.v1_20_1.hud.chat.mixins.json",
     "theladscore.v1_20_1.hud.overlay.mixins.json",
@@ -67,6 +73,7 @@
         "theladscore.v1_20_1.quit.mixins.json",
         "theladscore.v1_20_1.ebe.mixins.json"
   ],
+  "accessWidener": "theladscore.v1_20_1.accesswidener",
   "depends": {
     "fabricloader": ">=0.14.21",
     "fabric-api": "*",

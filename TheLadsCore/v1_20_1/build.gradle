@@ -15,6 +15,8 @@ loom {
     mixin {
         useLegacyMixinAp = true
     }
+    // Access for the embedded upstream mods (ETF, EMF, ImmediatelyFast), merged from their own 1.20.1 access wideners.
+    accessWidenerPath = file('src/main/resources/theladscore.v1_20_1.accesswidener')
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -26,6 +28,7 @@ repositories {
     mavenCentral()
     maven { url = 'https://maven.fabricmc.net/' }
     maven { url = 'https://maven.shedaniel.me/' }
+    maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
 }
 
 dependencies {
@@ -36,6 +39,13 @@ dependencies {
 
     implementation project(':common')
     implementation files('../v26_2/libs/catconfig-mc-26.2-0.2.1.jar', '../v26_2/libs/catconfig-0.3.0.jar')
+
+    // Embedded Entity Texture/Model Features: the optional-mod APIs upstream's own 1.20.1 Fabric build compiles against
+    // (Iris, Sodium, 3D Skin Layers; same Modrinth versions). Compile only, they stay optional mods.
+    compileOnly 'com.demonwav.mcdev:annotations:2.1.0'
+    modCompileOnly('maven.modrinth:iris:s5eFLITc') { transitive = false }
+    modCompileOnly('maven.modrinth:sodium:ygf8cVZg') { transitive = false }
+    modCompileOnly('maven.modrinth:3dskinlayers:aiPCdDJa') { transitive = false }
 }
 
 apply from: 'perf.gradle'
