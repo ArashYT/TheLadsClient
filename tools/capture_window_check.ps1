@@ -55,6 +55,7 @@ public static class WindowCapture {
         int w = r.R - r.L, hh = r.B - r.T;
         Add("window rect " + r.L + "," + r.T + " " + w + "x" + hh);
         State(h);
+        try { extra(); } catch (Exception e) { Add("wgc FAILED " + e.Message); } // first: OBS window capture and Discord use it, and a short QA run may end soon
         try { using (var b = new Bitmap(w, hh)) { using (var g = Graphics.FromImage(b)) g.CopyFromScreen(r.L, r.T, 0, 0, new Size(w, hh)); Save(b, "bitblt"); } } catch (Exception e) { Add("bitblt FAILED " + e.Message); }
         try {
             using (var b = new Bitmap(w, hh)) {
@@ -69,7 +70,6 @@ public static class WindowCapture {
             }
         } catch (Exception e) { Add("printwindow FAILED " + e.Message); }
         try { Duplicate(r); } catch (Exception e) { Add("duplicate FAILED " + e.Message); }
-        try { extra(); } catch (Exception e) { Add("wgc FAILED " + e.Message); }
         SetWindowPos(h, new IntPtr(-2), 0, 0, 0, 0, 0x13);
         File.WriteAllText(Path.Combine(dir, name + "-capture.txt"), Report);
     }
@@ -198,6 +198,7 @@ public static class WindowCapture {
 '@
 
 function Capture-WindowGraphics {
+    $ErrorActionPreference = 'Stop' # a failed step is one "wgc FAILED" line, not a loop of null errors
     [void][Windows.Graphics.Capture.GraphicsCaptureItem, Windows.Graphics.Capture, ContentType = WindowsRuntime]
     [void][Windows.Graphics.Capture.Direct3D11CaptureFramePool, Windows.Graphics.Capture, ContentType = WindowsRuntime]
     [void][Windows.Graphics.DirectX.DirectXPixelFormat, Windows.Graphics.DirectX, ContentType = WindowsRuntime]
