@@ -192,6 +192,12 @@ bool lightsCaptureVerification = autoWorldVerification && !capabilities.Forge &&
 bool flashbackVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_FLASHBACK") == "1";
 // 26.x: Async stress test (AsyncStressProbe): ~1700 mobs plus items in pens, tick time with Async off and on, behaviour checks.
 bool asyncStressVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_ASYNC") == "1";
+// Built-in baked block entities (EBE remake) benchmark and pixel-parity frames (BakedBlockEntitiesProbe*): LADS_VERIFY_EBE=1,
+// or =off to time the same run with -Dlads.ebe=false, =xmas to force the Christmas chest textures. 1.8.9 runs it as its
+// self-test's focused path (LADS_VERIFY_189_ONLY=ebe, set here when LADS_VERIFY_EBE is).
+string? ebeMode = autoWorldVerification ? Env("LADS_VERIFY_EBE") : null;
+if (ebeMode is not (null or "1" or "off" or "xmas")) throw new ArgumentException("LADS_VERIFY_EBE must be 1, off or xmas.");
+bool ebeVerification = ebeMode != null;
 // 26.x: AppleSkin server payloads (saturation, exhaustion, natural regeneration) injected in the QA world (AppleSkinSyncCapture).
 bool appleSkinSyncVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_APPLESKIN_SYNC") == "1";
 if (autoWorldVerification && dirName != version + "-title")
@@ -394,11 +400,12 @@ string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:",
     "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
     "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
-    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:"];
+    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads EBE probe END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
 bool Settled(bool requested, params string[] ends) => !requested || ends.All(passedMarkers.ContainsKey) || ends.Any(failedCaptures.ContainsKey);
 bool CapturesSettled(bool resolutionRequested) =>
     Settled(menuCaptureVerification, "Lads menu capture END:", "Lads mods view capture END:")
+    && Settled(ebeVerification, "Lads EBE probe END:")
     && Settled(hudCaptureVerification, "Lads HUD capture END:", "Lads HUD editor probe END:")
     && Settled(bannerCaptureVerification, "Lads kill banner capture END:")
     && Settled(killStreakCaptureVerification, "Lads kill streak capture END:")
@@ -606,6 +613,12 @@ try
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
     if (addServerVerification) AddJvm("-Dthelads.verifyAddServer=true");
+    if (ebeVerification)
+    {
+        AddJvm(capabilities.Forge ? "-Dthelads.verify189Only=ebe" : "-Dlads.ebe.probe=true");
+        if (ebeMode == "off") AddJvm("-Dlads.ebe=false");
+        if (ebeMode == "xmas") AddJvm("-Dlads.ebe.xmas=true");
+    }
     if (capabilities.Forge)
     {
         // The 1.8.9 Core's one QA switch: its self-test (Lads menu on the title screen, in its own QA world and from the
@@ -733,7 +746,7 @@ try
                 "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
                 "Lads server features capture END:", "Lads F3/FOV capture END:",
                 "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:", "Lads resolution capture END:",
-                "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:" })
+                "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads EBE probe END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -888,7 +901,8 @@ try
                     (mouseTweaksCaptureVerification, mouseTweaksCaptureRequest, "Drive Lads Mouse Tweaks in a QA chest and capture its frames."),
                     (lightsCaptureVerification, lightsCaptureRequest, "Light the QA world at midnight with Dynamic Lights and capture its frames."),
                     (asyncStressVerification, asyncStressRequest, "Stress Async with a pen of mobs in the QA world."),
-                    (appleSkinSyncVerification, appleSkinSyncRequest, "Inject AppleSkin server payloads in the QA world and capture the food bar.") })
+                    (appleSkinSyncVerification, appleSkinSyncRequest, "Inject AppleSkin server payloads in the QA world and capture the food bar."),
+                    (ebeVerification, Path.Combine(directory, ".lads-qa-ebe"), "Build baked block entities in the QA world, time and photograph them.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -919,6 +933,7 @@ try
         if (nativeProbeFailed && (!autoWorldVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads native screenshots probe END:")
             || stopwatch.Elapsed > TimeSpan.FromSeconds(90))
             && (Settled(resolutionCaptureRequested, "Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))
+            && (Settled(ebeVerification, "Lads EBE probe END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(480))
             && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
