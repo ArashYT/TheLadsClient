@@ -104,8 +104,10 @@ internal static class ZeroSmpQa
             bool perfOk = int.TryParse(perfRd, out int rdNumber) && rdNumber is >= 2 and <= 16 && int.TryParse(perfSim, out int simNumber) && simNumber is >= 2 and <= 16
                 && (perfFps is "30" or "60" or "120" or "144" or "240" or "260");
             if (!perfOk) throw new ArgumentException("LADS_VERIFY_PERF_RD/_SIM must be 2..16, LADS_VERIFY_PERF_FPS one of 30 60 120 144 240 260.");
+            // LADS_VERIFY_FULLSCREEN=1: started as the launcher does with "Fullscreen on launch" (its default): --fullscreen and fullscreen:true.
+            bool fullscreen = QaShared.Env("LADS_VERIFY_FULLSCREEN") == "1";
             string[] qaForced = { "soundCategory_master:0.0", "maxFps:" + perfFps, "enableVsync:false", "renderDistance:" + perfRd, "simulationDistance:" + perfSim, "guiScale:2",
-                "pauseOnLostFocus:false", "fullscreen:false", "onboardAccessibility:false", "tutorialStep:none" };
+                "pauseOnLostFocus:false", "fullscreen:" + (fullscreen ? "true" : "false"), "onboardAccessibility:false", "tutorialStep:none" };
             string options = Path.Combine(gameDir, "options.txt");
             var lines = File.Exists(options) ? File.ReadAllLines(options).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList() : new List<string>();
             lines.AddRange(qaForced);
@@ -151,7 +153,7 @@ internal static class ZeroSmpQa
                 CreatedUtc = DateTime.UtcNow, Author = "The Lads", PackVersion = "1.0.0", MaxRamMb = 6144, Directory = instanceDir
             };
             Modpacks.Save(instance);
-            var settings = new LauncherSettings { FullscreenOnLaunch = false, MaxRamMb = 6144, MinRamMb = 1024, AutoDetectJava = true };
+            var settings = new LauncherSettings { FullscreenOnLaunch = QaShared.Env("LADS_VERIFY_FULLSCREEN") == "1", MaxRamMb = 6144, MinRamMb = 1024, AutoDetectJava = true };
             var java = new JavaService(new PathService(QaShared.RuntimeData));
             var session = AccountIdentity.CreateOfflineSession("LadsQA");
             using var http = new HttpClient();

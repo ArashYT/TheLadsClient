@@ -1,11 +1,15 @@
 # QA only: captures a game window the way OBS and Discord do and reports whether the capture is black.
 #   bitblt      - GDI copy of the screen over the window (GDI capture)
+#   windowdc    - GDI copy of the window's own DC (OBS "Window Capture" with the BitBlt method)
 #   printwindow - the window's own composition surface (PW_RENDERFULLCONTENT)
 #   duplicate   - DXGI Desktop Duplication of the monitor (OBS "Display Capture", Discord screen share)
 #   wgc         - Windows Graphics Capture of the window (OBS "Window Capture", Discord window share)
 # A window that exactly covers a monitor can be promoted to fullscreen/independent flip by Windows, and capture tools then see black.
-# Usage: powershell -NoProfile -File capture_window_check.ps1 -Hwnd <decimal handle> -OutDir <folder> -Tag <name>
-param([Parameter(Mandatory)][long]$Hwnd, [Parameter(Mandatory)][string]$OutDir, [Parameter(Mandatory)][string]$Tag)
+# The report starts with the window's Win32 state: window/client rect against its monitor, styles, DWM frame bounds.
+# Usage: powershell -NoProfile -File capture_window_check.ps1 -Hwnd <decimal handle> -OutDir <folder> -Tag <name> [-NoFocus]
+#    or: ... -Match <text in the game's java command line> [-WaitSec 240] [-StableSec 6]: waits until that game's window has covered a
+#        monitor (fullscreen or borderless) with the same rect for StableSec seconds, then captures it. -NoFocus: raised above other windows without activating it (QA games never take focus).
+param([long]$Hwnd = 0, [string]$Match, [Parameter(Mandatory)][string]$OutDir, [Parameter(Mandatory)][string]$Tag, [switch]$NoFocus, [int]$WaitSec = 240, [int]$StableSec = 6)
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
 using System;
 using System.Drawing;
@@ -19,6 +23,16 @@ public static class WindowCapture {
     [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr h, IntPtr dc, uint flags);
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int w, int cy, uint flags);
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int index);
+    [DllImport("user32.dll")] static extern IntPtr GetWindowDC(IntPtr h);
+    [DllImport("user32.dll")] static extern int ReleaseDC(IntPtr h, IntPtr dc);
+    [DllImport("gdi32.dll")] static extern bool BitBlt(IntPtr dst, int x, int y, int w, int h, IntPtr src, int sx, int sy, uint rop);
+    [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
+    [DllImport("user32.dll")] static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
+    [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attribute, out RECT value, int size);
+    [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attribute, out int value, int size);
+    [StructLayout(LayoutKind.Sequential)] struct MONITORINFO { public int Size; public RECT Monitor, Work; public uint Flags; }
     [DllImport("d3d11.dll")] static extern int D3D11CreateDevice(IntPtr adapter, int type, IntPtr sw, uint flags, IntPtr levels, uint n, uint sdk, out IntPtr dev, out int level, out IntPtr ctx);
     [DllImport("d3d11.dll")] static extern int CreateDirect3D11DeviceFromDXGIDevice(IntPtr dxgiDevice, out IntPtr graphicsDevice);
     [DllImport("combase.dll")] static extern int RoGetActivationFactory(IntPtr classId, ref Guid iid, out IntPtr factory);
@@ -30,17 +44,24 @@ public static class WindowCapture {
     static IntPtr device, context;
     public static string Report = "";
 
-    public static void Run(long hwnd, string dir, string name, Action extra) {
+    public static void Run(long hwnd, string dir, string name, bool focus, Action extra) {
         SetProcessDPIAware();
         outDir = dir; tag = name; Directory.CreateDirectory(dir);
         IntPtr h = new IntPtr(hwnd);
-        // On top of everything for the capture, as a window the user is looking at is.
-        SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, 0x13); SetForegroundWindow(h);
+        // On top of everything for the capture, as a window the user is looking at is (activated only without -NoFocus).
+        SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, 0x13); if (focus) SetForegroundWindow(h);
         System.Threading.Thread.Sleep(3000); // a promotion to flip takes a moment
         RECT r; GetWindowRect(h, out r);
         int w = r.R - r.L, hh = r.B - r.T;
         Add("window rect " + r.L + "," + r.T + " " + w + "x" + hh);
+        State(h);
         try { using (var b = new Bitmap(w, hh)) { using (var g = Graphics.FromImage(b)) g.CopyFromScreen(r.L, r.T, 0, 0, new Size(w, hh)); Save(b, "bitblt"); } } catch (Exception e) { Add("bitblt FAILED " + e.Message); }
+        try {
+            using (var b = new Bitmap(w, hh)) {
+                using (var g = Graphics.FromImage(b)) { IntPtr dc = g.GetHdc(), src = GetWindowDC(h); BitBlt(dc, 0, 0, w, hh, src, 0, 0, 0x00CC0020); ReleaseDC(h, src); g.ReleaseHdc(dc); }
+                Save(b, "windowdc");
+            }
+        } catch (Exception e) { Add("windowdc FAILED " + e.Message); }
         try {
             using (var b = new Bitmap(w, hh)) {
                 using (var g = Graphics.FromImage(b)) { IntPtr dc = g.GetHdc(); bool ok = PrintWindow(h, dc, 2); g.ReleaseHdc(dc); if (!ok) Add("printwindow returned false"); }
@@ -51,6 +72,26 @@ public static class WindowCapture {
         try { extra(); } catch (Exception e) { Add("wgc FAILED " + e.Message); }
         SetWindowPos(h, new IntPtr(-2), 0, 0, 0, 0, 0x13);
         File.WriteAllText(Path.Combine(dir, name + "-capture.txt"), Report);
+    }
+
+    /** The window as Windows sees it: rects against its monitor, styles, DWM's frame. Exactly the monitor's rect = may be promoted to flip. */
+    public static void State(IntPtr h) {
+        RECT r, c, f; GetWindowRect(h, out r); GetClientRect(h, out c);
+        var mi = new MONITORINFO { Size = Marshal.SizeOf(typeof(MONITORINFO)) };
+        GetMonitorInfo(MonitorFromWindow(h, 2), ref mi);
+        RECT m = mi.Monitor;
+        int style = GetWindowLong(h, -16), ex = GetWindowLong(h, -20), cloaked = 0;
+        string frame = DwmGetWindowAttribute(h, 9, out f, Marshal.SizeOf(typeof(RECT))) == 0 ? f.L + "," + f.T + "-" + f.R + "," + f.B : "n/a";
+        DwmGetWindowAttribute(h, 14, out cloaked, 4);
+        string styles = ((style & 0x80000000) != 0 ? "WS_POPUP " : "") + ((style & 0x00C00000) == 0x00C00000 ? "WS_CAPTION " : "") + ((style & 0x00040000) != 0 ? "WS_THICKFRAME " : "")
+            + ((style & 0x00080000) != 0 ? "WS_SYSMENU " : "") + ((style & 0x01000000) != 0 ? "WS_MAXIMIZE " : "") + ((style & 0x20000000) != 0 ? "WS_MINIMIZE " : "");
+        string exStyles = ((ex & 0x8) != 0 ? "WS_EX_TOPMOST " : "") + ((ex & 0x40000) != 0 ? "WS_EX_APPWINDOW " : "") + ((ex & 0x80000) != 0 ? "WS_EX_LAYERED " : "")
+            + ((ex & 0x200000) != 0 ? "WS_EX_NOREDIRECTIONBITMAP " : "");
+        string cover = r.L == m.L && r.T == m.T && r.R == m.R && r.B == m.B ? "EXACTLY the monitor (Windows may promote it to fullscreen/independent flip)"
+            : r.L <= m.L && r.T <= m.T && r.R >= m.R && r.B >= m.B ? "covers the monitor plus " + (r.R - r.L - (m.R - m.L)) + " column(s) and " + (r.B - r.T - (m.B - m.T)) + " row(s)" : "does not cover the monitor";
+        Add("state: window " + r.L + "," + r.T + "-" + r.R + "," + r.B + " (" + (r.R - r.L) + "x" + (r.B - r.T) + "), client " + (c.R - c.L) + "x" + (c.B - c.T)
+            + ", monitor " + m.L + "," + m.T + "-" + m.R + "," + m.B + " (" + (m.R - m.L) + "x" + (m.B - m.T) + "): " + cover);
+        Add("state: style 0x" + style.ToString("X8") + " [" + styles.Trim() + "], exstyle 0x" + ex.ToString("X8") + " [" + exStyles.Trim() + "], DWM frame " + frame + ", cloaked " + cloaked);
     }
 
     public static void Add(string line) { Report += line + "\n"; Console.WriteLine(line); }
@@ -175,4 +216,45 @@ function Capture-WindowGraphics {
     $frame.Dispose(); $session.Dispose(); $pool.Dispose()
 }
 
-[WindowCapture]::Run($Hwnd, $OutDir, $Tag, [Action]{ Capture-WindowGraphics })
+if ($Hwnd -eq 0) {
+    # The game's own window (GLFW, SDL or LWJGL 2 class) once it covers a monitor.
+    Add-Type -ReferencedAssemblies System.Windows.Forms, System.Drawing -TypeDefinition @'
+using System; using System.Runtime.InteropServices; using System.Text; using System.Windows.Forms;
+public static class GameWindow {
+    delegate bool EnumProc(IntPtr h, IntPtr l);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc p, IntPtr l);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
+    [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
+    /** "handle rect" of the process's game window while it covers a monitor, else "". */
+    public static string Covering(uint pid) {
+        SetProcessDPIAware();
+        string found = "";
+        EnumWindows((h, l) => {
+            uint p; GetWindowThreadProcessId(h, out p); var c = new StringBuilder(64); GetClassName(h, c, 64); string n = c.ToString();
+            if (p != pid || !IsWindowVisible(h) || !(n == "LWJGL" || n.StartsWith("GLFW") || n.StartsWith("SDL"))) return true;
+            RECT r; GetWindowRect(h, out r);
+            foreach (var s in Screen.AllScreens) if (r.L <= s.Bounds.Left && r.T <= s.Bounds.Top && r.R >= s.Bounds.Right && r.B >= s.Bounds.Bottom) { found = h.ToInt64() + " " + r.L + "," + r.T + "," + r.R + "," + r.B; return false; }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+}
+'@
+    # Stable: a fullscreen start passes through an exclusive mode and window sizes before it settles.
+    $end = (Get-Date).AddSeconds($WaitSec); $seen = ''; $since = Get-Date
+    while ($Hwnd -eq 0 -and (Get-Date) -lt $end) {
+        $now = ''
+        foreach ($p in Get-CimInstance Win32_Process -Filter "Name='java.exe' OR Name='javaw.exe'" | Where-Object { $_.CommandLine -like "*$Match*" }) {
+            $now = [GameWindow]::Covering([uint32]$p.ProcessId); if ($now) { break }
+        }
+        if ($now -ne $seen) { if ($now) { Write-Output "$(Get-Date -Format HH:mm:ss) covering: $now" }; $seen = $now; $since = Get-Date }
+        elseif ($now -and ((Get-Date) - $since).TotalSeconds -ge $StableSec) { $Hwnd = [long]($now -split ' ')[0]; break }
+        Start-Sleep -Milliseconds 250
+    }
+    if ($Hwnd -eq 0) { Write-Output "no game window matching '$Match' covered a monitor steadily within $WaitSec s"; exit 2 }
+}
+[WindowCapture]::Run($Hwnd, $OutDir, $Tag, -not $NoFocus, [Action]{ Capture-WindowGraphics })

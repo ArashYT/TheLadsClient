@@ -365,6 +365,8 @@ public final class QaProbe1201 {
         switch (n) {
             case "f1" -> mc.options.hideGui = !mc.options.hideGui;
             case "f3" -> mc.options.renderDebug = !mc.options.renderDebug;
+            // As vanilla's KeyboardHandler does for F11.
+            case "f11" -> { mc.getWindow().toggleFullScreen(); mc.options.fullscreen().set(mc.getWindow().isFullscreen()); }
             case "escape", "esc" -> { if (mc.screen != null) mc.screen.onClose(); else mc.pauseGame(false); }
             default -> {
                 InputConstants.Key key = InputConstants.getKey("key.keyboard." + n);
