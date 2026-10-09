@@ -173,6 +173,12 @@ public final class GameProbe1201 {
             case "shot" -> { pendingShot = s[1]; wait = 3; }
             case "shotnow" -> { shot(mc, s[1]); LOGGER.info("Lads game qa shot: screenshots/{}.png", s[1]); }
             case "cheats" -> LOGGER.info("Lads game qa cheats: {}", com.thelads.core.v1_20_1.game.cheats.Cheats1201.lastState);
+            case "mine" -> {
+                // QA windows never grab the mouse, so holding the attack key would not mine: start (or stop) the break directly.
+                if (s[1].equals("off")) mc.gameMode.stopDestroyBlock();
+                else mc.gameMode.startDestroyBlock(mc.player.blockPosition().offset(Integer.parseInt(s[1]), Integer.parseInt(s[2]), Integer.parseInt(s[3])),
+                    net.minecraft.core.Direction.NORTH);
+            }
             case "anim" -> LOGGER.info("Lads game qa anim: {}", NativeOldAnimations1201.debug(mc.player));
             case "log" -> LOGGER.info("Lads game qa log: {}", rest(s, 1));
             case "trace" -> { if (s[2].equals("on")) { traceName = s[1]; trace = new StringBuilder("tick,sprinting,sentSprint,sneaking,keyShift,pose,speed,fov,zoomActive,x,y,z,yaw,pitch,health,hurtTime,onGround,tiltYaw,tiltStrength,bob,eye,swing\n"); } else endTrace(); }
