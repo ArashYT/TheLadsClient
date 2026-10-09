@@ -907,34 +907,8 @@ public partial class ModpacksView : UserControl
         };
     }
 
-    public static string? FindBundledCoreJar(string mcVersion)
-    {
-        var candidates = new List<string>
-        {
-            Path.Combine(AppContext.BaseDirectory, "game-mods", mcVersion, "theladscore.jar"),
-            Path.Combine(AppContext.BaseDirectory, "game-mods", "theladscore.jar"),
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "game-mods", mcVersion, "theladscore.jar"),
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "game-mods", "theladscore.jar")
-        };
-
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && dir.Exists)
-        {
-            candidates.Add(Path.Combine(dir.FullName, "game-mods", mcVersion, "theladscore.jar"));
-            candidates.Add(Path.Combine(dir.FullName, "TheLadsLauncher", "game-mods", mcVersion, "theladscore.jar"));
-            candidates.Add(Path.Combine(dir.FullName, "artifacts", "client", "game-mods", mcVersion, "theladscore.jar"));
-            candidates.Add(Path.Combine(dir.FullName, "Lads Client", "TheLadsLauncher", "game-mods", mcVersion, "theladscore.jar"));
-            candidates.Add(Path.Combine(dir.FullName, "Lads Client", "artifacts", "client", "game-mods", mcVersion, "theladscore.jar"));
-            dir = dir.Parent;
-        }
-
-        foreach (var path in candidates)
-        {
-            if (File.Exists(path)) return Path.GetFullPath(path);
-        }
-
-        return null;
-    }
+    /// <summary>The Core bundled with this launcher for <paramref name="mcVersion"/>, or null (see ModpackCoreSync).</summary>
+    public static string? FindBundledCoreJar(string mcVersion) => ModpackCoreSync.FindBundledJar(mcVersion);
 
     private void RenderActiveSubTab()
     {
