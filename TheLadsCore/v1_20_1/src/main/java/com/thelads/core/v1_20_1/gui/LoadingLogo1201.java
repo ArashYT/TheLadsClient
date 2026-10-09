@@ -48,5 +48,6 @@ public final class LoadingLogo1201 {
                     graphics.setColor(1f, 1f, 1f, 1f);
                 }
             }));
+        if (alpha >= 1f) LoadingQa1201.frame();
     }
 }

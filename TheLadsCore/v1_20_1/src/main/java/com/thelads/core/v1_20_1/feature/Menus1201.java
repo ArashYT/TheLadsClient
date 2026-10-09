@@ -15,6 +15,7 @@ public final class Menus1201 {
     public static void register() {
         LocalSkins1201.initialize();
         NativeReconnect1201.register();
+        com.thelads.core.v1_20_1.feature.screenshots.ScreenshotViewer1201.register();
         MenusQa1201.register();
         LOGGER.info("Lads menus (title, pause, loading, settings) registered for 1.20.1");
     }
