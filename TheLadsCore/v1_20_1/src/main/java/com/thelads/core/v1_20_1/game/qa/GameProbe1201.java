@@ -87,6 +87,8 @@ public final class GameProbe1201 {
             }
             if (cur.length() > 0 || any) tokens.add(cur.toString());
             tokens.set(0, tokens.get(0).toLowerCase(Locale.ROOT));
+            // A command keeps its text exactly (quotes included): it is typed into chat as written.
+            if (tokens.get(0).equals("cmd")) { parsed.add(new String[] {"cmd", line.substring(3).strip()}); continue; }
             parsed.add(tokens.toArray(new String[0]));
         }
         return parsed;
@@ -170,6 +172,7 @@ public final class GameProbe1201 {
             case "hotbar" -> mc.player.getInventory().selected = Integer.parseInt(s[1]) - 1;
             case "shot" -> { pendingShot = s[1]; wait = 3; }
             case "shotnow" -> { shot(mc, s[1]); LOGGER.info("Lads game qa shot: screenshots/{}.png", s[1]); }
+            case "cheats" -> LOGGER.info("Lads game qa cheats: {}", com.thelads.core.v1_20_1.game.cheats.Cheats1201.lastState);
             case "anim" -> LOGGER.info("Lads game qa anim: {}", NativeOldAnimations1201.debug(mc.player));
             case "log" -> LOGGER.info("Lads game qa log: {}", rest(s, 1));
             case "trace" -> { if (s[2].equals("on")) { traceName = s[1]; trace = new StringBuilder("tick,sprinting,sentSprint,sneaking,keyShift,pose,speed,fov,zoomActive,x,y,z,yaw,pitch,health,hurtTime,onGround,tiltYaw,tiltStrength,bob,eye,swing\n"); } else endTrace(); }
@@ -217,6 +220,15 @@ public final class GameProbe1201 {
             case "onground" -> p.onGround() ? 1 : 0;
             case "tiltyaw" -> Gameplay1201.lastTiltYaw;
             case "tiltstrength" -> Gameplay1201.lastTiltStrength;
+            case "cheatsguests" -> {
+                var server = mc.getSingleplayerServer();
+                Boolean guests = server == null ? null : com.thelads.core.client.WorldCheats.guests(com.thelads.core.v1_20_1.game.cheats.Cheats1201.folder(server));
+                yield guests == null ? -1 : guests ? 1 : 0;
+            }
+            case "essentialswitch" -> {
+                Boolean essential = com.thelads.core.client.WorldCheats.essential();
+                yield essential == null ? -1 : essential ? 1 : 0;
+            }
             case "swinging" -> p.swinging ? 1 : 0;
             case "using" -> p.isUsingItem() ? 1 : 0;
             case "resscale" -> com.thelads.core.v1_20_1.game.RenderScale1201.lastScale;
