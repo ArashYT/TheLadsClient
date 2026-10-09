@@ -1,0 +1,64 @@
+// Derived from Dynamic FPS 3.11.9 (MIT); see licenses/DynamicFPS-LICENSE.txt.
+package com.thelads.core.v1_20_1.perf.dynamicfps.feature.state;
+
+import com.thelads.core.v1_20_1.perf.dynamicfps.config.option.GraphicsState;
+import net.minecraft.client.CloudStatus;
+import net.minecraft.client.GraphicsStatus;
+import net.minecraft.client.Options;
+import net.minecraft.client.ParticleStatus;
+
+/*
+ * Helper for saving, overriding, and re-applying vanilla options.
+ *
+ * Different power states may be configured to use different graphics settings.
+ */
+public class OptionHolder {
+	private static int biomeBlendRadius;
+	private static CloudStatus cloudStatus;
+	private static GraphicsStatus graphicsStatus;
+	private static boolean ambientOcclusion;
+	private static ParticleStatus particlesStatus;
+	private static boolean entityShadows;
+	private static double entityDistance;
+
+	/*
+	 * Create an in-memory copy of current vanilla graphics options.
+	 *
+	 * This MUST be called while graphics options have not been changed yet.
+	 */
+	public static void copyOptions(Options options) {
+		biomeBlendRadius = options.biomeBlendRadius().get();
+		cloudStatus = options.cloudStatus().get();
+		graphicsStatus = options.graphicsMode().get();
+		ambientOcclusion = options.ambientOcclusion().get();
+		particlesStatus = options.particles().get();
+		entityShadows = options.entityShadows().get();
+		entityDistance = options.entityDistanceScaling().get();
+	}
+
+	/*
+	 * Apply or revert the graphics options for the specified graphics state.
+	 */
+	public static void applyOptions(Options options, GraphicsState state) {
+		if (state == GraphicsState.DEFAULT) {
+			options.biomeBlendRadius().set(biomeBlendRadius);
+			options.cloudStatus().set(cloudStatus);
+			options.graphicsMode().set(graphicsStatus);
+			options.ambientOcclusion().set(ambientOcclusion);
+			options.particles().set(particlesStatus);
+			options.entityShadows().set(entityShadows);
+			options.entityDistanceScaling().set(entityDistance);
+		} else { // state == GraphicsState.REDUCED
+			options.cloudStatus().set(CloudStatus.OFF);
+			options.particles().set(ParticleStatus.MINIMAL);
+			options.entityShadows().set(false);
+			options.entityDistanceScaling().set(0.5);
+
+			if (state == GraphicsState.MINIMAL) {
+				options.graphicsMode().set(GraphicsStatus.FAST);
+				options.biomeBlendRadius().set(0);
+				options.ambientOcclusion().set(false);
+			}
+		}
+	}
+}

@@ -31,6 +31,9 @@ dependencies {
     include 'club.minnced:discord-rpc-release:v3.3.0'
 }
 
+apply from: 'perf.gradle'
+apply from: 'embedded.gradle'
+
 processResources {
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {

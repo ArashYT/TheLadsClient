@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.perf.mixin",
+  "plugin": "com.thelads.core.v1_20_1.perf.borderless.BorderlessMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "BorderlessWindowMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -20,8 +20,6 @@
     "BossBarAccessor1201",
     "LocalPlayerMixin",
     "KeyboardInputMixin",
-    "BorderlessWindowMixin",
-    "MinecraftFramerateMixin",
     "KillBannerAttackMixin",
     "KillBannerPacketsMixin",
     "DamageTiltMixin",
