@@ -3,10 +3,15 @@
     Generates a surgical update patch (update-<version>.json) from changes made in the Dev instance.
 .DESCRIPTION
     Compares the active Dev instance against the baseline and compiles:
-    - Added and removed mod JARs
-    - New keybinds as "defaults" (safe for players)
-    - Forced keybind overrides (if specified)
-    - Granular config patches (JSON / TOML / CFG)
+    - Added and removed mod JARs (added jars get a download url: Modrinth by hash, else -FallbackUrlBase)
+    - New keybinds as "defaults" (safe for players: applied only when the player has no value yet)
+    - Keybinds that have to be set although the dev options.txt does not know them yet (-ExtraKeybindDefaults)
+    - Forced keybind overrides (-ForceKeybinds)
+    - Config patch templates (only with -IncludeConfigTemplates; an empty template changes nothing)
+    theladscore.jar is ignored: the launcher keeps every Lads Core in a modpack at its newest bundled build by itself.
+.EXAMPLE
+    .\generate-patch.ps1 -NewVersion 1.0.1 -Description "Adds c2mef, lazyyyyy, crawl-on-demand" `
+        -ExtraKeybindDefaults @{ 'key_key.crawlondemand.toggle_crawl' = 'key.keyboard.j' }
 #>
 
 [CmdletBinding()]
@@ -17,7 +22,18 @@ param(
     [string]$Description = "Surgical update patch",
     [string]$InstanceGameDir = "$env:APPDATA\.theladsclient\instances\zero-smp-1.20.1\minecraft",
     [string]$BaselineDir = "$PSScriptRoot\baseline-1.0.0",
-    [string]$OutputDir = "$PSScriptRoot\patches"
+    [string]$OutputDir = "$PSScriptRoot\patches",
+    [string]$OutputFile = "",
+
+    # options.txt keys a mod adds only once it has run (so the dev options.txt lacks them): key_<id> -> key.keyboard.x
+    [hashtable]$ExtraKeybindDefaults = @{},
+    [hashtable]$ForceKeybinds = @{},
+    # Extra jar names the patch removes besides the ones missing from the dev instance (e.g. duplicates Lads Core replaces)
+    [string[]]$ExtraRemoveMods = @(),
+    # url = <base>/<escaped file name> for added jars Modrinth does not host
+    [string]$FallbackUrlBase = "",
+    [switch]$SkipUrlLookup,
+    [switch]$IncludeConfigTemplates
 )
 
 Set-StrictMode -Off
@@ -42,26 +58,51 @@ if (Test-Path $baselineManifestPath) {
 $currentMods = @{}
 $currentModFiles = Get-ChildItem (Join-Path $InstanceGameDir "mods") -Filter "*.jar" -ErrorAction SilentlyContinue
 foreach ($jar in $currentModFiles) {
+    if ($jar.Name -like "theladscore*.jar" -or $jar.Name -like "*TheLadsCore*.jar") { continue }
     $sha1 = (Get-FileHash -LiteralPath $jar.FullName -Algorithm SHA1).Hash.ToLowerInvariant()
     $currentMods[$jar.Name] = $sha1
+}
+
+# Modrinth hash -> download url for the added jars (one request).
+$modrinthUrls = @{}
+$newNames = @($currentMods.Keys | Where-Object { -not $baselineMods.ContainsKey($_) })
+if ($newNames.Count -gt 0 -and -not $SkipUrlLookup) {
+    try {
+        $body = @{ hashes = @($newNames | ForEach-Object { $currentMods[$_] }); algorithm = "sha1" } | ConvertTo-Json -Compress
+        $found = Invoke-RestMethod -Method Post -Uri "https://api.modrinth.com/v2/version_files" -Body $body `
+            -ContentType "application/json" -UserAgent "TheLadsClient-modpack-manager/1.8.5"
+        foreach ($prop in $found.PSObject.Properties) {
+            $file = @($prop.Value.files | Where-Object { $_.hashes.sha1 -eq $prop.Name })[0]
+            if ($file) { $modrinthUrls[$prop.Name] = $file.url }
+        }
+    } catch {
+        Write-Warning "Modrinth lookup failed ($($_.Exception.Message)); added jars get no url unless -FallbackUrlBase is set."
+    }
 }
 
 $addMods = @()
 $removeMods = @()
 
-foreach ($name in $currentMods.Keys) {
+foreach ($name in ($currentMods.Keys | Sort-Object)) {
     if (-not $baselineMods.ContainsKey($name)) {
-        $addMods += [PSCustomObject]@{
-            fileName = $name
-            sha1 = $currentMods[$name]
-        }
+        $sha1 = $currentMods[$name]
+        $url = $modrinthUrls[$sha1]
+        if (-not $url -and $FallbackUrlBase) { $url = $FallbackUrlBase.TrimEnd('/') + "/" + [uri]::EscapeDataString($name) }
+        if (-not $url) { Write-Warning "No download url for ${name}: the patch cannot fetch it (pack archives still carry it)." }
+        $entry = [ordered]@{ fileName = $name; sha1 = $sha1 }
+        if ($url) { $entry["url"] = $url }
+        $addMods += [PSCustomObject]$entry
     }
 }
 
-foreach ($name in $baselineMods.Keys) {
+foreach ($name in ($baselineMods.Keys | Sort-Object)) {
+    if ($name -like "theladscore*.jar") { continue }
     if (-not $currentMods.ContainsKey($name)) {
         $removeMods += $name
     }
+}
+foreach ($name in $ExtraRemoveMods) {
+    if ($removeMods -notcontains $name) { $removeMods += $name }
 }
 
 # 2. Keybinds Diff
@@ -87,19 +128,22 @@ $forceKeybinds = [ordered]@{}
 foreach ($k in $currentOptions.Keys) {
     if ($k.StartsWith("key_")) {
         $val = $currentOptions[$k]
-        if (-not $baselineOptions.Contains($k)) {
+        # An unbound key is what Minecraft assigns anyway; shipping it would only be noise.
+        if (-not $baselineOptions.Contains($k) -and $val -ne "key.keyboard.unknown") {
             # Brand new keybind from a newly added mod -> assign as safe default!
             $defaultKeybinds[$k] = $val
         }
     }
 }
+foreach ($k in $ExtraKeybindDefaults.Keys) { $defaultKeybinds[$k] = [string]$ExtraKeybindDefaults[$k] }
+foreach ($k in $ForceKeybinds.Keys) { $forceKeybinds[$k] = [string]$ForceKeybinds[$k] }
 
 # 3. Config Diffs
 $baselineConfigDir = Join-Path $BaselineDir "config"
 $currentConfigDir = Join-Path $InstanceGameDir "config"
 $configPatches = @()
 
-if (Test-Path $currentConfigDir) {
+if ($IncludeConfigTemplates -and (Test-Path $currentConfigDir)) {
     $currentConfigFiles = Get-ChildItem $currentConfigDir -Recurse -File
     foreach ($file in $currentConfigFiles) {
         $relPath = $file.FullName.Substring($currentConfigDir.Length).TrimStart('\', '/')
@@ -133,20 +177,22 @@ $patch = [PSCustomObject]@{
     version = $NewVersion
     description = $Description
     mods = [PSCustomObject]@{
-        add = $addMods
-        remove = $removeMods
+        add = @($addMods)
+        remove = @($removeMods)
     }
     keybinds = [PSCustomObject]@{
         defaults = $defaultKeybinds
         force = $forceKeybinds
     }
-    configPatches = $configPatches
+    configPatches = @($configPatches)
 }
 
-$patchFile = Join-Path $OutputDir "update-$NewVersion.json"
-$patch | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $patchFile -Encoding UTF8
+$patchFile = if ($OutputFile) { $OutputFile } else { Join-Path $OutputDir "update-$NewVersion.json" }
+$json = $patch | ConvertTo-Json -Depth 6
+# UTF-8 without BOM on both Windows PowerShell 5.1 and 7.
+[System.IO.File]::WriteAllText($patchFile, $json, (New-Object System.Text.UTF8Encoding($false)))
 
-Write-Host "`n[OK] Successfully generated patch template: $patchFile" -ForegroundColor Green
+Write-Host "`n[OK] Successfully generated patch: $patchFile" -ForegroundColor Green
 Write-Host "  - Added Mods:    $($addMods.Count)"
 Write-Host "  - Removed Mods:  $($removeMods.Count)"
 Write-Host "  - New Keybinds:  $($defaultKeybinds.Count)"

@@ -13,6 +13,9 @@
 param(
     [string]$InstanceGameDir = "$env:APPDATA\.theladsclient\instances\zero-smp-1.20.1\minecraft",
     [string]$BaselineDir = "$PSScriptRoot\baseline-1.0.0",
+    # options.txt keys a patch will default although the dev options.txt lacks them (checked for conflicts too)
+    [hashtable]$ExtraKeybindDefaults = @{},
+    [int]$MaxConfigList = 40,
     [switch]$GeneratePatchTemplate
 )
 
@@ -49,6 +52,8 @@ if (Test-Path $baselineManifestPath) {
 $currentMods = @{}
 $currentModFiles = Get-ChildItem (Join-Path $InstanceGameDir "mods") -Filter "*.jar" -ErrorAction SilentlyContinue
 foreach ($jar in $currentModFiles) {
+    # Lads Core is kept at its newest bundled build by the launcher itself, not by patches.
+    if ($jar.Name -like "theladscore*.jar" -or $jar.Name -like "*TheLadsCore*.jar") { continue }
     $sha1 = (Get-FileHash -LiteralPath $jar.FullName -Algorithm SHA1).Hash.ToLowerInvariant()
     $currentMods[$jar.Name] = $sha1
 }
@@ -73,6 +78,7 @@ foreach ($name in $currentMods.Keys) {
 }
 
 foreach ($name in $baselineMods.Keys) {
+    if ($name -like "theladscore*.jar") { continue }
     if (-not $currentMods.ContainsKey($name) -and -not ($updatedMods | Where-Object { $_.Old -eq $name })) {
         $removedMods += $name
     }
@@ -125,7 +131,7 @@ foreach ($k in $currentOptions.Keys) {
     if ($k.StartsWith("key_")) {
         $currentKeybindings[$k] = $val
         if (-not $baselineOptions.Contains($k)) {
-            $newKeybinds[$k] = $val
+            if ($val -ne "key.keyboard.unknown") { $newKeybinds[$k] = $val }
         } elseif ($baselineOptions[$k] -ne $val) {
             $changedKeybinds[$k] = [PSCustomObject]@{ Old = $baselineOptions[$k]; New = $val }
         }
@@ -147,6 +153,12 @@ if ($newKeybinds.Count -eq 0 -and $changedKeybinds.Count -eq 0) {
             Write-Host "      ~ ${k}: '$($changedKeybinds[$k].Old)' -> '$($changedKeybinds[$k].New)'" -ForegroundColor Cyan
         }
     }
+}
+
+# Keys a patch will default for mods that have not run yet take part in the conflict check
+foreach ($k in $ExtraKeybindDefaults.Keys) {
+    $currentKeybindings[$k] = [string]$ExtraKeybindDefaults[$k]
+    Write-Host "  [+] Proposed default: $k = $($ExtraKeybindDefaults[$k])" -ForegroundColor Green
 }
 
 # Conflict Checker
@@ -211,8 +223,11 @@ if ($modifiedConfigs.Count -eq 0 -and $newConfigs.Count -eq 0) {
     }
     if ($modifiedConfigs.Count -gt 0) {
         Write-Host "  [~] Modified Config Files ($($modifiedConfigs.Count)):" -ForegroundColor Cyan
-        foreach ($c in $modifiedConfigs) {
+        foreach ($c in ($modifiedConfigs | Select-Object -First $MaxConfigList)) {
             Write-Host "      ~ $c" -ForegroundColor Cyan
+        }
+        if ($modifiedConfigs.Count -gt $MaxConfigList) {
+            Write-Host "      ... and $($modifiedConfigs.Count - $MaxConfigList) more (-MaxConfigList to see them)" -ForegroundColor DarkCyan
         }
     }
 }
