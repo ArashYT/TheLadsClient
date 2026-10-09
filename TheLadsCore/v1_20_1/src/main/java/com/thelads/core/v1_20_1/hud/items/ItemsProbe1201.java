@@ -44,7 +44,7 @@ public final class ItemsProbe1201 {
         if (done || mc.level == null || mc.player == null || mc.getSingleplayerServer() == null || mc.getOverlay() != null) return;
         Path request = mc.gameDirectory.toPath().resolve(".lads-qa-items");
         boolean file = Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS);
-        if (!file && !Boolean.getBoolean("thelads.verifyItems1201")) return;
+        if (!file && !Boolean.getBoolean("thelads.verifyItems1201") && !scriptAsks(mc)) return;
         done = true;
         try {
             if (file) Files.delete(request);
@@ -55,6 +55,16 @@ public final class ItemsProbe1201 {
             LOGGER.info("Lads items probe END: {} passed, 0 failed", passed);
         } catch (Throwable failure) {
             LOGGER.error("Lads items probe FAILED after {} checks", passed, failure);
+        }
+    }
+
+    /** A "# items-qa" comment line in the harness's QA script file (.lads-qa-script.txt) also asks for the probe. */
+    private static boolean scriptAsks(Minecraft mc) {
+        try {
+            Path script = mc.gameDirectory.toPath().resolve(".lads-qa-script.txt");
+            return Files.isRegularFile(script) && Files.readAllLines(script).stream().anyMatch(line -> line.strip().equals("# items-qa"));
+        } catch (java.io.IOException failure) {
+            return false;
         }
     }
 

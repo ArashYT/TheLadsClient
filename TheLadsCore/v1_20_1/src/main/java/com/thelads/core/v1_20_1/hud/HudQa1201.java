@@ -21,12 +21,23 @@ final class HudQa1201 {
 
     private HudQa1201() {}
 
+    /** True when the harness's QA script file (.lads-qa-script.txt) has a "# <flag>" comment line: how a script switches QA logging on. */
+    static boolean scriptAsks(Path dir, String flag) {
+        try {
+            Path script = dir.resolve(".lads-qa-script.txt");
+            return Files.isRegularFile(script) && Files.readAllLines(script).stream().anyMatch(line -> line.strip().equals("# " + flag));
+        } catch (java.io.IOException failure) {
+            return false;
+        }
+    }
+
     static void tick(Minecraft mc) {
         if (!checked) {
             checked = true;
             Path dir = FabricLoader.getInstance().getGameDir();
             String normalized = dir.toAbsolutePath().toString().replace('\\', '/').toLowerCase(Locale.ROOT);
-            if (normalized.contains("/artifacts/verification/") && Files.isRegularFile(dir.resolve(".lads-qa-hud"))) marker = dir.resolve(".lads-qa-hud");
+            if (normalized.contains("/artifacts/verification/") && (Files.isRegularFile(dir.resolve(".lads-qa-hud")) || scriptAsks(dir, "hud-qa")))
+                marker = dir.resolve(".lads-qa-hud");
         }
         if (marker == null || mc.level == null || mc.player == null || ++ticks % 100 != 0) return;
         try {
