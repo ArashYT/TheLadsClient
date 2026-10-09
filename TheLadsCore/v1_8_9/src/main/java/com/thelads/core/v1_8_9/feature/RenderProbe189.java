@@ -44,7 +44,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.MathHelper;
-import net.minecraft.util.ScreenShotHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSettings;
 import org.apache.logging.log4j.LogManager;
@@ -165,9 +164,18 @@ final class RenderProbe189 {
         try {
             File folder = new File(mc.mcDataDir, "lads-qa");
             new File(folder, "screenshots").mkdirs();
-            ScreenShotHelper.saveScreenshot(folder, "render185-" + name + ".png", mc.displayWidth, mc.displayHeight, mc.getFramebuffer());
-            BufferedImage image = ImageIO.read(new File(folder, "screenshots/render185-" + name + ".png"));
-            SHOTS.put(name, image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth()));
+            // The game framebuffer is still bound at the end of updateCameraAndRender: read it straight back (rows bottom-up).
+            int w = mc.displayWidth, h = mc.displayHeight;
+            IntBuffer buffer = BufferUtils.createIntBuffer(w * h);
+            GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
+            GL11.glReadPixels(0, 0, w, h, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+            int[] raw = new int[w * h], pixels = new int[w * h];
+            buffer.get(raw);
+            for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) pixels[(h - 1 - y) * w + x] = raw[y * w + x] | 0xFF000000;
+            BufferedImage image = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+            image.setRGB(0, 0, w, h, pixels, 0, w);
+            ImageIO.write(image, "png", new File(folder, "screenshots/render185-" + name + ".png"));
+            SHOTS.put(name, pixels);
             LOG.info("Lads render 1.8.5 frame lads-qa/screenshots/render185-{}.png", name);
         } catch (Exception failure) { RenderQa.failures++; LOG.error("Lads render 1.8.5 capture FAILED: frame " + name, failure); }
     }

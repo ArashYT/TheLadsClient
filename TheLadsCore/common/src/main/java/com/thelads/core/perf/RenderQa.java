@@ -24,7 +24,8 @@ public final class RenderQa {
     private static long[] samples = new long[4096];
     private static int sampleCount;
     private static long kept0, culled0, lod0, copied0, uploaded0, animNanos0, animTicks0;
-    private static long itemStart, itemNanos;
+    private static long itemStart, itemNanos, gpuNanos;
+    private static int gpuFrames;
     private static int itemDepth;
 
     private RenderQa() {}
@@ -49,7 +50,14 @@ public final class RenderQa {
 
     public static void itemEnd() { if (recording && itemDepth > 0 && --itemDepth == 0) itemNanos += System.nanoTime() - itemStart; }
 
+    /** While a window records: the adapter times frames on the GPU too (GL timer queries) and hands each result here. */
+    public static boolean recording() { return recording; }
+
+    public static void gpuSample(long nanos) { if (recording) { gpuNanos += nanos; gpuFrames++; } }
+
     public static void startWindow() {
+        gpuNanos = 0;
+        gpuFrames = 0;
         sampleCount = 0;
         frameNanos = 0;
         itemNanos = 0;
@@ -76,6 +84,7 @@ public final class RenderQa {
         w.put("p95Ms", round(s.length == 0 ? 0 : s[Math.min(s.length - 1, (int) (s.length * 0.95))] / 1e6));
         int frames = Math.max(1, s.length);
         w.put("itemRenderUsPerFrame", round(itemNanos / 1e3 / frames));
+        if (gpuFrames > 0) w.put("gpuMs", round(gpuNanos / 1e6 / gpuFrames));
         w.put("quadsKeptPerFrame", (BuiltInRender.quadsKept - kept0) / frames);
         w.put("quadsCulledPerFrame", (BuiltInRender.quadsCulled - culled0) / frames);
         w.put("quadsLodPerFrame", (BuiltInRender.quadsLod - lod0) / frames);

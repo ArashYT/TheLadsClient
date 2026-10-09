@@ -133,10 +133,25 @@ public final class RenderProbe1201 {
 
     // ---- frames (GameRendererProbeMixin) ----
 
-    public static void frameStart() { RenderQa.phaseStart(); }
+    private static int[] queries;
+    private static int gpuFrame;
+    private static boolean timing;
+
+    /** Frame start: CPU timing, and a GL timer query (two alternating, read a frame later) while a window records. */
+    public static void frameStart() {
+        RenderQa.phaseStart();
+        if (!RenderQa.recording()) return;
+        if (queries == null) queries = new int[]{org.lwjgl.opengl.GL15C.glGenQueries(), org.lwjgl.opengl.GL15C.glGenQueries()};
+        int query = queries[gpuFrame & 1];
+        if (gpuFrame >= 2 && org.lwjgl.opengl.GL15C.glGetQueryObjecti(query, org.lwjgl.opengl.GL15C.GL_QUERY_RESULT_AVAILABLE) != 0)
+            RenderQa.gpuSample(org.lwjgl.opengl.GL33C.glGetQueryObjecti64(query, org.lwjgl.opengl.GL15C.GL_QUERY_RESULT));
+        org.lwjgl.opengl.GL15C.glBeginQuery(org.lwjgl.opengl.GL33C.GL_TIME_ELAPSED, query);
+        timing = true;
+    }
 
     public static void frameEnd() {
         RenderQa.phaseEnd(true);
+        if (timing) { org.lwjgl.opengl.GL15C.glEndQuery(org.lwjgl.opengl.GL33C.GL_TIME_ELAPSED); gpuFrame++; timing = false; }
         if (pendingShot == null) return;
         String name = pendingShot;
         pendingShot = null;
