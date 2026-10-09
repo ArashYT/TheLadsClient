@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.feature.clumps.mixin",
+  "plugin": "com.thelads.core.v1_20_1.feature.clumps.ClumpsMixinPlugin1201",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": ["ExperienceOrbMixin", "ExperienceOrbAccess"],
+  "client": [],
+  "injectors": { "defaultRequire": 1 }
+}

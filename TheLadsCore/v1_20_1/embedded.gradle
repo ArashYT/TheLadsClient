@@ -15,3 +15,16 @@ processResources {
         into 'META-INF/lads-sources/mixin-configs'
     }
 }
+
+// Native Lads modules adapted from MIT upstream mods keep their complete modified sources in the jar too, like the embedded
+// mods above, but live in the feature package (clumps: src/main/java/com/thelads/core/v1_20_1/feature/clumps).
+processResources {
+    from('src/main/java') {
+        include 'com/thelads/core/v1_20_1/feature/clumps/**'
+        into 'META-INF/lads-sources/clumps/v1_20_1'
+    }
+    from('src/main/resources') {
+        include 'theladscore.v1_20_1.clumps.mixins.json'
+        into 'META-INF/lads-sources/clumps/resources'
+    }
+}
