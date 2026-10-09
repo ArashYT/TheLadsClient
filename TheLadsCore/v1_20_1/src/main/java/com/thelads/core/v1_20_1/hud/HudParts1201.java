@@ -11,8 +11,8 @@ import net.minecraft.client.gui.GuiGraphics;
  * overlay with {@link #begin} and {@link #end} instead.
  */
 public final class HudParts1201 {
-    /** What a begun part must undo: its pose and the Auto Hide scope outside it. */
-    public record Scope(PoseStack pose, float outerOpacity, boolean faded) {}
+    /** What a begun part must undo: its pose (the stack and the entry this part pushed) and the Auto Hide scope outside it. */
+    public record Scope(PoseStack pose, PoseStack.Pose entry, float outerOpacity, boolean faded) {}
 
     private HudParts1201() {}
 
@@ -51,7 +51,7 @@ public final class HudParts1201 {
             NativeAutohide1201.scopeOpacity = opacity;
             graphics.setColor(1, 1, 1, opacity);
         }
-        return new Scope(pose, outer, faded);
+        return new Scope(pose, pose.last(), outer, faded);
     }
 
     public static void end(GuiGraphics graphics, Scope scope) {
@@ -60,6 +60,10 @@ public final class HudParts1201 {
             graphics.setColor(1, 1, 1, 1);
             NativeAutohide1201.scopeOpacity = scope.outerOpacity();
         }
-        scope.pose().popPose();
+        // Another mod's overlay (under Forge) can leave a push of its own on the stack: popping once would then remove its push and keep
+        // this part's lift on the pose for everything drawn after it, every screen of the frame included. Pop down to this part's entry.
+        PoseStack pose = scope.pose();
+        for (int guard = 0; pose.last() != scope.entry() && !pose.clear() && guard < 64; guard++) pose.popPose();
+        if (pose.last() == scope.entry()) pose.popPose();
     }
 }

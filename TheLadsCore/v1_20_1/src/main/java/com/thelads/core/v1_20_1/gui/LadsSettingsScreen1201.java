@@ -84,6 +84,10 @@ public class LadsSettingsScreen1201 extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         ui.setReducedMotion(minecraft.options.screenEffectScale().get() <= 0);
+        if (com.thelads.core.v1_20_1.feature.UiQa1201.poseProbe) { // QA only: see UiQa1201
+            com.thelads.core.v1_20_1.feature.UiQa1201.logPose("screen", g);
+            com.thelads.core.v1_20_1.feature.UiQa1201.poseProbe = false;
+        }
         var adapter = new GuiGraphicsLadsAdapter1201(g, this.font) {
             // Fullbright's preview shows the live world (no HUD), so a gamma change is seen as it is made.
             @Override

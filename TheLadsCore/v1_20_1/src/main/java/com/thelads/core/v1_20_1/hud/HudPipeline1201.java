@@ -13,6 +13,7 @@ public final class HudPipeline1201 {
     private HudPipeline1201() {}
 
     public static void beforeGui(GuiGraphics graphics) {
+        com.thelads.core.v1_20_1.feature.UiQa1201.logPose("before the GUI", graphics);
         NativeAutohide1201.scopeOpacity = 1;
     }
 
@@ -29,6 +30,8 @@ public final class HudPipeline1201 {
 
     /** After the whole vanilla GUI (and the mods' HUDs drawn with it): the Lads HUD, then the kill banner above it. */
     public static void afterGui(GuiGraphics graphics) {
+        ForgeOverlays1201.closeUnfinished(null); // Forge: a part of the last cancelled overlay would otherwise stay open into the screens
+        com.thelads.core.v1_20_1.feature.UiQa1201.logPose("after the GUI", graphics);
         layer(graphics);
         try {
             NativeAutohide1201.renderLadsHud(graphics);
