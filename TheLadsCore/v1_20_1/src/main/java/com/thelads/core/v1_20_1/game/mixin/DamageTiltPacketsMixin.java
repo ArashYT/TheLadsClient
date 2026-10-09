@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPacketListener.class)
 public class DamageTiltPacketsMixin {
-    @Inject(method = "handleDamageEvent", at = @At("TAIL"), require = 0)
+    @Inject(method = "handleDamageEvent", at = @At("TAIL"))
     private void lads$hurt(ClientboundDamageEventPacket packet, CallbackInfo callback) {
         if (!own(packet.entityId())) return;
         long now = System.currentTimeMillis();
@@ -20,7 +20,7 @@ public class DamageTiltPacketsMixin {
         DamageTilt.CLIENT.direction(Float.NaN, now);
     }
 
-    @Inject(method = "handleHurtAnimation", at = @At("TAIL"), require = 0)
+    @Inject(method = "handleHurtAnimation", at = @At("TAIL"))
     private void lads$direction(ClientboundHurtAnimationPacket packet, CallbackInfo callback) {
         if (!own(packet.id())) return;
         long now = System.currentTimeMillis();
