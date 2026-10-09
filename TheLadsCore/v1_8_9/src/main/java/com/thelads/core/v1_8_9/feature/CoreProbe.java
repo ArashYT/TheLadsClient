@@ -599,6 +599,7 @@ public final class CoreProbe {
         expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.TheLadsCore189.GAMEPLAY_MODULES));
         for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.LIMITED) expected.add(module[0]);
         if (SkinLayers189.LOADED) expected.add("SkinLayers");
+        expected.add(com.thelads.core.client.ParticleCore.MODULE); // ParticleCore189 (1.8.5)
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
         check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 5 /* DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
@@ -609,7 +610,9 @@ public final class CoreProbe {
     }
 
     private static volatile boolean serverBusy, raced;
+    private static volatile int shutdownTick;
     private static IntegratedServer leaving;
+    private static final List<java.util.concurrent.Future<?>> notRun = new java.util.ArrayList<>();
     private static long leftAfterMs;
 
     /**
@@ -617,17 +620,40 @@ public final class CoreProbe {
      * loadWorld(null) queues "log every player out" for the server thread and waits for it (OptiFine only skips that task once
      * the server has stopped running). A server that stops right after that check, as when its owner's connection drops, leaves
      * its tick loop without running the task, and vanilla waited forever (Not Responding). Forced here on every run: a server
-     * task keeps the server's task queue busy until this thread is blocked queuing its logout, then stops the server as a
-     * dropped owner does (initiateShutdown on the server thread); the queued logout task never runs.
+     * task keeps the server's task queue locked until this thread is blocked queuing its logout, then stops the server as a
+     * dropped owner does (initiateShutdown on the server thread), lets the logout in and takes it back out of the queue, so it
+     * never runs. Taking it out matters on a server that is behind: MinecraftServer.run runs the ticks it owes back to back
+     * without looking at serverRunning, and the next of those would run the logout (the race lost, the fix never exercised:
+     * the 1.8.5 QA runs failed that way under load). One server tick 300 ms late before the race makes every run a catch-up.
      */
-    private static boolean leaveWorld(Minecraft mc) {
+    private static boolean leaveWorld(Minecraft mc) throws Exception {
         final IntegratedServer server = leaving = mc.getIntegratedServer();
         final Thread client = Thread.currentThread();
+        final java.util.Queue<java.util.concurrent.FutureTask<?>> tasks = ReflectionHelper.getPrivateValue(net.minecraft.server.MinecraftServer.class,
+            server, "futureTaskQueue", "field_175589_i");
+        final java.util.concurrent.CountDownLatch late = new java.util.concurrent.CountDownLatch(1);
+        server.addScheduledTask(() -> {
+            try { Thread.sleep(300); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            late.countDown();
+        });
+        check(late.await(10, java.util.concurrent.TimeUnit.SECONDS), "the QA world's server ran a tick 300 ms late (it is behind)");
         server.addScheduledTask(() -> {
             serverBusy = true;
             long end = System.nanoTime() + 10_000_000_000L;
             while (!(raced = queuingLogout(client)) && System.nanoTime() < end) LockSupport.parkNanos(1_000_000L);
             server.initiateShutdown();
+            shutdownTick = server.getTickCounter();
+            // This task runs under the queue's lock: waiting on it lets the blocked client queue its logout.
+            synchronized (tasks) {
+                end = System.nanoTime() + 10_000_000_000L;
+                try {
+                    while (tasks.isEmpty() && System.nanoTime() < end) tasks.wait(5);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                notRun.addAll(tasks);
+                tasks.clear();
+            }
         });
         long end = System.nanoTime() + 10_000_000_000L;
         while (!serverBusy && System.nanoTime() < end) LockSupport.parkNanos(1_000_000L);
@@ -647,9 +673,10 @@ public final class CoreProbe {
     }
 
     private static boolean leftWorld(Minecraft mc) {
-        java.util.Queue<?> tasks = ReflectionHelper.getPrivateValue(net.minecraft.server.MinecraftServer.class, leaving, "futureTaskQueue", "field_175589_i");
-        boolean unrun = false;
-        for (Object task : tasks) unrun |= !((java.util.concurrent.Future<?>) task).isDone();
+        boolean unrun = !notRun.isEmpty();
+        for (java.util.concurrent.Future<?> task : notRun) unrun &= !task.isDone();
+        LOG.info("Lads 1.8.9 core probe: leave race: client blocked queuing its logout {}, {} task(s) queued after the stop and never run {}, "
+            + "{} server tick(s) after the stop", raced, notRun.size(), unrun, leaving.getTickCounter() - shutdownTick);
         check(raced && unrun, "the client queued its logout task just as the server stopped on its own, and the server never ran it (the freeze's race, forced)");
         check(leaving.isServerStopped() && mc.theWorld == null && mc.getIntegratedServer() == null && mc.currentScreen instanceof GuiMainMenu,
             "loadWorld(null) still returned (" + leftAfterMs + " ms) and the QA world closed back to the title screen");
