@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.renderer.v1.mesh.QuadEmitter;
 import net.minecraft.client.Minecraft;
@@ -25,6 +26,7 @@ import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.blockentity.BellRenderer;
 import net.minecraft.client.renderer.blockentity.ChestRenderer;
+import net.minecraft.client.renderer.blockentity.DecoratedPotRenderer;
 import net.minecraft.client.renderer.blockentity.ShulkerBoxRenderer;
 import net.minecraft.client.renderer.blockentity.state.ChestRenderState.ChestMaterialType;
 import net.minecraft.client.renderer.texture.SpriteLoader;
@@ -35,22 +37,27 @@ import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.ItemInstance;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.CopperChestBlock;
+import net.minecraft.world.level.block.DecoratedPotBlock;
 import net.minecraft.world.level.block.EnderChestBlock;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
 import net.minecraft.world.level.block.entity.BellBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.entity.ChestLidController;
+import net.minecraft.world.level.block.entity.DecoratedPotBlockEntity;
 import net.minecraft.world.level.block.entity.EnderChestBlockEntity;
+import net.minecraft.world.level.block.entity.PotDecorations;
 import net.minecraft.world.level.block.entity.ShulkerBoxBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
@@ -84,7 +91,7 @@ public final class BakedBlockEntities263 {
     public static synchronized void init() {
         if (initialised) return;
         initialised = true;
-        if (BakedBlockEntities.init()) LOG.info("Baked block entities on (chests, shulker boxes, bells)");
+        if (BakedBlockEntities.init()) LOG.info("Baked block entities on (chests, shulker boxes, bells, decorated pots)");
         else LOG.info("Baked block entities standing down: {}", BakedBlockEntities.standDownReason());
         BakedBlockEntitiesProbe263.register();
     }
@@ -156,7 +163,29 @@ public final class BakedBlockEntities263 {
             return box.getAnimationStatus() != ShulkerBoxBlockEntity.AnimationStatus.CLOSED || box.getProgress(1f) > 0f;
         }
         if (entity instanceof BellBlockEntity bell) return bell.shaking;
+        if (entity instanceof DecoratedPotBlockEntity pot) return potDynamic(pot);
         return false;
+    }
+
+    /**
+     * Decorated pots are baked with plain sides; one with pottery sherds (per block entity, not in the block state) or
+     * wobbling after a hit keeps its renderer.
+     */
+    private static boolean potDynamic(DecoratedPotBlockEntity pot) {
+        DecoratedPotBlockEntity.WobbleStyle wobble = pot.lastWobbleStyle;
+        if (wobble != null && pot.getLevel() != null && pot.getLevel().getGameTime() - pot.wobbleStartedAtTick <= wobble.duration) return true;
+        PotDecorations sides = pot.getDecorations();
+        return patterned(sides.back()) || patterned(sides.left()) || patterned(sides.right()) || patterned(sides.front());
+    }
+
+    private static boolean patterned(Optional<? extends ItemInstance> side) {
+        return side.isPresent() && side.get().get(DataComponents.PROVIDES_POTTERY_PATTERN) != null;
+    }
+
+    /** DecoratedPotBlockEntity.loadAdditional (client): a sherd pot arriving with its chunk is meshed without its baked sides. */
+    public static void potLoaded(DecoratedPotBlockEntity pot) {
+        if (installed.containsKey(pot.getBlockState()) && potDynamic(pot) && BakedBlockEntities.setAnimating(pot.getBlockPos().asLong(), true)
+            && pot.getLevel() != null) markDirty(pot.getBlockPos());
     }
 
     private static boolean lidMoving(ChestLidController lid) {
@@ -206,6 +235,7 @@ public final class BakedBlockEntities263 {
             boolean chests = !PackOverrides.replaces(resources, PackOverrides.CHESTS);
             boolean shulkers = !PackOverrides.replaces(resources, PackOverrides.SHULKERS);
             boolean bells = !PackOverrides.replaces(resources, PackOverrides.BELLS);
+            boolean pots = !PackOverrides.replaces(resources, PackOverrides.POTS);
             Map<ChestType, ChestModel> chestModels = new IdentityHashMap<>();
             ModelPart shulker = shulkers ? models.bakeLayer(ModelLayers.SHULKER_BOX) : null;
             List<BakedQuad> bellBody = null;
@@ -239,6 +269,22 @@ public final class BakedBlockEntities263 {
                         capture.begin();
                         shulker.render(pose, capture, 0, 0, -1);
                         put(state, capture.quads(sprite), false);
+                    }
+                } else if (pots && block == Blocks.DECORATED_POT) {
+                    TextureAtlasSprite base = sprite(Sheets.DECORATED_POT_BASE), side = sprite(Sheets.DECORATED_POT_SIDE);
+                    if (base == null || side == null) continue;
+                    ModelPart potBase = models.bakeLayer(ModelLayers.DECORATED_POT_BASE), potSides = models.bakeLayer(ModelLayers.DECORATED_POT_SIDES);
+                    for (BlockState state : block.getStateDefinition().getPossibleStates()) {
+                        PoseStack pose = new PoseStack();
+                        pose.mulPose(DecoratedPotRenderer.modelTransformation(state.getValue(DecoratedPotBlock.HORIZONTAL_FACING)));
+                        List<BakedQuad> quads = new ArrayList<>();
+                        capture.begin();
+                        for (String name : new String[] {"neck", "top", "bottom"}) potBase.getChild(name).render(pose, capture, 0, 0);
+                        quads.addAll(capture.quads(base));
+                        capture.begin();
+                        for (String name : new String[] {"front", "back", "left", "right"}) potSides.getChild(name).render(pose, capture, 0, 0);
+                        quads.addAll(capture.quads(side));
+                        put(state, List.copyOf(quads), false);
                     }
                 } else if (bells && block == Blocks.BELL) {
                     TextureAtlasSprite sprite = sprite(BellRenderer.BELL_TEXTURE);
@@ -378,6 +424,7 @@ public final class BakedBlockEntities263 {
             "copper_chest", "entity/chest/"};
         static final String[] SHULKERS = {"shulker_box", "entity/shulker/"};
         static final String[] BELLS = {"bell", "entity/bell/"};
+        static final String[] POTS = {"decorated_pot", "entity/decorated_pot/"};
 
         static boolean replaces(ResourceManager resources, String[] keys) {
             for (String key : keys) {

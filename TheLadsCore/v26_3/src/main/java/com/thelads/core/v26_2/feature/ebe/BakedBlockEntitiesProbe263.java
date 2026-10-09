@@ -48,6 +48,7 @@ public final class BakedBlockEntitiesProbe263 {
     private static int shots, shotsSaved, limitBefore;
     private static java.util.concurrent.CompletableFuture<Void> reload;
     private static String phase = "baked";
+    private static int afterReload = -1;
 
     private BakedBlockEntitiesProbe263() {}
 
@@ -110,48 +111,53 @@ public final class BakedBlockEntitiesProbe263 {
                 JSON.append(",\"blockEntities\":").append(placed).append(",\"bakedStates\":").append(installedCount());
                 LOG.info("Lads EBE probe: {} block entities placed, {} baked block states", placed, installedCount());
             }
-            case 160 -> shot(mc, "closed");
-            case 170 -> forced = 0.5f;
-            case 200 -> shot(mc, "mid");
-            case 210 -> forced = 1f;
-            case 240 -> shot(mc, "open");
-            case 250 -> forced = 0f;
-            case 252 -> forced = -1f;
-            case 300 -> shot(mc, "closed-again");
-            case 310 -> bench(mc, true);
-            case 310 + BENCH_TICKS -> bench(mc, false);
-            case 320 + BENCH_TICKS -> {
+            case 260 -> shot(mc, "closed"); // the game-mode chat line has faded by now
+            case 270 -> forced = 0.5f;
+            case 300 -> shot(mc, "mid");
+            case 310 -> forced = 1f;
+            case 340 -> shot(mc, "open");
+            case 350 -> forced = 0f;
+            case 352 -> forced = -1f;
+            case 400 -> shot(mc, "closed-again");
+            case 404 -> side(server, name, true);
+            case 440 -> shot(mc, "closed-side");
+            case 444 -> side(server, name, false);
+            case 470 -> bench(mc, true);
+            case 470 + BENCH_TICKS -> bench(mc, false);
+            case 480 + BENCH_TICKS -> {
                 phase = "vanilla";
                 BakedBlockEntities.setSuspended(true);
                 mc.levelExtractor.allChanged();
             }
-            case 440 + BENCH_TICKS -> shot(mc, "closed");
-            case 450 + BENCH_TICKS -> forced = 0.5f;
-            case 480 + BENCH_TICKS -> shot(mc, "mid");
-            case 490 + BENCH_TICKS -> forced = 1f;
-            case 520 + BENCH_TICKS -> shot(mc, "open");
-            case 530 + BENCH_TICKS -> forced = 0f;
-            case 532 + BENCH_TICKS -> forced = -1f;
-            case 580 + BENCH_TICKS -> shot(mc, "closed-again");
-            case 590 + BENCH_TICKS -> bench(mc, true);
-            case 590 + 2 * BENCH_TICKS -> bench(mc, false);
-            case 600 + 2 * BENCH_TICKS -> {
+            case 600 + BENCH_TICKS -> shot(mc, "closed");
+            case 610 + BENCH_TICKS -> forced = 0.5f;
+            case 640 + BENCH_TICKS -> shot(mc, "mid");
+            case 650 + BENCH_TICKS -> forced = 1f;
+            case 680 + BENCH_TICKS -> shot(mc, "open");
+            case 690 + BENCH_TICKS -> forced = 0f;
+            case 692 + BENCH_TICKS -> forced = -1f;
+            case 740 + BENCH_TICKS -> shot(mc, "closed-again");
+            case 744 + BENCH_TICKS -> side(server, name, true);
+            case 780 + BENCH_TICKS -> shot(mc, "closed-side");
+            case 784 + BENCH_TICKS -> side(server, name, false);
+            case 810 + BENCH_TICKS -> bench(mc, true);
+            case 810 + 2 * BENCH_TICKS -> bench(mc, false);
+            case 820 + 2 * BENCH_TICKS -> {
                 phase = "baked";
                 BakedBlockEntities.setSuspended(false);
                 mc.levelExtractor.allChanged();
             }
-            case 700 + 2 * BENCH_TICKS -> {
+            case 920 + 2 * BENCH_TICKS -> {
                 phase = "reload";
                 reload = mc.reloadResourcePacks();
             }
             default -> {
-                if (reload != null && reload.isDone() && t > 700 + 2 * BENCH_TICKS) {
-                    reload = null;
-                    tick = 2000; // continue after the reload settled
-                } else if (t == 2100) {
+                if (reload != null) {
+                    if (reload.isDone()) { reload = null; afterReload = t; } // F3+T can take a while on a big pack
+                } else if (afterReload >= 0 && t == afterReload + 100) {
                     shot(mc, "after-f3t");
                     JSON.append(",\"bakedStatesAfterReload\":").append(installedCount());
-                } else if (t == 2140) finish(mc);
+                } else if (afterReload >= 0 && t == afterReload + 140) finish(mc);
             }
         }
     }
@@ -173,6 +179,7 @@ public final class BakedBlockEntitiesProbe263 {
         set(level, new BlockPos(x + 12, oy, z), Blocks.BELL.defaultBlockState());
         lid(level, new BlockPos(x + 14, oy, z), chest(block("copper_chest"), ChestType.SINGLE));
         lid(level, new BlockPos(x + 15, oy, z), chest(block("oxidized_copper_chest"), ChestType.SINGLE));
+        set(level, new BlockPos(x + 17, oy, z), Blocks.DECORATED_POT.defaultBlockState());
         // Benchmark field behind it.
         DyeColor[] colors = DyeColor.values();
         int i = 0;
@@ -185,7 +192,7 @@ public final class BakedBlockEntitiesProbe263 {
                     case 2 -> set(level, pos, Blocks.ENDER_CHEST.defaultBlockState());
                     case 3 -> set(level, pos, block(colors[i % colors.length].getName() + "_shulker_box").defaultBlockState());
                     case 4 -> set(level, pos, Blocks.BELL.defaultBlockState());
-                    case 5 -> set(level, pos, chest(block("copper_chest"), ChestType.SINGLE));
+                    case 5 -> set(level, pos, (i % 2 == 0 ? Blocks.DECORATED_POT : block("copper_chest")).defaultBlockState());
                     default -> {
                         set(level, pos, chest(Blocks.CHEST, ChestType.LEFT));
                         set(level, pos.east(), chest(Blocks.CHEST, ChestType.RIGHT));
@@ -217,6 +224,11 @@ public final class BakedBlockEntitiesProbe263 {
             if (be instanceof BakedBlockEntities263.LidHolder holder)
                 ((BakedBlockEntities263.LidTarget) holder.lads$lid()).lads$force(openness);
         }
+    }
+
+    /** Camera beside the showcase row (signs, pots and the rest of the row's left end), or back in front of it. */
+    private static void side(IntegratedServer server, String name, boolean side) {
+        command(server, String.format(Locale.ROOT, "tp %s %.1f %d %.1f 0 35", name, origin.getX() + (side ? 9.5 : 0.5), origin.getY() + 5, origin.getZ() - 3.5));
     }
 
     private static void command(IntegratedServer server, String command) {

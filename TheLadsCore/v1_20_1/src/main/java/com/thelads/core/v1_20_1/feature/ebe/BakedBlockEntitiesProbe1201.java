@@ -58,6 +58,7 @@ public final class BakedBlockEntitiesProbe1201 {
     private static final StringBuilder JSON = new StringBuilder("{");
     private static CompletableFuture<Void> reload;
     private static String phase = "baked";
+    private static int afterReload = -1;
 
     private BakedBlockEntitiesProbe1201() {}
 
@@ -119,48 +120,53 @@ public final class BakedBlockEntitiesProbe1201 {
                 JSON.append(",\"blockEntities\":").append(placed).append(",\"bakedStates\":").append(BakedBlockEntities1201.bakedStates());
                 LOG.info("Lads EBE probe: {} block entities placed, {} baked block states", placed, BakedBlockEntities1201.bakedStates());
             }
-            case 160 -> shot(mc, "closed");
-            case 170 -> forced = 0.5f;
-            case 200 -> shot(mc, "mid");
-            case 210 -> forced = 1f;
-            case 240 -> shot(mc, "open");
-            case 250 -> forced = 0f;
-            case 252 -> forced = -1f;
-            case 300 -> shot(mc, "closed-again");
-            case 310 -> bench(mc, true);
-            case 310 + BENCH_TICKS -> bench(mc, false);
-            case 320 + BENCH_TICKS -> {
+            case 260 -> shot(mc, "closed"); // the game-mode chat line has faded by now
+            case 270 -> forced = 0.5f;
+            case 300 -> shot(mc, "mid");
+            case 310 -> forced = 1f;
+            case 340 -> shot(mc, "open");
+            case 350 -> forced = 0f;
+            case 352 -> forced = -1f;
+            case 400 -> shot(mc, "closed-again");
+            case 404 -> side(server, name, true);
+            case 440 -> shot(mc, "closed-side");
+            case 444 -> side(server, name, false);
+            case 470 -> bench(mc, true);
+            case 470 + BENCH_TICKS -> bench(mc, false);
+            case 480 + BENCH_TICKS -> {
                 phase = "vanilla";
                 BakedBlockEntities.setSuspended(true);
                 mc.levelRenderer.allChanged();
             }
-            case 440 + BENCH_TICKS -> shot(mc, "closed");
-            case 450 + BENCH_TICKS -> forced = 0.5f;
-            case 480 + BENCH_TICKS -> shot(mc, "mid");
-            case 490 + BENCH_TICKS -> forced = 1f;
-            case 520 + BENCH_TICKS -> shot(mc, "open");
-            case 530 + BENCH_TICKS -> forced = 0f;
-            case 532 + BENCH_TICKS -> forced = -1f;
-            case 580 + BENCH_TICKS -> shot(mc, "closed-again");
-            case 590 + BENCH_TICKS -> bench(mc, true);
-            case 590 + 2 * BENCH_TICKS -> bench(mc, false);
-            case 600 + 2 * BENCH_TICKS -> {
+            case 600 + BENCH_TICKS -> shot(mc, "closed");
+            case 610 + BENCH_TICKS -> forced = 0.5f;
+            case 640 + BENCH_TICKS -> shot(mc, "mid");
+            case 650 + BENCH_TICKS -> forced = 1f;
+            case 680 + BENCH_TICKS -> shot(mc, "open");
+            case 690 + BENCH_TICKS -> forced = 0f;
+            case 692 + BENCH_TICKS -> forced = -1f;
+            case 740 + BENCH_TICKS -> shot(mc, "closed-again");
+            case 744 + BENCH_TICKS -> side(server, name, true);
+            case 780 + BENCH_TICKS -> shot(mc, "closed-side");
+            case 784 + BENCH_TICKS -> side(server, name, false);
+            case 810 + BENCH_TICKS -> bench(mc, true);
+            case 810 + 2 * BENCH_TICKS -> bench(mc, false);
+            case 820 + 2 * BENCH_TICKS -> {
                 phase = "baked";
                 BakedBlockEntities.setSuspended(false);
                 mc.levelRenderer.allChanged();
             }
-            case 700 + 2 * BENCH_TICKS -> {
+            case 920 + 2 * BENCH_TICKS -> {
                 phase = "reload";
                 reload = mc.reloadResourcePacks();
             }
             default -> {
-                if (reload != null && reload.isDone() && t > 700 + 2 * BENCH_TICKS) {
-                    reload = null;
-                    tick = 2000;
-                } else if (t == 2100) {
+                if (reload != null) {
+                    if (reload.isDone()) { reload = null; afterReload = t; } // F3+T can take a while on a big pack
+                } else if (afterReload >= 0 && t == afterReload + 100) {
                     shot(mc, "after-f3t");
                     JSON.append(",\"bakedStatesAfterReload\":").append(BakedBlockEntities1201.bakedStates());
-                } else if (t == 2140) finish(mc);
+                } else if (afterReload >= 0 && t == afterReload + 140) finish(mc);
             }
         }
     }
@@ -186,6 +192,7 @@ public final class BakedBlockEntitiesProbe1201 {
         sign(level, new BlockPos(x + 18, oy, z), Blocks.SPRUCE_WALL_SIGN.defaultBlockState().setValue(WallSignBlock.FACING, Direction.NORTH));
         level.setBlock(new BlockPos(x + 20, oy + 2, z), stone, Block.UPDATE_CLIENTS);
         sign(level, new BlockPos(x + 20, oy + 1, z), Blocks.OAK_HANGING_SIGN.defaultBlockState().setValue(CeilingHangingSignBlock.ROTATION, 8));
+        set(level, new BlockPos(x + 22, oy, z), Blocks.DECORATED_POT.defaultBlockState());
         // Benchmark field behind it.
         DyeColor[] colors = DyeColor.values();
         int i = 0;
@@ -198,7 +205,7 @@ public final class BakedBlockEntitiesProbe1201 {
                     case 2 -> set(level, pos, Blocks.ENDER_CHEST.defaultBlockState());
                     case 3 -> set(level, pos, block(colors[i % colors.length].getName() + "_shulker_box").defaultBlockState());
                     case 4 -> bed(level, pos, colors[i % colors.length].getName() + "_bed");
-                    case 5 -> set(level, pos, (i % 2 == 0 ? Blocks.BELL : Blocks.OAK_SIGN).defaultBlockState());
+                    case 5 -> set(level, pos, (i % 3 == 0 ? Blocks.BELL : i % 3 == 1 ? Blocks.OAK_SIGN : Blocks.DECORATED_POT).defaultBlockState());
                     default -> {
                         set(level, pos, chest(Blocks.CHEST, ChestType.LEFT));
                         set(level, pos.east(), chest(Blocks.CHEST, ChestType.RIGHT));
@@ -243,6 +250,11 @@ public final class BakedBlockEntitiesProbe1201 {
             if (be instanceof BakedBlockEntities1201.LidHolder holder)
                 ((BakedBlockEntities1201.LidTarget) holder.lads$lid()).lads$force(openness);
         }
+    }
+
+    /** Camera beside the showcase row (signs, pots and the rest of the row's left end), or back in front of it. */
+    private static void side(IntegratedServer server, String name, boolean side) {
+        command(server, String.format(Locale.ROOT, "tp %s %.1f %d %.1f 0 35", name, origin.getX() + (side ? 9.5 : 0.5), origin.getY() + 5, origin.getZ() - 3.5));
     }
 
     private static void command(IntegratedServer server, String command) {

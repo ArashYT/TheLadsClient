@@ -2,6 +2,7 @@
     "sources": [
         { "type": "directory", "source": "entity/cushion", "prefix": "entity/cushion/" },
         { "type": "directory", "source": "entity/chest", "prefix": "entity/chest/" },
-        { "type": "directory", "source": "entity/shulker", "prefix": "entity/shulker/" }
+        { "type": "directory", "source": "entity/shulker", "prefix": "entity/shulker/" },
+        { "type": "directory", "source": "entity/decorated_pot", "prefix": "entity/decorated_pot/" }
     ]
 }

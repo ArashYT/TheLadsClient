@@ -79,46 +79,46 @@ public final class BakedBlockEntitiesProbe189 {
                 LOG.info("Lads EBE probe: {} block entities placed, baking {}", placed, BakedBlockEntities189.baking());
                 break;
             }
-            case 160: shot(mc, server, "closed"); break;
-            case 170: forced = 0.5F; break;
-            case 200: shot(mc, server, "mid"); break;
-            case 210: forced = 1F; break;
-            case 240: shot(mc, server, "open"); break;
-            case 250: forced = 0F; break;
-            case 252: forced = -1F; break;
-            case 300: shot(mc, server, "closed-again"); break;
-            case 310: bench(mc, true); break;
-            case 310 + BENCH_TICKS: bench(mc, false); break;
-            case 320 + BENCH_TICKS:
+            case 260: shot(mc, server, "closed"); break;
+            case 270: forced = 0.5F; break;
+            case 300: shot(mc, server, "mid"); break;
+            case 310: forced = 1F; break;
+            case 340: shot(mc, server, "open"); break;
+            case 350: forced = 0F; break;
+            case 352: forced = -1F; break;
+            case 400: shot(mc, server, "closed-again"); break;
+            case 410: bench(mc, true); break;
+            case 410 + BENCH_TICKS: bench(mc, false); break;
+            case 420 + BENCH_TICKS:
                 phase = "vanilla";
                 BakedBlockEntities.setSuspended(true);
                 mc.renderGlobal.loadRenderers();
                 break;
-            case 440 + BENCH_TICKS: shot(mc, server, "closed"); break;
-            case 450 + BENCH_TICKS: forced = 0.5F; break;
-            case 480 + BENCH_TICKS: shot(mc, server, "mid"); break;
-            case 490 + BENCH_TICKS: forced = 1F; break;
-            case 520 + BENCH_TICKS: shot(mc, server, "open"); break;
-            case 530 + BENCH_TICKS: forced = 0F; break;
-            case 532 + BENCH_TICKS: forced = -1F; break;
-            case 580 + BENCH_TICKS: shot(mc, server, "closed-again"); break;
-            case 590 + BENCH_TICKS: bench(mc, true); break;
-            case 590 + 2 * BENCH_TICKS: bench(mc, false); break;
-            case 600 + 2 * BENCH_TICKS:
+            case 540 + BENCH_TICKS: shot(mc, server, "closed"); break;
+            case 550 + BENCH_TICKS: forced = 0.5F; break;
+            case 580 + BENCH_TICKS: shot(mc, server, "mid"); break;
+            case 590 + BENCH_TICKS: forced = 1F; break;
+            case 620 + BENCH_TICKS: shot(mc, server, "open"); break;
+            case 630 + BENCH_TICKS: forced = 0F; break;
+            case 632 + BENCH_TICKS: forced = -1F; break;
+            case 680 + BENCH_TICKS: shot(mc, server, "closed-again"); break;
+            case 690 + BENCH_TICKS: bench(mc, true); break;
+            case 690 + 2 * BENCH_TICKS: bench(mc, false); break;
+            case 700 + 2 * BENCH_TICKS:
                 phase = "baked";
                 BakedBlockEntities.setSuspended(false);
                 mc.renderGlobal.loadRenderers();
                 break;
-            case 700 + 2 * BENCH_TICKS:
+            case 800 + 2 * BENCH_TICKS:
                 phase = "reload";
                 mc.refreshResources(); // F3+T, synchronous on 1.8.9
                 mc.renderGlobal.loadRenderers();
                 break;
-            case 800 + 2 * BENCH_TICKS:
+            case 900 + 2 * BENCH_TICKS:
                 shot(mc, server, "after-f3t");
                 JSON.append(",\"bakedAfterReload\":").append(BakedBlockEntities189.baking());
                 break;
-            case 840 + 2 * BENCH_TICKS:
+            case 940 + 2 * BENCH_TICKS:
                 finish(mc);
                 return true;
             default:

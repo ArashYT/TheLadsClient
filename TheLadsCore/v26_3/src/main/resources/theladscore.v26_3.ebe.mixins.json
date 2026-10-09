@@ -10,7 +10,8 @@
     "EbeLevelRendererMixin",
     "EbeChestBlockEntityMixin",
     "EbeEnderChestBlockEntityMixin",
-    "EbeChestLidControllerMixin"
+    "EbeChestLidControllerMixin",
+    "EbeDecoratedPotBlockEntityMixin"
   ],
   "injectors": { "defaultRequire": 1 }
 }

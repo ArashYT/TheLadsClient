@@ -43,6 +43,12 @@ import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.CeilingHangingSignBlock;
+import net.minecraft.world.level.block.DecoratedPotBlock;
+import net.minecraft.world.level.block.entity.DecoratedPotBlockEntity;
+import net.minecraft.world.level.block.entity.DecoratedPotPatterns;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.EnderChestBlock;
 import net.minecraft.world.level.block.EntityBlock;
@@ -103,7 +109,7 @@ public final class BakedBlockEntities1201 {
             LOG.info("Baked block entities standing down: {}", BakedBlockEntities.standDownReason());
             return;
         }
-        LOG.info("Baked block entities on (chests, shulker boxes, beds, signs, bells)");
+        LOG.info("Baked block entities on (chests, shulker boxes, beds, signs, bells, decorated pots)");
         // Cutout, as vanilla's entity renderers draw them: alpha-tested and without mipmaps. Bells keep their (solid) frame layer.
         // Only meshed while baked (the other states stay INVISIBLE / entity-rendered), so this is safe even when a type stands down.
         for (Block block : BuiltInRegistries.BLOCK) {
@@ -117,7 +123,7 @@ public final class BakedBlockEntities1201 {
     private static boolean candidate(Block block) {
         if (!"minecraft".equals(BuiltInRegistries.BLOCK.getKey(block).getNamespace())) return false; // modded chests keep their renderers
         return block instanceof ChestBlock || block instanceof EnderChestBlock || block instanceof ShulkerBoxBlock || block instanceof BedBlock
-            || block instanceof SignBlock || block instanceof BellBlock;
+            || block instanceof SignBlock || block instanceof BellBlock || block instanceof DecoratedPotBlock;
     }
 
     // ---- model reload (main thread, ModelManager.apply -> BlockModelShaper.replaceCache) ---------------------------
@@ -177,7 +183,24 @@ public final class BakedBlockEntities1201 {
             return box.getAnimationStatus() != ShulkerBoxBlockEntity.AnimationStatus.CLOSED || box.getProgress(1f) > 0f;
         }
         if (entity instanceof BellBlockEntity bell) return bell.shaking;
+        if (entity instanceof DecoratedPotBlockEntity pot) return patterned(pot);
         return false; // beds never move
+    }
+
+    /** Pots are baked with plain sides; one with pottery sherds (block entity data, not block state) keeps its renderer. */
+    private static boolean patterned(DecoratedPotBlockEntity pot) {
+        DecoratedPotBlockEntity.Decorations sides = pot.getDecorations();
+        return patterned(sides.back()) || patterned(sides.left()) || patterned(sides.right()) || patterned(sides.front());
+    }
+
+    private static boolean patterned(Item side) {
+        return side != Items.BRICK && DecoratedPotPatterns.getResourceKey(side) != null;
+    }
+
+    /** DecoratedPotBlockEntity.load (client): a sherd pot arriving with its chunk is meshed without its baked sides. */
+    public static void potLoaded(DecoratedPotBlockEntity pot) {
+        if (((Flag) pot.getBlockState()).lads$baked() && patterned(pot) && BakedBlockEntities.setAnimating(pot.getBlockPos().asLong(), true)
+            && pot.getLevel() != null) markDirty(pot.getBlockPos());
     }
 
     private static boolean lidMoving(ChestLidController lid) {
@@ -224,6 +247,10 @@ public final class BakedBlockEntities1201 {
             boolean amendments = BakedBlockEntities.modLoaded("amendments");
             boolean signs = !amendments && !PackOverrides.replaces(resources, PackOverrides.SIGNS);
             boolean bells = !amendments && !PackOverrides.replaces(resources, PackOverrides.BELLS);
+            boolean pots = !PackOverrides.replaces(resources, PackOverrides.POTS);
+            ModelPart potBase = part(ModelLayers.DECORATED_POT_BASE), potSides = part(ModelLayers.DECORATED_POT_SIDES);
+            Material potBaseMaterial = Sheets.getDecoratedPotMaterial(DecoratedPotPatterns.BASE);
+            Material potSideMaterial = Sheets.getDecoratedPotMaterial(DecoratedPotPatterns.getResourceKey(Items.BRICK));
             if (amendments) LOG.info("Baked block entities: Amendments installed, signs, hanging signs and bells keep their renderers");
             ModelPart chestSingle = part(ModelLayers.CHEST), chestLeft = part(ModelLayers.DOUBLE_CHEST_LEFT), chestRight = part(ModelLayers.DOUBLE_CHEST_RIGHT);
             ShulkerModel<?> shulker = new ShulkerModel<>(part(ModelLayers.SHULKER));
@@ -294,6 +321,21 @@ public final class BakedBlockEntities1201 {
                             pose.scale(scale, -scale, -scale);
                             model.root.render(pose, capture, 0, 0);
                         } else break;
+                    } else if (block instanceof DecoratedPotBlock) {
+                        if (!pots || potBaseMaterial == null || potSideMaterial == null) break;
+                        TextureAtlasSprite base = sprite(potBaseMaterial), side = sprite(potSideMaterial);
+                        if (base == null || side == null) break;
+                        pose.translate(0.5, 0.0, 0.5);
+                        pose.mulPose(Axis.YP.rotationDegrees(180.0F - state.getValue(BlockStateProperties.HORIZONTAL_FACING).toYRot()));
+                        pose.translate(-0.5, 0.0, -0.5);
+                        for (String name : new String[] {"neck", "top", "bottom"}) potBase.getChild(name).render(pose, capture, 0, 0);
+                        List<BakedQuad> quads = new ArrayList<>(capture.quads(base));
+                        capture.begin();
+                        for (String name : new String[] {"front", "back", "left", "right"}) potSides.getChild(name).render(pose, capture, 0, 0);
+                        quads.addAll(capture.quads(side));
+                        BakedModel original = vanilla.get(state);
+                        if (original != null) out.put(state, new EbeModel(original, state, List.copyOf(quads), false));
+                        continue;
                     } else if (block instanceof BellBlock) {
                         if (!bells) break;
                         material = BellRenderer.BELL_RESOURCE_LOCATION;
@@ -419,6 +461,7 @@ public final class BakedBlockEntities1201 {
         static final String[] BEDS = {"bed", "entity/bed/"};
         static final String[] SIGNS = {"sign", "hanging_sign", "entity/signs/"};
         static final String[] BELLS = {"bell", "entity/bell/"};
+        static final String[] POTS = {"decorated_pot", "entity/decorated_pot/"};
 
         static boolean replaces(ResourceManager resources, String[] keys) {
             for (String key : keys) {
