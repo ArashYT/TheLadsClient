@@ -1,6 +1,5 @@
 package com.thelads.core.v1_20_1.perf;
 
-import java.util.Locale;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
@@ -9,22 +8,16 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Shared plumbing for the QA probes of the small embedded mods (serverpingerfixer, fastipping, fixbookgui, ksyxis, quickpack,
- * hoveringhotbar, tooltips). A probe runs only when {@code -Dthelads.perfProbe} is {@code true}, {@code all} or a comma list that
- * names the mod, and logs {@code PERF-PROBE <name> PASS|FAIL <details>} once.
+ * hoveringhotbar, tooltips). A probe runs only when {@link PerfProbe1201#passive()} is true, and logs {@code PERF-PROBE <name> PASS|FAIL <details>} once.
  */
 public final class SmallModsProbe1201 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore-PerfProbe");
 
     private SmallModsProbe1201() {}
 
+    /** Same gate as every other probe: {@link PerfProbe1201#passive()} ({@code -Dthelads.perfProbe=<anything>} or LADS_PERF_PROBE). */
     public static boolean enabled(String name) {
-        String value = System.getProperty("thelads.perfProbe");
-        if (value == null || value.isBlank()) return false;
-        for (String part : value.toLowerCase(Locale.ROOT).split(",")) {
-            String token = part.trim();
-            if (token.equals("true") || token.equals("all") || token.equals(name)) return true;
-        }
-        return false;
+        return PerfProbe1201.passive();
     }
 
     /**

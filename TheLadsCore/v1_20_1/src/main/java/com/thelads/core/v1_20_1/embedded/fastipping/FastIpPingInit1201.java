@@ -2,7 +2,6 @@
 package com.thelads.core.v1_20_1.embedded.fastipping;
 
 import com.thelads.core.v1_20_1.perf.SmallModsProbe1201;
-import java.net.InetSocketAddress;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.client.multiplayer.resolver.ResolvedServerAddress;
@@ -40,7 +39,7 @@ public final class FastIpPingInit1201 {
             long ipMillis = (System.nanoTime() - start) / 1_000_000L;
             Optional<ResolvedServerAddress> byName = ServerNameResolver.DEFAULT.resolveAddress(new ServerAddress("localhost", 25565));
             boolean ipOk = byIp.isPresent() && "127.0.0.1".equals(byIp.get().getHostName()) && byIp.get().getPort() == 25565;
-            boolean nameOk = byName.isPresent() && byName.get().asInetSocketAddress() instanceof InetSocketAddress socket && socket.getAddress().isLoopbackAddress();
+            boolean nameOk = byName.isPresent() && byName.get().asInetSocketAddress().getAddress().isLoopbackAddress();
             SmallModsProbe1201.result("fastipping", ipOk && nameOk && PATCHED.get() > 0,
                 "ipHostName=" + byIp.map(ResolvedServerAddress::getHostName).orElse("-") + " (expected 127.0.0.1) resolvedMs=" + ipMillis
                     + " nameResolves=" + nameOk + " patchedCalls=" + PATCHED.get());
