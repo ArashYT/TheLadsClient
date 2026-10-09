@@ -62,6 +62,8 @@ final class MiscQa1201 {
     private static void run(Minecraft mc, String[] s) {
         switch (s[0]) {
             case "items" -> items(mc);
+            case "sitems" -> serverItems(mc);
+            case "count" -> count(mc, s[1]);
             case "lookat" -> lookAtItem(mc);
             case "drop" -> drop(mc, s[1]);
             case "light" -> light(mc, Integer.parseInt(s[1]), Integer.parseInt(s[2]), Integer.parseInt(s[3]));
@@ -93,6 +95,32 @@ final class MiscQa1201 {
                 BuiltInRegistries.ITEM.getKey(item.getItem().getItem()), item.getItem().getCount(), item.getX(), item.getY(), item.getZ(),
                 item.onGround(), item.getDeltaMovement().length(), tumble.yaw(1), tumble.pitch(1), tumble.raise(1), item.getAge()));
         }
+    }
+
+    /** The integrated server's own dropped items (their age is what the despawn rule changes), logged from the server thread. */
+    private static void serverItems(Minecraft mc) {
+        var server = mc.getSingleplayerServer();
+        if (server == null) throw new IllegalStateException("no integrated server");
+        server.execute(() -> {
+            int n = 0;
+            for (var level : server.getAllLevels())
+                for (var entity : level.getAllEntities())
+                    if (entity instanceof ItemEntity item) {
+                        n++;
+                        LOGGER.info(String.format(Locale.ROOT, "Lads misc qa server item: %s x%d at %.1f,%.1f,%.1f age=%d onFire=%b fireImmune=%b speed=%.3f",
+                            BuiltInRegistries.ITEM.getKey(item.getItem().getItem()), item.getItem().getCount(), item.getX(), item.getY(), item.getZ(),
+                            item.getAge(), item.isOnFire(), item.fireImmune(), item.getDeltaMovement().length()));
+                    }
+            LOGGER.info("Lads misc qa server items: {}", n);
+        });
+    }
+
+    /** How many of an item the player carries (inventory and cursor). */
+    private static void count(Minecraft mc, String id) {
+        Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(id));
+        int total = 0;
+        for (ItemStack stack : mc.player.getInventory().items) if (stack.getItem() == item) total += stack.getCount();
+        LOGGER.info("Lads misc qa count: {} x{} in the inventory", id, total);
     }
 
     private static void lookAtItem(Minecraft mc) {
