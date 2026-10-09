@@ -139,6 +139,7 @@ public final class NativeKillBanner1201 {
     private static void kill(KillDetector.Kill kill) {
         KillBannerModule module = module();
         if (kill == null || module == null) return;
+        com.thelads.core.v1_20_1.hud.Hud1201.LOG.info("Lads killbanner: kill detected ({})", kill);
         play(module, KillBanners.fire(module, kill, System.nanoTime()));
     }
 
@@ -176,6 +177,7 @@ public final class NativeKillBanner1201 {
 
     private static void play(KillBannerModule module, String sound) {
         if (sound == null) return;
+        com.thelads.core.v1_20_1.hud.Hud1201.LOG.info("Lads killbanner: banner shown, sound '{}' at volume {}", sound.isEmpty() ? "(base chime)" : sound, module.volume.getValue());
         SoundEvent event = sound.isEmpty() ? SoundEvents.EXPERIENCE_ORB_PICKUP : SoundEvent.createVariableRangeEvent(new ResourceLocation(sound));
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(event, 1.0f, (float) module.volume.getValue()));
     }

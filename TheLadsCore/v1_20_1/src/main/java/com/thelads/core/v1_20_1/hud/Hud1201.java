@@ -41,11 +41,12 @@ public final class Hud1201 {
         com.thelads.core.v1_20_1.hud.overlay.OverlayFeatures1201.register();
         com.thelads.core.v1_20_1.hud.items.ItemFeatures1201.register();
         com.thelads.core.v1_20_1.hud.jade.JadeFeatures1201.register();
-        ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
+        ClientTickEvents.END_CLIENT_TICK.register(client -> tick(client));
     }
 
-    private static void tick() {
+    private static void tick(net.minecraft.client.Minecraft client) {
         Minimap1201.tick();
+        HudQa1201.tick(client);
     }
 
     public static Module module(String name) { return ModuleManager.getInstance().getModule(name); }
