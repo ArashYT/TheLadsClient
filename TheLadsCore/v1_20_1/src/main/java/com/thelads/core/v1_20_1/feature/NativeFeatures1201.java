@@ -101,8 +101,23 @@ public final class NativeFeatures1201 {
         reset(false);
     }
 
+    private static Boolean rawApplied;
+
+    /**
+     * RawInput: the module drives GLFW's raw mouse motion (the switch Minecraft 1.20.1 has under Mouse Settings). On keeps the pointer
+     * raw, off applies Windows' pointer speed and acceleration, as 26.3's module does. Applied once at startup and when the module changes.
+     */
+    private static void rawInput(Minecraft mc) {
+        if (mc.getWindow() == null) return;
+        boolean on = enabled("RawInput");
+        if (rawApplied != null && rawApplied == on) return;
+        rawApplied = on;
+        mc.getWindow().updateRawMouseInput(on);
+    }
+
     public static void tick() {
         Minecraft mc = Minecraft.getInstance();
+        rawInput(mc);
         Object currentPlayer = mc.player;
         if (currentPlayer != player) {
             reset(true);
@@ -197,8 +212,11 @@ public final class NativeFeatures1201 {
 
     /** ZoomMixin: the FOV Minecraft computed (dynamic FOV, spyglass and fluids included) times the zoom. */
     public static float fov(float vanilla, boolean hand) {
-        if (Gameplay1201.zoomOwnedByMod()) return vanilla;
         long now = System.nanoTime();
+        if (Gameplay1201.zoomOwnedByMod()) {
+            if (!hand) { lastWorldFov = vanilla; lastWorldNanos = now; } // QA reads the FOV even when another mod owns the zoom
+            return vanilla;
+        }
         float fov = vanilla * zoom().fovFactor(hand, now);
         if (!hand) {
             lastWorldFov = fov;
