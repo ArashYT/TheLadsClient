@@ -206,11 +206,9 @@ public final class Nea1201 {
                 boolean airborne = vehicle == null && !swimming && !climbing && !player.onGround() && !player.isInWater() && !flying(player);
                 s.falling = airborne && (s.falling ? fall < -0.3 : fall < -0.5);
                 if (s.falling) {
-                    // Arms fly up and out, legs part: added on top so a swing still shows.
-                    model.rightArm.zRot += 0.8f;
-                    model.leftArm.zRot -= 0.8f;
-                    model.rightArm.xRot -= 0.25f;
-                    model.leftArm.xRot -= 0.25f;
+                    // Arms fly up and out (unless busy with an item), legs part: added on top so a swing still shows.
+                    if (!rightBusy) { model.rightArm.zRot += 0.8f; model.rightArm.xRot -= 0.25f; }
+                    if (!leftBusy) { model.leftArm.zRot -= 0.8f; model.leftArm.xRot -= 0.25f; }
                     model.rightLeg.zRot += 0.12f;
                     model.leftLeg.zRot -= 0.12f;
                     key |= FALL;
@@ -393,8 +391,9 @@ public final class Nea1201 {
         return RIDE_OTHER;
     }
 
+    /** The hand on the oar's handle: forward while the blade sweeps back (paddle yaw), wider while the blade is deep (pitch). */
     private static void row(ModelPart arm, float rowing, float side) {
-        float reach = (Mth.sin(-rowing + 1f) + 1f) / 2f, lift = (Mth.sin(-rowing) + 1f) / 2f;
+        float reach = (1f - Mth.sin(-rowing + 1f)) / 2f, lift = (Mth.sin(-rowing) + 1f) / 2f;
         arm.xRot = -0.35f - 0.75f * reach;
         arm.yRot = 0f;
         arm.zRot = side * (0.3f + 0.15f * lift);
