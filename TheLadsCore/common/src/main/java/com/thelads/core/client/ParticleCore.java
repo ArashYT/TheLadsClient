@@ -26,6 +26,11 @@ public final class ParticleCore {
     /** QA counters: particles dropped at spawn, drawn and culled while drawing, lightmap lookups answered from a particle's last answer. Plain fields; the render thread owns them. */
     public static long dropped, drawn, culled, reused;
 
+    /** QA only: when set, the version hooks add the time spent in the game's particle drawing to {@link #particleNanos}. */
+    public static volatile boolean timing;
+    private static final java.util.concurrent.atomic.AtomicLong NANOS = new java.util.concurrent.atomic.AtomicLong();
+    private static final ThreadLocal<long[]> STARTED = ThreadLocal.withInitial(() -> new long[1]);
+
     private static volatile boolean standDown;
     private static ParticleCoreModule module;
     private static boolean active, cull, optimized, hideOwn, hideOthers, limit;
@@ -96,5 +101,9 @@ public final class ParticleCore {
         return (int) ((x >>> 33) % 100);
     }
 
-    public static void resetStats() { dropped = drawn = culled = reused = 0; }
+    public static void timeBegin() { if (timing) STARTED.get()[0] = System.nanoTime(); }
+    public static void timeEnd() { if (timing) NANOS.addAndGet(System.nanoTime() - STARTED.get()[0]); }
+    public static long particleNanos() { return NANOS.get(); }
+
+    public static void resetStats() { dropped = drawn = culled = reused = 0; NANOS.set(0); }
 }

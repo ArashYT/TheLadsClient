@@ -132,6 +132,12 @@ bool anim172CaptureVerification = autoWorldVerification && !capabilities.Forge &
 // Fabric versions: Lads Zoom through the real key and scroll handlers, photographed, with every frame's FOV in zoom-fov.csv (ZoomCapture).
 // 1.8.9's self-test (Probe160) always runs the same checks.
 bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ZOOM") == "1";
+// Fabric versions: Particle Core in a heavy particle scene (smoke, flames, explosions, potion swirls round a cluster), off and on with
+// the view toward and away from it: frames, particle CPU time, particles alive/drawn/culled, then its rates, potion switches and
+// module pages photographed (ParticleCoreCapture, writing screenshots/particle-core.json). 1.8.9: LADS_VERIFY_189_ONLY=particles.
+bool particlesCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_PARTICLES") == "1";
+// LADS_VERIFY_PARTICLES_ONLY=1: that capture alone, once the QA world is up (the other world probes neither gate it nor are required).
+bool particlesOnly = particlesCaptureVerification && Env("LADS_VERIFY_PARTICLES_ONLY") == "1";
 // Fabric versions: the player in a checkerboard-layered QA skin, from the front, SkinLayers on and off (SkinLayersCapture). 1.8.9's self-test does the same.
 bool skinLayersCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_SKINLAYERS") == "1";
 // Fabric versions: cheats turned on as World Options and Multiplayer Options do ("set"), "off", or what stayed after the
@@ -330,6 +336,8 @@ string anim172CaptureRequest = Path.Combine(directory, ".lads-qa-capture-anim172
 if (autoWorldVerification && File.Exists(anim172CaptureRequest)) File.Delete(anim172CaptureRequest);
 string zoomCaptureRequest = Path.Combine(directory, ".lads-qa-capture-zoom");
 if (autoWorldVerification && File.Exists(zoomCaptureRequest)) File.Delete(zoomCaptureRequest);
+string particlesCaptureRequest = Path.Combine(directory, ".lads-qa-capture-particles");
+if (autoWorldVerification && File.Exists(particlesCaptureRequest)) File.Delete(particlesCaptureRequest);
 string skinLayersCaptureRequest = Path.Combine(directory, ".lads-qa-capture-skinlayers");
 if (autoWorldVerification && File.Exists(skinLayersCaptureRequest)) File.Delete(skinLayersCaptureRequest);
 string cheatsRequest = Path.Combine(directory, ".lads-qa-cheats");
@@ -394,7 +402,7 @@ string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:",
     "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
     "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
-    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:"];
+    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
 bool Settled(bool requested, params string[] ends) => !requested || ends.All(passedMarkers.ContainsKey) || ends.Any(failedCaptures.ContainsKey);
 bool CapturesSettled(bool resolutionRequested) =>
@@ -420,7 +428,8 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(resolutionRequested, "Lads resolution capture END:")
     && Settled(lightsCaptureVerification, "Lads dynamic lights capture END:")
     && Settled(asyncStressVerification, "Lads async stress probe END:")
-    && Settled(appleSkinSyncVerification, "Lads AppleSkin sync capture END:");
+    && Settled(appleSkinSyncVerification, "Lads AppleSkin sync capture END:")
+    && Settled(particlesCaptureVerification, "Lads particle core capture END:");
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
 LoadedModList modList = capabilities.Forge ? new ForgeModList() : new FabricModList();
@@ -438,6 +447,7 @@ if (requestedFeaturesOnly)
     requiredWorldProbes = ["Lads native feature probe END:", "Lads improvements probe END:", "Lads font reload probe END:", "Lads world capture END:", "Lads shared content probe END:"];
     Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
 }
+if (particlesOnly) requiredWorldProbes = ["Lads world capture END:"];
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
 // The 1.8.9 Core has neither report: its runs are checked from logs\latest.log (Forge's mod list, OptiFine, the title screen).
@@ -447,7 +457,7 @@ if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
 // Every version: the Add Server screen names known servers (AddServerProbe), screenshots/addserver-*.png.
 bool addServerVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_ADDSERVER") == "1";
 if (addServerVerification) requiredCore.Add("Lads add-server probe END:");
-if (!expectCoreDisabled && !capabilities.Forge) requiredCore.Add("Lads shared content probe END:");
+if (!expectCoreDisabled && !capabilities.Forge && !particlesOnly) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
@@ -627,7 +637,7 @@ try
         // =anim: only swing while using items and the damage tilt (Probe172Anim).
         // =keybinds: side mouse buttons and lasting key binds, the phase in <game>\.lads-qa-keybinds (Probe172Keybinds).
         // =ui: only the reset questions and Fullbright's slider (Probe172Ui).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "anim" or "keybinds" or "ui") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "particles" or "anim" or "keybinds" or "ui") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
         if (perf189)
         {
             string perfFolder = Path.Combine(directory, "lads-qa", "perf");
@@ -803,7 +813,7 @@ try
     // Title runs without the 26.x auto-world end once every check the harness asserts has passed (they never did before, so
     // 1.21.x waited the full 540 s); the stop is a Kill, as for every non-auto-world run.
     bool earlyTitleExit = titleVerification && !autoWorldVerification;
-    while (stopwatch.Elapsed < TimeSpan.FromSeconds(perf189 ? 1140 : titleVerification ? (asyncStressVerification ? 900 : 540) : 180) && !process.HasExited)
+    while (stopwatch.Elapsed < TimeSpan.FromSeconds(perf189 ? 1140 : titleVerification ? (asyncStressVerification || particlesCaptureVerification ? 900 : 540) : 180) && !process.HasExited)
     {
         process.Refresh();
         if (!windowFound && process.MainWindowHandle != IntPtr.Zero)
@@ -874,6 +884,7 @@ try
                     (oldAnimCaptureVerification, oldAnimCaptureRequest, "Pose 1.7 Animations in the QA world and capture its frames."),
                     (anim172CaptureVerification, anim172CaptureRequest, "Check swing while using items and the damage tilt in the QA world."),
                     (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames."),
+                    (particlesCaptureVerification, particlesCaptureRequest, "Run Particle Core in a heavy particle scene in the QA world and photograph its pages."),
                     (skinLayersCaptureVerification, skinLayersCaptureRequest, "Photograph the player's 3D skin layers with SkinLayers on and off."),
                     (sprintCaptureVerification, sprintCaptureRequest, "Walk Toggle Sprint & Sneak through the QA world and log every tick's sprint packets."),
                     (hud170CaptureVerification, hud170CaptureRequest, "Capture the 1.7.0 HUD changes in the QA world."),
@@ -1005,6 +1016,8 @@ try
             "The requested 1.7 Animations frames were not all captured.");
         Require(!zoomCaptureVerification || passedMarkers.ContainsKey("Lads zoom capture END:"),
             "The requested Lads Zoom capture did not pass. Inspect production-smoke.log.");
+        Require(!particlesCaptureVerification || passedMarkers.ContainsKey("Lads particle core capture END:"),
+            "The requested Particle Core capture did not pass. Inspect production-smoke.log.");
         Require(!skinLayersCaptureVerification || passedMarkers.ContainsKey("Lads skin layers capture END:"),
             "The requested 3D skin layers frames were not both captured.");
         Require(!sprintCaptureVerification || passedMarkers.ContainsKey("Lads sprint capture END:"),

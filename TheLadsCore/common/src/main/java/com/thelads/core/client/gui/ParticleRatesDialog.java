@@ -79,6 +79,13 @@ final class ParticleRatesDialog {
         g.drawText(reset, x + w - 12 - g.textWidth(reset), y + h - 12, confirmReset ? ACCENT : MUTED);
     }
 
+    /** QA and tests drive real clicks at it: the slider track of this type's row as {x, y, width, height} (null while the dialog is closed or the row is not listed). */
+    int[] track(String id) {
+        int row = filtered.indexOf(id);
+        if (!open || row < 0) return null;
+        return new int[] {trackX, y + 80 + row * ROW - (int) Math.round(scroll) + 9, trackW, 6};
+    }
+
     private int index(double my) {
         int top = y + 80;
         return (int) Math.floor((my - top + Math.round(scroll)) / ROW);

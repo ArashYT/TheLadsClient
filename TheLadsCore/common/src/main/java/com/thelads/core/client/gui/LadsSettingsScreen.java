@@ -114,6 +114,11 @@ public final class LadsSettingsScreen {
     /** Bounds of a control drawn by the last render (e.g. "search", "option:Size"), or null; QA drives real input at them. */
     public Rect controlBounds(String id) { return controls.stream().filter(c -> c.id.equals(id)).map(Control::rect).findFirst().orElse(null); }
     public int getScrollOffset() { return scrollOffset; }
+    /** The slider track of a particle type's row in Particle Core's open rates editor, or null: QA and tests click at it. */
+    public Rect particleRatesTrack(String id) {
+        int[] t = particleRates.track(id);
+        return t == null ? null : new Rect(t[0], t[1], t[2], t[3]);
+    }
     /** Where the last frame drew the live game view (GUI pixels), or null (QA measures the world there). */
     public Rect gameViewBounds() { return gameView; }
     /** True while the open page draws the live game view in its preview (Fullbright): 1.8.9 copies the framebuffer before the menu paints. */

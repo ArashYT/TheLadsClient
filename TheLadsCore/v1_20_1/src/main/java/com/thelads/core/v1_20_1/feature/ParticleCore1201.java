@@ -55,7 +55,7 @@ public final class ParticleCore1201 {
     public static boolean deferVertices() {
         Boolean value = deferVertices;
         if (value == null) {
-            deferVertices = value = modLoaded("sodium", "embeddium", "rubidium");
+            deferVertices = value = modLoaded("sodium", "embeddium", "rubidium") && !"1".equals(System.getenv("LADS_PARTICLE_CORE_FORCE_VERTICES")); // QA: measure our own vertex work beside Sodium
             LOGGER.info("Particle Core vertex work: {}", value ? "left to Sodium/Embeddium" : "Lads");
         }
         return value;

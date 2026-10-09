@@ -9,15 +9,15 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * 26.3 already leaves out the flat particles whose centre is outside the view; Particle Core's Culling switch owns that test.
- * It counts what is drawn and what is culled (the QA numbers), and with Culling off every particle is drawn.
+ * It counts what is drawn and what is culled (the QA numbers, also with the module off, which is plain vanilla), and with
+ * Culling off every particle is drawn.
  */
 @Mixin(QuadParticleGroup.class)
 public abstract class QuadParticleGroupMixin {
     @Redirect(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/culling/Frustum;pointInFrustum(DDD)Z"))
     private boolean ladsCull(Frustum frustum, double x, double y, double z) {
-        if (!ParticleCore.active()) return frustum.pointInFrustum(x, y, z);
-        if (!ParticleCore.culling() || frustum.pointInFrustum(x, y, z)) { ParticleCore.drawn++; return true; }
-        ParticleCore.culled++;
-        return false;
+        boolean visible = frustum.pointInFrustum(x, y, z) || ParticleCore.active() && !ParticleCore.culling(); // off: draw all, only while we are the ones deciding
+        if (visible) ParticleCore.drawn++; else ParticleCore.culled++;
+        return visible;
     }
 }

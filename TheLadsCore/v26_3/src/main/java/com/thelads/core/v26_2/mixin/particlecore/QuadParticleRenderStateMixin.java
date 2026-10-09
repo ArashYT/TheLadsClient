@@ -3,6 +3,7 @@ package com.thelads.core.v26_2.mixin.particlecore;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.thelads.core.client.ParticleCore;
 import com.thelads.core.v26_2.feature.NativeParticleCore;
+import net.minecraft.client.particle.SingleQuadParticle;
 import net.minecraft.client.renderer.state.level.QuadParticleRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -31,4 +32,11 @@ public abstract class QuadParticleRenderStateMixin {
         builder.addVertex(x - ax - bx, y - ay - by, z - az - bz).setUv(u0, v1).setColor(color).setLight(light);
         ci.cancel();
     }
+
+    /** QA timing of the vertex building (a no-op unless ParticleCore.timing). */
+    @Inject(method = "buildLayer", at = @At("HEAD"))
+    private void ladsBuildBegin(SingleQuadParticle.Layer layer, VertexConsumer builder, CallbackInfo ci) { ParticleCore.timeBegin(); }
+
+    @Inject(method = "buildLayer", at = @At("RETURN"))
+    private void ladsBuildEnd(SingleQuadParticle.Layer layer, VertexConsumer builder, CallbackInfo ci) { ParticleCore.timeEnd(); }
 }

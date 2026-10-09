@@ -47,7 +47,12 @@ public final class ParticleReductionOption extends Option {
     /** The catalogue plus any saved id it lacks (another version's, or a mod no longer installed), so every change can be undone. */
     public List<String> ids() {
         List<String> result = new ArrayList<>();
-        try { result.addAll(catalog.get()); } catch (RuntimeException ignored) {}
+        try {
+            for (String id : catalog.get()) {
+                String normal = normalise(id);
+                if (!result.contains(normal)) result.add(normal);
+            }
+        } catch (RuntimeException ignored) {}
         for (String id : reduced.keySet()) if (!result.contains(id)) result.add(id);
         return result;
     }

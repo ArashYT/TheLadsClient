@@ -60,6 +60,7 @@ public final class ParticleCore189 {
 
     /** EffectRenderer.renderParticles HEAD: this frame's planes, read from the GL matrices the particles use. */
     public static void beginFrame() {
+        ParticleCore.timeBegin();
         ParticleCore.refresh();
         if (!ParticleCore.culling()) { ParticleCore.FRUSTUM.clear(); return; }
         PROJECTION.clear();
@@ -72,7 +73,7 @@ public final class ParticleCore189 {
     }
 
     /** EffectRenderer.renderParticles end: nothing is culled outside the particle pass. */
-    public static void endFrame() { ParticleCore.FRUSTUM.clear(); }
+    public static void endFrame() { ParticleCore.FRUSTUM.clear(); ParticleCore.timeEnd(); }
 
     public static boolean inView(EntityFX particle, float partialTicks) {
         if (!ParticleCore.culling()) return true;
