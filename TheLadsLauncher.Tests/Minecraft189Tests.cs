@@ -151,7 +151,8 @@ public class Minecraft189Tests
         Write(Path.Combine(broken, "profiles.json"), JsonSerializer.Serialize(new { ActiveProfileId = "broken", Profiles = new[] {
             new LauncherProfile { Id = "old-189", Name = "Old 1.8.9", MinecraftVersion = "1.8.9", FabricVersion = null, JavaMajorVersion = 8 },
             new LauncherProfile { Id = "broken", Name = "Broken", MinecraftVersion = "26.3", FabricVersion = "custom-loader", JavaMajorVersion = 25 } } }));
-        Assert.Equal("26.2", new ProfileService(new PathService(broken), global).GetActiveProfile().Id);
+        // 26.3 is broken here and 26.2 is paused, so the first valid Fabric default (1.20.1) takes over.
+        Assert.Equal("1.20.1", new ProfileService(new PathService(broken), global).GetActiveProfile().Id);
 
         // A 1.8.9 profile an older launcher saved isolated (it was forced) shares its settings now, once: isolating it again sticks.
         var older = Path.Combine(dir.Path, "older");
