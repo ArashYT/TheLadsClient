@@ -64,6 +64,15 @@ public final class MenusQa1201 {
         });
     }
 
+    private static Boolean qaFolder;
+
+    /** The game folder is a verification-harness sandbox (any path with /artifacts/verification/ in it); decided once. */
+    private static boolean qaFolder(Minecraft mc) {
+        if (qaFolder == null)
+            qaFolder = mc.gameDirectory.toPath().toAbsolutePath().toString().replace('\\', '/').toLowerCase(java.util.Locale.ROOT).contains("/artifacts/verification/");
+        return qaFolder;
+    }
+
     private static boolean needsWorld(String scene) {
         return scene.equals("pause") || scene.equals("hud-editor") || scene.contains("module:");
     }
@@ -71,11 +80,14 @@ public final class MenusQa1201 {
     private static void tick(Minecraft mc) {
         if (!running) {
             Path request = mc.gameDirectory.toPath().resolve(".lads-qa-capture-menus");
-            // The scene list comes from a marker file in the game folder, or from the LADS_QA_MENUS environment variable (a harness
+            // The scene list comes from a marker file in the game folder (only a harness folder under artifacts/verification is
+            // looked at, so a player's game never touches the disk here), or from the LADS_QA_MENUS environment variable (a harness
             // that rebuilds the game folder, like Zero SMP's, keeps no marker); the variable is read once.
             String fromEnv = envUsed ? null : System.getenv("LADS_QA_MENUS");
-            boolean marker = Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS);
-            if ((!marker && (fromEnv == null || fromEnv.isBlank())) || mc.getOverlay() != null) return;
+            boolean hasEnv = fromEnv != null && !fromEnv.isBlank();
+            if (!hasEnv && !qaFolder(mc)) return;
+            boolean marker = qaFolder(mc) && Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS);
+            if ((!marker && !hasEnv) || mc.getOverlay() != null) return;
             try {
                 String text = marker ? Files.readString(request).strip() : fromEnv.strip();
                 ownWorld = text.contains("own-world");

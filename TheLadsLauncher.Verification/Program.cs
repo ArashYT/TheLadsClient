@@ -127,9 +127,8 @@ if (!capabilities.Minimal && (Env("LADS_VERIFY_SCRIPT") ?? Env("LADS_VERIFY_SCRI
     throw new ArgumentException($"LADS_VERIFY_SCRIPT needs the 1.20.1 QA probe (QaProbe1201), which {version} does not have.");
 bool renderScaleVerification = capabilities.RenderScale && !expectCoreDisabled && !requestedFeaturesOnly && titleVerification && (autoWorldVerification || Env("LADS_VERIFY_RENDER_SCALE") == "1");
 // QA only: upstream mods left out of the staged pack, to get past a pack defect under diagnosis. Never the production manifest.
-// 1.20.1: the pinned manifest names Faster Iris Shadow Mapper "fastershadowmapper" but its jar declares "fism", so the installer rejects it;
-// until the manifest is fixed the QA pack leaves it out (a no-op once the id is right). LADS_VERIFY_EXCLUDE_MODS=none keeps the pack as pinned.
-var excludedMods = Ids(Env("LADS_VERIFY_EXCLUDE_MODS") ?? (capabilities.Minimal ? "fastershadowmapper" : null));
+// (1.20.1's Faster Iris Shadow Mapper needed this until the manifest id was fixed from "fastershadowmapper" to its jar's "fism".)
+var excludedMods = Ids(Env("LADS_VERIFY_EXCLUDE_MODS"));
 excludedMods.Remove("none");
 // The staged pack (which jars are installed) follows the env alone, so a Core-disabled run keeps the same mods folder.
 bool nativePack = autoWorldRequested || Env("LADS_VERIFY_NATIVE_PORTS") == "1" || excludedMods.Count > 0;

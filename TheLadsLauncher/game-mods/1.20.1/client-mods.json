@@ -246,7 +246,7 @@
       "projectId": "nSRLvOHG",
       "projectSlug": "fism",
       "name": "Faster Iris Shadow Mapper [FISM]",
-      "modId": "fastershadowmapper",
+      "modId": "fism",
       "versionId": "JZF3sYNu",
       "version": "1.0.6",
       "fileName": "fism+1.20.1-1.0.6.jar",
@@ -558,21 +558,6 @@
       "projectUrl": "https://modrinth.com/mod/resourcify"
     },
     {
-      "projectId": "zV5r3pPn",
-      "projectSlug": "3dskinlayers",
-      "name": "3D Skin Layers",
-      "modId": "skinlayers3d",
-      "versionId": "GHPhA16V",
-      "version": "1.11.3",
-      "fileName": "skinlayers3d-fabric-1.11.3-mc1.20.1.jar",
-      "url": "https://cdn.modrinth.com/data/zV5r3pPn/versions/GHPhA16V/skinlayers3d-fabric-1.11.3-mc1.20.1.jar",
-      "sha512": "2ad40e742409fc8a829d209e9c8e973a73fc1d0716d583c9fe98df1dcd2de23c38f75670199b9f3aeaf80e7fc448f604ee0555994c05cf15f975eaf21d0ef047",
-      "size": 1912385,
-      "license": "LicenseRef-tr7zw-Protective-License",
-      "sourceUrl": "https://github.com/tr7zw/3d-skin-layers",
-      "projectUrl": "https://modrinth.com/mod/3dskinlayers"
-    },
-    {
       "projectId": "AANobbMI",
       "projectSlug": "sodium",
       "name": "Sodium",
@@ -741,6 +726,15 @@
         "fc38d93931ac4ee0f7171c5c771a42c06e7739ed697d807ed03cf300988b3a1c607b23250a4eb8ea3cb6592c08e20e816c82f2f31e131d476d0539ff28bac6f3"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.8.5 (built-in baked block entities)."
+    },
+    {
+      "modId": "skinlayers3d",
+      "projectId": "zV5r3pPn",
+      "name": "3D Skin Layers",
+      "sha512": [
+        "2ad40e742409fc8a829d209e9c8e973a73fc1d0716d583c9fe98df1dcd2de23c38f75670199b9f3aeaf80e7fc448f604ee0555994c05cf15f975eaf21d0ef047"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.8.5 (SkinLayers module)."
     }
   ]
 }

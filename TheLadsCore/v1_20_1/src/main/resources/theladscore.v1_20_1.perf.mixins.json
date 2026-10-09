@@ -13,6 +13,6 @@
     "MixinFont_StringRenderOutput"
   ],
   "injectors": {
-    "defaultRequire": 0
+    "defaultRequire": 1
   }
 }
