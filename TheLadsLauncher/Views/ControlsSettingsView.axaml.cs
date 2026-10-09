@@ -111,11 +111,11 @@ public partial class ControlsSettingsView : UserControl
         foreach (var version in versions)
         {
             var chip = new Border { Classes = { "chip" }, Margin = new Thickness(0, 0, 6, 4), Child = new TextBlock { Text = version }.Untranslated() };
-            if (GameVersionPolicy.IsPaused(version))
+            if (GameVersionPolicy.IsPaused(version) || GameVersionPolicy.IsComingNever(version))
             {
                 chip.Opacity = 0.45;
                 chip.IsEnabled = false;
-                ToolTip.SetTip(chip, GameVersionPolicy.PausedMessage);
+                ToolTip.SetTip(chip, GameVersionPolicy.IsComingNever(version) ? GameVersionPolicy.ComingNeverMessage : GameVersionPolicy.PausedMessage);
                 ToolTip.SetShowOnDisabled(chip, true);
             }
             VersionChips.Children.Add(chip);

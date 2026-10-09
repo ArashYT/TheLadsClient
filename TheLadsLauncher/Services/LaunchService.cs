@@ -58,6 +58,7 @@ public class LaunchService : ILaunchService
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (GameVersionPolicy.IsPaused(profile.MinecraftVersion)) throw new InvalidOperationException(GameVersionPolicy.PausedMessage);
+        if (GameVersionPolicy.IsComingNever(profile.MinecraftVersion)) throw new InvalidOperationException(GameVersionPolicy.ComingNeverMessage);
         var versionId = GameVersionPolicy.ResolveVersionId(profile);
         var usesFabric = !string.IsNullOrWhiteSpace(profile.FabricVersion);
         var usesForge = GameVersionPolicy.UsesForge(profile.MinecraftVersion); // ResolveVersionId refuses Fabric on these

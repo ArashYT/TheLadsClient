@@ -226,6 +226,24 @@ public class VersionAndInstallationTests
     }
 
     [Fact]
+    public async Task ComingNever1710VersionCannotBeLaunchedOrActive()
+    {
+        using var dir = new TestDirectory();
+        string file = Path.Combine(dir.Path, "profiles.json");
+        var p1710 = new LauncherProfile { Id = "1.7.10", Name = "The Lads Client 1.7.10", MinecraftVersion = "1.7.10", JavaMajorVersion = 8 };
+        File.WriteAllText(file, JsonSerializer.Serialize(new { ActiveProfileId = p1710.Id, Profiles = new[] { p1710 } }));
+
+        var shared = new SharedContentService(Path.Combine(dir.Path, "global"));
+        var paths = new PathService(dir.Path);
+        var service = new ProfileService(paths, shared);
+        Assert.Equal("26.3", service.GetActiveProfile().MinecraftVersion); // falls back to default
+
+        var launch = new LaunchService(paths, service, new JavaService(paths), new AuthService(paths), null, shared);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => launch.LaunchAsync(p1710, "LadsQA", new LauncherSettings()));
+        Assert.Equal(GameVersionPolicy.ComingNeverMessage, ex.Message);
+    }
+
+    [Fact]
     public async Task ReturningGameDoesNotResurrectRemovedSharedAccount()
     {
         using var dir = new TestDirectory();

@@ -2293,13 +2293,35 @@ public partial class MainWindow : Window
         {
             LaunchProfileSelector.Items.Clear();
             var active = _profileService.GetActiveProfile();
+            bool has1710 = false;
             foreach (var p in ProfileTools.NewestFirst(_profileService.GetProfiles()))
             {
+                if (GameVersionPolicy.IsComingNever(p.MinecraftVersion))
+                {
+                    has1710 = true;
+                    var comingNeverItem = new ComboBoxItem { Content = "1.7.10 (COMING NEVER!)", Tag = p, IsEnabled = false, Opacity = 0.5 };
+                    ToolTip.SetTip(comingNeverItem, GameVersionPolicy.ComingNeverMessage);
+                    ToolTip.SetShowOnDisabled(comingNeverItem, true);
+                    LaunchProfileSelector.Items.Add(comingNeverItem);
+                    continue;
+                }
                 bool offered = ProfileTools.PlayableVersions.Contains(p.MinecraftVersion);
                 var item = new ComboBoxItem { Content = p.ToString(), Tag = p, IsEnabled = offered };
                 if (!offered) ToolTip.SetTip(item, GameVersionPolicy.IsPaused(p.MinecraftVersion) ? GameVersionPolicy.PausedMessage : $"Minecraft {p.MinecraftVersion} is not offered on the Play screen.");
                 LaunchProfileSelector.Items.Add(item);
                 if (p.Id == active.Id) LaunchProfileSelector.SelectedItem = item;
+            }
+            if (!has1710)
+            {
+                var neverItem = new ComboBoxItem
+                {
+                    Content = "1.7.10 (COMING NEVER!)",
+                    IsEnabled = false,
+                    Opacity = 0.5
+                };
+                ToolTip.SetTip(neverItem, GameVersionPolicy.ComingNeverMessage);
+                ToolTip.SetShowOnDisabled(neverItem, true);
+                LaunchProfileSelector.Items.Add(neverItem);
             }
             LaunchProfileSelector.SelectedItem ??= LaunchProfileSelector.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.IsEnabled);
             ApplyProfile(active, false);
@@ -2314,6 +2336,11 @@ public partial class MainWindow : Window
     {
         if (_populatingProfileSelector) return;
         if (_launching) { PopulateLaunchProfileSelector(); return; }
+        if (LaunchProfileSelector.SelectedItem is ComboBoxItem { IsEnabled: false })
+        {
+            PopulateLaunchProfileSelector();
+            return;
+        }
         if (LaunchProfileSelector.SelectedItem is ComboBoxItem { Tag: TheLadsLauncher.Models.LauncherProfile profile })
         {
             try { GameVersionPolicy.ResolveVersionId(profile); }
@@ -2375,7 +2402,11 @@ public partial class MainWindow : Window
                 Margin = new Thickness(0, 0, 0, 10)
             };
             if (isActive) card.Classes.Add("selected");
-            if (GameVersionPolicy.IsPaused(profile.MinecraftVersion)) { card.Opacity = 0.5; ToolTip.SetTip(card, GameVersionPolicy.PausedMessage); }
+            if (GameVersionPolicy.IsPaused(profile.MinecraftVersion) || GameVersionPolicy.IsComingNever(profile.MinecraftVersion))
+            {
+                card.Opacity = 0.5;
+                ToolTip.SetTip(card, GameVersionPolicy.IsComingNever(profile.MinecraftVersion) ? GameVersionPolicy.ComingNeverMessage : GameVersionPolicy.PausedMessage);
+            }
 
             var grid = new Grid
             {
@@ -2497,10 +2528,10 @@ public partial class MainWindow : Window
                     Padding = new Thickness(16, 0),
                     FontSize = 12.5
                 };
-                if (GameVersionPolicy.IsPaused(profile.MinecraftVersion))
+                if (GameVersionPolicy.IsPaused(profile.MinecraftVersion) || GameVersionPolicy.IsComingNever(profile.MinecraftVersion))
                 {
                     selectBtn.IsEnabled = false;
-                    ToolTip.SetTip(selectBtn, GameVersionPolicy.PausedMessage);
+                    ToolTip.SetTip(selectBtn, GameVersionPolicy.IsComingNever(profile.MinecraftVersion) ? GameVersionPolicy.ComingNeverMessage : GameVersionPolicy.PausedMessage);
                     ToolTip.SetShowOnDisabled(selectBtn, true);
                 }
                 selectBtn.Click += (s, e) =>
@@ -2613,6 +2644,7 @@ public partial class MainWindow : Window
             string version = versionBox.Text?.Trim() ?? "26.3";
             if (GameVersionPolicy.IsDropped(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"Minecraft {version} is no longer supported (1.8.9, 1.20.1 or 26.3)"; return; }
             if (GameVersionPolicy.IsPaused(version)) { versionBox.Text = ""; versionBox.PlaceholderText = GameVersionPolicy.PausedMessage; return; }
+            if (GameVersionPolicy.IsComingNever(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"1.7.10: {GameVersionPolicy.ComingNeverMessage}"; return; }
             if (string.IsNullOrEmpty(name)) name = $"Profile {version}";
 
             bool forge = GameVersionPolicy.UsesForge(version); // 1.8.9: Forge and Java 8, never Fabric
@@ -4036,6 +4068,11 @@ public partial class MainWindow : Window
             StatusText.Text = GameVersionPolicy.PausedMessage;
             return;
         }
+        if (GameVersionPolicy.IsComingNever(_profileService.GetActiveProfile().MinecraftVersion))
+        {
+            StatusText.Text = GameVersionPolicy.ComingNeverMessage;
+            return;
+        }
         if (_modsBusy)
         {
             // An add/update/delete on the Mods page is writing to Mods; the installers must not run next to it.
@@ -4657,9 +4694,9 @@ public partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(targetVersion)) return false;
 
             Log($"[Launcher] Version switch requested to: {targetVersion}");
-            if (GameVersionPolicy.IsPaused(targetVersion))
+            if (GameVersionPolicy.IsPaused(targetVersion) || GameVersionPolicy.IsComingNever(targetVersion))
             {
-                Log($"[Launcher] Version switch refused: {GameVersionPolicy.PausedMessage}.");
+                Log($"[Launcher] Version switch refused: {(GameVersionPolicy.IsComingNever(targetVersion) ? GameVersionPolicy.ComingNeverMessage : GameVersionPolicy.PausedMessage)}.");
                 return false;
             }
             var targetProfile = _profileService.GetProfiles().FirstOrDefault(p =>

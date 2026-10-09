@@ -71,6 +71,8 @@ public static class ProfileTools
             throw new InvalidDataException($"Minecraft {preset.MinecraftVersion} is no longer supported; The Lads Client offers 1.8.9, 1.20.1 and 26.3.");
         if (GameVersionPolicy.IsPaused(preset.MinecraftVersion))
             throw new InvalidOperationException(GameVersionPolicy.PausedMessage);
+        if (GameVersionPolicy.IsComingNever(preset.MinecraftVersion))
+            throw new InvalidOperationException(GameVersionPolicy.ComingNeverMessage);
         var profile = NewProfile(preset);
         GameVersionPolicy.ResolveVersionId(profile);
         return preset;
@@ -86,6 +88,8 @@ public static class ProfileTools
     {
         if (GameVersionPolicy.IsPaused(preset.MinecraftVersion))
             throw new InvalidOperationException(GameVersionPolicy.PausedMessage);
+        if (GameVersionPolicy.IsComingNever(preset.MinecraftVersion))
+            throw new InvalidOperationException(GameVersionPolicy.ComingNeverMessage);
         Validate(preset);
         var profile = NewProfile(preset);
         string directory = Path.Combine(profilesDirectory, profile.Id);

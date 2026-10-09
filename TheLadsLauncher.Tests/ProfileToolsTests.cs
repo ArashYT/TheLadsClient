@@ -81,6 +81,20 @@ public class ProfileToolsTests
     }
 
     [Fact]
+    public void ComingNeverVersion1710IsHandled()
+    {
+        using var dir = new TestDirectory();
+        var preset = new ProfileTools.Preset(1, "Never 1.7.10", "1.7.10", null, new() { ["options.txt"] = "guiScale:2\n" });
+        var ex = Assert.Throws<InvalidOperationException>(() => ProfileTools.Import(preset, dir.Path));
+        Assert.Equal(GameVersionPolicy.ComingNeverMessage, ex.Message);
+        Assert.Equal("COMING NEVER!", GameVersionPolicy.ComingNeverMessage);
+        Assert.True(GameVersionPolicy.IsComingNever("1.7.10"));
+        Assert.False(GameVersionPolicy.IsComingNever("1.8.9"));
+        Assert.DoesNotContain("1.7.10", ProfileTools.PlayableVersions);
+        Assert.DoesNotContain("1.7.10", ProfileTools.FilterVersions);
+    }
+
+    [Fact]
     public void PlayMenuListsNewestVersionFirstAndOffersPlayableVersions()
     {
         var profiles = new[] { "1.8.9", "1.21.1", "26.2", "1.21.11", "26.3" }.Select(v => new LauncherProfile { Name = "P " + v, MinecraftVersion = v })

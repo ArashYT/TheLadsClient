@@ -81,6 +81,10 @@ public static class GameVersionPolicy
     public const string PausedMessage = "26.2 support is paused — use 26.3";
     public static bool IsPaused(string minecraftVersion) => minecraftVersion == "26.2";
 
+    /// <summary>1.7.10 is never coming: listed greyed out in the version selector ("COMING NEVER!"), never launched or created.</summary>
+    public const string ComingNeverMessage = "COMING NEVER!";
+    public static bool IsComingNever(string? minecraftVersion) => minecraftVersion == "1.7.10";
+
     /// <summary>A bundled-Core version whose Core is a Fabric mod: all of them but 1.8.9, whose Core is a Forge mod.</summary>
     public static bool RequiresFabric(string minecraftVersion) => RequiresBundledCore(minecraftVersion) && !UsesForge(minecraftVersion);
 
