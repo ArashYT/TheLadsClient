@@ -7,6 +7,7 @@ import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.HudModule;
 import com.thelads.core.perf.BuiltInRender;
 import com.thelads.core.perf.RenderQa;
+import com.thelads.core.perf.RenderQaPack;
 import com.thelads.core.v1_20_1.feature.QaProbe1201;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -318,6 +319,22 @@ public final class RenderProbe1201 {
         }
     }
 
+    private static final RenderQaPack.Sprite[] HD = {
+        new RenderQaPack.Sprite("block/water_still", 32, 2, false), new RenderQaPack.Sprite("block/lava_still", 20, 2, false),
+        new RenderQaPack.Sprite("block/sea_lantern", 5, 5, false), new RenderQaPack.Sprite("block/nether_portal", 32, 1, false),
+        new RenderQaPack.Sprite("block/fire_0", 32, 1, false), new RenderQaPack.Sprite("block/magma", 3, 8, true),
+        new RenderQaPack.Sprite("block/prismarine", 4, 20, true)};
+
+    /** Adds or removes the generated HD pack from the selected resource packs (the reload is the caller's). */
+    private static void pack(Minecraft mc, boolean on) {
+        var repository = mc.getResourcePackRepository();
+        repository.reload();
+        List<String> ids = new ArrayList<>(repository.getSelectedIds());
+        ids.remove("file/" + RenderQaPack.NAME);
+        if (on) ids.add("file/" + RenderQaPack.NAME);
+        repository.setSelected(ids);
+    }
+
     private static void measure(List<Step> steps, String scene) {
         for (int round = 0; round < ROUNDS; round++) for (boolean on : new boolean[]{false, true}) {
             String mode = on ? "on" : "off";
@@ -336,7 +353,7 @@ public final class RenderProbe1201 {
             mc.gui.getChat().clearMessages(false);
             if (pause) mc.setScreen(new Still());
             BuiltInRender.items = false; BuiltInRender.animations = false;
-            return 6;
+            return pause ? 60 : 6; // pausing saves the world: its "Saving world" notice fades out first
         });
         steps.add(mc -> { pendingShot = scene + "-off"; return 2; });
         steps.add(mc -> { BuiltInRender.items = true; BuiltInRender.animations = true; return 6; });
@@ -401,6 +418,22 @@ public final class RenderProbe1201 {
         steps.add(mc -> { look(mc, 60, 0, 0, 10); return 60; });
         measure(steps, "animations");
         atlasParity(steps, "start");
+        // 5. An HD pack of animated textures (256 px frames), where frame uploads are heavy: costs and parity, then the pack is removed
+        steps.add(mc -> {
+            RenderQaPack.write(game.resolve("resourcepacks"), "\"pack_format\":15", 256, HD);
+            pack(mc, true);
+            reload = mc.reloadResourcePacks();
+            return 0;
+        });
+        steps.add(mc -> reload.isDone() ? 60 : -1);
+        steps.add(mc -> {
+            RenderQa.check(mc.getResourcePackRepository().getSelectedIds().contains("file/" + RenderQaPack.NAME), "the HD animated pack is active");
+            return 0;
+        });
+        measure(steps, "hd");
+        atlasParity(steps, "hd");
+        steps.add(mc -> { pack(mc, false); reload = mc.reloadResourcePacks(); return 0; });
+        steps.add(mc -> reload.isDone() ? 20 : -1);
         // 5. F3+T: textures reloaded, the cache rebuilt from the new sprites, copies still exact
         steps.add(mc -> { reload = mc.reloadResourcePacks(); return 0; });
         steps.add(mc -> reload.isDone() ? 40 : -1);

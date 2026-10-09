@@ -19,6 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(SpriteContents.AnimationState.class)
 public abstract class AnimationStateAnimationMixin implements AnimationStateLink26 {
     @Shadow private int frame;
+    @Shadow private boolean isDirty;
     @Shadow @Final private Int2ObjectMap<GpuTextureView> frameTexturesByIndex;
     @Unique private Object lads$animation;
 
@@ -30,6 +31,8 @@ public abstract class AnimationStateAnimationMixin implements AnimationStateLink
     @Override public boolean lads$interpolates() {
         return ((AnimatedTextureAnimationAccess) lads$animation).lads$interpolates();
     }
+
+    @Override public void lads$markDirty() { isDirty = true; }
 
     @Override public GpuTextureView lads$currentFrame() {
         List<?> frames = ((AnimatedTextureAnimationAccess) lads$animation).lads$frames();

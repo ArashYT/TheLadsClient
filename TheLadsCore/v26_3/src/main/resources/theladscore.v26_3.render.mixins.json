@@ -12,6 +12,8 @@
     "AnimatedTextureAnimationMixin",
     "AnimationStateAnimationMixin",
     "FrameInfoAnimationAccess",
+    "GameRendererProbeMixin",
+    "GuiRendererProbeAccess",
     "ItemFeatureRendererCullMixin",
     "ProjectionCullMixin",
     "RenderSystemCullMixin",
