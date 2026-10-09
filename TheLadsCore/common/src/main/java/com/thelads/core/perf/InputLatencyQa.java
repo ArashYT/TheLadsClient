@@ -11,8 +11,8 @@ import java.util.Locale;
  * and measures for 6 s (LatencyMeter): pacing on and off with no extra GPU work, then with a GPU load calibrated until the game is
  * GPU-bound well below the QA frame cap (unpaced input-to-GPU-done latency above twice the frame time, under 80 FPS), twice each in turn; then optional mouse floods (the
  * version's synthetic high-rate mouse events, per event and batched); then the window resized, made fullscreen (F11's path) and
- * restored with the pacing on; then, with LADS_VERIFY_INPUT_SOAK=seconds, a long run logging every minute. The verdict (END or
- * FAILED line) comes last. The caller ticks it every client tick and owns the knobs.
+ * restored with the pacing on. LADS_VERIFY_INPUT_SOAK=seconds makes it a light stability run instead: no measurements and no GPU
+ * load, the window steps, then that long a run logging every minute. The verdict (END or FAILED line) comes last. The caller ticks it every client tick and owns the knobs.
  */
 public final class InputLatencyQa {
     public interface Target {
@@ -56,6 +56,11 @@ public final class InputLatencyQa {
         long seconds = 0;
         try { seconds = Long.parseLong(String.valueOf(System.getenv("LADS_VERIFY_INPUT_SOAK")).trim()); } catch (NumberFormatException ignored) {}
         this.soak = Math.max(0, seconds) * SECOND;
+        if (soak > 0) { // stability run: straight to the window steps and the soak
+            calibrating = false;
+            verdict = "stability run with the pacing on, no measurements";
+            ok = true;
+        }
     }
 
     public boolean done() {
@@ -72,7 +77,10 @@ public final class InputLatencyQa {
         if (done) return true;
         long now = clock.getAsLong();
         if (calibrating) return calibrate(now);
-        if (verdict != null) return afterMeasurements(now);
+        if (verdict != null) {
+            if (phaseStart == 0) phaseStart = now;
+            return afterMeasurements(now);
+        }
         if (phase >= 0 && !measuring && now - phaseStart >= SETTLE) { // settled: measure
             meter.reset();
             pacedFramesAtStart = pacer.pacedFrames;
