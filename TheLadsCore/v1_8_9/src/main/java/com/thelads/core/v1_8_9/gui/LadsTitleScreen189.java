@@ -52,19 +52,36 @@ public final class LadsTitleScreen189 {
     public GuiButton moreButton() { return moreButton; }
     public GuiButton switchButton() { return switchButton; }
     public GuiButton fullscreenButton() { return fullscreenButton; }
+    /** QA: every button the Lads layout places (main, Switch, fullscreen, language and Essential's row). */
+    public List<GuiButton> placedButtons() {
+        List<GuiButton> placed = new ArrayList<>(main);
+        placed.add(switchButton);
+        placed.add(fullscreenButton);
+        placed.add(languageButton);
+        placed.addAll(row);
+        return placed;
+    }
+
+    /**
+     * Window pixels per layout pixel: 3 (GUI scale 3 everywhere), less on windows under 720x540, so the layout never gets
+     * below its 240x180 minimum (TitleScreenTheme.layout), which would put its bottom (the account card) off the screen.
+     */
+    private static double windowPerLayoutPixel(Minecraft mc) {
+        return Math.min(3.0, Math.min(mc.displayWidth / 240.0, mc.displayHeight / 180.0));
+    }
 
     private int targetWidth() {
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc != null && mc.displayWidth > 0) {
-            return (int) Math.round(mc.displayWidth / 3.0);
+        if (mc != null && mc.displayWidth > 0 && mc.displayHeight > 0) {
+            return (int) Math.round(mc.displayWidth / windowPerLayoutPixel(mc));
         }
         return screen != null ? screen.width : 320;
     }
 
     private int targetHeight() {
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc != null && mc.displayHeight > 0) {
-            return (int) Math.round(mc.displayHeight / 3.0);
+        if (mc != null && mc.displayWidth > 0 && mc.displayHeight > 0) {
+            return (int) Math.round(mc.displayHeight / windowPerLayoutPixel(mc));
         }
         return screen != null ? screen.height : 240;
     }
@@ -147,25 +164,19 @@ public final class LadsTitleScreen189 {
         for (int i = 0; i < main.size(); i++) {
             GuiButton button = main.get(i);
             TitleScreenTheme.Rect rect = layout.buttons().get(i);
-            button.xPosition = (int) Math.round(rect.x() * ms);
-            button.yPosition = (int) Math.round(rect.y() * ms);
-            button.width = (int) Math.round(rect.width() * ms);
-            button.height = (int) Math.round(rect.height() * ms);
+            place(button, rect.x(), rect.y(), rect.width(), rect.height(), ms);
             button.visible = true;
         }
 
-        fullscreenButton.xPosition = (int) Math.round((targetW - 26) * ms);
-        fullscreenButton.yPosition = (int) Math.round(6 * ms);
-        fullscreenButton.width = (int) Math.round(20 * ms);
-        fullscreenButton.height = (int) Math.round(20 * ms);
-
-        languageButton.xPosition = (int) Math.round((targetW - 50) * ms);
-        languageButton.yPosition = (int) Math.round(6 * ms);
-        languageButton.width = (int) Math.round(20 * ms);
-        languageButton.height = (int) Math.round(20 * ms);
+        place(fullscreenButton, targetW - 26, 6, 20, 20, ms);
+        place(languageButton, targetW - 50, 6, 20, 20, ms);
 
         row.clear();
-        row.addAll(EssentialRow189.place(essential, LADS_ID + 10, screen.height, TitleScreenTheme.essentialRowWidth(layout)));
+        // In layout pixels like the rest, so the row keeps its place above the account card at every scale.
+        for (GuiButton button : EssentialRow189.place(essential, LADS_ID + 10, layout.height(), TitleScreenTheme.essentialRowWidth(layout))) {
+            place(button, button.xPosition, button.yPosition, button.width, button.height, ms);
+            row.add(button);
+        }
         buttons.addAll(row);
         seen.clear();
         seen.addAll(buttons);
@@ -260,17 +271,20 @@ public final class LadsTitleScreen189 {
 
         GlStateManager.popMatrix();
 
-        if (switchBox != null) {
-            switchButton.xPosition = (int) Math.round(switchBox.x() * ms);
-            switchButton.yPosition = (int) Math.round(switchBox.y() * ms);
-            switchButton.width = (int) Math.round(switchBox.width() * ms);
-            switchButton.height = (int) Math.round(switchBox.height() * ms);
-        }
+        if (switchBox != null) place(switchButton, switchBox.x(), switchBox.y(), switchBox.width(), switchBox.height(), ms);
 
-        for (GuiButton button : row) button.drawButton(mc, event.mouseX, event.mouseY);
-        switchButton.drawButton(mc, event.mouseX, event.mouseY);
-        fullscreenButton.drawButton(mc, event.mouseX, event.mouseY);
-        if (languageButton != null) languageButton.drawButton(mc, event.mouseX, event.mouseY);
+        for (GuiButton button : row) ((CompactButton189) button).drawButton(mc, event.mouseX, event.mouseY, ms);
+        switchButton.drawButton(mc, event.mouseX, event.mouseY, ms);
+        fullscreenButton.drawButton(mc, event.mouseX, event.mouseY, ms);
+        if (languageButton != null) languageButton.drawButton(mc, event.mouseX, event.mouseY, ms);
+    }
+
+    /** Layout pixels to screen pixels; edges rounded, so neighbours that touch in the layout never overlap on the screen. */
+    private static void place(GuiButton button, int x, int y, int width, int height, float ms) {
+        button.xPosition = Math.round(x * ms);
+        button.yPosition = Math.round(y * ms);
+        button.width = Math.round((x + width) * ms) - button.xPosition;
+        button.height = Math.round((y + height) * ms) - button.yPosition;
     }
 
     private static void openFriends(GuiMainMenu parent) {

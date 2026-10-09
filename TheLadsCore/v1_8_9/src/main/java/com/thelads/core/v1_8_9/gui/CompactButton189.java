@@ -6,6 +6,7 @@ import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import java.util.function.Supplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.renderer.GlStateManager;
 
 /**
  * A Lads-drawn compact button on the title and pause screens (Essential's row, the fullscreen toggle): icon and label, or
@@ -25,9 +26,19 @@ public final class CompactButton189 extends GuiButton {
 
     @Override
     public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+        drawButton(mc, mouseX, mouseY, 1f);
+    }
+
+    /** Drawn at {@code scale} screen pixels per GUI pixel (LadsTitleScreen189's layout scale): icon and label grow with the box. */
+    public void drawButton(Minecraft mc, int mouseX, int mouseY, float scale) {
         if (!visible) return;
         hovered = mouseX >= xPosition && mouseY >= yPosition && mouseX < xPosition + width && mouseY < yPosition + height;
-        TitleScreenTheme.renderCompactButton(new GuiLadsAdapter(mc.fontRendererObj, 0, 0), xPosition, yPosition, width, height,
-            icon.get(), width <= height ? null : displayString, false, enabled, ButtonLift.update(this, enabled && hovered));
+        int x = Math.round(xPosition / scale), y = Math.round(yPosition / scale);
+        int w = Math.round((xPosition + width) / scale) - x, h = Math.round((yPosition + height) / scale) - y;
+        GlStateManager.pushMatrix();
+        GlStateManager.scale(scale, scale, 1f);
+        TitleScreenTheme.renderCompactButton(new GuiLadsAdapter(mc.fontRendererObj, 0, 0), x, y, w, h,
+            icon.get(), w <= h ? null : displayString, false, enabled, ButtonLift.update(this, enabled && hovered));
+        GlStateManager.popMatrix();
     }
 }

@@ -735,8 +735,8 @@ try
         // =cull: only Entity Culling in a crowd behind a wall, including uncapped frame times at render distance 8 and 12 (Probe173Cull).
         // =anim: only swing while using items and the damage tilt (Probe172Anim).
         // =keybinds: side mouse buttons and lasting key binds, the phase in <game>\.lads-qa-keybinds (Probe172Keybinds).
-        // =ui: only the reset questions and Fullbright's slider (Probe172Ui).
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "particles" or "anim" or "keybinds" or "ui" or "render185") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        // =ui: only the reset questions and Fullbright's slider (Probe172Ui). =title: only the title layout at every GUI scale and More.
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "particles" or "anim" or "keybinds" or "ui" or "render185" or "title") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
         if (perf189)
         {
             string perfFolder = Path.Combine(directory, "lads-qa", "perf");
