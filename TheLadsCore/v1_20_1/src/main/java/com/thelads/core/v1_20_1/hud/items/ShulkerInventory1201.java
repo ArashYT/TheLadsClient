@@ -21,8 +21,9 @@ public final class ShulkerInventory1201 {
 
     /** A shulker box item whose contents its tooltip may show ("HideFlags" can hide the additional tooltip, where they live). */
     public static boolean eligible(ItemStack item) {
-        if (!Hud1201.enabled("ShulkerBoxUtils") || item.isEmpty()
-            || !(item.getItem() instanceof BlockItem block) || !(block.getBlock() instanceof ShulkerBoxBlock)) return false;
+        // Every GUI item passes here (creative and JEI lists): the type test comes first.
+        if (item.isEmpty() || !(item.getItem() instanceof BlockItem block) || !(block.getBlock() instanceof ShulkerBoxBlock)
+            || !Hud1201.enabled("ShulkerBoxUtils")) return false;
         return (hideFlags(item) & ItemStack.TooltipPart.ADDITIONAL.getMask()) == 0;
     }
     private static int hideFlags(ItemStack item) {
