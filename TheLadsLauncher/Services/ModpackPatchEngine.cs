@@ -55,9 +55,6 @@ public sealed class PatchConfig
     public string File { get; set; } = ""; // e.g. "config/modernfix.json"
     public string Format { get; set; } = "json"; // "json", "toml", "cfg", "properties"
     public Dictionary<string, JsonElement>? Set { get; set; }
-    /// <summary>True: every key of <see cref="Set"/> is a literal property name of the file's top level, dots included
-    /// (lazyyyyy.mixins.json has keys like "entity_sound_features.async_sound_events"). False: dots descend into nested objects.</summary>
-    public bool Flat { get; set; }
     public Dictionary<string, string>? KeyValues { get; set; }
 }
 
@@ -194,8 +191,7 @@ public static class ModpackPatchEngine
 
             foreach (var (path, element) in patch.Set)
             {
-                if (patch.Flat) root[path] = JsonNode.Parse(element.GetRawText());
-                else SetNestedJsonProperty(root, path, JsonNode.Parse(element.GetRawText()));
+                SetNestedJsonProperty(root, path, JsonNode.Parse(element.GetRawText()));
             }
 
             File.WriteAllText(filePath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
