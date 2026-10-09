@@ -127,6 +127,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe172Ui.STEPS);
+        } else if ("ebe".equals(only)) { // built-in baked block entities: frames and frame times (BakedBlockEntitiesProbe189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady,
+                com.thelads.core.v1_8_9.feature.ebe.BakedBlockEntitiesProbe189::run));
         } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));

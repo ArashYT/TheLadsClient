@@ -56,6 +56,7 @@ public class TheLadsCore189 {
         // JInput's jar is sealed: LaunchClassLoader defining its classes logs "has a security seal ... not secure" once per
         // class. It loads from the parent loader instead, as org.lwjgl. does. Set before RawMouse189 (or any JInput class) loads.
         net.minecraft.launchwrapper.Launch.classLoader.addClassLoaderExclusion("net.java.games.input.");
+        com.thelads.core.v1_8_9.feature.ebe.BakedBlockEntities189.init(); // before the first texture stitch (preceding FML init)
     }
 
     @Mod.EventHandler

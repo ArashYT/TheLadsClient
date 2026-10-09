@@ -25,6 +25,7 @@ loom {
     forge {
         pack200Provider = new dev.architectury.pack200.java.Pack200Adapter()
         mixinConfig("theladscore.v1_8_9.mixins.json")
+        mixinConfig("theladscore.v1_8_9.ebe.mixins.json")
     }
     mixin {
         defaultRefmapName = "theladscore.v1_8_9.refmap.json"
@@ -80,7 +81,7 @@ tasks.withType(Jar).configureEach {
         'FMLCorePluginContainsFMLMod': 'true',
         'ForceLoadAsMod': 'true',
         'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
-        'MixinConfigs': 'theladscore.v1_8_9.mixins.json',
+        'MixinConfigs': 'theladscore.v1_8_9.mixins.json,theladscore.v1_8_9.ebe.mixins.json',
     )
 }
 
