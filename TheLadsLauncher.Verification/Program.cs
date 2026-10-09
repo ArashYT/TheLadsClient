@@ -408,7 +408,7 @@ StreamWriter? log = null;
 var logGate = new object();
 bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false, flashbackPassed = false, flashbackRequested = false;
 bool menuCaptureRequested = false, hudCaptureRequested = false, worldCapturesRequested = false, windowFound = false, snapshotInvalid = false;
-bool resolutionCaptureRequested = false;
+bool resolutionCaptureRequested = false, render185Requested = false;
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 // END markers whose FAILED line was logged instead ("Lads x capture END:" -> "Lads x capture FAILED"): that capture is settled, so one
 // failure no longer ends the run before the other requested captures have finished. The run still fails (nativeProbeFailed, Require).
@@ -444,7 +444,7 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(lightsCaptureVerification, "Lads dynamic lights capture END:")
     && Settled(asyncStressVerification, "Lads async stress probe END:")
     && Settled(appleSkinSyncVerification, "Lads AppleSkin sync capture END:")
-    && Settled(render185Verification, "Lads render 1.8.5 capture END:");
+    && Settled(render185Requested, "Lads render 1.8.5 capture END:");
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
 LoadedModList modList = capabilities.Forge ? new ForgeModList() : new FabricModList();
@@ -973,8 +973,7 @@ try
                     (mouseTweaksCaptureVerification, mouseTweaksCaptureRequest, "Drive Lads Mouse Tweaks in a QA chest and capture its frames."),
                     (lightsCaptureVerification, lightsCaptureRequest, "Light the QA world at midnight with Dynamic Lights and capture its frames."),
                     (asyncStressVerification, asyncStressRequest, "Stress Async with a pen of mobs in the QA world."),
-                    (appleSkinSyncVerification, appleSkinSyncRequest, "Inject AppleSkin server payloads in the QA world and capture the food bar."),
-                    (render185Verification, render185Request, "Measure and photograph the built-in render remakes off and on.") })
+                    (appleSkinSyncVerification, appleSkinSyncRequest, "Inject AppleSkin server payloads in the QA world and capture the food bar.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -999,12 +998,22 @@ try
             await LockFiles.WriteAtomicallyAsync(resolutionCaptureRequest, Encoding.UTF8.GetBytes("Photograph Better Resolution at each setting in the QA world."), ct);
             resolutionCaptureRequested = true;
         }
+        // The 1.8.5 render capture builds its own scene in the sky and puts it back: asked for once the QA world capture passed and the
+        // world probes settled (passed or failed), so an unrelated probe failure does not hide its evidence.
+        if (render185Verification && !render185Requested && passedMarkers.ContainsKey("Lads world capture END:")
+            && (nativeProbeFailed || requiredWorldProbes.All(passedMarkers.ContainsKey)))
+        {
+            await LockFiles.WriteAtomicallyAsync(render185Request, Encoding.UTF8.GetBytes("Measure and photograph the built-in render remakes off and on."), ct);
+            render185Requested = true;
+            Console.WriteLine("Requesting the 1.8.5 render capture (built-in Flerovium and Kerria remakes off and on).");
+        }
         // Allow independent world/GPU probes to finish after a restored-state assertion fails.
         // The run still fails below; collecting their evidence avoids hiding subsequent defects.
         // Once the world captures were asked for, every requested one (and a requested Flashback probe) settles first.
         if (nativeProbeFailed && (!autoWorldVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads native screenshots probe END:")
             || stopwatch.Elapsed > TimeSpan.FromSeconds(90))
             && (Settled(resolutionCaptureRequested, "Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))
+            && Settled(render185Requested, "Lads render 1.8.5 capture END:")
             && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed && (!scripted || passedMarkers.ContainsKey("Lads qa script END:"))
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
