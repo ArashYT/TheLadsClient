@@ -36,9 +36,10 @@ dependencies {
 
     implementation project(':common')
     implementation files('../v26_2/libs/catconfig-mc-26.2-0.2.1.jar', '../v26_2/libs/catconfig-0.3.0.jar')
-    include 'club.minnced:java-discord-rpc:2.0.1'
-    include 'club.minnced:discord-rpc-release:v3.3.0'
 }
+
+apply from: 'perf.gradle'
+apply from: 'embedded.gradle'
 
 processResources {
     // 1.20.1's shader preprocessor cannot import from another namespace, so the shared upscale functions (common) also ship as

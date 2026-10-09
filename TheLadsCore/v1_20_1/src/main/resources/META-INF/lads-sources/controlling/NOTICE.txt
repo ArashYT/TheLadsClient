@@ -1,0 +1,16 @@
+Controlling (mod id controlling) for Minecraft 1.20.1, with the parts of its library Searchables (mod id searchables) that it uses.
+Copyright (c) 2021 Jared (Controlling) and (c) 2023 Jared (Searchables). License: MIT; the texts are in LICENSE
+(Controlling) and LICENSE-Searchables beside this file.
+Projects: https://github.com/jaredlll08/Controlling and https://github.com/jaredlll08/searchables
+
+Ported by The Lads to Minecraft 1.20.1 from the Lads Core 26.3 embedded copy, which is Controlling 26.3.3
+(branch 26.3, commit d7426fa0702a790be069b5baece752212a6d9a8f) with Searchables 1.0.2 (branch 26.3,
+commit 48dcda51a27e1299129dfa7342c1bf4c55ab95ad). No source was fetched for the 1.20.1 port.
+
+Modified by The Lads: repackaged into Lads Core as com.thelads.core.v1_20_1.embedded.controlling (Searchables under
+...controlling.searchables; mixin config theladscore.v1_20_1.embedded.controlling.mixins.json). The screen, the key lists and the
+search box are rewritten for the 1.20.1 GUI API (immediate-mode GuiGraphics, ContainerObjectSelectionList, GLFW key codes); the key
+binds screen is a standalone OptionsSubScreen, not a subclass of vanilla's. The platform services are created directly instead of
+through ServiceLoader. The key binds screen swap is done by ControllingScreenMixin on Minecraft.setScreen. Everything stands down
+while the original Controlling mod is installed (plain Fabric jar or Forge jar under Connector).
+The language files are those of the 26.3 copy, packed from the same source tree.

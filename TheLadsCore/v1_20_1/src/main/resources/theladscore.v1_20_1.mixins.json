@@ -15,8 +15,7 @@
     "ScoreboardMixin",
     "BossBarMixin",
     "BossBarAccessor1201",
-    "BorderlessWindowMixin",
-    "MinecraftFramerateMixin",
+
     "KillBannerAttackMixin",
     "KillBannerPacketsMixin"
   ]

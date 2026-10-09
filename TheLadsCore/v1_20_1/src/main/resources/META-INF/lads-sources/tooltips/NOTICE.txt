@@ -1,0 +1,19 @@
+Extra item tooltip lines (com.thelads.core.*.embedded.tooltips) - an independent implementation by The Lads.
+
+It provides the kind of information the Tooltips TXF mod (tooltipstxf, All Rights Reserved) is publicly described
+as adding: durability, food values, compostable chance, burn time, use cooldown, song duration, enchantability,
+repair cost, block hardness/resistance, enchanting power, mining level/speed, mod name and item components.
+It was written from that public description and from observing tooltips in game. No Tooltips TXF code, assets or
+text were copied, decompiled or paraphrased. It reads the same config/tooltipstxf.json5 setting names so a
+player's existing choices keep applying, and it stays off while the tooltipstxf mod itself is installed.
+
+The Minecraft 1.20.1 version (com.thelads.core.v1_20_1.embedded.tooltips) is the Lads 26.3 implementation carried over
+to 1.20.1 by the same authors; no third-party source was used for it either. 1.20.1 has no item data components, so each
+line reads its value from the class that holds it there: food from the item's FoodProperties (saturation is nutrition
+x modifier x 2), compost chance from ComposterBlock's table, burn time from Fabric API's fuel registry, song length from
+RecordItem, enchantability from the item, repair cost from the stack's RepairCost tag, hardness and resistance from
+the block, mining level and speed from the tier of pickaxes, axes, shovels and hoes (netherite shows level 4, as the
+tier does in 1.20.1), and "components" lists the stack's NBT tag. Left out because 1.20.1 has no data for them: the use
+cooldown line (cooldowns are constants inside the item classes) and modded enchantment power (only the bookshelf, the
+one block the 1.20.1 enchanting table counts, shows it). Lads' own durability and food lines (EnhancedToolbars,
+EnhancedTooltips) are not consulted: those modules have no 1.20.1 implementation yet.
