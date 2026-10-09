@@ -178,9 +178,9 @@ public final class NativeFeatures1201 {
     }
 
     /** LocalPlayer.aiStep's reads of the Sprint key: this tick's value from {@link #movement}, else the key itself. */
-    public static boolean sprintKeyDown(KeyMapping key) {
+    public static boolean sprintKeyDown(KeyMapping key, boolean pressed) {
         Boolean value = sprintKey;
-        return value != null && key == Minecraft.getInstance().options.keySprint ? value : key.isDown();
+        return value != null && key == Minecraft.getInstance().options.keySprint ? value : pressed;
     }
 
     /** End of LocalPlayer.aiStep. */

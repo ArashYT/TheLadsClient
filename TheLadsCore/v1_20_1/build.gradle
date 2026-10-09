@@ -41,6 +41,12 @@ dependencies {
 }
 
 processResources {
+    // 1.20.1's shader preprocessor cannot import from another namespace, so the shared upscale functions (common) also ship as
+    // a vanilla-namespace include for the Better Resolution shader.
+    from('../common/src/main/resources/assets/theladscore/shaders/include/world_upscale.glsl') {
+        into 'assets/minecraft/shaders/include'
+        rename { 'lads_world_upscale.glsl' }
+    }
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
         expand "version": project.version
