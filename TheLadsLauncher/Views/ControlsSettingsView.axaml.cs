@@ -109,7 +109,17 @@ public partial class ControlsSettingsView : UserControl
         ScopeTitle.Text = _targets.Count > 0 ? "Applies to all Lads Client versions" : "Every profile keeps its own settings";
         VersionChips.Children.Clear();
         foreach (var version in versions)
-            VersionChips.Children.Add(new Border { Classes = { "chip" }, Margin = new Thickness(0, 0, 6, 4), Child = new TextBlock { Text = version }.Untranslated() });
+        {
+            var chip = new Border { Classes = { "chip" }, Margin = new Thickness(0, 0, 6, 4), Child = new TextBlock { Text = version }.Untranslated() };
+            if (GameVersionPolicy.IsPaused(version))
+            {
+                chip.Opacity = 0.45;
+                chip.IsEnabled = false;
+                ToolTip.SetTip(chip, GameVersionPolicy.PausedMessage);
+                ToolTip.SetShowOnDisabled(chip, true);
+            }
+            VersionChips.Children.Add(chip);
+        }
         var isolated = all.Where(p => p.IsIsolated).ToList();
         IsolatedNote.Text = isolated.Count == 0 ? "" : (_targets.Count == 0 ? "All profiles are isolated, so changes here only update the shared copy new profiles start from. Isolated: " : "Isolated profiles keep their own settings: ")
             + string.Join(", ", isolated.Select(p => $"{p.Name} ({p.MinecraftVersion})")) + ".";

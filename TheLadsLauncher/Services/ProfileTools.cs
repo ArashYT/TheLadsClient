@@ -24,6 +24,9 @@ public static class ProfileTools
     /// <summary>The versions the Play screen offers; profiles for other versions are listed greyed out (26.2 is paused, see GameVersionPolicy).</summary>
     public static readonly string[] PlayableVersions = { "26.3", "1.20.1", "1.8.9" };
 
+    /// <summary>The version filter choices on the Profiles page (26.2 is paused, see GameVersionPolicy).</summary>
+    public static readonly string[] FilterVersions = { "All versions", "26.3", "1.20.1", "1.21.11", "1.8.9" };
+
     /// <summary>Newest Minecraft version first (1.8.9 last); "Latest Release" ahead of the profile it matches.</summary>
     public static IEnumerable<LauncherProfile> NewestFirst(IEnumerable<LauncherProfile> profiles) =>
         profiles.OrderByDescending(p => Version.TryParse(p.MinecraftVersion, out var v) ? v : new Version(0, 0))
@@ -66,6 +69,8 @@ public static class ProfileTools
             throw new InvalidDataException("Invalid or unsupported settings preset.");
         if (GameVersionPolicy.IsDropped(preset.MinecraftVersion))
             throw new InvalidDataException($"Minecraft {preset.MinecraftVersion} is no longer supported; The Lads Client offers 1.8.9, 1.20.1 and 26.3.");
+        if (GameVersionPolicy.IsPaused(preset.MinecraftVersion))
+            throw new InvalidOperationException(GameVersionPolicy.PausedMessage);
         var profile = NewProfile(preset);
         GameVersionPolicy.ResolveVersionId(profile);
         return preset;
@@ -79,6 +84,8 @@ public static class ProfileTools
 
     public static LauncherProfile Import(Preset preset, string profilesDirectory)
     {
+        if (GameVersionPolicy.IsPaused(preset.MinecraftVersion))
+            throw new InvalidOperationException(GameVersionPolicy.PausedMessage);
         Validate(preset);
         var profile = NewProfile(preset);
         string directory = Path.Combine(profilesDirectory, profile.Id);
