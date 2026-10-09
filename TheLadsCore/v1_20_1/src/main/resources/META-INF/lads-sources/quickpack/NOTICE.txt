@@ -1,0 +1,20 @@
+quick-pack by Drex
+https://github.com/DrexHD/quick-pack (commit b80dac13af15e6d389acc4a62d561d225b5828ff, "Improve mod compatibility",
+2026-07-29, mod_version 1.4.0), the last revision released under the MIT License.
+Copyright (c) 2025 Drex. MIT License, see LICENSE beside this file.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_20_1.embedded.quickpack) and ported to
+Minecraft 1.20.1 from the Lads 26.3 embedded copy (which is derived from the commit above and adapted to 26.3).
+The pack shipped quick-pack 1.5.1, which upstream relicensed under the GPL-3.0 on 2026-07-29; none of that later
+code is used here, so the 1.5.0 additions (parallel atlas mipmap generation, font provider selection) are not
+part of this copy.
+
+1.20.1 differs from the version the 26.3 copy targets: FilePackResources there keeps a shared zip handle and
+overlay prefixes, neither of which exists in 1.20.1, where the pack opens its own ZipFile. The 1.20.1 mixin
+therefore builds the index (a sorted set of the zip's file names plus the namespaces per pack type, read in one pass)
+the first time a pack is asked for its namespaces or a listing, and answers getNamespaces and listResources from it,
+with vanilla's rules for namespaces (non-lower-case ones ignored) and listed paths. The loading overlay fade-out
+(the two seconds after the reload is done) and the title screen fade-in are removed as in 26.3, hooked where 1.20.1
+makes them (LoadingOverlay.render, Minecraft.setInitialScreen). Config file kept: config/quick-pack.json. A QA probe
+was added. The embedded copy stays inactive while the original quick-pack jar is installed (Fabric jar, or Forge jar
+under Sinytra Connector).

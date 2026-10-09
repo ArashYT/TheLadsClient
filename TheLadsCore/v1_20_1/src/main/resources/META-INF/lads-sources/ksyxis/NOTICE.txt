@@ -1,0 +1,13 @@
+Ksyxis 1.4.5 by VidTu
+https://github.com/VidTu/Ksyxis (tag 1.4.5, commit a0c448c908e10ba6daf55bf9a3eaa90319499f34)
+Copyright (c) 2021-2026 VidTu. MIT License, see LICENSE beside this file.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_20_1.embedded.ksyxis) and ported to
+Minecraft 1.20.1 from the Lads 26.3 embedded copy (which is derived from the tag and commit above). The 26.3 copy
+keeps only the injections for the 1.21.9+ player-spawn preparation and the 500 ms world-open delay, neither of which
+exists in 1.20.1. On 1.20.1 the same idea is applied to MinecraftServer.prepareLevels: the radius-11 START ticket
+around the world spawn is not added and the "Preparing spawn area" wait for 441 ticking chunks ends at once, so the
+world opens without generating the 21 x 21 start region (the chunks around the player load when the player joins).
+As with Ksyxis itself, the spawn chunks are therefore no longer kept loaded. The legacy-version mixins and loader
+shims of Ksyxis are left out. A QA probe was added. The embedded copy stays inactive while the original Ksyxis jar is
+installed (Fabric jar, or Forge jar under Sinytra Connector).
