@@ -69,6 +69,8 @@ public final class NativeItemPhysics1201 {
     /** QA: dropped items drawn by Item Physics since start, and the last tumble seen (read by the QA probe). */
     public static volatile long drawn;
     public static volatile String lastDrawn = "";
+    /** QA: HUD callbacks seen, and those that drew the charge bar. */
+    public static volatile long barCalls, barDrawn;
 
     private NativeItemPhysics1201() {}
 
@@ -289,8 +291,10 @@ public final class NativeItemPhysics1201 {
 
     /** The charge, as a thin bar under the crosshair. */
     private static void chargeBar(GuiGraphics graphics) {
+        barCalls++;
         float shown = CHARGE.shown();
         if (shown <= 0) return;
+        barDrawn++;
         int x = graphics.guiWidth() / 2 - 8, y = graphics.guiHeight() / 2 + 9;
         graphics.fill(x, y, x + 16, y + 2, 0x80000000);
         graphics.fill(x, y, x + Math.round(16 * shown), y + 2, 0xE0FFFFFF);
