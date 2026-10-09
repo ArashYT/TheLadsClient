@@ -459,7 +459,8 @@ if (requestedFeaturesOnly)
 }
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
 // 1.8.5 input lane, Fabric versions: input-latency pacing and synthetic mouse evidence in the QA world (InputProbe26 / InputProbe1201).
-if (autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_INPUT") == "1") requiredWorldProbes = [.. requiredWorldProbes, "Lads input probe END:"];
+bool inputVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_INPUT") == "1", inputProbeFailed = false;
+if (inputVerification) requiredWorldProbes = [.. requiredWorldProbes, "Lads input probe END:"];
 if (scripted) requiredWorldProbes = [.. requiredWorldProbes, "Lads qa script END:"];
 if (capabilities.Minimal && !autoWorldVerification) requiredWorldProbes = []; // --no-world: the title screen and the script are the whole run
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
@@ -797,6 +798,7 @@ try
             if (line.Contains($"TheLadsCore {version} initialized successfully")) initialized = true;
             if (line.Contains("Lads integration write probe END:") && Passed(line)) settingsProbePassed = true;
             if (failureMarkers.Any(line.Contains)) nativeProbeFailed = true;
+            if (line.Contains("Lads input probe FAILED")) inputProbeFailed = true;
             // 1.20.1: a Lads mixin that failed to apply (the config uses defaultRequire 0, so Mixin may only warn) fails the run.
             if (capabilities.Minimal && QaShared.MixinProblem(line)) { nativeProbeFailed = true; keyLines.Add("MIXIN PROBLEM: " + Clean(line)); }
             foreach (string end in captureEnds)
@@ -1008,7 +1010,9 @@ try
         if (nativeProbeFailed && (!autoWorldVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads native screenshots probe END:")
             || stopwatch.Elapsed > TimeSpan.FromSeconds(90))
             && (Settled(resolutionCaptureRequested, "Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))
-            && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))) break;
+            && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))
+            // The input probe's measurements run on after an unrelated probe failed (they need the world for a few minutes).
+            && (!inputVerification || inputProbeFailed || passedMarkers.ContainsKey("Lads input probe END:"))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed && (!scripted || passedMarkers.ContainsKey("Lads qa script END:"))
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
             && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;
