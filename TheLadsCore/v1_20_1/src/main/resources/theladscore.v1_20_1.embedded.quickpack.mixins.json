@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.embedded.quickpack.mixin",
+  "plugin": "com.thelads.core.v1_20_1.embedded.quickpack.QuickPackMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "client": ["FilePackResourcesMixin", "LoadingOverlayMixin", "MinecraftMixin"],
+  "injectors": { "defaultRequire": 1 }
+}
