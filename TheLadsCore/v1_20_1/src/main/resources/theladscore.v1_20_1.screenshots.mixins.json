@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.feature.screenshots.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "plugin": "com.thelads.core.v1_20_1.feature.screenshots.ScreenshotsMixinPlugin1201",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "GlobalScreenshotMixin",
+    "MainMixin",
+    "ScreenMixin",
+    "ScreenshotMixin",
+    "ScreenshotsKeyboardMixin"
+  ]
+}

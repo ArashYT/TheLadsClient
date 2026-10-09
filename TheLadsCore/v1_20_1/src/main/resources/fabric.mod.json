@@ -27,7 +27,8 @@
   },
   "mixins": [
     "theladscore.v1_20_1.mixins.json",
-    "theladscore.v1_20_1.menus.mixins.json"
+    "theladscore.v1_20_1.menus.mixins.json",
+    "theladscore.v1_20_1.screenshots.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.14.21",
