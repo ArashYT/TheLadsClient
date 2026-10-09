@@ -119,6 +119,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe173Cap.STEPS);
+        } else if ("input".equals(only)) { // 1.8.5 input-latency pacing: FPS and input-to-GPU-done latency (ProbeInput189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll(ProbeInput189.STEPS);
         } else if ("quick".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));

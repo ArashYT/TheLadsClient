@@ -27,5 +27,10 @@ public final class InputLatencyMixins26 {
         private void lads$beforeSubmit(boolean advanceGameTime, CallbackInfo ci) {
             InputLatency26.beforeSubmit();
         }
+
+        @Inject(method = "renderFrame", at = @At(value = "INVOKE", target = "Lcom/mojang/renderpearl/api/device/GpuSurface;present()V", shift = At.Shift.AFTER), require = 0)
+        private void lads$afterPresent(boolean advanceGameTime, CallbackInfo ci) {
+            InputLatency26.afterPresent();
+        }
     }
 }

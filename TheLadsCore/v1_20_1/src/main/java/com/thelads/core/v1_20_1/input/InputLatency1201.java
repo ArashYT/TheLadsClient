@@ -2,11 +2,13 @@ package com.thelads.core.v1_20_1.input;
 
 import com.mojang.blaze3d.platform.Window;
 import com.thelads.core.perf.FramePacer;
+import com.thelads.core.perf.LatencyMeter;
 import com.thelads.core.perf.PreciseWait;
 import com.thelads.core.perf.RawMouseBatch;
 import com.thelads.core.v1_20_1.input.mixin.MouseHandlerInvoker1201;
 import com.thelads.core.v1_20_1.input.mixin.RenderSystemInvoker1201;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicLong;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
@@ -14,6 +16,8 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWNativeWin32;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL32C;
+import org.lwjgl.opengl.GL43C;
+import org.lwjgl.opengl.GL45C;
 import org.lwjgl.system.JNI;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Platform;
@@ -57,8 +61,16 @@ public final class InputLatency1201 {
     static final FramePacer PACER = new FramePacer();
     private static boolean glChecked;
     private static long previous, older;
-    /** QA: Probe pauses the pacing for its with/without comparison. */
+    /** QA (InputProbe1201): pacing paused for the with/without comparison. */
     public static boolean qaReflexPaused;
+    /** QA: latency meter, GPU load (4096x4096 texture copies), mouse flood mode, vanilla input paths (buffered input and limiter off). */
+    static LatencyMeter qaMeter;
+    static int qaCopies, qaFlood;
+    static boolean qaVanilla;
+    /** QA: synthetic mouse events a thread produced since the last poll (flood mode 2, the buffered path). */
+    static final AtomicLong qaPending = new AtomicLong();
+    private static ByteBuffer qaRecords;
+    private static int loadA, loadB;
 
     private InputLatency1201() {}
 
@@ -109,7 +121,8 @@ public final class InputLatency1201 {
 
     /** Head of RenderSystem.pollEvents: the queued raw mouse motion, summed, before GLFW sees it. */
     public static void beforePoll() {
-        if (!ixeris) return;
+        if (qaFlood == 2) qaDeliverBatch();
+        if (!ixeris || qaVanilla) return;
         try {
             Minecraft mc = Minecraft.getInstance();
             Window window = mc.getWindow();
@@ -170,7 +183,7 @@ public final class InputLatency1201 {
 
     /** RenderSystem.limitDisplayFPS: true when this waited instead (no event pumping during the wait, input polled after it). */
     public static boolean limit(int fps) {
-        if (!ixeris) return false;
+        if (!ixeris || qaVanilla) return false;
         lastFrameEnd = PreciseWait.until(lastFrameEnd + 1_000_000_000L / Math.max(1, fps), () -> false);
         RenderSystemInvoker1201.lads$pollEvents();
         return true;
@@ -178,6 +191,12 @@ public final class InputLatency1201 {
 
     /** Head of Minecraft.runTick: wait for the GPU, then read input once more. */
     public static void frameStart() {
+        if (qaMeter != null) qaMeter.poll();
+        pace();
+        if (qaMeter != null) qaMeter.input();
+    }
+
+    private static void pace() {
         if (!reflex || qaReflexPaused) return;
         try {
             if (!glChecked) {
@@ -196,6 +215,8 @@ public final class InputLatency1201 {
 
     /** RenderSystem.flipFrame, right before glfwSwapBuffers: the feedback for the pacing, then this frame's fence. */
     public static void beforeSwap() {
+        if (qaCopies > 0) qaGpuLoad();
+        if (qaMeter != null) qaMeter.fence();
         if (!reflex || qaReflexPaused || !glChecked) return;
         try {
             PACER.frameEnd(done(previous));
@@ -205,6 +226,49 @@ public final class InputLatency1201 {
         } catch (Throwable t) {
             stopPacing(t);
         }
+    }
+
+    /** RenderSystem.flipFrame, right after glfwSwapBuffers (QA only). */
+    public static void afterSwap() {
+        if (qaMeter != null) qaMeter.poll();
+    }
+
+    static LatencyMeter meter() {
+        if (qaMeter == null) qaMeter = new LatencyMeter(() -> GL32C.glFenceSync(GL32C.GL_SYNC_GPU_COMMANDS_COMPLETE, 0),
+            fence -> done((Long) fence), fence -> GL32C.glDeleteSync((Long) fence));
+        return qaMeter;
+    }
+
+    private static void qaGpuLoad() {
+        int size = 4096;
+        if (loadA == 0) {
+            loadA = GL45C.glCreateTextures(GL32C.GL_TEXTURE_2D);
+            loadB = GL45C.glCreateTextures(GL32C.GL_TEXTURE_2D);
+            GL45C.glTextureStorage2D(loadA, 1, GL32C.GL_RGBA8, size, size);
+            GL45C.glTextureStorage2D(loadB, 1, GL32C.GL_RGBA8, size, size);
+        }
+        for (int i = 0; i < qaCopies; i++) {
+            int from = i % 2 == 0 ? loadA : loadB, to = i % 2 == 0 ? loadB : loadA;
+            GL43C.glCopyImageSubData(from, GL32C.GL_TEXTURE_2D, 0, 0, 0, 0, to, GL32C.GL_TEXTURE_2D, 0, 0, 0, 0, size, size, 1);
+        }
+    }
+
+    /** Flood mode 2: the synthetic events since the last poll, laid out as GetRawInputBuffer would, summed and handed over once. */
+    private static void qaDeliverBatch() {
+        int count = (int) Math.min(qaPending.getAndSet(0), 300);
+        if (count == 0) return;
+        if (qaRecords == null) qaRecords = MemoryUtil.memAlloc(300 * 48);
+        for (int i = 0; i < count; i++) {
+            int at = i * 48;
+            qaRecords.putInt(at, 0).putInt(at + 4, 48).putShort(at + 24, (short) 0).putInt(at + 36, i % 2 == 0 ? 1 : -1).putInt(at + 40, 0);
+        }
+        batch.clear();
+        batch.add(qaRecords, count);
+        Minecraft mc = Minecraft.getInstance();
+        MouseHandler mouse = mc.mouseHandler;
+        ((MouseHandlerInvoker1201) mouse).lads$onMove(mc.getWindow().getWindow(), mouse.xpos() + batch.dx + 1, mouse.ypos() + batch.dy);
+        batchedPolls++;
+        batchedRecords += batch.mouse;
     }
 
     private static boolean done(long fence) {

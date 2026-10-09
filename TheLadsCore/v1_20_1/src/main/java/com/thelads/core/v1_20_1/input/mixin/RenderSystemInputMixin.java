@@ -20,6 +20,11 @@ public class RenderSystemInputMixin {
         InputLatency1201.beforeSwap();
     }
 
+    @Inject(method = "flipFrame(J)V", at = @At(value = "INVOKE", target = "Lorg/lwjgl/glfw/GLFW;glfwSwapBuffers(J)V", shift = At.Shift.AFTER))
+    private static void lads$afterSwap(long window, CallbackInfo ci) {
+        InputLatency1201.afterSwap();
+    }
+
     @Inject(method = "limitDisplayFPS(I)V", at = @At("HEAD"), cancellable = true)
     private static void lads$limit(int fps, CallbackInfo ci) {
         if (InputLatency1201.limit(fps)) ci.cancel();

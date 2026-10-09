@@ -18,4 +18,9 @@ public class MinecraftInputMixin189 {
     private void ladsBeforeSwap(CallbackInfo ci) {
         InputLatency189.beforeSwap();
     }
+
+    @Inject(method = "updateDisplay", at = @At("TAIL"))
+    private void ladsAfterSwap(CallbackInfo ci) {
+        InputLatency189.afterSwap();
+    }
 }

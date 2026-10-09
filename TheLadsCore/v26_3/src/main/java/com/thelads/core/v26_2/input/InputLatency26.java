@@ -1,8 +1,11 @@
 package com.thelads.core.v26_2.input;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.renderpearl.api.GpuFormat;
 import com.mojang.renderpearl.api.commands.GpuFence;
+import com.mojang.renderpearl.api.textures.GpuTexture;
 import com.thelads.core.perf.FramePacer;
+import com.thelads.core.perf.LatencyMeter;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +27,11 @@ public final class InputLatency26 {
     static final FramePacer PACER = new FramePacer();
     static boolean reflex;
     private static GpuFence previous, older;
-    /** QA: the probe pauses the pacing for its with/without comparison. */
+    /** QA (InputProbe26): pacing paused for the with/without comparison, the latency meter, GPU load (4096x4096 texture copies). */
     public static boolean qaPaused;
+    static LatencyMeter qaMeter;
+    static int qaCopies;
+    private static GpuTexture loadA, loadB;
 
     private InputLatency26() {}
 
@@ -40,8 +46,20 @@ public final class InputLatency26 {
         LOGGER.info("Lads input: input-latency pacing {}; buffered raw mouse input is SDL3's own on 26.x", reflex ? "on" : "off");
     }
 
+    static LatencyMeter meter() {
+        if (qaMeter == null) qaMeter = new LatencyMeter(() -> RenderSystem.getDevice().createCommandEncoder().createFence(),
+            fence -> ((GpuFence) fence).awaitCompletion(0L), fence -> ((GpuFence) fence).close());
+        return qaMeter;
+    }
+
     /** Head of RenderSystem.pollEvents. */
     public static void frameStart() {
+        if (qaMeter != null) qaMeter.poll();
+        pace();
+        if (qaMeter != null) qaMeter.input();
+    }
+
+    private static void pace() {
         if (!reflex || qaPaused) return;
         try {
             PACER.frameStart(() -> done(previous), () -> done(older));
@@ -52,6 +70,8 @@ public final class InputLatency26 {
 
     /** Right before the frame's CommandEncoder.submit. */
     public static void beforeSubmit() {
+        if (qaCopies > 0) gpuLoad();
+        if (qaMeter != null) qaMeter.fence();
         if (!reflex || qaPaused) return;
         try {
             PACER.frameEnd(done(previous));
@@ -61,6 +81,22 @@ public final class InputLatency26 {
         } catch (Throwable t) {
             stop(t);
         }
+    }
+
+    /** Right after the frame's present (QA only). */
+    public static void afterPresent() {
+        if (qaMeter != null) qaMeter.poll();
+    }
+
+    private static void gpuLoad() {
+        var device = RenderSystem.getDevice();
+        int size = 4096, usage = GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_COPY_DST;
+        if (loadA == null) {
+            loadA = device.createTexture("Lads QA GPU load A", usage, GpuFormat.RGBA8_UNORM, size, size, 1, 1);
+            loadB = device.createTexture("Lads QA GPU load B", usage, GpuFormat.RGBA8_UNORM, size, size, 1, 1);
+        }
+        var encoder = device.createCommandEncoder();
+        for (int i = 0; i < qaCopies; i++) encoder.copyTextureToTexture(i % 2 == 0 ? loadA : loadB, i % 2 == 0 ? loadB : loadA, 0, 0, 0, 0, 0, size, size);
     }
 
     private static boolean done(GpuFence fence) {

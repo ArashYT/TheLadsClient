@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.input;
 
 import com.thelads.core.perf.FramePacer;
+import com.thelads.core.perf.LatencyMeter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.Display;
@@ -25,8 +26,9 @@ public final class InputLatency189 {
     static final FramePacer PACER = new FramePacer();
     private static boolean reflex = !"false".equalsIgnoreCase(System.getProperty("lads.reflex")), checked;
     private static GLSync previous, older;
-    /** QA: Probe145 pauses the pacing for its with/without comparison. */
+    /** QA: Probe145 and ProbeInput189 pause the pacing for their with/without comparisons; ProbeInput189's latency meter. */
     public static boolean qaPaused;
+    static LatencyMeter qaMeter;
 
     private InputLatency189() {}
 
@@ -38,8 +40,21 @@ public final class InputLatency189 {
         return PACER;
     }
 
+    /** QA: input-to-GPU-done measurement with its own fences (ProbeInput189). */
+    public static LatencyMeter meter() {
+        if (qaMeter == null) qaMeter = new LatencyMeter(() -> GL32.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0),
+            fence -> done((GLSync) fence), fence -> GL32.glDeleteSync((GLSync) fence));
+        return qaMeter;
+    }
+
     /** Head of Minecraft.runGameLoop. */
     public static void frameStart() {
+        if (qaMeter != null) qaMeter.poll();
+        pace();
+        if (qaMeter != null) qaMeter.input();
+    }
+
+    private static void pace() {
         if (!active()) return;
         try {
             if (!checked) {
@@ -60,6 +75,7 @@ public final class InputLatency189 {
 
     /** Head of Minecraft.updateDisplay, right before the swap: the feedback, then this frame's fence. */
     public static void beforeSwap() {
+        if (qaMeter != null) qaMeter.fence();
         if (!active() || !checked) return;
         try {
             PACER.frameEnd(done(previous));
@@ -69,6 +85,11 @@ public final class InputLatency189 {
         } catch (Throwable t) {
             stop(t);
         }
+    }
+
+    /** End of Minecraft.updateDisplay (QA only). */
+    public static void afterSwap() {
+        if (qaMeter != null) qaMeter.poll();
     }
 
     private static boolean done(GLSync fence) {

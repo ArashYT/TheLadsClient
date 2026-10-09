@@ -439,6 +439,8 @@ if (requestedFeaturesOnly)
     Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
 }
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
+// 1.8.5 input lane, Fabric versions: input-latency pacing and synthetic mouse evidence in the QA world (InputProbe26 / InputProbe1201).
+if (autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_INPUT") == "1") requiredWorldProbes = [.. requiredWorldProbes, "Lads input probe END:"];
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
 // The 1.8.9 Core has neither report: its runs are checked from logs\latest.log (Forge's mod list, OptiFine, the title screen).
 var requiredCore = new List<string>();
@@ -459,7 +461,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
     "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
-    "Lads AppleSkin sync capture FAILED",
+    "Lads AppleSkin sync capture FAILED", "Lads input probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
