@@ -2,15 +2,10 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.thelads.core.v1_20_1.perf.mixin",
-  "plugin": "com.thelads.core.v1_20_1.perf.PerformanceMixinPlugin1201",
   "compatibilityLevel": "JAVA_17",
   "client": [
     "JoinMultiplayerInvoker",
-    "PacketDecodeGuardMixin",
-    "LivingEntityRendererAnimLodMixin",
-    "LevelRendererWeatherMixin",
-    "ModelBakeryDeduplicationMixin",
-    "MixinFont_StringRenderOutput"
+    "PacketDecodeGuardMixin"
   ],
   "injectors": {
     "defaultRequire": 1

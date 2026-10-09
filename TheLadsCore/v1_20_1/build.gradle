@@ -61,7 +61,3 @@ jar {
 remapJar {
     archiveClassifier = 'mc1.20.1'
 }
-
-tasks.named('test') {
-    failOnNoDiscoveredTests = false
-}

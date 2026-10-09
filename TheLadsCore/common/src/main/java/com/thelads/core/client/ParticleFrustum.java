@@ -47,28 +47,4 @@ public final class ParticleFrustum {
             if (planes[i] * x + planes[i + 1] * y + planes[i + 2] * z + planes[i + 3] < -radius) return false;
         return true;
     }
-
-    /**
-     * Tests an axis-aligned vertical cylinder (such as a weather precipitation column) against the view frustum planes.
-     *
-     * @param x       camera-relative X coordinate of cylinder center
-     * @param y       camera-relative Y coordinate of cylinder center
-     * @param z       camera-relative Z coordinate of cylinder center
-     * @param radius  horizontal cross-section radius in the XZ plane
-     * @param halfH   vertical half-height along the Y axis
-     * @return true if any part of the cylinder is visible or intersects the frustum; false if wholly outside
-     */
-    public boolean visibleCylinder(double x, double y, double z, double radius, double halfH) {
-        if (!valid) return true;
-        for (int i = 0; i < 24; i += 4) {
-            double nx = planes[i];
-            double ny = planes[i + 1];
-            double nz = planes[i + 2];
-            double d = planes[i + 3];
-            double dist = nx * x + ny * y + nz * z + d;
-            double extent = radius * Math.sqrt(nx * nx + nz * nz) + Math.abs(ny) * halfH;
-            if (dist < -extent) return false;
-        }
-        return true;
-    }
 }
