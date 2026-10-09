@@ -396,7 +396,7 @@ if (autoWorldVerification)
         ".lads-qa-flashback", ".lads-qa-flashback-done", ".lads-qa-flashback-failed" })
         File.Delete(Path.Combine(directory, flag));
 // 1.20.1 runs may wait for a QA slot and download the pack and Java first: an hour.
-using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(capabilities.Minimal ? 60 : flashbackVerification || perf189 ? 20 : asyncStressVerification ? 16 : 10));
+using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(capabilities.Minimal ? 60 : particlesCaptureVerification ? 40 : flashbackVerification || perf189 ? 20 : asyncStressVerification ? 16 : 10));
 var ct = timeout.Token;
 
 Process? process = null;

@@ -76,7 +76,7 @@ public final class ParticleCore189 {
     public static void endFrame() { ParticleCore.FRUSTUM.clear(); ParticleCore.timeEnd(); }
 
     public static boolean inView(EntityFX particle, float partialTicks) {
-        if (!ParticleCore.culling()) return true;
+        if (!ParticleCore.culling()) { if (ParticleCore.timing) ParticleCore.drawn++; return true; } // (counted for the QA numbers only)
         double x = particle.prevPosX + (particle.posX - particle.prevPosX) * partialTicks - EntityFX.interpPosX;
         double y = particle.prevPosY + (particle.posY - particle.prevPosY) * partialTicks - EntityFX.interpPosY;
         double z = particle.prevPosZ + (particle.posZ - particle.prevPosZ) * partialTicks - EntityFX.interpPosZ;

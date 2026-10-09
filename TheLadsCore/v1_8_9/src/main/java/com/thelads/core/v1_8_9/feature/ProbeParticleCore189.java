@@ -70,6 +70,19 @@ final class ProbeParticleCore189 {
             last = now;
         }
         void reset() { count = 0; last = 0; start = System.nanoTime(); }
+
+        /** Every tick, whatever delay the probe step is in: the scene is fed and the player stays where the scene is built. */
+        @SubscribeEvent
+        public void tick(TickEvent.ClientTickEvent event) {
+            Minecraft mc = Minecraft.getMinecraft();
+            if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || mc.theWorld == null) return;
+            net.minecraft.client.settings.KeyBinding.unPressAllKeys();
+            if (feeding) feed(mc);
+            if (measuring) {
+                if (ticks % 20 == 0) { aliveSum += alive(mc); aliveSamples++; }
+                ticks++;
+            }
+        }
     }
 
     private static ParticleCoreModule module() { return (ParticleCoreModule) Options189.module(ParticleCore.MODULE); }
@@ -81,12 +94,6 @@ final class ProbeParticleCore189 {
 
     private static boolean run(Minecraft mc) throws Exception {
         ParticleCoreModule module = module();
-        net.minecraft.client.settings.KeyBinding.unPressAllKeys(); // the player stays where the scene is built
-        if (feeding) feed(mc);
-        if (measuring) {
-            if (ticks % 20 == 0) { aliveSum += alive(mc); aliveSamples++; }
-            ticks++;
-        }
         switch (seq) {
             case 0: // the scene, filled to its steady state with Particle Core off
                 difficultyWas = mc.theWorld.getDifficulty().getDifficultyId();
@@ -175,13 +182,13 @@ final class ProbeParticleCore189 {
             }
             case 11:
                 CoreProbe.screenshot(mc, "particlecore-editor");
-                for (char c : "fire".toCharArray()) menu.ui().charTyped(c);
+                for (char c : "flam".toCharArray()) menu.ui().charTyped(c);
                 seq = 12;
                 return retry(20);
             case 12: {
                 CoreProbe.screenshot(mc, "particlecore-editor-search");
                 com.thelads.core.client.gui.LadsSettingsScreen.Rect track = menu.ui().particleRatesTrack("flame");
-                check(track != null, "the flame row is listed while searching 'fire'");
+                check(track != null, "the flame row is listed while searching 'flam'");
                 menu.ui().mouseClicked(track.x(), track.y() + track.height() / 2.0, 0);
                 menu.ui().mouseReleased(track.x(), track.y() + track.height() / 2.0, 0);
                 check(module.rates.percent("flame") == 0, "a click at the far left of a slider switches the type off");
@@ -287,11 +294,11 @@ final class ProbeParticleCore189 {
         check(half > 160 && half < 240, "flame at 50%: " + half + " of 400 spawn");
         module.rates.reset();
         check(count(mc, EnumParticleTypes.SPELL_MOB, x, y, z, 50) == 50 && count(mc, EnumParticleTypes.SPELL_MOB, x + 6, y, z, 50) == 50, "potion swirls on you and on others spawn by default");
-        module.hideOwn.set(true);
+        module.hideOwn.set(true); ParticleCore.refresh();
         check(count(mc, EnumParticleTypes.SPELL_MOB, x, y, z, 50) == 0 && count(mc, EnumParticleTypes.SPELL_MOB_AMBIENT, x + 6, y, z, 50) == 50, "Hide own potion particles: yours gone, others' stay");
-        module.hideOwn.set(false); module.hideOthers.set(true);
+        module.hideOwn.set(false); module.hideOthers.set(true); ParticleCore.refresh();
         check(count(mc, EnumParticleTypes.SPELL_MOB, x, y, z, 50) == 50 && count(mc, EnumParticleTypes.SPELL_MOB_AMBIENT, x + 6, y, z, 50) == 0, "Hide others' potion particles: theirs gone, yours stay");
-        module.hideOthers.set(false);
+        module.hideOthers.set(false); ParticleCore.refresh();
         check(count(mc, EnumParticleTypes.CRIT, x, y, z, 50) == 50, "other types are untouched by the potion switches");
         CHECKS.addProperty("lightReusedInOptimizedPhases", value("east-optimized", "lightReusedPerFrame") + " / " + value("east-both", "lightReusedPerFrame") + " per frame");
         check(value("east-optimized", "lightReusedPerFrame") > 0 && value("east-both", "lightReusedPerFrame") > 0, "Optimized rendering reuses lightmap lookups");

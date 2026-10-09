@@ -177,14 +177,14 @@ final class ParticleCoreCapture {
         STEPS.add(mc -> { pendingShot = "particlecore-editor"; return 2; });
         STEPS.add(mc -> {
             var ui = ((com.thelads.core.v26_2.gui.LadsSettingsScreen26) mc.gui.screen()).ui();
-            for (char c : "fire".toCharArray()) ui.charTyped(c);
+            for (char c : "flam".toCharArray()) ui.charTyped(c);
             return 20;
         });
         STEPS.add(mc -> { pendingShot = "particlecore-editor-search"; return 2; });
         STEPS.add(mc -> { // a real click on the slider of "flame": the far left is off, the middle 50%
             var ui = ((com.thelads.core.v26_2.gui.LadsSettingsScreen26) mc.gui.screen()).ui();
             var track = ui.particleRatesTrack("flame");
-            check(track != null, "the flame row is listed while searching 'fire'");
+            check(track != null, "the flame row is listed while searching 'flam'");
             if (track != null) {
                 ui.mouseClicked(track.x(), track.y() + track.height() / 2.0, 0);
                 ui.mouseReleased(track.x(), track.y() + track.height() / 2.0, 0);
@@ -328,11 +328,11 @@ final class ParticleCoreCapture {
         module.rates.reset();
         ParticleOptions swirl = ColorParticleOption.create(ParticleTypes.ENTITY_EFFECT, 0xFF3366FF);
         check(count(engine, swirl, here, 50) == 50 && count(engine, swirl, other, 50) == 50, "potion swirls on you and on others spawn by default");
-        module.hideOwn.set(true);
+        module.hideOwn.set(true); ParticleCore.refresh();
         check(count(engine, swirl, here, 50) == 0 && count(engine, swirl, other, 50) == 50, "Hide own potion particles: yours gone, others' stay");
-        module.hideOwn.set(false); module.hideOthers.set(true);
+        module.hideOwn.set(false); module.hideOthers.set(true); ParticleCore.refresh();
         check(count(engine, swirl, here, 50) == 50 && count(engine, swirl, other, 50) == 0, "Hide others' potion particles: theirs gone, yours stay");
-        module.hideOthers.set(false);
+        module.hideOthers.set(false); ParticleCore.refresh();
         check(count(engine, ParticleTypes.CRIT, here, 50) == 50, "other types are untouched by the potion switches");
         CHECKS.addProperty("lightReusedPerFrameOptimizedPhases", median("east-optimized", "lightReusedPerFrame") + " / " + median("east-both", "lightReusedPerFrame"));
         check(median("east-optimized", "lightReusedPerFrame") > 0 && median("east-both", "lightReusedPerFrame") > 0, "Optimized rendering reuses lightmap lookups");
