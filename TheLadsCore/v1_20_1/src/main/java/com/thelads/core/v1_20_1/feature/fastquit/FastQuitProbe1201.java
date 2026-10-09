@@ -83,13 +83,14 @@ public final class FastQuitProbe1201 {
             waitFor("the game", 180, () -> Minecraft.getInstance() != null);
             Minecraft mc = Minecraft.getInstance();
             waitFor("the title screen", 180, () -> mc.level == null && mc.getOverlay() == null
-                && mc.screen != null && mc.screen.getClass().getSimpleName().contains("TitleScreen"));
+                && mc.screen instanceof TitleScreen);
             Thread.sleep(8000); // the title screen's own QA reports first
             LOGGER.info("Lads fast quit probe BEGIN: phase {}, FastQuit {}", PHASE, FastQuit.enabled() ? "on" : "off");
             switch (PHASE) {
                 case "run" -> scenarios(mc);
                 case "verify" -> verify(mc);
                 case "baseline" -> baseline(mc);
+                case "crash" -> crash(mc);
                 default -> throw new IllegalArgumentException("phase " + PHASE);
             }
         } catch (Throwable failure) {
@@ -229,6 +230,25 @@ public final class FastQuitProbe1201 {
         end("baseline " + quits);
     }
 
+    /** S8: quit, then the game crashes at once; the JVM exit waits for the save (FastQuit's shutdown hook); verify checks it. */
+    private static void crash(Minecraft mc) throws Exception {
+        int k = readExpect().map(e -> e.get("k").getAsInt()).orElse(0) + 10;
+        enter(mc, A);
+        writeExpect(mark(mc, k), k);
+        boolean[] saving = new boolean[1];
+        long quit = onClient(mc, () -> {
+            long q = quitToTitle(mc);
+            saving[0] = FastQuit.anySaving();
+            mc.delayCrash(net.minecraft.CrashReport.forThrowable(new IllegalStateException("Lads FastQuit QA: a crash during a background save"), "FastQuit QA crash"));
+            return q;
+        });
+        LOGGER.info("Lads fast quit probe: S8 crash during the save: quit {} ms, save running when the crash was raised {}", quit, saving[0]);
+        long raised = System.nanoTime();
+        while (FastQuit.anySaving()) Thread.sleep(5);
+        if (!saving[0]) failures.add("S8: no background save was running at the crash (nothing tested)");
+        end("crash k=" + k + ": the save finished " + ms(raised) + " ms after the crash was raised; verify checks it");
+    }
+
     // ---- steps ----
 
     /** Opens (or creates) a world from the title screen and waits until the player stands in it. */
@@ -249,11 +269,31 @@ public final class FastQuitProbe1201 {
 
     private static void waitInWorld(Minecraft mc, String world) throws Exception {
         waitFor(world + " to load", 180, () -> {
+            skipBackupQuestion(mc);
             MinecraftServer server = mc.getSingleplayerServer();
             return mc.level != null && mc.player != null && server != null && server.isReady() && !server.getPlayerList().getPlayers().isEmpty()
                 && mc.screen == null;
         });
         Thread.sleep(1500);
+    }
+
+    /**
+     * The "back up before loading?" question (a QA world opened by a game with other data packs or settings than the one that
+     * made it): Load without a backup, as a player clicking through would.
+     */
+    private static void skipBackupQuestion(Minecraft mc) {
+        var screen = mc.screen;
+        if (!(screen instanceof net.minecraft.client.gui.screens.BackupConfirmScreen)) return; // class names are intermediary in production
+        String load = Component.translatable("selectWorld.backupJoinSkipButton").getString();
+        mc.execute(() -> {
+            if (mc.screen != screen) return;
+            for (var child : screen.children())
+                if (child instanceof Button button && button.getMessage().getString().equals(load)) {
+                    LOGGER.info("Lads fast quit probe: '{}' asked for a backup; loading without one", screen.getTitle().getString());
+                    button.onPress();
+                    return;
+                }
+        });
     }
 
     /** The real pause menu's "Save and Quit to Title" button, pressed; returns how long the press took (ms). */
@@ -361,7 +401,10 @@ public final class FastQuitProbe1201 {
     private static void waitFor(String what, int seconds, BooleanSupplier ready) throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds);
         while (!ready.getAsBoolean()) {
-            if (System.nanoTime() > deadline) throw new IllegalStateException("timed out waiting for " + what);
+            if (System.nanoTime() > deadline) {
+                var screen = Minecraft.getInstance().screen;
+                throw new IllegalStateException("timed out waiting for " + what + "; screen " + (screen == null ? "none" : screen.getClass().getName() + " '" + screen.getTitle().getString() + "'"));
+            }
             Thread.sleep(100);
         }
     }

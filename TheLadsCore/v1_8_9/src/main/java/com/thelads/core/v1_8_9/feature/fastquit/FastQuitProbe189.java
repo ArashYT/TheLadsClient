@@ -90,6 +90,7 @@ public final class FastQuitProbe189 {
             if ("run".equals(PHASE)) scenarios(mc);
             else if ("verify".equals(PHASE)) verify(mc);
             else if ("baseline".equals(PHASE)) baseline(mc);
+            else if ("crash".equals(PHASE)) crash(mc);
             else throw new IllegalArgumentException("phase " + PHASE);
         } catch (Throwable failure) {
             LOGGER.error("Lads fast quit probe FAILED: " + failure, failure);
@@ -225,6 +226,26 @@ public final class FastQuitProbe189 {
         }
         LOGGER.info("Lads fast quit probe: baseline (FastQuit {}) quit times {} ms", FastQuit.enabled() ? "on" : "off", quits);
         end("baseline " + quits);
+    }
+
+    /** S8: quit, then the game crashes at once; the JVM exit waits for the save (FastQuit's shutdown hook); verify checks it. */
+    private static void crash(final Minecraft mc) throws Exception {
+        Properties old = readExpect();
+        final int k = (old == null ? 0 : Integer.parseInt(old.getProperty("k"))) + 10;
+        enter(mc, A);
+        writeExpect(mark(mc, k));
+        final boolean[] saving = new boolean[1];
+        long quit = onClient(new Callable<Long>() { public Long call() throws Exception {
+            long q = quitToTitle(mc);
+            saving[0] = FastQuit.anySaving();
+            mc.crashed(net.minecraft.crash.CrashReport.makeCrashReport(new IllegalStateException("Lads FastQuit QA: a crash during a background save"), "FastQuit QA crash"));
+            return q;
+        } });
+        LOGGER.info("Lads fast quit probe: S8 crash during the save: quit {} ms, save running when the crash was raised {}", quit, saving[0]);
+        long raised = System.nanoTime();
+        while (FastQuit.anySaving()) Thread.sleep(5);
+        if (!saving[0]) failures.add("S8: no background save was running at the crash (nothing tested)");
+        end("crash k=" + k + ": the save finished " + ms(raised) + " ms after the crash was raised; verify checks it");
     }
 
     // ---- steps ----
