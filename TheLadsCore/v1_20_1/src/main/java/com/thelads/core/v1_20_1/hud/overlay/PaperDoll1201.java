@@ -104,7 +104,8 @@ public final class PaperDoll1201 {
         Vector4f a = pose.transform(new Vector4f(x, y, 0, 1)), b = pose.transform(new Vector4f(x + width, y + height, 0, 1));
         int left = Math.round(Math.min(a.x, b.x)), top = Math.round(Math.min(a.y, b.y)), right = Math.round(Math.max(a.x, b.x)), bottom = Math.round(Math.max(a.y, b.y));
         boolean leftHalf = (left + right) / 2 < graphics.guiWidth() / 2;
-        float opacity = editor ? 1 : PaperDoll.INSTANCE.opacity();
+        // Its own Model Opacity, and Auto Hide's while the HUD is faded.
+        float opacity = (editor ? 1 : PaperDoll.INSTANCE.opacity()) * com.thelads.core.v1_20_1.feature.NativeAutohide1201.scopeOpacity;
         if (opacity >= 1) {
             draw(graphics, x, y, width, height, left, top, right, bottom, leftHalf);
             return;
