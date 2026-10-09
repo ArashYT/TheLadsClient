@@ -179,6 +179,22 @@ public class ModpackCoreSyncTests : IDisposable
     }
 
     [Fact]
+    public void SkipVariable_KeepsADevelopmentCoreInPlace()
+    {
+        var bundle = Bundle("1.20.1", "new");
+        var core = Path.Combine(Mods, "theladscore.jar");
+        MakeCore(core, "my own build");
+        var before = File.ReadAllBytes(core);
+
+        Environment.SetEnvironmentVariable(ModpackCoreSync.SkipEnvironmentVariable, "1");
+        try { Assert.False(ModpackCoreSync.Sync(Game, "1.20.1", bundle)); }
+        finally { Environment.SetEnvironmentVariable(ModpackCoreSync.SkipEnvironmentVariable, null); }
+
+        Assert.Equal(before, File.ReadAllBytes(core));
+        Assert.True(ModpackCoreSync.Sync(Game, "1.20.1", bundle)); // and syncs again once the variable is gone
+    }
+
+    [Fact]
     public void ModpackInstanceOverload_UsesItsGameFolderAndMinecraftVersion()
     {
         var bundle = Bundle("1.20.1", "new");

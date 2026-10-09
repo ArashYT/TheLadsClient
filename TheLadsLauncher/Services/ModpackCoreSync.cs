@@ -17,6 +17,10 @@ public static class ModpackCoreSync
 {
     public const string BundledName = "theladscore.jar";
 
+    /// <summary>Set to 1 to leave every modpack's Core alone, for a run that tests a Core built from source (the QA harness copies
+    /// its own build into the instance and the launcher must not swap it back for the bundled one).</summary>
+    public const string SkipEnvironmentVariable = "LADS_SKIP_MODPACK_CORE_SYNC";
+
     /// <summary>The bundled Core for <paramref name="mcVersion"/>: under <paramref name="bundleRoot"/> when given, else next to the
     /// launcher (and, for a development build, in the repository folders above it). Null when this launcher has none.</summary>
     public static string? FindBundledJar(string mcVersion, string? bundleRoot = null)
@@ -59,6 +63,7 @@ public static class ModpackCoreSync
 
     public static bool Sync(string gameDirectory, string mcVersion, string? bundleRoot = null, Action<string>? status = null)
     {
+        if (Environment.GetEnvironmentVariable(SkipEnvironmentVariable) == "1") return false;
         var modsDirectory = Path.Combine(gameDirectory, "mods");
         if (CoreJars(modsDirectory).Count == 0) return false;
         var bundled = FindBundledJar(mcVersion, bundleRoot);
