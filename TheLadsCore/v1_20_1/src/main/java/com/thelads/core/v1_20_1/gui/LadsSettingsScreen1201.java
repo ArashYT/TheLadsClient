@@ -2,6 +2,7 @@ package com.thelads.core.v1_20_1.gui;
 
 import com.thelads.core.client.gui.LadsSettingsScreen;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
+import com.thelads.core.v1_20_1.feature.HudEditorView1201;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -27,13 +28,36 @@ public class LadsSettingsScreen1201 extends Screen {
         });
         this.ui.setOnOpenResourcePacks(this::openResourcePacks);
         this.ui.setClipboardReader(() -> Minecraft.getInstance().keyboardHandler.getClipboard());
+        this.ui.setOnOpenVideoSettings(() -> VideoSettingsRelay1201.open(this));
         this.ui.setOnOpenModSettings(modId -> ExternalModSettings1201.open(modId, this));
+    }
+
+    public void openGlobalColors() {
+        ui.openGlobalColors();
+    }
+
+    public void openDisplayActions() {
+        ui.openDisplayActions();
     }
 
     public void openModule(String name) {
         ui.openModule(name);
     }
 
+    public void searchKillBanners(String query) {
+        ui.searchKillBanners(query);
+    }
+
+    /** Opens the Installed mods view (also used by the QA capture chain). */
+    public void openMods() {
+        ui.openMods();
+    }
+
+    public boolean isModsViewOpen() {
+        return ui.isModsViewOpen();
+    }
+
+    /** The shared menu this screen draws and routes input to (QA reads its bounds and state). */
     public LadsSettingsScreen ui() {
         return ui;
     }
@@ -46,6 +70,7 @@ public class LadsSettingsScreen1201 extends Screen {
 
     private void openResourcePacks() {
         minecraft.setScreen(new PackSelectionScreen(minecraft.getResourcePackRepository(), packs -> {
+            // Vanilla's apply path: persist the selection and reload the changed resources.
             minecraft.options.updateResourcePacks(packs);
             minecraft.setScreen(this);
         }, minecraft.getResourcePackDirectory(), Component.translatable("resourcePack.title")));
@@ -59,7 +84,13 @@ public class LadsSettingsScreen1201 extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         ui.setReducedMotion(minecraft.options.screenEffectScale().get() <= 0);
-        ui.render(new GuiGraphicsLadsAdapter1201(g, this.font), mouseX, mouseY);
+        ui.render(new GuiGraphicsLadsAdapter1201(g, this.font) {
+            // Fullbright's preview shows the live world (no HUD), so a gamma change is seen as it is made.
+            @Override
+            public boolean drawGameView(int x, int y, int width, int height) {
+                return HudEditorView1201.draw(g, x, y, width, height, false);
+            }
+        }, mouseX, mouseY);
         super.render(g, mouseX, mouseY, delta);
     }
 
@@ -111,6 +142,13 @@ public class LadsSettingsScreen1201 extends Screen {
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
     }
 
+    @Override
+    public void removed() {
+        HudEditorView1201.release();
+        super.removed();
+    }
+
+    /** Save through the common UI's existing close path; no separate menu state. */
     public void closeFromMenuKey() {
         ui.close();
     }

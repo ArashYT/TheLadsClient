@@ -8,8 +8,6 @@
   },
   "client": [
     "GuiMixin",
-    "PauseScreenMixin",
-    "TitleScreenMixin",
     "KeyboardHandlerMixin",
     "MouseHandlerMixin",
     "KeyMappingMixin",
