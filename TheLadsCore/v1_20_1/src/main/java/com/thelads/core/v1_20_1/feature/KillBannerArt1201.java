@@ -93,6 +93,8 @@ final class KillBannerArt1201 {
                     iconLayer(g, style, exitLayer(style, kills, variant, strip, true), f.iconScale(), argb(0xFFFFFF, f.iconAlpha()));
             } else {
                 ResourceLocation frame = frame(style, variant, strip, f.stripFrame());
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
                 RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
                 g.blit(frame, 0, 0, 0, 0, strip.width, strip.height, strip.width, strip.height);
             }
@@ -203,6 +205,8 @@ final class KillBannerArt1201 {
         float r = ((rgb >> 16) & 255) / 255.0f;
         float gr = ((rgb >> 8) & 255) / 255.0f;
         float b = (rgb & 255) / 255.0f;
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(r, gr, b, 1.0f);
         g.blit(atlas.id(), 0, 0, (c % book.cols()) * book.cellW(), (c / book.cols()) * book.cellH(),
             book.cellW(), book.cellH(), atlas.width(), atlas.height());
@@ -393,6 +397,8 @@ final class KillBannerArt1201 {
         float r = ((color >> 16) & 255) / 255.0f;
         float gr = ((color >> 8) & 255) / 255.0f;
         float b = (color & 255) / 255.0f;
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(r, gr, b, a);
         g.blit(s.id(), 0, 0, 0, 0, s.width(), s.height(), s.width(), s.height());
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -414,6 +420,8 @@ final class KillBannerArt1201 {
         float r = ((color >> 16) & 255) / 255.0f;
         float gr = ((color >> 8) & 255) / 255.0f;
         float b = (color & 255) / 255.0f;
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(r, gr, b, a);
         g.blit(s.id(), 0, 0, 0, 0, s.width(), s.height(), s.width(), s.height());
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);

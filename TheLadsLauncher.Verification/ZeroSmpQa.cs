@@ -186,7 +186,7 @@ internal static class ZeroSmpQa
             if (ebe == "xmas") flags.Add("-Dlads.ebe.xmas=true");
             File.Delete(Path.Combine(gameDir, ".lads-qa-ebe"));
             if (args.Count > 0) for (int i = flags.Count - 1; i >= 0; i--) args.Insert(0, flags[i]);
-            else game.StartInfo.Arguments = string.Join(' ', flags) + " " + game.StartInfo.Arguments;
+            else game.StartInfo.Arguments = string.Join(' ', flags.Select(f => f.Contains(' ') && !f.StartsWith("\"") ? $"\"{f}\"" : f)) + " " + game.StartInfo.Arguments;
             if (QaShared.Env("LADS_VERIFY_NO_RESIZE") != "1" && args.Count > 0)
             {
                 var size = QaWindowGuard.TileClient(1);

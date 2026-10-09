@@ -204,20 +204,28 @@ public final class NativeKillBanner1201 {
     /** Kill Banner picker art (LadsGraphics.drawKillBanner). */
     public static boolean drawThumb(GuiGraphics g, String skin, int variant, int x, int y, int w, int h) {
         try {
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
             KillBannerArt1201.thumb(g, KillBannerStyle.fromId(skin), variant, x, y, w, h);
             return true;
         } catch (RuntimeException failure) {
             return false;
+        } finally {
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         }
     }
 
     /** The Kill Banner settings preview: the skin's banners for 1 to 5 kills in turn, {@code clock} seconds into the loop. */
     public static boolean drawPreview(GuiGraphics g, String skin, int variant, int x, int y, int w, int h, double clock) {
         try {
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
             KillBannerArt1201.preview(g, KillBannerStyle.fromId(skin), variant, x, y, w, h, clock);
             return true;
         } catch (RuntimeException failure) {
             return false;
+        } finally {
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         }
     }
 
@@ -234,22 +242,28 @@ public final class NativeKillBanner1201 {
         if (!eligible() || minecraft.options.hideGui || module == null) return;
         double age = BANNER.age(System.nanoTime());
         if (age < 0) return;
-        KillBannerModule.Pick pick = KillBanners.shown(module);
-        KillBannerStyle style = pick != null ? pick.style() : null;
-        if (style == null) {
-            renderBase(graphics, minecraft, module, age);
-            return;
-        }
-        boolean headshot = BANNER.headshot(), mark = headshot && module.killMark.get(), label = module.headshotBanner.get();
-        float size = (float) module.size.getValue() / 100f;
-        int variant = pick != null ? pick.variant() : 0;
-        if (style.isAnimated()) {
-            KillBannerStrip strip = style.strip(BANNER.sequence());
-            KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot, BANNER.cutAge());
-            if (frame != null) KillBannerArt1201.draw(graphics, style, variant, BANNER.sequence(), strip, frame, size, mark, label);
-        } else {
-            KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot, BANNER.cutAge());
-            if (layers != null) KillBannerArt1201.draw(graphics, style, variant, BANNER.sequence(), layers, size, mark, label);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        try {
+            KillBannerModule.Pick pick = KillBanners.shown(module);
+            KillBannerStyle style = pick != null ? pick.style() : null;
+            if (style == null) {
+                renderBase(graphics, minecraft, module, age);
+                return;
+            }
+            boolean headshot = BANNER.headshot(), mark = headshot && module.killMark.get(), label = module.headshotBanner.get();
+            float size = (float) module.size.getValue() / 100f;
+            int variant = pick != null ? pick.variant() : 0;
+            if (style.isAnimated()) {
+                KillBannerStrip strip = style.strip(BANNER.sequence());
+                KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot, BANNER.cutAge());
+                if (frame != null) KillBannerArt1201.draw(graphics, style, variant, BANNER.sequence(), strip, frame, size, mark, label);
+            } else {
+                KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot, BANNER.cutAge());
+                if (layers != null) KillBannerArt1201.draw(graphics, style, variant, BANNER.sequence(), layers, size, mark, label);
+            }
+        } finally {
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         }
     }
 
@@ -275,6 +289,8 @@ public final class NativeKillBanner1201 {
         try {
             pose.translate(graphics.guiWidth() / 2f, Math.max(12, graphics.guiHeight() - 80 - height) + (1 - entrance) * 8, 0);
             pose.scale(scale, scale, 1.0f);
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
             RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha);
             graphics.blit(BASE, -width / 2, 0, 0, 0, width, height, sourceWidth, sourceHeight);
             RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);

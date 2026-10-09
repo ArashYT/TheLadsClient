@@ -693,7 +693,11 @@ try
     {
         jvmFlags.Add(argument);
         if (process.StartInfo.ArgumentList.Count > 0) process.StartInfo.ArgumentList.Insert(0, argument);
-        else process.StartInfo.Arguments = argument + " " + process.StartInfo.Arguments;
+        else
+        {
+            string formatted = argument.Contains(' ') && !argument.StartsWith("\"") ? $"\"{argument}\"" : argument;
+            process.StartInfo.Arguments = formatted + " " + process.StartInfo.Arguments;
+        }
     }
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
