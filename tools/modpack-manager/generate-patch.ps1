@@ -7,7 +7,7 @@
     - New keybinds as "defaults" (safe for players: applied only when the player has no value yet)
     - Keybinds that have to be set although the dev options.txt does not know them yet (-ExtraKeybindDefaults)
     - Forced keybind overrides (-ForceKeybinds)
-    - Config patch templates (only with -IncludeConfigTemplates; an empty template changes nothing) and ready-made -ExtraConfigPatches
+    - Config patch templates (only with -IncludeConfigTemplates; an empty template changes nothing)
     theladscore.jar is ignored: the launcher keeps every Lads Core in a modpack at its newest bundled build by itself.
 .EXAMPLE
     .\generate-patch.ps1 -NewVersion 1.0.1 -Description "Adds c2mef, lazyyyyy, crawl-on-demand" `
@@ -30,8 +30,6 @@ param(
     [hashtable]$ForceKeybinds = @{},
     # Extra jar names the patch removes besides the ones missing from the dev instance (e.g. duplicates Lads Core replaces)
     [string[]]$ExtraRemoveMods = @(),
-    # Ready-made config patches (the reviewer part of the templates): @{ file = 'config/x.json'; format = 'json'; set = @{ key = $false } }
-    [hashtable[]]$ExtraConfigPatches = @(),
     # url = <base>/<escaped file name> for added jars Modrinth does not host
     [string]$FallbackUrlBase = "",
     [switch]$SkipUrlLookup,
@@ -173,8 +171,6 @@ if ($IncludeConfigTemplates -and (Test-Path $currentConfigDir)) {
         }
     }
 }
-
-foreach ($extra in $ExtraConfigPatches) { $configPatches += [PSCustomObject]$extra }
 
 $patch = [PSCustomObject]@{
     packId = "zero-smp-1.20.1"
