@@ -91,18 +91,25 @@ public final class RenderProbe1201 {
 
     private RenderProbe1201() {}
 
-    /** Registered by Render1201: the script step "render185". */
-    public static void register() { QaProbe1201.registerStep("render185", args -> tick(Minecraft.getInstance())); }
+    /**
+     * Registered by Render1201: the script steps "render185" (the full capture) and "render185shaders [pack]" (Iris/Oculus with a
+     * shader pack from the game's shaderpacks folder: costs and frames with shaders on).
+     */
+    public static void register() {
+        QaProbe1201.registerStep("render185", args -> tick(Minecraft.getInstance(), "render185", RenderProbe1201::steps));
+        QaProbe1201.registerStep("render185shaders", args -> tick(Minecraft.getInstance(), "render185-shaders", () -> shaderSteps(args.length > 1 ? args[1] : null)));
+    }
 
-    /** One tick of the routine; true when it has finished (passed or failed). */
-    private static boolean tick(Minecraft mc) {
+    /** One tick of a routine; true when it has finished (passed or failed). */
+    private static boolean tick(Minecraft mc, String name, java.util.function.Supplier<List<Step>> plan) {
         if (step < 0) {
             game = FabricLoader.getInstance().getGameDir();
-            out = game.resolve("lads-qa").resolve("render185");
+            out = game.resolve("lads-qa").resolve(name);
             try { Files.createDirectories(out); } catch (Exception failure) { throw new IllegalStateException(failure); }
             RenderQa.reset();
             STEPS.clear();
-            STEPS.addAll(steps());
+            SHOTS.clear();
+            STEPS.addAll(plan.get());
             step = 0;
             LOGGER.info("Lads render 1.8.5 capture BEGIN: {} steps; Flerovium {}, Kerria {}", STEPS.size(),
                 BuiltInRender.items ? "on" : "off", BuiltInRender.animations ? "on" : "off");
@@ -114,7 +121,7 @@ public final class RenderProbe1201 {
             int next = STEPS.get(step).run(mc);
             if (next < 0) return false;
             wait = next;
-            if (++step == STEPS.size()) { RenderQa.finish(out); return true; }
+            if (++step == STEPS.size()) { RenderQa.finish(out); step = -1; return true; }
         } catch (Throwable failure) {
             LOGGER.error("Lads render 1.8.5 capture FAILED: step {}", step, failure);
             RenderQa.failures++;
@@ -361,7 +368,8 @@ public final class RenderProbe1201 {
         steps.add(mc -> { BuiltInRender.items = false; BuiltInRender.animations = false; return 6; });
         steps.add(mc -> { pendingShot = scene + "-off2"; return 2; });
         steps.add(mc -> {
-            RenderQa.compareShots(scene, SHOTS.get(scene + "-off"), SHOTS.get(scene + "-on"), SHOTS.get(scene + "-off2"), lod);
+            if (scene.endsWith("Shaders")) RenderQa.compareNoisyShots(scene, SHOTS.get(scene + "-off"), SHOTS.get(scene + "-on"), SHOTS.get(scene + "-off2"));
+            else RenderQa.compareShots(scene, SHOTS.get(scene + "-off"), SHOTS.get(scene + "-on"), SHOTS.get(scene + "-off2"), lod);
             BuiltInRender.items = true; BuiltInRender.animations = true;
             if (pause) mc.setScreen(null);
             hudModules(false);
@@ -372,7 +380,14 @@ public final class RenderProbe1201 {
 
     private static List<Step> steps() {
         List<Step> steps = new ArrayList<>();
-        steps.add(mc -> {
+        steps.add(RenderProbe1201::setup);
+        steps.addAll(mainSteps());
+        steps.add(RenderProbe1201::restore);
+        return steps;
+    }
+
+    private static int setup(Minecraft mc) {
+        {
             posBefore = new double[]{mc.player.getX(), mc.player.getY(), mc.player.getZ()};
             yawBefore = mc.player.getYRot(); pitchBefore = mc.player.getXRot();
             modeBefore = mc.gameMode.getPlayerMode();
@@ -396,7 +411,11 @@ public final class RenderProbe1201 {
             RenderQa.RESULTS.put("kerria", BuiltInRender.standDownReason(BuiltInRender.KERRIA) == null ? "on" : BuiltInRender.standDownReason(BuiltInRender.KERRIA));
             onServer(player -> { player.setGameMode(GameType.CREATIVE); build(player.serverLevel()); });
             return 10;
-        });
+        }
+    }
+
+    private static List<Step> mainSteps() {
+        List<Step> steps = new ArrayList<>();
         steps.add(mc -> { mc.player.getAbilities().flying = true; look(mc, 0, 0, 0, 12); fillInventory(true); return 100; });
         // 1. Items in frames, on the floor, in mobs' hands, a glinting hotbar: costs; then the still scene with plain items
         measure(steps, "items");
@@ -450,7 +469,11 @@ public final class RenderProbe1201 {
         atlasParity(steps, "nomips");
         steps.add(mc -> { mc.options.mipmapLevels().set(mipmapsBefore); mc.updateMaxMipLevel(mipmapsBefore); reload = mc.reloadResourcePacks(); return 0; });
         steps.add(mc -> reload.isDone() ? 20 : -1);
-        steps.add(mc -> {
+        return steps;
+    }
+
+    private static int restore(Minecraft mc) {
+        {
             RenderQa.stop();
             animationsHeld = false;
             hudModules(false);
@@ -474,7 +497,54 @@ public final class RenderProbe1201 {
             if (cloudsBefore != null) mc.options.cloudStatus().set(cloudsBefore);
             if (particlesBefore != null) mc.options.particles().set(particlesBefore);
             return 5;
+        }
+    }
+
+    // ---- shaders (Iris / Oculus) ----
+
+    private static int shaderWait;
+
+    private static List<Step> shaderSteps(String pack) {
+        List<Step> steps = new ArrayList<>();
+        steps.add(RenderProbe1201::setup);
+        steps.add(mc -> { mc.player.getAbilities().flying = true; look(mc, 0, 0, 0, 12); fillInventory(false); return 100; });
+        steps.add(mc -> { RenderQa.RESULTS.put("shaderPack", shaders(true, pack)); shaderWait = 0; return 20; });
+        steps.add(mc -> {
+            if (!shadersInUse() && ++shaderWait < 1200) return -1;
+            RenderQa.check(shadersInUse(), "the shader pack is in use");
+            return 200; // shaders compiled, first frames settled
         });
+        measure(steps, "itemsShaders");
+        steps.add(mc -> { pendingShot = "shaders-world"; return 2; });
+        shots(steps, "itemsShaders", true, false);
+        steps.add(mc -> { shaders(false, null); return 200; });
+        steps.add(RenderProbe1201::restore);
         return steps;
+    }
+
+    /** Turns Iris/Oculus shaders on (with the given pack, or the first pack in shaderpacks) or off; returns the pack name. */
+    private static String shaders(boolean on, String pack) throws Exception {
+        if (on && pack == null) {
+            try (var files = Files.list(game.resolve("shaderpacks"))) {
+                pack = files.map(f -> f.getFileName().toString()).filter(n -> n.endsWith(".zip")).sorted().findFirst()
+                    .orElseThrow(() -> new IllegalStateException("no shader pack in shaderpacks"));
+            }
+        }
+        Class<?> iris = Class.forName("net.irisshaders.iris.Iris");
+        Object config = iris.getMethod("getIrisConfig").invoke(null);
+        if (pack != null) config.getClass().getMethod("setShaderPackName", String.class).invoke(config, pack);
+        config.getClass().getMethod("setShadersEnabled", boolean.class).invoke(config, on);
+        config.getClass().getMethod("save").invoke(config);
+        iris.getMethod("reload").invoke(null);
+        LOGGER.info("Lads render 1.8.5: shaders {} ({})", on ? "on" : "off", pack);
+        return pack;
+    }
+
+    private static boolean shadersInUse() {
+        try {
+            Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+            Object instance = api.getMethod("getInstance").invoke(null);
+            return (boolean) api.getMethod("isShaderPackInUse").invoke(instance);
+        } catch (Throwable absent) { return false; }
     }
 }

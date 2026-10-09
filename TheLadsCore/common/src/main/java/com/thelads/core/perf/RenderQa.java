@@ -113,6 +113,18 @@ public final class RenderQa {
         } else check(changed == 0, scene + ": the remakes on draw the still scene pixel for pixel as off (" + changed + " pixels differ)");
     }
 
+    /**
+     * Off, on and off-again frames of a scene that moves by itself (shader packs animate with real time even while the game is
+     * paused): the remakes may not add more difference than two frames with them off already have, plus 0.1% of the pixels.
+     */
+    public static void compareNoisyShots(String scene, int[] off, int[] on, int[] again) {
+        int changed = differing(off, on), control = differing(off, again), limit = control + (off == null ? 0 : off.length / 1000);
+        RESULTS.put(scene + "PixelsDifferingOffVsOn", changed);
+        RESULTS.put(scene + "PixelsDifferingOffVsOff", control);
+        check(changed <= limit, scene + ": the remakes change no more than the scene changes by itself (" + changed + " pixels differ off vs on, "
+            + control + " off vs off again, limit " + limit + ")");
+    }
+
     /** Two atlas readbacks of the same frames, texel for texel, plus texels still showing the poison colour in the first. */
     public static void compareAtlas(String what, int[][] first, int[][] second, int poison) {
         long differ = 0, left = 0, texels = 0;
