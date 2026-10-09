@@ -6,6 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 
 /** What the Lads HUD does around vanilla's in-game GUI each frame (called from GameRendererHudMixin). */
 public final class HudPipeline1201 {
+    private static long lastFailure;
+
     private HudPipeline1201() {}
 
     public static void beforeGui(GuiGraphics graphics) {
@@ -17,7 +19,12 @@ public final class HudPipeline1201 {
         try {
             NativeAutohide1201.renderLadsHud(graphics);
         } catch (RuntimeException failure) {
-            Hud1201.LOG.error("Lads HUD failed to render", failure);
+            // Once every few seconds, not once per frame.
+            long now = System.nanoTime();
+            if (now - lastFailure > 5_000_000_000L) {
+                lastFailure = now;
+                Hud1201.LOG.error("Lads HUD failed to render", failure);
+            }
         } finally {
             NativeAutohide1201.scopeOpacity = 1;
         }
