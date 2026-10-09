@@ -73,7 +73,7 @@ final class Probe173Quick {
                 registered = true;
                 MinecraftForge.EVENT_BUS.register(new Probe173Quick());
             }
-            pacingWas = RawMouse189.pacing;
+            pacingWas = com.thelads.core.v1_8_9.input.InputLatency189.active();
             LOG.info("Lads 1.8.9 quick probe: limit {} (QA: 60), window focused {}, unfocused cap bypass {}, pacing default {}",
                 mc.gameSettings.limitFramerate, Display.isActive(), Boolean.getBoolean("thelads.noUnfocusedCap"), pacingWas);
             index = 0;
