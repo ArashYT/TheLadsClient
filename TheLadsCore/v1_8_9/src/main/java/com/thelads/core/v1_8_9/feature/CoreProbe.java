@@ -70,7 +70,7 @@ public final class CoreProbe {
         // doll, RaisedDollProbe189), =hudflicker (runs of frames with the HUD FPS cap off and on, Probe172HudFlicker), =perf (the 1.7.3
         // benchmark scenes in a fresh perf world, Probe173Perf), =cull (Entity Culling in a crowd behind a wall: views off and on, an
         // audited fast-motion run and uncapped frame times, Probe173Cull), =anim (swing while using items and damage tilt, Probe172Anim),
-        // =ui (the reset questions and Fullbright's slider, Probe172Ui) or =leave (only the
+        // =ui (the reset questions and Fullbright's slider, Probe172Ui), =title (the title screen at every GUI scale) or =leave (only the
         // final leave, the 1.7.0 freeze regression check);
         // -Dthelads.verifyChatHeads=true (ChatHeadsProbe189) and -Dthelads.verify189F3Fov=true (Probe170F3Fov).
         String only = System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY"));
@@ -80,6 +80,8 @@ public final class CoreProbe {
             STEPS.add(CoreProbe::titleShown);
             STEPS.add(CoreProbe::focused);
             STEPS.addAll(Probe170Misc.steps(FOCUS));
+        } else if ("title".equals(only)) { // only the title screen's layout at every GUI scale, and its More
+            STEPS.subList(3, STEPS.size()).clear();
         } else {
         if ("itemphysics".equals(only)) {
             STEPS.clear();
@@ -229,40 +231,71 @@ public final class CoreProbe {
         return mc.currentScreen instanceof GuiMainMenu && after(40);
     }
 
+    /** GUI scales the title layout is checked at in this window: 1, 2, 3, 4 and Auto (0), the QA run's own scale last. */
+    private static List<Integer> titleScales;
+    private static int titleScale = -1;
+
     /**
      * The Lads title screen (LadsTitleScreen189): its main buttons laid out by TitleScreenTheme (Forge's Mods and Screenshots
-     * among them), Switch beside the account name, the fullscreen toggle top right, and a click on More.
+     * among them), Switch beside the account name, the fullscreen toggle top right, none overlapping and all on the screen at
+     * every GUI scale, and a click on More.
      */
     private static boolean ladsTitle(Minecraft mc) throws Exception {
-        LadsTitleScreen189 lads = LadsTitleScreen189.INSTANCE;
-        check(lads.screen() != null && lads.screen() == mc.currentScreen, "the TitleScreen module put the Lads layout on the title screen");
-        List<String> labels = new java.util.ArrayList<>();
-        List<GuiButton> placed = new java.util.ArrayList<>(lads.mainButtons());
-        placed.add(lads.switchButton());
-        placed.add(lads.fullscreenButton());
-        boolean laidOut = true;
-        for (GuiButton button : placed) {
-            if (lads.mainButtons().contains(button)) labels.add(button.displayString);
-            laidOut &= button.visible && button.width >= 16 && button.xPosition >= 0 && button.xPosition + button.width <= mc.currentScreen.width
-                && button.yPosition + button.height <= mc.currentScreen.height;
-            for (GuiButton other : placed)
-                laidOut &= other == button || button.xPosition + button.width <= other.xPosition || other.xPosition + other.width <= button.xPosition
-                    || button.yPosition + button.height <= other.yPosition || other.yPosition + other.height <= button.yPosition;
+        if (titleScales == null) {
+            titleScales = new java.util.ArrayList<>(Arrays.asList(1, 2, 3, 4, 0));
+            titleScales.remove(Integer.valueOf(mc.gameSettings.guiScale));
+            titleScales.add(mc.gameSettings.guiScale);
+        } else checkTitleLayout(mc, titleScales.get(titleScale));
+        if (++titleScale < titleScales.size()) {
+            guiScale(mc, titleScales.get(titleScale));
+            return retry(5); // frames lay the buttons out (and place Switch) at the new scale
         }
+        screenshot(mc, "c1-title");
+        GuiButton more = LadsTitleScreen189.INSTANCE.moreButton();
+        click(more.xPosition + more.width / 2, more.yPosition + more.height / 2);
+        return after(10);
+    }
+
+    private static void guiScale(Minecraft mc, int scale) {
+        mc.gameSettings.guiScale = scale;
+        net.minecraft.client.gui.ScaledResolution scaled = new net.minecraft.client.gui.ScaledResolution(mc);
+        mc.currentScreen.setWorldAndResolution(mc, scaled.getScaledWidth(), scaled.getScaledHeight());
+    }
+
+    private static void checkTitleLayout(Minecraft mc, int scale) {
+        LadsTitleScreen189 lads = LadsTitleScreen189.INSTANCE;
+        int w = mc.currentScreen.width, h = mc.currentScreen.height;
+        String at = " at GUI scale " + (scale == 0 ? "Auto" : String.valueOf(scale)) + " (" + w + "x" + h + " in a " + mc.displayWidth + "x" + mc.displayHeight + " window)";
+        screenshot(mc, "c1-title-gui" + scale); // before the checks: a failure keeps its picture
+        check(lads.screen() != null && lads.screen() == mc.currentScreen, "the TitleScreen module put the Lads layout on the title screen" + at);
+        List<String> labels = new java.util.ArrayList<>();
+        for (GuiButton button : lads.mainButtons()) labels.add(button.displayString);
         List<String> expected = new java.util.ArrayList<>(Arrays.asList(I18n.format("menu.singleplayer"), I18n.format("menu.multiplayer"),
             "Lads Mods", I18n.format("fml.menu.mods"), I18n.format("menu.options")));
         if (com.thelads.core.v1_8_9.feature.Screenshots189.active()) expected.add("Screenshots");
-        expected.addAll(Arrays.asList("More...", I18n.format("menu.quit")));
-        check(laidOut && labels.equals(expected), "the main title actions, laid out by TitleScreenTheme without overlaps " + labels);
+        if (Loader.isModLoaded("replaymod")) expected.add("Replays");
+        expected.addAll(Arrays.asList("Friends", "More...", I18n.format("menu.quit"), "Switch Versions"));
+        check(labels.equals(expected), "the main title actions in order " + labels + at);
+        List<String> problems = new java.util.ArrayList<>();
+        List<GuiButton> placed = lads.placedButtons();
+        for (int i = 0; i < placed.size(); i++) {
+            GuiButton button = placed.get(i);
+            if (!button.visible || button.width < 8 || button.height < 8 || button.xPosition < 0 || button.yPosition < 0
+                || button.xPosition + button.width > w || button.yPosition + button.height > h) problems.add(rect(button) + " off the screen");
+            for (GuiButton other : placed.subList(i + 1, placed.size()))
+                if (button.xPosition < other.xPosition + other.width && other.xPosition < button.xPosition + button.width
+                    && button.yPosition < other.yPosition + other.height && other.yPosition < button.yPosition + button.height)
+                    problems.add(rect(button) + " overlaps " + rect(other));
+        }
+        check(problems.isEmpty(), placed.size() + " Lads title buttons (main, Switch, fullscreen, language, Essential's row) on the screen without overlaps" + at + " " + problems);
         GuiButton switchButton = lads.switchButton(), fullscreen = lads.fullscreenButton();
-        int h = mc.currentScreen.height, w = mc.currentScreen.width;
-        check(switchButton.xPosition > 30 && switchButton.yPosition == h - 25 && "Switch".equals(switchButton.displayString)
-            && fullscreen.xPosition == w - 26 && fullscreen.yPosition == 6,
-            "Switch sits after the account name at the bottom left (x " + switchButton.xPosition + ", " + switchButton.width + " wide), fullscreen top right");
-        screenshot(mc, "c1-title");
-        GuiButton more = lads.moreButton();
-        click(more.xPosition + more.width / 2, more.yPosition + more.height / 2);
-        return after(10);
+        check("Switch".equals(switchButton.displayString) && switchButton.xPosition > 16 && switchButton.yPosition > h * 3 / 4
+            && fullscreen.xPosition > w * 3 / 4 && fullscreen.yPosition < h / 8,
+            "Switch sits after the account name at the bottom left " + rect(switchButton) + ", fullscreen top right " + rect(fullscreen) + at);
+    }
+
+    private static String rect(GuiButton button) {
+        return "'" + button.displayString + "' " + button.xPosition + "," + button.yPosition + " " + button.width + "x" + button.height;
     }
 
     /** More, then its Language: the title screen's own Language button pressed from More (GuiLanguage, a list on the Lads backdrop). */
@@ -566,6 +599,7 @@ public final class CoreProbe {
         expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.TheLadsCore189.GAMEPLAY_MODULES));
         for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.LIMITED) expected.add(module[0]);
         if (SkinLayers189.LOADED) expected.add("SkinLayers");
+        expected.add(com.thelads.core.client.ParticleCore.MODULE); // ParticleCore189 (1.8.5)
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
         check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 5 /* DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
@@ -576,7 +610,9 @@ public final class CoreProbe {
     }
 
     private static volatile boolean serverBusy, raced;
+    private static volatile int shutdownTick;
     private static IntegratedServer leaving;
+    private static final List<java.util.concurrent.Future<?>> notRun = new java.util.ArrayList<>();
     private static long leftAfterMs;
 
     /**
@@ -584,17 +620,40 @@ public final class CoreProbe {
      * loadWorld(null) queues "log every player out" for the server thread and waits for it (OptiFine only skips that task once
      * the server has stopped running). A server that stops right after that check, as when its owner's connection drops, leaves
      * its tick loop without running the task, and vanilla waited forever (Not Responding). Forced here on every run: a server
-     * task keeps the server's task queue busy until this thread is blocked queuing its logout, then stops the server as a
-     * dropped owner does (initiateShutdown on the server thread); the queued logout task never runs.
+     * task keeps the server's task queue locked until this thread is blocked queuing its logout, then stops the server as a
+     * dropped owner does (initiateShutdown on the server thread), lets the logout in and takes it back out of the queue, so it
+     * never runs. Taking it out matters on a server that is behind: MinecraftServer.run runs the ticks it owes back to back
+     * without looking at serverRunning, and the next of those would run the logout (the race lost, the fix never exercised:
+     * the 1.8.5 QA runs failed that way under load). One server tick 300 ms late before the race makes every run a catch-up.
      */
-    private static boolean leaveWorld(Minecraft mc) {
+    private static boolean leaveWorld(Minecraft mc) throws Exception {
         final IntegratedServer server = leaving = mc.getIntegratedServer();
         final Thread client = Thread.currentThread();
+        final java.util.Queue<java.util.concurrent.FutureTask<?>> tasks = ReflectionHelper.getPrivateValue(net.minecraft.server.MinecraftServer.class,
+            server, "futureTaskQueue", "field_175589_i");
+        final java.util.concurrent.CountDownLatch late = new java.util.concurrent.CountDownLatch(1);
+        server.addScheduledTask(() -> {
+            try { Thread.sleep(300); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            late.countDown();
+        });
+        check(late.await(10, java.util.concurrent.TimeUnit.SECONDS), "the QA world's server ran a tick 300 ms late (it is behind)");
         server.addScheduledTask(() -> {
             serverBusy = true;
             long end = System.nanoTime() + 10_000_000_000L;
             while (!(raced = queuingLogout(client)) && System.nanoTime() < end) LockSupport.parkNanos(1_000_000L);
             server.initiateShutdown();
+            shutdownTick = server.getTickCounter();
+            // This task runs under the queue's lock: waiting on it lets the blocked client queue its logout.
+            synchronized (tasks) {
+                end = System.nanoTime() + 10_000_000_000L;
+                try {
+                    while (tasks.isEmpty() && System.nanoTime() < end) tasks.wait(5);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                notRun.addAll(tasks);
+                tasks.clear();
+            }
         });
         long end = System.nanoTime() + 10_000_000_000L;
         while (!serverBusy && System.nanoTime() < end) LockSupport.parkNanos(1_000_000L);
@@ -614,9 +673,10 @@ public final class CoreProbe {
     }
 
     private static boolean leftWorld(Minecraft mc) {
-        java.util.Queue<?> tasks = ReflectionHelper.getPrivateValue(net.minecraft.server.MinecraftServer.class, leaving, "futureTaskQueue", "field_175589_i");
-        boolean unrun = false;
-        for (Object task : tasks) unrun |= !((java.util.concurrent.Future<?>) task).isDone();
+        boolean unrun = !notRun.isEmpty();
+        for (java.util.concurrent.Future<?> task : notRun) unrun &= !task.isDone();
+        LOG.info("Lads 1.8.9 core probe: leave race: client blocked queuing its logout {}, {} task(s) queued after the stop and never run {}, "
+            + "{} server tick(s) after the stop", raced, notRun.size(), unrun, leaving.getTickCounter() - shutdownTick);
         check(raced && unrun, "the client queued its logout task just as the server stopped on its own, and the server never ran it (the freeze's race, forced)");
         check(leaving.isServerStopped() && mc.theWorld == null && mc.getIntegratedServer() == null && mc.currentScreen instanceof GuiMainMenu,
             "loadWorld(null) still returned (" + leftAfterMs + " ms) and the QA world closed back to the title screen");
