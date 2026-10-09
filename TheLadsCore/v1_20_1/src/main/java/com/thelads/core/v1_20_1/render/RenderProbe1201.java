@@ -81,6 +81,7 @@ public final class RenderProbe1201 {
     private static double[] posBefore;
     private static float yawBefore, pitchBefore;
     private static GameType modeBefore;
+    private static net.minecraft.world.Difficulty difficultyBefore;
     private static CameraType cameraBefore;
     private static CloudStatus cloudsBefore;
     private static ParticleStatus particlesBefore;
@@ -424,7 +425,12 @@ public final class RenderProbe1201 {
             RenderQa.RESULTS.put("shaders", FabricLoader.getInstance().isModLoaded("oculus") ? "Oculus" : FabricLoader.getInstance().isModLoaded("iris") ? "Iris" : "none");
             RenderQa.RESULTS.put("flerovium", BuiltInRender.standDownReason(BuiltInRender.FLEROVIUM) == null ? "on" : BuiltInRender.standDownReason(BuiltInRender.FLEROVIUM));
             RenderQa.RESULTS.put("kerria", BuiltInRender.standDownReason(BuiltInRender.KERRIA) == null ? "on" : BuiltInRender.standDownReason(BuiltInRender.KERRIA));
-            onServer(player -> { player.setGameMode(GameType.CREATIVE); build(player.serverLevel()); });
+            onServer(player -> {
+                difficultyBefore = player.server.getWorldData().getDifficulty();
+                player.server.setDifficulty(net.minecraft.world.Difficulty.EASY, true); // the QA world is peaceful: armed mobs would vanish
+                player.setGameMode(GameType.CREATIVE);
+                build(player.serverLevel());
+            });
             return 10;
         }
     }
@@ -503,6 +509,7 @@ public final class RenderProbe1201 {
                 blocks.forEach((pos, state) -> level.setBlock(pos, state, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE));
                 for (int i = 0; i < INVENTORY.size(); i++) player.getInventory().setItem(i, INVENTORY.get(i));
                 if (modeBefore != null) player.setGameMode(modeBefore);
+                if (difficultyBefore != null) player.server.setDifficulty(difficultyBefore, true);
                 if (posBefore != null) player.teleportTo(posBefore[0], posBefore[1], posBefore[2]);
             });
             SPAWNED.clear(); CHANGED.clear();
