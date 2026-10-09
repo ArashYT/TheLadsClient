@@ -12,6 +12,7 @@ public final class RenderMixinPlugin1201 implements IMixinConfigPlugin {
     @Override public void onLoad(String mixinPackage) {}
     @Override public String getRefMapperConfig() { return null; }
     @Override public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.contains("Probe")) return true; // QA timing and frames, idle outside the render capture
         return BuiltInRender.enabled(mixinClassName.contains("Animation") ? BuiltInRender.KERRIA : BuiltInRender.FLEROVIUM);
     }
     @Override public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {}

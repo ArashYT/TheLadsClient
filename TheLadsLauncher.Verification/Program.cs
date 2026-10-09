@@ -211,6 +211,8 @@ bool flashbackVerification = autoWorldVerification && !capabilities.Forge && Env
 bool asyncStressVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_ASYNC") == "1";
 // 26.x: AppleSkin server payloads (saturation, exhaustion, natural regeneration) injected in the QA world (AppleSkinSyncCapture).
 bool appleSkinSyncVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_APPLESKIN_SYNC") == "1";
+// Fabric versions: the 1.8.5 built-in render remakes (Flerovium item culling, Kerria animation cache) off and on: frame costs, pixel parity, F3+T (RenderProbe).
+bool render185Verification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_RENDER185") == "1";
 if (autoWorldVerification && dirName != version + "-title" && !capabilities.Minimal)
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
@@ -382,6 +384,8 @@ string asyncStressRequest = Path.Combine(directory, ".lads-qa-async");
 if (autoWorldVerification && File.Exists(asyncStressRequest)) File.Delete(asyncStressRequest);
 string appleSkinSyncRequest = Path.Combine(directory, ".lads-qa-appleskin-sync");
 if (autoWorldVerification && File.Exists(appleSkinSyncRequest)) File.Delete(appleSkinSyncRequest);
+string render185Request = Path.Combine(directory, ".lads-qa-capture-render185");
+if (autoWorldVerification && File.Exists(render185Request)) File.Delete(render185Request);
 if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed",
         ".lads-qa-flashback", ".lads-qa-flashback-done", ".lads-qa-flashback-failed" })
@@ -413,7 +417,7 @@ string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:",
     "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
     "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
-    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:"];
+    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads render 1.8.5 capture END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
 bool Settled(bool requested, params string[] ends) => !requested || ends.All(passedMarkers.ContainsKey) || ends.Any(failedCaptures.ContainsKey);
 bool CapturesSettled(bool resolutionRequested) =>
@@ -439,7 +443,8 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(resolutionRequested, "Lads resolution capture END:")
     && Settled(lightsCaptureVerification, "Lads dynamic lights capture END:")
     && Settled(asyncStressVerification, "Lads async stress probe END:")
-    && Settled(appleSkinSyncVerification, "Lads AppleSkin sync capture END:");
+    && Settled(appleSkinSyncVerification, "Lads AppleSkin sync capture END:")
+    && Settled(render185Verification, "Lads render 1.8.5 capture END:");
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
 LoadedModList modList = capabilities.Forge ? new ForgeModList() : new FabricModList();
@@ -480,7 +485,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
     "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
-    "Lads AppleSkin sync capture FAILED", "Lads qa script FAILED", "Lads qa step FAILED",
+    "Lads AppleSkin sync capture FAILED", "Lads qa script FAILED", "Lads qa step FAILED", "Lads render 1.8.5 capture FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || capabilities.Minimal || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -968,7 +973,8 @@ try
                     (mouseTweaksCaptureVerification, mouseTweaksCaptureRequest, "Drive Lads Mouse Tweaks in a QA chest and capture its frames."),
                     (lightsCaptureVerification, lightsCaptureRequest, "Light the QA world at midnight with Dynamic Lights and capture its frames."),
                     (asyncStressVerification, asyncStressRequest, "Stress Async with a pen of mobs in the QA world."),
-                    (appleSkinSyncVerification, appleSkinSyncRequest, "Inject AppleSkin server payloads in the QA world and capture the food bar.") })
+                    (appleSkinSyncVerification, appleSkinSyncRequest, "Inject AppleSkin server payloads in the QA world and capture the food bar."),
+                    (render185Verification, render185Request, "Measure and photograph the built-in render remakes off and on.") })
                     if (asked) await LockFiles.WriteAtomicallyAsync(request, Encoding.UTF8.GetBytes(text), ct);
                 worldCapturesRequested = true;
             }
@@ -1119,6 +1125,8 @@ try
             "The requested Async stress probe did not pass. Inspect production-smoke.log.");
         Require(!appleSkinSyncVerification || passedMarkers.ContainsKey("Lads AppleSkin sync capture END:"),
             "The requested AppleSkin server payload capture did not pass. Inspect production-smoke.log.");
+        Require(!render185Verification || passedMarkers.ContainsKey("Lads render 1.8.5 capture END:"),
+            "The requested 1.8.5 render capture did not pass. Inspect production-smoke.log.");
     }
 }
 catch (Exception e) // every failure after the trip-wire snapshot still reaches FinishAsync (trip-wire after, evidence)

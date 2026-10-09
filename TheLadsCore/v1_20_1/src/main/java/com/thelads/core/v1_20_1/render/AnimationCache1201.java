@@ -28,6 +28,8 @@ public final class AnimationCache1201 {
     private static long used;
     /** The atlas whose animations are ticking now (TextureAtlas.cycleAnimationFrames), 0 outside it. */
     public static int cyclingAtlas;
+    /** QA: the cache stands aside so frames take the mapped-buffer path (RenderProbe1201's parity check of that path). */
+    public static boolean skipForQa;
 
     private AnimationCache1201() {}
 
@@ -37,7 +39,7 @@ public final class AnimationCache1201 {
      * game's uploads, and 0 when nothing was done (the caller lets the game upload).
      */
     public static int copy(int cache, int spriteAtlas, NativeImage[] strip, int width, int height, int x, int y, int frameX, int frameY) {
-        if (cache < 0 || !BuiltInRender.animations || spriteAtlas == 0 || spriteAtlas != cyclingAtlas || !supported()) return 0;
+        if (cache < 0 || skipForQa || !BuiltInRender.animations || spriteAtlas == 0 || spriteAtlas != cyclingAtlas || !supported()) return 0;
         boolean fresh = cache == 0;
         if (fresh) {
             for (int i = 0; i < 16 && GL11C.glGetError() != 0; i++) {} // someone else's stale errors must not be read as ours below
