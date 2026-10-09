@@ -119,6 +119,9 @@ public final class MenusQa1201 {
         if (index >= scenes.size()) {
             LOGGER.info("Lads menus QA END: {} passed, {} failed", passed, failed);
             running = false;
+            // Hand the game back as the harness expects it: on the title screen, or in the world without a screen.
+            if (mc.level == null) mc.setScreen(new TitleScreen());
+            else mc.setScreen(null);
             return;
         }
         open(mc);
@@ -251,11 +254,12 @@ public final class MenusQa1201 {
         try {
             NativeImage image = Screenshot.takeScreenshot(mc.getMainRenderTarget());
             Path file = out.resolve(scene.replace(':', '-') + ".png");
+            String shownScreen = screen.getClass().getSimpleName();
+            writeWidgets(screen, out.resolve(scene.replace(':', '-') + ".txt"));
             Util.ioPool().execute(() -> {
                 try (image) {
                     image.writeToFile(file);
-                    LOGGER.info("Lads menus QA scene {} ok: {} ({}x{}, screen {})", scene, file, image.getWidth(), image.getHeight(),
-                        mc.screen == null ? "none" : mc.screen.getClass().getSimpleName());
+                    LOGGER.info("Lads menus QA scene {} ok: {} ({}x{}, screen {})", scene, file, image.getWidth(), image.getHeight(), shownScreen);
                 } catch (Exception failure) {
                     LOGGER.error("Lads menus QA scene {} could not save", scene, failure);
                 }
@@ -265,6 +269,21 @@ public final class MenusQa1201 {
             failed++;
             LOGGER.error("Lads menus QA scene {} could not capture", scene, failure);
         }
+    }
+
+    /** Every widget of the screen as drawn: class, text, bounds, active (evidence for layout questions). */
+    private static void writeWidgets(Screen screen, Path file) {
+        try {
+            var lines = new ArrayList<String>();
+            lines.add("screen " + screen.getClass().getName() + " " + screen.width + "x" + screen.height);
+            for (var child : screen.children()) {
+                if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget) {
+                    lines.add(widget.getClass().getName() + " | " + widget.getMessage().getString() + " | " + widget.getX() + "," + widget.getY() + " "
+                        + widget.getWidth() + "x" + widget.getHeight() + " | active=" + widget.active + " visible=" + widget.visible);
+                } else lines.add(child.getClass().getName());
+            }
+            Files.write(file, lines);
+        } catch (Exception ignored) {}
     }
 
     private static void requestWorld(Minecraft mc) {
