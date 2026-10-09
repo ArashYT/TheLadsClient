@@ -151,6 +151,10 @@ public final class MenusQa1201 {
 
     private static void open(Minecraft mc) {
         String scene = scenes.get(index);
+        // A scene named "<scene>-nobatch" draws the Lads artwork call by call (no drawManaged), to compare with the batched path.
+        boolean unbatched = scene.endsWith("-nobatch");
+        com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201.noBatch = unbatched;
+        if (unbatched) scene = scene.substring(0, scene.length() - "-nobatch".length());
         try {
             if (needsWorld(scene)) {
                 if (mc.level == null || mc.player == null) {

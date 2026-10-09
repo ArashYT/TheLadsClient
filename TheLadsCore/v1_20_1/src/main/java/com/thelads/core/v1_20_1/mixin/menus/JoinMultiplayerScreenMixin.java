@@ -32,6 +32,7 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
                 minecraft.setScreen(new ServerDiscoveryScreen1201(this));
             }
         }).bounds(width - 124, 8, 116, 20).build());
+        org.slf4j.LoggerFactory.getLogger("TheLadsCore-1.20.1").info("Discover Servers button added to the multiplayer screen at {},{}", width - 124, 8);
     }
 
     @Inject(method = "render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V", at = @At("HEAD"))

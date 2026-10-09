@@ -55,8 +55,12 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
      * of fills per frame. Direct draws (blits) inside must flush() first so they stay in order.
      */
     public void managed(Runnable drawing) {
-        guiGraphics.drawManaged(drawing);
+        if (noBatch) drawing.run();
+        else guiGraphics.drawManaged(drawing);
     }
+
+    /** QA switch (MenusQa1201): draw the Lads artwork call by call, to compare with the batched path. */
+    public static volatile boolean noBatch;
 
     @Override
     public void drawModIcon(String id, int x, int y, int size) {
