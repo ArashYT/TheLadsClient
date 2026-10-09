@@ -78,6 +78,7 @@ public class ProfileToolsTests
         var ex = Assert.Throws<InvalidOperationException>(() => ProfileTools.Import(preset, dir.Path));
         Assert.Equal(GameVersionPolicy.PausedMessage, ex.Message);
         Assert.DoesNotContain("26.2", ProfileTools.FilterVersions);
+        Assert.DoesNotContain("1.21.11", ProfileTools.FilterVersions);
     }
 
     [Fact]

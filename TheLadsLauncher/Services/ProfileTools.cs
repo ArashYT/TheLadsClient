@@ -24,8 +24,8 @@ public static class ProfileTools
     /// <summary>The versions the Play screen offers; profiles for other versions are listed greyed out (26.2 is paused, see GameVersionPolicy).</summary>
     public static readonly string[] PlayableVersions = { "26.3", "1.20.1", "1.8.9" };
 
-    /// <summary>The version filter choices on the Profiles page (26.2 is paused, see GameVersionPolicy).</summary>
-    public static readonly string[] FilterVersions = { "All versions", "26.3", "1.20.1", "1.21.11", "1.8.9" };
+    /// <summary>The version filter choices on the Profiles page (26.2 and 1.21.11 are hidden).</summary>
+    public static readonly string[] FilterVersions = { "All versions", "26.3", "1.20.1", "1.8.9" };
 
     /// <summary>Newest Minecraft version first (1.8.9 last); "Latest Release" ahead of the profile it matches.</summary>
     public static IEnumerable<LauncherProfile> NewestFirst(IEnumerable<LauncherProfile> profiles) =>

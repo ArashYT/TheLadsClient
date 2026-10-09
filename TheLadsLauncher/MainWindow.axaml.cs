@@ -2296,6 +2296,9 @@ public partial class MainWindow : Window
             bool has1710 = false;
             foreach (var p in ProfileTools.NewestFirst(_profileService.GetProfiles()))
             {
+                if (p.MinecraftVersion is "26.2" or "1.21.11")
+                    continue;
+
                 if (GameVersionPolicy.IsComingNever(p.MinecraftVersion))
                 {
                     has1710 = true;
