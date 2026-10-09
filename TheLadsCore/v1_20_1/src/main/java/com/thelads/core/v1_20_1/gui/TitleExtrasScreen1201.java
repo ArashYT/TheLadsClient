@@ -48,7 +48,7 @@ public final class TitleExtrasScreen1201 extends Screen {
             AbstractWidget widget = original;
             if (original instanceof Button button) {
                 String label = TitleWidgetRegistry1201.renderLabel(original);
-                if (label.isBlank()) label = "Extra settings";
+                if (label.isBlank()) label = TitleWidgetRegistry1201.guessLabel(original);
                 widget = Button.builder(Component.literal(label), b -> button.onPress()).bounds(0, 0, 1, 1).build();
                 widget.active = original.active;
             }

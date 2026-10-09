@@ -57,6 +57,27 @@ public final class TitleWidgetRegistry1201 {
         };
     }
 
+    /**
+     * A label for an icon-only button another mod added (Create's, Quark's, Supplementaries' config buttons have no text): the mod
+     * it came from, read off the jar its class was loaded from, e.g. "Create settings".
+     */
+    public static String guessLabel(AbstractWidget widget) {
+        try {
+            var source = widget.getClass().getProtectionDomain().getCodeSource();
+            if (source != null) {
+                String location = java.net.URLDecoder.decode(source.getLocation().toString(), java.nio.charset.StandardCharsets.UTF_8);
+                var matcher = java.util.regex.Pattern.compile("([^/\\\\!#]+?)\\.jar").matcher(location);
+                String jar = null;
+                while (matcher.find()) jar = matcher.group(1);
+                if (jar != null) {
+                    String name = jar.replaceFirst("(?i)[-_ +]*(forge|fabric|neoforge|mc)?[-_ +]*v?\\d.*$", "").replaceAll("[-_]+", " ").trim();
+                    if (!name.isEmpty()) return Character.toUpperCase(name.charAt(0)) + name.substring(1) + " settings";
+                }
+            }
+        } catch (RuntimeException ignored) {}
+        return "Extra settings";
+    }
+
     public static void unregister(AbstractWidget widget) {
         WIDGETS.remove(widget);
     }
