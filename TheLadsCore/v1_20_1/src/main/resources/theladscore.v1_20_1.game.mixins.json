@@ -26,6 +26,13 @@
     "OldAnimationsHeartsMixin",
     "CustomFovPlayerMixin",
     "CustomFovCameraMixin",
-    "VerticalBobbingMixin"
+    "VerticalBobbingMixin",
+    "KeyboardInvokers",
+    "MouseInvokers",
+    "EssentialZoomMixin",
+    "MinecraftTargetAccessor",
+    "LevelTargetsAccessor",
+    "RenderScaleMixin",
+    "RenderScaleOutlineMixin"
   ]
 }

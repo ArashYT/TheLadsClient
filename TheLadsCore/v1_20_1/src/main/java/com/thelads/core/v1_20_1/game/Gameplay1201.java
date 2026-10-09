@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 public final class Gameplay1201 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore-1.20.1");
     private static boolean qa;
+    /** QA: the direction and strength the last hurt-camera tilt used (DamageTiltMixin). */
+    public static volatile float lastTiltYaw, lastTiltStrength = 1;
 
     private Gameplay1201() {}
 
@@ -27,12 +29,13 @@ public final class Gameplay1201 {
         qa = Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null;
         // Modules this lane implements natively. The entrypoint's shared list registered a few of them as built in before they worked.
         ModuleSupport.registerBuiltIn(ToggleSprintModule.NAME, "Fullbright", "LegacySwing", DamageTilt.MODULE, NativeVerticalBob1201.MODULE,
-            OldAnimationsModule.NAME);
+            OldAnimationsModule.NAME, "BetterResolution");
         if (zoomOwnedByMod()) ModuleSupport.registerExternal("Zoom", "Just Zoom", "justzoom", true);
         else ModuleSupport.registerBuiltIn("Zoom");
         NativeCustomFov1201.register();
         GoodMcAttackSpeedReset1201.register();
         ClientTickEvents.END_CLIENT_TICK.register(Gameplay1201::tick);
+        com.thelads.core.v1_20_1.game.qa.GameProbe1201.register();
         com.thelads.core.v1_20_1.game.skin.SkinLayers1201.register();
         com.thelads.core.v1_20_1.game.nea.Nea1201.register();
         com.thelads.core.v1_20_1.game.misc.Misc1201.register();
