@@ -53,7 +53,8 @@ import org.slf4j.LoggerFactory;
 public final class FastQuitProbe26 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final String PHASE = System.getProperty("thelads.verifyFastQuit", System.getenv("LADS_VERIFY_FASTQUIT"));
-    private static final String A = "FastQuit QA A", B = "FastQuit QA B", C = "FastQuit QA C";
+    /** The saves folder is shared by every version (Lads shared content): each version keeps its own QA worlds. */
+    private static final String A = "FastQuit QA A 26.3", B = "FastQuit QA B 26.3", C = "FastQuit QA C 26.3";
     private static final Block[] MARKS = {Blocks.GOLD_BLOCK, Blocks.EMERALD_BLOCK, Blocks.DIAMOND_BLOCK, Blocks.LAPIS_BLOCK};
     /** Mark offsets from the player: nearby chunks, and far ones in other region files. */
     private static final int[][] OFFSETS = {{0, 0}, {40, 0}, {-40, 0}, {0, 40}, {0, -40}, {-600, 0}, {600, 600}};
@@ -176,7 +177,7 @@ public final class FastQuitProbe26 {
 
         // S7: quit, then close the game at once; verify (next game) checks these marks.
         enter(mc, A);
-        writeExpect(mark(mc, k + 2), k + 2);
+        writeExpect(mark(mc, k + 2, true), k + 2);
         boolean[] pendingAtStop = new boolean[1];
         long quit = onClient(mc, () -> {
             long q = quitToTitle(mc);
@@ -232,12 +233,14 @@ public final class FastQuitProbe26 {
     private static void crash(Minecraft mc) throws Exception {
         int k = readExpect().map(e -> e.get("k").getAsInt()).orElse(0) + 10;
         enter(mc, A);
-        writeExpect(mark(mc, k), k);
+        writeExpect(mark(mc, k, true), k);
         boolean[] saving = new boolean[1];
+        // Built first: filling a crash report takes longer than a small save.
+        net.minecraft.CrashReport report = net.minecraft.CrashReport.forThrowable(new IllegalStateException("Lads FastQuit QA: a crash during a background save"), "FastQuit QA crash");
         long quit = onClient(mc, () -> {
             long q = quitToTitle(mc);
             saving[0] = FastQuit.anySaving();
-            mc.delayCrash(net.minecraft.CrashReport.forThrowable(new IllegalStateException("Lads FastQuit QA: a crash during a background save"), "FastQuit QA crash"));
+            mc.delayCrash(report);
             return q;
         });
         LOGGER.info("Lads fast quit probe: S8 crash during the save: quit {} ms, save running when the crash was raised {}", quit, saving[0]);
@@ -313,7 +316,13 @@ public final class FastQuitProbe26 {
     }
 
     /** Blocks around the player (some far, in other region files), a chest with emeralds and diamonds in slot 1, all from k. */
-    private static JsonObject mark(Minecraft mc, int k) throws Exception {
+    private static JsonObject mark(Minecraft mc, int k) throws Exception { return mark(mc, k, false); }
+
+    /**
+     * heavy: also a glass block in each of 256 force-loaded chunks around the player (kept loaded, so the next quit saves
+     * them all: a background save long enough to close or crash the game in the middle of it).
+     */
+    private static JsonObject mark(Minecraft mc, int k, boolean heavy) throws Exception {
         MinecraftServer server = mc.getSingleplayerServer();
         return onServer(server, () -> {
             ServerPlayer player = server.getPlayerList().getPlayers().get(0);
@@ -328,6 +337,14 @@ public final class FastQuitProbe26 {
             level.setBlockAndUpdate(chest, Blocks.CHEST.defaultBlockState());
             if (level.getBlockEntity(chest) instanceof Container box) box.setItem(0, new ItemStack(Items.EMERALD, k % 64 + 1));
             player.getInventory().setItem(1, new ItemStack(Items.DIAMOND, k % 64 + 1));
+            if (heavy) {
+                marks.addProperty("heavy", true);
+                for (int i = -8; i < 8; i++) for (int j = -8; j < 8; j++) {
+                    int cx = (origin.getX() >> 4) + i, cz = (origin.getZ() >> 4) + j;
+                    level.setChunkForced(cx, cz, true);
+                    level.setBlockAndUpdate(new BlockPos(cx * 16 + 8, origin.getY() + 2, cz * 16 + 8), Blocks.GLASS.defaultBlockState());
+                }
+            }
             return marks;
         });
     }
@@ -346,7 +363,14 @@ public final class FastQuitProbe26 {
             boolean chest = inChest.getItem() == Items.EMERALD && inChest.getCount() == k % 64 + 1;
             ItemStack held = server.getPlayerList().getPlayers().get(0).getInventory().getItem(1);
             boolean inventory = held.getItem() == Items.DIAMOND && held.getCount() == k % 64 + 1;
-            return good + "/" + OFFSETS.length + " marks of k=" + k + ", chest " + (chest ? "OK" : "WRONG " + inChest) + ", inventory " + (inventory ? "OK" : "WRONG " + held);
+            String heavy = "";
+            if (marks.has("heavy")) {
+                int glass = 0;
+                for (int i = -8; i < 8; i++) for (int j = -8; j < 8; j++)
+                    if (level.getBlockState(new BlockPos(((origin.getX() >> 4) + i) * 16 + 8, origin.getY() + 2, ((origin.getZ() >> 4) + j) * 16 + 8)).getBlock() == Blocks.GLASS) glass++;
+                heavy = ", " + glass + "/256 force-loaded chunk marks" + (glass == 256 ? "" : " WRONG");
+            }
+            return good + "/" + OFFSETS.length + " marks of k=" + k + ", chest " + (chest ? "OK" : "WRONG " + inChest) + ", inventory " + (inventory ? "OK" : "WRONG " + held) + heavy;
         });
         if (!result.startsWith(OFFSETS.length + "/") || result.contains("WRONG")) failures.add("check: " + result);
         return result;
