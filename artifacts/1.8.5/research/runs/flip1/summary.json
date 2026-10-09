@@ -1,0 +1,295 @@
+{
+ "run": "flip1",
+ "case": "\ufeffstarted 10/08/2026 23:24:50 ; variants= drop= rd=12 sim=8 fps=260 jfr=True jvm=\nharness exit 0 ; finished 10/08/2026 23:51:00 ; elapsed 1570 s",
+ "startup": {
+  "mf_bootstrap_s": 15.0,
+  "modload_s": 23.0,
+  "reload_s": 31.0,
+  "game_start_s": 43.0,
+  "world_total_s": 58.0,
+  "qa_begin_s": 31.0,
+  "qa_ready_s": 60.0,
+  "script_end_s": 882.0,
+  "game_took_reported_s": 44.924,
+  "world_total_reported_s": 54.606834,
+  "menu_to_game_s": 9.682836
+ },
+ "phases": {
+  "S": {
+   "seconds": 93,
+   "fps_samples": 19,
+   "fps_mean": 236.1,
+   "fps_min": 137,
+   "fps_max": 291,
+   "fps_median": 244
+  },
+  "hud_b0": {
+   "seconds": 21,
+   "fps_samples": 11,
+   "fps_mean": 279.4,
+   "fps_min": 255,
+   "fps_max": 353,
+   "fps_median": 273
+  },
+  "hud_v0": {
+   "seconds": 22,
+   "fps_samples": 11,
+   "fps_mean": 377.7,
+   "fps_min": 304,
+   "fps_max": 473,
+   "fps_median": 354
+  },
+  "hud_b1": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 257.5,
+   "fps_min": 147,
+   "fps_max": 297,
+   "fps_median": 266.0
+  },
+  "hud_v1": {
+   "seconds": 22,
+   "fps_samples": 11,
+   "fps_mean": 332.3,
+   "fps_min": 245,
+   "fps_max": 400,
+   "fps_median": 339
+  },
+  "hud_b2": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 304.4,
+   "fps_min": 262,
+   "fps_max": 323,
+   "fps_median": 308.5
+  },
+  "hud_v2": {
+   "seconds": 21,
+   "fps_samples": 11,
+   "fps_mean": 320.4,
+   "fps_min": 244,
+   "fps_max": 437,
+   "fps_median": 302
+  },
+  "grass_b0": {
+   "seconds": 21,
+   "fps_samples": 10,
+   "fps_mean": 276.2,
+   "fps_min": 243,
+   "fps_max": 325,
+   "fps_median": 273.5
+  },
+  "grass_v0_r64": {
+   "seconds": 21,
+   "fps_samples": 10,
+   "fps_mean": 302.8,
+   "fps_min": 283,
+   "fps_max": 340,
+   "fps_median": 296.0
+  },
+  "grass_b1": {
+   "seconds": 21,
+   "fps_samples": 10,
+   "fps_mean": 264.3,
+   "fps_min": 220,
+   "fps_max": 321,
+   "fps_median": 248.5
+  },
+  "grass_v1_r64": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 268.7,
+   "fps_min": 229,
+   "fps_max": 317,
+   "fps_median": 265.0
+  },
+  "grass_b2": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 273.7,
+   "fps_min": 212,
+   "fps_max": 336,
+   "fps_median": 274.0
+  },
+  "grass_v2_r32": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 255.7,
+   "fps_min": 221,
+   "fps_max": 290,
+   "fps_median": 255.0
+  },
+  "grass_b3": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 250.4,
+   "fps_min": 163,
+   "fps_max": 314,
+   "fps_median": 271.0
+  },
+  "grass_v3_r32": {
+   "seconds": 21,
+   "fps_samples": 10,
+   "fps_mean": 169.2,
+   "fps_min": 163,
+   "fps_max": 179,
+   "fps_median": 168.5
+  },
+  "rain_b0": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 227,
+   "fps_min": 177,
+   "fps_max": 262,
+   "fps_median": 230.5
+  },
+  "rain_v0": {
+   "seconds": 21,
+   "fps_samples": 10,
+   "fps_mean": 162.1,
+   "fps_min": 108,
+   "fps_max": 187,
+   "fps_median": 171.5
+  },
+  "rain_b1": {
+   "seconds": 21,
+   "fps_samples": 10,
+   "fps_mean": 222,
+   "fps_min": 198,
+   "fps_max": 272,
+   "fps_median": 211.5
+  },
+  "rain_v1": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 180.3,
+   "fps_min": 93,
+   "fps_max": 219,
+   "fps_median": 194.0
+  },
+  "rain_b2": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 183.7,
+   "fps_min": 145,
+   "fps_max": 210,
+   "fps_median": 189.0
+  },
+  "rain_v2": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 198.1,
+   "fps_min": 132,
+   "fps_max": 250,
+   "fps_median": 198.0
+  },
+  "rain_nohud": {
+   "seconds": 22,
+   "fps_samples": 10,
+   "fps_mean": 297.3,
+   "fps_min": 243,
+   "fps_max": 324,
+   "fps_median": 300.5
+  },
+  "D": {
+   "seconds": 32,
+   "fps_samples": 15,
+   "fps_mean": 210.7,
+   "fps_min": 175,
+   "fps_max": 282,
+   "fps_median": 201
+  },
+  "B": {
+   "seconds": 74,
+   "fps_samples": 20,
+   "fps_mean": 251.2,
+   "fps_min": 150,
+   "fps_max": 305,
+   "fps_median": 258.5
+  },
+  "E": {
+   "seconds": 26,
+   "fps_samples": 12,
+   "fps_mean": 135.5,
+   "fps_min": 114,
+   "fps_max": 149,
+   "fps_median": 137.0
+  },
+  "Z": {
+   "seconds": 12,
+   "fps_samples": 2,
+   "fps_mean": 179,
+   "fps_min": 139,
+   "fps_max": 219,
+   "fps_median": 179.0
+  }
+ },
+ "spark": [
+  "\ufffd6Distant Horizons: G1 Garbage collector detected.\ufffdr\\nThis can cause FPS stuttering. \\nIt's recommended to use a concurrent garbage collector \\nlike ZGC (Java 21+) or Shenandoah (Java 8 through 17) \\n",
+  "\\n> TPS from last 5s, 10s, 1m, 5m, 15m:\\n    19.99, 20.0, *20.0, 20.0, 19.89\\n\\n> Tick durations (min/med/95%ile/max ms) from last 10s, 1m:\\n    1.8/2.9/5.1/20.2; 1.2/2.8/6.7/61.5\\n\\n> CPU usage from ",
+  "[?] TPS from last 5s, 10s, 1m, 5m, 15m:",
+  "[?] Tick durations (min/med/95%ile/max ms) from last 10s, 1m:",
+  "[?] CPU usage from last 10s, 1m, 15m:",
+  "[?] Calculating GC statistics...",
+  "\\n> Garbage Collector statistics\\n\\n    G1 Young Generation collector:\\n      4.51 ms avg, 272 total collections\\n      3s avg frequency\\n\\n    G1 Old Generation collector:\\n      0 collections"
+ ],
+ "machine_during_script": {
+  "cpu_pct_mean": 55.8,
+  "cpu_pct_max": 97.0,
+  "free_gb_min": 2.34
+ },
+ "jfr_file": "game-%p.jfr",
+ "jfr_mb": 78.6,
+ "gc_all": [
+  "collectors: ('\"G1New\"', '\"G1Old\"')",
+  "window: 888 s, collections: 385",
+  "by kind: {'\"G1New\"': 371, '\"G1Old\"': 13, '\"G1Full\"': 1}",
+  "pause ms: avg 6.5  p95 13.3  max 308.0  total 2509 ms = 0.28% of wall",
+  "pauses >20 ms: 6  >50 ms: 1  >100 ms: 1",
+  "worst: [('\"G1Full\"', '\"System.gc()\"', 308.0), ('\"G1Old\"', '\"G1 Evacuation Pause\"', 34.2), ('\"G1Old\"', '\"Metadata GC Threshold\"', 30.1), ('\"G1New\"', '\"G1 Evacuation Pause\"', 29.0), ('\"G1New\"', '\"G1 Evacuation Pause\"', 21.2)]",
+  "heap used after GC (MB): median 1536  p90 1843  max 2355  last 1331"
+ ],
+ "jfr_clock_offset_s": 3600.0,
+ "attrib_head": [
+  "total samples 88357",
+  "",
+  "== Thread-N: 31684 samples (java 2841, native 28843)",
+  "  section : other 98.9%, server-worldgen 0.9%, xaero 0.2%",
+  "  first   : (vanilla/forge/jdk) 95.3%, AmbientSounds 4.3%, modernfix 0.2%, xaeroworldmap 0.1%, CreativeCore 0.1%, open 0.0%, konkrete 0.0%, exposure 0.0%",
+  "  on path : AmbientSounds 4.5%, modernfix 0.2%, xaeroworldmap 0.1%, CreativeCore 0.1%, open 0.0%, konkrete 0.0%, exposure 0.0%",
+  "",
+  "== main: 15571 samples (java 15015, native 556)",
+  "  section : grass 38.3%, other 33.6%, xaero 8.6%, lads-core 4.7%, entities 4.4%, server-worldgen 3.9%, particles 3.4%, terrain-chunks 2.3%",
+  "  first   : grazziergrass 37.4%, (vanilla/forge/jdk) 11.4%, particlerain 9.2%, continuity 5.9%, xaeroworldmap 3.9%, embeddium 3.8%, theladscore.jar 3.6%, xaerominimap 3.4%",
+  "  on path : grazziergrass 38.3%, particlerain 9.6%, oculus 8.8%, continuity 6.3%, Connector 5.3%, xaerominimap 5.3%, theladscore.jar 4.7%, embeddium 4.3%, xaeroworldmap 4.2%, entity 3.8%",
+  "",
+  "== FileSystemWatchService: 6718 samples (java 0, native 6718)",
+  "  section : other 100.0%",
+  "  first   : (vanilla/forge/jdk) 100.0%",
+  "  on path : ",
+  "",
+  "== CullThread: 6500 samples (java 6499, native 1)",
+  "  section : other 100.0%",
+  "  first   : entityculling 100.0%",
+  "  on path : entityculling 100.0%",
+  "",
+  "== DH-World Gen Thread[N]: 4386 samples (java 4385, native 1)",
+  "  section : DH 100.0%, other 0.0%",
+  "  first   : DistantHorizons 98.9%, modernfix 0.9%, Data 0.2%, (vanilla/forge/jdk) 0.0%",
+  "  on path : DistantHorizons 100.0%, modernfix 0.9%, Data 0.2%",
+  "",
+  "== shortgrass-section-builder: 3471 samples (java 3471, native 0)",
+  "  section : grass 99.9%, other 0.1%",
+  "  first   : Quark 66.4%, grazziergrass 32.0%, modernfix 1.4%, ferritecore 0.1%, (vanilla/forge/jdk) 0.1%, tectonic 0.0%",
+  "  on path : grazziergrass 99.9%, Quark 67.6%, modernfix 1.4%, ferritecore 0.1%, tectonic 0.0%",
+  "",
+  "== DH-Render Loader Thread[N]: 3388 samples (java 3378, native 10)",
+  "  section : DH 99.9%, other 0.1%",
+  "  first   : DistantHorizons 99.9%, (vanilla/forge/jdk) 0.1%, modernfix 0.0%",
+  "  on path : DistantHorizons 99.9%, modernfix 0.0%",
+  "",
+  "== DH-Update Propagator Thread[N]: 2714 samples (java 2706, native 8)",
+  "  section : DH 100.0%",
+  "  first   : DistantHorizons 100.0%"
+ ]
+}

@@ -96,7 +96,14 @@ internal static class ZeroSmpQa
             File.WriteAllLines(Path.Combine(evidence, "mods.txt"), Directory.EnumerateFiles(mods, "*.jar").Select(f => Path.GetFileName(f)).Order(StringComparer.OrdinalIgnoreCase));
 
             // Options: the owner's own options.txt of the pack with the QA values forced (the same array as the 1.20.1 and 26.x runs).
-            string[] qaForced = { "soundCategory_master:0.0", "maxFps:120", "enableVsync:false", "renderDistance:4", "simulationDistance:4", "guiScale:2",
+            // Research lane (1.8.5, Zero SMP performance study): LADS_VERIFY_PERF_RD / _SIM / _FPS let a measurement run use a realistic render distance and
+            // an uncapped frame rate (maxFps 260 = unlimited), as the 1.8.9 perf benchmark does. Unset = the standard QA values; the window, priority,
+            // mute, slot and RAM rules are untouched.
+            string perfRd = QaShared.Env("LADS_VERIFY_PERF_RD") ?? "4", perfSim = QaShared.Env("LADS_VERIFY_PERF_SIM") ?? "4", perfFps = QaShared.Env("LADS_VERIFY_PERF_FPS") ?? "120";
+            bool perfOk = int.TryParse(perfRd, out int rdNumber) && rdNumber is >= 2 and <= 16 && int.TryParse(perfSim, out int simNumber) && simNumber is >= 2 and <= 16
+                && (perfFps is "30" or "60" or "120" or "144" or "240" or "260");
+            if (!perfOk) throw new ArgumentException("LADS_VERIFY_PERF_RD/_SIM must be 2..16, LADS_VERIFY_PERF_FPS one of 30 60 120 144 240 260.");
+            string[] qaForced = { "soundCategory_master:0.0", "maxFps:" + perfFps, "enableVsync:false", "renderDistance:" + perfRd, "simulationDistance:" + perfSim, "guiScale:2",
                 "pauseOnLostFocus:false", "fullscreen:false", "onboardAccessibility:false", "tutorialStep:none" };
             string options = Path.Combine(gameDir, "options.txt");
             var lines = File.Exists(options) ? File.ReadAllLines(options).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList() : new List<string>();

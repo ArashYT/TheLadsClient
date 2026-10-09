@@ -1,0 +1,2 @@
+﻿started 10/08/2026 23:24:50 ; variants= drop= rd=12 sim=8 fps=260 jfr=True jvm=
+harness exit 0 ; finished 10/08/2026 23:51:00 ; elapsed 1570 s

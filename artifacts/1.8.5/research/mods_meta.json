@@ -1,0 +1,3525 @@
+[
+ {
+  "file": "AmbientSounds_FORGE_v6.3.8_mc1.20.1.jar",
+  "sizeKB": 52176,
+  "classes": 64,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "ambientsounds",
+   "creativecore"
+  ],
+  "ver_raw": [
+   "6.3.8"
+  ],
+  "dispName": [
+   "AmbientSounds"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "fabric_id": "ambientsounds",
+  "fabric_ver": "6.3.6",
+  "fabric_name": "AmbientSounds",
+  "env": "client",
+  "mixins": [
+   "ambientsounds.mixins.json"
+  ],
+  "kind": [
+   "forge",
+   "fabric"
+  ],
+  "mixin_cfgs": [
+   "ambientsounds.mixins.json"
+  ]
+ },
+ {
+  "file": "BetterAdvancements-Forge-1.20.1-0.6.0.73.jar",
+  "sizeKB": 98,
+  "classes": 37,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "betteradvancements"
+  ],
+  "ver_raw": [
+   "0.6.0.73"
+  ],
+  "dispName": [
+   "Better Advancements"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "BorderlessWindow-1.20-1.6.0.jar",
+  "sizeKB": 42,
+  "classes": 22,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "borderlesswindow"
+  ],
+  "ver_raw": [
+   "1.20-1.6.0"
+  ],
+  "dispName": [
+   "Borderless Window"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "Chimes-v2.1.1-1.20.1-Forge.jar",
+  "sizeKB": 12187,
+  "classes": 41,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "chimes"
+  ],
+  "ver_raw": [
+   "2.1.1"
+  ],
+  "dispName": [
+   "Chimes"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "Clumps-forge-1.20.1-12.0.0.4.jar",
+  "sizeKB": 19,
+  "classes": 15,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "clumps"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Clumps"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "clumps.mixins.json"
+  ]
+ },
+ {
+  "file": "Connector-1.0.0-beta.49+1.20.1.jar",
+  "sizeKB": 4927,
+  "classes": 1111,
+  "jarjar": [
+   "META-INF/jarjar/Connector-1.0.0-beta.49+1.20.1-mod.jar"
+  ],
+  "fabric_jij": [],
+  "kind": [],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "Controlling-forge-1.20.1-12.0.2.jar",
+  "sizeKB": 112,
+  "classes": 39,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "controlling",
+   "searchables"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Controlling"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "controlling.forge.mixins.json",
+   "controlling.mixins.json"
+  ]
+ },
+ {
+  "file": "Corgilib-Forge-1.20.1-4.0.3.5.jar",
+  "sizeKB": 311,
+  "classes": 151,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "corgilib"
+  ],
+  "ver_raw": [
+   "4.0.3.5"
+  ],
+  "dispName": [
+   "CorgiLib"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "corgilib-common.mixins.json"
+  ]
+ },
+ {
+  "file": "CreativeCore_FORGE_v2.12.39_mc1.20.1.jar",
+  "sizeKB": 1117,
+  "classes": 642,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "creativecore"
+  ],
+  "ver_raw": [
+   "2.12.39"
+  ],
+  "dispName": [
+   "CreativeCore"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "creativecore.forge.mixins.json",
+   "creativecore.mixins.json"
+  ]
+ },
+ {
+  "file": "Data_Anchor-forge-1.20.1-1.0.0.22.jar",
+  "sizeKB": 114,
+  "classes": 75,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "dataanchor"
+  ],
+  "ver_raw": [
+   "1.0.0.22"
+  ],
+  "dispName": [
+   "Data Anchor"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "dataanchor-common.mixins.json",
+   "dataanchor.mixins.json"
+  ]
+ },
+ {
+  "file": "DistantHorizons-3.3.3-1.20.1-fabric-forge.jar",
+  "sizeKB": 27051,
+  "classes": 1764,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/fabric-api-0.92.11+1.20.1.jar",
+   "META-INF/jars/fabric-api-base-0.4.32+1802ada577.jar",
+   "META-INF/jars/fabric-api-lookup-api-v1-1.6.37+1802ada577.jar",
+   "META-INF/jars/fabric-biome-api-v1-13.0.15+93aa238b77.jar",
+   "META-INF/jars/fabric-block-api-v1-1.0.12+1802ada577.jar",
+   "META-INF/jars/fabric-block-view-api-v2-1.0.3+924f046a77.jar",
+   "META-INF/jars/fabric-blockrenderlayer-v1-1.1.42+1802ada577.jar",
+   "META-INF/jars/fabric-client-tags-api-v1-1.2.0+238242b777.jar",
+   "META-INF/jars/fabric-command-api-v1-1.2.35+f71b366f77.jar",
+   "META-INF/jars/fabric-command-api-v2-2.2.14+1802ada577.jar",
+   "META-INF/jars/fabric-commands-v0-0.2.52+df3654b377.jar",
+   "META-INF/jars/fabric-containers-v0-0.1.68+df3654b377.jar",
+   "META-INF/jars/fabric-content-registries-v0-4.0.13+1802ada577.jar",
+   "META-INF/jars/fabric-convention-tags-v1-1.5.6+1802ada577.jar",
+   "META-INF/jars/fabric-crash-report-info-v1-0.2.20+1802ada577.jar",
+   "META-INF/jars/fabric-data-attachment-api-v1-1.0.2+de0fd6d177.jar",
+   "META-INF/jars/fabric-data-generation-api-v1-12.4.0+238242b777.jar",
+   "META-INF/jars/fabric-dimensions-v1-2.1.55+1802ada577.jar",
+   "META-INF/jars/fabric-entity-events-v1-1.6.1+1c78457f77.jar",
+   "META-INF/jars/fabric-events-interaction-v0-0.6.6+13a40c6677.jar",
+   "META-INF/jars/fabric-events-lifecycle-v0-0.2.64+df3654b377.jar",
+   "META-INF/jars/fabric-game-rule-api-v1-1.0.41+1802ada577.jar",
+   "META-INF/jars/fabric-item-api-v1-2.1.29+1802ada577.jar",
+   "META-INF/jars/fabric-item-group-api-v1-4.0.14+1802ada577.jar",
+   "META-INF/jars/fabric-key-binding-api-v1-1.0.38+1802ada577.jar",
+   "META-INF/jars/fabric-keybindings-v0-0.2.36+df3654b377.jar",
+   "META-INF/jars/fabric-lifecycle-events-v1-2.2.23+1802ada577.jar",
+   "META-INF/jars/fabric-loot-api-v2-1.2.3+1802ada577.jar",
+   "META-INF/jars/fabric-loot-tables-v1-1.1.47+9e7660c677.jar",
+   "META-INF/jars/fabric-message-api-v1-5.1.10+1802ada577.jar",
+   "META-INF/jars/fabric-mining-level-api-v1-2.1.52+1802ada577.jar",
+   "META-INF/jars/fabric-model-loading-api-v1-1.0.4+1802ada577.jar",
+   "META-INF/jars/fabric-models-v0-0.4.3+9386d8a777.jar",
+   "META-INF/jars/fabric-networking-api-v1-1.3.15+0caff8d077.jar",
+   "META-INF/jars/fabric-networking-v0-0.3.55+df3654b377.jar",
+   "META-INF/jars/fabric-object-builder-api-v1-11.1.5+e35120df77.jar",
+   "META-INF/jars/fabric-particles-v1-1.1.3+1802ada577.jar",
+   "META-INF/jars/fabric-recipe-api-v1-1.0.25+1802ada577.jar",
+   "META-INF/jars/fabric-registry-sync-v0-2.4.1+4c0a70e677.jar",
+   "META-INF/jars/fabric-renderer-api-v1-3.2.2+1802ada577.jar",
+   "META-INF/jars/fabric-renderer-indigo-1.5.3+85287f9f77.jar",
+   "META-INF/jars/fabric-renderer-registries-v1-3.2.47+df3654b377.jar",
+   "META-INF/jars/fabric-rendering-data-attachment-v1-0.3.39+92a0d36777.jar",
+   "META-INF/jars/fabric-rendering-fluids-v1-3.0.29+1802ada577.jar",
+   "META-INF/jars/fabric-rendering-v0-1.1.50+df3654b377.jar",
+   "META-INF/jars/fabric-rendering-v1-3.0.9+1802ada577.jar",
+   "META-INF/jars/fabric-resource-conditions-api-v1-2.3.9+1802ada577.jar",
+   "META-INF/jars/fabric-resource-loader-v0-0.11.12+fb82e9d777.jar",
+   "META-INF/jars/fabric-screen-api-v1-2.0.9+1802ada577.jar",
+   "META-INF/jars/fabric-screen-handler-api-v1-1.3.34+1802ada577.jar",
+   "META-INF/jars/fabric-sound-api-v1-1.0.14+1802ada577.jar",
+   "META-INF/jars/fabric-tag-api-v1-1.3.0+238242b777.jar",
+   "META-INF/jars/fabric-transfer-api-v1-3.3.6+8dd72ea377.jar",
+   "META-INF/jars/fabric-transitive-access-wideners-v1-4.3.2+1802ada577.jar"
+  ],
+  "ids": [
+   "distanthorizons",
+   "oculus"
+  ],
+  "ver_raw": [
+   "3.3.3"
+  ],
+  "dispName": [
+   "Distant Horizons"
+  ],
+  "sides": [
+   "BOTH",
+   "CLIENT"
+  ],
+  "fabric_id": "distanthorizons",
+  "fabric_ver": "3.3.3",
+  "fabric_name": "Distant Horizons",
+  "env": "*",
+  "mixins": [
+   "DistantHorizons.fabric.mixins.json"
+  ],
+  "kind": [
+   "forge",
+   "fabric"
+  ],
+  "mixin_cfgs": [
+   "DistantHorizons.fabric.mixins.json",
+   "DistantHorizons.forge.mixins.json"
+  ]
+ },
+ {
+  "file": "EasyAnvils-v8.0.2-1.20.1-Forge.jar",
+  "sizeKB": 138,
+  "classes": 52,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "easyanvils",
+   "puzzleslib"
+  ],
+  "ver_raw": [
+   "8.0.2"
+  ],
+  "dispName": [
+   "Easy Anvils"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "easyanvils.common.mixins.json",
+   "easyanvils.forge.mixins.json"
+  ]
+ },
+ {
+  "file": "EasyMagic-v8.0.1-1.20.1-Forge.jar",
+  "sizeKB": 113,
+  "classes": 34,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "easymagic",
+   "puzzleslib"
+  ],
+  "ver_raw": [
+   "8.0.1"
+  ],
+  "dispName": [
+   "Easy Magic"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "easymagic.common.mixins.json"
+  ]
+ },
+ {
+  "file": "FarmersDelight-1.20.1-1.3.3.jar",
+  "sizeKB": 3233,
+  "classes": 289,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.3.6.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "farmersdelight",
+   "crafttweaker"
+  ],
+  "ver_raw": [
+   "1.20.1-1.3.3"
+  ],
+  "dispName": [
+   "Farmer's Delight"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "farmersdelight.mixins.json"
+  ]
+ },
+ {
+  "file": "GlitchCore-forge-1.20.1-0.0.1.1.jar",
+  "sizeKB": 85,
+  "classes": 76,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "glitchcore"
+  ],
+  "ver_raw": [
+   "0.0.1.1"
+  ],
+  "dispName": [
+   "GlitchCore"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "glitchcore.forge.mixins.json",
+   "glitchcore.mixins.json"
+  ]
+ },
+ {
+  "file": "IMM v1.3.2-1.20.1.jar",
+  "sizeKB": 923,
+  "classes": 0,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "integrated_mowzies_mobs",
+   "integrated_api",
+   "mowziesmobs",
+   "quark",
+   "supplementaries",
+   "amendments"
+  ],
+  "ver_raw": [
+   "1.3.2"
+  ],
+  "dispName": [
+   "Integrated Mowzie's Mobs"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "ImmediatelyFast-Forge-1.5.5+1.20.4.jar",
+  "sizeKB": 519,
+  "classes": 86,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/Reflect-1.6.2.jar",
+   "META-INF/jars/mixinextras-forge-0.3.6.jar"
+  ],
+  "ids": [
+   "immediatelyfast"
+  ],
+  "ver_raw": [
+   "1.5.5+1.20.4"
+  ],
+  "dispName": [
+   "ImmediatelyFast"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "immediatelyfast-common.mixins.json",
+   "immediatelyfast-forge.mixins.json"
+  ]
+ },
+ {
+  "file": "ImmersiveThunder-forge-1.2.3.jar",
+  "sizeKB": 6423,
+  "classes": 3,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "immersivethunder"
+  ],
+  "ver_raw": [
+   "1.2.3"
+  ],
+  "dispName": [
+   "ImmersiveThunder"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "immersivethunder.mixins.json",
+   "leahs-immersive-thunder.mixins.json"
+  ]
+ },
+ {
+  "file": "Jade-1.20.1-Forge-11.13.3.jar",
+  "sizeKB": 540,
+  "classes": 242,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "jade"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Jade"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "jade.mixins.json"
+  ]
+ },
+ {
+  "file": "Kiwi-1.20.1-Forge-11.10.3.jar",
+  "sizeKB": 1638,
+  "classes": 808,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.3.2.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "kiwi"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Kiwi Library"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "kiwi.mixins.json"
+  ]
+ },
+ {
+  "file": "MouseTweaks-forge-mc1.20.1-2.25.1.jar",
+  "sizeKB": 74,
+  "classes": 23,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "mousetweaks"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Mouse Tweaks"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "mousetweaks-fabric.mixins.json",
+   "mousetweaks.mixins.json"
+  ]
+ },
+ {
+  "file": "Necronomicon-Forge-1.6.0+1.20.1.jar",
+  "sizeKB": 32,
+  "classes": 28,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "necronomicon"
+  ],
+  "ver_raw": [
+   "1.6.0"
+  ],
+  "dispName": [
+   "Necronomicon"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "fabric_id": "necronomicon",
+  "fabric_ver": "1.6.0",
+  "fabric_name": "Necronomicon",
+  "env": "*",
+  "mixins": [
+   "necronomicon-common.mixins.json"
+  ],
+  "kind": [
+   "forge",
+   "fabric"
+  ],
+  "mixin_cfgs": [
+   "necronomicon-common.mixins.json"
+  ]
+ },
+ {
+  "file": "Paraglider-forge-20.1.3.jar",
+  "sizeKB": 575,
+  "classes": 222,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "paraglider"
+  ],
+  "ver_raw": [
+   "20.1.3"
+  ],
+  "dispName": [
+   "Paraglider"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "paraglider.mixins.json"
+  ]
+ },
+ {
+  "file": "ParticleEffects-1.6.0+1.20.1+forge.jar",
+  "sizeKB": 490,
+  "classes": 54,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.4.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "particle_effects",
+   "oldpotions",
+   "inventory_particles"
+  ],
+  "ver_raw": [
+   "1.6.0+1.20.1+forge"
+  ],
+  "dispName": [
+   "Particle Effects"
+  ],
+  "sides": [
+   "BOTH",
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "particle_effects-inventory_particles.mixins.json",
+   "particle_effects.mixins.json"
+  ]
+ },
+ {
+  "file": "Presence Footsteps [FORGE] 1.0.0.jar",
+  "sizeKB": 5437,
+  "classes": 94,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "presencefootsteps"
+  ],
+  "ver_raw": [
+   "1.0.0"
+  ],
+  "dispName": [
+   "Presence Footsteps [FORGE]"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "PuzzlesLib-v8.0.15-1.20.1-Forge.jar",
+  "sizeKB": 673,
+  "classes": 516,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "puzzleslib"
+  ],
+  "ver_raw": [
+   "8.0.15"
+  ],
+  "dispName": [
+   "Puzzles Lib"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "puzzleslib.common.mixins.json",
+   "puzzleslib.forge.mixins.json"
+  ]
+ },
+ {
+  "file": "Quark-4.0-462.jar",
+  "sizeKB": 14585,
+  "classes": 936,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "quark",
+   "zeta",
+   "curios",
+   "lootr"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Quark"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "quark.mixins.json",
+   "quark_integrations.mixins.json"
+  ]
+ },
+ {
+  "file": "Searchables-forge-1.20.1-1.0.3.jar",
+  "sizeKB": 75,
+  "classes": 41,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "searchables"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Searchables"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "searchables.forge.mixins.json",
+   "searchables.mixins.json"
+  ]
+ },
+ {
+  "file": "SnowRealMagic-1.20.1-Forge-10.7.0.jar",
+  "sizeKB": 338,
+  "classes": 63,
+  "jarjar": [
+   "META-INF/jarjar/fabric-api-base-0.4.32+ef105b4977.jar",
+   "META-INF/jarjar/fabric-renderer-api-v1-3.2.2+cf68abbe77.jar",
+   "META-INF/jarjar/fabric-renderer-indigo-1.5.3+b5b2da4177.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "snowrealmagic",
+   "kiwi"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Snow! Real Magic!"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "snowrealmagic.mixins.json"
+  ]
+ },
+ {
+  "file": "Waves-1.20.1-1.6a.jar",
+  "sizeKB": 1306,
+  "classes": 42,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "waves"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Waves"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "waves.mixins.json"
+  ]
+ },
+ {
+  "file": "YouShallNotSpawn-forge-1.20.x-2.0.2.jar",
+  "sizeKB": 213,
+  "classes": 8,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "ysns",
+   "necronomicon"
+  ],
+  "ver_raw": [
+   "2.0.2"
+  ],
+  "dispName": [
+   "You Shall Not Spawn"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "ysns.mixins.json"
+  ]
+ },
+ {
+  "file": "YungsApi-1.20-Forge-4.0.6.jar",
+  "sizeKB": 361,
+  "classes": 167,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "yungsapi"
+  ],
+  "ver_raw": [
+   "1.20-Forge-4.0.6"
+  ],
+  "dispName": [
+   "YUNG's API"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "yungsapi.mixins.json",
+   "yungsapi_forge.mixins.json"
+  ]
+ },
+ {
+  "file": "YungsBetterMineshafts-1.20-Forge-4.0.4.jar",
+  "sizeKB": 481,
+  "classes": 50,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "bettermineshafts",
+   "yungsapi"
+  ],
+  "ver_raw": [
+   "1.20-Forge-4.0.4"
+  ],
+  "dispName": [
+   "YUNG's Better Mineshafts"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "bettermineshafts.mixins.json",
+   "bettermineshafts_forge.mixins.json"
+  ]
+ },
+ {
+  "file": "YungsBetterNetherFortresses-1.20-Forge-2.0.6.jar",
+  "sizeKB": 604,
+  "classes": 31,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "betterfortresses",
+   "yungsapi"
+  ],
+  "ver_raw": [
+   "1.20-Forge-2.0.6"
+  ],
+  "dispName": [
+   "YUNG's Better Nether Fortresses"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "betterfortresses.mixins.json",
+   "betterfortresses_forge.mixins.json"
+  ]
+ },
+ {
+  "file": "Zeta-1.0-31.jar",
+  "sizeKB": 982,
+  "classes": 696,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.3.2.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "zeta",
+   "quark"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Zeta"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "zeta_forge.mixins.json",
+   "zeta.mixins.json"
+  ]
+ },
+ {
+  "file": "alexscaves-2.0.2.jar",
+  "sizeKB": 73116,
+  "classes": 1303,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "alexscaves",
+   "citadel"
+  ],
+  "ver_raw": [
+   "2.0.2"
+  ],
+  "dispName": [
+   "Alex's Caves"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "alexscaves.mixins.json"
+  ]
+ },
+ {
+  "file": "alexsmobs-1.22.9.jar",
+  "sizeKB": 25733,
+  "classes": 1118,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "alexsmobs",
+   "citadel"
+  ],
+  "ver_raw": [
+   "1.22.9"
+  ],
+  "dispName": [
+   "Alex's Mobs"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "amendments-1.20-2.2.6.jar",
+  "sizeKB": 1284,
+  "classes": 254,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.4.1.jar"
+  ],
+  "ids": [
+   "amendments",
+   "moonlight",
+   "supplementaries",
+   "flywheel"
+  ],
+  "ver_raw": [
+   "1.20-2.2.6"
+  ],
+  "dispName": [
+   "Amendments"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "amendments-common.mixins.json",
+   "amendments.mixins.json"
+  ]
+ },
+ {
+  "file": "another_furniture-forge-1.20.1-3.0.4.jar",
+  "sizeKB": 2405,
+  "classes": 85,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.3.6.jar"
+  ],
+  "ids": [
+   "another_furniture",
+   "create"
+  ],
+  "ver_raw": [
+   "1.20.1-3.0.4"
+  ],
+  "dispName": [
+   "Another Furniture"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "another_furniture-common.mixins.json",
+   "another_furniture.mixins.json"
+  ]
+ },
+ {
+  "file": "appleskin-forge-mc1.20.1-2.5.1.jar",
+  "sizeKB": 46,
+  "classes": 29,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "appleskin"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "AppleSkin"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "architectury-9.2.14-forge.jar",
+  "sizeKB": 566,
+  "classes": 382,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "architectury"
+  ],
+  "ver_raw": [
+   "9.2.14"
+  ],
+  "dispName": [
+   "Architectury"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "architectury-common.mixins.json",
+   "architectury.mixins.json"
+  ]
+ },
+ {
+  "file": "artifacts-forge-9.5.19.jar",
+  "sizeKB": 831,
+  "classes": 178,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/expandability-forge-9.0.4.jar",
+   "META-INF/jars/mixinextras-forge-0.3.5.jar"
+  ],
+  "ids": [
+   "artifacts",
+   "curios",
+   "expandability",
+   "cloth_config",
+   "architectury"
+  ],
+  "ver_raw": [
+   "9.5.19"
+  ],
+  "dispName": [
+   "Artifacts"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "backpacked-forge-1.20.1-3.0.9.jar",
+  "sizeKB": 1155,
+  "classes": 433,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "backpacked",
+   "framework"
+  ],
+  "ver_raw": [
+   "3.0.9"
+  ],
+  "dispName": [
+   "Backpacked"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "backpacked.common.mixins.json",
+   "backpacked.forge.mixins.json"
+  ]
+ },
+ {
+  "file": "balm-forge-1.20.1-7.3.42.jar",
+  "sizeKB": 548,
+  "classes": 403,
+  "jarjar": [
+   "META-INF/jarjar/kuma-api-forge-20.1.12+1.20.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "balm"
+  ],
+  "ver_raw": [
+   "7.3.42"
+  ],
+  "dispName": [
+   "Balm"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "balm.mixins.json"
+  ]
+ },
+ {
+  "file": "bushierflowers-0.0.3-1.20.1.jar",
+  "sizeKB": 312,
+  "classes": 12,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "bushierflowers"
+  ],
+  "ver_raw": [
+   "0.0.3-1.20.1"
+  ],
+  "dispName": [
+   "Bushier Flowers"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "bushierflowers.mixins.json"
+  ]
+ },
+ {
+  "file": "carryon-forge-1.20.1-2.1.2.7.jar",
+  "sizeKB": 429,
+  "classes": 79,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.2.0-beta.6.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "carryon"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Carry On"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "carryon.mixins.json",
+   "carryon.forge.mixins.json"
+  ]
+ },
+ {
+  "file": "chat_heads-0.15.7-forge-1.20.jar",
+  "sizeKB": 707,
+  "classes": 45,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.5.0.jar"
+  ],
+  "ids": [
+   "chat_heads"
+  ],
+  "ver_raw": [
+   "0.15.7"
+  ],
+  "dispName": [
+   "Chat Heads"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "chat_heads.forge.mixins.json",
+   "chat_heads.mixins.json"
+  ]
+ },
+ {
+  "file": "citadel-2.6.3-1.20.1.jar",
+  "sizeKB": 3110,
+  "classes": 1419,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "citadel"
+  ],
+  "ver_raw": [
+   "2.6.3"
+  ],
+  "dispName": [
+   "Citadel"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "citadel.mixins.json"
+  ]
+ },
+ {
+  "file": "cloth-config-11.1.136-forge.jar",
+  "sizeKB": 1153,
+  "classes": 633,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "cloth_config"
+  ],
+  "ver_raw": [
+   "11.1.136"
+  ],
+  "dispName": [
+   "Cloth Config v10 API"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "comforts-forge-6.4.0+1.20.1.jar",
+  "sizeKB": 373,
+  "classes": 59,
+  "jarjar": [
+   "META-INF/jarjar/spectrelib-forge-0.13.15+1.20.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "comforts"
+  ],
+  "ver_raw": [
+   "6.4.0+1.20.1"
+  ],
+  "dispName": [
+   "Comforts"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "comforts.mixins.json"
+  ]
+ },
+ {
+  "file": "configured-forge-1.20.1-2.2.3.jar",
+  "sizeKB": 409,
+  "classes": 120,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "configured",
+   "catalogue",
+   "jei",
+   "framework"
+  ],
+  "ver_raw": [
+   "2.2.3"
+  ],
+  "dispName": [
+   "Configured"
+  ],
+  "sides": [
+   "BOTH",
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "configured.common.mixins.json"
+  ]
+ },
+ {
+  "file": "continuity-3.0.0+1.20.1.forge.jar",
+  "sizeKB": 992,
+  "classes": 177,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "continuity",
+   "connectormod",
+   "fabric_api"
+  ],
+  "ver_raw": [
+   "3.0.0+1.20.1.forge"
+  ],
+  "dispName": [
+   "Continuity"
+  ],
+  "sides": [],
+  "fabric_id": "continuity",
+  "fabric_ver": "3.0.0+1.20.1.forge",
+  "fabric_name": "Continuity",
+  "env": "client",
+  "mixins": [
+   "continuity.mixins.json"
+  ],
+  "kind": [
+   "forge",
+   "fabric"
+  ],
+  "mixin_cfgs": [
+   "continuity.mixins.json"
+  ]
+ },
+ {
+  "file": "coolrain-1.20.1-Forge-1.0.3.jar",
+  "sizeKB": 4057,
+  "classes": 7,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "coolrain"
+  ],
+  "ver_raw": [
+   "1.0.3"
+  ],
+  "dispName": [
+   "Cool Rain"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "coolrain.mixins.json"
+  ]
+ },
+ {
+  "file": "coroutil-forge-1.20.1-1.3.7.jar",
+  "sizeKB": 62,
+  "classes": 44,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "coroutil"
+  ],
+  "ver_raw": [
+   "1.20.1-1.3.7"
+  ],
+  "dispName": [
+   "CoroUtil"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "coroutil.mixins.json",
+   "coroutil_fabric.mixins.json"
+  ]
+ },
+ {
+  "file": "cosmeticarmorreworked-1.20.1-v1a.jar",
+  "sizeKB": 86,
+  "classes": 40,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "cosmeticarmorreworked"
+  ],
+  "ver_raw": [
+   "1.20.1-v1a"
+  ],
+  "dispName": [
+   "CosmeticArmorReworked"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "create-1.20.1-6.0.8.jar",
+  "sizeKB": 18721,
+  "classes": 2687,
+  "jarjar": [
+   "META-INF/jarjar/Ponder-Forge-1.20.1-1.0.91.jar",
+   "META-INF/jarjar/Registrate-MC1.20-1.3.3.jar",
+   "META-INF/jarjar/flywheel-forge-1.20.1-1.0.5.jar",
+   "META-INF/jarjar/mixinextras-forge-0.4.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "create",
+   "flywheel",
+   "ponder",
+   "jei"
+  ],
+  "ver_raw": [
+   "6.0.8"
+  ],
+  "dispName": [
+   "Create"
+  ],
+  "sides": [
+   "BOTH",
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "create.mixins.json"
+  ]
+ },
+ {
+  "file": "createdeco-2.0.3-1.20.1-forge.jar",
+  "sizeKB": 3426,
+  "classes": 68,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "createdeco",
+   "create"
+  ],
+  "ver_raw": [
+   "2.0.3-1.20.1-forge"
+  ],
+  "dispName": [
+   "Create Deco"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "createdeco-common.mixins.json",
+   "createdeco.mixins.json"
+  ]
+ },
+ {
+  "file": "creeperoverhaul-3.0.2-forge.jar",
+  "sizeKB": 1422,
+  "classes": 49,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/resourcefullib-forge-1.20.1-2.1.20.jar"
+  ],
+  "ids": [
+   "creeperoverhaul",
+   "geckolib",
+   "resourcefulconfig"
+  ],
+  "ver_raw": [
+   "3.0.2"
+  ],
+  "dispName": [
+   "Creeper Overhaul"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "creeperoverhaul-common.mixins.json"
+  ]
+ },
+ {
+  "file": "cullleaves-forge-4.1.1+1.20.1.jar",
+  "sizeKB": 95,
+  "classes": 10,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/midnightlib-1.9.2+1.20.1-forge.jar"
+  ],
+  "ids": [
+   "cullleaves",
+   "midnightlib"
+  ],
+  "ver_raw": [
+   "4.1.1"
+  ],
+  "dispName": [
+   "CullLeaves"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "cullleaves-fabric.mixins.json",
+   "cullleaves-neoforge.mixins.json",
+   "cullleaves.mixins.json"
+  ]
+ },
+ {
+  "file": "curios-forge-5.14.1+1.20.1.jar",
+  "sizeKB": 388,
+  "classes": 143,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "curios"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Curios API"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "curios.mixins.json"
+  ]
+ },
+ {
+  "file": "dynamic-fps-3.11.4+minecraft-1.20.0-forge.jar",
+  "sizeKB": 392,
+  "classes": 71,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/battery-2.0.0.jar",
+   "META-INF/jars/mixinextras-forge-0.4.1.jar"
+  ],
+  "ids": [
+   "dynamic_fps"
+  ],
+  "ver_raw": [
+   "3.11.4"
+  ],
+  "dispName": [
+   "Dynamic FPS"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "dynamic_fps-common.mixins.json",
+   "dynamic_fps.mixins.json"
+  ]
+ },
+ {
+  "file": "ecologics-forge-1.20.1-2.2.7.jar",
+  "sizeKB": 1821,
+  "classes": 109,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "ecologics"
+  ],
+  "ver_raw": [
+   "2.2.7"
+  ],
+  "dispName": [
+   "Ecologics"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "ecologics-common.mixins.json",
+   "ecologics.mixins.json"
+  ]
+ },
+ {
+  "file": "embeddium-0.3.31+mc1.20.1.jar",
+  "sizeKB": 1289,
+  "classes": 602,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.3.5.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "embeddium",
+   "rubidium",
+   "oculus",
+   "textrues_embeddium_options"
+  ],
+  "ver_raw": [
+   "0.3.31+mc1.20.1",
+   "0.7.1"
+  ],
+  "dispName": [
+   "Embeddium",
+   "Rubidium (Embeddium)"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "embeddium.mixins.json"
+  ]
+ },
+ {
+  "file": "endermanoverhaul-forge-1.20.1-1.0.4.jar",
+  "sizeKB": 1179,
+  "classes": 115,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "endermanoverhaul",
+   "resourcefullib",
+   "resourcefulconfig",
+   "geckolib"
+  ],
+  "ver_raw": [
+   "1.0.4"
+  ],
+  "dispName": [
+   "Enderman Overhaul"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "endermanoverhaul-common.mixins.json",
+   "endermanoverhaul.mixins.json"
+  ]
+ },
+ {
+  "file": "entity_model_features-3.3.11-1.20.1-forge.jar",
+  "sizeKB": 820,
+  "classes": 282,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.4.1.jar"
+  ],
+  "ids": [
+   "entity_model_features",
+   "entity_texture_features"
+  ],
+  "ver_raw": [
+   "3.3.11"
+  ],
+  "dispName": [
+   "Entity Model Features"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "entity_model_features.mixins.json"
+  ]
+ },
+ {
+  "file": "entity_texture_features-7.2.5-1.20.1-forge.jar",
+  "sizeKB": 975,
+  "classes": 268,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.4.1.jar"
+  ],
+  "ids": [
+   "entity_texture_features"
+  ],
+  "ver_raw": [
+   "7.2.5"
+  ],
+  "dispName": [
+   "Entity Texture Features"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "entity_texture_features.mixins.json"
+  ]
+ },
+ {
+  "file": "entityculling-forge-1.11.3-mc1.20.1.jar",
+  "sizeKB": 1479,
+  "classes": 34,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/TRansition-1.0.26-1.20.1-forge-SNAPSHOT.jar",
+   "META-INF/jars/TRender-1.0.17-1.20.1-forge-SNAPSHOT.jar"
+  ],
+  "ids": [
+   "entityculling"
+  ],
+  "ver_raw": [
+   "1.11.3"
+  ],
+  "dispName": [
+   "EntityCulling"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "entityculling.mixins.json",
+   "entityculling.refmap.mixins.json"
+  ]
+ },
+ {
+  "file": "exposure-forge-1.20.1-1.9.20.jar",
+  "sizeKB": 2196,
+  "classes": 574,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.4.1.jar"
+  ],
+  "ids": [
+   "exposure"
+  ],
+  "ver_raw": [
+   "1.9.20"
+  ],
+  "dispName": [
+   "Exposure"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "exposure-common.mixins.json",
+   "exposure-forge.mixins.json"
+  ]
+ },
+ {
+  "file": "fabric-api-0.92.6+1.11.15+1.20.1.jar",
+  "sizeKB": 2993,
+  "classes": 2,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.4.1.jar",
+   "META-INF/jarjar/fabric-transitive-access-wideners-v1-4.3.2+1880499877.jar",
+   "META-INF/jarjar/fabric-transfer-api-v1-3.3.6+25eff73b77.jar",
+   "META-INF/jarjar/fabric-sound-api-v1-1.0.14+4f23bd8477.jar",
+   "META-INF/jarjar/fabric-screen-handler-api-v1-1.3.33+561530ec77.jar",
+   "META-INF/jarjar/fabric-screen-api-v1-2.0.9+45a670a577.jar",
+   "META-INF/jarjar/fabric-resource-loader-v0-0.11.12+4b4151c077.jar",
+   "META-INF/jarjar/fabric-resource-conditions-api-v1-2.3.9+996d00b277.jar",
+   "META-INF/jarjar/fabric-rendering-v1-3.0.9+66e9a48f77.jar",
+   "META-INF/jarjar/fabric-rendering-fluids-v1-3.0.29+4ac5e37a77.jar",
+   "META-INF/jarjar/fabric-rendering-data-attachment-v1-0.3.39+a6081afc77.jar",
+   "META-INF/jarjar/fabric-renderer-indigo-1.5.3+b5b2da4177.jar",
+   "META-INF/jarjar/fabric-renderer-api-v1-3.2.2+cf68abbe77.jar",
+   "META-INF/jarjar/fabric-registry-sync-v0-2.3.6+1c0ea72177.jar",
+   "META-INF/jarjar/fabric-recipe-api-v1-1.0.24+514a076577.jar",
+   "META-INF/jarjar/fabric-particles-v1-1.1.3+78e1ecb877.jar",
+   "META-INF/jarjar/fabric-object-builder-api-v1-11.1.5+f8c414ce77.jar",
+   "META-INF/jarjar/fabric-networking-api-v1-1.3.14+fb7c822677.jar",
+   "META-INF/jarjar/fabric-models-v0-0.4.3+7c3892a477.jar",
+   "META-INF/jarjar/fabric-model-loading-api-v1-1.0.4+6274ab9d77.jar",
+   "META-INF/jarjar/fabric-mining-level-api-v1-2.1.52+561530ec77.jar",
+   "META-INF/jarjar/fabric-message-api-v1-5.1.10+52cc178c77.jar",
+   "META-INF/jarjar/fabric-loot-api-v2-1.2.3+eb28f93e77.jar",
+   "META-INF/jarjar/fabric-loader-2.6.0+0.15.0+1.20.1-full.jar",
+   "META-INF/jarjar/fabric-lifecycle-events-v1-2.2.23+afab492177.jar",
+   "META-INF/jarjar/fabric-key-binding-api-v1-1.0.38+561530ec77.jar",
+   "META-INF/jarjar/fabric-item-group-api-v1-4.0.14+c9161c2d77.jar",
+   "META-INF/jarjar/fabric-item-api-v1-2.1.29+4d0bbcfa77.jar",
+   "META-INF/jarjar/fabric-game-rule-api-v1-1.0.41+683d4da877.jar",
+   "META-INF/jarjar/fabric-events-interaction-v0-0.6.5+0f26153f77.jar",
+   "META-INF/jarjar/fabric-entity-events-v1-1.6.1+4ca7515277.jar",
+   "META-INF/jarjar/fabric-dimensions-v1-2.1.55+8005d10d77.jar",
+   "META-INF/jarjar/fabric-data-generation-api-v1-12.3.7+369cb3a477.jar",
+   "META-INF/jarjar/fabric-data-attachment-api-v1-1.0.2+30ef839e77.jar",
+   "META-INF/jarjar/fabric-convention-tags-v1-1.5.6+fa3d1c0177.jar",
+   "META-INF/jarjar/fabric-content-registries-v0-4.0.13+a670df1e77.jar",
+   "META-INF/jarjar/fabric-command-api-v2-2.2.14+561530ec77.jar",
+   "META-INF/jarjar/fabric-command-api-v1-1.2.35+f71b366f77.jar",
+   "META-INF/jarjar/fabric-client-tags-api-v1-1.1.3+5d6761b877.jar",
+   "META-INF/jarjar/fabric-blockrenderlayer-v1-1.1.42+1d0da21e77.jar",
+   "META-INF/jarjar/fabric-block-view-api-v2-1.0.3+53347ba977.jar",
+   "META-INF/jarjar/fabric-block-api-v1-1.0.12+0e6cb7f777.jar",
+   "META-INF/jarjar/fabric-biome-api-v1-13.0.14+dc36698e77.jar",
+   "META-INF/jarjar/fabric-api-lookup-api-v1-1.6.37+67f9824077.jar",
+   "META-INF/jarjar/fabric-api-base-0.4.32+ef105b4977.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "fabric_api"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Forgified Fabric API"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "ferritecore-6.0.1-forge.jar",
+  "sizeKB": 120,
+  "classes": 81,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "ferritecore"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Ferrite Core"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "ferritecore.blockstatecache.mixin.json",
+   "ferritecore.dedupbakedquad.mixin.json",
+   "ferritecore.dedupmultipart.mixin.json",
+   "ferritecore.fastmap.mixin.json",
+   "ferritecore.modelsides.mixin.json",
+   "ferritecore.mrl.mixin.json",
+   "ferritecore.predicates.mixin.json",
+   "ferritecore.threaddetec.mixin.json"
+  ]
+ },
+ {
+  "file": "framework-forge-1.20.1-0.8.0.jar",
+  "sizeKB": 374,
+  "classes": 238,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "framework"
+  ],
+  "ver_raw": [
+   "0.8.0"
+  ],
+  "dispName": [
+   "Framework"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "ftb-essentials-forge-2001.2.4.jar",
+  "sizeKB": 154,
+  "classes": 64,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "ftbessentials",
+   "ftblibrary",
+   "ftbranks",
+   "luckperms"
+  ],
+  "ver_raw": [
+   "2001.2.4"
+  ],
+  "dispName": [
+   "FTB Essentials"
+  ],
+  "sides": [
+   "BOTH",
+   "SERVER"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "ftbessentials-common.mixins.json"
+  ]
+ },
+ {
+  "file": "ftb-library-forge-2001.2.13.jar",
+  "sizeKB": 762,
+  "classes": 318,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "ftblibrary",
+   "architectury",
+   "ftbquests"
+  ],
+  "ver_raw": [
+   "2001.2.13"
+  ],
+  "dispName": [
+   "FTB Library"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "ftblibrary-common.mixins.json"
+  ]
+ },
+ {
+  "file": "fzzy_config-0.7.6+1.20.1+forge.jar",
+  "sizeKB": 2319,
+  "classes": 754,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/jankson-1.2.3.jar",
+   "META-INF/jars/tomlkt-jvm-0.3.7.jar"
+  ],
+  "ids": [
+   "fzzy_config",
+   "kotlinforforge"
+  ],
+  "ver_raw": [
+   "0.7.6+1.20.1+forge"
+  ],
+  "dispName": [
+   "Fzzy Config"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "geckolib-forge-1.20.1-4.8.4 (1).jar",
+  "sizeKB": 1013,
+  "classes": 260,
+  "jarjar": [
+   "META-INF/jarjar/mclib-20.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "geckolib",
+   "geckoanimfix"
+  ],
+  "ver_raw": [
+   "4.8.4"
+  ],
+  "dispName": [
+   "GeckoLib 4"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "geckolib.mixins.json"
+  ]
+ },
+ {
+  "file": "grazziergrass-forge-1.4.5+mc1.20.1.jar",
+  "sizeKB": 2312,
+  "classes": 48,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "grassiergrass",
+   "embeddium"
+  ],
+  "ver_raw": [
+   "1.4.5"
+  ],
+  "dispName": [
+   "Grassier Grass"
+  ],
+  "sides": [
+   "BOTH",
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "grassiergrass.mixins.json"
+  ]
+ },
+ {
+  "file": "idas_forge-1.13.0+1.20.1.jar",
+  "sizeKB": 14082,
+  "classes": 19,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "idas",
+   "quark",
+   "create",
+   "supplementaries",
+   "integrated_api"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Integrated Dungeons and Structures"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "idas.mixins.json"
+  ]
+ },
+ {
+  "file": "immersive-winds-1.20.1-0.9.jar",
+  "sizeKB": 2219,
+  "classes": 51,
+  "jarjar": [],
+  "fabric_jij": [],
+  "fabric_id": "immersivewind",
+  "fabric_ver": "0.9",
+  "fabric_name": "Immersive Winds",
+  "env": "*",
+  "mixins": [
+   "immersivewind.mixins.json"
+  ],
+  "kind": [
+   "fabric"
+  ],
+  "mixin_cfgs": [
+   "immersivewind.mixins.json"
+  ]
+ },
+ {
+  "file": "immersive_aircraft-1.4.1+1.20.1-forge.jar",
+  "sizeKB": 2378,
+  "classes": 199,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/MathParser.org-mXparser-5.2.1.jar"
+  ],
+  "ids": [
+   "immersive_aircraft",
+   "ad_astra"
+  ],
+  "ver_raw": [
+   "1.4.1+1.20.1"
+  ],
+  "dispName": [
+   "Immersive Aircraft"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "immersive_aircraft.mixins.json"
+  ]
+ },
+ {
+  "file": "immersive_armors-1.7.2+1.20.1-forge.jar",
+  "sizeKB": 1234,
+  "classes": 90,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "immersive_armors"
+  ],
+  "ver_raw": [
+   "1.7.2+1.20.1"
+  ],
+  "dispName": [
+   "Immersive Armors"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "immersive_armors.mixins.json"
+  ]
+ },
+ {
+  "file": "immersive_paintings-0.6.13+1.20.1-forge.jar",
+  "sizeKB": 4742,
+  "classes": 93,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "immersive_paintings"
+  ],
+  "ver_raw": [
+   "0.6.13+1.20.1"
+  ],
+  "dispName": [
+   "Immersive Paintings"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "immersive_paintings.mixin.json"
+  ]
+ },
+ {
+  "file": "immersivehotbar-1.2.2-forge-1.20.1-all.jar",
+  "sizeKB": 298,
+  "classes": 49,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.4.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "immersivehotbar"
+  ],
+  "ver_raw": [
+   "1.2.2-forge-1.20.1"
+  ],
+  "dispName": [
+   "Immersive Hotbar"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "immersive-hotbar.client.mixins.json"
+  ]
+ },
+ {
+  "file": "incontrol-1.20-9.4.7.jar",
+  "sizeKB": 353,
+  "classes": 152,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "incontrol",
+   "lostcities"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "InControl"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "integrated_api-forge-1.20.1-1.8.0.jar",
+  "sizeKB": 688,
+  "classes": 202,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.2.0-beta.7.jar"
+  ],
+  "ids": [
+   "integrated_api"
+  ],
+  "ver_raw": [
+   "1.8.0"
+  ],
+  "dispName": [
+   "Integrated API"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "integrated_api-common.mixins.json",
+   "integrated_api-forge.mixins.json"
+  ]
+ },
+ {
+  "file": "integrated_stronghold-1.1.1+1.20.1-forge.jar",
+  "sizeKB": 5131,
+  "classes": 7,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.2.0-beta.7.jar"
+  ],
+  "ids": [
+   "integrated_stronghold",
+   "integrated_api",
+   "create",
+   "supplementaries",
+   "quark"
+  ],
+  "ver_raw": [
+   "1.1.1+1.20.1-forge"
+  ],
+  "dispName": [
+   "Integrated Stronghold"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "integrated_stronghold-common.mixins.json"
+  ]
+ },
+ {
+  "file": "integrated_villages-1.3.2+1.20.1-forge.jar",
+  "sizeKB": 4555,
+  "classes": 19,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.2.0-beta.7.jar"
+  ],
+  "ids": [
+   "integrated_villages",
+   "integrated_api",
+   "create",
+   "supplementaries"
+  ],
+  "ver_raw": [
+   "1.3.2+1.20.1-forge"
+  ],
+  "dispName": [
+   "Integrated Villages"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "integrated_villages-common.mixins.json"
+  ]
+ },
+ {
+  "file": "jei-1.20.1-forge-15.49.0.191.jar",
+  "sizeKB": 1632,
+  "classes": 988,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "jei"
+  ],
+  "ver_raw": [
+   "15.49.0.191"
+  ],
+  "dispName": [
+   "Just Enough Items"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "justzoom_forge_2.1.1_MC_1.20.1.jar",
+  "sizeKB": 199,
+  "classes": 24,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.3.5.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "justzoom",
+   "konkrete"
+  ],
+  "ver_raw": [
+   "2.1.1"
+  ],
+  "dispName": [
+   "Just Zoom"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "justzoom.forge.mixins.json",
+   "justzoom.mixins.json"
+  ]
+ },
+ {
+  "file": "konkrete_forge_1.8.0_MC_1.20-1.20.1.jar",
+  "sizeKB": 610,
+  "classes": 399,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "konkrete"
+  ],
+  "ver_raw": [
+   "1.8.0"
+  ],
+  "dispName": [
+   "Konkrete"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "konkrete.mixin.json"
+  ]
+ },
+ {
+  "file": "kotlinforforge-4.12.0-all.jar",
+  "sizeKB": 7268,
+  "classes": 4314,
+  "jarjar": [
+   "META-INF/jarjar/kfflang-4.12.0.jar",
+   "META-INF/jarjar/kfflib-4.12.0.jar",
+   "META-INF/jarjar/kffmod-4.12.0.jar"
+  ],
+  "fabric_jij": [],
+  "kind": [],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "lithostitched-forge-1.20.1-1.4.11.jar",
+  "sizeKB": 465,
+  "classes": 163,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "lithostitched"
+  ],
+  "ver_raw": [
+   "1.4.11"
+  ],
+  "dispName": [
+   "Lithostitched"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "lithostitched.forge.mixins.json",
+   "lithostitched.mixins.json"
+  ]
+ },
+ {
+  "file": "lootr-forge-1.20-0.7.35.94.jar",
+  "sizeKB": 452,
+  "classes": 100,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "lootr"
+  ],
+  "ver_raw": [
+   "0.7.35.94"
+  ],
+  "dispName": [
+   "Lootr"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "lootr.mixins.json"
+  ]
+ },
+ {
+  "file": "mahoutsukai-1.20.1-v1.34.74.jar",
+  "sizeKB": 3931,
+  "classes": 713,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "mahoutsukai",
+   "jousting"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Mahou Tsukai"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "mahoutsukai.mixins.json"
+  ]
+ },
+ {
+  "file": "midnightlib-forge-1.9.2+1.20.1.jar",
+  "sizeKB": 60,
+  "classes": 24,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "midnightlib"
+  ],
+  "ver_raw": [
+   "1.9.2"
+  ],
+  "dispName": [
+   "MidnightLib"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "midnightlib.mixins.json"
+  ]
+ },
+ {
+  "file": "modelfix-1.15.jar",
+  "sizeKB": 44,
+  "classes": 15,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "modelfix"
+  ],
+  "ver_raw": [
+   "1.15"
+  ],
+  "dispName": [
+   "Model Gap Fix"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "modelfix.mixins.json"
+  ]
+ },
+ {
+  "file": "modernfix-forge-5.27.85+mc1.20.1.jar",
+  "sizeKB": 979,
+  "classes": 411,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.4.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "modernfix",
+   "jei"
+  ],
+  "ver_raw": [
+   "5.27.85+mc1.20.1"
+  ],
+  "dispName": [
+   "ModernFix"
+  ],
+  "sides": [
+   "BOTH",
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "modernfix-modernfix.mixins.json"
+  ]
+ },
+ {
+  "file": "moonlight-1.20-2.16.34-forge.jar",
+  "sizeKB": 1386,
+  "classes": 511,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.3.6.jar",
+   "META-INF/jars/mixinsquared-forge-0.1.1.jar"
+  ],
+  "ids": [
+   "moonlight"
+  ],
+  "ver_raw": [
+   "1.20-2.16.34"
+  ],
+  "dispName": [
+   "Moonlight Library"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "moonlight-common.mixins.json",
+   "moonlight.mixins.json"
+  ]
+ },
+ {
+  "file": "moreculling-0.24.6-all.jar",
+  "sizeKB": 935,
+  "classes": 122,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.5.4.jar",
+   "META-INF/jarjar/mixinsquared-forge-0.2.0.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "moreculling",
+   "cloth_config"
+  ],
+  "ver_raw": [
+   "0.24.6"
+  ],
+  "dispName": [
+   "More Culling"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "moreculling.mixins.json"
+  ]
+ },
+ {
+  "file": "mowziesmobs-1.8.2.jar",
+  "sizeKB": 35189,
+  "classes": 794,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "mowziesmobs",
+   "geckolib"
+  ],
+  "ver_raw": [
+   "1.8.2"
+  ],
+  "dispName": [
+   "Mowzie's Mobs"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "mowziesmobs.mixins.json"
+  ]
+ },
+ {
+  "file": "noisiumed-forge-3.0.6+mc1.20-1.20.1.jar",
+  "sizeKB": 213,
+  "classes": 12,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.3.5.jar"
+  ],
+  "ids": [
+   "noisiumed"
+  ],
+  "ver_raw": [
+   "3.0.6+mc1.20-1.20.1"
+  ],
+  "dispName": [
+   "Noisiumed"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "noisiumed-common.mixins.json"
+  ]
+ },
+ {
+  "file": "notenoughanimations-forge-1.12.6-mc1.20.1.jar",
+  "sizeKB": 1826,
+  "classes": 74,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/TRansition-1.0.25-1.20.1-forge-SNAPSHOT.jar",
+   "META-INF/jars/TRender-1.0.17-1.20.1-forge-SNAPSHOT.jar"
+  ],
+  "ids": [
+   "notenoughanimations"
+  ],
+  "ver_raw": [
+   "1.12.6"
+  ],
+  "dispName": [
+   "NotEnoughAnimations"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "notenoughanimations.mixins.json",
+   "notenoughanimations.refmap.mixins.json"
+  ]
+ },
+ {
+  "file": "oceanicrealms-1.0.7-last-laster-ver.jar",
+  "sizeKB": 608,
+  "classes": 166,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "oceanicrealms"
+  ],
+  "ver_raw": [
+   "1.0.7"
+  ],
+  "dispName": [
+   "Oceanic Realms"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "oceanicrealms.mixin.json"
+  ]
+ },
+ {
+  "file": "oculus-mc1.20.1-1.8.0.jar",
+  "sizeKB": 2784,
+  "classes": 1587,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/jcpp-1.4.14.jar"
+  ],
+  "ids": [
+   "oculus",
+   "embeddium"
+  ],
+  "ver_raw": [
+   "1.8.0"
+  ],
+  "dispName": [
+   "Oculus"
+  ],
+  "sides": [
+   "BOTH",
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "oculus-batched-entity-rendering.mixins.json"
+  ]
+ },
+ {
+  "file": "open-parties-and-claims-forge-1.20.1-0.30.3.jar",
+  "sizeKB": 1783,
+  "classes": 977,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "openpartiesandclaims",
+   "create"
+  ],
+  "ver_raw": [
+   "0.30.3"
+  ],
+  "dispName": [
+   "Open Parties and Claims"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "openpartiesandclaims.create.forge.mixins.json",
+   "openpartiesandclaims.create.mixins.json",
+   "openpartiesandclaims.forge.mixins.json",
+   "openpartiesandclaims.mixins.json"
+  ]
+ },
+ {
+  "file": "oreexcavation-1.13.170.jar",
+  "sizeKB": 275,
+  "classes": 47,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "oreexcavation"
+  ],
+  "ver_raw": [
+   "1.13.170"
+  ],
+  "dispName": [
+   "OreExcavation"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "particle_core-0.3.3+1.20.1+forge.jar",
+  "sizeKB": 755,
+  "classes": 44,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/conditional-mixin-forge-0.6.4.jar",
+   "META-INF/jars/mixinextras-forge-0.5.3.jar"
+  ],
+  "ids": [
+   "particle_core",
+   "kotlinforforge",
+   "fzzy_config"
+  ],
+  "ver_raw": [
+   "0.3.3+1.20.1+forge"
+  ],
+  "dispName": [
+   "Particle Core"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "particle_core.mixins.json"
+  ]
+ },
+ {
+  "file": "particlerain-4.0.1+1.20.1-forge.jar",
+  "sizeKB": 1228,
+  "classes": 116,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.5.0.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "particlerain"
+  ],
+  "ver_raw": [
+   "4.0.1"
+  ],
+  "dispName": [
+   "Particle Rain"
+  ],
+  "sides": [
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "particlerain.mixins.json"
+  ]
+ },
+ {
+  "file": "particular-1.20.1-Forge-1.5.7.jar",
+  "sizeKB": 474,
+  "classes": 87,
+  "jarjar": [
+   "META-INF/jarjar/mixinextras-forge-0.4.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "particular",
+   "tfc"
+  ],
+  "ver_raw": [
+   "1.5.7"
+  ],
+  "dispName": [
+   "Particular Reforged"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "particular.forge.mixins.json",
+   "particular.mixins.json"
+  ]
+ },
+ {
+  "file": "player-animation-lib-forge-1.0.2-rc1+1.20.jar",
+  "sizeKB": 177,
+  "classes": 115,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "playeranimator"
+  ],
+  "ver_raw": [
+   "1.0.2-rc1+1.20"
+  ],
+  "dispName": [
+   "Player Animator"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "playerAnimator-common.mixins.json"
+  ]
+ },
+ {
+  "file": "polymorph-forge-0.49.10+1.20.1.jar",
+  "sizeKB": 292,
+  "classes": 91,
+  "jarjar": [
+   "META-INF/jarjar/spectrelib-forge-0.13.17+1.20.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "polymorph"
+  ],
+  "ver_raw": [
+   "0.49.10+1.20.1"
+  ],
+  "dispName": [
+   "Polymorph"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "polymorph-integrations.forge.mixins.json",
+   "polymorph.mixins.json"
+  ]
+ },
+ {
+  "file": "realmrpg_balloons-1.0.0-forge-1.20.1.jar",
+  "sizeKB": 269,
+  "classes": 93,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "realmrpg_balloons"
+  ],
+  "ver_raw": [
+   "1.0.0"
+  ],
+  "dispName": [
+   "[NoCube's] Realm RPG: Treasure Balloons"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "resourcefulconfig-forge-1.20.1-2.1.3.jar",
+  "sizeKB": 133,
+  "classes": 80,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "resourcefulconfig"
+  ],
+  "ver_raw": [
+   "2.1.3"
+  ],
+  "dispName": [
+   "Resourcefulconfig"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "resourcefullib-forge-1.20.1-2.1.29.jar",
+  "sizeKB": 422,
+  "classes": 188,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/yabn-1.0.3.jar",
+   "META-INF/jars/bytecodecs-1.0.2.jar"
+  ],
+  "ids": [
+   "resourcefullib"
+  ],
+  "ver_raw": [
+   "2.1.29"
+  ],
+  "dispName": [
+   "Resourceful Lib"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "rubidium-extra-0.5.4.4+mc1.20.1-build.131.jar",
+  "sizeKB": 555,
+  "classes": 76,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/NanoLiveConfig-1.2.1.jar",
+   "META-INF/jars/mixinextras-forge-0.4.1.jar"
+  ],
+  "ids": [
+   "embeddium_extra",
+   "embeddium"
+  ],
+  "ver_raw": [
+   "0.5.4.4+mc1.20.1-build.131"
+  ],
+  "dispName": [
+   "Embeddium Extra"
+  ],
+  "sides": [
+   "BOTH",
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "sodium-extra.mixins.json"
+  ]
+ },
+ {
+  "file": "skinlayers3d-forge-1.11.3-mc1.20.1.jar",
+  "sizeKB": 2044,
+  "classes": 79,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/TRansition-1.0.25-1.20.1-forge-SNAPSHOT.jar",
+   "META-INF/jars/TRender-1.0.17-1.20.1-forge-SNAPSHOT.jar",
+   "META-INF/jars/mixinextras-forge-0.4.1.jar"
+  ],
+  "ids": [
+   "skinlayers3d"
+  ],
+  "ver_raw": [
+   "1.11.3"
+  ],
+  "dispName": [
+   "3d-Skin-Layers"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "skinlayers3d.mixins.json",
+   "skinlayers3d.refmap.mixins.json"
+  ]
+ },
+ {
+  "file": "snowundertrees-1.20.1-1.4.12.jar",
+  "sizeKB": 27,
+  "classes": 12,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "snowundertrees"
+  ],
+  "ver_raw": [
+   "${file.jarVersion}"
+  ],
+  "dispName": [
+   "Snow Under Trees"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "sound-physics-remastered-forge-1.20.1-1.5.1.jar",
+  "sizeKB": 202,
+  "classes": 91,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "sound_physics_remastered",
+   "cloth_config",
+   "voicechat"
+  ],
+  "ver_raw": [
+   "1.20.1-1.5.1"
+  ],
+  "dispName": [
+   "Sound Physics Remastered"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "sound_physics_remastered.mixins.json"
+  ]
+ },
+ {
+  "file": "supplementaries-1.20-3.1.43-forge.jar",
+  "sizeKB": 13347,
+  "classes": 1106,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/mixinextras-forge-0.3.6.jar",
+   "META-INF/jars/mixinsquared-forge-0.1.1.jar"
+  ],
+  "ids": [
+   "supplementaries",
+   "moonlight",
+   "quark",
+   "create"
+  ],
+  "ver_raw": [
+   "1.20-3.1.43"
+  ],
+  "dispName": [
+   "Supplementaries"
+  ],
+  "sides": [
+   "BOTH",
+   "CLIENT"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "supplementaries-common.mixins.json",
+   "supplementaries.mixins.json"
+  ]
+ },
+ {
+  "file": "tectonic-3.0.17-forge-1.20.1.jar",
+  "sizeKB": 315,
+  "classes": 56,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "lithostitched",
+   "tectonic"
+  ],
+  "ver_raw": [
+   "3.0.17"
+  ],
+  "dispName": [
+   "Tectonic"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "tectonic.mixins.json",
+   "tectonic_1.20.1.mixins.json"
+  ]
+ },
+ {
+  "file": "theladscore.jar",
+  "sizeKB": 19255,
+  "classes": 333,
+  "jarjar": [],
+  "fabric_jij": [
+   "META-INF/jars/discord-rpc-release-v3.3.0.jar",
+   "META-INF/jars/java-discord-rpc-2.0.1.jar"
+  ],
+  "fabric_id": "theladscore",
+  "fabric_ver": "1.8.5",
+  "fabric_name": "The Lads Core",
+  "env": "*",
+  "mixins": [
+   "theladscore.v1_20_1.mixins.json"
+  ],
+  "kind": [
+   "fabric"
+  ],
+  "mixin_cfgs": [
+   "theladscore.v1_20_1.mixins.json"
+  ]
+ },
+ {
+  "file": "voicechat-forge-1.20.1-2.6.22.jar",
+  "sizeKB": 4808,
+  "classes": 674,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "voicechat",
+   "voicechat_api",
+   "cloth_config"
+  ],
+  "ver_raw": [
+   "1.20.1-2.6.22",
+   "2.6.20"
+  ],
+  "dispName": [
+   "Simple Voice Chat",
+   "Simple Voice Chat API"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": []
+ },
+ {
+  "file": "wakes-1.20.1-Forge-1.4.1.jar",
+  "sizeKB": 217,
+  "classes": 63,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "wakes",
+   "valkyrienskies"
+  ],
+  "ver_raw": [
+   "1.4.1"
+  ],
+  "dispName": [
+   "Wakes"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "wakes.mixins.json"
+  ]
+ },
+ {
+  "file": "watut-forge-1.20.1-1.2.3.jar",
+  "sizeKB": 425,
+  "classes": 71,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "watut",
+   "coroutil"
+  ],
+  "ver_raw": [
+   "1.20.1-1.2.3"
+  ],
+  "dispName": [
+   "What Are They Up To"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "watut.mixins.json",
+   "watut_fabric.mixins.json"
+  ]
+ },
+ {
+  "file": "waystones-forge-1.20.1-14.1.20.jar",
+  "sizeKB": 521,
+  "classes": 189,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "waystones",
+   "balm"
+  ],
+  "ver_raw": [
+   "14.1.20"
+  ],
+  "dispName": [
+   "Waystones"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "waystones.mixins.json"
+  ]
+ },
+ {
+  "file": "weaponmaster_ydm-forge-1.20.1-4.2.3.jar",
+  "sizeKB": 277,
+  "classes": 72,
+  "jarjar": [],
+  "fabric_jij": [],
+  "ids": [
+   "weaponmaster_ydm"
+  ],
+  "ver_raw": [
+   "4.2.3"
+  ],
+  "dispName": [
+   "YDM's Weapon Master"
+  ],
+  "sides": [],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "weaponmaster_ydm.mixins.json"
+  ]
+ },
+ {
+  "file": "xaerominimap-forge-1.20.1-26.4.2.jar",
+  "sizeKB": 2143,
+  "classes": 689,
+  "jarjar": [
+   "META-INF/jarjar/xaerolib-forge-1.20.1-1.7.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "xaerominimap",
+   "openpartiesandclaims",
+   "xaeroworldmap",
+   "xaerolib"
+  ],
+  "ver_raw": [
+   "26.4.2"
+  ],
+  "dispName": [
+   "Xaero's Minimap"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "xaerohud.forge.mixins.json",
+   "xaerohud.mixins.json",
+   "xaerominimap.forge.mixins.json",
+   "xaerominimap.mixins.json"
+  ]
+ },
+ {
+  "file": "xaeroworldmap-forge-1.20.1-1.45.0.jar",
+  "sizeKB": 1391,
+  "classes": 370,
+  "jarjar": [
+   "META-INF/jarjar/xaerolib-forge-1.20.1-1.7.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "xaeroworldmap",
+   "openpartiesandclaims",
+   "xaerominimap",
+   "xaerobetterpvp",
+   "xaerolib"
+  ],
+  "ver_raw": [
+   "1.45.0"
+  ],
+  "dispName": [
+   "Xaero's World Map"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "xaeroworldmap.forge.mixins.json",
+   "xaeroworldmap.mixins.json"
+  ]
+ },
+ {
+  "file": "yet_another_config_lib_v3-3.6.6+1.20.1-forge.jar",
+  "sizeKB": 1079,
+  "classes": 344,
+  "jarjar": [
+   "META-INF/jarjar/common-image-3.12.0.jar",
+   "META-INF/jarjar/common-io-3.12.0.jar",
+   "META-INF/jarjar/common-lang-3.12.0.jar",
+   "META-INF/jarjar/gson-0.2.1.jar",
+   "META-INF/jarjar/imageio-core-3.12.0.jar",
+   "META-INF/jarjar/imageio-metadata-3.12.0.jar",
+   "META-INF/jarjar/imageio-webp-3.12.0.jar",
+   "META-INF/jarjar/json-0.2.1.jar"
+  ],
+  "fabric_jij": [],
+  "ids": [
+   "yet_another_config_lib_v3"
+  ],
+  "ver_raw": [
+   "3.6.6+1.20.1-forge"
+  ],
+  "dispName": [
+   "YetAnotherConfigLib"
+  ],
+  "sides": [
+   "BOTH"
+  ],
+  "kind": [
+   "forge"
+  ],
+  "mixin_cfgs": [
+   "yacl-fabric.mixins.json",
+   "yacl.mixins.json"
+  ]
+ }
+]

@@ -1,0 +1,37 @@
+{
+  "packId": "zero-smp-1.20.1",
+  "version": "1.0.1-proposed-performance",
+  "description": "PROPOSAL from the 1.8.5 research lane (not applied anywhere). Config-only, no downloads. Same schema as tools/modpack-manager/patches/update-1.0.1.json; values get final after the sandbox A/B (ZERO_SMP_PERFORMANCE.md section 6).",
+  "mods": {
+    "add": [],
+    "remove": [
+      "cullleaves-forge-4.1.1+1.20.1.jar",
+      "midnightlib-forge-1.9.2+1.20.1.jar",
+      "Corgilib-Forge-1.20.1-4.0.3.5.jar",
+      "Data_Anchor-forge-1.20.1-1.0.0.22.jar",
+      "player-animation-lib-forge-1.0.2-rc1+1.20.jar"
+    ]
+  },
+  "keybinds": { "defaults": {}, "force": {} },
+  "configPatches": [
+    { "file": "config/grassiergrass-client.toml", "format": "toml",
+      "keyValues": { "renderRadius": "80", "bladeParticles": "false", "denseFlowers": "false" } },
+    { "file": "config/particular-common.toml", "format": "toml",
+      "keyValues": { "rainRipples": "false", "waterDripRipples": "false" } },
+    { "file": "config/immersivewind.json", "format": "json",
+      "set": { "enableRainHitParticles": false, "enableSplashParticles": false } },
+    { "file": "config/particlerain/config.json", "format": "json",
+      "set": { "perf.maxParticleAmount": 1000 } },
+    { "file": "config/sound_physics_remastered/soundphysics.properties", "format": "properties",
+      "keyValues": { "environment_evaluation_ray_count": "16", "environment_evaluation_ray_bounces": "2", "max_occlusion_rays": "8" } },
+    { "file": "config/embeddium-options.json", "format": "json",
+      "set": { "performance.chunk_builder_threads": 0 } },
+    { "file": "config/alexsmobs.toml", "format": "toml",
+      "keyValues": { "pathfindingThreads": "2" } },
+    { "file": "config/alexscaves-general.toml", "format": "toml",
+      "keyValues": { "pathfinding_threads": "2" } },
+    { "file": "config/modernfix-mixins.properties", "format": "properties",
+      "keyValues": { "mixin.perf.dynamic_resources": "true" },
+      "_note": "experimental: only after the compat test (section 6); delete this entry if it fails" }
+  ]
+}
