@@ -50,6 +50,11 @@ public abstract class SkinScreenMixin extends OptionsSubScreen {
                     ? net.minecraft.world.entity.HumanoidArm.LEFT : net.minecraft.world.entity.HumanoidArm.RIGHT);
                 button.setMessage(Component.literal("Main hand: " + (options.mainHand().get() == net.minecraft.world.entity.HumanoidArm.RIGHT ? "right" : "left")));
             }));
+        // The embedded Capes adds its button to the vanilla screen in an init RETURN hook; this screen cancels init at its head, so it asks for the button itself.
+        if (com.thelads.core.v1_20_1.embedded.EmbeddedMods1201.active("capes")) {
+            addRenderableWidget(new LadsButton1201(left, height - 85, previewWidth, 20, Component.literal("Choose cape"),
+                b -> minecraft.setScreen(new com.thelads.core.v1_20_1.embedded.capes.menu.SelectorMenu(this, options))));
+        }
         addRenderableWidget(new LadsButton1201(width / 2 - 55, height - 29, 110, 20, Component.literal("Done"), button -> {
             options.save();
             onClose();

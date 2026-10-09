@@ -87,7 +87,9 @@ public final class CapesInit1201 {
 
                 SkinCustomizationScreen skin = new SkinCustomizationScreen(null, mc.options);
                 skin.init(mc, 427, 240);
-                long buttons = skin.children().stream().filter(CapeButton.class::isInstance).count();
+                // the vanilla screen gets CapeButton from a mixin; the Lads skin screen (which cancels init) has its own "Choose cape" button
+                long buttons = skin.children().stream().filter(child -> child instanceof CapeButton
+                    || child instanceof net.minecraft.client.gui.components.AbstractButton button && "Choose cape".equals(button.getMessage().getString())).count();
                 SelectorMenu selector = new SelectorMenu(null, mc.options);
                 selector.init(mc, 427, 240);
                 GuiGraphics graphics = new GuiGraphics(mc, mc.renderBuffers().bufferSource());
