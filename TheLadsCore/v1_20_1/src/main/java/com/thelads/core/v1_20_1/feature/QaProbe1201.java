@@ -22,7 +22,9 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.OptionsScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -66,7 +68,7 @@ public final class QaProbe1201 {
     private static Phase phase = Phase.TITLE;
     private static Path gameDir;
     private static long phaseSince, nextStopCheck;
-    private static int titleTicks, setupTicks, waitTicks, index, passed, failedSteps;
+    private static int titleTicks, setupTicks, waitTicks, index, passed, failedSteps, confirmTicks;
     private static String pendingShot;
     private static List<String[]> steps = new ArrayList<>();
     private static final List<InputConstants.Key> releaseNext = new ArrayList<>();
@@ -184,6 +186,16 @@ public final class QaProbe1201 {
     private static void loading(Minecraft mc, long now) {
         if (now - phaseSince > WORLD_TIMEOUT)
             throw new IllegalStateException("QA world not ready within 150 s; screen=" + describeScreen(mc));
+        // A modded world asks before it opens (experimental settings, backup): in this sandboxed QA world the answer is always yes, once, and logged.
+        if (mc.screen instanceof ConfirmScreen confirm) {
+            if (++confirmTicks == 20) {
+                LOGGER.info("Lads auto-world QA CONFIRM: '{}' screen answered yes (first button) in the sandbox QA world", confirm.getTitle().getString());
+                try { shot(mc, "qa-confirm"); } catch (Exception ignored) { }
+                for (var child : confirm.children()) if (child instanceof Button yes) { yes.onPress(); break; }
+            }
+            return;
+        }
+        confirmTicks = 0;
         if (mc.level == null || mc.player == null) return;
         if (mc.screen instanceof PauseScreen) mc.setScreen(null);
         if (mc.screen != null || mc.player.tickCount < 60 || !mc.levelRenderer.hasRenderedAllChunks()) return;
