@@ -13,10 +13,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
  * Forge; their Forge counterparts (ForgeOverlays1201, FoodForgeGuiMixin) do the same job there.
  */
 public final class HudMixinPlugin implements IMixinConfigPlugin {
-    /** Mixins that reach into Gui.render's or renderPlayerHealth's body: plain Fabric only. */
-    private static final Set<String> FABRIC_ONLY = Set.of(
-        "com.thelads.core.v1_20_1.hud.mixin.GuiPartsMixin",
-        "com.thelads.core.v1_20_1.hud.items.mixin.FoodRowMixin");
+    private String mixinPackage = "";
     private static Boolean forge;
 
     /** True when this game runs on Forge (Zero SMP, through Connector). */
@@ -31,18 +28,26 @@ public final class HudMixinPlugin implements IMixinConfigPlugin {
         return forge;
     }
 
-    @Override public void onLoad(String mixinPackage) {}
+    @Override public void onLoad(String mixinPackage) { this.mixinPackage = mixinPackage; }
 
     @Override public String getRefMapperConfig() { return null; }
 
     @Override
-    public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        return !(forge() && FABRIC_ONLY.contains(mixinClassName));
-    }
+    public boolean shouldApplyMixin(String targetClassName, String mixinClassName) { return true; }
 
     @Override public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {}
 
-    @Override public List<String> getMixins() { return null; }
+    /**
+     * The mixins that reach into Gui.render's or renderPlayerHealth's body are not listed in the JSON (Connector's adapter patches
+     * what the JSON lists): they are registered here, on plain Fabric only.
+     */
+    @Override
+    public List<String> getMixins() {
+        if (forge()) return null;
+        if (mixinPackage.equals("com.thelads.core.v1_20_1.hud.mixin")) return List.of("GuiPartsMixin");
+        if (mixinPackage.equals("com.thelads.core.v1_20_1.hud.items.mixin")) return List.of("FoodRowMixin");
+        return null;
+    }
 
     @Override public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {}
 

@@ -172,6 +172,15 @@ public final class Food1201 {
     }
 
     /** Hunger row start (before vanilla's first icon): the exhaustion band behind the icons, where exhaustion is known. */
+    /** True between the profiler's "food" and "air" sections of renderPlayerHealth (FoodRowMixin). */
+    public static boolean row;
+
+    /** The player whose HUD this is: the camera entity when it is a player, else the local player. */
+    public static Player cameraPlayer() {
+        var minecraft = Minecraft.getInstance();
+        return minecraft.getCameraEntity() instanceof Player player ? player : minecraft.player;
+    }
+
     public static void beforeFood(GuiGraphics graphics, Player player, int top, int right) {
         foodRight = right;
         Arrays.fill(foodY, top);
