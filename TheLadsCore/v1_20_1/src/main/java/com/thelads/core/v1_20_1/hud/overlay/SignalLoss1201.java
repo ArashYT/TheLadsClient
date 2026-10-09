@@ -66,6 +66,11 @@ public final class SignalLoss1201 {
         }
     }
 
+    /** QA (probe step "ui silence <ms>"): pretend the last packet arrived this many nanoseconds ago; 0 = the real connection. */
+    private static volatile long qaSilence;
+
+    public static void qaSilence(long nanos) { qaSilence = nanos; }
+
     private static SignalLossPolicy.Frame frame() {
         Minecraft minecraft = Minecraft.getInstance();
         SignalLossModule module = module();
@@ -74,6 +79,7 @@ public final class SignalLoss1201 {
         boolean eligible = module.isEnabled() && minecraft.level != null && minecraft.player != null && !minecraft.options.hideGui
             && connection != null && connection.isConnected() && (module.singleplayer.get() || !minecraft.hasSingleplayerServer());
         long received = connection instanceof PacketActivity1201 activity ? activity.lads$lastPacketNanos() : 0;
+        if (qaSilence > 0) received = System.nanoTime() - qaSilence; // QA only: a server that has been silent this long
         var settings = new SignalLossPolicy.Settings(SignalLossModule.milliseconds(module.timeout, 2000),
             SignalLossModule.milliseconds(module.minimum, 2000), SignalLossModule.milliseconds(module.linger, 1000));
         return POLICY.update(connection, System.nanoTime(), received, eligible, minecraft.isPaused(),

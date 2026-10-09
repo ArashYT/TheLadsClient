@@ -113,6 +113,8 @@ public final class LadsSettingsScreen {
     public List<Rect> getControlBounds() { return controls.stream().map(Control::rect).toList(); }
     /** Bounds of a control drawn by the last render (e.g. "search", "option:Size"), or null; QA drives real input at them. */
     public Rect controlBounds(String id) { return controls.stream().filter(c -> c.id.equals(id)).map(Control::rect).findFirst().orElse(null); }
+    /** Ids of the controls drawn by the last render (QA scripts click them by id). */
+    public List<String> controlIds() { return controls.stream().map(c -> c.id).toList(); }
     public int getScrollOffset() { return scrollOffset; }
     /** The slider track of a particle type's row in Particle Core's open rates editor, or null: QA and tests click at it. */
     public Rect particleRatesTrack(String id) {
@@ -127,8 +129,11 @@ public final class LadsSettingsScreen {
     public ConfirmDialog confirmDialog() { return confirm; }
     public List<String> visibleModuleNames() { return getFilteredModules().stream().map(Module::getName).toList(); }
 
-    public void render(LadsGraphics g, int mouseX, int mouseY) {
+    public void render(LadsGraphics g, int pointerX, int pointerY) {
         refreshCapabilities();
+        // A popup is modal: the screen under it neither highlights nor reacts to the pointer.
+        boolean modal = colorPicker.isOpen() || actions.isOpen() || particleRates.isOpen() || fpsDialogOpen || confirm.isOpen();
+        int mouseX = modal ? -100000 : pointerX, mouseY = modal ? -100000 : pointerY;
         long now = System.nanoTime();
         double elapsed = previousFrameNanos == 0 ? 0 : Math.min(.1, (now - previousFrameNanos) / 1e9);
         previousFrameNanos = now;
@@ -142,9 +147,10 @@ public final class LadsSettingsScreen {
         int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 340 ? 118 : 0;
         g.fill(0, 0, width, 2, ACCENT);
         g.drawText("THE LADS", pad, 15, ACCENT);
-        if (width >= 400) g.drawText(modsView ? "INSTALLED MODS" : detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", pad + 68, 15, MUTED);
         String fpsBtnLabel = "HUD FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
         int fpsBtnW = Math.max(78, g.textWidth(fpsBtnLabel) + 14);
+        // The title line stops where the HUD FPS button begins ("60 (Recommended)" makes that button wide).
+        if (width >= 400) g.drawText(fit(g, modsView ? "INSTALLED MODS" : detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", width - pad - 116 - fpsBtnW - 6 - (pad + 68)), pad + 68, 15, MUTED);
         button(g, "global-hud-fps", fpsBtnLabel, new Rect(width - pad - 116 - fpsBtnW, 8, fpsBtnW, 23), this::openHudFpsDialog, true, mouseX, mouseY, fpsDialogOpen);
         button(g, "global-colors", "Colors", new Rect(width - pad - 110, 8, 52, 23), colorPicker::openGlobal, true, mouseX, mouseY, false);
         button(g, "close", "Done", new Rect(width - pad - 52, 8, 52, 23), this::close, true, mouseX, mouseY, false);
@@ -164,18 +170,19 @@ public final class LadsSettingsScreen {
         else if (detail == null) renderCatalog(g, x, w, side == 0, mouseX, mouseY);
         else renderDetails(g, x, w, mouseX, mouseY);
         g.drawText(fit(g, notice.isEmpty() ? "Ctrl+F search / Tab navigate / Esc back" : notice, w), x, height - 15, MUTED);
-        colorPicker.render(g, mouseX, mouseY);
-        actions.render(g, mouseX, mouseY);
-        particleRates.render(g, mouseX, mouseY);
-        renderHudFpsDialog(g, mouseX, mouseY);
-        confirm.render(g, mouseX, mouseY);
-        boolean overlay = colorPicker.isOpen() || actions.isOpen() || particleRates.isOpen() || fpsDialogOpen || confirm.isOpen();
-        if (tip.update(overlay || tipModule == null ? null : tipModule.getName(), now)) {
+        // Each popup is its own layer in front of everything before it (see LadsGraphics.overlay).
+        g.overlay(() -> colorPicker.render(g, pointerX, pointerY));
+        g.overlay(() -> actions.render(g, pointerX, pointerY));
+        g.overlay(() -> particleRates.render(g, pointerX, pointerY));
+        g.overlay(() -> renderHudFpsDialog(g, pointerX, pointerY));
+        g.overlay(() -> confirm.render(g, pointerX, pointerY));
+        if (tip.update(modal || tipModule == null ? null : tipModule.getName(), now)) {
             String desc = tipModule.getDescription();
             if (tipModule.isBlockedByServer()) {
                 desc += " [Disabled on Hypixel - Server Rules]";
             }
-            tooltip(g, desc, mouseX, mouseY);
+            String text = desc;
+            g.overlay(() -> tooltip(g, text, pointerX, pointerY));
         }
     }
     /** Description tooltip beside the pointer, kept on screen and drawn last so it sits above the frame. */
@@ -224,7 +231,7 @@ public final class LadsSettingsScreen {
             button(g, "packs", "Packs", new Rect(x + w - 87, top - 4, 39, 18), () -> leave(onOpenResourcePacks), true, mx, my, false);
             button(g, "video", "Video", new Rect(x + w - 43, top - 4, 43, 18), () -> leave(onOpenVideoSettings), true, mx, my, false);
         }
-        if (currentCategory.equals("HUD") && !modsView && w >= 280) {
+        if (currentCategory.equals("HUD") && !modsView && !compact && w >= 280) { // compact: the header already has HUD FPS, and this row has the shortcuts
             String fpsStatus = "HUD FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
             button(g, "cat-hud-fps", fpsStatus, new Rect(x + w - 160, top - 4, 158, 18), this::openHudFpsDialog, true, mx, my, HudSettings.getInstance().isHudFpsCapEnabled());
         }
@@ -696,6 +703,7 @@ public final class LadsSettingsScreen {
     }
     public void openHudFpsDialog() {
         fpsDialogOpen = true;
+        fpsBox = null;
         editingFps = false;
         draggingFpsSlider = false;
         int limit = HudSettings.getInstance().getHudFpsLimit();
@@ -755,38 +763,90 @@ public final class LadsSettingsScreen {
         ConfigManager.save();
         dirty = true;
     }
+    /** QA and tests: the HUD FPS popup's box, then every control in it, as the last frame laid them out (empty while it is closed or not drawn). */
+    public List<Rect> hudFpsDialogRects() {
+        if (!fpsDialogOpen || fpsBox == null) return List.of();
+        List<Rect> rects = new ArrayList<>(List.of(fpsBox, fpsClose, fpsToggle, fpsInput, fpsApply));
+        rects.addAll(Arrays.asList(fpsPresets));
+        rects.addAll(fpsExceptionRects.values());
+        return rects;
+    }
+    private static final String[] FPS_EXEMPT_SAMPLE = {"Keystrokes", "CPS", "FPS", "ArmorHUD", "Minimap", "Voice Chat"};
+    // The HUD frame rate popup's rectangles as the last render laid them out; clicks use the same ones.
+    private Rect fpsBox, fpsClose, fpsToggle, fpsInput, fpsApply;
+    private Rect[] fpsPresets = new Rect[0];
+    private int fpsTitleY, fpsSubY, fpsLabelX, fpsLabelY, fpsHintX, fpsHintY, fpsExcLabelY, fpsRateY, fpsRateHintY;
+    /**
+     * Lays the popup out for a box at dx, dy and returns the box height. {@code compact} tightens the rows (and drops the hint lines)
+     * for a window too short for the roomy layout; the box is as tall as its content so nothing hangs out of it.
+     */
+    private int layoutHudFpsDialog(LadsGraphics g, int dx, int dy, int dw, boolean compact) {
+        int pad = 12, rowH = compact ? 16 : 18, fieldH = compact ? 20 : 22;
+        fpsClose = new Rect(dx + dw - 52, dy + (compact ? 6 : 8), 42, 20);
+        fpsTitleY = dy + (compact ? 7 : 11);
+        fpsSubY = dy + (compact ? 17 : 23);
+        fpsToggle = new Rect(dx + pad, dy + (compact ? 28 : 40), dw - 2 * pad, compact ? 18 : 22);
+        fpsSliderTrack = new Rect(dx + pad, dy + (compact ? 50 : 78), dw - 2 * pad, 14);
+        int levels = HudSettings.HUD_FPS_LEVELS.length, btnW = (dw - 2 * pad - (levels - 1) * 3) / levels, presetY = dy + (compact ? 68 : 100);
+        fpsPresets = new Rect[levels];
+        for (int i = 0; i < levels; i++) fpsPresets[i] = new Rect(dx + pad + i * (btnW + 3), presetY, btnW, rowH);
+        int inputY = dy + (compact ? 88 : 144);
+        fpsLabelX = dx + pad;
+        fpsLabelY = compact ? inputY + 6 : inputY - 14;
+        int inputX = compact ? dx + pad + g.textWidth("Or type custom FPS:") + 6 : dx + pad;
+        fpsInput = new Rect(inputX, inputY, 76, fieldH);
+        fpsApply = new Rect(inputX + 82, inputY, 48, fieldH);
+        fpsHintX = fpsApply.x + fpsApply.width + 8;
+        fpsHintY = compact ? -1 : inputY + 6;
+        fpsExcLabelY = dy + (compact ? 112 : 175);
+        int chipH = compact ? 16 : 18, chipX = dx + pad, chipY = dy + (compact ? 123 : 189);
+        fpsExceptionRects.clear();
+        for (String mod : FPS_EXEMPT_SAMPLE) {
+            int chipW = g.textWidth(mod) + 14;
+            if (chipX + chipW > dx + dw - pad) {
+                chipX = dx + pad;
+                chipY += chipH + 4;
+            }
+            fpsExceptionRects.put(mod, new Rect(chipX, chipY, chipW, chipH));
+            chipX += chipW + 4;
+        }
+        fpsRateY = chipY + chipH + (compact ? 7 : 18);
+        fpsRateHintY = compact ? -1 : fpsRateY + 13;
+        return (compact ? fpsRateY + 9 + 6 : fpsRateHintY + 9 + 7) - dy;
+    }
     private void renderHudFpsDialog(LadsGraphics g, int mx, int my) {
         if (!fpsDialogOpen) return;
         int dw = Math.min(370, width - 24);
-        int dh = Math.min(235, height - 24);
-        int dx = (width - dw) / 2;
-        int dy = (height - dh) / 2;
+        int dh = layoutHudFpsDialog(g, 0, 0, dw, false);
+        boolean compact = dh > height - 8;
+        if (compact) dh = layoutHudFpsDialog(g, 0, 0, dw, true);
+        dh = Math.min(dh, height - 8);
+        int dx = (width - dw) / 2, dy = (height - dh) / 2;
+        layoutHudFpsDialog(g, dx, dy, dw, compact);
+        fpsBox = new Rect(dx, dy, dw, dh);
 
         g.fill(0, 0, width, height, 0xB0000000);
         round(g, dx - 2, dy + 3, dw + 4, dh + 4, 0x14000000);
         round(g, dx, dy + 1, dw, dh, 0x28000000);
-
-        round(g, dx, dy, dw, dh, PANEL);
         round(g, dx, dy, dw, dh, LadsPalette.BORDER);
-        g.fill(dx, dy, dx + dw, dy + 2, ACCENT);
+        round(g, dx + 1, dy + 1, dw - 2, dh - 2, PANEL);
+        g.fill(dx + 1, dy, dx + dw - 1, dy + 2, ACCENT);
 
-        g.drawText("GLOBAL HUD FRAME RATE CAP", dx + 12, dy + 11, ACCENT);
-        g.drawText("Controls refresh rate of all HUD modules & vanilla HUD", dx + 12, dy + 23, MUTED);
+        g.drawText("GLOBAL HUD FRAME RATE CAP", dx + 12, fpsTitleY, ACCENT);
+        g.drawText(fit(g, "Controls refresh rate of all HUD modules & vanilla HUD", dw - 24 - fpsClose.width - 6), dx + 12, fpsSubY, MUTED);
 
-        boolean closeHover = new Rect(dx + dw - 52, dy + 8, 42, 20).contains(mx, my);
-        round(g, dx + dw - 52, dy + 8, 42, 20, closeHover ? LadsPalette.HOVER : CARD);
-        g.drawCenteredText("Done", dx + dw - 31, dy + 13, TEXT);
+        boolean closeHover = fpsClose.contains(mx, my);
+        round(g, fpsClose.x, fpsClose.y, fpsClose.width, fpsClose.height, closeHover ? LadsPalette.HOVER : CARD);
+        g.drawCenteredText("Done", fpsClose.x + fpsClose.width / 2, fpsClose.y + (fpsClose.height - g.fontHeight()) / 2 + 1, TEXT);
 
         boolean capEnabled = HudSettings.getInstance().isHudFpsCapEnabled();
         int currentFps = HudSettings.getInstance().getHudFpsLimit();
-        Rect toggleRect = new Rect(dx + 12, dy + 40, dw - 24, 22);
-        boolean toggleHover = toggleRect.contains(mx, my);
-        round(g, toggleRect.x, toggleRect.y, toggleRect.width, toggleRect.height,
+        boolean toggleHover = fpsToggle.contains(mx, my);
+        round(g, fpsToggle.x, fpsToggle.y, fpsToggle.width, fpsToggle.height,
             capEnabled ? (toggleHover ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY) : (toggleHover ? LadsPalette.HOVER : CARD));
         String statusLabel = capEnabled ? "HUD FPS LIMIT: ENABLED (" + HudSettings.formatFpsLimit(currentFps) + ")" : "HUD FPS LIMIT: OFF (UNCAPPED)";
-        g.drawCenteredText(statusLabel, toggleRect.x + toggleRect.width / 2, toggleRect.y + 6, TEXT);
+        g.drawCenteredText(statusLabel, fpsToggle.x + fpsToggle.width / 2, fpsToggle.y + (fpsToggle.height - g.fontHeight()) / 2 + 1, TEXT);
 
-        fpsSliderTrack = new Rect(dx + 12, dy + 78, dw - 24, 14);
         int[] levels = HudSettings.HUD_FPS_LEVELS;
         int activeIdx = getClosestFpsLevelIndex(currentFps);
         float progress = (float) activeIdx / (levels.length - 1);
@@ -802,56 +862,37 @@ public final class LadsSettingsScreen {
         round(g, thumbX, fpsSliderTrack.y, 12, 14, draggingFpsSlider ? LadsPalette.PRIMARY_HOVER : ACCENT);
         round(g, thumbX + 2, fpsSliderTrack.y + 2, 8, 10, TEXT);
 
-        int btnW = (dw - 24 - (levels.length - 1) * 3) / levels.length;
-        int py = dy + 100;
         for (int i = 0; i < levels.length; i++) {
-            int bx = dx + 12 + i * (btnW + 3);
-            Rect btnRect = new Rect(bx, py, btnW, 18);
+            Rect btn = fpsPresets[i];
             boolean active = levels[i] == currentFps || (levels[i] == 0 && (currentFps <= 0 || currentFps > 240));
-            boolean hover = btnRect.contains(mx, my);
-            round(g, bx, py, btnW, 18, active ? LadsPalette.PRIMARY : (hover ? LadsPalette.HOVER : CARD));
+            boolean hover = btn.contains(mx, my);
+            round(g, btn.x, btn.y, btn.width, btn.height, active ? LadsPalette.PRIMARY : (hover ? LadsPalette.HOVER : CARD));
             String lbl = levels[i] == 0 ? "Max" : levels[i] == 60 ? "60*" : String.valueOf(levels[i]);
-            g.drawCenteredText(lbl, bx + btnW / 2, py + 4, active ? TEXT : MUTED);
+            g.drawCenteredText(lbl, btn.x + btn.width / 2, btn.y + (btn.height - g.fontHeight()) / 2 + 1, active ? TEXT : MUTED);
         }
 
-        g.drawText("Or type custom FPS:", dx + 12, dy + 130, MUTED);
-        Rect textRect = new Rect(dx + 12, dy + 144, 76, 22);
-        round(g, textRect.x, textRect.y, textRect.width, textRect.height, editingFps ? CARD : PANEL);
-        round(g, textRect.x, textRect.y, textRect.width, textRect.height, editingFps ? ACCENT : LadsPalette.BORDER);
+        g.drawText("Or type custom FPS:", fpsLabelX, fpsLabelY, MUTED);
+        round(g, fpsInput.x, fpsInput.y, fpsInput.width, fpsInput.height, editingFps ? ACCENT : LadsPalette.BORDER);
+        round(g, fpsInput.x + 1, fpsInput.y + 1, fpsInput.width - 2, fpsInput.height - 2, editingFps ? CARD : PANEL);
         String displayVal = editingFps ? (fpsBuffer + "|") : (currentFps == 0 ? "0" : String.valueOf(currentFps));
-        g.drawCenteredText(displayVal, textRect.x + textRect.width / 2, textRect.y + 6, TEXT);
+        g.drawCenteredText(displayVal, fpsInput.x + fpsInput.width / 2, fpsInput.y + (fpsInput.height - g.fontHeight()) / 2 + 1, TEXT);
 
-        Rect applyRect = new Rect(dx + 94, dy + 144, 48, 22);
-        boolean applyHover = applyRect.contains(mx, my);
-        round(g, applyRect.x, applyRect.y, applyRect.width, applyRect.height, applyHover ? LadsPalette.HOVER : CARD);
-        g.drawCenteredText("Apply", applyRect.x + applyRect.width / 2, applyRect.y + 6, TEXT);
+        boolean applyHover = fpsApply.contains(mx, my);
+        round(g, fpsApply.x, fpsApply.y, fpsApply.width, fpsApply.height, applyHover ? LadsPalette.HOVER : CARD);
+        g.drawCenteredText("Apply", fpsApply.x + fpsApply.width / 2, fpsApply.y + (fpsApply.height - g.fontHeight()) / 2 + 1, TEXT);
 
-        g.drawText("60 FPS (Recommended) prevents tearing.", dx + 150, dy + 150, MUTED);
+        if (fpsHintY >= 0) g.drawText(fit(g, "60 FPS (Recommended) prevents tearing.", dx + dw - 12 - fpsHintX), fpsHintX, fpsHintY, MUTED);
 
-        fpsExceptionRects.clear();
-        g.drawText("EXCEPTIONS (IGNORE FPS CAP)", dx + 12, dy + 175, ACCENT);
-        String[] sampleExempt = new String[]{"Keystrokes", "CPS", "FPS", "ArmorHUD", "Minimap", "Voice Chat"};
-        int chipX = dx + 12;
-        int chipY = dy + 189;
-        int chipH = 18;
-        for (String mod : sampleExempt) {
-            boolean ex = HudSettings.getInstance().isModuleExempt(mod);
-            int chipW = g.textWidth(mod) + 14;
-            if (chipX + chipW > dx + dw - 12) {
-                chipX = dx + 12;
-                chipY += chipH + 4;
-            }
-            Rect cr = new Rect(chipX, chipY, chipW, chipH);
-            fpsExceptionRects.put(mod, cr);
-            boolean ch = cr.contains(mx, my);
-            round(g, chipX, chipY, chipW, chipH, ex ? LadsPalette.PRIMARY : (ch ? LadsPalette.HOVER : CARD));
-            g.drawCenteredText(mod, chipX + chipW / 2, chipY + 4, ex ? TEXT : MUTED);
-            chipX += chipW + 4;
+        g.drawText("EXCEPTIONS (IGNORE FPS CAP)", dx + 12, fpsExcLabelY, ACCENT);
+        for (var entry : fpsExceptionRects.entrySet()) {
+            Rect cr = entry.getValue();
+            boolean ex = HudSettings.getInstance().isModuleExempt(entry.getKey());
+            round(g, cr.x, cr.y, cr.width, cr.height, ex ? LadsPalette.PRIMARY : (cr.contains(mx, my) ? LadsPalette.HOVER : CARD));
+            g.drawCenteredText(entry.getKey(), cr.x + cr.width / 2, cr.y + (cr.height - g.fontHeight()) / 2 + 1, ex ? TEXT : MUTED);
         }
 
-        String rateText = "Current HUD Rate: " + HudManager.getInstance().getMeasuredHudFps() + " FPS";
-        g.drawText(rateText, dx + 12, dy + 225, ACCENT);
-        g.drawText("Updates all HUD modules & vanilla HUD in real time.", dx + 12, dy + 238, MUTED);
+        g.drawText("Current HUD Rate: " + HudManager.getInstance().getMeasuredHudFps() + " FPS", dx + 12, fpsRateY, ACCENT);
+        if (fpsRateHintY >= 0) g.drawText(fit(g, "Updates all HUD modules & vanilla HUD in real time.", dw - 24), dx + 12, fpsRateHintY, MUTED);
     }
     private void renderMods(LadsGraphics g, int x, int w, int mx, int my) {
         pollModState();
@@ -1144,21 +1185,12 @@ public final class LadsSettingsScreen {
         if (particleRates.click(x, y, button)) return true;
         if (colorPicker.click(x, y, button)) return true;
         if (fpsDialogOpen) {
-            int dw = Math.min(370, width - 24);
-            int dh = Math.min(235, height - 24);
-            int dx = (width - dw) / 2;
-            int dy = (height - dh) / 2;
-            Rect dialogRect = new Rect(dx, dy, dw, dh);
-            if (!dialogRect.contains(x, y)) {
+            if (fpsBox == null) return true; // opened, not drawn yet
+            if (!fpsBox.contains(x, y) || fpsClose.contains(x, y)) {
                 closeHudFpsDialog();
                 return true;
             }
-            if (new Rect(dx + dw - 52, dy + 8, 42, 20).contains(x, y)) {
-                closeHudFpsDialog();
-                return true;
-            }
-            Rect toggleRect = new Rect(dx + 12, dy + 40, dw - 24, 22);
-            if (toggleRect.contains(x, y)) {
+            if (fpsToggle.contains(x, y)) {
                 boolean next = !HudSettings.getInstance().isHudFpsCapEnabled();
                 HudSettings.getInstance().setHudFpsCapEnabled(next);
                 ConfigManager.save();
@@ -1171,11 +1203,8 @@ public final class LadsSettingsScreen {
                 return true;
             }
             int[] levels = HudSettings.HUD_FPS_LEVELS;
-            int btnW = (dw - 24 - (levels.length - 1) * 3) / levels.length;
-            int py = dy + 100;
             for (int i = 0; i < levels.length; i++) {
-                Rect btnRect = new Rect(dx + 12 + i * (btnW + 3), py, btnW, 18);
-                if (btnRect.contains(x, y)) {
+                if (fpsPresets[i].contains(x, y)) {
                     HudSettings.getInstance().setHudFpsLimit(levels[i]);
                     HudSettings.getInstance().setHudFpsCapEnabled(true);
                     fpsBuffer = levels[i] == 0 ? "0" : String.valueOf(levels[i]);
@@ -1184,13 +1213,11 @@ public final class LadsSettingsScreen {
                     return true;
                 }
             }
-            Rect textRect = new Rect(dx + 12, dy + 144, 76, 22);
-            if (textRect.contains(x, y)) {
+            if (fpsInput.contains(x, y)) {
                 startEditFps();
                 return true;
             }
-            Rect applyRect = new Rect(dx + 94, dy + 144, 48, 22);
-            if (applyRect.contains(x, y)) {
+            if (fpsApply.contains(x, y)) {
                 commitFpsEdit();
                 return true;
             }
@@ -1261,7 +1288,7 @@ public final class LadsSettingsScreen {
         if (confirm.isOpen()) return true;
         if (actions.wheel(amount)) return true;
         if (particleRates.wheel(amount)) return true;
-        if (colorPicker.isOpen()) return true;
+        if (colorPicker.isOpen() || fpsDialogOpen) return true;
         if (!viewport.contains(x, y)) return false;
         tip.dismiss(); scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int)(amount * 28))); return true;
     }

@@ -11,10 +11,36 @@ import net.minecraft.client.gui.GuiGraphics;
  * overlay with {@link #begin} and {@link #end} instead.
  */
 public final class HudParts1201 {
-    /** What a begun part must undo: its pose and the Auto Hide scope outside it. */
-    public record Scope(PoseStack pose, float outerOpacity, boolean faded) {}
+    /** What a begun part must undo: its pose (the stack and how deep it was before this part pushed) and the Auto Hide scope outside it. */
+    public record Scope(PoseStack pose, int depth, float outerOpacity, boolean faded) {}
+
+    private static final java.lang.reflect.Field STACK = stackField();
 
     private HudParts1201() {}
+
+    /** PoseStack's one Deque field, found by type so it needs no mapped name (plain Fabric and Forge through Connector name it differently). */
+    private static java.lang.reflect.Field stackField() {
+        for (var field : PoseStack.class.getDeclaredFields()) {
+            if (java.util.Deque.class.isAssignableFrom(field.getType())) {
+                try {
+                    field.setAccessible(true);
+                    return field;
+                } catch (RuntimeException unavailable) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** How many entries the pose stack has, or -1 where it cannot be read (then a part ends with the one popPose it always had). */
+    private static int depth(PoseStack pose) {
+        try {
+            return STACK == null ? -1 : ((java.util.Deque<?>) STACK.get(pose)).size();
+        } catch (ReflectiveOperationException | RuntimeException failure) {
+            return -1;
+        }
+    }
 
     /** Draws a part of the hotbar group (lifted by Raised, faded by Auto Hide); skipped while Auto Hide has it fully hidden. */
     public static void group(GuiGraphics graphics, Runnable part) {
@@ -42,6 +68,7 @@ public final class HudParts1201 {
         float opacity = fades && Hud1201.bool("Autohide", "Fade vanilla HUD", true) ? NativeAutohide1201.update() : 1;
         if (opacity <= 0) return null;
         PoseStack pose = graphics.pose();
+        int depth = depth(pose);
         pose.pushPose();
         int lift = Raised1201.hotbar();
         if (lift != 0) pose.translate(0, -lift, 0);
@@ -51,7 +78,7 @@ public final class HudParts1201 {
             NativeAutohide1201.scopeOpacity = opacity;
             graphics.setColor(1, 1, 1, opacity);
         }
-        return new Scope(pose, outer, faded);
+        return new Scope(pose, depth, outer, faded);
     }
 
     public static void end(GuiGraphics graphics, Scope scope) {
@@ -60,6 +87,14 @@ public final class HudParts1201 {
             graphics.setColor(1, 1, 1, 1);
             NativeAutohide1201.scopeOpacity = scope.outerOpacity();
         }
-        scope.pose().popPose();
+        // Another mod's overlay (under Forge) can leave a push of its own inside the part: a single popPose would then remove that push
+        // and keep this part's lift on the pose for everything drawn after it, every screen of the frame included. Pop back to the depth
+        // the stack had before this part, never below it.
+        PoseStack pose = scope.pose();
+        if (scope.depth() < 1) {
+            pose.popPose();
+            return;
+        }
+        for (int guard = 0; depth(pose) > scope.depth() && guard < 64; guard++) pose.popPose();
     }
 }

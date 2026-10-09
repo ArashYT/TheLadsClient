@@ -87,6 +87,11 @@ and the run ends when it finishes (log: `Lads qa script END: N passed, M failed`
 | `option "Fullbright" "Gamma" 0.5` | sets a module option from JSON (`true`, `0.5`, `"text"`; a bare word is taken as a string) |
 | `dump state` / `dump modules [filter]` / `dump all` | logs `Lads qa dump ...` lines: screen, FPS, window, FOV, position, health, gamemode, effects, time; every module's enabled flag, support kind and options |
 | `log text` | logs `Lads qa log: text` |
+| `ui open fps` (or `colors`, `mods`, `actions`), `ui module <name>`, `ui search <text>`, `ui click <control id>`, `ui ids [prefix]`, `ui key <glfw code>`, `ui type <text>`, `ui scroll <n>`, `ui scale 1` (or `2`) | drives the open Lads settings screen through its real input methods (`ui ids` logs the control ids on screen: `category:HUD`, `card:<module>`, `option:<name>`, `reset`, ...); `ui hud click <id>` and `ui hud ids` do the same in the HUD editor; `ui scale` switches the GUI scale (1 = the roomy layouts, 2 = the compact ones in the 944x501 QA window) |
+| `ui mouse <x> <y>`, `ui hover <slot>` | puts the pointer at GUI pixel x, y, or on a container slot (inventory open), so tooltips and hover states render for a shot |
+| `ui pose` | the next frame of a Lads settings screen logs `Lads qa pose ...` lines: the translation of the GuiGraphics pose before the vanilla HUD, after it, and at the screen (all 0 unless an overlay leaked a pose push) |
+| `ui silence <ms>` | SignalLoss sees the server silent for that long (0 = the real connection); the toast shows 5 s after the module became eligible |
+| `kbcap [skin id,...]` | holds the Kill Banner at the frames the 26.3 capture uses and writes the banner crops to `screenshots\kb172\kb-<skin>-v<variant>-k<kills>-f<frame>.png`, to compare with the 26.3 frames of the same name (`LADS_VERIFY_CAPTURE_KILLBANNER=1`) |
 | `quit` | stops the game |
 
 Example (`artifacts\1.8.5\<lane>\test.txt`):

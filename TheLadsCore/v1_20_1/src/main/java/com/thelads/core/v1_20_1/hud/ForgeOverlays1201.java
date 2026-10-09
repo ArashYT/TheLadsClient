@@ -64,8 +64,23 @@ public final class ForgeOverlays1201 {
         return name == null ? "" : name.toString().substring(name.toString().indexOf(':') + 1);
     }
 
+    /**
+     * Ends every part still open when {@code current} (the next overlay's Pre, or null at the end of the GUI) begins: overlays run one
+     * after the other, so a part left open belongs to an overlay that another mod cancelled after our last look (its Post never
+     * comes). Left open, its Raised lift stayed on the pose for everything drawn after it, which on Zero SMP shifted every screen of
+     * the frame (Lads settings, HUD editor, pause, inventory) up by the lift.
+     */
+    static void closeUnfinished(Object current) {
+        Object[] top;
+        while ((top = OPEN.peek()) != null && top[0] != current) {
+            OPEN.pop();
+            HudParts1201.end((GuiGraphics) top[1], (HudParts1201.Scope) top[2]);
+        }
+    }
+
     private static void pre(Object event) {
         try {
+            closeUnfinished(event);
             if (Boolean.TRUE.equals(cancelled.invoke(event))) return; // someone else already skipped it: no Post will come
             String name = path(event);
             boolean group = GROUP.contains(name), record = name.contains("record");

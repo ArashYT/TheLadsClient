@@ -60,7 +60,7 @@ public final class VoiceChat1201 {
             return new VoiceChatState(null, List.of());
         boolean disconnected = (Boolean) call(states, "isDisconnected");
         boolean startup = client != null && System.currentTimeMillis() - (Long) call(client, "getStartTime") < 5000L;
-        if ((disconnected && startup) || !(Boolean) call(plugins, "shouldRenderHudIcons")) return new VoiceChatState(null, List.of());
+        if ((disconnected && startup) || !optional(plugins, "shouldRenderHudIcons", true)) return new VoiceChatState(null, List.of());
         String icon = null;
         if (disconnected) icon = "disconnected";
         else if ((Boolean) call(states, "isDisabled")) icon = "speaker_off";
@@ -87,12 +87,25 @@ public final class VoiceChat1201 {
 
     /** RenderEvents.shouldShowIcons: forced by a plugin, else not while onboarding, else when connected or not in a closed singleplayer world. */
     private static boolean showIcons(Object client, Object plugins) throws ReflectiveOperationException {
-        if ((Boolean) call(plugins, "shouldForceShowIcons")) return true;
+        if (optional(plugins, "shouldForceShowIcons", false)) return true;
         if ((Boolean) invoke(Class.forName("de.maxhenkel.voicechat.gui.onboarding.OnboardingManager"), null, "isOnboarding")) return false;
         Object connection = client != null ? call(client, "getConnection") : null;
         if (connection != null && (Boolean) call(connection, "isInitialized")) return true;
         var server = Minecraft.getInstance().getSingleplayerServer();
         return server == null || server.isPublished();
+    }
+
+    /**
+     * A plugin's say over the HUD icons. Simple Voice Chat 2.6 no longer has these two calls on its ClientPluginManager (the pinned pack
+     * ships 2.6.22 on Fabric and on Forge); without them the whole integration failed on the first frame and the elements stayed off.
+     * A call the installed version lacks means no plugin veto.
+     */
+    private static boolean optional(Object target, String name, boolean absent) throws ReflectiveOperationException {
+        try {
+            return (Boolean) call(target, name);
+        } catch (NoSuchMethodException missing) {
+            return absent;
+        }
     }
 
     private static boolean setting(Object config, String name) throws ReflectiveOperationException {

@@ -304,6 +304,18 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         guiGraphics.pose().scale(sx, sy, 1.0f);
     }
 
+    /** Popups sit 400 in front (vanilla's tooltip depth): text and items drawn earlier are in front of a fill at the same depth. */
+    @Override
+    public void overlay(Runnable draw) {
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0.0f, 0.0f, 400.0f);
+        try {
+            draw.run();
+        } finally {
+            guiGraphics.pose().popPose();
+        }
+    }
+
     @Override
     public void enableScissor(int minX, int minY, int maxX, int maxY) {
         guiGraphics.enableScissor(minX, minY, maxX, maxY);
