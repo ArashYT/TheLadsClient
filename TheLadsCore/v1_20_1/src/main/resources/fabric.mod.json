@@ -32,14 +32,11 @@
     "theladscore.v1_20_1.mixins.json",
     "theladscore.v1_20_1.dynamicfps.mixins.json",
     "theladscore.v1_20_1.borderless.mixins.json",
-<<<<<<< HEAD
     "theladscore.v1_20_1.perf.mixins.json",
-    "theladscore.v1_20_1.embedded.controlling.mixins.json"
-=======
+    "theladscore.v1_20_1.embedded.controlling.mixins.json",
     "theladscore.v1_20_1.embedded.entityculling.mixins.json",
     "theladscore.v1_20_1.embedded.lazyai.mixins.json",
     "theladscore.v1_20_1.clumps.mixins.json"
->>>>>>> work/185-perf-cull
   ],
   "depends": {
     "fabricloader": ">=0.14.21",
