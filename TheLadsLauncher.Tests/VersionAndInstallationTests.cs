@@ -87,10 +87,10 @@ public class VersionAndInstallationTests
     [InlineData("26.2", "fabric-loader-0.18.0-custom-26.2", "fabric-loader-0.18.0-custom-26.2")]
     [InlineData("26.3", "0.19.5", "0.19.5")]
     [InlineData("26.3", "fabric-loader-0.19.5-26.3", "fabric-loader-0.19.5-26.3")]
-    [InlineData("1.20.1", "0.15.0", "0.16.10")]
-    [InlineData("1.20.1", "0.16.10", "0.16.10")]
-    [InlineData("1.20.1", "fabric-loader-0.15.0-1.20.1", "fabric-loader-0.16.10-1.20.1")]
-    [InlineData("1.20.1", "fabric-loader-0.16.10-1.20.1", "fabric-loader-0.16.10-1.20.1")]
+    [InlineData("1.20.1", "0.15.0", "0.19.5")]
+    [InlineData("1.20.1", "0.16.10", "0.19.5")]
+    [InlineData("1.20.1", "fabric-loader-0.15.0-1.20.1", "fabric-loader-0.19.5-1.20.1")]
+    [InlineData("1.20.1", "fabric-loader-0.16.10-1.20.1", "fabric-loader-0.19.5-1.20.1")]
     public void SupportedCoreLoaderMinimumPreservesOtherLoaders(string mc, string loader, string expected)
     {
         using var dir = new TestDirectory();
