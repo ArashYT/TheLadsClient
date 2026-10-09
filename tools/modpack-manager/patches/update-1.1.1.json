@@ -1,13 +1,12 @@
 {
   "packId": "zero-smp-1.20.1",
   "version": "1.1.1",
-  "description": "Zero SMP performance tuning: Grassier Grass radius 80, rain particle de-duplication (Particular rain ripples and Immersive Winds splashes, which ParticleRain already draws), prune 3 orphan client jars (Corgilib and Data Anchor stay: the Zero SMP server requires their network channels). Reviewed: ModernFix opt-ins, ParticleRain's particle cap and Particular's drip ripples stay at their defaults.",
+  "description": "Zero SMP performance tuning: Grassier Grass radius 80, rain particle de-duplication (Particular rain ripples and Immersive Winds splashes, which ParticleRain already draws), remove Cull Leaves (already disabled; MoreCulling culls leaves) and MidnightLib, its only user. Corgilib, Data Anchor and Player Animation Lib stay: the Zero SMP server runs them (the first two are required for joining; Player Animation Lib is unproven without a join test and saves nothing). Reviewed: ModernFix opt-ins, ParticleRain's particle cap and Particular's drip ripples stay at their defaults.",
   "mods": {
     "add": [],
     "remove": [
       "cullleaves-forge-4.1.1+1.20.1.jar",
-      "midnightlib-forge-1.9.2+1.20.1.jar",
-      "player-animation-lib-forge-1.0.2-rc1+1.20.jar"
+      "midnightlib-forge-1.9.2+1.20.1.jar"
     ]
   },
   "keybinds": {
