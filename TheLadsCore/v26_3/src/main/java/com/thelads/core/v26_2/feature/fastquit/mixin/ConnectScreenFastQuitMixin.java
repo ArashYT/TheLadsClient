@@ -1,0 +1,17 @@
+package com.thelads.core.v26_2.feature.fastquit.mixin;
+
+import com.thelads.core.v26_2.feature.fastquit.FastQuit26;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+/** A server, LAN or Realms connection starts once background saves are done (the last server's mods have stopped). */
+@Mixin(ConnectScreen.class)
+abstract class ConnectScreenFastQuitMixin {
+    @Inject(method = "startConnecting", at = @At("HEAD"))
+    private static void lads$awaitSaves(CallbackInfo ci) {
+        FastQuit26.awaitSaves(true);
+    }
+}

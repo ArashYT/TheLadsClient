@@ -156,6 +156,10 @@ internal static class ZeroSmpQa
             var flags = new List<string> { "-Dfabric.noGui=true" };
             if (!noWorld) { flags.Add("-Dthelads.verifyAutoWorld=true"); flags.Add("-Dthelads.qaWorld=" + WorldName); }
             if (script != null || scriptText != null) flags.Add("-Dthelads.qaScript=" + scriptFile);
+            // LADS_VERIFY_FASTQUIT=run|verify|baseline: the FastQuit probe (FastQuitProbe1201) drives the game from the title screen instead.
+            string? fastQuit = QaShared.Env("LADS_VERIFY_FASTQUIT");
+            if (fastQuit != null) flags.Add("-Dthelads.verifyFastQuit=" + fastQuit);
+            if (fastQuit == "baseline") flags.Add("-Dlads.fastquit=false");
             if (args.Count > 0) for (int i = flags.Count - 1; i >= 0; i--) args.Insert(0, flags[i]);
             else game.StartInfo.Arguments = string.Join(' ', flags) + " " + game.StartInfo.Arguments;
             if (QaShared.Env("LADS_VERIFY_NO_RESIZE") != "1" && args.Count > 0)
@@ -174,7 +178,7 @@ internal static class ZeroSmpQa
             Say($"Started PID {game.Id}: {game.StartInfo.FileName}");
             QaWindowGuard.Watch(game, slot.Number);
 
-            bool begin = false, title = false, ready = false, worldDone = false, scriptDone = false, initialized = false, stopSent = false;
+            bool begin = false, title = false, ready = false, worldDone = false, scriptDone = false, initialized = false, stopSent = false, fastQuitDone = false;
             bool scripted = script != null || scriptText != null;
             var seen = new HashSet<string>();
             while (!game.HasExited && started.Elapsed < TimeSpan.FromSeconds(timeoutSec))
@@ -189,13 +193,15 @@ internal static class ZeroSmpQa
                     if (line.Contains("Lads world capture END:") && line.Contains(", 0 failed")) worldDone = true;
                     if (line.Contains("Lads qa script END:") && line.Contains(", 0 failed")) scriptDone = true;
                     if (line.Contains("TheLadsCore 1.20.1 initialized successfully")) initialized = true;
+                    if (line.Contains("Lads fast quit probe END:")) fastQuitDone = true;
+                    if (line.Contains("Lads fast quit probe FAILED") && seen.Add(line)) failures.Add(line.Trim());
                     if ((line.Contains("Lads auto-world QA FAILED") || line.Contains("Lads qa script FAILED") || line.Contains("Lads qa step FAILED")) && seen.Add(line))
                         failures.Add(line.Trim());
                     if (QaShared.MixinProblem(line) && seen.Add(line)) failures.Add("MIXIN PROBLEM: " + line.Trim());
                     if (line.Contains("Crash report saved") || line.Contains("---- Minecraft Crash Report")) { if (seen.Add("crash")) failures.Add("the game crashed (see latest.log / crash-reports)"); }
                 }
                 if (failures.Count > 0 && !stopSent && (failures.Any(f => f.Contains("crashed")) || failures.Any(f => f.Contains("auto-world QA FAILED")))) break;
-                bool finished = initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone);
+                bool finished = fastQuit != null ? initialized && fastQuitDone : initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone);
                 if (finished && !stopSent)
                 {
                     stopSent = true;
@@ -204,12 +210,12 @@ internal static class ZeroSmpQa
                     break;
                 }
             }
-            if (game.HasExited && !stopSent && !(initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone)))
+            if (game.HasExited && !stopSent && !(fastQuit != null ? fastQuitDone : initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone)))
                 failures.Add($"the game exited early with code {game.ExitCode}");
             else if (!game.HasExited && !stopSent && failures.Count == 0)
                 failures.Add($"no title/world/script completion within {timeoutSec} s (begin={begin} title={title} ready={ready} world={worldDone} script={scriptDone} initialized={initialized})");
             if (!initialized) failures.Add("the Core never logged 'TheLadsCore 1.20.1 initialized successfully' (not loaded through Connector?)");
-            if (!begin) failures.Add("the QA probe never started (Lads auto-world QA BEGIN missing)");
+            if (!begin && fastQuit == null) failures.Add("the QA probe never started (Lads auto-world QA BEGIN missing)");
             // Graceful stop, then the tree.
             if (!game.HasExited) { try { await game.WaitForExitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token); } catch (OperationCanceledException) { } }
             if (!game.HasExited) { Say("Stopping the Zero SMP game with Kill (it ignored the stop request)."); game.Kill(entireProcessTree: true); game.WaitForExit(30000); }

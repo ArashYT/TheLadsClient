@@ -103,6 +103,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.MouseTweaks189.register();
         com.thelads.core.v1_8_9.feature.SideButtons189.install();
         MinecraftForge.EVENT_BUS.register(this);
+        com.thelads.core.v1_8_9.feature.fastquit.FastQuitProbe189.initialize();
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
 
