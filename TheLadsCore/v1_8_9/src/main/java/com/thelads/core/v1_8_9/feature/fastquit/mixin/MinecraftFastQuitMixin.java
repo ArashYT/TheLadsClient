@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.world.WorldSettings;
+import net.minecraft.world.storage.ISaveFormat;
 import org.apache.logging.log4j.LogManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -33,6 +34,13 @@ public abstract class MinecraftFastQuitMixin {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/server/integrated/IntegratedServer;isServerStopped()Z"))
     private boolean lads$skipServerWait(IntegratedServer server) {
         return FastQuit189.skipServerWait((Minecraft) (Object) this, server, running) || server.isServerStopped();
+    }
+
+    /** The leave's own region cache flush (AnvilSaveConverter.flushCache waits for saves) must not wait for the save it just started. */
+    @Redirect(method = "loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;Ljava/lang/String;)V",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/world/storage/ISaveFormat;flushCache()V"))
+    private void lads$flushAfterSave(ISaveFormat format) {
+        FastQuit189.flushCache(format);
     }
 
     @Inject(method = "loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;Ljava/lang/String;)V", at = @At("RETURN"))

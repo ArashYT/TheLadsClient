@@ -43,12 +43,35 @@ public final class FastQuit189 {
         }
     }
 
+    /**
+     * Minecraft.loadWorld(null) ends by flushing the region file cache (closing every cached region file), which the world's server
+     * must not see while it is still saving: with a save running the flush waits until the next hook that waits for saves
+     * (opening or deleting a world, a connection, closing the game), which runs it right after the saves; else it runs at once.
+     */
+    private static volatile net.minecraft.world.storage.ISaveFormat pendingFlush;
+
+    public static void flushCache(net.minecraft.world.storage.ISaveFormat format) {
+        if (FastQuit.anySaving()) pendingFlush = format;
+        else format.flushCache();
+    }
+
+    private static void flushIfPending() {
+        net.minecraft.world.storage.ISaveFormat format = pendingFlush;
+        if (format == null || FastQuit.anySaving()) return;
+        pendingFlush = null;
+        format.flushCache();
+    }
+
     /** Waits for every background save; on the client thread behind the "Saving world" loading screen. Free when nothing is saving. */
     public static void awaitSaves() {
-        if (!FastQuit.anySaving()) return;
+        if (!FastQuit.anySaving()) {
+            flushIfPending();
+            return;
+        }
         final Minecraft mc = Minecraft.getMinecraft();
         if (mc == null || !mc.isCallingFromMinecraftThread() || mc.loadingScreen == null) {
             FastQuit.awaitAll(Long.MAX_VALUE);
+            flushIfPending();
             return;
         }
         mc.loadingScreen.resetProgressAndMessage(I18n.format("menu.savingLevel"));
@@ -58,6 +81,7 @@ public final class FastQuit189 {
                 sleep(40);
             }
         });
+        flushIfPending();
         // Clicks and keys pressed meanwhile were for the loading screen, not the screen that comes back.
         while (Mouse.isCreated() && Mouse.next()) {}
         while (Keyboard.isCreated() && Keyboard.next()) {}
