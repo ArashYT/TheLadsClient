@@ -513,21 +513,6 @@
       "projectUrl": "https://modrinth.com/mod/not-enough-animations"
     },
     {
-      "projectId": "AtOSAunf",
-      "projectSlug": "obe",
-      "name": "Optimized Block Entities [OBE]",
-      "modId": "obe",
-      "versionId": "wXYbSiX1",
-      "version": "1.1.46",
-      "fileName": "obe+1.20.1-1.1.46.jar",
-      "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/wXYbSiX1/obe%2B1.20.1-1.1.46.jar",
-      "sha512": "fc38d93931ac4ee0f7171c5c771a42c06e7739ed697d807ed03cf300988b3a1c607b23250a4eb8ea3cb6592c08e20e816c82f2f31e131d476d0539ff28bac6f3",
-      "size": 196169,
-      "license": "LGPL-3.0-or-later",
-      "sourceUrl": "https://github.com/maDU59/OptimisedBlockEntities",
-      "projectUrl": "https://modrinth.com/mod/obe"
-    },
-    {
       "projectId": "eXts2L7r",
       "projectSlug": "placeholder-api",
       "name": "Text Placeholder API",
@@ -751,6 +736,17 @@
       "license": "LGPL-3.0-or-later",
       "sourceUrl": "https://github.com/isXander/YetAnotherConfigLib",
       "projectUrl": "https://modrinth.com/mod/yacl"
+    }
+  ],
+  "retired": [
+    {
+      "modId": "obe",
+      "projectId": "AtOSAunf",
+      "name": "Optimized Block Entities [OBE]",
+      "sha512": [
+        "fc38d93931ac4ee0f7171c5c771a42c06e7739ed697d807ed03cf300988b3a1c607b23250a4eb8ea3cb6592c08e20e816c82f2f31e131d476d0539ff28bac6f3"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.8.5 (built-in baked block entities)."
     }
   ]
 }
