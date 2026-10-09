@@ -24,6 +24,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         ConfigManager.load();
         NativeKeyBindings1201.init();
         NativeFeatures1201.initialize();
+        com.thelads.core.v1_20_1.render.Render1201.init();
 
         ExternalModSettings1201.register();
 

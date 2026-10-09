@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.render.mixin",
+  "plugin": "com.thelads.core.v1_20_1.render.RenderMixinPlugin1201",
+  "compatibilityLevel": "JAVA_17",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "ItemRendererCullMixin",
+    "NativeImageAnimationAccess",
+    "SpriteContentsAnimationMixin",
+    "TextureAtlasAnimationMixin"
+  ]
+}
