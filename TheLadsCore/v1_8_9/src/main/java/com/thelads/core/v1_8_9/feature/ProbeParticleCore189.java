@@ -44,7 +44,7 @@ final class ProbeParticleCore189 {
     private static final JsonArray PHASES = new JsonArray();
     private static final JsonObject CHECKS = new JsonObject();
     private static final Frames FRAMES = new Frames();
-    private static int seq, ticks, phase;
+    private static int seq, ticks, phase, scrolls, difficultyWas;
     private static boolean feeding, measuring;
     private static double px, py, pz;
     private static float yawBefore, pitchBefore;
@@ -74,8 +74,14 @@ final class ProbeParticleCore189 {
 
     private static ParticleCoreModule module() { return (ParticleCoreModule) Options189.module(ParticleCore.MODULE); }
 
+    private static void command(Minecraft mc, String command) {
+        net.minecraft.server.MinecraftServer server = mc.getIntegratedServer();
+        server.addScheduledTask(() -> server.getCommandManager().executeCommand(server, command));
+    }
+
     private static boolean run(Minecraft mc) throws Exception {
         ParticleCoreModule module = module();
+        net.minecraft.client.settings.KeyBinding.unPressAllKeys(); // the player stays where the scene is built
         if (feeding) feed(mc);
         if (measuring) {
             if (ticks % 20 == 0) { aliveSum += alive(mc); aliveSamples++; }
@@ -83,6 +89,8 @@ final class ProbeParticleCore189 {
         }
         switch (seq) {
             case 0: // the scene, filled to its steady state with Particle Core off
+                difficultyWas = mc.theWorld.getDifficulty().getDifficultyId();
+                for (String command : new String[] {"time set 6000", "gamerule doDaylightCycle false", "weather clear 100000", "difficulty 0"}) command(mc, command);
                 px = mc.thePlayer.posX; py = mc.thePlayer.posY; pz = mc.thePlayer.posZ;
                 yawBefore = mc.thePlayer.rotationYaw; pitchBefore = mc.thePlayer.rotationPitch;
                 enabledBefore = module.isEnabled(); cullBefore = module.culling.get(); optBefore = module.optimized.get();
@@ -149,25 +157,43 @@ final class ProbeParticleCore189 {
                 CoreProbe.screenshot(mc, "particlecore-card");
                 seq = 8;
                 return retry(5);
-            case 8: {
+            case 8: { // the small QA window shows two rows of the page: scroll until the rates row is in view
+                if (menu.ui().controlBounds("option:" + ParticleCore.RATES) != null || ++scrolls > 14) { seq = 9; return retry(3); }
+                menu.ui().mouseScrolled(menu.width * 0.4, menu.height * 0.6, -1);
+                return retry(2);
+            }
+            case 9:
+                CoreProbe.screenshot(mc, "particlecore-card-rates");
+                seq = 10;
+                return retry(5);
+            case 10: {
                 com.thelads.core.client.gui.LadsSettingsScreen.Rect bounds = menu.ui().controlBounds("option:" + ParticleCore.RATES);
                 check(bounds != null, "the Spawn rates row is on the module page");
                 CoreProbe.click(bounds.x() + bounds.width() / 2, bounds.y() + bounds.height() / 2);
-                seq = 9;
+                seq = 11;
                 return retry(20);
             }
-            case 9:
+            case 11:
                 CoreProbe.screenshot(mc, "particlecore-editor");
                 for (char c : "fire".toCharArray()) menu.ui().charTyped(c);
-                seq = 10;
+                seq = 12;
                 return retry(20);
-            case 10:
+            case 12: {
                 CoreProbe.screenshot(mc, "particlecore-editor-search");
+                com.thelads.core.client.gui.LadsSettingsScreen.Rect track = menu.ui().particleRatesTrack("flame");
+                check(track != null, "the flame row is listed while searching 'fire'");
+                menu.ui().mouseClicked(track.x(), track.y() + track.height() / 2.0, 0);
+                menu.ui().mouseReleased(track.x(), track.y() + track.height() / 2.0, 0);
+                check(module.rates.percent("flame") == 0, "a click at the far left of a slider switches the type off");
+                menu.ui().mouseClicked(track.x() + track.width() / 2.0, track.y() + track.height() / 2.0, 0);
+                menu.ui().mouseReleased(track.x() + track.width() / 2.0, track.y() + track.height() / 2.0, 0);
+                check(module.rates.percent("flame") == 50, "a click in the middle is 50%");
                 menu.ui().keyPressed(1, 0); // Esc: the editor first
                 check(mc.currentScreen == menu, "Esc closes the rates editor and leaves the module page");
                 mc.displayGuiScreen(null);
-                seq = 11;
+                seq = 13;
                 return retry(5);
+            }
             default:
                 finish(mc);
                 return after(5);
@@ -285,6 +311,7 @@ final class ProbeParticleCore189 {
         MinecraftForge.EVENT_BUS.unregister(FRAMES);
         mc.effectRenderer.clearEffects(mc.theWorld);
         mc.thePlayer.rotationYaw = yawBefore; mc.thePlayer.rotationPitch = pitchBefore;
+        command(mc, "difficulty " + difficultyWas); // the next runs' QA world as it was
         JsonObject report = new JsonObject();
         report.add("phases", PHASES);
         report.add("checks", CHECKS);

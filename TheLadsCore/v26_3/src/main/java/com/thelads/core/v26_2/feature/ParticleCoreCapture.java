@@ -40,7 +40,7 @@ final class ParticleCoreCapture {
     private static final JsonObject CHECKS = new JsonObject();
     private static final double[] EX = new double[EMITTERS], EZ = new double[EMITTERS];
     private static final java.util.Random RANDOM = new java.util.Random(135);
-    private static int index = -1, wait, ticks, saved;
+    private static int index = -1, wait, ticks, saved, scrolls;
     private static boolean capturing, measuring, enabledBefore, cullBefore, optBefore, ownBefore, othersBefore, feeding;
     private static String pendingShot;
     private static Path game;
@@ -90,7 +90,9 @@ final class ParticleCoreCapture {
         if (pendingShot != null) return;
         if (wait > 0) { wait--; return; }
         try {
-            wait = Math.max(0, STEPS.get(index).run(mc));
+            int next = STEPS.get(index).run(mc);
+            if (next < 0) { wait = 2; return; } // the step asked to run again
+            wait = next;
         } catch (Exception failure) {
             fail("step " + index + ": " + failure);
             LOGGER.error("Lads particle core capture step failed", failure);
@@ -158,6 +160,13 @@ final class ParticleCoreCapture {
             return 20;
         });
         STEPS.add(mc -> { pendingShot = "particlecore-card"; return 2; });
+        STEPS.add(mc -> { // the small QA window shows two rows of the page: scroll until the rates row is in view
+            var ui = ((com.thelads.core.v26_2.gui.LadsSettingsScreen26) mc.gui.screen()).ui();
+            if (ui.controlBounds("option:" + ParticleCore.RATES) != null || ++scrolls > 14) return 3;
+            ui.mouseScrolled(mc.getWindow().getGuiScaledWidth() * 0.4, mc.getWindow().getGuiScaledHeight() * 0.6, -1);
+            return -1;
+        });
+        STEPS.add(mc -> { pendingShot = "particlecore-card-rates"; return 2; });
         STEPS.add(mc -> {
             var ui = ((com.thelads.core.v26_2.gui.LadsSettingsScreen26) mc.gui.screen()).ui();
             var bounds = ui.controlBounds("option:" + ParticleCore.RATES);

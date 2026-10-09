@@ -46,7 +46,7 @@ public final class ParticleCoreCapture1201 {
     private static final double[] EX = new double[EMITTERS], EZ = new double[EMITTERS];
     private static final java.util.Random RANDOM = new java.util.Random(135);
     private static final double[] FRAME_MS = new double[8192];
-    private static int index = -1, wait, ticks, saved, aliveSamples;
+    private static int index = -1, wait, ticks, saved, aliveSamples, scrolls;
     private static boolean started, measuring, feeding, enabledBefore, cullBefore, optBefore, ownBefore, othersBefore;
     private static Path game;
     private static double px, py, pz;
@@ -103,7 +103,9 @@ public final class ParticleCoreCapture1201 {
         }
         if (wait > 0) { wait--; return; }
         try {
-            wait = Math.max(0, STEPS.get(index).run(mc));
+            int next = STEPS.get(index).run(mc);
+            if (next < 0) { wait = 2; return; } // the step asked to run again
+            wait = next;
         } catch (Exception failure) {
             fail("step " + index + ": " + failure);
             LOGGER.error("Lads particle core capture step failed", failure);
@@ -177,6 +179,13 @@ public final class ParticleCoreCapture1201 {
             return 20;
         });
         STEPS.add(mc -> { shot(mc, "particlecore-card"); return 2; });
+        STEPS.add(mc -> { // the small QA window shows two rows of the page: scroll until the rates row is in view
+            var ui = ((LadsSettingsScreen1201) mc.screen).ui();
+            if (ui.controlBounds("option:" + ParticleCore.RATES) != null || ++scrolls > 14) return 3;
+            ui.mouseScrolled(mc.getWindow().getGuiScaledWidth() * 0.4, mc.getWindow().getGuiScaledHeight() * 0.6, -1);
+            return -1;
+        });
+        STEPS.add(mc -> { shot(mc, "particlecore-card-rates"); return 2; });
         STEPS.add(mc -> {
             var ui = ((LadsSettingsScreen1201) mc.screen).ui();
             var bounds = ui.controlBounds("option:" + ParticleCore.RATES);
