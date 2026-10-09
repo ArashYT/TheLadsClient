@@ -27,8 +27,10 @@ def mixinConfigs = fileTree('src/main/resources') { include 'theladscore.v1_8_9*
 loom {
     forge {
         pack200Provider = new dev.architectury.pack200.java.Pack200Adapter()
-        mixinConfig("theladscore.v1_8_9.mixins.json", "theladscore.v1_8_9.particlecore.mixins.json", "theladscore.v1_8_9.render.mixins.json", "theladscore.v1_8_9.input.mixins.json", "theladscore.v1_8_9.fastquit.mixins.json")        defaultRefmapName = "theladscore.v1_8_9.refmap.json"
+        mixinConfig(*mixinConfigs)
     }
+    mixin {
+        defaultRefmapName = "theladscore.v1_8_9.refmap.json"    }
 }
 
 repositories {
@@ -80,7 +82,12 @@ tasks.withType(Jar).configureEach {
         'FMLCorePluginContainsFMLMod': 'true',
         'ForceLoadAsMod': 'true',
         'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
+<<<<<<< HEAD
         'MixinConfigs': mixinConfigs.join(','),    )
+=======
+        'MixinConfigs': 'theladscore.v1_8_9.mixins.json,theladscore.v1_8_9.ebe.mixins.json',
+    )
+>>>>>>> work/185-ebe
 }
 
 processResources {

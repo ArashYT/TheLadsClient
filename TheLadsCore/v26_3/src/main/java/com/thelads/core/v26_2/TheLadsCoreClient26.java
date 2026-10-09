@@ -53,9 +53,11 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.NativeCheats.register();
         com.thelads.core.v26_2.embedded.EmbeddedMods.clientInit();
 
+
         com.thelads.core.v26_2.input.InputLatency26.init();
         com.thelads.core.v26_2.input.InputProbe26.register();
                 com.thelads.core.v26_2.feature.fastquit.FastQuitProbe26.initialize();
+                com.thelads.core.v26_2.feature.ebe.BakedBlockEntities263.init();
         LOGGER.info("TheLadsCore 26.3 initialized successfully.");
         com.thelads.core.mods.NativeCatalogProbe.log();
         // The launcher lists Lads modules from this catalog; late registrations (Minimap) bump the revision on a later tick.

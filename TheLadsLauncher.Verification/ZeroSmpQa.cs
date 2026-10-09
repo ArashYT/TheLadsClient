@@ -103,6 +103,17 @@ internal static class ZeroSmpQa
             lines.AddRange(qaForced);
             File.WriteAllLines(options, lines);
             QaDiscord.ForceOff(gameDir); // Essential's and Lads' Discord activity off in the copy
+            // LADS_VERIFY_SHADERPACK=<file in shaderpacks>: Oculus on with that pack in the copy (the owner's config keeps shaders off).
+            if (QaShared.Env("LADS_VERIFY_SHADERPACK") is { } shaderPack)
+            {
+                if (!File.Exists(Path.Combine(gameDir, "shaderpacks", shaderPack))) throw new FileNotFoundException("LADS_VERIFY_SHADERPACK: no such pack in the copy's shaderpacks", shaderPack);
+                string oculus = Path.Combine(gameDir, "config", "oculus.properties");
+                var props = File.Exists(oculus) ? File.ReadAllLines(oculus).Where(l => !l.StartsWith("enableShaders=") && !l.StartsWith("shaderPack=")).ToList() : new List<string>();
+                props.Add("enableShaders=true");
+                props.Add("shaderPack=" + shaderPack);
+                File.WriteAllLines(oculus, props);
+                Say("Shaders on in the copy: " + shaderPack);
+            }
             string scriptFile = Path.Combine(gameDir, ".lads-qa-script.txt");
             if (script != null || scriptText != null)
                 File.WriteAllText(scriptFile, script != null ? File.ReadAllText(script) : string.Join('\n', scriptText!.Split(';', StringSplitOptions.TrimEntries)));
@@ -160,6 +171,14 @@ internal static class ZeroSmpQa
             string? fastQuit = QaShared.Env("LADS_VERIFY_FASTQUIT");
             if (fastQuit != null) flags.Add("-Dthelads.verifyFastQuit=" + fastQuit);
             if (fastQuit == "baseline") flags.Add("-Dlads.fastquit=false");
+            // LADS_VERIFY_EBE=1|off|xmas: the baked block entity probe (BakedBlockEntitiesProbe1201), asked for after the world capture.
+            string? ebe = QaShared.Env("LADS_VERIFY_EBE");
+            if (ebe is not (null or "1" or "off" or "xmas")) throw new ArgumentException("LADS_VERIFY_EBE must be 1, off or xmas.");
+            if (ebe != null) flags.Add("-Dlads.ebe.probe=true");
+            if (ebe == "off") flags.Add("-Dlads.ebe=false");
+            if (ebe == "xmas") flags.Add("-Dlads.ebe.xmas=true");
+            File.Delete(Path.Combine(gameDir, ".lads-qa-ebe"));
+>>>>>>> work/185-ebe
             if (args.Count > 0) for (int i = flags.Count - 1; i >= 0; i--) args.Insert(0, flags[i]);
             else game.StartInfo.Arguments = string.Join(' ', flags) + " " + game.StartInfo.Arguments;
             if (QaShared.Env("LADS_VERIFY_NO_RESIZE") != "1" && args.Count > 0)
@@ -178,7 +197,7 @@ internal static class ZeroSmpQa
             Say($"Started PID {game.Id}: {game.StartInfo.FileName}");
             QaWindowGuard.Watch(game, slot.Number);
 
-            bool begin = false, title = false, ready = false, worldDone = false, scriptDone = false, initialized = false, stopSent = false, fastQuitDone = false;
+            bool begin = false, title = false, ready = false, worldDone = false, scriptDone = false, initialized = false, stopSent = false, fastQuitDone = false, ebeDone = false, ebeAsked = false;
             bool scripted = script != null || scriptText != null;
             var seen = new HashSet<string>();
             while (!game.HasExited && started.Elapsed < TimeSpan.FromSeconds(timeoutSec))
@@ -195,13 +214,16 @@ internal static class ZeroSmpQa
                     if (line.Contains("TheLadsCore 1.20.1 initialized successfully")) initialized = true;
                     if (line.Contains("Lads fast quit probe END:")) fastQuitDone = true;
                     if (line.Contains("Lads fast quit probe FAILED") && seen.Add(line)) failures.Add(line.Trim());
+                    if (line.Contains("Lads EBE probe END:")) { ebeDone = true; if (!line.Contains(", 0 failed") && seen.Add(line)) failures.Add(line.Trim()); }
+                    if (line.Contains("Lads EBE probe FAILED") && seen.Add(line)) failures.Add(line.Trim());
                     if ((line.Contains("Lads auto-world QA FAILED") || line.Contains("Lads qa script FAILED") || line.Contains("Lads qa step FAILED")) && seen.Add(line))
                         failures.Add(line.Trim());
                     if (QaShared.MixinProblem(line) && seen.Add(line)) failures.Add("MIXIN PROBLEM: " + line.Trim());
                     if (line.Contains("Crash report saved") || line.Contains("---- Minecraft Crash Report")) { if (seen.Add("crash")) failures.Add("the game crashed (see latest.log / crash-reports)"); }
                 }
                 if (failures.Count > 0 && !stopSent && (failures.Any(f => f.Contains("crashed")) || failures.Any(f => f.Contains("auto-world QA FAILED")))) break;
-                bool finished = fastQuit != null ? initialized && fastQuitDone : initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone);
+                if (ebe != null && worldDone && !ebeAsked) { File.WriteAllText(Path.Combine(gameDir, ".lads-qa-ebe"), "probe"); ebeAsked = true; }
+                bool finished = fastQuit != null ? initialized && fastQuitDone : initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone) && (ebe == null || ebeDone);
                 if (finished && !stopSent)
                 {
                     stopSent = true;
@@ -221,7 +243,8 @@ internal static class ZeroSmpQa
             if (!game.HasExited) { Say("Stopping the Zero SMP game with Kill (it ignored the stop request)."); game.Kill(entireProcessTree: true); game.WaitForExit(30000); }
             if (File.Exists(log)) File.Copy(log, Path.Combine(evidence, "latest.log"), true);
             var logText = ReadShared(log).Split('\n');
-            foreach (var line in logText.Where(l => l.Contains("Lads auto-world QA") || l.Contains("Lads world capture") || l.Contains("Lads qa ") || l.Contains("TheLadsCore")))
+            foreach (var line in logText.Where(l => l.Contains("Lads auto-world QA") || l.Contains("Lads world capture") || l.Contains("Lads qa ") || l.Contains("TheLadsCore")
+                || l.Contains("Lads EBE") || l.Contains("Baked block entities")))
                 Say("log: " + line.TrimEnd());
         }
         catch (Exception error)

@@ -31,6 +31,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         com.thelads.core.v1_20_1.input.InputProbe1201.register();
 
         ExternalModSettings1201.register();
+        com.thelads.core.v1_20_1.feature.ebe.BakedBlockEntities1201.init();
 
         com.thelads.core.v1_20_1.feature.Menus1201.register();
                 com.thelads.core.v1_20_1.feature.fastquit.FastQuitProbe1201.initialize();
