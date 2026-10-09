@@ -50,8 +50,9 @@ public final class RenderScale1201 {
 
     private RenderScale1201() {}
 
+    /** Distant Horizons draws its far terrain into the main target's size; it and a second Better Resolution mod are left alone. */
     private static boolean external() {
-        return ModPresence1201.loaded("betterresolution") || ModPresence1201.loaded("better_resolution") || ModPresence1201.loaded("better-resolution");
+        return ModPresence1201.loaded("distanthorizons") || ModPresence1201.loaded("betterresolution") || ModPresence1201.loaded("better_resolution") || ModPresence1201.loaded("better-resolution");
     }
 
     private static boolean shadersInUse() {

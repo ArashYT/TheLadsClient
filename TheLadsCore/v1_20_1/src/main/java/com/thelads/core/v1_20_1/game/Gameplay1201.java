@@ -32,6 +32,8 @@ public final class Gameplay1201 {
             OldAnimationsModule.NAME, "BetterResolution");
         if (zoomOwnedByMod()) ModuleSupport.registerExternal("Zoom", "Just Zoom", "justzoom", true);
         else ModuleSupport.registerBuiltIn("Zoom");
+        if (ModPresence1201.loaded("distanthorizons"))
+            ModuleSupport.registerBuiltInLimited("BetterResolution", "It stays off while Distant Horizons is installed (both draw the world into its own target).");
         NativeCustomFov1201.register();
         GoodMcAttackSpeedReset1201.register();
         com.thelads.core.v1_20_1.game.cheats.Cheats1201.register();
