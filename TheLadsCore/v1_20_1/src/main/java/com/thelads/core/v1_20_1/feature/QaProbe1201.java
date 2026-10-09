@@ -76,6 +76,22 @@ public final class QaProbe1201 {
     private static final java.util.Map<String, java.util.function.Predicate<String[]>> routines = new java.util.HashMap<>();
     private static java.util.function.Predicate<String[]> routine;
     private static String[] routineStep;
+    private static int reloadsLeft;
+    private static java.util.concurrent.CompletableFuture<Void> reloadFuture;
+
+    /** "reload N" routine: reloads the resource packs N times, each one started the tick after the last finished. */
+    private static boolean reloadStep(String[] step) {
+        Minecraft mc = Minecraft.getInstance();
+        if (reloadFuture != null) {
+            if (!reloadFuture.isDone()) return false;
+            reloadFuture = null;
+        }
+        if (reloadsLeft <= 0) return true;
+        reloadsLeft--;
+        LOGGER.info("Lads qa reload: {} more after this one", reloadsLeft);
+        reloadFuture = mc.reloadResourcePacks();
+        return false;
+    }
 
     private QaProbe1201() {}
 
@@ -283,6 +299,7 @@ public final class QaProbe1201 {
             case "module" -> module(arg(s, 1), s.length > 2 ? s[2] : "toggle");
             case "option" -> option(arg(s, 1), arg(s, 2), rest(s, 3));
             case "dump" -> dump(mc, s.length > 1 ? s[1].toLowerCase(Locale.ROOT) : "state", s.length > 2 ? s[2] : null);
+            case "reload" -> { reloadsLeft = s.length > 1 ? Integer.parseInt(s[1]) : 1; routine = QaProbe1201::reloadStep; routineStep = s; } // F3+T, N times back to back
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
             case "quit" -> {
                 LOGGER.info("Lads qa quit requested");
