@@ -7,7 +7,6 @@
     "defaultRequire": 0
   },
   "client": [
-    "GuiMixin",
     "PauseScreenMixin",
     "TitleScreenMixin",
     "KeyboardHandlerMixin",

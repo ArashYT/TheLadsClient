@@ -1,7 +1,8 @@
 package com.thelads.core.v1_20_1.adapter;
 
-import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.GameTimeText;
+import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.v1_20_1.mixin.BossBarAccessor1201;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.core.BlockPos;
@@ -168,22 +169,55 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
         return armor;
     }
 
+    // ---- Potion effects ----
     private net.minecraft.client.player.LocalPlayer potionPlayer;
     private int potionTick = Integer.MIN_VALUE;
     private List<String> potions = List.of();
+    private List<PotionEffectInfo> detailedPotions = List.of();
+
+    private static String romanNumeral(int value) {
+        return switch (value) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            case 5 -> "V";
+            default -> String.valueOf(value);
+        };
+    }
+
+    @Override
+    public List<PotionEffectInfo> getActivePotions() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) {
+            potionPlayer = null;
+            potionTick = Integer.MIN_VALUE;
+            potions = List.of();
+            return detailedPotions = List.of();
+        }
+        if (player != potionPlayer || player.tickCount != potionTick) {
+            potionPlayer = player;
+            potionTick = player.tickCount;
+            var snapshot = new ArrayList<String>();
+            var detailed = new ArrayList<PotionEffectInfo>();
+            for (MobEffectInstance effect : player.getActiveEffects()) {
+                String name = net.minecraft.network.chat.Component.translatable(effect.getEffect().getDescriptionId()).getString();
+                if (effect.getAmplifier() > 0) name += " " + romanNumeral(effect.getAmplifier() + 1);
+                int totalSec = effect.getDuration() / 20;
+                String dur = effect.isInfiniteDuration() ? "**:**" : totalSec >= 60 ? String.format("%d:%02d", totalSec / 60, totalSec % 60) : totalSec + "s";
+                var key = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect());
+                detailed.add(new PotionEffectInfo(name, dur, 0, key == null ? "" : key.toString(), 0xFFFFFFFF));
+                snapshot.add(name + " (" + (effect.isInfiniteDuration() ? "**:**" : totalSec + "s") + ")");
+            }
+            potions = List.copyOf(snapshot);
+            detailedPotions = List.copyOf(detailed);
+        }
+        return detailedPotions;
+    }
 
     @Override
     public List<String> getActivePotionEffects() {
-        var player = Minecraft.getInstance().player;
-        if (player == null) { potionPlayer = null; potionTick = Integer.MIN_VALUE; return potions = List.of(); }
-        if (player != potionPlayer || player.tickCount != potionTick) {
-            potionPlayer = player; potionTick = player.tickCount;
-            var snapshot = new ArrayList<String>();
-            for (MobEffectInstance effect : player.getActiveEffects())
-                snapshot.add(net.minecraft.network.chat.Component.translatable(effect.getEffect().getDescriptionId()).getString()
-                    + " (" + (effect.getDuration() / 20) + "s)");
-            potions = List.copyOf(snapshot);
-        }
+        getActivePotions();
         return potions;
     }
 
@@ -242,5 +276,137 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     public boolean isHudHidden() {
         Minecraft mc = Minecraft.getInstance();
         return mc.options != null && mc.options.hideGui;
+    }
+
+    // ---- Scoreboard (the sidebar the player would see, in vanilla's order) ----
+    private Object scoreboardPlayer;
+    private int scoreboardTick = Integer.MIN_VALUE;
+    private ScoreboardSnapshot scoreboardSnapshot;
+
+    @Override
+    public ScoreboardSnapshot getScoreboard() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) {
+            scoreboardPlayer = null;
+            scoreboardSnapshot = null;
+            return null;
+        }
+        if (scoreboardPlayer == mc.player && scoreboardTick == mc.player.tickCount) return scoreboardSnapshot;
+        scoreboardPlayer = mc.player;
+        scoreboardTick = mc.player.tickCount;
+        var board = mc.level.getScoreboard();
+        var team = board.getPlayersTeam(mc.player.getScoreboardName());
+        net.minecraft.world.scores.Objective objective = null;
+        if (team != null) {
+            int slot = team.getColor().getId();
+            if (slot >= 0) objective = board.getDisplayObjective(3 + slot);
+        }
+        if (objective == null) objective = board.getDisplayObjective(1);
+        if (objective == null) {
+            scoreboardSnapshot = null;
+            return null;
+        }
+        // Vanilla keeps the highest 15 scores of the sorted (ascending) list and draws the highest at the top.
+        List<net.minecraft.world.scores.Score> scores = new ArrayList<>();
+        for (var score : board.getPlayerScores(objective))
+            if (score.getOwner() != null && !score.getOwner().startsWith("#")) scores.add(score);
+        if (scores.size() > 15) scores = new ArrayList<>(scores.subList(scores.size() - 15, scores.size()));
+        List<ScoreLine> lines = new ArrayList<>(scores.size());
+        for (int i = scores.size() - 1; i >= 0; i--) {
+            var score = scores.get(i);
+            lines.add(new ScoreLine(legacy(net.minecraft.world.scores.PlayerTeam.formatNameForTeam(
+                board.getPlayersTeam(score.getOwner()), net.minecraft.network.chat.Component.literal(score.getOwner()))),
+                "§r§c" + score.getScore()));
+        }
+        scoreboardSnapshot = new ScoreboardSnapshot(legacy(objective.getDisplayName()), lines);
+        return scoreboardSnapshot;
+    }
+
+    /** The text with its colours and styles as section-sign codes, which the Lads HUD draws. */
+    private static String legacy(net.minecraft.network.chat.Component text) {
+        StringBuilder out = new StringBuilder();
+        text.visit((style, part) -> {
+            if (part.isEmpty()) return java.util.Optional.empty();
+            out.append("§r");
+            if (style.getColor() != null) out.append('§').append(com.thelads.core.client.LegacyText.code(style.getColor().getValue()));
+            if (style.isBold()) out.append("§l");
+            if (style.isItalic()) out.append("§o");
+            if (style.isUnderlined()) out.append("§n");
+            if (style.isStrikethrough()) out.append("§m");
+            if (style.isObfuscated()) out.append("§k");
+            out.append(part);
+            return java.util.Optional.empty();
+        }, net.minecraft.network.chat.Style.EMPTY);
+        return out.toString();
+    }
+
+    @Override
+    public int bossBarCount() {
+        var mc = Minecraft.getInstance();
+        if (mc.gui == null || mc.gui.getBossOverlay() == null) return 0;
+        try {
+            var map = ((BossBarAccessor1201) mc.gui.getBossOverlay()).ladsEvents();
+            return map == null ? 0 : map.size();
+        } catch (Throwable ignored) {
+            return 0;
+        }
+    }
+
+    private java.util.Collection<net.minecraft.server.packs.repository.Pack> packSelection = List.of();
+    private List<String> packNames = List.of();
+
+    @Override
+    public List<String> getActiveResourcePacks() {
+        var repository = Minecraft.getInstance().getResourcePackRepository();
+        if (repository == null) { packSelection = List.of(); return packNames = List.of(); }
+        var selected = repository.getSelectedPacks();
+        if (!packSelection.equals(selected)) {
+            packSelection = List.copyOf(selected);
+            packNames = selected.stream().map(net.minecraft.server.packs.repository.Pack::getId).toList();
+        }
+        return packNames;
+    }
+
+    @Override
+    public boolean hasMinimap() { return com.thelads.core.v1_20_1.hud.Minimap1201.available(); }
+
+    @Override
+    public int[] minimapSize() { return com.thelads.core.v1_20_1.hud.Minimap1201.size(); }
+
+    @Override
+    public void positionMinimap(int x, int y) { com.thelads.core.v1_20_1.hud.Minimap1201.position(x, y); }
+
+    @Override
+    public VoiceChatState voiceChat() { return com.thelads.core.v1_20_1.hud.VoiceChat1201.state(); }
+
+    @Override
+    public void previewKillBannerSound(String skin, float volume) { com.thelads.core.v1_20_1.feature.NativeKillBanner1201.previewSound(skin, volume); }
+
+    @Override
+    public List<com.thelads.core.mods.LoadedMod> loadedMods() {
+        List<com.thelads.core.mods.LoadedMod> mods = new ArrayList<>();
+        for (net.fabricmc.loader.api.ModContainer container : net.fabricmc.loader.api.FabricLoader.getInstance().getAllMods()) {
+            var meta = container.getMetadata();
+            List<String> depends = new ArrayList<>();
+            for (var dependency : meta.getDependencies())
+                if (dependency.getKind() == net.fabricmc.loader.api.metadata.ModDependency.Kind.DEPENDS) depends.add(dependency.getModId());
+            List<String> authors = new ArrayList<>();
+            for (var person : meta.getAuthors()) authors.add(person.getName());
+            String parent = container.getContainingMod().map(containing -> containing.getMetadata().getId()).orElse(null);
+            mods.add(new com.thelads.core.mods.LoadedMod(meta.getId(), meta.getName(), meta.getVersion().getFriendlyString(), parent,
+                authors, String.join(", ", meta.getLicense()), depends, List.copyOf(meta.getProvides()), libraryBadge(meta), meta.getType()));
+        }
+        return mods;
+    }
+
+    /** Mod Menu's custom "badges" may hold anything; only a string "library" entry in an array counts. */
+    private static boolean libraryBadge(net.fabricmc.loader.api.metadata.ModMetadata meta) {
+        var modmenu = meta.getCustomValue("modmenu");
+        if (modmenu == null || modmenu.getType() != net.fabricmc.loader.api.metadata.CustomValue.CvType.OBJECT) return false;
+        var badges = modmenu.getAsObject().get("badges");
+        if (badges == null || badges.getType() != net.fabricmc.loader.api.metadata.CustomValue.CvType.ARRAY) return false;
+        for (var badge : badges.getAsArray())
+            if (badge.getType() == net.fabricmc.loader.api.metadata.CustomValue.CvType.STRING && "library".equals(badge.getAsString())) return true;
+        return false;
     }
 }

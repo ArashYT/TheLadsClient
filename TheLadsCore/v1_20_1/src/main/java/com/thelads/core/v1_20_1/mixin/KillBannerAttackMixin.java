@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(MultiPlayerGameMode.class)
 public class KillBannerAttackMixin {
-    @Inject(method = "attack", at = @At("HEAD"), require = 0)
+    @Inject(method = "attack", at = @At("HEAD"), require = 1)
     private void lads$attack(Player player, Entity target, CallbackInfo ci) {
         NativeKillBanner1201.attacked(target);
     }

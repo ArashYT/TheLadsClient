@@ -4,7 +4,9 @@ import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
+import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.config.SliderOption;
+import com.thelads.core.modules.RaisedModule;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +24,14 @@ public final class Hud1201 {
     public static void register() {
         if (registered) return;
         registered = true;
+        // Modules the entry point lists as built in that only work with another mod, or have an upstream mod installed.
+        if (Mods1201.loaded("raised")) ModuleSupport.registerExternal(RaisedModule.NAME, "Raised", "raised", true);
+        for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
+            if (VoiceChat1201.loaded()) ModuleSupport.registerBuiltIn(voice);
+            else ModuleSupport.registerUnavailable(voice, "Simple Voice Chat is not installed in this game.");
+        if (!Mods1201.loaded("xaerominimap")) ModuleSupport.registerUnavailable("Minimap", "Xaero's Minimap is not installed in this game.");
+        NativeBetterF3_1201.register();
+        ForgeOverlays1201.register();
         // One line per group; each group owns its class, package and mixin config.
         com.thelads.core.v1_20_1.hud.chat.ChatFeatures1201.register();
         com.thelads.core.v1_20_1.hud.overlay.OverlayFeatures1201.register();
@@ -31,6 +41,7 @@ public final class Hud1201 {
     }
 
     private static void tick() {
+        Minimap1201.tick();
     }
 
     public static Module module(String name) { return ModuleManager.getInstance().getModule(name); }

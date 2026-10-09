@@ -7,5 +7,12 @@
     "defaultRequire": 1
   },
   "client": [
+    "GameRendererHudMixin",
+    "GuiPartsMixin",
+    "GuiHotbarMixin",
+    "BetterF3Mixin",
+    "BossBarSettingsMixin",
+    "VoiceChatHudMixin",
+    "VoiceChatGroupHudMixin"
   ]
 }
