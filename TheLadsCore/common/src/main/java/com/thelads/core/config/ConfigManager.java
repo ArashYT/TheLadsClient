@@ -139,6 +139,7 @@ public class ConfigManager {
             migrateDynamicLights(modulesJson);
             migrateDiscord(modulesJson);
             migrateDamageTilt(modulesJson);
+            migrateParticleBudget(modulesJson);
             java.util.Set<String> known = new java.util.HashSet<>();
             for (Module m : ModuleManager.getInstance().getModules()) {
                 known.add(m.getName());
@@ -288,6 +289,25 @@ public class ConfigManager {
         if (options.get("Intensity") != null) options.addProperty("Intensity", number(options.get("Intensity")) == 0 ? 50 : 100);
         JsonElement changed = tilt.get("lastModified");
         if (changed == null || changed.isJsonPrimitive() && changed.getAsJsonPrimitive().isNumber() && changed.getAsLong() == 0) tilt.remove("enabled");
+    }
+
+    /**
+     * 1.8.5 folded ParticleBudget into Particle Core (on by default, with the old quota as its "Limit decorative particles" option,
+     * off as ParticleBudget was). A player who had ParticleBudget on keeps the quota on with their own numbers; whatever Particle
+     * Core already saved wins, so a config an older client re-saved with the old entry does not undo it.
+     */
+    public static void migrateParticleBudget(JsonObject modules) {
+        if (!(modules.remove("ParticleBudget") instanceof JsonObject budget)) return;
+        if (!(modules.get(com.thelads.core.client.ParticleCore.MODULE) instanceof JsonObject)) modules.add(com.thelads.core.client.ParticleCore.MODULE, new JsonObject());
+        JsonObject core = modules.getAsJsonObject(com.thelads.core.client.ParticleCore.MODULE);
+        if (!(core.get("options") instanceof JsonObject)) core.add("options", new JsonObject());
+        JsonObject options = core.getAsJsonObject("options");
+        JsonElement saved = budget.get("options");
+        if (!options.has(com.thelads.core.client.ParticleCore.LIMIT)) options.addProperty(com.thelads.core.client.ParticleCore.LIMIT, bool(budget.get("enabled")));
+        if (saved instanceof JsonObject old) {
+            if (old.has("Particles per tick") && !options.has(com.thelads.core.client.ParticleCore.PER_TICK)) options.add(com.thelads.core.client.ParticleCore.PER_TICK, old.get("Particles per tick"));
+            if (old.has("Distance") && !options.has(com.thelads.core.client.ParticleCore.DISTANCE)) options.add(com.thelads.core.client.ParticleCore.DISTANCE, old.get("Distance"));
+        }
     }
 
     /** 1.4.5 moved ClientTools "Chat timestamps" and the HideChatIndicators module into Chat options; keeps whatever the user had. */
