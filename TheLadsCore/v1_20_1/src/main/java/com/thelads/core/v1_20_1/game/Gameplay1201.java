@@ -19,6 +19,9 @@ public final class Gameplay1201 {
     /** Called once from the client entrypoint, after the shared module list was registered. */
     public static void register() {
         qa = Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null;
+        com.thelads.core.v1_20_1.game.skin.SkinLayers1201.register();
+        com.thelads.core.v1_20_1.game.nea.Nea1201.register();
+        com.thelads.core.v1_20_1.game.misc.Misc1201.register();
         LOGGER.info("Lads gameplay modules for 1.20.1 registered (loader: {})",
             ModPresence1201.forge() ? "Forge through Connector" : "Fabric");
     }
