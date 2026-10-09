@@ -22,6 +22,7 @@ public final class ModPresence1201 {
     private static final Map<String, Boolean> INSTALLED = new ConcurrentHashMap<>();
     private static final Map<String, String> SOURCE = new ConcurrentHashMap<>();
     private static volatile Boolean forge;
+    private static volatile java.util.List<String> jarNames;
 
     private ModPresence1201() {}
 
@@ -52,7 +53,8 @@ public final class ModPresence1201 {
         } catch (RuntimeException | LinkageError ignored) {
             // The loader is not up yet (a very early mixin plugin): fall through to Forge.
         }
-        return forgeWhere(id);
+        String forge = forgeWhere(id);
+        return forge != null ? forge : folderWhere(id);
     }
 
     /** True when running on Forge (including Forge with Sinytra Connector). */
@@ -69,6 +71,31 @@ public final class ModPresence1201 {
     public static boolean underConnector() {
         return classExists("dev.su5ed.sinytra.connector.loader.ConnectorLoaderMod")
             || classExists("dev.su5ed.sinytra.connector.loader.ConnectorEarlyLoader");
+    }
+
+    /**
+     * Last resort on Forge when neither Forge list can be read: a jar in the mods folder whose name starts with the id (letters and
+     * digits only, case-insensitive; 'dynamic_fps' matches 'dynamic-fps-3.11.4+minecraft-1.20.0-forge.jar'). Never used on plain Fabric.
+     */
+    private static String folderWhere(String id) {
+        if (!onForge()) return null;
+        java.util.List<String> names = jarNames;
+        if (names == null) {
+            names = new java.util.ArrayList<>();
+            try {
+                java.nio.file.Path mods = FabricLoader.getInstance().getGameDir().resolve("mods");
+                try (java.util.stream.Stream<java.nio.file.Path> files = java.nio.file.Files.list(mods)) {
+                    files.map(p -> p.getFileName().toString().toLowerCase(java.util.Locale.ROOT)).filter(n -> n.endsWith(".jar"))
+                        .map(n -> n.replaceAll("[^a-z0-9]", "")).forEach(names::add);
+                }
+            } catch (java.io.IOException | RuntimeException | LinkageError ignored) {
+                // No mods folder to read.
+            }
+            jarNames = names;
+        }
+        String wanted = id.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]", "");
+        for (String name : names) if (name.startsWith(wanted)) return "mods-folder";
+        return null;
     }
 
     private static String forgeWhere(String id) {
