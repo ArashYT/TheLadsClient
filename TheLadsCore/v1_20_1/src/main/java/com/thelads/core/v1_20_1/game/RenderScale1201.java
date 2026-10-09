@@ -36,7 +36,7 @@ public final class RenderScale1201 {
     private static final RenderScalePolicy POLICY = new RenderScalePolicy();
     private static TextureTarget world;
     private static RenderTarget nativeTarget;
-    private static boolean swapped, upscaleFailed, irisChecked;
+    private static boolean swapped, upscaleFailed, irisChecked, disabled;
     private static ShaderInstance upscale;
     private static Method irisInUse;
     private static Object irisApi;
@@ -76,6 +76,7 @@ public final class RenderScale1201 {
     /** GameRenderer.render, just before the world pass. */
     public static void beginWorld(Minecraft mc, GameRenderer renderer) {
         swapped = false;
+        if (disabled) return;
         RenderTarget main = mc.getMainRenderTarget();
         if (!(ModuleManager.getInstance().getModule(BetterResolutionModule.NAME) instanceof BetterResolutionModule module)) return;
         RenderScalePolicy.Settings settings = module.settings(external());
@@ -124,9 +125,11 @@ public final class RenderScale1201 {
             composite(nativeTarget);
             scaledFrames++;
         } catch (RuntimeException failure) {
-            LOGGER.error("Better Resolution: the composite failed; the world frame is left unscaled from now on", failure);
+            LOGGER.error("Better Resolution: the composite failed; the world is left unscaled until resources reload", failure);
             qaPercent = 0;
+            disabled = true;
             release();
+            Minecraft.getInstance().execute(() -> resizeLevel(mc, nativeTarget.width, nativeTarget.height));
         }
         nativeTarget.bindWrite(true);
     }
@@ -138,7 +141,11 @@ public final class RenderScale1201 {
     }
 
     private static void composite(RenderTarget destination) {
-        ShaderInstance shader = upscale();
+        ShaderInstance shader = upscaleOrNull();
+        if (shader == null) {
+            compositeBasic(destination);
+            return;
+        }
         destination.bindWrite(true);
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
@@ -165,11 +172,47 @@ public final class RenderScale1201 {
         GlStateManager._glBindFramebuffer(36160, destination.frameBufferId);
     }
 
+    /** Smooth and Sharp need the upscale shader; without it the vanilla position-texture shader does Linear and Nearest. */
+    private static void compositeBasic(RenderTarget destination) {
+        destination.bindWrite(true);
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.disableBlend();
+        float w = destination.width, h = destination.height;
+        RenderSystem.setProjectionMatrix(new Matrix4f().setOrtho(0.0f, w, h, 0.0f, 1000.0f, 3000.0f), com.mojang.blaze3d.vertex.VertexSorting.ORTHOGRAPHIC_Z);
+        var modelView = RenderSystem.getModelViewStack();
+        modelView.pushPose();
+        modelView.setIdentity();
+        modelView.translate(0.0f, 0.0f, -2000.0f);
+        RenderSystem.applyModelViewMatrix();
+        RenderSystem.setShader(GameRenderer::getPositionTexShader);
+        RenderSystem.setShaderTexture(0, world.getColorTextureId());
+        BufferBuilder buffer = Tesselator.getInstance().getBuilder();
+        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        buffer.vertex(0.0, h, 0.0).uv(0.0f, 0.0f).endVertex();
+        buffer.vertex(w, h, 0.0).uv(1.0f, 0.0f).endVertex();
+        buffer.vertex(w, 0.0, 0.0).uv(1.0f, 1.0f).endVertex();
+        buffer.vertex(0.0, 0.0, 0.0).uv(0.0f, 1.0f).endVertex();
+        BufferUploader.drawWithShader(buffer.end());
+        modelView.popPose();
+        RenderSystem.applyModelViewMatrix();
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
+    }
+
+    private static ShaderInstance upscaleOrNull() {
+        try {
+            return upscaleFailed ? null : upscale();
+        } catch (IllegalStateException failed) {
+            return null; // logged once by upscale()
+        }
+    }
+
     /** The upscale shader, made on first use (it is not a vanilla core shader, so the game's own list does not hold it). */
     private static ShaderInstance upscale() {
         if (upscale == null) {
             try {
-                upscale = new ShaderInstance(Minecraft.getInstance().getResourceManager(), "theladscore:lads_world_upscale", DefaultVertexFormat.POSITION_TEX);
+                upscale = new ShaderInstance(Minecraft.getInstance().getResourceManager(), "lads_world_upscale", DefaultVertexFormat.POSITION_TEX);
             } catch (IOException | RuntimeException failure) {
                 if (!upscaleFailed) LOGGER.error("Better Resolution: the upscale shader did not compile", failure);
                 upscaleFailed = true;
@@ -193,6 +236,7 @@ public final class RenderScale1201 {
             upscale = null;
         }
         upscaleFailed = false;
+        disabled = false;
     }
 
     /** LevelRenderer.doEntityOutline: the outline image is as big as the main target the world renders into. */

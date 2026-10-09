@@ -86,6 +86,7 @@ public final class NativeOldAnimations1201 {
      * {@code NONE} once the pose holds the 1.7 placement, or null to draw nothing (the sword blocks, the shield hides).
      */
     public static ItemDisplayContext firstPerson(LivingEntity player, ItemStack item, PoseStack pose, ItemDisplayContext vanilla) {
+        firstPersonCalls++;
         OldAnimationsModule module = module();
         if (module == null || !module.isEnabled()) return vanilla;
         InteractionHand hand = handNow;
@@ -119,6 +120,17 @@ public final class NativeOldAnimations1201 {
             : use == Use.BOW || held == Held.BOW ? Feature.BOW : held == Held.ROD ? Feature.ROD : Feature.HELD_ITEMS);
         return ItemDisplayContext.NONE;
     }
+
+    /** QA: what the placement hooks see for the entity's main hand item. */
+    public static String debug(LivingEntity entity) {
+        ItemStack item = entity.getMainHandItem();
+        BakedModel model = model(entity, item);
+        return "module=" + (module() != null && module().isEnabled()) + " held=" + held(item) + " flat=" + ModelShape1201.flat(model)
+            + " customRenderer=" + model.isCustomRenderer() + " blockLight=" + model.usesBlockLight() + " applied=" + APPLIED
+            + " hand=" + handNow + " calls=" + firstPersonCalls;
+    }
+
+    private static long firstPersonCalls;
 
     private static BakedModel model(LivingEntity entity, ItemStack item) {
         return Minecraft.getInstance().getItemRenderer().getModel(item, entity.level(), entity, entity.getId());

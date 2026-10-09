@@ -4,8 +4,8 @@
         "srcrgb": "one",
         "dstrgb": "zero"
     },
-    "vertex": "theladscore:lads_world_upscale",
-    "fragment": "theladscore:lads_world_upscale",
+    "vertex": "lads_world_upscale",
+    "fragment": "lads_world_upscale",
     "attributes": [
         "Position",
         "UV0"
