@@ -74,7 +74,7 @@ final class ParticleRatesDialog {
         }
         g.disableScissor();
         if (filtered.isEmpty()) g.drawText(changedOnly ? "No changed particle types." : "No matching particle types.", x + 15, listTop + 8, MUTED);
-        g.drawText(filtered.size() + " types, " + option.changed() + " changed", x + 12, y + h - 12, MUTED);
+        g.drawText((filtered.size() == all.size() ? filtered.size() + " types" : filtered.size() + " of " + all.size() + " types") + ", " + option.changed() + " changed", x + 12, y + h - 12, MUTED);
         String reset = confirmReset ? "Click again to reset all" : "Reset all";
         g.drawText(reset, x + w - 12 - g.textWidth(reset), y + h - 12, confirmReset ? ACCENT : MUTED);
     }

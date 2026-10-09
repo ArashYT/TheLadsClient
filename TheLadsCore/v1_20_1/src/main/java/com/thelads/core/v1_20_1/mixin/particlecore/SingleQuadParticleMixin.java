@@ -20,10 +20,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * The drawing side of Particle Core for the flat particles that make almost all of them. Culling: a quad wholly outside the frame's
  * frustum is not built. Optimized rendering: the four corners come straight from the camera's own left and up vectors (plus the
  * roll), with no rotation per corner and nothing allocated; the quad is the one vanilla builds. Sodium and Embeddium draw these
- * quads their own way, so with either installed the vertex work is left to them. The late priority puts this after their rewrite
- * of the method, so the culling test still comes first.
+ * quads their own way (their own cancelling hook at the head of this method), so with either installed the vertex work is left to
+ * them. The early priority (a lower number is applied first, and its hook runs first) puts this ahead of theirs, so a culled
+ * particle never reaches their geometry code; a particle that is not culled falls through to it.
  */
-@Mixin(value = SingleQuadParticle.class, priority = 1500)
+@Mixin(value = SingleQuadParticle.class, priority = 500)
 public abstract class SingleQuadParticleMixin extends Particle {
     protected SingleQuadParticleMixin(ClientLevel level, double x, double y, double z) { super(level, x, y, z); }
 

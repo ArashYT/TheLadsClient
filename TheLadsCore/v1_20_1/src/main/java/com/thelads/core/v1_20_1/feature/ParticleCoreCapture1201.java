@@ -92,6 +92,13 @@ public final class ParticleCoreCapture1201 {
             ParticleCore.timing = true;
             LOGGER.info("Lads particle core capture BEGIN: {} emitters, {} steps; vertex work {}", EMITTERS, STEPS.size(), ParticleCore1201.deferVertices() ? "left to Sodium/Embeddium" : "ours");
             index = 0; wait = 2;
+            for (Class<?> type : new Class<?>[] {net.minecraft.client.particle.SingleQuadParticle.class, net.minecraft.client.particle.Particle.class}) { // which mixins reached the particle drawing
+                StringBuilder methods = new StringBuilder();
+                for (java.lang.reflect.Method method : type.getDeclaredMethods())
+                    if (method.getName().startsWith("handler$") || method.getName().startsWith("method_3074") || method.getName().startsWith("method_3068") || method.getName().equals("render") || method.getName().equals("getLightColor"))
+                        methods.append(method.getName()).append(java.util.Arrays.toString(method.getAnnotations())).append("; ");
+                LOGGER.info("Lads particle core mixin check {}: {}", type.getSimpleName(), methods);
+            }
             return;
         }
         releaseKeys(mc);
