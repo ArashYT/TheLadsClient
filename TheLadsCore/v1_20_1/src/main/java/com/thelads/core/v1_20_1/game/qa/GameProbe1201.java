@@ -206,7 +206,13 @@ public final class GameProbe1201 {
             case "hold" -> hold(mc, s[1]).setDown(!"off".equals(s.length > 2 ? s[2] : "on"));
             case "look" -> { mc.player.setYRot(Float.parseFloat(s[1])); mc.player.setXRot(Float.parseFloat(s[2])); mc.player.yRotO = mc.player.getYRot(); mc.player.xRotO = mc.player.getXRot(); }
             case "camera" -> mc.options.setCameraType(switch (s[1]) { case "back" -> CameraType.THIRD_PERSON_BACK; case "front" -> CameraType.THIRD_PERSON_FRONT; default -> CameraType.FIRST_PERSON; });
-            case "screen" -> mc.setScreen(s[1].equals("inventory") ? new InventoryScreen(mc.player) : null);
+            case "screen" -> mc.setScreen(switch (s[1]) {
+                case "inventory" -> new InventoryScreen(mc.player);
+                case "skin" -> new net.minecraft.client.gui.screens.SkinCustomizationScreen(null, mc.options);
+                case "options" -> new net.minecraft.client.gui.screens.OptionsScreen(null, mc.options);
+                case "controls" -> new net.minecraft.client.gui.screens.controls.KeyBindsScreen(null, mc.options);
+                default -> null;
+            });
             case "hotbar" -> mc.player.getInventory().selected = Integer.parseInt(s[1]) - 1;
             case "shot" -> { pendingShot = s[1]; wait = 3; }
             case "shotnow" -> { shot(mc, s[1]); LOGGER.info("Lads game qa shot: screenshots/{}.png", s[1]); }
