@@ -9,6 +9,8 @@ net.raphimc.immediatelyfastapi at com.thelads.core.v1_20_1.embedded.immediatelyf
 - The common and Fabric code ship as upstream has them; the Forge build's mixins (ForgeGui HUD batching, Forge text render types,
   Forge's GuiGraphics.drawString and slot highlight) ship too and are the ones applied when Core runs on Forge under Sinytra Connector;
   the WebDisplays compatibility mixin and the Forge mod entrypoint are not included.
+- The renderPlayerHealth/renderVehicleHealth HUD batching hooks of the common MixinInGameHud moved to a Fabric-only mixin
+  (MixinInGameHud_PlayerHealth): Forge's ForgeGui does not call those methods, and Connector re-targets Fabric hooks on them.
 - The mixin plugin also stands the copy down while the original ImmediatelyFast jar is installed (Fabric jar, or the Forge jar under
   Connector), mod checks also see Forge mods, the version string is fixed instead of read from the (absent) mod metadata, the platform
   service is created directly instead of through ServiceLoader, the two uses of the Reflect library are plain reflection, and the

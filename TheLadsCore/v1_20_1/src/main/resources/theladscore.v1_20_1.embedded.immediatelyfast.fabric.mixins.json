@@ -6,6 +6,7 @@
   "plugin": "com.thelads.core.v1_20_1.embedded.immediatelyfast.injection.ImmediatelyFastMixinPlugin",
   "client": [
     "core.MixinRenderLayer",
+    "hud_batching.MixinInGameHud_PlayerHealth",
     "hud_batching.compat.appleskin.MixinAppleSkin_HUDOverlayHandler",
     "hud_batching.consumer.MixinDrawContext",
     "screen_batching.MixinHandledScreen"

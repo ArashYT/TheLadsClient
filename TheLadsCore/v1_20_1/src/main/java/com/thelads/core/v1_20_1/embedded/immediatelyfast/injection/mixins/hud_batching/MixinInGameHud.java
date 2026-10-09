@@ -29,6 +29,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = Gui.class, priority = 1500)
+// The Lads: renderPlayerHealth and renderVehicleHealth moved to fabric/injection/mixins/hud_batching/MixinInGameHud_PlayerHealth. Forge's ForgeGui
+// never calls them (MixinForgeGui batches its split health/armor/food/mount health instead), and Sinytra Connector re-targets
+// Fabric injections into them at ForgeGui's methods, which fails on Gui.
 public abstract class MixinInGameHud {
 
     @InjectAboveEverything
@@ -39,9 +42,7 @@ public abstract class MixinInGameHud {
             "renderHotbar",
             "renderJumpMeter",
             "renderExperienceBar",
-            "renderSelectedItemName",
-            "renderPlayerHealth",
-            "renderVehicleHealth"
+            "renderSelectedItemName"
     }, at = @At("HEAD"))
     private void beginBatching(CallbackInfo ci) {
         if (ImmediatelyFast.runtimeConfig.hud_batching) {
@@ -57,9 +58,7 @@ public abstract class MixinInGameHud {
             "renderHotbar",
             "renderJumpMeter",
             "renderExperienceBar",
-            "renderSelectedItemName",
-            "renderPlayerHealth",
-            "renderVehicleHealth"
+            "renderSelectedItemName"
     }, at = @At("RETURN"))
     private void endBatching(CallbackInfo ci) {
         if (ImmediatelyFast.runtimeConfig.hud_batching) {
