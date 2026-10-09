@@ -70,7 +70,7 @@ public final class EmbeddedMods1201 {
             try {
                 init = Class.forName(entry.initClass()).getMethod("init");
             } catch (ClassNotFoundException absent) {
-                LOGGER.debug("Lads embedded {}: not part of this build", entry.name());
+                LOGGER.info("Lads embedded {}: not part of this 1.20.1 build (the original mod is not installed either, so nothing provides it)", entry.name());
                 continue;
             } catch (ReflectiveOperationException | LinkageError broken) {
                 LOGGER.error("Lads embedded {}: init class is unusable", entry.name(), broken);
