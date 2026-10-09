@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.feature.fastquit.mixin",
+  "plugin": "com.thelads.core.v26_2.feature.fastquit.FastQuitMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ConnectScreenFastQuitMixin",
+    "CreateWorldScreenFastQuitMixin",
+    "DirectoryLockFastQuitMixin",
+    "LevelStorageSourceFastQuitMixin",
+    "LevelSummaryFastQuitMixin",
+    "MinecraftFastQuitMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}
