@@ -9,6 +9,9 @@
     - Forced keybind overrides (-ForceKeybinds)
     - Config patch templates (only with -IncludeConfigTemplates; an empty template changes nothing)
     theladscore.jar is ignored: the launcher keeps every Lads Core in a modpack at its newest bundled build by itself.
+    Server guard: before writing, the removed jars are checked against a status ping of the Zero SMP server
+    (check-server-compat.py, no login). A jar whose mod owns a channel the server requires, or Corgilib / Data Anchor
+    (patch 1.1.1 removed them and nobody could join), stops the script; mods the server merely lists give warnings.
 .EXAMPLE
     .\generate-patch.ps1 -NewVersion 1.0.1 -Description "Adds c2mef, lazyyyyy, crawl-on-demand" `
         -ExtraKeybindDefaults @{ 'key_key.crawlondemand.toggle_crawl' = 'key.keyboard.j' }
@@ -33,7 +36,14 @@ param(
     # url = <base>/<escaped file name> for added jars Modrinth does not host
     [string]$FallbackUrlBase = "",
     [switch]$SkipUrlLookup,
-    [switch]$IncludeConfigTemplates
+    [switch]$IncludeConfigTemplates,
+
+    # Zero SMP server pinged (status only) to guard removals; -SkipServerCheck turns the guard off, -AllowServerConflicts
+    # lets a patch through that the guard rejects (a join test has to prove it first).
+    [string]$ServerHost = "nikzerosmp.my.pebble.host",
+    [int]$ServerPort = 25565,
+    [switch]$SkipServerCheck,
+    [switch]$AllowServerConflicts
 )
 
 Set-StrictMode -Off
@@ -103,6 +113,27 @@ foreach ($name in ($baselineMods.Keys | Sort-Object)) {
 }
 foreach ($name in $ExtraRemoveMods) {
     if ($removeMods -notcontains $name) { $removeMods += $name }
+}
+
+# 1b. Server guard: would the server still let a player with this pack join?
+if ($removeMods.Count -gt 0 -and -not $SkipServerCheck) {
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $python) { $python = Get-Command py -ErrorAction SilentlyContinue }
+    if (-not $python) {
+        Write-Warning "Python not found: the server guard (check-server-compat.py) was skipped. Removed jars: $($removeMods -join ', ')"
+    } else {
+        $guardOutput = & $python.Source -I (Join-Path $PSScriptRoot "check-server-compat.py") $ServerHost $ServerPort `
+            (Join-Path $InstanceGameDir "mods") --remove ($removeMods -join ",") 2>&1
+        $guardExit = $LASTEXITCODE
+        $guardOutput | ForEach-Object { Write-Host "  [server] $_" }
+        if ($guardExit -eq 1 -and -not $AllowServerConflicts) {
+            throw "The patch would remove mods the Zero SMP server needs (see [server] ERROR lines). Fix the removal, or pass -AllowServerConflicts after a join test."
+        } elseif ($guardExit -eq 1) {
+            Write-Warning "Server guard ERRORs ignored (-AllowServerConflicts)."
+        } elseif ($guardExit -ne 0) {
+            Write-Warning "Server guard could not run (exit ${guardExit}: server unreachable?); the removals are unchecked."
+        }
+    }
 }
 
 # 2. Keybinds Diff
