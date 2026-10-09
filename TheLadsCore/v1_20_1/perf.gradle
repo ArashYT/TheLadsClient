@@ -13,4 +13,7 @@ processResources {
     // Same language files and defaults as the 26.x build (one copy in the tree).
     from('../v26_3/src/main/resources/assets/thelads_dynamicfps') { into 'assets/thelads_dynamicfps' }
     from('../v26_3/src/main/resources/licenses/DynamicFPS-LICENSE.txt') { into 'licenses' }
+    // Controlling and Searchables language files (the embedded copies use the original asset namespaces).
+    from('../v26_3/src/main/resources/assets/controlling') { into 'assets/controlling' }
+    from('../v26_3/src/main/resources/assets/searchables') { into 'assets/searchables' }
 }

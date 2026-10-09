@@ -21,7 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * QA probes of the performance features, off unless {@code -Dthelads.perfProbe=<list>} names them (comma separated:
+ * QA probes of the performance features, off unless {@code -Dthelads.perfProbe=<list>} (or the environment variable LADS_PERF_PROBE) names them (comma separated:
  * {@code presence}, {@code dfps}, {@code borderless}). They drive the real module switches, the real window and the real
  * render loop, measure, and log {@code PERF-PROBE ...} lines; nothing is simulated. A QA window is never focused, so the
  * Dynamic FPS state it is in is UNFOCUSED (or HOVERED when the mouse is over it); the probe presses the module's own
@@ -40,13 +40,26 @@ public final class PerfProbe1201 {
     private static boolean presenceDone;
     private static Dfps dfps;
     private static Border border;
+    private static Controls controls;
 
     private PerfProbe1201() {}
 
+    private static String value() {
+        String value = System.getProperty("thelads.perfProbe", System.getenv("LADS_PERF_PROBE"));
+        return value == null ? "" : value.trim().toLowerCase();
+    }
+
+    /** True when any probe is asked for: the passive probes of the embedded mods (counters, self tests) run then. */
+    public static boolean passive() {
+        return !value().isEmpty() && !value().equals("false");
+    }
+
     public static void register() {
-        String value = System.getProperty("thelads.perfProbe");
-        if (value == null || value.isBlank()) return;
-        wanted = Set.copyOf(Arrays.asList(value.toLowerCase().split(",")));
+        String value = value();
+        if (value.isEmpty() || value.equals("false")) return;
+        // "true" or "all" runs every scenario below that does not change the window or the settings screens.
+        if (value.equals("true") || value.equals("all")) value = "presence,dfps";
+        wanted = Set.copyOf(Arrays.asList(value.split(",")));
         LOGGER.info("PERF-PROBE enabled: {}", wanted);
         ClientTickEvents.END_CLIENT_TICK.register(client -> tick(client));
     }
@@ -64,6 +77,10 @@ public final class PerfProbe1201 {
             if (dfps == null) dfps = new Dfps();
             dfps.tick(client, now);
         }
+        if (wanted.contains("controlling")) {
+            if (controls == null) controls = new Controls();
+            controls.tick(client, now);
+        }
         if (wanted.contains("borderless") && (dfps == null || dfps.finished())) {
             if (border == null) border = new Border();
             border.tick(client, now);
@@ -73,6 +90,12 @@ public final class PerfProbe1201 {
     private static void presence() {
         LOGGER.info("PERF-PROBE presence onForge={} underConnector={} fabricLoaderVersion={}", ModPresence1201.onForge(), ModPresence1201.underConnector(),
             FabricLoader.getInstance().getModContainer("fabricloader").map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?"));
+        String title = com.thelads.core.client.discord.DiscordPresence.screen(net.minecraft.client.gui.screens.TitleScreen.class);
+        String options = com.thelads.core.client.discord.DiscordPresence.screen(net.minecraft.client.gui.screens.OptionsScreen.class);
+        String pause = com.thelads.core.client.discord.DiscordPresence.screen(net.minecraft.client.gui.screens.PauseScreen.class);
+        boolean labelsOk = "In the main menu".equals(title) && "In the options".equals(options) && "Paused".equals(pause);
+        LOGGER.info("PERF-PROBE discord screen labels: TitleScreen='{}' OptionsScreen='{}' PauseScreen='{}' (class name here: {}) {}", title, options, pause,
+            net.minecraft.client.gui.screens.TitleScreen.class.getSimpleName(), labelsOk ? "PASS" : "FAIL");
         for (String id : PRESENCE_IDS) {
             boolean fabric = FabricLoader.getInstance().isModLoaded(id);
             String where = ModPresence1201.where(id);
@@ -91,6 +114,7 @@ public final class PerfProbe1201 {
         private long phaseStart;
         private long loops0, rendered0;
         private boolean failed;
+        private double rendered1;
         private final StringBuilder summary = new StringBuilder();
         private int unfocusedTarget = 20;
 
@@ -113,6 +137,8 @@ public final class PerfProbe1201 {
                 if (module.getOption("Mode") instanceof DropdownOption mode) mode.setIndex(0); // Aggressive: no 3 s grace
                 if (module.getOption("Unfocused FPS") instanceof SliderOption slider) slider.setValue(unfocusedTarget);
                 if (module.getOption("Hidden FPS") instanceof SliderOption slider) slider.setValue(10);
+                // A QA window may be hovered by the mouse: make that profile visibly slower than the 60 FPS menu limit too.
+                com.thelads.core.v1_20_1.perf.dynamicfps.config.DynamicFPSConfig.INSTANCE.get(PowerState.HOVERED).setFrameRateTarget(30);
                 begin(1, now);
                 LOGGER.info("PERF-PROBE dfps setup: module enabled, Aggressive, Unfocused FPS {}, vanilla cap {}", unfocusedTarget, client.options.framerateLimit().get());
                 return;
@@ -137,13 +163,14 @@ public final class PerfProbe1201 {
             switch (phase) {
                 case 1 -> { // module on, real window state (never focused in QA)
                     int target = DynamicFPSMod.targetFrameRate();
+                    rendered1 = rendered;
                     ok = state != PowerState.FOCUSED && rendered <= target * 1.3 + 2 && rendered >= target * 0.5;
                     LOGGER.info("PERF-PROBE dfps {} {}", line, ok ? "PASS (throttled to the power state's rate)" : "FAIL");
                     DynamicFPSMod.toggleDisabled(); // the key binding's action
                     begin(2, now);
                 }
                 case 2 -> { // disabled by its key: full speed
-                    ok = state == PowerState.FOCUSED && DynamicFPSMod.isDisabled() && rendered > unfocusedTarget * 1.8;
+                    ok = state == PowerState.FOCUSED && DynamicFPSMod.isDisabled() && rendered > Math.max(unfocusedTarget * 1.8, rendered1 * 1.3);
                     LOGGER.info("PERF-PROBE dfps {} {}", line, ok ? "PASS (full speed while disabled)" : "FAIL");
                     DynamicFPSMod.toggleDisabled();
                     DynamicFPSMod.toggleForceLowFPS();
@@ -157,7 +184,7 @@ public final class PerfProbe1201 {
                     begin(4, now);
                 }
                 default -> { // module off: the engine releases the limit
-                    ok = state == PowerState.FOCUSED && rendered > unfocusedTarget * 1.8;
+                    ok = state == PowerState.FOCUSED && rendered > Math.max(unfocusedTarget * 1.8, rendered1 * 1.3);
                     LOGGER.info("PERF-PROBE dfps {} {}", line, ok ? "PASS (module off, vanilla limit)" : "FAIL");
                     module.setEnabled(true);
                     phase = 5;
@@ -174,6 +201,61 @@ public final class PerfProbe1201 {
             phase = next;
             phaseStart = now;
             phaseStart2 = 0;
+        }
+    }
+
+    // ---------------------------------------------------------------- Controlling
+
+    private static final class Controls {
+        private int step;
+        private long stepStart;
+        private int allRows;
+        private boolean failed;
+
+        void tick(Minecraft client, long now) {
+            if (step >= 5) return;
+            if (!com.thelads.core.v1_20_1.embedded.EmbeddedMods1201.active("controlling")) {
+                LOGGER.info("PERF-PROBE controlling SKIP original Controlling is installed, Lads stands down");
+                step = 5;
+                return;
+            }
+            if (step > 0 && now - stepStart < 1_500_000_000L) return;
+            stepStart = now;
+            switch (step) {
+                case 0 -> {
+                    client.setScreen(new net.minecraft.client.gui.screens.controls.KeyBindsScreen(client.screen, client.options));
+                    step = 1;
+                }
+                case 1 -> {
+                    var screen = client.screen;
+                    boolean ok = screen instanceof com.thelads.core.v1_20_1.embedded.controlling.client.NewKeyBindsScreen;
+                    LOGGER.info("PERF-PROBE controlling screen class {} {}", screen == null ? "none" : screen.getClass().getName(), ok ? "PASS (embedded Controlling replaced the vanilla key binds screen)" : "FAIL");
+                    failed |= !ok;
+                    if (ok) {
+                        var c = (com.thelads.core.v1_20_1.embedded.controlling.client.NewKeyBindsScreen) screen;
+                        allRows = c.keyList().children().size();
+                        int rows = c.probeSearch("forward");
+                        boolean found = rows >= 1 && rows < allRows;
+                        LOGGER.info("PERF-PROBE controlling search all={} forward={} {}", allRows, rows, found ? "PASS (search narrows the list)" : "FAIL");
+                        failed |= !found;
+                        int none = c.probeSearch("name:zzzzzzqq");
+                        LOGGER.info("PERF-PROBE controlling search nomatch rows={} {}", none, none == 0 ? "PASS" : "FAIL");
+                        failed |= none != 0;
+                        c.probeSearch("");
+                        c.probeToggleFree();
+                        int free = c.keyList().children().size();
+                        LOGGER.info("PERF-PROBE controlling free keys rows={} {}", free, free > 1 ? "PASS (free keys list)" : "FAIL");
+                        failed |= free <= 1;
+                    }
+                    step = 2;
+                }
+                case 2 -> {
+                    client.setScreen(null);
+                    step = 5;
+                    LOGGER.info("PERF-PROBE controlling RESULT {}", failed ? "FAIL" : "PASS");
+                }
+                default -> { }
+            }
         }
     }
 
