@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
  * input methods a real mouse and keyboard reach, so a script can open every category, search, click a control and photograph it.
  * <pre>
  * ui open fps|colors|mods|actions   ui module &lt;name&gt;   ui search &lt;text&gt;   ui click &lt;control id&gt;   ui ids [prefix]
- * ui key &lt;glfw code&gt;   ui type &lt;text&gt;   ui scroll &lt;amount&gt;   ui scale &lt;1|2&gt;   ui hud click &lt;control id&gt;   ui hud ids
+ * ui key &lt;glfw code&gt;   ui type &lt;text&gt;   ui scroll &lt;amount&gt;   ui scale &lt;1|2&gt;   ui mouse &lt;x&gt; &lt;y&gt;   ui hover &lt;slot&gt;   ui hud click &lt;control id&gt;   ui hud ids
  * </pre>
  */
 public final class UiQa1201 {
@@ -32,6 +32,26 @@ public final class UiQa1201 {
         if (what.equals("scale")) { // the GUI scale (1 gives a roomy layout in the QA window, 2 the compact one)
             mc.options.guiScale().set(Integer.parseInt(rest));
             mc.resizeDisplay();
+            return true;
+        }
+        if (what.equals("mouse") || what.equals("hover")) { // the pointer a real mouse would be at (GUI pixels), or the centre of a container slot
+            double x, y;
+            if (what.equals("hover")) {
+                if (!(mc.screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> container))
+                    throw new IllegalStateException("ui hover: no container screen open (screen " + mc.screen + ")");
+                var slot = container.getMenu().slots.get(Integer.parseInt(rest));
+                var access = (com.thelads.core.v1_20_1.game.misc.mixin.ContainerAccess1201) container;
+                x = access.lads$leftPos() + slot.x + 8;
+                y = access.lads$topPos() + slot.y + 8;
+            } else {
+                String[] xy = rest.split(" +");
+                x = Double.parseDouble(xy[0]);
+                y = Double.parseDouble(xy[1]);
+            }
+            var window = mc.getWindow();
+            var mouse = (com.thelads.core.v1_20_1.game.misc.mixin.MouseAccess1201) mc.mouseHandler;
+            mouse.lads$xpos(x * window.getScreenWidth() / window.getGuiScaledWidth());
+            mouse.lads$ypos(y * window.getScreenHeight() / window.getGuiScaledHeight());
             return true;
         }
         if (!(mc.screen instanceof LadsSettingsScreen1201 screen)) throw new IllegalStateException("ui: the Lads settings screen is not open (screen " + mc.screen + ")");

@@ -762,6 +762,14 @@ public final class LadsSettingsScreen {
         ConfigManager.save();
         dirty = true;
     }
+    /** QA and tests: the HUD FPS popup's box, then every control in it, as the last frame laid them out (empty while it is closed or not drawn). */
+    public List<Rect> hudFpsDialogRects() {
+        if (!fpsDialogOpen || fpsBox == null) return List.of();
+        List<Rect> rects = new ArrayList<>(List.of(fpsBox, fpsClose, fpsToggle, fpsInput, fpsApply));
+        rects.addAll(Arrays.asList(fpsPresets));
+        rects.addAll(fpsExceptionRects.values());
+        return rects;
+    }
     private static final String[] FPS_EXEMPT_SAMPLE = {"Keystrokes", "CPS", "FPS", "ArmorHUD", "Minimap", "Voice Chat"};
     // The HUD frame rate popup's rectangles as the last render laid them out; clicks use the same ones.
     private Rect fpsBox, fpsClose, fpsToggle, fpsInput, fpsApply;
