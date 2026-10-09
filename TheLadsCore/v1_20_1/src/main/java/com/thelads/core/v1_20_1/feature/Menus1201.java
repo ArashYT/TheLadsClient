@@ -17,6 +17,8 @@ public final class Menus1201 {
         NativeReconnect1201.register();
         com.thelads.core.v1_20_1.feature.screenshots.ScreenshotViewer1201.register();
         MenusQa1201.register();
+        UiQa1201.register();
+        KillBannerQa1201.register();
         LOGGER.info("Lads menus (title, pause, loading, settings) registered for 1.20.1");
     }
 }
