@@ -41,6 +41,7 @@ internal static class ModpackQa
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(25));
         var ct = timeout.Token;
         Process? game = null;
+        QaShared.Slot? slot = null;
         try
         {
             var versions = (await ModrinthModpacks.VersionsAsync(http, project, ct)).Where(v => loader == null || v.Loaders.Contains(loader)).ToList();
@@ -81,7 +82,7 @@ internal static class ModpackQa
             File.WriteAllLines(Path.Combine(evidence, "mods.txt"), Modpacks.Mods(instance).Select(m => (m.Enabled ? "on   " : "off  ") + m.FileName));
 
             var settings = new LauncherSettings { FullscreenOnLaunch = false, MaxRamMb = 4096, MinRamMb = 512, AutoDetectJava = true };
-            var java = new JavaService(new PathService(Path.Combine(verification, "runtime-data")));
+            var java = new JavaService(new PathService(QaShared.RuntimeData));
             var session = AccountIdentity.CreateOfflineSession("LadsQA");
             if (!launch)
             {
@@ -109,11 +110,12 @@ internal static class ModpackQa
                 game = await ModpackLauncher.PrepareAsync(data, instance, session, settings, java, http, Progress(Say), ct);
                 if (game.StartInfo.ArgumentList.Count > 0) game.StartInfo.ArgumentList.Insert(0, "-Dfabric.noGui=true");
                 else game.StartInfo.Arguments = "-Dfabric.noGui=true " + game.StartInfo.Arguments;
+                slot = await QaShared.AcquireAsync(4, "modpack " + project, ct); // at most 3 QA games machine-wide (QaShared)
                 game.Start();
                 instance.LastPlayedUtc = DateTime.UtcNow;
                 Modpacks.Save(instance);
                 Say($"Started PID {game.Id}: {game.StartInfo.FileName}");
-                QaWindowGuard.Watch(game);
+                QaWindowGuard.Watch(game, slot.Number);
                 bool window = false, title = false;
                 TimeSpan titleAt = default;
                 while (started.Elapsed < TimeSpan.FromMinutes(10) && !game.HasExited)
@@ -158,6 +160,7 @@ internal static class ModpackQa
                 game.WaitForExit(30000);
                 Say("Game stopped.");
             }
+            slot?.Dispose();
         }
         Say(failures.Count == 0 ? "PASS" : "FAIL:\n  " + string.Join("\n  ", failures));
         File.WriteAllLines(Path.Combine(evidence, "summary.txt"), summary);

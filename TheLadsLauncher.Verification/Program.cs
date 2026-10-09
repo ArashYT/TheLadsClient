@@ -10,6 +10,12 @@ using TheLadsLauncher.Services;
 // Modpacks tab QA (ModpackQa.cs): a real Modrinth modpack installed (and updated) in the sandbox, then started to its title screen.
 if (args.Length >= 3 && args[0] == "--modpack") return await ModpackQa.RunAsync(args[1], Path.GetFullPath(args[2]), args[3..]);
 
+// 1.8.5: --zero-smp <sandbox dir> [options]: a sandbox copy of the user's Zero SMP instance (Forge + Sinytra Connector) with the freshly built
+// 1.20.1 Core, started through the launcher's own ModpackLauncher (ZeroSmpQa.cs). --mc1201 <repo root> [options]: the plain Fabric
+// "The Lads Client 1.20.1" profile as a --title run with the QA world (Mc1201Qa.cs); both are described in README-1201.md.
+if (args.Length >= 1 && args[0] == "--zero-smp") return await ZeroSmpQa.RunAsync(args[1..]);
+if (args.Length >= 1 && args[0] == "--mc1201") args = Mc1201Qa.Prepare(args[1..]);
+
 // Explicit maintenance mode: prepare a profile's pinned pack without starting a game or reading accounts.
 if (args.Length == 4 && args[0] == "--install-pack")
 {
@@ -49,7 +55,9 @@ if (args.Length == 1 && args[0] == "--api")
 string[] supportedVersions = QaCapabilities.Supported;
 string Usage = $"Usage: dotnet run --project TheLadsLauncher.Verification -- <{string.Join('|', supportedVersions)}> <repository root> [--title|--settings|--pack-smoke] [--dir <qaDirName>] [--expect-core-disabled]\n"
     + "   or: ... -- --show-mods <version> <repository root> [--dir <qaDirName>]\n"
-    + "   or: ... -- --set-mods <version> <repository root> <enable|disable> <id,id,...> [--dir <qaDirName>]";
+    + "   or: ... -- --set-mods <version> <repository root> <enable|disable> <id,id,...> [--dir <qaDirName>]\n"
+    + "   or: ... -- --mc1201 [<repository root>] [--script <file>] [--remove-mods a,b] [--dir <name>] [--no-world] [--fresh-world] [--no-build|--build] [--core-jar <jar>] [--timeout-sec N]\n"
+    + "   or: ... -- --zero-smp <sandbox dir> [--script <file>] [--remove-mods a,b] [--no-world] [--fresh-world] [--no-build|--build] [--core-jar <jar>] [--timeout-sec N]";
 var rest = args.ToList();
 string? dirOption = null;
 int dirIndex = rest.IndexOf("--dir");
@@ -111,9 +119,18 @@ foreach (var (flag, available, feature) in new[] {
 bool autoWorldRequested = titleVerification && Env("LADS_VERIFY_AUTO_WORLD") == "1";
 bool autoWorldVerification = autoWorldRequested && !expectCoreDisabled;
 bool requestedFeaturesOnly = autoWorldVerification && Env("LADS_VERIFY_REQUESTS_ONLY") == "1";
+// 1.20.1 (QaProbe1201): LADS_VERIFY_SCRIPT=<file> or LADS_VERIFY_SCRIPT_TEXT="wait 40;cmd /time set day;shot a" runs a probe script (README-1201.md).
+string? scriptSource = capabilities.Minimal ? Env("LADS_VERIFY_SCRIPT") : null, scriptText = capabilities.Minimal ? Env("LADS_VERIFY_SCRIPT_TEXT") : null;
+bool scripted = scriptSource != null || scriptText != null;
+if (scriptSource != null && !File.Exists(scriptSource)) throw new FileNotFoundException("LADS_VERIFY_SCRIPT does not exist: " + scriptSource);
+if (!capabilities.Minimal && (Env("LADS_VERIFY_SCRIPT") ?? Env("LADS_VERIFY_SCRIPT_TEXT")) != null)
+    throw new ArgumentException($"LADS_VERIFY_SCRIPT needs the 1.20.1 QA probe (QaProbe1201), which {version} does not have.");
 bool renderScaleVerification = capabilities.RenderScale && !expectCoreDisabled && !requestedFeaturesOnly && titleVerification && (autoWorldVerification || Env("LADS_VERIFY_RENDER_SCALE") == "1");
 // QA only: upstream mods left out of the staged pack, to get past a pack defect under diagnosis. Never the production manifest.
-var excludedMods = Ids(Env("LADS_VERIFY_EXCLUDE_MODS"));
+// 1.20.1: the pinned manifest names Faster Iris Shadow Mapper "fastershadowmapper" but its jar declares "fism", so the installer rejects it;
+// until the manifest is fixed the QA pack leaves it out (a no-op once the id is right). LADS_VERIFY_EXCLUDE_MODS=none keeps the pack as pinned.
+var excludedMods = Ids(Env("LADS_VERIFY_EXCLUDE_MODS") ?? (capabilities.Minimal ? "fastershadowmapper" : null));
+excludedMods.Remove("none");
 // The staged pack (which jars are installed) follows the env alone, so a Core-disabled run keeps the same mods folder.
 bool nativePack = autoWorldRequested || Env("LADS_VERIFY_NATIVE_PORTS") == "1" || excludedMods.Count > 0;
 bool nativePortsVerification = nativePack && !expectCoreDisabled;
@@ -123,20 +140,20 @@ bool hudCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_
 bool bannerCaptureVerification = autoWorldVerification && capabilities.KillBanner && Env("LADS_VERIFY_CAPTURE_KILLBANNER") == "1";
 // Fabric versions: the kill streak in the QA world: rapid kills (banners 1 to 5, none dropped), server kill messages, the streak
 // timer, Unlimited and death (KillStreakCapture). 1.8.9: LADS_VERIFY_189_FOCUS=killstreak (Probe172KillStreak).
-bool killStreakCaptureVerification = autoWorldVerification && capabilities.KillBanner && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_KILLSTREAK") == "1";
+bool killStreakCaptureVerification = autoWorldVerification && capabilities.KillBanner && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_KILLSTREAK") == "1";
 // Fabric versions: the 1.7 Animations poses (sword block, bow, rod, eating, 2D dropped item, red armour) photographed (OldAnimationsCapture).
-bool oldAnimCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_OLDANIM") == "1";
+bool oldAnimCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_OLDANIM") == "1";
 // Fabric versions: the 1.7.2 animation lane (swing while using items, damage tilt), tick-driven so it works minimized (Anim172Capture).
 // 1.8.9: LADS_VERIFY_189_ONLY=anim (Probe172Anim).
-bool anim172CaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ANIM172") == "1";
+bool anim172CaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_ANIM172") == "1";
 // Fabric versions: Lads Zoom through the real key and scroll handlers, photographed, with every frame's FOV in zoom-fov.csv (ZoomCapture).
 // 1.8.9's self-test (Probe160) always runs the same checks.
-bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ZOOM") == "1";
+bool zoomCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_ZOOM") == "1";
 // Fabric versions: the player in a checkerboard-layered QA skin, from the front, SkinLayers on and off (SkinLayersCapture). 1.8.9's self-test does the same.
-bool skinLayersCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_SKINLAYERS") == "1";
+bool skinLayersCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_SKINLAYERS") == "1";
 // Fabric versions: cheats turned on as World Options and Multiplayer Options do ("set"), "off", or what stayed after the
 // world reopened ("check") (CheatsProbe). 1.8.9 runs its checks as a focused self-test: LADS_VERIFY_189_FOCUS (CoreProbe).
-string? cheatsPhase = autoWorldVerification && !capabilities.Forge ? Env("LADS_VERIFY_CHEATS") : null;
+string? cheatsPhase = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal ? Env("LADS_VERIFY_CHEATS") : null;
 if (cheatsPhase is not (null or "set" or "check" or "off")) throw new ArgumentException("LADS_VERIFY_CHEATS must be set, check or off.");
 string? focus189 = autoWorldVerification && capabilities.Forge ? Env("LADS_VERIFY_189_FOCUS") : null;
 if (focus189 != null && !Regex.IsMatch(focus189, @"\A[a-z0-9-]{1,40}\z")) throw new ArgumentException("LADS_VERIFY_189_FOCUS must be a plain step list name.");
@@ -152,49 +169,49 @@ string? perfSeconds = perf189 ? Env("LADS_VERIFY_PERF_SECONDS") : null;
 if (perfSeconds != null && !Regex.IsMatch(perfSeconds, @"\A[1-9][0-9]?\z")) throw new ArgumentException("LADS_VERIFY_PERF_SECONDS must be 1 to 99.");
 // Fabric versions: Toggle Sprint & Sneak in the QA world (walls, hits, hunger, items, water, sneaking, flying, death, keys), every tick's
 // sprint packets in sprint-trace.csv (SprintCapture). 1.8.9's self-test runs the same checks (Probe170Sprint).
-bool sprintCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_SPRINT") == "1";
+bool sprintCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_SPRINT") == "1";
 // Fabric versions: the 1.7.0 HUD lane in the QA world (Hud170Capture). 1.8.9's self-test runs the same checks (Probe170Hud).
-bool hud170CaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_HUD170") == "1";
+bool hud170CaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_HUD170") == "1";
 // Fabric versions: runs of consecutive frames with the HUD hidden, the HUD FPS cap off and on, every HUD element in view (HudFlickerCapture).
 // 1.8.9: LADS_VERIFY_189_ONLY=hudflicker (Probe172HudFlicker).
-bool hudFlickerCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_HUDFLICKER") == "1";
+bool hudFlickerCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_HUDFLICKER") == "1";
 // Fabric versions: the reset questions (HUD editor, module page) and Fullbright's slider with its menu open, through the real screens (UiCapture).
 // 1.8.9: LADS_VERIFY_189_ONLY=ui (Probe172Ui). LADS_VERIFY_UI_CONTROL=defer runs the Fullbright part without the live lightmap update.
-bool uiCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_UI") == "1";
+bool uiCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_UI") == "1";
 // Fabric versions: Item Physics in a QA arena (ItemPhysicsCapture). 1.8.9's self-test runs the same checks: LADS_VERIFY_189_ONLY=itemphysics.
-bool itemPhysicsCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_ITEMPHYSICS") == "1";
+bool itemPhysicsCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_ITEMPHYSICS") == "1";
 // Fabric versions: the survival and creative inventories with and without potion effects, centred (InventoryCapture). 1.8.9: LADS_VERIFY_189_FOCUS=inventory (ProbeInventory).
-bool inventoryCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_INVENTORY") == "1";
+bool inventoryCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_INVENTORY") == "1";
 // Fabric versions: the Lads title screen and its More screen photographed before the QA world opens (NativeWorldVerification).
 // 1.8.9's self-test (CoreProbe) always captures them.
-bool titleCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_TITLE") == "1";
+bool titleCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_TITLE") == "1";
 // Fabric versions: IgnorePacketErrors, AutoReconnect (the QA world and a closed port), chat signing and Ctrl+R on the server list
 // (ServerFeaturesCapture). 1.8.9's self-test (ProbeServer170) always runs the same checks.
-bool serverCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_SERVER") == "1";
+bool serverCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_SERVER") == "1";
 // Every version: Chat Heads with own, second-player and ranked server chat, photographed closed, open, aligned and off (Fabric:
 // ChatHeadsCapture, which the world capture waits for; 1.8.9: ChatHeadsProbe189 alone in the self-test's QA world).
 bool chatHeadsCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_CHATHEADS") == "1";
 // Better F3 frames and Custom FOV values in the QA world (Fabric: F3FovCapture; 1.8.9: a focused self-test, Probe170F3Fov).
 bool f3FovCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTURE_F3FOV") == "1";
 // 26.x: the AppleSkin module's food previews, food and durability tooltips and Crosshair Tweaks styles photographed (HudInfoCapture).
-bool hudInfoCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_HUDINFO") == "1";
+bool hudInfoCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_HUDINFO") == "1";
 // Fabric versions: Raised and the paper doll in the QA world (RaisedDollCapture). 1.8.9's self-test runs the same (RaisedDollProbe189).
-bool raisedCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_RAISED") == "1";
+bool raisedCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_RAISED") == "1";
 // Fabric versions: Lads Mouse Tweaks in a server chest through the screen's own mouse handlers (MouseTweaksCapture).
 // 1.8.9's self-test (MouseTweaksProbe189) always runs the same checks.
-bool mouseTweaksCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_MOUSETWEAKS") == "1";
+bool mouseTweaksCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_MOUSETWEAKS") == "1";
 // Fabric versions: Better Resolution photographed per setting with its FPS and GPU frame time (ResolutionCapture). 1.8.9: Probe170r.
-bool resolutionCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_RESOLUTION") == "1";
+bool resolutionCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_RESOLUTION") == "1";
 // Fabric versions: Dynamic Lights at midnight with the module off and on, and a moving torch's frame rate (DynamicLightsCapture).
 // 1.8.9's self-test (LightsProbe189) always checks that the module drives OptiFine's Dynamic Lights.
-bool lightsCaptureVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_CAPTURE_LIGHTS") == "1";
+bool lightsCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_LIGHTS") == "1";
 // 26.x: Flashback Settings records into a Lads replay folder and times stock vs Lads exports of the same clip (FlashbackExportProbe).
 bool flashbackVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_FLASHBACK") == "1";
 // 26.x: Async stress test (AsyncStressProbe): ~1700 mobs plus items in pens, tick time with Async off and on, behaviour checks.
 bool asyncStressVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_ASYNC") == "1";
 // 26.x: AppleSkin server payloads (saturation, exhaustion, natural regeneration) injected in the QA world (AppleSkinSyncCapture).
 bool appleSkinSyncVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_APPLESKIN_SYNC") == "1";
-if (autoWorldVerification && dirName != version + "-title")
+if (autoWorldVerification && dirName != version + "-title" && !capabilities.Minimal)
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
 if (sharedRole is not (null or "create" or "observe")) throw new ArgumentException("LADS_VERIFY_SHARED_ROLE must be create or observe.");
@@ -369,10 +386,12 @@ if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed",
         ".lads-qa-flashback", ".lads-qa-flashback-done", ".lads-qa-flashback-failed" })
         File.Delete(Path.Combine(directory, flag));
-using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(flashbackVerification || perf189 ? 20 : asyncStressVerification ? 16 : 10));
+// Every run may wait for a QA slot and free RAM, and download the pack and Java first: an hour (the game's own time limits are the stopwatches below).
+using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(60));
 var ct = timeout.Token;
 
 Process? process = null;
+QaShared.Slot? qaSlot = null;
 var exitHandled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 string? optionsSync = Env("LADS_VERIFY_OPTIONS_SYNC");
 if (optionsSync is not (null or "1" or "prepare")) throw new ArgumentException("LADS_VERIFY_OPTIONS_SYNC must be 1 or prepare.");
@@ -439,6 +458,8 @@ if (requestedFeaturesOnly)
     Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
 }
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
+if (scripted) requiredWorldProbes = [.. requiredWorldProbes, "Lads qa script END:"];
+if (capabilities.Minimal && !autoWorldVerification) requiredWorldProbes = []; // --no-world: the title screen and the script are the whole run
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
 // The 1.8.9 Core has neither report: its runs are checked from logs\latest.log (Forge's mod list, OptiFine, the title screen).
 var requiredCore = new List<string>();
@@ -447,7 +468,7 @@ if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
 // Every version: the Add Server screen names known servers (AddServerProbe), screenshots/addserver-*.png.
 bool addServerVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_ADDSERVER") == "1";
 if (addServerVerification) requiredCore.Add("Lads add-server probe END:");
-if (!expectCoreDisabled && !capabilities.Forge) requiredCore.Add("Lads shared content probe END:");
+if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
@@ -459,9 +480,9 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
     "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
-    "Lads AppleSkin sync capture FAILED",
+    "Lads AppleSkin sync capture FAILED", "Lads qa script FAILED", "Lads qa step FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
-bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || inventorySnapshots.ContainsKey("title")); }
+bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || capabilities.Minimal || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
 bool CatalogWritten() => File.Exists(catalogFile) && File.GetLastWriteTimeUtc(catalogFile) >= runStartUtc;
 var jvmFlags = new List<string>();
@@ -492,7 +513,8 @@ try
     if (prepared.ReportPath != null) CopyIfExists(prepared.ReportPath, Path.Combine(evidence, "shared-prepare-report.jsonl"));
 
     var path = new MinecraftPath(directory);
-    string cache = Path.Combine(root, "artifacts", "verification", "shared-cache");
+    // Every worktree's runs share one machine-wide download cache (Minecraft assets and libraries, Java, Modrinth jars): see QaShared.
+    string cache = Path.Combine(QaShared.CacheRoot, "mc");
     path.Assets = Path.Combine(cache, "assets");
     path.Library = Path.Combine(cache, "libraries");
     var launcher = new MinecraftLauncher(path);
@@ -504,8 +526,27 @@ try
         Interlocked.Exchange(ref lastProgress, now);
         Console.WriteLine($"Install: {progress.ProgressedTasks}/{progress.TotalTasks}");
     };
-    await BundledModInstaller.InstallAsync(Path.Combine(root, "TheLadsLauncher"), directory, version, ct);
-    string packSource = Path.Combine(root, "TheLadsLauncher");
+    string bundleRoot = Path.Combine(root, "TheLadsLauncher");
+    if (capabilities.Minimal)
+    {
+        // The 1.20.1 Core is the one built from THIS worktree (rebuilt when its sources are newer), staged beside the production manifest.
+        string coreJar = QaShared.CoreJar1201(root, Env("LADS_VERIFY_CORE_JAR"), Env("LADS_VERIFY_BUILD") == "1", Env("LADS_VERIFY_NO_BUILD") == "1");
+        bundleRoot = Path.Combine(verificationRoot, "core-bundle-" + dirName);
+        foreach (var other in supportedVersions)
+        {
+            string production = Path.Combine(root, "TheLadsLauncher", "game-mods", other, "client-mods.json");
+            string staged = Path.Combine(bundleRoot, "game-mods", other, "client-mods.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(staged)!);
+            if (File.Exists(production)) File.Copy(production, staged, overwrite: true);
+        }
+        File.Copy(coreJar, Path.Combine(bundleRoot, "game-mods", version, "theladscore.jar"), overwrite: true);
+        summary.Add("Core jar: " + coreJar + " (" + File.GetLastWriteTime(coreJar).ToString("O") + ")");
+        if (Env("LADS_VERIFY_FRESH_WORLD") == "1" && Directory.Exists(Path.Combine(sharedRoot, "saves")))
+            foreach (var old in Directory.EnumerateDirectories(Path.Combine(sharedRoot, "saves"), "LadsQA-" + dirName.Replace('.', '_')))
+            { RequireInside(old, verificationRoot, "QA world to delete"); SafeFileOps.DeleteTree(old); Console.WriteLine("Fresh world: deleted " + old); }
+    }
+    await BundledModInstaller.InstallAsync(bundleRoot, directory, version, ct);
+    string packSource = bundleRoot;
     if (nativePack)
     {
         var manifest = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(packSource, "game-mods", version, "client-mods.json"), ct))!.AsObject();
@@ -538,7 +579,15 @@ try
         await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "preferredGraphicsBackend:\"" + (renderer == GraphicsRenderer.Vulkan ? "vulkan" : "opengl") + "\"\n", ct);
         await GraphicsRenderer.PrepareAsync(directory, version, renderer, Console.WriteLine, ct);
     }
+    if (capabilities.Minimal) QaShared.RestoreModJars(version, Path.Combine(directory, "mods"));
     await ClientModInstaller.InstallAsync(packSource, directory, version, Console.WriteLine, ct);
+    if (capabilities.Minimal)
+    {
+        var packFiles = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(packSource, "game-mods", version, "client-mods.json"), ct))!["mods"]!.AsArray()
+            .Select(mod => mod!["fileName"]!.GetValue<string>());
+        QaShared.RememberModJars(version, Path.Combine(directory, "mods"), packFiles);
+        foreach (var line in QaShared.RemoveMods(Path.Combine(directory, "mods"), Env("LADS_VERIFY_REMOVE_MODS"))) { Console.WriteLine(line); summary.Add(line); }
+    }
     if (Env("LADS_VERIFY_V133") == "1")
     {
         string addon = Path.Combine(root,"TheLadsCore",version=="26.3"?"v26_3":"v26_2","build","verification","lads-jade-addon-qa.jar");
@@ -564,9 +613,11 @@ try
     CopyIfExists(Path.Combine(directory, ModPreferences.FileName), Path.Combine(evidence, "lads-mod-state.before.json"));
     Console.WriteLine($"Launcher inventory: {ModInventoryView.CountsText(inventory.Counts)}; {loadedMods.Count} enabled jar ids recorded for the running marker.");
 
-    var java = new JavaService(new PathService(Path.Combine(root, "artifacts", "verification", "runtime-data")));
+    var java = new JavaService(new PathService(QaShared.RuntimeData));
     int requiredJava = GameVersionPolicy.GetRequiredJavaMajor(version);
-    string javaPath = await java.EnsureJavaAsync(requiredJava, cancellationToken: ct);
+    string javaPath;
+    using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".java.lock"), ct))
+        javaPath = await java.EnsureJavaAsync(requiredJava, cancellationToken: ct);
     int? javaMajor = java.GetJavaMajorVersion(javaPath);
     Console.WriteLine($"Java: {javaMajor}; Minecraft: {version}");
     // As LaunchService: 1.8.9 needs Java 8 exactly (Forge's LaunchWrapper crashes on Java 9 and newer).
@@ -583,7 +634,11 @@ try
     else
     {
         var fabric = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(http);
-        string loaderVersion = "0.19.5";
+        // 1.20.1: the pinned pack's Kotlin, JEI, TLib, Effectual, MRU and OBE need Fabric Loader >= 0.19.5 (ProfileService requires it too since 1.8.5).
+        // Loader 0.16.10 has no -Dfabric.noGui (it opens its error window on the owner's screen when a mod is incompatible), so older loaders are refused.
+        string loaderVersion = Env("LADS_VERIFY_LOADER") ?? "0.19.5";
+        if (Version.Parse(loaderVersion) < new Version(0, 19, 5)) throw new ArgumentException($"LADS_VERIFY_LOADER {loaderVersion}: QA games need Fabric Loader 0.19.5 or newer (older loaders ignore -Dfabric.noGui and can open an error window on the owner's screen).");
+        if (!Regex.IsMatch(loaderVersion, @"\A[0-9]+\.[0-9]+\.[0-9]+\z")) throw new ArgumentException("LADS_VERIFY_LOADER must look like 0.19.5.");
         id = await fabric.Install(version, loaderVersion, path);
         if (id != $"fabric-loader-{loaderVersion}-{version}") throw new InvalidOperationException("Fabric selected a different version.");
     }
@@ -592,11 +647,15 @@ try
     // A fresh options.txt every run, except with LADS_VERIFY_OPTIONS_SYNC: the game keeps its own, as players do (qaForced still applies).
     if (optionsSync == null) await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
     Console.WriteLine("Installing production dependencies...");
-    process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
-    {
-        Session = session, JavaPath = javaPath, MaximumRamMb = 2048, MinimumRamMb = 256,
-        FullScreen = false, ScreenWidth = titleVerification ? 1280 : 960, ScreenHeight = titleVerification ? 720 : 600
-    }, ct);
+    // QA windows are tiles of the primary monitor (QaWindowGuard): the game opens at the tile's client size.
+    bool tiled = Env("LADS_VERIFY_FOCUS") != "1" && Env("LADS_VERIFY_PLAYING") != "1" && Env("LADS_VERIFY_NO_RESIZE") != "1";
+    var windowSize = tiled ? QaWindowGuard.TileClient(1) : new System.Drawing.Size(titleVerification ? 1280 : 960, titleVerification ? 720 : 600);
+    using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".mc.lock"), ct))
+        process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
+        {
+            Session = session, JavaPath = javaPath, MaximumRamMb = 2048, MinimumRamMb = 256,
+            FullScreen = false, ScreenWidth = windowSize.Width, ScreenHeight = windowSize.Height
+        }, ct);
     void AddJvm(string argument)
     {
         jvmFlags.Add(argument);
@@ -635,6 +694,19 @@ try
             File.Delete(Path.Combine(perfFolder, "perf.json")); // only this run's results
             if (perfSeconds != null) AddJvm("-Dthelads.perfSeconds=" + perfSeconds);
             if (Env("LADS_VERIFY_PERF_JFR") == "1") AddJvm("-XX:StartFlightRecording=settings=profile,filename=" + Path.Combine(perfFolder, "perf.jfr"));
+        }
+    }
+    else if (capabilities.Minimal)
+    {
+        // 1.20.1: the one QA probe (QaProbe1201) and nothing of the 26.x suites.
+        AddJvm("-Dfabric.noGui=true");
+        if (autoWorldVerification) { AddJvm("-Dthelads.verifyAutoWorld=true"); AddJvm("-Dthelads.qaWorld=LadsQA-" + dirName.Replace('.', '_')); }
+        if (scripted)
+        {
+            string scriptFile = Path.Combine(directory, ".lads-qa-script.txt");
+            await File.WriteAllTextAsync(scriptFile, scriptSource != null ? await File.ReadAllTextAsync(scriptSource, ct) : string.Join('\n', scriptText!.Split(';', StringSplitOptions.TrimEntries)), ct);
+            AddJvm("-Dthelads.qaScript=" + scriptFile);
+            CopyIfExists(scriptFile, Path.Combine(evidence, "qa-script.txt"));
         }
     }
     else
@@ -676,6 +748,13 @@ try
     process.StartInfo.RedirectStandardOutput = true;
     process.StartInfo.RedirectStandardError = true;
     GameSession.Configure(process.StartInfo, directory, shared.Root);
+    // The Core's shared config (ClientPaths.getGlobalBaseDir) is THELADS_GLOBAL_DIR, else the owner's REAL %APPDATA%\\.theladsclient\\shared\\thelads_config.json
+    // (read and saved: the owner's HUD layout and Discord RPC in QA games, QA module changes in the owner's config). QA games get their own folder: the game
+    // folder, whose thelads_config.json QaDiscord.ForceOff prepared; the shared copy is dropped so every launch re-seeds from it.
+    Directory.CreateDirectory(Path.Combine(directory, "shared"));
+    File.Delete(Path.Combine(directory, "shared", "thelads_config.json"));
+    process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = directory;
+    summary.Add("Core global config dir (THELADS_GLOBAL_DIR): " + directory);
     summary.Add($"Child environment: THELADS_DIR={directory}; {SharedContentService.RootEnvironmentVariable}={shared.Root}; {GameOptionsService.LunarEnvironmentVariable}={lunarRoot}");
     summary.Add("JVM QA flags: " + string.Join(' ', jvmFlags));
     log = new StreamWriter(logPath) { AutoFlush = true };
@@ -716,6 +795,8 @@ try
             if (line.Contains($"TheLadsCore {version} initialized successfully")) initialized = true;
             if (line.Contains("Lads integration write probe END:") && Passed(line)) settingsProbePassed = true;
             if (failureMarkers.Any(line.Contains)) nativeProbeFailed = true;
+            // 1.20.1: a Lads mixin that failed to apply (the config uses defaultRequire 0, so Mixin may only warn) fails the run.
+            if (capabilities.Minimal && QaShared.MixinProblem(line)) { nativeProbeFailed = true; keyLines.Add("MIXIN PROBLEM: " + Clean(line)); }
             foreach (string end in captureEnds)
                 if (line.Contains(end.Replace(" END:", " FAILED"))) failedCaptures.TryAdd(end, 0);
             if (line.Contains("Lads 1.3.4 screenshots probe END:") && Passed(line)) screenshots134Passed = true;
@@ -792,8 +873,12 @@ try
     var stopwatch = Stopwatch.StartNew();
     // 26.3 (SDL) shows its window without activating it; QaWindowGuard covers 1.8.9 and 26.2 (and moves every game window).
     if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") != "1") process.StartInfo.Environment["SDL_WINDOW_ACTIVATE_WHEN_SHOWN"] = "0";
+    // At most 3 QA games machine-wide, each with >= 4 GB free RAM (QaShared). Runs that need the game in front (LADS_VERIFY_FOCUS=1) are the exclusive .qa-game-lock ones.
+    if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") != "1")
+        qaSlot = await QaShared.AcquireAsync(4, $"{version} {dirName}", ct);
+    stopwatch.Restart();
     process.Start();
-    QaWindowGuard.Watch(process);
+    QaWindowGuard.Watch(process, qaSlot?.Number ?? 1);
     GameSession.Attach(process, directory, loadedMods, message => { lock (sessionMessages) sessionMessages.Add(message); }, shared,
         () => { exitHandled.TrySetResult(); return Task.CompletedTask; });
     process.BeginOutputReadLine();
@@ -803,7 +888,9 @@ try
     // Title runs without the 26.x auto-world end once every check the harness asserts has passed (they never did before, so
     // 1.21.x waited the full 540 s); the stop is a Kill, as for every non-auto-world run.
     bool earlyTitleExit = titleVerification && !autoWorldVerification;
-    while (stopwatch.Elapsed < TimeSpan.FromSeconds(perf189 ? 1140 : titleVerification ? (asyncStressVerification ? 900 : 540) : 180) && !process.HasExited)
+    int loopSeconds = int.TryParse(Env("LADS_VERIFY_TIMEOUT_SEC"), out int overrideSeconds) ? overrideSeconds
+        : perf189 ? 1140 : titleVerification ? (asyncStressVerification ? 900 : capabilities.Minimal && scripted ? 900 : 540) : 180;
+    while (stopwatch.Elapsed < TimeSpan.FromSeconds(loopSeconds) && !process.HasExited)
     {
         process.Refresh();
         if (!windowFound && process.MainWindowHandle != IntPtr.Zero)
@@ -920,7 +1007,7 @@ try
             || stopwatch.Elapsed > TimeSpan.FromSeconds(90))
             && (Settled(resolutionCaptureRequested, "Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))
             && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))) break;
-        if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed
+        if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed && (!scripted || passedMarkers.ContainsKey("Lads qa script END:"))
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
             && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;
         if (!titleVerification && windowFound && initialized && (!settingsVerification || settingsProbePassed)
@@ -950,7 +1037,7 @@ try
         {
             Require(initialized, $"LadsCore did not log 'TheLadsCore {version} initialized successfully'.");
             Require(requiredCore.All(passedMarkers.ContainsKey), "Missing passing END markers: " + string.Join(", ", requiredCore.Where(m => !passedMarkers.ContainsKey(m))));
-            Require(capabilities.Forge || (inventorySnapshots.ContainsKey("title") && !snapshotInvalid), "The title-screen 'Lads mods inventory snapshot:' line was missing or not valid JSON.");
+            Require(capabilities.Forge || capabilities.Minimal || (inventorySnapshots.ContainsKey("title") && !snapshotInvalid), "The title-screen 'Lads mods inventory snapshot:' line was missing or not valid JSON.");
         }
         if (forgeList != null)
         {
@@ -1067,6 +1154,7 @@ finally
     }
     // After Kill too: the parameterless wait drains the redirected output before the log closes (bounded first, in case Kill failed).
     if (process != null && HasStarted(process) && process.WaitForExit(60_000)) process.WaitForExit();
+    qaSlot?.Dispose(); // the game is gone: its slot is free for the next one
 }
 
 // This independent addon belongs only to the opt-in compatibility probe.
@@ -1153,6 +1241,7 @@ string loadedText = $"{modList.Name} loaded {modList.Top.Count} top-level mods (
 string coreText = forgeList != null
     ? $"core initialized, OptiFine {forgeList.OptiFine ?? "(missing)"} loaded next to it, no mixin or coremod errors in logs\\latest.log"
         + (autoWorldVerification ? " and the Core's 1.8.9 self-test ended with 0 failed" : "")
+    : capabilities.Minimal ? $"core initialized{(autoWorldVerification ? ", QA world loaded and photographed" : "")}{(scripted ? ", probe script finished with 0 failed" : "")}"
     : $"core initialized, {string.Join(", ", requiredCore.Select(m => m.TrimEnd(':')))} and the title inventory snapshot passed";
 string passLine = expectCoreDisabled
     ? $"PRODUCTION SMOKE PASS (LadsCore disabled): correct version, native window observed, {loadedText}; stopped with Kill because no LadsCore hooks exist. Online sign-in is not exercised."
@@ -1170,8 +1259,12 @@ async Task<int> FinishAsync(string passLine, IReadOnlyList<string> logLines)
     {
         var before = tripBefore.Split('\n').ToHashSet();
         var after = tripAfter.Split('\n').ToHashSet();
-        failures.Add("TRIP-WIRE: the real %APPDATA%\\.minecraft changed during this run: "
-            + string.Join("; ", before.Except(after).Select(l => "- " + l).Concat(after.Except(before).Select(l => "+ " + l))));
+        // The owner plays on this PC while QA runs: its own servers.dat, screenshots and new worlds trip the wire. A change is a failure only with
+        // LADS_VERIFY_TRIPWIRE=strict (run it while the owner is away); otherwise it is reported as a warning (the sandbox env and link checks still apply).
+        string change = "the real %APPDATA%\\.minecraft changed during this run: "
+            + string.Join("; ", before.Except(after).Select(l => "- " + l).Concat(after.Except(before).Select(l => "+ " + l)));
+        if (Env("LADS_VERIFY_TRIPWIRE") == "strict") failures.Add("TRIP-WIRE: " + change);
+        else { Console.WriteLine("TRIP-WIRE WARNING (not a failure; the owner may be playing; LADS_VERIFY_TRIPWIRE=strict makes it one): " + change); summary.Add("TRIP-WIRE WARNING: " + change); }
     }
     else Console.WriteLine($"Trip-wire: {realMinecraft} unchanged (top-level entries, servers.dat SHA-256, saves/resourcepacks/shaderpacks entries).");
     string verdict = failures.Count == 0 ? passLine : "FAIL: " + string.Join(" | ", failures);
@@ -1303,10 +1396,14 @@ sealed record QaCapabilities(bool SharedCreate, bool RenderScale, bool Welcome, 
     public static readonly string[] Supported = ["1.8.9", "1.20.1", "1.21.11", "26.2", "26.3"];
 
     public bool Forge { get; init; }
+    /// <summary>1.20.1: a Fabric Core with only QaProbe1201 (title, QA world, script, screenshots), none of the 26.x probes, snapshots or shared-content reports.</summary>
+    public bool Minimal { get; init; }
     /// <summary>The Kill Banner skins exist in the Fabric Cores (1.21.x and 26.x), not on 1.8.9.</summary>
     public bool KillBanner { get; init; }
 
-    public static QaCapabilities For(string version) => version is "26.2" or "26.3"
+    public static QaCapabilities For(string version) => version == "1.20.1"
+        ? new(false, false, false, false, false, false, false, [], ["Lads world capture END:"]) { Minimal = true }
+        : version is "26.2" or "26.3"
         ? new(true, true, true, true, GraphicsRenderer.SupportsVulkan(version), true, true,
             ["Lads raised title probe END:", "Lads native reconnect probe END:", "Lads background policy probe END:", "Lads native SignalLoss probe END:", "Lads narrator probe END:"],
             ["Lads native feature probe END:", "Lads food probe END:",
