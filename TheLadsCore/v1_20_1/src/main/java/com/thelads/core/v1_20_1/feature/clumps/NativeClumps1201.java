@@ -44,7 +44,33 @@ public final class NativeClumps1201 {
         ModuleSupport.registerBuiltIn("Clumps");
         ClientTickEvents.END_CLIENT_TICK.register(client -> refresh());
         NativeClumpsProbe1201.initialize();
+        installForgePickupEvent();
         LOGGER.info("Clumps: Lads' own XP orb merging is active in singleplayer and LAN worlds");
+    }
+
+    /**
+     * Under Forge (Connector) other mods listen to Forge's PlayerXpEvent.PickupXp; Lads' pickup replaces the vanilla method that
+     * posts it, so it posts the event itself (reflection, no Forge compile dependency). A cancelled event means the pickup is vetoed.
+     */
+    private static void installForgePickupEvent() {
+        if (!ModPresence1201.onForge()) return;
+        try {
+            Class<?> eventType = Class.forName("net.minecraftforge.event.entity.player.PlayerXpEvent$PickupXp");
+            java.lang.reflect.Constructor<?> constructor = eventType.getConstructor(Player.class, ExperienceOrb.class);
+            Object bus = Class.forName("net.minecraftforge.common.MinecraftForge").getField("EVENT_BUS").get(null);
+            java.lang.reflect.Method post = bus.getClass().getMethod("post", Class.forName("net.minecraftforge.eventbus.api.Event"));
+            post.setAccessible(true);
+            pickupEvent = (player, orb) -> {
+                try {
+                    return Boolean.TRUE.equals(post.invoke(bus, constructor.newInstance(player, orb)));
+                } catch (ReflectiveOperationException | RuntimeException failure) {
+                    return false;
+                }
+            };
+            LOGGER.info("Clumps: Forge's XP pickup event is posted for orbs Lads picks up");
+        } catch (ReflectiveOperationException | LinkageError unavailable) {
+            LOGGER.warn("Clumps: Forge's XP pickup event is not reachable; mods listening to it will not see Lads' pickups", unavailable);
+        }
     }
 
     public static void refresh() { enabled = active && PerfOptions1201.enabled("Clumps"); }

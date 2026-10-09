@@ -26,6 +26,7 @@ public final class Performance1201 {
         borderless();
         jasione();
         integrations();
+        com.thelads.core.v1_20_1.feature.clumps.NativeClumps1201.register();
         ConnectionTweaks1201.register();
         DiscordScreenNames1201.register();
         PerfProbe1201.register();
