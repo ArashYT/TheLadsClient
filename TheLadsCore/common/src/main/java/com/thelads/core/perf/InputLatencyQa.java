@@ -9,7 +9,7 @@ import java.util.Locale;
 /**
  * QA only: the in-game evidence run for the built-in input remakes, the same on every game version. Each phase settles for 2 s
  * and measures for 6 s (LatencyMeter): pacing on and off with no extra GPU work, then with a GPU load calibrated until the game is
- * GPU-bound (input-to-GPU-done latency above twice the frame time unpaced), twice each in turn; then optional mouse floods (the
+ * GPU-bound well below the QA frame cap (unpaced input-to-GPU-done latency above twice the frame time, under 80 FPS), twice each in turn; then optional mouse floods (the
  * version's synthetic high-rate mouse events, per event and batched); then the window resized, made fullscreen (F11's path) and
  * restored with the pacing on; then, with LADS_VERIFY_INPUT_SOAK=seconds, a long run logging every minute. The verdict (END or
  * FAILED line) comes last. The caller ticks it every client tick and owns the knobs.
@@ -112,7 +112,7 @@ public final class InputLatencyQa {
         double fps = meter.fps(), latency = meter.meanLatencyMs();
         target.log(String.format(Locale.ROOT, "Lads input probe: calibrating: GPU load %d: %s", load, meter.summary()));
         boolean gpuBound = fps > 0 && latency > 2 * 1000 / fps;
-        if (!gpuBound && load < 32768) {
+        if ((!gpuBound || fps > 80) && load < 32768) {
             load *= 2;
             target.gpuLoad(load);
             phaseStart = now;

@@ -60,6 +60,8 @@ public final class InputLatency26 {
         if (meter != null) meter.poll();
         pace();
         if (meter != null) meter.input();
+        // QA GPU load at the frame's start, where the world's own GPU work sits (the HUD at the end is cheap)
+        if (qaCopies > 0 && Thread.currentThread() == renderThread) gpuLoad();
     }
 
     private static void pace() {
@@ -77,7 +79,6 @@ public final class InputLatency26 {
             renderThread = Thread.currentThread();
             LOGGER.info("Lads input: frames are submitted on thread '{}'", renderThread.getName());
         }
-        if (qaCopies > 0) gpuLoad();
         if (qaMeter != null) qaMeter.fence();
         if (!reflex || qaPaused) return;
         try {

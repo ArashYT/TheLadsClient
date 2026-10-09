@@ -85,7 +85,7 @@ public final class FramePacer {
         if (startedAt >= 0) cpu = average(cpu, now - startedAt);
         if (paced && gpu > 0) {
             if (previousDone) dryFrames++;
-            margin = previousDone ? Math.min(gpu, margin + gpu / 16) : Math.max(0, margin - gpu / 128);
+            margin = previousDone ? Math.min(gpu, margin + gpu / 16) : Math.max(0, margin - gpu / 256);
         }
         previousDoneAt = previousDone ? now : -1;
     }

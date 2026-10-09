@@ -64,6 +64,7 @@ public final class InputProbe1201 {
     /** Resize and restore the window, and F11's fullscreen option on and off (Lads makes it borderless with BorderlessFullscreen). */
     private static void windowAction(Minecraft mc, String action) {
         var window = mc.getWindow();
+        LOGGER.info("Lads input probe: window {} (was {}x{}, fullscreen option {})", action, window.getScreenWidth(), window.getScreenHeight(), mc.options.fullscreen().get());
         switch (action) {
             case "resize" -> {
                 savedWidth = window.getScreenWidth();
@@ -73,7 +74,6 @@ public final class InputProbe1201 {
             case "restore" -> org.lwjgl.glfw.GLFW.glfwSetWindowSize(window.getWindow(), savedWidth, savedHeight);
             default -> mc.options.fullscreen().set("fullscreen".equals(action));
         }
-        LOGGER.info("Lads input probe: window {} -> {}x{}, fullscreen {}", action, window.getScreenWidth(), window.getScreenHeight(), window.isFullscreen());
     }
 
     private static void setFlood(int mode) {

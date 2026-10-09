@@ -200,6 +200,8 @@ public final class InputLatency1201 {
         if (meter != null) meter.poll();
         pace();
         if (meter != null) meter.input();
+        // QA GPU load at the frame's start, where the world's own GPU work sits (the HUD at the end is cheap)
+        if (qaCopies > 0 && Thread.currentThread() == glThread) qaGpuLoad();
     }
 
     private static void pace() {
@@ -226,7 +228,6 @@ public final class InputLatency1201 {
             glThread = Thread.currentThread();
             LOGGER.info("Lads input: frames are presented on thread '{}'", glThread.getName());
         }
-        if (qaCopies > 0) qaGpuLoad();
         if (qaMeter != null) qaMeter.fence();
         if (!reflex || qaReflexPaused || !glChecked) return;
         try {

@@ -13,7 +13,8 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
+import org.lwjgl.opengl.GL11;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
@@ -22,7 +23,7 @@ import org.apache.logging.log4j.Logger;
 /**
  * QA only (LADS_VERIFY_189_ONLY=input): the input-latency pacing's in-game evidence (InputLatencyQa): frame rate and
  * input-to-GPU-done latency with the pacing on and off, without and with a calibrated GPU load (full-screen nearly transparent
- * quads in one draw). The QA frame cap (120) stays.
+ * quads in one draw at the frame's start). The QA frame cap (120) stays.
  */
 final class ProbeInput189 {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
@@ -49,6 +50,7 @@ final class ProbeInput189 {
 
     /** Resize and restore the window, and F11 on and off (Borderless189 makes it borderless with BorderlessFullscreen). */
     private static void windowAction(Minecraft mc, String action) {
+        LOG.info("Lads input probe: window {} (was {}x{}, fullscreen {})", action, mc.displayWidth, mc.displayHeight, mc.isFullScreen());
         try {
             switch (action) {
                 case "resize":
@@ -65,7 +67,6 @@ final class ProbeInput189 {
         } catch (org.lwjgl.LWJGLException e) {
             throw new IllegalStateException(e);
         }
-        LOG.info("Lads input probe: window {} -> {}x{}, fullscreen {}", action, mc.displayWidth, mc.displayHeight, mc.isFullScreen());
     }
 
     private static boolean run(Minecraft mc) {
@@ -74,12 +75,18 @@ final class ProbeInput189 {
         return after(1);
     }
 
+    /** At the frame's start, where the world's own GPU work sits (the HUD at the end is cheap), in a unit square ortho view. */
     @SubscribeEvent
-    public void overlay(RenderGameOverlayEvent.Post event) {
-        if (event.type != RenderGameOverlayEvent.ElementType.ALL || quads <= 0) return;
-        Minecraft mc = Minecraft.getMinecraft();
-        float w = mc.displayWidth, h = mc.displayHeight;
+    public void renderStart(TickEvent.RenderTickEvent event) {
+        if (event.phase != TickEvent.Phase.START || quads <= 0) return;
+        float w = 1, h = 1;
+        GlStateManager.matrixMode(GL11.GL_PROJECTION);
         GlStateManager.pushMatrix();
+        GlStateManager.loadIdentity();
+        GlStateManager.ortho(0, 1, 1, 0, -1, 1);
+        GlStateManager.matrixMode(GL11.GL_MODELVIEW);
+        GlStateManager.pushMatrix();
+        GlStateManager.loadIdentity();
         GlStateManager.disableTexture2D();
         GlStateManager.disableDepth();
         GlStateManager.enableBlend();
@@ -100,5 +107,8 @@ final class ProbeInput189 {
         GlStateManager.enableDepth();
         GlStateManager.enableTexture2D();
         GlStateManager.popMatrix();
+        GlStateManager.matrixMode(GL11.GL_PROJECTION);
+        GlStateManager.popMatrix();
+        GlStateManager.matrixMode(GL11.GL_MODELVIEW);
     }
 }
