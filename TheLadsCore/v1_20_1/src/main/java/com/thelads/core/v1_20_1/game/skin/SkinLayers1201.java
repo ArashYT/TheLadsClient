@@ -24,7 +24,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
@@ -78,12 +77,23 @@ public final class SkinLayers1201 {
     /** Called once from Gameplay1201 (after the client entrypoint registered the module list): the truthful module status. */
     public static void register() {
         standDown = ModPresence1201.loaded("skinlayers3d");
-        qaSkin = Gameplay1201.qaActive() && (Boolean.getBoolean("thelads.qaSkin")
+        qaSkin = Gameplay1201.qaActive() && (Boolean.getBoolean("thelads.qaSkin") || qaScriptAsksSkin()
             || Files.isRegularFile(FabricLoader.getInstance().getGameDir().resolve(".lads-qa-skin")));
+        SkinLayersQa1201.register();
         if (standDown) ModuleSupport.registerExternal(SkinLayersModule.NAME, "3D Skin Layers", "skinlayers3d", true);
         else ModuleSupport.registerBuiltIn(SkinLayersModule.NAME);
         LOGGER.info(standDown ? "Lads SkinLayers stands down: 3D Skin Layers (skinlayers3d) is installed and draws the layers{}"
-            : "Lads SkinLayers: native 3D skin layers active{}", qaSkin ? " (QA checkerboard skin on the local player)" : "");
+            : "Lads SkinLayers: native 3D skin layers active{}", qaSkin ? " (QA checkerboard skin on every player)" : "");
+    }
+
+    /** QA only: the harness script carries a "# lads-qa-skin" line. */
+    private static boolean qaScriptAsksSkin() {
+        try {
+            String script = System.getProperty("thelads.qaScript");
+            return script != null && Files.readString(java.nio.file.Path.of(script)).contains("# lads-qa-skin");
+        } catch (Exception unreadable) {
+            return false;
+        }
     }
 
     /** The layer every PlayerRenderer gets, or null while the real mod is installed. */
@@ -264,9 +274,12 @@ public final class SkinLayers1201 {
         LOGGER.error("Lads SkinLayers stopped: vanilla's flat skin layers are shown from now on", failure);
     }
 
-    /** QA only (QA run plus -Dthelads.qaSkin=true or a ".lads-qa-skin" file): the local player wears QaSkin's checkerboard. */
+    /**
+     * QA only (QA run plus -Dthelads.qaSkin=true, a "# lads-qa-skin" script line or a ".lads-qa-skin" file): every player (the QA
+     * world has the local one and SkinLayersQa1201's dummy) wears QaSkin's checkerboard.
+     */
     public static ResourceLocation qaSkin(AbstractClientPlayer player) {
-        if (!qaSkin || !(player instanceof LocalPlayer) || !RenderSystem.isOnRenderThread()) return null;
+        if (!qaSkin || !RenderSystem.isOnRenderThread()) return null;
         if (qaTexture == null) {
             BufferedImage skin = QaSkin.image();
             NativeImage image = new NativeImage(64, 64, true);
@@ -282,6 +295,6 @@ public final class SkinLayers1201 {
 
     /** QA only: the QA skin is a wide-armed (Steve) layout. */
     public static boolean qaWide(AbstractClientPlayer player) {
-        return qaSkin && player instanceof LocalPlayer;
+        return qaSkin;
     }
 }
