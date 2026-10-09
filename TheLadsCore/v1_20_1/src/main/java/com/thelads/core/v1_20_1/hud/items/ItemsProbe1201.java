@@ -37,13 +37,19 @@ import org.slf4j.LoggerFactory;
 public final class ItemsProbe1201 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static boolean done;
+    private static Boolean qaFolder;
     private static int passed;
     private ItemsProbe1201() {}
 
     static void tick(Minecraft mc) {
         if (done || mc.level == null || mc.player == null || mc.getSingleplayerServer() == null || mc.getOverlay() != null) return;
+        if (qaFolder == null)
+            qaFolder = mc.gameDirectory.toPath().toAbsolutePath().toString().replace('\\', '/').toLowerCase(java.util.Locale.ROOT).contains("/artifacts/verification/");
+        // The marker file and the script line only count in a harness folder (under artifacts/verification): a player's game never
+        // touches the disk here. -Dthelads.verifyItems1201 is set by the harness itself.
+        if (!qaFolder && !Boolean.getBoolean("thelads.verifyItems1201")) return;
         Path request = mc.gameDirectory.toPath().resolve(".lads-qa-items");
-        boolean file = Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS);
+        boolean file = qaFolder && Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS);
         if (!file && !Boolean.getBoolean("thelads.verifyItems1201") && !scriptAsks(mc)) return;
         done = true;
         try {
