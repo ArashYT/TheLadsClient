@@ -10,7 +10,6 @@
   },
   "client": [
     "EntityRendererProbeMixin",
-    "RenderItemCullMixin",
     "TextureAtlasSpriteAnimationMixin",
     "TextureMapAnimationMixin"
   ]

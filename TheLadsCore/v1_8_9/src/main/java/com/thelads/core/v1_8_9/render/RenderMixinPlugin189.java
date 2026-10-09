@@ -7,13 +7,12 @@ import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
-/** theladscore.v1_8_9.render.mixins.json: the "Animation" mixins are Kerria's, "Probe" ones QA's, the rest Flerovium's. */
+/** theladscore.v1_8_9.render.mixins.json: the "Animation" mixins are Kerria's (none while it stands down), "Probe" ones QA's. */
 public final class RenderMixinPlugin189 implements IMixinConfigPlugin {
     @Override public void onLoad(String mixinPackage) {}
     @Override public String getRefMapperConfig() { return null; }
     @Override public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        if (mixinClassName.contains("Probe")) return true; // QA timing, idle outside the render capture
-        return BuiltInRender.enabled(mixinClassName.contains("Animation") ? BuiltInRender.KERRIA : BuiltInRender.FLEROVIUM);
+        return mixinClassName.contains("Probe") || BuiltInRender.enabled(BuiltInRender.KERRIA);
     }
     @Override public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {}
     @Override public List<String> getMixins() { return null; }

@@ -11,7 +11,7 @@ public final class GlState189 {
     /** Mixed into GlStateManager.BooleanState. */
     public interface Switch { boolean on(); }
 
-    private static Switch blend, depth, alpha, cull;
+    private static Switch blend, depth, alpha;
 
     private GlState189() {}
 
@@ -20,7 +20,6 @@ public final class GlState189 {
         if (capability == GL11.GL_BLEND && blend == null) blend = state;
         else if (capability == GL11.GL_DEPTH_TEST && depth == null) depth = state;
         else if (capability == GL11.GL_ALPHA_TEST && alpha == null) alpha = state;
-        else if (capability == GL11.GL_CULL_FACE && cull == null) cull = state;
     }
 
     /** QA (Probe173Cap): all three switches were handed over, and agree with the driver right now. */
@@ -34,7 +33,4 @@ public final class GlState189 {
     public static boolean depth() { return depth != null ? depth.on() : GL11.glIsEnabled(GL11.GL_DEPTH_TEST); }
 
     public static boolean alpha() { return alpha != null ? alpha.on() : GL11.glIsEnabled(GL11.GL_ALPHA_TEST); }
-
-    /** Face culling (1.8.5, ItemCull189). */
-    public static boolean cull() { return cull != null ? cull.on() : GL11.glIsEnabled(GL11.GL_CULL_FACE); }
 }
