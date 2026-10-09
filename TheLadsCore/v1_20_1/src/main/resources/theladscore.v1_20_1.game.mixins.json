@@ -9,11 +9,23 @@
   "client": [
     "ZoomMixin",
     "FullbrightMixin",
+    "LocalPlayerAccessor",
     "LocalPlayerMixin",
     "KeyboardInputMixin",
     "DamageTiltMixin",
     "DamageTiltPacketsMixin",
     "LowFireMixin",
-    "LegacySwingMixin"
+    "LegacySwingMixin",
+    "OldAnimationsHeldItemMixin",
+    "OldAnimationsPlayerMixin",
+    "OldAnimationsArmPoseMixin",
+    "OldAnimationsDroppedItemMixin",
+    "OldAnimationsArmourMixin",
+    "OldAnimationsCameraMixin",
+    "OldAnimationsClientMixin",
+    "OldAnimationsHeartsMixin",
+    "CustomFovPlayerMixin",
+    "CustomFovCameraMixin",
+    "VerticalBobbingMixin"
   ]
 }
