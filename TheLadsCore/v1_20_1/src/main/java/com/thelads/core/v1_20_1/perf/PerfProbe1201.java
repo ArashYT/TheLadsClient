@@ -46,6 +46,9 @@ public final class PerfProbe1201 {
     private static Dfps dfps;
     private static Border border;
     private static Controls controls;
+    private static boolean quickDone;
+    private static long quickAt;
+    private static int quickStep;
 
     private PerfProbe1201() {}
 
@@ -92,6 +95,7 @@ public final class PerfProbe1201 {
             if (dfps == null) dfps = new Dfps();
             dfps.tick(client, now);
         }
+        if ((wanted.contains("threads") || wanted.contains("packets")) && (dfps == null || dfps.finished())) quick(client, now);
         if (wanted.contains("controlling") && (dfps == null || dfps.finished())) {
             if (controls == null) controls = new Controls();
             controls.tick(client, now);
@@ -102,9 +106,84 @@ public final class PerfProbe1201 {
         }
     }
 
+    // ---------------------------------------------------------------- Threads and IgnorePacketErrors
+
+    private static void quick(Minecraft client, long now) {
+        if (quickDone) return;
+        if (quickStep == 0) {
+            quickAt = now;
+            quickStep = 1;
+            if (wanted.contains("threads")) {
+                Module threads = module("Threads");
+                if (threads == null) { LOGGER.info("PERF-PROBE threads SKIP module missing"); } else {
+                    if (threads.getOption("Render thread priority") instanceof SliderOption slider) slider.setValue(7);
+                    threads.setEnabled(false);
+                    threads.setEnabled(true);
+                }
+            }
+            if (wanted.contains("packets")) packets();
+            return;
+        }
+        if (now - quickAt < 2_500_000_000L) return;
+        if (quickStep == 1) {
+            Module threads = module("Threads");
+            if (wanted.contains("threads") && threads != null) {
+                int priority = priorityOf("Render thread");
+                LOGGER.info("PERF-PROBE threads enabled: Render thread priority={} {}", priority, priority == 7 ? "PASS (module sets the render thread priority)" : "FAIL");
+                threads.setEnabled(false);
+            }
+            quickStep = 2;
+            quickAt = now;
+            return;
+        }
+        Module threads = module("Threads");
+        if (wanted.contains("threads") && threads != null) {
+            int priority = priorityOf("Render thread");
+            LOGGER.info("PERF-PROBE threads disabled: Render thread priority={} {}", priority, priority == 5 ? "PASS (original priority restored)" : "FAIL");
+        }
+        quickDone = true;
+    }
+
+    private static int priorityOf(String name) {
+        for (Thread thread : Thread.getAllStackTraces().keySet()) if (thread.getName().equals(name)) return thread.getPriority();
+        return -1;
+    }
+
+    /** IgnorePacketErrors: an undecodable clientbound play packet is dropped with the module on and still an error with it off. */
+    private static void packets() {
+        Module module = module("IgnorePacketErrors");
+        if (module == null) { LOGGER.info("PERF-PROBE packets SKIP module missing"); return; }
+        boolean wasEnabled = module.isEnabled();
+        try {
+            module.setEnabled(true);
+            boolean guarded = decode();
+            module.setEnabled(false);
+            boolean vanilla = !decode();
+            LOGGER.info("PERF-PROBE packets IgnorePacketErrors: on={} (packet dropped), off={} (decode error kept) {}", guarded, vanilla, guarded && vanilla ? "PASS" : "FAIL");
+        } finally {
+            module.setEnabled(wasEnabled);
+        }
+    }
+
+    /** True when decoding a packet with an unknown id did not throw. */
+    private static boolean decode() {
+        io.netty.channel.embedded.EmbeddedChannel channel = new io.netty.channel.embedded.EmbeddedChannel(new net.minecraft.network.PacketDecoder(net.minecraft.network.protocol.PacketFlow.CLIENTBOUND));
+        channel.attr(net.minecraft.network.Connection.ATTRIBUTE_PROTOCOL).set(net.minecraft.network.ConnectionProtocol.PLAY);
+        io.netty.buffer.ByteBuf buffer = io.netty.buffer.Unpooled.buffer();
+        new net.minecraft.network.FriendlyByteBuf(buffer).writeVarInt(9999);
+        try {
+            channel.writeInbound(buffer);
+            return channel.readInbound() == null;
+        } catch (RuntimeException failure) {
+            return false;
+        } finally {
+            channel.finishAndReleaseAll();
+        }
+    }
+
     /** Once a scenario began it runs on, whatever screen is open. */
     private static boolean started() {
-        return presenceDone || dfps != null || controls != null || border != null;
+        return presenceDone || dfps != null || controls != null || border != null || quickStep > 0;
     }
 
     private static void shot(Minecraft client, String name) {
