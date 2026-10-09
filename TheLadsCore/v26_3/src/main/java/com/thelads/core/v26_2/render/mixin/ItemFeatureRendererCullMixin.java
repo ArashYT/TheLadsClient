@@ -18,7 +18,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ItemFeatureRenderer.class)
 public abstract class ItemFeatureRendererCullMixin {
     @Inject(method = "buildGroup", at = @At("HEAD"))
-    private void lads$group(CallbackInfo ci) { ItemCull26.newGroup(); }
+    private void lads$group(CallbackInfo ci) { ItemCull26.newGroup(); com.thelads.core.perf.RenderQa.itemStart(); }
+
+    @Inject(method = "buildGroup", at = @At("RETURN"))
+    private void lads$groupEnd(CallbackInfo ci) { com.thelads.core.perf.RenderQa.itemEnd(); } // QA timing only
 
     @WrapWithCondition(method = "prepareMainSubmit", at = @At(value = "INVOKE",
         target = "Lcom/mojang/blaze3d/vertex/VertexConsumer;putBakedQuad(Lcom/mojang/blaze3d/vertex/PoseStack$Pose;Lnet/minecraft/client/resources/model/geometry/BakedQuad;Lcom/mojang/blaze3d/vertex/QuadInstance;)V"))

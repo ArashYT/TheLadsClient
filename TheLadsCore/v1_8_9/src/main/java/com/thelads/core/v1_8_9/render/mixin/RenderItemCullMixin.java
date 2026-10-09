@@ -23,7 +23,10 @@ public abstract class RenderItemCullMixin {
     private void lads$contextEnd(ItemStack stack, IBakedModel model, ItemCameraTransforms.TransformType type, CallbackInfo ci) { ItemCull189.context(null); }
 
     @Inject(method = "renderModel(Lnet/minecraft/client/resources/model/IBakedModel;ILnet/minecraft/item/ItemStack;)V", at = @At("HEAD"))
-    private void lads$model(IBakedModel model, int color, ItemStack stack, CallbackInfo ci) { ItemCull189.begin(); }
+    private void lads$model(IBakedModel model, int color, ItemStack stack, CallbackInfo ci) { com.thelads.core.perf.RenderQa.itemStart(); ItemCull189.begin(); }
+
+    @Inject(method = "renderModel(Lnet/minecraft/client/resources/model/IBakedModel;ILnet/minecraft/item/ItemStack;)V", at = @At("RETURN"))
+    private void lads$modelEnd(IBakedModel model, int color, ItemStack stack, CallbackInfo ci) { com.thelads.core.perf.RenderQa.itemEnd(); } // QA timing only
 
     @ModifyVariable(method = "renderQuads", at = @At("HEAD"), index = 2)
     private List<BakedQuad> lads$quads(List<BakedQuad> quads) { return ItemCull189.filter(quads); }

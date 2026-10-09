@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class RenderProbe1201 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private static final int MEASURE_TICKS = 60, SETTLE_TICKS = 10, ROUNDS = 3, MAGENTA = 0xFFFF00FF;
+    private static final int MEASURE_TICKS = 60, SETTLE_TICKS = 10, ROUNDS = 3, MAGENTA = 0x01FF00FF; // poison: magenta at alpha 1, a texel no real texture holds
     private interface Step { int run(Minecraft mc) throws Exception; }
 
     /** Read by TextureAtlasAnimationMixin: atlas animations held still. */

@@ -24,6 +24,8 @@ public final class RenderQa {
     private static long[] samples = new long[4096];
     private static int sampleCount;
     private static long kept0, culled0, lod0, copied0, uploaded0, animNanos0, animTicks0;
+    private static long itemStart, itemNanos;
+    private static int itemDepth;
 
     private RenderQa() {}
 
@@ -42,9 +44,16 @@ public final class RenderQa {
         frameNanos = 0;
     }
 
+    /** Around the item renderer's own work (nested calls count once): its CPU time per frame, apart from everything else in the frame. */
+    public static void itemStart() { if (recording && itemDepth++ == 0) itemStart = System.nanoTime(); }
+
+    public static void itemEnd() { if (recording && itemDepth > 0 && --itemDepth == 0) itemNanos += System.nanoTime() - itemStart; }
+
     public static void startWindow() {
         sampleCount = 0;
         frameNanos = 0;
+        itemNanos = 0;
+        itemDepth = 0;
         kept0 = BuiltInRender.quadsKept; culled0 = BuiltInRender.quadsCulled; lod0 = BuiltInRender.quadsLod;
         copied0 = BuiltInRender.framesCopied; uploaded0 = BuiltInRender.framesUploaded;
         animNanos0 = BuiltInRender.animationNanos; animTicks0 = BuiltInRender.animationTicks;
@@ -66,6 +75,7 @@ public final class RenderQa {
         w.put("medianMs", round(s.length == 0 ? 0 : s[s.length / 2] / 1e6));
         w.put("p95Ms", round(s.length == 0 ? 0 : s[Math.min(s.length - 1, (int) (s.length * 0.95))] / 1e6));
         int frames = Math.max(1, s.length);
+        w.put("itemRenderUsPerFrame", round(itemNanos / 1e3 / frames));
         w.put("quadsKeptPerFrame", (BuiltInRender.quadsKept - kept0) / frames);
         w.put("quadsCulledPerFrame", (BuiltInRender.quadsCulled - culled0) / frames);
         w.put("quadsLodPerFrame", (BuiltInRender.quadsLod - lod0) / frames);

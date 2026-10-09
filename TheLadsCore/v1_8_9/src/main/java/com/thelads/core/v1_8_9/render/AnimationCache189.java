@@ -34,6 +34,8 @@ public final class AnimationCache189 {
     private static long used;
     /** The block atlas while its animations tick (TextureMap.updateAnimations), else 0. */
     public static int cyclingAtlas;
+    /** The atlas animated sprites as last stitched (QA reads them). */
+    public static List<TextureAtlasSprite> animated = java.util.Collections.emptyList();
 
     private AnimationCache189() {}
 
@@ -46,8 +48,9 @@ public final class AnimationCache189 {
     }
 
     /** After the atlas was stitched: its animated sprites (OptiFine's normal, specular and single sprites are not among them). */
-    public static void stitched(List<TextureAtlasSprite> animated) {
-        for (TextureAtlasSprite sprite : animated) MAIN.put(sprite, Boolean.TRUE);
+    public static void stitched(List<TextureAtlasSprite> sprites) {
+        for (TextureAtlasSprite sprite : sprites) MAIN.put(sprite, Boolean.TRUE);
+        animated = sprites;
     }
 
     /**
