@@ -27,6 +27,8 @@ public final class InputLatency26 {
     static final FramePacer PACER = new FramePacer();
     static boolean reflex;
     private static GpuFence previous, older;
+    /** The thread that submits frames; with a threaded renderer (Ixeris in the 26.3 pack) the event poll may run elsewhere. */
+    private static volatile Thread renderThread;
     /** QA (InputProbe26): pacing paused for the with/without comparison, the latency meter, GPU load (4096x4096 texture copies). */
     public static boolean qaPaused;
     static LatencyMeter qaMeter;
@@ -54,13 +56,14 @@ public final class InputLatency26 {
 
     /** Head of RenderSystem.pollEvents. */
     public static void frameStart() {
-        if (qaMeter != null) qaMeter.poll();
+        LatencyMeter meter = Thread.currentThread() == renderThread ? qaMeter : null;
+        if (meter != null) meter.poll();
         pace();
-        if (qaMeter != null) qaMeter.input();
+        if (meter != null) meter.input();
     }
 
     private static void pace() {
-        if (!reflex || qaPaused) return;
+        if (!reflex || qaPaused || Thread.currentThread() != renderThread) return; // fences belong to the submitting thread
         try {
             PACER.frameStart(() -> done(previous), () -> done(older));
         } catch (Throwable t) {
@@ -70,6 +73,10 @@ public final class InputLatency26 {
 
     /** Right before the frame's CommandEncoder.submit. */
     public static void beforeSubmit() {
+        if (renderThread == null) {
+            renderThread = Thread.currentThread();
+            LOGGER.info("Lads input: frames are submitted on thread '{}'", renderThread.getName());
+        }
         if (qaCopies > 0) gpuLoad();
         if (qaMeter != null) qaMeter.fence();
         if (!reflex || qaPaused) return;

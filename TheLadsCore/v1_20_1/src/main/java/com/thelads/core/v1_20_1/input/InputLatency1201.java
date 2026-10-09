@@ -48,6 +48,10 @@ public final class InputLatency1201 {
     private static final long RECHECK_NS = 1_000_000_000L;
 
     static boolean ixeris, reflex;
+    /** The original Ixeris is installed (the Lads 1.20.1 pack ships it): it polls events itself, on its own thread. */
+    private static boolean ixerisJar;
+    /** The thread that presents frames (the GL context's); with a threaded renderer the frame start may run elsewhere. */
+    private static volatile Thread glThread;
     private static long getRawInputBuffer, getRegisteredDevices;
     private static ByteBuffer records, devices;
     private static long sizeAddress;
@@ -77,7 +81,8 @@ public final class InputLatency1201 {
     /** From the client initializer. */
     public static void init() {
         boolean windows = Platform.get() == Platform.WINDOWS;
-        ixeris = windows && !killed("lads.ixeris") && !installed("Ixeris", IXERIS_IDS);
+        ixerisJar = installed("Ixeris", IXERIS_IDS);
+        ixeris = windows && !killed("lads.ixeris") && !ixerisJar;
         reflex = !killed("lads.reflex") && !installed("Reflex AntiLag", REFLEX_IDS);
         if (ixeris) {
             try {
@@ -191,13 +196,14 @@ public final class InputLatency1201 {
 
     /** Head of Minecraft.runTick: wait for the GPU, then read input once more. */
     public static void frameStart() {
-        if (qaMeter != null) qaMeter.poll();
+        LatencyMeter meter = Thread.currentThread() == glThread ? qaMeter : null;
+        if (meter != null) meter.poll();
         pace();
-        if (qaMeter != null) qaMeter.input();
+        if (meter != null) meter.input();
     }
 
     private static void pace() {
-        if (!reflex || qaReflexPaused) return;
+        if (!reflex || qaReflexPaused || Thread.currentThread() != glThread) return; // fences belong to the GL thread
         try {
             if (!glChecked) {
                 glChecked = true;
@@ -207,7 +213,8 @@ public final class InputLatency1201 {
                     return;
                 }
             }
-            if (PACER.frameStart(() -> done(previous), () -> done(older)) > 0) RenderSystemInvoker1201.lads$pollEvents();
+            // Fresh input after the wait; with Ixeris' threaded event loop events arrive on its own schedule instead.
+            if (PACER.frameStart(() -> done(previous), () -> done(older)) > 0 && !ixerisJar) RenderSystemInvoker1201.lads$pollEvents();
         } catch (Throwable t) {
             stopPacing(t);
         }
@@ -215,6 +222,10 @@ public final class InputLatency1201 {
 
     /** RenderSystem.flipFrame, right before glfwSwapBuffers: the feedback for the pacing, then this frame's fence. */
     public static void beforeSwap() {
+        if (glThread == null) {
+            glThread = Thread.currentThread();
+            LOGGER.info("Lads input: frames are presented on thread '{}'", glThread.getName());
+        }
         if (qaCopies > 0) qaGpuLoad();
         if (qaMeter != null) qaMeter.fence();
         if (!reflex || qaReflexPaused || !glChecked) return;
