@@ -1,0 +1,28 @@
+{
+  "packId": "zero-smp-1.20.1",
+  "version": "1.1.0",
+  "description": "Removes duplicate jars replaced by The Lads Client 1.8.5 (Dynamic FPS, Borderless, Zoom, AppleSkin, Clumps, Chat Heads, Controlling, Searchables, Entity Culling, ImmediatelyFast, ETF, EMF, MouseTweaks). Jade remains installed.",
+  "mods": {
+    "add": [],
+    "remove": [
+      "dynamic-fps-3.11.4+minecraft-1.20.0-forge.jar",
+      "BorderlessWindow-1.20-1.6.0.jar",
+      "justzoom_forge_2.1.1_MC_1.20.1.jar",
+      "appleskin-forge-mc1.20.1-2.5.1.jar",
+      "Clumps-forge-1.20.1-12.0.0.4.jar",
+      "chat_heads-0.15.7-forge-1.20.jar",
+      "Controlling-forge-1.20.1-12.0.2.jar",
+      "Searchables-forge-1.20.1-1.0.3.jar",
+      "entityculling-forge-1.11.3-mc1.20.1.jar",
+      "ImmediatelyFast-Forge-1.5.5+1.20.4.jar",
+      "entity_texture_features-7.2.5-1.20.1-forge.jar",
+      "entity_model_features-3.3.11-1.20.1-forge.jar",
+      "MouseTweaks-forge-mc1.20.1-2.25.1.jar"
+    ]
+  },
+  "keybinds": {
+    "defaults": {},
+    "force": {}
+  },
+  "configPatches": []
+}
