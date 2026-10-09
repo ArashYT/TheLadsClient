@@ -146,6 +146,12 @@ internal static class ZeroSmpQa
             }
             using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".mc.lock"), ct))
                 game = await ModpackLauncher.PrepareAsync(data, instance, session, settings, java, http, Progress, ct);
+            // ModpackLauncher gives the game THELADS_GLOBAL_DIR = this sandbox folder (never the owner's); a shared config left by an earlier run is dropped so the
+            // Core re-seeds it from the copy's own thelads_config.json (the owner's layout, Discord RPC off).
+            if (game.StartInfo.Environment.TryGetValue("THELADS_GLOBAL_DIR", out var globalDir) && SafeFileOps.IsSameOrInside(globalDir ?? "", verification))
+                File.Delete(Path.Combine(globalDir!, "shared", "thelads_config.json"));
+            else throw new InvalidOperationException("THELADS_GLOBAL_DIR of the Zero SMP game is not inside the sandbox: " + globalDir);
+            Say("Core global config dir (THELADS_GLOBAL_DIR): " + globalDir);
             var args = game.StartInfo.ArgumentList;
             var flags = new List<string> { "-Dfabric.noGui=true" };
             if (!noWorld) { flags.Add("-Dthelads.verifyAutoWorld=true"); flags.Add("-Dthelads.qaWorld=" + WorldName); }

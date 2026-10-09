@@ -748,6 +748,13 @@ try
     process.StartInfo.RedirectStandardOutput = true;
     process.StartInfo.RedirectStandardError = true;
     GameSession.Configure(process.StartInfo, directory, shared.Root);
+    // The Core's shared config (ClientPaths.getGlobalBaseDir) is THELADS_GLOBAL_DIR, else the owner's REAL %APPDATA%\\.theladsclient\\shared\\thelads_config.json
+    // (read and saved: the owner's HUD layout and Discord RPC in QA games, QA module changes in the owner's config). QA games get their own folder: the game
+    // folder, whose thelads_config.json QaDiscord.ForceOff prepared; the shared copy is dropped so every launch re-seeds from it.
+    Directory.CreateDirectory(Path.Combine(directory, "shared"));
+    File.Delete(Path.Combine(directory, "shared", "thelads_config.json"));
+    process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = directory;
+    summary.Add("Core global config dir (THELADS_GLOBAL_DIR): " + directory);
     summary.Add($"Child environment: THELADS_DIR={directory}; {SharedContentService.RootEnvironmentVariable}={shared.Root}; {GameOptionsService.LunarEnvironmentVariable}={lunarRoot}");
     summary.Add("JVM QA flags: " + string.Join(' ', jvmFlags));
     log = new StreamWriter(logPath) { AutoFlush = true };
