@@ -51,7 +51,7 @@ public final class MenusQa1201 {
     private static List<String> scenes;
     private static int index = -1, frames, passed, failed;
     private static long sceneStart, worldReadyAt, worldWaitFrom;
-    private static boolean running, captured, opened, worldRequested, ownWorld;
+    private static boolean running, captured, opened, worldRequested, ownWorld, envUsed;
     private static Screen shown;
     private static Path out;
 
@@ -71,9 +71,13 @@ public final class MenusQa1201 {
     private static void tick(Minecraft mc) {
         if (!running) {
             Path request = mc.gameDirectory.toPath().resolve(".lads-qa-capture-menus");
-            if (!Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS) || mc.getOverlay() != null) return;
+            // The scene list comes from a marker file in the game folder, or from the LADS_QA_MENUS environment variable (a harness
+            // that rebuilds the game folder, like Zero SMP's, keeps no marker); the variable is read once.
+            String fromEnv = envUsed ? null : System.getenv("LADS_QA_MENUS");
+            boolean marker = Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS);
+            if ((!marker && (fromEnv == null || fromEnv.isBlank())) || mc.getOverlay() != null) return;
             try {
-                String text = Files.readString(request).strip();
+                String text = marker ? Files.readString(request).strip() : fromEnv.strip();
                 ownWorld = text.contains("own-world");
                 List<String> listed = Arrays.stream(text.split("[,\\s]+")).filter(s -> !s.isBlank() && !s.equals("own-world")).toList();
                 List<String> wanted = listed.isEmpty() ? DEFAULT_SCENES : listed;
@@ -81,7 +85,8 @@ public final class MenusQa1201 {
                 boolean inWorld = mc.level != null && mc.player != null && mc.screen == null;
                 boolean anyTitle = wanted.stream().anyMatch(s -> !needsWorld(s));
                 if (anyTitle ? !(mc.screen instanceof TitleScreen) : !inWorld && !ownWorld) return;
-                Files.delete(request);
+                if (marker) Files.delete(request);
+                else envUsed = true;
                 scenes = new ArrayList<>(wanted.stream().filter(s -> !needsWorld(s)).toList());
                 scenes.addAll(wanted.stream().filter(MenusQa1201::needsWorld).toList());
                 out = mc.gameDirectory.toPath().resolve("screenshots/menus-qa");
