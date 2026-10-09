@@ -28,7 +28,7 @@ public final class LazyAi {
     /** Vanilla evaluates goals every second tick; lazy intervals are multiples of it so they only drop ticks. */
     public static final int VANILLA_INTERVAL = 2;
     /** QA probe (-Dthelads.perfProbe=true): count what the hooks do and log it. */
-    private static final boolean PROBE = Boolean.getBoolean("thelads.perfProbe");
+    private static final boolean PROBE = com.thelads.core.v1_20_1.perf.PerfProbe1201.passive();
     private static final AtomicLong AI_STEPS = new AtomicLong(), LAZY_STEPS = new AtomicLong(), SKIPPED_GOALS = new AtomicLong(),
         SKIPPED_SENSING = new AtomicLong(), SLOWED_SENSORS = new AtomicLong();
     private static volatile long nextReport;

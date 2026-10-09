@@ -44,10 +44,22 @@ public final class PerfProbe1201 {
 
     private PerfProbe1201() {}
 
-    public static void register() {
+    private static String value() {
         String value = System.getProperty("thelads.perfProbe", System.getenv("LADS_PERF_PROBE"));
-        if (value == null || value.isBlank()) return;
-        wanted = Set.copyOf(Arrays.asList(value.toLowerCase().split(",")));
+        return value == null ? "" : value.trim().toLowerCase();
+    }
+
+    /** True when any probe is asked for: the passive probes of the embedded mods (counters, self tests) run then. */
+    public static boolean passive() {
+        return !value().isEmpty() && !value().equals("false");
+    }
+
+    public static void register() {
+        String value = value();
+        if (value.isEmpty() || value.equals("false")) return;
+        // "true" or "all" runs every scenario below that does not change the window or the settings screens.
+        if (value.equals("true") || value.equals("all")) value = "presence,dfps";
+        wanted = Set.copyOf(Arrays.asList(value.split(",")));
         LOGGER.info("PERF-PROBE enabled: {}", wanted);
         ClientTickEvents.END_CLIENT_TICK.register(client -> tick(client));
     }

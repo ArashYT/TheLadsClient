@@ -10,7 +10,7 @@ public final class EntityCullingInit1201 {
 
     public static void init() {
         // The hooks and the worker thread need no setup; only the QA probe (-Dthelads.perfProbe=true) registers anything.
-        if (!Boolean.getBoolean("thelads.perfProbe")) return;
+        if (!com.thelads.core.v1_20_1.perf.PerfProbe1201.passive()) return;
         EntityCulling.selfTest();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.level == null) {

@@ -40,7 +40,7 @@ public final class NativeClumpsProbe1201 {
     private NativeClumpsProbe1201() {}
 
     static void initialize() {
-        if (!Boolean.getBoolean("thelads.perfProbe")) return;
+        if (!com.thelads.core.v1_20_1.perf.PerfProbe1201.passive()) return;
         ClumpsEvents.VALUE_EVENT.register(event -> {
             if (multiplyValues && event.getPlayer() == eventPlayer) event.setValue(event.getValue() * 2);
             return null;

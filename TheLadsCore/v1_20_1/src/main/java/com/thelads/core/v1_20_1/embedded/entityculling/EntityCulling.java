@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 public final class EntityCulling {
     private static final Logger LOGGER = LoggerFactory.getLogger("EntityCulling");
     /** QA probe (-Dthelads.perfProbe=true): count what the hooks see and log it; off, the hooks only pay for the checks. */
-    private static final boolean PROBE = Boolean.getBoolean("thelads.perfProbe");
+    private static final boolean PROBE = com.thelads.core.v1_20_1.perf.PerfProbe1201.passive();
     /** Occluders further than this from the camera are ignored, and boxes beyond it are never culled. */
     private static final int REACH = 64;
     private static final double NEAR_SQ = 4 * 4;
