@@ -59,7 +59,7 @@ public final class ItemCull1201 {
         var window = Minecraft.getInstance().getWindow();
         SCRATCH.set(RenderSystem.getProjectionMatrix()).mul(RenderSystem.getModelViewMatrix()).mul(pose);
         SCRATCH.get(WRAPPER.matrix);
-        FaceCull.toViewport(WRAPPER.matrix, window.getWidth(), window.getHeight());
+        FaceCull.prepare(FaceCull.toViewport(WRAPPER.matrix, window.getWidth(), window.getHeight()));
         boolean far = (context == ItemDisplayContext.GROUND || context == ItemDisplayContext.FIXED)
             && pose.m30() * pose.m30() + pose.m31() * pose.m31() + pose.m32() * pose.m32() > LOD_DISTANCE * LOD_DISTANCE;
         WRAPPER.lod = far ? LOD_PIXELS : 0;
@@ -90,7 +90,7 @@ public final class ItemCull1201 {
 
     /** One reusable wrapper: renderModelLists reads each returned list fully before asking for the next. */
     static final class Wrapper implements BakedModel {
-        final float[] matrix = new float[16];
+        final float[] matrix = new float[FaceCull.MATRIX_FLOATS];
         final ArrayList<BakedQuad> kept = new ArrayList<>();
         BakedModel model;
         float lod;

@@ -437,8 +437,8 @@ public final class RenderProbe26 {
         steps.add(mc -> { fillInventory(false); return 10; });
         shots(steps, "inventory", false);
         steps.add(mc -> { mc.gui.setScreen(null); return 5; });
-        // 4. Animated blocks: atlas animation cost per tick and frame cost, animations running (world frozen)
-        steps.add(mc -> { look(mc, 60, 0, 0, 10); return 60; });
+        // 4. Animated blocks: atlas animation cost per tick and frame cost, animations running
+        steps.add(mc -> { frozen(false); look(mc, 60, 0, 0, 10); return 60; }); // texture animations tick only while the world runs
         measure(steps, "animations");
         atlasParity(steps, "start");
         // 5. An HD pack of animated textures (256 px frames), where frame updates are heavy: costs and parity, then the pack is removed

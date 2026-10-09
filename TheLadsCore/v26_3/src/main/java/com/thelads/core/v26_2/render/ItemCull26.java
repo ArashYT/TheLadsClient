@@ -32,7 +32,7 @@ public final class ItemCull26 {
     private static final Map<GpuBuffer, Matrix4f> UPLOADED = new IdentityHashMap<>();
     private static final MethodHandle SHADOW_PASS = bindShadowPass();
     private static final Matrix4f SCRATCH = new Matrix4f();
-    private static final float[] MATRIX = new float[16];
+    private static final float[] MATRIX = new float[FaceCull.MATRIX_FLOATS];
     private static @Nullable Matrix4f projection, backup;
     private static @Nullable Object lastSubmit;
     private static boolean usable;
@@ -63,7 +63,7 @@ public final class ItemCull26 {
                 Matrix4f m = pose.pose();
                 var window = Minecraft.getInstance().getWindow();
                 SCRATCH.set(projection).mul(RenderSystem.getModelViewStack()).mul(m).get(MATRIX);
-                FaceCull.toViewport(MATRIX, window.getWidth(), window.getHeight());
+                FaceCull.prepare(FaceCull.toViewport(MATRIX, window.getWidth(), window.getHeight()));
                 boolean far = (context == ItemDisplayContext.GROUND || context == ItemDisplayContext.FIXED)
                     && m.m30() * m.m30() + m.m31() * m.m31() + m.m32() * m.m32() > LOD_DISTANCE * LOD_DISTANCE;
                 lod = far ? LOD_PIXELS : 0;
