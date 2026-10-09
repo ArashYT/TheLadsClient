@@ -44,6 +44,7 @@ public final class ExtraTooltips {
 
     private static java.lang.reflect.Method forgeBurnTime;
     private static boolean forgeBurnTimeLooked;
+    private static java.util.Map<Item, Integer> vanillaFuel;
 
     /**
      * The fuel time of the stack. Fabric API's registry first; under Forge (Sinytra Connector) Forgified Fabric API's registry holds only the
@@ -60,12 +61,18 @@ public final class ExtraTooltips {
                 forgeBurnTime = null;
             }
         }
-        if (forgeBurnTime == null) return time;
-        try {
-            return (Integer) forgeBurnTime.invoke(null, stack, null);
-        } catch (ReflectiveOperationException | RuntimeException failure) {
-            return time;
+        if (forgeBurnTime != null) {
+            try {
+                Integer forge = (Integer) forgeBurnTime.invoke(null, stack, null);
+                if (forge != null && forge > 0) return forge;
+            } catch (ReflectiveOperationException | RuntimeException failure) {
+                // fall through to the vanilla table
+            }
         }
+        // Forge fills its own table only once a world loaded its tags (the title screen has none): vanilla's table covers that
+        if (vanillaFuel == null) vanillaFuel = net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity.getFuel();
+        Integer vanilla = vanillaFuel.get(stack.getItem());
+        return vanilla != null && vanilla > 0 ? vanilla : time;
     }
 
     /** The loaded configuration (null before init), for the QA probe. */
