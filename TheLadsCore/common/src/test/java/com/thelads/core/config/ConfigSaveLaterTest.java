@@ -43,4 +43,24 @@ class ConfigSaveLaterTest {
             module.setEnabled(was);
         }
     }
+
+    @Test void unmanagedModulesArePreservedAcrossSave(@TempDir Path dir) throws Exception {
+        File config = dir.resolve("thelads_config.json").toFile();
+        ConfigManager.setTestConfigFile(config);
+        com.google.gson.JsonObject root = new com.google.gson.JsonObject();
+        com.google.gson.JsonObject modules = new com.google.gson.JsonObject();
+        com.google.gson.JsonObject external = new com.google.gson.JsonObject();
+        external.addProperty("enabled", true);
+        external.addProperty("favorite", true);
+        modules.add("ExternalModuleFromAnotherVersion", external);
+        root.add("modules", modules);
+        ConfigManager.applyJson(root);
+
+        ConfigManager.save();
+        ConfigManager.flush();
+
+        String saved = Files.readString(config.toPath(), StandardCharsets.UTF_8);
+        assertTrue(saved.contains("ExternalModuleFromAnotherVersion"), "Unmanaged module is preserved in saved config");
+        assertTrue(saved.contains("\"favorite\": true"), "Unmanaged module options/properties are preserved");
+    }
 }

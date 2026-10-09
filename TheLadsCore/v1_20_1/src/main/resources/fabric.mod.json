@@ -25,6 +25,9 @@
       "com.thelads.core.v1_20_1.TheLadsCoreClient1201"
     ]
   },
+  "mixins": [
+    "theladscore.v1_20_1.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.14.21",
     "fabric-api": "*",

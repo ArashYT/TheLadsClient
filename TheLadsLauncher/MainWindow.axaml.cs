@@ -465,6 +465,7 @@ public partial class MainWindow : Window
         VersionText.Text = $"v{Program.Version}";
         UpdateMinecraftVersionDisplay();
         InitializeSearchMcVersions();
+        ReloadModsInventory();
         _ = TriggerDefaultSearchesAsync();
     }
 
@@ -593,6 +594,19 @@ public partial class MainWindow : Window
         var tab = ModsSubTabControl.SelectedItem;
         DiscordPresence.Page(tab == ModsBrowseTab ? "BrowseMods" : tab == ModsSettingsTab ? "ModSettings" : tab == PacksBrowseTab ? "Packs"
             : tab == ShaderPacksTab ? "Shaders" : tab == DataPacksTab ? "DataPacks" : "Mods");
+
+        if (tab == ModsBrowseTab)
+        {
+            RefreshBrowseInstalledStates();
+        }
+        else if (tab == PacksBrowseTab)
+        {
+            RefreshBrowseRpInstalledStates();
+        }
+        else if (tab == ModsInstalledTab)
+        {
+            ReloadModsInventory();
+        }
     }
     private void NavigateTo(string page)
     {
@@ -2924,6 +2938,7 @@ public partial class MainWindow : Window
                 _modsLoadingProfile = null;
                 ShowModsNotice(preferencesError);
                 RenderModsInventory();
+                RefreshBrowseInstalledStates();
             }
             return inventory;
         }
@@ -3337,6 +3352,7 @@ public partial class MainWindow : Window
         // The inventory this reload read, not _modInventory: a newer reload may still be running, and the one shown until
         // then can predate the change.
         if (await ReloadModsInventoryAsync() is not { } inventory) return;
+        RefreshBrowseInstalledStates();
         try { await _modInventoryService.WriteSnapshotAsync(inventory); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -5307,52 +5323,151 @@ public partial class MainWindow : Window
         await SearchBrowseAsync(RpSearchBox, RpSearchProvider, SearchRpMcVersionDropdown, isResourcePack: true, BrowseRpList);
     }
 
-    private string GetInstalledVersion(string itemName, bool isResourcePack)
+    private bool IsItemInstalled(ModSearchItem item, string mcVersion, bool isResourcePack)
     {
-        // Resource packs are shared by every version: look in the shared folder, not the profile.
-        string targetFolder = isResourcePack
-            ? SharedContentService.Instance.ResourcePacksDirectory
-            : Path.Combine(settings.InstancePath, "mods");
-        if (!Directory.Exists(targetFolder)) return "";
+        if (item == null) return false;
+        return isResourcePack ? IsResourcePackInstalled(item) : IsModInstalled(item, mcVersion);
+    }
 
-        string cleanName = Regex.Replace(itemName, @"\s+", "").ToLower();
-        var files = Directory.GetFiles(targetFolder);
-        foreach (var file in files)
+    private static bool IsResourcePackInstalled(ModSearchItem item)
+    {
+        try
         {
-            string cleanFile = Path.GetFileNameWithoutExtension(file).Replace(".disabled", "").Replace(" ", "").ToLower();
-            if (cleanFile.Contains(cleanName) || cleanName.Contains(cleanFile))
+            string targetFolder = SharedContentService.Instance.ResourcePacksDirectory;
+            return ModSearchMatcher.MatchesResourcePack(item, targetFolder);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private bool IsModInstalled(ModSearchItem item, string mcVersion)
+    {
+        if (item == null) return false;
+
+        // 1. Check loaded _modInventory
+        var inventory = _modInventory;
+        if (inventory != null)
+        {
+            foreach (var entry in inventory.Entries)
             {
-                if (isResourcePack)
+                if (ModSearchMatcher.MatchesInventoryEntry(item, entry))
+                    return true;
+            }
+        }
+
+        // 2. Check profile's mods directory on disk directly
+        try
+        {
+            var (gameDirectory, _) = ModsTarget();
+            string modsDir = Path.Combine(gameDirectory, "mods");
+            if (Directory.Exists(modsDir))
+            {
+                foreach (var file in Directory.EnumerateFiles(modsDir))
                 {
-                    return "installed";
+                    if (!file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) &&
+                        !file.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    if (ModSearchMatcher.MatchesJarFile(item, file))
+                        return true;
                 }
-                else
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+
+        // 3. Check shipped pack manifest for this profile's Minecraft version
+        try
+        {
+            string versionToCheck = string.IsNullOrWhiteSpace(mcVersion) ||
+                mcVersion.Equals("all", StringComparison.OrdinalIgnoreCase) ||
+                mcVersion.Equals("all versions", StringComparison.OrdinalIgnoreCase)
+                ? ModsTarget().MinecraftVersion
+                : mcVersion;
+            string manifestPath = Path.Combine(AppContext.BaseDirectory, "game-mods", versionToCheck, "client-mods.json");
+            if (File.Exists(manifestPath))
+            {
+                var manifest = ClientModInstaller.ReadManifest(File.ReadAllText(manifestPath));
+                if (manifest?.Mods != null)
                 {
-                    try
+                    foreach (var mod in manifest.Mods)
                     {
-                        using var archive = ZipFile.OpenRead(file);
-                        var entry = archive.GetEntry("fabric.mod.json");
-                        if (entry != null)
-                        {
-                            using var stream = entry.Open();
-                            using var reader = new StreamReader(stream);
-                            string json = reader.ReadToEnd();
-                            using var doc = JsonDocument.Parse(json);
-                            if (doc.RootElement.TryGetProperty("version", out var verProp))
-                            {
-                                return verProp.GetString() ?? "";
-                            }
-                        }
-                    }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException)
-                    {
-                        // Only the Browse "Installed/Update" label depends on this; the Mods page lists the jar as Invalid.
-                        Log($"[Mods] Could not read the version of '{Path.GetFileName(file)}': {ex.Message}");
+                        if (ModSearchMatcher.MatchesManifestEntry(item, mod))
+                            return true;
                     }
                 }
             }
         }
-        return "";
+        catch (Exception ex) when (ex is IOException or JsonException)
+        {
+        }
+
+        return false;
+    }
+
+    private void UpdateBrowseButtonState(Button installBtn, ModSearchItem item, string mcVersion, bool isResourcePack)
+    {
+        bool isInstalled = IsItemInstalled(item, mcVersion, isResourcePack);
+        installBtn.Content = isInstalled ? "Installed" : "Install";
+        installBtn.IsEnabled = !isInstalled;
+        installBtn.Classes.Remove(isInstalled ? "launch" : "action");
+        if (!installBtn.Classes.Contains(isInstalled ? "action" : "launch"))
+            installBtn.Classes.Add(isInstalled ? "action" : "launch");
+    }
+
+    private void RefreshBrowseInstalledStates()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(RefreshBrowseInstalledStates);
+            return;
+        }
+
+        if (BrowseModsList == null || BrowseModsList.Children.Count == 0) return;
+        string mcVersion = SearchModMcVersionDropdown?.SelectedItem as string ?? ResolveMinecraftVersion();
+        foreach (var child in BrowseModsList.Children)
+        {
+            if (child is Border row && row.Tag is ModSearchItem item)
+            {
+                if (row.Child is Grid grid && grid.Children.Count > 2 &&
+                    grid.Children[2] is StackPanel actionPanel &&
+                    actionPanel.Children.Count > 0 &&
+                    actionPanel.Children[0] is Button btn)
+                {
+                    if (btn.Content is string text && (text.EndsWith("...") || text.Contains("ing"))) continue;
+                    UpdateBrowseButtonState(btn, item, mcVersion, isResourcePack: false);
+                }
+            }
+        }
+    }
+
+    private void RefreshBrowseRpInstalledStates()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(RefreshBrowseRpInstalledStates);
+            return;
+        }
+
+        if (BrowseRpList == null || BrowseRpList.Children.Count == 0) return;
+        string mcVersion = SearchRpMcVersionDropdown?.SelectedItem as string ?? ResolveMinecraftVersion();
+        foreach (var child in BrowseRpList.Children)
+        {
+            if (child is Border row && row.Tag is ModSearchItem item)
+            {
+                if (row.Child is Grid grid && grid.Children.Count > 2 &&
+                    grid.Children[2] is StackPanel actionPanel &&
+                    actionPanel.Children.Count > 0 &&
+                    actionPanel.Children[0] is Button btn)
+                {
+                    if (btn.Content is string text && (text.EndsWith("...") || text.Contains("ing"))) continue;
+                    UpdateBrowseButtonState(btn, item, mcVersion, isResourcePack: true);
+                }
+            }
+        }
     }
 
     /// <summary>Downloads the newest matching file. Returns null on success, otherwise the reason it failed.</summary>
@@ -5508,25 +5623,20 @@ public partial class MainWindow : Window
                 }
             }
 
-            // Determine installation & update state
-            var installedVersion = GetInstalledVersion(item.Name, isResourcePack);
-            var isInstalled = !string.IsNullOrEmpty(installedVersion);
-            var needsUpdate = false;
-            if (isInstalled && !isResourcePack && !string.IsNullOrEmpty(item.Version) && installedVersion != "installed")
-            {
-                needsUpdate = item.Version != installedVersion;
-            }
+            // Determine installation state
+            bool isInstalled = IsItemInstalled(item, mcVersion, isResourcePack);
 
             // Create buttons
             var installBtn = new Button
             {
-                Content = needsUpdate ? "Update" : (isInstalled ? "Installed" : "Install"),
-                IsEnabled = !isInstalled || needsUpdate,
-                Classes = { (isInstalled && !needsUpdate) ? "action" : "launch" },
+                Content = isInstalled ? "Installed" : "Install",
+                IsEnabled = !isInstalled,
+                Classes = { isInstalled ? "action" : "launch" },
                 Height = 30,
                 Padding = new Thickness(12, 0),
                 HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
+                VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Tag = item
             };
             var progressBar = new ProgressBar { Minimum = 0, Maximum = 100, Value = 0, Height = 6, Width = 80, IsVisible = false, Foreground = new SolidColorBrush(Color.Parse("#C44343")) };
             
@@ -5540,7 +5650,7 @@ public partial class MainWindow : Window
             installBtn.Click += async (s, e) =>
             {
                 installBtn.IsEnabled = false;
-                installBtn.Content = needsUpdate ? "Updating..." : "Installing...";
+                installBtn.Content = "Installing...";
                 progressBar.IsVisible = true;
 
                 // Nothing is deleted first: a mod update replaces only your own copy of the same Fabric id (UserModFiles).
@@ -5558,17 +5668,22 @@ public partial class MainWindow : Window
                     installBtn.Classes.Add("action");
                     installBtn.IsEnabled = false;
                     progressBar.IsVisible = false;
-                    needsUpdate = false;
+
+                    if (!isResourcePack)
+                        RefreshBrowseInstalledStates();
+                    else
+                        RefreshBrowseRpInstalledStates();
                 }
                 else
                 {
                     installBtn.IsEnabled = true;
-                    installBtn.Content = needsUpdate ? "Update Failed" : "Failed";
+                    installBtn.Content = "Failed";
                     progressBar.IsVisible = false;
                     ModsStatus($"{item.Name}: {failure}", true);
                 }
             };
 
+            row.Tag = item;
             listPanel.Children.Add(row);
         }
     }

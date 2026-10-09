@@ -31,6 +31,7 @@ import java.nio.file.AtomicMoveNotSupportedException;
 public class ConfigManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static File testConfigFile = null;
+    private static final java.util.Map<String, JsonObject> unmanagedModules = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.concurrent.atomic.AtomicLong sequence = new java.util.concurrent.atomic.AtomicLong();
     private static final Object LATER = new Object();
     private static String latestJson;
@@ -52,6 +53,9 @@ public class ConfigManager {
     public static JsonObject toJson() {
         JsonObject json = new JsonObject();
         JsonObject modulesJson = new JsonObject();
+        for (java.util.Map.Entry<String, JsonObject> entry : unmanagedModules.entrySet()) {
+            modulesJson.add(entry.getKey(), entry.getValue().deepCopy());
+        }
         for (Module module : ModuleManager.getInstance().getModules()) {
             JsonObject moduleJson = new JsonObject();
             moduleJson.addProperty("enabled", module.isEnabled());
@@ -135,6 +139,15 @@ public class ConfigManager {
             migrateDynamicLights(modulesJson);
             migrateDiscord(modulesJson);
             migrateDamageTilt(modulesJson);
+            java.util.Set<String> known = new java.util.HashSet<>();
+            for (Module m : ModuleManager.getInstance().getModules()) {
+                known.add(m.getName());
+            }
+            for (java.util.Map.Entry<String, JsonElement> entry : modulesJson.entrySet()) {
+                if (!known.contains(entry.getKey()) && entry.getValue() instanceof JsonObject obj) {
+                    unmanagedModules.put(entry.getKey(), obj.deepCopy());
+                }
+            }
             for (Module module : ModuleManager.getInstance().getModules()) {
                 try {
                     if (module.getName().equals("Nametags") && !modulesJson.has("Nametags") && modulesJson.has("ToggleNametags"))
@@ -433,23 +446,48 @@ public class ConfigManager {
         if (order < writtenOrder) return;
         writtenOrder = order;
         File configFile = getConfigFile();
-        if (configFile.getParentFile() != null) {
-            configFile.getParentFile().mkdirs();
-        }
-        Path temporary = null;
+        writeAtomic(configFile, json);
+
+        if (testConfigFile != null) return;
+
+        // Mirror to global root and local instance directory if applicable
         try {
-            Path destination = configFile.toPath().toAbsolutePath();
-            temporary = Files.createTempFile(destination.getParent(), ".lads-config-", ".tmp");
-            Files.writeString(temporary, json, StandardCharsets.UTF_8);
-            try {
-                Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (AtomicMoveNotSupportedException unsupported) {
-                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING);
+            Path globalRoot = ClientPaths.getGlobalBaseDir().resolve("thelads_config.json");
+            if (!configFile.toPath().toAbsolutePath().equals(globalRoot.toAbsolutePath())) {
+                writeAtomic(globalRoot.toFile(), json);
             }
-        } catch (IOException e) {
+            Path localBase = ClientPaths.getBaseDir().resolve("thelads_config.json");
+            if (!configFile.toPath().toAbsolutePath().equals(localBase.toAbsolutePath()) &&
+                !globalRoot.toAbsolutePath().equals(localBase.toAbsolutePath())) {
+                writeAtomic(localBase.toFile(), json);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private static void writeAtomic(File destinationFile, String content) {
+        if (destinationFile == null) return;
+        try {
+            Path destination = destinationFile.toPath().toAbsolutePath();
+            Path parent = destination.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Path temporary = null;
+            try {
+                temporary = Files.createTempFile(parent, ".lads-config-", ".tmp");
+                Files.writeString(temporary, content, StandardCharsets.UTF_8);
+                try {
+                    Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                } catch (AtomicMoveNotSupportedException unsupported) {
+                    Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (temporary != null) try { Files.deleteIfExists(temporary); } catch (IOException ignored) {}
+            }
+        } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            if (temporary != null) try { Files.deleteIfExists(temporary); } catch (IOException ignored) {}
         }
     }
 }

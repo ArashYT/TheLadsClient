@@ -88,12 +88,58 @@ public static class ModpackLauncher
     public static async Task<Process> LaunchAsync(string dataDirectory, ModpackInstance instance, MSession session, LauncherSettings settings,
         IJavaService java, HttpClient http, Action<string>? status, CancellationToken token)
     {
+        SyncLadsConfigToInstance(dataDirectory, instance.GameDirectory);
         var process = await PrepareAsync(dataDirectory, instance, session, settings, java, http, status, token);
         token.ThrowIfCancellationRequested();
+        process.EnableRaisingEvents = true;
+        process.Exited += (_, _) => SyncLadsConfigFromInstance(instance.GameDirectory, dataDirectory);
         process.Start();
         instance.LastPlayedUtc = DateTime.UtcNow;
         Modpacks.Save(instance);
         return process;
+    }
+
+    private static void SyncLadsConfigToInstance(string dataDirectory, string gameDirectory)
+    {
+        try
+        {
+            var sharedConfig = Path.Combine(dataDirectory, "shared", "thelads_config.json");
+            var instanceConfig = Path.Combine(gameDirectory, "thelads_config.json");
+            if (File.Exists(sharedConfig))
+            {
+                if (!File.Exists(instanceConfig) || File.GetLastWriteTimeUtc(sharedConfig) > File.GetLastWriteTimeUtc(instanceConfig))
+                {
+                    Directory.CreateDirectory(gameDirectory);
+                    File.Copy(sharedConfig, instanceConfig, true);
+                }
+            }
+            else if (File.Exists(instanceConfig))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(sharedConfig)!);
+                File.Copy(instanceConfig, sharedConfig, true);
+            }
+        }
+        catch { }
+    }
+
+    private static void SyncLadsConfigFromInstance(string gameDirectory, string dataDirectory)
+    {
+        try
+        {
+            var sharedConfig = Path.Combine(dataDirectory, "shared", "thelads_config.json");
+            var rootConfig = Path.Combine(dataDirectory, "thelads_config.json");
+            var instanceConfig = Path.Combine(gameDirectory, "thelads_config.json");
+            if (File.Exists(instanceConfig))
+            {
+                if (!File.Exists(sharedConfig) || File.GetLastWriteTimeUtc(instanceConfig) >= File.GetLastWriteTimeUtc(sharedConfig))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(sharedConfig)!);
+                    File.Copy(instanceConfig, sharedConfig, true);
+                    File.Copy(instanceConfig, rootConfig, true);
+                }
+            }
+        }
+        catch { }
     }
 
     /// <summary>Everything <see cref="LaunchAsync"/> does short of starting the game: Java, loader, game files; the process to start.</summary>
@@ -132,6 +178,8 @@ public static class ModpackLauncher
         }, token);
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.CreateNoWindow = true;
+        process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = dataDirectory;
+        process.StartInfo.Environment["THELADS_DIR"] = instance.GameDirectory;
         return process;
     }
 

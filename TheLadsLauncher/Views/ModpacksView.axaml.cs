@@ -2,23 +2,62 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using TheLadsLauncher.Services;
 
 namespace TheLadsLauncher.Views;
+
+public sealed class ModpackModItem
+{
+    public string FileName { get; set; } = "";
+    public string FilePath { get; set; } = "";
+    public string BaseName { get; set; } = "";
+    public bool Enabled { get; set; }
+    public string DisplayName { get; set; } = "";
+    public string Version { get; set; } = "";
+    public string Author { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Environment { get; set; } = "Client & Server";
+    public byte[]? IconBytes { get; set; }
+    public string? Sha1 { get; set; }
+    public uint? Fingerprint { get; set; }
+    public bool HasUpdate { get; set; }
+    public ContentFile? UpdateFile { get; set; }
+    public string? ProjectId { get; set; }
+    public string? Provider { get; set; }
+    public bool IsSelected { get; set; }
+}
+
+public sealed class ModpackContentItemInfo
+{
+    public string Name { get; set; } = "";
+    public string Path { get; set; } = "";
+    public bool Enabled { get; set; }
+    public string Type { get; set; } = "";
+    public string? Description { get; set; }
+    public byte[]? IconBytes { get; set; }
+}
 
 /// <summary>The Modpacks tab: My Modpacks (cards), Browse (Modrinth) and one instance's page. Instances start from here only.</summary>
 public partial class ModpacksView : UserControl
@@ -29,6 +68,12 @@ public partial class ModpacksView : UserControl
     private static readonly (string Label, string Index)[] BrowseSorts =
         { ("Most downloads", "downloads"), ("Relevance", "relevance"), ("Most follows", "follows"), ("Newest", "newest"), ("Recently updated", "updated") };
     private static readonly Dictionary<string, Bitmap?> RemoteIcons = new();
+    private static readonly Dictionary<string, (DateTime Stamp, ModpackContentItemInfo Info)> _contentInfoCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<int, WriteableBitmap> _worldPlaceholders = new();
+    private static WriteableBitmap? _shaderFallback;
+    private static WriteableBitmap? _rpFallback;
+    private static WriteableBitmap? _dpFallback;
+    private static WriteableBitmap? _modFallback;
 
     private readonly Dictionary<string, Process> _running = new();
     private readonly Dictionary<string, CancellationTokenSource> _launching = new();
@@ -40,6 +85,14 @@ public partial class ModpacksView : UserControl
     private int _browseOffset;
     private bool _browsed, _importing;
     private readonly bool _ready;
+
+    private List<ModpackModItem> _instanceMods = new();
+    private string _currentSubTab = "mods";
+    private CancellationTokenSource? _updateCheckCts;
+    private CancellationTokenSource? _modDetailsCts;
+    private ModSearchItem? _currentDetailProject;
+    private List<ProjectVersionItem> _currentDetailVersions = new();
+    private bool _updatingAll;
 
     private ExternalScan? _externalScan;
     private bool _externalLoaded;
@@ -617,7 +670,25 @@ public partial class ModpacksView : UserControl
         try
         {
             if (!RemoteIcons.TryGetValue(url, out var bitmap))
-                RemoteIcons[url] = bitmap = new Bitmap(new MemoryStream(await Http.GetByteArrayAsync(url)));
+            {
+                if (url.StartsWith("local://theladscore", StringComparison.OrdinalIgnoreCase))
+                {
+                    string? corePath = FindBundledCoreJar("1.20.1");
+                    if (corePath != null && File.Exists(corePath))
+                    {
+                        var info = FabricModMetadata.ReadJar(corePath, includeIcon: true);
+                        if (info?.Icon is { Length: > 0 } iconBytes)
+                        {
+                            bitmap = new Bitmap(new MemoryStream(iconBytes));
+                        }
+                    }
+                }
+                else
+                {
+                    bitmap = new Bitmap(new MemoryStream(await Http.GetByteArrayAsync(url)));
+                }
+                RemoteIcons[url] = bitmap;
+            }
             if (bitmap != null) target.Child = new Image { Source = bitmap, Stretch = Stretch.UniformToFill };
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException or ArgumentException or InvalidDataException or NotSupportedException) { RemoteIcons[url] = null; }
@@ -658,16 +729,23 @@ public partial class ModpacksView : UserControl
 
     // ── One instance ────────────────────────────────────────────────────────
 
+    // ── One instance (CurseForge style) ────────────────────────────────────
+
     internal void OpenManage(ModpackInstance instance)
     {
         _selected = instance;
         LibraryPanel.IsVisible = false;
         ManagePanel.IsVisible = true;
-        ManageArt.Child = Art(instance, 96);
+        ManageArt.Child = Art(instance, 82);
         ManageTitle.Text = instance.Name;
-        ManageInfo.Text = $"Minecraft {instance.McVersion}  ·  {LoaderName(instance.Loader)} {instance.LoaderVersion}".TrimEnd()
-            + (string.IsNullOrEmpty(instance.PackVersion) ? "" : $"  ·  pack {instance.PackVersion}") + "  ·  " + Byline(instance)
-            + (instance.LastPlayedUtc is { } played ? $"  ·  last played {played.ToLocalTime():g}" : "");
+        ManageByline.Text = Byline(instance);
+        ManageVersionText.Text = string.IsNullOrEmpty(instance.PackVersion) ? (instance.Source != null ? instance.Source.VersionId : "") : $"v{instance.PackVersion}";
+        ManageVersionRow.IsVisible = !string.IsNullOrEmpty(instance.PackVersion) || instance.Source != null;
+        ManageLastPlayed.Text = instance.LastPlayedUtc is { } played ? $"▶ {RelativeTime(played)}" : "▶ Never";
+        ManagePlaytime.Text = "⏱ 0m";
+        ManageCreated.Text = $"📅 {instance.CreatedUtc.ToLocalTime():d}";
+        ManageMcVersion.Text = $"🎮 {instance.McVersion}";
+        ManageLoader.Text = $"🛠 {LoaderName(instance.Loader)}{(string.IsNullOrEmpty(instance.LoaderVersion) ? "" : $" - {instance.LoaderVersion}")}";
         NameBox.Text = instance.Name;
         _updatingRam = true;
         RamBox.Value = instance.MaxRamMb;
@@ -677,9 +755,24 @@ public partial class ModpacksView : UserControl
         ManageStatus.Text = "";
         UpdateCard.IsVisible = instance.Source != null;
         VersionBox.ItemsSource = null;
-        RenderMods();
+
+        // Default to Content tab
+        InstanceTabs.SelectedIndex = 1;
+        OverviewPanel.IsVisible = false;
+        ContentPanel.IsVisible = true;
+        LogsPanel.IsVisible = false;
+        ScreenshotsPanel.IsVisible = false;
+
+        _currentSubTab = "mods";
+        UpdateSubTabSelection();
+        RenderAllContent();
         RefreshButtons();
         if (instance.Source != null) _ = LoadVersionsAsync(instance);
+    }
+
+    private void OpenSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        InstanceTabs.SelectedIndex = 0;
     }
 
     private void RamSlider_ValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
@@ -739,110 +832,1385 @@ public partial class ModpacksView : UserControl
         DeleteButton.IsEnabled = UpdateButton.IsEnabled = Idle(i);
     }
 
-    private string _addContentType = "mod";
-    private string _addContentTargetDir = "";
-    private CancellationTokenSource? _addContentSearchCts;
-
     private void InstanceTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (_selected == null || InstanceTabs == null) return;
+        int idx = InstanceTabs.SelectedIndex;
+        OverviewPanel.IsVisible = idx == 0;
+        ContentPanel.IsVisible = idx == 1;
+        LogsPanel.IsVisible = idx == 2;
+        ScreenshotsPanel.IsVisible = idx == 3;
+
+        if (idx == 1) RenderActiveSubTab();
+        else if (idx == 2) LoadLatestLog();
+        else if (idx == 3) LoadScreenshots();
+    }
+
+    private void SubTab_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string tab)
+        {
+            _currentSubTab = tab;
+            UpdateSubTabSelection();
+            RenderActiveSubTab();
+        }
+    }
+
+    private void UpdateSubTabSelection()
+    {
+        Button[] buttons = { SubTabModsBtn, SubTabDatapacksBtn, SubTabResourcePacksBtn, SubTabShadersBtn, SubTabWorldsBtn };
+        foreach (var btn in buttons)
+        {
+            if ((btn.Tag as string) == _currentSubTab)
+            {
+                btn.Classes.Clear();
+                btn.Classes.Add("launch");
+            }
+            else
+            {
+                btn.Classes.Clear();
+                btn.Classes.Add("action");
+            }
+        }
+
+        bool isMods = _currentSubTab == "mods";
+        bool isWorlds = _currentSubTab == "worlds";
+        ModsTableHeader.IsVisible = isMods;
+        GenericTableHeader.IsVisible = !isMods && !isWorlds;
+        WorldsTableHeader.IsVisible = isWorlds;
+        UpdateAllButton.IsVisible = isMods;
+        ContentUpdateStatus.IsVisible = isMods;
+
+        ModsList.IsVisible = isMods;
+        DatapacksList.IsVisible = _currentSubTab == "datapacks";
+        ResourcePacksList.IsVisible = _currentSubTab == "resourcepacks";
+        ShadersList.IsVisible = _currentSubTab == "shaderpacks";
+        WorldsList.IsVisible = isWorlds;
+
+        if (!isMods && !isWorlds)
+        {
+            GenericHeaderTitle.Text = _currentSubTab switch
+            {
+                "datapacks" => "Data Pack Name",
+                "resourcepacks" => "Resource Pack Name",
+                "shaderpacks" => "Shader Pack Name",
+                _ => "Name"
+            };
+            GenericHeaderStatus.Text = "Active";
+        }
+
+        AddFromFileButton.IsVisible = !isWorlds;
+        AddFromFileButton.Content = _currentSubTab switch
+        {
+            "mods" => "+ From file (.jar)",
+            _ => "+ From file (.zip)"
+        };
+    }
+
+    public static string? FindBundledCoreJar(string mcVersion)
+    {
+        var candidates = new List<string>
+        {
+            Path.Combine(AppContext.BaseDirectory, "game-mods", mcVersion, "theladscore.jar"),
+            Path.Combine(AppContext.BaseDirectory, "game-mods", "theladscore.jar"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "game-mods", mcVersion, "theladscore.jar"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "game-mods", "theladscore.jar")
+        };
+
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && dir.Exists)
+        {
+            candidates.Add(Path.Combine(dir.FullName, "game-mods", mcVersion, "theladscore.jar"));
+            candidates.Add(Path.Combine(dir.FullName, "TheLadsLauncher", "game-mods", mcVersion, "theladscore.jar"));
+            candidates.Add(Path.Combine(dir.FullName, "artifacts", "client", "game-mods", mcVersion, "theladscore.jar"));
+            candidates.Add(Path.Combine(dir.FullName, "Lads Client", "TheLadsLauncher", "game-mods", mcVersion, "theladscore.jar"));
+            candidates.Add(Path.Combine(dir.FullName, "Lads Client", "artifacts", "client", "game-mods", mcVersion, "theladscore.jar"));
+            dir = dir.Parent;
+        }
+
+        foreach (var path in candidates)
+        {
+            if (File.Exists(path)) return Path.GetFullPath(path);
+        }
+
+        return null;
+    }
+
+    private void RenderActiveSubTab()
+    {
         if (_selected == null) return;
-        RenderAllContent();
+        switch (_currentSubTab)
+        {
+            case "mods":
+                RenderModsTable();
+                break;
+            case "datapacks":
+                RenderOtherContent("datapacks", "DATAPACKS", DatapacksList);
+                break;
+            case "resourcepacks":
+                RenderOtherContent("resourcepacks", "RESOURCE PACKS", ResourcePacksList);
+                break;
+            case "shaderpacks":
+                RenderOtherContent("shaderpacks", "SHADERS", ShadersList);
+                break;
+            case "worlds":
+                RenderWorlds();
+                break;
+        }
     }
 
     private void ContentFilter_Changed(object? sender, TextChangedEventArgs e)
     {
         if (_selected == null) return;
-        RenderAllContent();
+        RenderActiveSubTab();
     }
 
     private void RenderAllContent()
     {
         if (_selected is not { } i) return;
-        RenderContent("mods", "MODS", ModsHeader, ModsList, ModsSearch);
-        RenderContent("resourcepacks", "RESOURCE PACKS", ResourcePacksHeader, ResourcePacksList, ResourcePacksSearch);
-        RenderContent("shaderpacks", "SHADERS", ShadersHeader, ShadersList, ShadersSearch);
-        RenderContent("datapacks", "DATAPACKS", DatapacksHeader, DatapacksList, DatapacksSearch);
+        _ = ScanModsAsync(i);
+        UpdateHeaderCounts();
+        RenderActiveSubTab();
     }
 
-    private void RenderContent(string folder, string typeHeader, TextBlock header, StackPanel list, TextBox searchBox)
+    private void UpdateHeaderCounts()
     {
-        list.Children.Clear();
         if (_selected is not { } i) return;
-        List<ModpackContentItem> items;
-        try { items = Modpacks.Content(i, folder, typeHeader); }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { header.Text = typeHeader; ManageStatus.Text = e.Message; return; }
+        int modsCount = _instanceMods.Count;
+        int datapacksCount = SafeCountDirectory(Path.Combine(i.GameDirectory, "datapacks"));
+        int resourcePacksCount = SafeCountDirectory(Path.Combine(i.GameDirectory, "resourcepacks"));
+        int shadersCount = SafeCountDirectory(Path.Combine(i.GameDirectory, "shaderpacks"));
+        int worldsCount = SafeCountDirectory(Path.Combine(i.GameDirectory, "saves"));
 
-        string filter = (searchBox.Text ?? "").Trim();
-        var visible = string.IsNullOrEmpty(filter)
-            ? items
-            : items.Where(item => item.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+        SubTabModsBtn.Content = $"Mods ({modsCount})";
+        SubTabDatapacksBtn.Content = $"Data Packs ({datapacksCount})";
+        SubTabResourcePacksBtn.Content = $"Resource Packs ({resourcePacksCount})";
+        SubTabShadersBtn.Content = $"Shaders ({shadersCount})";
+        SubTabWorldsBtn.Content = $"Worlds ({worldsCount})";
 
-        header.Text = $"{typeHeader} · {items.Count(m => m.Enabled)} OF {items.Count} ON";
+        TabContent.Header = $"Content ({modsCount + datapacksCount + resourcePacksCount + shadersCount + worldsCount})";
+    }
+
+    private static int SafeCountDirectory(string path)
+    {
+        try
+        {
+            if (!Directory.Exists(path)) return 0;
+            return Directory.EnumerateFileSystemEntries(path).Count();
+        }
+        catch { return 0; }
+    }
+
+    private async Task ScanModsAsync(ModpackInstance instance)
+    {
+        string modsDir = Path.Combine(instance.GameDirectory, "mods");
+        Directory.CreateDirectory(modsDir);
+        var files = Directory.EnumerateFiles(modsDir)
+            .Where(f => f.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var items = new List<ModpackModItem>();
+        await Task.Run(() =>
+        {
+            foreach (var file in files)
+            {
+                items.Add(InspectJar(file));
+            }
+        });
+
+        _instanceMods = items;
+        RenderModsTable();
+        UpdateHeaderCounts();
+
+        _updateCheckCts?.Cancel();
+        var cts = _updateCheckCts = new CancellationTokenSource();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var sha1Map = new Dictionary<string, ModpackModItem>(StringComparer.OrdinalIgnoreCase);
+                foreach (var mod in items)
+                {
+                    try
+                    {
+                        string sha1 = ContentCatalog.Sha1(mod.FilePath);
+                        mod.Sha1 = sha1;
+                        sha1Map[sha1] = mod;
+                    }
+                    catch { }
+                }
+
+                var updates = await Catalog().ModrinthUpdatesAsync(sha1Map.Keys.ToList(), instance.McVersion, instance.Loader, cts.Token);
+                int count = 0;
+                foreach (var (sha1, updateFile) in updates)
+                {
+                    if (sha1Map.TryGetValue(sha1, out var mod))
+                    {
+                        if (updateFile.Sha1 != null && !updateFile.Sha1.Equals(sha1, StringComparison.OrdinalIgnoreCase))
+                        {
+                            mod.HasUpdate = true;
+                            mod.UpdateFile = updateFile;
+                            count++;
+                        }
+                    }
+                }
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_selected != instance) return;
+                    if (count > 0)
+                    {
+                        UpdateAllBadge.IsVisible = true;
+                        UpdateAllBadgeText.Text = count.ToString();
+                        ContentUpdateStatus.Text = $"{count} mod update{(count == 1 ? "" : "s")} available";
+                    }
+                    else
+                    {
+                        UpdateAllBadge.IsVisible = false;
+                        ContentUpdateStatus.Text = "All mods are up to date";
+                    }
+                    RenderModsTable();
+                });
+            }
+            catch { }
+        }, cts.Token);
+    }
+
+    private static ModpackModItem InspectJar(string filePath)
+    {
+        string fileName = Path.GetFileName(filePath);
+        bool enabled = !fileName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
+        string baseName = enabled ? fileName : fileName[..^".disabled".Length];
+        string cleanName = Path.GetFileNameWithoutExtension(baseName);
+
+        var item = new ModpackModItem
+        {
+            FileName = fileName,
+            FilePath = filePath,
+            BaseName = baseName,
+            Enabled = enabled,
+            DisplayName = cleanName,
+            Author = "Unknown",
+            Environment = "Client & Server"
+        };
+
+        try
+        {
+            var fabric = FabricModMetadata.ReadJar(filePath, includeIcon: true);
+            if (fabric != null && fabric.HasMetadata)
+            {
+                if (!string.IsNullOrWhiteSpace(fabric.Name)) item.DisplayName = fabric.Name;
+                item.Version = fabric.Version ?? "";
+                if (fabric.Authors != null && fabric.Authors.Count > 0)
+                    item.Author = string.Join(", ", fabric.Authors);
+                item.Description = fabric.Description ?? "";
+                item.Environment = fabric.Environment switch
+                {
+                    "client" => "Client",
+                    "server" => "Server",
+                    _ => "Client & Server"
+                };
+                item.IconBytes = fabric.Icon ?? ModIconService.ReadJarIcon(filePath);
+                return item;
+            }
+
+            var forge = FabricModMetadata.ReadForgeJar(filePath);
+            if (forge != null && forge.HasMetadata)
+            {
+                if (!string.IsNullOrWhiteSpace(forge.Name)) item.DisplayName = forge.Name;
+                item.Version = forge.Version ?? "";
+                if (forge.Authors != null && forge.Authors.Count > 0)
+                    item.Author = string.Join(", ", forge.Authors);
+                item.Description = forge.Description ?? "";
+                item.IconBytes = ModIconService.ReadJarIcon(filePath);
+                return item;
+            }
+
+            using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
+            using (var zip = new ZipArchive(stream, ZipArchiveMode.Read))
+            {
+                var tomlEntry = zip.GetEntry("META-INF/mods.toml") ?? zip.GetEntry("META-INF/neoforge.mods.toml");
+                if (tomlEntry != null)
+                {
+                    using var reader = new StreamReader(tomlEntry.Open(), Encoding.UTF8);
+                    string toml = reader.ReadToEnd();
+                    var nameMatch = Regex.Match(toml, @"displayName\s*=\s*[""']([^""']+)[""']");
+                    if (nameMatch.Success) item.DisplayName = nameMatch.Groups[1].Value;
+                    var authorsMatch = Regex.Match(toml, @"authors\s*=\s*[""']([^""']+)[""']");
+                    if (authorsMatch.Success) item.Author = authorsMatch.Groups[1].Value;
+                    var versionMatch = Regex.Match(toml, @"version\s*=\s*[""']([^""']+)[""']");
+                    if (versionMatch.Success) item.Version = versionMatch.Groups[1].Value;
+                    var descMatch = Regex.Match(toml, @"description\s*=\s*'''(.*?)'''", RegexOptions.Singleline);
+                    if (!descMatch.Success) descMatch = Regex.Match(toml, @"description\s*=\s*[""']([^""']+)[""']");
+                    if (descMatch.Success) item.Description = descMatch.Groups[1].Value.Trim();
+                }
+            }
+
+            item.IconBytes = ModIconService.ReadJarIcon(filePath);
+            if (item.IconBytes == null && File.Exists(filePath + ".icon.png"))
+            {
+                try { item.IconBytes = File.ReadAllBytes(filePath + ".icon.png"); } catch { }
+            }
+        }
+        catch { }
+
+        return item;
+    }
+
+    private void RenderModsTable()
+    {
+        ModsList.Children.Clear();
+        if (_selected == null) return;
+
+        string query = (ContentFilterSearch.Text ?? "").Trim();
+        var visible = string.IsNullOrEmpty(query)
+            ? _instanceMods
+            : _instanceMods.Where(m => m.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase)
+                                    || m.BaseName.Contains(query, StringComparison.OrdinalIgnoreCase)
+                                    || m.Author.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+
         if (visible.Count == 0)
         {
-            list.Children.Add(new TextBlock
+            ModsList.Children.Add(new TextBlock
             {
-                Text = items.Count == 0
-                    ? $"No {typeHeader.ToLowerInvariant()} installed. Use + Add {typeHeader.ToLowerInvariant()} to search Modrinth or + From file to install."
-                    : "No items match your filter.",
-                Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")),
-                Margin = new Thickness(0, 10, 0, 0)
+                Text = _instanceMods.Count == 0
+                    ? "No mods installed. Click '+ Add Content' to browse and install mods!"
+                    : "No mods match your search.",
+                Foreground = new SolidColorBrush(Color.Parse("#8F919C")),
+                Margin = new Thickness(0, 14, 0, 0)
             });
             return;
         }
 
         foreach (var item in visible)
         {
-            var rowGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-            var box = new CheckBox
-            {
-                Content = item.Name,
-                IsChecked = item.Enabled,
-                IsEnabled = Idle(i),
-                VerticalAlignment = VerticalAlignment.Center
-            }.Untranslated();
+            ModsList.Children.Add(CreateModRow(item));
+        }
+    }
 
-            box.IsCheckedChanged += (_, _) =>
+    private Control CreateModRow(ModpackModItem item)
+    {
+        var rowGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("34,*,140,140,70,80,44") };
+
+        var cb = new CheckBox { IsChecked = item.IsSelected, VerticalAlignment = VerticalAlignment.Center };
+        cb.IsCheckedChanged += (_, _) => item.IsSelected = cb.IsChecked == true;
+        rowGrid.Children.Add(cb);
+
+        var nameGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Cursor = new Cursor(StandardCursorType.Hand) };
+        var iconBorder = new Border
+        {
+            Width = 36, Height = 36, CornerRadius = new CornerRadius(6), ClipToBounds = true,
+            Background = new SolidColorBrush(Color.Parse("#25262B")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#26272E")),
+            BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        if (item.IconBytes == null && File.Exists(item.FilePath + ".icon.png"))
+        {
+            try { item.IconBytes = File.ReadAllBytes(item.FilePath + ".icon.png"); } catch { }
+        }
+        if (item.IconBytes != null)
+        {
+            try { iconBorder.Child = new Image { Source = new Bitmap(new MemoryStream(item.IconBytes)), Stretch = Stretch.UniformToFill }; } catch { }
+        }
+        if (iconBorder.Child == null)
+        {
+            iconBorder.Child = new Image { Source = GetModFallbackBitmap(), Stretch = Stretch.UniformToFill };
+        }
+        nameGrid.Children.Add(iconBorder);
+
+        var titleStack = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(titleStack, 1);
+        var titleBlock = new TextBlock { Text = item.DisplayName, FontWeight = FontWeight.SemiBold, FontSize = 13, Foreground = Brushes.White, TextTrimming = TextTrimming.CharacterEllipsis };
+        var fileBlock = new TextBlock { Text = item.BaseName, FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#8E909B")), TextTrimming = TextTrimming.CharacterEllipsis };
+        titleStack.Children.Add(titleBlock);
+        titleStack.Children.Add(fileBlock);
+        nameGrid.Children.Add(titleStack);
+
+        nameGrid.PointerPressed += (_, _) => OpenModDetailsFromInstalled(item);
+        Grid.SetColumn(nameGrid, 1);
+        rowGrid.Children.Add(nameGrid);
+
+        var actionPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        Grid.SetColumn(actionPanel, 2);
+        if (item.HasUpdate && item.UpdateFile != null)
+        {
+            var updateBtn = new Button
             {
-                try { Modpacks.SetContentEnabled(item, box.IsChecked == true); }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { ManageStatus.Text = $"Could not switch {item.Name}: {e.Message}"; }
-                RenderContent(folder, typeHeader, header, list, searchBox);
+                Classes = { "cfUpdate" },
+                Content = "Update",
+                Height = 28,
+                Padding = new Thickness(12, 0),
+                VerticalContentAlignment = VerticalAlignment.Center
             };
-            rowGrid.Children.Add(box);
+            updateBtn.Click += async (_, _) => await UpdateModAsync(item, updateBtn);
+            actionPanel.Children.Add(updateBtn);
+        }
+        else
+        {
+            actionPanel.Children.Add(new TextBlock
+            {
+                Text = "Recently Updated",
+                FontSize = 11.5,
+                Foreground = new SolidColorBrush(Color.Parse("#7B7E8C")),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+        }
+        rowGrid.Children.Add(actionPanel);
+
+        var authorBlock = new TextBlock
+        {
+            Text = item.Author,
+            FontSize = 12,
+            Foreground = new SolidColorBrush(Color.Parse("#A5A8B5")),
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        };
+        Grid.SetColumn(authorBlock, 3);
+        rowGrid.Children.Add(authorBlock);
+
+        var envBlock = new TextBlock
+        {
+            Text = item.Environment == "Client" ? "💻 Client" : item.Environment == "Server" ? "🖧 Server" : "💻 Both",
+            FontSize = 11,
+            Foreground = new SolidColorBrush(Color.Parse("#8F919B")),
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        Grid.SetColumn(envBlock, 4);
+        rowGrid.Children.Add(envBlock);
+
+        var toggle = new ToggleSwitch
+        {
+            Classes = { "cfSwitch" },
+            IsChecked = item.Enabled,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            OnContent = "",
+            OffContent = ""
+        };
+        toggle.IsCheckedChanged += (_, _) =>
+        {
+            bool nowEnabled = toggle.IsChecked == true;
+            try
+            {
+                string oldPath = item.FilePath;
+                string newPath = nowEnabled ? (oldPath.EndsWith(".disabled") ? oldPath[..^".disabled".Length] : oldPath)
+                                            : (oldPath.EndsWith(".disabled") ? oldPath : oldPath + ".disabled");
+                if (File.Exists(oldPath) && oldPath != newPath)
+                {
+                    File.Move(oldPath, newPath);
+                    item.FilePath = newPath;
+                    item.FileName = Path.GetFileName(newPath);
+                    item.Enabled = nowEnabled;
+                }
+            }
+            catch (Exception ex)
+            {
+                ManageStatus.Text = $"Could not toggle {item.DisplayName}: {ex.Message}";
+                toggle.IsChecked = item.Enabled;
+            }
+            UpdateHeaderCounts();
+        };
+        Grid.SetColumn(toggle, 5);
+        rowGrid.Children.Add(toggle);
+
+        var delBtn = new Button
+        {
+            Classes = { "icon", "danger" },
+            Content = "🗑",
+            Width = 30, Height = 30,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        delBtn.Click += async (_, _) =>
+        {
+            if (Host is { } host && !await host.ConfirmModpackAsync("Delete mod", $"Delete '{item.DisplayName}' from this modpack?", "Delete")) return;
+            try
+            {
+                if (File.Exists(item.FilePath)) SafeFileOps.DeleteToRecycleBin(item.FilePath);
+                _instanceMods.Remove(item);
+                RenderModsTable();
+                UpdateHeaderCounts();
+                ManageStatus.Text = $"Removed {item.DisplayName}.";
+            }
+            catch (Exception ex) { ManageStatus.Text = $"Could not delete {item.DisplayName}: {ex.Message}"; }
+        };
+        Grid.SetColumn(delBtn, 6);
+        rowGrid.Children.Add(delBtn);
+
+        return new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#1A1B20")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#26272E")),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(10, 6),
+            Child = rowGrid
+        };
+    }
+
+    private void ModsSelectAll_Changed(object? sender, RoutedEventArgs e)
+    {
+        bool isChecked = ModsSelectAllBox.IsChecked == true;
+        foreach (var mod in _instanceMods)
+        {
+            mod.IsSelected = isChecked;
+        }
+        RenderModsTable();
+    }
+
+    private async Task UpdateModAsync(ModpackModItem item, Button? updateBtn = null)
+    {
+        if (_selected is not { } instance || item.UpdateFile == null) return;
+        if (updateBtn != null) { updateBtn.IsEnabled = false; updateBtn.Content = "Updating..."; }
+        try
+        {
+            string modsDir = Path.Combine(instance.GameDirectory, "mods");
+            Directory.CreateDirectory(modsDir);
+            string newPath = await Catalog().InstallAsync(item.UpdateFile, modsDir, SharedContentService.Instance);
+            if (File.Exists(item.FilePath) && Path.GetFullPath(item.FilePath) != Path.GetFullPath(newPath))
+            {
+                SafeFileOps.DeleteToRecycleBin(item.FilePath);
+            }
+            ManageStatus.Text = $"Updated {item.DisplayName} to {item.UpdateFile.VersionName}!";
+            await ScanModsAsync(instance);
+        }
+        catch (Exception ex)
+        {
+            ManageStatus.Text = $"Update failed for {item.DisplayName}: {ex.Message}";
+            if (updateBtn != null) { updateBtn.IsEnabled = true; updateBtn.Content = "Retry"; }
+        }
+    }
+
+    private async void UpdateAll_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is not { } instance || _updatingAll) return;
+        var toUpdate = _instanceMods.Where(m => m.HasUpdate && m.UpdateFile != null).ToList();
+        if (toUpdate.Count == 0)
+        {
+            ManageStatus.Text = "All mods are already up to date.";
+            return;
+        }
+
+        _updatingAll = true;
+        UpdateAllButton.IsEnabled = false;
+        ContentUpdateStatus.Text = $"Updating {toUpdate.Count} mod(s)...";
+        int updated = 0;
+        string modsDir = Path.Combine(instance.GameDirectory, "mods");
+
+        try
+        {
+            foreach (var mod in toUpdate)
+            {
+                if (mod.UpdateFile == null) continue;
+                ContentUpdateStatus.Text = $"Updating {mod.DisplayName}...";
+                try
+                {
+                    string newPath = await Catalog().InstallAsync(mod.UpdateFile, modsDir, SharedContentService.Instance);
+                    if (File.Exists(mod.FilePath) && Path.GetFullPath(mod.FilePath) != Path.GetFullPath(newPath))
+                    {
+                        SafeFileOps.DeleteToRecycleBin(mod.FilePath);
+                    }
+                    updated++;
+                }
+                catch (Exception ex)
+                {
+                    Host?.ModpackLog($"Failed to update {mod.DisplayName}: {ex}");
+                }
+            }
+            ManageStatus.Text = $"Successfully updated {updated} of {toUpdate.Count} mods.";
+            await ScanModsAsync(instance);
+        }
+        finally
+        {
+            _updatingAll = false;
+            UpdateAllButton.IsEnabled = true;
+        }
+    }
+
+    private void RenderOtherContent(string folder, string typeHeader, StackPanel list)
+    {
+        list.Children.Clear();
+        if (_selected is not { } i) return;
+        List<ModpackContentItem> rawItems;
+        try { rawItems = Modpacks.Content(i, folder, typeHeader); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { ManageStatus.Text = e.Message; return; }
+
+        string filter = (ContentFilterSearch.Text ?? "").Trim();
+        var visible = string.IsNullOrEmpty(filter)
+            ? rawItems
+            : rawItems.Where(item => item.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        if (visible.Count == 0)
+        {
+            list.Children.Add(new TextBlock
+            {
+                Text = rawItems.Count == 0
+                    ? $"No {typeHeader.ToLowerInvariant()} installed. Use '+ Add Content' to browse or '+ From file' to install."
+                    : "No items match your filter.",
+                Foreground = new SolidColorBrush(Color.Parse("#8F919C")),
+                Margin = new Thickness(0, 14, 0, 0)
+            });
+            return;
+        }
+
+        foreach (var item in visible)
+        {
+            var itemInfo = InspectOtherContentItem(item, folder);
+
+            var rowGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,100,60") };
+
+            var nameGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), VerticalAlignment = VerticalAlignment.Center };
+
+            var iconBorder = new Border
+            {
+                Width = 36, Height = 36, CornerRadius = new CornerRadius(6), ClipToBounds = true,
+                Background = new SolidColorBrush(Color.Parse("#25262B")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#26272E")),
+                BorderThickness = new Thickness(1),
+                Margin = new Thickness(0, 0, 10, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var iconImage = new Image { Width = 36, Height = 36, Stretch = Stretch.UniformToFill };
+
+            if (itemInfo.IconBytes is { Length: > 0 } bytes)
+            {
+                try { iconImage.Source = new Bitmap(new MemoryStream(bytes)); } catch { }
+            }
+            if (iconImage.Source == null)
+            {
+                iconImage.Source = folder switch
+                {
+                    "shaderpacks" => GetShaderFallbackBitmap(),
+                    "resourcepacks" => GetResourcePackFallbackBitmap(),
+                    _ => GetDataPackFallbackBitmap()
+                };
+
+                if (File.Exists(item.Path))
+                {
+                    string filePath = item.Path;
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            string hash = await ComputeSha1Async(filePath);
+                            string url = $"https://api.modrinth.com/v2/version_file/{hash}?algorithm=sha1";
+                            using var resp = await Http.GetAsync(url);
+                            if (resp.IsSuccessStatusCode)
+                            {
+                                string json = await resp.Content.ReadAsStringAsync();
+                                using var doc = JsonDocument.Parse(json);
+                                if (doc.RootElement.TryGetProperty("project_id", out var pidProp))
+                                {
+                                    string pid = pidProp.GetString()!;
+                                    using var pResp = await Http.GetAsync($"https://api.modrinth.com/v2/project/{pid}");
+                                    if (pResp.IsSuccessStatusCode)
+                                    {
+                                        string pJson = await pResp.Content.ReadAsStringAsync();
+                                        using var pDoc = JsonDocument.Parse(pJson);
+                                        if (pDoc.RootElement.TryGetProperty("icon_url", out var iconProp) && iconProp.GetString() is { Length: > 0 } iconUrl)
+                                        {
+                                            var imgBytes = await Http.GetByteArrayAsync(iconUrl);
+                                            try { await File.WriteAllBytesAsync(filePath + ".icon.png", imgBytes); } catch { }
+                                            itemInfo.IconBytes = imgBytes;
+                                            Dispatcher.UIThread.Post(() =>
+                                            {
+                                                try { iconImage.Source = new Bitmap(new MemoryStream(imgBytes)); } catch { }
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+                    });
+                }
+            }
+            iconBorder.Child = iconImage;
+
+            var textStack = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+            var titleBlock = new TextBlock
+            {
+                Text = item.Name,
+                FontWeight = FontWeight.SemiBold,
+                FontSize = 13,
+                Foreground = Brushes.White,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            textStack.Children.Add(titleBlock);
+
+            string subtext = !string.IsNullOrWhiteSpace(itemInfo.Description)
+                ? itemInfo.Description
+                : Path.GetFileName(item.Path);
+            var subBlock = new TextBlock
+            {
+                Text = subtext,
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.Parse("#8E909B")),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxLines = 1
+            };
+            textStack.Children.Add(subBlock);
+
+            Grid.SetColumn(textStack, 1);
+            nameGrid.Children.Add(iconBorder);
+            nameGrid.Children.Add(textStack);
+            rowGrid.Children.Add(nameGrid);
+
+            var toggle = new ToggleSwitch
+            {
+                Classes = { "cfSwitch" },
+                IsChecked = item.Enabled,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                OnContent = "",
+                OffContent = ""
+            };
+            toggle.IsCheckedChanged += (_, _) =>
+            {
+                try { Modpacks.SetContentEnabled(item, toggle.IsChecked == true); }
+                catch (Exception e) { ManageStatus.Text = $"Could not switch {item.Name}: {e.Message}"; }
+                RenderOtherContent(folder, typeHeader, list);
+                UpdateHeaderCounts();
+            };
+            Grid.SetColumn(toggle, 1);
+            rowGrid.Children.Add(toggle);
 
             var delBtn = new Button
             {
-                Classes = { "danger" },
-                Content = "✕",
-                Width = 28,
-                Height = 28,
-                Padding = new Thickness(0),
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center,
+                Classes = { "icon", "danger" },
+                Content = "🗑",
+                Width = 28, Height = 28,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
             };
-            ToolTip.SetTip(delBtn, "Delete this file");
-            Grid.SetColumn(delBtn, 1);
             delBtn.Click += async (_, _) =>
             {
                 if (Host is { } host && !await host.ConfirmModpackAsync("Delete item", $"Delete '{item.Name}' from this modpack?", "Delete")) return;
                 try
                 {
                     Modpacks.DeleteContent(item);
-                    RenderContent(folder, typeHeader, header, list, searchBox);
+                    RenderOtherContent(folder, typeHeader, list);
+                    UpdateHeaderCounts();
                 }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { ManageStatus.Text = $"Could not delete {item.Name}: {e.Message}"; }
+                catch (Exception e) { ManageStatus.Text = $"Could not delete {item.Name}: {e.Message}"; }
             };
+            Grid.SetColumn(delBtn, 2);
             rowGrid.Children.Add(delBtn);
 
             var border = new Border
             {
-                Background = new SolidColorBrush(Color.Parse("#1B1C20")),
+                Background = new SolidColorBrush(Color.Parse("#1A1B20")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#26272E")),
+                BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(10, 6),
+                Padding = new Thickness(12, 6),
                 Child = rowGrid
             };
             list.Children.Add(border);
         }
+    }
+
+    private static ModpackContentItemInfo InspectOtherContentItem(ModpackContentItem item, string folder)
+    {
+        DateTime stamp = default;
+        try { stamp = File.Exists(item.Path) ? File.GetLastWriteTimeUtc(item.Path) : Directory.Exists(item.Path) ? Directory.GetLastWriteTimeUtc(item.Path) : default; }
+        catch { }
+
+        if (_contentInfoCache.TryGetValue(item.Path, out var cached) && cached.Stamp == stamp)
+            return cached.Info;
+
+        var info = new ModpackContentItemInfo
+        {
+            Name = item.Name,
+            Path = item.Path,
+            Enabled = item.Enabled,
+            Type = item.Type
+        };
+
+        try
+        {
+            string sidecar = item.Path + ".icon.png";
+            if (File.Exists(sidecar))
+            {
+                try { info.IconBytes = File.ReadAllBytes(sidecar); } catch { }
+            }
+
+            if (File.Exists(item.Path))
+            {
+                string ext = Path.GetExtension(item.Path);
+                if (ext.Equals(".zip", StringComparison.OrdinalIgnoreCase) ||
+                    item.Path.EndsWith(".zip.disabled", StringComparison.OrdinalIgnoreCase) ||
+                    ext.Equals(".jar", StringComparison.OrdinalIgnoreCase) ||
+                    item.Path.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
+                {
+                    using var stream = new FileStream(item.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+
+                    if (info.IconBytes == null)
+                    {
+                        var imgEntry = archive.Entries.FirstOrDefault(e =>
+                            e.FullName.Equals("pack.png", StringComparison.OrdinalIgnoreCase) ||
+                            e.FullName.Equals("icon.png", StringComparison.OrdinalIgnoreCase) ||
+                            e.FullName.Equals("screen.png", StringComparison.OrdinalIgnoreCase) ||
+                            e.FullName.EndsWith("/pack.png", StringComparison.OrdinalIgnoreCase) ||
+                            e.FullName.EndsWith("/icon.png", StringComparison.OrdinalIgnoreCase) ||
+                            e.FullName.EndsWith("/screen.png", StringComparison.OrdinalIgnoreCase));
+
+                        if (imgEntry != null && imgEntry.Length is > 0 and <= 4 * 1024 * 1024)
+                        {
+                            using var ms = new MemoryStream();
+                            using var es = imgEntry.Open();
+                            es.CopyTo(ms);
+                            info.IconBytes = ms.ToArray();
+                        }
+                    }
+
+                    var mcmeta = archive.GetEntry("pack.mcmeta");
+                    if (mcmeta != null && mcmeta.Length is > 0 and <= 64 * 1024)
+                    {
+                        using var es = mcmeta.Open();
+                        using var reader = new StreamReader(es, Encoding.UTF8);
+                        string json = reader.ReadToEnd();
+                        using var doc = JsonDocument.Parse(json);
+                        if (doc.RootElement.TryGetProperty("pack", out var packProp) &&
+                            packProp.TryGetProperty("description", out var descProp))
+                        {
+                            string desc = descProp.ValueKind == JsonValueKind.String
+                                ? descProp.GetString() ?? ""
+                                : descProp.ToString();
+                            info.Description = Regex.Replace(desc, "§[0-9a-fk-or]", "").Trim();
+                        }
+                    }
+                }
+            }
+            else if (Directory.Exists(item.Path))
+            {
+                if (info.IconBytes == null)
+                {
+                    string[] candidates = { "pack.png", "icon.png", "screen.png", Path.Combine("shaders", "pack.png"), Path.Combine("shaders", "icon.png") };
+                    foreach (var c in candidates)
+                    {
+                        string p = Path.Combine(item.Path, c);
+                        if (File.Exists(p))
+                        {
+                            try { info.IconBytes = File.ReadAllBytes(p); } catch { }
+                            break;
+                        }
+                    }
+                }
+
+                string metaPath = Path.Combine(item.Path, "pack.mcmeta");
+                if (File.Exists(metaPath))
+                {
+                    string json = File.ReadAllText(metaPath);
+                    using var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("pack", out var packProp) &&
+                        packProp.TryGetProperty("description", out var descProp))
+                    {
+                        string desc = descProp.ValueKind == JsonValueKind.String
+                            ? descProp.GetString() ?? ""
+                            : descProp.ToString();
+                        info.Description = Regex.Replace(desc, "§[0-9a-fk-or]", "").Trim();
+                    }
+                }
+            }
+        }
+        catch { }
+
+        _contentInfoCache[item.Path] = (stamp, info);
+        return info;
+    }
+
+    private void RenderWorlds()
+    {
+        WorldsList.Children.Clear();
+        if (_selected is not { } i) return;
+        string savesDir = Path.Combine(i.GameDirectory, "saves");
+        if (!Directory.Exists(savesDir))
+        {
+            WorldsList.Children.Add(new TextBlock { Text = "No worlds found. Launch the modpack to create worlds.", Foreground = new SolidColorBrush(Color.Parse("#8F919C")), Margin = new Thickness(0, 14, 0, 0) });
+            return;
+        }
+
+        var catalog = WorldCatalogService.Scan(new[] { new WorldSource(i.Name, "Modpack", i.GameDirectory, i.McVersion) });
+        string filter = (ContentFilterSearch.Text ?? "").Trim();
+        var worlds = string.IsNullOrEmpty(filter)
+            ? catalog.Worlds
+            : catalog.Worlds.Where(w => w.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) || w.Folder.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        if (worlds.Count == 0)
+        {
+            WorldsList.Children.Add(new TextBlock { Text = "No worlds match your filter.", Foreground = new SolidColorBrush(Color.Parse("#8F919C")), Margin = new Thickness(0, 14, 0, 0) });
+            return;
+        }
+
+        foreach (var world in worlds)
+        {
+            var rowGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,140,80,60") };
+
+            var nameGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), VerticalAlignment = VerticalAlignment.Center };
+
+            var iconBorder = new Border
+            {
+                Width = 36, Height = 36, CornerRadius = new CornerRadius(6), ClipToBounds = true,
+                Background = new SolidColorBrush(Color.Parse("#25262B")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#26272E")),
+                BorderThickness = new Thickness(1),
+                Margin = new Thickness(0, 0, 10, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var iconImage = new Image { Width = 36, Height = 36, Stretch = Stretch.UniformToFill };
+            RenderOptions.SetBitmapInterpolationMode(iconImage, BitmapInterpolationMode.None);
+
+            if (world.Icon != null && File.Exists(world.Icon))
+            {
+                try { iconImage.Source = new Bitmap(world.Icon); } catch { }
+            }
+            if (iconImage.Source == null)
+            {
+                iconImage.Source = GetWorldGrassBlockBitmap(world.Name);
+            }
+            iconBorder.Child = iconImage;
+
+            var nameStack = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+            nameStack.Children.Add(new TextBlock
+            {
+                Text = world.Name,
+                FontWeight = FontWeight.SemiBold,
+                FontSize = 13,
+                Foreground = Brushes.White,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+
+            string sub = Path.GetFileName(world.Folder);
+            if (!string.IsNullOrEmpty(world.GameMode)) sub += $"  ·  {world.GameMode}";
+            if (!string.IsNullOrEmpty(world.Version)) sub += $"  ·  {world.Version}";
+            nameStack.Children.Add(new TextBlock
+            {
+                Text = sub,
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.Parse("#8E909B")),
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+
+            Grid.SetColumn(nameStack, 1);
+            nameGrid.Children.Add(iconBorder);
+            nameGrid.Children.Add(nameStack);
+            rowGrid.Children.Add(nameGrid);
+
+            var playedBlock = new TextBlock
+            {
+                Text = RelativeTime(world.LastPlayed),
+                FontSize = 11.5,
+                Foreground = new SolidColorBrush(Color.Parse("#8F919C")),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(playedBlock, 1);
+            rowGrid.Children.Add(playedBlock);
+
+            var openBtn = new Button
+            {
+                Classes = { "action" },
+                Content = "Open",
+                Height = 28,
+                Padding = new Thickness(12, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            string folderPath = Directory.Exists(world.Folder) ? world.Folder : Path.Combine(savesDir, world.Folder);
+            openBtn.Click += (_, _) =>
+            {
+                if (Directory.Exists(folderPath)) Process.Start(new ProcessStartInfo(folderPath) { UseShellExecute = true });
+            };
+            Grid.SetColumn(openBtn, 2);
+            rowGrid.Children.Add(openBtn);
+
+            var delBtn = new Button
+            {
+                Classes = { "icon", "danger" },
+                Content = "🗑",
+                Width = 28,
+                Height = 28,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            delBtn.Click += async (_, _) =>
+            {
+                if (Host is { } host && !await host.ConfirmModpackAsync("Delete world", $"Delete world '{world.Name}'? This cannot be undone.", "Delete")) return;
+                try
+                {
+                    if (Directory.Exists(folderPath)) SafeFileOps.DeleteToRecycleBin(folderPath);
+                    RenderWorlds();
+                    UpdateHeaderCounts();
+                }
+                catch (Exception ex) { ManageStatus.Text = $"Could not delete world: {ex.Message}"; }
+            };
+            Grid.SetColumn(delBtn, 3);
+            rowGrid.Children.Add(delBtn);
+
+            var border = new Border
+            {
+                Background = new SolidColorBrush(Color.Parse("#1A1B20")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#26272E")),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 6),
+                Child = rowGrid
+            };
+            WorldsList.Children.Add(border);
+        }
+    }
+
+    private static async Task<string> ComputeSha1Async(string filePath)
+    {
+        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var sha1 = SHA1.Create();
+        var hash = await sha1.ComputeHashAsync(stream);
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    private static WriteableBitmap GetShaderFallbackBitmap()
+    {
+        if (_shaderFallback != null) return _shaderFallback;
+        var raw = new byte[32 * 32 * 4];
+        for (int y = 0; y < 32; y++)
+        for (int x = 0; x < 32; x++)
+        {
+            double r, g, b;
+            if (y < 20)
+            {
+                double t = y / 20.0;
+                r = 34 + t * (234 - 34);
+                g = 21 + t * (88 - 21);
+                b = 81 + t * (12 - 81);
+                double dx = x - 16, dy = y - 8;
+                double dist = Math.Sqrt(dx * dx + dy * dy);
+                if (dist < 3.5) { r = 255; g = 253; b = 231; }
+                else if (dist < 6.5)
+                {
+                    double blend = (6.5 - dist) / 3.0;
+                    r = r * (1 - blend) + 254 * blend;
+                    g = g * (1 - blend) + 215 * blend;
+                    b = b * (1 - blend) + 100 * blend;
+                }
+                double rayDist = Math.Abs((x - 16) - (y - 8) * 0.7);
+                if (rayDist < 2.5 && y > 8)
+                {
+                    double rayIntensity = (1.0 - rayDist / 2.5) * 0.35;
+                    r = Math.Min(255, r + 255 * rayIntensity);
+                    g = Math.Min(255, g + 220 * rayIntensity);
+                    b = Math.Min(255, b + 100 * rayIntensity);
+                }
+            }
+            else
+            {
+                double t = (y - 20) / 12.0;
+                r = 15 + (1 - t) * 60;
+                g = 23 + (1 - t) * 40;
+                b = 42 + (1 - t) * 60;
+                if (Math.Abs(x - 16) < 3 + (y - 20) * 0.4)
+                {
+                    double wave = Math.Sin((x + y * 2) * 1.5) * 0.5 + 0.5;
+                    r = Math.Min(255, r + 140 * wave);
+                    g = Math.Min(255, g + 80 * wave);
+                    b = Math.Min(255, b + 30 * wave);
+                }
+            }
+            int i = (y * 32 + x) * 4;
+            raw[i] = (byte)Math.Clamp(b, 0, 255);
+            raw[i + 1] = (byte)Math.Clamp(g, 0, 255);
+            raw[i + 2] = (byte)Math.Clamp(r, 0, 255);
+            raw[i + 3] = 255;
+        }
+        var bmp = new WriteableBitmap(new PixelSize(32, 32), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        using (var buffer = bmp.Lock())
+            for (int y = 0; y < 32; y++) Marshal.Copy(raw, y * 128, buffer.Address + y * buffer.RowBytes, 128);
+        return _shaderFallback = bmp;
+    }
+
+    private static WriteableBitmap GetResourcePackFallbackBitmap()
+    {
+        if (_rpFallback != null) return _rpFallback;
+        var raw = new byte[32 * 32 * 4];
+        string[] grass = { "#5DA83C", "#6DBA45", "#4F9632", "#7CC553" };
+        string[] dirt = { "#8C5B37", "#7C4F2F", "#9A6841", "#6D4427" };
+        string[] stone = { "#757575", "#616161", "#424242", "#9E9E9E" };
+        string[] wood = { "#A27646", "#8F6438", "#B58450", "#76512B" };
+        string[] cyan = { "#06B6D4", "#22D3EE", "#0891B2", "#67E8F9" };
+
+        for (int y = 0; y < 32; y++)
+        for (int x = 0; x < 32; x++)
+        {
+            Color color;
+            if (x == 0 || y == 0 || x == 31 || y == 31 || x == 16 || y == 16)
+            {
+                color = Color.Parse("#1A1B20");
+            }
+            else if (x < 16 && y < 16)
+            {
+                double n = Rand(1, x, y);
+                int edge = 5 + (Rand(10, x, 0) > 0.5 ? 1 : 0);
+                color = Color.Parse(y < edge ? grass[(int)(n * grass.Length)] : dirt[(int)(n * dirt.Length)]);
+            }
+            else if (x >= 16 && y < 16)
+            {
+                double n = Rand(2, x, y);
+                color = Color.Parse(stone[(int)(n * stone.Length)]);
+            }
+            else if (x < 16 && y >= 16)
+            {
+                double n = Rand(3, x, y);
+                bool plankLine = (y % 4 == 0) || (y < 20 && x == 8) || (y >= 20 && x == 4);
+                color = plankLine ? Color.Parse("#53381B") : Color.Parse(wood[(int)(n * wood.Length)]);
+            }
+            else
+            {
+                double n = Rand(4, x, y);
+                bool isDiamond = (x is 20 or 21 or 25 or 26 && y is 20 or 21 or 26 or 27) || (x is 23 && y is 23 or 24);
+                color = isDiamond ? Color.Parse(cyan[(int)(n * cyan.Length)]) : Color.Parse(stone[(int)(n * stone.Length)]);
+            }
+
+            int i = (y * 32 + x) * 4;
+            raw[i] = color.B; raw[i + 1] = color.G; raw[i + 2] = color.R; raw[i + 3] = 255;
+        }
+        var bmp = new WriteableBitmap(new PixelSize(32, 32), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        using (var buffer = bmp.Lock())
+            for (int y = 0; y < 32; y++) Marshal.Copy(raw, y * 128, buffer.Address + y * buffer.RowBytes, 128);
+        return _rpFallback = bmp;
+    }
+
+    private static WriteableBitmap GetDataPackFallbackBitmap()
+    {
+        if (_dpFallback != null) return _dpFallback;
+        var raw = new byte[32 * 32 * 4];
+        for (int y = 0; y < 32; y++)
+        for (int x = 0; x < 32; x++)
+        {
+            double dx = x - 16, dy = y - 16;
+            double dist = Math.Sqrt(dx * dx + dy * dy);
+            Color color;
+            if (x is < 2 or > 29 || y is < 2 or > 29)
+                color = Color.Parse("#382318");
+            else if (x is 2 or 29 || y is 2 or 29)
+                color = Color.Parse("#8B5A3C");
+            else if (dist < 4.5)
+                color = Color.Parse("#93C5FD");
+            else if (dist < 8.5)
+                color = (int)(dist * 2) % 2 == 0 ? Color.Parse("#3B82F6") : Color.Parse("#1D4ED8");
+            else if (Math.Abs(dx) < 2 || Math.Abs(dy) < 2)
+                color = Color.Parse("#EF4444");
+            else
+                color = Color.Parse((x + y) % 2 == 0 ? "#5E3924" : "#4A2D1B");
+
+            int i = (y * 32 + x) * 4;
+            raw[i] = color.B; raw[i + 1] = color.G; raw[i + 2] = color.R; raw[i + 3] = 255;
+        }
+        var bmp = new WriteableBitmap(new PixelSize(32, 32), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        using (var buffer = bmp.Lock())
+            for (int y = 0; y < 32; y++) Marshal.Copy(raw, y * 128, buffer.Address + y * buffer.RowBytes, 128);
+        return _dpFallback = bmp;
+    }
+
+    private static WriteableBitmap GetModFallbackBitmap()
+    {
+        if (_modFallback != null) return _modFallback;
+        var raw = new byte[32 * 32 * 4];
+        for (int y = 0; y < 32; y++)
+        for (int x = 0; x < 32; x++)
+        {
+            double dx = x - 16, dy = y - 16;
+            double dist = Math.Sqrt(dx * dx + dy * dy);
+            Color color;
+            if (x is < 2 or > 29 || y is < 2 or > 29)
+                color = Color.Parse("#18191E");
+            else if (dist < 4.0)
+                color = Color.Parse("#C084FC");
+            else if (dist < 7.5)
+                color = Color.Parse("#818CF8");
+            else if ((Math.Abs(dx) < 2.5 && dy < 0) || (Math.Abs(dy) < 2.5 && dx > 0) || (Math.Abs(dx) < 2.5 && dy > 0) || (Math.Abs(dy) < 2.5 && dx < 0))
+                color = Color.Parse("#A855F7");
+            else
+                color = Color.Parse((x + y) % 2 == 0 ? "#25262E" : "#212228");
+
+            int i = (y * 32 + x) * 4;
+            raw[i] = color.B; raw[i + 1] = color.G; raw[i + 2] = color.R; raw[i + 3] = 255;
+        }
+        var bmp = new WriteableBitmap(new PixelSize(32, 32), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        using (var buffer = bmp.Lock())
+            for (int y = 0; y < 32; y++) Marshal.Copy(raw, y * 128, buffer.Address + y * buffer.RowBytes, 128);
+        return _modFallback = bmp;
+    }
+
+    private static WriteableBitmap GetWorldGrassBlockBitmap(string name)
+    {
+        int seed = 0;
+        foreach (char c in name) seed = seed * 31 + c;
+        seed &= 7;
+        if (_worldPlaceholders.TryGetValue(seed, out var cached)) return cached;
+        string[] grass = { "#6DBA45", "#5DA83C", "#4F9632", "#7CC553" }, dirt = { "#8C5B37", "#7C4F2F", "#9A6841", "#6D4427" };
+        var raw = new byte[16 * 16 * 4];
+        for (int y = 0; y < 16; y++)
+        for (int x = 0; x < 16; x++)
+        {
+            double n = Rand(seed, x, y);
+            int edge = 3 + (Rand(seed + 40, x, 0) > 0.5 ? 1 : 0) + (Rand(seed + 80, x, 1) > 0.8 ? 1 : 0);
+            var color = Color.Parse(y < edge ? grass[(int)(n * grass.Length)] : n > 0.94 ? "#A77A52" : dirt[(int)(n * dirt.Length)]);
+            int i = (y * 16 + x) * 4;
+            raw[i] = color.B; raw[i + 1] = color.G; raw[i + 2] = color.R; raw[i + 3] = 255;
+        }
+        var bitmap = new WriteableBitmap(new PixelSize(16, 16), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        using (var buffer = bitmap.Lock())
+            for (int y = 0; y < 16; y++) Marshal.Copy(raw, y * 64, buffer.Address + y * buffer.RowBytes, 64);
+        return _worldPlaceholders[seed] = bitmap;
+    }
+
+    private static double Rand(int seed, int x, int y)
+    {
+        uint h = unchecked((uint)(seed * 374761393 + x * 668265263 + y * 1274126177));
+        h = unchecked((h ^ (h >> 13)) * 1274126177);
+        return ((h ^ (h >> 16)) & 0xFFFFFF) / (double)0x1000000;
+    }
+
+    private void LoadLatestLog()
+    {
+        if (_selected is not { } instance) return;
+        string logPath = Path.Combine(instance.GameDirectory, "logs", "latest.log");
+        if (File.Exists(logPath))
+        {
+            try
+            {
+                using var stream = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var reader = new StreamReader(stream, Encoding.UTF8);
+                string text = reader.ReadToEnd();
+                LogsText.Text = text;
+            }
+            catch (Exception ex) { LogsText.Text = $"Could not read log: {ex.Message}"; }
+        }
+        else
+        {
+            LogsText.Text = "No logs generated yet. Play the modpack to create logs.";
+        }
+    }
+
+    private void LogsFilter_Changed(object? sender, TextChangedEventArgs e)
+    {
+        string filter = (LogsFilterBox.Text ?? "").Trim();
+        if (string.IsNullOrEmpty(filter))
+        {
+            LoadLatestLog();
+            return;
+        }
+        if (_selected is not { } instance) return;
+        string logPath = Path.Combine(instance.GameDirectory, "logs", "latest.log");
+        if (!File.Exists(logPath)) return;
+        try
+        {
+            var lines = File.ReadAllLines(logPath).Where(l => l.Contains(filter, StringComparison.OrdinalIgnoreCase));
+            LogsText.Text = string.Join(Environment.NewLine, lines);
+        }
+        catch { }
+    }
+
+    private void CopyLog_Click(object? sender, RoutedEventArgs e)
+    {
+        if (TopLevel.GetTopLevel(this) is { } top && top.Clipboard != null)
+        {
+            _ = top.Clipboard.SetTextAsync(LogsText.Text ?? "");
+            ManageStatus.Text = "Log copied to clipboard.";
+        }
+    }
+
+    private void OpenLogFile_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is not { } instance) return;
+        string logPath = Path.Combine(instance.GameDirectory, "logs", "latest.log");
+        if (File.Exists(logPath)) Process.Start(new ProcessStartInfo(logPath) { UseShellExecute = true });
+        else Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+    }
+
+    private void LoadScreenshots()
+    {
+        if (_selected is not { } instance) return;
+        ScreenshotsGallery.Children.Clear();
+        string ssDir = Path.Combine(instance.GameDirectory, "screenshots");
+        if (!Directory.Exists(ssDir))
+        {
+            ScreenshotsHeader.Text = "SCREENSHOTS (0)";
+            return;
+        }
+        var files = Directory.EnumerateFiles(ssDir)
+            .Where(f => f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(f => File.GetLastWriteTimeUtc(f))
+            .ToList();
+        ScreenshotsHeader.Text = $"SCREENSHOTS ({files.Count})";
+
+        foreach (var file in files)
+        {
+            try
+            {
+                var card = new Border
+                {
+                    Width = 180, Height = 140, Margin = new Thickness(0, 0, 12, 12),
+                    CornerRadius = new CornerRadius(6), ClipToBounds = true,
+                    Background = new SolidColorBrush(Color.Parse("#202127")),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#2F3038")),
+                    BorderThickness = new Thickness(1),
+                    Cursor = new Cursor(StandardCursorType.Hand)
+                };
+                var img = new Image { Source = new Bitmap(file), Stretch = Stretch.UniformToFill };
+                card.Child = img;
+                card.PointerPressed += (_, _) =>
+                {
+                    Process.Start(new ProcessStartInfo(file) { UseShellExecute = true });
+                };
+                ScreenshotsGallery.Children.Add(card);
+            }
+            catch { }
+        }
+    }
+
+    private void OpenScreenshotsFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is not { } instance) return;
+        string ssDir = Path.Combine(instance.GameDirectory, "screenshots");
+        Directory.CreateDirectory(ssDir);
+        Process.Start(new ProcessStartInfo(ssDir) { UseShellExecute = true });
+    }
+
+    private void RefreshCurrentContent_Click(object? sender, RoutedEventArgs e) => RenderAllContent();
+
+    private void OpenCurrentFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is not { } instance) return;
+        string folderName = _currentSubTab switch
+        {
+            "datapacks" => "datapacks",
+            "resourcepacks" => "resourcepacks",
+            "shaderpacks" => "shaderpacks",
+            "worlds" => "saves",
+            _ => "mods"
+        };
+        string targetDir = Path.Combine(instance.GameDirectory, folderName);
+        Directory.CreateDirectory(targetDir);
+        Process.Start(new ProcessStartInfo(targetDir) { UseShellExecute = true });
+    }
+
+    private async void AddCurrentFromFile_Click(object? sender, RoutedEventArgs e)
+    {
+        string folderName = _currentSubTab switch
+        {
+            "datapacks" => "datapacks",
+            "resourcepacks" => "resourcepacks",
+            "shaderpacks" => "shaderpacks",
+            "worlds" => "saves",
+            _ => "mods"
+        };
+        string ext = _currentSubTab == "mods" ? "jar" : "zip";
+        await AddFromFileAsync(folderName, ext);
     }
 
     private void RenderMods() => RenderAllContent();
@@ -904,6 +2272,10 @@ public partial class ModpacksView : UserControl
         RenderAllContent();
     }
 
+    private string _addContentType = "mod";
+    private string _addContentTargetDir = "";
+    private CancellationTokenSource? _addContentSearchCts;
+
     private ContentKind AddContentKind => _addContentType switch
     {
         "resourcepack" => ContentKind.ResourcePack,
@@ -923,24 +2295,81 @@ public partial class ModpacksView : UserControl
         if (_selected is not { } i) return;
         _addContentType = projectType;
         _addContentTargetDir = targetDir;
-        AddContentTitle.Text = $"Add {title}";
-        AddContentSubtitle.Text = $"Automatically searching compatible content for Minecraft {i.McVersion} ({LoaderName(i.Loader)})";
+        AddContentPanel.IsVisible = true;
+        AddContentArt.Child = Art(i, 44);
+        AddContentTitle.Text = i.Name;
+        AddContentSubtitle.Text = $"Minecraft {i.McVersion} · {LoaderName(i.Loader)}";
+
+        AddContentLoaderPillText.Text = LoaderName(i.Loader);
+        AddContentVersionPillText.Text = i.McVersion;
+        AddContentLoaderPill.IsVisible = true;
+        AddContentVersionPill.IsVisible = true;
+
         AddContentSearchBox.Text = "";
+        AddContentSearchBox.PlaceholderText = $"Search for {title.ToLowerInvariant()}...";
         AddContentResults.Children.Clear();
         AddContentStatus.Text = "";
 
-        if (AddContentKind == ContentKind.Shader)
-            AddContentCategory.ItemsSource = new[] { "All categories", "Realistic", "Fantasy", "Performance", "Vibrant", "Cel-shaded", "Vanilla-like" };
-        else if (AddContentKind == ContentKind.DataPack)
-            AddContentCategory.ItemsSource = new[] { "All categories", "Adventure", "Magic", "Technology", "Utility", "Worldgen", "Minigame" };
-        else if (AddContentKind == ContentKind.ResourcePack)
-            AddContentCategory.ItemsSource = new[] { "All categories", "16x", "32x", "64x", "128x", "Faithful", "Realistic", "Medieval", "Vanilla-like" };
-        else
-            AddContentCategory.ItemsSource = new[] { "All categories", "Adventure", "Cursed", "Decoration", "Economy", "Equipment", "Food", "Game Mechanics", "Magic", "Management", "Minigame", "Mobs", "Optimization", "Social", "Storage", "Technology", "Transportation", "Utility", "Worldgen" };
-        AddContentCategory.SelectedIndex = 0;
+        int kindIndex = projectType switch
+        {
+            "datapack" => 1,
+            "resourcepack" => 2,
+            "shader" => 3,
+            _ => 0
+        };
+        if (AddContentKindBox.SelectedIndex != kindIndex)
+            AddContentKindBox.SelectedIndex = kindIndex;
 
-        AddContentPanel.IsVisible = true;
+        PopulateAddContentCategories();
         _ = SearchAddContentAsync("");
+    }
+
+    private void AddContentKind_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (!_ready || AddContentKindBox == null || _selected == null) return;
+        _addContentType = AddContentKindBox.SelectedIndex switch
+        {
+            1 => "datapack",
+            2 => "resourcepack",
+            3 => "shader",
+            _ => "mod"
+        };
+        string folderName = _addContentType switch
+        {
+            "datapack" => "datapacks",
+            "resourcepack" => "resourcepacks",
+            "shader" => "shaderpacks",
+            _ => "mods"
+        };
+        _addContentTargetDir = Path.Combine(_selected.GameDirectory, folderName);
+        PopulateAddContentCategories();
+        _ = SearchAddContentAsync(AddContentSearchBox?.Text ?? "");
+    }
+
+    private void PopulateAddContentCategories()
+    {
+        if (AddContentCategory == null) return;
+        if (AddContentKind == ContentKind.Shader)
+            AddContentCategory.ItemsSource = new[] { "All categories", "Realistic", "Fantasy", "Performance", "Vibrant", "Vanilla-like" };
+        else if (AddContentKind == ContentKind.DataPack)
+            AddContentCategory.ItemsSource = new[] { "All categories", "Adventure", "Magic", "Technology", "Utility", "Worldgen" };
+        else if (AddContentKind == ContentKind.ResourcePack)
+            AddContentCategory.ItemsSource = new[] { "All categories", "16x", "32x", "64x", "128x", "Faithful", "Realistic", "Vanilla-like" };
+        else
+            AddContentCategory.ItemsSource = new[] { "All categories", "Adventure", "Cosmetic", "Decoration", "Equipment", "Food", "Game Mechanics", "Magic", "Mobs", "Optimization", "Storage", "Technology", "Transportation", "Utility", "Worldgen" };
+        AddContentCategory.SelectedIndex = 0;
+    }
+
+    private void ClearLoaderFilter_Click(object? sender, PointerPressedEventArgs e)
+    {
+        AddContentLoaderPill.IsVisible = false;
+        _ = SearchAddContentAsync(AddContentSearchBox?.Text ?? "");
+    }
+
+    private void ClearVersionFilter_Click(object? sender, PointerPressedEventArgs e)
+    {
+        AddContentVersionPill.IsVisible = false;
+        _ = SearchAddContentAsync(AddContentSearchBox?.Text ?? "");
     }
 
     private void AddContentFilter_Changed(object? sender, SelectionChangedEventArgs e)
@@ -972,14 +2401,46 @@ public partial class ModpacksView : UserControl
             string? cat = AddContentCategory?.SelectedItem as string;
             if (cat == "All categories") cat = null;
 
-            var hits = await Catalog().SearchAsync(provider, AddContentKind, query, i.McVersion, i.Loader, cat, sort, cts.Token);
+            string mcVer = AddContentVersionPill.IsVisible ? i.McVersion : "all";
+            string loader = AddContentLoaderPill.IsVisible ? i.Loader : "all";
+
+            var hits = await Catalog().SearchAsync(provider, AddContentKind, query, mcVer, loader, cat, sort, cts.Token);
             if (cts.IsCancellationRequested) return;
+
+            if (AddContentKind == ContentKind.Mod)
+            {
+                string q = (query ?? "").Trim();
+                bool matchesLadsCore = string.IsNullOrEmpty(q)
+                    || "the lads core".Contains(q, StringComparison.OrdinalIgnoreCase)
+                    || "ladscore".Contains(q, StringComparison.OrdinalIgnoreCase)
+                    || "thelads".Contains(q, StringComparison.OrdinalIgnoreCase)
+                    || "core".Contains(q, StringComparison.OrdinalIgnoreCase);
+
+                if (matchesLadsCore)
+                {
+                    hits.Insert(0, new ModSearchItem
+                    {
+                        Id = "theladscore",
+                        Provider = "The Lads",
+                        Name = "The Lads Core",
+                        ProjectSlug = "theladscore",
+                        Author = "The Lads",
+                        Summary = $"The official Lads Client core mod for Minecraft {i.McVersion}. Custom multiplayer features, Discord RPC, cosmetics, and performance optimizations.",
+                        Categories = new List<string> { "Utility", "Client" },
+                        DownloadCount = 250000,
+                        IconUrl = "local://theladscore"
+                    });
+                }
+            }
+
             if (hits.Count == 0)
             {
-                AddContentStatus.Text = $"No compatible results found on {provider} for this Minecraft version and loader.";
+                AddContentResultsCount.Text = "0 Projects found";
+                AddContentStatus.Text = $"No compatible results found on {provider}.";
                 return;
             }
-            AddContentStatus.Text = $"Found {hits.Count} results on {provider}:";
+            AddContentResultsCount.Text = $"{hits.Count} Projects found";
+            AddContentStatus.Text = "";
             foreach (var hit in hits)
             {
                 AddContentResults.Children.Add(CreateAddContentResultRow(hit));
@@ -995,48 +2456,613 @@ public partial class ModpacksView : UserControl
     private Control CreateAddContentResultRow(ModSearchItem hit)
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
-        var icon = new Border { Width = 56, Height = 56, CornerRadius = new CornerRadius(6), ClipToBounds = true, Background = new SolidColorBrush(Color.Parse("#2A2B31")), VerticalAlignment = VerticalAlignment.Top };
+
+        var icon = new Border
+        {
+            Width = 60, Height = 60, CornerRadius = new CornerRadius(8), ClipToBounds = true,
+            Background = new SolidColorBrush(Color.Parse("#25262B")), VerticalAlignment = VerticalAlignment.Top
+        };
         _ = LoadRemoteIconAsync(icon, hit.IconUrl);
         grid.Children.Add(icon);
 
-        var text = new StackPanel { Spacing = 2, Margin = new Thickness(12, 0, 12, 0) };
-        var title = new TextBlock { TextWrapping = TextWrapping.Wrap, Inlines = new Avalonia.Controls.Documents.InlineCollection
-        {
-            new Avalonia.Controls.Documents.Run(hit.Name) { FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White },
-            new Avalonia.Controls.Documents.Run("  by " + hit.Author) { FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")) }
-        } }.Untranslated();
-        text.Children.Add(title);
-        text.Children.Add(new TextBlock { Text = hit.Summary, TextWrapping = TextWrapping.Wrap, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis, Foreground = new SolidColorBrush(Color.Parse("#C9CAD1")), FontSize = 11 });
-        text.Children.Add(new TextBlock { Text = $"{Downloads(hit.DownloadCount)} downloads  ·  {hit.Provider}", FontSize = 10, Foreground = new SolidColorBrush(Color.Parse("#8F919B")) });
-        Grid.SetColumn(text, 1);
-        grid.Children.Add(text);
+        var textStack = new StackPanel { Spacing = 3, Margin = new Thickness(14, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetColumn(textStack, 1);
 
-        var installBtn = new Button { Classes = { "launch" }, Content = "Install", Width = 96, Height = 32, HorizontalContentAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        Grid.SetColumn(installBtn, 2);
-        installBtn.Click += async (_, _) =>
+        var titlePanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Cursor = new Cursor(StandardCursorType.Hand) };
+        titlePanel.PointerPressed += (_, _) => OpenModDetails(hit);
+        var titleBlock = new TextBlock { Text = hit.Name, FontSize = 15, FontWeight = FontWeight.Bold, Foreground = Brushes.White, TextTrimming = TextTrimming.CharacterEllipsis };
+        var authorBlock = new TextBlock { Text = string.IsNullOrEmpty(hit.Author) ? "" : "by " + hit.Author, FontSize = 12, Foreground = new SolidColorBrush(Color.Parse("#9CA0AB")), VerticalAlignment = VerticalAlignment.Center };
+        titlePanel.Children.Add(titleBlock);
+        titlePanel.Children.Add(authorBlock);
+        textStack.Children.Add(titlePanel);
+
+        if (!string.IsNullOrWhiteSpace(hit.Summary))
         {
-            if (_selected is not { } instance) return;
-            installBtn.IsEnabled = false;
-            installBtn.Content = "Installing...";
+            textStack.Children.Add(new TextBlock
+            {
+                Text = hit.Summary, TextWrapping = TextWrapping.Wrap, MaxLines = 2,
+                TextTrimming = TextTrimming.CharacterEllipsis, Foreground = new SolidColorBrush(Color.Parse("#C9CAD1")), FontSize = 12
+            });
+        }
+
+        var tagsRow = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
+        tagsRow.Children.Add(CreateChip(hit.Provider, "#2A2B33", "#B5B7C0"));
+        if (_selected != null)
+        {
+            tagsRow.Children.Add(CreateChip(LoaderName(_selected.Loader), "#2A2B33", "#B5B7C0"));
+            tagsRow.Children.Add(CreateChip($"MC {_selected.McVersion}", "#2A2B33", "#B5B7C0"));
+        }
+        foreach (var cat in hit.Categories.Take(3))
+        {
+            tagsRow.Children.Add(CreateChip(cat, "#23242A", "#9CA0AB"));
+        }
+        if (hit.DownloadCount > 0)
+        {
+            tagsRow.Children.Add(CreateChip($"⬇ {Downloads(hit.DownloadCount)}", "#23242A", "#8F919B"));
+        }
+        textStack.Children.Add(tagsRow);
+        grid.Children.Add(textStack);
+
+        var sideStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+        Grid.SetColumn(sideStack, 2);
+
+        var matchedInstalled = FindInstalledMatch(hit);
+        var actionBtn = new Button { Width = 100, Height = 34, HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center };
+
+        if (matchedInstalled != null)
+        {
+            if (matchedInstalled.HasUpdate)
+            {
+                actionBtn.Classes.Add("cfInstall");
+                actionBtn.Content = "Update";
+                actionBtn.Click += async (_, _) =>
+                {
+                    actionBtn.IsEnabled = false;
+                    actionBtn.Content = "Updating...";
+                    await UpdateModAsync(matchedInstalled);
+                    actionBtn.Content = "✓ Installed";
+                };
+            }
+            else
+            {
+                actionBtn.Classes.Add("action");
+                actionBtn.IsEnabled = false;
+                actionBtn.Content = "✓ Installed";
+            }
+        }
+        else
+        {
+            actionBtn.Classes.Add("cfInstall");
+            actionBtn.Content = "Install";
+            actionBtn.Click += async (_, _) =>
+            {
+                if (_selected is not { } instance) return;
+                actionBtn.IsEnabled = false;
+                actionBtn.Content = "Installing...";
+                try
+                {
+                    if (hit.Id == "theladscore" || hit.Provider == "The Lads")
+                    {
+                        string? sourceJar = FindBundledCoreJar(instance.McVersion);
+                        if (sourceJar == null || !File.Exists(sourceJar))
+                            throw new InvalidOperationException($"The Lads Core mod is not available for Minecraft {instance.McVersion}.");
+                        Directory.CreateDirectory(_addContentTargetDir);
+                        string destJar = Path.Combine(_addContentTargetDir, "theladscore.jar");
+                        File.Copy(sourceJar, destJar, overwrite: true);
+                        try
+                        {
+                            var meta = FabricModMetadata.ReadJar(sourceJar, includeIcon: true);
+                            if (meta?.Icon != null)
+                            {
+                                await File.WriteAllBytesAsync(destJar + ".icon.png", meta.Icon);
+                            }
+                        }
+                        catch { }
+                        actionBtn.Content = "✓ Installed";
+                        actionBtn.Classes.Clear();
+                        actionBtn.Classes.Add("action");
+                        ManageStatus.Text = "The Lads Core installed!";
+                        await ScanModsAsync(instance);
+                        RenderActiveSubTab();
+                        return;
+                    }
+
+                    var file = await Catalog().LatestFileAsync(hit, AddContentKind, instance.McVersion, instance.Loader);
+                    if (file == null) throw new InvalidOperationException($"No file found for Minecraft {instance.McVersion} ({LoaderName(instance.Loader)}).");
+                    Directory.CreateDirectory(_addContentTargetDir);
+                    string savedFile = await Catalog().InstallAsync(file, _addContentTargetDir, SharedContentService.Instance);
+                    if (!string.IsNullOrEmpty(hit.IconUrl))
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var imgBytes = await Http.GetByteArrayAsync(hit.IconUrl);
+                                await File.WriteAllBytesAsync(savedFile + ".icon.png", imgBytes);
+                            }
+                            catch { }
+                        });
+                    }
+                    actionBtn.Content = "✓ Installed";
+                    actionBtn.Classes.Clear();
+                    actionBtn.Classes.Add("action");
+                    ManageStatus.Text = $"Installed {Path.GetFileName(savedFile)}!";
+                    await ScanModsAsync(instance);
+                    RenderActiveSubTab();
+                }
+                catch (Exception ex)
+                {
+                    actionBtn.IsEnabled = true;
+                    actionBtn.Content = "Retry";
+                    AddContentStatus.Text = $"Installation failed: {ex.Message}";
+                }
+            };
+        }
+        sideStack.Children.Add(actionBtn);
+        grid.Children.Add(sideStack);
+
+        return new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#1A1B20")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#26272E")),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(14, 10),
+            Child = grid
+        };
+    }
+
+    private ModpackModItem? FindInstalledMatch(ModSearchItem item)
+    {
+        if (AddContentKind == ContentKind.Mod)
+        {
+            return _instanceMods.FirstOrDefault(m =>
+            {
+                if (string.Equals(item.Id, "theladscore", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.Equals(m.BaseName, "theladscore", StringComparison.OrdinalIgnoreCase)
+                        || m.DisplayName.IndexOf("The Lads Core", StringComparison.OrdinalIgnoreCase) >= 0
+                        || m.DisplayName.IndexOf("LadsCore", StringComparison.OrdinalIgnoreCase) >= 0)
+                        return true;
+                }
+                if (!string.IsNullOrEmpty(m.ProjectId) && string.Equals(m.ProjectId, item.Id, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (!string.IsNullOrEmpty(item.ProjectSlug) && string.Equals(m.BaseName, item.ProjectSlug, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                string normItemSlug = ModSearchMatcher.NormalizeKey(item.ProjectSlug);
+                string normItemName = ModSearchMatcher.NormalizeKey(item.Name);
+                string normModName = ModSearchMatcher.NormalizeKey(m.DisplayName);
+                string normBase = ModSearchMatcher.NormalizeKey(m.BaseName);
+                return (!string.IsNullOrEmpty(normItemSlug) && normBase.Contains(normItemSlug))
+                    || (!string.IsNullOrEmpty(normItemName) && normModName == normItemName)
+                    || ModSearchMatcher.MatchesJarFile(item, m.BaseName);
+            });
+        }
+        else if (_selected != null && Directory.Exists(_addContentTargetDir))
+        {
             try
             {
-                var file = await Catalog().LatestFileAsync(hit, AddContentKind, instance.McVersion, instance.Loader);
-                if (file == null) throw new InvalidOperationException($"No release found for Minecraft {instance.McVersion} and loader {instance.Loader}.");
-                Directory.CreateDirectory(_addContentTargetDir);
-                string savedFile = await Catalog().InstallAsync(file, _addContentTargetDir, SharedContentService.Instance);
-                installBtn.Content = "✓ Installed";
-                ManageStatus.Text = $"Installed {Path.GetFileName(savedFile)}!";
+                var files = Directory.GetFileSystemEntries(_addContentTargetDir);
+                string normItemSlug = ModSearchMatcher.NormalizeKey(item.ProjectSlug);
+                string normItemName = ModSearchMatcher.NormalizeKey(item.Name);
+                foreach (var file in files)
+                {
+                    string baseName = Path.GetFileNameWithoutExtension(file);
+                    string normBase = ModSearchMatcher.NormalizeKey(baseName);
+                    if ((!string.IsNullOrEmpty(normItemSlug) && normBase.Contains(normItemSlug))
+                        || (!string.IsNullOrEmpty(normItemName) && (normBase.Contains(normItemName) || normItemName.Contains(normBase))))
+                    {
+                        return new ModpackModItem { FilePath = file, FileName = Path.GetFileName(file), BaseName = baseName, DisplayName = baseName, Enabled = true };
+                    }
+                }
             }
-            catch (Exception ex)
+            catch { }
+        }
+        return null;
+    }
+
+    private static Border CreateChip(string text, string bgHex, string fgHex)
+    {
+        return new Border
+        {
+            Classes = { "chip" },
+            Background = new SolidColorBrush(Color.Parse(bgHex)),
+            Margin = new Thickness(0, 0, 6, 6),
+            Padding = new Thickness(8, 2),
+            Child = new TextBlock
             {
-                installBtn.IsEnabled = true;
-                installBtn.Content = "Retry";
-                AddContentStatus.Text = $"Installation failed: {ex.Message}";
+                Text = text,
+                FontSize = 10.5,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = new SolidColorBrush(Color.Parse(fgHex))
             }
         };
-        grid.Children.Add(installBtn);
+    }
 
-        return new Border { Background = new SolidColorBrush(Color.Parse("#1B1C20")), CornerRadius = new CornerRadius(8), Padding = new Thickness(12), Child = grid };
+    private async void OpenModDetails(ModSearchItem hit)
+    {
+        if (_selected is not { } instance) return;
+        _currentDetailProject = hit;
+        _modDetailsCts?.Cancel();
+        var cts = _modDetailsCts = new CancellationTokenSource();
+
+        ModDetailsPanel.IsVisible = true;
+        ModDetailsBreadcrumb.Text = $"{instance.Name} / {hit.Name}";
+        ModDetailsTitle.Text = hit.Name;
+        ModDetailsAuthor.Text = string.IsNullOrEmpty(hit.Author) ? "" : "by " + hit.Author;
+        ModDetailsSummary.Text = hit.Summary;
+        ModDetailsBody.Text = "Loading description...";
+
+        ModDetailsIcon.Child = null;
+        _ = LoadRemoteIconAsync(ModDetailsIcon, hit.IconUrl);
+
+        ModDetailsTags.Children.Clear();
+        ModDetailsTags.Children.Add(CreateChip(hit.Provider, "#2A2B33", "#B5B7C0"));
+        ModDetailsTags.Children.Add(CreateChip(LoaderName(instance.Loader), "#2A2B33", "#B5B7C0"));
+        ModDetailsTags.Children.Add(CreateChip($"MC {instance.McVersion}", "#2A2B33", "#B5B7C0"));
+        if (hit.DownloadCount > 0) ModDetailsTags.Children.Add(CreateChip($"⬇ {Downloads(hit.DownloadCount)}", "#23242A", "#8F919B"));
+
+        var matched = FindInstalledMatch(hit);
+        if (matched != null)
+        {
+            if (matched.HasUpdate)
+            {
+                ModDetailsActionBtn.Classes.Clear();
+                ModDetailsActionBtn.Classes.Add("cfInstall");
+                ModDetailsActionBtn.Content = "Update";
+                ModDetailsActionBtn.IsEnabled = true;
+            }
+            else
+            {
+                ModDetailsActionBtn.Classes.Clear();
+                ModDetailsActionBtn.Classes.Add("action");
+                ModDetailsActionBtn.Content = "✓ Installed";
+                ModDetailsActionBtn.IsEnabled = false;
+            }
+        }
+        else
+        {
+            ModDetailsActionBtn.Classes.Clear();
+            ModDetailsActionBtn.Classes.Add("cfInstall");
+            ModDetailsActionBtn.Content = "Install";
+            ModDetailsActionBtn.IsEnabled = true;
+        }
+
+        ModDetailsTabs.SelectedIndex = 0;
+        ModDetailsOverviewView.IsVisible = true;
+        ModDetailsVersionsView.IsVisible = false;
+
+        if (hit.Id == "theladscore" || hit.Provider == "The Lads")
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_currentDetailProject == hit)
+                    ModDetailsBody.Text = string.IsNullOrWhiteSpace(hit.Summary)
+                        ? "The official Lads Client core mod. Adds multiplayer integration, Discord Rich Presence, cosmetics, and client-side performance enhancements."
+                        : hit.Summary;
+            });
+            _currentDetailVersions = new List<ProjectVersionItem>
+            {
+                new(
+                    "1.8.5",
+                    $"The Lads Core 1.8.5 (MC {instance.McVersion})",
+                    "1.8.5",
+                    "release",
+                    DateTime.UtcNow,
+                    new[] { LoaderName(instance.Loader).ToLowerInvariant() },
+                    new[] { instance.McVersion },
+                    null
+                )
+            };
+            ModDetailsVersionsStatus.Text = "1 version available (Bundled)";
+            RenderModVersionsTable();
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                string desc = await Catalog().GetProjectDescriptionAsync(hit.Provider, hit.Id, cts.Token);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_currentDetailProject == hit) ModDetailsBody.Text = string.IsNullOrWhiteSpace(desc) ? hit.Summary : desc;
+                });
+            }
+            catch
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_currentDetailProject == hit) ModDetailsBody.Text = hit.Summary;
+                });
+            }
+        });
+
+        await LoadModVersionsAsync(hit);
+    }
+
+    private void OpenModDetailsFromInstalled(ModpackModItem mod)
+    {
+        var hit = new ModSearchItem
+        {
+            Id = mod.ProjectId ?? mod.BaseName,
+            Name = mod.DisplayName,
+            Summary = mod.Description,
+            Author = mod.Author,
+            Provider = mod.Provider ?? "Modrinth",
+            ProjectSlug = mod.BaseName
+        };
+        OpenModDetails(hit);
+    }
+
+    private void ModDetailsBack_Click(object? sender, RoutedEventArgs e)
+    {
+        ModDetailsPanel.IsVisible = false;
+        _currentDetailProject = null;
+    }
+
+    private async void ModDetailsAction_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is not { } instance || _currentDetailProject is not { } hit) return;
+        ModDetailsActionBtn.IsEnabled = false;
+        ModDetailsActionBtn.Content = "Installing...";
+        try
+        {
+            string targetDir = string.IsNullOrEmpty(_addContentTargetDir) ? Path.Combine(instance.GameDirectory, "mods") : _addContentTargetDir;
+            if (hit.Id == "theladscore" || hit.Provider == "The Lads")
+            {
+                string? sourceJar = FindBundledCoreJar(instance.McVersion);
+                if (sourceJar == null || !File.Exists(sourceJar))
+                    throw new InvalidOperationException($"The Lads Core mod is not available for Minecraft {instance.McVersion}.");
+                Directory.CreateDirectory(targetDir);
+                string destJar = Path.Combine(targetDir, "theladscore.jar");
+                File.Copy(sourceJar, destJar, overwrite: true);
+                try
+                {
+                    var meta = FabricModMetadata.ReadJar(sourceJar, includeIcon: true);
+                    if (meta?.Icon != null)
+                    {
+                        await File.WriteAllBytesAsync(destJar + ".icon.png", meta.Icon);
+                    }
+                }
+                catch { }
+                ModDetailsActionBtn.Content = "✓ Installed";
+                ModDetailsActionBtn.Classes.Clear();
+                ModDetailsActionBtn.Classes.Add("action");
+                ManageStatus.Text = "The Lads Core installed!";
+                await ScanModsAsync(instance);
+                RenderActiveSubTab();
+                return;
+            }
+            var file = await Catalog().LatestFileAsync(hit, AddContentKind, instance.McVersion, instance.Loader);
+            if (file == null) throw new InvalidOperationException($"No release found for Minecraft {instance.McVersion} and loader {instance.Loader}.");
+            string savedFile = await Catalog().InstallAsync(file, targetDir, SharedContentService.Instance);
+            if (!string.IsNullOrEmpty(hit.IconUrl))
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var imgBytes = await Http.GetByteArrayAsync(hit.IconUrl);
+                        await File.WriteAllBytesAsync(savedFile + ".icon.png", imgBytes);
+                    }
+                    catch { }
+                });
+            }
+            ModDetailsActionBtn.Content = "✓ Installed";
+            ModDetailsActionBtn.Classes.Clear();
+            ModDetailsActionBtn.Classes.Add("action");
+            ManageStatus.Text = $"Installed {Path.GetFileName(savedFile)}!";
+            await ScanModsAsync(instance);
+            RenderActiveSubTab();
+        }
+        catch (Exception ex)
+        {
+            ModDetailsActionBtn.IsEnabled = true;
+            ModDetailsActionBtn.Content = "Retry";
+            ManageStatus.Text = "Installation failed: " + ex.Message;
+        }
+    }
+
+    private void ModDetailsTabs_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (ModDetailsTabs == null) return;
+        bool isOverview = ModDetailsTabs.SelectedIndex == 0;
+        ModDetailsOverviewView.IsVisible = isOverview;
+        ModDetailsVersionsView.IsVisible = !isOverview;
+    }
+
+    private void ModDetailsIncompatible_Changed(object? sender, RoutedEventArgs e)
+    {
+        RenderModVersionsTable();
+    }
+
+    private async Task LoadModVersionsAsync(ModSearchItem hit)
+    {
+        if (_selected is not { } instance) return;
+        ModDetailsVersionsStatus.Text = "Loading versions...";
+        ModDetailsVersionsList.Children.Clear();
+        try
+        {
+            var versions = await Catalog().GetProjectVersionsAsync(hit.Provider, hit.Id, CancellationToken.None);
+            if (_currentDetailProject != hit) return;
+            _currentDetailVersions = versions;
+            ModDetailsVersionsStatus.Text = $"{versions.Count} versions available";
+            RenderModVersionsTable();
+        }
+        catch (Exception ex)
+        {
+            ModDetailsVersionsStatus.Text = "Failed to load versions: " + ex.Message;
+        }
+    }
+
+    private void RenderModVersionsTable()
+    {
+        if (_selected is not { } instance) return;
+        ModDetailsVersionsList.Children.Clear();
+        bool showIncompatible = ModDetailsIncompatibleToggle.IsChecked == true;
+
+        var list = _currentDetailVersions.Where(v =>
+        {
+            if (showIncompatible) return true;
+            bool loaderMatch = v.Loaders.Count == 0 || v.Loaders.Any(l => l.Equals(instance.Loader, StringComparison.OrdinalIgnoreCase));
+            bool gvMatch = v.GameVersions.Count == 0 || v.GameVersions.Contains(instance.McVersion);
+            return loaderMatch && gvMatch;
+        }).ToList();
+
+        if (list.Count == 0)
+        {
+            ModDetailsVersionsList.Children.Add(new TextBlock
+            {
+                Text = showIncompatible ? "No versions found." : "No versions match this Minecraft version and loader. Toggle 'Show incompatible versions' to see all.",
+                Foreground = new SolidColorBrush(Color.Parse("#8F919C")),
+                Margin = new Thickness(0, 10, 0, 0)
+            });
+            return;
+        }
+
+        foreach (var ver in list)
+        {
+            var rowGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("50,*,120,100,100,110") };
+
+            var (badgeBg, badgeText) = ver.ReleaseType switch
+            {
+                "beta" => ("#1F75FE", "B"),
+                "alpha" => ("#E56F10", "A"),
+                _ => ("#22A04A", "R")
+            };
+            var badgeBorder = new Border
+            {
+                Width = 22, Height = 22, CornerRadius = new CornerRadius(4),
+                Background = new SolidColorBrush(Color.Parse(badgeBg)),
+                HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock { Text = badgeText, FontWeight = FontWeight.Bold, FontSize = 11, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
+            };
+            rowGrid.Children.Add(badgeBorder);
+
+            var nameBlock = new TextBlock
+            {
+                Text = string.IsNullOrEmpty(ver.Name) ? ver.VersionNumber : ver.Name,
+                FontWeight = FontWeight.SemiBold, FontSize = 12.5, Foreground = Brushes.White,
+                VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            Grid.SetColumn(nameBlock, 1);
+            rowGrid.Children.Add(nameBlock);
+
+            var dateBlock = new TextBlock
+            {
+                Text = ver.DatePublished is { } dp ? dp.ToLocalTime().ToString("d") : "Unknown",
+                FontSize = 11.5, Foreground = new SolidColorBrush(Color.Parse("#9CA0AB")),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(dateBlock, 2);
+            rowGrid.Children.Add(dateBlock);
+
+            var loaderBlock = new TextBlock
+            {
+                Text = ver.Loaders.Count > 0 ? string.Join(", ", ver.Loaders) : LoaderName(instance.Loader),
+                FontSize = 11.5, Foreground = new SolidColorBrush(Color.Parse("#9CA0AB")),
+                VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            Grid.SetColumn(loaderBlock, 3);
+            rowGrid.Children.Add(loaderBlock);
+
+            var gvBlock = new TextBlock
+            {
+                Text = ver.GameVersions.Count > 0 ? ver.GameVersions[0] : instance.McVersion,
+                FontSize = 11.5, Foreground = new SolidColorBrush(Color.Parse("#9CA0AB")),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(gvBlock, 4);
+            rowGrid.Children.Add(gvBlock);
+
+            bool isLadsCore = _currentDetailProject?.Id == "theladscore" || _currentDetailProject?.Provider == "The Lads";
+            var isInstalled = isLadsCore
+                ? _instanceMods.Any(m => string.Equals(m.BaseName, "theladscore", StringComparison.OrdinalIgnoreCase)
+                                      || m.DisplayName.IndexOf("The Lads Core", StringComparison.OrdinalIgnoreCase) >= 0
+                                      || m.DisplayName.IndexOf("LadsCore", StringComparison.OrdinalIgnoreCase) >= 0)
+                : _instanceMods.Any(m => m.Version == ver.VersionNumber || (ver.PrimaryFile != null && m.FileName.Equals(ver.PrimaryFile.FileName, StringComparison.OrdinalIgnoreCase)));
+            var actionBtn = new Button
+            {
+                Classes = { isInstalled ? "action" : "cfUpdate" },
+                Content = isInstalled ? "✓ Installed" : "Install",
+                IsEnabled = !isInstalled && (isLadsCore || ver.PrimaryFile != null),
+                Height = 28, Padding = new Thickness(12, 0),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
+            };
+            if (!isInstalled && (isLadsCore || ver.PrimaryFile != null))
+            {
+                actionBtn.Click += async (_, _) =>
+                {
+                    actionBtn.IsEnabled = false;
+                    actionBtn.Content = "Installing...";
+                    try
+                    {
+                        string targetDir = string.IsNullOrEmpty(_addContentTargetDir) ? Path.Combine(instance.GameDirectory, "mods") : _addContentTargetDir;
+                        if (isLadsCore)
+                        {
+                            string? sourceJar = FindBundledCoreJar(instance.McVersion);
+                            if (sourceJar == null || !File.Exists(sourceJar))
+                                throw new InvalidOperationException($"The Lads Core mod is not available for Minecraft {instance.McVersion}.");
+                            Directory.CreateDirectory(targetDir);
+                            string destJar = Path.Combine(targetDir, "theladscore.jar");
+                            File.Copy(sourceJar, destJar, overwrite: true);
+                            try
+                            {
+                                var meta = FabricModMetadata.ReadJar(sourceJar, includeIcon: true);
+                                if (meta?.Icon != null)
+                                {
+                                    await File.WriteAllBytesAsync(destJar + ".icon.png", meta.Icon);
+                                }
+                            }
+                            catch { }
+                        }
+                        else
+                        {
+                            await Catalog().InstallAsync(ver.PrimaryFile!, targetDir, SharedContentService.Instance);
+                            string savedFile = Path.Combine(targetDir, ver.PrimaryFile!.FileName);
+                            if (_currentDetailProject?.IconUrl is { Length: > 0 } iconUrl)
+                            {
+                                _ = Task.Run(async () =>
+                                {
+                                    try
+                                    {
+                                        var imgBytes = await Http.GetByteArrayAsync(iconUrl);
+                                        await File.WriteAllBytesAsync(savedFile + ".icon.png", imgBytes);
+                                    }
+                                    catch { }
+                                });
+                            }
+                        }
+                        actionBtn.Content = "✓ Installed";
+                        actionBtn.Classes.Clear();
+                        actionBtn.Classes.Add("action");
+                        ManageStatus.Text = isLadsCore ? "The Lads Core installed!" : $"Installed {ver.PrimaryFile?.FileName ?? ver.Name}!";
+                        await ScanModsAsync(instance);
+                        RenderActiveSubTab();
+                    }
+                    catch (Exception ex)
+                    {
+                        actionBtn.IsEnabled = true;
+                        actionBtn.Content = "Retry";
+                        ManageStatus.Text = $"Install failed: {ex.Message}";
+                    }
+                };
+            }
+            Grid.SetColumn(actionBtn, 5);
+            rowGrid.Children.Add(actionBtn);
+
+            var border = new Border
+            {
+                Background = new SolidColorBrush(Color.Parse("#1A1B20")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#26272E")),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 6),
+                Child = rowGrid
+            };
+            ModDetailsVersionsList.Children.Add(border);
+        }
     }
 
     private async void Play_Click(object? sender, RoutedEventArgs e)

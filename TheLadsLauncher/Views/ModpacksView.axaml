@@ -64,27 +64,82 @@
       </Grid>
     </Grid>
 
-    <!-- One instance -->
-    <Grid x:Name="ManagePanel" IsVisible="False" RowDefinitions="Auto,Auto,Auto,*" Margin="28,24,28,12">
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-        <Button Classes="action" Content="&#8592; Modpacks" Height="34" VerticalAlignment="Top" Click="Back_Click" />
-        <Border x:Name="ManageArt" Grid.Column="1" Width="96" Height="96" CornerRadius="8" ClipToBounds="True" Margin="18,0,18,0" />
-        <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
-          <TextBlock x:Name="ManageTitle" Classes="notranslate" FontSize="24" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
-          <TextBlock x:Name="ManageInfo" Foreground="#A0A1AA" TextWrapping="Wrap" />
-          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-            <Button x:Name="PlayButton" Classes="launch" Content="Play" Width="120" Height="38" HorizontalContentAlignment="Center" Click="Play_Click" />
-            <Button Classes="action" Content="Open folder" Height="38" Click="OpenFolder_Click" />
-            <Button x:Name="DeleteButton" Classes="danger" Content="Delete" Height="38" Click="Delete_Click" />
+    <!-- One instance (CurseForge style) -->
+    <Grid x:Name="ManagePanel" IsVisible="False" RowDefinitions="Auto,Auto,*" Margin="24,18,24,12">
+      <!-- Top Header Area -->
+      <Grid RowDefinitions="Auto,Auto" Margin="0,0,0,14">
+        <!-- Top bar: Back button + Title actions -->
+        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
+          <Button Classes="action" Content="&#8592; Modpacks" Height="32" Padding="12,0" VerticalAlignment="Center" Click="Back_Click" />
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Button Classes="icon" ToolTip.Tip="Open modpack folder" Width="34" Height="34" Click="OpenFolder_Click">
+              <TextBlock Text="📁" FontSize="13" />
+            </Button>
+            <Button Classes="icon" ToolTip.Tip="Instance RAM &amp; Settings" Width="34" Height="34" Click="OpenSettings_Click">
+              <TextBlock Text="⚙" FontSize="13" />
+            </Button>
+            <Button x:Name="DeleteButton" Classes="icon danger" ToolTip.Tip="Delete Modpack" Width="34" Height="34" Click="Delete_Click">
+              <TextBlock Text="🗑" FontSize="13" />
+            </Button>
           </StackPanel>
-        </StackPanel>
+        </Grid>
+
+        <!-- Instance Main Info Card / Header -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+          <Border x:Name="ManageArt" Width="82" Height="82" CornerRadius="8" ClipToBounds="True" Margin="0,0,16,0" BorderBrush="#2D2F37" BorderThickness="1" />
+          <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <TextBlock x:Name="ManageTitle" Classes="notranslate" FontSize="22" FontWeight="Bold" Foreground="White" TextTrimming="CharacterEllipsis" />
+              <TextBlock x:Name="ManageByline" Foreground="#9CA0AB" FontSize="13" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Subtitle row (Release badge + pack version / source) -->
+            <StackPanel x:Name="ManageVersionRow" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Border x:Name="ManageReleaseBadge" Classes="chip good" Padding="6,1" Height="19" VerticalAlignment="Center">
+                <TextBlock Text="R" FontSize="10" FontWeight="Bold" Foreground="#7FD99A" />
+              </Border>
+              <TextBlock x:Name="ManageVersionText" Foreground="#C5C7D0" FontSize="11.5" VerticalAlignment="Center" />
+              <Border Classes="chip" Padding="8,1" Height="19" VerticalAlignment="Center">
+                <TextBlock Text="Modpacks" FontSize="10.5" />
+              </Border>
+            </StackPanel>
+
+            <!-- Info chips / glyphs row (Played, playtime, created, MC version, Loader) -->
+            <StackPanel Orientation="Horizontal" Spacing="14" Margin="0,3,0,0">
+              <TextBlock x:Name="ManageLastPlayed" Foreground="#8F919C" FontSize="11" />
+              <TextBlock x:Name="ManagePlaytime" Foreground="#8F919C" FontSize="11" />
+              <TextBlock x:Name="ManageCreated" Foreground="#8F919C" FontSize="11" />
+              <TextBlock x:Name="ManageMcVersion" Foreground="#B0B2BD" FontSize="11" FontWeight="SemiBold" />
+              <TextBlock x:Name="ManageLoader" Foreground="#B0B2BD" FontSize="11" FontWeight="SemiBold" />
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Big CurseForge Play Button -->
+          <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="6" HorizontalAlignment="Right">
+            <Button x:Name="PlayButton" Classes="cfPlay" Content="Play" MinWidth="130" Height="40" HorizontalContentAlignment="Center" Click="Play_Click" />
+          </StackPanel>
+        </Grid>
       </Grid>
-      <TextBlock x:Name="ManageStatus" Grid.Row="1" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,14,0,0" />
-      <TabControl x:Name="InstanceTabs" Classes="pills" Grid.Row="2" Margin="0,16,0,0" SelectionChanged="InstanceTabs_SelectionChanged">
-        <!-- Overview Tab -->
-        <TabItem x:Name="TabOverview" Header="Overview">
-          <ScrollViewer Margin="0,12,0,0">
-            <StackPanel Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+
+      <TextBlock x:Name="ManageStatus" Grid.Row="1" Foreground="#A0A1AA" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+      <!-- Primary Tab Strip with + Add Content -->
+      <Grid Grid.Row="2" RowDefinitions="Auto,*">
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+          <TabControl x:Name="InstanceTabs" Classes="pills" Padding="0" SelectionChanged="InstanceTabs_SelectionChanged">
+            <TabItem x:Name="TabOverview" Header="Overview" />
+            <TabItem x:Name="TabContent" Header="Content (0)" />
+            <TabItem x:Name="TabLogs" Header="Logs" />
+            <TabItem x:Name="TabScreenshots" Header="Screenshots" />
+          </TabControl>
+          <Button x:Name="HeaderAddContentButton" Grid.Column="1" Classes="action" Content="+ Add Content" Height="34" Padding="16,0" FontWeight="SemiBold" VerticalAlignment="Center" Click="AddMods_Click" />
+        </Grid>
+
+        <!-- Main Tab Contents -->
+        <Grid Grid.Row="1">
+          <!-- 1. Overview Tab -->
+          <ScrollViewer x:Name="OverviewPanel" IsVisible="True" Margin="0,8,0,0">
+            <StackPanel Spacing="16" MaxWidth="740" HorizontalAlignment="Left">
               <!-- Memory Allocation Card -->
               <Border Classes="card">
                 <StackPanel Spacing="12">
@@ -145,63 +200,133 @@
               </StackPanel>
             </StackPanel>
           </ScrollViewer>
-        </TabItem>
 
-        <!-- Mods Tab -->
-        <TabItem x:Name="TabMods" Header="Mods">
-          <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
-              <TextBlock x:Name="ModsHeader" Classes="caption" Text="MODS" VerticalAlignment="Center" />
-              <TextBox x:Name="ModsSearch" Grid.Column="1" Width="200" Margin="8,0,0,0" PlaceholderText="Filter installed mods..." TextChanged="ContentFilter_Changed" />
-              <Button Grid.Column="2" Classes="launch" Content="+ Add Mods" Height="32" Margin="8,0,0,0" Click="AddMods_Click" />
-              <Button Grid.Column="3" Classes="action" Content="+ From file" Height="32" Margin="8,0,0,0" Click="AddModsFromFile_Click" />
-            </Grid>
-            <ScrollViewer Grid.Row="1"><StackPanel x:Name="ModsList" Spacing="4" /></ScrollViewer>
-          </Grid>
-        </TabItem>
+          <!-- 2. Content Tab (CurseForge sub-tabs and table) -->
+          <Grid x:Name="ContentPanel" IsVisible="False" RowDefinitions="Auto,Auto,*" Margin="0,6,0,0">
+            <!-- Secondary Subtabs (Mods, Data Packs, Resource Packs, Shaders, Worlds) -->
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,10">
+              <Button x:Name="SubTabModsBtn" Classes="action" Content="Mods (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="mods" />
+              <Button x:Name="SubTabDatapacksBtn" Classes="action" Content="Data Packs (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="datapacks" />
+              <Button x:Name="SubTabResourcePacksBtn" Classes="action" Content="Resource Packs (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="resourcepacks" />
+              <Button x:Name="SubTabShadersBtn" Classes="action" Content="Shaders (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="shaderpacks" />
+              <Button x:Name="SubTabWorldsBtn" Classes="action" Content="Worlds (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="worlds" />
+            </StackPanel>
 
-        <!-- Resource Packs Tab -->
-        <TabItem x:Name="TabResourcePacks" Header="Resource Packs">
-          <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
-              <TextBlock x:Name="ResourcePacksHeader" Classes="caption" Text="RESOURCE PACKS" VerticalAlignment="Center" />
-              <TextBox x:Name="ResourcePacksSearch" Grid.Column="1" Width="200" Margin="8,0,0,0" PlaceholderText="Filter resource packs..." TextChanged="ContentFilter_Changed" />
-              <Button Grid.Column="2" Classes="launch" Content="+ Add Resource Packs" Height="32" Margin="8,0,0,0" Click="AddResourcePacks_Click" />
-              <Button Grid.Column="3" Classes="action" Content="+ From file" Height="32" Margin="8,0,0,0" Click="AddResourcePacksFromFile_Click" />
-            </Grid>
-            <ScrollViewer Grid.Row="1"><StackPanel x:Name="ResourcePacksList" Spacing="4" /></ScrollViewer>
-          </Grid>
-        </TabItem>
+            <!-- Content Toolbar (Update all, search, filter, refresh, from file) -->
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" Margin="0,0,0,10">
+              <!-- Update All Button with Count Badge -->
+              <Button x:Name="UpdateAllButton" Classes="action" Height="32" Padding="10,0" VerticalAlignment="Center" Click="UpdateAll_Click">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <TextBlock Text="🔄 Update all" VerticalAlignment="Center" />
+                  <Border x:Name="UpdateAllBadge" Background="#F16436" CornerRadius="10" MinWidth="18" Height="18" Padding="5,0" VerticalAlignment="Center" IsVisible="False">
+                    <TextBlock x:Name="UpdateAllBadgeText" Text="1" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                </StackPanel>
+              </Button>
 
-        <!-- Shaders Tab -->
-        <TabItem x:Name="TabShaders" Header="Shaders">
-          <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
-              <TextBlock x:Name="ShadersHeader" Classes="caption" Text="SHADERS" VerticalAlignment="Center" />
-              <TextBox x:Name="ShadersSearch" Grid.Column="1" Width="200" Margin="8,0,0,0" PlaceholderText="Filter shaders..." TextChanged="ContentFilter_Changed" />
-              <Button Grid.Column="2" Classes="launch" Content="+ Add Shaders" Height="32" Margin="8,0,0,0" Click="AddShaders_Click" />
-              <Button Grid.Column="3" Classes="action" Content="+ From file" Height="32" Margin="8,0,0,0" Click="AddShadersFromFile_Click" />
-            </Grid>
-            <ScrollViewer Grid.Row="1"><StackPanel x:Name="ShadersList" Spacing="4" /></ScrollViewer>
-          </Grid>
-        </TabItem>
+              <TextBlock x:Name="ContentUpdateStatus" Grid.Column="1" Foreground="#8F919C" FontSize="11.5" VerticalAlignment="Center" Margin="14,0,0,0" TextTrimming="CharacterEllipsis" />
 
-        <!-- Datapacks Tab -->
-        <TabItem x:Name="TabDatapacks" Header="Datapacks">
-          <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
-              <TextBlock x:Name="DatapacksHeader" Classes="caption" Text="DATAPACKS" VerticalAlignment="Center" />
-              <TextBox x:Name="DatapacksSearch" Grid.Column="1" Width="200" Margin="8,0,0,0" PlaceholderText="Filter datapacks..." TextChanged="ContentFilter_Changed" />
-              <Button Grid.Column="2" Classes="launch" Content="+ Add Datapacks" Height="32" Margin="8,0,0,0" Click="AddDatapacks_Click" />
-              <Button Grid.Column="3" Classes="action" Content="+ From file" Height="32" Margin="8,0,0,0" Click="AddDatapacksFromFile_Click" />
+              <TextBox x:Name="ContentFilterSearch" Grid.Column="2" Width="200" Height="32" PlaceholderText="Search installed..." TextChanged="ContentFilter_Changed" Margin="8,0,0,0" />
+              <Button x:Name="AddFromFileButton" Grid.Column="3" Classes="action" Content="+ From file" Height="32" Margin="8,0,0,0" Click="AddCurrentFromFile_Click" />
+              <Button Classes="icon" Grid.Column="4" ToolTip.Tip="Refresh list and check for updates" Width="32" Height="32" Margin="8,0,0,0" Click="RefreshCurrentContent_Click">
+                <TextBlock Text="🔄" FontSize="12" />
+              </Button>
+              <Button Classes="icon" Grid.Column="5" ToolTip.Tip="Open current folder in File Explorer" Width="32" Height="32" Margin="8,0,0,0" Click="OpenCurrentFolder_Click">
+                <TextBlock Text="📁" FontSize="12" />
+              </Button>
             </Grid>
-            <ScrollViewer Grid.Row="1"><StackPanel x:Name="DatapacksList" Spacing="4" /></ScrollViewer>
+
+            <!-- Table Area -->
+            <Grid Grid.Row="2" RowDefinitions="Auto,*">
+              <!-- Mods Table Header (Screenshot 3 & 4) -->
+              <Border x:Name="ModsTableHeader" Background="#141519" BorderBrush="#26272E" BorderThickness="0,0,0,1" Padding="10,8" Margin="0,0,0,4">
+                <Grid ColumnDefinitions="34,*,140,140,70,80,44">
+                  <CheckBox x:Name="ModsSelectAllBox" VerticalAlignment="Center" IsCheckedChanged="ModsSelectAll_Changed" />
+                  <TextBlock Grid.Column="1" Text="Name ▲" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="Action" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="Author" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="4" Text="Env" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                  <TextBlock Grid.Column="5" Text="Active" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                  <TextBlock Grid.Column="6" Text="" VerticalAlignment="Center" />
+                </Grid>
+              </Border>
+
+              <!-- Generic Header for Resource Packs / Shaders / Datapacks -->
+              <Border x:Name="GenericTableHeader" IsVisible="False" Background="#141519" BorderBrush="#26272E" BorderThickness="0,0,0,1" Padding="10,8" Margin="0,0,0,4">
+                <Grid ColumnDefinitions="*,100,60">
+                  <TextBlock x:Name="GenericHeaderTitle" Text="Name" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <TextBlock x:Name="GenericHeaderStatus" Grid.Column="1" Text="Active" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="Delete" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                </Grid>
+              </Border>
+
+              <!-- Dedicated Worlds Table Header -->
+              <Border x:Name="WorldsTableHeader" IsVisible="False" Background="#141519" BorderBrush="#26272E" BorderThickness="0,0,0,1" Padding="10,8" Margin="0,0,0,4">
+                <Grid ColumnDefinitions="*,140,80,60">
+                  <TextBlock Text="World Name" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="Last Played" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="Folder" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="Delete" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                </Grid>
+              </Border>
+
+              <ScrollViewer Grid.Row="1">
+                <StackPanel>
+                  <!-- Mods Table List -->
+                  <StackPanel x:Name="ModsList" Spacing="4" />
+                  <!-- Data Packs List -->
+                  <StackPanel x:Name="DatapacksList" Spacing="4" IsVisible="False" />
+                  <!-- Resource Packs List -->
+                  <StackPanel x:Name="ResourcePacksList" Spacing="4" IsVisible="False" />
+                  <!-- Shaders List -->
+                  <StackPanel x:Name="ShadersList" Spacing="4" IsVisible="False" />
+                  <!-- Worlds List -->
+                  <StackPanel x:Name="WorldsList" Spacing="4" IsVisible="False" />
+
+                  <!-- Compatibility hidden elements for existing code -->
+                  <TextBlock x:Name="ModsHeader" IsVisible="False" />
+                  <TextBox x:Name="ModsSearch" IsVisible="False" />
+                  <TextBlock x:Name="ResourcePacksHeader" IsVisible="False" />
+                  <TextBox x:Name="ResourcePacksSearch" IsVisible="False" />
+                  <TextBlock x:Name="ShadersHeader" IsVisible="False" />
+                  <TextBox x:Name="ShadersSearch" IsVisible="False" />
+                  <TextBlock x:Name="DatapacksHeader" IsVisible="False" />
+                  <TextBox x:Name="DatapacksSearch" IsVisible="False" />
+                </StackPanel>
+              </ScrollViewer>
+            </Grid>
           </Grid>
-        </TabItem>
-      </TabControl>
+
+          <!-- 3. Logs Tab -->
+          <Grid x:Name="LogsPanel" IsVisible="False" RowDefinitions="Auto,*" Margin="0,8,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
+              <TextBlock Text="latest.log" FontWeight="SemiBold" FontSize="13" Foreground="#C5C7D0" VerticalAlignment="Center" />
+              <TextBox x:Name="LogsFilterBox" Grid.Column="1" Width="200" Height="30" PlaceholderText="Filter log..." Margin="8,0,0,0" TextChanged="LogsFilter_Changed" />
+              <Button Grid.Column="2" Classes="action" Content="Copy all" Height="30" Margin="8,0,0,0" Click="CopyLog_Click" />
+              <Button Grid.Column="3" Classes="action" Content="Open in Editor" Height="30" Margin="8,0,0,0" Click="OpenLogFile_Click" />
+            </Grid>
+            <Border Grid.Row="1" Background="#111215" BorderBrush="#26272E" BorderThickness="1" CornerRadius="6" Padding="12">
+              <ScrollViewer x:Name="LogsScroll">
+                <SelectableTextBlock x:Name="LogsText" FontFamily="Consolas,Menlo,Monospace" FontSize="11.5" Foreground="#D5D7E0" TextWrapping="Wrap" />
+              </ScrollViewer>
+            </Border>
+          </Grid>
+
+          <!-- 4. Screenshots Tab -->
+          <Grid x:Name="ScreenshotsPanel" IsVisible="False" RowDefinitions="Auto,*" Margin="0,8,0,0">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+              <TextBlock x:Name="ScreenshotsHeader" Text="SCREENSHOTS" FontWeight="SemiBold" FontSize="13" Foreground="#C5C7D0" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Classes="action" Content="Open screenshots folder" Height="30" Click="OpenScreenshotsFolder_Click" />
+            </Grid>
+            <ScrollViewer Grid.Row="1">
+              <WrapPanel x:Name="ScreenshotsGallery" />
+            </ScrollViewer>
+          </Grid>
+        </Grid>
+      </Grid>
     </Grid>
 
-    <!-- + Create -->
+    <!-- + Create Modal -->
     <Border x:Name="CreatePanel" IsVisible="False" Background="#CC000000">
       <Border Background="#17181B" BorderBrush="#303137" BorderThickness="1" CornerRadius="10" Padding="22" Width="380" HorizontalAlignment="Center" VerticalAlignment="Center">
         <StackPanel Spacing="10">
@@ -222,38 +347,155 @@
       </Border>
     </Border>
 
-    <!-- Add Content Modal (CurseForge style browser) -->
+    <!-- Add Content Modal (CurseForge style browser - Screenshot 2) -->
     <Border x:Name="AddContentPanel" IsVisible="False" Background="#E60D0E11">
-      <Grid RowDefinitions="Auto,Auto,*" Margin="32,24,32,18">
+      <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="32,20,32,18">
+        <!-- Top bar: Instance header + close X button -->
         <Grid ColumnDefinitions="Auto,*,Auto">
-          <Button Classes="action" Content="&#8592; Back" Height="34" Click="AddContentBack_Click" />
-          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="AddContentTitle" FontSize="20" FontWeight="Bold" Foreground="White" />
-            <TextBlock x:Name="AddContentSubtitle" FontSize="12" Foreground="#A0A1AA" />
+          <Border x:Name="AddContentArt" Width="44" Height="44" CornerRadius="6" ClipToBounds="True" Margin="0,0,12,0" VerticalAlignment="Center" />
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+            <TextBlock x:Name="AddContentTitle" FontSize="18" FontWeight="Bold" Foreground="White" />
+            <TextBlock x:Name="AddContentSubtitle" FontSize="11.5" Foreground="#A0A1AA" />
           </StackPanel>
-          <Button Grid.Column="2" Classes="action" Content="Done" Height="34" Click="AddContentBack_Click" />
+          <Button Grid.Column="2" Classes="icon" Width="36" Height="36" Click="AddContentBack_Click" ToolTip.Tip="Close browser">
+            <TextBlock Text="✕" FontSize="14" FontWeight="Bold" />
+          </Button>
         </Grid>
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,14,0,14">
-          <TextBox x:Name="AddContentSearchBox" PlaceholderText="Search content..." KeyDown="AddContentSearch_KeyDown" />
-          <ComboBox x:Name="AddContentProvider" Grid.Column="1" Width="120" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
-            <ComboBoxItem Content="Modrinth" />
-            <ComboBoxItem Content="CurseForge" />
-          </ComboBox>
-          <ComboBox x:Name="AddContentSort" Grid.Column="2" Width="130" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
-            <ComboBoxItem Content="Most downloads" />
-            <ComboBoxItem Content="Relevance" />
-            <ComboBoxItem Content="Most follows" />
-            <ComboBoxItem Content="Newest" />
-            <ComboBoxItem Content="Recently updated" />
-          </ComboBox>
-          <ComboBox x:Name="AddContentCategory" Grid.Column="3" Width="130" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed" />
-          <Button Grid.Column="4" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="AddContentSearch_Click" />
+
+        <!-- Search input box -->
+        <Grid Grid.Row="1" Margin="0,14,0,8">
+          <TextBox x:Name="AddContentSearchBox" Height="38" FontSize="13" PlaceholderText="Search for mods..." KeyDown="AddContentSearch_KeyDown" />
         </Grid>
-        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+
+        <!-- Filter pills + Dropdown Controls (Kind, Provider, Sort, Category) -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,Auto" Margin="0,0,0,12">
+          <!-- Active filter pills (Loader, Game Version) -->
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+            <Border x:Name="AddContentLoaderPill" Classes="chip" Padding="10,4" Background="#24252C">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock x:Name="AddContentLoaderPillText" Text="Fabric" FontSize="11" Foreground="#C5C7D0" FontWeight="SemiBold" />
+                <TextBlock Text="✕" FontSize="10" Foreground="#8F919C" Cursor="Hand" PointerPressed="ClearLoaderFilter_Click" />
+              </StackPanel>
+            </Border>
+            <Border x:Name="AddContentVersionPill" Classes="chip" Padding="10,4" Background="#24252C">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock x:Name="AddContentVersionPillText" Text="26.3" FontSize="11" Foreground="#C5C7D0" FontWeight="SemiBold" />
+                <TextBlock Text="✕" FontSize="10" Foreground="#8F919C" Cursor="Hand" PointerPressed="ClearVersionFilter_Click" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <!-- Controls bar (Kind dropdown, count, sort, categories, search button) -->
+          <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+            <ComboBox x:Name="AddContentKindBox" Width="140" Height="34" SelectionChanged="AddContentKind_Changed">
+              <ComboBoxItem Content="Mods" />
+              <ComboBoxItem Content="Data Packs" />
+              <ComboBoxItem Content="Resource Packs" />
+              <ComboBoxItem Content="Shaders" />
+            </ComboBox>
+
+            <TextBlock x:Name="AddContentResultsCount" Grid.Column="1" Text="Projects found" Foreground="#8F919C" FontSize="12" VerticalAlignment="Center" Margin="14,0,0,0" />
+
+            <ComboBox x:Name="AddContentProvider" Grid.Column="2" Width="110" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
+              <ComboBoxItem Content="Modrinth" />
+              <ComboBoxItem Content="CurseForge" />
+            </ComboBox>
+            <ComboBox x:Name="AddContentSort" Grid.Column="3" Width="140" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed">
+              <ComboBoxItem Content="Most downloads" />
+              <ComboBoxItem Content="Relevance" />
+              <ComboBoxItem Content="Most follows" />
+              <ComboBoxItem Content="Newest" />
+              <ComboBoxItem Content="Recently updated" />
+            </ComboBox>
+            <ComboBox x:Name="AddContentCategory" Grid.Column="4" Width="130" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed" />
+            <Button Grid.Column="5" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="AddContentSearch_Click" />
+          </Grid>
+        </Grid>
+
+        <!-- Search Results list -->
+        <Grid Grid.Row="3" RowDefinitions="Auto,*">
           <TextBlock x:Name="AddContentStatus" Foreground="#A0A1AA" Margin="0,0,0,8" />
           <ScrollViewer Grid.Row="1">
             <StackPanel x:Name="AddContentResults" Spacing="8" />
           </ScrollViewer>
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- Mod Details & Version Picker Modal (CurseForge style - Screenshot 1) -->
+    <Border x:Name="ModDetailsPanel" IsVisible="False" Background="#FA0D0E11">
+      <Grid RowDefinitions="Auto,Auto,*" Margin="32,20,32,18">
+        <!-- Top breadcrumb bar -->
+        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,14">
+          <Button Classes="action" Content="&#8592; Back" Height="32" Padding="12,0" Click="ModDetailsBack_Click" />
+          <TextBlock x:Name="ModDetailsBreadcrumb" Grid.Column="1" Foreground="#8F919C" FontSize="12.5" VerticalAlignment="Center" Margin="14,0,0,0" />
+          <Button Grid.Column="2" Classes="icon" Width="34" Height="34" Click="ModDetailsBack_Click">
+            <TextBlock Text="✕" FontSize="13" FontWeight="Bold" />
+          </Button>
+        </Grid>
+
+        <!-- Mod Details Header (Icon, Title, Byline, Summary, Tags, Action Button) -->
+        <Border Grid.Row="1" Background="#16171B" BorderBrush="#2A2B33" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,14">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border x:Name="ModDetailsIcon" Width="72" Height="72" CornerRadius="8" ClipToBounds="True" Background="#24252B" Margin="0,0,16,0" VerticalAlignment="Top" />
+            <StackPanel Grid.Column="1" Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock x:Name="ModDetailsTitle" FontSize="20" FontWeight="Bold" Foreground="White" />
+                <TextBlock x:Name="ModDetailsAuthor" Foreground="#A0A1AA" FontSize="13" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock x:Name="ModDetailsSummary" Foreground="#C9CAD1" FontSize="12" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+              <WrapPanel x:Name="ModDetailsTags" Margin="0,4,0,0" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="16,0,0,0">
+              <Button x:Name="ModDetailsActionBtn" Classes="cfInstall" Content="Install" MinWidth="110" Height="38" HorizontalContentAlignment="Center" Click="ModDetailsAction_Click" />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- Details Tabs: Overview & Versions -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+          <TabControl x:Name="ModDetailsTabs" Classes="pills" Padding="0" Margin="0,0,0,10" SelectionChanged="ModDetailsTabs_Changed">
+            <TabItem x:Name="ModDetailsOverviewTab" Header="Overview" />
+            <TabItem x:Name="ModDetailsVersionsTab" Header="Versions" />
+          </TabControl>
+
+          <Grid Grid.Row="1">
+            <!-- Overview Body / Description -->
+            <ScrollViewer x:Name="ModDetailsOverviewView" IsVisible="True">
+              <Border Background="#16171B" BorderBrush="#26272E" BorderThickness="1" CornerRadius="8" Padding="18">
+                <SelectableTextBlock x:Name="ModDetailsBody" Foreground="#D5D7E0" FontSize="12.5" TextWrapping="Wrap" />
+              </Border>
+            </ScrollViewer>
+
+            <!-- Versions Table View (Screenshot 1) -->
+            <Grid x:Name="ModDetailsVersionsView" IsVisible="False" RowDefinitions="Auto,Auto,*">
+              <!-- Filter / Controls row -->
+              <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <TextBlock x:Name="ModDetailsVersionsStatus" Foreground="#8F919C" FontSize="12" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <TextBlock Text="Show incompatible versions" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <ToggleSwitch x:Name="ModDetailsIncompatibleToggle" Classes="cfSwitch" IsChecked="False" IsCheckedChanged="ModDetailsIncompatible_Changed" />
+                </StackPanel>
+              </Grid>
+
+              <!-- Versions Table Header -->
+              <Border Grid.Row="1" Background="#141519" BorderBrush="#26272E" BorderThickness="0,0,0,1" Padding="12,8" Margin="0,0,0,4">
+                <Grid ColumnDefinitions="50,*,120,100,100,110">
+                  <TextBlock Text="Type" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="Name" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="Release Date" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="Modloader" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="4" Text="Game Ver" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="5" Text="Action" FontWeight="SemiBold" FontSize="12" Foreground="#8F919C" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                </Grid>
+              </Border>
+
+              <!-- Versions List -->
+              <ScrollViewer Grid.Row="2">
+                <StackPanel x:Name="ModDetailsVersionsList" Spacing="4" />
+              </ScrollViewer>
+            </Grid>
+          </Grid>
         </Grid>
       </Grid>
     </Border>

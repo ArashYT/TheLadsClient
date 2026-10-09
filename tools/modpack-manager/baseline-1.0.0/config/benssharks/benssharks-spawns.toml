@@ -1,0 +1,549 @@
+
+["Mob Spawn Settings"]
+
+	#Configuration settings for all aquatic mob spawning in Ben's Sharks.
+	["Mob Spawn Settings".Angelshark_Spawns]
+		#Settings for Angelshark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_lukewarm_ocean,lukewarm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Axodile_Spawns]
+		#Settings for Axodile.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 10
+		#Range: 0 ~ 100
+		spawn_weight = 10
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_cold_ocean,deep_frozen_ocean,frozen_ocean,snowy_beach"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Barracuda_Spawns]
+		#Settings for Barracuda.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "lukewarm_ocean,warm_ocean,ocean,deep_lukewarm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Basking_Shark_Spawns]
+		#Settings for Basking Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_cold_ocean,deep_frozen_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Blacktip_Reef_Shark_Spawns]
+		#Settings for Blacktip Reef Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 5
+		#Range: 0 ~ 100
+		spawn_weight = 5
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 2
+		#Range: 1 ~ 30
+		max_group_size = 2
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "lukewarm_ocean,warm_ocean,beach,mangrove_swamp"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Blue_Shark_Spawns]
+		#Settings for Blue Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 2
+		#Range: 0 ~ 100
+		spawn_weight = 2
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_ocean,deep_cold_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Bonnethead_Shark_Spawns]
+		#Settings for Bonnethead Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 3
+		#Range: 0 ~ 100
+		spawn_weight = 3
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 2
+		#Range: 1 ~ 30
+		max_group_size = 2
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "warm_ocean,lukewarm_ocean,ocean,beach,mangrove_swamp"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Bull_Shark_Spawns]
+		#Settings for Bull Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 2
+		#Range: 0 ~ 100
+		spawn_weight = 2
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 2
+		#Range: 1 ~ 30
+		max_group_size = 2
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "mangrove_swamp,swamp,lukewarm_ocean,beach,stony_shore,deep_lukewarm_ocean,warm_ocean,river"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Cookiecutter_Shark_Spawns]
+		#Settings for Cookiecutter Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_ocean,deep_cold_ocean,deep_frozen_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "NIGHT"
+
+	["Mob Spawn Settings".Goblin_Shark_Spawns]
+		#Settings for Goblin Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_cold_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "NIGHT"
+
+	["Mob Spawn Settings".Greater_Axodile_Spawns]
+		#Settings for Greater Axodile.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_frozen_ocean,frozen_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".GreatWhite_Shark_Spawns]
+		#Settings for GreatWhite Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Greenland_Shark_Spawns]
+		#Settings for Greenland Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 2
+		#Range: 0 ~ 100
+		spawn_weight = 2
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_frozen_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Krill_Spawns]
+		#Settings for Krill.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 20
+		#Range: 0 ~ 100
+		spawn_weight = 20
+		#Minimum group size. Default: 5
+		#Range: 1 ~ 20
+		min_group_size = 5
+		#Maximum group size. Default: 12
+		#Range: 1 ~ 30
+		max_group_size = 12
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "cold_ocean,deep_cold_ocean,deep_frozen_ocean,deep_lukewarm_ocean,deep_ocean,frozen_ocean,lukewarm_ocean,ocean,warm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Lemon_Shark_Spawns]
+		#Settings for Lemon Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 4
+		#Range: 0 ~ 100
+		spawn_weight = 4
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 2
+		#Range: 1 ~ 30
+		max_group_size = 2
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "lukewarm_ocean,warm_ocean,beach,mangrove_swamp"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Leopard_Shark_Spawns]
+		#Settings for Leopard Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 2
+		#Range: 0 ~ 100
+		spawn_weight = 2
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 2
+		#Range: 1 ~ 30
+		max_group_size = 2
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "beach,ocean,lukewarm_ocean,cold_ocean,stony_shore,mangrove_swamp"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Mako_Shark_Spawns]
+		#Settings for Mako Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 2
+		#Range: 0 ~ 100
+		spawn_weight = 2
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_ocean,ocean,deep_lukewarm_ocean,lukewarm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Megalodon_Spawns]
+		#Settings for Megalodon.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_frozen_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Megamouth_Shark_Spawns]
+		#Settings for Megamouth Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_ocean,deep_lukewarm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "NIGHT"
+
+	["Mob Spawn Settings".Nurse_Shark_Spawns]
+		#Settings for Nurse Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 2
+		#Range: 0 ~ 100
+		spawn_weight = 2
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 2
+		#Range: 1 ~ 30
+		max_group_size = 2
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "beach,lukewarm_ocean,warm_ocean,ocean,mangrove_swamp"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Pilot_Fish_Spawns]
+		#Settings for Pilot Fish.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 12
+		#Range: 0 ~ 100
+		spawn_weight = 12
+		#Minimum group size. Default: 3
+		#Range: 1 ~ 20
+		min_group_size = 3
+		#Maximum group size. Default: 5
+		#Range: 1 ~ 30
+		max_group_size = 5
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "lukewarm_ocean,ocean,warm_ocean,deep_lukewarm_ocean,beach,mangrove_swamp"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Remora_Spawns]
+		#Settings for Remora.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 10
+		#Range: 0 ~ 100
+		spawn_weight = 10
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 3
+		#Range: 1 ~ 30
+		max_group_size = 3
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_lukewarm_ocean,deep_ocean,lukewarm_ocean,ocean,warm_ocean,beach"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Sardine_Spawns]
+		#Settings for Sardine.
+		#If true, this mob will spawn naturally.
+		enable_spawning = false
+		#The weight (rarity) of this mob. Default: 10
+		#Range: 0 ~ 100
+		spawn_weight = 10
+		#Minimum group size. Default: 3
+		#Range: 1 ~ 20
+		min_group_size = 3
+		#Maximum group size. Default: 7
+		#Range: 1 ~ 30
+		max_group_size = 7
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "cold_ocean,deep_cold_ocean,deep_frozen_ocean,deep_lukewarm_ocean,deep_ocean,frozen_ocean,lukewarm_ocean,ocean,warm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Shoal_Spawns]
+		#Settings for Shoal.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 5
+		#Range: 0 ~ 100
+		spawn_weight = 5
+		#Minimum group size. Default: 3
+		#Range: 1 ~ 20
+		min_group_size = 3
+		#Maximum group size. Default: 7
+		#Range: 1 ~ 30
+		max_group_size = 7
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "cold_ocean,deep_cold_ocean,deep_frozen_ocean,deep_lukewarm_ocean,deep_ocean,frozen_ocean,lukewarm_ocean,ocean,warm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Sawshark_Spawns]
+		#Settings for Sawshark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_lukewarm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Sea_Lion_Spawns]
+		#Settings for Sea Lion.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 2
+		#Range: 0 ~ 100
+		spawn_weight = 2
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 3
+		#Range: 1 ~ 30
+		max_group_size = 3
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "beach,ocean,cold_ocean,lukewarm_ocean,stony_shore"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Thresher_Shark_Spawns]
+		#Settings for Thresher Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "lukewarm_ocean,deep_lukewarm_ocean,warm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Tiger_Shark_Spawns]
+		#Settings for Tiger Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 2
+		#Range: 0 ~ 100
+		spawn_weight = 2
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_lukewarm_ocean,lukewarm_ocean,warm_ocean,beach"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Whale_Shark_Spawns]
+		#Settings for Whale Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 1
+		#Range: 0 ~ 100
+		spawn_weight = 1
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "deep_lukewarm_ocean,lukewarm_ocean,warm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Whitetip_Shark_Spawns]
+		#Settings for Whitetip Shark.
+		#If true, this mob will spawn naturally.
+		enable_spawning = true
+		#The weight (rarity) of this mob. Default: 4
+		#Range: 0 ~ 100
+		spawn_weight = 4
+		#Minimum group size. Default: 1
+		#Range: 1 ~ 20
+		min_group_size = 1
+		#Maximum group size. Default: 1
+		#Range: 1 ~ 30
+		max_group_size = 1
+		#List of biomes (separated by commas) where this mob can spawn.
+		biomes_list = "lukewarm_ocean,warm_ocean,deep_lukewarm_ocean"
+		#Restrictions: ANY, DAY, NIGHT
+		spawn_time_restriction = "ANY"
+
+	["Mob Spawn Settings".Thalassoger_Raid_Settings]
+		#Settings for the Thalassoger appearing in Raids.
+		#If true, the Thalassoger will join Illager Raids.
+		enable_raid_spawning = true
+

@@ -1,0 +1,19 @@
+
+#Trial Chambers Generation Settings
+[worldgen]
+	#Whether Trial Chambers should generate in the world.
+	#Disable to use the mod's items without the structures.
+	#Requires world restart to take effect.
+	generate_trial_chambers = true
+	#Average chunk distance between trial chamber generation attempts.
+	#Vanilla default: 32. Higher = rarer.
+	#Examples: 32 = vanilla, 64 = 2x rarer, 128 = 4x rarer, 256 = 8x rarer.
+	#Requires world restart to take effect.
+	#Range: 8 ~ 512
+	trial_chamber_spacing = 32
+	#Minimum chunk distance between trial chambers. Must be less than spacing.
+	#Vanilla default: 21. Will be auto-clamped to spacing-1 if too high.
+	#Requires world restart to take effect.
+	#Range: 4 ~ 511
+	trial_chamber_separation = 21
+

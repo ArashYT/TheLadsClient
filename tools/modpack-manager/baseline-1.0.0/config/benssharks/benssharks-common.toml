@@ -1,0 +1,7 @@
+
+[vanilla_settings]
+	#If true, Dolphins will hunt and attack live Sardines.
+	enable_dolphin_aggro = true
+	#If true, Dolphins will eat dropped Sardine items.
+	enable_dolphin_eating = true
+

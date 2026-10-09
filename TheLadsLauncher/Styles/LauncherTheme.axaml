@@ -480,7 +480,80 @@
     <Setter Property="Background" Value="{DynamicResource LadsAccentSubtle}"/>
     <Setter Property="Foreground" Value="White"/>
   </Style>
-  <Style Selector="ComboBox.launchPicker ComboBoxItem:disabled">
-    <Setter Property="Opacity" Value="0.4"/>
+  <!-- ═══ CurseForge theme styles ═══ -->
+  <Style Selector="Button.cfPlay">
+    <Setter Property="Background" Value="#F16436"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="BorderBrush" Value="#FF7A4D"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="Padding" Value="24,8"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Button.cfPlay:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#FF7547"/>
+    <Setter Property="BorderBrush" Value="#FFA07D"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Button.cfPlay:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#D95328"/>
+    <Setter Property="BorderBrush" Value="#C2441D"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Button.cfInstall">
+    <Setter Property="Background" Value="#F16436"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="BorderBrush" Value="#FF7A4D"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="16,6"/>
+    <Setter Property="FontSize" Value="12.5"/>
+  </Style>
+  <Style Selector="Button.cfInstall:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#FF7547"/>
+    <Setter Property="BorderBrush" Value="#FFA07D"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Button.cfInstall:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#D95328"/>
+    <Setter Property="BorderBrush" Value="#C2441D"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Button.cfUpdate">
+    <Setter Property="Background" Value="#25262B"/>
+    <Setter Property="Foreground" Value="#FFFFFF"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="BorderBrush" Value="#4B4C57"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="14,5"/>
+    <Setter Property="FontSize" Value="12"/>
+  </Style>
+  <Style Selector="Button.cfUpdate:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#32333B"/>
+    <Setter Property="BorderBrush" Value="#707282"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="ToggleSwitch.cfSwitch">
+    <Setter Property="OnContent" Value=""/>
+    <Setter Property="OffContent" Value=""/>
+    <Setter Property="MinWidth" Value="0"/>
+    <Setter Property="MinHeight" Value="0"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+  <Style Selector="ToggleSwitch.cfSwitch:checked /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="#F16436"/>
+    <Setter Property="BorderBrush" Value="#F16436"/>
+  </Style>
+  <Style Selector="ToggleSwitch.cfSwitch:checked:pointerover /template/ Border#SwitchKnobBounds">
+    <Setter Property="Background" Value="#FF7547"/>
+    <Setter Property="BorderBrush" Value="#FF7547"/>
   </Style>
 </Styles>

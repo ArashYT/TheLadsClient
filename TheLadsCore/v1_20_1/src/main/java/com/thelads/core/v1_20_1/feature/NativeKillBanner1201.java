@@ -1,0 +1,239 @@
+package com.thelads.core.v1_20_1.feature;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.thelads.core.client.KillBannerTimeline;
+import com.thelads.core.client.killbanner.KillBannerPlayer;
+import com.thelads.core.client.killbanner.KillBannerStrip;
+import com.thelads.core.client.killbanner.KillBannerStyle;
+import com.thelads.core.client.killbanner.KillBanners;
+import com.thelads.core.client.killbanner.KillDetector;
+import com.thelads.core.config.HudSettings;
+import com.thelads.core.config.Module;
+import com.thelads.core.config.ModuleManager;
+import com.thelads.core.modules.KillBannerModule;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.boss.EnderDragonPart;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.monster.ElderGuardian;
+import net.minecraft.world.entity.monster.warden.Warden;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+
+public final class NativeKillBanner1201 {
+    private static final ResourceLocation BASE = new ResourceLocation("theladscore", "textures/gui/base_kill_banner.png");
+    private static final KillBannerTimeline BANNER = KillBanners.TIMELINE;
+    private static ClientPacketListener trackedConnection;
+    private static ClientLevel trackedLevel;
+    private static int lastLabelDelta;
+    private static boolean lastLabelPreview;
+    private static String label = "";
+
+    private NativeKillBanner1201() {}
+
+    private static KillBannerModule module() {
+        Module m = ModuleManager.getInstance().getModule("KillBanner");
+        return m instanceof KillBannerModule ? (KillBannerModule) m : null;
+    }
+
+    public static void tick() {
+        KillBannerArt1201.sweep();
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!eligible()) { reset(); return; }
+        if (trackedConnection != minecraft.getConnection() || trackedLevel != minecraft.level) {
+            reset();
+            trackedConnection = minecraft.getConnection();
+            trackedLevel = minecraft.level;
+        }
+        if (minecraft.player != null && !minecraft.player.isAlive()) BANNER.clear();
+        KillBannerArrows1201.tick(minecraft);
+        KillBannerModule module = module();
+        if (module != null) {
+            play(module, KillBanners.poll(module, System.nanoTime()));
+            KillBannerModule.Pick pick = module.chosen();
+            if (pick != null && pick.style() != null) KillBannerArt1201.warm(pick.style(), pick.variant());
+        }
+    }
+
+    public static void attacked(Entity target) {
+        if (!eligible()) return;
+        boolean head = Minecraft.getInstance().hitResult instanceof EntityHitResult hit && hit.getType() == HitResult.Type.ENTITY
+            && hit.getEntity() == target && KillDetector.headHit(hit.getLocation().y, target.getY(), target.getBbHeight());
+        LivingEntity victim = victim(target);
+        if (victim != null && !victim.isDeadOrDying()) {
+            KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
+        }
+    }
+
+    static void arrowHit(Entity target, double hitY) {
+        if (!eligible()) return;
+        LivingEntity victim = victim(target);
+        if (victim == null || victim.isDeadOrDying()) return;
+        boolean head = KillDetector.headHit(hitY, target.getY(), target.getBbHeight());
+        KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
+    }
+
+    public static void damaged(int entityId, int causeId) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!eligible() || causeId < 0 || minecraft.player == null || minecraft.level == null) return;
+        if (causeId == minecraft.player.getId()) {
+            LivingEntity victim = victim(minecraft.level.getEntity(entityId));
+            if (victim != null) {
+                KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), false, System.nanoTime());
+            }
+        } else {
+            KillBanners.DETECTOR.hitByOther(entityId, System.nanoTime());
+        }
+    }
+
+    public static void died(Entity entity) {
+        if (entity != null && eligible()) {
+            kill(KillBanners.DETECTOR.died(entity.getId(), System.nanoTime()));
+        }
+    }
+
+    public static void chat(Component message) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (message == null || !eligible() || minecraft.player == null) return;
+        Set<String> me = names(minecraft.player);
+        String text = null;
+        if (message.getContents() instanceof TranslatableContents death) {
+            List<String> args = new ArrayList<>();
+            for (Object arg : death.getArgs()) args.add(arg instanceof Component part ? part.getString() : String.valueOf(arg));
+            text = KillDetector.deathLine(death.getKey(), args);
+        }
+        if (text == null) text = message.getString();
+        if (KillDetector.myDeath(text, me)) BANNER.endStreak();
+        kill(KillBanners.DETECTOR.chat(text, me, NativeKillBanner1201::players, System.nanoTime()));
+    }
+
+    private static Map<Integer, Set<String>> players() {
+        Map<Integer, Set<String>> players = new HashMap<>();
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null) {
+            for (Player player : mc.level.players()) {
+                if (player != mc.player) players.put(player.getId(), names(player));
+            }
+        }
+        return players;
+    }
+
+    private static void kill(KillDetector.Kill kill) {
+        KillBannerModule module = module();
+        if (kill == null || module == null) return;
+        play(module, KillBanners.fire(module, kill, System.nanoTime()));
+    }
+
+    private static LivingEntity victim(Entity entity) {
+        if (entity instanceof EnderDragonPart part) return part.parentMob;
+        return entity instanceof LivingEntity living && !(living instanceof ArmorStand) && living != Minecraft.getInstance().player ? living : null;
+    }
+
+    private static KillDetector.Kind kind(LivingEntity entity) {
+        if (entity instanceof Player) return KillDetector.Kind.PLAYER;
+        return entity instanceof EnderDragon || entity instanceof WitherBoss || entity instanceof Warden || entity instanceof ElderGuardian
+            ? KillDetector.Kind.BOSS : KillDetector.Kind.MOB;
+    }
+
+    private static Set<String> names(LivingEntity entity) {
+        if (!(entity instanceof Player player)) return Set.of();
+        var conn = Minecraft.getInstance().getConnection();
+        var info = conn != null ? conn.getPlayerInfo(player.getUUID()) : null;
+        return KillDetector.names(player.getGameProfile().getName(),
+            info != null && info.getTabListDisplayName() != null ? info.getTabListDisplayName().getString() : player.getDisplayName().getString());
+    }
+
+    private static boolean eligible() {
+        Minecraft minecraft = Minecraft.getInstance();
+        KillBannerModule mod = module();
+        return mod != null && mod.isEnabled() && minecraft.level != null && minecraft.player != null
+            && minecraft.getConnection() != null && minecraft.getConnection().getConnection().isConnected();
+    }
+
+    static void reset() {
+        trackedConnection = null;
+        trackedLevel = null;
+        KillBanners.reset();
+    }
+
+    private static void play(KillBannerModule module, String sound) {
+        if (sound == null) return;
+        SoundEvent event = sound.isEmpty() ? SoundEvents.EXPERIENCE_ORB_PICKUP : SoundEvent.createVariableRangeEvent(new ResourceLocation(sound));
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(event, 1.0f, (float) module.volume.getValue()));
+    }
+
+    public static void render(GuiGraphics graphics) {
+        Minecraft minecraft = Minecraft.getInstance();
+        KillBannerModule module = module();
+        if (!eligible() || minecraft.options.hideGui || module == null) return;
+        double age = BANNER.age(System.nanoTime());
+        if (age < 0) return;
+        KillBannerModule.Pick pick = KillBanners.shown(module);
+        KillBannerStyle style = pick != null ? pick.style() : null;
+        if (style == null) {
+            renderBase(graphics, minecraft, module, age);
+            return;
+        }
+        boolean headshot = BANNER.headshot(), mark = headshot && module.killMark.get(), label = module.headshotBanner.get();
+        float size = (float) module.size.getValue() / 100f;
+        int variant = pick != null ? pick.variant() : 0;
+        if (style.isAnimated()) {
+            KillBannerStrip strip = style.strip(BANNER.sequence());
+            KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot, BANNER.cutAge());
+            if (frame != null) KillBannerArt1201.draw(graphics, style, variant, BANNER.sequence(), strip, frame, size, mark, label);
+        } else {
+            KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot, BANNER.cutAge());
+            if (layers != null) KillBannerArt1201.draw(graphics, style, variant, BANNER.sequence(), layers, size, mark, label);
+        }
+    }
+
+    private static void renderBase(GuiGraphics graphics, Minecraft minecraft, KillBannerModule module, double age) {
+        double opacity = KillBannerTimeline.opacity(age, module.duration.getValue());
+        if (opacity <= 0) return;
+        if (lastLabelDelta != BANNER.sequence() || lastLabelPreview != BANNER.preview() || label.isEmpty()) {
+            lastLabelDelta = BANNER.sequence();
+            lastLabelPreview = BANNER.preview();
+            label = BANNER.preview() ? "PREVIEW" : BANNER.sequence() == 1 ? "KILL" : BANNER.sequence() + " KILLS";
+        }
+        int sourceWidth = 256, sourceHeight = 64;
+        int height = Math.round(74 * (float) module.size.getValue() / 100f);
+        int width = Math.round(height * (float) sourceWidth / sourceHeight);
+        float entrance = (float) (1 - Math.pow(1 - Math.min(1, age / .22), 3));
+        float scale = .85f + .15f * entrance;
+        float alpha = (float) Math.max(0, Math.min(1, opacity));
+        int chosenColor = module.textColor.isUseGlobal() ? HudSettings.getInstance().getGlobalColor() : module.textColor.getColor();
+        int textAlpha = (int) Math.round(((chosenColor >>> 24) & 255) * opacity);
+
+        var pose = graphics.pose();
+        pose.pushPose();
+        try {
+            pose.translate(graphics.guiWidth() / 2f, Math.max(12, graphics.guiHeight() - 80 - height) + (1 - entrance) * 8, 0);
+            pose.scale(scale, scale, 1.0f);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha);
+            graphics.blit(BASE, -width / 2, 0, 0, 0, width, height, sourceWidth, sourceHeight);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            graphics.drawString(minecraft.font, label, -minecraft.font.width(label) / 2, height + 3,
+                textAlpha << 24 | (chosenColor & 0xffffff), true);
+        } finally {
+            pose.popPose();
+        }
+    }
+}

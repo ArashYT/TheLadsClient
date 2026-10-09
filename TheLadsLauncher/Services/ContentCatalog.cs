@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,6 +23,18 @@ public sealed record ContentFile(string ProjectId, string FileId, string Version
     /// <summary>The Minecraft versions the release supports, as the source lists them.</summary>
     public IReadOnlyList<string> GameVersions { get; init; } = Array.Empty<string>();
 }
+
+/// <summary>Detailed release version of a project for the version picker.</summary>
+public sealed record ProjectVersionItem(
+    string Id,
+    string Name,
+    string VersionNumber,
+    string ReleaseType,
+    DateTime? DatePublished,
+    IReadOnlyList<string> Loaders,
+    IReadOnlyList<string> GameVersions,
+    ContentFile? PrimaryFile
+);
 
 /// <summary>A search or lookup failed; the message is meant for the user.</summary>
 public sealed class ContentSourceException(string message, Exception? inner = null) : Exception(message, inner);
@@ -234,6 +247,93 @@ public sealed class ContentCatalog
             }
             return result;
         }, cancellationToken);
+    }
+
+    /// <summary>Fetches the list of releases/files for a project from Modrinth or CurseForge.</summary>
+    public async Task<List<ProjectVersionItem>> GetProjectVersionsAsync(string provider, string projectId, CancellationToken cancellationToken = default)
+    {
+        if (provider == "CurseForge")
+        {
+            string url = $"{_curseForge}/mods/{Uri.EscapeDataString(projectId)}/files?pageSize=50";
+            return await SendAsync("CurseForge", CurseForgeRequest(HttpMethod.Get, url), root =>
+            {
+                var list = new List<ProjectVersionItem>();
+                if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var file in data.EnumerateArray())
+                    {
+                        int rType = file.TryGetProperty("releaseType", out var rt) && rt.ValueKind == JsonValueKind.Number ? rt.GetInt32() : 1;
+                        string releaseType = rType switch { 1 => "release", 2 => "beta", 3 => "alpha", _ => "release" };
+                        DateTime? date = file.TryGetProperty("fileDate", out var fd) && fd.ValueKind == JsonValueKind.String && DateTime.TryParse(fd.GetString(), out var d) ? d : null;
+                        var parsedFile = CurseForgeFile(file);
+                        var rawGv = Strings(file, "gameVersions");
+                        list.Add(new ProjectVersionItem(
+                            Number(file, "id"),
+                            Text(file, "displayName"),
+                            Text(file, "fileName"),
+                            releaseType,
+                            date,
+                            rawGv.Where(v => v.Contains("Fabric", StringComparison.OrdinalIgnoreCase) || v.Contains("Forge", StringComparison.OrdinalIgnoreCase) || v.Contains("Quilt", StringComparison.OrdinalIgnoreCase) || v.Contains("NeoForge", StringComparison.OrdinalIgnoreCase)).ToList(),
+                            rawGv.Where(v => v.Length > 0 && char.IsDigit(v[0])).ToList(),
+                            parsedFile
+                        ));
+                    }
+                }
+                return list;
+            }, cancellationToken);
+        }
+        else
+        {
+            string url = $"{_modrinth}/project/{Uri.EscapeDataString(projectId)}/version";
+            return await SendAsync("Modrinth", new HttpRequestMessage(HttpMethod.Get, url), root =>
+            {
+                var list = new List<ProjectVersionItem>();
+                if (root.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var ver in root.EnumerateArray())
+                    {
+                        string vType = Text(ver, "version_type");
+                        DateTime? date = ver.TryGetProperty("date_published", out var dp) && dp.ValueKind == JsonValueKind.String && DateTime.TryParse(dp.GetString(), out var d) ? d : null;
+                        var parsedFile = ModrinthFile(ver);
+                        list.Add(new ProjectVersionItem(
+                            Text(ver, "id"),
+                            Text(ver, "name"),
+                            Text(ver, "version_number"),
+                            string.IsNullOrEmpty(vType) ? "release" : vType.ToLowerInvariant(),
+                            date,
+                            Strings(ver, "loaders"),
+                            Strings(ver, "game_versions"),
+                            parsedFile
+                        ));
+                    }
+                }
+                return list;
+            }, cancellationToken);
+        }
+    }
+
+    /// <summary>Fetches the project description/body (Modrinth markdown or CurseForge text) for details view.</summary>
+    public async Task<string> GetProjectDescriptionAsync(string provider, string projectId, CancellationToken cancellationToken = default)
+    {
+        if (provider == "CurseForge")
+        {
+            string url = $"{_curseForge}/mods/{Uri.EscapeDataString(projectId)}/description";
+            return await SendAsync("CurseForge", CurseForgeRequest(HttpMethod.Get, url), root =>
+            {
+                string html = Text(root, "data");
+                return Regex.Replace(html, "<.*?>", string.Empty).Trim();
+            }, cancellationToken);
+        }
+        else
+        {
+            string url = $"{_modrinth}/project/{Uri.EscapeDataString(projectId)}";
+            return await SendAsync("Modrinth", new HttpRequestMessage(HttpMethod.Get, url), root =>
+            {
+                string body = Text(root, "body");
+                if (string.IsNullOrWhiteSpace(body)) body = Text(root, "description");
+                return body;
+            }, cancellationToken);
+        }
     }
 
     private HttpRequestMessage CurseForgeRequest(HttpMethod method, string url)
