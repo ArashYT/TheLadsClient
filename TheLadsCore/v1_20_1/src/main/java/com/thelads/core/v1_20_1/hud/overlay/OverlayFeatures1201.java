@@ -11,6 +11,7 @@ public final class OverlayFeatures1201 {
 
     public static void register() {
         Crosshair1201.register();
+        PaperDoll1201.register();
     }
 
     /**
