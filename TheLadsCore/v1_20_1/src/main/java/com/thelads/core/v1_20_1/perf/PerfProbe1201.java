@@ -1,6 +1,8 @@
 package com.thelads.core.v1_20_1.perf;
 
 import com.mojang.blaze3d.platform.Window;
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinDef;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.SliderOption;
@@ -14,18 +16,21 @@ import java.util.Set;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.sounds.SoundSource;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWNativeWin32;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * QA probes of the performance features, off unless {@code -Dthelads.perfProbe=<list>} (or the environment variable LADS_PERF_PROBE) names them (comma separated:
- * {@code presence}, {@code dfps}, {@code borderless}). They drive the real module switches, the real window and the real
- * render loop, measure, and log {@code PERF-PROBE ...} lines; nothing is simulated. A QA window is never focused, so the
- * Dynamic FPS state it is in is UNFOCUSED (or HOVERED when the mouse is over it); the probe presses the module's own
- * "disable" key action to see the focused path.
+ * QA probes of the performance features, off unless {@code -Dthelads.perfProbe=<list>} (or the environment variable
+ * LADS_PERF_PROBE) names them (comma separated: {@code presence}, {@code dfps}, {@code borderless}, {@code controlling}). They
+ * drive the real module switches, the real window and the real render loop, measure, and log {@code PERF-PROBE ...} lines;
+ * nothing is simulated. The Dynamic FPS probe also hides and minimises its own window for a few seconds to let the real window
+ * observer see an unfocused and a minimised game (a QA window is normally focused).
  */
 public final class PerfProbe1201 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore-PerfProbe");
@@ -36,7 +41,7 @@ public final class PerfProbe1201 {
     };
 
     private static Set<String> wanted = Set.of();
-    private static long startNanos = -1;
+    private static long startNanos = -1, levelSince = -1;
     private static boolean presenceDone;
     private static Dfps dfps;
     private static Border border;
@@ -57,18 +62,28 @@ public final class PerfProbe1201 {
     public static void register() {
         String value = value();
         if (value.isEmpty() || value.equals("false")) return;
-        // "true" or "all" runs every scenario below that does not change the window or the settings screens.
-        if (value.equals("true") || value.equals("all")) value = "presence,dfps";
+        // "true" or "all" runs the scenarios that do not change the window or open screens.
+        if (value.equals("true") || value.equals("all")) value = "presence";
         wanted = Set.copyOf(Arrays.asList(value.split(",")));
         LOGGER.info("PERF-PROBE enabled: {}", wanted);
         ClientTickEvents.END_CLIENT_TICK.register(client -> tick(client));
     }
 
-    private static void tick(Minecraft client) {
-        if (client.getOverlay() != null || client.getWindow() == null) return;
-        long now = System.nanoTime();
+    /** Probes start in a settled world (6 s after joining), or after 45 s at the title screen when no world is being opened. */
+    private static boolean ready(Minecraft client, long now) {
+        if (client.getOverlay() != null || client.getWindow() == null) return false;
         if (startNanos < 0) startNanos = now;
-        if (now - startNanos < 4_000_000_000L) return; // let the title screen settle
+        if (client.level != null && client.screen == null) {
+            if (levelSince < 0) levelSince = now;
+            return now - levelSince > 6_000_000_000L;
+        }
+        levelSince = -1;
+        return client.level == null && client.screen instanceof TitleScreen && now - startNanos > 45_000_000_000L;
+    }
+
+    private static void tick(Minecraft client) {
+        long now = System.nanoTime();
+        if (!ready(client, now) && !started()) return;
         if (wanted.contains("presence") && !presenceDone) {
             presenceDone = true;
             presence();
@@ -77,25 +92,38 @@ public final class PerfProbe1201 {
             if (dfps == null) dfps = new Dfps();
             dfps.tick(client, now);
         }
-        if (wanted.contains("controlling")) {
+        if (wanted.contains("controlling") && (dfps == null || dfps.finished())) {
             if (controls == null) controls = new Controls();
             controls.tick(client, now);
         }
-        if (wanted.contains("borderless") && (dfps == null || dfps.finished())) {
+        if (wanted.contains("borderless") && (dfps == null || dfps.finished()) && (controls == null || controls.finished())) {
             if (border == null) border = new Border();
             border.tick(client, now);
+        }
+    }
+
+    /** Once a scenario began it runs on, whatever screen is open. */
+    private static boolean started() {
+        return presenceDone || dfps != null || controls != null || border != null;
+    }
+
+    private static void shot(Minecraft client, String name) {
+        try {
+            Screenshot.grab(client.gameDirectory, name + ".png", client.getMainRenderTarget(), message -> { });
+        } catch (RuntimeException failure) {
+            LOGGER.warn("PERF-PROBE screenshot {} failed", name, failure);
         }
     }
 
     private static void presence() {
         LOGGER.info("PERF-PROBE presence onForge={} underConnector={} fabricLoaderVersion={}", ModPresence1201.onForge(), ModPresence1201.underConnector(),
             FabricLoader.getInstance().getModContainer("fabricloader").map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?"));
-        String title = com.thelads.core.client.discord.DiscordPresence.screen(net.minecraft.client.gui.screens.TitleScreen.class);
+        String title = com.thelads.core.client.discord.DiscordPresence.screen(TitleScreen.class);
         String options = com.thelads.core.client.discord.DiscordPresence.screen(net.minecraft.client.gui.screens.OptionsScreen.class);
         String pause = com.thelads.core.client.discord.DiscordPresence.screen(net.minecraft.client.gui.screens.PauseScreen.class);
         boolean labelsOk = "In the main menu".equals(title) && "In the options".equals(options) && "Paused".equals(pause);
         LOGGER.info("PERF-PROBE discord screen labels: TitleScreen='{}' OptionsScreen='{}' PauseScreen='{}' (class name here: {}) {}", title, options, pause,
-            net.minecraft.client.gui.screens.TitleScreen.class.getSimpleName(), labelsOk ? "PASS" : "FAIL");
+            TitleScreen.class.getSimpleName(), labelsOk ? "PASS" : "FAIL");
         for (String id : PRESENCE_IDS) {
             boolean fabric = FabricLoader.getInstance().isModLoaded(id);
             String where = ModPresence1201.where(id);
@@ -110,97 +138,139 @@ public final class PerfProbe1201 {
     // ---------------------------------------------------------------- Dynamic FPS
 
     private static final class Dfps {
-        private int phase = -1;
-        private long phaseStart;
+        private enum Phase { MODE, TARGETS, NATURAL, DISABLED, FORCED, HIDDEN, ICONIFIED, OFF, DONE }
+
+        private Phase phase = Phase.MODE;
+        private boolean entered;
+        private long phaseStart, measureStart;
         private long loops0, rendered0;
         private boolean failed;
-        private double rendered1;
-        private final StringBuilder summary = new StringBuilder();
-        private int unfocusedTarget = 20;
+        private double renderedNatural = -1;
+        private final int unfocusedTarget = 20, hiddenTarget = 10;
 
         boolean finished() {
-            return phase >= 5;
+            return phase == Phase.DONE;
         }
 
         void tick(Minecraft client, long now) {
-            if (phase >= 5) return;
+            if (phase == Phase.DONE) return;
             Module module = module("DynamicFPS");
             if (module == null || DynamicFPSMod.getWindow() == null) {
-                if (phase == -1) {
+                if (phase == Phase.MODE) {
                     LOGGER.info("PERF-PROBE dfps SKIP engine not active (original Dynamic FPS installed, or module missing)");
-                    phase = 5;
+                    phase = Phase.DONE;
                 }
                 return;
             }
-            if (phase == -1) {
-                module.setEnabled(true);
-                if (module.getOption("Mode") instanceof DropdownOption mode) mode.setIndex(0); // Aggressive: no 3 s grace
-                if (module.getOption("Unfocused FPS") instanceof SliderOption slider) slider.setValue(unfocusedTarget);
-                if (module.getOption("Hidden FPS") instanceof SliderOption slider) slider.setValue(10);
-                // A QA window may be hovered by the mouse: make that profile visibly slower than the 60 FPS menu limit too.
-                com.thelads.core.v1_20_1.perf.dynamicfps.config.DynamicFPSConfig.INSTANCE.get(PowerState.HOVERED).setFrameRateTarget(30);
-                begin(1, now);
-                LOGGER.info("PERF-PROBE dfps setup: module enabled, Aggressive, Unfocused FPS {}, vanilla cap {}", unfocusedTarget, client.options.framerateLimit().get());
+            long handle = client.getWindow().getWindow();
+            if (!entered) {
+                enter(client, module, handle);
+                entered = true;
+                phaseStart = now;
+                measureStart = 0;
                 return;
             }
-            if (now - phaseStart < 1_000_000_000L) return; // settle
-            if (phaseStart2 == 0) {
-                phaseStart2 = now;
+            if (phase == Phase.MODE || phase == Phase.TARGETS) {
+                if (now - phaseStart > 1_500_000_000L) advance(now);
+                return;
+            }
+            if (now - phaseStart < 1_500_000_000L) return; // settle after the change
+            if (measureStart == 0) {
+                measureStart = now;
                 loops0 = DynamicFPSMod.probeLoops;
                 rendered0 = DynamicFPSMod.probeRendered;
                 return;
             }
-            if (now - phaseStart2 < 4_000_000_000L) return;
-            double seconds = (now - phaseStart2) / 1e9;
+            if (now - measureStart < 4_000_000_000L) return;
+            double seconds = (now - measureStart) / 1e9;
             double rendered = (DynamicFPSMod.probeRendered - rendered0) / seconds;
             double loops = (DynamicFPSMod.probeLoops - loops0) / seconds;
             PowerState state = DynamicFPSMod.powerState();
-            String line = String.format("phase=%d state=%s disabled=%s forced=%s target=%d renderedPerSec=%.1f loopsPerSec=%.1f volumeMaster=%.2f vsync=%s focused=%s hovered=%s",
+            String line = String.format("%s state=%s disabled=%s forced=%s target=%d renderedPerSec=%.1f loopsPerSec=%.1f volumeMaster=%.2f vsync=%s focused=%s hovered=%s",
                 phase, state, DynamicFPSMod.isDisabled(), DynamicFPSMod.isForcingLowFPS(), DynamicFPSMod.targetFrameRate(), rendered, loops,
                 SmoothVolumeHandler.volumeMultiplier(SoundSource.MASTER), DynamicFPSMod.enableVsync(),
                 DynamicFPSMod.getWindow().isFocused(), DynamicFPSMod.getWindow().isHovered());
-            boolean ok;
+            boolean ok = true;
+            String verdict;
             switch (phase) {
-                case 1 -> { // module on, real window state (never focused in QA)
-                    int target = DynamicFPSMod.targetFrameRate();
-                    rendered1 = rendered;
-                    ok = state != PowerState.FOCUSED && rendered <= target * 1.3 + 2 && rendered >= target * 0.5;
-                    LOGGER.info("PERF-PROBE dfps {} {}", line, ok ? "PASS (throttled to the power state's rate)" : "FAIL");
-                    DynamicFPSMod.toggleDisabled(); // the key binding's action
-                    begin(2, now);
+                case NATURAL -> { // module on, whatever state the real window is in
+                    renderedNatural = rendered;
+                    if (state == PowerState.FOCUSED) {
+                        verdict = "INFO (the QA window has the operating system focus, so the unfocused state is exercised by the phases below)";
+                    } else {
+                        int target = DynamicFPSMod.targetFrameRate();
+                        ok = rendered <= target * 1.3 + 2 && rendered >= target * 0.5;
+                        verdict = ok ? "PASS (throttled to the power state's rate)" : "FAIL";
+                    }
                 }
-                case 2 -> { // disabled by its key: full speed
-                    ok = state == PowerState.FOCUSED && DynamicFPSMod.isDisabled() && rendered > Math.max(unfocusedTarget * 1.8, rendered1 * 1.3);
-                    LOGGER.info("PERF-PROBE dfps {} {}", line, ok ? "PASS (full speed while disabled)" : "FAIL");
-                    DynamicFPSMod.toggleDisabled();
-                    DynamicFPSMod.toggleForceLowFPS();
-                    begin(3, now);
+                case DISABLED -> { // disabled by its key: full speed
+                    ok = state == PowerState.FOCUSED && DynamicFPSMod.isDisabled() && rendered > Math.max(unfocusedTarget * 2.0, renderedNatural * 1.3);
+                    verdict = ok ? "PASS (full speed while disabled)" : "FAIL";
                 }
-                case 3 -> { // forced low FPS: the unfocused profile
+                case FORCED -> { // forced low FPS: the unfocused profile
                     ok = state == PowerState.UNFOCUSED && DynamicFPSMod.isForcingLowFPS() && rendered <= unfocusedTarget * 1.3 + 2 && rendered >= unfocusedTarget * 0.5;
-                    LOGGER.info("PERF-PROBE dfps {} {}", line, ok ? "PASS (forced low FPS)" : "FAIL");
-                    DynamicFPSMod.toggleForceLowFPS();
-                    module.setEnabled(false);
-                    begin(4, now);
+                    verdict = ok ? "PASS (forced low FPS)" : "FAIL";
+                }
+                case HIDDEN -> { // the window really loses the focus (hidden): the observer must notice
+                    ok = state == PowerState.UNFOCUSED && !DynamicFPSMod.getWindow().isFocused() && rendered <= unfocusedTarget * 1.3 + 2 && rendered >= unfocusedTarget * 0.5
+                        && SmoothVolumeHandler.volumeMultiplier(SoundSource.MASTER) < 1.0f;
+                    verdict = ok ? "PASS (real focus loss throttles the game and lowers the volume)" : "FAIL";
+                }
+                case ICONIFIED -> { // the window is really minimised
+                    ok = state == PowerState.INVISIBLE && DynamicFPSMod.getWindow().isIconified() && rendered <= hiddenTarget * 1.3 + 2 && rendered >= hiddenTarget * 0.4;
+                    verdict = ok ? "PASS (a minimised window renders at the Hidden FPS)" : "FAIL";
                 }
                 default -> { // module off: the engine releases the limit
-                    ok = state == PowerState.FOCUSED && rendered > Math.max(unfocusedTarget * 1.8, rendered1 * 1.3);
-                    LOGGER.info("PERF-PROBE dfps {} {}", line, ok ? "PASS (module off, vanilla limit)" : "FAIL");
-                    module.setEnabled(true);
-                    phase = 5;
-                    LOGGER.info("PERF-PROBE dfps RESULT {}", failed || !ok ? "FAIL" : "PASS");
-                    return;
+                    ok = state == PowerState.FOCUSED && rendered > Math.max(unfocusedTarget * 2.0, renderedNatural * 1.3);
+                    verdict = ok ? "PASS (module off, vanilla limit)" : "FAIL";
                 }
             }
+            LOGGER.info("PERF-PROBE dfps {} {}", line, verdict);
             failed |= !ok;
+            leave(client, module, handle);
+            advance(now);
         }
 
-        private long phaseStart2;
+        private void advance(long now) {
+            phase = Phase.values()[phase.ordinal() + 1];
+            entered = false;
+            if (phase == Phase.DONE) {
+                LOGGER.info("PERF-PROBE dfps RESULT {}", failed ? "FAIL" : "PASS");
+            }
+        }
 
-        private void begin(int next, long now) {
-            phase = next;
-            phaseStart = now;
-            phaseStart2 = 0;
+        private void enter(Minecraft client, Module module, long handle) {
+            switch (phase) {
+                case MODE -> {
+                    module.setEnabled(true);
+                    if (module.getOption("Mode") instanceof DropdownOption mode) mode.setIndex(0); // Aggressive: no 3 s grace
+                    LOGGER.info("PERF-PROBE dfps setup: module enabled, Aggressive, vanilla cap {}", client.options.framerateLimit().get());
+                }
+                case TARGETS -> {
+                    // After the bridge applied the mode's own defaults.
+                    if (module.getOption("Unfocused FPS") instanceof SliderOption slider) slider.setValue(unfocusedTarget);
+                    if (module.getOption("Hidden FPS") instanceof SliderOption slider) slider.setValue(hiddenTarget);
+                    // A QA window may be hovered by the mouse: make that profile visibly slower than the 60 FPS menu limit too.
+                    com.thelads.core.v1_20_1.perf.dynamicfps.config.DynamicFPSConfig.INSTANCE.get(PowerState.HOVERED).setFrameRateTarget(30);
+                }
+                case DISABLED -> DynamicFPSMod.toggleDisabled(); // the key binding's action
+                case FORCED -> DynamicFPSMod.toggleForceLowFPS();
+                case HIDDEN -> GLFW.glfwHideWindow(handle);
+                case ICONIFIED -> GLFW.glfwIconifyWindow(handle);
+                case OFF -> module.setEnabled(false);
+                default -> { }
+            }
+        }
+
+        private void leave(Minecraft client, Module module, long handle) {
+            switch (phase) {
+                case DISABLED -> DynamicFPSMod.toggleDisabled();
+                case FORCED -> DynamicFPSMod.toggleForceLowFPS();
+                case HIDDEN -> GLFW.glfwShowWindow(handle);
+                case ICONIFIED -> GLFW.glfwRestoreWindow(handle);
+                case OFF -> module.setEnabled(true);
+                default -> { }
+            }
         }
     }
 
@@ -211,6 +281,10 @@ public final class PerfProbe1201 {
         private long stepStart;
         private int allRows;
         private boolean failed;
+
+        boolean finished() {
+            return step >= 5;
+        }
 
         void tick(Minecraft client, long now) {
             if (step >= 5) return;
@@ -231,25 +305,37 @@ public final class PerfProbe1201 {
                     boolean ok = screen instanceof com.thelads.core.v1_20_1.embedded.controlling.client.NewKeyBindsScreen;
                     LOGGER.info("PERF-PROBE controlling screen class {} {}", screen == null ? "none" : screen.getClass().getName(), ok ? "PASS (embedded Controlling replaced the vanilla key binds screen)" : "FAIL");
                     failed |= !ok;
-                    if (ok) {
-                        var c = (com.thelads.core.v1_20_1.embedded.controlling.client.NewKeyBindsScreen) screen;
-                        allRows = c.keyList().children().size();
-                        int rows = c.probeSearch("forward");
-                        boolean found = rows >= 1 && rows < allRows;
-                        LOGGER.info("PERF-PROBE controlling search all={} forward={} {}", allRows, rows, found ? "PASS (search narrows the list)" : "FAIL");
-                        failed |= !found;
-                        int none = c.probeSearch("name:zzzzzzqq");
-                        LOGGER.info("PERF-PROBE controlling search nomatch rows={} {}", none, none == 0 ? "PASS" : "FAIL");
-                        failed |= none != 0;
-                        c.probeSearch("");
-                        c.probeToggleFree();
-                        int free = c.keyList().children().size();
-                        LOGGER.info("PERF-PROBE controlling free keys rows={} {}", free, free > 1 ? "PASS (free keys list)" : "FAIL");
-                        failed |= free <= 1;
+                    if (!ok) {
+                        step = 3;
+                        return;
                     }
+                    shot(client, "perf-controlling-1-list");
+                    var c = (com.thelads.core.v1_20_1.embedded.controlling.client.NewKeyBindsScreen) screen;
+                    allRows = c.keyList().children().size();
+                    int rows = c.probeSearch("forward");
+                    boolean found = rows >= 1 && rows < allRows;
+                    LOGGER.info("PERF-PROBE controlling search all={} forward={} {}", allRows, rows, found ? "PASS (search narrows the list)" : "FAIL");
+                    failed |= !found;
                     step = 2;
                 }
                 case 2 -> {
+                    var c = (com.thelads.core.v1_20_1.embedded.controlling.client.NewKeyBindsScreen) client.screen;
+                    shot(client, "perf-controlling-2-search");
+                    int none = c.probeSearch("name:zzzzzzqq");
+                    LOGGER.info("PERF-PROBE controlling search nomatch rows={} {}", none, none == 0 ? "PASS" : "FAIL");
+                    failed |= none != 0;
+                    c.probeSearch("");
+                    c.probeToggleFree();
+                    int free = c.keyList().children().size();
+                    LOGGER.info("PERF-PROBE controlling free keys rows={} {}", free, free > 1 ? "PASS (free keys list)" : "FAIL");
+                    failed |= free <= 1;
+                    step = 4;
+                }
+                case 4 -> {
+                    shot(client, "perf-controlling-3-free");
+                    step = 3;
+                }
+                case 3 -> {
                     client.setScreen(null);
                     step = 5;
                     LOGGER.info("PERF-PROBE controlling RESULT {}", failed ? "FAIL" : "PASS");
@@ -286,6 +372,7 @@ public final class PerfProbe1201 {
                 }
                 case 1 -> {
                     boolean ok = check("module on, F11", window, access, true);
+                    shot(client, "perf-borderless-cover");
                     failed |= !ok;
                     window.toggleFullScreen(); // back to windowed
                     step = 2;
@@ -328,6 +415,7 @@ public final class PerfProbe1201 {
             }
         }
 
+        /** The window is the monitor's rectangle plus one row, undecorated and not owned by the monitor: GLFW's view and the OS's view (Windows). */
         private boolean check(String label, Window window, BorderlessAccess1201 access, boolean expectBorderless) {
             long handle = window.getWindow();
             int[] x = {0}, y = {0}, w = {0}, h = {0};
@@ -340,9 +428,24 @@ public final class PerfProbe1201 {
             boolean decorated = GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_DECORATED) == GLFW.GLFW_TRUE;
             boolean ok = mode != null && access.lads$borderlessActive() == expectBorderless && window.isFullscreen() && !decorated
                 && GLFW.glfwGetWindowMonitor(handle) == 0 && x[0] == mx[0] && y[0] == my[0] && w[0] == mode.width() && h[0] == mode.height() + 1;
-            LOGGER.info("PERF-PROBE borderless {}: window {}x{} at {},{} decorated={} ownedByMonitor={} monitor {}x{} at {},{} active={} {}", label, w[0], h[0], x[0], y[0],
+            String os = "os=n/a";
+            try {
+                long hwnd = GLFWNativeWin32.glfwGetWin32Window(handle);
+                if (hwnd != 0) {
+                    WinDef.HWND native_ = new WinDef.HWND(new com.sun.jna.Pointer(hwnd));
+                    WinDef.RECT rect = new WinDef.RECT();
+                    User32.INSTANCE.GetWindowRect(native_, rect);
+                    int style = User32.INSTANCE.GetWindowLong(native_, User32.GWL_STYLE);
+                    boolean caption = (style & 0x00C00000) != 0, frame = (style & 0x00040000) != 0;
+                    os = String.format("os rect %d,%d-%d,%d (%dx%d) caption=%s sizeframe=%s", rect.left, rect.top, rect.right, rect.bottom, rect.right - rect.left, rect.bottom - rect.top, caption, frame);
+                    ok &= !caption && !frame && mode != null && rect.right - rect.left == mode.width() && rect.bottom - rect.top == mode.height() + 1;
+                }
+            } catch (Throwable unavailable) {
+                os = "os check unavailable: " + unavailable;
+            }
+            LOGGER.info("PERF-PROBE borderless {}: window {}x{} at {},{} decorated={} ownedByMonitor={} monitor {}x{} at {},{} active={} {} {}", label, w[0], h[0], x[0], y[0],
                 decorated, GLFW.glfwGetWindowMonitor(handle) != 0, mode == null ? -1 : mode.width(), mode == null ? -1 : mode.height(), mx[0], my[0],
-                access.lads$borderlessActive(), ok ? "PASS (monitor rect +1 row)" : "FAIL");
+                access.lads$borderlessActive(), os, ok ? "PASS (monitor rect +1 row)" : "FAIL");
             return ok;
         }
 
