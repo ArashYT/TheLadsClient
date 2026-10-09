@@ -392,8 +392,8 @@ if (autoWorldVerification)
     foreach (var flag in new[] { ".lads-qa-screenshots134", ".lads-qa-replay", ".lads-qa-replay-done", ".lads-qa-replay-failed",
         ".lads-qa-flashback", ".lads-qa-flashback-done", ".lads-qa-flashback-failed" })
         File.Delete(Path.Combine(directory, flag));
-// 1.20.1 runs may wait for a QA slot and download the pack and Java first: an hour.
-using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(capabilities.Minimal ? 60 : flashbackVerification || perf189 ? 20 : asyncStressVerification ? 16 : 10));
+// Every run may wait for a QA slot and free RAM, and download the pack and Java first: an hour (the game's own time limits are the stopwatches below).
+using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(60));
 var ct = timeout.Token;
 
 Process? process = null;
@@ -521,8 +521,8 @@ try
     if (prepared.ReportPath != null) CopyIfExists(prepared.ReportPath, Path.Combine(evidence, "shared-prepare-report.jsonl"));
 
     var path = new MinecraftPath(directory);
-    // 1.20.1 runs share one machine-wide download cache (Minecraft assets and libraries, Java, Modrinth jars): see QaShared.
-    string cache = capabilities.Minimal ? Path.Combine(QaShared.CacheRoot, "mc") : Path.Combine(root, "artifacts", "verification", "shared-cache");
+    // Every worktree's runs share one machine-wide download cache (Minecraft assets and libraries, Java, Modrinth jars): see QaShared.
+    string cache = Path.Combine(QaShared.CacheRoot, "mc");
     path.Assets = Path.Combine(cache, "assets");
     path.Library = Path.Combine(cache, "libraries");
     var launcher = new MinecraftLauncher(path);
@@ -621,10 +621,10 @@ try
     CopyIfExists(Path.Combine(directory, ModPreferences.FileName), Path.Combine(evidence, "lads-mod-state.before.json"));
     Console.WriteLine($"Launcher inventory: {ModInventoryView.CountsText(inventory.Counts)}; {loadedMods.Count} enabled jar ids recorded for the running marker.");
 
-    var java = new JavaService(new PathService(capabilities.Minimal ? QaShared.RuntimeData : Path.Combine(root, "artifacts", "verification", "runtime-data")));
+    var java = new JavaService(new PathService(QaShared.RuntimeData));
     int requiredJava = GameVersionPolicy.GetRequiredJavaMajor(version);
     string javaPath;
-    using (capabilities.Minimal ? await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".java.lock"), ct) : null)
+    using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".java.lock"), ct))
         javaPath = await java.EnsureJavaAsync(requiredJava, cancellationToken: ct);
     int? javaMajor = java.GetJavaMajorVersion(javaPath);
     Console.WriteLine($"Java: {javaMajor}; Minecraft: {version}");
@@ -658,7 +658,7 @@ try
     // QA windows are tiles of the primary monitor (QaWindowGuard): the game opens at the tile's client size.
     bool tiled = Env("LADS_VERIFY_FOCUS") != "1" && Env("LADS_VERIFY_PLAYING") != "1" && Env("LADS_VERIFY_NO_RESIZE") != "1";
     var windowSize = tiled ? QaWindowGuard.TileClient(1) : new System.Drawing.Size(titleVerification ? 1280 : 960, titleVerification ? 720 : 600);
-    using (capabilities.Minimal ? await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".mc.lock"), ct) : null)
+    using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".mc.lock"), ct))
         process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
         {
             Session = session, JavaPath = javaPath, MaximumRamMb = 2048, MinimumRamMb = 256,
@@ -762,6 +762,13 @@ try
     process.StartInfo.RedirectStandardOutput = true;
     process.StartInfo.RedirectStandardError = true;
     GameSession.Configure(process.StartInfo, directory, shared.Root);
+    // The Core's shared config (ClientPaths.getGlobalBaseDir) is THELADS_GLOBAL_DIR, else the owner's REAL %APPDATA%\\.theladsclient\\shared\\thelads_config.json
+    // (read and saved: the owner's HUD layout and Discord RPC in QA games, QA module changes in the owner's config). QA games get their own folder: the game
+    // folder, whose thelads_config.json QaDiscord.ForceOff prepared; the shared copy is dropped so every launch re-seeds from it.
+    Directory.CreateDirectory(Path.Combine(directory, "shared"));
+    File.Delete(Path.Combine(directory, "shared", "thelads_config.json"));
+    process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = directory;
+    summary.Add("Core global config dir (THELADS_GLOBAL_DIR): " + directory);
     summary.Add($"Child environment: THELADS_DIR={directory}; {SharedContentService.RootEnvironmentVariable}={shared.Root}; {GameOptionsService.LunarEnvironmentVariable}={lunarRoot}");
     summary.Add("JVM QA flags: " + string.Join(' ', jvmFlags));
     log = new StreamWriter(logPath) { AutoFlush = true };
@@ -1268,8 +1275,12 @@ async Task<int> FinishAsync(string passLine, IReadOnlyList<string> logLines)
     {
         var before = tripBefore.Split('\n').ToHashSet();
         var after = tripAfter.Split('\n').ToHashSet();
-        failures.Add("TRIP-WIRE: the real %APPDATA%\\.minecraft changed during this run: "
-            + string.Join("; ", before.Except(after).Select(l => "- " + l).Concat(after.Except(before).Select(l => "+ " + l))));
+        // The owner plays on this PC while QA runs: its own servers.dat, screenshots and new worlds trip the wire. A change is a failure only with
+        // LADS_VERIFY_TRIPWIRE=strict (run it while the owner is away); otherwise it is reported as a warning (the sandbox env and link checks still apply).
+        string change = "the real %APPDATA%\\.minecraft changed during this run: "
+            + string.Join("; ", before.Except(after).Select(l => "- " + l).Concat(after.Except(before).Select(l => "+ " + l)));
+        if (Env("LADS_VERIFY_TRIPWIRE") == "strict") failures.Add("TRIP-WIRE: " + change);
+        else { Console.WriteLine("TRIP-WIRE WARNING (not a failure; the owner may be playing; LADS_VERIFY_TRIPWIRE=strict makes it one): " + change); summary.Add("TRIP-WIRE WARNING: " + change); }
     }
     else Console.WriteLine($"Trip-wire: {realMinecraft} unchanged (top-level entries, servers.dat SHA-256, saves/resourcepacks/shaderpacks entries).");
     string verdict = failures.Count == 0 ? passLine : "FAIL: " + string.Join(" | ", failures);
