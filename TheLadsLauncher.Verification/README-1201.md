@@ -60,6 +60,11 @@ Needs 7 GB free RAM (6 GB heap). The QA world is `LadsQA-zero-smp` in the copy's
   pauseOnLostFocus false, not fullscreen; Essential's Discord activity and Lads DiscordRPC off; `-Dfabric.noGui=true` (needs Fabric
   Loader >= 0.19.5, older loaders are refused: they ignore it and would open the crash window on the owner's screen).
 
+* **Trip-wire**: the real `%APPDATA%\.minecraft` listing must not change during a run. The owner plays on this PC, so a change is only a printed
+  warning; `LADS_VERIFY_TRIPWIRE=strict` makes it a failure (use it while the owner is away). Games always run with sandbox folders.
+* **Caches**: Minecraft assets/libraries, Java runtimes and the 1.20.1 pack jars are cached in `The Lads Client Dev\.qa-cache` for every
+  worktree (downloaded once, under file locks); `LADS_QA_SHARED_ROOT` moves it.
+
 ## 4. Probe script (`QaProbe1201`, 1.20.1 Core, inert without the harness flags)
 
 `--script <file>`, `LADS_VERIFY_SCRIPT=<file>`, or `--script-text "step;step"` (`LADS_VERIFY_SCRIPT_TEXT`). One step per line, `#` starts a
