@@ -28,8 +28,8 @@ It reaches the title screen, photographs it, creates (first run) or opens the su
 (default `1.20.1-title`). `--fresh-world` deletes the folder's QA world first. `--no-world` stops at the title screen (a script still runs there).
 `--remove-mods a,b` deletes jars whose file name contains `a` or `b` (case-insensitive) from the sandbox mods, after the pack
 installer ran (to test a Lads module replacing a duplicate mod, e.g. `--remove-mods sodium-extra,moreculling`).
-Known: Faster Iris Shadow Mapper is left out of the QA pack (the manifest says `fastershadowmapper`, its jar says `fism`, the
-installer rejects it); `LADS_VERIFY_EXCLUDE_MODS=none` keeps the pack as pinned (then the run fails there until the manifest is fixed).
+The QA pack is the pack as pinned (Faster Iris Shadow Mapper included: its manifest id is `fism`, like its jar).
+`LADS_VERIFY_EXCLUDE_MODS=a,b` leaves upstream mods out of a run, to get past a pack defect under diagnosis.
 Essential shows an "Account authentication failed" modal over the title screen (offline QA account); harmless.
 
 ## 2. Zero SMP (Forge 47.4.10 + Sinytra Connector): `--zero-smp`
