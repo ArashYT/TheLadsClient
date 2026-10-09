@@ -28,6 +28,7 @@ public final class HudPipeline1201 {
         } finally {
             NativeAutohide1201.scopeOpacity = 1;
         }
+        com.thelads.core.v1_20_1.hud.overlay.OverlayFeatures1201.hud(graphics);
         NativeKillBanner1201.render(graphics);
     }
 }

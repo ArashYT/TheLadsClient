@@ -91,6 +91,11 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     }
 
     @Override
+    public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
+        com.thelads.core.v1_20_1.hud.overlay.PaperDoll1201.render(guiGraphics, x, y, width, height, editor);
+    }
+
+    @Override
     public void drawBossBars(int x, int y, int max, boolean names, boolean preview) {
         try {
             var overlay = (BossBarAccessor1201) Minecraft.getInstance().gui.getBossOverlay();

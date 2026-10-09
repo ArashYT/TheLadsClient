@@ -368,6 +368,15 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     }
 
     @Override
+    public String getItemCountText(int selection) { return com.thelads.core.v1_20_1.hud.chat.NativeClientTools1201.itemCount(selection); }
+
+    @Override
+    public String getRecentReachText() { return com.thelads.core.v1_20_1.hud.chat.NativeClientTools1201.reachText(); }
+
+    @Override
+    public boolean hasPaperDollRenderer() { return com.thelads.core.v1_20_1.hud.overlay.PaperDoll1201.active(); }
+
+    @Override
     public boolean hasMinimap() { return com.thelads.core.v1_20_1.hud.Minimap1201.available(); }
 
     @Override
