@@ -8,6 +8,15 @@ java {
     }
 }
 
+// Loom 1.17 no longer runs the Mixin annotation processor by default. Without it no refmap is written, and every injector that names
+// a method (@Inject, @Redirect, @Shadow ...) keeps its Mojang name, which a production (intermediary) Fabric or a Connector setup
+// cannot find: with defaultRequire 0 those hooks were silently skipped. This is why mixins looked "on" but did nothing.
+loom {
+    mixin {
+        useLegacyMixinAp = true
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.release = 17
     options.encoding = 'UTF-8'
