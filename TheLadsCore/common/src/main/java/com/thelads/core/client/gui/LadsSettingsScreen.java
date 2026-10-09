@@ -147,9 +147,10 @@ public final class LadsSettingsScreen {
         int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 340 ? 118 : 0;
         g.fill(0, 0, width, 2, ACCENT);
         g.drawText("THE LADS", pad, 15, ACCENT);
-        if (width >= 400) g.drawText(modsView ? "INSTALLED MODS" : detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", pad + 68, 15, MUTED);
         String fpsBtnLabel = "HUD FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
         int fpsBtnW = Math.max(78, g.textWidth(fpsBtnLabel) + 14);
+        // The title line stops where the HUD FPS button begins ("60 (Recommended)" makes that button wide).
+        if (width >= 400) g.drawText(fit(g, modsView ? "INSTALLED MODS" : detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", width - pad - 116 - fpsBtnW - 6 - (pad + 68)), pad + 68, 15, MUTED);
         button(g, "global-hud-fps", fpsBtnLabel, new Rect(width - pad - 116 - fpsBtnW, 8, fpsBtnW, 23), this::openHudFpsDialog, true, mouseX, mouseY, fpsDialogOpen);
         button(g, "global-colors", "Colors", new Rect(width - pad - 110, 8, 52, 23), colorPicker::openGlobal, true, mouseX, mouseY, false);
         button(g, "close", "Done", new Rect(width - pad - 52, 8, 52, 23), this::close, true, mouseX, mouseY, false);
