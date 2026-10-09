@@ -128,7 +128,7 @@ final class LightsProbe189 {
 
     private static double shot(Minecraft mc, String name) throws Exception {
         screenshot(mc, name);
-        BufferedImage image = ImageIO.read(new File(mc.mcDataDir, "lads-qa/screenshots/" + name + ".png"));
+        BufferedImage image = CoreProbe.readShot(mc, name);
         long sum = 0, count = 0;
         for (int y = image.getHeight() / 5; y < image.getHeight() * 4 / 5; y += 2)
             for (int x = image.getWidth() / 4; x < image.getWidth() * 3 / 4; x += 2) {

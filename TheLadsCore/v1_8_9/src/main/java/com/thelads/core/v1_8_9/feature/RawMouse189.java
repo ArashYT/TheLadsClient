@@ -35,6 +35,8 @@ public final class RawMouse189 extends MouseHelper {
     /** Package-private for Probe145 (QA). */
     List<Controller> mice;
     boolean rawLive;
+    /** Package-private for Probe145 (QA): false reads the deltas it injected, which Mouse.poll() would replace in an unfocused window. */
+    boolean pumpInput = true;
     private int lwjglOnly;
     private float carryX, carryY;
 
@@ -50,7 +52,7 @@ public final class RawMouse189 extends MouseHelper {
 
     @Override
     public void mouseXYChange() {
-        Display.processMessages(); // pumps the window's input and Mouse.poll()s it
+        if (pumpInput) Display.processMessages(); // pumps the window's input and Mouse.poll()s it
         int lwjglX = Mouse.getDX(), lwjglY = Mouse.getDY();
         int[] raw = rawInputOn() ? pollRaw() : null;
         boolean rawMoved = raw != null && (raw[0] != 0 || raw[1] != 0);

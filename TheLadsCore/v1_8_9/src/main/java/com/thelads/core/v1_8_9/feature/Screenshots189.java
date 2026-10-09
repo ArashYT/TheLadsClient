@@ -88,10 +88,21 @@ public final class Screenshots189 {
         if (!active()) return;
         IO.execute(() -> {
             try {
-                BufferedImage image = read(file, 256);
-                Minecraft.getMinecraft().addScheduledTask(() -> showPreview(file, image));
-            } catch (IOException | RuntimeException unreadable) {
+                BufferedImage image = null;
+                // The chat line can come before the PNG is complete (the file is written by another thread): read again for up to 3 s.
+                for (int attempt = 0; image == null; attempt++) {
+                    try {
+                        image = read(file, 256);
+                    } catch (IOException early) {
+                        if (attempt >= 30) throw early;
+                        Thread.sleep(100);
+                    }
+                }
+                BufferedImage decoded = image;
+                Minecraft.getMinecraft().addScheduledTask(() -> showPreview(file, decoded));
+            } catch (IOException | RuntimeException | InterruptedException unreadable) {
                 // The chat line still links the file; only the preview is skipped.
+                org.apache.logging.log4j.LogManager.getLogger("TheLadsCore-1.8.9").warn("No screenshot preview for {}: {}", file, unreadable.toString());
             }
         });
     }

@@ -73,6 +73,8 @@ public class DraggableHudScreen {
     public Rect settingsBoundsFor(String name){var row=row(name);return row==null?null:row.gear();}
     /** Screen bounds of a HUD's list row, or null when it is not listed or scrolled out of view. */
     public Rect rowBoundsFor(String name){var row=row(name);return row==null?null:row.bounds();}
+    /** Scrolls the list to a HUD's row at the next draw (QA: rows below the viewport are not drawn, so they have no bounds). */
+    public void revealRow(String name){for(var element:listed())if(Objects.equals(name,element.getModuleName()))reveal=element;}
     /** Names in the element list, top to bottom (including rows scrolled out of view). */
     public List<String> listedNames(){return listed().stream().map(HudElement::getModuleName).toList();}
     public Rect previewBounds(){return preview;}

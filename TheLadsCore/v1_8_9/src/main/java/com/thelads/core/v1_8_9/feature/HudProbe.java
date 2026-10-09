@@ -378,6 +378,11 @@ public final class HudProbe {
         if (!framed()) return retry(0); // the capture below shows this state
         check(editor.ui().isShowingAll() && editor.ui().boundsFor("FPS") != null && editor.ui().listedNames().contains("Memory"),
             "Show disabled lists and previews the switched-off HUDs " + editor.ui().listedNames());
+        // The list is alphabetical and this window shows few rows: FPS's row is only drawn (and clickable) once scrolled into view.
+        if (editor.ui().toggleBoundsFor("FPS") == null) {
+            editor.ui().revealRow("FPS");
+            return retry(0);
+        }
         screenshot(mc, "c2-editor-all");
         clickScreen(editor.ui().toggleBoundsFor("FPS"));
         return after(2);

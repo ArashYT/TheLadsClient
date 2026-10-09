@@ -232,6 +232,7 @@ public final class CoreProbe {
     }
 
     /** GUI scales the title layout is checked at in this window: 1, 2, 3, 4 and Auto (0), the QA run's own scale last. */
+    private static boolean moreOpened;
     private static List<Integer> titleScales;
     private static int titleScale = -1;
 
@@ -241,6 +242,10 @@ public final class CoreProbe {
      * every GUI scale, and a click on More.
      */
     private static boolean ladsTitle(Minecraft mc) throws Exception {
+        if (essentialModalOpen()) { // the pictures and the More click below need the title screen, not Essential's popup over it
+            tap(Keyboard.KEY_ESCAPE, (char) 27); // Essential's modal takes the key (its own Escape handling closes it) before the screen sees it
+            return retry(5);
+        }
         if (titleScales == null) {
             titleScales = new java.util.ArrayList<>(Arrays.asList(1, 2, 3, 4, 0));
             titleScales.remove(Integer.valueOf(mc.gameSettings.guiScale));
@@ -254,6 +259,19 @@ public final class CoreProbe {
         GuiButton more = LadsTitleScreen189.INSTANCE.moreButton();
         click(more.xPosition + more.width / 2, more.yPosition + more.height / 2);
         return after(10);
+    }
+
+    /**
+     * QA only: the sandbox's offline account makes Essential open "Account authentication failed" over the title screen, and that
+     * popup takes every click. False when Essential is not loaded or its overlay cannot be read.
+     */
+    private static boolean essentialModalOpen() {
+        try {
+            Class<?> overlays = Class.forName("gg.essential.gui.overlay.OverlayManagerImpl");
+            return (Boolean) overlays.getMethod("hasOpenModals").invoke(overlays.getField("INSTANCE").get(null));
+        } catch (ReflectiveOperationException | LinkageError absent) {
+            return false;
+        }
     }
 
     private static void guiScale(Minecraft mc, int scale) {
@@ -301,6 +319,7 @@ public final class CoreProbe {
     /** More, then its Language: the title screen's own Language button pressed from More (GuiLanguage, a list on the Lads backdrop). */
     private static boolean titleMore(Minecraft mc) throws Exception {
         if (mc.currentScreen instanceof TitleExtrasScreen189) {
+            moreOpened = true;
             TitleExtrasScreen189 more = (TitleExtrasScreen189) mc.currentScreen;
             check(more.labels().containsAll(Arrays.asList("Language", "Realms")) && !more.labels().contains("Mods")
                     && !more.labels().contains("Accounts") && !more.labels().contains("Screenshots"),
@@ -317,6 +336,7 @@ public final class CoreProbe {
             mc.displayGuiScreen(LadsTitleScreen189.INSTANCE.screen());
             return retry(10);
         }
+        check(moreOpened, "the click on More opened the More screen (screen now " + mc.currentScreen + ")");
         check(mc.currentScreen instanceof GuiMainMenu && "en_US".equals(mc.gameSettings.language), "back on the title screen, language unchanged");
         return after(10);
     }
@@ -768,6 +788,21 @@ public final class CoreProbe {
         File folder = new File(mc.mcDataDir, "lads-qa");
         new File(folder, "screenshots").mkdirs(); // ScreenShotHelper creates only the last folder
         ScreenShotHelper.saveScreenshot(folder, name + ".png", mc.displayWidth, mc.displayHeight, mc.getFramebuffer());
+    }
+
+    /**
+     * A picture screenshot() saved, once its file is complete: Lads Screenshots writes it on its own thread, so right after the
+     * call the file is missing or half written. Waits up to 10 s on the client thread (QA only).
+     */
+    static java.awt.image.BufferedImage readShot(Minecraft mc, String name) throws Exception {
+        File file = new File(mc.mcDataDir, "lads-qa/screenshots/" + name + ".png");
+        for (int attempt = 0; attempt < 100; attempt++) {
+            java.awt.image.BufferedImage image = null;
+            try { if (file.isFile()) image = javax.imageio.ImageIO.read(file); } catch (java.io.IOException partial) { /* still being written */ }
+            if (image != null) return image;
+            Thread.sleep(100);
+        }
+        throw new IllegalStateException("1.8.9 core QA: the screenshot " + file + " was not written in 10 s");
     }
 
     /** A key press and release, queued in LWJGL's keyboard buffer as Keyboard.poll() stores them. */
