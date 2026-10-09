@@ -29,6 +29,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
+import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,7 +135,19 @@ public final class GameProbe1201 {
 
     private static void run(Minecraft mc, String[] s) throws Exception {
         switch (s[0]) {
-            case "wait" -> wait = Math.max(1, Integer.parseInt(s[1]));
+            case "wait" -> wait = com.thelads.core.v1_20_1.feature.QaProbe1201.duration(s[1]);
+            case "dump" -> com.thelads.core.v1_20_1.feature.QaProbe1201.dump(mc, s.length > 1 ? s[1].toLowerCase(Locale.ROOT) : "state", s.length > 2 ? s[2] : null);
+            case "window" -> { // QA: a real focus loss (hide) or minimise, as a player alt-tabbing causes; show/restore undoes it
+                long handle = mc.getWindow().getWindow();
+                switch (s[1]) { case "hide" -> GLFW.glfwHideWindow(handle); case "show" -> GLFW.glfwShowWindow(handle); case "iconify" -> GLFW.glfwIconifyWindow(handle); case "restore" -> GLFW.glfwRestoreWindow(handle); default -> throw new IllegalArgumentException("window " + s[1]); }
+                LOGGER.info("Lads game qa window: {} focused={}", s[1], GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_FOCUSED));
+            }
+            case "click" -> {
+                int button = switch (s[1]) { case "left" -> 0; case "right" -> 1; default -> 2; };
+                var handler = (MouseInvokers) mc.mouseHandler;
+                handler.ladsPress(mc.getWindow().getWindow(), button, 1, 0);
+                handler.ladsPress(mc.getWindow().getWindow(), button, 0, 0);
+            }
             case "cmd" -> mc.player.connection.sendCommand(rest(s, 1).replaceFirst("^/", ""));
             case "module" -> {
                 Module m = module(s[1]);
@@ -236,6 +249,7 @@ public final class GameProbe1201 {
                 Boolean essential = com.thelads.core.client.WorldCheats.essential();
                 yield essential == null ? -1 : essential ? 1 : 0;
             }
+            case "fps" -> mc.getFps();
             case "swinging" -> p.swinging ? 1 : 0;
             case "using" -> p.isUsingItem() ? 1 : 0;
             case "resscale" -> com.thelads.core.v1_20_1.game.RenderScale1201.lastScale;
