@@ -918,6 +918,19 @@ try
         ? File.ReadAllLines(qaOptions).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList()
         : new List<string>();
     qaLines.AddRange(qaForced);
+    // LADS_VERIFY_RESOURCEPACKS=a.zip,b.zip: those packs copied into the sandbox and enabled (e.g. Fresh Animations for the embedded EMF/ETF).
+    if (Env("LADS_VERIFY_RESOURCEPACKS") is { } packs)
+    {
+        var enabled = new List<string> { "\"vanilla\"", "\"fabric\"" };
+        foreach (var pack in packs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            Directory.CreateDirectory(Path.Combine(directory, "resourcepacks"));
+            File.Copy(pack, Path.Combine(directory, "resourcepacks", Path.GetFileName(pack)), overwrite: true);
+            enabled.Add("\"file/" + Path.GetFileName(pack) + "\"");
+        }
+        qaLines.RemoveAll(l => l.StartsWith("resourcePacks:", StringComparison.Ordinal));
+        qaLines.Add("resourcePacks:[" + string.Join(",", enabled) + "]");
+    }
     File.WriteAllLines(qaOptions, qaLines);
     QaDiscord.ForceOff(directory); // QA games never show on the owner's Discord (Essential's activity status, Lads DiscordRPC)
     var stopwatch = Stopwatch.StartNew();
