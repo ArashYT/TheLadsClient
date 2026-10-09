@@ -82,7 +82,7 @@ internal static class ModpackQa
             File.WriteAllLines(Path.Combine(evidence, "mods.txt"), Modpacks.Mods(instance).Select(m => (m.Enabled ? "on   " : "off  ") + m.FileName));
 
             var settings = new LauncherSettings { FullscreenOnLaunch = false, MaxRamMb = 4096, MinRamMb = 512, AutoDetectJava = true };
-            var java = new JavaService(new PathService(Path.Combine(verification, "runtime-data")));
+            var java = new JavaService(new PathService(QaShared.RuntimeData));
             var session = AccountIdentity.CreateOfflineSession("LadsQA");
             if (!launch)
             {
