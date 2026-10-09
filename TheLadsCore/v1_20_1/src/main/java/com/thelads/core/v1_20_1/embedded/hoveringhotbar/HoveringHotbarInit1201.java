@@ -46,6 +46,10 @@ public final class HoveringHotbarInit1201 {
     private static void probe(Minecraft client) {
         client.gui.getChat().addMessage(Component.literal("PERF-PROBE hoveringhotbar: chat line"));
         int offset = HoveringHotbar.CONFIG.getHotbarOffset();
+        boolean onForge = ModPresence1201.onForge();
+        // the experience bar and the health row are only drawn in survival, so only then are their hooks expected to have run
+        boolean survival = client.gameMode != null && client.gameMode.canHurtPlayer();
+        boolean experience = client.gameMode != null && client.gameMode.hasExperience() && client.player.jumpableVehicle() == null;
         Thread thread = new Thread(() -> {
             try {
                 Thread.sleep(2000L);
@@ -55,11 +59,13 @@ public final class HoveringHotbarInit1201 {
             boolean hotbar = HoveringHotbar.HOTBAR_DRAWS.get() > 0;
             boolean translated = offset == 0 || Math.abs(HoveringHotbar.lastHotbarTranslateY() + offset) < 0.001F;
             boolean chat = HoveringHotbar.CHAT_LINES.get() > 0;
-            SmallModsProbe1201.result("hoveringhotbar", hotbar && translated && chat,
+            // On plain Fabric every hooked method must have run; on Forge the gui draws some rows itself, so those counters are only reported.
+            boolean rows = onForge || ((!survival || HoveringHotbar.STATUS_DRAWS.get() > 0) && (!experience || HoveringHotbar.EXPERIENCE_DRAWS.get() > 0));
+            SmallModsProbe1201.result("hoveringhotbar", hotbar && translated && chat && rows,
                 "offset=" + offset + " hotbarDraws=" + HoveringHotbar.HOTBAR_DRAWS.get() + " hotbarTranslateY=" + HoveringHotbar.lastHotbarTranslateY()
                     + " chatLinesLaidOut=" + HoveringHotbar.CHAT_LINES.get() + " experienceBarDraws=" + HoveringHotbar.EXPERIENCE_DRAWS.get()
                     + " statusRowDraws=" + HoveringHotbar.STATUS_DRAWS.get() + " itemNameLines=" + HoveringHotbar.ITEM_NAME_LINES.get()
-                    + " onForge=" + ModPresence1201.onForge() + " moveExperienceAboveBar=" + HoveringHotbar.CONFIG.moveExperienceAboveBar);
+                    + " survival=" + survival + " onForge=" + onForge + " moveExperienceAboveBar=" + HoveringHotbar.CONFIG.moveExperienceAboveBar);
         }, "HoveringHotbar-probe");
         thread.setDaemon(true);
         thread.start();

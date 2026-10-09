@@ -22,17 +22,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * each lifted by the offset with a matrix translation around the method that draws them, and the held item name (a fixed height)
  * is raised by the same amount. The hooks sit on Gui's own draw methods rather than on {@code Gui.render}, because Forge's
  * gui replaces render and still calls several of these helpers.
+ *
+ * <p>Every hook here is {@code require = 0}: Forge patches Gui and draws the health, armor, food and air rows through its own
+ * methods, so a hook that cannot apply (or never runs) there must not stop the game from starting. The QA probe counts how often each
+ * hook ran, which is how a missing one shows up.
  */
 @Mixin(value = Gui.class, priority = 900)
 abstract class HudMixin {
 
-    @Inject(method = "renderHotbar", at = @At("HEAD"))
+    @Inject(method = "renderHotbar", at = @At("HEAD"), require = 0)
     private void hoveringhotbar$hotbarStart(float partialTick, GuiGraphics guiGraphics, CallbackInfo ci) {
         hoveringhotbar$lift(guiGraphics);
         HoveringHotbar.hotbarDrawn(guiGraphics.pose().last().pose().m31());
     }
 
-    @Inject(method = "renderHotbar", at = @At("RETURN"))
+    @Inject(method = "renderHotbar", at = @At("RETURN"), require = 0)
     private void hoveringhotbar$hotbarEnd(float partialTick, GuiGraphics guiGraphics, CallbackInfo ci) {
         guiGraphics.pose().popPose();
     }
@@ -40,61 +44,61 @@ abstract class HudMixin {
     /** The selection frame is 24 pixels tall in the texture but drawn 22 tall in vanilla, which hides its bottom edge off screen; floating, it shows. */
     @ModifyArg(method = "renderHotbar",
                at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blit(Lnet/minecraft/resources/ResourceLocation;IIIIII)V", ordinal = 1),
-               index = 6)
+               index = 6, require = 0)
     private int hoveringhotbar$selectionHeight(int height) {
         return height == 22 ? 24 : height;
     }
 
-    @Inject(method = "renderExperienceBar", at = @At("HEAD"))
+    @Inject(method = "renderExperienceBar", at = @At("HEAD"), require = 0)
     private void hoveringhotbar$experienceStart(GuiGraphics guiGraphics, int x, CallbackInfo ci) {
         HoveringHotbar.EXPERIENCE_DRAWS.incrementAndGet();
         hoveringhotbar$lift(guiGraphics);
     }
 
-    @Inject(method = "renderExperienceBar", at = @At("RETURN"))
+    @Inject(method = "renderExperienceBar", at = @At("RETURN"), require = 0)
     private void hoveringhotbar$experienceEnd(GuiGraphics guiGraphics, int x, CallbackInfo ci) {
         guiGraphics.pose().popPose();
     }
 
     /** The level number is drawn at screenHeight - 31 - 4, over the top of the bar; the console edition (and 26.3) put it three pixels higher. */
-    @ModifyConstant(method = "renderExperienceBar", constant = @Constant(intValue = 31))
+    @ModifyConstant(method = "renderExperienceBar", constant = @Constant(intValue = 31), require = 0)
     private int hoveringhotbar$levelAboveBar(int distanceFromBottom) {
         return HoveringHotbar.CONFIG.moveExperienceAboveBar ? distanceFromBottom + 3 : distanceFromBottom;
     }
 
-    @Inject(method = "renderJumpMeter", at = @At("HEAD"))
+    @Inject(method = "renderJumpMeter", at = @At("HEAD"), require = 0)
     private void hoveringhotbar$jumpStart(PlayerRideableJumping rideable, GuiGraphics guiGraphics, int x, CallbackInfo ci) {
         hoveringhotbar$lift(guiGraphics);
     }
 
-    @Inject(method = "renderJumpMeter", at = @At("RETURN"))
+    @Inject(method = "renderJumpMeter", at = @At("RETURN"), require = 0)
     private void hoveringhotbar$jumpEnd(PlayerRideableJumping rideable, GuiGraphics guiGraphics, int x, CallbackInfo ci) {
         guiGraphics.pose().popPose();
     }
 
-    @Inject(method = "renderPlayerHealth", at = @At("HEAD"))
+    @Inject(method = "renderPlayerHealth", at = @At("HEAD"), require = 0)
     private void hoveringhotbar$healthStart(GuiGraphics guiGraphics, CallbackInfo ci) {
         HoveringHotbar.STATUS_DRAWS.incrementAndGet();
         hoveringhotbar$lift(guiGraphics);
     }
 
-    @Inject(method = "renderPlayerHealth", at = @At("RETURN"))
+    @Inject(method = "renderPlayerHealth", at = @At("RETURN"), require = 0)
     private void hoveringhotbar$healthEnd(GuiGraphics guiGraphics, CallbackInfo ci) {
         guiGraphics.pose().popPose();
     }
 
-    @Inject(method = "renderVehicleHealth", at = @At("HEAD"))
+    @Inject(method = "renderVehicleHealth", at = @At("HEAD"), require = 0)
     private void hoveringhotbar$mountStart(GuiGraphics guiGraphics, CallbackInfo ci) {
         hoveringhotbar$lift(guiGraphics);
     }
 
-    @Inject(method = "renderVehicleHealth", at = @At("RETURN"))
+    @Inject(method = "renderVehicleHealth", at = @At("RETURN"), require = 0)
     private void hoveringhotbar$mountEnd(GuiGraphics guiGraphics, CallbackInfo ci) {
         guiGraphics.pose().popPose();
     }
 
     /** The held item's name floats 59 pixels above the bottom (above the status bars); keep it above the lifted bars. */
-    @ModifyConstant(method = "renderSelectedItemName", constant = @Constant(intValue = 59))
+    @ModifyConstant(method = "renderSelectedItemName", constant = @Constant(intValue = 59), require = 0)
     private int hoveringhotbar$itemNameHeight(int distanceFromBottom) {
         HoveringHotbar.ITEM_NAME_LINES.incrementAndGet();
         return distanceFromBottom + HoveringHotbar.CONFIG.getHotbarOffset();
