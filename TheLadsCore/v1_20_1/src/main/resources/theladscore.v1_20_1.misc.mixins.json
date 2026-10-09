@@ -7,5 +7,17 @@
     "defaultRequire": 1
   },
   "client": [
+    "ItemPhysicsEntityMixin",
+    "ItemPhysicsRenderMixin",
+    "ItemPhysicsInputMixin",
+    "ItemPhysicsThrowMixin",
+    "DynamicLightsBlockMixin",
+    "DynamicLightsEntityMixin",
+    "SodiumDynamicLightsMixin",
+    "MouseTweaksMixin",
+    "MouseTweaksScrollMixin",
+    "CreativeTabAccessor1201",
+    "FarBlockEntitiesMixin",
+    "ItemModelGapsMixin"
   ]
 }
