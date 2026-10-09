@@ -184,7 +184,7 @@ public final class InputLatency1201 {
     /** RenderSystem.limitDisplayFPS: true when this waited instead (no event pumping during the wait, input polled after it). */
     public static boolean limit(int fps) {
         if (!ixeris || qaVanilla) return false;
-        lastFrameEnd = PreciseWait.until(lastFrameEnd + 1_000_000_000L / Math.max(1, fps), () -> false);
+        lastFrameEnd = PreciseWait.until(lastFrameEnd + 1_000_000_000L / Math.max(1, fps));
         RenderSystemInvoker1201.lads$pollEvents();
         return true;
     }

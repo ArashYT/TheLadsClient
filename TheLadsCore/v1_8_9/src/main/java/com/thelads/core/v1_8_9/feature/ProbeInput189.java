@@ -38,14 +38,38 @@ final class ProbeInput189 {
             @Override public void paced(boolean on) { InputLatency189.qaPaused = !on; }
             @Override public void gpuLoad(int count) { quads = count; }
             @Override public void flood(int mode) {}
+            @Override public void window(String action) { windowAction(Minecraft.getMinecraft(), action); }
             @Override public void log(String line) { LOG.info(line); }
         }, InputLatency189.meter(), InputLatency189.pacer(), 128);
         LOG.info("Lads input probe: 1.8.9, limit {}, vsync {}, pacing {}", mc.gameSettings.limitFramerate, mc.gameSettings.enableVsync, InputLatency189.active());
         return after(20);
     }
 
+    private static int savedWidth, savedHeight;
+
+    /** Resize and restore the window, and F11 on and off (Borderless189 makes it borderless with BorderlessFullscreen). */
+    private static void windowAction(Minecraft mc, String action) {
+        try {
+            switch (action) {
+                case "resize":
+                    savedWidth = org.lwjgl.opengl.Display.getWidth();
+                    savedHeight = org.lwjgl.opengl.Display.getHeight();
+                    org.lwjgl.opengl.Display.setDisplayMode(new org.lwjgl.opengl.DisplayMode(800, 480));
+                    break;
+                case "restore":
+                    org.lwjgl.opengl.Display.setDisplayMode(new org.lwjgl.opengl.DisplayMode(savedWidth, savedHeight));
+                    break;
+                default:
+                    if (mc.isFullScreen() != "fullscreen".equals(action)) mc.toggleFullscreen();
+            }
+        } catch (org.lwjgl.LWJGLException e) {
+            throw new IllegalStateException(e);
+        }
+        LOG.info("Lads input probe: window {} -> {}x{}, fullscreen {}", action, mc.displayWidth, mc.displayHeight, mc.isFullScreen());
+    }
+
     private static boolean run(Minecraft mc) {
-        if (!qa.tick()) return retry(1);
+        if (!qa.tick()) return retry(qa.soaking() ? 20 : 1);
         check(true, "input probe finished (its END or FAILED line holds the verdict)");
         return after(1);
     }

@@ -43,6 +43,7 @@ public final class InputProbe1201 {
                     @Override public void paced(boolean on) { InputLatency1201.qaReflexPaused = !on; }
                     @Override public void gpuLoad(int units) { InputLatency1201.qaCopies = units; }
                     @Override public void flood(int mode) { setFlood(mode); }
+                    @Override public void window(String action) { windowAction(mc, action); }
                     @Override public void log(String line) { LOGGER.info(line); }
                 }, InputLatency1201.meter(), InputLatency1201.PACER, 1, 1, 2);
                 LOGGER.info("Lads input probe: 1.20.1, limit {}, vsync {}, pacing {}, buffered raw input {}", mc.options.framerateLimit().get(),
@@ -56,6 +57,23 @@ public final class InputProbe1201 {
             failed = true;
             LOGGER.error("Lads input probe FAILED", t);
         }
+    }
+
+    private static int savedWidth, savedHeight;
+
+    /** Resize and restore the window, and F11's fullscreen option on and off (Lads makes it borderless with BorderlessFullscreen). */
+    private static void windowAction(Minecraft mc, String action) {
+        var window = mc.getWindow();
+        switch (action) {
+            case "resize" -> {
+                savedWidth = window.getScreenWidth();
+                savedHeight = window.getScreenHeight();
+                org.lwjgl.glfw.GLFW.glfwSetWindowSize(window.getWindow(), 800, 480);
+            }
+            case "restore" -> org.lwjgl.glfw.GLFW.glfwSetWindowSize(window.getWindow(), savedWidth, savedHeight);
+            default -> mc.options.fullscreen().set("fullscreen".equals(action));
+        }
+        LOGGER.info("Lads input probe: window {} -> {}x{}, fullscreen {}", action, window.getScreenWidth(), window.getScreenHeight(), window.isFullscreen());
     }
 
     private static void setFlood(int mode) {

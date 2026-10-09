@@ -42,6 +42,7 @@ public final class InputProbe26 {
                     @Override public void paced(boolean on) { InputLatency26.qaPaused = !on; }
                     @Override public void gpuLoad(int units) { InputLatency26.qaCopies = units; }
                     @Override public void flood(int mode) { setFlood(mode == 1); }
+                    @Override public void window(String action) { windowAction(mc, action); }
                     @Override public void log(String line) { LOGGER.info(line); }
                 }, InputLatency26.meter(), InputLatency26.PACER, 1, 1);
                 LOGGER.info("Lads input probe: 26.3, device {}, limit {}, vsync {}, pacing {}", com.mojang.blaze3d.systems.RenderSystem.getDevice().getDeviceInfo(),
@@ -55,6 +56,23 @@ public final class InputProbe26 {
             failed = true;
             LOGGER.error("Lads input probe FAILED", t);
         }
+    }
+
+    private static int savedWidth, savedHeight;
+
+    /** Resize and restore the window, and F11's fullscreen option on and off (Lads makes it borderless with BorderlessFullscreen). */
+    private static void windowAction(Minecraft mc, String action) {
+        var window = mc.getWindow();
+        switch (action) {
+            case "resize" -> {
+                savedWidth = window.getScreenWidth();
+                savedHeight = window.getScreenHeight();
+                SDLVideo.SDL_SetWindowSize(window.handle(), 800, 480);
+            }
+            case "restore" -> SDLVideo.SDL_SetWindowSize(window.handle(), savedWidth, savedHeight);
+            default -> mc.options.fullscreen().set("fullscreen".equals(action));
+        }
+        LOGGER.info("Lads input probe: window {} -> {}x{}, fullscreen option {}", action, window.getScreenWidth(), window.getScreenHeight(), mc.options.fullscreen().get());
     }
 
     private static void setFlood(boolean on) {
