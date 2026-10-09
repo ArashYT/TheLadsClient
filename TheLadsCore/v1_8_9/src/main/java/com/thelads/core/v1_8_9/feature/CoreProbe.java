@@ -94,10 +94,18 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe173Rx.STEPS);
+        } else if ("render185".equals(only)) { // 1.8.5 built-in render remakes off and on (RenderProbe189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(RenderProbe189.STEPS);
         } else if ("cull".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe173Cull.STEPS);
+        } else if ("particles".equals(only)) { // Particle Core in a heavy particle scene (ProbeParticleCore189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(ProbeParticleCore189.STEPS);
         } else if ("anim".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
@@ -119,6 +127,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe173Cap.STEPS);
+        } else if ("input".equals(only)) { // 1.8.5 input-latency pacing: FPS and input-to-GPU-done latency (ProbeInput189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll(ProbeInput189.STEPS);
         } else if ("quick".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
@@ -127,6 +139,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe172Ui.STEPS);
+        } else if ("ebe".equals(only)) { // built-in baked block entities: frames and frame times (BakedBlockEntitiesProbe189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady,
+                com.thelads.core.v1_8_9.feature.ebe.BakedBlockEntitiesProbe189::run));
         } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
@@ -205,6 +221,7 @@ public final class CoreProbe {
         RaisedDollProbe189.stop();
         Probe172Anim.stop();
         Probe172Keybinds.stop();
+        ProbeParticleCore189.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 

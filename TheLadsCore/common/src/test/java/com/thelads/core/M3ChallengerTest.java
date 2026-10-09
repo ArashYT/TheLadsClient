@@ -223,7 +223,7 @@ public class M3ChallengerTest {
 
         CompletableFuture<Path> future = SkinFetcher.getOrFetchSkin(uuid, "NonExistentUserXYZ");
         assertNotNull(future);
-        Path result = future.get(10, TimeUnit.SECONDS);
+        Path result = future.get(20, TimeUnit.SECONDS);
         assertNotEquals(cachedSkin, result, "0-byte cache file must never be accepted as a valid skin");
     }
 

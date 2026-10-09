@@ -1,0 +1,19 @@
+// Performance / system lane (1.8.5): dependencies and resources that only the perf features need.
+// Applied from build.gradle with one line, so other lanes' edits to build.gradle never overlap with this.
+repositories {
+    maven { url = 'https://maven.shedaniel.me/' }
+}
+
+dependencies {
+    // Dynamic FPS's profile editor uses Cloth Config when it is installed (plain Fabric ships it, Zero SMP has the Forge build).
+    modCompileOnly('me.shedaniel.cloth:cloth-config-fabric:11.1.136') { transitive = false }
+}
+
+processResources {
+    // Same language files and defaults as the 26.x build (one copy in the tree).
+    from('../v26_3/src/main/resources/assets/thelads_dynamicfps') { into 'assets/thelads_dynamicfps' }
+    from('../v26_3/src/main/resources/licenses/DynamicFPS-LICENSE.txt') { into 'licenses' }
+    // Controlling and Searchables language files (the embedded copies use the original asset namespaces).
+    from('../v26_3/src/main/resources/assets/controlling') { into 'assets/controlling' }
+    from('../v26_3/src/main/resources/assets/searchables') { into 'assets/searchables' }
+}

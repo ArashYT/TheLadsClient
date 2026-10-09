@@ -1,0 +1,22 @@
+World Play Time Reborn (mod id worldplaytimereborn), 1.2.6 for Minecraft 26.3
+Copyright (c) 2026 KoroWin. License: MIT; the license text is in LICENSE beside this file.
+Based on World Play Time by Khajiitos (https://github.com/Khajiitos/WorldPlayTime),
+Copyright (c) Khajiitos, also under the MIT license.
+Project: https://github.com/korovagg/WorldPlayTimeReborn
+Source used: branch main, commit 0948127a60702919e7a7fc04f91ec7f287e3d579
+(folder "World Play Time Reborn 26.3 Fabric", mod_version 1.2.6, includes the world size display).
+
+This copy is ported to Minecraft 1.20.1 from the Lads 26.3 embedded copy (which is derived from
+the source above).
+
+Modified by The Lads: repackaged into Lads Core as com.thelads.core.v1_20_1.embedded.playtime
+(mixin config theladscore.v1_20_1.embedded.playtime.mixins.json). Changes for 1.20.1: the render
+hooks take the row geometry from the vanilla render(...) arguments (WorldListEntry,
+OnlineServerEntry) instead of the 26.x content accessors; the icon is drawn with GuiGraphics.blit
+and a shader colour instead of the 26.x render pipelines; play time and world size are read in a
+wrapper around the per-world summary task of LevelStorageSource.loadLevelSummaries (1.20.1 has no
+makeLevelSummary) and moved to util/PlayTimeScanner; NBT file access uses the 1.20.1 NbtIo API;
+the server play time table is synchronized. The Cloth Config/Mod Menu settings screen is not
+included; the settings file config/worldplaytimereborn/config.json and the server play time file
+config/worldplaytimereborn/servers_playtime.dat are unchanged. Everything stands down while the
+original worldplaytimereborn mod is installed.

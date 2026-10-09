@@ -61,8 +61,15 @@ public class BetterF3Module extends Module {
         addOption(new BoolOption("Background", true));
         addOption(new ColorOption("Background Color", false, 0x90505050));
         addOption(new BoolOption("Slide In", true));
+        // 1.8.5: on by default, as requested: the Lads HUD modules step aside while the debug screen is open (whatever else Better F3 does).
+        addOption(new BoolOption("Hide Lads HUD", true));
         for (Section section : Section.values()) addOption(new BoolOption(section.option, true));
         setEnabled(true);
+    }
+
+    /** True while the debug screen is open and the Lads HUD modules should not be drawn (the "Hide Lads HUD" option, on by default). */
+    public static boolean hidesLadsHud() {
+        return com.thelads.core.config.ModuleManager.getInstance().getModule("BetterF3") instanceof BetterF3Module f3 ? f3.bool("Hide Lads HUD") : true;
     }
 
     private boolean bool(String name) { return getOption(name) instanceof BoolOption option && option.get(); }

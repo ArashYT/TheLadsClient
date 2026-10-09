@@ -21,12 +21,51 @@
   "icon": "assets/modid/icon.png",
   "environment": "*",
   "entrypoints": {
+    "preLaunch": [
+      "com.thelads.core.v1_20_1.perf.PerfPreLaunch1201"
+    ],
     "client": [
       "com.thelads.core.v1_20_1.TheLadsCoreClient1201"
     ]
   },
   "mixins": [
-    "theladscore.v1_20_1.mixins.json"
+    "theladscore.v1_20_1.mixins.json",
+
+
+
+
+
+    "theladscore.v1_20_1.game.mixins.json",
+    "theladscore.v1_20_1.skinlayers.mixins.json",
+    "theladscore.v1_20_1.nea.mixins.json",
+    "theladscore.v1_20_1.misc.mixins.json",
+    "theladscore.v1_20_1.dynamicfps.mixins.json",
+    "theladscore.v1_20_1.borderless.mixins.json",
+    "theladscore.v1_20_1.perf.mixins.json",
+    "theladscore.v1_20_1.embedded.controlling.mixins.json",
+    "theladscore.v1_20_1.embedded.entityculling.mixins.json",
+    "theladscore.v1_20_1.embedded.lazyai.mixins.json",
+    "theladscore.v1_20_1.clumps.mixins.json",
+    "theladscore.v1_20_1.embedded.serverpingerfixer.mixins.json",
+    "theladscore.v1_20_1.embedded.fastipping.mixins.json",
+    "theladscore.v1_20_1.embedded.fixbookgui.mixins.json",
+    "theladscore.v1_20_1.embedded.ksyxis.mixins.json",
+    "theladscore.v1_20_1.embedded.quickpack.mixins.json",
+    "theladscore.v1_20_1.embedded.hoveringhotbar.mixins.json",
+    "theladscore.v1_20_1.embedded.playtime.mixins.json",
+    "theladscore.v1_20_1.embedded.capes.mixins.json",
+    "theladscore.v1_20_1.hud.mixins.json",
+    "theladscore.v1_20_1.hud.chat.mixins.json",
+    "theladscore.v1_20_1.hud.overlay.mixins.json",
+    "theladscore.v1_20_1.hud.items.mixins.json",
+    "theladscore.v1_20_1.hud.jade.mixins.json",
+        "theladscore.v1_20_1.menus.mixins.json",
+    "theladscore.v1_20_1.screenshots.mixins.json",
+        "theladscore.v1_20_1.particlecore.mixins.json",
+        "theladscore.v1_20_1.render.mixins.json",
+        "theladscore.v1_20_1.input.mixins.json",
+        "theladscore.v1_20_1.quit.mixins.json",
+        "theladscore.v1_20_1.ebe.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.14.21",

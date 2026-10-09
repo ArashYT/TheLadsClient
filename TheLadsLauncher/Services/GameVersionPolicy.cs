@@ -76,6 +76,11 @@ public static class GameVersionPolicy
     /// profiles.json, and their game folders untouched, but they are not listed or launched (see ProfileService).</summary>
     public static bool IsDropped(string minecraftVersion) => minecraftVersion == "1.21.1";
 
+    /// <summary>26.2 support is paused (2026-10-08): its profile stays and is listed greyed out, but it is never launched, made
+    /// active at startup or created anew. Its game folder and settings are left alone.</summary>
+    public const string PausedMessage = "26.2 support is paused — use 26.3";
+    public static bool IsPaused(string minecraftVersion) => minecraftVersion == "26.2";
+
     /// <summary>A bundled-Core version whose Core is a Fabric mod: all of them but 1.8.9, whose Core is a Forge mod.</summary>
     public static bool RequiresFabric(string minecraftVersion) => RequiresBundledCore(minecraftVersion) && !UsesForge(minecraftVersion);
 

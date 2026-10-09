@@ -1,0 +1,28 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.perf.dynamicfps.mixin",
+  "plugin": "com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFpsMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "ActivityMixin",
+    "DebugOverlayMixin",
+    "FramerateLimitMixin",
+    "InputActivityMixin",
+    "KeyActivityMixin",
+    "LoadingOverlayMixin",
+    "MinecraftMixin",
+    "OptionsMixin",
+    "SoundEngineMixin",
+    "SoundManagerAccessor",
+    "ToastComponentMixin",
+    "bugfix.BlockableEventLoopMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "conformVisibility": true,
+    "requireAnnotations": true
+  }
+}

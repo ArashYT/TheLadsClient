@@ -7,26 +7,13 @@
     "defaultRequire": 0
   },
   "client": [
-    "GuiMixin",
-    "PauseScreenMixin",
-    "TitleScreenMixin",
     "KeyboardHandlerMixin",
     "MouseHandlerMixin",
-    "KeyMappingMixin",
-    "ZoomMixin",
-    "FullbrightMixin",
     "ScoreboardMixin",
     "BossBarMixin",
     "BossBarAccessor1201",
-    "LocalPlayerMixin",
-    "KeyboardInputMixin",
-    "BorderlessWindowMixin",
-    "MinecraftFramerateMixin",
+
     "KillBannerAttackMixin",
-    "KillBannerPacketsMixin",
-    "DamageTiltMixin",
-    "DamageTiltPacketsMixin",
-    "LowFireMixin",
-    "LegacySwingMixin"
+    "KillBannerPacketsMixin"
   ]
 }

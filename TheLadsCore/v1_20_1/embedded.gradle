@@ -1,0 +1,30 @@
+// Embedded upstream-derived mods (1.8.5 perf lane). Same licensing approach as the 26.x build: every embedded mod's complete
+// modified sources ship in the jar under META-INF/lads-sources/<name>/v1_20_1, beside its NOTICE/LICENSE texts, which live
+// in src/main/resources/META-INF/lads-sources/<name>/ and are packed by the normal resources task.
+processResources {
+    def embeddedRoot = file('src/main/java/com/thelads/core/v1_20_1/embedded')
+    (embeddedRoot.listFiles() ?: new File[0]).findAll { it.isDirectory() }.each { dir ->
+        from('src/main/java') {
+            include "com/thelads/core/v1_20_1/embedded/${dir.name}/**"
+            into "META-INF/lads-sources/${dir.name}/v1_20_1"
+        }
+    }
+    // Mixin configs of embedded mods ride along as part of the sources.
+    from('src/main/resources') {
+        include 'theladscore.v1_20_1.embedded.*.mixins.json'
+        into 'META-INF/lads-sources/mixin-configs'
+    }
+}
+
+// Native Lads modules adapted from MIT upstream mods keep their complete modified sources in the jar too, like the embedded
+// mods above, but live in the feature package (clumps: src/main/java/com/thelads/core/v1_20_1/feature/clumps).
+processResources {
+    from('src/main/java') {
+        include 'com/thelads/core/v1_20_1/feature/clumps/**'
+        into 'META-INF/lads-sources/clumps/v1_20_1'
+    }
+    from('src/main/resources') {
+        include 'theladscore.v1_20_1.clumps.mixins.json'
+        into 'META-INF/lads-sources/clumps/resources'
+    }
+}

@@ -46,7 +46,7 @@ public class NativeHudMixin {
 
     @Inject(method = "extractHotbarAndDecorations", at = @At("HEAD"), require = 1)
     private void lads$raise(GuiGraphicsExtractor graphics, DeltaTracker delta, CallbackInfo callback) {
-        com.thelads.core.v26_2.feature.NativeAutohide.scopeOpacity=com.thelads.core.v26_2.feature.NativeAutohide.update();
+        com.thelads.core.v26_2.feature.NativeAutohide.scopeOpacity=com.thelads.core.v26_2.feature.NativeAutohide.vanillaOpacity();
         graphics.pose().pushMatrix();
         graphics.pose().translate(0, -com.thelads.core.v26_2.feature.Raised26.hotbar());
     }

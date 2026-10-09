@@ -107,16 +107,16 @@ final class Probe145 {
         // An ungrabbed mouse (QA window without focus) makes Mouse.poll() replace the injected deltas with the cursor's own.
         LOG.info("Lads 1.8.9 core probe: mouse: RawInput {}, {} JInput mice, raw live {}, frame pacing {}, window focused {}, mouse grabbed {}",
             module("RawInput").isEnabled(), helper.mice == null ? "no scan of" : String.valueOf(helper.mice.size()), helper.rawLive,
-            RawMouse189.pacing, Display.isActive(), Mouse.isGrabbed());
+            com.thelads.core.v1_8_9.input.InputLatency189.active(), Display.isActive(), Mouse.isGrabbed());
         check(helper.rawLive || (helper.deltaX == 37 && helper.deltaY == -11),
             "with Raw Input on and no JInput mouse moving, the camera turns by LWJGL's deltas (37, -11): " + helper.deltaX + ", " + helper.deltaY);
-        check(!RawMouse189.pacing, "frame pacing is off by default");
+        check(com.thelads.core.v1_8_9.input.InputLatency189.active(), "input-latency pacing is on by default");
         return after(1);
     }
 
     /** Frame pacing's cost: the frame rate without VSync or a limit, with and without pacing. */
     private static boolean pacedStart(Minecraft mc) {
-        RawMouse189.pacing = true; // off in the game; the A/B below switches it on
+        com.thelads.core.v1_8_9.input.InputLatency189.qaPaused = false; // on in the game; the A/B below pauses it
         vsync = mc.gameSettings.enableVsync;
         limit = mc.gameSettings.limitFramerate;
         mc.gameSettings.enableVsync = false;
@@ -132,7 +132,7 @@ final class Probe145 {
 
     private static boolean paced(Minecraft mc) {
         pacedFps = fps();
-        RawMouse189.pacing = false;
+        com.thelads.core.v1_8_9.input.InputLatency189.qaPaused = true;
         startCount();
         return after(60);
     }
@@ -140,7 +140,7 @@ final class Probe145 {
     /** Paced, unpaced, then paced again: the better paced window, so neither side gets only the noisy one. */
     private static boolean unpaced(Minecraft mc) {
         unpacedFps = fps();
-        RawMouse189.pacing = true;
+        com.thelads.core.v1_8_9.input.InputLatency189.qaPaused = false;
         startCount();
         return after(60);
     }
@@ -150,9 +150,9 @@ final class Probe145 {
      * real cost of pacing shows in every round. Each round is logged.
      */
     private static boolean pacedAgain(Minecraft mc) {
-        if (!RawMouse189.pacing) { // a further round: its unpaced window just ended
+        if (com.thelads.core.v1_8_9.input.InputLatency189.qaPaused) { // a further round: its unpaced window just ended
             unpacedFps = fps();
-            RawMouse189.pacing = true;
+            com.thelads.core.v1_8_9.input.InputLatency189.qaPaused = false;
             startCount();
             return retry(60);
         }
@@ -160,14 +160,17 @@ final class Probe145 {
         pacingRounds++;
         LOG.info("Lads 1.8.9 core probe: frame pacing round {}: {} FPS paced, {} FPS unpaced (no VSync, no limit; window focused {})",
             pacingRounds, best, unpaced, Display.isActive());
-        // Thousands of FPS: a percentage measures noise there, so pacing may also cost under 0.1 ms a frame.
-        // Off in the game since 1.7.3 (RawMouse189.pacing): this only records what turning it on would cost, no longer a requirement.
-        boolean kept = best >= unpaced * 0.85f || 1000f / best - 1000f / unpaced < 0.1f;
+        // Thousands of FPS: a percentage measures noise there, so pacing may also cost under 0.1 ms a frame. On in the game since
+        // 1.8.5 (InputLatency189): a CPU-bound frame finds the GPU idle and does not wait, so it must keep the frame rate.
+        boolean kept = best >= unpaced * 0.95f || 1000f / best - 1000f / unpaced < 0.1f;
         mc.gameSettings.enableVsync = vsync;
         Display.setVSyncEnabled(vsync);
-        RawMouse189.pacing = false;
+        com.thelads.core.v1_8_9.input.InputLatency189.qaPaused = false;
         mc.gameSettings.limitFramerate = limit;
-        check(true, "frame pacing is off in the game; switched on it would give " + best + " FPS against " + unpaced + " unpaced (within 15 %: " + kept + ")");
+        com.thelads.core.perf.FramePacer pacer = com.thelads.core.v1_8_9.input.InputLatency189.pacer();
+        LOG.info("Lads 1.8.9 core probe: input-latency pacing: {} of {} frames GPU-bound, {} ms waited, GPU frame {} us, CPU frame {} us, margin {} us",
+            pacer.pacedFrames, pacer.frames, pacer.waitedNs / 1_000_000, pacer.gpuFrameNs() / 1000, pacer.cpuFrameNs() / 1000, pacer.marginNs() / 1000);
+        check(kept, "input-latency pacing keeps the frame rate: " + best + " FPS paced against " + unpaced + " unpaced (within 5 % or 0.1 ms)");
         return after(1);
     }
 

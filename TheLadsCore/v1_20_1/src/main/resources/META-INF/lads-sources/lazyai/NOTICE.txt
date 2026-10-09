@@ -1,0 +1,10 @@
+Lazy AI behaviour in Lads Core for Minecraft 1.20.1 (com.thelads.core.v1_20_1.embedded.lazyai)
+
+An independent implementation written for The Lads Client 1.4.6 (Minecraft 26.x). It recreates the behaviour described for
+the Lazy AI mod (lazy_ai_pixelindiedev, "Optimizes mob AI by scaling calculations based on distance to players")
+without using, reading or deriving from that mod's GPL-3.0 code, for 26.x or for this port. Integrated server only;
+inactive while the original Lazy AI jar is installed (plain Fabric jar, or the Forge jar under Sinytra Connector).
+
+This 1.20.1 copy was ported from the Lads 26.3 embedded copy (package com.thelads.core.v26_2.embedded.lazyai) to the
+1.20.1 mob, goal selector, sensor and navigation code, all by The Lads. Lazy goal evaluations are aligned to the server tick
+clock that 1.20.1's Mob.serverAiStep uses for its own odd/even split.

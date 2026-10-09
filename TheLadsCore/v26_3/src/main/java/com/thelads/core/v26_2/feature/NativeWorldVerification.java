@@ -102,7 +102,22 @@ public final class NativeWorldVerification {
                 if(!SkinLoadProbe.tick())return;
                 if (titleSince == 0) titleSince = now;
                 if (now - titleSince < 5_000_000_000L) return;
+                Files.createDirectories(gameDirectory.resolve("saves"));
                 Path saves = gameDirectory.resolve("saves").toRealPath();
+                if (!Files.isRegularFile(saves.resolve(SAVE).resolve("level.dat"), LinkOption.NOFOLLOW_LINKS)) {
+                    // A fresh sandbox has no QA world yet: make a superflat one (survival, normal difficulty, cheats on; its display name is the
+                    // "Client QA 26.2" the clumps probe expects) and open it as it is made.
+                    if (!(saves.startsWith(gameDirectory) || sandboxSaves(saves))) throw new IOException("QA saves directory resolves outside the isolated QA directory");
+                    opened = true; openedAt = now;
+                    LOGGER.info("Lads auto-world QA CREATE: {} (superflat, seed 135)", SAVE);
+                    var settings = new net.minecraft.world.level.LevelSettings("Client QA 26.2", net.minecraft.world.level.GameType.SURVIVAL,
+                        new net.minecraft.world.level.LevelSettings.DifficultySettings(net.minecraft.world.Difficulty.NORMAL, false, true), true,
+                        net.minecraft.world.level.WorldDataConfiguration.DEFAULT);
+                    mc.createWorldOpenFlows().createFreshLevel(SAVE, settings, new net.minecraft.world.level.levelgen.WorldOptions(135L, false, false),
+                        registries -> registries.lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_PRESET)
+                            .getOrThrow(net.minecraft.world.level.levelgen.presets.WorldPresets.FLAT).value().createWorldDimensions(), mc.gui.screen());
+                    return;
+                }
                 Path world = saves.resolve(SAVE).toRealPath();
                 if (!(saves.startsWith(gameDirectory) || sandboxSaves(saves)) || !world.getParent().equals(saves)
                     || !Files.isRegularFile(world.resolve("level.dat"), LinkOption.NOFOLLOW_LINKS)) {
@@ -152,6 +167,7 @@ public final class NativeWorldVerification {
             MouseTweaksCapture.tick(gameDirectory, captureReady && (MouseTweaksCapture.busy() || !captureBusy()));
             ResolutionCapture.tick(gameDirectory, captureReady && (ResolutionCapture.busy() || !captureBusy()));
             DynamicLightsCapture.tick(gameDirectory, captureReady && (DynamicLightsCapture.busy() || !captureBusy()));
+            ParticleCoreCapture.tick(gameDirectory, captureReady && (ParticleCoreCapture.busy() || !captureBusy()));
             com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.tick(gameDirectory, captureReady && (com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() || !captureBusy()));
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
@@ -284,6 +300,7 @@ public final class NativeWorldVerification {
         ResolutionCapture.frame(target, gameDirectory);
         com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.frame(target, gameDirectory);
         DynamicLightsCapture.frame(target, gameDirectory);
+        ParticleCoreCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter || ChatHeadsCapture.pending()) return;
         captureStarted = true;
         try {
@@ -420,7 +437,7 @@ public final class NativeWorldVerification {
         return HudInfoCapture.busy() || KillBannerCapture.busy() || KillStreakCapture.busy() || OldAnimationsCapture.busy() || Anim172Capture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
             ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
-            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy();
+            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ParticleCoreCapture.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();

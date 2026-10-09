@@ -8,6 +8,7 @@ import com.thelads.core.v1_20_1.feature.NativeDiscordPresence1201;
 import com.thelads.core.v1_20_1.feature.NativeFeatures1201;
 import com.thelads.core.v1_20_1.feature.NativeKeyBindings1201;
 import com.thelads.core.v1_20_1.feature.NativeKillBanner1201;
+import com.thelads.core.v1_20_1.feature.QaProbe1201;
 import com.thelads.core.v1_20_1.gui.ExternalModSettings1201;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -24,8 +25,16 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         ConfigManager.load();
         NativeKeyBindings1201.init();
         NativeFeatures1201.initialize();
+        com.thelads.core.v1_20_1.render.Render1201.init();
+        QaProbe1201.register(); // QA only: inert unless the Verification harness sets -Dthelads.verifyAutoWorld / -Dthelads.qaScript
+        com.thelads.core.v1_20_1.input.InputLatency1201.init();
+        com.thelads.core.v1_20_1.input.InputProbe1201.register();
 
         ExternalModSettings1201.register();
+        com.thelads.core.v1_20_1.feature.ebe.BakedBlockEntities1201.init();
+
+        com.thelads.core.v1_20_1.feature.Menus1201.register();
+                com.thelads.core.v1_20_1.feature.fastquit.FastQuitProbe1201.initialize();
 
         ModuleSupport.registerBuiltIn("Threads");
         ModuleSupport.registerBuiltInRestart("Jasione");
@@ -44,7 +53,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             com.thelads.core.modules.OldAnimationsModule.NAME, "Item Physics", "Nametags",
             "BetterScreenshots", "AutoReconnect", "IgnorePacketErrors", "SmoothHotbar",
             "BorderlessFullscreen", "DisableNarrator", "Raised", "FarBlockEntities",
-            "ParticleBudget", "SignalLoss", "Flashback Settings", "ShulkerBoxUtils",
+            "SignalLoss", "Flashback Settings", "ShulkerBoxUtils",
             "TabList", "EnhancedTooltips", "EnhancedToolbars", "PingView",
             "Performance", "Exordium", "BetterResolution", "ClientTools",
             "ScalableLux", "ModernAdvancements", "Resourcify", "Minimap",
@@ -52,6 +61,12 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "DynamicFPS", "SkinLayers", "NotEnoughAnimations", "BetterF3", "BetterStats",
             "Clumps", "AppleSkin", "Jade", "MouseTweaks"
         );
+
+
+        com.thelads.core.v1_20_1.game.Gameplay1201.register();
+        com.thelads.core.v1_20_1.perf.Performance1201.register();
+        com.thelads.core.v1_20_1.hud.Hud1201.register();
+                com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             NativeFeatures1201.tick();

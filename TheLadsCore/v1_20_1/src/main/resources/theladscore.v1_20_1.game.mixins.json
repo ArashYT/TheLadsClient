@@ -1,0 +1,41 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.game.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "ZoomMixin",
+    "FullbrightMixin",
+    "LocalPlayerAccessor",
+    "LocalPlayerMixin",
+    "KeyboardInputMixin",
+    "DamageTiltMixin",
+    "DamageTiltPacketsMixin",
+    "LowFireMixin",
+    "LegacySwingMixin",
+    "OldAnimationsHeldItemMixin",
+    "OldAnimationsPlayerMixin",
+    "OldAnimationsArmPoseMixin",
+    "OldAnimationsDroppedItemMixin",
+    "OldAnimationsArmourMixin",
+    "OldAnimationsCameraMixin",
+    "OldAnimationsClientMixin",
+    "OldAnimationsHeartsMixin",
+    "CustomFovPlayerMixin",
+    "CustomFovCameraMixin",
+    "VerticalBobbingMixin",
+    "KeyboardInvokers",
+    "MouseInvokers",
+    "EssentialZoomMixin",
+    "MinecraftTargetAccessor",
+    "LevelTargetsAccessor",
+    "RenderScaleMixin",
+    "RenderScaleOutlineMixin",
+    "PrimaryLevelDataAccessor",
+    "LevelSettingsAccessor",
+    "CheatsMixin"
+  ]
+}

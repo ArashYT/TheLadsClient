@@ -528,21 +528,6 @@
       "projectUrl": "https://modrinth.com/mod/not-enough-animations"
     },
     {
-      "projectId": "AtOSAunf",
-      "projectSlug": "obe",
-      "name": "Optimized Block Entities [OBE]",
-      "modId": "obe",
-      "versionId": "nmIzJcIn",
-      "version": "1.1.50",
-      "fileName": "obe+26.3-1.1.50.jar",
-      "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/nmIzJcIn/obe%2B26.3-1.1.50.jar",
-      "sha512": "547a3467dc7019b1b8cec942d3cf6ee7f13684b115eb9df9e935961b717f1c3d9c3a897256210a69fa0ce8b39fc507b91b237e57361dfcb9243fc8717e042a66",
-      "size": 214842,
-      "license": "LGPL-3.0-or-later",
-      "sourceUrl": "https://github.com/maDU59/OptimisedBlockEntities",
-      "projectUrl": "https://modrinth.com/mod/obe"
-    },
-    {
       "projectId": "eXts2L7r",
       "projectSlug": "placeholder-api",
       "name": "Text Placeholder API",
@@ -965,7 +950,7 @@
     {
       "modId": "jade",
       "projectId": "nvQzSEkH",
-      "name": "Jade \ud83d\udd0d",
+      "name": "Jade 🔍",
       "sha512": [
         "1359d6576214fffadcb7bd4202bfd1606c827ab6c75143cbc7747269ed7d4131f5db226a914b9a924cac92e596c7994e6fe3303671ff8d5a2dcd41caf613e7ae"
       ],
@@ -1133,6 +1118,15 @@
         "c7bdd01450ebc398c9a6300b35930fb0752d01f9e0b5500045c26c540d36bc27f72d5e002913bc70ea42934df886a147268ae44a0efc9b3c951b2c53903be55d"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "obe",
+      "projectId": "AtOSAunf",
+      "name": "Optimized Block Entities [OBE]",
+      "sha512": [
+        "547a3467dc7019b1b8cec942d3cf6ee7f13684b115eb9df9e935961b717f1c3d9c3a897256210a69fa0ce8b39fc507b91b237e57361dfcb9243fc8717e042a66"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.8.5 (built-in baked block entities)."
     }
   ]
 }

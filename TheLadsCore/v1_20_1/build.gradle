@@ -8,6 +8,15 @@ java {
     }
 }
 
+// Loom 1.17 no longer runs the Mixin annotation processor by default. Without it no refmap is written, and every injector that names
+// a method (@Inject, @Redirect, @Shadow ...) keeps its Mojang name, which a production (intermediary) Fabric or a Connector setup
+// cannot find: with defaultRequire 0 those hooks were silently skipped. This is why mixins looked "on" but did nothing.
+loom {
+    mixin {
+        useLegacyMixinAp = true
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.release = 17
     options.encoding = 'UTF-8'
@@ -27,11 +36,18 @@ dependencies {
 
     implementation project(':common')
     implementation files('../v26_2/libs/catconfig-mc-26.2-0.2.1.jar', '../v26_2/libs/catconfig-0.3.0.jar')
-    include 'club.minnced:java-discord-rpc:2.0.1'
-    include 'club.minnced:discord-rpc-release:v3.3.0'
 }
 
+apply from: 'perf.gradle'
+apply from: 'embedded.gradle'
+
 processResources {
+    // 1.20.1's shader preprocessor cannot import from another namespace, so the shared upscale functions (common) also ship as
+    // a vanilla-namespace include for the Better Resolution shader.
+    from('../common/src/main/resources/assets/theladscore/shaders/include/world_upscale.glsl') {
+        into 'assets/minecraft/shaders/include'
+        rename { 'lads_world_upscale.glsl' }
+    }
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
         expand "version": project.version

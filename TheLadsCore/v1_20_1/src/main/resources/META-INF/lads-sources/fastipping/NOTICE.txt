@@ -1,0 +1,15 @@
+Fast IP Ping 1.0.12 by Fallen_Breath and contributors
+https://github.com/Fallen-Breath/fast-ip-ping (tag v1.0.12, commit 757bd97af7691bb032ff3cff141fd218d7ee5bbe)
+Copyright (C) 2023 Fallen_Breath and contributors. GNU LGPL v3, see LICENSE beside this file.
+LGPL-3.0 supplements the GNU GPL v3, whose text is in GPL-3.0.txt beside this file.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_20_1.embedded.fastipping) and ported to
+Minecraft 1.20.1 from the Lads 26.3 embedded copy (which is derived from the tag and commit above): the Minecraft
+1.17+ Fabric path of the preprocessed source, the unused pre-1.17 and Forge variants are left out and the log line
+moves to Core's client initializer. The 26.3 mixin patches the InetAddress inside ServerAddressResolver's lambda, a
+synthetic method whose name differs between the dev, intermediary and Forge-mapped game; on 1.20.1 the mixin wraps the
+resolver call in ServerNameResolver.resolveAddress instead (ServerNameResolverMixin) and rebuilds the resolved
+address with the patched InetAddress, which has the same effect: the patched address is what AddressCheck and the
+connection see. A QA probe was added. The complete modified source files ship in this jar under
+META-INF/lads-sources/fastipping/v1_20_1. The embedded copy stays inactive while the original Fast IP Ping jar is
+installed (Fabric jar, or Forge jar under Sinytra Connector).

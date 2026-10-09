@@ -87,10 +87,10 @@ public class VersionAndInstallationTests
     [InlineData("26.2", "fabric-loader-0.18.0-custom-26.2", "fabric-loader-0.18.0-custom-26.2")]
     [InlineData("26.3", "0.19.5", "0.19.5")]
     [InlineData("26.3", "fabric-loader-0.19.5-26.3", "fabric-loader-0.19.5-26.3")]
-    [InlineData("1.20.1", "0.15.0", "0.16.10")]
-    [InlineData("1.20.1", "0.16.10", "0.16.10")]
-    [InlineData("1.20.1", "fabric-loader-0.15.0-1.20.1", "fabric-loader-0.16.10-1.20.1")]
-    [InlineData("1.20.1", "fabric-loader-0.16.10-1.20.1", "fabric-loader-0.16.10-1.20.1")]
+    [InlineData("1.20.1", "0.15.0", "0.19.5")]
+    [InlineData("1.20.1", "0.16.10", "0.19.5")]
+    [InlineData("1.20.1", "fabric-loader-0.15.0-1.20.1", "fabric-loader-0.19.5-1.20.1")]
+    [InlineData("1.20.1", "fabric-loader-0.16.10-1.20.1", "fabric-loader-0.19.5-1.20.1")]
     public void SupportedCoreLoaderMinimumPreservesOtherLoaders(string mc, string loader, string expected)
     {
         using var dir = new TestDirectory();
@@ -100,8 +100,13 @@ public class VersionAndInstallationTests
             JsonSerializer.Serialize(new { ActiveProfileId = profile.Id, Profiles = new[] { profile } }));
         var service = new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global")));
         Assert.Equal(expected, service.GetProfile(profile.Id)!.FabricVersion);
-        Assert.Equal(profile.Id, service.GetActiveProfile().Id);
-        Assert.Equal(profile.CustomGameDir, service.GetActiveProfile().CustomGameDir);
+        // A paused version (26.2) keeps its saved profile, migrated, but never stays active: startup falls back to 26.3.
+        if (GameVersionPolicy.IsPaused(mc)) Assert.Equal("26.3", service.GetActiveProfile().Id);
+        else
+        {
+            Assert.Equal(profile.Id, service.GetActiveProfile().Id);
+            Assert.Equal(profile.CustomGameDir, service.GetActiveProfile().CustomGameDir);
+        }
     }
 
     [Theory]
@@ -176,6 +181,42 @@ public class VersionAndInstallationTests
         string migrated = File.ReadAllText(file);
         Assert.Equal("26.3", new ProfileService(new PathService(dir.Path), new SharedContentService(Path.Combine(dir.Path, "global"))).GetActiveProfile().MinecraftVersion);
         Assert.Equal(migrated, File.ReadAllText(file)); // a second start changes nothing
+    }
+
+    /// <summary>26.2 is paused (2026-10-08): its saved profile stays as it was and is still listed, but it is never the active
+    /// profile at startup, never offered on the Play screen and never launched.</summary>
+    [Fact]
+    public async Task PausedVersionProfileIsKeptButNeverActiveOrLaunched()
+    {
+        using var dir = new TestDirectory();
+        string world = Path.Combine(dir.Path, "my-26.2-game");
+        Directory.CreateDirectory(Path.Combine(world, "saves", "Old World"));
+        File.WriteAllText(Path.Combine(world, "options.txt"), "fov:0.5\n");
+        var saved = new LauncherProfile { Id = "26.2", Name = "The Lads Client 26.2", MinecraftVersion = "26.2", FabricVersion = "0.19.5", JavaMajorVersion = 25, CustomGameDir = world };
+        string file = Path.Combine(dir.Path, "profiles.json");
+        File.WriteAllText(file, JsonSerializer.Serialize(new { ActiveProfileId = saved.Id, Profiles = new[] { saved } }));
+
+        var shared = new SharedContentService(Path.Combine(dir.Path, "global"));
+        var paths = new PathService(dir.Path);
+        var service = new ProfileService(paths, shared);
+        Assert.Equal("26.3", service.GetActiveProfile().MinecraftVersion); // startup falls back to the default; nothing is deleted
+        Assert.Equal((world, "0.19.5"), (service.GetProfile("26.2")!.CustomGameDir, service.GetProfile("26.2")!.FabricVersion));
+        Assert.DoesNotContain("26.2", ProfileTools.PlayableVersions);
+        Assert.True(GameVersionPolicy.IsPaused("26.2") && !GameVersionPolicy.IsPaused("26.3"));
+
+        // Not launchable: refused before the launch touches any file.
+        var launch = new LaunchService(paths, service, new JavaService(paths), new AuthService(paths), null, shared);
+        Assert.Equal(GameVersionPolicy.PausedMessage, (await Assert.ThrowsAsync<InvalidOperationException>(
+            () => launch.LaunchAsync(service.GetProfile("26.2")!, "LadsQA", new LauncherSettings()))).Message);
+
+        using var json = JsonDocument.Parse(File.ReadAllText(file));
+        var kept = json.RootElement.GetProperty("Profiles").EnumerateArray().Single(p => p.GetProperty("Id").GetString() == "26.2");
+        Assert.Equal(("26.2", world), (kept.GetProperty("MinecraftVersion").GetString(), kept.GetProperty("CustomGameDir").GetString()));
+        Assert.Equal("fov:0.5\n", File.ReadAllText(Path.Combine(world, "options.txt")));
+        Assert.True(Directory.Exists(Path.Combine(world, "saves", "Old World")));
+        string after = File.ReadAllText(file);
+        Assert.Equal("26.3", new ProfileService(paths, shared).GetActiveProfile().MinecraftVersion);
+        Assert.Equal(after, File.ReadAllText(file)); // a second start changes nothing
     }
 
     [Fact]

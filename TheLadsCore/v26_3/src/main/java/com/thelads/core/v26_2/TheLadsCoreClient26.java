@@ -17,6 +17,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         LadsGameBridge.set(new VanillaGameBridge26());
         com.thelads.core.v26_2.feature.paperdoll.PlayerActions.initialize();
         ConfigManager.load();
+        com.thelads.core.v26_2.render.Render26.init();
         com.thelads.core.v26_2.feature.LocalSkins.initialize();
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
         ModuleSupport.registerBuiltInRestart("Jasione");
@@ -28,6 +29,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
             "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks");
         com.thelads.core.v26_2.gui.ExternalModSettings.register();
         com.thelads.core.v26_2.feature.NativeQualityOfLife.register();
+        com.thelads.core.v26_2.feature.NativeParticleCore.register();
         com.thelads.core.v26_2.feature.NativeFeatures.initialize();
         com.thelads.core.v26_2.feature.NativeChatHeads.register();
         com.thelads.core.v26_2.feature.NativeBetterF3.register();
@@ -50,6 +52,12 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.GoodMcAttackSpeedReset.register();
         com.thelads.core.v26_2.feature.NativeCheats.register();
         com.thelads.core.v26_2.embedded.EmbeddedMods.clientInit();
+
+
+        com.thelads.core.v26_2.input.InputLatency26.init();
+        com.thelads.core.v26_2.input.InputProbe26.register();
+                com.thelads.core.v26_2.feature.fastquit.FastQuitProbe26.initialize();
+                com.thelads.core.v26_2.feature.ebe.BakedBlockEntities263.init();
         LOGGER.info("TheLadsCore 26.3 initialized successfully.");
         com.thelads.core.mods.NativeCatalogProbe.log();
         // The launcher lists Lads modules from this catalog; late registrations (Minimap) bump the revision on a later tick.

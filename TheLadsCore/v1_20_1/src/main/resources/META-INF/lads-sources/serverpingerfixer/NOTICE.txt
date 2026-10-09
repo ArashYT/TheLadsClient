@@ -1,0 +1,9 @@
+Server Pinger Fixer 1.1.1 (+26.1) by JustAlittleWolf
+https://github.com/JustAlittleWolf/ServerPingerFixer (branch main, commit de4ac37edc0e362d8a174fc00d654f6253e12152)
+Copyright (c) 2023 JustAlittleWolf. MIT License, see LICENSE beside this file.
+
+Modified by The Lads: repackaged into Lads Core (com.thelads.core.v1_20_1.embedded.serverpingerfixer) and ported to
+Minecraft 1.20.1 from the Lads 26.3 embedded copy (which is derived from the commit above): the same one injection
+into ServerSelectionList's static initializer, with its target resolved against the 1.20.1 class. A QA probe was added.
+The embedded copy stays inactive while the original Server Pinger Fixer jar is installed (Fabric jar, or Forge jar
+under Sinytra Connector).

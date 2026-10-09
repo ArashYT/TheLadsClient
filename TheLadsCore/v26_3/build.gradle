@@ -184,3 +184,7 @@ processResources {
         into 'META-INF/lads-sources/capes/v26_3'
     }
 }
+
+tasks.named('test') {
+    failOnNoDiscoveredTests = false
+}

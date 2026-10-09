@@ -139,6 +139,7 @@ public class ConfigManager {
             migrateDynamicLights(modulesJson);
             migrateDiscord(modulesJson);
             migrateDamageTilt(modulesJson);
+            migrateParticleBudget(modulesJson);
             java.util.Set<String> known = new java.util.HashSet<>();
             for (Module m : ModuleManager.getInstance().getModules()) {
                 known.add(m.getName());
@@ -290,6 +291,25 @@ public class ConfigManager {
         if (changed == null || changed.isJsonPrimitive() && changed.getAsJsonPrimitive().isNumber() && changed.getAsLong() == 0) tilt.remove("enabled");
     }
 
+    /**
+     * 1.8.5 folded ParticleBudget into Particle Core (on by default, with the old quota as its "Limit decorative particles" option,
+     * off as ParticleBudget was). A player who had ParticleBudget on keeps the quota on with their own numbers; whatever Particle
+     * Core already saved wins, so a config an older client re-saved with the old entry does not undo it.
+     */
+    public static void migrateParticleBudget(JsonObject modules) {
+        if (!(modules.remove("ParticleBudget") instanceof JsonObject budget)) return;
+        if (!(modules.get(com.thelads.core.client.ParticleCore.MODULE) instanceof JsonObject)) modules.add(com.thelads.core.client.ParticleCore.MODULE, new JsonObject());
+        JsonObject core = modules.getAsJsonObject(com.thelads.core.client.ParticleCore.MODULE);
+        if (!(core.get("options") instanceof JsonObject)) core.add("options", new JsonObject());
+        JsonObject options = core.getAsJsonObject("options");
+        JsonElement saved = budget.get("options");
+        if (!options.has(com.thelads.core.client.ParticleCore.LIMIT)) options.addProperty(com.thelads.core.client.ParticleCore.LIMIT, bool(budget.get("enabled")));
+        if (saved instanceof JsonObject old) {
+            if (old.has("Particles per tick") && !options.has(com.thelads.core.client.ParticleCore.PER_TICK)) options.add(com.thelads.core.client.ParticleCore.PER_TICK, old.get("Particles per tick"));
+            if (old.has("Distance") && !options.has(com.thelads.core.client.ParticleCore.DISTANCE)) options.add(com.thelads.core.client.ParticleCore.DISTANCE, old.get("Distance"));
+        }
+    }
+
     /** 1.4.5 moved ClientTools "Chat timestamps" and the HideChatIndicators module into Chat options; keeps whatever the user had. */
     static void migrateChat(JsonObject modules) {
         JsonElement stamps = legacy(modules, "ClientTools", "options", "Chat timestamps");
@@ -348,10 +368,16 @@ public class ConfigManager {
      * (its card showed that mod's own settings), so a state saved without a change holds only the old defaults: drop it.
      */
     static void migrateDynamicLights(JsonObject modules) {
-        JsonElement changed = legacy(modules, "DynamicLights", "lastModified");
-        if (modules.get("DynamicLights") instanceof JsonObject
+        dropUnchanged(modules, "DynamicLights");
+        // 1.8.5 builds Not Enough Animations in (1.20.1), on as the mod it replaces was: the same rule.
+        dropUnchanged(modules, com.thelads.core.modules.NotEnoughAnimationsModule.NAME);
+    }
+
+    private static void dropUnchanged(JsonObject modules, String name) {
+        JsonElement changed = legacy(modules, name, "lastModified");
+        if (modules.get(name) instanceof JsonObject
             && (changed == null || changed.isJsonPrimitive() && changed.getAsJsonPrimitive().isNumber() && changed.getAsLong() == 0))
-            modules.remove("DynamicLights");
+            modules.remove(name);
     }
 
     private static JsonElement legacy(JsonObject root, String... path) {

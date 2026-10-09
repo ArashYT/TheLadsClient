@@ -512,7 +512,7 @@ public class ProfileService : IProfileService
                 && loader.Length > "fabric-loader-".Length + suffix.Length)
                 loader = loader.Substring("fabric-loader-".Length, loader.Length - "fabric-loader-".Length - suffix.Length);
             // Parse only numeric releases; retain custom builds and mismatched full IDs.
-            var minimumLoader = profile.MinecraftVersion == "1.20.1" ? "0.16.10" : "0.19.5";
+            var minimumLoader = "0.19.5"; // also 1.20.1: its pinned pack (Kotlin, JEI, TLib, Effectual, MRU, OBE) needs Fabric Loader >= 0.19.5
             if (Version.TryParse(loader, out var parsed) && parsed < Version.Parse(minimumLoader))
             {
                 profile.FabricVersion = fullId ? "fabric-loader-" + minimumLoader + suffix : minimumLoader;
@@ -558,8 +558,9 @@ public class ProfileService : IProfileService
         try
         {
             GameVersionPolicy.ResolveVersionId(profile);
-            return !GameVersionPolicy.RequiresFabric(profile.MinecraftVersion)
-                || !string.IsNullOrWhiteSpace(profile.FabricVersion);
+            // A paused version (26.2) can be saved and kept, but never the active profile: startup falls back to 26.3.
+            return !GameVersionPolicy.IsPaused(profile.MinecraftVersion)
+                && (!GameVersionPolicy.RequiresFabric(profile.MinecraftVersion) || !string.IsNullOrWhiteSpace(profile.FabricVersion));
         }
         catch (ArgumentException)
         {
@@ -593,7 +594,7 @@ public class ProfileService : IProfileService
                 Id = "1.20.1",
                 Name = "The Lads Client 1.20.1",
                 MinecraftVersion = "1.20.1",
-                FabricVersion = "0.16.10",
+                FabricVersion = "0.19.5",
                 JavaMajorVersion = 17,
                 IsIsolated = false,
                 PackwizUrl = null,

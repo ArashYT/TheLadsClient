@@ -13,14 +13,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.Display;
-import org.lwjgl.opengl.GL32;
-import org.lwjgl.opengl.GLContext;
-import org.lwjgl.opengl.GLSync;
 
 /**
  * The 1.8.9 camera's mouse input, read as late as possible: EntityRenderer calls {@link #mouseXYChange} right before it turns the
- * camera, after Display.sync's frame-limit sleep, the ticks and {@link #paceFrame}. Vanilla reads it in Display.update at the end
- * of the previous frame, before all three.
+ * camera, after Display.sync's frame-limit sleep, the ticks and the input-latency pacing (InputLatency189). Vanilla reads it in
+ * Display.update at the end of the previous frame, before all three.
  *
  * <p>Raw Input: deltas summed over every JInput mouse (Windows lists virtual, HID and touchpad mice; the first one is often idle).
  * LWJGL's own deltas are used until a JInput mouse reports motion, and again when they keep moving while no JInput mouse does
@@ -40,9 +37,6 @@ public final class RawMouse189 extends MouseHelper {
     boolean rawLive;
     private int lwjglOnly;
     private float carryX, carryY;
-    private static GLSync previousFrame;
-    /** Off since 1.7.3: waiting on the GPU every frame cost frame rate for a small input-latency gain; Probe145 switches it on to A/B. */
-    static boolean pacing = false;
 
     private RawMouse189() {}
 
@@ -124,33 +118,5 @@ public final class RawMouse189 extends MouseHelper {
             LOGGER.warn("Could not initialize raw mouse input: " + t);
         }
         return found;
-    }
-
-    /**
-     * Every frame before the camera reads the mouse (RenderTickEvent START): wait until the GPU finished the frame before last, so
-     * the driver queues at most one frame between this input and the screen (3 by default: up to 50 ms at 60 Hz with VSync).
-     * The CPU still prepares a frame while the GPU draws the previous one, so the frame rate stays.
-     */
-    public static void paceFrame() {
-        if (!pacing) {
-            if (previousFrame != null) GL32.glDeleteSync(previousFrame);
-            previousFrame = null;
-            return;
-        }
-        try {
-            if (previousFrame == null && !GLContext.getCapabilities().OpenGL32) {
-                pacing = false;
-                return;
-            }
-            GLSync frame = GL32.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-            if (previousFrame != null) {
-                GL32.glClientWaitSync(previousFrame, GL32.GL_SYNC_FLUSH_COMMANDS_BIT, 100_000_000L);
-                GL32.glDeleteSync(previousFrame);
-            }
-            previousFrame = frame;
-        } catch (Throwable t) {
-            pacing = false;
-            LOGGER.warn("Frame pacing for mouse input is off: " + t);
-        }
     }
 }

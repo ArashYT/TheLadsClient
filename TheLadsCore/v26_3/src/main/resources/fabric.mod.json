@@ -37,6 +37,7 @@
   },
   "mixins": [
     "theladscore.v26_2.mixins.json",
+    "theladscore.v26_3.particlecore.mixins.json",
     "theladscore.food.mixins.json",
     "theladscore.dynamicfps.mixins.json",
     "theladscore.tabtweaks.mixins.json",
@@ -44,6 +45,7 @@
     "theladscore.flashback.mixins.json",
     "theladscore.clumps.mixins.json",
     "theladscore.async.mixins.json",
+    "theladscore.v26_3.quit.mixins.json",
     "jade.mixins.json",
     "theladscore.embedded.etf.mixins.json",
     "theladscore.embedded.emf.mixins.json",
@@ -60,7 +62,11 @@
     "theladscore.embedded.hoveringhotbar.mixins.json",
     "theladscore.embedded.nbtac.mixins.json",
     "theladscore.embedded.controlling.mixins.json",
-    "theladscore.embedded.capes.mixins.json"
+    "theladscore.embedded.capes.mixins.json",
+
+        "theladscore.v26_3.render.mixins.json",
+        "theladscore.v26_3.input.mixins.json",
+            "theladscore.v26_3.ebe.mixins.json"
   ],
   "jars": [
     {

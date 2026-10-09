@@ -293,6 +293,11 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         return mc().gameSettings != null && mc().gameSettings.hideGUI;
     }
 
+    @Override
+    public boolean isDebugScreenOpen() {
+        return mc().gameSettings != null && mc().gameSettings.showDebugInfo;
+    }
+
     /** Worn armor, feet first (1.8.9's armorInventory order matches the other versions' slot order). */
     @Override
     public List<ArmorPiece> getArmor() {

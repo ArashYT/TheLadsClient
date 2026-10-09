@@ -6,6 +6,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Third-party mod registrations and their settings screens: Mod Menu's config screen on Fabric, the mod's own Forge config
+ * screen (or Forge's mod list) inside Zero SMP.
+ */
 public final class ExternalModSettings1201 {
     private ExternalModSettings1201() {}
 
@@ -27,24 +31,30 @@ public final class ExternalModSettings1201 {
     }
 
     private static void external(String name, String display, String id) {
-        boolean loaded = FabricLoader.getInstance().isModLoaded(id)
-            || FabricLoader.getInstance().isModLoaded(id.replace("_", ""))
-            || FabricLoader.getInstance().isModLoaded(id.replace("-", ""));
+        boolean loaded = ModPresence1201.isLoaded(id)
+            || ModPresence1201.isLoaded(id.replace("_", ""))
+            || ModPresence1201.isLoaded(id.replace("-", ""));
         ModuleSupport.registerExternal(name, display, id, loaded);
     }
 
     public static void open(String modId, Screen parent) {
         Minecraft mc = Minecraft.getInstance();
-        if (FabricLoader.getInstance().isModLoaded("modmenu")) {
-            try {
-                Class<?> api = Class.forName("com.terraformersmc.modmenu.ModMenu");
-                Screen target = (Screen) api.getMethod("getConfigScreen", String.class, Screen.class).invoke(null, modId, parent);
-                if (target != null) {
-                    mc.setScreen(target);
-                    return;
-                }
-            } catch (Exception ignored) {}
+        Screen target = null;
+        if (modId != null && !modId.isBlank()) {
+            if (FabricLoader.getInstance().isModLoaded("modmenu")) {
+                try {
+                    Class<?> api = Class.forName("com.terraformersmc.modmenu.ModMenu");
+                    target = (Screen) api.getMethod("getConfigScreen", String.class, Screen.class).invoke(null, modId, parent);
+                } catch (ReflectiveOperationException | LinkageError ignored) {}
+            }
+            if (target == null) target = ModPresence1201.forgeConfigScreen(modId, parent);
         }
-        LoggerFactory.getLogger("TheLadsCore-1.20.1").info("Open settings requested for mod: {}", modId);
+        if (target == null) target = ModPresence1201.forgeModList(parent);
+        if (target != null) {
+            mc.setScreen(target);
+            return;
+        }
+        mc.getNarrator().sayNow("Install Mod Menu to view external mod details.");
+        LoggerFactory.getLogger("TheLadsCore-1.20.1").info("Open settings requested for mod: {} (no settings screen found)", modId);
     }
 }

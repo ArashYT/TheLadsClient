@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.mixin.particlecore",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "ParticleEngineMixin",
+    "QuadParticleGroupMixin",
+    "QuadParticleRenderStateMixin",
+    "SingleQuadParticleMixin",
+    "ParticleLightMixin"
+  ]
+}

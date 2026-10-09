@@ -56,6 +56,7 @@ public class TheLadsCore189 {
         // JInput's jar is sealed: LaunchClassLoader defining its classes logs "has a security seal ... not secure" once per
         // class. It loads from the parent loader instead, as org.lwjgl. does. Set before RawMouse189 (or any JInput class) loads.
         net.minecraft.launchwrapper.Launch.classLoader.addClassLoaderExclusion("net.java.games.input.");
+        com.thelads.core.v1_8_9.feature.ebe.BakedBlockEntities189.init(); // before the first texture stitch (preceding FML init)
     }
 
     @Mod.EventHandler
@@ -69,6 +70,7 @@ public class TheLadsCore189 {
         LadsGameBridge.set(new VanillaGameBridge189());
         com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189.register();
         ConfigManager.load();
+        com.thelads.core.v1_8_9.render.Render189.init();
         registerStatuses();
         com.thelads.core.v1_8_9.feature.Nametags189.register();
         OldAnimations189.register();
@@ -97,17 +99,19 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.Raised189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PaperDoll189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.EntityCulling189());
+        com.thelads.core.v1_8_9.feature.ParticleCore189.register();
         Screenshots189.register();
         com.thelads.core.v1_8_9.feature.MouseTweaks189.register();
         com.thelads.core.v1_8_9.feature.SideButtons189.install();
         MinecraftForge.EVENT_BUS.register(this);
+        com.thelads.core.v1_8_9.feature.fastquit.FastQuitProbe189.initialize();
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
 
     public static final String[] GAMEPLAY_MODULES = {
         "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", BetterResolutionModule.NAME, "BetterScreenshots", "EnhancedToolbars",
         "Fullbright", com.thelads.core.modules.ToggleSprintModule.NAME, "Zoom", "LegacySwing",
-        "VerticalBobbing", "OldDamageTilt", "ClientTools", "ParticleBudget", "SmoothHotbar", "TitleScreen", "Title Scale",
+        "VerticalBobbing", "OldDamageTilt", "ClientTools", "SmoothHotbar", "TitleScreen", "Title Scale",
         "RawInput", "BorderlessFullscreen", com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189.NAME,
         // Raised189: Forge's overlay events and the GuiIngame, GuiIngameForge and GuiNewChat mixins.
         "Raised",
@@ -129,8 +133,7 @@ public class TheLadsCore189 {
         OldAnimationsModule.NAME,
         // ItemPhysics189 through the EntityItem, RenderEntityItem and Minecraft mixins and Forge's item events.
         com.thelads.core.modules.ItemPhysicsModule.NAME,
-        // EntityCulling189 through the RenderManager, TileEntityRendererDispatcher and World mixins; Particles189 (ParticleBudget and
-        // the particle frustum test) through EffectRendererMixin.
+        // EntityCulling189 through the RenderManager, TileEntityRendererDispatcher and World mixins. (Particle Core is ParticleCore189.)
         com.thelads.core.v1_8_9.feature.EntityCulling189.MODULE
     };
 
@@ -231,7 +234,6 @@ public class TheLadsCore189 {
     @SubscribeEvent
     public void frame(TickEvent.RenderTickEvent event) {
         if (event.phase == TickEvent.Phase.START) {
-            RawMouse189.paceFrame();
             com.thelads.core.v1_8_9.gui.SmoothScroll189.frame();
         } else Zoom189.frame();
     }

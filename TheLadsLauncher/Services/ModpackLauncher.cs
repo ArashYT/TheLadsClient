@@ -16,7 +16,8 @@ using CmlLib.Core.ProcessBuilder;
 namespace TheLadsLauncher.Services;
 
 /// <summary>
-/// Installs modpacks as instances and starts them: vanilla plus the pack's loader, never LadsCore or the Lads pack. Libraries,
+/// Installs modpacks as instances and starts them: vanilla plus the pack's loader, never the Lads pack (a Lads Core a pack already
+/// contains is kept at the launcher's newest build, see ModpackCoreSync). Libraries,
 /// assets and versions are shared by every instance in &lt;launcher data&gt;/modpack-cache; each game folder is its own.
 /// </summary>
 public static class ModpackLauncher
@@ -46,6 +47,7 @@ public static class ModpackLauncher
         {
             await Task.Run(() => Mrpack.InstallAsync(mrpackFile, instance.Directory, http, status, token), token); // off the UI thread: it hashes and copies every file
             Apply(instance, index, source);
+            ModpackCoreSync.Sync(instance, status: status); // a Core inside the pack is brought to this launcher's build
             instance.Author = author;
             if (iconUrl != null && Uri.TryCreate(iconUrl, UriKind.Absolute, out var icon) && icon.Scheme == Uri.UriSchemeHttps)
             {
@@ -72,6 +74,7 @@ public static class ModpackLauncher
     {
         var index = await Task.Run(() => Mrpack.InstallAsync(mrpackFile, instance.Directory, http, status, token), token);
         Apply(instance, index, source);
+        ModpackCoreSync.Sync(instance, status: status);
         Modpacks.Save(instance);
     }
 
@@ -148,6 +151,7 @@ public static class ModpackLauncher
     {
         var path = GamePath(dataDirectory, instance);
         Directory.CreateDirectory(instance.GameDirectory);
+        ModpackCoreSync.Sync(instance, status: status); // before every launch: a modpack always runs the newest bundled Lads Core
         var launcher = new MinecraftLauncher(path);
         launcher.FileProgressChanged += (_, e) =>
         {

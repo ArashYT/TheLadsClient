@@ -1,0 +1,28 @@
+Native Lads Clumps for Minecraft 1.20.1
+
+Adapted from Clumps 26.2.1, Copyright (c) 2021 Jaredlll08.
+License: MIT; the complete original license is in LICENSE.txt beside this file.
+Source: https://github.com/jaredlll08/Clumps
+Revision: 6c4d4e4bee4c0d9f7cff5de802508e27914aadca (26.2 branch).
+The source declares mod_version=26.2; the pinned release build is 26.2.1:
+https://modrinth.com/mod/clumps/version/dEMopoOJ
+
+This 1.20.1 copy was ported from the Lads 26.3 native copy (com.thelads.core.v26_2.feature.clumps), which is itself the
+modified source of the revision above. No source of Clumps for 1.20.1 (Fabric or Forge) was read or used. The port keeps the
+behaviour of the 26.3 copy: merge mixed XP values, award-time merging, immediate collection, per-original-orb Mending, the
+relocated value/repair/pickup callbacks, the upstream clumpedMap NBT format, integrated-server ownership (singleplayer and
+LAN host only), a live master switch, and existing-stack/persistence safeguards. Modifications for 1.20.1, all by The Lads:
+the hooks target 1.20.1's ExperienceOrb (a private int value without setter, count, canMerge/merge/tryMergeToExisting,
+scanForEntities, playerTouch, CompoundTag save and load), Mending is priced per original orb instead of by the aggregate value,
+and the mixins stand down while a real Clumps jar is installed (plain Fabric jar, or the Forge jar under Sinytra Connector).
+Remote servers and separately installed upstream Clumps retain their own behavior. No upstream assets or mod identity are
+repackaged.
+
+The corresponding modified Java files and the Mixin configuration are bundled beside this file
+(META-INF/lads-sources/clumps/v1_20_1 and META-INF/lads-sources/clumps/resources).
+
+Build in the complete Lads source tree with Java 21 (compiles for Java 17):
+  cd TheLadsCore
+  gradlew.bat :v1_20_1:build -x test
+To run the opt-in entity probe, start a singleplayer world with exactly one local player and no Clumps jar, with
+-Dthelads.perfProbe=true; it logs "PERF-PROBE clumps PASS" or "PERF-PROBE clumps FAIL" about five seconds in.

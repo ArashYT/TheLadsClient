@@ -16,6 +16,11 @@ public class ModuleManager {
         autohide.addOption(new SliderOption("Fade milliseconds", 350, 0, 1500, 50));
         autohide.addOption(new BoolOption("Show while moving", false));
         autohide.addOption(new BoolOption("Show when hurt or hungry", true));
+        // 1.8.5: how far it fades, whether swinging, placing and using items bring it back (off: they do not), and what fades.
+        autohide.addOption(new SliderOption("Faded opacity", 0, 0, 80, 5).percent());
+        autohide.addOption(new BoolOption("Show when swinging or placing", false));
+        autohide.addOption(new BoolOption("Fade vanilla HUD", true));
+        autohide.addOption(new BoolOption("Fade Lads HUD", true));
         autohide.setEnabled(true);register(autohide,Module.Category.HUD);
         Module jade=new Module("Jade", "Identify blocks and entities using the source-integrated Jade API and addon providers.");
         jade.addOption(new ActionOption("Settings and addons", "Open Jade settings"));jade.setEnabled(true);register(jade,Module.Category.HUD);
@@ -36,10 +41,8 @@ public class ModuleManager {
         tools.addOption(new SliderOption("Durability percent", 10, 1, 50, 1));
         tools.addOption(new BoolOption("Inventory full warning", true));
         register(tools, Module.Category.MECHANIC);
-        var particles = new Module("ParticleBudget", "Limit only decorative smoke, leaves and spores. Gameplay indicators remain unchanged.");
-        particles.addOption(new SliderOption("Particles per tick", 64, 8, 512, 8));
-        particles.addOption(new SliderOption("Distance", 48, 16, 128, 8));
-        register(particles, Module.Category.MECHANIC);
+        // Particle Core replaced ParticleBudget in 1.8.5; ConfigManager.migrateParticleBudget carries the old settings over.
+        register(new ParticleCoreModule(), Module.Category.MECHANIC);
         var culling = new Module("EntityCulling", "Skip drawing entities and block entities hidden behind solid blocks. Name tags still show through walls.");
         culling.setEnabled(true);
         register(culling, Module.Category.MECHANIC);

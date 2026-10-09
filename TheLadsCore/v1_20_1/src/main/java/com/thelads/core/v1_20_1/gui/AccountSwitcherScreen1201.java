@@ -1,0 +1,40 @@
+package com.thelads.core.v1_20_1.gui;
+
+import com.thelads.core.client.auth.AccountSwitcherScreen;
+import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+
+public class AccountSwitcherScreen1201 extends Screen {
+    private final Screen parent;
+    private final AccountSwitcherScreen ui;
+
+    public AccountSwitcherScreen1201(Screen parent) {
+        super(Component.literal("Account Switcher"));
+        this.parent = parent;
+        this.ui = new AccountSwitcherScreen();
+        this.ui.setOnClose(this::onClose);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics g) {}
+
+    @Override
+    public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
+        ui.render(new GuiGraphicsLadsAdapter1201(g, this.font), mouseX, mouseY);
+        super.render(g, mouseX, mouseY, delta);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (ui.mouseClicked(mouseX, mouseY, button)) return true;
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public void onClose() {
+        Minecraft.getInstance().setScreen(parent);
+    }
+}
