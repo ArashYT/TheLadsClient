@@ -348,10 +348,16 @@ public class ConfigManager {
      * (its card showed that mod's own settings), so a state saved without a change holds only the old defaults: drop it.
      */
     static void migrateDynamicLights(JsonObject modules) {
-        JsonElement changed = legacy(modules, "DynamicLights", "lastModified");
-        if (modules.get("DynamicLights") instanceof JsonObject
+        dropUnchanged(modules, "DynamicLights");
+        // 1.8.5 builds Not Enough Animations in (1.20.1), on as the mod it replaces was: the same rule.
+        dropUnchanged(modules, com.thelads.core.modules.NotEnoughAnimationsModule.NAME);
+    }
+
+    private static void dropUnchanged(JsonObject modules, String name) {
+        JsonElement changed = legacy(modules, name, "lastModified");
+        if (modules.get(name) instanceof JsonObject
             && (changed == null || changed.isJsonPrimitive() && changed.getAsJsonPrimitive().isNumber() && changed.getAsLong() == 0))
-            modules.remove("DynamicLights");
+            modules.remove(name);
     }
 
     private static JsonElement legacy(JsonObject root, String... path) {
