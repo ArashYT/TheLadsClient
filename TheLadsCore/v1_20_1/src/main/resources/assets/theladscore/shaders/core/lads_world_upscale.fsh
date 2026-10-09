@@ -1,6 +1,6 @@
 #version 150
 
-#moj_import <theladscore:world_upscale.glsl>
+#moj_import <lads_world_upscale.glsl>
 
 uniform sampler2D DiffuseSampler;
 // 0 Smooth, 1 Sharp, 2 plain bilinear/nearest (the sampler's own filter)

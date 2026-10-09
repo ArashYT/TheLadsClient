@@ -103,8 +103,8 @@ public final class RenderScale1201 {
         nativeTarget = main;
         resizeLevel(mc, size.width(), size.height());
         ((MinecraftTargetAccessor) mc).ladsSetMainTarget(world);
+        world.clear(Minecraft.ON_OSX); // leaves the target unbound
         world.bindWrite(true);
-        world.clear(Minecraft.ON_OSX);
         swapped = true;
         lastScale = scale;
         lastWidth = size.width();
