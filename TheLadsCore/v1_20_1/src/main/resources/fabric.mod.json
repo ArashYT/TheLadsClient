@@ -31,6 +31,7 @@
   "mixins": [
     "theladscore.v1_20_1.mixins.json",
 
+
     "theladscore.v1_20_1.game.mixins.json",
     "theladscore.v1_20_1.skinlayers.mixins.json",
     "theladscore.v1_20_1.nea.mixins.json",
@@ -57,7 +58,8 @@
     "theladscore.v1_20_1.hud.jade.mixins.json",
         "theladscore.v1_20_1.menus.mixins.json",
     "theladscore.v1_20_1.screenshots.mixins.json",
-        "theladscore.v1_20_1.particlecore.mixins.json"
+        "theladscore.v1_20_1.particlecore.mixins.json",
+        "theladscore.v1_20_1.render.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.14.21",

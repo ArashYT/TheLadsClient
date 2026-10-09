@@ -72,6 +72,10 @@ public final class QaProbe1201 {
     private static String pendingShot;
     private static List<String[]> steps = new ArrayList<>();
     private static final List<InputConstants.Key> releaseNext = new ArrayList<>();
+    /** Lanes' own long QA routines, run as script steps: "verb args" calls the routine every tick until it returns true. */
+    private static final java.util.Map<String, java.util.function.Predicate<String[]>> routines = new java.util.HashMap<>();
+    private static java.util.function.Predicate<String[]> routine;
+    private static String[] routineStep;
 
     private QaProbe1201() {}
 
@@ -85,6 +89,9 @@ public final class QaProbe1201 {
         ClientLifecycleEvents.CLIENT_STARTED.register(QaProbe1201::begin);
         ClientTickEvents.START_CLIENT_TICK.register(QaProbe1201::tick);
     }
+
+    /** A script verb for a lane's own routine (ticked until it returns true; an exception fails the step). */
+    public static void registerStep(String verb, java.util.function.Predicate<String[]> routine) { routines.put(verb.toLowerCase(Locale.ROOT), routine); }
 
     /** True while the QA probe drives this game. */
     public static boolean active() { return active && !failed; }
@@ -223,13 +230,18 @@ public final class QaProbe1201 {
             LOGGER.info("Lads qa script BEGIN: {} steps", steps.size());
         }
         if (waitTicks > 0) { waitTicks--; return; }
+        if (routine != null) {
+            try { if (!routine.test(routineStep)) return; }
+            catch (Exception e) { stepFailed(String.join(" ", routineStep), e); }
+            routine = null;
+        }
         if (pendingShot != null) {
             String name = pendingShot;
             pendingShot = null;
             try { shot(mc, name); LOGGER.info("Lads qa shot: screenshots/{}.png", name); passed++; }
             catch (Exception e) { stepFailed("shot " + name, e); }
         }
-        while (waitTicks == 0 && pendingShot == null && index < steps.size()) {
+        while (waitTicks == 0 && pendingShot == null && routine == null && index < steps.size()) {
             String[] step = steps.get(index++);
             LOGGER.info("Lads qa step {}/{}: {}", index, steps.size(), String.join(" ", step));
             try {
@@ -241,7 +253,7 @@ public final class QaProbe1201 {
                 waitTicks = 1;
             }
         }
-        if (waitTicks == 0 && pendingShot == null && index >= steps.size()) {
+        if (waitTicks == 0 && pendingShot == null && routine == null && index >= steps.size()) {
             scriptDone = true;
             phase = Phase.DONE;
             LOGGER.info("Lads qa script END: {} passed, {} failed", passed, failedSteps);
@@ -272,7 +284,11 @@ public final class QaProbe1201 {
             case "dump" -> dump(mc, s.length > 1 ? s[1].toLowerCase(Locale.ROOT) : "state", s.length > 2 ? s[2] : null);
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
             case "quit" -> { LOGGER.info("Lads qa quit requested"); waitTicks = 5; mc.stop(); }
-            default -> throw new IllegalArgumentException("unknown step '" + verb + "'");
+            default -> {
+                if (!routines.containsKey(verb)) throw new IllegalArgumentException("unknown step '" + verb + "'");
+                routine = routines.get(verb);
+                routineStep = s;
+            }
         }
     }
 

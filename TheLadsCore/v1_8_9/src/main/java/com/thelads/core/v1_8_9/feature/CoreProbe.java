@@ -94,6 +94,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe173Rx.STEPS);
+        } else if ("render185".equals(only)) { // 1.8.5 built-in render remakes off and on (RenderProbe189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(RenderProbe189.STEPS);
         } else if ("cull".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));

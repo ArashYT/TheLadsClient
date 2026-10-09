@@ -69,6 +69,7 @@ public class TheLadsCore189 {
         LadsGameBridge.set(new VanillaGameBridge189());
         com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189.register();
         ConfigManager.load();
+        com.thelads.core.v1_8_9.render.Render189.init();
         registerStatuses();
         com.thelads.core.v1_8_9.feature.Nametags189.register();
         OldAnimations189.register();

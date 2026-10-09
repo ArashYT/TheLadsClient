@@ -1,0 +1,23 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.render.mixin",
+  "plugin": "com.thelads.core.v26_2.render.RenderMixinPlugin26",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "AnimatedTextureAnimationAccess",
+    "AnimatedTextureAnimationMixin",
+    "AnimationStateAnimationMixin",
+    "FrameInfoAnimationAccess",
+    "GameRendererProbeMixin",
+    "GuiRendererProbeAccess",
+    "ItemFeatureRendererCullMixin",
+    "ProjectionCullMixin",
+    "RenderSystemCullMixin",
+    "TextureAtlasAnimationMixin",
+    "TextureAtlasSpriteAnimationAccess"
+  ]
+}
