@@ -402,7 +402,7 @@ final class Probe172Ui {
 
     private static void measure(Minecraft mc, String name, int x0, int y0, int x1, int y1) throws Exception {
         screenshot(mc, name);
-        BufferedImage image = ImageIO.read(new File(mc.mcDataDir, "lads-qa/screenshots/" + name + ".png"));
+        BufferedImage image = CoreProbe.readShot(mc, name);
         long sum = 0, count = 0;
         for (int y = Math.max(0, y0); y < Math.min(image.getHeight(), y1); y += 2)
             for (int x = Math.max(0, x0); x < Math.min(image.getWidth(), x1); x += 2) {

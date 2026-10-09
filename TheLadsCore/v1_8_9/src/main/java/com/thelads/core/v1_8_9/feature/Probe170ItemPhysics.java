@@ -417,8 +417,8 @@ final class Probe170ItemPhysics {
                     case 16:
                         screenshot(mc, "170-ip-rest-off-b");
                         File folder = new File(mc.mcDataDir, "lads-qa/screenshots");
-                        BufferedImage a = ImageIO.read(new File(folder, "170-ip-rest-off-a.png")), on = ImageIO.read(new File(folder, "170-ip-rest-on-frozen.png")),
-                            b = ImageIO.read(new File(folder, "170-ip-rest-off-b.png"));
+                        BufferedImage a = CoreProbe.readShot(mc, "170-ip-rest-off-a"), on = CoreProbe.readShot(mc, "170-ip-rest-on-frozen"),
+                            b = CoreProbe.readShot(mc, "170-ip-rest-off-b");
                         offAgain = differing(a, b);
                         onChanged = differing(a, on);
                         finish();

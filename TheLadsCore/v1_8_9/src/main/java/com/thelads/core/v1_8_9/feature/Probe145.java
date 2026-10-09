@@ -103,8 +103,14 @@ final class Probe145 {
         Mouse.getDY();
         dx.setInt(null, 37);
         dy.setInt(null, -11);
-        helper.mouseXYChange();
-        // An ungrabbed mouse (QA window without focus) makes Mouse.poll() replace the injected deltas with the cursor's own.
+        // The helper pumps the window's input (Display.processMessages -> Mouse.poll) first, and an ungrabbed mouse (the QA window
+        // has no focus) makes poll() replace the injected deltas with the cursor's own: this read skips the pump.
+        helper.pumpInput = false;
+        try {
+            helper.mouseXYChange();
+        } finally {
+            helper.pumpInput = true;
+        }
         LOG.info("Lads 1.8.9 core probe: mouse: RawInput {}, {} JInput mice, raw live {}, frame pacing {}, window focused {}, mouse grabbed {}",
             module("RawInput").isEnabled(), helper.mice == null ? "no scan of" : String.valueOf(helper.mice.size()), helper.rawLive,
             com.thelads.core.v1_8_9.input.InputLatency189.active(), Display.isActive(), Mouse.isGrabbed());

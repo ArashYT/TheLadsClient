@@ -790,6 +790,21 @@ public final class CoreProbe {
         ScreenShotHelper.saveScreenshot(folder, name + ".png", mc.displayWidth, mc.displayHeight, mc.getFramebuffer());
     }
 
+    /**
+     * A picture screenshot() saved, once its file is complete: Lads Screenshots writes it on its own thread, so right after the
+     * call the file is missing or half written. Waits up to 10 s on the client thread (QA only).
+     */
+    static java.awt.image.BufferedImage readShot(Minecraft mc, String name) throws Exception {
+        File file = new File(mc.mcDataDir, "lads-qa/screenshots/" + name + ".png");
+        for (int attempt = 0; attempt < 100; attempt++) {
+            java.awt.image.BufferedImage image = null;
+            try { if (file.isFile()) image = javax.imageio.ImageIO.read(file); } catch (java.io.IOException partial) { /* still being written */ }
+            if (image != null) return image;
+            Thread.sleep(100);
+        }
+        throw new IllegalStateException("1.8.9 core QA: the screenshot " + file + " was not written in 10 s");
+    }
+
     /** A key press and release, queued in LWJGL's keyboard buffer as Keyboard.poll() stores them. */
     static void tap(int key, char character) throws Exception {
         key(key, character, true);
