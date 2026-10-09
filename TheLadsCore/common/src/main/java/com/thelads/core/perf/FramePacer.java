@@ -32,7 +32,13 @@ public final class FramePacer {
     /** When the frame-end check saw the previous frame's GPU work done; -1 when it was still running. */
     private long previousDoneAt = -1;
     private long lastAnchor = -1;
-    /** Averages: GPU frame time (between anchors, GPU-bound only), CPU frame time (input read to present). 0 = unknown. */
+    /** When the last two frames were presented (the frame before last's first). */
+    private long presentedPrevious = -1, presentedOlder = -1;
+    /**
+     * Averages: the GPU's busy time per frame and the CPU frame time (input read to present); 0 = unknown. A frame's GPU time is
+     * its finish minus when the GPU could start it: the later of the frame before it finishing and its own present. Finish minus
+     * finish alone would count the idle time pacing itself leaves, and pacing would then wait longer each frame.
+     */
     private long gpu, cpu;
     private long margin = -1;
     private boolean paced;
@@ -64,7 +70,10 @@ public final class FramePacer {
         // The frame before last finishing is the anchor; while more than one frame is queued this first drains it to one.
         long anchor = previousDoneAt >= 0 ? previousDoneAt : waiter.until(entry + MAX_WAIT, olderDone);
         previousDoneAt = -1;
-        if (lastAnchor >= 0 && anchor - lastAnchor > 0 && anchor - lastAnchor < MAX_WAIT) gpu = average(gpu, anchor - lastAnchor);
+        if (lastAnchor >= 0 && presentedOlder >= 0) {
+            long busy = anchor - Math.max(lastAnchor, presentedOlder);
+            if (busy > 0 && busy < MAX_WAIT) gpu = average(gpu, busy);
+        }
         lastAnchor = anchor;
         paced = true;
         pacedFrames++;
@@ -88,6 +97,8 @@ public final class FramePacer {
             margin = previousDone ? Math.min(gpu, margin + gpu / 16) : Math.max(0, margin - gpu / 256);
         }
         previousDoneAt = previousDone ? now : -1;
+        presentedOlder = presentedPrevious;
+        presentedPrevious = now;
     }
 
     public long gpuFrameNs() { return gpu; }

@@ -68,6 +68,22 @@ class FramePacerTest {
         assertTrue(on.fps() >= off.fps() * 0.96, "frame rate " + on + " vs " + off);
     }
 
+    /** Game ticks (a CPU spike every 6th frame) and a GPU whose frame time wanders, as in a real world. */
+    @Test
+    void spikyCpuAndWanderingGpuKeepTheFrameRate() {
+        Random random = new Random(3);
+        long[] cpu = new long[WARMUP + FRAMES], gpu = new long[WARMUP + FRAMES];
+        long g = 12 * MS;
+        for (int k = 0; k < cpu.length; k++) {
+            cpu[k] = (k % 6 == 0 ? 7 : 2) * MS + (long) (random.nextDouble() * MS);
+            g = Math.max(8 * MS, Math.min(18 * MS, g + (long) ((random.nextDouble() - 0.5) * MS)));
+            gpu[k] = g;
+        }
+        Result off = run(false, k -> cpu[k], k -> gpu[k]), on = run(true, k -> cpu[k], k -> gpu[k]);
+        assertTrue(on.latencyMs() < off.latencyMs() * 0.75, "latency " + on + " vs " + off);
+        assertTrue(on.fps() >= off.fps() * 0.97, "frame rate " + on + " vs " + off);
+    }
+
     @Test
     void cpuBoundNeverWaits() {
         Result off = run(false, k -> 8 * MS, k -> 3 * MS), on = run(true, k -> 8 * MS, k -> 3 * MS);
