@@ -71,12 +71,7 @@ public final class Performance1201 {
         ModuleSupport.registerExternal("JEI (Just Enough Items)", "Just Enough Items", "jei", ModPresence1201.loaded("jei"));
         ModuleSupport.registerExternal("XaeroWorldmap", "Xaero's World Map", "xaeroworldmap", ModPresence1201.loaded("xaeroworldmap"));
         ModuleSupport.registerExternal("FerriteCore", "FerriteCore", "ferritecore", ModPresence1201.loaded("ferritecore"));
-        // 26.x ships Jade as source inside Core; the 1.20.1 build does not (yet), so the module follows the real mod.
-        if (ModPresence1201.loaded("jade")) {
-            ModuleSupport.registerExternal("Jade", "Jade", "jade", true);
-        } else {
-            ModuleSupport.registerUnavailable("Jade", "Lads does not bundle Jade for Minecraft 1.20.1 yet. Install the Jade mod to use it.");
-        }
+        // Jade is registered by hud/jade/JadeFeatures1201 (native overlay, stands down to the real mod); not here.
         // The Entity Culling switch is the 1.8.9 Core's own culling; 26.x (and now 1.20.1) cull hidden entities by themselves, with no switch,
         // unless the original Entity Culling mod is installed (then its status page is shown).
         if (ModPresence1201.loaded("entityculling")) {
