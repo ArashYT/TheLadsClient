@@ -139,6 +139,7 @@ public final class NativeKillBanner1201 {
     private static void kill(KillDetector.Kill kill) {
         KillBannerModule module = module();
         if (kill == null || module == null) return;
+        com.thelads.core.v1_20_1.hud.Hud1201.LOG.info("Lads killbanner: kill detected ({})", kill);
         play(module, KillBanners.fire(module, kill, System.nanoTime()));
     }
 
@@ -176,8 +177,55 @@ public final class NativeKillBanner1201 {
 
     private static void play(KillBannerModule module, String sound) {
         if (sound == null) return;
+        com.thelads.core.v1_20_1.hud.Hud1201.LOG.info("Lads killbanner: banner shown, sound '{}' at volume {}", sound.isEmpty() ? "(base chime)" : sound, module.volume.getValue());
         SoundEvent event = sound.isEmpty() ? SoundEvents.EXPERIENCE_ORB_PICKUP : SoundEvent.createVariableRangeEvent(new ResourceLocation(sound));
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(event, 1.0f, (float) module.volume.getValue()));
+    }
+
+    /** A preview or QA banner: kills 1 to 5, with the module's pick (skin and variant) and its sound. */
+    public static void trigger(int kills, boolean preview, boolean headshot) {
+        KillBannerModule module = module();
+        if (module != null) trigger(kills, preview, headshot, module.chosen());
+    }
+
+    public static void trigger(int kills, boolean preview, boolean headshot, KillBannerModule.Pick pick) {
+        KillBannerModule module = module();
+        if (!eligible() || module == null) return;
+        play(module, KillBanners.show(module, kills, preview, headshot, pick, System.nanoTime()));
+    }
+
+    /** QA: binds the current connection now, so the next tick does not reset a banner fired on purpose. */
+    public static void bindCurrent() {
+        if (!eligible()) return;
+        trackedConnection = Minecraft.getInstance().getConnection();
+        trackedLevel = Minecraft.getInstance().level;
+    }
+
+    /** Kill Banner picker art (LadsGraphics.drawKillBanner). */
+    public static boolean drawThumb(GuiGraphics g, String skin, int variant, int x, int y, int w, int h) {
+        try {
+            KillBannerArt1201.thumb(g, KillBannerStyle.fromId(skin), variant, x, y, w, h);
+            return true;
+        } catch (RuntimeException failure) {
+            return false;
+        }
+    }
+
+    /** The Kill Banner settings preview: the skin's banners for 1 to 5 kills in turn, {@code clock} seconds into the loop. */
+    public static boolean drawPreview(GuiGraphics g, String skin, int variant, int x, int y, int w, int h, double clock) {
+        try {
+            KillBannerArt1201.preview(g, KillBannerStyle.fromId(skin), variant, x, y, w, h, clock);
+            return true;
+        } catch (RuntimeException failure) {
+            return false;
+        }
+    }
+
+    /** Kill Banner picker: a skin's one-kill sound. */
+    public static void previewSound(String skin, float volume) {
+        KillBannerStyle style = KillBannerStyle.fromId(skin);
+        SoundEvent event = SoundEvent.createVariableRangeEvent(new ResourceLocation("theladscore", style.id + "_kill_1"));
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(event, 1.0f, volume));
     }
 
     public static void render(GuiGraphics graphics) {

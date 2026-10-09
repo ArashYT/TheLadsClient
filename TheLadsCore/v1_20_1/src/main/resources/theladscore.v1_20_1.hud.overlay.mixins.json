@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.hud.overlay.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "ConnectionActivityMixin",
+    "NametagRenderMixin",
+    "OverlayGameRendererMixin",
+    "OverlayGuiMixin",
+    "OwnNametagMixin",
+    "TabOverlayMixin"
+  ]
+}

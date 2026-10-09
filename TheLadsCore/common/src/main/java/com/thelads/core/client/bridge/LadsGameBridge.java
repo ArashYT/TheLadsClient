@@ -153,6 +153,9 @@ public interface LadsGameBridge {
 
     boolean isHudHidden();
 
+    /** True while the F3 debug screen is open. */
+    default boolean isDebugScreenOpen() { return false; }
+
     /** Every mod container Fabric loaded in this process, nested jars included; empty without a loader. */
     default List<com.thelads.core.mods.LoadedMod> loadedMods() {
         return List.of();

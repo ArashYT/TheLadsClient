@@ -74,7 +74,7 @@ public final class NativeHud {
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
         // Autohide fades the Lads HUD with the hotbar (Autohide189).
         Autohide189.flush();
-        float shown = Autohide189.shown;
+        float shown = Autohide189.ladsShown();
         boolean faded = shown > 0 && shown < 1 && Autohide189.begin();
         try {
             long start = System.nanoTime();

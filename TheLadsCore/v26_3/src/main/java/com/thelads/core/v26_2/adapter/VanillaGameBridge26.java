@@ -367,6 +367,12 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     }
 
     @Override
+    public boolean isDebugScreenOpen() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.debugEntries != null && mc.debugEntries.isOverlayVisible();
+    }
+
+    @Override
     public List<com.thelads.core.mods.LoadedMod> loadedMods() {
         List<com.thelads.core.mods.LoadedMod> mods = new ArrayList<>();
         for (net.fabricmc.loader.api.ModContainer container : net.fabricmc.loader.api.FabricLoader.getInstance().getAllMods()) {

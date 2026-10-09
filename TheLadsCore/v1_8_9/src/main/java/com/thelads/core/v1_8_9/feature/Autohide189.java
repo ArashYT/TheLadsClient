@@ -55,14 +55,27 @@ public final class Autohide189 {
         air = p.getAir();
         slot = nextSlot;
         xp = p.experienceTotal;
-        boolean action = mc.currentScreen != null || p.isUsingItem() || mc.gameSettings.keyBindAttack.isKeyDown() || mc.gameSettings.keyBindUseItem.isKeyDown();
+        boolean action = mc.currentScreen != null;
+        // Swinging, placing and using items bring the HUD back only when asked to.
+        if (Options189.bool("Autohide", "Show when swinging or placing", false))
+            action |= p.isUsingItem() || mc.gameSettings.keyBindAttack.isKeyDown() || mc.gameSettings.keyBindUseItem.isKeyDown();
         if (Options189.bool("Autohide", "Show while moving", false)) action |= p.motionX * p.motionX + p.motionZ * p.motionZ > .001 || !p.onGround;
         if (Options189.bool("Autohide", "Show when hurt or hungry", true)) action |= health < p.getMaxHealth() || food < 20 || air < 300;
         if (changed || action || activity == 0) activity = now;
-        float target = (now - activity) / 1e9 < Options189.number("Autohide", "Hide after seconds", 4) ? 1 : 0;
+        float target = (now - activity) / 1e9 < Options189.number("Autohide", "Hide after seconds", 4) ? 1 : (float) Options189.number("Autohide", "Faded opacity", 0) / 100f;
         opacity = AutohideFade.step(opacity, target, (now - frame) / 1e9, Options189.number("Autohide", "Fade milliseconds", 350) / 1000);
         frame = now;
         return opacity;
+    }
+
+    /** The opacity of vanilla's hotbar group: Auto Hide's, or 1 with "Fade vanilla HUD" off. */
+    static float vanillaShown() {
+        return Options189.bool("Autohide", "Fade vanilla HUD", true) ? shown : 1;
+    }
+
+    /** The opacity of the Lads HUD: Auto Hide's, or 1 with "Fade Lads HUD" off. */
+    public static float ladsShown() {
+        return Options189.bool("Autohide", "Fade Lads HUD", true) ? shown : 1;
     }
 
     /** Last, so a mod that cancels an element first leaves nothing captured. */
@@ -77,8 +90,9 @@ public final class Autohide189 {
             BUFFER.newFrame();
         } else if (FADED.contains(event.type)) {
             end(null);
-            if (shown <= 0) event.setCanceled(true);
-            else if (shown < 1 && begin()) capturing = event.type;
+            float vanilla = vanillaShown();
+            if (vanilla <= 0) event.setCanceled(true);
+            else if (vanilla < 1 && begin()) capturing = event.type;
         }
     }
 
@@ -105,7 +119,7 @@ public final class Autohide189 {
         capturing = null;
         Minecraft mc = Minecraft.getMinecraft();
         net.minecraft.client.gui.ScaledResolution res = event != null ? event.resolution : new net.minecraft.client.gui.ScaledResolution(mc);
-        end(shown, res.getScaledWidth_double(), res.getScaledHeight_double());
+        end(vanillaShown(), res.getScaledWidth_double(), res.getScaledHeight_double());
     }
 
     /** Back to the framebuffer drawn before begin(), with the captured pixels blended in at alpha over the scaled GUI area. */

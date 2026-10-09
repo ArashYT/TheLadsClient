@@ -32,7 +32,12 @@ public class DraggableHudScreen1201 extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
-        ui.render(new GuiGraphicsLadsAdapter1201(g, this.font), mouseX, mouseY);
+        ui.render(new GuiGraphicsLadsAdapter1201(g, this.font) {
+            @Override
+            public boolean drawGameView(int x, int y, int width, int height) {
+                return com.thelads.core.v1_20_1.hud.HudEditorView1201.draw(g, x, y, width, height);
+            }
+        }, mouseX, mouseY);
         super.render(g, mouseX, mouseY, delta);
     }
 
@@ -93,6 +98,7 @@ public class DraggableHudScreen1201 extends Screen {
     @Override
     public void removed() {
         ui.close();
+        com.thelads.core.v1_20_1.hud.HudEditorView1201.release();
         super.removed();
     }
 }

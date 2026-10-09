@@ -77,6 +77,8 @@ public class HudManager {
 
     public void render(LadsGraphics g) {
         if (g == null || (g.getGame() != null && g.getGame().isHudHidden())) return;
+        // F3 hides the Lads HUD modules (Better F3's "Hide Lads HUD", on by default).
+        if (g.getGame() != null && g.getGame().isDebugScreenOpen() && com.thelads.core.modules.BetterF3Module.hidesLadsHud()) return;
         if (!HudFrameCap.wholeHud && g.getGame() != null && g.getGame().isIngame() && HudFrameCap.enabled()) {
             // Capped: rebuild at the cap rate and draw the last build on every frame, so the HUD never blinks out.
             long now = System.nanoTime();

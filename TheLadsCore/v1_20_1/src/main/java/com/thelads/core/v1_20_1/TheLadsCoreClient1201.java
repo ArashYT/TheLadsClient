@@ -57,6 +57,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
 
         com.thelads.core.v1_20_1.game.Gameplay1201.register();
         com.thelads.core.v1_20_1.perf.Performance1201.register();
+        com.thelads.core.v1_20_1.hud.Hud1201.register();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             NativeFeatures1201.tick();

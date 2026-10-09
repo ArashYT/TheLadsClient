@@ -21,7 +21,8 @@ public final class NativeAutohide {
         if(mc.gui.screen() instanceof com.thelads.core.v26_2.gui.DraggableHudScreen26)return;
         float previous=scopeOpacity;
         try{
-            scopeOpacity=update();
+            float shown=update();
+            scopeOpacity=NativeQualityOfLife.bool("Autohide","Fade Lads HUD",true)?shown:1;
             if(scopeOpacity>0)com.thelads.core.client.hud.HudManager.getInstance().render(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics,mc.font));
         }finally{scopeOpacity=previous;}
     }
@@ -35,15 +36,19 @@ public final class NativeAutohide {
         int nextFood=p.getFoodData().getFoodLevel(),nextSlot=p.getInventory().getSelectedSlot();
         boolean changed=player!=p||health!=p.getHealth()||food!=nextFood||air!=p.getAirSupply()||slot!=nextSlot||xp!=p.totalExperience;
         player=p;health=p.getHealth();food=nextFood;air=p.getAirSupply();slot=nextSlot;xp=p.totalExperience;
-        boolean action=mc.gui.screen()!=null||p.isUsingItem()||mc.options.keyAttack.isDown()||mc.options.keyUse.isDown();
+        boolean action=mc.gui.screen()!=null;
+        // Swinging, placing and using items bring the HUD back only when asked to.
+        if(NativeQualityOfLife.bool("Autohide","Show when swinging or placing",false))action|=p.isUsingItem()||mc.options.keyAttack.isDown()||mc.options.keyUse.isDown();
         if(NativeQualityOfLife.bool("Autohide","Show while moving",false))action|=p.getDeltaMovement().lengthSqr()>.001;
         if(NativeQualityOfLife.bool("Autohide","Show when hurt or hungry",true))action|=health<p.getMaxHealth()||food<20||air<p.getMaxAirSupply();
         if(changed||action||activity==0)activity=now;
-        float target=(now-activity)/1e9<NativeQualityOfLife.number("Autohide","Hide after seconds",4)?1:0;
+        float target=(now-activity)/1e9<NativeQualityOfLife.number("Autohide","Hide after seconds",4)?1:(float)NativeQualityOfLife.number("Autohide","Faded opacity",0)/100f;
         double duration=NativeQualityOfLife.number("Autohide","Fade milliseconds",350)/1000;
         // Called by the hotbar and again by the Lads HUD each frame; each call steps by its own elapsed time, so a frame steps once.
         opacity=com.thelads.core.client.hud.AutohideFade.step(opacity,target,(now-frame)/1e9,duration);frame=now;
         return opacity;
     }
+    /** The opacity of the vanilla hotbar group: Auto Hide's, or 1 when "Fade vanilla HUD" is off. */
+    public static float vanillaOpacity(){float shown=update();return NativeQualityOfLife.bool("Autohide","Fade vanilla HUD",true)?shown:1;}
     public static int tint(int color,float alpha){return (color&0xFFFFFF)|(Math.round((color>>>24)*alpha)<<24);}
 }
