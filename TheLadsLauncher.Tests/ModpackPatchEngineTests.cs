@@ -174,4 +174,47 @@ public class ModpackPatchEngineTests : IDisposable
         applied = ModpackPatchEngine.GetAppliedPatches(_tempDir);
         Assert.Equal(new[] { "1.0.1", "1.0.2" }, applied);
     }
+
+    [Fact]
+    public void ApplyConfigPatch_Flat_KeepsDottedKeysLiteral()
+    {
+        var gameDir = Path.Combine(_tempDir, "minecraft");
+        Directory.CreateDirectory(Path.Combine(gameDir, "config"));
+        File.WriteAllText(Path.Combine(gameDir, "config", "lazyyyyy.mixins.json"), "{\"debug\":false,\"lazy_entity_renderers\":true}");
+        var patch = new PatchConfig
+        {
+            File = "config/lazyyyyy.mixins.json",
+            Format = "json",
+            Flat = true,
+            Set = new Dictionary<string, JsonElement>
+            {
+                ["lazy_entity_renderers"] = JsonDocument.Parse("false").RootElement,
+                ["entity_sound_features.async_sound_events"] = JsonDocument.Parse("false").RootElement
+            }
+        };
+
+        ModpackPatchEngine.ApplyConfigPatch(gameDir, patch);
+
+        var root = JsonNode.Parse(File.ReadAllText(Path.Combine(gameDir, "config", "lazyyyyy.mixins.json")))!.AsObject();
+        Assert.False(root["lazy_entity_renderers"]!.GetValue<bool>());
+        Assert.False(root["entity_sound_features.async_sound_events"]!.GetValue<bool>()); // not entity_sound_features -> async_sound_events
+        Assert.False(root["debug"]!.GetValue<bool>());
+        Assert.Null(root["entity_sound_features"]);
+    }
+
+    [Fact]
+    public void ApplyConfigPatch_Flat_CreatesAMissingFile()
+    {
+        var gameDir = Path.Combine(_tempDir, "minecraft");
+        var patch = new PatchConfig
+        {
+            File = "config/new.json",
+            Flat = true,
+            Set = new Dictionary<string, JsonElement> { ["a.b"] = JsonDocument.Parse("true").RootElement }
+        };
+
+        ModpackPatchEngine.ApplyConfigPatch(gameDir, patch);
+
+        Assert.True(JsonNode.Parse(File.ReadAllText(Path.Combine(gameDir, "config", "new.json")))!["a.b"]!.GetValue<bool>());
+    }
 }

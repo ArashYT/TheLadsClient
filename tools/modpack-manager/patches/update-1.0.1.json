@@ -1,7 +1,7 @@
 {
   "packId": "zero-smp-1.20.1",
   "version": "1.0.1",
-  "description": "Adds c2mef, lazyyyyy (lazy entity renderers off: its EMF mixin does not fit EMF 3.3.11) and Crawl on Demand (crawl key J); drops LeavesBeGone",
+  "description": "Adds c2mef, lazyyyyy (its ETF/EMF mixin groups off: they do not fit ETF/EMF 7.2.5/3.3.11) and Crawl on Demand (crawl key J); drops LeavesBeGone",
   "mods": {
     "add": [
       {
@@ -33,11 +33,13 @@
   },
   "configPatches": [
     {
-      "file": "config/lazyyyyy.mixins.json",
       "set": {
-        "lazy_entity_renderers": false
+        "lazy_entity_renderers": false,
+        "entity_sound_features.async_sound_events": false
       },
-      "format": "json"
+      "format": "json",
+      "flat": true,
+      "file": "config/lazyyyyy.mixins.json"
     }
   ]
 }
