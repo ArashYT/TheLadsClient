@@ -172,7 +172,7 @@ public final class GameProbe1201 {
             case "shotnow" -> { shot(mc, s[1]); LOGGER.info("Lads game qa shot: screenshots/{}.png", s[1]); }
             case "anim" -> LOGGER.info("Lads game qa anim: {}", NativeOldAnimations1201.debug(mc.player));
             case "log" -> LOGGER.info("Lads game qa log: {}", rest(s, 1));
-            case "trace" -> { if (s[2].equals("on")) { traceName = s[1]; trace = new StringBuilder("tick,sprinting,sentSprint,sneaking,keyShift,pose,speed,fov,zoomActive,x,y,z,yaw,pitch,health,hurtTime,onGround,tiltYaw,tiltStrength,bob\n"); } else endTrace(); }
+            case "trace" -> { if (s[2].equals("on")) { traceName = s[1]; trace = new StringBuilder("tick,sprinting,sentSprint,sneaking,keyShift,pose,speed,fov,zoomActive,x,y,z,yaw,pitch,health,hurtTime,onGround,tiltYaw,tiltStrength,bob,eye,swing\n"); } else endTrace(); }
             case "expect" -> expect(mc, s);
             case "stop" -> { finished = true; LOGGER.info("Lads game qa END: {} passed, {} failed", passed, failed); append("results.txt", "Lads game qa END: " + passed + " passed, " + failed + " failed\n"); mc.stop(); }
             default -> throw new IllegalArgumentException("unknown step " + s[0]);
@@ -217,6 +217,8 @@ public final class GameProbe1201 {
             case "onground" -> p.onGround() ? 1 : 0;
             case "tiltyaw" -> Gameplay1201.lastTiltYaw;
             case "tiltstrength" -> Gameplay1201.lastTiltStrength;
+            case "swinging" -> p.swinging ? 1 : 0;
+            case "using" -> p.isUsingItem() ? 1 : 0;
             case "resscale" -> com.thelads.core.v1_20_1.game.RenderScale1201.lastScale;
             case "resframes" -> com.thelads.core.v1_20_1.game.RenderScale1201.scaledFrames;
             case "reswidth" -> com.thelads.core.v1_20_1.game.RenderScale1201.lastWidth;
@@ -258,7 +260,8 @@ public final class GameProbe1201 {
             .append(',').append(String.format(Locale.ROOT, "%.2f", NativeFeatures1201.lastWorldFov)).append(',').append(metric(mc, "zoom"))
             .append(',').append(String.format(Locale.ROOT, "%.2f,%.2f,%.2f,%.1f,%.1f", p.getX(), p.getY(), p.getZ(), p.getYRot(), p.getXRot()))
             .append(',').append(p.getHealth()).append(',').append(p.hurtTime).append(',').append(p.onGround() ? 1 : 0)
-            .append(',').append(String.format(Locale.ROOT, "%.1f,%.2f,%.3f", Gameplay1201.lastTiltYaw, Gameplay1201.lastTiltStrength, NativeVerticalBob1201.lastDisplacement)).append('\n');
+            .append(',').append(String.format(Locale.ROOT, "%.1f,%.2f,%.3f,%.4f,%.3f", Gameplay1201.lastTiltYaw, Gameplay1201.lastTiltStrength, NativeVerticalBob1201.lastDisplacement,
+                mc.gameRenderer.getMainCamera().getPosition().y - p.getY(), p.getAttackAnim(0))).append('\n');
     }
 
     private static void endTrace() {
