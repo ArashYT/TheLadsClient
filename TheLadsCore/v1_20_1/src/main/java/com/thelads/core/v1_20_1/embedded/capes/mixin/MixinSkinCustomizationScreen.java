@@ -20,9 +20,15 @@ public abstract class MixinSkinCustomizationScreen extends OptionsSubScreen {
         super(parent, gameOptions, title);
     }
 
-    /** Next to the first column of toggles, where 26.3 puts it next to the options list. */
+    /** Next to the first column of toggles, where 26.3 puts it next to the options list; in the corner when the window is too narrow for that. */
     @Inject(method = "init", at = @At("RETURN"))
     public void addCapeButton(CallbackInfo info) {
-        this.addRenderableWidget(new CapeButton(this.width / 2 - 155 - 25, this.height / 6, button -> this.minecraft.setScreen(new SelectorMenu(this, this.options))));
+        int x = this.width / 2 - 155 - 25;
+        int y = this.height / 6;
+        if (x < 2) {
+            x = 2;
+            y = 2;
+        }
+        this.addRenderableWidget(new CapeButton(x, y, button -> this.minecraft.setScreen(new SelectorMenu(this, this.options))));
     }
 }

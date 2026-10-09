@@ -33,7 +33,6 @@ import org.joml.Quaternionf;
  */
 public final class PlayerPreview {
     private static final float SCALE = 69.0F;
-    private static final ResourceLocation VANILLA_ELYTRA = new ResourceLocation("textures/entity/elytra.png");
 
     public static boolean showBody = true;
     public static boolean showElytra = false;
@@ -93,7 +92,7 @@ public final class PlayerPreview {
     public static ResourceLocation elytraTexture() {
         PlayerHandler handler = PlayerHandler.fromProfile(profile());
         ResourceLocation cape = capeTexture();
-        return handler.getHasElytraTexture() && Capes.getConfig().getEnableElytraTexture() && cape != null ? cape : VANILLA_ELYTRA;
+        return handler.getHasElytraTexture() && Capes.getConfig().getEnableElytraTexture() && cape != null ? cape : Capes.VANILLA_ELYTRA;
     }
 
     private static PlayerInfo info() {

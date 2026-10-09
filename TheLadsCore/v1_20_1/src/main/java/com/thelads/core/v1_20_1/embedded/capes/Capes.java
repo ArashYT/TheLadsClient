@@ -34,6 +34,9 @@ public final class Capes {
 
     public static final Logger LOGGER = LoggerFactory.getLogger("Capes");
 
+    /** The vanilla elytra texture (a constant here: a mixin class cannot carry a static initializer). */
+    public static final ResourceLocation VANILLA_ELYTRA = new ResourceLocation("textures/entity/elytra.png");
+
     private Capes() {
     }
 

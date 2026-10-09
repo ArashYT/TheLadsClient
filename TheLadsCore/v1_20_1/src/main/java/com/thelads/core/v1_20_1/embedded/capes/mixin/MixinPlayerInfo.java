@@ -30,9 +30,6 @@ public abstract class MixinPlayerInfo {
     @Shadow @Final private GameProfile profile;
 
     @Unique
-    private static final ResourceLocation capes$VANILLA_ELYTRA = new ResourceLocation("textures/entity/elytra.png");
-
-    @Unique
     private boolean capes$valid;
     @Unique
     private long capes$recheckAt;
@@ -71,7 +68,7 @@ public abstract class MixinPlayerInfo {
         PlayerHandler handler = PlayerHandler.fromProfile(profile);
         if (handler.getHasCape()) {
             CapeConfig config = Capes.getConfig();
-            cir.setReturnValue(handler.getHasElytraTexture() && config.getEnableElytraTexture() ? handler.getCape() : capes$VANILLA_ELYTRA);
+            cir.setReturnValue(handler.getHasElytraTexture() && config.getEnableElytraTexture() ? handler.getCape() : Capes.VANILLA_ELYTRA);
         }
     }
 }
