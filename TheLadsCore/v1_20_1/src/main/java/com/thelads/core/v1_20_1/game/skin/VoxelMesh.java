@@ -200,7 +200,49 @@ final class VoxelMesh {
                 check(dot > 0, "every quad is counter-clockwise seen from outside");
             }
         }
+        for (boolean slim : new boolean[] {false, true}) {
+            float[][] boxes = slim ? SLIM : WIDE, parts = build(solid, 64, 64, slim);
+            for (int part = 0; part < PARTS; part++) matchesVanilla(boxes[part], parts[part], part == HAT ? HEAD_DEPTH : BODY_DEPTH, part * NUDGE);
+        }
         System.out.println("VoxelMesh self-check passed");
+    }
+
+    /**
+     * Oracle: vanilla ModelPart.Cube's own layout (its 8 corners, polygon corner order and polygon UV rectangles, written out
+     * independently of FACES) must put each texel where its cuboid's outer face stands, DEPTH out from the base box.
+     */
+    private static void matchesVanilla(float[] box, float[] quads, float depth, float nudge) {
+        float u = box[0], v = box[1], w = box[2], h = box[3], d = box[4], x0 = box[5], y0 = box[6], z0 = box[7], x1 = x0 + w, y1 = y0 + h, z1 = z0 + d;
+        float[] c1 = {x0, y0, z0}, c2 = {x1, y0, z0}, c3 = {x1, y1, z0}, c4 = {x0, y1, z0}, c5 = {x0, y0, z1}, c6 = {x1, y0, z1}, c7 = {x1, y1, z1}, c8 = {x0, y1, z1};
+        float l = u, m = u + d, n = u + d + w, o = u + d + w + w, p = u + d + w + d, q = u + d + w + d + w, r = v, s = v + d, t = v + d + h;
+        Object[][] polygons = { // corners, u1 v1 u2 v2, normal
+            {new float[][] {c6, c5, c1, c2}, new float[] {m, r, n, s}, new float[] {0, -1, 0}},
+            {new float[][] {c3, c4, c8, c7}, new float[] {n, s, o, r}, new float[] {0, 1, 0}},
+            {new float[][] {c1, c5, c8, c4}, new float[] {l, s, m, t}, new float[] {-1, 0, 0}},
+            {new float[][] {c2, c1, c4, c3}, new float[] {m, s, n, t}, new float[] {0, 0, -1}},
+            {new float[][] {c6, c2, c3, c7}, new float[] {n, s, p, t}, new float[] {1, 0, 0}},
+            {new float[][] {c5, c6, c7, c8}, new float[] {p, s, q, t}, new float[] {0, 0, 1}},
+        };
+        int outer = 0;
+        for (int at = 0; at < quads.length; at += FLOATS) {
+            float tu = quads[at + 12] * 64, tv = quads[at + 13] * 64;
+            for (Object[] polygon : polygons) {
+                float[][] corner = (float[][]) polygon[0];
+                float[] uv = (float[]) polygon[1], normal = (float[]) polygon[2];
+                if (tu < Math.min(uv[0], uv[2]) || tu > Math.max(uv[0], uv[2]) || tv < Math.min(uv[1], uv[3]) || tv > Math.max(uv[1], uv[3])) continue;
+                if (quads[at + 14] != normal[0] || quads[at + 15] != normal[1] || quads[at + 16] != normal[2]) continue;
+                // vanilla: corner[1] is (u1, v1), corner[0] is (u2, v1), corner[2] is (u1, v2)
+                float su = (tu - uv[0]) / (uv[2] - uv[0]), sv = (tv - uv[1]) / (uv[3] - uv[1]);
+                for (int axis = 0; axis < 3; axis++) {
+                    float expected = corner[1][axis] + su * (corner[0][axis] - corner[1][axis]) + sv * (corner[2][axis] - corner[1][axis]) + normal[axis] * depth;
+                    float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
+                    for (int c = 0; c < 4; c++) { float value = quads[at + c * 3 + axis] * 16 - nudge; lo = Math.min(lo, value); hi = Math.max(hi, value); }
+                    check(expected >= lo - 1e-3f && expected <= hi + 1e-3f, "texel " + tu + "," + tv + " stands where vanilla maps it (axis " + axis + ")");
+                }
+                outer++;
+            }
+        }
+        check(outer == 2 * (int) (w * d + w * h + d * h), "every texel has its outer face: " + outer);
     }
 
     private static int quads(float[] part) { return part.length / FLOATS; }
