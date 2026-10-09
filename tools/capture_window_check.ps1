@@ -48,6 +48,7 @@ public static class WindowCapture {
         SetProcessDPIAware();
         outDir = dir; tag = name; Directory.CreateDirectory(dir);
         IntPtr h = new IntPtr(hwnd);
+        Add("before raising it:"); State(h); // the window as the game left it (the raise below adds WS_EX_TOPMOST)
         // On top of everything for the capture, as a window the user is looking at is (activated only without -NoFocus).
         SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, 0x13); if (focus) SetForegroundWindow(h);
         System.Threading.Thread.Sleep(3000); // a promotion to flip takes a moment

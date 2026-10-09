@@ -425,7 +425,10 @@ public final class QaProbe1201 {
         if (what.equals("state") || what.equals("all")) {
             StringBuilder s = new StringBuilder("Lads qa dump state: screen=" + describeScreen(mc) + " fps=" + mc.fpsString
                 + " window=" + mc.getWindow().getWidth() + "x" + mc.getWindow().getHeight() + " guiScale=" + mc.getWindow().getGuiScale()
-                + " fov=" + mc.options.fov().get() + " hideGui=" + mc.options.hideGui + " debug=" + mc.options.renderDebug);
+                + " fov=" + mc.options.fov().get() + " hideGui=" + mc.options.hideGui + " debug=" + mc.options.renderDebug
+                // Fullscreen as GLFW has it: owned by a monitor (exclusive) or a desktop window (borderless), and decorated or not.
+                + " fullscreen=" + mc.getWindow().isFullscreen() + " ownedByMonitor=" + (org.lwjgl.glfw.GLFW.glfwGetWindowMonitor(mc.getWindow().getWindow()) != 0)
+                + " decorated=" + (org.lwjgl.glfw.GLFW.glfwGetWindowAttrib(mc.getWindow().getWindow(), org.lwjgl.glfw.GLFW.GLFW_DECORATED) == org.lwjgl.glfw.GLFW.GLFW_TRUE));
             if (mc.player != null && mc.level != null) {
                 s.append(" dimension=").append(mc.level.dimension().location())
                     .append(String.format(Locale.ROOT, " pos=%.2f,%.2f,%.2f yaw=%.1f pitch=%.1f", mc.player.getX(), mc.player.getY(), mc.player.getZ(), mc.player.getYRot(), mc.player.getXRot()))
