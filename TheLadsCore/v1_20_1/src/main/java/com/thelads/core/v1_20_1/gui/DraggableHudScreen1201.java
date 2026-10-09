@@ -2,6 +2,7 @@ package com.thelads.core.v1_20_1.gui;
 
 import com.thelads.core.client.gui.DraggableHudScreen;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
+import com.thelads.core.v1_20_1.feature.HudEditorView1201;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -32,18 +33,24 @@ public class DraggableHudScreen1201 extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
-        ui.render(new GuiGraphicsLadsAdapter1201(g, this.font) {
+        var adapter = new GuiGraphicsLadsAdapter1201(g, this.font) {
             @Override
             public boolean drawGameView(int x, int y, int width, int height) {
-                return com.thelads.core.v1_20_1.hud.HudEditorView1201.draw(g, x, y, width, height);
+                return HudEditorView1201.draw(g, x, y, width, height);
             }
-        }, mouseX, mouseY);
+        };
+        adapter.managed(() -> ui.render(adapter, mouseX, mouseY));
         super.render(g, mouseX, mouseY, delta);
+    }
+
+    /** The shared editor this screen draws and routes input to (QA reads its bounds and state). */
+    public DraggableHudScreen ui() {
+        return ui;
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (ui.mouseClicked(mouseX, mouseY, button, 0)) {
+        if (ui.mouseClicked(mouseX, mouseY, button, modifiers())) {
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -51,7 +58,7 @@ public class DraggableHudScreen1201 extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (ui.mouseReleased(mouseX, mouseY, button, 0)) {
+        if (ui.mouseReleased(mouseX, mouseY, button, modifiers())) {
             return true;
         }
         return super.mouseReleased(mouseX, mouseY, button);
@@ -89,6 +96,11 @@ public class DraggableHudScreen1201 extends Screen {
         return super.charTyped(codePoint, modifiers);
     }
 
+    /** The held modifier keys in GLFW's bit order (shift 1, ctrl 2, alt 4), which the shared editor reads. */
+    private static int modifiers() {
+        return (Screen.hasShiftDown() ? 1 : 0) | (Screen.hasControlDown() ? 2 : 0) | (Screen.hasAltDown() ? 4 : 0);
+    }
+
     @Override
     public void onClose() {
         ui.close();
@@ -98,7 +110,13 @@ public class DraggableHudScreen1201 extends Screen {
     @Override
     public void removed() {
         ui.close();
-        com.thelads.core.v1_20_1.hud.HudEditorView1201.release();
+        var adapter = new GuiGraphicsLadsAdapter1201(g, this.font) {
+            @Override
+            public boolean drawGameView(int x, int y, int width, int height) {
+                return HudEditorView1201.draw(g, x, y, width, height);
+            }
+        };
+        adapter.managed(() -> ui.render(adapter, mouseX, mouseY));
         super.removed();
     }
 }

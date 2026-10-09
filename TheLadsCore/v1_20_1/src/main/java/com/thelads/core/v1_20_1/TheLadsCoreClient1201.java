@@ -28,6 +28,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         QaProbe1201.register(); // QA only: inert unless the Verification harness sets -Dthelads.verifyAutoWorld / -Dthelads.qaScript
 
         ExternalModSettings1201.register();
+        com.thelads.core.v1_20_1.feature.Menus1201.register();
 
         ModuleSupport.registerBuiltIn("Threads");
         ModuleSupport.registerBuiltInRestart("Jasione");

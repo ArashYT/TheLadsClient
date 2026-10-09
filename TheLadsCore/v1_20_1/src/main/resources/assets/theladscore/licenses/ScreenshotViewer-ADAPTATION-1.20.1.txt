@@ -1,0 +1,16 @@
+Lads native Screenshot Viewer adaptation, Minecraft 1.20.1
+
+Original: Screenshot Viewer 1.3.6, Copyright (c) 2026 LGatodu47, MIT (see ScreenshotViewer-LICENSE.txt).
+Project: https://github.com/LGatodu47/ScreenshotViewer
+
+This is the 1.20.1 port of the Lads adaptation that ships in the 26.x builds
+(com.thelads.core.v26_2.feature.screenshots): the same gallery, screenshot toast, chat link
+buttons and gallery settings, rewritten for the 1.20.1 GUI (GuiGraphics, the old input
+signatures, plain-texture icons instead of GUI sprites).
+
+Differences from the 26.x adaptation:
+- The options are stored by a small Gson-backed class in config/theladscore/screenshot_viewer.json;
+  CatConfig and CatConfig-MC (MIT) are not part of the 1.20.1 build, the settings screen is Lads code
+  that behaves like CatConfig-MC's.
+- Copying a picture to the clipboard is not available on macOS (the Objective-C bridge is not bundled).
+- The chat buttons are click events that carry the screenshot path and are handled in a Screen mixin.

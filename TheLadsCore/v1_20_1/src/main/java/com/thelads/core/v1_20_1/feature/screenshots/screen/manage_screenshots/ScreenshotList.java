@@ -1,0 +1,466 @@
+// SPDX-License-Identifier: MIT
+// Adapted from Screenshot Viewer 1.3.6 (LGatodu47). See ScreenshotViewer-LICENSE.txt.
+package com.thelads.core.v1_20_1.feature.screenshots.screen.manage_screenshots;
+
+import com.thelads.core.v1_20_1.feature.GlobalScreenshots1201;
+import com.thelads.core.v1_20_1.feature.screenshots.ScreenshotViewerUtils;
+import com.thelads.core.v1_20_1.feature.screenshots.config.ScreenshotListOrder;
+import com.thelads.core.v1_20_1.feature.screenshots.config.ScreenshotViewerOptions;
+import com.thelads.core.v1_20_1.feature.screenshots.config.VisibilityState;
+import com.thelads.core.v1_20_1.feature.screenshots.screen.ScreenshotViewerTexts;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.IntUnaryOperator;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Renderable;
+import net.minecraft.client.gui.components.events.AbstractContainerEventHandler;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.narration.NarratableEntry.NarrationPriority;
+import net.minecraft.util.FastColor;
+import net.minecraft.util.Mth;
+
+final class ScreenshotList
+   extends AbstractContainerEventHandler
+   implements Renderable,
+   NarratableEntry,
+   ScreenshotImageList,
+   ScreenshotWidget.Context {
+   private final ManageScreenshotsScreen mainScreen;
+   private final Minecraft client;
+   private final int x;
+   private final int y;
+   private final List<ScreenshotWidget> screenshotWidgets = new ArrayList<>();
+   private final List<GuiEventListener> elements = new ArrayList<>();
+   private final ScreenshotList.Scrollbar scrollbar = new ScreenshotList.Scrollbar();
+   private int width;
+   private int height;
+   private int scrollY;
+   private int scrollSpeedFactor;
+   private int screenshotsPerRow;
+   private int spacing;
+   private int childWidth;
+   private int childHeight;
+   private boolean invertedOrder;
+   private boolean invertedScroll;
+   private boolean namesHidden;
+   private File screenshotsFolder;
+   private boolean scrollbarClicked;
+   private static final java.util.concurrent.ThreadPoolExecutor SCANNER=new java.util.concurrent.ThreadPoolExecutor(
+      1,1,0L,java.util.concurrent.TimeUnit.MILLISECONDS,new java.util.concurrent.LinkedBlockingQueue<>(),task->{
+         Thread thread=new Thread(task,"Lads screenshot scan");thread.setDaemon(true);return thread;
+      });
+   private java.util.concurrent.Future<?> scanTask;
+   private volatile int scanRevision;
+   private boolean scanning;
+   /** scanned: the last scan finished (re-init only re-lays out); fresh: the next result starts a new scan and replaces the list. */
+   private boolean scanned,fresh;
+   /** User deletes and renames since this scan started; partial and final results are corrected with them. */
+   private final java.util.Set<File> deletedDuringScan=new java.util.HashSet<>();
+   private final java.util.Map<File,File> renamedDuringScan=new java.util.HashMap<>();
+
+   ScreenshotList(ManageScreenshotsScreen mainScreen, int x, int y, int width, int height) {
+      this.mainScreen = mainScreen;
+      this.client = mainScreen.client();
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+      this.scrollSpeedFactor = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.SCREEN_SCROLL_SPEED, 10);
+      this.screenshotsPerRow = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.INITIAL_SCREENSHOT_AMOUNT_PER_ROW, 4);
+      this.invertedOrder = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.ASCENDING).isInverted();
+      this.screenshotsFolder = ManageScreenshotsScreen.CONFIG.getOrElseGet(ScreenshotViewerOptions.SCREENSHOTS_FOLDER, ScreenshotViewerUtils::getVanillaScreenshotsFolder);
+      this.invertedScroll = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.INVERT_ZOOM_DIRECTION, false);
+      this.namesHidden = ManageScreenshotsScreen.CONFIG
+         .get(ScreenshotViewerOptions.SCREENSHOT_ELEMENT_TEXT_VISIBILITY)
+         .filter(VisibilityState.HIDDEN::equals)
+         .isPresent();
+      this.updateVariables();
+   }
+
+   void updateSize(int width, int height) {
+      this.width = width;
+      this.height = height;
+   }
+
+   void onConfigUpdate() {
+      this.scrollSpeedFactor = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.SCREEN_SCROLL_SPEED, 10);
+      this.screenshotsPerRow = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.INITIAL_SCREENSHOT_AMOUNT_PER_ROW, 4);
+      this.invertedScroll = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.INVERT_ZOOM_DIRECTION, false);
+      this.namesHidden = ManageScreenshotsScreen.CONFIG
+         .get(ScreenshotViewerOptions.SCREENSHOT_ELEMENT_TEXT_VISIBILITY)
+         .filter(VisibilityState.HIDDEN::equals)
+         .isPresent();
+      File currentScreenshotsFolder = ManageScreenshotsScreen.CONFIG.getOrElseGet(ScreenshotViewerOptions.SCREENSHOTS_FOLDER, ScreenshotViewerUtils::getVanillaScreenshotsFolder);
+      if (!this.screenshotsFolder.equals(currentScreenshotsFolder)) {
+         this.screenshotsFolder = currentScreenshotsFolder;
+         this.init();
+      } else if (this.invertedOrder
+         != ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.ASCENDING).isInverted()) {
+         this.invertOrder();
+      } else {
+         this.updateChildren(true);
+      }
+   }
+
+   /** Scans (or lists) again. Only first open, Refresh/F5, Add folder and a changed folder setting call this; see relayout. */
+   void init() {
+      cancelScan();
+      int revision=scanRevision;fresh=true;scanned=false;deletedDuringScan.clear();renamedDuringScan.clear();
+      if (GlobalScreenshots1201.sharedGallery(screenshotsFolder)) {
+         scanning=true;
+         scanTask=SCANNER.submit(()->{
+            java.util.Map<File,Long> times=new java.util.HashMap<>();
+            try {
+               List<File> files=byTime(GlobalScreenshots1201.scan(()->revision!=scanRevision,partial->{
+                  List<File> sorted=byTime(partial,times);
+                  client.execute(()->{if(revision==scanRevision&&client.screen==mainScreen){install(sorted);mainScreen.openRequestedScreenshot();}});
+               }),times);
+               if(revision!=scanRevision)return;
+               client.execute(()->{
+                  if(revision!=scanRevision||client.screen!=mainScreen)return;
+                  scanning=false;scanned=true;install(files);mainScreen.openRequestedScreenshot();
+               });
+            }catch(Throwable error){client.execute(()->{
+               if(revision!=scanRevision)return;
+               // A failed scan counts as done: re-init must not retry it on every resize; Refresh/F5 still does.
+               scanning=false;scanned=true;ScreenshotViewerUtils.fileError("Scan screenshots",screenshotsFolder,error);
+            });}
+         });
+      } else {scanned=true;install(byTime(ScreenshotViewerUtils.getScreenshotFiles(this.screenshotsFolder),new java.util.HashMap<>()));}
+   }
+
+   /** Screen re-init (resize, F11, GUI scale, back from settings) re-lays out the same widgets; it rescans only if a scan was cut short. */
+   void relayout() {
+      if (!scanned && !scanning) this.init(); else this.updateChildren(false);
+   }
+
+   /** Oldest first, reading each timestamp once: a lastModified comparator stats every file about 2 log n times. */
+   static List<File> byTime(List<File> files, java.util.Map<File,Long> times) {
+      for (File file : files) times.computeIfAbsent(file, File::lastModified);
+      List<File> sorted = new ArrayList<>(files);
+      sorted.sort(Comparator.comparingLong((File file) -> times.get(file)).thenComparing(File::getAbsolutePath));
+      return sorted;
+   }
+
+   /** files: oldest first. A scan's first result replaces the list; its later partial results only add, keeping loaded images and scroll. */
+   private void install(List<File> files) {
+      if (!deletedDuringScan.isEmpty() || !renamedDuringScan.isEmpty()) { // results found before a delete or rename must not revive the old path
+         List<File> adjusted=new ArrayList<>(files.size());java.util.Set<File> seen=new java.util.HashSet<>();
+         for (File file : files) {if (deletedDuringScan.contains(file)) continue;File now=renamedDuringScan.getOrDefault(file,file);if (seen.add(now)) adjusted.add(now);}
+         files=adjusted;
+      }
+      java.util.Map<File,ScreenshotWidget> kept=new java.util.HashMap<>();
+      if (this.fresh) this.clearChildren(); else for (ScreenshotWidget widget : this.screenshotWidgets) kept.put(widget.getScreenshotFile(), widget);
+      int scroll=this.fresh ? 0 : this.scrollY;
+      this.screenshotWidgets.clear();
+      this.elements.clear();
+      for (int i = 0; i < files.size(); i++) {
+         File file = files.get(this.invertedOrder ? files.size() - 1 - i : i);
+         ScreenshotWidget widget = kept.remove(file);
+         if (widget == null) widget = new ScreenshotWidget(this.mainScreen, this.x, this.y, this.childWidth, this.childHeight, this, file);
+         this.screenshotWidgets.add(widget);
+         this.elements.add(widget);
+      }
+      boolean replaced = this.fresh || !kept.isEmpty();
+      kept.values().forEach(ScreenshotWidget::close);
+      this.fresh = false;
+      this.updateChildren(false);
+      this.scrollY = Math.max(0, Math.min(scroll, this.getTotalHeightOfChildren() - (this.height - 2 * this.spacing)));
+      if (replaced) this.mainScreen.widgetsReplaced();
+   }
+
+   void updateScreenshotsPerRow(double scrollAmount) {
+      scrollAmount = this.invertedScroll ? -scrollAmount : scrollAmount;
+      if (scrollAmount > 0.0) {
+         if (this.screenshotsPerRow < 8) {
+            this.screenshotsPerRow = Math.min(8, this.screenshotsPerRow + 1);
+         }
+      } else if (scrollAmount < 0.0 && this.screenshotsPerRow > 2) {
+         this.screenshotsPerRow = Math.max(2, this.screenshotsPerRow - 1);
+      }
+
+      this.updateChildren(false);
+   }
+
+   void updateChildren(boolean configUpdated) {
+      this.scrollY = 0;
+      this.updateVariables();
+      int maxXOff = this.screenshotsPerRow - 1;
+      int childX = this.x + this.spacing;
+      int childY = this.y + this.spacing;
+      int xOff = 0;
+
+      for (ScreenshotWidget widget : this.screenshotWidgets) {
+         widget.setX(childX);
+         widget.updateBaseY(childY);
+         widget.setWidth(this.childWidth);
+         widget.setHeight(this.childHeight);
+         if (configUpdated) {
+            widget.onConfigUpdate();
+         }
+
+         if (xOff == maxXOff) {
+            xOff = 0;
+            childX = this.x + this.spacing;
+            childY += this.childHeight + this.spacing;
+         } else {
+            xOff++;
+            childX += this.childWidth + this.spacing;
+         }
+      }
+
+      this.scrollbar.repositionScrollbar(this.x, this.y, this.width, this.height, this.spacing, this.getTotalHeightOfChildren());
+   }
+
+   List<ScreenshotWidget> deletionList() {
+      return this.mainScreen.isFastDeleteToggled() ? this.screenshotWidgets.stream().filter(ScreenshotWidget::isSelectedForDeletion).toList() : List.of();
+   }
+
+   void resetDeleteSelection() {
+      this.screenshotWidgets.forEach(ScreenshotWidget::deselectForDeletion);
+   }
+
+   private void updateVariables() {
+      float windowAspect = (float)this.client.getWindow().getScreenWidth() / this.client.getWindow().getScreenHeight();
+      int scrollbarWidth = 6;
+      int scrollbarSpacing = 2;
+      this.spacing = 4;
+      this.childWidth = (this.width - (this.screenshotsPerRow + 1) * this.spacing - 6 - 2) / this.screenshotsPerRow;
+      this.childHeight = (int)((this.namesHidden ? 1.0 : 1.08) * this.childWidth / windowAspect);
+   }
+
+   private void clearChildren() {
+      this.close();
+      this.screenshotWidgets.clear();
+      this.elements.clear();
+   }
+
+   public void close() {
+      this.screenshotWidgets.forEach(ScreenshotWidget::close);
+   }
+   void cancelScan(){
+      scanRevision++;scanning=false;
+      if(scanTask!=null){scanTask.cancel(true);scanTask=null;SCANNER.purge();}
+   }
+   boolean scanning(){return scanning;}
+   String status(){return scanning?"Scanning instance screenshots... "+size()+" found":size()+" screenshots | external originals are read-only";}
+
+   @Override
+   public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+   }
+
+   void render(GuiGraphics context, int mouseX, int mouseY, float delta, boolean updateHoverState) {
+      context.fill(this.x, this.y, this.x + this.width, this.y + this.height, FastColor.ARGB32.color(178, 0, 0, 0));
+      if (this.screenshotWidgets.isEmpty()) {
+         context.drawCenteredString(this.client.font, scanning ? net.minecraft.network.chat.Component.literal("Scanning instance screenshots...") : ScreenshotViewerTexts.NO_SCREENSHOTS, (this.x + this.width) / 2, (this.y + this.height + 8) / 2, 16777215);
+      }
+
+      for (ScreenshotWidget screenshotWidget : this.screenshotWidgets) {
+         screenshotWidget.updateY(this.scrollY);
+         int viewportY = this.y + this.spacing;
+         int viewportBottom = this.y + this.height - this.spacing;
+         screenshotWidget.updateHoverState(mouseX, mouseY, viewportY, viewportBottom, updateHoverState);
+         if (screenshotWidget.getY() + screenshotWidget.getHeight() >= this.y && screenshotWidget.getY() <= this.y + this.height) {
+            screenshotWidget.render(context, mouseX, mouseY, delta, viewportY, viewportBottom);
+         } else if (!mainScreen.isShowing(screenshotWidget)) { screenshotWidget.close(); }
+      }
+
+      if (this.canScroll()) {
+         this.scrollbar.render(context, mouseX, mouseY, this.scrollY, updateHoverState, this.scrollbarClicked);
+      }
+   }
+
+   public List<? extends GuiEventListener> children() {
+      return this.elements;
+   }
+
+   @Override
+   public ScreenshotImageHolder getScreenshot(int index) {
+      return this.screenshotWidgets.get(index);
+   }
+
+   @Override
+   public Optional<ScreenshotImageHolder> findByFileName(File file) {
+      return this.screenshotWidgets
+         .stream()
+         .filter(screenshotWidget -> screenshotWidget.getScreenshotFile().equals(file))
+         .map(ScreenshotImageHolder.class::cast)
+         .findFirst();
+   }
+
+   @Override
+   public int size() {
+      return this.screenshotWidgets.size();
+   }
+
+   @Override
+   public int screenshotsPerRow() {
+      return this.screenshotsPerRow;
+   }
+
+   @Override
+   public int currentIndex(ScreenshotWidget widget) {
+      return this.screenshotWidgets.indexOf(widget);
+   }
+
+   @Override
+   public void removeEntry(ScreenshotWidget widget) {
+      this.deletedDuringScan.add(widget.getScreenshotFile());
+      this.screenshotWidgets.remove(widget);
+      this.elements.remove(widget);
+      this.updateChildren(false);
+   }
+
+   @Override
+   public void renamed(File from, File to) {
+      this.renamedDuringScan.replaceAll((original,current)->current.equals(from)?to:current);
+      this.renamedDuringScan.putIfAbsent(from,to);
+   }
+
+   void invertOrder() {
+      Collections.reverse(this.screenshotWidgets);
+      this.invertedOrder = !this.invertedOrder;
+      int previousScrollY = this.scrollY;
+      this.updateChildren(false);
+      this.scrollY = previousScrollY;
+   }
+
+   boolean isInvertedOrder() {
+      return this.invertedOrder;
+   }
+
+   private boolean canScroll() {
+      int totalHeightOfTheChildrens = this.getTotalHeightOfChildren();
+      int viewHeight = this.height - 2 * this.spacing;
+      return totalHeightOfTheChildrens > viewHeight;
+   }
+
+   private boolean canScrollDown() {
+      int totalHeightOfTheChildrens = this.getTotalHeightOfChildren();
+      int viewHeight = this.height - 2 * this.spacing;
+      int leftOver = totalHeightOfTheChildrens - viewHeight;
+      return this.scrollY < leftOver;
+   }
+
+   private int getTotalHeightOfChildren() {
+      int rows = Mth.ceil((float)this.screenshotWidgets.size() / this.screenshotsPerRow);
+      return rows * this.childHeight + this.spacing * (rows - 1);
+   }
+
+   @Override
+   public boolean mouseScrolled(double mouseX, double mouseY, double verticalAmount) {
+      if (this.canScroll()) {
+         int scrollSpeed = Math.abs((int)(this.scrollSpeedFactor * (6.0F / this.screenshotsPerRow) * verticalAmount));
+         if (this.scrollY > 0 && verticalAmount > 0.0) {
+            this.scrollY = Math.max(0, this.scrollY - scrollSpeed);
+         }
+
+         if (this.canScrollDown() && verticalAmount < 0.0) {
+            int totalHeightOfTheChildrens = this.getTotalHeightOfChildren();
+            int viewHeight = this.height - 2 * this.spacing;
+            int leftOver = totalHeightOfTheChildrens - viewHeight;
+            this.scrollY = Math.min(leftOver, this.scrollY + scrollSpeed);
+         }
+
+         return true;
+      } else {
+         return super.mouseScrolled(mouseX, mouseY, verticalAmount);
+      }
+   }
+
+   @Override
+   public boolean mouseClicked(double mouseX, double mouseY, int button) {
+      this.scrollbarClicked = false;
+      if (this.canScroll() && this.scrollbar.mouseClicked(mouseX, mouseY, button, this.scrollY)) {
+         this.scrollbarClicked = true;
+         return true;
+      } else {
+         return super.mouseClicked(mouseX, mouseY, button);
+      }
+   }
+
+   @Override
+   public boolean mouseReleased(double mouseX, double mouseY, int button) {
+      this.scrollbarClicked = false;
+      return super.mouseReleased(mouseX, mouseY, button);
+   }
+
+   @Override
+   public boolean mouseDragged(double mouseX, double mouseY, int button, double offsetX, double offsetY) {
+      if (this.scrollbarClicked && this.canScroll()) {
+         int totalHeightOfTheChildrens = this.getTotalHeightOfChildren();
+         int scrollDelta = this.scrollbar.getScrollOffsetDelta(offsetY, totalHeightOfTheChildrens);
+         if (this.scrollY > 0 && scrollDelta > 0) {
+            this.scrollY = Math.max(0, this.scrollY - scrollDelta);
+         }
+
+         if (this.canScrollDown() && scrollDelta < 0) {
+            int viewHeight = this.height - 2 * this.spacing;
+            int leftOver = totalHeightOfTheChildrens - viewHeight;
+            this.scrollY = Math.min(leftOver, this.scrollY - scrollDelta);
+         }
+      }
+
+      return super.mouseDragged(mouseX, mouseY, button, offsetX, offsetY);
+   }
+
+   @Override
+   public boolean keyPressed(int key, int scanCode, int modifiers) {
+      return this.screenshotWidgets.stream().anyMatch(widget -> widget.keyPressed(key, scanCode, modifiers));
+   }
+
+   public void updateNarration(NarrationElementOutput builder) {
+   }
+
+   public NarrationPriority narrationPriority() {
+      return NarrationPriority.NONE;
+   }
+
+   private static class Scrollbar {
+      private final int spacing = 2;
+      private final int width = 6;
+      private final int trackWidth = 2;
+      private int x;
+      private int height;
+      private int trackX;
+      private int trackY;
+      private int trackHeight;
+      private IntUnaryOperator scrollbarYGetter;
+
+      void repositionScrollbar(int listX, int listY, int listWith, int listHeight, int listSpacing, int totalHeightOfTheChildrens) {
+         this.x = listX + listWith - 2 - 6;
+         this.trackX = this.x + 2;
+         this.trackY = listY + listSpacing;
+         this.trackHeight = listHeight - 2 * listSpacing;
+         int scrollbarSpacedTrackHeight = this.trackHeight + 4;
+         this.scrollbarYGetter = scrollOffset -> Mth.ceil((float)(scrollOffset * scrollbarSpacedTrackHeight) / totalHeightOfTheChildrens) + listY + 2;
+         this.height = totalHeightOfTheChildrens<=0 ? this.trackHeight : this.trackHeight * scrollbarSpacedTrackHeight / totalHeightOfTheChildrens;
+      }
+
+      void render(GuiGraphics context, double mouseX, double mouseY, int scrollOffset, boolean updateHoverState, boolean clicked) {
+         int y = this.scrollbarYGetter.applyAsInt(scrollOffset);
+         context.fill(this.trackX, this.trackY, this.trackX + 2, this.trackY + this.trackHeight, -1);
+         context.fill(this.x, y, this.x + 6, y + this.height, clicked ? -1 : (this.isHovered(mouseX, mouseY, y) && updateHoverState ? -9605779 : -14803426));
+      }
+
+      boolean mouseClicked(double mouseX, double mouseY, double button, int scrollOffset) {
+         return button == 0.0 && this.isHovered(mouseX, mouseY, this.scrollbarYGetter.applyAsInt(scrollOffset));
+      }
+
+      int getScrollOffsetDelta(double scrollbarDelta, double totalHeightOfTheChildrens) {
+         int scrollbarSpacedTrackHeight = this.trackHeight + 4;
+         return Mth.ceil(-scrollbarDelta * totalHeightOfTheChildrens / scrollbarSpacedTrackHeight);
+      }
+
+      private boolean isHovered(double mouseX, double mouseY, int y) {
+         return mouseX >= this.x && mouseY >= y && mouseX < this.x + 6 && mouseY < y + this.height;
+      }
+   }
+}

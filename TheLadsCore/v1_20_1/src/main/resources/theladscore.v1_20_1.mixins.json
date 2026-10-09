@@ -7,8 +7,6 @@
     "defaultRequire": 0
   },
   "client": [
-    "PauseScreenMixin",
-    "TitleScreenMixin",
     "KeyboardHandlerMixin",
     "MouseHandlerMixin",
     "ScoreboardMixin",

@@ -93,6 +93,22 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     @Override
     public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
         com.thelads.core.v1_20_1.hud.overlay.PaperDoll1201.render(guiGraphics, x, y, width, height, editor);
+
+        /**
+     * Runs the drawing as one batch: 1.20.1's GuiGraphics ends its vertex buffer after every fill, and the Lads artwork is hundreds
+     * of fills per frame. Direct draws (blits) inside must flush() first so they stay in order.
+     */
+    public void managed(Runnable drawing) {
+        if (noBatch) drawing.run();
+        else guiGraphics.drawManaged(drawing);
+    }
+
+    /** QA switch (MenusQa1201): draw the Lads artwork call by call, to compare with the batched path. */
+    public static volatile boolean noBatch;
+
+    @Override
+    public void drawModIcon(String id, int x, int y, int size) {
+        if (!com.thelads.core.v1_20_1.gui.ModIcons1201.draw(guiGraphics, id, x, y, size)) LadsGraphics.super.drawModIcon(id, x, y, size);
     }
 
     @Override
