@@ -93,6 +93,7 @@ internal static class ZeroSmpQa
             string mods = Path.Combine(gameDir, "mods");
             File.Copy(coreJar, Path.Combine(mods, "theladscore.jar"), overwrite: true);
             foreach (var line in QaShared.RemoveMods(mods, removeMods)) Say(line);
+            foreach (var line in QaShared.AddMods(mods, QaShared.Env("LADS_VERIFY_ADD_MODS"))) Say(line);
             if (freshWorld) { string world = Path.Combine(gameDir, "saves", WorldName); if (Directory.Exists(world)) { SafeFileOps.DeleteTree(world); Say("Fresh world: deleted " + world); } }
             File.WriteAllLines(Path.Combine(evidence, "mods.txt"), Directory.EnumerateFiles(mods, "*.jar").Select(f => Path.GetFileName(f)).Order(StringComparer.OrdinalIgnoreCase));
 
@@ -181,6 +182,8 @@ internal static class ZeroSmpQa
             string? fastQuit = QaShared.Env("LADS_VERIFY_FASTQUIT");
             if (fastQuit != null) flags.Add("-Dthelads.verifyFastQuit=" + fastQuit);
             if (fastQuit == "baseline") flags.Add("-Dlads.fastquit=false");
+            foreach (var extra in (QaShared.Env("LADS_VERIFY_EXTRA_JVM") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                flags.Add(System.Text.RegularExpressions.Regex.IsMatch(extra, @"\A-Dlads\.[a-z0-9.]{1,40}=[A-Za-z0-9._-]{1,40}\z") ? extra : throw new ArgumentException("LADS_VERIFY_EXTRA_JVM takes only -Dlads.<name>=<value> flags, not '" + extra + "'."));
             // LADS_VERIFY_EBE=1|off|xmas: the baked block entity probe (BakedBlockEntitiesProbe1201), asked for after the world capture.
             string? ebe = QaShared.Env("LADS_VERIFY_EBE");
             if (ebe is not (null or "1" or "off" or "xmas")) throw new ArgumentException("LADS_VERIFY_EBE must be 1, off or xmas.");

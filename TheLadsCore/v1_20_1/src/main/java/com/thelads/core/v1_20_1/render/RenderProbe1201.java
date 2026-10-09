@@ -458,6 +458,9 @@ public final class RenderProbe1201 {
         steps.add(mc -> { look(mc, 60, 0, 0, 10); return 60; });
         measure(steps, "animations");
         atlasParity(steps, "start");
+        // Zero SMP crashes natively (jemalloc, a pack mod's shader registration) on the 4th or 5th resource reload in a row, with every 1.8.5
+        // built-in off as well: -Dlads.render185.noreload=true leaves the reload steps (HD pack, F3+T, mipmaps off) out there.
+        if (Boolean.getBoolean("lads.render185.noreload")) return steps;
         // 5. An HD pack of animated textures (256 px frames), where frame uploads are heavy: costs and parity, then the pack is removed
         steps.add(mc -> {
             RenderQaPack.write(game.resolve("resourcepacks"), "\"pack_format\":15", 256, HD);

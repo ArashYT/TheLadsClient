@@ -291,13 +291,17 @@ public final class FastQuitProbe1201 {
      */
     private static void skipBackupQuestion(Minecraft mc) {
         var screen = mc.screen;
-        if (!(screen instanceof net.minecraft.client.gui.screens.BackupConfirmScreen)) return; // class names are intermediary in production
-        String load = Component.translatable("selectWorld.backupJoinSkipButton").getString();
+        // class names are intermediary in production; Forge (Zero SMP) also asks "Worlds using Experimental Settings are not supported" (Yes)
+        boolean backup = screen instanceof net.minecraft.client.gui.screens.BackupConfirmScreen;
+        boolean experimental = !backup && screen instanceof net.minecraft.client.gui.screens.ConfirmScreen
+            && screen.getTitle().getString().equals(Component.translatable("selectWorld.warning.experimental.title").getString());
+        if (!backup && !experimental) return;
+        String load = backup ? Component.translatable("selectWorld.backupJoinSkipButton").getString() : net.minecraft.network.chat.CommonComponents.GUI_YES.getString();
         mc.execute(() -> {
             if (mc.screen != screen) return;
             for (var child : screen.children())
                 if (child instanceof Button button && button.getMessage().getString().equals(load)) {
-                    LOGGER.info("Lads fast quit probe: '{}' asked for a backup; loading without one", screen.getTitle().getString());
+                    LOGGER.info("Lads fast quit probe: '{}' asked {}; loading anyway", screen.getTitle().getString(), backup ? "for a backup" : "to confirm");
                     button.onPress();
                     return;
                 }

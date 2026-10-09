@@ -620,6 +620,7 @@ try
         QaShared.RememberModJars(version, Path.Combine(directory, "mods"), packFiles);
         foreach (var line in QaShared.RemoveMods(Path.Combine(directory, "mods"), Env("LADS_VERIFY_REMOVE_MODS"))) { Console.WriteLine(line); summary.Add(line); }
     }
+    foreach (var line in QaShared.AddMods(Path.Combine(directory, "mods"), Env("LADS_VERIFY_ADD_MODS"))) { Console.WriteLine(line); summary.Add(line); }
     if (Env("LADS_VERIFY_V133") == "1")
     {
         string addon = Path.Combine(root,"TheLadsCore",version=="26.3"?"v26_3":"v26_2","build","verification","lads-jade-addon-qa.jar");
@@ -704,6 +705,9 @@ try
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
     if (fastQuitPhase != null) AddJvm("-Dthelads.verifyFastQuit=" + fastQuitPhase);
     if (fastQuitPhase == "baseline") AddJvm("-Dlads.fastquit=false");
+    // LADS_VERIFY_EXTRA_JVM="-Dlads.ixeris=false;-Dlads.reflex=false": the built-ins' kill switches (and nothing else) for a QA run.
+    foreach (var extra in (Env("LADS_VERIFY_EXTRA_JVM") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        AddJvm(Regex.IsMatch(extra, @"\A-Dlads\.[a-z0-9.]{1,40}=[A-Za-z0-9._-]{1,40}\z") ? extra : throw new ArgumentException("LADS_VERIFY_EXTRA_JVM takes only -Dlads.<name>=<value> flags, not '" + extra + "'."));
     if (addServerVerification) AddJvm("-Dthelads.verifyAddServer=true");
     if (ebeVerification)
     {
