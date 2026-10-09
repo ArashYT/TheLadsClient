@@ -1,7 +1,7 @@
 {
   "packId": "zero-smp-1.20.1",
   "version": "1.0.1",
-  "description": "Adds c2mef, lazyyyyy and Crawl on Demand (crawl key J); drops LeavesBeGone",
+  "description": "Adds c2mef and Crawl on Demand (crawl key J); drops LeavesBeGone",
   "mods": {
     "add": [
       {
@@ -13,11 +13,6 @@
         "fileName": "crawlondemand-1.20-1.20.1-1.3.0+forge.jar",
         "sha1": "cdd356d07de6b39ffa4e56a45b784fb2fbaaf968",
         "url": "https://cdn.modrinth.com/data/wcXLQVhg/versions/vYF9TsDY/crawlondemand-1.20-1.20.1-1.3.0%2Bforge.jar"
-      },
-      {
-        "fileName": "lazyyyyy-lexforge-core-0.14.19.jar",
-        "sha1": "5a7dc4414e0f950fe875c9e20b740c5dba300132",
-        "url": "https://cdn.modrinth.com/data/U8A8WZbk/versions/9vBKElli/lazyyyyy-lexforge-core-0.14.19.jar"
       }
     ],
     "remove": [
@@ -26,8 +21,8 @@
   },
   "keybinds": {
     "defaults": {
-      "key_key.crawlondemand.crawl": "key.keyboard.unknown",
-      "key_key.crawlondemand.toggle_crawl": "key.keyboard.j"
+      "key_key.crawlondemand.toggle_crawl": "key.keyboard.j",
+      "key_key.crawlondemand.crawl": "key.keyboard.unknown"
     },
     "force": {}
   },
