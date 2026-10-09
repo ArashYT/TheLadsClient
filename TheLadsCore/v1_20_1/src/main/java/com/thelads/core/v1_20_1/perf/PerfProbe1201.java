@@ -21,7 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * QA probes of the performance features, off unless {@code -Dthelads.perfProbe=<list>} names them (comma separated:
+ * QA probes of the performance features, off unless {@code -Dthelads.perfProbe=<list>} (or the environment variable LADS_PERF_PROBE) names them (comma separated:
  * {@code presence}, {@code dfps}, {@code borderless}). They drive the real module switches, the real window and the real
  * render loop, measure, and log {@code PERF-PROBE ...} lines; nothing is simulated. A QA window is never focused, so the
  * Dynamic FPS state it is in is UNFOCUSED (or HOVERED when the mouse is over it); the probe presses the module's own
@@ -40,11 +40,12 @@ public final class PerfProbe1201 {
     private static boolean presenceDone;
     private static Dfps dfps;
     private static Border border;
+    private static Controls controls;
 
     private PerfProbe1201() {}
 
     public static void register() {
-        String value = System.getProperty("thelads.perfProbe");
+        String value = System.getProperty("thelads.perfProbe", System.getenv("LADS_PERF_PROBE"));
         if (value == null || value.isBlank()) return;
         wanted = Set.copyOf(Arrays.asList(value.toLowerCase().split(",")));
         LOGGER.info("PERF-PROBE enabled: {}", wanted);
@@ -63,6 +64,10 @@ public final class PerfProbe1201 {
         if (wanted.contains("dfps")) {
             if (dfps == null) dfps = new Dfps();
             dfps.tick(client, now);
+        }
+        if (wanted.contains("controlling")) {
+            if (controls == null) controls = new Controls();
+            controls.tick(client, now);
         }
         if (wanted.contains("borderless") && (dfps == null || dfps.finished())) {
             if (border == null) border = new Border();
@@ -174,6 +179,61 @@ public final class PerfProbe1201 {
             phase = next;
             phaseStart = now;
             phaseStart2 = 0;
+        }
+    }
+
+    // ---------------------------------------------------------------- Controlling
+
+    private static final class Controls {
+        private int step;
+        private long stepStart;
+        private int allRows;
+        private boolean failed;
+
+        void tick(Minecraft client, long now) {
+            if (step >= 5) return;
+            if (!com.thelads.core.v1_20_1.embedded.EmbeddedMods1201.active("controlling")) {
+                LOGGER.info("PERF-PROBE controlling SKIP original Controlling is installed, Lads stands down");
+                step = 5;
+                return;
+            }
+            if (step > 0 && now - stepStart < 1_500_000_000L) return;
+            stepStart = now;
+            switch (step) {
+                case 0 -> {
+                    client.setScreen(new net.minecraft.client.gui.screens.controls.KeyBindsScreen(client.screen, client.options));
+                    step = 1;
+                }
+                case 1 -> {
+                    var screen = client.screen;
+                    boolean ok = screen instanceof com.thelads.core.v1_20_1.embedded.controlling.client.NewKeyBindsScreen;
+                    LOGGER.info("PERF-PROBE controlling screen class {} {}", screen == null ? "none" : screen.getClass().getName(), ok ? "PASS (embedded Controlling replaced the vanilla key binds screen)" : "FAIL");
+                    failed |= !ok;
+                    if (ok) {
+                        var c = (com.thelads.core.v1_20_1.embedded.controlling.client.NewKeyBindsScreen) screen;
+                        allRows = c.keyList().children().size();
+                        int rows = c.probeSearch("forward");
+                        boolean found = rows >= 1 && rows < allRows;
+                        LOGGER.info("PERF-PROBE controlling search all={} forward={} {}", allRows, rows, found ? "PASS (search narrows the list)" : "FAIL");
+                        failed |= !found;
+                        int none = c.probeSearch("name:zzzzzzqq");
+                        LOGGER.info("PERF-PROBE controlling search nomatch rows={} {}", none, none == 0 ? "PASS" : "FAIL");
+                        failed |= none != 0;
+                        c.probeSearch("");
+                        c.probeToggleFree();
+                        int free = c.keyList().children().size();
+                        LOGGER.info("PERF-PROBE controlling free keys rows={} {}", free, free > 1 ? "PASS (free keys list)" : "FAIL");
+                        failed |= free <= 1;
+                    }
+                    step = 2;
+                }
+                case 2 -> {
+                    client.setScreen(null);
+                    step = 5;
+                    LOGGER.info("PERF-PROBE controlling RESULT {}", failed ? "FAIL" : "PASS");
+                }
+                default -> { }
+            }
         }
     }
 
