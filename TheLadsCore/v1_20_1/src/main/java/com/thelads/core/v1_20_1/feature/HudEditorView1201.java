@@ -64,6 +64,7 @@ public final class HudEditorView1201 {
             mc.gui.render(g, mc.getFrameTime()); // the Lads HUD skips itself while the editor is open
         } finally {
             g.pose().popPose();
+            g.flush();
         }
         return true;
     }

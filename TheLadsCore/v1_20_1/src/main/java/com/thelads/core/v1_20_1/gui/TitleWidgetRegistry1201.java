@@ -85,9 +85,11 @@ public final class TitleWidgetRegistry1201 {
         float step = frameDelta * 8;
         entry.hover = reducedMotion ? target : entry.hover < target
             ? Math.min(target, entry.hover + step) : Math.max(target, entry.hover - step);
-        TitleScreenTheme.renderButton(frameGraphics, widget.getX(), widget.getY(), widget.getWidth(),
+        Runnable draw = () -> TitleScreenTheme.renderButton(frameGraphics, widget.getX(), widget.getY(), widget.getWidth(),
             widget.getHeight(), entry.label,
             entry.icon, entry.primary, widget.isHovered(), widget.isFocused(), widget.active, entry.hover);
+        if (frameGraphics instanceof com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201 adapter) adapter.managed(draw);
+        else draw.run();
         return true;
     }
 

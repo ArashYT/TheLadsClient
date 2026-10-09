@@ -302,8 +302,10 @@ public abstract class TitleScreenMixin extends Screen {
         graphics.pose().scale(matrixScale, matrixScale, 1.0f);
 
         var adapter = new GuiGraphicsLadsAdapter1201(graphics, font);
-        TitleScreenTheme.Rect switchBox = TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(),
-            SharedConstants.getCurrentVersion().getName() + (minecraft.isDemo() ? " Demo" : ""), false, ladsAnimationSeconds, true);
+        TitleScreenTheme.Rect[] box = new TitleScreenTheme.Rect[1];
+        adapter.managed(() -> box[0] = TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(),
+            SharedConstants.getCurrentVersion().getName() + (minecraft.isDemo() ? " Demo" : ""), false, ladsAnimationSeconds, true));
+        TitleScreenTheme.Rect switchBox = box[0];
         if (switchBox != null) {
             ((CompactButton1201) ladsSwitchButton).setBounds(switchBox.x(), switchBox.y(), switchBox.width(), switchBox.height());
         }

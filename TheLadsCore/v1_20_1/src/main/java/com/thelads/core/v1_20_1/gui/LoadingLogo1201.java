@@ -35,9 +35,11 @@ public final class LoadingLogo1201 {
 
     /** One frame of the Lads loading screen (vanilla's overlay and Forge's both draw it). */
     public static void draw(GuiGraphics graphics, float progress, float alpha, float barAlpha) {
-        LoadingScreenTheme.render(new GuiGraphicsLadsAdapter1201(graphics, Minecraft.getInstance().font), graphics.guiWidth(), graphics.guiHeight(),
+        var adapter = new GuiGraphicsLadsAdapter1201(graphics, Minecraft.getInstance().font);
+        adapter.managed(() -> LoadingScreenTheme.render(adapter, graphics.guiWidth(), graphics.guiHeight(),
             progress, alpha, barAlpha, (x, y, width, height, a) -> {
                 if (ready()) {
+                    graphics.flush(); // the glow fills before the logo are still buffered; the logo is a direct draw
                     RenderSystem.enableBlend();
                     RenderSystem.defaultBlendFunc();
                     graphics.setColor(1f, 1f, 1f, a);
@@ -45,6 +47,6 @@ public final class LoadingLogo1201 {
                         LoadingScreenTheme.LOGO_WIDTH, LoadingScreenTheme.LOGO_HEIGHT);
                     graphics.setColor(1f, 1f, 1f, 1f);
                 }
-            });
+            }));
     }
 }

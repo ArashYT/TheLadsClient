@@ -25,8 +25,9 @@ public abstract class GlobalButtonMixin extends AbstractWidget {
     @Inject(method = "renderWidget(Lnet/minecraft/client/gui/GuiGraphics;IIF)V", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsButton(GuiGraphics g, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         var adapter = new GuiGraphicsLadsAdapter1201(g);
-        TitleScreenTheme.renderButtonSurface(adapter, getX(), getY(), getWidth(), getHeight(), isHoveredOrFocused(), isFocused(),
-            active, alpha, ButtonLift.eased(this));
+        float lift = ButtonLift.eased(this);
+        adapter.managed(() -> TitleScreenTheme.renderButtonSurface(adapter, getX(), getY(), getWidth(), getHeight(), isHoveredOrFocused(),
+            isFocused(), active, alpha, lift));
         Font font = Minecraft.getInstance().font;
         int color = (active ? 0xFFFFFF : 0xA0A0A0) | Mth.ceil(alpha * 255.0f) << 24;
         // The pause menu's buttons: an icon before the label, the two centred together.

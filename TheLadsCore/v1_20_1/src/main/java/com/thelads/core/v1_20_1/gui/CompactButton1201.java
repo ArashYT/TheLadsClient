@@ -36,8 +36,9 @@ public final class CompactButton1201 extends Button {
 
     @Override
     protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float delta) {
-        TitleScreenTheme.renderCompactButton(new GuiGraphicsLadsAdapter1201(g), getX(), getY(), getWidth(), getHeight(),
-            icon.get(), getWidth() <= getHeight() ? null : getMessage().getString(), isFocused(), active,
-            ButtonLift.update(this, active && isHoveredOrFocused()));
+        var adapter = new GuiGraphicsLadsAdapter1201(g);
+        float hover = ButtonLift.update(this, active && isHoveredOrFocused());
+        adapter.managed(() -> TitleScreenTheme.renderCompactButton(adapter, getX(), getY(), getWidth(), getHeight(),
+            icon.get(), getWidth() <= getHeight() ? null : getMessage().getString(), isFocused(), active, hover));
     }
 }

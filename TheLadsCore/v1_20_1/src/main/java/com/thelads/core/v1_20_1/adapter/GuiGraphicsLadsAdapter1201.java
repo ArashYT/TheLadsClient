@@ -50,6 +50,14 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         return guiGraphics;
     }
 
+    /**
+     * Runs the drawing as one batch: 1.20.1's GuiGraphics ends its vertex buffer after every fill, and the Lads artwork is hundreds
+     * of fills per frame. Direct draws (blits) inside must flush() first so they stay in order.
+     */
+    public void managed(Runnable drawing) {
+        guiGraphics.drawManaged(drawing);
+    }
+
     @Override
     public void drawModIcon(String id, int x, int y, int size) {
         LadsGraphics.super.drawModIcon(id, x, y, size);

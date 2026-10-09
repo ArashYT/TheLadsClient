@@ -84,13 +84,14 @@ public class LadsSettingsScreen1201 extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         ui.setReducedMotion(minecraft.options.screenEffectScale().get() <= 0);
-        ui.render(new GuiGraphicsLadsAdapter1201(g, this.font) {
+        var adapter = new GuiGraphicsLadsAdapter1201(g, this.font) {
             // Fullbright's preview shows the live world (no HUD), so a gamma change is seen as it is made.
             @Override
             public boolean drawGameView(int x, int y, int width, int height) {
                 return HudEditorView1201.draw(g, x, y, width, height, false);
             }
-        }, mouseX, mouseY);
+        };
+        adapter.managed(() -> ui.render(adapter, mouseX, mouseY));
         super.render(g, mouseX, mouseY, delta);
     }
 

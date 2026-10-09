@@ -30,7 +30,7 @@ public abstract class GlobalSliderMixin {
         float alpha = ((WidgetHeightAccessor) slider).ladsAlpha();
 
         // 1. Render base track surface matching client button layout
-        TitleScreenTheme.renderButtonSurface(adapter, x, y, w, h, hovered, focused, active, alpha);
+        adapter.managed(() -> TitleScreenTheme.renderButtonSurface(adapter, x, y, w, h, hovered, focused, active, alpha));
 
         // 2. Render slider handle knob
         int handleWidth = 8;
