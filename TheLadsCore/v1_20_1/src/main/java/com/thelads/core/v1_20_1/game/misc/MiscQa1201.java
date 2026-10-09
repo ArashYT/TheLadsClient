@@ -151,10 +151,10 @@ final class MiscQa1201 {
         int packed = LevelRenderer.getLightColor(mc.level, at);
         boolean sodium = ModPresence1201.loaded("sodium"), embeddium = ModPresence1201.loaded("embeddium") || ModPresence1201.loaded("rubidium");
         LOGGER.info(String.format(Locale.ROOT,
-            "Lads misc qa light at %d,%d,%d (player %+d,%+d,%+d): world block=%d sky=%d | dynamic=%d | vanilla getLightColor block=%d | module on=%b active=%b | sodium=%b embeddium=%b | hits vanilla=%d entity=%d sodium=%d | ticks=%d rebuilds=%d | chunkCompiled=%b | dayTime=%d skyDarken=%.2f gamma=%.2f fullbright=%b",
+            "Lads misc qa light at %d,%d,%d (player %+d,%+d,%+d): world block=%d sky=%d | dynamic=%d | vanilla getLightColor block=%d | module on=%b active=%b | sodium=%b embeddium=%b light-cache hook=%s | hits vanilla=%d entity=%d sodium=%d | ticks=%d rebuilds=%d | chunkCompiled=%b | dayTime=%d skyDarken=%.2f gamma=%.2f fullbright=%b",
             at.getX(), at.getY(), at.getZ(), dx, dy, dz, mc.level.getBrightness(LightLayer.BLOCK, at), mc.level.getBrightness(LightLayer.SKY, at),
             DynamicLights.WORLD.at(at.getX(), at.getY(), at.getZ()), LightTexture.block(packed),
-            ModuleManager.getInstance().getModule("DynamicLights").isEnabled(), NativeDynamicLights1201.active(), sodium, embeddium,
+            ModuleManager.getInstance().getModule("DynamicLights").isEnabled(), NativeDynamicLights1201.active(), sodium, embeddium, NativeDynamicLights1201.sodiumMixinState(),
             NativeDynamicLights1201.vanillaHits, NativeDynamicLights1201.entityHits, NativeDynamicLights1201.sodiumHits,
             NativeDynamicLights1201.ticks, NativeDynamicLights1201.rebuilds, mc.levelRenderer.isChunkCompiled(at), mc.level.getDayTime(),
             mc.level.getSkyDarken(1f), mc.options.gamma().get(), ModuleManager.getInstance().getModule("Fullbright").isEnabled()));

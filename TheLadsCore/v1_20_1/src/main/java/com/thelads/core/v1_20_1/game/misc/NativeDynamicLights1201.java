@@ -107,6 +107,20 @@ public final class NativeDynamicLights1201 {
         return word & ~0xF | light;
     }
 
+    /** QA: whether the Sodium/Embeddium light cache class carries our hook (Mixin merges the handler into it): "applied", "not hooked" or "absent". */
+    public static String sodiumMixinState() {
+        for (String name : new String[] {"me.jellysquid.mods.sodium.client.model.light.data.LightDataAccess"}) {
+            try {
+                Class<?> cache = Class.forName(name, false, NativeDynamicLights1201.class.getClassLoader());
+                for (java.lang.reflect.Method method : cache.getDeclaredMethods()) if (method.getName().contains("lads$dynamicLight")) return "applied";
+                return "not hooked";
+            } catch (Throwable absent) {
+                return "absent";
+            }
+        }
+        return "absent";
+    }
+
     private static void tick(Minecraft mc) {
         long start = System.nanoTime();
         DynamicLights lights = DynamicLights.WORLD;
