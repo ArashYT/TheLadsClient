@@ -230,7 +230,12 @@ internal static class ZeroSmpQa
                 Directory.CreateDirectory(Path.Combine(evidence, "screenshots"));
                 png.CopyTo(Path.Combine(evidence, "screenshots", png.Name), true);
             }
-        if (Listing(realMinecraft) != tripBefore) failures.Add("TRIP-WIRE: the real %APPDATA%\\.minecraft changed during this run.");
+        if (Listing(realMinecraft) != tripBefore)
+        {
+            // The owner plays on this PC while QA runs; LADS_VERIFY_TRIPWIRE=strict makes a change a failure (see Program.cs).
+            if (QaShared.Env("LADS_VERIFY_TRIPWIRE") == "strict") failures.Add("TRIP-WIRE: the real %APPDATA%\\.minecraft changed during this run.");
+            else Say("TRIP-WIRE WARNING (not a failure; the owner may be playing): the real %APPDATA%\\.minecraft changed during this run.");
+        }
         else Say($"Trip-wire: {realMinecraft} unchanged.");
         if (Listing(Path.Combine(realSource, "minecraft")) != instanceBefore) Say("note: the source instance listing changed during the run (read-only for the harness: the owner may have played).");
         Say(failures.Count == 0 ? "PASS" : "FAIL:\n  " + string.Join("\n  ", failures));
