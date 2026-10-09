@@ -132,13 +132,21 @@ public record DiscordPresence(String details, String state, long startTimestamp)
         @Override protected String computeValue(Class<?> type) { return label(type); }
     };
 
+    private static volatile Map<Class<?>, String> classNames = Map.of();
+
+    /**
+     * For runtimes whose class names are obfuscated (Fabric 1.20.1: class_442): the screen classes by their Mojang simple name,
+     * registered once at startup before the first screen is labelled. Classes not listed keep their own simple name.
+     */
+    public static void nameClasses(Map<Class<?>, String> mojangSimpleNames) { classNames = Map.copyOf(mojangSimpleNames); }
+
     /** What Discord shows for a screen of this class. */
     public static String screen(Class<?> type) { return CACHE.get(type); }
 
     static String label(Class<?> type) {
         String named = null;
         for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
-            String name = c.getSimpleName().replaceFirst("\\d+$", "");
+            String name = classNames.getOrDefault(c, c.getSimpleName()).replaceFirst("\\d+$", "");
             Class<?> outer = c.getEnclosingClass();
             String label = outer == null ? null : LABELS.get(outer.getSimpleName().replaceFirst("\\d+$", "") + "." + name);
             if (label == null) label = LABELS.get(name);

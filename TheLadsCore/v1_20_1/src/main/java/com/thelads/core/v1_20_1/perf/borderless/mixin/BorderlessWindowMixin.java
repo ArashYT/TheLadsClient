@@ -1,4 +1,4 @@
-package com.thelads.core.v1_20_1.perf.mixin;
+package com.thelads.core.v1_20_1.perf.borderless.mixin;
 
 import com.mojang.blaze3d.platform.Monitor;
 import com.mojang.blaze3d.platform.ScreenManager;

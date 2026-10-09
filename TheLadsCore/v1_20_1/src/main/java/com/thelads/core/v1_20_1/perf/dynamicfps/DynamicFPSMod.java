@@ -160,8 +160,12 @@ public class DynamicFPSMod {
 
 	static boolean renderedCurrentFrame = true;
 
+	/** Loop iterations and frames actually rendered since start (QA reads them to measure the real render rate). */
+	public static volatile long probeLoops, probeRendered;
+
 	public static boolean checkForRender() {
-        if (window != null) window.poll();
+		if (window != null) window.poll();
+		probeLoops++;
 		long currentTime = Util.getEpochMillis();
 		long timeSinceLastRender = currentTime - lastRender;
 
@@ -172,6 +176,7 @@ public class DynamicFPSMod {
 
 		lastRender = currentTime;
 		renderedCurrentFrame = true;
+		probeRendered++;
 		return true;
 	}
 

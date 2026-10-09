@@ -3,8 +3,11 @@ package com.thelads.core.v1_20_1.perf;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.v1_20_1.compat.ModPresence1201;
 import com.thelads.core.v1_20_1.perf.borderless.BorderlessController1201;
+import com.thelads.core.v1_20_1.perf.connection.ConnectionTweaks1201;
+import com.thelads.core.v1_20_1.perf.dynamicfps.util.HudInfoRenderer;
 import com.thelads.core.v1_20_1.perf.dynamicfps.util.KeyMappingHandler;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,8 +24,16 @@ public final class Performance1201 {
     public static void register() {
         dynamicFps();
         borderless();
+        jasione();
+        integrations();
+        ConnectionTweaks1201.register();
+        DiscordScreenNames1201.register();
+        PerfProbe1201.register();
         com.thelads.core.v1_20_1.embedded.EmbeddedMods1201.clientInit();
-        ClientTickEvents.END_CLIENT_TICK.register(client -> BorderlessController1201.tick());
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            BorderlessController1201.tick();
+            if (client.getOverlay() == null) EnumValuesHook1201.reportOnce();
+        });
     }
 
     private static void dynamicFps() {
@@ -32,6 +43,8 @@ public final class Performance1201 {
         } else {
             ModuleSupport.registerBuiltIn("DynamicFPS");
             KeyMappingHandler.register();
+            // Fabric API draws this on both loaders (Forgified Fabric API maps it onto Forge overlays; Forge's own Gui class never runs vanilla Gui.render).
+            HudRenderCallback.EVENT.register((graphics, tickDelta) -> HudInfoRenderer.renderInfo(graphics));
             LOGGER.info("DynamicFPS: Lads' own background profiles are active");
         }
     }
@@ -43,6 +56,40 @@ public final class Performance1201 {
         } else {
             ModuleSupport.registerBuiltIn("BorderlessFullscreen");
             LOGGER.info("BorderlessFullscreen: Lads' own borderless window is active");
+        }
+    }
+
+    /**
+     * Engines Lads wraps instead of replacing. ExternalModSettings1201 registered them with Fabric-only detection; this settles
+     * them again with Forge-aware detection, so Zero SMP (Embeddium, Forge jars) shows the right status.
+     */
+    private static void integrations() {
+        String renderer = ModPresence1201.loaded("sodium") ? "sodium" : ModPresence1201.loaded("embeddium") ? "embeddium" : "rubidium";
+        ModuleSupport.registerExternal("Performance", renderer.equals("sodium") ? "Sodium" : renderer.equals("embeddium") ? "Embeddium" : "Rubidium",
+            renderer, ModPresence1201.loaded("sodium", "embeddium", "rubidium"));
+        ModuleSupport.registerExternal("JEI (Just Enough Items)", "Just Enough Items", "jei", ModPresence1201.loaded("jei"));
+        ModuleSupport.registerExternal("XaeroWorldmap", "Xaero's World Map", "xaeroworldmap", ModPresence1201.loaded("xaeroworldmap"));
+        ModuleSupport.registerExternal("FerriteCore", "FerriteCore", "ferritecore", ModPresence1201.loaded("ferritecore"));
+        // Async ticks entities on the integrated server (26.x only by design: it rewrites 26.x's entity ticking). Not ported:
+        // 1.20.1 modpacks run many mods whose entities and block entities are not thread safe.
+        ModuleSupport.registerUnavailable("Async", "Parallel entity ticking is only available on Minecraft 26.x.");
+        // Flashback Settings configures the Flashback mod, which does not exist for 1.20.1 (the Replay Mod is the 1.20.1 replay tool).
+        ModuleSupport.registerUnavailable("Flashback Settings", "Flashback needs Minecraft 1.21 or newer. Use the Replay Mod on 1.20.1.");
+        // Like 26.3: no Lads engine for Exordium; the module is only there while the mod is.
+        if (ModPresence1201.loaded("exordium")) {
+            ModuleSupport.registerExternal("Exordium", "Exordium", "exordium", true);
+        } else {
+            ModuleSupport.registerUnavailable("Exordium", "Lads has no HUD caching engine for Minecraft 1.20.1 yet. Install the Exordium mod to use it.");
+        }
+    }
+
+    private static void jasione() {
+        if (ModPresence1201.onForge()) {
+            ModuleSupport.registerUnavailable("Jasione", "Under Forge the class loader is not Fabric's Knot; the Enum#values() rewrite is not available here.");
+        } else if (ModPresence1201.loaded("jasione")) {
+            ModuleSupport.registerExternal("Jasione", "Jasione", "jasione", true);
+        } else {
+            ModuleSupport.registerBuiltInRestart("Jasione");
         }
     }
 }

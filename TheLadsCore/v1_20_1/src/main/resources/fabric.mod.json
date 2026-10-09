@@ -21,6 +21,9 @@
   "icon": "assets/modid/icon.png",
   "environment": "*",
   "entrypoints": {
+    "preLaunch": [
+      "com.thelads.core.v1_20_1.perf.PerfPreLaunch1201"
+    ],
     "client": [
       "com.thelads.core.v1_20_1.TheLadsCoreClient1201"
     ]
@@ -28,7 +31,8 @@
   "mixins": [
     "theladscore.v1_20_1.mixins.json",
     "theladscore.v1_20_1.dynamicfps.mixins.json",
-    "theladscore.v1_20_1.borderless.mixins.json"
+    "theladscore.v1_20_1.borderless.mixins.json",
+    "theladscore.v1_20_1.perf.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.14.21",
