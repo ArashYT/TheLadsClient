@@ -39,7 +39,7 @@ import org.joml.Vector4f;
  * Stands down while the Paper Doll mod is installed.
  */
 public final class PaperDoll1201 {
-    private static boolean mod, drawing;
+    private static boolean mod, drawing, registered;
     private static float lastYaw = Float.NaN;
     private static TextureTarget faded;
 
@@ -51,8 +51,10 @@ public final class PaperDoll1201 {
     /** True while the doll is being drawn (Nametags never shows your own tag over it). */
     static boolean drawing() { return drawing; }
 
-    /** Built in (with its triggers and per-tick feed) unless the Paper Doll mod is installed. Called by OverlayFeatures1201. */
+    /** Built in (with its triggers and per-tick feed) unless the Paper Doll mod is installed. Called by OverlayFeatures1201; repeat calls do nothing. */
     public static void register() {
+        if (registered) return;
+        registered = true;
         mod = Mods1201.loaded("paperdoll");
         if (mod) {
             ModuleSupport.registerExternal("Paperdoll", "Paper Doll", "paperdoll", true);

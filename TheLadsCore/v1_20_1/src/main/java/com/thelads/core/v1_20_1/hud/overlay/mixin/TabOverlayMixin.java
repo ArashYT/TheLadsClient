@@ -126,7 +126,7 @@ public class TabOverlayMixin {
     }
 
     @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/PlayerInfo;getSkinLocation()Lnet/minecraft/resources/ResourceLocation;"))
-    private ResourceLocation lads$row(PlayerInfo info, Operation<ResourceLocation> original) {
+    private ResourceLocation lads$captureRow(PlayerInfo info, Operation<ResourceLocation> original) {
         lads$row = info;
         return original.call(info);
     }
