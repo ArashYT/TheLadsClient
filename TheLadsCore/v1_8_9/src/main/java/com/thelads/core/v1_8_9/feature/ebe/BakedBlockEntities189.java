@@ -3,6 +3,7 @@ package com.thelads.core.v1_8_9.feature.ebe;
 import com.thelads.core.client.ebe.BakedBlockEntities;
 import com.thelads.core.client.ebe.BakedQuadOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import net.minecraft.block.Block;
@@ -108,12 +109,14 @@ public final class BakedBlockEntities189 {
     private static void bake(TextureMap map) {
         TextureAtlasSprite missing = map.getMissingSprite();
         TextureAtlasSprite[] sprites = new TextureAtlasSprite[TEXTURES.length];
-        for (int i = 0; i < TEXTURES.length; i++) {
-            sprites[i] = map.getAtlasSprite("minecraft:entity/chest/" + TEXTURES[i]);
-            if (sprites[i] == missing) throw new IllegalStateException("entity/chest/" + TEXTURES[i] + " is not in the block atlas");
-        }
+        for (int i = 0; i < TEXTURES.length; i++) sprites[i] = map.getAtlasSprite("minecraft:entity/chest/" + TEXTURES[i]);
         TextureAtlasSprite signSprite = map.getAtlasSprite("minecraft:entity/sign");
-        if (signSprite == missing) throw new IllegalStateException("entity/sign is not in the block atlas");
+        if (Arrays.asList(sprites).contains(missing) || signSprite == missing) {
+            // The game's first block-atlas pass skips loading sprites (the model reload right after stitches for real).
+            LOG.info("Baked block entities: block atlas without the entity textures this pass, renderers stay in use");
+            chests = new IBakedModel[0][];
+            return;
+        }
         TextureAtlasSprite planks = map.getAtlasSprite("minecraft:blocks/planks_oak"), obsidian = map.getAtlasSprite("minecraft:blocks/obsidian");
 
         ModelChest single = new ModelChest();
