@@ -278,7 +278,7 @@ public final class SkinLayers1201 {
      * QA only (QA run plus -Dthelads.qaSkin=true, a "# lads-qa-skin" script line or a ".lads-qa-skin" file): every player (the QA
      * world has the local one and SkinLayersQa1201's dummy) wears QaSkin's checkerboard.
      */
-    public static ResourceLocation qaSkin(AbstractClientPlayer player) {
+    public static ResourceLocation qaSkin() {
         if (!qaSkin || !RenderSystem.isOnRenderThread()) return null;
         if (qaTexture == null) {
             BufferedImage skin = QaSkin.image();
@@ -294,7 +294,7 @@ public final class SkinLayers1201 {
     }
 
     /** QA only: the QA skin is a wide-armed (Steve) layout. */
-    public static boolean qaWide(AbstractClientPlayer player) {
+    public static boolean qaWide() {
         return qaSkin;
     }
 }

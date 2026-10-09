@@ -8,17 +8,17 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** QA only (inert outside QA runs): the local player wears QaSkin's checkerboard outer layers so 3D layers stand out in captures. */
+/** QA only (inert outside QA runs): players wear QaSkin's checkerboard outer layers so 3D layers stand out in captures. */
 @Mixin(AbstractClientPlayer.class)
 abstract class QaSkinMixin {
     @Inject(method = "getSkinTextureLocation", at = @At("HEAD"), cancellable = true)
     private void lads$qaSkin(CallbackInfoReturnable<ResourceLocation> callback) {
-        ResourceLocation skin = SkinLayers1201.qaSkin((AbstractClientPlayer) (Object) this);
+        ResourceLocation skin = SkinLayers1201.qaSkin();
         if (skin != null) callback.setReturnValue(skin);
     }
 
     @Inject(method = "getModelName", at = @At("HEAD"), cancellable = true)
     private void lads$qaModel(CallbackInfoReturnable<String> callback) {
-        if (SkinLayers1201.qaWide((AbstractClientPlayer) (Object) this)) callback.setReturnValue("default");
+        if (SkinLayers1201.qaWide()) callback.setReturnValue("default");
     }
 }
