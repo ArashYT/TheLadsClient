@@ -296,8 +296,9 @@ public final class NativeItemPhysics1201 {
         if (shown <= 0) return;
         barDrawn++;
         int x = graphics.guiWidth() / 2 - 8, y = graphics.guiHeight() / 2 + 9;
-        graphics.fill(x, y, x + 16, y + 2, 0x80000000);
-        graphics.fill(x, y, x + Math.round(16 * shown), y + 2, 0xE0FFFFFF);
+        // z 400: the chat and other panels drawn before this callback write the depth buffer at their own z and would hide a flat bar
+        graphics.fill(x, y, x + 16, y + 2, 400, 0x80000000);
+        graphics.fill(x, y, x + Math.round(16 * shown), y + 2, 400, 0xE0FFFFFF);
     }
 
     /** QA: the charge bar's fill, 0 to 1. */
