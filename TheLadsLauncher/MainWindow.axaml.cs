@@ -2299,7 +2299,7 @@ public partial class MainWindow : Window
                 if (GameVersionPolicy.IsComingNever(p.MinecraftVersion))
                 {
                     has1710 = true;
-                    var comingNeverItem = new ComboBoxItem { Content = "1.7.10 (COMING NEVER!)", Tag = p, IsEnabled = false, Opacity = 0.5 };
+                    var comingNeverItem = new ComboBoxItem { Content = "The Lads Client 1.7.10 (COMING NEVER!)", Tag = p, IsEnabled = false, Opacity = 0.5 };
                     ToolTip.SetTip(comingNeverItem, GameVersionPolicy.ComingNeverMessage);
                     ToolTip.SetShowOnDisabled(comingNeverItem, true);
                     LaunchProfileSelector.Items.Add(comingNeverItem);
@@ -2315,7 +2315,7 @@ public partial class MainWindow : Window
             {
                 var neverItem = new ComboBoxItem
                 {
-                    Content = "1.7.10 (COMING NEVER!)",
+                    Content = "The Lads Client 1.7.10 (COMING NEVER!)",
                     IsEnabled = false,
                     Opacity = 0.5
                 };
