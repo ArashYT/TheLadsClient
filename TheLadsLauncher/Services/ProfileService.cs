@@ -558,8 +558,9 @@ public class ProfileService : IProfileService
         try
         {
             GameVersionPolicy.ResolveVersionId(profile);
-            return !GameVersionPolicy.RequiresFabric(profile.MinecraftVersion)
-                || !string.IsNullOrWhiteSpace(profile.FabricVersion);
+            // A paused version (26.2) can be saved and kept, but never the active profile: startup falls back to 26.3.
+            return !GameVersionPolicy.IsPaused(profile.MinecraftVersion)
+                && (!GameVersionPolicy.RequiresFabric(profile.MinecraftVersion) || !string.IsNullOrWhiteSpace(profile.FabricVersion));
         }
         catch (ArgumentException)
         {

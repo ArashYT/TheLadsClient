@@ -76,7 +76,7 @@ public class ProfileToolsTests
         var profiles = new[] { "1.8.9", "1.21.1", "26.2", "1.21.11", "26.3" }.Select(v => new LauncherProfile { Name = "P " + v, MinecraftVersion = v })
             .Append(new LauncherProfile { Name = ProfileService.LatestReleaseName, MinecraftVersion = "26.3" });
         Assert.Equal(new[] { "Latest Release", "P 26.3", "P 26.2", "P 1.21.11", "P 1.21.1", "P 1.8.9" }, ProfileTools.NewestFirst(profiles).Select(p => p.Name));
-        Assert.Equal(new[] { "26.3", "26.2", "1.20.1", "1.8.9" }, ProfileTools.PlayableVersions);
+        Assert.Equal(new[] { "26.3", "1.20.1", "1.8.9" }, ProfileTools.PlayableVersions); // 26.2 is paused
     }
 
     [Fact]

@@ -2297,7 +2297,7 @@ public partial class MainWindow : Window
             {
                 bool offered = ProfileTools.PlayableVersions.Contains(p.MinecraftVersion);
                 var item = new ComboBoxItem { Content = p.ToString(), Tag = p, IsEnabled = offered };
-                if (!offered) ToolTip.SetTip(item, $"Minecraft {p.MinecraftVersion} is not offered on the Play screen.");
+                if (!offered) ToolTip.SetTip(item, GameVersionPolicy.IsPaused(p.MinecraftVersion) ? GameVersionPolicy.PausedMessage : $"Minecraft {p.MinecraftVersion} is not offered on the Play screen.");
                 LaunchProfileSelector.Items.Add(item);
                 if (p.Id == active.Id) LaunchProfileSelector.SelectedItem = item;
             }
@@ -2375,6 +2375,7 @@ public partial class MainWindow : Window
                 Margin = new Thickness(0, 0, 0, 10)
             };
             if (isActive) card.Classes.Add("selected");
+            if (GameVersionPolicy.IsPaused(profile.MinecraftVersion)) { card.Opacity = 0.5; ToolTip.SetTip(card, GameVersionPolicy.PausedMessage); }
 
             var grid = new Grid
             {
@@ -2496,6 +2497,12 @@ public partial class MainWindow : Window
                     Padding = new Thickness(16, 0),
                     FontSize = 12.5
                 };
+                if (GameVersionPolicy.IsPaused(profile.MinecraftVersion))
+                {
+                    selectBtn.IsEnabled = false;
+                    ToolTip.SetTip(selectBtn, GameVersionPolicy.PausedMessage);
+                    ToolTip.SetShowOnDisabled(selectBtn, true);
+                }
                 selectBtn.Click += (s, e) =>
                 {
                     if (_launching) return;
@@ -2604,7 +2611,8 @@ public partial class MainWindow : Window
         {
             string name = nameBox.Text?.Trim() ?? "";
             string version = versionBox.Text?.Trim() ?? "26.3";
-            if (GameVersionPolicy.IsDropped(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"Minecraft {version} is no longer supported (1.8.9, 1.20.1, 26.2 or 26.3)"; return; }
+            if (GameVersionPolicy.IsDropped(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"Minecraft {version} is no longer supported (1.8.9, 1.20.1 or 26.3)"; return; }
+            if (GameVersionPolicy.IsPaused(version)) { versionBox.Text = ""; versionBox.PlaceholderText = GameVersionPolicy.PausedMessage; return; }
             if (string.IsNullOrEmpty(name)) name = $"Profile {version}";
 
             bool forge = GameVersionPolicy.UsesForge(version); // 1.8.9: Forge and Java 8, never Fabric
@@ -4023,6 +4031,11 @@ public partial class MainWindow : Window
     private async Task LaunchGame()
     {
         if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup) return;
+        if (GameVersionPolicy.IsPaused(_profileService.GetActiveProfile().MinecraftVersion))
+        {
+            StatusText.Text = GameVersionPolicy.PausedMessage;
+            return;
+        }
         if (_modsBusy)
         {
             // An add/update/delete on the Mods page is writing to Mods; the installers must not run next to it.
@@ -4616,7 +4629,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var versions = new List<string> { "26.3", "26.2", "1.8.9" };
+            var versions = new List<string> { "26.3", "1.8.9" }; // 26.2 is paused (GameVersionPolicy.IsPaused): not offered to the in-game switcher
 
             var obj = new JsonObject
             {
@@ -4644,6 +4657,11 @@ public partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(targetVersion)) return false;
 
             Log($"[Launcher] Version switch requested to: {targetVersion}");
+            if (GameVersionPolicy.IsPaused(targetVersion))
+            {
+                Log($"[Launcher] Version switch refused: {GameVersionPolicy.PausedMessage}.");
+                return false;
+            }
             var targetProfile = _profileService.GetProfiles().FirstOrDefault(p =>
                 string.Equals(p.MinecraftVersion, targetVersion, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(p.Name, targetVersion, StringComparison.OrdinalIgnoreCase));
