@@ -57,7 +57,8 @@ Needs 7 GB free RAM (6 GB heap). The QA world is `LadsQA-zero-smp` in the copy's
 * **Window**: primary monitor (DISPLAY1), a 2x2 tile of the screen by slot (1 top left, 2 top right, 3 bottom left; 960x540 each), game opened at the tile's
   client size (944x501, so GUI scale 2 is not capped), never activated, never minimized, **High** priority. `LADS_VERIFY_NO_RESIZE=1` keeps the game's own size.
 * **Options forced** into `options.txt` on every launch: 120 FPS, vsync off, render/simulation distance 4, GUI scale 2, master volume 0,
-  pauseOnLostFocus false, not fullscreen; Essential's Discord activity and Lads DiscordRPC off; `-Dfabric.noGui=true` (needs Fabric
+  pauseOnLostFocus false, not fullscreen (`LADS_VERIFY_FULLSCREEN=1`: started as the launcher's default "Fullscreen on launch" does,
+  `--fullscreen` + `fullscreen:true`, for borderless/capture tests: the game then covers the primary monitor); Essential's Discord activity and Lads DiscordRPC off; `-Dfabric.noGui=true` (needs Fabric
   Loader >= 0.19.5, older loaders are refused: they ignore it and would open the crash window on the owner's screen).
 
 * **Trip-wire**: the real `%APPDATA%\.minecraft` listing must not change during a run. The owner plays on this PC, so a change is only a printed
@@ -78,7 +79,7 @@ and the run ends when it finishes (log: `Lads qa script END: N passed, M failed`
 | `chat hello` | plain chat message |
 | `shot name` | waits 3 ticks, writes `screenshots\name.png` (the main render target: last finished frame, GUI included); name = `[A-Za-z0-9._-]` |
 | `screen X` | `none` `title` `pause` `options` `video` `controls` `lads` (Lads settings) `hud` (HUD editor) `inventory` `chat` |
-| `key F5` | presses a key binding by its GLFW name (`key.keyboard.<name>`); `F1` toggles hideGui, `F3` the debug screen, `escape` closes the screen or pauses |
+| `key F5` | presses a key binding by its GLFW name (`key.keyboard.<name>`); `F1` toggles hideGui, `F3` the debug screen, `F11` fullscreen (Lads makes it borderless), `escape` closes the screen or pauses |
 | `hold forward on` / `hold sneak off` | holds a movement/action key (`forward back left right jump sneak sprint attack use tab`; `hold tab on` keeps the player list open for a shot, `hold tab off` releases it) |
 | `click left` | one left/right/middle mouse click on the key mappings (attack, use) |
 | `hotbar 3` | selects slot 3 |
