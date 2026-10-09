@@ -1,0 +1,404 @@
+log PERF scenario begin
+cmd gamemode creative
+cmd time set day
+cmd weather clear
+cmd gamerule doMobSpawning false
+look 0 10
+wait 2s
+dump state
+log PERF phase=S begin
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=S end
+log PERF phase=A begin
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=A end
+log PERF phase=A2 begin
+key F1
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=A2 end
+key F1
+wait 1s
+log PERF flip grass_r64
+wait 8s
+log PERF phase=G64 begin
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=G64 end
+log PERF flip grass_r32
+wait 8s
+log PERF phase=G32 begin
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=G32 end
+log PERF flip grass_b3
+wait 8s
+log PERF phase=G32b3 begin
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=G32b3 end
+log PERF flip grass_base
+wait 8s
+log PERF phase=G160 begin
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=G160 end
+log PERF phase=C begin
+cmd weather rain
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=C end
+log PERF flip particular_off
+wait 8s
+log PERF phase=C_particular_off begin
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=C_particular_off end
+log PERF flip particular_on
+wait 8s
+log PERF phase=C_particular_on begin
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=C_particular_on end
+cmd weather clear
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+cmd execute at @s run summon minecraft:cow ~ ~ ~
+log PERF phase=D begin
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=D end
+cmd kill @e[type=minecraft:cow]
+log PERF phase=B begin
+cmd gamemode spectator
+cmd tp @s ~ ~12 ~
+hold forward on
+hold sprint on
+wait 3s
+look 0 8
+dump state
+wait 3s
+look 17 8
+dump state
+wait 3s
+look 34 8
+dump state
+wait 3s
+look 51 8
+dump state
+wait 3s
+look 68 8
+dump state
+wait 3s
+look 85 8
+dump state
+wait 3s
+look 102 8
+dump state
+wait 3s
+look 119 8
+dump state
+wait 3s
+look 136 8
+dump state
+wait 3s
+look 153 8
+dump state
+wait 3s
+look 170 8
+dump state
+wait 3s
+look 187 8
+dump state
+wait 3s
+look 204 8
+dump state
+wait 3s
+look 221 8
+dump state
+wait 3s
+look 238 8
+dump state
+wait 3s
+look 255 8
+dump state
+wait 3s
+look 272 8
+dump state
+wait 3s
+look 289 8
+dump state
+wait 3s
+look 306 8
+dump state
+wait 3s
+look 323 8
+dump state
+hold forward off
+hold sprint off
+cmd gamemode creative
+cmd spreadplayers 0 0 0 1 false @s
+wait 8s
+log PERF phase=B end
+log PERF phase=E begin
+cmd weather thunder
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+wait 3s
+dump state
+log PERF phase=E end
+log PERF phase=Z begin
+cmd weather clear
+wait 2s
+cmd spark health
+wait 3s
+cmd spark tps
+wait 3s
+cmd spark gc
+wait 3s
+dump state
+log PERF phase=Z end
+log PERF scenario end

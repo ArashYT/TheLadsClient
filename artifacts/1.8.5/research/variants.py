@@ -40,6 +40,24 @@ V = {
  'rd12':        [('options.txt', r'^renderDistance:.*$', 'renderDistance:12'), ('options.txt', r'^simulationDistance:.*$', 'simulationDistance:8')],
  'rd8':         [('options.txt', r'^renderDistance:.*$', 'renderDistance:8'), ('options.txt', r'^simulationDistance:.*$', 'simulationDistance:6')],
 }
+
+# inverse / "live flip" variants: used by flipper.py while a game is running (Forge TOML configs are file-watched)
+V['grass_base'] = [('config/grassiergrass-client.toml', r'^\s*renderRadius\s*=.*$', '	renderRadius = 160'),
+                   ('config/grassiergrass-client.toml', r'^\s*bladesPerBlock\s*=.*$', '	bladesPerBlock = 10'),
+                   ('config/grassiergrass-client.toml', r'^\s*bladeParticles\s*=.*$', '	bladeParticles = true'),
+                   ('config/grassiergrass-client.toml', r'^\s*denseFlowers\s*=.*$', '	denseFlowers = true')]
+V['grass_r64'] = [('config/grassiergrass-client.toml', r'^\s*renderRadius\s*=.*$', '	renderRadius = 64')]
+V['grass_r32'] = [('config/grassiergrass-client.toml', r'^\s*renderRadius\s*=.*$', '	renderRadius = 32')]
+V['grass_b3'] = [('config/grassiergrass-client.toml', r'^\s*bladesPerBlock\s*=.*$', '	bladesPerBlock = 3')]
+V['particles_base'] = [('config/particular-common.toml', r'^\s*rainRipples\s*=.*$', '		rainRipples = true'),
+                       ('config/particular-common.toml', r'^\s*waterDripRipples\s*=.*$', '		waterDripRipples = true')]
+V['particular_off'] = [('config/particular-common.toml', r'^\s*rainRipples\s*=.*$', '		rainRipples = false'),
+                       ('config/particular-common.toml', r'^\s*waterDripRipples\s*=.*$', '		waterDripRipples = false'),
+                       ('config/particular-common.toml', r'^\s*fallingLeaves\s*=.*$', '		fallingLeaves = false'),
+                       ('config/particular-common.toml', r'^\s*fireflies\s*=.*$', '		fireflies = false'),
+                       ('config/particular-common.toml', r'^\s*caveDust\s*=.*$', '		caveDust = false')]
+V['particular_on'] = [(f, rx, n.replace('false', 'true')) for f, rx, n in V['particular_off']]
+
 V['all_cfg'] = V['mf_dynres'] + V['grass_lo'] + V['particles_lo'] + V['spr_lo'] + V['emb_auto']
 
 def apply(game, name):

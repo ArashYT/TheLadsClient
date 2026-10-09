@@ -1,0 +1,1 @@
+﻿started 10/08/2026 23:51:19 ; variants=mf_dynres drop= rd=12 sim=8 fps=260 jfr=True jvm=
