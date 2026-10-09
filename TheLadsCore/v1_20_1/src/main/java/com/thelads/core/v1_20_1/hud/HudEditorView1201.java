@@ -24,30 +24,43 @@ public final class HudEditorView1201 {
 
     private HudEditorView1201() {}
 
-    public static boolean draw(GuiGraphics g, int x, int y, int width, int height) {
+    private static boolean wanted, captured;
+
+    /**
+     * GameRenderer, right before the open screen draws (GameRendererHudMixin): the frame's world and vanilla HUD are in the main
+     * render target now, before the editor has drawn anything over them. Only when a view asked for it last frame.
+     */
+    public static void capture() {
+        if (!wanted) return;
+        wanted = false;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || width <= 0 || height <= 0) return false;
+        if (mc.level == null) return;
         RenderTarget main = mc.getMainRenderTarget();
         if (copy == null || copy.width != main.width || copy.height != main.height) {
             release();
             copy = new TextureTarget(main.width, main.height, false, Minecraft.ON_OSX);
             copy.setClearColor(0, 0, 0, 1);
         }
-        g.flush();
         Matrix4f projection = RenderSystem.getProjectionMatrix();
         VertexSorting sorting = RenderSystem.getVertexSorting();
         ShaderInstance shader = mc.gameRenderer.blitShader;
-        GlStateManager._disableScissorTest();
-        try {
-            // 1. the main target's colour into the copy (opaque: alpha is not written, the copy is cleared to alpha 1)
-            copy.clear(Minecraft.ON_OSX);
-            copy.bindWrite(true);
-            fullScreen(shader, main, main.width, main.height);
-            main.bindWrite(true);
-            RenderSystem.setProjectionMatrix(projection, sorting);
-        } finally {
-            GlStateManager._enableScissorTest();
-        }
+        // the main target's colour into the copy (opaque: alpha is not written, the copy is cleared to alpha 1)
+        copy.clear(Minecraft.ON_OSX);
+        copy.bindWrite(true);
+        fullScreen(shader, main, main.width, main.height);
+        main.bindWrite(true);
+        RenderSystem.setProjectionMatrix(projection, sorting);
+        captured = true;
+    }
+
+    /** The captured view into the box; false (the editor keeps its plain backdrop) until the first capture, a frame after the first call. */
+    public static boolean draw(GuiGraphics g, int x, int y, int width, int height) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || width <= 0 || height <= 0) return false;
+        wanted = true;
+        if (copy == null || !captured) return false;
+        g.flush();
+        ShaderInstance shader = mc.gameRenderer.blitShader;
         // 2. the copy into the box, through the GUI's own pose
         Matrix4f pose = g.pose().last().pose();
         shader.setSampler("DiffuseSampler", copy.getColorTextureId());
@@ -95,6 +108,7 @@ public final class HudEditorView1201 {
     }
 
     public static void release() {
+        wanted = captured = false;
         if (copy == null) return;
         copy.destroyBuffers();
         copy = null;
