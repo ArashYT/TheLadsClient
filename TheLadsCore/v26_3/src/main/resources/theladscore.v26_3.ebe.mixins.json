@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.mixin.ebe",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "EbeModelManagerMixin",
+    "EbeBlockEntityRenderDispatcherMixin",
+    "EbeChestRendererMixin",
+    "EbeLevelRendererMixin",
+    "EbeChestBlockEntityMixin",
+    "EbeEnderChestBlockEntityMixin",
+    "EbeChestLidControllerMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}
