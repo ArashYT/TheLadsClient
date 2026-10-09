@@ -110,13 +110,7 @@ public class DraggableHudScreen1201 extends Screen {
     @Override
     public void removed() {
         ui.close();
-        var adapter = new GuiGraphicsLadsAdapter1201(g, this.font) {
-            @Override
-            public boolean drawGameView(int x, int y, int width, int height) {
-                return HudEditorView1201.draw(g, x, y, width, height);
-            }
-        };
-        adapter.managed(() -> ui.render(adapter, mouseX, mouseY));
+        HudEditorView1201.release();
         super.removed();
     }
 }

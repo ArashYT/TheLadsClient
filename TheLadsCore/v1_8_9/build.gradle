@@ -82,12 +82,8 @@ tasks.withType(Jar).configureEach {
         'FMLCorePluginContainsFMLMod': 'true',
         'ForceLoadAsMod': 'true',
         'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
-<<<<<<< HEAD
-        'MixinConfigs': mixinConfigs.join(','),    )
-=======
-        'MixinConfigs': 'theladscore.v1_8_9.mixins.json,theladscore.v1_8_9.ebe.mixins.json',
+        'MixinConfigs': mixinConfigs.join(','),
     )
->>>>>>> work/185-ebe
 }
 
 processResources {
