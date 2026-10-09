@@ -43,6 +43,7 @@ public final class LadsSettingsScreen {
     private boolean reducedMotion;
     private final ColorPicker colorPicker = new ColorPicker();
     private final ActionDropdown actions = new ActionDropdown();
+    private final ParticleRatesDialog particleRates = new ParticleRatesDialog();
     private final ConfirmDialog confirm = new ConfirmDialog();
     private double displayedScroll;
     private int renderScroll;
@@ -60,7 +61,7 @@ public final class LadsSettingsScreen {
     private Consumer<String> onNarrate = ignored -> {};
     private Supplier<String> clipboardReader = () -> "";
     private static final String[] CATEGORIES = {"All", "HUD", "Gameplay", "Performance", "Server"};
-    private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "UnfocusedFpsCap", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore", "Async");
+    private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "UnfocusedFpsCap", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore", "Async", com.thelads.core.client.ParticleCore.MODULE);
     // Installed mods view: its own state, search and "mods:" row ids, so the native catalog above stays native-only.
     private record ModLine(ModInventoryModel.Row row, int depth) {}
     private boolean modsView, detailFromMods;
@@ -106,13 +107,18 @@ public final class LadsSettingsScreen {
     public void setClipboardReader(Supplier<String> reader) { clipboardReader = reader; }
     public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; catalogScrollOffset = 0; catalogDisplayedScroll = 0; catalogRenderScroll = 0; }
     public String getSearchQuery() { return searchQuery; }
-    public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || colorPicker.isOpen() || fpsDialogOpen; }
+    public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || particleRates.isOpen() || colorPicker.isOpen() || fpsDialogOpen; }
     public String getCurrentCategory() { return currentCategory; }
     public String getCurrentTab() { return "MODS"; }
     public List<Rect> getControlBounds() { return controls.stream().map(Control::rect).toList(); }
     /** Bounds of a control drawn by the last render (e.g. "search", "option:Size"), or null; QA drives real input at them. */
     public Rect controlBounds(String id) { return controls.stream().filter(c -> c.id.equals(id)).map(Control::rect).findFirst().orElse(null); }
     public int getScrollOffset() { return scrollOffset; }
+    /** The slider track of a particle type's row in Particle Core's open rates editor, or null: QA and tests click at it. */
+    public Rect particleRatesTrack(String id) {
+        int[] t = particleRates.track(id);
+        return t == null ? null : new Rect(t[0], t[1], t[2], t[3]);
+    }
     /** Where the last frame drew the live game view (GUI pixels), or null (QA measures the world there). */
     public Rect gameViewBounds() { return gameView; }
     /** True while the open page draws the live game view in its preview (Fullbright): 1.8.9 copies the framebuffer before the menu paints. */
@@ -160,9 +166,10 @@ public final class LadsSettingsScreen {
         g.drawText(fit(g, notice.isEmpty() ? "Ctrl+F search / Tab navigate / Esc back" : notice, w), x, height - 15, MUTED);
         colorPicker.render(g, mouseX, mouseY);
         actions.render(g, mouseX, mouseY);
+        particleRates.render(g, mouseX, mouseY);
         renderHudFpsDialog(g, mouseX, mouseY);
         confirm.render(g, mouseX, mouseY);
-        boolean overlay = colorPicker.isOpen() || actions.isOpen() || fpsDialogOpen || confirm.isOpen();
+        boolean overlay = colorPicker.isOpen() || actions.isOpen() || particleRates.isOpen() || fpsDialogOpen || confirm.isOpen();
         if (tip.update(overlay || tipModule == null ? null : tipModule.getName(), now)) {
             String desc = tipModule.getDescription();
             if (tipModule.isBlockedByServer()) {
@@ -1078,6 +1085,8 @@ public final class LadsSettingsScreen {
             button(g, id + ":global", c.isUseGlobal() ? "Global" : "Own", new Rect(r.x + r.width - 54, r.y, 54, r.height), () -> { c.setUseGlobal(!c.isUseGlobal()); changed(detail); }, true, mx, my, c.isUseGlobal());
         } else if (option instanceof TextOption t) {
             button(g, id, editingOption == option ? inputWindow(g, r.width - 10) : t.getValue(), r, () -> startEdit(option), true, mx, my, editingOption == option);
+        } else if (option instanceof ParticleReductionOption p) {
+            button(g, id, p.changed() == 0 ? "Edit..." : p.changed() + " changed...", r, () -> particleRates.open(p, () -> changed(detail)), true, mx, my, p.changed() > 0);
         }
     }
     private void button(LadsGraphics g, String id, String label, Rect r, Runnable action, boolean enabled, int mx, int my, boolean selected) {
@@ -1132,6 +1141,7 @@ public final class LadsSettingsScreen {
         tip.dismiss();
         if (confirm.isOpen()) return confirm.click(x, y, button);
         if (actions.click(x,y,button)) return true;
+        if (particleRates.click(x, y, button)) return true;
         if (colorPicker.click(x, y, button)) return true;
         if (fpsDialogOpen) {
             int dw = Math.min(370, width - 24);
@@ -1221,6 +1231,7 @@ public final class LadsSettingsScreen {
     }
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
         if (confirm.isOpen()) return true;
+        if (particleRates.drag(x)) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); return true; }
         if (colorPicker.move(x, y)) return true;
         refreshCapabilities();
@@ -1230,6 +1241,7 @@ public final class LadsSettingsScreen {
     }
     public boolean mouseReleased(double x, double y, int button) {
         if (confirm.isOpen()) return true;
+        if (particleRates.release()) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); draggingFpsSlider = false; return true; }
         if (colorPicker.release()) return true;
         refreshCapabilities();
@@ -1248,6 +1260,7 @@ public final class LadsSettingsScreen {
     public boolean mouseScrolled(double x, double y, double amount) {
         if (confirm.isOpen()) return true;
         if (actions.wheel(amount)) return true;
+        if (particleRates.wheel(amount)) return true;
         if (colorPicker.isOpen()) return true;
         if (!viewport.contains(x, y)) return false;
         tip.dismiss(); scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int)(amount * 28))); return true;
@@ -1255,6 +1268,7 @@ public final class LadsSettingsScreen {
     public boolean keyPressed(int key, int modifiers) {
         if (confirm.isOpen()) return confirm.key(key);
         if (actions.key(key,modifiers)) return true;
+        if (particleRates.key(key, modifiers)) return true;
         if (colorPicker.key(key)) return true;
         if (fpsDialogOpen) {
             if (key == 256) { closeHudFpsDialog(); return true; }
@@ -1334,6 +1348,7 @@ public final class LadsSettingsScreen {
     public boolean charTyped(int codePoint) {
         if (confirm.isOpen()) return true;
         if (actions.type(codePoint)) return true;
+        if (particleRates.type(codePoint)) return true;
         if (colorPicker.type(codePoint)) return true;
         if (fpsDialogOpen) {
             if (editingFps && codePoint >= '0' && codePoint <= '9' && fpsBuffer.length() < 4) {

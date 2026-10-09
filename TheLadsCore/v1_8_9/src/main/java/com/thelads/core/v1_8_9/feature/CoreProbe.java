@@ -98,6 +98,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe173Cull.STEPS);
+        } else if ("particles".equals(only)) { // Particle Core in a heavy particle scene (ProbeParticleCore189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(ProbeParticleCore189.STEPS);
         } else if ("anim".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
@@ -205,6 +209,7 @@ public final class CoreProbe {
         RaisedDollProbe189.stop();
         Probe172Anim.stop();
         Probe172Keybinds.stop();
+        ProbeParticleCore189.stop();
         if (Minecraft.getMinecraft().gameSettings != null && title != null) Minecraft.getMinecraft().gameSettings.pauseOnLostFocus = pauseOnLostFocus;
     }
 

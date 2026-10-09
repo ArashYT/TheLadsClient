@@ -47,7 +47,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             com.thelads.core.modules.OldAnimationsModule.NAME, "Item Physics", "Nametags",
             "BetterScreenshots", "AutoReconnect", "IgnorePacketErrors", "SmoothHotbar",
             "BorderlessFullscreen", "DisableNarrator", "Raised", "FarBlockEntities",
-            "ParticleBudget", "SignalLoss", "Flashback Settings", "ShulkerBoxUtils",
+            "SignalLoss", "Flashback Settings", "ShulkerBoxUtils",
             "TabList", "EnhancedTooltips", "EnhancedToolbars", "PingView",
             "Performance", "Exordium", "BetterResolution", "ClientTools",
             "ScalableLux", "ModernAdvancements", "Resourcify", "Minimap",
@@ -56,9 +56,11 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "Clumps", "AppleSkin", "Jade", "MouseTweaks"
         );
 
+
         com.thelads.core.v1_20_1.game.Gameplay1201.register();
         com.thelads.core.v1_20_1.perf.Performance1201.register();
         com.thelads.core.v1_20_1.hud.Hud1201.register();
+                com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             NativeFeatures1201.tick();

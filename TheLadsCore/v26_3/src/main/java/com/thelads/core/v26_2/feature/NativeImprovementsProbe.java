@@ -2,6 +2,7 @@ package com.thelads.core.v26_2.feature;
 
 import com.thelads.core.config.*;
 import com.thelads.core.client.ClientTools;
+import com.thelads.core.client.ParticleCore;
 import com.thelads.core.client.bridge.LadsGameBridge;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
@@ -28,7 +29,7 @@ final class NativeImprovementsProbe {
         String clipboard = mc.keyboardHandler.getClipboard();
         var chat = mc.gui.hud.getChat(); var chatState = chat.storeState();
         try {
-            for (String name : List.of("Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates", "ClientTools", "ParticleBudget")) {
+            for (String name : List.of("Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates", "ClientTools", ParticleCore.MODULE)) {
                 require(ModuleSupport.isBuiltIn(name), name + " is connected");
                 NativeQualityOfLife.module(name).setEnabled(true);
             }
@@ -97,11 +98,13 @@ final class NativeImprovementsProbe {
             require(bridge.getServerAddress().equals("Singleplayer"), "local connection HUD label");
             require(!ClientTools.portal(bridge.getDimensionId(), -1, -9).isBlank(), "dimension bridge supplies portal conversion");
             double x = mc.player.getX(), y = mc.player.getY(), z = mc.player.getZ();
-            ((SliderOption)NativeQualityOfLife.module("ParticleBudget").getOption("Particles per tick")).setValue(8);
+            var core = (com.thelads.core.modules.ParticleCoreModule) NativeQualityOfLife.module(ParticleCore.MODULE);
+            core.limit.set(true); core.perTick.setValue(8); ParticleCore.refresh(); ParticleCore.worldChanged();
             for (int i = 0; i < 8; i++) require(mc.particleEngine.createParticle(ParticleTypes.SMOKE, x, y, z, 0, 0, 0) != null, "decorative quota accepts " + i);
             require(mc.particleEngine.createParticle(ParticleTypes.SMOKE, x, y, z, 0, 0, 0) == null, "transformed particle engine enforces quota");
             require(mc.particleEngine.createParticle(ParticleTypes.CRIT, x, y, z, 0, 0, 0) != null, "gameplay particles bypass quota");
             require(mc.particleEngine.createParticle(ParticleTypes.SMOKE, x + 200, y, z, 0, 0, 0) == null, "distance limit applies to decoration");
+            core.limit.set(false); ParticleCore.refresh();
             var target = new net.minecraft.world.entity.decoration.ArmorStand(mc.level, x, y, z + 2);
             target.setId(Integer.MAX_VALUE - 130);
             var location = mc.player.getEyePosition().add(0, 0, 2);

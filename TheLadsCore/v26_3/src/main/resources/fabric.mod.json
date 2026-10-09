@@ -37,6 +37,7 @@
   },
   "mixins": [
     "theladscore.v26_2.mixins.json",
+    "theladscore.v26_3.particlecore.mixins.json",
     "theladscore.food.mixins.json",
     "theladscore.dynamicfps.mixins.json",
     "theladscore.tabtweaks.mixins.json",
