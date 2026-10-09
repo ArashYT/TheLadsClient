@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Adapted from Screenshot Viewer 1.3.6 (LGatodu47), Minecraft 26.2. See ScreenshotViewer-LICENSE.txt.
+// Adapted from Screenshot Viewer 1.3.6 (LGatodu47). See ScreenshotViewer-LICENSE.txt.
 package com.thelads.core.v1_20_1.feature.screenshots.screen.manage_screenshots;
 
 import com.thelads.core.v1_20_1.feature.GlobalScreenshots1201;

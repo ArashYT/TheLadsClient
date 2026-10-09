@@ -28,14 +28,20 @@ import org.slf4j.LoggerFactory;
 public final class ScreenshotViewerConfig implements ConfigAccess {
    private static final Logger LOGGER = LoggerFactory.getLogger("Lads Screenshots");
    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-   private final Path file = FabricLoader.getInstance().getConfigDir().resolve("theladscore").resolve("screenshot_viewer.json");
+   private final Path file;
    private final Map<String, Object> values = new ConcurrentHashMap<>();
 
    public ScreenshotViewerConfig() {
+      this(FabricLoader.getInstance().getConfigDir());
+   }
+
+   /** configDir is the game's config folder; the settings live in its theladscore subfolder. */
+   public ScreenshotViewerConfig(Path configDir) {
+      file = configDir.resolve("theladscore").resolve("screenshot_viewer.json");
       if (Files.isRegularFile(file)) {
          load(file, false);
       } else {
-         load(FabricLoader.getInstance().getConfigDir().resolve("screenshot_viewer-client.json"), true);
+         load(configDir.resolve("screenshot_viewer-client.json"), true);
       }
    }
 

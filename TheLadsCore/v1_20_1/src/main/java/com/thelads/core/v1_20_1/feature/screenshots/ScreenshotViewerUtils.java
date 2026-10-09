@@ -49,8 +49,11 @@ import org.slf4j.Logger;
 
 public class ScreenshotViewerUtils {
    private static final Logger LOGGER = LogUtils.getLogger();
-   @Nullable
-   private static final Clipboard AWT_CLIPBOARD = tryGetAWTClipboard();
+   /** The AWT clipboard is looked up on first use, so starting the game never initialises the AWT toolkit. */
+   private static final class AwtClipboard {
+      @Nullable
+      static final Clipboard INSTANCE = tryGetAWTClipboard();
+   }
    private static final SystemToast.SystemToastIds COPY_SCREENSHOT = SystemToast.SystemToastIds.PERIODIC_NOTIFICATION;
    /** The hint tooltip is drawn after everything else of the frame, so no later widget covers it. */
    @Nullable
@@ -139,14 +142,15 @@ public class ScreenshotViewerUtils {
          fileError("Copy", screenshotFile, new IllegalStateException("Copying an image is not supported on macOS in this version"));
          return;
       }
-      if (AWT_CLIPBOARD == null) { fileError("Copy", screenshotFile, new IllegalStateException("System image clipboard unavailable")); return; }
+      Clipboard clipboard = AwtClipboard.INSTANCE;
+      if (clipboard == null) { fileError("Copy", screenshotFile, new IllegalStateException("System image clipboard unavailable")); return; }
       CompletableFuture.runAsync(() -> {
          try {
             BufferedImage image = ScreenshotFileIO.read(screenshotFile.toPath());
             BufferedImage rgb = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
             var graphics = rgb.createGraphics();
             try { graphics.drawImage(image, 0, 0, null); } finally { graphics.dispose(); image.flush(); }
-            AWT_CLIPBOARD.setContents(new ImageTransferable(rgb), null);
+            clipboard.setContents(new ImageTransferable(rgb), null);
             Minecraft client = Minecraft.getInstance();
             client.execute(() -> SystemToast.addOrUpdate(client.getToasts(), COPY_SCREENSHOT,
                ScreenshotViewerTexts.TOAST_COPY_SUCCESS, Component.literal(screenshotFile.getName())));

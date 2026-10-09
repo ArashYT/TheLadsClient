@@ -7,7 +7,6 @@ import com.thelads.core.v1_20_1.feature.GlobalScreenshots1201;
 import com.thelads.core.v1_20_1.feature.screenshots.config.ScreenshotViewerOptions;
 import com.thelads.core.v1_20_1.feature.screenshots.screen.IconButtonWidget;
 import com.thelads.core.v1_20_1.feature.screenshots.screen.ScreenshotViewerTexts;
-import com.thelads.core.v1_20_1.gui.Widgets1201;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -168,7 +167,10 @@ class ScreenshotPropertiesMenu extends AbstractContainerEventHandler implements 
 
       void setRectangle(int width, int height, int x, int y) {
          this.renderWide = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.RENDER_WIDE_PROPERTIES_BUTTON, true);
-         Widgets1201.setBounds(this, x, y, this.renderWide ? width : this.getWidth(), height);
+         this.setX(x);
+         this.setY(y);
+         this.setWidth(this.renderWide ? width : this.getWidth());
+         this.height = height; // 1.20.1 widgets have no setHeight
       }
 
       @Override
