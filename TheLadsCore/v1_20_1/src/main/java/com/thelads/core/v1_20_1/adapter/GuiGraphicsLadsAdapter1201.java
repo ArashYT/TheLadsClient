@@ -60,7 +60,7 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
 
     @Override
     public void drawModIcon(String id, int x, int y, int size) {
-        LadsGraphics.super.drawModIcon(id, x, y, size);
+        if (!com.thelads.core.v1_20_1.gui.ModIcons1201.draw(guiGraphics, id, x, y, size)) LadsGraphics.super.drawModIcon(id, x, y, size);
     }
 
     @Override
