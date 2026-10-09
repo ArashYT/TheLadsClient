@@ -12,11 +12,23 @@ import org.slf4j.LoggerFactory;
  * input methods a real mouse and keyboard reach, so a script can open every category, search, click a control and photograph it.
  * <pre>
  * ui open fps|colors|mods|actions   ui module &lt;name&gt;   ui search &lt;text&gt;   ui click &lt;control id&gt;   ui ids [prefix]
- * ui key &lt;glfw code&gt;   ui type &lt;text&gt;   ui scroll &lt;amount&gt;   ui scale &lt;1|2&gt;   ui mouse &lt;x&gt; &lt;y&gt;   ui hover &lt;slot&gt;   ui hud click &lt;control id&gt;   ui hud ids
+ * ui key &lt;glfw code&gt;   ui type &lt;text&gt;   ui scroll &lt;amount&gt;   ui scale &lt;1|2&gt;   ui mouse &lt;x&gt; &lt;y&gt;   ui hover &lt;slot&gt;   ui pose   ui silence &lt;ms&gt;   ui hud click &lt;control id&gt;   ui hud ids
  * </pre>
  */
 public final class UiQa1201 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
+
+    /**
+     * QA ("ui pose"): until the next Lads screen frame has been drawn, the HUD pipeline and that screen log the translation their
+     * GuiGraphics pose has (a pose leaked by a HUD overlay shifts every screen drawn after it in the same frame).
+     */
+    public static volatile boolean poseProbe;
+
+    public static void logPose(String where, net.minecraft.client.gui.GuiGraphics graphics) {
+        if (!poseProbe) return;
+        var m = graphics.pose().last().pose();
+        LOGGER.info("Lads qa pose {}: translation {} {} {}, scale {} {}", where, m.m30(), m.m31(), m.m32(), m.m00(), m.m11());
+    }
 
     private UiQa1201() {}
 
@@ -29,6 +41,8 @@ public final class UiQa1201 {
         String what = a.length > 1 ? a[1].toLowerCase(java.util.Locale.ROOT) : "";
         String rest = String.join(" ", Arrays.copyOfRange(a, Math.min(2, a.length), a.length));
         if (what.equals("hud")) return hud(mc, a);
+        if (what.equals("pose")) { poseProbe = true; return true; }
+        if (what.equals("silence")) { com.thelads.core.v1_20_1.hud.overlay.SignalLoss1201.qaSilence(Long.parseLong(rest) * 1_000_000L); return true; } // the server has been silent this many ms (0 = real)
         if (what.equals("scale")) { // the GUI scale (1 gives a roomy layout in the QA window, 2 the compact one)
             mc.options.guiScale().set(Integer.parseInt(rest));
             mc.resizeDisplay();
@@ -54,6 +68,8 @@ public final class UiQa1201 {
             mouse.lads$ypos(y * window.getScreenHeight() / window.getGuiScaledHeight());
             return true;
         }
+        // "ui module" opens the screen when it is not up (Esc on a module page that does not exist, such as one a third-party mod replaces, closes it).
+        if (what.equals("module") && !(mc.screen instanceof LadsSettingsScreen1201)) mc.setScreen(new LadsSettingsScreen1201(null));
         if (!(mc.screen instanceof LadsSettingsScreen1201 screen)) throw new IllegalStateException("ui: the Lads settings screen is not open (screen " + mc.screen + ")");
         var ui = screen.ui();
         switch (what) {
@@ -78,7 +94,7 @@ public final class UiQa1201 {
             case "ids" -> LOGGER.info("Lads qa ui ids: {}", ui.controlIds().stream().filter(id -> id.startsWith(rest)).toList());
             case "key" -> { int code = Integer.parseInt(rest); screen.keyPressed(code, 0, 0); }
             case "type" -> rest.chars().forEach(c -> screen.charTyped((char) c, 0));
-            case "scroll" -> screen.mouseScrolled(mc.getWindow().getGuiScaledWidth() / 2.0, mc.getWindow().getGuiScaledHeight() / 2.0, Double.parseDouble(rest));
+            case "scroll" -> screen.mouseScrolled(80, 190, Double.parseDouble(rest)); // inside the options column of a module page (the preview is to its right)
             default -> throw new IllegalArgumentException("unknown ui step '" + what + "'");
         }
         return true;
