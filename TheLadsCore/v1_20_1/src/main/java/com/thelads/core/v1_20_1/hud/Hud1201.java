@@ -24,6 +24,10 @@ public final class Hud1201 {
     public static void register() {
         if (registered) return;
         registered = true;
+        LOG.info("Lads mod presence: forge={} fabric-api={} appleskin={} jade={} chat_heads={} voicechat={} xaerominimap={} tabtweaks={} durabilitytooltip={} paperdoll={} custom-crosshair-mod={}",
+            ForgeOverlays1201.present(), Mods1201.loaded("fabric-api"), Mods1201.loaded("appleskin"), Mods1201.loaded("jade"),
+            Mods1201.loaded("chat_heads"), Mods1201.loaded("voicechat"), Mods1201.loaded("xaerominimap"), Mods1201.loaded("tabtweaks"),
+            Mods1201.loaded("durabilitytooltip"), Mods1201.loaded("paperdoll"), Mods1201.loaded("custom-crosshair-mod"));
         // Modules the entry point lists as built in that only work with another mod, or have an upstream mod installed.
         if (Mods1201.loaded("raised")) ModuleSupport.registerExternal(RaisedModule.NAME, "Raised", "raised", true);
         for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
