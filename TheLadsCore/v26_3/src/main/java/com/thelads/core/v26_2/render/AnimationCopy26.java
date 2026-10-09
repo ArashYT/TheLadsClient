@@ -25,6 +25,8 @@ public final class AnimationCopy26 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static boolean failed, announced;
     private static boolean[] drawn = new boolean[64];
+    /** Why frames were not copied: not due this tick, interpolated, padded, no frame texture, frame texture not a copy source. */
+    private static final long[] SKIPPED = new long[5];
 
     private AnimationCopy26() {}
 
@@ -42,7 +44,9 @@ public final class AnimationCopy26 {
         int left = 0;
         for (int i = 0; i < states.size(); i++) {
             SpriteContents.AnimationState state = states.get(i);
-            drawn[i] = !state.needsToDraw() || copy(encoder, state, sprites.get(i), atlas, maxMipLevel);
+            boolean due = state.needsToDraw();
+            if (!due) SKIPPED[0]++;
+            drawn[i] = !due || copy(encoder, state, sprites.get(i), atlas, maxMipLevel);
             if (!drawn[i]) left++;
         }
         if (left > 0) {
@@ -65,9 +69,12 @@ public final class AnimationCopy26 {
     /** One plain frame change: the current frame's texture copied into the sprite's atlas rectangle on every mip level. */
     private static boolean copy(CommandEncoder encoder, SpriteContents.AnimationState state, TextureAtlasSprite sprite, GpuTexture atlas, int maxMipLevel) {
         AnimationStateLink26 link = (AnimationStateLink26) (Object) state;
-        if (failed || link.lads$interpolates() || ((com.thelads.core.v26_2.render.mixin.TextureAtlasSpriteAnimationAccess) sprite).lads$padding() != 0) return false;
+        if (failed) return false;
+        if (link.lads$interpolates()) { SKIPPED[1]++; return false; }
+        if (((com.thelads.core.v26_2.render.mixin.TextureAtlasSpriteAnimationAccess) sprite).lads$padding() != 0) { SKIPPED[2]++; return false; }
         GpuTextureView view = link.lads$currentFrame();
-        if (view == null || (view.texture().usage() & GpuTexture.USAGE_COPY_SRC) == 0) return false;
+        if (view == null) { SKIPPED[3]++; return false; }
+        if ((view.texture().usage() & GpuTexture.USAGE_COPY_SRC) == 0) { SKIPPED[4]++; return false; }
         int width = sprite.contents().width(), height = sprite.contents().height();
         try {
             for (int level = 0; level <= maxMipLevel; level++) {
@@ -83,5 +90,11 @@ public final class AnimationCopy26 {
         }
         BuiltInRender.framesCopied++;
         return true;
+    }
+
+    /** For the QA report: copies made and why other frames were not copied. */
+    public static String describe() {
+        return "copied " + BuiltInRender.framesCopied + (failed ? " (copies off after a refusal)" : "") + "; not copied: not due " + SKIPPED[0]
+            + ", interpolated " + SKIPPED[1] + ", padded " + SKIPPED[2] + ", no frame texture " + SKIPPED[3] + ", not a copy source " + SKIPPED[4];
     }
 }

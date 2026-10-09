@@ -223,6 +223,7 @@ public final class RenderProbe26 {
             redrawAndDump(atlas, tag + "-copies", true);
             redrawAndDump(atlas, tag + "-game", false);
             RenderQa.RESULTS.put(tag + "AnimatedSprites", ((AtlasProbeLink26) atlas).lads$animatedSprites().size());
+            RenderQa.RESULTS.put(tag + "Kerria", AnimationCopy26.describe());
             return 2;
         });
         steps.add(mc -> compareAtlas(tag + "-copies", tag + "-game", ((AtlasProbeLink26) blocks(mc)).lads$maxMipLevel()));
