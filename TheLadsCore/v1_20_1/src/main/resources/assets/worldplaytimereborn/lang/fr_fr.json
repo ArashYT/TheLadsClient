@@ -1,0 +1,22 @@
+{
+  "worldplaytimereborn.format": "%sh",
+  "worldplaytimereborn.config.header": "Paramètres de World Play Time Reborn",
+  "worldplaytimereborn.config.category.general": "Général",
+  "worldplaytimereborn.config.category.world_entry": "Paramètres monde",
+  "worldplaytimereborn.config.category.server_entry": "Paramètres serveur",
+  "worldplaytimereborn.config.showServerPlayTime": "Afficher le temps de jeu sur serveur",
+  "worldplaytimereborn.config.serverPlayTimePosition": "Position du temps de jeu sur serveur",
+  "worldplaytimereborn.config.serverPlayTimePosition.after_name": "Après le nom",
+  "worldplaytimereborn.config.serverPlayTimePosition.behind_count": "Derrière le compteur",
+  "worldplaytimereborn.config.serverPlayTimePosition.left": "Gauche",
+  "worldplaytimereborn.config.serverPlayTimePosition.right": "Droite",
+  "worldplaytimereborn.config.serverPlayTimeColor": "Couleur du temps de jeu sur serveur",
+  "worldplaytimereborn.config.showWorldPlayTime": "Afficher le temps de jeu des mondes",
+  "worldplaytimereborn.config.worldPlayTimeCountAllPlayers": "Compter le temps de jeu de tous les joueurs",
+  "worldplaytimereborn.config.showWorldSize": "Afficher la taille des mondes",
+  "worldplaytimereborn.config.worldPlayTimePosition": "Position du temps de jeu des mondes",
+  "worldplaytimereborn.config.worldPlayTimePosition.top_right": "En haut à droite",
+  "worldplaytimereborn.config.worldPlayTimePosition.left": "Gauche",
+  "worldplaytimereborn.config.worldPlayTimePosition.right": "Droite",
+  "worldplaytimereborn.config.worldPlayTimeColor": "Couleur du temps de jeu des mondes"
+}
