@@ -60,7 +60,8 @@
     "theladscore.embedded.hoveringhotbar.mixins.json",
     "theladscore.embedded.nbtac.mixins.json",
     "theladscore.embedded.controlling.mixins.json",
-    "theladscore.embedded.capes.mixins.json"
+    "theladscore.embedded.capes.mixins.json",
+    "theladscore.v26_3.render.mixins.json"
   ],
   "jars": [
     {

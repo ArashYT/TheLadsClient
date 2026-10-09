@@ -13,8 +13,9 @@ public final class BuiltInRender {
 
     /** Live switches the QA probes flip for before/after runs; the game only reads them. Render thread only. */
     public static boolean items, animations;
-    /** Counters for QA and the debug log: item quads written, culled, dropped by LOD; animation frames copied on the GPU, uploaded. */
-    public static long quadsKept, quadsCulled, quadsLod, framesCopied, framesUploaded;
+    /** Counters for QA and the debug log: item quads written, culled, dropped by LOD; animation frames copied on the GPU, uploaded;
+     *  CPU time spent in atlas animation ticks and how many there were. */
+    public static long quadsKept, quadsCulled, quadsLod, framesCopied, framesUploaded, animationNanos, animationTicks;
 
     private static String flerovium, kerria;
     private static boolean decided;
