@@ -13,6 +13,8 @@ public final class Menus1201 {
     private Menus1201() {}
 
     public static void register() {
+        LocalSkins1201.initialize();
+        NativeReconnect1201.register();
         LOGGER.info("Lads menus (title, pause, loading, settings) registered for 1.20.1");
     }
 }

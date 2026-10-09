@@ -4,7 +4,7 @@
   "package": "com.thelads.core.v1_20_1.mixin.menus",
   "compatibilityLevel": "JAVA_17",
   "injectors": {
-    "defaultRequire": 0
+    "defaultRequire": 1
   },
   "client": [
     "WidgetHeightAccessor",
@@ -27,6 +27,13 @@
     "ServerListAccessor",
     "ServerListSharedMixin",
     "WorldStorageAccessor",
-    "WorldFoldersMixin"
+    "WorldFoldersMixin",
+    "DisconnectedScreenAccess",
+    "ReconnectTargetMixin",
+    "ReconnectRealmsMixin",
+    "SkinTextureAccessor",
+    "LocalSkinMixin",
+    "SkinScreenMixin",
+    "ForgeLoadingOverlayMixin"
   ]
 }
