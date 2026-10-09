@@ -7,5 +7,18 @@
     "defaultRequire": 1
   },
   "client": [
+    "FoodDebugMixin",
+    "FoodForgeGuiMixin",
+    "FoodGuiMixin",
+    "ItemTooltipMixin",
+    "ShulkerBlockChangesMixin",
+    "ShulkerHoverTextMixin",
+    "ShulkerInteractionMixin",
+    "ShulkerInventoryMixin",
+    "ShulkerPacketsMixin",
+    "ShulkerPlacedMixin",
+    "ShulkerRemovedMixin",
+    "ShulkerRendererMixin",
+    "TooltipFactoryMixin"
   ]
 }
