@@ -1,4 +1,4 @@
-package com.thelads.core.v1_20_1.mixin;
+package com.thelads.core.v1_20_1.game.mixin;
 
 import com.thelads.core.client.DamageTilt;
 import net.minecraft.client.Minecraft;

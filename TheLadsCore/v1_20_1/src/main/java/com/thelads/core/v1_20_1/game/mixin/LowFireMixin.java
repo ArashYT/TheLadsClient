@@ -1,4 +1,4 @@
-package com.thelads.core.v1_20_1.mixin;
+package com.thelads.core.v1_20_1.game.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.thelads.core.config.Module;

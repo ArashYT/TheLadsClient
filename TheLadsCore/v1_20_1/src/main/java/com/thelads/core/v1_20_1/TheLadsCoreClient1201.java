@@ -53,6 +53,8 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "Clumps", "AppleSkin", "Jade", "MouseTweaks"
         );
 
+        com.thelads.core.v1_20_1.game.Gameplay1201.register();
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             NativeFeatures1201.tick();
             NativeDiscordPresence1201.tick();
