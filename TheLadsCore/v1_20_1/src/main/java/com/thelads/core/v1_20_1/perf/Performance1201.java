@@ -71,6 +71,13 @@ public final class Performance1201 {
         ModuleSupport.registerExternal("JEI (Just Enough Items)", "Just Enough Items", "jei", ModPresence1201.loaded("jei"));
         ModuleSupport.registerExternal("XaeroWorldmap", "Xaero's World Map", "xaeroworldmap", ModPresence1201.loaded("xaeroworldmap"));
         ModuleSupport.registerExternal("FerriteCore", "FerriteCore", "ferritecore", ModPresence1201.loaded("ferritecore"));
+        // Wrapper cards with no Lads engine on 1.20.1 (same as 26.3's ExternalModSettings): the entrypoint's built-in list runs after
+        // ExternalModSettings1201.register() and had turned them into "Built in" switches that do nothing.
+        ModuleSupport.registerExternal("BetterStats", "Better Statistics Screen", "betterstats", ModPresence1201.loaded("betterstats"));
+        ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", ModPresence1201.loaded("resourcify"));
+        ModuleSupport.registerExternal("ModernAdvancements", "Modern Advancements", "modern-advancements", ModPresence1201.loaded("modern-advancements", "modernadvancements"));
+        ModuleSupport.registerExternal("ScalableLux", "ScalableLux", "scalablelux", ModPresence1201.loaded("scalablelux"));
+        ModuleSupport.registerExternal("Lithium", "Lithium", "lithium", ModPresence1201.loaded("lithium"));
         // 26.x ships Jade as source inside Core; the 1.20.1 build does not (yet), so the module follows the real mod.
         if (ModPresence1201.loaded("jade")) {
             ModuleSupport.registerExternal("Jade", "Jade", "jade", true);
