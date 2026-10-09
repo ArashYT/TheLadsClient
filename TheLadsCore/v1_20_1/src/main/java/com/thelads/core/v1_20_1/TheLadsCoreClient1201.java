@@ -8,6 +8,7 @@ import com.thelads.core.v1_20_1.feature.NativeDiscordPresence1201;
 import com.thelads.core.v1_20_1.feature.NativeFeatures1201;
 import com.thelads.core.v1_20_1.feature.NativeKeyBindings1201;
 import com.thelads.core.v1_20_1.feature.NativeKillBanner1201;
+import com.thelads.core.v1_20_1.feature.QaProbe1201;
 import com.thelads.core.v1_20_1.gui.ExternalModSettings1201;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -24,6 +25,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         ConfigManager.load();
         NativeKeyBindings1201.init();
         NativeFeatures1201.initialize();
+        QaProbe1201.register(); // QA only: inert unless the Verification harness sets -Dthelads.verifyAutoWorld / -Dthelads.qaScript
 
         ExternalModSettings1201.register();
         com.thelads.core.v1_20_1.feature.fastquit.FastQuitProbe1201.initialize();
