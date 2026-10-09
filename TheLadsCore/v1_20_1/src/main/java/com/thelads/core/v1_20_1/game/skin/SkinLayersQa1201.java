@@ -17,6 +17,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.PlayerModelPart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +49,10 @@ final class SkinLayersQa1201 {
         if (player == null || level == null) return 0;
         remove();
         float distance = FloatArgumentType.getFloat(context, "distance"), turn = FloatArgumentType.getFloat(context, "turn");
-        RemotePlayer dummy = new RemotePlayer(level, new GameProfile(UUID.nameUUIDFromBytes("lads-qa-dummy".getBytes(StandardCharsets.UTF_8)), "LadsQA"));
+        RemotePlayer dummy = new RemotePlayer(level, new GameProfile(UUID.nameUUIDFromBytes("lads-qa-dummy".getBytes(StandardCharsets.UTF_8)), "LadsQA")) {
+            @Override public boolean isModelPartShown(PlayerModelPart part) { return true; } // a fresh RemotePlayer shows none
+        };
+        dummy.setId(ID); // ClientLevel.addPlayer only uses the id to drop an older entity, it does not assign it
         double yaw = Math.toRadians(player.getYRot());
         float facing = player.getYRot() + 180 + turn;
         dummy.moveTo(player.getX() - Math.sin(yaw) * distance, player.getY(), player.getZ() + Math.cos(yaw) * distance, facing, 0);
