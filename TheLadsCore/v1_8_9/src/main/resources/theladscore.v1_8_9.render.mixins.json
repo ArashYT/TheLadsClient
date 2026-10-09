@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.render.mixin",
+  "plugin": "com.thelads.core.v1_8_9.render.RenderMixinPlugin189",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "EntityRendererProbeMixin",
+    "RenderItemCullMixin",
+    "TextureAtlasSpriteAnimationMixin",
+    "TextureMapAnimationMixin"
+  ]
+}
