@@ -448,7 +448,10 @@ public final class BakedBlockEntities1201 {
             return bake ? part : List.of();
         }
 
-        @Override public boolean useAmbientOcclusion() { return true; }
+        // Flat lighting, as the block entity renderers light their models: the light of the block itself, no ambient occlusion.
+        // Smooth lighting darkened the faces next to the floor; under Oculus/Iris shader packs (separate AO, which BSL squares)
+        // that made baked chests clearly darker than dynamic ones, most at dusk. The bell keeps its frame's (block model) lighting.
+        @Override public boolean useAmbientOcclusion() { return keepVanilla && vanilla.useAmbientOcclusion(); }
         @Override public boolean isGui3d() { return vanilla.isGui3d(); }
         @Override public boolean usesBlockLight() { return true; }
         @Override public boolean isCustomRenderer() { return false; }
