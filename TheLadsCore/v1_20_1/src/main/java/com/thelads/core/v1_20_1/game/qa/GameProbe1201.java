@@ -29,6 +29,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
+import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,7 +135,44 @@ public final class GameProbe1201 {
 
     private static void run(Minecraft mc, String[] s) throws Exception {
         switch (s[0]) {
-            case "wait" -> wait = Math.max(1, Integer.parseInt(s[1]));
+            case "wait" -> wait = com.thelads.core.v1_20_1.feature.QaProbe1201.duration(s[1]);
+            case "dump" -> com.thelads.core.v1_20_1.feature.QaProbe1201.dump(mc, s.length > 1 ? s[1].toLowerCase(Locale.ROOT) : "state", s.length > 2 ? s[2] : null);
+            case "action" -> { // a module's action option (Background Profiles, Toggle Sprint key ...): what its card button does
+                if (!(module(s[1]).getOption(s[2]) instanceof com.thelads.core.config.ActionOption action) || !action.isAvailable()) throw new IllegalArgumentException("no action " + s[2]);
+                action.run();
+            }
+            case "dfps" -> { // QA: what Lads' Dynamic FPS engine sees right now
+                long handle = mc.getWindow().getWindow();
+                var observer = com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.getWindow();
+                LOGGER.info("Lads game qa dfps: state={} disabled={} target={} observer(focused={} hovered={} iconified={}) glfw(focused={} hovered={} iconified={} visible={}) loops={} rendered={}",
+                    com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.powerState(), com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.isDisabled(),
+                    com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.targetFrameRate(),
+                    observer == null ? "-" : observer.isFocused(), observer == null ? "-" : observer.isHovered(), observer == null ? "-" : observer.isIconified(),
+                    GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_FOCUSED), GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_HOVERED),
+                    GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_ICONIFIED), GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_VISIBLE),
+                    com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.probeLoops, com.thelads.core.v1_20_1.perf.dynamicfps.DynamicFPSMod.probeRendered);
+            }
+            case "extopen" -> { // QA: the Open settings button of an external mod card (what the Lads menu does for an installed mod)
+                com.thelads.core.v1_20_1.gui.ExternalModSettings1201.open(s[1], mc.screen);
+                LOGGER.info("Lads game qa extopen: {} -> screen {}", s[1], mc.screen == null ? "none" : mc.screen.getClass().getName());
+            }
+            case "focus" -> { // QA: the window loses (off) or gets back (on) the focus and the mouse as far as Dynamic FPS can tell; auto = ask GLFW again
+                Boolean value = switch (s[1]) { case "off" -> Boolean.FALSE; case "on" -> Boolean.TRUE; default -> null; };
+                com.thelads.core.v1_20_1.perf.dynamicfps.feature.state.WindowObserver.qaFocused = value;
+                com.thelads.core.v1_20_1.perf.dynamicfps.feature.state.WindowObserver.qaHovered = value;
+                LOGGER.info("Lads game qa focus: {}", s[1]);
+            }
+            case "window" -> { // QA: a real focus loss (hide) or minimise, as a player alt-tabbing causes; show/restore undoes it
+                long handle = mc.getWindow().getWindow();
+                switch (s[1]) { case "hide" -> GLFW.glfwHideWindow(handle); case "show" -> GLFW.glfwShowWindow(handle); case "iconify" -> GLFW.glfwIconifyWindow(handle); case "restore" -> GLFW.glfwRestoreWindow(handle); default -> throw new IllegalArgumentException("window " + s[1]); }
+                LOGGER.info("Lads game qa window: {} focused={}", s[1], GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_FOCUSED));
+            }
+            case "click" -> {
+                int button = switch (s[1]) { case "left" -> 0; case "right" -> 1; default -> 2; };
+                var handler = (MouseInvokers) mc.mouseHandler;
+                handler.ladsPress(mc.getWindow().getWindow(), button, 1, 0);
+                handler.ladsPress(mc.getWindow().getWindow(), button, 0, 0);
+            }
             case "cmd" -> mc.player.connection.sendCommand(rest(s, 1).replaceFirst("^/", ""));
             case "module" -> {
                 Module m = module(s[1]);
@@ -168,7 +206,13 @@ public final class GameProbe1201 {
             case "hold" -> hold(mc, s[1]).setDown(!"off".equals(s.length > 2 ? s[2] : "on"));
             case "look" -> { mc.player.setYRot(Float.parseFloat(s[1])); mc.player.setXRot(Float.parseFloat(s[2])); mc.player.yRotO = mc.player.getYRot(); mc.player.xRotO = mc.player.getXRot(); }
             case "camera" -> mc.options.setCameraType(switch (s[1]) { case "back" -> CameraType.THIRD_PERSON_BACK; case "front" -> CameraType.THIRD_PERSON_FRONT; default -> CameraType.FIRST_PERSON; });
-            case "screen" -> mc.setScreen(s[1].equals("inventory") ? new InventoryScreen(mc.player) : null);
+            case "screen" -> mc.setScreen(switch (s[1]) {
+                case "inventory" -> new InventoryScreen(mc.player);
+                case "skin" -> new net.minecraft.client.gui.screens.SkinCustomizationScreen(null, mc.options);
+                case "options" -> new net.minecraft.client.gui.screens.OptionsScreen(null, mc.options);
+                case "controls" -> new net.minecraft.client.gui.screens.controls.KeyBindsScreen(null, mc.options);
+                default -> null;
+            });
             case "hotbar" -> mc.player.getInventory().selected = Integer.parseInt(s[1]) - 1;
             case "shot" -> { pendingShot = s[1]; wait = 3; }
             case "shotnow" -> { shot(mc, s[1]); LOGGER.info("Lads game qa shot: screenshots/{}.png", s[1]); }
@@ -236,6 +280,8 @@ public final class GameProbe1201 {
                 Boolean essential = com.thelads.core.client.WorldCheats.essential();
                 yield essential == null ? -1 : essential ? 1 : 0;
             }
+            case "fps" -> mc.getFps();
+            case "rawmouse" -> GLFW.glfwGetInputMode(mc.getWindow().getWindow(), GLFW.GLFW_RAW_MOUSE_MOTION) == GLFW.GLFW_TRUE ? 1 : 0;
             case "swinging" -> p.swinging ? 1 : 0;
             case "using" -> p.isUsingItem() ? 1 : 0;
             case "resscale" -> com.thelads.core.v1_20_1.game.RenderScale1201.lastScale;

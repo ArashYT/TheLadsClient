@@ -33,11 +33,25 @@ public class DiscordRpcModule extends Module {
     public void publish(DiscordPresence.Place place, String version, String server, String world, String dimension, Object screen) {
         if (service == null) {
             if (!isEnabled()) return;
-            service = new DiscordRpcService(IpcDiscordTransport::new);
+            service = new DiscordRpcService(qa() ? QaTransport::new : IpcDiscordTransport::new);
         }
         DiscordPresence.Privacy privacy = privacy();
         String label = screen == null ? null : DiscordPresence.screen(screen.getClass());
         service.submit(new DiscordRpcService.Desired(isEnabled(), APPLICATION_ID, privacy,
             DiscordPresence.from(new DiscordPresence.Game(place, version, server, world, dimension, label, STARTED), privacy)));
+    }
+
+    /** Harness runs (the Verification launcher sets one of these) never touch the real Discord app: presence goes to the log instead. */
+    private static boolean qa() {
+        return Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null;
+    }
+
+    private static final class QaTransport implements DiscordRpcService.Transport {
+        private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("TheLadsCore/Discord");
+        @Override public void initialize(String applicationId, DiscordRpcService.Events events) { LOGGER.info("Lads discord QA: connected (no real Discord, app {})", applicationId); events.ready(); }
+        @Override public void callbacks() {}
+        @Override public void update(DiscordPresence presence) { LOGGER.info("Lads discord QA: presence details='{}' state='{}'", presence.details(), presence.state()); }
+        @Override public void clear() { LOGGER.info("Lads discord QA: presence cleared"); }
+        @Override public void shutdown() {}
     }
 }

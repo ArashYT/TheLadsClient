@@ -72,6 +72,13 @@ public final class Performance1201 {
         ModuleSupport.registerExternal("XaeroWorldmap", "Xaero's World Map", "xaeroworldmap", ModPresence1201.loaded("xaeroworldmap"));
         ModuleSupport.registerExternal("FerriteCore", "FerriteCore", "ferritecore", ModPresence1201.loaded("ferritecore"));
         // Jade is registered by hud/jade/JadeFeatures1201 (native overlay, stands down to the real mod); not here.
+        // Wrapper cards with no Lads engine on 1.20.1 (same as 26.3's ExternalModSettings): the entrypoint's built-in list runs after
+        // ExternalModSettings1201.register() and had turned them into "Built in" switches that do nothing.
+        ModuleSupport.registerExternal("BetterStats", "Better Statistics Screen", "betterstats", ModPresence1201.loaded("betterstats"));
+        ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", ModPresence1201.loaded("resourcify"));
+        ModuleSupport.registerExternal("ModernAdvancements", "Modern Advancements", "modern-advancements", ModPresence1201.loaded("modern-advancements", "modernadvancements"));
+        ModuleSupport.registerExternal("ScalableLux", "ScalableLux", "scalablelux", ModPresence1201.loaded("scalablelux"));
+        ModuleSupport.registerExternal("Lithium", "Lithium", "lithium", ModPresence1201.loaded("lithium"));
         // The Entity Culling switch is the 1.8.9 Core's own culling; 26.x (and now 1.20.1) cull hidden entities by themselves, with no switch,
         // unless the original Entity Culling mod is installed (then its status page is shown).
         if (ModPresence1201.loaded("entityculling")) {

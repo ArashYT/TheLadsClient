@@ -42,6 +42,39 @@ public final class ExtraTooltips {
         ItemTooltipCallback.EVENT.register((stack, flag, lines) -> append(config, stack, flag, lines));
     }
 
+    private static java.lang.reflect.Method forgeBurnTime;
+    private static boolean forgeBurnTimeLooked;
+    private static java.util.Map<Item, Integer> vanillaFuel;
+
+    /**
+     * The fuel time of the stack. Fabric API's registry first; under Forge (Sinytra Connector) Forgified Fabric API's registry holds only the
+     * fuels added through it, not vanilla's, so Forge's own lookup answers (it covers vanilla and modded fuels alike).
+     */
+    static Integer burnTime(ItemStack stack) {
+        Integer time = FuelRegistry.INSTANCE.get(stack.getItem());
+        if (time != null && time > 0) return time;
+        if (!forgeBurnTimeLooked) {
+            forgeBurnTimeLooked = true;
+            try {
+                forgeBurnTime = Class.forName("net.minecraftforge.common.ForgeHooks").getMethod("getBurnTime", ItemStack.class, net.minecraft.world.item.crafting.RecipeType.class);
+            } catch (ReflectiveOperationException | LinkageError notForge) {
+                forgeBurnTime = null;
+            }
+        }
+        if (forgeBurnTime != null) {
+            try {
+                Integer forge = (Integer) forgeBurnTime.invoke(null, stack, null);
+                if (forge != null && forge > 0) return forge;
+            } catch (ReflectiveOperationException | RuntimeException failure) {
+                // fall through to the vanilla table
+            }
+        }
+        // Forge fills its own table only once a world loaded its tags (the title screen has none): vanilla's table covers that
+        if (vanillaFuel == null) vanillaFuel = net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity.getFuel();
+        Integer vanilla = vanillaFuel.get(stack.getItem());
+        return vanilla != null && vanilla > 0 ? vanilla : time;
+    }
+
     /** The loaded configuration (null before init), for the QA probe. */
     static TooltipsConfig current() {
         return config;
@@ -63,7 +96,7 @@ public final class ExtraTooltips {
         if (c.on("showCompostable") && compostChance > 0.0F) {
             lines.add(line(c, "compostable", "compostable", Math.round(compostChance * 100)));
         }
-        Integer burnTime = c.on("showBurnTime") ? FuelRegistry.INSTANCE.get(item) : null;
+        Integer burnTime = c.on("showBurnTime") ? burnTime(stack) : null;
         if (burnTime != null && burnTime > 0) {
             lines.add(line(c, "burnTime", "burn_time", time(c, burnTime)));
         }

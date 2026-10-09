@@ -328,7 +328,7 @@ public final class QaProbe1201 {
     private static String rest(String[] s, int from) { return String.join(" ", java.util.Arrays.copyOfRange(s, Math.min(from, s.length), s.length)); }
 
     /** "40" = 40 ticks (20 per second); "2s" = 2 seconds; "500ms". */
-    private static int duration(String v) {
+    public static int duration(String v) {
         v = v.toLowerCase(Locale.ROOT);
         if (v.endsWith("ms")) return Math.max(1, Integer.parseInt(v.substring(0, v.length() - 2)) / 50);
         if (v.endsWith("s")) return Math.max(1, (int) Math.round(Double.parseDouble(v.substring(0, v.length() - 1)) * 20));
@@ -411,7 +411,7 @@ public final class QaProbe1201 {
         LOGGER.info("Lads qa option: {}.{} = {}", m.getName(), option, o.save());
     }
 
-    private static void dump(Minecraft mc, String what, String filter) {
+    public static void dump(Minecraft mc, String what, String filter) {
         if (what.equals("modules") || what.equals("all")) {
             for (Module m : ModuleManager.getInstance().getModules()) {
                 if (filter != null && !m.getName().toLowerCase(Locale.ROOT).contains(filter.toLowerCase(Locale.ROOT))) continue;

@@ -48,6 +48,12 @@ public final class ExternalModSettings1201 {
                 } catch (ReflectiveOperationException | LinkageError ignored) {}
             }
             if (target == null) target = ModPresence1201.forgeConfigScreen(modId, parent);
+            // A mod with no config screen of its own (JEI, Lithium, FerriteCore ...): Mod Menu's list, so the button never does nothing.
+            if (target == null && FabricLoader.getInstance().isModLoaded("modmenu")) {
+                try {
+                    target = (Screen) Class.forName("com.terraformersmc.modmenu.gui.ModsScreen").getConstructor(Screen.class).newInstance(parent);
+                } catch (ReflectiveOperationException | LinkageError ignored) {}
+            }
         }
         if (target == null) target = ModPresence1201.forgeModList(parent);
         if (target != null) {

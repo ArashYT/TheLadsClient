@@ -19,7 +19,16 @@ public final class WindowObserver {
         isIconified = attribute(GLFW.GLFW_ICONIFIED);
     }
 
+    /**
+     * QA only (null = ask GLFW): a QA window is usually the OS-active window, and GLFW keeps reporting focus for it even when it is
+     * hidden, so the harness cannot lose focus the way an alt-tab does. These stand in for the two GLFW reads, the rest of the engine
+     * (state machine, limiter, sound fades) runs unchanged.
+     */
+    public static volatile Boolean qaFocused, qaHovered;
+
     private boolean attribute(int attribute) {
+        if (attribute == GLFW.GLFW_FOCUSED && qaFocused != null) return qaFocused;
+        if (attribute == GLFW.GLFW_HOVERED && qaHovered != null) return qaHovered;
         return GLFW.glfwGetWindowAttrib(address, attribute) == GLFW.GLFW_TRUE;
     }
 
