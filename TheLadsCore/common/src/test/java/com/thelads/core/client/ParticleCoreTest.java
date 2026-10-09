@@ -43,20 +43,6 @@ class ParticleCoreTest {
         assertTrue(frustum.visible(0, 0, 5, 0.1), "cleared: nothing is culled");
     }
 
-    @Test void weatherColumnsBehindOrBesideTheViewAreCulled() {
-        var frustum = new ParticleFrustum();
-        assertTrue(frustum.visibleCylinder(0, 0, 5, 1, 11), "without a frustum nothing is culled");
-        frustum.set(projection(), identity());
-        assertTrue(frustum.visibleCylinder(0.5, 0, -6.5, 1, 11), "ahead");
-        assertTrue(frustum.visibleCylinder(0.5, 0, 0.5, 1, 11), "the camera's own column");
-        assertFalse(frustum.visibleCylinder(0.5, 0, 6.5, 1, 11), "behind");
-        double edge = 5 * 16 / 9.0;
-        assertTrue(frustum.visibleCylinder(edge + 0.5, 0, -5, 1, 11), "centre outside the edge, quad reaching in");
-        assertFalse(frustum.visibleCylinder(edge + 3, 0, -5, 1, 11), "wholly outside the edge");
-        assertTrue(frustum.visibleCylinder(0, 30, -20, 1, 11), "below the column top in view: the tall column reaches in");
-        assertFalse(frustum.visibleCylinder(0, 30, -5, 1, 11), "wholly above the 90 degree view");
-    }
-
     @Test void frustumFollowsTheViewMatrix() {
         var frustum = new ParticleFrustum();
         float[] turnedAround = {-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1}; // yaw 180 degrees

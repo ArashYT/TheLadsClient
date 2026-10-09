@@ -47,17 +47,4 @@ public final class ParticleFrustum {
             if (planes[i] * x + planes[i + 1] * y + planes[i + 2] * z + planes[i + 3] < -radius) return false;
         return true;
     }
-
-    /**
-     * Like {@link #visible} for an upright cylinder (a weather column): centre camera-relative, {@code radius} across, {@code halfHeight}
-     * up and down. Its reach towards a plane's normal is radius * |normal.xz| + halfHeight * |normal.y|.
-     */
-    public boolean visibleCylinder(double x, double y, double z, double radius, double halfHeight) {
-        if (!valid) return true;
-        for (int i = 0; i < 24; i += 4) {
-            double reach = radius * Math.sqrt(planes[i] * planes[i] + planes[i + 2] * planes[i + 2]) + Math.abs(planes[i + 1]) * halfHeight;
-            if (planes[i] * x + planes[i + 1] * y + planes[i + 2] * z + planes[i + 3] < -reach) return false;
-        }
-        return true;
-    }
 }
