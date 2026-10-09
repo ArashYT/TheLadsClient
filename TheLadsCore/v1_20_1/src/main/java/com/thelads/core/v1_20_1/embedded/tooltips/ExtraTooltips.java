@@ -42,6 +42,32 @@ public final class ExtraTooltips {
         ItemTooltipCallback.EVENT.register((stack, flag, lines) -> append(config, stack, flag, lines));
     }
 
+    private static java.lang.reflect.Method forgeBurnTime;
+    private static boolean forgeBurnTimeLooked;
+
+    /**
+     * The fuel time of the stack. Fabric API's registry first; under Forge (Sinytra Connector) Forgified Fabric API's registry holds only the
+     * fuels added through it, not vanilla's, so Forge's own lookup answers (it covers vanilla and modded fuels alike).
+     */
+    static Integer burnTime(ItemStack stack) {
+        Integer time = FuelRegistry.INSTANCE.get(stack.getItem());
+        if (time != null && time > 0) return time;
+        if (!forgeBurnTimeLooked) {
+            forgeBurnTimeLooked = true;
+            try {
+                forgeBurnTime = Class.forName("net.minecraftforge.common.ForgeHooks").getMethod("getBurnTime", ItemStack.class, net.minecraft.world.item.crafting.RecipeType.class);
+            } catch (ReflectiveOperationException | LinkageError notForge) {
+                forgeBurnTime = null;
+            }
+        }
+        if (forgeBurnTime == null) return time;
+        try {
+            return (Integer) forgeBurnTime.invoke(null, stack, null);
+        } catch (ReflectiveOperationException | RuntimeException failure) {
+            return time;
+        }
+    }
+
     /** The loaded configuration (null before init), for the QA probe. */
     static TooltipsConfig current() {
         return config;
@@ -63,7 +89,7 @@ public final class ExtraTooltips {
         if (c.on("showCompostable") && compostChance > 0.0F) {
             lines.add(line(c, "compostable", "compostable", Math.round(compostChance * 100)));
         }
-        Integer burnTime = c.on("showBurnTime") ? FuelRegistry.INSTANCE.get(item) : null;
+        Integer burnTime = c.on("showBurnTime") ? burnTime(stack) : null;
         if (burnTime != null && burnTime > 0) {
             lines.add(line(c, "burnTime", "burn_time", time(c, burnTime)));
         }
