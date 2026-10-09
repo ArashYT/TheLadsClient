@@ -1,7 +1,7 @@
 {
   "packId": "zero-smp-1.20.1",
   "version": "1.1.1",
-  "description": "Zero SMP performance tuning: Grassier Grass radius 80, particle deduplication (Particular/Winds/ParticleRain), ModernFix dynamic resources and fast item rendering, prune 3 orphan client jars (Corgilib and Data Anchor stay: the Zero SMP server requires their network channels), and G1GC heap pacing.",
+  "description": "Zero SMP performance tuning: Grassier Grass radius 80, rain particle de-duplication (Particular rain ripples and Immersive Winds splashes, which ParticleRain already draws), prune 3 orphan client jars (Corgilib and Data Anchor stay: the Zero SMP server requires their network channels). Reviewed: ModernFix opt-ins, ParticleRain's particle cap and Particular's drip ripples stay at their defaults.",
   "mods": {
     "add": [],
     "remove": [
@@ -27,7 +27,7 @@
       "format": "toml",
       "keyValues": {
         "rainRipples": "false",
-        "waterDripRipples": "false"
+        "waterDripRipples": "true"
       }
     },
     {
@@ -42,23 +42,16 @@
       "file": "config/particlerain/config.json",
       "format": "json",
       "set": {
-        "perf.maxParticleAmount": 1000
+        "perf.maxParticleAmount": 1500
       }
     },
     {
       "file": "config/modernfix-mixins.properties",
       "format": "properties",
       "keyValues": {
-        "mixin.perf.dynamic_resources": "true",
-        "mixin.perf.clear_mixin_classinfo": "true",
-        "mixin.perf.faster_item_rendering": "true"
-      }
-    },
-    {
-      "file": "config/embeddium-options.json",
-      "format": "json",
-      "set": {
-        "performance.chunk_builder_threads": 0
+        "mixin.perf.dynamic_resources": "false",
+        "mixin.perf.clear_mixin_classinfo": "false",
+        "mixin.perf.faster_item_rendering": "false"
       }
     }
   ]
