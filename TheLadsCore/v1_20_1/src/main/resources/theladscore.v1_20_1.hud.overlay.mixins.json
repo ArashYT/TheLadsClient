@@ -7,5 +7,11 @@
     "defaultRequire": 1
   },
   "client": [
+    "ConnectionActivityMixin",
+    "NametagRenderMixin",
+    "OverlayGameRendererMixin",
+    "OverlayGuiMixin",
+    "OwnNametagMixin",
+    "TabOverlayMixin"
   ]
 }
