@@ -466,6 +466,7 @@ if (requestedFeaturesOnly)
 }
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
 if (scripted) requiredWorldProbes = [.. requiredWorldProbes, "Lads qa script END:"];
+if (ebeVerification && capabilities.Minimal) requiredWorldProbes = [.. requiredWorldProbes, "Lads EBE probe END:"];
 if (capabilities.Minimal && !autoWorldVerification) requiredWorldProbes = []; // --no-world: the title screen and the script are the whole run
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
 // The 1.8.9 Core has neither report: its runs are checked from logs\latest.log (Forge's mod list, OptiFine, the title screen).
