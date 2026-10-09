@@ -57,7 +57,9 @@ public final class HoveringHotbarInit1201 {
                 return;
             }
             boolean hotbar = HoveringHotbar.HOTBAR_DRAWS.get() > 0;
-            boolean translated = offset == 0 || Math.abs(HoveringHotbar.lastHotbarTranslateY() + offset) < 0.001F;
+            // Lads' own Raised module lifts the whole hotbar group too (26.3 adds the two as well), and that lift is inside the matrix this reads
+            int raised = com.thelads.core.v1_20_1.hud.Raised1201.hotbar();
+            boolean translated = offset + raised == 0 || Math.abs(HoveringHotbar.lastHotbarTranslateY() + offset + raised) < 0.001F;
             boolean chat = HoveringHotbar.CHAT_LINES.get() > 0;
             // On plain Fabric every hooked method must have run; on Forge the gui draws some rows itself, so those counters are only reported.
             boolean rows = onForge || ((!survival || HoveringHotbar.STATUS_DRAWS.get() > 0) && (!experience || HoveringHotbar.EXPERIENCE_DRAWS.get() > 0));

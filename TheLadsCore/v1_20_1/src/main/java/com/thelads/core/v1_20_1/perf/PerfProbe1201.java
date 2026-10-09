@@ -49,6 +49,8 @@ public final class PerfProbe1201 {
     private static boolean quickDone;
     private static long quickAt;
     private static int quickStep;
+    /** The render thread's priority before the Threads module touched it (another mod may set it, 10 on the Fabric pack): what disabling must restore. */
+    private static int renderPriorityBefore = -1;
 
     private PerfProbe1201() {}
 
@@ -116,6 +118,7 @@ public final class PerfProbe1201 {
             if (wanted.contains("threads")) {
                 Module threads = module("Threads");
                 if (threads == null) { LOGGER.info("PERF-PROBE threads SKIP module missing"); } else {
+                    renderPriorityBefore = priorityOf("Render thread");
                     if (threads.getOption("Render thread priority") instanceof SliderOption slider) slider.setValue(7);
                     threads.setEnabled(false);
                     threads.setEnabled(true);
@@ -139,7 +142,7 @@ public final class PerfProbe1201 {
         Module threads = module("Threads");
         if (wanted.contains("threads") && threads != null) {
             int priority = priorityOf("Render thread");
-            LOGGER.info("PERF-PROBE threads disabled: Render thread priority={} {}", priority, priority == 5 ? "PASS (original priority restored)" : "FAIL");
+            LOGGER.info("PERF-PROBE threads disabled: Render thread priority={} {}", priority, priority == renderPriorityBefore ? "PASS (original priority " + renderPriorityBefore + " restored)" : "FAIL (was " + renderPriorityBefore + ")");
         }
         quickDone = true;
     }
@@ -340,7 +343,11 @@ public final class PerfProbe1201 {
                 }
                 case DISABLED -> DynamicFPSMod.toggleDisabled(); // the key binding's action
                 case FORCED -> DynamicFPSMod.toggleForceLowFPS();
-                case HIDDEN -> GLFW.glfwHideWindow(handle);
+                case HIDDEN -> { // GLFW keeps reporting focus for a hidden window that is the OS-active one (the QA window usually is): stand in for the two reads
+                    GLFW.glfwHideWindow(handle);
+                    com.thelads.core.v1_20_1.perf.dynamicfps.feature.state.WindowObserver.qaFocused = false;
+                    com.thelads.core.v1_20_1.perf.dynamicfps.feature.state.WindowObserver.qaHovered = false;
+                }
                 case ICONIFIED -> GLFW.glfwIconifyWindow(handle);
                 case OFF -> module.setEnabled(false);
                 default -> { }
@@ -351,7 +358,11 @@ public final class PerfProbe1201 {
             switch (phase) {
                 case DISABLED -> DynamicFPSMod.toggleDisabled();
                 case FORCED -> DynamicFPSMod.toggleForceLowFPS();
-                case HIDDEN -> GLFW.glfwShowWindow(handle);
+                case HIDDEN -> {
+                    GLFW.glfwShowWindow(handle);
+                    com.thelads.core.v1_20_1.perf.dynamicfps.feature.state.WindowObserver.qaFocused = null;
+                    com.thelads.core.v1_20_1.perf.dynamicfps.feature.state.WindowObserver.qaHovered = null;
+                }
                 case ICONIFIED -> GLFW.glfwRestoreWindow(handle);
                 case OFF -> module.setEnabled(true);
                 default -> { }
