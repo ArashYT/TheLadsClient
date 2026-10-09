@@ -52,7 +52,7 @@ public final class Nea1201 {
     private static final int RIDE_ROW = 1, RIDE_SIT = 2, RIDE_REINS = 3, RIDE_CART = 4, RIDE_OTHER = 5;
     private static final int HOLD_ROD = 1, HOLD_MAP = 2, HOLD_MAP_BOTH = 3, HOLD_GAUGE = 4, HOLD_LIGHT = 5, HOLD_SUPPORT = 6;
 
-    private static boolean external;
+    private static boolean external, qa;
     private static NotEnoughAnimationsModule module;
     /** player-animation-lib (Zero SMP: emotes, Better Combat style attacks): while it animates a player it owns the pose. */
     private static Class<?> animatedPlayer;
@@ -67,12 +67,13 @@ public final class Nea1201 {
     static final class State {
         int key = -1;
         boolean falling, crouched;
-        float changeAge = -100f, lastAge = -100f, crouchFrom, crouchAge = -100f;
+        float changeAge = -100f, lastAge = -100f, crouchFrom, crouchAge = -100f, drop = -1f;
         final float[] from = new float[CHANNELS], last = new float[CHANNELS];
     }
 
     public static void register() {
         external = ModPresence1201.loaded("notenoughanimations");
+        qa = com.thelads.core.v1_20_1.game.Gameplay1201.qaActive();
         if (external) ModuleSupport.registerExternal(NotEnoughAnimationsModule.NAME, "Not Enough Animations", "notenoughanimations", true);
         else ModuleSupport.registerBuiltIn(NotEnoughAnimationsModule.NAME);
         try {
@@ -219,7 +220,11 @@ public final class Nea1201 {
         if (on(Family.TRANSITIONS)) {
             NOW[30] = tiltX;
             NOW[31] = tiltZ;
-            crossfade(model, s, key, age);
+            float t = crossfade(model, s, key, age);
+            if (qa && t < 1f && player instanceof LocalPlayer) {
+                LOGGER.info("Lads qa nea fade: key {} t {} body x {} right arm x {} z {} left arm x {} z {} crouch drop {}", Integer.toHexString(key),
+                    t, model.body.xRot, model.rightArm.xRot, model.rightArm.zRot, model.leftArm.xRot, model.leftArm.zRot, s.drop);
+            }
             tiltX = NOW[30];
             tiltZ = NOW[31];
         }
@@ -249,7 +254,7 @@ public final class Nea1201 {
             s.crouchAge = age;
             s.crouched = crouching;
         }
-        return (age - s.crouchAge) / FADE_TICKS >= 1f ? -1f : crouchValue(s, age);
+        return s.drop = (age - s.crouchAge) / FADE_TICKS >= 1f ? -1f : crouchValue(s, age);
     }
 
     private static float crouchValue(State s, float age) {
@@ -267,7 +272,8 @@ public final class Nea1201 {
         return Mth.wrapDegrees((b - a) * Mth.RAD_TO_DEG) * Mth.DEG_TO_RAD;
     }
 
-    private static void crossfade(PlayerModel<?> model, State s, int key, float age) {
+    /** Returns how far the cross-fade is (1 or more: settled). */
+    private static float crossfade(PlayerModel<?> model, State s, int key, float age) {
         for (int p = 0; p < 5; p++) read(part(model, p), NOW, p * 6);
         if (key != s.key) {
             s.key = key;
@@ -290,6 +296,7 @@ public final class Nea1201 {
         }
         System.arraycopy(NOW, 0, s.last, 0, CHANNELS);
         s.lastAge = age;
+        return t;
     }
 
     private static ModelPart part(PlayerModel<?> model, int p) {
@@ -354,7 +361,7 @@ public final class Nea1201 {
             case HOLD_MAP_BOTH -> { pitch = -0.9f; yaw = -side * 0.35f; }
             case HOLD_SUPPORT -> { pitch = -0.9f - ITEM_PITCH; yaw = -side * 0.35f; } // an EMPTY arm: vanilla added no item pitch
             case HOLD_GAUGE -> { pitch = -0.95f; yaw = -side * 0.3f; }
-            default -> { pitch = -0.6f; yaw = 0f; roll = side * 0.1f; } // HOLD_LIGHT
+            default -> { pitch = -0.8f; yaw = 0f; roll = side * 0.15f; } // HOLD_LIGHT
         }
         arm.xRot += pitch - ITEM_PITCH;
         arm.yRot += yaw;
@@ -373,9 +380,9 @@ public final class Nea1201 {
             return RIDE_ROW;
         }
         if (vehicle instanceof AbstractMinecart) {
-            // Hands on the rim of the cart.
-            if (rightFree && model.rightArmPose == ArmPose.EMPTY) rest(model.rightArm, -0.3f, 0.35f);
-            if (leftFree && model.leftArmPose == ArmPose.EMPTY) rest(model.leftArm, -0.3f, -0.35f);
+            // Arms out on the rim of the cart.
+            if (rightFree && model.rightArmPose == ArmPose.EMPTY) rest(model.rightArm, -0.15f, 1.1f);
+            if (leftFree && model.leftArmPose == ArmPose.EMPTY) rest(model.leftArm, -0.15f, -1.1f);
             return RIDE_CART;
         }
         if (vehicle instanceof Saddleable && vehicle.getControllingPassenger() == player) {
