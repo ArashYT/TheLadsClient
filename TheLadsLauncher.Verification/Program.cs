@@ -855,8 +855,7 @@ try
                 "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
                 "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
                 "Lads server features capture END:", "Lads F3/FOV capture END:",
-                "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:", "Lads resolution capture END:",
-    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:"];
+                "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -1058,12 +1057,11 @@ try
         // Once the world captures were asked for, every requested one (and a requested Flashback probe) settles first.
         if (nativeProbeFailed && (!autoWorldVerification || capabilities.Forge || passedMarkers.ContainsKey("Lads native screenshots probe END:")
             || stopwatch.Elapsed > TimeSpan.FromSeconds(90))
-            && (Settled(resolutionCaptureRequested, "Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))
-    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:"];
-=======
+            && Settled(render185Requested, "Lads render 1.8.5 capture END:")
             && (Settled(ebeVerification, "Lads EBE probe END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(480))
-            && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))) break;
->>>>>>> work/185-ebe
+            && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))
+            // The input probe's measurements run on after an unrelated probe failed (they need the world for a few minutes).
+            && (!inputVerification || inputProbeFailed || passedMarkers.ContainsKey("Lads input probe END:"))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed && (!scripted || passedMarkers.ContainsKey("Lads qa script END:"))
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
             && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;
