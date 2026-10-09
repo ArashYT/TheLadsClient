@@ -1,0 +1,2757 @@
+{
+ "AmbientSounds_FORGE_v6.3.8_mc1.20.1.jar": {
+  "ids": [
+   "ambientsounds",
+   "ambientsounds"
+  ],
+  "deps": [
+   [
+    "ambientsounds",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "ambientsounds",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "ambientsounds",
+    "creativecore",
+    true,
+    "BOTH"
+   ],
+   [
+    "ambientsounds",
+    "fabricloader",
+    true,
+    ""
+   ],
+   [
+    "ambientsounds",
+    "fabric-api",
+    true,
+    ""
+   ],
+   [
+    "ambientsounds",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "ambientsounds",
+    "creativecore",
+    true,
+    ""
+   ]
+  ]
+ },
+ "BetterAdvancements-Forge-1.20.1-0.6.0.73.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "betteradvancements",
+    "forge",
+    true,
+    "CLIENT"
+   ],
+   [
+    "betteradvancements",
+    "minecraft",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "BorderlessWindow-1.20-1.6.0.jar": {
+  "ids": [
+   "borderlesswindow"
+  ],
+  "deps": []
+ },
+ "Chimes-v2.1.1-1.20.1-Forge.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "chimes",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "Clumps-forge-1.20.1-12.0.0.4.jar": {
+  "ids": [
+   "clumps"
+  ],
+  "deps": []
+ },
+ "Connector-1.0.0-beta.49+1.20.1.jar": {
+  "ids": [],
+  "deps": []
+ },
+ "Controlling-forge-1.20.1-12.0.2.jar": {
+  "ids": [
+   "controlling"
+  ],
+  "deps": [
+   [
+    "controlling",
+    "forge",
+    true,
+    "CLIENT"
+   ],
+   [
+    "controlling",
+    "minecraft",
+    true,
+    "CLIENT"
+   ],
+   [
+    "controlling",
+    "searchables",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "Corgilib-Forge-1.20.1-4.0.3.5.jar": {
+  "ids": [
+   "corgilib"
+  ],
+  "deps": [
+   [
+    "corgilib",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "CreativeCore_FORGE_v2.12.39_mc1.20.1.jar": {
+  "ids": [
+   "creativecore"
+  ],
+  "deps": [
+   [
+    "creativecore",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "creativecore",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "Data_Anchor-forge-1.20.1-1.0.0.22.jar": {
+  "ids": [
+   "dataanchor"
+  ],
+  "deps": [
+   [
+    "dataanchor",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "dataanchor",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "DistantHorizons-3.3.3-1.20.1-fabric-forge.jar": {
+  "ids": [
+   "distanthorizons"
+  ],
+  "deps": [
+   [
+    "distanthorizons",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "distanthorizons",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "distanthorizons",
+    "oculus",
+    false,
+    "CLIENT"
+   ],
+   [
+    "distanthorizons",
+    "fabricloader",
+    true,
+    ""
+   ],
+   [
+    "distanthorizons",
+    "fabric-api-base",
+    true,
+    ""
+   ],
+   [
+    "distanthorizons",
+    "fabric-lifecycle-events-v1",
+    true,
+    ""
+   ],
+   [
+    "distanthorizons",
+    "fabric-resource-loader-v0",
+    true,
+    ""
+   ],
+   [
+    "distanthorizons",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "distanthorizons",
+    "java",
+    true,
+    ""
+   ]
+  ]
+ },
+ "EasyAnvils-v8.0.2-1.20.1-Forge.jar": {
+  "ids": [
+   "easyanvils"
+  ],
+  "deps": [
+   [
+    "easyanvils",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "easyanvils",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "easyanvils",
+    "puzzleslib",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "EasyMagic-v8.0.1-1.20.1-Forge.jar": {
+  "ids": [
+   "easymagic"
+  ],
+  "deps": [
+   [
+    "easymagic",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "easymagic",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "easymagic",
+    "puzzleslib",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "FarmersDelight-1.20.1-1.3.3.jar": {
+  "ids": [
+   "farmersdelight"
+  ],
+  "deps": [
+   [
+    "farmersdelight",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "farmersdelight",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "farmersdelight",
+    "crafttweaker",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "GlitchCore-forge-1.20.1-0.0.1.1.jar": {
+  "ids": [
+   "glitchcore"
+  ],
+  "deps": [
+   [
+    "glitchcore",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "IMM v1.3.2-1.20.1.jar": {
+  "ids": [
+   "integrated_mowzies_mobs"
+  ],
+  "deps": [
+   [
+    "integrated_mowzies_mobs",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "integrated_mowzies_mobs",
+    "integrated_api",
+    true,
+    "BOTH"
+   ],
+   [
+    "integrated_mowzies_mobs",
+    "mowziesmobs",
+    true,
+    "BOTH"
+   ],
+   [
+    "integrated_mowzies_mobs",
+    "quark",
+    true,
+    "BOTH"
+   ],
+   [
+    "integrated_mowzies_mobs",
+    "supplementaries",
+    true,
+    "BOTH"
+   ],
+   [
+    "integrated_mowzies_mobs",
+    "amendments",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "ImmediatelyFast-Forge-1.5.5+1.20.4.jar": {
+  "ids": [
+   "immediatelyfast"
+  ],
+  "deps": [
+   [
+    "immediatelyfast",
+    "minecraft",
+    true,
+    "CLIENT"
+   ],
+   [
+    "immediatelyfast",
+    "forge",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "ImmersiveThunder-forge-1.2.3.jar": {
+  "ids": [
+   "immersivethunder"
+  ],
+  "deps": [
+   [
+    "immersivethunder",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "immersivethunder",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "Jade-1.20.1-Forge-11.13.3.jar": {
+  "ids": [
+   "jade"
+  ],
+  "deps": [
+   [
+    "jade",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "Kiwi-1.20.1-Forge-11.10.3.jar": {
+  "ids": [
+   "kiwi"
+  ],
+  "deps": []
+ },
+ "MouseTweaks-forge-mc1.20.1-2.25.1.jar": {
+  "ids": [
+   "mousetweaks"
+  ],
+  "deps": []
+ },
+ "Necronomicon-Forge-1.6.0+1.20.1.jar": {
+  "ids": [
+   "necronomicon",
+   "necronomicon"
+  ],
+  "deps": [
+   [
+    "necronomicon",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "necronomicon",
+    "fabric",
+    true,
+    ""
+   ],
+   [
+    "necronomicon",
+    "fabricloader",
+    true,
+    ""
+   ],
+   [
+    "necronomicon",
+    "java",
+    true,
+    ""
+   ]
+  ]
+ },
+ "Paraglider-forge-20.1.3.jar": {
+  "ids": [
+   "paraglider"
+  ],
+  "deps": []
+ },
+ "ParticleEffects-1.6.0+1.20.1+forge.jar": {
+  "ids": [
+   "particle_effects"
+  ],
+  "deps": [
+   [
+    "particle_effects",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "particle_effects",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "particle_effects",
+    "oldpotions",
+    false,
+    "BOTH"
+   ],
+   [
+    "particle_effects",
+    "inventory_particles",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "Presence Footsteps [FORGE] 1.0.0.jar": {
+  "ids": [
+   "presencefootsteps"
+  ],
+  "deps": [
+   [
+    "presencefootsteps",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "presencefootsteps",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "PuzzlesLib-v8.0.15-1.20.1-Forge.jar": {
+  "ids": [
+   "puzzleslib"
+  ],
+  "deps": [
+   [
+    "puzzleslib",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "puzzleslib",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "Quark-4.0-462.jar": {
+  "ids": [
+   "quark"
+  ],
+  "deps": [
+   [
+    "quark",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "quark",
+    "zeta",
+    true,
+    "BOTH"
+   ],
+   [
+    "quark",
+    "curios",
+    false,
+    "BOTH"
+   ],
+   [
+    "quark",
+    "lootr",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "Searchables-forge-1.20.1-1.0.3.jar": {
+  "ids": [
+   "searchables"
+  ],
+  "deps": [
+   [
+    "searchables",
+    "forge",
+    true,
+    ""
+   ],
+   [
+    "searchables",
+    "minecraft",
+    true,
+    ""
+   ]
+  ]
+ },
+ "SnowRealMagic-1.20.1-Forge-10.7.0.jar": {
+  "ids": [
+   "snowrealmagic"
+  ],
+  "deps": [
+   [
+    "snowrealmagic",
+    "kiwi",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "Waves-1.20.1-1.6a.jar": {
+  "ids": [
+   "waves"
+  ],
+  "deps": [
+   [
+    "waves",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "waves",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "YouShallNotSpawn-forge-1.20.x-2.0.2.jar": {
+  "ids": [
+   "ysns"
+  ],
+  "deps": [
+   [
+    "ysns",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "ysns",
+    "necronomicon",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "YungsApi-1.20-Forge-4.0.6.jar": {
+  "ids": [
+   "yungsapi"
+  ],
+  "deps": [
+   [
+    "yungsapi",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "yungsapi",
+    "forge",
+    true,
+    ""
+   ]
+  ]
+ },
+ "YungsBetterMineshafts-1.20-Forge-4.0.4.jar": {
+  "ids": [
+   "bettermineshafts"
+  ],
+  "deps": [
+   [
+    "bettermineshafts",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "bettermineshafts",
+    "forge",
+    true,
+    ""
+   ],
+   [
+    "bettermineshafts",
+    "yungsapi",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "YungsBetterNetherFortresses-1.20-Forge-2.0.6.jar": {
+  "ids": [
+   "betterfortresses"
+  ],
+  "deps": [
+   [
+    "betterfortresses",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "betterfortresses",
+    "forge",
+    true,
+    ""
+   ],
+   [
+    "betterfortresses",
+    "yungsapi",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "Zeta-1.0-31.jar": {
+  "ids": [
+   "zeta"
+  ],
+  "deps": [
+   [
+    "zeta",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "zeta",
+    "quark",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "alexscaves-2.0.2.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "alexscaves",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "alexsmobs-1.22.9.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "alexsmobs",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "amendments-1.20-2.2.6.jar": {
+  "ids": [
+   "amendments"
+  ],
+  "deps": [
+   [
+    "amendments",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "amendments",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "amendments",
+    "moonlight",
+    true,
+    "BOTH"
+   ],
+   [
+    "amendments",
+    "supplementaries",
+    false,
+    "BOTH"
+   ],
+   [
+    "amendments",
+    "flywheel",
+    false,
+    ""
+   ]
+  ]
+ },
+ "another_furniture-forge-1.20.1-3.0.4.jar": {
+  "ids": [
+   "another_furniture"
+  ],
+  "deps": [
+   [
+    "another_furniture",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "another_furniture",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "another_furniture",
+    "create",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "appleskin-forge-mc1.20.1-2.5.1.jar": {
+  "ids": [
+   "appleskin"
+  ],
+  "deps": [
+   [
+    "appleskin",
+    "forge",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "architectury-9.2.14-forge.jar": {
+  "ids": [
+   "architectury"
+  ],
+  "deps": [
+   [
+    "architectury",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "architectury",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "artifacts-forge-9.5.19.jar": {
+  "ids": [
+   "artifacts"
+  ],
+  "deps": [
+   [
+    "artifacts",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "artifacts",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "artifacts",
+    "curios",
+    true,
+    "BOTH"
+   ],
+   [
+    "artifacts",
+    "expandability",
+    true,
+    "BOTH"
+   ],
+   [
+    "artifacts",
+    "cloth_config",
+    true,
+    "BOTH"
+   ],
+   [
+    "artifacts",
+    "architectury",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "backpacked-forge-1.20.1-3.0.9.jar": {
+  "ids": [
+   "backpacked"
+  ],
+  "deps": [
+   [
+    "\"backpacked\"",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "\"backpacked\"",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "\"backpacked\"",
+    "framework",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "balm-forge-1.20.1-7.3.42.jar": {
+  "ids": [
+   "balm"
+  ],
+  "deps": [
+   [
+    "balm",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "balm",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "bushierflowers-0.0.3-1.20.1.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "bushierflowers",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "c2meF-0.2.0+alpha.12-all.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "\"c2me\"",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "carryon-forge-1.20.1-2.1.2.7.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "carryon",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "chat_heads-0.15.7-forge-1.20.jar": {
+  "ids": [
+   "chat_heads"
+  ],
+  "deps": [
+   [
+    "chat_heads",
+    "forge",
+    true,
+    "CLIENT"
+   ],
+   [
+    "chat_heads",
+    "minecraft",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "citadel-2.6.3-1.20.1.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "citadel",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "cloth-config-11.1.136-forge.jar": {
+  "ids": [
+   "cloth_config"
+  ],
+  "deps": [
+   [
+    "cloth_config",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "comforts-forge-6.4.0+1.20.1.jar": {
+  "ids": [
+   "comforts"
+  ],
+  "deps": [
+   [
+    "comforts",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "comforts",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "configured-forge-1.20.1-2.2.3.jar": {
+  "ids": [
+   "configured"
+  ],
+  "deps": [
+   [
+    "\"configured\"",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "\"configured\"",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "\"configured\"",
+    "catalogue",
+    false,
+    "CLIENT"
+   ],
+   [
+    "\"configured\"",
+    "jei",
+    false,
+    "BOTH"
+   ],
+   [
+    "\"configured\"",
+    "framework",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "continuity-3.0.0+1.20.1.forge.jar": {
+  "ids": [
+   "continuity",
+   "continuity"
+  ],
+  "deps": [
+   [
+    "continuity",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "continuity",
+    "connectormod",
+    true,
+    ""
+   ],
+   [
+    "continuity",
+    "fabric_api",
+    true,
+    ""
+   ],
+   [
+    "continuity",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "continuity",
+    "fabricloader",
+    true,
+    ""
+   ],
+   [
+    "continuity",
+    "fabric-api",
+    true,
+    ""
+   ]
+  ]
+ },
+ "coolrain-1.20.1-Forge-1.0.3.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "\"coolrain\"",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "coroutil-forge-1.20.1-1.3.7.jar": {
+  "ids": [
+   "coroutil"
+  ],
+  "deps": [
+   [
+    "coroutil",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "coroutil",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "cosmeticarmorreworked-1.20.1-v1a.jar": {
+  "ids": [
+   "cosmeticarmorreworked"
+  ],
+  "deps": [
+   [
+    "cosmeticarmorreworked",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "crawlondemand-1.20-1.20.1-1.3.0+forge.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "crawlondemand",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "create-1.20.1-6.0.8.jar": {
+  "ids": [
+   "create"
+  ],
+  "deps": [
+   [
+    "create",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "create",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "create",
+    "flywheel",
+    true,
+    "CLIENT"
+   ],
+   [
+    "create",
+    "ponder",
+    true,
+    "BOTH"
+   ],
+   [
+    "create",
+    "jei",
+    false,
+    "CLIENT"
+   ]
+  ]
+ },
+ "createdeco-2.0.3-1.20.1-forge.jar": {
+  "ids": [
+   "createdeco"
+  ],
+  "deps": [
+   [
+    "createdeco",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "createdeco",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "createdeco",
+    "create",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "creeperoverhaul-3.0.2-forge.jar": {
+  "ids": [
+   "creeperoverhaul"
+  ],
+  "deps": [
+   [
+    "creeperoverhaul",
+    "geckolib",
+    true,
+    "BOTH"
+   ],
+   [
+    "creeperoverhaul",
+    "resourcefulconfig",
+    true,
+    "BOTH"
+   ],
+   [
+    "creeperoverhaul",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "creeperoverhaul",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "cullleaves-forge-4.1.1+1.20.1.jar": {
+  "ids": [
+   "cullleaves"
+  ],
+  "deps": [
+   [
+    "cullleaves",
+    "forge",
+    true,
+    "CLIENT"
+   ],
+   [
+    "cullleaves",
+    "minecraft",
+    true,
+    "CLIENT"
+   ],
+   [
+    "cullleaves",
+    "midnightlib",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "curios-forge-5.14.1+1.20.1.jar": {
+  "ids": [
+   "curios"
+  ],
+  "deps": [
+   [
+    "curios",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "curios",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "dynamic-fps-3.11.4+minecraft-1.20.0-forge.jar": {
+  "ids": [
+   "dynamic_fps"
+  ],
+  "deps": [
+   [
+    "dynamic_fps",
+    "minecraft",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "ecologics-forge-1.20.1-2.2.7.jar": {
+  "ids": [
+   "ecologics"
+  ],
+  "deps": [
+   [
+    "ecologics",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "ecologics",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "embeddium-0.3.31+mc1.20.1.jar": {
+  "ids": [
+   "embeddium",
+   "rubidium"
+  ],
+  "deps": [
+   [
+    "embeddium",
+    "oculus",
+    false,
+    "CLIENT"
+   ],
+   [
+    "embeddium",
+    "textrues_embeddium_options",
+    false,
+    "CLIENT"
+   ]
+  ]
+ },
+ "endermanoverhaul-forge-1.20.1-1.0.4.jar": {
+  "ids": [
+   "endermanoverhaul"
+  ],
+  "deps": [
+   [
+    "endermanoverhaul",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "endermanoverhaul",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "endermanoverhaul",
+    "resourcefullib",
+    true,
+    "BOTH"
+   ],
+   [
+    "endermanoverhaul",
+    "resourcefulconfig",
+    true,
+    "BOTH"
+   ],
+   [
+    "endermanoverhaul",
+    "geckolib",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "entity_model_features-3.3.11-1.20.1-forge.jar": {
+  "ids": [
+   "entity_model_features"
+  ],
+  "deps": [
+   [
+    "entity_model_features",
+    "forge",
+    true,
+    "CLIENT"
+   ],
+   [
+    "entity_model_features",
+    "minecraft",
+    true,
+    "CLIENT"
+   ],
+   [
+    "entity_model_features",
+    "entity_texture_features",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "entity_texture_features-7.2.5-1.20.1-forge.jar": {
+  "ids": [
+   "entity_texture_features"
+  ],
+  "deps": [
+   [
+    "entity_texture_features",
+    "forge",
+    true,
+    "CLIENT"
+   ],
+   [
+    "entity_texture_features",
+    "minecraft",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "entityculling-forge-1.11.3-mc1.20.1.jar": {
+  "ids": [
+   "entityculling"
+  ],
+  "deps": [
+   [
+    "entityculling",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "exposure-forge-1.20.1-1.9.20.jar": {
+  "ids": [
+   "exposure"
+  ],
+  "deps": [
+   [
+    "exposure",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "exposure",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "fabric-api-0.92.6+1.11.15+1.20.1.jar": {
+  "ids": [
+   "fabric_api"
+  ],
+  "deps": [
+   [
+    "fabric_api",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "fabric_api",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "ferritecore-6.0.1-forge.jar": {
+  "ids": [
+   "ferritecore"
+  ],
+  "deps": [
+   [
+    "ferritecore",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "ferritecore",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "framework-forge-1.20.1-0.8.0.jar": {
+  "ids": [
+   "framework"
+  ],
+  "deps": [
+   [
+    "\"framework\"",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "\"framework\"",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "ftb-essentials-forge-2001.2.4.jar": {
+  "ids": [
+   "ftbessentials"
+  ],
+  "deps": [
+   [
+    "ftbessentials",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "ftbessentials",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "ftbessentials",
+    "ftblibrary",
+    true,
+    "BOTH"
+   ],
+   [
+    "ftbessentials",
+    "ftbranks",
+    false,
+    "BOTH"
+   ],
+   [
+    "ftbessentials",
+    "luckperms",
+    false,
+    "SERVER"
+   ]
+  ]
+ },
+ "ftb-library-forge-2001.2.13.jar": {
+  "ids": [
+   "ftblibrary"
+  ],
+  "deps": [
+   [
+    "ftblibrary",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "ftblibrary",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "ftblibrary",
+    "architectury",
+    true,
+    "BOTH"
+   ],
+   [
+    "ftblibrary",
+    "ftbquests",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "fzzy_config-0.7.6+1.20.1+forge.jar": {
+  "ids": [
+   "fzzy_config"
+  ],
+  "deps": [
+   [
+    "fzzy_config",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "fzzy_config",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "fzzy_config",
+    "kotlinforforge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "geckolib-forge-1.20.1-4.8.4 (1).jar": {
+  "ids": [
+   "geckolib"
+  ],
+  "deps": [
+   [
+    "geckolib",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "geckolib",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "geckolib",
+    "geckoanimfix",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "grazziergrass-forge-1.4.5+mc1.20.1.jar": {
+  "ids": [
+   "grassiergrass"
+  ],
+  "deps": [
+   [
+    "grassiergrass",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "grassiergrass",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "grassiergrass",
+    "embeddium",
+    false,
+    "CLIENT"
+   ]
+  ]
+ },
+ "idas_forge-1.13.0+1.20.1.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "idas",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "idas",
+    "forge",
+    true,
+    ""
+   ],
+   [
+    "idas",
+    "quark",
+    true,
+    ""
+   ],
+   [
+    "idas",
+    "create",
+    true,
+    ""
+   ],
+   [
+    "idas",
+    "supplementaries",
+    true,
+    ""
+   ],
+   [
+    "idas",
+    "integrated_api",
+    true,
+    ""
+   ]
+  ]
+ },
+ "immersive-winds-1.20.1-0.9.jar": {
+  "ids": [
+   "immersivewind"
+  ],
+  "deps": [
+   [
+    "immersivewind",
+    "fabricloader",
+    true,
+    ""
+   ],
+   [
+    "immersivewind",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "immersivewind",
+    "java",
+    true,
+    ""
+   ],
+   [
+    "immersivewind",
+    "fabric-api",
+    true,
+    ""
+   ]
+  ]
+ },
+ "immersive_aircraft-1.4.1+1.20.1-forge.jar": {
+  "ids": [
+   "immersive_aircraft"
+  ],
+  "deps": [
+   [
+    "immersive_aircraft",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "immersive_aircraft",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "immersive_aircraft",
+    "ad_astra",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "immersive_armors-1.7.2+1.20.1-forge.jar": {
+  "ids": [
+   "immersive_armors"
+  ],
+  "deps": [
+   [
+    "immersive_armors",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "immersive_armors",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "immersive_paintings-0.6.13+1.20.1-forge.jar": {
+  "ids": [
+   "immersive_paintings"
+  ],
+  "deps": [
+   [
+    "immersive_paintings",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "immersive_paintings",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "immersivehotbar-1.2.2-forge-1.20.1-all.jar": {
+  "ids": [
+   "immersivehotbar"
+  ],
+  "deps": [
+   [
+    "immersivehotbar",
+    "forge",
+    true,
+    "CLIENT"
+   ],
+   [
+    "immersivehotbar",
+    "minecraft",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "incontrol-1.20-9.4.7.jar": {
+  "ids": [
+   "incontrol"
+  ],
+  "deps": [
+   [
+    "incontrol",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "incontrol",
+    "lostcities",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "integrated_api-forge-1.20.1-1.8.0.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "integrated_api",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "integrated_api",
+    "forge",
+    true,
+    ""
+   ]
+  ]
+ },
+ "integrated_stronghold-1.1.1+1.20.1-forge.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "integrated_stronghold",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "integrated_stronghold",
+    "integrated_api",
+    true,
+    ""
+   ],
+   [
+    "integrated_stronghold",
+    "forge",
+    true,
+    ""
+   ],
+   [
+    "integrated_stronghold",
+    "create",
+    true,
+    ""
+   ],
+   [
+    "integrated_stronghold",
+    "supplementaries",
+    true,
+    ""
+   ],
+   [
+    "integrated_stronghold",
+    "quark",
+    true,
+    ""
+   ]
+  ]
+ },
+ "integrated_villages-1.3.2+1.20.1-forge.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "integrated_villages",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "integrated_villages",
+    "integrated_api",
+    true,
+    ""
+   ],
+   [
+    "integrated_villages",
+    "forge",
+    true,
+    ""
+   ],
+   [
+    "integrated_villages",
+    "create",
+    true,
+    ""
+   ],
+   [
+    "integrated_villages",
+    "supplementaries",
+    true,
+    ""
+   ]
+  ]
+ },
+ "jei-1.20.1-forge-15.49.0.191.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "jei",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "jei",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "justzoom_forge_2.1.1_MC_1.20.1.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "justzoom",
+    "konkrete",
+    true,
+    "BOTH"
+   ],
+   [
+    "justzoom",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "justzoom",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "konkrete_forge_1.8.0_MC_1.20-1.20.1.jar": {
+  "ids": [
+   "konkrete"
+  ],
+  "deps": [
+   [
+    "konkrete",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "konkrete",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "kotlinforforge-4.12.0-all.jar": {
+  "ids": [],
+  "deps": []
+ },
+ "lazyyyyy-lexforge-core-0.14.19.jar": {
+  "ids": [],
+  "deps": []
+ },
+ "lithostitched-forge-1.20.1-1.4.11.jar": {
+  "ids": [
+   "lithostitched"
+  ],
+  "deps": [
+   [
+    "lithostitched",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "lithostitched",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "lootr-forge-1.20-0.7.35.94.jar": {
+  "ids": [
+   "lootr"
+  ],
+  "deps": [
+   [
+    "Lootr",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "Lootr",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "mahoutsukai-1.20.1-v1.34.74.jar": {
+  "ids": [],
+  "deps": []
+ },
+ "midnightlib-forge-1.9.2+1.20.1.jar": {
+  "ids": [
+   "midnightlib"
+  ],
+  "deps": [
+   [
+    "midnightlib",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "midnightlib",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "modelfix-1.15.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "modelfix",
+    "minecraft",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "modernfix-forge-5.27.85+mc1.20.1.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "modernfix",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "modernfix",
+    "jei",
+    false,
+    "CLIENT"
+   ]
+  ]
+ },
+ "moonlight-1.20-2.16.34-forge.jar": {
+  "ids": [
+   "moonlight"
+  ],
+  "deps": [
+   [
+    "moonlight",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "moonlight",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "moreculling-0.24.6-all.jar": {
+  "ids": [
+   "moreculling"
+  ],
+  "deps": [
+   [
+    "moreculling",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "moreculling",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "moreculling",
+    "cloth_config",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "mowziesmobs-1.8.2.jar": {
+  "ids": [
+   "mowziesmobs"
+  ],
+  "deps": [
+   [
+    "mowziesmobs",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "mowziesmobs",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "mowziesmobs",
+    "geckolib",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "noisiumed-forge-3.0.6+mc1.20-1.20.1.jar": {
+  "ids": [
+   "noisiumed"
+  ],
+  "deps": [
+   [
+    "noisiumed",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "noisiumed",
+    "forge",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "notenoughanimations-forge-1.12.6-mc1.20.1.jar": {
+  "ids": [
+   "notenoughanimations"
+  ],
+  "deps": [
+   [
+    "notenoughanimations",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "oceanicrealms-1.0.7-last-laster-ver.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "oceanicrealms",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "oculus-mc1.20.1-1.8.0.jar": {
+  "ids": [
+   "oculus"
+  ],
+  "deps": [
+   [
+    "oculus",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "oculus",
+    "embeddium",
+    false,
+    "CLIENT"
+   ]
+  ]
+ },
+ "open-parties-and-claims-forge-1.20.1-0.30.3.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "openpartiesandclaims",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "openpartiesandclaims",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "openpartiesandclaims",
+    "create",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "oreexcavation-1.13.170.jar": {
+  "ids": [
+   "oreexcavation"
+  ],
+  "deps": [
+   [
+    "oreexcavation",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "particle_core-0.3.3+1.20.1+forge.jar": {
+  "ids": [
+   "particle_core"
+  ],
+  "deps": [
+   [
+    "particle_core",
+    "forge",
+    true,
+    "CLIENT"
+   ],
+   [
+    "particle_core",
+    "minecraft",
+    true,
+    "CLIENT"
+   ],
+   [
+    "particle_core",
+    "kotlinforforge",
+    true,
+    "CLIENT"
+   ],
+   [
+    "particle_core",
+    "fzzy_config",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "particlerain-4.0.1+1.20.1-forge.jar": {
+  "ids": [
+   "particlerain"
+  ],
+  "deps": [
+   [
+    "particlerain",
+    "forge",
+    true,
+    "CLIENT"
+   ],
+   [
+    "particlerain",
+    "minecraft",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "particular-1.20.1-Forge-1.5.7.jar": {
+  "ids": [
+   "particular"
+  ],
+  "deps": [
+   [
+    "\"particular\"",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "\"particular\"",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "\"particular\"",
+    "tfc",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "player-animation-lib-forge-1.0.2-rc1+1.20.jar": {
+  "ids": [
+   "playeranimator"
+  ],
+  "deps": [
+   [
+    "playeranimator",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "polymorph-forge-0.49.10+1.20.1.jar": {
+  "ids": [
+   "polymorph"
+  ],
+  "deps": [
+   [
+    "polymorph",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "polymorph",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "realmrpg_balloons-1.0.0-forge-1.20.1.jar": {
+  "ids": [
+   "realmrpg_balloons"
+  ],
+  "deps": [
+   [
+    "realmrpg_balloons",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "resourcefulconfig-forge-1.20.1-2.1.3.jar": {
+  "ids": [
+   "resourcefulconfig"
+  ],
+  "deps": [
+   [
+    "resourcefulconfig",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "resourcefulconfig",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "resourcefullib-forge-1.20.1-2.1.29.jar": {
+  "ids": [
+   "resourcefullib"
+  ],
+  "deps": [
+   [
+    "resourcefullib",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "resourcefullib",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "rubidium-extra-0.5.4.4+mc1.20.1-build.131.jar": {
+  "ids": [
+   "embeddium_extra"
+  ],
+  "deps": [
+   [
+    "embeddium_extra",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "embeddium_extra",
+    "embeddium",
+    true,
+    "CLIENT"
+   ],
+   [
+    "embeddium_extra",
+    "minecraft",
+    true,
+    "CLIENT"
+   ]
+  ]
+ },
+ "skinlayers3d-forge-1.11.3-mc1.20.1.jar": {
+  "ids": [
+   "skinlayers3d"
+  ],
+  "deps": [
+   [
+    "skinlayers3d",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "snowundertrees-1.20.1-1.4.12.jar": {
+  "ids": [
+   "snowundertrees"
+  ],
+  "deps": [
+   [
+    "snowundertrees",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "snowundertrees",
+    "minecraft",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "sound-physics-remastered-forge-1.20.1-1.5.1.jar": {
+  "ids": [
+   "sound_physics_remastered"
+  ],
+  "deps": [
+   [
+    "sound_physics_remastered",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "sound_physics_remastered",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "sound_physics_remastered",
+    "cloth_config",
+    false,
+    "BOTH"
+   ],
+   [
+    "sound_physics_remastered",
+    "voicechat",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "supplementaries-1.20-3.1.43-forge.jar": {
+  "ids": [
+   "supplementaries"
+  ],
+  "deps": [
+   [
+    "supplementaries",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "supplementaries",
+    "minecraft",
+    true,
+    "CLIENT"
+   ],
+   [
+    "supplementaries",
+    "moonlight",
+    true,
+    "BOTH"
+   ],
+   [
+    "supplementaries",
+    "quark",
+    false,
+    "BOTH"
+   ],
+   [
+    "supplementaries",
+    "create",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "tectonic-3.0.17-forge-1.20.1.jar": {
+  "ids": [
+   "tectonic"
+  ],
+  "deps": [
+   [
+    "tectonic",
+    "forge",
+    true,
+    ""
+   ],
+   [
+    "tectonic",
+    "lithostitched",
+    true,
+    ""
+   ]
+  ]
+ },
+ "theladscore.jar": {
+  "ids": [
+   "theladscore"
+  ],
+  "deps": [
+   [
+    "theladscore",
+    "fabricloader",
+    true,
+    ""
+   ],
+   [
+    "theladscore",
+    "fabric-api",
+    true,
+    ""
+   ],
+   [
+    "theladscore",
+    "minecraft",
+    true,
+    ""
+   ],
+   [
+    "theladscore",
+    "java",
+    true,
+    ""
+   ]
+  ]
+ },
+ "voicechat-forge-1.20.1-2.6.22.jar": {
+  "ids": [
+   "voicechat",
+   "voicechat_api"
+  ],
+  "deps": [
+   [
+    "voicechat",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "voicechat",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "voicechat",
+    "cloth_config",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "wakes-1.20.1-Forge-1.4.1.jar": {
+  "ids": [
+   "wakes"
+  ],
+  "deps": [
+   [
+    "\"wakes\"",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "\"wakes\"",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "\"wakes\"",
+    "valkyrienskies",
+    false,
+    "BOTH"
+   ]
+  ]
+ },
+ "watut-forge-1.20.1-1.2.3.jar": {
+  "ids": [
+   "watut"
+  ],
+  "deps": [
+   [
+    "watut",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "watut",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "watut",
+    "coroutil",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "waystones-forge-1.20.1-14.1.20.jar": {
+  "ids": [
+   "waystones"
+  ],
+  "deps": [
+   [
+    "waystones",
+    "forge",
+    true,
+    "BOTH"
+   ],
+   [
+    "waystones",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "waystones",
+    "balm",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "weaponmaster_ydm-forge-1.20.1-4.2.3.jar": {
+  "ids": [
+   "weaponmaster_ydm"
+  ],
+  "deps": []
+ },
+ "xaerominimap-forge-1.20.1-26.4.2.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "xaerominimap",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "xaerominimap",
+    "openpartiesandclaims",
+    false,
+    "BOTH"
+   ],
+   [
+    "xaerominimap",
+    "xaeroworldmap",
+    false,
+    "BOTH"
+   ],
+   [
+    "xaerobetterpvp",
+    "xaerolib",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "xaeroworldmap-forge-1.20.1-1.45.0.jar": {
+  "ids": [],
+  "deps": [
+   [
+    "xaeroworldmap",
+    "minecraft",
+    true,
+    "BOTH"
+   ],
+   [
+    "xaeroworldmap",
+    "openpartiesandclaims",
+    false,
+    "BOTH"
+   ],
+   [
+    "xaeroworldmap",
+    "xaerominimap",
+    false,
+    "BOTH"
+   ],
+   [
+    "xaeroworldmap",
+    "xaerobetterpvp",
+    false,
+    "BOTH"
+   ],
+   [
+    "xaeroworldmap",
+    "xaerolib",
+    true,
+    "BOTH"
+   ]
+  ]
+ },
+ "yet_another_config_lib_v3-3.6.6+1.20.1-forge.jar": {
+  "ids": [
+   "yet_another_config_lib_v3"
+  ],
+  "deps": []
+ }
+}
