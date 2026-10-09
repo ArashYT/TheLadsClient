@@ -79,7 +79,7 @@ and the run ends when it finishes (log: `Lads qa script END: N passed, M failed`
 | `shot name` | waits 3 ticks, writes `screenshots\name.png` (the main render target: last finished frame, GUI included); name = `[A-Za-z0-9._-]` |
 | `screen X` | `none` `title` `pause` `options` `video` `controls` `lads` (Lads settings) `hud` (HUD editor) `inventory` `chat` |
 | `key F5` | presses a key binding by its GLFW name (`key.keyboard.<name>`); `F1` toggles hideGui, `F3` the debug screen, `escape` closes the screen or pauses |
-| `hold forward on` / `hold sneak off` | holds a movement/action key (`forward back left right jump sneak sprint attack use`) |
+| `hold forward on` / `hold sneak off` | holds a movement/action key (`forward back left right jump sneak sprint attack use tab`; `hold tab on` keeps the player list open for a shot, `hold tab off` releases it) |
 | `click left` | one left/right/middle mouse click on the key mappings (attack, use) |
 | `hotbar 3` | selects slot 3 |
 | `look <yaw> <pitch>` | turns the player (client side) |

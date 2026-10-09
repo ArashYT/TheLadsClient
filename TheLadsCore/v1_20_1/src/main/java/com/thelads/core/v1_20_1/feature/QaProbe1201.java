@@ -356,8 +356,8 @@ public final class QaProbe1201 {
         KeyMapping mapping = switch (name.toLowerCase(Locale.ROOT)) {
             case "forward" -> mc.options.keyUp; case "back" -> mc.options.keyDown; case "left" -> mc.options.keyLeft; case "right" -> mc.options.keyRight;
             case "jump" -> mc.options.keyJump; case "sneak" -> mc.options.keyShift; case "sprint" -> mc.options.keySprint;
-            case "attack" -> mc.options.keyAttack; case "use" -> mc.options.keyUse;
-            default -> throw new IllegalArgumentException("hold: forward back left right jump sneak sprint attack use");
+            case "attack" -> mc.options.keyAttack; case "use" -> mc.options.keyUse; case "tab" -> mc.options.keyPlayerList;
+            default -> throw new IllegalArgumentException("hold: forward back left right jump sneak sprint attack use tab");
         };
         mapping.setDown(down);
     }
