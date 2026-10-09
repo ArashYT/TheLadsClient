@@ -71,6 +71,16 @@ public class ProfileToolsTests
     }
 
     [Fact]
+    public void PausedVersionPresetImportIsRefused()
+    {
+        using var dir = new TestDirectory();
+        var preset = new ProfileTools.Preset(1, "Paused 26.2", "26.2", "0.19.5", new() { ["options.txt"] = "guiScale:2\n" });
+        var ex = Assert.Throws<InvalidOperationException>(() => ProfileTools.Import(preset, dir.Path));
+        Assert.Equal(GameVersionPolicy.PausedMessage, ex.Message);
+        Assert.DoesNotContain("26.2", ProfileTools.FilterVersions);
+    }
+
+    [Fact]
     public void PlayMenuListsNewestVersionFirstAndOffersPlayableVersions()
     {
         var profiles = new[] { "1.8.9", "1.21.1", "26.2", "1.21.11", "26.3" }.Select(v => new LauncherProfile { Name = "P " + v, MinecraftVersion = v })

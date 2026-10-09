@@ -202,7 +202,13 @@ public class VersionAndInstallationTests
         Assert.Equal("26.3", service.GetActiveProfile().MinecraftVersion); // startup falls back to the default; nothing is deleted
         Assert.Equal((world, "0.19.5"), (service.GetProfile("26.2")!.CustomGameDir, service.GetProfile("26.2")!.FabricVersion));
         Assert.DoesNotContain("26.2", ProfileTools.PlayableVersions);
+        Assert.DoesNotContain("26.2", ProfileTools.FilterVersions);
         Assert.True(GameVersionPolicy.IsPaused("26.2") && !GameVersionPolicy.IsPaused("26.3"));
+
+        // Preset import for a paused version is refused.
+        var preset = new ProfileTools.Preset(1, "The Lads Client 26.2", "26.2", "0.19.5", new() { ["options.txt"] = "fov:0.5\n" });
+        var importEx = Assert.Throws<InvalidOperationException>(() => ProfileTools.Import(preset, paths.ProfilesDirectory));
+        Assert.Equal(GameVersionPolicy.PausedMessage, importEx.Message);
 
         // Not launchable: refused before the launch touches any file.
         var launch = new LaunchService(paths, service, new JavaService(paths), new AuthService(paths), null, shared);
