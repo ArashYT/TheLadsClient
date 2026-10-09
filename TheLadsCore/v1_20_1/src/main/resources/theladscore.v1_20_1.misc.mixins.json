@@ -17,6 +17,8 @@
     "MouseTweaksMixin",
     "MouseTweaksScrollMixin",
     "CreativeTabAccessor1201",
+    "MouseAccess1201",
+    "ContainerAccess1201",
     "FarBlockEntitiesMixin",
     "ItemModelGapsMixin"
   ]

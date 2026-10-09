@@ -16,6 +16,7 @@ public final class Misc1201 {
         NativeItemPhysics1201.initialize();
         NativeDynamicLights1201.initialize();
         registerMouseTweaks();
+        MiscQa1201.register();
         // Far block entities and the item model gaps are plain mixins with nothing to start: FarBlockEntities stays "Built in".
     }
 
