@@ -278,6 +278,12 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
         return mc.options != null && mc.options.hideGui;
     }
 
+    @Override
+    public boolean isDebugScreenOpen() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.options != null && mc.options.renderDebug;
+    }
+
     // ---- Scoreboard (the sidebar the player would see, in vanilla's order) ----
     private Object scoreboardPlayer;
     private int scoreboardTick = Integer.MIN_VALUE;

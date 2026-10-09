@@ -29,7 +29,8 @@ public final class NativeAutohide1201 {
         if (mc.screen instanceof DraggableHudScreen1201) return;
         float previous = scopeOpacity;
         try {
-            scopeOpacity = update();
+            float opacity = update();
+            scopeOpacity = Hud1201.bool("Autohide", "Fade Lads HUD", true) ? opacity : 1;
             if (scopeOpacity > 0) HudManager.getInstance().render(new GuiGraphicsLadsAdapter1201(graphics, mc.font));
         } finally {
             scopeOpacity = previous;
@@ -63,11 +64,14 @@ public final class NativeAutohide1201 {
         air = p.getAirSupply();
         slot = nextSlot;
         xp = p.totalExperience;
-        boolean action = mc.screen != null || p.isUsingItem() || mc.options.keyAttack.isDown() || mc.options.keyUse.isDown();
+        boolean action = mc.screen != null;
+        // Swinging, placing and using items bring the HUD back only when asked to.
+        if (Hud1201.bool("Autohide", "Show when swinging or placing", false))
+            action |= p.isUsingItem() || mc.options.keyAttack.isDown() || mc.options.keyUse.isDown();
         if (Hud1201.bool("Autohide", "Show while moving", false)) action |= p.getDeltaMovement().lengthSqr() > .001;
         if (Hud1201.bool("Autohide", "Show when hurt or hungry", true)) action |= health < p.getMaxHealth() || food < 20 || air < p.getMaxAirSupply();
         if (changed || action || activity == 0) activity = now;
-        float target = (now - activity) / 1e9 < Hud1201.number("Autohide", "Hide after seconds", 4) ? 1 : 0;
+        float target = (now - activity) / 1e9 < Hud1201.number("Autohide", "Hide after seconds", 4) ? 1 : (float) Hud1201.number("Autohide", "Faded opacity", 0) / 100f;
         double duration = Hud1201.number("Autohide", "Fade milliseconds", 350) / 1000;
         opacity = AutohideFade.step(opacity, target, (now - frame) / 1e9, duration);
         frame = now;

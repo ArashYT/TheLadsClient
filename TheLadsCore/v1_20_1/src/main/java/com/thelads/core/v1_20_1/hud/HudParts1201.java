@@ -39,7 +39,7 @@ public final class HudParts1201 {
 
     /** Starts a part; null (nothing was changed) when it is fully hidden and must not be drawn. */
     public static Scope begin(GuiGraphics graphics, boolean fades) {
-        float opacity = fades ? NativeAutohide1201.update() : 1;
+        float opacity = fades && Hud1201.bool("Autohide", "Fade vanilla HUD", true) ? NativeAutohide1201.update() : 1;
         if (opacity <= 0) return null;
         PoseStack pose = graphics.pose();
         pose.pushPose();
