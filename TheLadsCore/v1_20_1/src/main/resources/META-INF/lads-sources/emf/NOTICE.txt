@@ -1,0 +1,15 @@
+Entity Model Features 3.3.11 for Minecraft 1.20.1 (Fabric), by Traben.
+Licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0-only), see LICENSE beside this file.
+Source: https://github.com/Traben-0/Entity_Model_Features (tag v3.3.11, commit 622a0cba8c2e3eeef896b5a9dbcb8d94600f3cd7).
+
+Modified by The Lads: repackaged into Lads Core.
+- Upstream's multi-version preprocessor was run for its own 1.20.1-fabric target (the inactive branches removed) and the packages
+  were relocated to com.thelads.core.v1_20_1.embedded.emf.
+- It runs hidden (no Mod Menu entry) and stays off while the original entity_model_features jar is installed, as a Fabric jar or as
+  the Forge jar under Sinytra Connector; the embedded EMF also needs the embedded ETF.
+- The access widener entries moved into Core's theladscore.v1_20_1.accesswidener.
+- Config files, resource-pack paths and asset namespaces are unchanged.
+
+The complete modified source is in META-INF/lads-sources/emf/v1_20_1 in this jar (mixin config in META-INF/lads-sources/mixin-configs).
+To use a modified version, change those files in the Lads source tree
+(TheLadsCore/v1_20_1/src/main/java/com/thelads/core/v1_20_1/embedded/emf) and rebuild Core with TheLadsCore/gradlew.bat :v1_20_1:remapJar.

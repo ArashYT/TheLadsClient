@@ -36,10 +36,11 @@ public final class EmbeddedMods1201 {
         new Entry("capes", new String[] {"capes"}, BASE + "capes.CapesInit1201"),
         new Entry("cushions", new String[] {"optimizedcushions"}, BASE + "cushions.CushionsInit1201"),
         new Entry("controlling", new String[] {"controlling"}, BASE + "controlling.ControllingInit1201"),
-        new Entry("immediatelyfast", new String[] {"immediatelyfast"}, BASE + "immediatelyfast.ImmediatelyFastInit1201"),
-        new Entry("nbtac", new String[] {"nbtac"}, BASE + "nbtac.NbtAcInit1201"),
-        new Entry("etf", new String[] {"entity_texture_features"}, BASE + "etf.EtfInit1201"),
-        new Entry("emf", new String[] {"entity_model_features"}, BASE + "emf.EmfInit1201"),
+        new Entry("immediatelyfast", new String[] {"immediatelyfast"}, BASE + "immediatelyfast.ImmediatelyFast"),
+        new Entry("nbtac", new String[] {"nbtac"}, BASE + "nbtac.NBTacFabric"),
+        new Entry("etf", new String[] {"entity_texture_features"}, BASE + "etf.ETFInit"),
+        // EMF builds on ETF, so it also stays off on top of an installed ETF jar.
+        new Entry("emf", new String[] {"entity_model_features", "entity_texture_features"}, BASE + "emf.EMFInit"),
     };
 
     private EmbeddedMods1201() {}

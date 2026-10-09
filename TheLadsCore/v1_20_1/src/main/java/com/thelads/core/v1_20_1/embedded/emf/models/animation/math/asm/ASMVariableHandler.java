@@ -1,0 +1,147 @@
+package com.thelads.core.v1_20_1.embedded.emf.models.animation.math.asm;
+
+import org.objectweb.asm.MethodVisitor;
+import com.thelads.core.v1_20_1.embedded.emf.models.animation.math.EMFMathException;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+
+import static org.objectweb.asm.Opcodes.ALOAD;
+import static org.objectweb.asm.Opcodes.BALOAD;
+import static org.objectweb.asm.Opcodes.BASTORE;
+import static org.objectweb.asm.Opcodes.FALOAD;
+import static org.objectweb.asm.Opcodes.FASTORE;
+import static org.objectweb.asm.Opcodes.FNEG;
+import static org.objectweb.asm.Opcodes.ICONST_1;
+import static org.objectweb.asm.Opcodes.IXOR;
+import static org.objectweb.asm.Opcodes.SWAP;
+
+public class ASMVariableHandler {
+
+    private final Stack<Boolean> booleanScopeStack = new Stack<>();
+    private final List<String> floatVarList = new ArrayList<>();
+    private final List<String> boolVarList = new ArrayList<>();
+    // Index of each name in the lists above, kept in step by getAndAssignVarIndex() so the lists never need searching
+    private final Map<String, Integer> floatVarIndexes = new HashMap<>();
+    private final Map<String, Integer> boolVarIndexes = new HashMap<>();
+    // True once a name has been added to both lists, verifyEndOfParse() reports it
+    private boolean hasVarInBothLists = false;
+    private final Set<String> readVarNames = new HashSet<>();
+    private final Set<String> writeVarNames = new HashSet<>();
+
+    private int localVarIndex = 1;
+
+    public int getLocalVarIndex() {
+        return ++localVarIndex;
+    }
+    public void popLocalVarIndex(int was) {
+        if (localVarIndex != was) throw new IllegalStateException("popLocalVarIndex was not called from correct scope");
+        --localVarIndex;
+    }
+
+    public List<String> getFloatVarList() {
+        return floatVarList;
+    }
+    public List<String> getBoolVarList() {
+        return boolVarList;
+    }
+
+    public void scope(boolean isBoolean) {
+        booleanScopeStack.push(isBoolean);
+    }
+    public void scopeFloat() { scope(false); }
+    public void scopeBool() { scope(true); }
+    public void scopePop() { booleanScopeStack.pop(); }
+
+    public void verifyEndOfParse() throws EMFMathException {
+        if (!booleanScopeStack.isEmpty())
+            throw new EMFMathException("ASMVariableHandler verifyEndOfParse issue: type stack is not empty, probably an EMF issue.");
+
+        if (localVarIndex != 1)
+            throw new EMFMathException("ASMVariableHandler verifyEndOfParse issue: local variable index is not reset, probably an EMF issue.");
+
+        if (hasVarInBothLists)
+            throw new EMFMathException("ASMVariableHandler verifyEndOfParse issue: a variable was used both as a number and a boolean somewhere, this is not allowed.");
+    }
+
+    public boolean isScopeBool() {
+        return booleanScopeStack.peek();
+    }
+    public boolean isScopeFloat() {
+        return !isScopeBool();
+    }
+
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    public boolean isReadVarName(String varName) {
+        return readVarNames.contains(varName);
+    }
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    public boolean isWriteVarName(String varName) {
+        return writeVarNames.contains(varName);
+    }
+
+    private int getAndAssignVarIndex(String varName, boolean reading) {
+        if (reading) readVarNames.add(varName);
+        if (!reading) writeVarNames.add(varName);
+
+        boolean isBoolean = booleanScopeStack.peek();
+        var list = isBoolean ? boolVarList : floatVarList;
+        var indexes = isBoolean ? boolVarIndexes : floatVarIndexes;
+
+        Integer index = indexes.get(varName);
+        if (index != null) {
+            return index;
+        } else {
+            list.add(varName);
+            indexes.put(varName, list.size() - 1);
+            if ((isBoolean ? floatVarIndexes : boolVarIndexes).containsKey(varName)) hasVarInBothLists = true;
+            return list.size() - 1;
+        }
+    }
+
+    // Counter is useful enough to be wanted commonly in other stuff e.g. print functions
+    public void asmVisitFrameCounter(MethodVisitor mv) {
+        scopeFloat();
+        asmVisitVar(mv, "frame_counter");
+        scopePop();
+    }
+
+    public void asmVisitVar(MethodVisitor mv, String varName) {
+        int index = getAndAssignVarIndex(varName, true);
+
+        boolean isBoolean = booleanScopeStack.peek();
+
+        mv.visitVarInsn(ALOAD, isBoolean ? 1 : 0);
+        mv.visitLdcInsn(index);
+        mv.visitInsn(isBoolean ? BALOAD : FALOAD);
+    }
+
+    public int asmStoreVar(MethodVisitor mv, String varName) {
+        int index = getAndAssignVarIndex(varName, false);
+
+        boolean isBoolean = booleanScopeStack.peek();
+        // [?]
+        mv.visitVarInsn(ALOAD, isBoolean ? 1 : 0); // [?, a]
+        mv.visitInsn(SWAP); // [a, ?]
+        mv.visitLdcInsn(index); // [a, ?, i]
+        mv.visitInsn(SWAP); // [a, i, ?]
+        mv.visitInsn(isBoolean ? BASTORE : FASTORE); // []
+
+        return index;
+    }
+
+    public void asmInvertBoolean(MethodVisitor mv) {
+        mv.visitInsn(ICONST_1);
+        mv.visitInsn(IXOR);
+    }
+
+    public void asmNegateFloat(MethodVisitor mv) {
+        mv.visitInsn(FNEG);
+    }
+
+}

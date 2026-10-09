@@ -1,0 +1,34 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.embedded.nbtac.mixin",
+  "plugin": "com.thelads.core.v1_20_1.embedded.nbtac.NBTacMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "fields.ClientLanguageFields",
+    "fields.ClientLevelFields",
+    "fields.CommandSuggestionsFields",
+    "fields.CompoundTagFields",
+    "fields.DecoratedPotPatternsFields",
+    "fields.EntitySelectorFields",
+    "fields.FontManagerFields",
+    "fields.KeyMappingFields",
+    "fields.MinecraftFields",
+    "fields.TextColorFields",
+    "misc.ArgumentCommandNodeMixin",
+    "suggestions.SuggestionsListMixin",
+    "suggestions.arguments.ComponentArgumentMixin",
+    "suggestions.arguments.CompoundTagArgumentMixin",
+    "suggestions.arguments.NbtPathArgumentMixin",
+    "suggestions.arguments.NbtTagArgumentMixin",
+    "suggestions.selectors.BlockStateParserMixin",
+    "suggestions.selectors.EntitySelectorParserMixin",
+    "suggestions.selectors.ItemParserMixin",
+    "fabric.ArgumentCommandNodeMixin",
+    "fabric.CommandDispatcherMixin",
+    "fabric.MinecraftMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
