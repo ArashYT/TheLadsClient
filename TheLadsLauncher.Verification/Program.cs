@@ -474,6 +474,9 @@ if (requestedFeaturesOnly)
 }
 if (particlesOnly) requiredWorldProbes = ["Lads world capture END:"];
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
+// 1.8.5 input lane, Fabric versions: input-latency pacing and synthetic mouse evidence in the QA world (InputProbe26 / InputProbe1201).
+bool inputVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_INPUT") == "1", inputProbeFailed = false;
+if (inputVerification) requiredWorldProbes = [.. requiredWorldProbes, "Lads input probe END:"];
 if (scripted) requiredWorldProbes = [.. requiredWorldProbes, "Lads qa script END:"];
 if (capabilities.Minimal && !autoWorldVerification) requiredWorldProbes = []; // --no-world: the title screen and the script are the whole run
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
@@ -496,7 +499,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
     "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
-    "Lads AppleSkin sync capture FAILED", "Lads qa script FAILED", "Lads qa step FAILED", "Lads render 1.8.5 capture FAILED",
+    "Lads AppleSkin sync capture FAILED", "Lads qa script FAILED", "Lads qa step FAILED", "Lads render 1.8.5 capture FAILED", "Lads input probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || capabilities.Minimal || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
@@ -811,6 +814,7 @@ try
             if (line.Contains($"TheLadsCore {version} initialized successfully")) initialized = true;
             if (line.Contains("Lads integration write probe END:") && Passed(line)) settingsProbePassed = true;
             if (failureMarkers.Any(line.Contains)) nativeProbeFailed = true;
+            if (line.Contains("Lads input probe FAILED")) inputProbeFailed = true;
             // 1.20.1: a Lads mixin that failed to apply (the config uses defaultRequire 0, so Mixin may only warn) fails the run.
             if (capabilities.Minimal && QaShared.MixinProblem(line)) { nativeProbeFailed = true; keyLines.Add("MIXIN PROBLEM: " + Clean(line)); }
             foreach (string end in captureEnds)
@@ -1033,7 +1037,9 @@ try
             || stopwatch.Elapsed > TimeSpan.FromSeconds(90))
             && (Settled(resolutionCaptureRequested, "Lads resolution capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(180))
             && Settled(render185Requested, "Lads render 1.8.5 capture END:")
-            && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))) break;
+            && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))
+            // The input probe's measurements run on after an unrelated probe failed (they need the world for a few minutes).
+            && (!inputVerification || inputProbeFailed || passedMarkers.ContainsKey("Lads input probe END:"))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed && (!scripted || passedMarkers.ContainsKey("Lads qa script END:"))
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
             && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;

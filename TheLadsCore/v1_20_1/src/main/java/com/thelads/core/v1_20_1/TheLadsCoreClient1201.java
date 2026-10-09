@@ -27,6 +27,8 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         NativeFeatures1201.initialize();
         com.thelads.core.v1_20_1.render.Render1201.init();
         QaProbe1201.register(); // QA only: inert unless the Verification harness sets -Dthelads.verifyAutoWorld / -Dthelads.qaScript
+        com.thelads.core.v1_20_1.input.InputLatency1201.init();
+        com.thelads.core.v1_20_1.input.InputProbe1201.register();
 
         ExternalModSettings1201.register();
         com.thelads.core.v1_20_1.feature.Menus1201.register();

@@ -62,7 +62,8 @@
     "theladscore.embedded.nbtac.mixins.json",
     "theladscore.embedded.controlling.mixins.json",
     "theladscore.embedded.capes.mixins.json",
-    "theladscore.v26_3.render.mixins.json"
+        "theladscore.v26_3.render.mixins.json",
+        "theladscore.v26_3.input.mixins.json"
   ],
   "jars": [
     {
