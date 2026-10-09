@@ -148,6 +148,8 @@ final class DiscordScreenNames1201 {
         names.put(ConfirmScreen.class, "ConfirmScreen");
         names.put(AlertScreen.class, "AlertScreen");
         names.put(ConfirmLinkScreen.class, "ConfirmLinkScreen");
+        // Embedded Controlling's key binds screen is a screen of its own (not a subclass of vanilla's): same label.
+        names.put(com.thelads.core.v1_20_1.embedded.controlling.client.NewKeyBindsScreen.class, "KeyBindsScreen");
         DiscordPresence.nameClasses(names);
     }
 }
