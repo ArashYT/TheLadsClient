@@ -103,12 +103,12 @@ public partial class ExperiencesView : UserControl
             if (!installed)
             {
                 Report("Installing Zero SMP isolated instance...");
-                instance = await ExperiencesService.InstallZeroSmpAsync(DataDirectory, Report, token);
+                instance = await ExperiencesService.InstallZeroSmpAsync(DataDirectory, Report, token, Http);
             }
             else
             {
                 instance = ExperiencesService.GetInstance(DataDirectory, ExperiencesService.ZeroSmp.Id)
-                           ?? await ExperiencesService.InstallZeroSmpAsync(DataDirectory, Report, token);
+                           ?? await ExperiencesService.InstallZeroSmpAsync(DataDirectory, Report, token, Http);
             }
 
             // Save user RAM setting if changed
@@ -118,8 +118,9 @@ public partial class ExperiencesView : UserControl
                 Modpacks.Save(instance);
             }
 
-            // Check if LadsCore 1.20.1 was added
-            ExperiencesService.CheckAndInjectLadsCore(DataDirectory, instance.Id);
+            // Pack patches (new mods, retired mods, key defaults) not applied yet; the Lads Core in the pack is brought to this
+            // launcher's build by ModpackLauncher before the game starts.
+            await ExperiencesService.ApplyPendingPatchesAsync(DataDirectory, instance.Id, Http, Report, token);
 
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(token);
@@ -200,7 +201,7 @@ public partial class ExperiencesView : UserControl
         try
         {
             Report("Reinstalling Zero SMP...");
-            await ExperiencesService.InstallZeroSmpAsync(DataDirectory, Report, _actionCts.Token);
+            await ExperiencesService.InstallZeroSmpAsync(DataDirectory, Report, _actionCts.Token, Http);
             Report("Zero SMP reinstalled successfully.");
         }
         catch (Exception ex)

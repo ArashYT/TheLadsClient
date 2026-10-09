@@ -245,6 +245,31 @@ public static class ModpackPatchEngine
         current[parts[^1]] = value;
     }
 
+    /// <summary>Patches in <paramref name="patchesDirectory"/> (update-*.json) for this pack that the instance has not applied yet,
+    /// oldest version first. Unreadable files are skipped.</summary>
+    public static List<ModpackPatch> PendingPatches(string patchesDirectory, string instanceDirectory, string packId)
+    {
+        var pending = new List<ModpackPatch>();
+        if (!Directory.Exists(patchesDirectory)) return pending;
+        var applied = GetAppliedPatches(instanceDirectory);
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        foreach (var file in Directory.EnumerateFiles(patchesDirectory, "update-*.json"))
+        {
+            try
+            {
+                var patch = JsonSerializer.Deserialize<ModpackPatch>(File.ReadAllText(file), options);
+                if (patch != null && patch.PackId == packId && patch.Version.Length > 0 && !applied.Contains(patch.Version, StringComparer.OrdinalIgnoreCase))
+                    pending.Add(patch);
+            }
+            catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { }
+        }
+        return pending.OrderBy(p => Version.TryParse(p.Version, out var v) ? v : new Version(0, 0)).ThenBy(p => p.Version, StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>A bare file name: patches come from outside, so no path segments may reach the mods folder.</summary>
+    private static bool IsPlainFileName(string name) =>
+        !string.IsNullOrWhiteSpace(name) && name == Path.GetFileName(name) && name is not ("." or "..") && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+
     private static async Task ApplyModSyncAsync(string gameDir, PatchMods mods, HttpClient? http, Action<string>? status, CancellationToken token)
     {
         var modsDir = Path.Combine(gameDir, "mods");
@@ -254,11 +279,13 @@ public static class ModpackPatchEngine
         {
             foreach (var name in mods.Remove)
             {
-                var target = Path.Combine(modsDir, name);
-                if (File.Exists(target))
+                if (!IsPlainFileName(name)) continue;
+                // A mod the player switched off is renamed to <name>.disabled; retiring it removes that copy too.
+                foreach (var target in new[] { Path.Combine(modsDir, name), Path.Combine(modsDir, name + ".disabled") })
                 {
+                    if (!File.Exists(target)) continue;
                     status?.Invoke($"Removing retired mod {name}...");
-                    try { File.Delete(target); } catch { }
+                    try { File.Delete(target); } catch (IOException) { } catch (UnauthorizedAccessException) { }
                 }
             }
         }
@@ -267,21 +294,23 @@ public static class ModpackPatchEngine
         {
             foreach (var mod in mods.Add)
             {
+                if (!IsPlainFileName(mod.FileName)) continue;
                 var target = Path.Combine(modsDir, mod.FileName);
-                if (!File.Exists(target) && !string.IsNullOrWhiteSpace(mod.Url))
+                if (File.Exists(target) || File.Exists(target + ".disabled") || !Uri.TryCreate(mod.Url, UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps) continue;
+                status?.Invoke($"Downloading new mod {mod.FileName}...");
+                var bytes = await http.GetByteArrayAsync(url, token);
+                if (!string.IsNullOrWhiteSpace(mod.Sha1))
                 {
-                    status?.Invoke($"Downloading new mod {mod.FileName}...");
-                    var bytes = await http.GetByteArrayAsync(mod.Url, token);
-                    if (!string.IsNullOrWhiteSpace(mod.Sha1))
+                    var hash = Convert.ToHexString(SHA1.HashData(bytes)).ToLowerInvariant();
+                    if (!hash.Equals(mod.Sha1, StringComparison.OrdinalIgnoreCase))
                     {
-                        var hash = Convert.ToHexString(SHA1.HashData(bytes)).ToLowerInvariant();
-                        if (!hash.Equals(mod.Sha1, StringComparison.OrdinalIgnoreCase))
-                        {
-                            throw new InvalidDataException($"Hash mismatch downloading {mod.FileName}: expected {mod.Sha1}, got {hash}");
-                        }
+                        throw new InvalidDataException($"Hash mismatch downloading {mod.FileName}: expected {mod.Sha1}, got {hash}");
                     }
-                    await File.WriteAllBytesAsync(target, bytes, token);
                 }
+                // Written beside the target and moved in: a cancelled download never leaves a half jar for Forge to choke on.
+                var partial = target + ".part";
+                await File.WriteAllBytesAsync(partial, bytes, token);
+                File.Move(partial, target, overwrite: true);
             }
         }
     }

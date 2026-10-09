@@ -1,14 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace TheLadsLauncher.Services;
 
+/// <param name="PackArchiveUrl">Where fresh installs on other PCs download the pack archive (https; empty until it is hosted).
+/// The archive is what tools/modpack-manager/export-pack.ps1 writes. <paramref name="PackArchiveSha256"/> is checked when set.</param>
 public sealed record ExperienceDefinition(
     string Id,
     string Title,
@@ -20,9 +24,21 @@ public sealed record ExperienceDefinition(
     int ModCount,
     string ServerAddress,
     string IconAsset,
-    int RecommendedRamMb
+    int RecommendedRamMb,
+    string PackArchiveUrl = "",
+    string PackArchiveSha256 = ""
 );
 
+/// <summary>
+/// The official modpacks ("Experiences"). The pack source lives in the Lads data folder (THELADS_DIR aware), never in a fixed
+/// user path:
+/// <code>
+/// &lt;data&gt;/experiences/&lt;id&gt;/pack.zip   the pack archive (downloaded from PackArchiveUrl, or dropped in by hand)
+/// &lt;data&gt;/experiences/&lt;id&gt;/source/    the archive extracted: overrides/ (config, mods/, ...), all_mods/ (optional), pack.json, patches/
+/// &lt;data&gt;/experiences/&lt;id&gt;/patches/   update-*.json patches to apply before the next launch (optional)
+/// </code>
+/// A ready-made source folder works without an archive.
+/// </summary>
 public static class ExperiencesService
 {
     public static readonly ExperienceDefinition ZeroSmp = new(
@@ -33,16 +49,21 @@ public static class ExperiencesService
         McVersion: "1.20.1",
         Loader: "forge",
         LoaderVersion: "47.4.10",
-        ModCount: 128,
+        ModCount: 131,
         ServerAddress: "nikzerosmp.my.pebble.host",
         IconAsset: "avares://TheLadsLauncher/Assets/zero_smp_icon.png",
-        RecommendedRamMb: 6144
+        RecommendedRamMb: 6144,
+        PackArchiveUrl: "" // set to the hosted zero-smp-1.20.1 pack archive when it is published
     );
 
     public static readonly IReadOnlyList<ExperienceDefinition> AllExperiences = new[] { ZeroSmp };
 
     public static string InstanceDirectory(string baseDirectory, string experienceId) =>
         Path.Combine(Modpacks.Root(baseDirectory), experienceId);
+
+    public static string PackRoot(string baseDirectory, string experienceId) => Path.Combine(baseDirectory, "experiences", experienceId);
+    public static string PackArchivePath(string baseDirectory, string experienceId) => Path.Combine(PackRoot(baseDirectory, experienceId), "pack.zip");
+    public static string PackSourceDirectory(string baseDirectory, string experienceId) => Path.Combine(PackRoot(baseDirectory, experienceId), "source");
 
     public static bool IsInstalled(string baseDirectory, string experienceId)
     {
@@ -55,7 +76,8 @@ public static class ExperiencesService
     public static ModpackInstance? GetInstance(string baseDirectory, string experienceId) =>
         Modpacks.List(baseDirectory).FirstOrDefault(i => i.Id == experienceId);
 
-    public static async Task<ModpackInstance> InstallZeroSmpAsync(string baseDirectory, Action<string>? status, CancellationToken token)
+    /// <summary>Installs (or reinstalls over) the Zero SMP instance from the pack source. Saves, options and the player's own files stay.</summary>
+    public static async Task<ModpackInstance> InstallZeroSmpAsync(string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null)
     {
         var exp = ZeroSmp;
         var instDir = InstanceDirectory(baseDirectory, exp.Id);
@@ -63,50 +85,45 @@ public static class ExperiencesService
         var modsDir = Path.Combine(gameDir, "mods");
         var rpDir = Path.Combine(gameDir, "resourcepacks");
 
+        status?.Invoke("Setting up Zero SMP instance...");
+        var source = await EnsurePackSourceAsync(baseDirectory, exp, http, status, token);
+
         Directory.CreateDirectory(modsDir);
         Directory.CreateDirectory(rpDir);
-
-        status?.Invoke("Setting up Zero SMP instance...");
-
-        string localSource = @"C:\Users\Arash\Downloads\Zero SMP - 1.20.1";
-        if (Directory.Exists(localSource))
+        status?.Invoke("Installing modpack files and configurations...");
+        await Task.Run(() =>
         {
-            status?.Invoke("Installing modpack files and configurations...");
-            await Task.Run(() =>
+            var overrides = Path.Combine(source, "overrides");
+            if (Directory.Exists(overrides))
             {
-                var overrides = Path.Combine(localSource, "overrides");
-                if (Directory.Exists(overrides))
+                var iconSrc = Path.Combine(overrides, "icon.png");
+                if (File.Exists(iconSrc))
                 {
-                    var iconSrc = Path.Combine(overrides, "icon.png");
-                    if (File.Exists(iconSrc))
-                    {
-                        try { File.Copy(iconSrc, Path.Combine(instDir, "icon.png"), overwrite: true); } catch { }
-                    }
-
-                    CopyDirectoryContents(overrides, gameDir, skipSubdirs: new[] { "mods", ".mixin.out", "immersive_paintings_cache", "particular_cache" },
-                        skipFilePrefixes: new[] { "hs_err_pid" }, skipFileExtensions: new[] { ".log" });
-
-                    var localMods = Path.Combine(overrides, "mods");
-                    if (Directory.Exists(localMods))
-                    {
-                        foreach (var jar in Directory.EnumerateFiles(localMods, "*.jar"))
-                            File.Copy(jar, Path.Combine(modsDir, Path.GetFileName(jar)), overwrite: true);
-                    }
+                    try { File.Copy(iconSrc, Path.Combine(instDir, "icon.png"), overwrite: true); } catch (IOException) { }
                 }
 
-                var allMods = Path.Combine(localSource, "all_mods");
-                if (Directory.Exists(allMods))
+                CopyDirectoryContents(overrides, gameDir, skipSubdirs: new[] { "mods", ".mixin.out", "immersive_paintings_cache", "particular_cache" },
+                    skipFilePrefixes: new[] { "hs_err_pid" }, skipFileExtensions: new[] { ".log" });
+
+                var localMods = Path.Combine(overrides, "mods");
+                if (Directory.Exists(localMods))
                 {
-                    foreach (var jar in Directory.EnumerateFiles(allMods, "*.jar"))
+                    foreach (var jar in Directory.EnumerateFiles(localMods, "*.jar"))
                         File.Copy(jar, Path.Combine(modsDir, Path.GetFileName(jar)), overwrite: true);
-                    foreach (var zip in Directory.EnumerateFiles(allMods, "*.zip"))
-                        File.Copy(zip, Path.Combine(rpDir, Path.GetFileName(zip)), overwrite: true);
                 }
-            }, token);
-        }
+            }
 
-        CheckAndInjectLadsCore(baseDirectory, exp.Id);
+            var allMods = Path.Combine(source, "all_mods");
+            if (Directory.Exists(allMods))
+            {
+                foreach (var jar in Directory.EnumerateFiles(allMods, "*.jar"))
+                    File.Copy(jar, Path.Combine(modsDir, Path.GetFileName(jar)), overwrite: true);
+                foreach (var zip in Directory.EnumerateFiles(allMods, "*.zip"))
+                    File.Copy(zip, Path.Combine(rpDir, Path.GetFileName(zip)), overwrite: true);
+            }
+        }, token);
 
+        var pack = ReadPackInfo(source);
         var instance = new ModpackInstance
         {
             Id = exp.Id,
@@ -117,37 +134,149 @@ public static class ExperiencesService
             IconPath = "icon.png",
             CreatedUtc = DateTime.UtcNow,
             Author = "The Lads",
-            PackVersion = "1.0.0",
+            PackVersion = pack.Version ?? "1.0.0",
             MaxRamMb = exp.RecommendedRamMb,
             Directory = instDir
         };
         Modpacks.Save(instance);
+        // The archive already contains what its patches change; they must not run again on top of the player's choices.
+        foreach (var applied in pack.AppliedPatches) ModpackPatchEngine.RecordAppliedPatch(instDir, applied);
+        ModpackCoreSync.Sync(instance, status: status);
 
         status?.Invoke("Zero SMP instance ready.");
         return instance;
     }
 
-    public static void CheckAndInjectLadsCore(string baseDirectory, string experienceId)
+    /// <summary>Keeps the Lads Core of an installed Experience at the launcher's newest bundled build (nothing happens when the
+    /// instance has no Core jar). <see cref="ModpackLauncher.PrepareAsync"/> does the same before every launch.</summary>
+    public static bool SyncLadsCore(string baseDirectory, string experienceId)
     {
-        var gameDir = Path.Combine(InstanceDirectory(baseDirectory, experienceId), "minecraft", "mods");
-        if (!Directory.Exists(gameDir)) return;
+        var exp = AllExperiences.FirstOrDefault(e => e.Id == experienceId);
+        return exp != null && ModpackCoreSync.Sync(Path.Combine(InstanceDirectory(baseDirectory, experienceId), "minecraft"), exp.McVersion);
+    }
 
-        var searchDirs = new[]
+    /// <summary>Applies every pack patch (update-*.json in &lt;pack root&gt;/patches or the extracted archive) the instance has not
+    /// had yet, oldest first, before the game starts. A failing patch stops the run and is retried at the next launch.</summary>
+    public static async Task<int> ApplyPendingPatchesAsync(string baseDirectory, string experienceId, HttpClient? http, Action<string>? status, CancellationToken token)
+    {
+        var instDir = InstanceDirectory(baseDirectory, experienceId);
+        var pending = new[] { Path.Combine(PackRoot(baseDirectory, experienceId), "patches"), Path.Combine(PackSourceDirectory(baseDirectory, experienceId), "patches") }
+            .SelectMany(dir => ModpackPatchEngine.PendingPatches(dir, instDir, experienceId))
+            .GroupBy(p => p.Version, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
+            .OrderBy(p => Version.TryParse(p.Version, out var v) ? v : new Version(0, 0)).ToList();
+        foreach (var patch in pending)
         {
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "game-mods"),
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mods"),
-            baseDirectory
-        };
+            token.ThrowIfCancellationRequested();
+            await ModpackPatchEngine.ApplyPatchAsync(instDir, patch, http, status, token);
+        }
+        return pending.Count;
+    }
 
-        foreach (var dir in searchDirs)
+    /// <summary>The folder the install copies from: an extracted source, else the archive extracted, else the archive downloaded and
+    /// extracted. Throws with the place to put the archive when none of these exists.</summary>
+    public static async Task<string> EnsurePackSourceAsync(string baseDirectory, ExperienceDefinition exp, HttpClient? http, Action<string>? status, CancellationToken token)
+    {
+        var root = PackRoot(baseDirectory, exp.Id);
+        var source = PackSourceDirectory(baseDirectory, exp.Id);
+        var archive = PackArchivePath(baseDirectory, exp.Id);
+        Directory.CreateDirectory(root);
+
+        if (!File.Exists(archive) && !HasPackFiles(source))
         {
-            if (!Directory.Exists(dir)) continue;
-            foreach (var file in Directory.EnumerateFiles(dir, "*TheLadsCore*1.20.1*.jar"))
+            if (http == null || !Uri.TryCreate(exp.PackArchiveUrl, UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps)
+                throw new FileNotFoundException(
+                    $"The {exp.Title} pack is not available yet. Put its pack archive at '{archive}' (tools/modpack-manager/export-pack.ps1 writes it) and try again.", archive);
+            await DownloadArchiveAsync(http, url, archive, exp.PackArchiveSha256, status, token);
+        }
+
+        // An archive newer than what was extracted from it replaces the extracted copy.
+        if (File.Exists(archive))
+        {
+            var stamp = Path.Combine(source, ".extracted-from");
+            var current = $"{new FileInfo(archive).Length}:{File.GetLastWriteTimeUtc(archive).Ticks}";
+            if (!HasPackFiles(source) || !File.Exists(stamp) || File.ReadAllText(stamp) != current)
             {
-                var target = Path.Combine(gameDir, Path.GetFileName(file));
-                try { File.Copy(file, target, overwrite: true); return; } catch { }
+                status?.Invoke("Unpacking the pack archive...");
+                await Task.Run(() => ExtractArchive(archive, source, current), token);
             }
         }
+        if (!HasPackFiles(source)) throw new InvalidDataException($"'{source}' has no overrides/ or all_mods/ folder: this is not a Lads pack archive.");
+        return source;
+    }
+
+    private static bool HasPackFiles(string source) => Directory.Exists(Path.Combine(source, "overrides")) || Directory.Exists(Path.Combine(source, "all_mods"));
+
+    private static async Task DownloadArchiveAsync(HttpClient http, Uri url, string archive, string sha256, Action<string>? status, CancellationToken token)
+    {
+        var part = archive + ".part";
+        using (var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token))
+        {
+            response.EnsureSuccessStatusCode();
+            long total = response.Content.Headers.ContentLength ?? 0, done = 0;
+            await using var input = await response.Content.ReadAsStreamAsync(token);
+            await using var output = new FileStream(part, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            var buffer = new byte[81920];
+            int read, lastMb = -1;
+            while ((read = await input.ReadAsync(buffer, token)) > 0)
+            {
+                await output.WriteAsync(buffer.AsMemory(0, read), token);
+                done += read;
+                if ((int)(done >> 20) is var mb && mb != lastMb)
+                {
+                    lastMb = mb;
+                    status?.Invoke(total > 0 ? $"Downloading the pack... {mb}/{total >> 20} MB" : $"Downloading the pack... {mb} MB");
+                }
+            }
+        }
+        if (!string.IsNullOrWhiteSpace(sha256))
+        {
+            string actual;
+            await using (var check = File.OpenRead(part)) actual = Convert.ToHexString(await SHA256.HashDataAsync(check, token));
+            if (!actual.Equals(sha256, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Delete(part);
+                throw new InvalidDataException($"The downloaded pack does not match its published checksum (expected {sha256}, got {actual}).");
+            }
+        }
+        File.Move(part, archive, overwrite: true);
+    }
+
+    /// <summary>Extracts next to the target and renames, so an interrupted run never leaves a half source behind.</summary>
+    private static void ExtractArchive(string archive, string source, string stamp)
+    {
+        var staging = source + ".tmp";
+        SafeFileOps.DeleteTree(staging);
+        Directory.CreateDirectory(staging);
+        using (var zip = ZipFile.OpenRead(archive))
+        {
+            foreach (var entry in zip.Entries)
+            {
+                var name = entry.FullName.Replace('\\', '/');
+                if (name.EndsWith('/')) continue;
+                var target = Mrpack.SafePath(staging, name); // refuses ../ and absolute entries
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                entry.ExtractToFile(target, overwrite: true);
+            }
+        }
+        File.WriteAllText(Path.Combine(staging, ".extracted-from"), stamp);
+        SafeFileOps.DeleteTree(source);
+        Directory.Move(staging, source);
+    }
+
+    private sealed record PackInfo(string? Version, IReadOnlyList<string> AppliedPatches);
+
+    private static PackInfo ReadPackInfo(string source)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(source, "pack.json")));
+            var root = json.RootElement;
+            var version = root.TryGetProperty("packVersion", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+            var applied = root.TryGetProperty("appliedPatches", out var a) && a.ValueKind == JsonValueKind.Array
+                ? a.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.String).Select(e => e.GetString()!).ToList() : new List<string>();
+            return new PackInfo(version, applied);
+        }
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { return new PackInfo(null, Array.Empty<string>()); }
     }
 
     private static void CopyDirectoryContents(string source, string target, string[] skipSubdirs, string[] skipFilePrefixes, string[] skipFileExtensions)
