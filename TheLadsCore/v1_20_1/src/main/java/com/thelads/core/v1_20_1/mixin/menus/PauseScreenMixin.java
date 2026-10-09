@@ -11,6 +11,7 @@ import com.thelads.core.v1_20_1.gui.PauseMultiplayer1201;
 import com.thelads.core.v1_20_1.gui.ReplayScreens1201;
 import com.thelads.core.v1_20_1.gui.TitleExtrasScreen1201;
 import com.thelads.core.v1_20_1.gui.Widgets1201;
+import com.llamalad7.mixinextras.sugar.Local;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -30,7 +31,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -41,7 +41,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(PauseScreen.class)
 public abstract class PauseScreenMixin extends Screen {
     @Shadow @Final private boolean showPauseMenu;
-    @Unique private GridLayout.RowHelper ladsPauseRows;
     @Unique private final List<AbstractWidget> ladsExtras = new ArrayList<>();
     @Unique private final List<AbstractWidget> ladsEssentialPending = new ArrayList<>();
     @Unique private Button ladsExtrasButton;
@@ -200,20 +199,10 @@ public abstract class PauseScreenMixin extends Screen {
         }
     }
 
-    @Redirect(method = "createPauseMenu()V",
-        at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/layouts/GridLayout;createRowHelper(I)Lnet/minecraft/client/gui/layouts/GridLayout$RowHelper;"),
-        require = 1)
-    private GridLayout.RowHelper ladsCapturePauseRows(GridLayout grid, int columns) {
-        ladsPauseRows = grid.createRowHelper(columns);
-        return ladsPauseRows;
-    }
-
     @Inject(method = "createPauseMenu()V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/layouts/GridLayout;arrangeElements()V"),
         require = 1)
-    private void ladsAddPauseButton(CallbackInfo ci) {
-        if (ladsPauseRows == null) return;
+    private void ladsAddPauseButton(CallbackInfo ci, @Local GridLayout.RowHelper ladsPauseRows) {
         ladsPauseRows.addChild(Button.builder(Component.literal("Lads Client"),
             button -> minecraft.setScreen(new LadsSettingsScreen1201(this))).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.translatable("menu.multiplayer"),
@@ -222,7 +211,6 @@ public abstract class PauseScreenMixin extends Screen {
             ladsPauseRows.addChild(Button.builder(Component.literal("Replays"),
                 button -> ReplayScreens1201.open(this)).width(204).build(), 2);
         }
-        ladsPauseRows = null;
         LoggerFactory.getLogger("TheLadsCore").info("Lads Client pause-menu button initialized");
     }
 }

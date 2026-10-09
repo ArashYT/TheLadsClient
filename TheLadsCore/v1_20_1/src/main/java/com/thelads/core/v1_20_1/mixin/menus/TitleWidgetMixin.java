@@ -1,14 +1,14 @@
 package com.thelads.core.v1_20_1.mixin.menus;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.client.title.ButtonLift;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_20_1.gui.TitleWidgetRegistry1201;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * The title/More screens draw their registered native widgets with the Lads button art, and the pause menu's buttons
@@ -16,14 +16,12 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  */
 @Mixin(AbstractWidget.class)
 public abstract class TitleWidgetMixin {
-    @Shadow protected abstract void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick);
-
-    @Redirect(method = "render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V",
+    @WrapOperation(method = "render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V",
         at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/gui/components/AbstractWidget;renderWidget(Lnet/minecraft/client/gui/GuiGraphics;IIF)V"),
         require = 1)
     private void ladsRenderRegisteredTitleWidget(AbstractWidget widget, GuiGraphics graphics,
-        int mouseX, int mouseY, float partialTick) {
+        int mouseX, int mouseY, float partialTick, Operation<Void> original) {
         if (TitleWidgetRegistry1201.render(widget)) {
             return;
         }
@@ -37,12 +35,12 @@ public abstract class TitleWidgetMixin {
             graphics.pose().scale(scale, scale, 1);
             graphics.pose().translate(-cx, -cy, 0);
             try {
-                renderWidget(graphics, mouseX, mouseY, partialTick);
+                original.call(widget, graphics, mouseX, mouseY, partialTick);
             } finally {
                 graphics.pose().popPose();
             }
         } else {
-            renderWidget(graphics, mouseX, mouseY, partialTick);
+            original.call(widget, graphics, mouseX, mouseY, partialTick);
         }
     }
 }

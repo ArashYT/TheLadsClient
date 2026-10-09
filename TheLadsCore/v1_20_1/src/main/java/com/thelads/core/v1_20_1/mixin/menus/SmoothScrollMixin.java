@@ -1,5 +1,7 @@
 package com.thelads.core.v1_20_1.mixin.menus;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.v1_20_1.gui.SmoothScrollTarget1201;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSelectionList;
@@ -8,7 +10,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Wheel scrolling in every list (worlds, servers, controls, options, mod lists) eases to its target instead of jumping. */
@@ -21,9 +22,9 @@ public abstract class SmoothScrollMixin implements SmoothScrollTarget1201 {
     @Unique private long ladsFrame;
     @Unique private boolean ladsAnimating, ladsUpdating;
 
-    @Redirect(method = "mouseScrolled(DDD)Z",
+    @WrapOperation(method = "mouseScrolled(DDD)Z",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/AbstractSelectionList;setScrollAmount(D)V"), require = 1)
-    private void ladsWheel(AbstractSelectionList<?> list, double amount) {
+    private void ladsWheel(AbstractSelectionList<?> list, double amount, Operation<Void> original) {
         if (!ladsAnimating) ladsTarget = getScrollAmount();
         ladsTarget = Math.max(0, Math.min(getMaxScroll(), ladsTarget + amount - getScrollAmount()));
         ladsAnimating = true;

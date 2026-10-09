@@ -50,8 +50,8 @@ public final class MenusQa1201 {
         "pause", "hud-editor", "settings:module:Fullbright");
     private static List<String> scenes;
     private static int index = -1, frames, passed, failed;
-    private static long sceneStart, worldReadyAt;
-    private static boolean running, captured, opened, worldRequested;
+    private static long sceneStart, worldReadyAt, worldWaitFrom;
+    private static boolean running, captured, opened, worldRequested, ownWorld;
     private static Screen shown;
     private static Path out;
 
@@ -71,11 +71,17 @@ public final class MenusQa1201 {
     private static void tick(Minecraft mc) {
         if (!running) {
             Path request = mc.gameDirectory.toPath().resolve(".lads-qa-capture-menus");
-            if (!Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS) || mc.getOverlay() != null || !(mc.screen instanceof TitleScreen)) return;
+            if (!Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS) || mc.getOverlay() != null) return;
             try {
                 String text = Files.readString(request).strip();
+                ownWorld = text.contains("own-world");
+                List<String> listed = Arrays.stream(text.split("[,\\s]+")).filter(s -> !s.isBlank() && !s.equals("own-world")).toList();
+                List<String> wanted = listed.isEmpty() ? DEFAULT_SCENES : listed;
+                // Title scenes start on the title screen; a list of world scenes only starts in the world (the harness opens it).
+                boolean inWorld = mc.level != null && mc.player != null && mc.screen == null;
+                boolean anyTitle = wanted.stream().anyMatch(s -> !needsWorld(s));
+                if (anyTitle ? !(mc.screen instanceof TitleScreen) : !inWorld && !ownWorld) return;
                 Files.delete(request);
-                List<String> wanted = text.isEmpty() ? DEFAULT_SCENES : Arrays.stream(text.split("[,\\s]+")).filter(s -> !s.isBlank()).toList();
                 scenes = new ArrayList<>(wanted.stream().filter(s -> !needsWorld(s)).toList());
                 scenes.addAll(wanted.stream().filter(MenusQa1201::needsWorld).toList());
                 out = mc.gameDirectory.toPath().resolve("screenshots/menus-qa");
@@ -140,7 +146,13 @@ public final class MenusQa1201 {
         try {
             if (needsWorld(scene)) {
                 if (mc.level == null || mc.player == null) {
-                    requestWorld(mc);
+                    if (ownWorld) requestWorld(mc);
+                    if (worldWaitFrom == 0) worldWaitFrom = System.currentTimeMillis();
+                    if (System.currentTimeMillis() - worldWaitFrom > 300_000L) {
+                        fail(mc, "no world to photograph this scene in");
+                        return;
+                    }
+                    sceneStart = System.currentTimeMillis(); // the world (opened by the harness or by us) gets its own time
                     return;
                 }
                 if (mc.screen != null && !(mc.screen instanceof PauseScreen) && !(mc.screen instanceof DraggableHudScreen1201)
