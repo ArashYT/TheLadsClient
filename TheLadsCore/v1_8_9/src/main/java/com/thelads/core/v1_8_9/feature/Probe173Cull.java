@@ -347,7 +347,7 @@ final class Probe173Cull {
         if (++ticks == warm) {
             frames.record();
             gpu.reset();
-            Particles189.drawn = Particles189.skipped = 0;
+            com.thelads.core.client.ParticleCore.resetStats();
             EntityCulling189.passes = 0;
             EntityCulling189.passNanos = 0;
         }
@@ -363,7 +363,7 @@ final class Probe173Cull {
         entry.addProperty("gpuMs", gpu.milliseconds());
         entry.addProperty("avgFps", work[6]);
         entry.addProperty("low1Fps", work[7]);
-        if (particles) { entry.addProperty("particlesDrawn", Particles189.drawn); entry.addProperty("particlesSkipped", Particles189.skipped); }
+        if (particles) { entry.addProperty("particlesDrawn", com.thelads.core.client.ParticleCore.drawn); entry.addProperty("particlesSkipped", com.thelads.core.client.ParticleCore.culled); }
         if (on) entry.addProperty("cullPassMs", EntityCulling189.passNanos / 1e6 / Math.max(1, EntityCulling189.passes));
         report.add(name, entry);
         String key = sceneName + "-" + (on ? "on" : "off");

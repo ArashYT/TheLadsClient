@@ -23,8 +23,8 @@ public final class ParticleCore {
     private static final Set<String> POTION = Set.of("entity_effect", "ambient_entity_effect", "mobspell", "mobspellambient");
     /** The frustum of the frame being drawn (set by the version's level-render hook, cleared when it ends). */
     public static final ParticleFrustum FRUSTUM = new ParticleFrustum();
-    /** QA counters: particles dropped at spawn, drawn and culled while drawing. Plain fields; the render thread owns them. */
-    public static long dropped, drawn, culled;
+    /** QA counters: particles dropped at spawn, drawn and culled while drawing, lightmap lookups answered from a particle's last answer. Plain fields; the render thread owns them. */
+    public static long dropped, drawn, culled, reused;
 
     private static volatile boolean standDown;
     private static ParticleCoreModule module;
@@ -96,5 +96,5 @@ public final class ParticleCore {
         return (int) ((x >>> 33) % 100);
     }
 
-    public static void resetStats() { dropped = drawn = culled = 0; }
+    public static void resetStats() { dropped = drawn = culled = reused = 0; }
 }

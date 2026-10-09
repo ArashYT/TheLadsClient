@@ -90,7 +90,6 @@
     "ChatHeadsMessageMixin",
     "ChatHeadsListenerMixin",
     "ClientToolsAttackMixin",
-    "ParticleBudgetMixin",
     "FontMetricsMixin",
     "SmoothScrollMixin",
     "GlobalButtonMixin",

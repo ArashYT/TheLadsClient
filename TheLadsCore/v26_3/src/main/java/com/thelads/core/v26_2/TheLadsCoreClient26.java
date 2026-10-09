@@ -28,6 +28,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
             "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks");
         com.thelads.core.v26_2.gui.ExternalModSettings.register();
         com.thelads.core.v26_2.feature.NativeQualityOfLife.register();
+        com.thelads.core.v26_2.feature.NativeParticleCore.register();
         com.thelads.core.v26_2.feature.NativeFeatures.initialize();
         com.thelads.core.v26_2.feature.NativeChatHeads.register();
         com.thelads.core.v26_2.feature.NativeBetterF3.register();
