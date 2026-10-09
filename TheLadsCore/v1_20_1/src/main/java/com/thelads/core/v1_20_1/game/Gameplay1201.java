@@ -34,6 +34,7 @@ public final class Gameplay1201 {
         else ModuleSupport.registerBuiltIn("Zoom");
         NativeCustomFov1201.register();
         GoodMcAttackSpeedReset1201.register();
+        com.thelads.core.v1_20_1.game.cheats.Cheats1201.register();
         ClientTickEvents.END_CLIENT_TICK.register(Gameplay1201::tick);
         com.thelads.core.v1_20_1.game.qa.GameProbe1201.register();
         com.thelads.core.v1_20_1.game.skin.SkinLayers1201.register();
