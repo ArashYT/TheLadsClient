@@ -32,7 +32,7 @@ public final class Gameplay1201 {
             OldAnimationsModule.NAME, "BetterResolution");
         if (zoomOwnedByMod()) ModuleSupport.registerExternal("Zoom", "Just Zoom", "justzoom", true);
         else ModuleSupport.registerBuiltIn("Zoom");
-        if (ModPresence1201.loaded("distanthorizons"))
+        if (ModPresence1201.loaded("distanthorizons") && !qaFlag("allow-dh"))
             ModuleSupport.registerBuiltInLimited("BetterResolution", "It stays off while Distant Horizons is installed (both draw the world into its own target).");
         NativeCustomFov1201.register();
         GoodMcAttackSpeedReset1201.register();
@@ -60,6 +60,15 @@ public final class Gameplay1201 {
         try {
             String dir = FabricLoader.getInstance().getGameDir().toRealPath().toString().replace('\\', '/').toLowerCase(Locale.ROOT);
             return dir.contains("/artifacts/verification/");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** QA only: a flag file {@code <game folder>/lads-qa/<name>} that switches a behaviour for one test run. */
+    public static boolean qaFlag(String name) {
+        try {
+            return qaActive() && java.nio.file.Files.exists(FabricLoader.getInstance().getGameDir().resolve("lads-qa").resolve(name));
         } catch (Exception e) {
             return false;
         }
