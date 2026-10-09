@@ -241,6 +241,21 @@ static class QaShared
         return report;
     }
 
+    /// <summary>LADS_VERIFY_ADD_MODS=jar[;jar...]: copies stub or extra jars into the sandbox mods folder after the pack installer ran
+    /// (QA of a Lads built-in standing down when the real mod is present: a jar holding only a fabric.mod.json with that id).</summary>
+    public static List<string> AddMods(string modsFolder, string? jars)
+    {
+        var report = new List<string>();
+        foreach (var jar in (jars ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!File.Exists(jar)) throw new FileNotFoundException("LADS_VERIFY_ADD_MODS: no such jar", jar);
+            Directory.CreateDirectory(modsFolder);
+            File.Copy(jar, Path.Combine(modsFolder, Path.GetFileName(jar)), true);
+            report.Add($"add-mods: copied {Path.GetFileName(jar)} into {modsFolder}");
+        }
+        return report;
+    }
+
     // ---- caches -----------------------------------------------------------------------------------------------------
 
     /// <summary>Modrinth jars of a version's client pack, kept by file name: the installer keeps a jar whose hash matches, so a jar
