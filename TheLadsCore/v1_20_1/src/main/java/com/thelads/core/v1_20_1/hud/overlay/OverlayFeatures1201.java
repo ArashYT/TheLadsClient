@@ -13,6 +13,7 @@ public final class OverlayFeatures1201 {
         Crosshair1201.register();
         PaperDoll1201.register();
         TabTweaks1201.register();
+        SignalLoss1201.register();
     }
 
     /**
@@ -21,6 +22,7 @@ public final class OverlayFeatures1201 {
      */
     public static void hud(GuiGraphics graphics) {
         drawnThisFrame = true;
+        SignalLoss1201.render(graphics);
     }
 
     /** GameRenderer.render right after the HUD pass, before overlays and screens (OverlayGameRendererMixin); every frame. */
@@ -34,6 +36,7 @@ public final class OverlayFeatures1201 {
         if (!hudFallback && !hiddenCrosshair) return;
         GuiGraphics graphics = new GuiGraphics(mc, mc.renderBuffers().bufferSource());
         if (hiddenCrosshair) Crosshair1201.renderHiddenHud(graphics);
+        if (hudFallback) SignalLoss1201.render(graphics);
         graphics.flush();
     }
 }
