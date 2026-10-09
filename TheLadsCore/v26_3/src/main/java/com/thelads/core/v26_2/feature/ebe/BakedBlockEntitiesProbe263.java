@@ -48,7 +48,7 @@ public final class BakedBlockEntitiesProbe263 {
     private static int shots, shotsSaved, limitBefore;
     private static java.util.concurrent.CompletableFuture<Void> reload;
     private static String phase = "baked";
-    private static int afterReload = -1;
+    private static int mark, stage;
 
     private BakedBlockEntitiesProbe263() {}
 
@@ -153,11 +153,31 @@ public final class BakedBlockEntitiesProbe263 {
             }
             default -> {
                 if (reload != null) {
-                    if (reload.isDone()) { reload = null; afterReload = t; } // F3+T can take a while on a big pack
-                } else if (afterReload >= 0 && t == afterReload + 100) {
-                    shot(mc, "after-f3t");
-                    JSON.append(",\"bakedStatesAfterReload\":").append(installedCount());
-                } else if (afterReload >= 0 && t == afterReload + 140) finish(mc);
+                    if (reload.isDone()) { reload = null; mark = t; stage++; } // reloads can take a while on a big pack
+                    return;
+                }
+                int dt = t - mark;
+                if (stage == 1) { // after F3+T
+                    if (dt == 100) {
+                        shot(mc, "after-f3t");
+                        JSON.append(",\"bakedStatesAfterReload\":").append(installedCount());
+                    } else if (dt == 120) reload = pack(mc, true);
+                } else if (stage == 2) { // a resource pack retexturing chests (inverted) and shipping a CEM shulker box model
+                    if (dt == 100) {
+                        phase = "baked";
+                        shot(mc, "pack");
+                        JSON.append(",\"bakedStatesWithPack\":").append(installedCount());
+                    } else if (dt == 110) {
+                        BakedBlockEntities.setSuspended(true);
+                        allChanged(mc);
+                    } else if (dt == 230) {
+                        phase = "vanilla";
+                        shot(mc, "pack");
+                    } else if (dt == 240) {
+                        BakedBlockEntities.setSuspended(false);
+                        reload = pack(mc, false);
+                    }
+                } else if (stage == 3 && dt == 40) finish(mc);
             }
         }
     }
@@ -230,6 +250,41 @@ public final class BakedBlockEntitiesProbe263 {
     private static void side(IntegratedServer server, String name, boolean side) {
         command(server, String.format(Locale.ROOT, "tp %s %.1f %d %.1f 0 35", name, origin.getX() + (side ? 9.5 : 0.5), origin.getY() + 5, origin.getZ() - 3.5));
     }
+
+    /**
+     * Adds (or removes) a QA resource pack in the sandbox's resourcepacks folder: the vanilla chest texture inverted, and an
+     * OptiFine-format shulker box model; baked chests must follow the texture, shulker boxes must fall back to their renderer.
+     */
+    private static java.util.concurrent.CompletableFuture<Void> pack(Minecraft mc, boolean on) throws Exception {
+        String id = "file/lads-ebe-qa";
+        Path root = mc.getResourcePackDirectory().resolve("lads-ebe-qa");
+        if (on) {
+            Files.createDirectories(root.resolve("assets/minecraft/textures/entity/chest"));
+            Files.createDirectories(root.resolve("assets/minecraft/optifine/cem"));
+            Files.writeString(root.resolve("pack.mcmeta"), "{\"pack\":{\"pack_format\":15,\"description\":\"Lads EBE QA\"}}");
+            Files.writeString(root.resolve("assets/minecraft/optifine/cem/shulker_box.jem"), "{}");
+            java.awt.image.BufferedImage image;
+            try (var in = mc.getResourceManager().getResource(Identifier.withDefaultNamespace("textures/entity/chest/normal.png")).orElseThrow().open()) {
+                image = javax.imageio.ImageIO.read(in);
+            }
+            for (int y = 0; y < image.getHeight(); y++)
+                for (int x = 0; x < image.getWidth(); x++) {
+                    int argb = image.getRGB(x, y);
+                    image.setRGB(x, y, (argb & 0xFF000000) | (~argb & 0x00FFFFFF));
+                }
+            javax.imageio.ImageIO.write(image, "png", root.resolve("assets/minecraft/textures/entity/chest/normal.png").toFile());
+        }
+        var repository = mc.getResourcePackRepository();
+        repository.reload();
+        List<String> selected = new ArrayList<>(repository.getSelectedIds());
+        selected.remove(id);
+        if (on) selected.add(id);
+        repository.setSelected(selected);
+        LOG.info("Lads EBE probe: QA resource pack {}", on ? "on" : "off");
+        return mc.reloadResourcePacks();
+    }
+
+    private static void allChanged(Minecraft mc) { mc.levelExtractor.allChanged(); }
 
     private static void command(IntegratedServer server, String command) {
         server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), command));

@@ -12,18 +12,17 @@ import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.ShulkerModel;
-import net.minecraft.client.model.geom.LayerDefinitions;
-import net.minecraft.client.model.geom.ModelLayerLocation;
-import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.ItemOverrides;
 import net.minecraft.client.renderer.block.model.ItemTransforms;
+import net.minecraft.client.model.ShulkerModel;
+import net.minecraft.client.renderer.blockentity.BedRenderer;
 import net.minecraft.client.renderer.blockentity.BellRenderer;
+import net.minecraft.client.renderer.blockentity.ChestRenderer;
+import net.minecraft.client.renderer.blockentity.DecoratedPotRenderer;
 import net.minecraft.client.renderer.blockentity.HangingSignRenderer;
 import net.minecraft.client.renderer.blockentity.SignRenderer;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
@@ -228,7 +227,6 @@ public final class BakedBlockEntities1201 {
     private static final class Baker {
         private final Map<BlockState, BakedModel> vanilla;
         private final Map<BlockState, EbeModel> out;
-        private final Map<ModelLayerLocation, LayerDefinition> layers = LayerDefinitions.createRoots();
         private final TextureAtlas atlas = Minecraft.getInstance().getModelManager().getAtlas(TextureAtlas.LOCATION_BLOCKS);
         private final Capture capture = new Capture();
 
@@ -248,14 +246,18 @@ public final class BakedBlockEntities1201 {
             boolean signs = !amendments && !PackOverrides.replaces(resources, PackOverrides.SIGNS);
             boolean bells = !amendments && !PackOverrides.replaces(resources, PackOverrides.BELLS);
             boolean pots = !PackOverrides.replaces(resources, PackOverrides.POTS);
-            ModelPart potBase = part(ModelLayers.DECORATED_POT_BASE), potSides = part(ModelLayers.DECORATED_POT_SIDES);
+            ModelPart potBase = DecoratedPotRenderer.createBaseLayer().bakeRoot(), potSides = DecoratedPotRenderer.createSidesLayer().bakeRoot();
             Material potBaseMaterial = Sheets.getDecoratedPotMaterial(DecoratedPotPatterns.BASE);
             Material potSideMaterial = Sheets.getDecoratedPotMaterial(DecoratedPotPatterns.getResourceKey(Items.BRICK));
             if (amendments) LOG.info("Baked block entities: Amendments installed, signs, hanging signs and bells keep their renderers");
-            ModelPart chestSingle = part(ModelLayers.CHEST), chestLeft = part(ModelLayers.DOUBLE_CHEST_LEFT), chestRight = part(ModelLayers.DOUBLE_CHEST_RIGHT);
-            ShulkerModel<?> shulker = new ShulkerModel<>(part(ModelLayers.SHULKER));
-            ModelPart bedHead = part(ModelLayers.BED_HEAD), bedFoot = part(ModelLayers.BED_FOOT);
-            ModelPart bellBody = part(ModelLayers.BELL).getChild("bell_body");
+            // Vanilla's own layer factories (what LayerDefinitions.createRoots() registers): no Forge layer event fired mid-loading.
+            ModelPart chestSingle = ChestRenderer.createSingleBodyLayer().bakeRoot(), chestLeft = ChestRenderer.createDoubleBodyLeftLayer().bakeRoot(),
+                chestRight = ChestRenderer.createDoubleBodyRightLayer().bakeRoot();
+            // Model parts only, never Model instances: Entity Model Features hooks every Model constructor, and under Forge this runs
+            // while mods are still loading (constructing one here crashed Zero SMP through a Lazyyyyy mixin into EMF).
+            ModelPart shulker = ShulkerModel.createBodyLayer().bakeRoot(), shulkerBase = shulker.getChild("base"), shulkerLid = shulker.getChild("lid");
+            ModelPart bedHead = BedRenderer.createHeadLayer().bakeRoot(), bedFoot = BedRenderer.createFootLayer().bakeRoot();
+            ModelPart bellBody = BellRenderer.createBodyLayer().bakeRoot().getChild("bell_body");
             for (Block block : BuiltInRegistries.BLOCK) {
                 if (!candidate(block)) continue;
                 for (BlockState state : block.getStateDefinition().getPossibleStates()) {
@@ -285,9 +287,11 @@ public final class BakedBlockEntities1201 {
                         pose.mulPose(state.getValue(ShulkerBoxBlock.FACING).getRotation());
                         pose.scale(1.0F, -1.0F, -1.0F);
                         pose.translate(0.0F, -1.0F, 0.0F);
-                        shulker.getLid().setPos(0.0F, 24.0F, 0.0F);
-                        shulker.getLid().yRot = 0.0F;
-                        shulker.renderToBuffer(pose, capture, 0, 0, 1f, 1f, 1f, 1f);
+                        shulker.getAllParts().forEach(ModelPart::resetPose);
+                        shulkerLid.setPos(0.0F, 24.0F, 0.0F); // the renderer's lid pose at progress 0
+                        shulkerLid.yRot = 0.0F;
+                        shulkerBase.render(pose, capture, 0, 0); // ShulkerModel.parts(): base, lid (the head is the mob's)
+                        shulkerLid.render(pose, capture, 0, 0);
                     } else if (block instanceof BedBlock bed) {
                         if (!beds) break;
                         material = Sheets.BED_TEXTURES[bed.getColor().getId()];
@@ -303,23 +307,27 @@ public final class BakedBlockEntities1201 {
                         float rotation = -sign.getYRotationDegrees(state);
                         if (block instanceof CeilingHangingSignBlock || block instanceof WallHangingSignBlock) {
                             material = Sheets.getHangingSignMaterial(wood);
-                            HangingSignRenderer.HangingSignModel model = new HangingSignRenderer.HangingSignModel(part(ModelLayers.createHangingSignModelName(wood)));
-                            model.evaluateVisibleParts(state);
+                            ModelPart root = HangingSignRenderer.createHangingSignLayer().bakeRoot();
+                            boolean wall = !(block instanceof CeilingHangingSignBlock); // HangingSignModel.evaluateVisibleParts
+                            boolean attached = !wall && state.getValue(BlockStateProperties.ATTACHED);
+                            root.getChild("plank").visible = wall;
+                            root.getChild("normalChains").visible = !attached;
+                            root.getChild("vChains").visible = attached;
                             pose.translate(0.5, 0.9375, 0.5);
                             pose.mulPose(Axis.YP.rotationDegrees(rotation));
                             pose.translate(0.0F, -0.3125F, 0.0F);
                             pose.scale(1.0F, -1.0F, -1.0F);
-                            model.root.render(pose, capture, 0, 0);
+                            root.render(pose, capture, 0, 0);
                         } else if (block instanceof StandingSignBlock || block instanceof WallSignBlock) {
                             material = Sheets.getSignMaterial(wood);
-                            SignRenderer.SignModel model = new SignRenderer.SignModel(part(ModelLayers.createSignModelName(wood)));
-                            model.stick.visible = block instanceof StandingSignBlock;
+                            ModelPart root = SignRenderer.createSignLayer().bakeRoot();
+                            root.getChild("stick").visible = block instanceof StandingSignBlock;
                             float scale = 0.6666667F;
                             pose.translate(0.5F, 0.75F * scale, 0.5F);
                             pose.mulPose(Axis.YP.rotationDegrees(rotation));
                             if (!(block instanceof StandingSignBlock)) pose.translate(0.0F, -0.3125F, -0.4375F);
                             pose.scale(scale, -scale, -scale);
-                            model.root.render(pose, capture, 0, 0);
+                            root.render(pose, capture, 0, 0);
                         } else break;
                     } else if (block instanceof DecoratedPotBlock) {
                         if (!pots || potBaseMaterial == null || potSideMaterial == null) break;
@@ -351,8 +359,6 @@ public final class BakedBlockEntities1201 {
                 }
             }
         }
-
-        private ModelPart part(ModelLayerLocation layer) { return layers.get(layer).bakeRoot(); }
 
         private @Nullable TextureAtlasSprite sprite(Material material) {
             TextureAtlasSprite sprite = atlas.getSprite(material.texture());

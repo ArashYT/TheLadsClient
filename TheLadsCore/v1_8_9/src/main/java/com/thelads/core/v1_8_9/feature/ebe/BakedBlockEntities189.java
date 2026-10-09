@@ -23,6 +23,9 @@ import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.ItemCameraTransforms;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.client.renderer.texture.TextureUtil;
+import net.minecraft.client.resources.IResourceManager;
+import java.awt.image.BufferedImage;
 import net.minecraft.client.resources.model.IBakedModel;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
@@ -81,12 +84,14 @@ public final class BakedBlockEntities189 {
 
     @SubscribeEvent
     public void stitchPre(TextureStitchEvent.Pre event) {
-        for (String name : TEXTURES) event.map.registerSprite(new ResourceLocation("entity/chest/" + name));
-        event.map.registerSprite(new ResourceLocation("entity/sign"));
+        if (event.map != Minecraft.getMinecraft().getTextureMapBlocks()) return; // Essential and OptiFine stitch atlases of their own
+        for (String name : TEXTURES) event.map.setTextureEntry("minecraft:entity/chest/" + name, new EntitySprite("minecraft:entity/chest/" + name));
+        event.map.setTextureEntry("minecraft:entity/sign", new EntitySprite("minecraft:entity/sign"));
     }
 
     @SubscribeEvent
     public void stitchPost(TextureStitchEvent.Post event) {
+        if (event.map != Minecraft.getMinecraft().getTextureMapBlocks()) return;
         BakedBlockEntities.clear();
         try {
             bake(event.map);
@@ -216,6 +221,37 @@ public final class BakedBlockEntities189 {
             quads.add(new BakedQuad(data, -1, EnumFacing.VALUES[direction]));
         }
         return Collections.unmodifiableList(quads);
+    }
+
+    /**
+     * An entity texture in the block atlas. 1.8.9's sprite loader takes only square images (or animation strips); the
+     * double chest (128x64) and the sign (64x32) are not, so they are read here, as they are, without that check.
+     */
+    static final class EntitySprite extends TextureAtlasSprite {
+        EntitySprite(String name) { super(name); }
+
+        @Override
+        public boolean hasCustomLoader(IResourceManager manager, ResourceLocation location) { return true; }
+
+        @Override
+        public boolean load(IResourceManager manager, ResourceLocation location) {
+            ResourceLocation file = new ResourceLocation(location.getResourceDomain(), "textures/" + location.getResourcePath() + ".png");
+            try {
+                BufferedImage image = TextureUtil.readBufferedImage(manager.getResource(file).getInputStream());
+                width = image.getWidth();
+                height = image.getHeight();
+                int[] pixels = new int[width * height];
+                image.getRGB(0, 0, width, height, pixels, 0, width);
+                framesTextureData.clear();
+                int[][] levels = new int[5][]; // as vanilla: one slot per mip level (at most 4), filled by generateMipmaps
+                levels[0] = pixels;
+                framesTextureData.add(levels);
+                return false; // loaded: stitch it (mipmaps are generated from frame 0 like any sprite)
+            } catch (Exception e) {
+                LOG.warn("Baked block entities: cannot read {}", file, e);
+                return true;
+            }
+        }
     }
 
     /** Added to ModelBox by mixin: its (private) quads. */
