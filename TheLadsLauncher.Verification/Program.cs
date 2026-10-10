@@ -869,7 +869,7 @@ try
                 "Lads kill streak capture END:",
                 "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
                 "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
-                "Lads server features capture END:", "Lads F3/FOV capture END:",
+                "Lads server features capture END:", "Lads F3/FOV capture END:", "Lads HUD info capture END:",
                 "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:" })
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
