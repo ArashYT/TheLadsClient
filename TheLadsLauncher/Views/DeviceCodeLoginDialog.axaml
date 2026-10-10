@@ -27,15 +27,11 @@
 
                     <!-- Code Display Box -->
                     <Border Background="#12121E" CornerRadius="4" BorderBrush="#C44343" BorderThickness="1" Padding="12">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock x:Name="UserCodeText" Classes="notranslate" Grid.Column="0" Text="XXXX-XXXX"
-                                       Foreground="#FFD700" FontSize="22" FontWeight="Bold"
-                                       FontFamily="Consolas, monospace"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       LetterSpacing="1"/>
-                            <Button x:Name="CopyCodeOnlyBtn" Grid.Column="1" Classes="action" Content="Copy"
-                                    Height="32" Width="70" Click="CopyCodeOnly_Click"/>
-                        </Grid>
+                        <TextBlock x:Name="UserCodeText" Classes="notranslate" Text="XXXX-XXXX"
+                                   Foreground="#FFD700" FontSize="22" FontWeight="Bold"
+                                   FontFamily="Consolas, monospace"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   LetterSpacing="1"/>
                     </Border>
 
                     <TextBlock Text="2. Go to the Microsoft verification link:" Foreground="#CCCCCC" FontSize="13"/>
