@@ -325,14 +325,15 @@ public final class HudProbe {
     private static boolean grouped(Minecraft mc) throws Exception {
         check(PAIR.equals(HudSettings.getInstance().getGroupMembers("CPS")) && groupsOnDisk() == 1, "context Group creates the CPS + Day group and saves it");
         check(stacked(), "the new group is a centred stack " + bounds("CPS") + " / " + bounds("Day"));
-        // A member that grows breaks the stack until Center stack re-stacks it.
+        // A member that grows pushes the HUD docked under it (1.9.0: docked HUDs never overlap); Center stack still re-stacks.
+        before = bounds("CPS");
         ((SliderOption) module("CPS").getOption("Size")).setValue(150);
         return after(2);
     }
 
     private static boolean resized(Minecraft mc) throws Exception {
-        check(!stacked(), "CPS at 150% overlaps Day " + bounds("CPS") + " / " + bounds("Day") + ", CPS size "
-            + ((SliderOption) module("CPS").getOption("Size")).getValue());
+        check(bounds("CPS").height() > before.height() && stacked(), "CPS at 150% pushes Day down, still 2 px under it " + bounds("CPS") + " / "
+            + bounds("Day") + ", CPS size " + ((SliderOption) module("CPS").getOption("Size")).getValue());
         rightClick(bounds("CPS"));
         return after(2);
     }
