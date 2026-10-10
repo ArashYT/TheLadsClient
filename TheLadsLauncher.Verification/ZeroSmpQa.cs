@@ -183,7 +183,7 @@ internal static class ZeroSmpQa
             if (fastQuit != null) flags.Add("-Dthelads.verifyFastQuit=" + fastQuit);
             if (fastQuit == "baseline") flags.Add("-Dlads.fastquit=false");
             foreach (var extra in (QaShared.Env("LADS_VERIFY_EXTRA_JVM") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                flags.Add(System.Text.RegularExpressions.Regex.IsMatch(extra, @"\A-Dlads\.[a-z0-9.]{1,40}=[A-Za-z0-9._-]{1,40}\z") ? extra : throw new ArgumentException("LADS_VERIFY_EXTRA_JVM takes only -Dlads.<name>=<value> flags, not '" + extra + "'."));
+                flags.Add(System.Text.RegularExpressions.Regex.IsMatch(extra, @"\A(-Dlads\.[a-z0-9.]{1,40}=[A-Za-z0-9._-]{1,40}|-Dorg\.lwjgl\.(system\.allocator|util\.DebugAllocator|util\.DebugStack|util\.Debug)=[a-z]{1,10})\z") ? extra : throw new ArgumentException("LADS_VERIFY_EXTRA_JVM takes only -Dlads.<name>=<value> flags (and the LWJGL allocator diagnostics -Dorg.lwjgl.system.allocator / util.DebugAllocator / util.Debug), not '" + extra + "'."));
             // LADS_VERIFY_EBE=1|off|xmas: the baked block entity probe (BakedBlockEntitiesProbe1201), asked for after the world capture.
             string? ebe = QaShared.Env("LADS_VERIFY_EBE");
             if (ebe is not (null or "1" or "off" or "xmas")) throw new ArgumentException("LADS_VERIFY_EBE must be 1, off or xmas.");

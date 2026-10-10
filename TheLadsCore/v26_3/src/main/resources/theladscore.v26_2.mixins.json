@@ -8,6 +8,7 @@
   },
   "client": [
     "GuiMixin",
+    "EuphoriaClipboardMixin",
     "GuiHudCapMixin",
     "GuiRenderStateCaptureMixin",
     "TitleScreenMixin",
