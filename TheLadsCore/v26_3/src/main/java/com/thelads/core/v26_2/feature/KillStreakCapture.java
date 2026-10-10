@@ -37,8 +37,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * QA only (auto-world, ".lads-qa-capture-killstreak" from the harness's LADS_VERIFY_CAPTURE_KILLSTREAK): the kill streak in the
- * QA world. Five pigs killed by the player in one server tick, then five killed by the player's own attacks one client tick
- * apart: the banner must show 1, 2, 3, 4, 5 in turn, none dropped (the banner state every client tick in
+ * QA world. Five pigs killed by the player in one server tick end on the streak banner (banner 5 replaces earlier ones at once),
+ * then five killed by the player's own attacks one client tick apart: the banner shows 1, 2, 3, 4, 5 in turn, none dropped
+ * (the banner state every client tick in
  * screenshots/killstreak/killstreak-trace.csv, a banner lasts at least 5 ticks so each one is seen; and, when the game renders
  * frames, a picture of each banner 0.2 s in: screenshots/killstreak/ks-&lt;run&gt;-&lt;n&gt;-k&lt;count&gt;.png). Then server kill messages in
  * many servers' formats through the real chat packet handler (each counts, the decoys do not), the streak timer typed as 3 s
@@ -131,7 +132,7 @@ final class KillStreakCapture {
                 wait = 50;
             }
             case 2 -> {
-                end(List.of(1, 2, 3, 4, 5), "five pigs killed in one server tick show banners 1 to 5 in turn");
+                end(List.of(5), "five pigs killed in one server tick end on the streak banner (banner 5 replaces earlier ones at once)");
                 check(banner.streak() == 5, "and all five count (streak " + banner.streak() + ")");
                 pigs(5);
                 server(sp -> { for (int id : PIGS) if (sp.level().getEntity(id) instanceof LivingEntity pig) pig.setHealth(.1f); });
