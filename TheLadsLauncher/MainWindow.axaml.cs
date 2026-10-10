@@ -4448,6 +4448,7 @@ public partial class MainWindow : Window
             GameLaunchStatusText.Text = "Launching game...";
             Log("[Launcher] Starting game process...");
             PrepareVersionSwitch(gameDirectory, activeProfile.MinecraftVersion);
+            PrepareAccountSwitch(gameDirectory);
             EnforceEssentialSettings(gameDirectory);
             process.Start();
             _runningProcesses[process] = gameDirectory;
@@ -4655,34 +4656,35 @@ public partial class MainWindow : Window
         });
     }
 
-    private void ApplyNextAccountRequest(string gameDirectory)
+    /// <summary>
+    /// After any game (a profile, Zero SMP, a modpack) has exited from <paramref name="gameDirectory"/>: when it asked for another
+    /// account, applies the account switch so the next launch uses it. Runs on the UI thread.
+    /// </summary>
+    internal bool ApplyNextAccountRequest(string gameDirectory)
     {
-        string requestFile = Path.Combine(gameDirectory, "lads_next_account.json");
-        if (!File.Exists(requestFile)) return;
         try
         {
-            using var request = JsonDocument.Parse(File.ReadAllText(requestFile));
-            string name = request.RootElement.GetProperty("username").GetString() ?? "";
-            string uuid = request.RootElement.GetProperty("uuid").GetString() ?? "";
-            string type = request.RootElement.GetProperty("type").GetString() ?? "";
-            var existing = GetAccountSummaries().FirstOrDefault(a =>
-                string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(a.uuid.Replace("-", ""), uuid.Replace("-", ""), StringComparison.OrdinalIgnoreCase));
-            if (existing == null && type == "offline" &&
-                string.Equals(AccountIdentity.OfflineUuid(name), uuid, StringComparison.OrdinalIgnoreCase) &&
-                !GetAccountSummaries().Any(a => string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase)))
-            {
-                settings.OfflineAccounts.Add(AccountIdentity.NormalizeOfflineName(name));
-                settings.Save();
-                existing = new AccountSummary(name, uuid, "offline");
-            }
-            if (existing == null) throw new InvalidOperationException("Requested account is not saved in the launcher.");
-            _launchAccountOverride = existing.username;
+            if (AccountSwitch.Apply(gameDirectory, GetAccountSummaries(), settings, Log) is not { } account)
+                return false;
+
+            _launchAccountOverride = account.username;
             LoadAccounts();
-            Log($"[Accounts] Next launch will use {existing.username}.");
-            File.Delete(requestFile);
+            return true;
         }
-        catch (Exception) { Log("[Accounts] Could not apply the game's account selection. Select an account in the launcher."); }
+        catch (Exception ex)
+        {
+            Log($"[Accounts] Could not apply account switch: {ex.Message}");
+            return false;
+        }
+    }
+
+    private void PrepareAccountSwitch(string gameDirectory)
+    {
+        try { AccountSwitch.Prepare(gameDirectory); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log($"[Launcher] Could not prepare {AccountSwitch.RequestFile}: {ex.Message}");
+        }
     }
 
     private void PrepareVersionSwitch(string gameDirectory, string currentVersion)

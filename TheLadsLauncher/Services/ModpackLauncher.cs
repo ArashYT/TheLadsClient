@@ -191,6 +191,8 @@ public static class ModpackLauncher
         process.StartInfo.Environment["THELADS_DIR"] = instance.GameDirectory;
         try { VersionSwitch.Prepare(instance.GameDirectory, instance.Name); } // the in-game Switch Versions screen offers the Lads Client versions
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { status?.Invoke($"Could not write {VersionSwitch.VersionsFile}: {ex.Message}"); }
+        try { AccountSwitch.Prepare(instance.GameDirectory); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { status?.Invoke($"Could not prepare {AccountSwitch.RequestFile}: {ex.Message}"); }
         return process;
     }
 
