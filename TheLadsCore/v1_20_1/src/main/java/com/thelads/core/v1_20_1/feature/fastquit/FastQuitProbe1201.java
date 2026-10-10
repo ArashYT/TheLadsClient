@@ -103,6 +103,7 @@ public final class FastQuitProbe1201 {
             }
         } catch (Throwable failure) {
             LOGGER.error("Lads fast quit probe FAILED: {}", failure.toString(), failure);
+            Minecraft.getInstance().stop(); // never leave a QA game idle
         }
     }
 

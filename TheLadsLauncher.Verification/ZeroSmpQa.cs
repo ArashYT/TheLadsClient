@@ -234,7 +234,7 @@ internal static class ZeroSmpQa
                     if (QaShared.MixinProblem(line) && seen.Add(line)) failures.Add("MIXIN PROBLEM: " + line.Trim());
                     if (line.Contains("Crash report saved") || line.Contains("---- Minecraft Crash Report")) { if (seen.Add("crash")) failures.Add("the game crashed (see latest.log / crash-reports)"); }
                 }
-                if (failures.Count > 0 && !stopSent && (failures.Any(f => f.Contains("crashed")) || failures.Any(f => f.Contains("auto-world QA FAILED")))) break;
+                if (failures.Count > 0 && !stopSent && (failures.Any(f => f.Contains("crashed")) || failures.Any(f => f.Contains("auto-world QA FAILED") || f.Contains("fast quit probe FAILED")))) break;
                 if (ebe != null && worldDone && !ebeAsked) { File.WriteAllText(Path.Combine(gameDir, ".lads-qa-ebe"), "probe"); ebeAsked = true; }
                 bool finished = fastQuit != null ? initialized && fastQuitDone : initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone) && (ebe == null || ebeDone);
                 if (finished && !stopSent)
