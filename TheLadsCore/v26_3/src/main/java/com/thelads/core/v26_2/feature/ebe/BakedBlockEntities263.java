@@ -374,7 +374,8 @@ public final class BakedBlockEntities263 {
     /** The block entity's geometry as a block-model part (all quads unculled: none lies on a full block face). */
     private record Part(List<BakedQuad> quads, Material.Baked particle) implements BlockStateModelPart {
         @Override public List<BakedQuad> getQuads(@Nullable Direction direction) { return direction == null ? quads : List.of(); }
-        @Override public boolean useAmbientOcclusion() { return true; }
+        // Flat-lit like the block entity renderer it replaces: smooth AO made baked chests darker (and much darker under shader packs).
+        @Override public boolean useAmbientOcclusion() { return false; }
         @Override public Material.Baked particleMaterial() { return particle; }
         @Override public int materialFlags() {
             int flags = 0;
