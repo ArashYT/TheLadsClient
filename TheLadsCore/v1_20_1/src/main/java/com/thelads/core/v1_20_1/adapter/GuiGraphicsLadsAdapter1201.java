@@ -413,4 +413,9 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     public int hotbarLift() {
         return Raised1201.hotbar();
     }
+
+    @Override
+    public int guiScale() {
+        return (int) Minecraft.getInstance().getWindow().getGuiScale();
+    }
 }

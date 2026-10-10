@@ -204,6 +204,9 @@ bool f3FovCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTUR
 bool hudInfoCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_HUDINFO") == "1";
 // Fabric versions: Raised and the paper doll in the QA world (RaisedDollCapture). 1.8.9's self-test runs the same (RaisedDollProbe189).
 bool raisedCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_RAISED") == "1";
+// Fabric versions: the 1.9.0 HUD layout (HudLayoutQa): a pre-1.9.0 layout at GUI scales 3 and 2, docked HUDs pushed, the Lads HUD's own
+// scale and the hotbar snap in the HUD editor (HudLayoutCapture). 1.20.1: the "hudlayout" script step; 1.8.9: LADS_VERIFY_189_ONLY=hudlayout.
+bool hudLayoutCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_HUDLAYOUT") == "1";
 // Fabric versions: Lads Mouse Tweaks in a server chest through the screen's own mouse handlers (MouseTweaksCapture).
 // 1.8.9's self-test (MouseTweaksProbe189) always runs the same checks.
 bool mouseTweaksCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_MOUSETWEAKS") == "1";
@@ -394,6 +397,8 @@ string hudInfoCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hudinfo
 if (autoWorldVerification && File.Exists(hudInfoCaptureRequest)) File.Delete(hudInfoCaptureRequest);
 string raisedCaptureRequest = Path.Combine(directory, ".lads-qa-capture-raised");
 if (autoWorldVerification && File.Exists(raisedCaptureRequest)) File.Delete(raisedCaptureRequest);
+string hudLayoutCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hudlayout");
+if (autoWorldVerification && File.Exists(hudLayoutCaptureRequest)) File.Delete(hudLayoutCaptureRequest);
 string mouseTweaksCaptureRequest = Path.Combine(directory, ".lads-qa-capture-mousetweaks");
 if (autoWorldVerification && File.Exists(mouseTweaksCaptureRequest)) File.Delete(mouseTweaksCaptureRequest);
 string resolutionCaptureRequest = Path.Combine(directory, ".lads-qa-capture-resolution");
@@ -436,7 +441,7 @@ var failedCaptures = new System.Collections.Concurrent.ConcurrentDictionary<stri
 string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:",
     "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
     "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
-    "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
+    "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads hud layout END:", "Lads mouse tweaks capture END:",
     "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
 bool Settled(bool requested, params string[] ends) => !requested || ends.All(passedMarkers.ContainsKey) || ends.Any(failedCaptures.ContainsKey);
@@ -460,6 +465,7 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(f3FovCaptureVerification && !capabilities.Forge, "Lads F3/FOV capture END:")
     && Settled(hudInfoCaptureVerification, "Lads HUD info capture END:")
     && Settled(raisedCaptureVerification, "Lads raised capture END:")
+    && Settled(hudLayoutCaptureVerification, "Lads hud layout END:")
     && Settled(mouseTweaksCaptureVerification, "Lads mouse tweaks capture END:")
     && Settled(resolutionRequested, "Lads resolution capture END:")
     && Settled(lightsCaptureVerification, "Lads dynamic lights capture END:")
@@ -511,7 +517,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads cheats probe FAILED", "Lads zoom capture FAILED", "Lads sprint capture FAILED", "Lads add-server probe FAILED",
     "Lads HUD 1.7.0 capture FAILED", "Lads item physics capture FAILED", "Lads inventory capture FAILED",
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
-    "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
+    "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads hud layout FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
     "Lads AppleSkin sync capture FAILED", "Lads qa script FAILED", "Lads qa step FAILED", "Lads render 1.8.5 capture FAILED", "Lads input probe FAILED", "Lads fast quit probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
@@ -1047,6 +1053,7 @@ try
                     (f3FovCaptureVerification && !capabilities.Forge, f3FovCaptureRequest, "Capture Better F3 frames and log Custom FOV values."),
                     (hudInfoCaptureVerification, hudInfoCaptureRequest, "Photograph food previews, tooltips and crosshair styles in the QA world."),
                     (raisedCaptureVerification, raisedCaptureRequest, "Capture Raised and the paper doll in the QA world."),
+                    (hudLayoutCaptureVerification, hudLayoutCaptureRequest, "Load a pre-1.9.0 HUD layout and capture it across GUI scales, in the HUD editor and pushed."),
                     (mouseTweaksCaptureVerification, mouseTweaksCaptureRequest, "Drive Lads Mouse Tweaks in a QA chest and capture its frames."),
                     (lightsCaptureVerification, lightsCaptureRequest, "Light the QA world at midnight with Dynamic Lights and capture its frames."),
                     (asyncStressVerification, asyncStressRequest, "Stress Async with a pen of mobs in the QA world."),
@@ -1206,6 +1213,8 @@ try
             "The requested food, tooltip and crosshair frames were not all captured. Inspect production-smoke.log.");
         Require(!raisedCaptureVerification || passedMarkers.ContainsKey("Lads raised capture END:"),
             "The requested Raised and paper doll capture did not pass. Inspect production-smoke.log.");
+        Require(!hudLayoutCaptureVerification || passedMarkers.ContainsKey("Lads hud layout END:"),
+            "The requested HUD layout capture did not pass. Inspect production-smoke.log.");
         Require(!mouseTweaksCaptureVerification || passedMarkers.ContainsKey("Lads mouse tweaks capture END:"),
             "The requested Lads Mouse Tweaks capture did not pass. Inspect production-smoke.log.");
         Require(!resolutionCaptureVerification || passedMarkers.ContainsKey("Lads resolution capture END:"),

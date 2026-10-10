@@ -155,6 +155,9 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe172KillStreak.headshots());
+        } else if ("hudlayout".equals(only)) { // 1.9.0 HUD layout across GUI scales, docked HUDs, the hotbar snap (HudLayoutProbe189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, HudLayoutProbe189::run));
         } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));

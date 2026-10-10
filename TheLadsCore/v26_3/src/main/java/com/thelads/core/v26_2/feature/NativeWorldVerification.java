@@ -178,6 +178,7 @@ public final class NativeWorldVerification {
             ChatHeadsCapture.tick(captureReady && chatCaptureStep >= 2 && !NativeRenderScaleProbe.pending() && (ChatHeadsCapture.busy() || !captureBusy()));
             F3FovCapture.tick(gameDirectory, captureReady && (F3FovCapture.busy() || !captureBusy()));
             RaisedDollCapture.tick(gameDirectory, captureReady && (RaisedDollCapture.busy() || !captureBusy()));
+            HudLayoutCapture.tick(gameDirectory, captureReady && (HudLayoutCapture.busy() || !captureBusy()));
             MouseTweaksCapture.tick(gameDirectory, captureReady && (MouseTweaksCapture.busy() || !captureBusy()));
             ResolutionCapture.tick(gameDirectory, captureReady && (ResolutionCapture.busy() || !captureBusy()));
             DynamicLightsCapture.tick(gameDirectory, captureReady && (DynamicLightsCapture.busy() || !captureBusy()));
@@ -343,6 +344,7 @@ public final class NativeWorldVerification {
         ChatHeadsCapture.frame(target, gameDirectory);
         F3FovCapture.frame(target, gameDirectory);
         RaisedDollCapture.frame(target, gameDirectory);
+        HudLayoutCapture.frame(target, gameDirectory);
         MouseTweaksCapture.frame(target, gameDirectory);
         ResolutionCapture.frame(target, gameDirectory);
         com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.frame(target, gameDirectory);
@@ -484,7 +486,7 @@ public final class NativeWorldVerification {
     /** True while any in-world QA capture is running. */
     static boolean captureBusy() {
         return HudInfoCapture.busy() || KillBannerCapture.busy() || KillStreakCapture.busy() || OldAnimationsCapture.busy() || Anim172Capture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
-            ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || MouseTweaksCapture.busy() ||
+            ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || HudLayoutCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
             SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ParticleCoreCapture.busy();
     }

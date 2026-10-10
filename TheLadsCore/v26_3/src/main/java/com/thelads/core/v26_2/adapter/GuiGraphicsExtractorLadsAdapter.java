@@ -255,4 +255,9 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     public int hotbarLift() {
         return com.thelads.core.v26_2.embedded.hoveringhotbar.HoveringHotbar.hotbarLift() + com.thelads.core.v26_2.feature.Raised26.hotbar();
     }
+
+    @Override
+    public int guiScale() {
+        return Minecraft.getInstance().getWindow().getGuiScale();
+    }
 }

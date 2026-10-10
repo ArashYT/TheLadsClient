@@ -51,7 +51,7 @@ final class HudQa1201 {
                     .append(bounds.x()).append(',').append(bounds.y()).append(' ').append(bounds.width()).append('x').append(bounds.height())
                     .append(" xy=").append(element.getX()).append(',').append(element.getY())
                     .append(" saved=").append(java.util.Arrays.toString(com.thelads.core.config.HudSettings.getInstance().getPosition(element.getModuleName())))
-                    .append(" default=").append(java.util.Arrays.toString(com.thelads.core.client.hud.HudDefaults.origin(element.getModuleName(), graphics.guiWidth(), graphics.guiHeight(), bounds.width(), bounds.height()))).append(')');
+                    .append(" default=").append(java.util.Arrays.toString(com.thelads.core.client.hud.HudDefaults.origin(element.getModuleName(), graphics.guiWidth(), graphics.guiHeight(), bounds.width(), bounds.height(), com.thelads.core.client.hud.HudAnchors.hotbar(adapter)))).append(')');
             }
             Hud1201.LOG.info(out.toString());
         } catch (RuntimeException failure) {
