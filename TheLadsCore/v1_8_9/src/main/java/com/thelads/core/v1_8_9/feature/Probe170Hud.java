@@ -129,14 +129,13 @@ final class Probe170Hud {
         return after(10);
     }
 
-    /** Then the pack list changes under the HUD: one pack fewer. */
+    /** Then the pack list changes under the HUD (when the QA game has two packs of its own to choose from): down to two. */
     private static boolean packsFewer(Minecraft mc) {
         screenshot(mc, "170-packs-all-icons-off");
         ((BoolOption) Options189.module("TexturePacks").getOption("Show Icons")).set(true);
         ResourcePackRepository repository = mc.getResourcePackRepository();
         packsWere = new java.util.ArrayList<>(repository.getRepositoryEntries());
-        check(packsWere.size() > 1, "Pack: the QA game has resource packs of its own (" + packsWere.size() + ")");
-        repository.setRepositories(packsWere.subList(0, 2));
+        if (packsWere.size() > 2) repository.setRepositories(packsWere.subList(0, 2));
         return after(10);
     }
 

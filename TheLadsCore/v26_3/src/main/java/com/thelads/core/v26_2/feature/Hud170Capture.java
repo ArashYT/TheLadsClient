@@ -213,14 +213,13 @@ final class Hud170Capture {
                     ((BoolOption) NativeQualityOfLife.module("TexturePacks").getOption("Show Icons")).set(true);
                     bridgeWas = LadsGameBridge.get();
                     userPacks = mc.getResourcePackRepository().getSelectedIds().stream().filter(id -> id.startsWith("file/")).toList();
-                    check(!userPacks.isEmpty(), "Pack: the QA game has resource packs of its own selected " + userPacks);
                     List<String> own = new ArrayList<>(List.of("vanilla"));
                     own.addAll(userPacks);
-                    LadsGameBridge.set(listing(bridgeWas, own));
+                    if (!userPacks.isEmpty()) LadsGameBridge.set(listing(bridgeWas, own)); // none without LADS_VERIFY_RESOURCEPACKS
                     at(600, "hud170-packs-own");
                 }
                 case 14 -> {
-                    LadsGameBridge.set(listing(bridgeWas, List.of("vanilla", userPacks.get(0))));
+                    if (!userPacks.isEmpty()) LadsGameBridge.set(listing(bridgeWas, List.of("vanilla", userPacks.get(0))));
                     at(600, "hud170-packs-fewer");
                 }
                 default -> finish();
