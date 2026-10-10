@@ -22,6 +22,19 @@ static class QaShared
     /// <summary>Where the slots and the cache live: LADS_QA_SHARED_ROOT, else the owner's "The Lads Client Dev" folder.</summary>
     public static string Root => Path.GetFullPath(Env("LADS_QA_SHARED_ROOT") ?? (Directory.Exists(DevDirectory) ? DevDirectory : Path.Combine(Path.GetTempPath(), "lads-qa-shared")));
     public static string CacheRoot => Path.Combine(Root, ".qa-cache");
+
+    /// <summary>Owner-playing mode (owner 2026-10-09: "do the QAs 1 instance at a time on the 3rd monitor that has antigravity open, do not tab me
+    /// out of my game"): while &lt;shared root&gt;\.qa-owner-playing exists, every harness (Claude's and Antigravity's) runs ONE game machine-wide,
+    /// on the monitor named in that file (e.g. \.\DISPLAY3), below-normal priority, 60 FPS, never activated. Delete the file to return to normal.</summary>
+    public static string? PlayingMonitor
+    {
+        get
+        {
+            try { string f = Path.Combine(Root, ".qa-owner-playing"); return File.Exists(f) ? File.ReadAllText(f).Trim() is { Length: > 0 } m ? m : @"\\.\DISPLAY1" : null; }
+            catch (IOException) { return null; }
+        }
+    }
+    public static int EffectiveMaxGames => PlayingMonitor != null ? 1 : MaxGames;
     public static string RuntimeData => Path.Combine(CacheRoot, "runtime-data");
 
     public sealed class Slot : IDisposable
@@ -47,11 +60,11 @@ static class QaShared
             ct.ThrowIfCancellationRequested();
             double free = FreeGb();
             if (free >= minFreeGb && StaggerOk())
-                for (int number = 1; number <= MaxGames; number++)
+                for (int number = 1; number <= EffectiveMaxGames; number++)
                     if (TryClaim(number) is { } slot)
                     {
                         File.WriteAllText(Path.Combine(Root, ".qa-slot-last"), DateTime.UtcNow.Ticks.ToString());
-                        Console.WriteLine($"QA slot {number} of {MaxGames} claimed for {what} (free RAM {free:F1} GB, waited {wait.Elapsed.TotalSeconds:F0} s).");
+                        Console.WriteLine($"QA slot {number} of {MaxGames} claimed for {what}{(PlayingMonitor != null ? " [owner playing: 1 game on " + PlayingMonitor + "]" : "")} (free RAM {free:F1} GB, waited {wait.Elapsed.TotalSeconds:F0} s).");
                         return slot;
                     }
             if (wait.Elapsed.TotalSeconds - lastNote >= 60)

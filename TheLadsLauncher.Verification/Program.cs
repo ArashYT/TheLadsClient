@@ -902,7 +902,7 @@ try
     // 120 FPS cap (VSync off so the cap is what applies), render/simulation distance 4, GUI scale 2 (1.8.9 ignores simulationDistance);
     // pauseOnLostFocus off: a pause menu when the owner clicks away would stop the integrated server and the probes' input.
     // The 1.8.9 benchmark alone runs uncapped (maxFps 260 is Unlimited) at its own render distance (perf189 above).
-    bool ownerPlaying = Environment.GetEnvironmentVariable("LADS_VERIFY_PLAYING") == "1"; // 60 FPS cap while the owner plays and streams
+    bool ownerPlaying = Environment.GetEnvironmentVariable("LADS_VERIFY_PLAYING") == "1" || QaShared.PlayingMonitor != null; // 60 FPS cap while the owner plays and streams
     string[] qaForced = { "soundCategory_master:0.0", perf189 ? "maxFps:260" : ownerPlaying ? "maxFps:60" : "maxFps:120", "enableVsync:false", "renderDistance:" + perfRenderDistance,
         "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false", "fullscreen:" + (qaFullscreen ? "true" : "false") };
     string qaOptions = Path.Combine(directory, "options.txt");
