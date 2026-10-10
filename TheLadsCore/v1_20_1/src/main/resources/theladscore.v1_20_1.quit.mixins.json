@@ -7,6 +7,8 @@
   "client": [
     "ConnectScreenFastQuitMixin",
     "CreateWorldScreenFastQuitMixin",
+    "DhClientApiFastQuitMixin",
+    "DhServerApiFastQuitMixin",
     "DirectoryLockFastQuitMixin",
     "LevelStorageSourceFastQuitMixin",
     "LevelSummaryFastQuitMixin",

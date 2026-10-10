@@ -46,6 +46,8 @@ import org.slf4j.LoggerFactory;
 public final class BakedBlockEntitiesProbe1201 {
     private static final Logger LOG = LoggerFactory.getLogger("TheLadsCore/BakedBlockEntities");
     private static final int BENCH_TICKS = 200;
+    /** Time of day for every photo ({@code -Dlads.ebe.probe.time=12800} for dusk; shader packs light block entities differently then). */
+    private static final String TIME = System.getProperty("lads.ebe.probe.time", "noon");
     public static volatile boolean recording;
     private static final List<Long> FRAMES = new ArrayList<>();
     private static long lastFrame;
@@ -108,7 +110,7 @@ public final class BakedBlockEntitiesProbe1201 {
                 BlockPos p = mc.player.blockPosition();
                 origin = new BlockPos((p.getX() >> 4 << 4) + 8, 180, (p.getZ() >> 4 << 4) + 8);
                 command(server, "gamemode spectator " + name);
-                command(server, "time set noon");
+                command(server, "time set " + TIME);
                 command(server, "weather clear");
                 server.execute(() -> build(server.overworld()));
                 JSON.append("\"version\":\"1.20.1\",\"active\":").append(BakedBlockEntities.active())
@@ -317,7 +319,7 @@ public final class BakedBlockEntitiesProbe1201 {
     }
 
     private static void shot(Minecraft mc, String state) {
-        command(mc.getSingleplayerServer(), "time set noon");
+        command(mc.getSingleplayerServer(), "time set " + TIME);
         String file = "ebe-" + phase + "-" + state + (BakedBlockEntities.christmasForced() ? "-xmas" : "") + ".png";
         Path out = mc.gameDirectory.toPath().resolve("screenshots").resolve(file);
         shots++;

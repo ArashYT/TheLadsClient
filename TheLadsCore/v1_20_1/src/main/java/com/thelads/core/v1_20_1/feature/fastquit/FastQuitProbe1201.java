@@ -291,16 +291,20 @@ public final class FastQuitProbe1201 {
      */
     private static void skipBackupQuestion(Minecraft mc) {
         var screen = mc.screen;
-        // class names are intermediary in production; Forge (Zero SMP) also asks "Worlds using Experimental Settings are not supported" (Yes)
+        // class names are intermediary in production; Forge (Zero SMP) also asks "Worlds using Experimental Settings are not supported"
+        // (selectWorld.backupQuestion.experimental: Proceed / Cancel); vanilla's experimental warning answers Yes.
         boolean backup = screen instanceof net.minecraft.client.gui.screens.BackupConfirmScreen;
+        String title = screen == null ? "" : screen.getTitle().getString();
         boolean experimental = !backup && screen instanceof net.minecraft.client.gui.screens.ConfirmScreen
-            && screen.getTitle().getString().equals(Component.translatable("selectWorld.warning.experimental.title").getString());
+            && (title.equals(Component.translatable("selectWorld.warning.experimental.title").getString())
+                || title.equals(Component.translatable("selectWorld.backupQuestion.experimental").getString()));
         if (!backup && !experimental) return;
-        String load = backup ? Component.translatable("selectWorld.backupJoinSkipButton").getString() : net.minecraft.network.chat.CommonComponents.GUI_YES.getString();
+        java.util.Set<String> load = backup ? java.util.Set.of(Component.translatable("selectWorld.backupJoinSkipButton").getString())
+            : java.util.Set.of(net.minecraft.network.chat.CommonComponents.GUI_YES.getString(), net.minecraft.network.chat.CommonComponents.GUI_PROCEED.getString());
         mc.execute(() -> {
             if (mc.screen != screen) return;
             for (var child : screen.children())
-                if (child instanceof Button button && button.getMessage().getString().equals(load)) {
+                if (child instanceof Button button && load.contains(button.getMessage().getString())) {
                     LOGGER.info("Lads fast quit probe: '{}' asked {}; loading anyway", screen.getTitle().getString(), backup ? "for a backup" : "to confirm");
                     button.onPress();
                     return;
