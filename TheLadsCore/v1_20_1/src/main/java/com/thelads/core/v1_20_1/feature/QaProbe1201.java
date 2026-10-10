@@ -31,7 +31,15 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.VideoSettingsScreen;
 import net.minecraft.client.gui.screens.controls.ControlsScreen;
+import net.minecraft.client.gui.screens.LanguageSelectScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
+import net.minecraft.client.gui.screens.packs.PackSelectionScreen;
+import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
+import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.ServerList;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.GameRules;
@@ -293,6 +301,7 @@ public final class QaProbe1201 {
             case "chat" -> { needWorld(mc); mc.player.connection.sendChat(rest(s, 1)); }
             case "shot" -> { pendingShot = arg(s, 1); waitTicks = 3; }
             case "screen" -> openScreen(mc, arg(s, 1).toLowerCase(Locale.ROOT));
+            case "press" -> press(mc, rest(s, 1));
             case "key" -> pressKey(mc, arg(s, 1));
             case "hold" -> hold(mc, arg(s, 1), !"off".equalsIgnoreCase(s.length > 2 ? s[2] : "on"));
             case "click" -> { InputConstants.Key k = InputConstants.Type.MOUSE.getOrCreate(mouse(arg(s, 1))); KeyMapping.click(k); }
@@ -375,8 +384,61 @@ public final class QaProbe1201 {
             case "hud", "hudeditor" -> mc.setScreen(new DraggableHudScreen1201(current));
             case "inventory" -> { needWorld(mc); mc.setScreen(new InventoryScreen(mc.player)); }
             case "chat" -> mc.setScreen(new ChatScreen(""));
-            default -> throw new IllegalArgumentException("unknown screen '" + name + "' (none title pause options video controls lads hud inventory chat)");
+            case "multiplayer" -> { localServersOnly(mc); mc.setScreen(new JoinMultiplayerScreen(current)); }
+            case "singleplayer" -> mc.setScreen(new SelectWorldScreen(current));
+            case "createworld" -> CreateWorldScreen.openFresh(mc, current);
+            case "language" -> mc.setScreen(new LanguageSelectScreen(current, mc.options, mc.getLanguageManager()));
+            case "packs" -> mc.setScreen(new PackSelectionScreen(mc.getResourcePackRepository(), mc.options::updateResourcePacks,
+                mc.getResourcePackDirectory(), Component.translatable("resourcePack.title")));
+            case "mods" -> mc.setScreen(modsScreen(current));
+            default -> throw new IllegalArgumentException("unknown screen '" + name
+                + "' (none title pause options video controls lads hud inventory chat multiplayer singleplayer createworld language packs mods)");
         }
+    }
+
+    /** The loader's own mod list: Forge's Mods screen (Zero SMP), else Mod Menu's. */
+    private static Screen modsScreen(Screen parent) {
+        for (String name : new String[] {"net.minecraftforge.client.gui.ModListScreen", "com.terraformersmc.modmenu.gui.ModsScreen"}) {
+            try {
+                return (Screen) Class.forName(name).getConstructor(Screen.class).newInstance(parent);
+            } catch (ClassNotFoundException absent) {
+                // the other loader's
+            } catch (ReflectiveOperationException failed) {
+                throw new IllegalStateException(name + " could not be opened", failed);
+            }
+        }
+        throw new IllegalStateException("no mod list screen (neither Forge's nor Mod Menu's)");
+    }
+
+    /**
+     * Rule 5 of the QA brief: the Multiplayer screen pings every listed server, so it only opens on a list of local entries. An
+     * empty QA list gets two local ones (nothing listens there) so the list has rows to photograph.
+     */
+    private static void localServersOnly(Minecraft mc) {
+        ServerList list = new ServerList(mc);
+        list.load();
+        for (int i = 0; i < list.size(); i++) {
+            String ip = list.get(i).ip.toLowerCase(Locale.ROOT);
+            if (!ip.startsWith("localhost") && !ip.startsWith("127.0.0.1")) throw new IllegalStateException("refusing to open Multiplayer: the QA server list has a non-local entry '" + ip + "'");
+        }
+        if (list.size() == 0) {
+            list.add(new ServerData("QA Local 1", "127.0.0.1:25599", false), false);
+            list.add(new ServerData("QA Local 2", "localhost:25598", false), false);
+            list.save();
+        }
+    }
+
+    /** Presses the first button of the open screen whose label contains the text (case-insensitive). */
+    private static void press(Minecraft mc, String text) {
+        if (mc.screen == null) throw new IllegalStateException("no screen open");
+        String wanted = text.toLowerCase(Locale.ROOT);
+        for (var child : mc.screen.children()) {
+            if (child instanceof Button b && b.active && b.getMessage().getString().toLowerCase(Locale.ROOT).contains(wanted)) {
+                b.onPress();
+                return;
+            }
+        }
+        throw new IllegalStateException("no button '" + text + "' on " + mc.screen.getClass().getSimpleName());
     }
 
     private static void pressKey(Minecraft mc, String name) {
