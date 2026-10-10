@@ -7,14 +7,14 @@ using System.Text.Json.Nodes;
 /// <summary>
 /// Machine-wide QA rules shared by every worktree's harness (owner, 2026-10-08: "do all the tests on maximum performance, use the
 /// main monitor and you can do 3 instances at a time"): at most <see cref="MaxGames"/> QA games at once, claimed as
-/// &lt;shared root&gt;\.qa-slot-1..3 (a folder holding owner.txt with the harness PID), launched only with enough free RAM and not
+/// &lt;shared root&gt;\.qa-slot-1..5 (a folder holding owner.txt with the harness PID), launched only with enough free RAM and not
 /// within 25 s of the previous claim (a starting JVM is still growing). The slot number also picks the game's screen tile
 /// (QaWindowGuard). Also a download cache (Minecraft assets, libraries, Java, Modrinth mod jars) so twelve worktrees do not each
 /// fetch ~1 GB.
 /// </summary>
 static class QaShared
 {
-    public const int MaxGames = 3;
+    public const int MaxGames = 5; // owner 2026-10-09: "maximum performance, 5 instances at a time is your limit for both AIs"
     private const string DevDirectory = @"C:\Users\Arash\Desktop\The Lads Client Dev";
 
     public static string? Env(string name) => Environment.GetEnvironmentVariable(name) is { Length: > 0 } v ? v.Trim() : null;
