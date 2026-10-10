@@ -42,6 +42,55 @@ public final class FastQuit1201 {
         }
     }
 
+    /** -Dlads.fastquit.dh=false: Distant Horizons closes its world on the render thread when leaving one, as without Lads. */
+    private static final boolean DH = !"false".equalsIgnoreCase(System.getProperty("lads.fastquit.dh"));
+    private static volatile Thread dhClose;
+
+    /**
+     * Distant Horizons' ClientApi.onClientOnlyDisconnected (DhClientApiFastQuitMixin), called from ClientPacketListener.close
+     * when leaving any world: in singleplayer it closes DH's world (each level flushes its LOD data to the world's DH database,
+     * 5-8 s on a big world) on the render thread, after which the title screen appears. Leaving a singleplayer world, true:
+     * {@code close} runs on its own thread instead, tracked like the server's save, so that everything that opens world storage,
+     * every connection and closing the game wait for it; DH's next world also waits ({@link #awaitDhClose}). DH already closes
+     * its levels on threads of their own and hands GL work to the render thread, and its server side closes the same world from
+     * the server thread; only the render thread's wait goes.
+     */
+    public static boolean closeDhInBackground(Runnable close) {
+        if (!DH || broken) return false;
+        try {
+            Minecraft minecraft = Minecraft.getInstance();
+            if (!minecraft.isRunning() || !minecraft.isSameThread() || !FastQuit.enabled()) return false;
+            IntegratedServer server = minecraft.getSingleplayerServer();
+            if (server == null || server.getClass() != IntegratedServer.class) return false;
+            Thread thread = new Thread(() -> {
+                try {
+                    close.run();
+                } catch (Throwable failure) {
+                    org.slf4j.LoggerFactory.getLogger("TheLadsCore").error("Lads FastQuit: Distant Horizons' background close failed", failure);
+                }
+            }, "Lads FastQuit Distant Horizons close");
+            dhClose = thread;
+            thread.start();
+            FastQuit.track(server.getWorldPath(LevelResource.ROOT), server.getWorldData().getLevelName() + " (Distant Horizons)", thread);
+            return true;
+        } catch (Throwable failure) {
+            broken = true;
+            org.slf4j.LoggerFactory.getLogger("TheLadsCore").error("Lads FastQuit: Distant Horizons closes on the render thread from here on", failure);
+            return false;
+        }
+    }
+
+    /** DH's ServerApi.serverLoadEvent (DhServerApiFastQuitMixin): a new world's DH world starts after the last one closed. */
+    public static void awaitDhClose() {
+        Thread thread = dhClose;
+        if (thread == null || thread == Thread.currentThread()) return;
+        boolean interrupted = false;
+        while (thread.isAlive()) {
+            try { thread.join(); } catch (InterruptedException e) { interrupted = true; }
+        }
+        if (interrupted) Thread.currentThread().interrupt();
+    }
+
     /**
      * Waits for every background save; on the render thread behind the Saving screen, restoring the screen it found
      * when {@code restore}. Free when nothing is saving.
