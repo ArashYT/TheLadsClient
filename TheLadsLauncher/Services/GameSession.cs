@@ -30,12 +30,14 @@ public static class GameSession
     public static bool StartupFinished(string? line) => line != null && line.Contains("Sound engine started", StringComparison.Ordinal);
 
     /// <summary>
-    /// Startup runs at Realtime priority (Windows grants High unless the launcher is elevated), back to Normal once
-    /// <see cref="StartupFinished"/> appears on stdout or after 3 minutes: Realtime during play could starve input and audio.
+    /// Startup runs at BelowNormal priority, back to Normal once <see cref="StartupFinished"/> appears on stdout or after 3 minutes.
+    /// Loading a big modpack keeps every core busy; at Realtime/High (before 1.9.0) that froze Discord, audio and the rest of the
+    /// desktop (owner, 2026-10-10: "my discord keeps freezing and lagging when it's loading the game"). BelowNormal lets every other
+    /// app go first and costs the load almost nothing when the CPU is otherwise idle.
     /// </summary>
-    private static void BoostStartup(Process process)
+    private static void YieldDuringStartup(Process process)
     {
-        try { process.PriorityClass = ProcessPriorityClass.RealTime; }
+        try { process.PriorityClass = ProcessPriorityClass.BelowNormal; }
         catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return; }
         var restored = 0;
         void Restore()
@@ -88,7 +90,7 @@ public static class GameSession
     {
         var shared = sharedContent ?? SharedContentService.Instance;
         var pid = process.Id;
-        BoostStartup(process);
+        YieldDuringStartup(process);
         try
         {
             RunningGameMarker.Write(gameDirectory, pid, process.StartTime.ToUniversalTime(), loadedMods);
