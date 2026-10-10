@@ -54,11 +54,11 @@ the same world, quit then open another, open one while another is loaded; marks 
 
 ## 3. QA rules the harness enforces (every version, not only 1.20.1)
 
-* **Max 3 QA games machine-wide**: the harness claims `The Lads Client Dev\.qa-slot-1..3` (a folder with `owner.txt`, the harness PID;
+* **Max 6 QA games machine-wide** (owner 2026-10-10; the free-RAM gate is the real limit on this 32 GB PC): the harness claims `The Lads Client Dev\.qa-slot-1..6` (a folder with `owner.txt`, the harness PID;
   stale ones are reaped) and waits for a free slot **and** >= 4 GB free RAM (7 GB Zero SMP), with 25 s between two launches.
   Do not `mkdir` slots yourself; if a wrapper of yours already holds slot N, export `LADS_QA_SLOT=N` (the harness then skips its own claim).
   `LADS_VERIFY_FOCUS=1` runs (need the game in front) are the old exclusive ones and take no slot.
-* **Window**: primary monitor (DISPLAY1), a 2x2 tile of the screen by slot (1 top left, 2 top right, 3 bottom left; 960x540 each), game opened at the tile's
+* **Window**: the QA monitor (device name in `The Lads Client Dev\.qa-monitor`, e.g. `\\.\DISPLAY2`; primary when absent), a 2x2 tile of the screen by slot (1 top left, 2 top right, 3 bottom left; 960x540 each), game opened at the tile's
   client size (944x501, so GUI scale 2 is not capped), never activated, never minimized, **High** priority. `LADS_VERIFY_NO_RESIZE=1` keeps the game's own size.
 * **Options forced** into `options.txt` on every launch: 120 FPS, vsync off, render/simulation distance 4, GUI scale 2, master volume 0,
   pauseOnLostFocus false, not fullscreen (`LADS_VERIFY_FULLSCREEN=1`: started as the launcher's default "Fullscreen on launch" does,
