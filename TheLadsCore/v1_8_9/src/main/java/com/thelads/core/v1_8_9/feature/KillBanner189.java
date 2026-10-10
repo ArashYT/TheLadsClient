@@ -129,14 +129,14 @@ public final class KillBanner189 {
         lastFrame = 0;
     }
 
-    /** The local player's attack (sent before Forge's event, so a cancelled event still hit): a crosshair point on the top quarter is a head hit. */
+    /** The local player's attack (sent before Forge's event, so a cancelled event still hit): where the crosshair's point lands says whether in the head. */
     @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
     public void attack(AttackEntityEvent event) {
         Minecraft mc = Minecraft.getMinecraft();
         if (event.entityPlayer != mc.thePlayer || !eligible()) return;
         MovingObjectPosition hit = mc.objectMouseOver;
         boolean head = hit != null && hit.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && hit.entityHit == event.target
-            && hit.hitVec != null && KillDetector.headHit(hit.hitVec.yCoord, event.target.posY, event.target.height);
+            && hit.hitVec != null && headHit(event.target, hit.hitVec);
         EntityLivingBase victim = victim(event.target);
         // A click on a body still falling over is no new hit: the death already counted.
         if (victim != null && victim.getHealth() > 0) KillBanners.DETECTOR.hitByMe(victim.getEntityId(), names(victim), kind(victim), head, System.nanoTime());
@@ -149,7 +149,7 @@ public final class KillBanner189 {
 
     /**
      * Headshots from arrows: where one of the local player's arrows crosses a living entity's box this tick is where it hit,
-     * and a hit in the top quarter of the box is a head hit (1.8.9 sends no damage events, so this is the only word on it).
+     * in the head or not (1.8.9 sends no damage events, so this is the only word on it).
      */
     private static void arrows(Minecraft mc) {
         Set<Integer> seen = new HashSet<Integer>();
@@ -168,7 +168,8 @@ public final class KillBanner189 {
             AxisAlignedBB sweep = new AxisAlignedBB(Math.min(from.xCoord, to.xCoord), Math.min(from.yCoord, to.yCoord), Math.min(from.zCoord, to.zCoord),
                 Math.max(from.xCoord, to.xCoord), Math.max(from.yCoord, to.yCoord), Math.max(from.zCoord, to.zCoord)).expand(.5, .5, .5);
             EntityLivingBase victim = null;
-            double hitY = 0, nearest = Double.MAX_VALUE;
+            Vec3 where = null;
+            double nearest = Double.MAX_VALUE;
             for (EntityLivingBase candidate : mc.theWorld.getEntitiesWithinAABB(EntityLivingBase.class, sweep)) {
                 if (candidate == mc.thePlayer || !candidate.isEntityAlive()) continue;
                 MovingObjectPosition hit = candidate.getEntityBoundingBox().expand(.3, .3, .3).calculateIntercept(from, to);
@@ -177,14 +178,14 @@ public final class KillBanner189 {
                 if (d < nearest) {
                     nearest = d;
                     victim = candidate;
-                    hitY = hit.hitVec.yCoord;
+                    where = hit.hitVec;
                 }
             }
             if (victim != null) {
                 landed.add(id);
                 EntityLivingBase target = victim(victim);
                 if (target != null && target.getHealth() > 0)
-                    KillBanners.DETECTOR.hitByMe(target.getEntityId(), names(target), kind(target), KillDetector.headHit(hitY, victim.posY, victim.height), System.nanoTime());
+                    KillBanners.DETECTOR.hitByMe(target.getEntityId(), names(target), kind(target), headHit(victim, where), System.nanoTime());
             }
         }
         flying.keySet().retainAll(seen);
@@ -238,6 +239,15 @@ public final class KillBanner189 {
     /** A banner has just started: its frames start decoding now. */
     private static void prefetch(KillBannerModule module) {
         if (BANNER.age(System.nanoTime()) >= 0) KillBannerArt189.prefetch(KillBanners.shown(module), BANNER.sequence());
+    }
+
+    /** A hit at {@code at} on {@code target}: on the Ender Dragon, its "head" part; on anything else, the head about its eyes (KillDetector.headHit). */
+    private static boolean headHit(Entity target, Vec3 at) {
+        if (target instanceof EntityDragonPart) return KillDetector.headPart(((EntityDragonPart) target).partName);
+        AxisAlignedBB box = target.getEntityBoundingBox();
+        float yaw = target instanceof EntityLivingBase ? ((EntityLivingBase) target).renderYawOffset : target.rotationYaw;
+        return KillDetector.headHit(at.xCoord, at.yCoord, at.zCoord, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ,
+            target.posY + target.getEyeHeight(), yaw);
     }
 
     /** The living entity a hit lands on: the Ender Dragon for its parts. */
