@@ -48,6 +48,10 @@ machine-wide cache `The Lads Client Dev\.qa-cache`, seeded once from the owner's
 "initialized successfully" line (proves Connector loaded it), the QA probe's title, world and script markers, and a graceful stop.
 Needs 7 GB free RAM (6 GB heap). The QA world is `LadsQA-zero-smp` in the copy's own `saves`.
 
+FastQuit (both ways, and every version's `--title`): `LADS_VERIFY_FASTQUIT=run|verify|baseline|crash|cycles` runs the FastQuit probe
+**instead of** the auto-world QA (the probe opens its own worlds from the title screen; never both at once). `cycles` = 5x quit then rejoin
+the same world, quit then open another, open one while another is loaded; marks checked, every region file read at the end.
+
 ## 3. QA rules the harness enforces (every version, not only 1.20.1)
 
 * **Max 3 QA games machine-wide**: the harness claims `The Lads Client Dev\.qa-slot-1..3` (a folder with `owner.txt`, the harness PID;

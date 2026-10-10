@@ -176,10 +176,11 @@ internal static class ZeroSmpQa
             Say("Core global config dir (THELADS_GLOBAL_DIR): " + globalDir);
             var args = game.StartInfo.ArgumentList;
             var flags = new List<string> { "-Dfabric.noGui=true" };
-            if (!noWorld) { flags.Add("-Dthelads.verifyAutoWorld=true"); flags.Add("-Dthelads.qaWorld=" + WorldName); }
-            if (script != null || scriptText != null) flags.Add("-Dthelads.qaScript=" + scriptFile);
-            // LADS_VERIFY_FASTQUIT=run|verify|baseline: the FastQuit probe (FastQuitProbe1201) drives the game from the title screen instead.
+            // LADS_VERIFY_FASTQUIT=run|verify|baseline|crash|cycles: the FastQuit probe (FastQuitProbe1201) drives the game from the title screen
+            // instead of the auto-world QA (both at once open worlds over each other).
             string? fastQuit = QaShared.Env("LADS_VERIFY_FASTQUIT");
+            if (!noWorld && fastQuit == null) { flags.Add("-Dthelads.verifyAutoWorld=true"); flags.Add("-Dthelads.qaWorld=" + WorldName); }
+            if (script != null || scriptText != null) flags.Add("-Dthelads.qaScript=" + scriptFile);
             if (fastQuit != null) flags.Add("-Dthelads.verifyFastQuit=" + fastQuit);
             if (fastQuit == "baseline") flags.Add("-Dlads.fastquit=false");
             foreach (var extra in (QaShared.Env("LADS_VERIFY_EXTRA_JVM") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
