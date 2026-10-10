@@ -806,7 +806,7 @@ try
     process.StartInfo.CreateNoWindow = true;
     process.StartInfo.RedirectStandardOutput = true;
     process.StartInfo.RedirectStandardError = true;
-    GameSession.Configure(process.StartInfo, directory, shared.Root);
+    GameSession.Configure(process.StartInfo, directory, shared.Root, version);
     VersionSwitch.Prepare(directory, version); // as the launcher does before every start: the list the in-game Switch Versions screen reads
     // The Core's shared config (ClientPaths.getGlobalBaseDir) is THELADS_GLOBAL_DIR, else the owner's REAL %APPDATA%\\.theladsclient\\shared\\thelads_config.json
     // (read and saved: the owner's HUD layout and Discord RPC in QA games, QA module changes in the owner's config). QA games get their own folder: the game
@@ -945,6 +945,7 @@ try
         qaLines.Add("resourcePacks:[" + string.Join(",", enabled) + "]");
     }
     File.WriteAllLines(qaOptions, qaLines);
+    GameOptionsService.EnsureDataVersion(directory, version); // as GameSession.Configure in the launcher: this options.txt is written after it
     QaDiscord.ForceOff(directory); // QA games never show on the owner's Discord (Essential's activity status, Lads DiscordRPC)
     var stopwatch = Stopwatch.StartNew();
     // 26.3 (SDL) shows its window without activating it; QaWindowGuard covers 1.8.9 and 26.2 (and moves every game window).

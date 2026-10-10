@@ -411,6 +411,91 @@ public class Minecraft189Tests
         Assert.Equal(("key.keyboard.v", "key.keyboard.v"), (Options(l.Paths.SharedOptionsFile)["key_key.jump"], Options(file)["key_key.jump"]));
     }
 
+    /// <summary>A shared copy 1.8.9 started (no "version:" line) or one a newer version left its own data version in: a new 1.20.1 or
+    /// 26.3 profile's options.txt gets its OWN version's data version (the client jar's world_version) before the game starts, never
+    /// another version's, so Minecraft does not run its pre-1.13 key fix on the key names and reset every option. A version line the
+    /// file has stays; 1.8.9 gets none (not the shared copy's, not Lunar's).</summary>
+    [Fact]
+    public async Task NewerVersionsGetTheirOwnDataVersionAnd189None()
+    {
+        using var l = new Launcher();
+        File.Delete(l.Paths.SharedOptionsFile);
+        Write(Path.Combine(l.Paths.SharedDirectory, SharedControls.MergedFile), "");
+        Write(Path.Combine(l.Game189, "options.txt"), "fov:0.5\nkey_key.jump:47\nkey_key.drop:-97\n");
+        await l.Profiles.PrepareProfileEnvironmentAsync(l.Profiles.GetProfile("1.8.9")!, null);
+        Assert.False(Options(l.Paths.SharedOptionsFile).ContainsKey("version"));
+
+        foreach (var (version, java, dataVersion) in new[] { ("1.20.1", 17, 3465), ("26.3", 25, 5023) })
+        {
+            var profile = l.Profiles.CreateProfile("New " + version, version, java, fabricVersion: "0.19.5");
+            var game = l.Paths.GetProfileDirectory(profile);
+            await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+            Assert.False(Options(Path.Combine(game, "options.txt")).ContainsKey("version"));
+            Assert.Equal(("key.keyboard.v", "key.mouse.4"), (Options(Path.Combine(game, "options.txt"))["key_key.jump"], Options(Path.Combine(game, "options.txt"))["key_key.drop"]));
+
+            ClientJar(game, version, dataVersion);
+            GameSession.Configure(new System.Diagnostics.ProcessStartInfo("java"), game, l.Global, version); // after the install, before the start
+            Assert.StartsWith($"version:{dataVersion}\n", File.ReadAllText(Path.Combine(game, "options.txt")));
+            Assert.Equal("key.keyboard.v", Options(Path.Combine(game, "options.txt"))["key_key.jump"]);
+            GameSession.Configure(new System.Diagnostics.ProcessStartInfo("java"), game, l.Global, version);
+            Assert.Single(File.ReadAllLines(Path.Combine(game, "options.txt")), line => line.StartsWith("version:", StringComparison.Ordinal));
+        }
+
+        // The shared copy now carries 26.3's data version (its exit): never into another profile, nor into 1.8.9 (with Lunar's own neither).
+        File.AppendAllText(l.Paths.SharedOptionsFile, "version:5023\n");
+        Write(Path.Combine(l.Lunar, "profiles", "1.8", "options.txt"), "version:3700\nlang:en_us\n");
+        var v1201 = l.Profiles.CreateProfile("Another 1.20.1", "1.20.1", 17, fabricVersion: "0.19.5");
+        await l.Profiles.PrepareProfileEnvironmentAsync(v1201, null);
+        Assert.False(Options(Path.Combine(l.Paths.GetProfileDirectory(v1201), "options.txt")).ContainsKey("version"));
+        File.WriteAllText(Path.Combine(l.Game189, "options.txt"), "fov:0.5\nkey_key.jump:47\n");
+        File.Delete(Path.Combine(l.Game189, GameOptionsService.TakenOptionsFile));
+        await l.Profiles.PrepareProfileEnvironmentAsync(l.Profiles.GetProfile("1.8.9")!, null);
+        GameSession.Configure(new System.Diagnostics.ProcessStartInfo("java"), l.Game189, l.Global, "1.8.9");
+        Assert.False(Options(Path.Combine(l.Game189, "options.txt")).ContainsKey("version"));
+        Assert.Equal("en_us", Options(Path.Combine(l.Game189, "options.txt"))["lang"]);
+
+        // A version line the game wrote stays as it is.
+        var own = Path.Combine(l.Paths.GetProfileDirectory(v1201), "options.txt");
+        File.WriteAllText(own, "version:3337\nkey_key.jump:key.keyboard.v\n");
+        ClientJar(l.Paths.GetProfileDirectory(v1201), "1.20.1", 3465);
+        GameOptionsService.EnsureDataVersion(l.Paths.GetProfileDirectory(v1201), "1.20.1");
+        Assert.Equal("version:3337\nkey_key.jump:key.keyboard.v\n", File.ReadAllText(own));
+    }
+
+    /// <summary>A game that could not load its options.txt played and saved it with every option at its default. Its exit sends
+    /// nothing to the shared copy (the other versions keep their controls), and its next launch gives it the shared controls
+    /// back; after a normal session again only what the player changed goes back.</summary>
+    [Fact]
+    public async Task AGameThatLostItsOptionsNeverResetsTheSharedControls()
+    {
+        using var l = new Launcher();
+        var profile = l.Profiles.GetProfile("1.20.1")!;
+        var game = l.Paths.GetProfileDirectory(profile);
+        var file = Path.Combine(game, "options.txt");
+        const string controls = "fov:0.5\nkey_key.jump:key.keyboard.v\nkey_key.drop:key.mouse.4\nkey_key.theladscore.zoom:key.mouse.5\n";
+        File.WriteAllText(l.Paths.SharedOptionsFile, Launcher.SharedOptions + controls);
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        var sharedBefore = File.ReadAllText(l.Paths.SharedOptionsFile);
+
+        Write(Path.Combine(game, "logs", "latest.log"), "[04:02:09] [Render thread/INFO]: Loading Minecraft\n[04:02:09] [Render thread/ERROR]: Failed to load options\n"
+            + "java.lang.NumberFormatException: For input string: \"key.mouse.right\"\n");
+        File.WriteAllText(file, "version:3465\nfov:0.0\nkey_key.jump:key.keyboard.space\nkey_key.drop:key.keyboard.q\nkey_key.theladscore.zoom:key.keyboard.c\nguiScale:0\n");
+        await l.Profiles.SyncProfileToSharedAsync(profile);
+        Assert.Equal(sharedBefore, File.ReadAllText(l.Paths.SharedOptionsFile));
+
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        var restored = Options(file);
+        Assert.Equal(("0.5", "key.keyboard.v", "key.mouse.4", "key.mouse.5", "3465"), (restored["fov"], restored["key_key.jump"], restored["key_key.drop"],
+            restored["key_key.theladscore.zoom"], restored["version"]));
+
+        // A normal session: the one key the player changed goes back, the others stay.
+        Write(Path.Combine(game, "logs", "latest.log"), "[05:00:00] [Render thread/INFO]: Loading Minecraft\n");
+        File.WriteAllText(file, File.ReadAllText(file).Replace("key_key.drop:key.mouse.4", "key_key.drop:key.keyboard.g"));
+        await l.Profiles.SyncProfileToSharedAsync(profile);
+        var shared = Options(l.Paths.SharedOptionsFile);
+        Assert.Equal(("0.5", "key.keyboard.v", "key.keyboard.g", "key.mouse.5"), (shared["fov"], shared["key_key.jump"], shared["key_key.drop"], shared["key_key.theladscore.zoom"]));
+    }
+
     /// <summary>The first launch with 1.9.0 merges what is there: each control from the newest options.txt (or the shared copy) that
     /// has it, 1.8.9's codes and names read as the newer versions', keys only one version has kept; written into the shared copy
     /// and every profile's options.txt. The shared copy is backed up first, and the merge runs once. A profile added later takes
@@ -1029,4 +1114,14 @@ public class Minecraft189Tests
     private static string Sha(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 
     private static Dictionary<string, string> Options(string file) => GameOptionsService.ParseOptions(File.ReadAllText(file));
+
+    /// <summary>A client jar as the launcher installs it, with only its version.json.</summary>
+    private static void ClientJar(string game, string version, int dataVersion)
+    {
+        var jar = Path.Combine(game, "versions", version, version + ".jar");
+        Directory.CreateDirectory(Path.GetDirectoryName(jar)!);
+        using var zip = ZipFile.Open(jar, ZipArchiveMode.Create);
+        using var writer = new StreamWriter(zip.CreateEntry("version.json").Open());
+        writer.Write($"{{\"id\":\"{version}\",\"world_version\":{dataVersion}}}");
+    }
 }

@@ -4416,7 +4416,7 @@ public partial class MainWindow : Window
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.CreateNoWindow = true;
-            GameSession.Configure(process.StartInfo, gameDirectory, SharedContentService.Instance.Root);
+            GameSession.Configure(process.StartInfo, gameDirectory, SharedContentService.Instance.Root, activeProfile.MinecraftVersion);
 
             process.OutputDataReceived += (s, ev) => { if (GameSession.ReadableOutput(ev.Data) is { } line) Log($"[Game] {line}"); };
             process.ErrorDataReceived += (s, ev) => { if (GameSession.ReadableOutput(ev.Data) is { } line) Log($"[Game ERROR] {line}"); };

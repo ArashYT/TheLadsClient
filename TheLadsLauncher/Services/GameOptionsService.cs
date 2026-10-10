@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 
 namespace TheLadsLauncher.Services;
 
@@ -228,12 +230,14 @@ public static class GameOptionsService
         var instanceMap = File.Exists(instanceFile) ? ParseOptions(File.ReadAllText(instanceFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var takenFile = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(instanceFile))!, TakenOptionsFile);
         // None yet (the first launch since 1.7.2, a new or no longer isolated profile): the game's own settings stay, the controls
-        // become the shared ones.
-        var taken = File.Exists(takenFile) ? ParseOptions(File.ReadAllText(takenFile)) : null;
+        // become the shared ones. So too after a session that could not load its options.txt: the game saved its defaults over them.
+        var taken = File.Exists(takenFile) && !OptionsFailedToLoad(Path.GetDirectoryName(takenFile)!) ? ParseOptions(File.ReadAllText(takenFile)) : null;
 
         bool updated = false;
         foreach (var kvp in sharedMap)
         {
+            // Another version's data version would make Minecraft run the wrong option fixes; 1.8.9 has none (EnsureDataVersion).
+            if (kvp.Key.Equals("version", StringComparison.OrdinalIgnoreCase)) continue;
             bool control = SharedControls.IsControl(kvp.Key);
             bool changed = taken == null ? control : (control || SharedSettingsKeys.Contains(kvp.Key))
                 && !(taken.TryGetValue(kvp.Key, out var was) && was == kvp.Value);
@@ -257,7 +261,8 @@ public static class GameOptionsService
     /// settings): only the controls.</summary>
     public static void SyncFromInstance(string instanceFile, string sharedFile, string mcVersion, bool controlsOnly = false)
     {
-        if (!File.Exists(instanceFile)) return;
+        // A game that could not read its options.txt ran, and saved it, with every option at its default: none of it is the player's.
+        if (!File.Exists(instanceFile) || OptionsFailedToLoad(Path.GetDirectoryName(Path.GetFullPath(instanceFile))!)) return;
         var instanceMap = ParseOptions(File.ReadAllText(instanceFile));
         bool sourceIs18 = IsLegacy18(mcVersion);
         var sharedMap = File.Exists(sharedFile) ? ParseOptions(File.ReadAllText(sharedFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -280,6 +285,51 @@ public static class GameOptionsService
             }
 
         WriteAtomically(sharedFile, SerializeOptions(sharedMap));
+    }
+
+    /// <summary>Whether the game's last session logged that it could not load its options.txt (logs\latest.log).</summary>
+    public static bool OptionsFailedToLoad(string gameDirectory)
+    {
+        try
+        {
+            using var log = new FileStream(Path.Combine(gameDirectory, "logs", "latest.log"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(log);
+            while (reader.ReadLine() is { } line)
+                if (line.Contains("/ERROR]: Failed to load options", StringComparison.Ordinal)) return true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        return false;
+    }
+
+    /// <summary>
+    /// Right before a newer version starts: an options.txt without a "version:" line gets that Minecraft's data version (its client
+    /// jar's version.json world_version). Without one Minecraft takes the file for a pre-1.13 one, runs its old key code fix on the
+    /// key names the launcher wrote, fails to load the file and plays with every option at its default. A line the file has stays;
+    /// 1.8.9 has no data version and never gets one.
+    /// </summary>
+    public static void EnsureDataVersion(string gameDirectory, string mcVersion)
+    {
+        var file = Path.Combine(gameDirectory, "options.txt");
+        if (IsLegacy18(mcVersion) || !File.Exists(file)) return;
+        var bytes = File.ReadAllBytes(file);
+        var text = Encoding.Latin1.GetString(bytes);
+        if (ParseOptions(text).ContainsKey("version")
+            || DataVersion(Path.Combine(gameDirectory, "versions", mcVersion, mcVersion + ".jar")) is not { } version) return;
+        var line = Encoding.ASCII.GetBytes("version:" + version + (text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n"));
+        LockFiles.WriteAtomicallyAsync(file, line.Concat(bytes).ToArray()).GetAwaiter().GetResult();
+    }
+
+    /// <summary>A client jar's data version (version.json "world_version"), or null when it cannot be read.</summary>
+    public static int? DataVersion(string clientJar)
+    {
+        try
+        {
+            using var zip = ZipFile.OpenRead(clientJar);
+            if (zip.GetEntry("version.json") is not { } entry) return null;
+            using var json = JsonDocument.Parse(entry.Open());
+            return json.RootElement.TryGetProperty("world_version", out var version) && version.TryGetInt32(out int number) ? number : null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or JsonException) { return null; }
     }
 
     // A crash or a closed launcher mid-write leaves the old file whole, never a cut-off one. An unchanged file is not rewritten.

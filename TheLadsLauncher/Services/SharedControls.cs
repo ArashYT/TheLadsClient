@@ -159,7 +159,9 @@ public static class SharedControls
         var backup = Path.Combine(folder, BackupFile);
         if (!File.Exists(backup)) WriteText(backup, File.Exists(paths.SharedOptionsFile) ? ReadText(paths.SharedOptionsFile) : "");
 
-        var profiles = targets.Where(p => File.Exists(Path.Combine(paths.GetProfileDirectory(p), "options.txt"))).ToList();
+        // A profile whose game last ran on default options (it could not load them) has none of the player's.
+        var profiles = targets.Where(p => File.Exists(Path.Combine(paths.GetProfileDirectory(p), "options.txt"))
+            && !GameOptionsService.OptionsFailedToLoad(paths.GetProfileDirectory(p))).ToList();
         var sources = profiles.Select(p => (File: Path.Combine(paths.GetProfileDirectory(p), "options.txt"), Legacy: GameOptionsService.IsLegacy18(p.MinecraftVersion)))
             .Append((File: paths.SharedOptionsFile, Legacy: false)).Where(s => File.Exists(s.File)).OrderBy(s => File.GetLastWriteTimeUtc(s.File));
         var merged = new Dictionary<string, string>(StringComparer.Ordinal);
