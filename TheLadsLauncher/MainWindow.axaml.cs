@@ -124,6 +124,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // The sandbox preview captures draw the window into a bitmap: they open it off screen and never activate it (the owner may be playing).
+        if (Environment.GetCommandLineArgs().Any(a => a.StartsWith("--preview-", StringComparison.Ordinal)))
+        {
+            ShowActivated = false;
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Position = new PixelPoint(-32000, -32000);
+        }
 
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
