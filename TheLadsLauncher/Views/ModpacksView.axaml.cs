@@ -3066,6 +3066,7 @@ public partial class ModpacksView : UserControl
                 RefreshButtons();
                 RenderMods();
                 RenderCards();
+                host.ApplyNextVersionRequest(instance.GameDirectory); // closed from the in-game Switch Versions screen
             });
             Report($"Minecraft {instance.McVersion} started as {session.Username}.");
             host.ModpackLog($"Started {instance.Name} ({instance.Loader} {instance.LoaderVersion}, Minecraft {instance.McVersion}) PID {process.Id}.");

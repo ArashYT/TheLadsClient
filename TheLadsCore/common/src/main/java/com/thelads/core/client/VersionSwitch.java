@@ -1,6 +1,5 @@
 package com.thelads.core.client;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -12,44 +11,50 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 /**
  * "Switch versions" hand-off between the game and the launcher, mirroring the account switch
- * (lads_next_account.json): the launcher writes {@link #VERSIONS_FILE} next to the accounts file at every launch
- * ({"current":"26.3","versions":["26.3","26.2","1.8.9"]}); the game writes {@link #REQUEST_FILE}
- * ({"version":"26.2","requested":"..."}) and quits; the launcher reads it when the game exits and starts that version.
+ * (lads_next_account.json): the launcher writes {@link #VERSIONS_FILE} next to the accounts file at every launch, plain profile
+ * or Zero SMP alike ({"current":"26.3","versions":["26.3","1.20.1","1.8.9"]}; "current" is "Zero SMP" in the modpack); the game
+ * writes {@link #REQUEST_FILE} ({"version":"1.8.9","requested":"..."}) and quits; the launcher reads it when the game exits and
+ * starts that version.
  */
 public final class VersionSwitch {
     public static final String VERSIONS_FILE = "lads_versions.json";
     public static final String REQUEST_FILE = "lads_next_version.json";
+    /** What the launcher's Play screen offers, newest first (26.2 is dropped): the list when the launcher wrote none (a dev run). */
+    public static final List<String> SUPPORTED = Collections.unmodifiableList(Arrays.asList("26.3", "1.20.1", "1.8.9"));
 
     private VersionSwitch() {}
 
-    /** The running version as the launcher names it ("26.3"), or "" when the launcher did not write the file. */
-    public static String current() {
-        return current(ClientPaths.getBaseDir());
+    /** The running version as the launcher names it ("26.3", "Zero SMP"); {@code running} (this adapter's own) when the launcher wrote no file. */
+    public static String current(String running) {
+        return current(ClientPaths.getBaseDir(), running);
     }
 
-    public static String current(Path dir) {
+    public static String current(Path dir, String running) {
         JsonObject root = read(dir);
-        return root != null && root.has("current") ? root.get("current").getAsString() : "";
+        return root != null && root.has("current") ? root.get("current").getAsString() : running;
     }
 
     /** The versions the player can switch to, in the launcher's order, without the running one. */
-    public static List<String> available() {
-        return available(ClientPaths.getBaseDir());
+    public static List<String> available(String running) {
+        return available(ClientPaths.getBaseDir(), running);
     }
 
-    public static List<String> available(Path dir) {
+    public static List<String> available(Path dir, String running) {
         JsonObject root = read(dir);
-        if (root == null || !root.has("versions") || !root.get("versions").isJsonArray()) return Collections.emptyList();
-        String current = root.has("current") ? root.get("current").getAsString() : "";
+        boolean listed = root != null && root.has("versions") && root.get("versions").isJsonArray();
+        String current = current(dir, running);
+        List<String> candidates = new ArrayList<>();
+        if (listed) for (JsonElement e : root.getAsJsonArray("versions")) candidates.add(e.isJsonPrimitive() ? e.getAsString() : "");
+        else candidates.addAll(SUPPORTED);
         List<String> out = new ArrayList<>();
-        JsonArray arr = root.getAsJsonArray("versions");
-        for (JsonElement e : arr) {
-            String v = e.isJsonPrimitive() ? e.getAsString().trim() : "";
+        for (String candidate : candidates) {
+            String v = candidate.trim();
             if (!v.isEmpty() && !v.equals(current) && !out.contains(v)) out.add(v);
         }
         return out;

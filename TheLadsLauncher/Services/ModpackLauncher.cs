@@ -4,7 +4,9 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
+using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using CmlLib.Core;
@@ -87,12 +89,13 @@ public static class ModpackLauncher
         instance.Source = source;
     }
 
-    /// <summary>Installs what the instance needs and starts it with <paramref name="session"/> and the Java its version needs.</summary>
+    /// <summary>Installs what the instance needs and starts it with <paramref name="session"/> and the Java its version needs.
+    /// <paramref name="joinServer"/> ("host" or "host:port"): the game joins it as soon as it has loaded.</summary>
     public static async Task<Process> LaunchAsync(string dataDirectory, ModpackInstance instance, MSession session, LauncherSettings settings,
-        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token)
+        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null)
     {
         SyncLadsConfigToInstance(dataDirectory, instance.GameDirectory);
-        var process = await PrepareAsync(dataDirectory, instance, session, settings, java, http, status, token);
+        var process = await PrepareAsync(dataDirectory, instance, session, settings, java, http, status, token, joinServer);
         token.ThrowIfCancellationRequested();
         process.EnableRaisingEvents = true;
         process.Exited += (_, _) => SyncLadsConfigFromInstance(instance.GameDirectory, dataDirectory);
@@ -147,7 +150,7 @@ public static class ModpackLauncher
 
     /// <summary>Everything <see cref="LaunchAsync"/> does short of starting the game: Java, loader, game files; the process to start.</summary>
     public static async Task<Process> PrepareAsync(string dataDirectory, ModpackInstance instance, MSession session, LauncherSettings settings,
-        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token)
+        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null)
     {
         var path = GamePath(dataDirectory, instance);
         Directory.CreateDirectory(instance.GameDirectory);
@@ -172,19 +175,44 @@ public static class ModpackLauncher
 
         status?.Invoke("Checking game files...");
         int ram = instance.MaxRamMb > 0 ? instance.MaxRamMb : Math.Max(1024, settings.MaxRamMb);
-        var process = await launcher.InstallAndBuildProcessAsync(versionId, new MLaunchOption
+        var options = new MLaunchOption
         {
             Session = session,
             JavaPath = javaPath,
             MaximumRamMb = ram,
             MinimumRamMb = Math.Clamp(settings.MinRamMb, 256, ram),
             FullScreen = settings.FullscreenOnLaunch
-        }, token);
+        };
+        if (!string.IsNullOrWhiteSpace(joinServer)) JoinServer(options, joinServer);
+        var process = await launcher.InstallAndBuildProcessAsync(versionId, options, token);
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.CreateNoWindow = true;
         process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = dataDirectory;
         process.StartInfo.Environment["THELADS_DIR"] = instance.GameDirectory;
+        try { VersionSwitch.Prepare(instance.GameDirectory, instance.Name); } // the in-game Switch Versions screen offers the Lads Client versions
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { status?.Invoke($"Could not write {VersionSwitch.VersionsFile}: {ex.Message}"); }
         return process;
+    }
+
+    /// <summary>The server the built game joins at start (its --quickPlayMultiplayer value), or null when it does not.</summary>
+    public static string? QuickPlayServer(Process process)
+    {
+        var arguments = process.StartInfo.ArgumentList.Count > 0 ? process.StartInfo.ArgumentList.ToList() : Regex.Split(process.StartInfo.Arguments, @"\s+").ToList();
+        int index = arguments.IndexOf("--quickPlayMultiplayer");
+        return index >= 0 && index + 1 < arguments.Count ? arguments[index + 1] : null;
+    }
+
+    /// <summary>Makes the game join <paramref name="address"/> ("host" or "host:port") as soon as it has loaded.</summary>
+    public static void JoinServer(MLaunchOption options, string address)
+    {
+        address = address.Trim();
+        int colon = address.LastIndexOf(':');
+        if (colon > 0 && int.TryParse(address.AsSpan(colon + 1), out int port))
+        {
+            options.ServerIp = address[..colon];
+            options.ServerPort = port;
+        }
+        else options.ServerIp = address;
     }
 
     /// <summary>The loader's version id, installed into the shared cache if it is not there yet.</summary>

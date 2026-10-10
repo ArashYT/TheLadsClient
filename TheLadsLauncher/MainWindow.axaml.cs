@@ -124,6 +124,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // The sandbox preview captures draw the window into a bitmap: they open it off screen and never activate it (the owner may be playing).
+        if (Environment.GetCommandLineArgs().Any(a => a.StartsWith("--preview-", StringComparison.Ordinal)))
+        {
+            ShowActivated = false;
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Position = new PixelPoint(-32000, -32000);
+        }
 
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
@@ -3963,7 +3970,11 @@ public partial class MainWindow : Window
     //  GAME LAUNCH
     // ═══════════════════════════════════════
 
-    private async void LaunchButton_Click(object? sender, RoutedEventArgs e)
+    private async void LaunchButton_Click(object? sender, RoutedEventArgs e) => await StartLaunchAsync();
+
+    /// <param name="afterVersionSwitch">The game closed to switch versions from its own screen: the player wants to play at once, so
+    /// nothing optional (the update prompt) holds the launch up.</param>
+    private async Task StartLaunchAsync(bool afterVersionSwitch = false)
     {
         try {
             LaunchButton.IsEnabled = false;
@@ -3977,7 +3988,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            await LaunchGame();
+            await LaunchGame(afterVersionSwitch);
         } catch (Exception ex) {
             try {
                 var crashFile = Path.Combine(TheLadsLauncher.Services.PathService.Instance.LogsDirectory, "crash_launchbtn.txt");
@@ -4063,9 +4074,13 @@ public partial class MainWindow : Window
         finally { _showingMicrosoftSetup = false; }
     }
 
-    private async Task LaunchGame()
+    private async Task LaunchGame(bool afterVersionSwitch = false)
     {
-        if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup) return;
+        if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup)
+        {
+            if (afterVersionSwitch) Log("[Launcher] The switched version was not started: a launch or sign-in is already in progress.");
+            return;
+        }
         if (GameVersionPolicy.IsPaused(_profileService.GetActiveProfile().MinecraftVersion))
         {
             StatusText.Text = GameVersionPolicy.PausedMessage;
@@ -4106,7 +4121,7 @@ public partial class MainWindow : Window
             return;
         }
         // A waiting launcher update brings the current Lads pack and LadsCore: offer it before playing with the old ones.
-        if (_readyUpdateVersion is { } update && !UpdateBlocked()
+        if (!afterVersionSwitch && _readyUpdateVersion is { } update && !UpdateBlocked()
             && await ShowLadsDialogAsync("Update ready", $"An update is ready (v{update}). Restart and update now? (recommended)",
                 "Update now", "Play anyway"))
         {
@@ -4432,7 +4447,7 @@ public partial class MainWindow : Window
 
             GameLaunchStatusText.Text = "Launching game...";
             Log("[Launcher] Starting game process...");
-            WriteLadsVersions(gameDirectory, activeProfile.MinecraftVersion);
+            PrepareVersionSwitch(gameDirectory, activeProfile.MinecraftVersion);
             EnforceEssentialSettings(gameDirectory);
             process.Start();
             _runningProcesses[process] = gameDirectory;
@@ -4621,6 +4636,11 @@ public partial class MainWindow : Window
                 StatusText.Text = "Launch cancelled." + suffix;
                 Log("[Launcher] The game was stopped before its window appeared (launch cancelled).");
             }
+            else if (relaunchRequested)
+            {
+                // The player closed it from the Switch Versions screen: the launch of the chosen version reports from here.
+                Log("[Launcher] The game closed to switch versions.");
+            }
             else if (exitCode != 0)
             {
                 StatusText.Text = $"Game crashed! (exit code: {exitCode}){suffix}";
@@ -4665,65 +4685,35 @@ public partial class MainWindow : Window
         catch (Exception) { Log("[Accounts] Could not apply the game's account selection. Select an account in the launcher."); }
     }
 
-    private void WriteLadsVersions(string gameDirectory, string currentVersion)
+    private void PrepareVersionSwitch(string gameDirectory, string currentVersion)
     {
-        try
+        try { VersionSwitch.Prepare(gameDirectory, currentVersion); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            var versions = new List<string> { "26.3", "1.8.9" }; // 26.2 is paused (GameVersionPolicy.IsPaused): not offered to the in-game switcher
-
-            var obj = new JsonObject
-            {
-                ["current"] = currentVersion,
-                ["versions"] = new JsonArray(versions.Select(v => (JsonNode)JsonValue.Create(v)!).ToArray())
-            };
-            string path = Path.Combine(gameDirectory, "lads_versions.json");
-            File.WriteAllText(path, obj.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-        }
-        catch (Exception ex)
-        {
-            Log($"[Launcher] Could not write lads_versions.json: {ex.Message}");
+            Log($"[Launcher] Could not write {VersionSwitch.VersionsFile}: {ex.Message}");
         }
     }
 
-    private bool ApplyNextVersionRequest(string gameDirectory)
+    /// <summary>
+    /// After any game (a profile, Zero SMP, a modpack) has exited from <paramref name="gameDirectory"/>: when it was closed from
+    /// the in-game Switch Versions screen, makes the chosen version's profile the active one and starts it. Runs on the UI thread.
+    /// True: a launch of the chosen version is on its way.
+    /// </summary>
+    internal bool ApplyNextVersionRequest(string gameDirectory)
     {
-        string requestFile = Path.Combine(gameDirectory, "lads_next_version.json");
-        if (!File.Exists(requestFile)) return false;
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(requestFile));
-            string targetVersion = doc.RootElement.GetProperty("version").GetString() ?? "";
-            File.Delete(requestFile);
-            if (string.IsNullOrWhiteSpace(targetVersion)) return false;
-
-            Log($"[Launcher] Version switch requested to: {targetVersion}");
-            if (GameVersionPolicy.IsPaused(targetVersion) || GameVersionPolicy.IsComingNever(targetVersion))
-            {
-                Log($"[Launcher] Version switch refused: {(GameVersionPolicy.IsComingNever(targetVersion) ? GameVersionPolicy.ComingNeverMessage : GameVersionPolicy.PausedMessage)}.");
-                return false;
-            }
-            var targetProfile = _profileService.GetProfiles().FirstOrDefault(p =>
-                string.Equals(p.MinecraftVersion, targetVersion, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p.Name, targetVersion, StringComparison.OrdinalIgnoreCase));
-
-            if (targetProfile == null)
-            {
-                targetProfile = _profileService.CreateProfile(targetVersion, targetVersion, targetVersion.StartsWith("26") ? 25 : 8, false, "");
-            }
-
-            _profileService.SetActiveProfile(targetProfile.Id);
-            Dispatcher.UIThread.Post(() =>
-            {
-                ApplyProfile(targetProfile, true);
-                PopulateLaunchProfileSelector();
-                LoadProfilesUI();
-            });
+            if (VersionSwitch.Apply(gameDirectory, _profileService, Log) is not { } targetProfile) return false;
+            ApplyProfile(targetProfile, true);
+            PopulateLaunchProfileSelector();
+            LoadProfilesUI();
             Log($"[Launcher] Switched active profile to: {targetProfile.Name} ({targetProfile.MinecraftVersion}). Auto-relaunching...");
+            StatusText.Text = $"Switching to Lads Client {targetProfile.MinecraftVersion}...";
 
             _ = Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 await Task.Delay(500);
-                LaunchButton_Click(null, new RoutedEventArgs());
+                await StartLaunchAsync(afterVersionSwitch: true);
             });
             return true;
         }

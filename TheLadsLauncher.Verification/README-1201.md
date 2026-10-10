@@ -94,6 +94,7 @@ and the run ends when it finishes (log: `Lads qa script END: N passed, M failed`
 | `log text` | logs `Lads qa log: text` |
 | `ui open fps` (or `colors`, `mods`, `actions`), `ui module <name>`, `ui search <text>`, `ui click <control id>`, `ui ids [prefix]`, `ui key <glfw code>`, `ui type <text>`, `ui scroll <n>`, `ui scale 1` (or `2`) | drives the open Lads settings screen through its real input methods (`ui ids` logs the control ids on screen: `category:HUD`, `card:<module>`, `option:<name>`, `reset`, ...); `ui hud click <id>` and `ui hud ids` do the same in the HUD editor; `ui scale` switches the GUI scale (1 = the roomy layouts, 2 = the compact ones in the 944x501 QA window) |
 | `ui mouse <x> <y>`, `ui hover <slot>` | puts the pointer at GUI pixel x, y, or on a container slot (inventory open), so tooltips and hover states render for a shot |
+| `press <label>` | presses the visible button with that label (case-insensitive, e.g. `press "Switch Versions"` on the title, `press "Lads Client 26.3"`, `press "Relaunch Now"`) on the open screen, through its own `onPress`; fails the step when there is none |
 | `ui pose` | the next frame of a Lads settings screen logs `Lads qa pose ...` lines: the translation of the GuiGraphics pose before the vanilla HUD, after it, and at the screen (all 0 unless an overlay leaked a pose push) |
 | `ui silence <ms>` | SignalLoss sees the server silent for that long (0 = the real connection); the toast shows 5 s after the module became eligible |
 | `kbcap [skin id,...]` | holds the Kill Banner at the frames the 26.3 capture uses and writes the banner crops to `screenshots\kb172\kb-<skin>-v<variant>-k<kills>-f<frame>.png`, to compare with the 26.3 frames of the same name (`LADS_VERIFY_CAPTURE_KILLBANNER=1`) |
@@ -121,6 +122,13 @@ evidence folder `artifacts\verification-1.2.3\<scenario>\<time>-game-<dir>\scree
 result, key log lines), `production-smoke.log` (Fabric) or `latest.log` (Zero SMP) and the script. Exit code 0 = PASS. Read the PNGs.
 Probe code for lanes that need more: `TheLadsCore\v1_20_1\...\feature\QaProbe1201.java` (`QaProbe1201.active()`, `windowActive()`:
 QA windows are never focused, so Lads input rules that need `isWindowActive()` can use `QaProbe1201.windowActive()`).
+
+Version switch (1.9.0): every harness start writes `lads_versions.json` into the game folder as the launcher does (`VersionSwitch.Prepare`; the
+Zero SMP start through `ModpackLauncher.PrepareAsync`, current = "Zero SMP"). `--mc1201 . --no-world --script-text "wait 40;press \"Switch Versions\";wait 20;shot versions;press \"Lads Client 26.3\";wait 20;shot confirm;press \"Relaunch Now\""`
+photographs the in-game list and confirmation and leaves `lads_next_version.json` in the game folder; 26.x: `LADS_VERIFY_AUTO_WORLD=1 LADS_VERIFY_CAPTURE_TITLE=1
+LADS_VERIFY_VERSION_SWITCH=1`; 1.8.9: `LADS_VERIFY_AUTO_WORLD=1 LADS_VERIFY_189_ONLY=title`. Zero SMP "Auto-join server": `LADS_VERIFY_JOIN=127.0.0.1:1`
+(local addresses only) starts the pack with the quick-play argument the launcher builds; the game must log `Connecting to 127.0.0.1, 1` and the probe
+photographs the connect/failed screen (`qa-join`; needs a script step, e.g. `--script-text "wait 20"`, to be active).
 
 Environment variables behind the options: `LADS_VERIFY_SCRIPT`, `LADS_VERIFY_SCRIPT_TEXT`, `LADS_VERIFY_REMOVE_MODS`, `LADS_VERIFY_CORE_JAR`,
 `LADS_VERIFY_BUILD`, `LADS_VERIFY_NO_BUILD`, `LADS_VERIFY_FRESH_WORLD`, `LADS_VERIFY_LOADER`, `LADS_VERIFY_TIMEOUT_SEC`, `LADS_VERIFY_SCENARIO`,
