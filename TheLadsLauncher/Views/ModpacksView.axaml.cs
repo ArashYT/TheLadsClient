@@ -3066,6 +3066,7 @@ public partial class ModpacksView : UserControl
                 RefreshButtons();
                 RenderMods();
                 RenderCards();
+                host.ApplyNextAccountRequest(instance.GameDirectory); // in-game account switcher
                 host.ApplyNextVersionRequest(instance.GameDirectory); // closed from the in-game Switch Versions screen
             });
             Report($"Minecraft {instance.McVersion} started as {session.Username}.");
