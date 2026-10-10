@@ -21,7 +21,7 @@ public class ModuleManager {
         autohide.addOption(new BoolOption("Show when swinging or placing", false));
         autohide.addOption(new BoolOption("Fade vanilla HUD", true));
         autohide.addOption(new BoolOption("Fade Lads HUD", true));
-        autohide.setEnabled(true);register(autohide,Module.Category.HUD);
+        autohide.setEnabled(false);register(autohide,Module.Category.HUD);
         Module jade=new Module("Jade", "Identify blocks and entities using the source-integrated Jade API and addon providers.");
         jade.addOption(new ActionOption("Settings and addons", "Open Jade settings"));jade.setEnabled(true);register(jade,Module.Category.HUD);
 

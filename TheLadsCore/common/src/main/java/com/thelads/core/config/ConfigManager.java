@@ -140,6 +140,7 @@ public class ConfigManager {
             migrateDiscord(modulesJson);
             migrateDamageTilt(modulesJson);
             migrateParticleBudget(modulesJson);
+            migrateAutohide(modulesJson);
             java.util.Set<String> known = new java.util.HashSet<>();
             for (Module m : ModuleManager.getInstance().getModules()) {
                 known.add(m.getName());
@@ -371,6 +372,18 @@ public class ConfigManager {
         dropUnchanged(modules, "DynamicLights");
         // 1.8.5 builds Not Enough Animations in (1.20.1), on as the mod it replaces was: the same rule.
         dropUnchanged(modules, com.thelads.core.modules.NotEnoughAnimationsModule.NAME);
+    }
+
+    /**
+     * 1.9.0 defaults Autohide to off: configs saved with the old default (lastModified 0 or missing) migrate
+     * to enabled=false; explicit player changes are kept.
+     */
+    static void migrateAutohide(JsonObject modules) {
+        if (!(modules.get("Autohide") instanceof JsonObject autohide)) return;
+        JsonElement changed = autohide.get("lastModified");
+        if (changed == null || (changed.isJsonPrimitive() && changed.getAsJsonPrimitive().isNumber() && changed.getAsLong() == 0)) {
+            autohide.addProperty("enabled", false);
+        }
     }
 
     private static void dropUnchanged(JsonObject modules, String name) {

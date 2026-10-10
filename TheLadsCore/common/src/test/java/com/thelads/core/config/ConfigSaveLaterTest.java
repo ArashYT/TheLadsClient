@@ -63,4 +63,27 @@ class ConfigSaveLaterTest {
         assertTrue(saved.contains("ExternalModuleFromAnotherVersion"), "Unmanaged module is preserved in saved config");
         assertTrue(saved.contains("\"favorite\": true"), "Unmanaged module options/properties are preserved");
     }
+
+    @Test void autohideDefaultsOffAndUnchangedConfigMigrates() {
+        Module autohide = ModuleManager.getInstance().getModule("Autohide");
+        boolean was = autohide.isEnabled();
+        try {
+            com.google.gson.JsonObject root = new com.google.gson.JsonObject();
+            com.google.gson.JsonObject modules = new com.google.gson.JsonObject();
+            com.google.gson.JsonObject ah = new com.google.gson.JsonObject();
+            ah.addProperty("enabled", true);
+            ah.addProperty("lastModified", 0);
+            modules.add("Autohide", ah);
+            root.add("modules", modules);
+            ConfigManager.applyJson(root);
+            assertFalse(autohide.isEnabled(), "old default of enabled:true with lastModified 0 migrates to off");
+
+            ah.addProperty("enabled", true);
+            ah.addProperty("lastModified", 1790000000000L);
+            ConfigManager.applyJson(root);
+            assertTrue(autohide.isEnabled(), "explicit player change is kept");
+        } finally {
+            autohide.setEnabled(was);
+        }
+    }
 }
