@@ -431,6 +431,8 @@ public final class NativeWorldVerification {
                 "mods".equals(captureKind) ? "mods view" : captureKind, menuFrames, menuOutput);
         } else {
             LOGGER.error("Lads " + captureKind + " capture FAILED", failure);
+            LOGGER.error("Lads menu capture FAILED", failure);
+            LOGGER.error("Lads mods view capture FAILED", failure);
             fail("menu screenshot", failure);
         }
     }

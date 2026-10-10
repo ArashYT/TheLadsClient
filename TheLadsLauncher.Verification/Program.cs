@@ -850,6 +850,11 @@ try
             if (capabilities.Minimal && QaShared.MixinProblem(line)) { nativeProbeFailed = true; keyLines.Add("MIXIN PROBLEM: " + Clean(line)); }
             foreach (string end in captureEnds)
                 if (line.Contains(end.Replace(" END:", " FAILED"))) failedCaptures.TryAdd(end, 0);
+            if (line.Contains("Lads auto-world QA FAILED: menu screenshot") || line.Contains("Lads pause capture FAILED"))
+            {
+                failedCaptures.TryAdd("Lads menu capture END:", 0);
+                failedCaptures.TryAdd("Lads mods view capture END:", 0);
+            }
             if (line.Contains("Lads 1.3.4 screenshots probe END:") && Passed(line)) screenshots134Passed = true;
             if (line.Contains("Lads 1.3.4 replay probe END:") && Passed(line)) replay134Passed = true;
             if (line.Contains("Lads Flashback probe END:") && Passed(line)) flashbackPassed = true;
