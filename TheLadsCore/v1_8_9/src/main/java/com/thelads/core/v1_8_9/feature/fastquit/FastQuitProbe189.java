@@ -95,6 +95,7 @@ public final class FastQuitProbe189 {
             else throw new IllegalArgumentException("phase " + PHASE);
         } catch (Throwable failure) {
             LOGGER.error("Lads fast quit probe FAILED: " + failure, failure);
+            Minecraft.getMinecraft().shutdown(); // never leave a QA game idle
         }
     }
 

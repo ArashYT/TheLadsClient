@@ -176,10 +176,11 @@ internal static class ZeroSmpQa
             Say("Core global config dir (THELADS_GLOBAL_DIR): " + globalDir);
             var args = game.StartInfo.ArgumentList;
             var flags = new List<string> { "-Dfabric.noGui=true" };
-            if (!noWorld) { flags.Add("-Dthelads.verifyAutoWorld=true"); flags.Add("-Dthelads.qaWorld=" + WorldName); }
-            if (script != null || scriptText != null) flags.Add("-Dthelads.qaScript=" + scriptFile);
-            // LADS_VERIFY_FASTQUIT=run|verify|baseline: the FastQuit probe (FastQuitProbe1201) drives the game from the title screen instead.
+            // LADS_VERIFY_FASTQUIT=run|verify|baseline|crash|cycles: the FastQuit probe (FastQuitProbe1201) drives the game from the title screen
+            // instead of the auto-world QA (both at once open worlds over each other).
             string? fastQuit = QaShared.Env("LADS_VERIFY_FASTQUIT");
+            if (!noWorld && fastQuit == null) { flags.Add("-Dthelads.verifyAutoWorld=true"); flags.Add("-Dthelads.qaWorld=" + WorldName); }
+            if (script != null || scriptText != null) flags.Add("-Dthelads.qaScript=" + scriptFile);
             if (fastQuit != null) flags.Add("-Dthelads.verifyFastQuit=" + fastQuit);
             if (fastQuit == "baseline") flags.Add("-Dlads.fastquit=false");
             foreach (var extra in (QaShared.Env("LADS_VERIFY_EXTRA_JVM") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -233,7 +234,7 @@ internal static class ZeroSmpQa
                     if (QaShared.MixinProblem(line) && seen.Add(line)) failures.Add("MIXIN PROBLEM: " + line.Trim());
                     if (line.Contains("Crash report saved") || line.Contains("---- Minecraft Crash Report")) { if (seen.Add("crash")) failures.Add("the game crashed (see latest.log / crash-reports)"); }
                 }
-                if (failures.Count > 0 && !stopSent && (failures.Any(f => f.Contains("crashed")) || failures.Any(f => f.Contains("auto-world QA FAILED")))) break;
+                if (failures.Count > 0 && !stopSent && (failures.Any(f => f.Contains("crashed")) || failures.Any(f => f.Contains("auto-world QA FAILED") || f.Contains("fast quit probe FAILED")))) break;
                 if (ebe != null && worldDone && !ebeAsked) { File.WriteAllText(Path.Combine(gameDir, ".lads-qa-ebe"), "probe"); ebeAsked = true; }
                 bool finished = fastQuit != null ? initialized && fastQuitDone : initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone) && (ebe == null || ebeDone);
                 if (finished && !stopSent)

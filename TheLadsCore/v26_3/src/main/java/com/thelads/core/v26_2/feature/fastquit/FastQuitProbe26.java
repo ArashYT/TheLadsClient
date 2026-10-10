@@ -43,18 +43,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * QA only: -Dthelads.verifyFastQuit=run|verify|baseline (or LADS_VERIFY_FASTQUIT), in a game folder under artifacts\verification. FastQuit's scenarios
+ * QA only: -Dthelads.verifyFastQuit=run|verify|baseline|crash|cycles (or LADS_VERIFY_FASTQUIT), in a game folder under artifacts\verification. FastQuit's scenarios
  * from the title screen through the real pause-menu button, with blocks, a chest and inventory written before every quit.
  * run: quit then rejoin the same world, quit then open another world, quit then connect to a server, quit then delete, edit
  * and list a world, and last quit then close the game at once (the marks of that last session are checked by verify, in the
  * next game). verify: reopens the worlds, checks the last marks and reads every chunk of every region file.
- * baseline (with -Dlads.fastquit=false): vanilla's quit times.
+ * baseline (with -Dlads.fastquit=false): vanilla's quit times. cycles: {@link #cycles}.
  */
 public final class FastQuitProbe26 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final String PHASE = System.getProperty("thelads.verifyFastQuit", System.getenv("LADS_VERIFY_FASTQUIT"));
     /** The saves folder is shared by every version (Lads shared content): each version keeps its own QA worlds. */
     private static final String A = "FastQuit QA A 26.3", B = "FastQuit QA B 26.3", C = "FastQuit QA C 26.3";
+    private static final int CYCLES = 5;
     private static final Block[] MARKS = {Blocks.GOLD_BLOCK, Blocks.EMERALD_BLOCK, Blocks.DIAMOND_BLOCK, Blocks.LAPIS_BLOCK};
     /** Mark offsets from the player: nearby chunks, and far ones in other region files. */
     private static final int[][] OFFSETS = {{0, 0}, {40, 0}, {-40, 0}, {0, 40}, {0, -40}, {-600, 0}, {600, 600}};
@@ -90,10 +91,12 @@ public final class FastQuitProbe26 {
                 case "verify" -> verify(mc);
                 case "baseline" -> baseline(mc);
                 case "crash" -> crash(mc);
+                case "cycles" -> cycles(mc);
                 default -> throw new IllegalArgumentException("phase " + PHASE);
             }
         } catch (Throwable failure) {
             LOGGER.error("Lads fast quit probe FAILED: {}", failure.toString(), failure);
+            Minecraft.getInstance().stop(); // never leave a QA game idle
         }
     }
 
@@ -104,28 +107,13 @@ public final class FastQuitProbe26 {
         // S1: quit, then rejoin the same world at once.
         enter(mc, A);
         JsonObject marks = mark(mc, k);
-        long[] s1 = onClient(mc, () -> {
-            long quit = quitToTitle(mc);
-            boolean pending = FastQuit.anySaving();
-            long start = System.nanoTime();
-            mc.createWorldOpenFlows().openWorld(A, () -> fail("S1: reopening A was cancelled"));
-            return new long[]{quit, pending ? 1 : 0, ms(start), FastQuit.anySaving() ? 1 : 0};
-        });
-        waitInWorld(mc, A);
+        long[] s1 = quitThenOpen(mc, A);
         String s1Check = check(mc, marks);
         report("S1 quit then rejoin the same world", s1, s1Check);
 
         // S2: quit, then open another world at once.
         JsonObject marksA2 = mark(mc, k + 1);
-        long[] s2 = onClient(mc, () -> {
-            long quit = quitToTitle(mc);
-            boolean pending = FastQuit.anySaving();
-            long start = System.nanoTime();
-            if (Files.isDirectory(saves(mc).resolve(B))) mc.createWorldOpenFlows().openWorld(B, () -> fail("S2: opening B was cancelled"));
-            else create(mc, B);
-            return new long[]{quit, pending ? 1 : 0, ms(start), FastQuit.anySaving() ? 1 : 0};
-        });
-        waitInWorld(mc, B);
+        long[] s2 = quitThenOpen(mc, B);
         JsonObject marksB = mark(mc, k);
         report("S2 quit then open another world", s2, "B opened");
 
@@ -198,23 +186,45 @@ public final class FastQuitProbe26 {
         enter(mc, A);
         String a = check(mc, expect);
         LOGGER.info("Lads fast quit probe: verify A (marks written just before the game closed during its save): {}", a);
-        long[] open = onClient(mc, () -> {
-            long quit = quitToTitle(mc);
-            boolean pending = FastQuit.anySaving();
-            long start = System.nanoTime();
-            mc.createWorldOpenFlows().openWorld(B, () -> fail("verify: opening B was cancelled"));
-            return new long[]{quit, pending ? 1 : 0, ms(start), FastQuit.anySaving() ? 1 : 0};
-        });
-        waitInWorld(mc, B);
-        report("verify quit A then open B", open, "B opened");
+        report("verify quit A then open B", quitThenOpen(mc, B), "B opened");
         long quit = onClient(mc, () -> quitToTitle(mc));
+        scanRegions(mc);
+        end("verify: A " + a + "; last quit " + quit + " ms");
+    }
+
+    /**
+     * cycles: {@value #CYCLES} times quit A then rejoin it at once, quit A then open B at once, and open A while B is loaded
+     * (Minecraft.doWorldLoad leaves B itself); each world's marks are checked when it is next opened, every region file at the end.
+     */
+    private static void cycles(Minecraft mc) throws Exception {
+        enter(mc, A);
+        JsonObject b = null;
+        for (int i = 1; i <= CYCLES; i++) {
+            JsonObject a = mark(mc, 200 + i);
+            long[] same = quitThenOpen(mc, A);
+            report("C" + i + " quit then rejoin the same world", same, check(mc, a));
+            a = mark(mc, 300 + i);
+            long[] other = quitThenOpen(mc, B);
+            report("C" + i + " quit then open another world", other, b == null ? "B opened" : "B: " + check(mc, b));
+            b = mark(mc, 400 + i);
+            long[] loaded = openWhileLoaded(mc, A);
+            report("C" + i + " open another world while one is loaded", loaded, check(mc, a));
+        }
+        long[] last = quitThenOpen(mc, B);
+        report("quit then open B (its last marks)", last, "B: " + check(mc, b));
+        onClient(mc, () -> quitToTitle(mc));
+        scanRegions(mc);
+        end("cycles " + CYCLES);
+    }
+
+    /** Waits for every background save, then reads every chunk of every region file of A and B. */
+    private static void scanRegions(Minecraft mc) throws Exception {
         FastQuit.awaitAll(120_000);
         for (String world : new String[]{A, B}) {
             FastQuitRegionCheck.Result regions = FastQuitRegionCheck.scan(saves(mc).resolve(world));
             LOGGER.info("Lads fast quit probe: {} region files: {}", world, regions);
             if (!regions.ok() || regions.chunks() == 0) failures.add(world + " regions: " + regions);
         }
-        end("verify: A " + a + "; last quit " + quit + " ms");
     }
 
     private static void baseline(Minecraft mc) throws Exception {
@@ -254,12 +264,47 @@ public final class FastQuitProbe26 {
 
     /** Opens (or creates) a world from the title screen and waits until the player stands in it. */
     private static void enter(Minecraft mc, String world) throws Exception {
-        onClient(mc, () -> {
-            if (Files.isDirectory(saves(mc).resolve(world))) mc.createWorldOpenFlows().openWorld(world, () -> fail("opening " + world + " was cancelled"));
-            else create(mc, world);
-            return null;
+        onClient(mc, () -> { open(mc, world); return null; });
+        waitInWorld(mc, world);
+    }
+
+    /** Save and Quit, then at once (the same client task) open {@code world}: quit ms, save pending, the open's wait ms, saving after it. */
+    private static long[] quitThenOpen(Minecraft mc, String world) throws Exception {
+        long[] r = onClient(mc, () -> {
+            long quit = quitToTitle(mc);
+            boolean pending = FastQuit.anySaving();
+            long start = System.nanoTime();
+            open(mc, world);
+            return new long[]{quit, pending ? 1 : 0, ms(start), FastQuit.anySaving() ? 1 : 0};
         });
         waitInWorld(mc, world);
+        return r;
+    }
+
+    /**
+     * Opens {@code world} while another one is loaded, without quitting it first (as a mod or a QA driver may): the world loads
+     * asynchronously, then Minecraft.doWorldLoad leaves the loaded one. Its server must have stopped before the new one exists.
+     */
+    private static long[] openWhileLoaded(Minecraft mc, String world) throws Exception {
+        MinecraftServer before = mc.getSingleplayerServer();
+        Thread old = before.getRunningThread();
+        boolean[] overlap = new boolean[1];
+        long start = System.nanoTime();
+        onClient(mc, () -> { open(mc, world); return null; });
+        waitFor(world + "'s server", 180, () -> {
+            MinecraftServer now = mc.getSingleplayerServer();
+            boolean started = now != null && now != before;
+            if (started && old.isAlive()) overlap[0] = true;
+            return started;
+        });
+        if (overlap[0]) failures.add("open " + world + " while loaded: its server started while the last one was still running");
+        waitInWorld(mc, world);
+        return new long[]{0, 0, ms(start), FastQuit.anySaving() ? 1 : 0};
+    }
+
+    private static void open(Minecraft mc, String world) {
+        if (Files.isDirectory(saves(mc).resolve(world))) mc.createWorldOpenFlows().openWorld(world, () -> fail("opening " + world + " was cancelled"));
+        else create(mc, world);
     }
 
     private static void create(Minecraft mc, String world) {

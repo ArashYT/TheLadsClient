@@ -116,7 +116,8 @@ foreach (var (flag, available, feature) in new[] {
     ("LADS_VERIFY_WELCOME", capabilities.Welcome, "the welcome-screen probe") })
     if (!(setMods || showMods) && Env(flag) == "1" && !available)
         throw new ArgumentException($"{flag}=1 needs {feature}, which LadsCore does not have on {version}. Unset it for {version} runs.");
-bool autoWorldRequested = titleVerification && Env("LADS_VERIFY_AUTO_WORLD") == "1";
+// The FastQuit probe opens its own worlds from the title screen: never beside the auto-world QA (two drivers opening worlds at once).
+bool autoWorldRequested = titleVerification && Env("LADS_VERIFY_AUTO_WORLD") == "1" && Env("LADS_VERIFY_FASTQUIT") == null;
 bool autoWorldVerification = autoWorldRequested && !expectCoreDisabled;
 bool requestedFeaturesOnly = autoWorldVerification && Env("LADS_VERIFY_REQUESTS_ONLY") == "1";
 // 1.20.1 (QaProbe1201): LADS_VERIFY_SCRIPT=<file> or LADS_VERIFY_SCRIPT_TEXT="wait 40;cmd /time set day;shot a" runs a probe script (README-1201.md).
@@ -229,9 +230,9 @@ if (autoWorldVerification && dirName != version + "-title" && !capabilities.Mini
     throw new ArgumentException($"Auto-world QA runs only in {version}-title (LadsCore refuses any other folder).");
 // Every version: FastQuit's scenarios from the title screen (FastQuitProbe*): LADS_VERIFY_FASTQUIT=run (ends by closing the game during a
 // background save), verify (the next game checks what that save kept, and every region file), baseline (-Dlads.fastquit=false: vanilla times)
-// or crash (the game crashes during a background save; verify then checks it).
+// or crash (the game crashes during a background save; verify then checks it), cycles (5x quit then rejoin / open another / open one while loaded).
 string? fastQuitPhase = titleVerification && !expectCoreDisabled ? Env("LADS_VERIFY_FASTQUIT") : null;
-if (fastQuitPhase is not (null or "run" or "verify" or "baseline" or "crash")) throw new ArgumentException("LADS_VERIFY_FASTQUIT must be run, verify, baseline or crash.");
+if (fastQuitPhase is not (null or "run" or "verify" or "baseline" or "crash" or "cycles")) throw new ArgumentException("LADS_VERIFY_FASTQUIT must be run, verify, baseline, crash or cycles.");
 string? sharedRole = Env("LADS_VERIFY_SHARED_ROLE"), runId = Env("LADS_VERIFY_RUN_ID"), modRequest = Env("LADS_VERIFY_MOD_REQUEST");
 if (sharedRole is not (null or "create" or "observe")) throw new ArgumentException("LADS_VERIFY_SHARED_ROLE must be create or observe.");
 if (runId != null && !Regex.IsMatch(runId, @"\A[A-Za-z0-9_-]{1,40}\z")) throw new ArgumentException("LADS_VERIFY_RUN_ID must be 1-40 letters, digits, '-' or '_'.");

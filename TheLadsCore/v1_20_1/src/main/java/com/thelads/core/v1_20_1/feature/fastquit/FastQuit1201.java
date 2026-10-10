@@ -1,9 +1,11 @@
 package com.thelads.core.v1_20_1.feature.fastquit;
 
 import com.thelads.core.client.FastQuit;
+import com.thelads.core.v1_20_1.feature.fastquit.mixin.MinecraftServerFastQuitAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.storage.LevelResource;
@@ -22,17 +24,23 @@ public final class FastQuit1201 {
     private FastQuit1201() {}
 
     /**
-     * Minecraft.clearLevel's "while (!server.isShutdown())" loop: true ends it at once, the server saving in the background.
+     * Minecraft.clearLevel lets go of its integrated server: true when it stops in the background, tracked (vanilla's
+     * "while (!server.isShutdown())" loop then ends at once). A Save and Quit has logged the player out, which stops the server;
+     * clearLevel without a level (a server still starting, or whose login failed) and doWorldLoad's clearLevel while a world is
+     * loaded don't, and the next world's server would run beside it (Xaero's mods: "Multiple servers running at once is not
+     * supported!"): those are stopped here, as 26.3's own disconnect does.
      * Only a plain IntegratedServer (not a replay server) while the game keeps running; closing the game waits as vanilla.
      */
     private static boolean broken;
 
-    public static boolean skipServerWait(Minecraft minecraft, IntegratedServer server) {
+    public static boolean stopInBackground(Minecraft minecraft, IntegratedServer server) {
         if (broken) return false;
         try {
             if (!minecraft.isRunning() || !minecraft.isSameThread() || server.getClass() != IntegratedServer.class || !FastQuit.enabled()) return false;
             Thread thread = server.getRunningThread();
             if (thread == null || !thread.isAlive()) return false;
+            ClientPacketListener connection = minecraft.getConnection();
+            if (connection == null || connection.getConnection().isConnected()) ((MinecraftServerFastQuitAccessor) server).lads$setRunning(false);
             FastQuit.track(server.getWorldPath(LevelResource.ROOT), server.getWorldData().getLevelName(), thread);
             return true;
         } catch (Throwable failure) { // never break leaving a world: quits wait as vanilla does from here on
