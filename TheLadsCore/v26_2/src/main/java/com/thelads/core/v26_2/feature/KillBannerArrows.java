@@ -16,8 +16,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * KillBanner headshots from arrows: the local player's arrows in flight, watched each client tick; where one's path
- * (from where it was to where it is going) crosses a living entity's box is where it hit, and a hit in the top quarter
- * of the box is a head hit (NativeKillBanner.arrowHit). The server decides the real hit; this follows the same arrow a
+ * (from where it was to where it is going) crosses a living entity's box is where it hit, in the head or not
+ * (NativeKillBanner.arrowHit). The server decides the real hit; this follows the same arrow a
  * tick or so behind, close enough to tell the head from the body.
  */
 final class KillBannerArrows {
@@ -61,7 +61,7 @@ final class KillBannerArrows {
             }
             if (victim != null) {
                 landed.add(id);
-                NativeKillBanner.arrowHit(victim, where.y);
+                NativeKillBanner.arrowHit(victim, from, where);
             }
         }
         flying.keySet().retainAll(seen);

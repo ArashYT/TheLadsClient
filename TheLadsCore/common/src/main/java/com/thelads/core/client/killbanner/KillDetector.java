@@ -62,20 +62,107 @@ public final class KillDetector {
 
     public void reset() { byId.clear(); }
 
-    /** A hit at {@code hitY} on a target whose box stands from {@code footY} up {@code height}: in its top quarter it is a head hit. */
-    public static boolean headHit(double hitY, double footY, double height) {
-        return hitY >= footY + height * .75;
+    /**
+     * Did a hit coming from ({@code fromX}, {@code fromY}, {@code fromZ}) (the attacker's eyes, an arrow's last place) through
+     * ({@code x}, {@code y}, {@code z}) (the crosshair's point on the target, where an arrow crossed it) land in the head of an
+     * entity with the box {@code minX}..{@code maxZ}, its eyes at {@code eyeY} and its body turned to {@code yaw} (degrees, 0 =
+     * south)? The head is as tall as a quarter of the body, or half its thickness for a stocky one, never more than the box is
+     * wide or tall, and reaches from the eyes up to three quarters of its size above them (the top of the box for nearly every mob:
+     * players' top quarter, as before). An upright body (1.75 times as tall as wide or more: players, zombies, endermen) wears it on
+     * top, all round; any other (animals, spiders, wide or flat modded mobs) at its front, so its back, rump and sides are body even
+     * up top. Anything odd (no box) is no head hit.
+     */
+    public static boolean headHit(double fromX, double fromY, double fromZ, double x, double y, double z,
+                                  double minX, double minY, double minZ, double maxX, double maxY, double maxZ, double eyeY, float yaw) {
+        double width = Math.min(maxX - minX, maxZ - minZ), height = maxY - minY;
+        if (!(width > 0 && height > 0) || Double.isNaN(fromX + fromY + fromZ + x + y + z + eyeY)) return false;
+        // The point is on a grown box (1.8.9's crosshair 0.1, arrows 0.3), so a shallow hit lands too far forward on it: where the
+        // same line enters the box itself is where it hit (the origin when inside it). A line that only grazed the grown box, and
+        // a point with no line (the crosshair's eye inside the box), stay where they are, moved onto the box.
+        double[] from = {fromX, fromY, fromZ}, along = {x - fromX, y - fromY, z - fromZ}, low = {minX, minY, minZ}, high = {maxX, maxY, maxZ};
+        double enter = 0, leave = Double.MAX_VALUE;
+        for (int axis = 0; axis < 3 && enter <= leave; axis++) {
+            if (Math.abs(along[axis]) < 1e-9) {
+                if (from[axis] < low[axis] || from[axis] > high[axis]) enter = Double.POSITIVE_INFINITY;
+                continue;
+            }
+            double a = (low[axis] - from[axis]) / along[axis], b = (high[axis] - from[axis]) / along[axis];
+            enter = Math.max(enter, Math.min(a, b));
+            leave = Math.min(leave, Math.max(a, b));
+        }
+        if (enter <= leave) {
+            x = fromX + along[0] * enter;
+            y = fromY + along[1] * enter;
+            z = fromZ + along[2] * enter;
+        }
+        x = Math.max(minX, Math.min(maxX, x));
+        y = Math.max(minY, Math.min(maxY, y));
+        z = Math.max(minZ, Math.min(maxZ, z));
+        double head = Math.min(Math.max(height / 4, Math.min(width, height) / 2), Math.min(width, height));
+        double top = Math.min(maxY, Math.max(minY + head, eyeY + head * .75));
+        if (y < top - head || y > top) return false;
+        if (height >= width * 1.75) return true;
+        double radians = Math.toRadians(yaw), forwardX = -Math.sin(radians), forwardZ = Math.cos(radians);
+        double dx = x - (minX + maxX) / 2, dz = z - (minZ + maxZ) / 2;
+        return dx * forwardX + dz * forwardZ >= width / 2 - head && Math.abs(dx * forwardZ - dz * forwardX) <= head / 2;
     }
 
-    /** The local player hit {@code id} (an attack, or a damage event that names the local player as its cause). */
+    /** A multipart mob's part by its name (the dragon's "head", a modded mob's {@code headPart}): only the head is a head hit. */
+    public static boolean headPart(String name) {
+        return name != null && name.toLowerCase(Locale.ROOT).contains("head");
+    }
+
+    /** Is {@code entity} a part of a multipart mob? Forge's PartEntity and modded segments have a public getParent(). */
+    public static boolean part(Object entity) {
+        try {
+            entity.getClass().getMethod("getParent");
+            return true;
+        } catch (NoSuchMethodException | RuntimeException | LinkageError none) {
+            return false;
+        }
+    }
+
+    /** The mob a part belongs to (its getParent()), or null: no part, or a segment whose client copy does not know its mob. */
+    public static Object parentOf(Object part) {
+        try {
+            Object parent = part.getClass().getMethod("getParent").invoke(part);
+            return parent != part ? parent : null;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError none) {
+            return null;
+        }
+    }
+
+    /** The name of the public field of {@code parent} holding {@code part} (Alex's Mobs and Caves: headPart, tail1Part), else "". */
+    public static String partName(Object parent, Object part) {
+        if (parent == null || part == null) return "";
+        for (java.lang.reflect.Field field : parent.getClass().getFields()) {
+            try {
+                if (field.get(parent) == part) return field.getName();
+            } catch (ReflectiveOperationException | RuntimeException | LinkageError skipped) {
+                // not readable: not this one
+            }
+        }
+        return "";
+    }
+
+    /** The local player hit {@code id} and saw where (an attack, an arrow): {@code head} is that hit's verdict, whatever came before. */
     public void hitByMe(int id, Collection<String> names, Kind kind, boolean head, long now) {
         forget(now);
         Victim victim = byId.computeIfAbsent(id, key -> new Victim());
         for (String name : names) if (name != null && !name.isBlank()) victim.names.add(name.toLowerCase(Locale.ROOT));
         victim.kind = kind;
-        // A plain damage event confirms the attack; it does not know where the hit landed.
-        if (head || since(now, victim.mine) > 1_000_000_000L) victim.head = head;
+        victim.head = head;
         victim.mine = now;
+    }
+
+    /**
+     * A damage event names the local player as the cause of {@code id}'s hurt: it confirms the hit seen a moment ago (and keeps its
+     * verdict), or is a hit of its own, not in the head, when none was (it does not know where it landed).
+     */
+    public void damagedByMe(int id, Collection<String> names, Kind kind, long now) {
+        Victim victim = byId.get(id);
+        boolean head = victim != null && victim.head && since(now, victim.mine) <= 1_000_000_000L;
+        hitByMe(id, names, kind, head, now);
     }
 
     /** A damage event on {@code id} named someone else as its cause: they now get the credit. */
