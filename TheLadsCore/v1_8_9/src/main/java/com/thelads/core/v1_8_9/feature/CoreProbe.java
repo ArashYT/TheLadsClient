@@ -145,6 +145,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady,
                 com.thelads.core.v1_8_9.feature.ebe.BakedBlockEntitiesProbe189::run));
+        } else if ("headshot".equals(only)) { // Kill Banner headshots through the crosshair (Probe172KillStreak.headshots)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe172KillStreak.headshots());
         } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
