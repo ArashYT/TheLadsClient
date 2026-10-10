@@ -105,7 +105,7 @@ public partial class ControlsSettingsView : UserControl
         foreach (var label in _sliderLabels) label();
         RenderKeyRows();
 
-        // The scope: every version, then who keeps their own and what follows Lunar.
+        // The scope: every version, then who keeps their own.
         ScopeTitle.Text = _targets.Count > 0 ? "Applies to all Lads Client versions" : "Every profile keeps its own settings";
         VersionChips.Children.Clear();
         foreach (var version in versions)
@@ -128,8 +128,6 @@ public partial class ControlsSettingsView : UserControl
         var running = _targets.Where(p => RunningGameMarker.IsRunning(PathService.Instance.GetProfileDirectory(p))).ToList();
         if (running.Count > 0)
             notes.Add($"Minecraft {string.Join(", ", running.Select(p => p.MinecraftVersion).Distinct())} is running: it gets your changes when it closes.");
-        if (_targets.Any(Legacy) && GameOptionsService.LunarOptions18() != null)
-            notes.Add("Minecraft 1.8.9 also follows Lunar Client: a key bind or setting you change in Lunar's 1.8 profile replaces this one at its next launch.");
         WarningNote.Text = string.Join("\n", notes);
         WarningNote.IsVisible = notes.Count > 0;
         Status("");

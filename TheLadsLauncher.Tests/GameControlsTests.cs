@@ -40,7 +40,8 @@ public sealed class GameControlsTests
         options.Set("fov", GameControls.FovStored(110));
         Assert.Equal("fov:1.0\nkey_key.attack:-100\nkey_key.jump:17\nlastServer:mc.example.net\nkey_key.drop:0\n", options.ToString());
 
-        Assert.Null(GameControls.ToStored("key.keyboard.left.win", legacy: true)); // no 1.8.9 code known: refused, never written as text
+        Assert.Equal("219", GameControls.ToStored("key.keyboard.left.win", legacy: true)); // LWJGL2's KEY_LMETA
+        Assert.Null(GameControls.ToStored("key.keyboard.world.1", legacy: true)); // no 1.8.9 code: refused, never written as text
         Assert.Equal("key.keyboard.left.win", GameControls.ToStored("key.keyboard.left.win", legacy: false));
         Assert.Equal("Not bound", GameControls.DisplayName("0"));
         Assert.Equal("Not bound", GameControls.DisplayName(GameControls.Unbound));
@@ -122,13 +123,15 @@ public sealed class GameControlsTests
         Assert.Equal(32, GameControls.Int("99", 12, 2, 32));
     }
 
-    /// <summary>1.8.9 codes and key names both ways: every mouse button (button b is b - 100), LWJGL's F19, and null where the
-    /// other side has no equivalent, so a sync keeps the bind it has.</summary>
+    /// <summary>1.8.9 codes and key names both ways: every mouse button (button b is b - 100), LWJGL's F19, Windows and Menu keys,
+    /// and null where the other side has no equivalent, so a sync keeps the bind it has. 1.8.9's own names of Lads' and Essential's
+    /// keys both ways; a 1.8.9 line under the newer name beside its own is a stale copy.</summary>
     [Fact]
     public void KeyBindsTranslateBetween189CodesAndKeyNames()
     {
         foreach (var (name, code) in new[] { ("key.mouse.left", "-100"), ("key.mouse.middle", "-98"), ("key.mouse.4", "-97"), ("key.mouse.5", "-96"),
-                     ("key.mouse.8", "-93"), ("key.keyboard.f19", "113"), ("key.keyboard.unknown", "0"), ("key.keyboard.w", "17") })
+                     ("key.mouse.8", "-93"), ("key.keyboard.f19", "113"), ("key.keyboard.unknown", "0"), ("key.keyboard.w", "17"),
+                     ("key.keyboard.left.win", "219"), ("key.keyboard.right.win", "220"), ("key.keyboard.menu", "221"), ("key.keyboard.keypad.equal", "141") })
         {
             Assert.Equal(code, GameOptionsService.TranslateKeybindToTarget("", name, true));
             Assert.Equal(name, GameOptionsService.TranslateKeybindToTarget("", code, false));
@@ -138,6 +141,15 @@ public sealed class GameControlsTests
         Assert.Null(GameOptionsService.TranslateKeybindToTarget("", "508", false)); // a character key 1.8.9 stores as character + 256
         Assert.Equal("-97", GameOptionsService.TranslateKeybindToTarget("", "-97", true));
         Assert.Equal("key.keyboard.world.1", GameOptionsService.TranslateKeybindToTarget("", "key.keyboard.world.1", false));
+
+        Assert.Equal("key_Chat Peek", SharedControls.OptionKey("key_keybind.name.CHAT_PEEK", legacy: true));
+        Assert.Equal("key_keybind.name.CHAT_PEEK", SharedControls.OptionKey("key_Chat Peek", legacy: false));
+        Assert.Equal("key_key.theladscore.screenshots", SharedControls.OptionKey("key_key.lads_screenshots.open_screenshots_screen", legacy: true));
+        Assert.Equal("key_key.jump", SharedControls.OptionKey("key_key.jump", legacy: true));
+        Assert.Equal(new Dictionary<string, string> { ["key_keybind.name.CHAT_PEEK"] = "key.keyboard.z", ["key_key.drop"] = "key.mouse.4", ["guiScale"] = "3" },
+            SharedControls.Read("key_Chat Peek:44\nkey_keybind.name.CHAT_PEEK:19\nkey_key.drop:-97\nguiScale:3\nlang:en_US\n", legacy: true));
+        Assert.Equal("key_Chat Peek:37\nkey_key.drop:-96\nguiScale:3\n", SharedControls.Apply("key_Chat Peek:44\nkey_key.drop:-97\nguiScale:2\n",
+            new Dictionary<string, string> { ["key_keybind.name.CHAT_PEEK"] = "key.keyboard.k", ["key_key.drop"] = "key.mouse.5", ["guiScale"] = "5" }, "1.8.9"));
     }
 
     [Fact]

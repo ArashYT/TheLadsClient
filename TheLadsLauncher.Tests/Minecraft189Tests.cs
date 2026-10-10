@@ -244,46 +244,52 @@ public class Minecraft189Tests
         Assert.Equal(("0.5", "3", "key.mouse.right", "key.keyboard.unknown"), (shared["fov"], shared["guiScale"], shared["key_key.attack"], shared["key_key.drop"]));
     }
 
-    /// <summary>With Lunar installed, 1.8.9 takes its settings from Lunar's 1.8 profile (modern key names, translated) and
-    /// Lunar's optionsof.txt once; later launches take only what changed in Lunar, so the game's own changes stay. Lunar's files
-    /// are only read, and nothing goes back to the launcher's shared copy.</summary>
+    /// <summary>With Lunar installed, 1.8.9 takes its settings other than the controls from Lunar's 1.8 profile, and Lunar's
+    /// optionsof.txt once; later launches take only what changed in Lunar, so the game's own changes stay. Its controls are the shared
+    /// ones like every version's (Lunar's key binds never replace them) and go back to the shared copy; its other settings do not, and
+    /// Lunar's files are only read.</summary>
     [Fact]
-    public async Task Minecraft189UsesLunarsSettingsWhenInstalledAndNeverWritesThere()
+    public async Task Minecraft189TakesLunarsSettingsButTheSharedControls()
     {
         using var l = new Launcher();
         var profile = l.Profiles.GetProfile("1.8.9")!;
         var options = Path.Combine(l.Game189, "options.txt");
         var optiFine = Path.Combine(l.Game189, "optionsof.txt");
         var lunar18 = Path.Combine(l.Lunar, "profiles", "1.8");
-        Write(Path.Combine(lunar18, "options.txt"), "version:3700\nlang:en_ca\nfov:0.75\nkey_key.attack:key.mouse.left\nkey_key.sprint:key.keyboard.left.control\n");
+        File.WriteAllText(l.Paths.SharedOptionsFile, Launcher.SharedOptions + "fov:0.25\nkey_key.attack:key.mouse.left\nkey_key.sprint:key.keyboard.r\n");
+        Write(Path.Combine(lunar18, "options.txt"), "version:3700\nlang:en_ca\ngamma:0.7\nfov:0.75\nkey_key.attack:key.mouse.right\n"
+            + "key_key.sprint:key.keyboard.left.control\nkey_Freelook:key.keyboard.right.alt\n");
         Write(Path.Combine(lunar18, "optionsof.txt"), "ofFastRender:true\n");
         Write(Path.Combine(lunar18, "resourcepacks", "lunar-pack.zip"), "a 1.8 pack");
         Dictionary<string, string> LunarTree() => Directory.EnumerateFiles(l.Lunar, "*", SearchOption.AllDirectories).ToDictionary(file => file, Sha);
         var lunarBefore = LunarTree();
 
         await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
-        var instance = GameOptionsService.ParseOptions(File.ReadAllText(options));
-        Assert.Equal(("-100", "29", "0.75"), (instance["key_key.attack"], instance["key_key.sprint"], instance["fov"]));
+        var instance = Options(options);
+        Assert.Equal(("en_ca", "0.7", "0.25", "-100", "19"), (instance["lang"], instance["gamma"], instance["fov"], instance["key_key.attack"], instance["key_key.sprint"]));
+        Assert.False(instance.ContainsKey("key_Freelook"));
         Assert.Equal("ofFastRender:true\n", File.ReadAllText(optiFine));
 
-        // The game's own changes stay at the next launches: OptiFine's (copied once), and settings and key binds Lunar did not change.
+        // The game's own changes: its controls go to the shared copy, its other settings stay its own, also at the next launches.
         File.WriteAllText(optiFine, "ofFastRender:false\n");
-        File.WriteAllText(options, "fov:1.0\nkey_key.attack:-99\nkey_key.sprint:-97\nkey_key.drop:-96\n");
+        File.WriteAllText(options, "lang:en_ca\ngamma:1.0\nfov:1.0\nkey_key.attack:-99\nkey_key.sprint:-97\nkey_key.drop:-96\n");
         await l.Profiles.SyncProfileToSharedAsync(profile);
+        var shared = Options(l.Paths.SharedOptionsFile);
+        Assert.Equal(("1.0", "key.mouse.right", "key.mouse.4", "key.mouse.5"), (shared["fov"], shared["key_key.attack"], shared["key_key.sprint"], shared["key_key.drop"]));
+        Assert.False(shared.ContainsKey("gamma") || shared.ContainsKey("lang"));
         await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
         await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
         Assert.Equal("ofFastRender:false\n", File.ReadAllText(optiFine));
-        var kept = GameOptionsService.ParseOptions(File.ReadAllText(options));
-        Assert.Equal(("1.0", "-99", "-97", "-96"), (kept["fov"], kept["key_key.attack"], kept["key_key.sprint"], kept["key_key.drop"]));
+        var kept = Options(options);
+        Assert.Equal(("1.0", "1.0", "-99", "-97", "-96"), (kept["gamma"], kept["fov"], kept["key_key.attack"], kept["key_key.sprint"], kept["key_key.drop"]));
         Assert.Equal(lunarBefore, LunarTree());
 
-        // What the player changes in Lunar comes at the next launch; a key 1.8.9 has no code for keeps the game's bind.
-        Write(Path.Combine(lunar18, "options.txt"), "version:3700\nlang:en_ca\nfov:0.5\nkey_key.attack:key.mouse.left\n"
-            + "key_key.sprint:key.mouse.6\nkey_key.drop:key.keyboard.world.1\n");
+        // A setting the player changes in Lunar comes at the next launch; a key bind or FOV changed there does not.
+        Write(Path.Combine(lunar18, "options.txt"), "version:3700\nlang:en_ca\ngamma:0.2\nfov:0.5\nkey_key.attack:key.mouse.left\nkey_key.drop:key.keyboard.q\n");
         await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
-        var taken = GameOptionsService.ParseOptions(File.ReadAllText(options));
-        Assert.Equal(("0.5", "-99", "-95", "-96"), (taken["fov"], taken["key_key.attack"], taken["key_key.sprint"], taken["key_key.drop"]));
-        Assert.Equal(Launcher.SharedOptions, File.ReadAllText(l.Paths.SharedOptionsFile));
+        var taken = Options(options);
+        Assert.Equal(("0.2", "1.0", "-99", "-96"), (taken["gamma"], taken["fov"], taken["key_key.attack"], taken["key_key.drop"]));
+        Assert.Equal(shared, Options(l.Paths.SharedOptionsFile));
     }
 
     /// <summary>A launch never undoes the game's own key binds: not when the launcher missed the game's exit (closed, killed or
@@ -328,6 +334,125 @@ public class Minecraft189Tests
         await l.Profiles.PrepareProfileEnvironmentAsync(legacy, null);
         var after = Read(options189);
         Assert.Equal(("34", "-96", "47", "508"), (after["key_key.drop"], after["key_key.pickItem"], after["key_key.jump"], after["key_key.chat"]));
+    }
+
+    // ------------------------------------------------------------------ controls shared by every version
+
+    /// <summary>One set of controls for 26.3, 1.20.1 and 1.8.9: a bind changed in one version reaches the others at their next
+    /// launch in their own format (1.8.9: LWJGL2 codes, mouse button b as b - 100, unbound 0, and its own names of Lads' and
+    /// Essential's keys). A version's exit sends only what the player changed in it: its stale copy of a key bind changed meanwhile
+    /// in another version, or of a key only other versions have, never resets the shared one.</summary>
+    [Fact]
+    public async Task ControlsFollowEveryVersionAndVersionOnlyKeysAreNeverReset()
+    {
+        using var l = new Launcher();
+        var legacy = l.Profiles.GetProfile("1.8.9")!;
+        var v1201 = l.Profiles.GetProfile("1.20.1")!;
+        var v263 = l.Profiles.GetProfile("26.3")!;
+        string file189 = Path.Combine(l.Game189, "options.txt"), file1201 = Path.Combine(l.Paths.GetProfileDirectory(v1201), "options.txt"),
+            file263 = Path.Combine(l.Paths.GetProfileDirectory(v263), "options.txt");
+        File.WriteAllText(l.Paths.SharedOptionsFile, Launcher.SharedOptions + "key_key.jump:key.keyboard.space\nkey_key.drop:key.keyboard.q\n"
+            + "key_key.sprint:key.keyboard.left.control\nkey_key.theladscore.zoom:key.keyboard.c\nkey_keybind.name.CHAT_PEEK:key.keyboard.z\n"
+            + "key_key.lads_screenshots.open_screenshots_screen:key.keyboard.f10\nkey_key.jei.showRecipe:key.keyboard.r\n");
+        foreach (var profile in new[] { v263, v1201, legacy }) await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        var first = Options(file189);
+        Assert.Equal(("57", "44", "68"), (first["key_key.jump"], first["key_Chat Peek"], first["key_key.theladscore.screenshots"]));
+        Assert.False(first.ContainsKey("key_keybind.name.CHAT_PEEK") || first.ContainsKey("key_key.lads_screenshots.open_screenshots_screen"));
+
+        // 26.3: a key, a mouse button, unbound, a key 1.8.9 has a code for since 1.9.0, Essential's and Lads' renamed keys, a 26.3-only key.
+        File.WriteAllText(file263, File.ReadAllText(file263).Replace("jump:key.keyboard.space", "jump:key.keyboard.v").Replace("drop:key.keyboard.q", "drop:key.mouse.4")
+            .Replace("sprint:key.keyboard.left.control", "sprint:key.keyboard.unknown").Replace("zoom:key.keyboard.c", "zoom:key.keyboard.left.win")
+            .Replace("CHAT_PEEK:key.keyboard.z", "CHAT_PEEK:key.keyboard.k").Replace("screen:key.keyboard.f10", "screen:key.keyboard.f9")
+            + "key_key.debug.improvedTransparency:key.keyboard.y\n");
+        await l.Profiles.SyncProfileToSharedAsync(v263);
+        await l.Profiles.PrepareProfileEnvironmentAsync(legacy, null);
+        await l.Profiles.PrepareProfileEnvironmentAsync(v1201, null);
+        var in189 = Options(file189);
+        Assert.Equal(("47", "-97", "0", "219", "37", "67"), (in189["key_key.jump"], in189["key_key.drop"], in189["key_key.sprint"],
+            in189["key_key.theladscore.zoom"], in189["key_Chat Peek"], in189["key_key.theladscore.screenshots"]));
+        var in1201 = Options(file1201);
+        Assert.Equal(("key.keyboard.v", "key.mouse.4", "key.keyboard.unknown", "key.keyboard.k", "key.keyboard.r"), (in1201["key_key.jump"],
+            in1201["key_key.drop"], in1201["key_key.sprint"], in1201["key_keybind.name.CHAT_PEEK"], in1201["key_key.jei.showRecipe"]));
+
+        // 1.20.1 changes its own JEI key; 1.8.9, still holding the old one, exits later with one change of its own (Chat Peek to G).
+        File.WriteAllText(file1201, File.ReadAllText(file1201).Replace("showRecipe:key.keyboard.r", "showRecipe:key.keyboard.u"));
+        await l.Profiles.SyncProfileToSharedAsync(v1201);
+        File.WriteAllText(file189, File.ReadAllText(file189).Replace("key_Chat Peek:37", "key_Chat Peek:34"));
+        await l.Profiles.SyncProfileToSharedAsync(legacy);
+        var shared = Options(l.Paths.SharedOptionsFile);
+        Assert.Equal(("key.keyboard.u", "key.keyboard.g", "key.keyboard.y", "key.keyboard.left.win", "key.keyboard.f9"), (shared["key_key.jei.showRecipe"],
+            shared["key_keybind.name.CHAT_PEEK"], shared["key_key.debug.improvedTransparency"], shared["key_key.theladscore.zoom"],
+            shared["key_key.lads_screenshots.open_screenshots_screen"]));
+        Assert.False(shared.ContainsKey("key_Chat Peek") || shared.ContainsKey("key_key.theladscore.screenshots"));
+
+        await l.Profiles.PrepareProfileEnvironmentAsync(v263, null);
+        var in263 = Options(file263);
+        Assert.Equal(("key.keyboard.g", "key.keyboard.u", "key.keyboard.y", "key.keyboard.v"), (in263["key_keybind.name.CHAT_PEEK"],
+            in263["key_key.jei.showRecipe"], in263["key_key.debug.improvedTransparency"], in263["key_key.jump"]));
+    }
+
+    /// <summary>No shared copy yet (a new install): the first game's options start it, and a bind changed in that first session goes
+    /// back to it at the exit and stays at the next launch.</summary>
+    [Fact]
+    public async Task FirstGameStartsTheSharedCopyAndItsChangesGoBack()
+    {
+        using var l = new Launcher();
+        File.Delete(l.Paths.SharedOptionsFile);
+        Write(Path.Combine(l.Paths.SharedDirectory, SharedControls.MergedFile), "");
+        var v1201 = l.Profiles.GetProfile("1.20.1")!;
+        var file = Path.Combine(l.Paths.GetProfileDirectory(v1201), "options.txt");
+        Write(file, "key_key.jump:key.keyboard.space\n");
+        await l.Profiles.PrepareProfileEnvironmentAsync(v1201, null);
+        Assert.Equal("key.keyboard.space", Options(l.Paths.SharedOptionsFile)["key_key.jump"]);
+
+        File.WriteAllText(file, "key_key.jump:key.keyboard.v\n");
+        await l.Profiles.SyncProfileToSharedAsync(v1201);
+        await l.Profiles.PrepareProfileEnvironmentAsync(v1201, null);
+        Assert.Equal(("key.keyboard.v", "key.keyboard.v"), (Options(l.Paths.SharedOptionsFile)["key_key.jump"], Options(file)["key_key.jump"]));
+    }
+
+    /// <summary>The first launch with 1.9.0 merges what is there: each control from the newest options.txt (or the shared copy) that
+    /// has it, 1.8.9's codes and names read as the newer versions', keys only one version has kept; written into the shared copy
+    /// and every profile's options.txt. The shared copy is backed up first, and the merge runs once. A profile added later takes
+    /// the shared controls at its first launch and keeps its own other settings.</summary>
+    [Fact]
+    public async Task FirstRunMergesEveryVersionsControlsNewestFirstOnce()
+    {
+        using var l = new Launcher();
+        string file189 = Path.Combine(l.Game189, "options.txt"), file1201 = Path.Combine(l.Paths.GetProfileDirectory(l.Profiles.GetProfile("1.20.1")!), "options.txt"),
+            file263 = Path.Combine(l.Paths.GetProfileDirectory(l.Profiles.GetProfile("26.3")!), "options.txt");
+        const string sharedBefore = "version:4671\nlang:en_us\nfov:0.0\nkey_key.chat:key.keyboard.t\nkey_key.jump:key.keyboard.space\n";
+        var now = DateTime.UtcNow;
+        void Save(string file, string text, int minutesAgo) { Write(file, text); File.SetLastWriteTimeUtc(file, now.AddMinutes(-minutesAgo)); }
+        Save(file263, "fov:0.5\nkey_key.jump:key.keyboard.v\nkey_key.theladscore.zoom:key.keyboard.z\nkey_key.debug.improvedTransparency:key.keyboard.y\n", 40);
+        Save(l.Paths.SharedOptionsFile, sharedBefore, 30);
+        Save(file1201, "key_key.theladscore.zoom:key.keyboard.c\nkey_key.jei.showRecipe:key.keyboard.r\n", 20);
+        Save(file189, "key_key.chat:28\nkey_key.jump:57\nkey_key.theladscore.screenshots:67\nkey_Chat Peek:44\nkey_Freelook:184\nkey_key.sprint:508\n", 10);
+
+        Assert.Empty(SharedControls.MergeOnce(l.Paths, SharedControls.Targets(l.Profiles.GetProfiles())));
+        var shared = Options(l.Paths.SharedOptionsFile);
+        Assert.Equal(("key.keyboard.enter", "key.keyboard.space", "key.keyboard.c", "key.keyboard.y", "0.0", "key.keyboard.r"), (shared["key_key.chat"],
+            shared["key_key.jump"], shared["key_key.theladscore.zoom"], shared["key_key.debug.improvedTransparency"], shared["fov"], shared["key_key.jei.showRecipe"]));
+        Assert.Equal(("key.keyboard.f9", "key.keyboard.z", "key.keyboard.right.alt", "en_us"), (shared["key_key.lads_screenshots.open_screenshots_screen"],
+            shared["key_keybind.name.CHAT_PEEK"], shared["key_Freelook"], shared["lang"]));
+        Assert.False(shared.ContainsKey("key_key.sprint") || shared.ContainsKey("key_Chat Peek")); // a code without a key name; 1.8.9's own name
+        Assert.Equal(sharedBefore, File.ReadAllText(Path.Combine(l.Paths.SharedDirectory, SharedControls.BackupFile)));
+        var in263 = Options(file263);
+        Assert.Equal(("key.keyboard.space", "key.keyboard.c", "key.keyboard.enter", "0.0"), (in263["key_key.jump"], in263["key_key.theladscore.zoom"], in263["key_key.chat"], in263["fov"]));
+        var in189 = Options(file189);
+        Assert.Equal(("28", "57", "508", "0.0"), (in189["key_key.chat"], in189["key_key.jump"], in189["key_key.sprint"], in189["fov"]));
+
+        // Once: a later change is not merged again.
+        Save(file1201, "key_key.theladscore.zoom:key.keyboard.x\n", 0);
+        Assert.Empty(SharedControls.MergeOnce(l.Paths, SharedControls.Targets(l.Profiles.GetProfiles())));
+        Assert.Equal(shared, Options(l.Paths.SharedOptionsFile));
+
+        // A profile added now (its folder copied from elsewhere): the shared controls at its first launch, its own other settings.
+        var added = l.Profiles.CreateProfile("Second 26.3", "26.3", 25, fabricVersion: "0.19.5");
+        var addedFile = Path.Combine(l.Paths.GetProfileDirectory(added), "options.txt");
+        Write(addedFile, "gamma:0.3\nkey_key.theladscore.zoom:key.keyboard.z\n");
+        await l.Profiles.PrepareProfileEnvironmentAsync(added, null);
+        Assert.Equal(("0.3", "key.keyboard.c"), (Options(addedFile)["gamma"], Options(addedFile)["key_key.theladscore.zoom"]));
     }
 
     // ------------------------------------------------------------------ Forge mods
@@ -902,4 +1027,6 @@ public class Minecraft189Tests
     }
 
     private static string Sha(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+
+    private static Dictionary<string, string> Options(string file) => GameOptionsService.ParseOptions(File.ReadAllText(file));
 }
