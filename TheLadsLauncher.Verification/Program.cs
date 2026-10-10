@@ -204,6 +204,9 @@ bool f3FovCaptureVerification = autoWorldVerification && Env("LADS_VERIFY_CAPTUR
 bool hudInfoCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_HUDINFO") == "1";
 // Fabric versions: Raised and the paper doll in the QA world (RaisedDollCapture). 1.8.9's self-test runs the same (RaisedDollProbe189).
 bool raisedCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_RAISED") == "1";
+// Fabric versions: the 1.9.0 HUD layout (HudLayoutQa): a pre-1.9.0 layout at GUI scales 3 and 2, docked HUDs pushed, the Lads HUD's own
+// scale and the hotbar snap in the HUD editor (HudLayoutCapture). 1.20.1: the "hudlayout" script step; 1.8.9: LADS_VERIFY_189_ONLY=hudlayout.
+bool hudLayoutCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_HUDLAYOUT") == "1";
 // Fabric versions: Lads Mouse Tweaks in a server chest through the screen's own mouse handlers (MouseTweaksCapture).
 // 1.8.9's self-test (MouseTweaksProbe189) always runs the same checks.
 bool mouseTweaksCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_MOUSETWEAKS") == "1";
@@ -394,6 +397,8 @@ string hudInfoCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hudinfo
 if (autoWorldVerification && File.Exists(hudInfoCaptureRequest)) File.Delete(hudInfoCaptureRequest);
 string raisedCaptureRequest = Path.Combine(directory, ".lads-qa-capture-raised");
 if (autoWorldVerification && File.Exists(raisedCaptureRequest)) File.Delete(raisedCaptureRequest);
+string hudLayoutCaptureRequest = Path.Combine(directory, ".lads-qa-capture-hudlayout");
+if (autoWorldVerification && File.Exists(hudLayoutCaptureRequest)) File.Delete(hudLayoutCaptureRequest);
 string mouseTweaksCaptureRequest = Path.Combine(directory, ".lads-qa-capture-mousetweaks");
 if (autoWorldVerification && File.Exists(mouseTweaksCaptureRequest)) File.Delete(mouseTweaksCaptureRequest);
 string resolutionCaptureRequest = Path.Combine(directory, ".lads-qa-capture-resolution");
@@ -436,7 +441,7 @@ var failedCaptures = new System.Collections.Concurrent.ConcurrentDictionary<stri
 string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:",
     "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
     "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
-    "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads mouse tweaks capture END:",
+    "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads hud layout END:", "Lads mouse tweaks capture END:",
     "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
 bool Settled(bool requested, params string[] ends) => !requested || ends.All(passedMarkers.ContainsKey) || ends.Any(failedCaptures.ContainsKey);
@@ -460,6 +465,7 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(f3FovCaptureVerification && !capabilities.Forge, "Lads F3/FOV capture END:")
     && Settled(hudInfoCaptureVerification, "Lads HUD info capture END:")
     && Settled(raisedCaptureVerification, "Lads raised capture END:")
+    && Settled(hudLayoutCaptureVerification, "Lads hud layout END:")
     && Settled(mouseTweaksCaptureVerification, "Lads mouse tweaks capture END:")
     && Settled(resolutionRequested, "Lads resolution capture END:")
     && Settled(lightsCaptureVerification, "Lads dynamic lights capture END:")
@@ -511,7 +517,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads cheats probe FAILED", "Lads zoom capture FAILED", "Lads sprint capture FAILED", "Lads add-server probe FAILED",
     "Lads HUD 1.7.0 capture FAILED", "Lads item physics capture FAILED", "Lads inventory capture FAILED",
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
-    "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
+    "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads hud layout FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
     "Lads AppleSkin sync capture FAILED", "Lads qa script FAILED", "Lads qa step FAILED", "Lads render 1.8.5 capture FAILED", "Lads input probe FAILED", "Lads fast quit probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
@@ -783,6 +789,8 @@ try
         if (renderScaleVerification) AddJvm("-Dthelads.verifyRenderScale=true");
         if (Env("LADS_VERIFY_V133") == "1") AddJvm("-Dthelads.verify133=true");
         if (titleCaptureVerification) AddJvm("-Dthelads.verifyTitleCapture=true");
+        // 26.x: with LADS_VERIFY_CAPTURE_TITLE=1, the title's Switch Versions button pressed and the screen photographed (NativeWorldVerification), then the game stops.
+        if (titleCaptureVerification && Env("LADS_VERIFY_VERSION_SWITCH") == "1") AddJvm("-Dthelads.verifyVersionSwitch=true");
         if (Env("LADS_VERIFY_V134") == "1") { AddJvm("-Dthelads.verify134=true"); AddJvm("-Dthelads.verifyRenderer=" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan")); }
         if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
         if (flashbackVerification) AddJvm("-Dthelads.verifyFlashback=true");
@@ -798,7 +806,8 @@ try
     process.StartInfo.CreateNoWindow = true;
     process.StartInfo.RedirectStandardOutput = true;
     process.StartInfo.RedirectStandardError = true;
-    GameSession.Configure(process.StartInfo, directory, shared.Root);
+    GameSession.Configure(process.StartInfo, directory, shared.Root, version);
+    VersionSwitch.Prepare(directory, version); // as the launcher does before every start: the list the in-game Switch Versions screen reads
     // The Core's shared config (ClientPaths.getGlobalBaseDir) is THELADS_GLOBAL_DIR, else the owner's REAL %APPDATA%\\.theladsclient\\shared\\thelads_config.json
     // (read and saved: the owner's HUD layout and Discord RPC in QA games, QA module changes in the owner's config). QA games get their own folder: the game
     // folder, whose thelads_config.json QaDiscord.ForceOff prepared; the shared copy is dropped so every launch re-seeds from it.
@@ -865,12 +874,8 @@ try
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             foreach (string marker in requiredWorldProbes)
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
-            foreach (string marker in new[] { "Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:", "Lads kill banner capture END:",
-                "Lads kill streak capture END:",
-                "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:", "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:",
-                "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads title capture END:", "Lads title More capture END:",
-                "Lads server features capture END:", "Lads F3/FOV capture END:",
-                "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:" })
+            // Every capture's END marker (captureEnds), so a capture added there can never be left waiting for the timeout.
+            foreach (string marker in captureEnds.Append("Lads title capture END:").Append("Lads title More capture END:"))
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
@@ -909,35 +914,40 @@ try
     // The 1.8.9 benchmark alone runs uncapped (maxFps 260 is Unlimited) at its own render distance (perf189 above).
     bool ownerPlaying = Environment.GetEnvironmentVariable("LADS_VERIFY_PLAYING") == "1" || QaShared.PlayingMonitor != null; // 60 FPS cap while the owner plays and streams
     string[] qaForced = { "soundCategory_master:0.0", perf189 ? "maxFps:260" : ownerPlaying ? "maxFps:60" : "maxFps:120", "enableVsync:false", "renderDistance:" + perfRenderDistance,
-        "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false", "fullscreen:" + (qaFullscreen ? "true" : "false") };
+        "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false", "fullscreen:" + (qaFullscreen ? "true" : "false"),
+        // An options.txt with its data version skips the DataFixer that switches the first-start accessibility screen off for old files.
+        "onboardAccessibility:false" };
     string qaOptions = Path.Combine(directory, "options.txt");
     // LADS_VERIFY_OPTIONS_SYNC=1: the launcher's options.txt sync around the game, as ProfileService does for a profile that is not
-    // isolated (1.8.9: Lunar's 1.8 profile when the Lunar sandbox has one, else the shared copy; back to the shared copy after the
-    // exit); =prepare: only the one before the game, as when the launcher missed the game's exit.
+    // isolated (the shared copy's controls; 1.8.9's other settings from Lunar's 1.8 profile when the Lunar sandbox has one, else the
+    // shared copy; back to the shared copy after the exit, 1.8.9 with Lunar only the controls); =prepare: only the one before the
+    // game, as when the launcher missed the game's exit.
     if (optionsSync != null)
     {
-        GameOptionsService.SyncToInstance(lunarOptions ?? sharedOptions, qaOptions, version);
+        GameOptionsService.SyncToInstance(sharedOptions, qaOptions, version, lunarOptions);
         CopyIfExists(qaOptions, Path.Combine(evidence, "options-after-launcher-sync.txt"));
-        summary.Add($"Options sync ({optionsSync}): {lunarOptions ?? sharedOptions} -> {qaOptions}");
+        summary.Add($"Options sync ({optionsSync}): {sharedOptions}{(lunarOptions != null ? " (other settings: " + lunarOptions + ")" : "")} -> {qaOptions}");
     }
     var qaLines = File.Exists(qaOptions)
         ? File.ReadAllLines(qaOptions).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList()
         : new List<string>();
     qaLines.AddRange(qaForced);
     // LADS_VERIFY_RESOURCEPACKS=a.zip,b.zip: those packs copied into the sandbox and enabled (e.g. Fresh Animations for the embedded EMF/ETF).
+    // 1.8.9 lists plain file names; the Fabric versions list pack ids.
     if (Env("LADS_VERIFY_RESOURCEPACKS") is { } packs)
     {
-        var enabled = new List<string> { "\"vanilla\"", "\"fabric\"" };
+        var enabled = capabilities.Forge ? new List<string>() : new List<string> { "\"vanilla\"", "\"fabric\"" };
         foreach (var pack in packs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             Directory.CreateDirectory(Path.Combine(directory, "resourcepacks"));
             File.Copy(pack, Path.Combine(directory, "resourcepacks", Path.GetFileName(pack)), overwrite: true);
-            enabled.Add("\"file/" + Path.GetFileName(pack) + "\"");
+            enabled.Add("\"" + (capabilities.Forge ? "" : "file/") + Path.GetFileName(pack) + "\"");
         }
         qaLines.RemoveAll(l => l.StartsWith("resourcePacks:", StringComparison.Ordinal));
         qaLines.Add("resourcePacks:[" + string.Join(",", enabled) + "]");
     }
     File.WriteAllLines(qaOptions, qaLines);
+    GameOptionsService.EnsureDataVersion(directory, version); // as GameSession.Configure in the launcher: this options.txt is written after it
     QaDiscord.ForceOff(directory); // QA games never show on the owner's Discord (Essential's activity status, Lads DiscordRPC)
     var stopwatch = Stopwatch.StartNew();
     // 26.3 (SDL) shows its window without activating it; QaWindowGuard covers 1.8.9 and 26.2 (and moves every game window).
@@ -1042,6 +1052,7 @@ try
                     (f3FovCaptureVerification && !capabilities.Forge, f3FovCaptureRequest, "Capture Better F3 frames and log Custom FOV values."),
                     (hudInfoCaptureVerification, hudInfoCaptureRequest, "Photograph food previews, tooltips and crosshair styles in the QA world."),
                     (raisedCaptureVerification, raisedCaptureRequest, "Capture Raised and the paper doll in the QA world."),
+                    (hudLayoutCaptureVerification, hudLayoutCaptureRequest, "Load a pre-1.9.0 HUD layout and capture it across GUI scales, in the HUD editor and pushed."),
                     (mouseTweaksCaptureVerification, mouseTweaksCaptureRequest, "Drive Lads Mouse Tweaks in a QA chest and capture its frames."),
                     (lightsCaptureVerification, lightsCaptureRequest, "Light the QA world at midnight with Dynamic Lights and capture its frames."),
                     (asyncStressVerification, asyncStressRequest, "Stress Async with a pen of mobs in the QA world."),
@@ -1201,6 +1212,8 @@ try
             "The requested food, tooltip and crosshair frames were not all captured. Inspect production-smoke.log.");
         Require(!raisedCaptureVerification || passedMarkers.ContainsKey("Lads raised capture END:"),
             "The requested Raised and paper doll capture did not pass. Inspect production-smoke.log.");
+        Require(!hudLayoutCaptureVerification || passedMarkers.ContainsKey("Lads hud layout END:"),
+            "The requested HUD layout capture did not pass. Inspect production-smoke.log.");
         Require(!mouseTweaksCaptureVerification || passedMarkers.ContainsKey("Lads mouse tweaks capture END:"),
             "The requested Lads Mouse Tweaks capture did not pass. Inspect production-smoke.log.");
         Require(!resolutionCaptureVerification || passedMarkers.ContainsKey("Lads resolution capture END:"),
@@ -1252,7 +1265,7 @@ if (Env("LADS_VERIFY_V133") == "1" && (process == null || !IsRunning(process)))
 if (process != null && HasStarted(process))
 {
     CopyIfExists(Path.Combine(directory, "options.txt"), Path.Combine(evidence, "options-after-game.txt"));
-    if (optionsSync == "1" && lunarOptions == null) GameOptionsService.SyncFromInstance(Path.Combine(directory, "options.txt"), sharedOptions, version);
+    if (optionsSync == "1") GameOptionsService.SyncFromInstance(Path.Combine(directory, "options.txt"), sharedOptions, version, controlsOnly: lunarOptions != null);
     CopyIfExists(sharedOptions, Path.Combine(evidence, "shared-options-after.txt"));
     bool handled = await Task.WhenAny(exitHandled.Task, Task.Delay(TimeSpan.FromSeconds(30))) == exitHandled.Task;
     if (!handled) failures.Add("GameSession's exit handler did not finish within 30 s (running marker removal and fallback server-list reconcile).");
@@ -1269,33 +1282,49 @@ if (process != null && HasStarted(process))
 lock (logGate) { log?.Dispose(); log = null; }
 if (File.Exists(logPath)) File.Copy(logPath, Path.Combine(evidence, $"production-smoke-{scenario}.log"), overwrite: true);
 if (capabilities.Forge) CopyIfExists(gameLog, Path.Combine(evidence, $"latest-{scenario}.log"));
-// Catalog parity with 26.2, the 1.3.5 target: informational, or a failure with LADS_VERIFY_PARITY=1 (the release gate).
+// Catalog parity with 26.3 (or 26.2 reference if present): informational, or a failure with LADS_VERIFY_PARITY=1 (the release gate).
 // 1.8.9's first-release scope is deliberately smaller (artifacts\1.4.0\PLAN-1.4.0.md): there it is only reported.
 bool parityGate = Env("LADS_VERIFY_PARITY") == "1" && !capabilities.Forge;
 if (!expectCoreDisabled && process != null && HasStarted(process))
 {
     var parityLines = new List<string>();
-    if (capabilities.Forge)
-        parityLines.Add($"Lads catalog parity: report only on {version}, whose first-release scope is deliberately smaller than 26.2's; LADS_VERIFY_PARITY does not apply.");
-    try
+    // 26.3 is the reference itself; the others compare with the newest 26.3 (else 26.2) catalog a run left in this worktree.
+    string? referencePath = version == "26.3" ? null : new[] {
+            Path.Combine(verificationRoot, "26.3-title", "lads-core-catalog.json"),
+            Path.Combine(verificationRoot, "26.3", "lads-core-catalog.json"),
+            Path.Combine(verificationRoot, "26.2-title", "lads-core-catalog.json")
+        }.FirstOrDefault(File.Exists);
+
+    if (referencePath == null)
     {
-        var reference = CatalogSupport(Path.Combine(verificationRoot, "26.2-title", "lads-core-catalog.json"));
-        var current = CatalogSupport(Path.Combine(directory, "lads-core-catalog.json"));
-        var builtIn = reference.Where(module => module.Value.Support == "builtIn").Select(module => module.Key).ToList();
-        // Equivalent: built in, or an upstream mod this pack installs behind the module's Lads card.
-        var missing = builtIn.Where(name => !current.TryGetValue(name, out var here) || !(here.Support == "builtIn" || here.Support == "external" && here.Label == "Installed mod"))
-            .Select(name => current.TryGetValue(name, out var here) ? $"{name} ({here.Support}{(here.Support == "external" ? ": " + here.Label : "")})" : $"{name} (absent)").ToList();
-        parityLines.Add($"Lads catalog parity END: {builtIn.Count} checks, {missing.Count} missing");
-        if (missing.Count > 0)
-        {
-            parityLines.Add($"Lads catalog parity: built in on 26.2 but neither built in nor an installed external mod on {version}: {string.Join(", ", missing)}");
-            if (parityGate) failures.Add($"LADS_VERIFY_PARITY=1: {missing.Count} of {builtIn.Count} modules built in on 26.2 are missing on {version}.");
-        }
+        parityLines.Add(version == "26.3" ? "Lads catalog parity: 26.3 is the reference version." : $"Lads catalog parity: skipped on {version} (no 26.3 reference catalog: run 26.3 in this worktree first).");
+        if (parityGate && version != "26.3") failures.Add(parityLines[^1]);
     }
-    catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or KeyNotFoundException or NullReferenceException)
+    else
     {
-        parityLines.Add($"Lads catalog parity FAILED: {e.GetType().Name}: {e.Message}");
-        if (parityGate) failures.Add(parityLines[^1]);
+        string refVer = referencePath.Contains("26.3", StringComparison.Ordinal) ? "26.3" : "26.2";
+        if (capabilities.Forge)
+            parityLines.Add($"Lads catalog parity: report only on {version}, whose first-release scope is deliberately smaller than {refVer}'s; LADS_VERIFY_PARITY does not apply.");
+        try
+        {
+            var reference = CatalogSupport(referencePath);
+            var current = CatalogSupport(Path.Combine(directory, "lads-core-catalog.json"));
+            var builtIn = reference.Where(module => module.Value.Support == "builtIn").Select(module => module.Key).ToList();
+            // Equivalent: built in, or an upstream mod this pack installs behind the module's Lads card.
+            var missing = builtIn.Where(name => !current.TryGetValue(name, out var here) || !(here.Support == "builtIn" || here.Support == "external" && here.Label == "Installed mod"))
+                .Select(name => current.TryGetValue(name, out var here) ? $"{name} ({here.Support}{(here.Support == "external" ? ": " + here.Label : "")})" : $"{name} (absent)").ToList();
+            parityLines.Add($"Lads catalog parity END: {builtIn.Count} checks, {missing.Count} missing");
+            if (missing.Count > 0)
+            {
+                parityLines.Add($"Lads catalog parity: built in on {refVer} but neither built in nor an installed external mod on {version}: {string.Join(", ", missing)}");
+                if (parityGate) failures.Add($"LADS_VERIFY_PARITY=1: {missing.Count} of {builtIn.Count} modules built in on {refVer} are missing on {version}.");
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or KeyNotFoundException or NullReferenceException)
+        {
+            parityLines.Add($"Lads catalog parity FAILED: {e.GetType().Name}: {e.Message}");
+            if (parityGate) failures.Add(parityLines[^1]);
+        }
     }
     foreach (var line in parityLines) { Console.WriteLine(line); keyLines.Add(line); }
 }

@@ -44,10 +44,12 @@ final class RecordingGraphics implements LadsGraphics {
     @Override public void drawArmorSlot(int slot, int x, int y, boolean preview) { mark("armorSlot", Arrays.asList(slot, preview), x, y); ops.add(g -> g.drawArmorSlot(slot, x, y, preview)); }
     @Override public void drawSprite(String sprite, int x, int y, int size) { mark("sprite", sprite, x, y, size); ops.add(g -> g.drawSprite(sprite, x, y, size)); }
     @Override public void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) { mark("potionIcon", Arrays.asList(effectId, iconIndex), x, y, size); ops.add(g -> g.drawPotionIcon(effectId, iconIndex, x, y, size)); }
+    @Override public void drawPackIcon(String pack, int x, int y, int size) { mark("packIcon", pack, x, y, size); ops.add(g -> g.drawPackIcon(pack, x, y, size)); }
     @Override public void drawBossBars(int x, int y, int max, boolean names, boolean preview) { mark("bossBars", Arrays.asList(max, names, preview), x, y); ops.add(g -> g.drawBossBars(x, y, max, names, preview)); }
     // Screen-only art (the Kill Banner picker, the HUD editor backdrop): recorded like the rest, assumed drawn.
     @Override public boolean drawKillBanner(String skin, int variant, int x, int y, int width, int height) { mark("banner", Arrays.asList(skin, variant), x, y, width, height); ops.add(g -> g.drawKillBanner(skin, variant, x, y, width, height)); return true; }
     @Override public boolean drawKillBannerPreview(String skin, int variant, int x, int y, int width, int height, double clock) { mark("bannerPreview", Arrays.asList(skin, variant), x, y, width, height, clock); ops.add(g -> g.drawKillBannerPreview(skin, variant, x, y, width, height, clock)); return true; }
+    @Override public boolean drawCrosshairPreview(int cx, int cy) { mark("crosshair", null, cx, cy); ops.add(g -> g.drawCrosshairPreview(cx, cy)); return true; }
     @Override public boolean drawGameView(int x, int y, int width, int height) { mark("view", null, x, y, width, height); ops.add(g -> g.drawGameView(x, y, width, height)); return true; }
 
     @Override public int textWidth(String text) { return target.textWidth(text); }
@@ -56,5 +58,7 @@ final class RecordingGraphics implements LadsGraphics {
     @Override public int getScaledWidth() { return target.getScaledWidth(); }
     @Override public int getScaledHeight() { return target.getScaledHeight(); }
     @Override public int hotbarLift() { return target.hotbarLift(); }
+    @Override public int guiScale() { return target.guiScale(); }
+    @Override public double hudUnit() { return target.hudUnit(); }
     @Override public LadsGameBridge getGame() { return target.getGame(); }
 }

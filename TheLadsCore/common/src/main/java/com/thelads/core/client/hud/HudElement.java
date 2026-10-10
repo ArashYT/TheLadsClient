@@ -39,7 +39,7 @@ public abstract class HudElement {
         prepareRender(g, editor);
         int dx=getDisplayX(g),dy=getDisplayY(g);
         if (organizedDefaults && followsOrganizedDefault() && !editingPosition && HudSettings.getInstance().getPosition(moduleName)==null) {
-            int[] origin=HudDefaults.origin(moduleName,g.getScaledWidth(),g.getScaledHeight(),getRenderWidth(),getRenderHeight());
+            int[] origin=HudDefaults.origin(moduleName,g.getScaledWidth(),g.getScaledHeight(),getRenderWidth(),getRenderHeight(),HudAnchors.hotbar(g));
             if(origin!=null){dx=origin[0];dy=origin[1];}
         }
         return new HudGroupLayout.Rect(dx,dy,getRenderWidth(),getRenderHeight());
@@ -47,6 +47,18 @@ public abstract class HudElement {
 
     /** False while the element places itself by default (getDisplayX/Y) instead of at its HudDefaults origin. */
     protected boolean followsOrganizedDefault() { return true; }
+
+    /** False while getDisplayX/Y place the element themselves (an anchor option of its own) and its saved position is not used. */
+    public boolean usesSavedPosition() { return true; }
+
+    /**
+     * Whether what is docked under this element keeps the room it had in the editor when it shrinks (content such as potion
+     * effects comes and goes); false where the size only follows the GUI scale.
+     */
+    public boolean keepsRoom() { return true; }
+
+    /** Called with where the element is drawn this frame (its own units), after the layout. */
+    public void placed(LadsGraphics g, HudGroupLayout.Rect bounds) {}
 
     /** False for catalog entries that have no implemented HUD renderer. */
     public boolean isAvailable() { return true; }
@@ -88,6 +100,7 @@ public abstract class HudElement {
         }
     }
 
+    public boolean isEditingPosition() { return editingPosition; }
     public void beginPositionEdit() { editingPosition = true; }
     public void endPositionEdit() { editingPosition = false; }
 
@@ -132,6 +145,8 @@ public abstract class HudElement {
     public void matchLayoutWidth(int pixels) { if(naturalWidth<0)naturalWidth=width; width = Math.max(width, (int)Math.ceil(pixels / getScale())); }
 
     public int getRenderWidth() { return Math.max(1, (int) Math.ceil(width * (double) getScale())); }
+    /** The render width before matchLayoutWidth widened it this frame: the width the layout places (HudAnchors). */
+    public int getNaturalRenderWidth() { return naturalWidth < 0 ? getRenderWidth() : Math.max(1, (int) Math.ceil(naturalWidth * (double) getScale())); }
     public int getRenderHeight() { return Math.max(1, (int) Math.ceil(height * (double) getScale())); }
 
     protected int resolveColor() {

@@ -97,6 +97,19 @@ public class ConfigManager {
             positions.add(e.getKey(), xy);
         }
         hud.add("positions", positions);
+        // Anchors (1.9.0): {"to": "#hotbar" or a HUD, "at": [x, y], "x": [ref, pin, offset, room], "y": [...]}; older builds read positions only.
+        JsonObject anchors = new JsonObject();
+        for (Map.Entry<String, HudSettings.Anchor> e : HudSettings.getInstance().getAnchors().entrySet()) {
+            HudSettings.Anchor a = e.getValue();
+            JsonObject anchor = new JsonObject();
+            if (a.to() != null) anchor.addProperty("to", a.to());
+            anchor.add("at", ints(a.x(), a.y()));
+            anchor.add("x", ints(a.h().ref(), a.h().pin(), a.h().off(), a.h().room()));
+            anchor.add("y", ints(a.v().ref(), a.v().pin(), a.v().off(), a.v().room()));
+            anchors.add(e.getKey(), anchor);
+        }
+        hud.add("anchors", anchors);
+        hud.addProperty("hudScale", HudSettings.getInstance().getHudScale());
         JsonArray fade = new JsonArray();
         for (int c : HudSettings.getInstance().getFadePlaylist()) {
             fade.add(c);
@@ -140,6 +153,7 @@ public class ConfigManager {
             migrateDiscord(modulesJson);
             migrateDamageTilt(modulesJson);
             migrateParticleBudget(modulesJson);
+            migrateAutohide(modulesJson);
             java.util.Set<String> known = new java.util.HashSet<>();
             for (Module m : ModuleManager.getInstance().getModules()) {
                 known.add(m.getName());
@@ -241,6 +255,18 @@ public class ConfigManager {
                     }
                 }
             }
+            if (hud.get("anchors") instanceof JsonObject anchors) {
+                for (String key : anchors.keySet()) {
+                    try {
+                        JsonObject a = anchors.getAsJsonObject(key);
+                        JsonArray at = a.getAsJsonArray("at"), h = a.getAsJsonArray("x"), v = a.getAsJsonArray("y");
+                        String to = a.has("to") ? a.get("to").getAsString() : null;
+                        HudSettings.getInstance().setAnchor(key, new HudSettings.Anchor(at.get(0).getAsInt(), at.get(1).getAsInt(), to, axis(h), axis(v)));
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            if (hud.has("hudScale")) HudSettings.getInstance().setHudScale(hud.get("hudScale").getAsInt());
             if (hud.has("fadePlaylist")) {
                 HudSettings.getInstance().getFadePlaylist().clear();
                 JsonArray fade = hud.getAsJsonArray("fadePlaylist");
@@ -359,6 +385,13 @@ public class ConfigManager {
         }
     }
 
+    private static JsonArray ints(int... values) { JsonArray array = new JsonArray(); for (int value : values) array.add(value); return array; }
+    private static HudSettings.Axis axis(JsonArray a) {
+        int ref = a.get(0).getAsInt(), pin = a.get(1).getAsInt();
+        if (ref < 0 || ref > 2 || pin < 0 || pin > 2) throw new IllegalArgumentException("anchor point");
+        return new HudSettings.Axis(ref, pin, a.get(2).getAsInt(), a.size() > 3 ? a.get(3).getAsInt() : 0);
+    }
+
     private static JsonObject modules(JsonElement module) { return module instanceof JsonObject object ? object : null; }
     private static boolean bool(JsonElement value) { try { return value != null && value.getAsBoolean(); } catch (RuntimeException e) { return false; } }
     private static int number(JsonElement value) { try { return value == null ? 0 : value.getAsInt(); } catch (RuntimeException e) { return 0; } }
@@ -371,6 +404,18 @@ public class ConfigManager {
         dropUnchanged(modules, "DynamicLights");
         // 1.8.5 builds Not Enough Animations in (1.20.1), on as the mod it replaces was: the same rule.
         dropUnchanged(modules, com.thelads.core.modules.NotEnoughAnimationsModule.NAME);
+    }
+
+    /**
+     * 1.9.0 defaults Autohide to off: configs saved with the old default (lastModified 0 or missing) migrate
+     * to enabled=false; explicit player changes are kept.
+     */
+    static void migrateAutohide(JsonObject modules) {
+        if (!(modules.get("Autohide") instanceof JsonObject autohide)) return;
+        JsonElement changed = autohide.get("lastModified");
+        if (changed == null || (changed.isJsonPrimitive() && changed.getAsJsonPrimitive().isNumber() && changed.getAsLong() == 0)) {
+            autohide.addProperty("enabled", false);
+        }
     }
 
     private static void dropUnchanged(JsonObject modules, String name) {

@@ -90,6 +90,13 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         return com.thelads.core.v1_20_1.feature.NativeKillBanner1201.drawPreview(guiGraphics, skin, variant, x, y, width, height, clock);
     }
 
+    /** The crosshair draws directly: flush the batched fills (the backdrop) first so it lands on top. */
+    @Override
+    public boolean drawCrosshairPreview(int cx, int cy) {
+        guiGraphics.flush();
+        return com.thelads.core.v1_20_1.hud.overlay.Crosshair1201.preview(guiGraphics, cx, cy);
+    }
+
     @Override
     public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
         com.thelads.core.v1_20_1.hud.overlay.PaperDoll1201.render(guiGraphics, x, y, width, height, editor);
@@ -110,6 +117,16 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     @Override
     public void drawModIcon(String id, int x, int y, int size) {
         if (!com.thelads.core.v1_20_1.gui.ModIcons1201.draw(guiGraphics, id, x, y, size)) LadsGraphics.super.drawModIcon(id, x, y, size);
+    }
+
+    @Override
+    public void drawPackIcon(String pack, int x, int y, int size) {
+        fade(1);
+        try {
+            com.thelads.core.v1_20_1.gui.PackIcons1201.draw(guiGraphics, pack, x, y, size);
+        } finally {
+            endFade();
+        }
     }
 
     @Override
@@ -395,5 +412,10 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     @Override
     public int hotbarLift() {
         return Raised1201.hotbar();
+    }
+
+    @Override
+    public int guiScale() {
+        return (int) Minecraft.getInstance().getWindow().getGuiScale();
     }
 }

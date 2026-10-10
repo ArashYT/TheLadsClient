@@ -20,10 +20,12 @@ public partial class ExperiencesView : UserControl
 
     private Process? _runningProcess;
     private CancellationTokenSource? _actionCts;
+    private bool _syncingAutoJoin;
 
     public ExperiencesView()
     {
         InitializeComponent();
+        ZeroSmpServerText.Text = ExperiencesService.ZeroSmp.ServerAddress; // the one place the address is written down
     }
 
     public async Task LoadAsync()
@@ -80,6 +82,20 @@ public partial class ExperiencesView : UserControl
 
         ZeroSmpFolderBtn.IsEnabled = installed && !busy;
         ZeroSmpReinstallBtn.IsEnabled = !busy && !running;
+
+        if (Host is { } host)
+        {
+            _syncingAutoJoin = true;
+            ZeroSmpAutoJoinCheck.IsChecked = host.ModpackSettings.ZeroSmpAutoJoin;
+            _syncingAutoJoin = false;
+        }
+    }
+
+    private void ZeroSmpAutoJoin_Changed(object? sender, RoutedEventArgs e)
+    {
+        if (_syncingAutoJoin || Host is not { } host) return;
+        host.ModpackSettings.ZeroSmpAutoJoin = ZeroSmpAutoJoinCheck.IsChecked == true;
+        host.ModpackSettings.Save();
     }
 
     private async void ZeroSmpPlay_Click(object? sender, RoutedEventArgs e)
@@ -126,7 +142,8 @@ public partial class ExperiencesView : UserControl
             var session = await host.ResolveModpackSessionAsync(token);
 
             Report("Preparing Minecraft 1.20.1 & Forge 47.4.10...");
-            var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token);
+            string? joinServer = host.ModpackSettings.ZeroSmpAutoJoin ? ExperiencesService.ZeroSmp.ServerAddress : null;
+            var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token, joinServer);
 
             _runningProcess = process;
             process.EnableRaisingEvents = true;
@@ -138,10 +155,13 @@ public partial class ExperiencesView : UserControl
                 ZeroSmpStatusText.Text = code == 0 ? "Game closed." : $"Minecraft closed with exit code {code}. See logs in Open Folder.";
                 ZeroSmpProgressBar.IsVisible = false;
                 RefreshState();
+                host.ApplyNextAccountRequest(instance.GameDirectory); // in-game account switcher
+                host.ApplyNextVersionRequest(instance.GameDirectory); // closed from the in-game Switch Versions screen
             });
 
             Report($"Zero SMP started as {session.Username}!");
-            host.ModpackLog($"Started Zero SMP (Forge 47.4.10, Minecraft 1.20.1) PID {process.Id}.");
+            host.ModpackLog($"Started Zero SMP (Forge 47.4.10, Minecraft 1.20.1) PID {process.Id}."
+                + (joinServer == null ? "" : $" Auto-join: --quickPlayMultiplayer {ModpackLauncher.QuickPlayServer(process)}."));
             RefreshState();
         }
         catch (OperationCanceledException)

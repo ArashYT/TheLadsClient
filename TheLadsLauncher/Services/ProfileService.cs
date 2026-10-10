@@ -165,7 +165,8 @@ public class ProfileService : IProfileService
     /// <summary>
     /// Every profile, isolated or not, gets shared worlds, resource packs, shader packs and server list. IsIsolated only keeps
     /// the profile's own game settings (options.txt, keybinds) instead of syncing them through the launcher's shared folder.
-    /// Minecraft 1.8.9 takes its game settings from Lunar Client's 1.8 profile instead when Lunar is installed (see SyncOptionsTo189).
+    /// Minecraft 1.8.9 takes its settings other than the controls from Lunar Client's 1.8 profile instead when Lunar is installed
+    /// (see SyncOptionsTo189): the controls are the same in every version.
     /// </summary>
     /// <param name="withoutSharedFolders">Only after the user chose to launch without shared worlds/packs this time
     /// (see <see cref="SharedContentUnavailableException"/>); not saved.</param>
@@ -215,6 +216,8 @@ public class ProfileService : IProfileService
                 await Task.Run(() =>
                 {
                     _pathService.EnsureDirectories();
+                    // 1.9.0: every version's controls merged into the shared copy, once.
+                    warnings.AddRange(SharedControls.MergeOnce(_pathService, SharedControls.Targets(GetProfiles())).Select(e => "Controls not merged: " + e));
                     // Settings → Controls changes made while this game ran, in case the launcher missed its exit.
                     SharedControls.ApplyPending(targetDir, profile.MinecraftVersion);
                     if (forge) SyncOptionsTo189(targetDir, profile.MinecraftVersion); // 1.8.9 has no renderer choice
@@ -274,9 +277,9 @@ public class ProfileService : IProfileService
                 _pathService.EnsureDirectories();
                 // Controls changed while the game ran: Minecraft just wrote its old ones; they must not reach the shared copy.
                 SharedControls.ApplyPending(targetDir, profile.MinecraftVersion);
-                // Settings taken from Lunar never go back: Lunar is only read.
-                if (GameOptionsService.LunarOptions18(LunarRoot) == null)
-                    GameOptionsService.SyncFromInstance(Path.Combine(targetDir, "options.txt"), _pathService.SharedOptionsFile, profile.MinecraftVersion);
+                // Settings taken from Lunar never go back (Lunar is only read); the controls are the shared ones and do.
+                GameOptionsService.SyncFromInstance(Path.Combine(targetDir, "options.txt"), _pathService.SharedOptionsFile, profile.MinecraftVersion,
+                    controlsOnly: GameOptionsService.LunarOptions18(LunarRoot) != null);
                 var sharedConfig = Path.Combine(_pathService.SharedDirectory, "thelads_config.json");
                 var targetConfig = Path.Combine(targetDir, "thelads_config.json");
                 if (File.Exists(targetConfig)) SyncFileFromInstance(targetConfig, sharedConfig);
@@ -314,12 +317,13 @@ public class ProfileService : IProfileService
     /// <summary>Lunar Client's folder (only ever read). Tests pass a sandbox.</summary>
     public string LunarRoot { get; init; } = GameOptionsService.LunarRoot();
 
-    /// <summary>1.8.9 game settings (options.txt, keybinds translated to 1.8 key codes) come from Lunar Client's 1.8 profile when
-    /// Lunar is installed, else from the launcher's shared copy; Lunar's OptiFine settings (optionsof.txt) are copied in once.</summary>
+    /// <summary>1.8.9's controls (keybinds translated to 1.8 key codes) come from the launcher's shared copy like every version's; its
+    /// other game settings from Lunar Client's 1.8 profile when Lunar is installed, else from the shared copy too. Lunar's OptiFine
+    /// settings (optionsof.txt) are copied in once.</summary>
     private void SyncOptionsTo189(string targetDir, string minecraftVersion)
     {
         var lunar = GameOptionsService.LunarOptions18(LunarRoot);
-        GameOptionsService.SyncToInstance(lunar ?? _pathService.SharedOptionsFile, Path.Combine(targetDir, "options.txt"), minecraftVersion);
+        GameOptionsService.SyncToInstance(_pathService.SharedOptionsFile, Path.Combine(targetDir, "options.txt"), minecraftVersion, lunar);
         var optiFine = Path.Combine(targetDir, "optionsof.txt");
         var lunarOptiFine = Path.Combine(LunarRoot, "profiles", "1.8", "optionsof.txt");
         if (lunar != null && !File.Exists(optiFine) && File.Exists(lunarOptiFine)) File.Copy(lunarOptiFine, optiFine);

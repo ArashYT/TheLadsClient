@@ -50,6 +50,7 @@ public final class LadsTitleScreen189 {
     public GuiMainMenu screen() { return screen; }
     public List<GuiButton> mainButtons() { return main; }
     public GuiButton moreButton() { return moreButton; }
+    public GuiButton switchVersionButton() { return switchVersionButton; }
     public GuiButton switchButton() { return switchButton; }
     public GuiButton fullscreenButton() { return fullscreenButton; }
     /** QA: every button the Lads layout places (main, Switch, fullscreen, language and Essential's row). */

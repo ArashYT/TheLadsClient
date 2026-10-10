@@ -12,7 +12,9 @@ import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderItem;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.resources.DefaultPlayerSkin;
+import net.minecraft.client.resources.ResourcePackRepository;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
@@ -185,6 +187,11 @@ public class GuiLadsAdapter implements LadsGraphics {
     }
 
     @Override
+    public boolean drawCrosshairPreview(int cx, int cy) {
+        return com.thelads.core.v1_8_9.feature.Crosshair189.preview(cx, cy);
+    }
+
+    @Override
     public void enableScissor(int minX, int minY, int maxX, int maxY) {
         int[] box = {minX, minY, maxX, maxY};
         int[] outer = scissors.peek();
@@ -253,6 +260,35 @@ public class GuiLadsAdapter implements LadsGraphics {
         }
     }
 
+    /** The default pack's pack.png, uploaded on first use. */
+    private static ResourceLocation defaultPackIcon;
+
+    /**
+     * A selected pack's icon from its repository entry, which is what the pack screen shows (the entry read its pack.png and fell back to
+     * the default pack's, and keeps the uploaded texture for as long as the pack list holds it). "Default", or a pack no longer selected,
+     * gets the default pack's own icon.
+     */
+    @Override
+    public void drawPackIcon(String pack, int x, int y, int size) {
+        Minecraft mc = Minecraft.getMinecraft();
+        try {
+            ResourcePackRepository.Entry found = null;
+            for (ResourcePackRepository.Entry entry : mc.getResourcePackRepository().getRepositoryEntries())
+                if (entry.getResourcePackName().equals(pack)) found = entry;
+            if (found != null) found.bindTexturePackIcon(mc.getTextureManager());
+            else {
+                if (defaultPackIcon == null)
+                    defaultPackIcon = mc.getTextureManager().getDynamicTextureLocation("lads_default_pack", new DynamicTexture(mc.mcDefaultResourcePack.getPackImage()));
+                mc.getTextureManager().bindTexture(defaultPackIcon);
+            }
+            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+            GlStateManager.enableBlend();
+            Gui.drawScaledCustomSizeModalRect(x, y, 0, 0, 1, 1, size, size, 1, 1);
+        } catch (Exception e) {
+            LadsGraphics.super.drawPackIcon(pack, x, y, size);
+        }
+    }
+
     /** Face and hat layer of the local player's skin, or the default skin for anyone else. */
     @Override
     public void drawHead(String username, String uuid, int x, int y, int size) {
@@ -290,6 +326,11 @@ public class GuiLadsAdapter implements LadsGraphics {
     @Override
     public int hotbarLift() {
         return com.thelads.core.v1_8_9.feature.Raised189.hotbar();
+    }
+
+    @Override
+    public int guiScale() {
+        return resolution().getScaleFactor();
     }
 
     @Override

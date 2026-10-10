@@ -166,8 +166,12 @@ internal static class ZeroSmpQa
                 Interlocked.Exchange(ref lastNote, now);
                 Console.WriteLine("  " + message);
             }
+            // LADS_VERIFY_JOIN=host[:port]: the launcher's Zero SMP "Auto-join server" with that address (a closed local port such as 127.0.0.1:1;
+            // never the real server): the game must try to connect as soon as it has loaded. The probe then photographs the connect/failed screen.
+            string? join = QaShared.Env("LADS_VERIFY_JOIN");
+            if (join != null && !System.Text.RegularExpressions.Regex.IsMatch(join, @"\A(127\.0\.0\.1|localhost)(:[0-9]{1,5})?\z")) throw new ArgumentException("LADS_VERIFY_JOIN takes only a local address (127.0.0.1:1), never a real server.");
             using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".mc.lock"), ct))
-                game = await ModpackLauncher.PrepareAsync(data, instance, session, settings, java, http, Progress, ct);
+                game = await ModpackLauncher.PrepareAsync(data, instance, session, settings, java, http, Progress, ct, join);
             // ModpackLauncher gives the game THELADS_GLOBAL_DIR = this sandbox folder (never the owner's); a shared config left by an earlier run is dropped so the
             // Core re-seeds it from the copy's own thelads_config.json (the owner's layout, Discord RPC off).
             if (game.StartInfo.Environment.TryGetValue("THELADS_GLOBAL_DIR", out var globalDir) && SafeFileOps.IsSameOrInside(globalDir ?? "", verification))
@@ -181,6 +185,7 @@ internal static class ZeroSmpQa
             string? fastQuit = QaShared.Env("LADS_VERIFY_FASTQUIT");
             if (!noWorld && fastQuit == null) { flags.Add("-Dthelads.verifyAutoWorld=true"); flags.Add("-Dthelads.qaWorld=" + WorldName); }
             if (script != null || scriptText != null) flags.Add("-Dthelads.qaScript=" + scriptFile);
+            if (join != null) flags.Add("-Dthelads.qaJoin=true");
             if (fastQuit != null) flags.Add("-Dthelads.verifyFastQuit=" + fastQuit);
             if (fastQuit == "baseline") flags.Add("-Dlads.fastquit=false");
             foreach (var extra in (QaShared.Env("LADS_VERIFY_EXTRA_JVM") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))

@@ -31,7 +31,15 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.VideoSettingsScreen;
 import net.minecraft.client.gui.screens.controls.ControlsScreen;
+import net.minecraft.client.gui.screens.LanguageSelectScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
+import net.minecraft.client.gui.screens.packs.PackSelectionScreen;
+import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
+import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.ServerList;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.GameRules;
@@ -61,6 +69,8 @@ public final class QaProbe1201 {
     /** The QA world's folder name: -Dthelads.qaWorld (the harness gives each QA game folder its own), else LadsQA-<game folder name>. */
     public static String save = "LadsQA-1_20_1";
     private static final long TITLE_TIMEOUT = 300_000_000_000L, WORLD_TIMEOUT = 150_000_000_000L;
+    private static final boolean JOIN = Boolean.getBoolean("thelads.qaJoin");
+    private static int joinTicks;
 
     private enum Phase { TITLE, LOADING, SETUP, SCRIPT, DONE }
 
@@ -164,6 +174,14 @@ public final class QaProbe1201 {
     }
 
     private static void title(Minecraft mc, long now) throws Exception {
+        // -Dthelads.qaJoin (Zero SMP "Auto-join server" QA, aimed at a closed local port): the game leaves the title for the connect screen at once.
+        if (JOIN && (mc.screen instanceof net.minecraft.client.gui.screens.ConnectScreen || mc.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen)) {
+            if (++joinTicks == 40) {
+                shot(mc, "qa-join");
+                LOGGER.info("Lads qa join screen: {} photographed (screenshots/qa-join.png)", mc.screen.getClass().getSimpleName());
+            }
+            return;
+        }
         // Supplementaries opens a welcome screen over the title when part of the pack is missing (QA subsets): leave it so the script can start.
         if (mc.getOverlay() == null && mc.screen != null && mc.screen.getClass().getSimpleName().equals("WelcomeMessageScreen")) mc.setScreen(new TitleScreen());
         if (!(mc.screen instanceof TitleScreen) || mc.getOverlay() != null) {
@@ -293,6 +311,7 @@ public final class QaProbe1201 {
             case "chat" -> { needWorld(mc); mc.player.connection.sendChat(rest(s, 1)); }
             case "shot" -> { pendingShot = arg(s, 1); waitTicks = 3; }
             case "screen" -> openScreen(mc, arg(s, 1).toLowerCase(Locale.ROOT));
+            case "press" -> pressButton(mc, rest(s, 1));
             case "key" -> pressKey(mc, arg(s, 1));
             case "hold" -> hold(mc, arg(s, 1), !"off".equalsIgnoreCase(s.length > 2 ? s[2] : "on"));
             case "click" -> { InputConstants.Key k = InputConstants.Type.MOUSE.getOrCreate(mouse(arg(s, 1))); KeyMapping.click(k); }
@@ -302,6 +321,11 @@ public final class QaProbe1201 {
             case "option" -> option(arg(s, 1), arg(s, 2), rest(s, 3));
             case "dump" -> dump(mc, s.length > 1 ? s[1].toLowerCase(Locale.ROOT) : "state", s.length > 2 ? s[2] : null);
             case "reload" -> { reloadsLeft = s.length > 1 ? Integer.parseInt(s[1]) : 1; routine = QaProbe1201::reloadStep; routineStep = s; } // F3+T, N times back to back
+            case "packs" -> { // select exactly these resource pack ids ("vanilla,file/a.zip") without a reload, or just list the selected ones
+                var repository = mc.getResourcePackRepository();
+                if (s.length > 1) repository.setSelected(java.util.Arrays.asList(arg(s, 1).split(",")));
+                LOGGER.info("Lads qa packs: {}", repository.getSelectedIds());
+            }
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
             case "quit" -> {
                 LOGGER.info("Lads qa quit requested");
@@ -362,6 +386,23 @@ public final class QaProbe1201 {
         return switch (v.toLowerCase(Locale.ROOT)) { case "left" -> 0; case "right" -> 1; case "middle" -> 2; default -> throw new IllegalArgumentException("mouse button " + v); };
     }
 
+    /** "press <label>": the visible button of the open screen with that label (case-insensitive), through its own onPress. */
+    /** The visible button labelled exactly {@code label} (any case), else the first active one whose label contains it. */
+    private static void pressButton(Minecraft mc, String label) {
+        if (mc.screen != null) {
+            String wanted = label.toLowerCase(Locale.ROOT);
+            Button partial = null;
+            for (var child : mc.screen.children())
+                if (child instanceof Button button && button.visible) {
+                    String text = button.getMessage().getString().toLowerCase(Locale.ROOT);
+                    if (text.equals(wanted)) { button.onPress(); return; }
+                    if (partial == null && button.active && text.contains(wanted)) partial = button;
+                }
+            if (partial != null) { partial.onPress(); return; }
+        }
+        throw new IllegalStateException("no button '" + label + "' on " + describeScreen(mc));
+    }
+
     private static void openScreen(Minecraft mc, String name) {
         Screen current = mc.screen;
         switch (name) {
@@ -375,10 +416,51 @@ public final class QaProbe1201 {
             case "hud", "hudeditor" -> mc.setScreen(new DraggableHudScreen1201(current));
             case "inventory" -> { needWorld(mc); mc.setScreen(new InventoryScreen(mc.player)); }
             case "chat" -> mc.setScreen(new ChatScreen(""));
-            default -> throw new IllegalArgumentException("unknown screen '" + name + "' (none title pause options video controls lads hud inventory chat)");
+            case "multiplayer" -> { localServersOnly(mc); mc.setScreen(new JoinMultiplayerScreen(current)); }
+            case "singleplayer" -> mc.setScreen(new SelectWorldScreen(current));
+            case "createworld" -> CreateWorldScreen.openFresh(mc, current);
+            case "language" -> mc.setScreen(new LanguageSelectScreen(current, mc.options, mc.getLanguageManager()));
+            case "packs" -> mc.setScreen(new PackSelectionScreen(mc.getResourcePackRepository(), mc.options::updateResourcePacks,
+                mc.getResourcePackDirectory(), Component.translatable("resourcePack.title")));
+            case "mods" -> mc.setScreen(modsScreen(current));
+            default -> throw new IllegalArgumentException("unknown screen '" + name
+                + "' (none title pause options video controls lads hud inventory chat multiplayer singleplayer createworld language packs mods)");
         }
     }
 
+    /** The loader's own mod list: Forge's Mods screen (Zero SMP), else Mod Menu's. */
+    private static Screen modsScreen(Screen parent) {
+        for (String name : new String[] {"net.minecraftforge.client.gui.ModListScreen", "com.terraformersmc.modmenu.gui.ModsScreen"}) {
+            try {
+                return (Screen) Class.forName(name).getConstructor(Screen.class).newInstance(parent);
+            } catch (ClassNotFoundException absent) {
+                // the other loader's
+            } catch (ReflectiveOperationException failed) {
+                throw new IllegalStateException(name + " could not be opened", failed);
+            }
+        }
+        throw new IllegalStateException("no mod list screen (neither Forge's nor Mod Menu's)");
+    }
+
+    /**
+     * Rule 5 of the QA brief: the Multiplayer screen pings every listed server, so it only opens on a list of local entries. An
+     * empty QA list gets two local ones (nothing listens there) so the list has rows to photograph.
+     */
+    private static void localServersOnly(Minecraft mc) {
+        ServerList list = new ServerList(mc);
+        list.load();
+        for (int i = 0; i < list.size(); i++) {
+            String ip = list.get(i).ip.toLowerCase(Locale.ROOT);
+            if (!ip.startsWith("localhost") && !ip.startsWith("127.0.0.1")) throw new IllegalStateException("refusing to open Multiplayer: the QA server list has a non-local entry '" + ip + "'");
+        }
+        if (list.size() == 0) {
+            list.add(new ServerData("QA Local 1", "127.0.0.1:25599", false), false);
+            list.add(new ServerData("QA Local 2", "localhost:25598", false), false);
+            list.save();
+        }
+    }
+
+    /** Presses the first button of the open screen whose label contains the text (case-insensitive). */
     private static void pressKey(Minecraft mc, String name) {
         String n = name.toLowerCase(Locale.ROOT);
         switch (n) {
@@ -466,7 +548,7 @@ public final class QaProbe1201 {
     // ---- screenshots ------------------------------------------------------------------------------------------------
 
     /** Writes the main render target (the last finished frame, GUI included) to screenshots/name.png. */
-    private static void shot(Minecraft mc, String name) throws IOException {
+    static void shot(Minecraft mc, String name) throws IOException {
         if (!name.matches("[A-Za-z0-9._-]{1,80}")) throw new IllegalArgumentException("shot name must be [A-Za-z0-9._-]");
         Path dir = gameDir.resolve("screenshots");
         Files.createDirectories(dir);

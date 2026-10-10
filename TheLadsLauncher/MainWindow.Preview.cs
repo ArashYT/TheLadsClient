@@ -14,7 +14,7 @@ namespace TheLadsLauncher;
 /// --preview-page &lt;Page&gt; &lt;outputDir&gt;: sandbox-only QA capture of one page (Program.Main refuses it unless THELADS_DIR and
 /// LADS_GLOBAL_MINECRAFT_DIR point at sandbox folders). Opens the page through its sidebar handler, waits, saves
 /// &lt;outputDir&gt;/&lt;page&gt;.png and closes. LADS_PREVIEW_SIZE=1280x720 resizes first; LADS_PREVIEW_DELAY_MS sets the wait
-/// (default 1500). Pages: Home, PlayPicker (Home with the Play profile list open), Accounts, Skins, Profiles, Modpacks, Worlds, Servers, Mods, Packs, Gallery, Files, Settings, Logs.
+/// (default 1500). Pages: Home, PlayPicker (Home with the Play profile list open), Experiences (Home's Experiences tab), Accounts, Skins, Profiles, Modpacks, Worlds, Servers, Mods, Packs, Gallery, Files, Settings, Logs.
 /// </summary>
 public partial class MainWindow
 {
@@ -33,6 +33,7 @@ public partial class MainWindow
         {
             case "Home": NavHome_Click(null, none); break;
             case "PlayPicker": NavHome_Click(null, none); LaunchProfileSelector.IsDropDownOpen = true; break;
+            case "Experiences": NavHome_Click(null, none); PlaySubTabs.SelectedItem = PlayExperiencesTab; break;
             case "Accounts": NavAccounts_Click(null, none); break;
             case "Skins": NavSkins_Click(null, none); break;
             case "Profiles": NavProfiles_Click(null, none); break;

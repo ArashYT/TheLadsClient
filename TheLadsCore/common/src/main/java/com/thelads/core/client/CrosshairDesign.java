@@ -55,6 +55,22 @@ public final class CrosshairDesign {
         }
         return result;
     }
+    /** Preview backdrop: dark under, {@link #checker} tiles light over, so white, black and inverse-blended shapes all show somewhere. */
+    public static final int BACKDROP_DARK = 0xff353a42, BACKDROP_LIGHT = 0xffaeb4bd;
+    /** The light 8 px tiles of a width x height backdrop, offsets from its corner. */
+    public static List<Rect> checker(int width, int height) {
+        List<Rect> tiles = new ArrayList<>();
+        for (int y = 0; y * 8 < height; y++) for (int x = y & 1; x * 8 < width; x += 2)
+            tiles.add(new Rect(x * 8, y * 8, Math.min(width, x * 8 + 8), Math.min(height, y * 8 + 8)));
+        return tiles;
+    }
+    /** The drawing editors' live preview: a square at the right, under the title and above the two control rows; null when under 48 px fit. */
+    public static Rect previewBox(int screenWidth, int screenHeight) {
+        int size = Math.min(120, screenHeight - 156);
+        if (screenWidth < 320 || size < 48) return null;
+        int left = screenWidth - 24 - size;
+        return new Rect(left, 90, left + size, 90 + size);
+    }
     public static void line(List<Rect> result, int x0, int y0, int x1, int y1, int thickness) {
         int dx=Math.abs(x1-x0), sx=x0<x1?1:-1, dy=-Math.abs(y1-y0), sy=y0<y1?1:-1, err=dx+dy;
         for (;;) {

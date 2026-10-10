@@ -280,11 +280,12 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         return effects;
     }
 
+    /** The player's packs, highest priority first (the top of the pack screen; the repository lists the lowest first). */
     @Override
     public List<String> getActiveResourcePacks() {
         List<String> packs = new ArrayList<>();
         for (ResourcePackRepository.Entry entry : mc().getResourcePackRepository().getRepositoryEntries())
-            packs.add(entry.getResourcePackName());
+            packs.add(0, entry.getResourcePackName());
         return packs;
     }
 

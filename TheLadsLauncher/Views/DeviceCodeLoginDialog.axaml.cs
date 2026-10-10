@@ -57,16 +57,6 @@ public partial class DeviceCodeLoginDialog : Window
         catch { }
     }
 
-    private async void CopyCodeOnly_Click(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            await CopyTextToClipboard(_result.UserCode);
-            CopyCodeOnlyBtn.Content = "✓ Copied";
-        }
-        catch { }
-    }
-
     private async void OpenBrowser_Click(object? sender, RoutedEventArgs e)
     {
         try

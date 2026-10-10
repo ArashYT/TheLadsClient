@@ -66,12 +66,14 @@ public static class GameSession
 
     /// <summary>Call before Start: Core reads its profile folder from THELADS_DIR, the shared root from LADS_GLOBAL_MINECRAFT_DIR
     /// and (1.8.9) Lunar Client's folder, for its 1.8 resource packs, from LADS_LUNAR_DIR. Also copies in the pack's missing
-    /// default files (<see cref="PackDefaults"/>).</summary>
-    public static void Configure(ProcessStartInfo startInfo, string gameDirectory, string sharedRoot)
+    /// default files (<see cref="PackDefaults"/>), after giving an options.txt without a data version <paramref name="minecraftVersion"/>'s
+    /// (<see cref="GameOptionsService.EnsureDataVersion"/>; the version's client jar is installed by now).</summary>
+    public static void Configure(ProcessStartInfo startInfo, string gameDirectory, string sharedRoot, string? minecraftVersion = null)
     {
         startInfo.Environment["THELADS_DIR"] = gameDirectory;
         startInfo.Environment[SharedContentService.RootEnvironmentVariable] = sharedRoot;
         startInfo.Environment[GameOptionsService.LunarEnvironmentVariable] = GameOptionsService.LunarRoot();
+        if (minecraftVersion != null) GameOptionsService.EnsureDataVersion(gameDirectory, minecraftVersion);
         PackDefaults.Apply(gameDirectory);
     }
 

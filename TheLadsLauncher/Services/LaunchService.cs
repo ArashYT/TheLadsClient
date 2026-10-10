@@ -210,7 +210,7 @@ public class LaunchService : ILaunchService
             process = await launcher.InstallAndBuildProcessAsync(versionId, launchOption, cancellationToken);
         }
 
-        GameSession.Configure(process.StartInfo, gameDir, _sharedContent.Root);
+        GameSession.Configure(process.StartInfo, gameDir, _sharedContent.Root, profile.MinecraftVersion);
         process.EnableRaisingEvents = true;
         process.Exited += async (s, e) =>
         {

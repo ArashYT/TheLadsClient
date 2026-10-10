@@ -39,6 +39,9 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     @Override public boolean drawKillBannerPreview(String skin, int variant, int x, int y, int width, int height, double clock) {
         return com.thelads.core.v26_2.feature.NativeKillBanner.drawPreview(g, skin, variant, x, y, width, height, clock);
     }
+    @Override public boolean drawCrosshairPreview(int cx, int cy) {
+        return com.thelads.core.v26_2.feature.crosshair.NativeCrosshair.preview(g, cx, cy);
+    }
     @Override public void drawModIcon(String id,int x,int y,int size){if(!com.thelads.core.v26_2.gui.ModIcons.draw(g,id,x,y,size))LadsGraphics.super.drawModIcon(id,x,y,size);}
 
     @Override public void drawBossBars(int x,int y,int max,boolean names,boolean preview) {
@@ -96,6 +99,8 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
             } catch (Throwable ignored) {}
         }
     }
+
+    @Override public void drawPackIcon(String pack, int x, int y, int size) { com.thelads.core.v26_2.gui.PackIcons.draw(g, pack, x, y, size); }
 
     @Override public void drawHotbarSlots(int x, int y, int slots) {
         int width = 1 + slots * 20;
@@ -249,5 +254,10 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     @Override
     public int hotbarLift() {
         return com.thelads.core.v26_2.embedded.hoveringhotbar.HoveringHotbar.hotbarLift() + com.thelads.core.v26_2.feature.Raised26.hotbar();
+    }
+
+    @Override
+    public int guiScale() {
+        return Minecraft.getInstance().getWindow().getGuiScale();
     }
 }

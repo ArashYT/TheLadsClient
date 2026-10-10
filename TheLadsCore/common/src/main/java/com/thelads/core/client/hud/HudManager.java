@@ -11,6 +11,10 @@ public class HudManager {
     private static HudManager instance;
     private final List<HudElement> elements = new ArrayList<>();
     private ScoreboardHudElement scoreboardElement;
+    /** QA only (HudLayoutQa): runs once after the next Lads HUD frame, with its graphics in Lads HUD units. */
+    public static volatile java.util.function.Consumer<LadsGraphics> afterRender;
+    /** Where each HUD was last drawn, in the Lads HUD's units (QA and tests). */
+    private final java.util.Map<String, HudGroupLayout.Rect> lastPlaced = new java.util.HashMap<>();
     /** The last capped Lads HUD build, replayed on the frames between builds (see HudFrameCap). */
     private final List<java.util.function.Consumer<LadsGraphics>> cachedHud = new ArrayList<>();
     private int hudFrameCount = 0;
@@ -79,6 +83,24 @@ public class HudManager {
         if (g == null || (g.getGame() != null && g.getGame().isHudHidden())) return;
         // F3 hides the Lads HUD modules (Better F3's "Hide Lads HUD", on by default).
         if (g.getGame() != null && g.getGame().isDebugScreenOpen() && com.thelads.core.modules.BetterF3Module.hidesLadsHud()) return;
+        // The Lads HUD's own GUI scale (HudScale): laid out in its units, drawn under one pose scale.
+        LadsGraphics hud = HudScale.units(g);
+        if (hud == g) renderScaled(g);
+        else {
+            g.pushPose();
+            try {
+                float scale = (float) (1 / hud.hudUnit());
+                g.scale(scale, scale);
+                renderScaled(hud);
+            } finally {
+                g.popPose();
+            }
+        }
+        var qa = afterRender;
+        if (qa != null) { afterRender = null; qa.accept(hud); }
+    }
+
+    private void renderScaled(LadsGraphics g) {
         if (!HudFrameCap.wholeHud && g.getGame() != null && g.getGame().isIngame() && HudFrameCap.enabled()) {
             // Capped: rebuild at the cap rate and draw the last build on every frame, so the HUD never blinks out.
             long now = System.nanoTime();
@@ -119,63 +141,90 @@ public class HudManager {
         HudFrameCap.built(now);
     }
 
-    private void renderElements(LadsGraphics g) {
-        renderElements(g, null);
-    }
-
     private void renderElements(LadsGraphics g, Boolean exemptFilter) {
         int screenW = g.getScaledWidth();
         int screenH = g.getScaledHeight();
+        HudSettings settings = HudSettings.getInstance();
 
-        // Most players do not group HUDs. Keep the same measuring/clamping/draw order
+        // Most players neither group nor move their HUDs. Keep the same measuring/clamping/draw order
         // without building maps, sets and stream pipelines for every rendered frame.
-        if (HudSettings.getInstance().getGroups().isEmpty()) {
-            for (var element : elements) {
-                element.restoreSavedPosition();
-                if (!element.isEnabled() || !element.isAvailable()) continue;
-                if (exemptFilter != null && isExempt(element) != exemptFilter) continue;
-                var bounds = element.measureBounds(g, false);
-                var delta = HudGroupLayout.clampDelta(bounds, 0, 0, screenW, screenH);
-                var placed = HudGroupLayout.translate(bounds, delta);
-                element.renderAt(g, placed.x(), placed.y(), false);
+        boolean legacy = false;
+        if (settings.getGroups().isEmpty() && settings.getAnchors().isEmpty()) {
+            for (var element : elements) legacy |= element.isAvailable() && HudAnchors.legacy(element);
+            if (!legacy) {
+                for (var element : elements) {
+                    element.restoreSavedPosition();
+                    if (!element.isEnabled() || !element.isAvailable()) continue;
+                    if (exemptFilter != null && isExempt(element) != exemptFilter) continue;
+                    var bounds = element.measureBounds(g, false);
+                    var delta = HudGroupLayout.clampDelta(bounds, 0, 0, screenW, screenH);
+                    var placed = HudGroupLayout.translate(bounds, delta);
+                    element.placed(g, placed);
+                    lastPlaced.put(element.getModuleName(), placed);
+                    element.renderAt(g, placed.x(), placed.y(), false);
+                }
+                return;
             }
-            return;
         }
+        var hotbar = HudAnchors.hotbar(g);
         var neededNames = new HashSet<String>();
         for (var element : elements) {
             // Loaded/profile-switched positions must also reach currently disabled HUDs.
             element.restoreSavedPosition();
+            legacy |= element.isAvailable() && HudAnchors.legacy(element);
             if (!element.isEnabled() || !element.isAvailable()) continue;
+            // The capped build and the every-frame pass of exempt HUDs each measure only their own HUDs (and what those need).
+            if (exemptFilter != null && isExempt(element) != exemptFilter) continue;
             neededNames.add(element.getModuleName());
-            var group = HudSettings.getInstance().getGroupMembers(element.getModuleName());
+            var group = settings.getGroupMembers(element.getModuleName());
             if (group != null) neededNames.addAll(group);
+            // What it is docked to is laid out too (a switched-off holder still keeps its room).
+            for (String to = holder(element.getModuleName()); to != null && neededNames.add(to); to = holder(to)) {}
         }
+        if (legacy) adopt(g, screenW, screenH, hotbar);
         var measured = new LinkedHashMap<HudElement, HudGroupLayout.Rect>();
         for (HudElement element : elements) {
             if (!element.isAvailable() || !neededNames.contains(element.getModuleName())) continue;
             // Hidden members keep the same group geometry in gameplay and the editor. Preview
             // measurement reserves optional empty content; renderAt(false) never draws samples.
-            boolean grouped = HudSettings.getInstance().getGroupMembers(element.getModuleName()) != null;
+            boolean grouped = settings.getGroupMembers(element.getModuleName()) != null;
             measured.put(element, element.measureBounds(g, grouped));
         }
-        HudGroupLayout.matchDockedWidths(measured);
-        var placed = new LinkedHashMap<HudElement, HudGroupLayout.Rect>();
-        for (var entry : measured.entrySet()) {
-            if (placed.containsKey(entry.getKey())) continue;
-            var names = HudSettings.getInstance().getGroupMembers(entry.getKey().getModuleName());
-            var members = names == null ? List.of(entry.getKey()) : measured.keySet().stream()
-                .filter(element -> names.contains(element.getModuleName())).toList();
-            var group = HudGroupLayout.union(members.stream().map(measured::get).toList());
-            var delta = HudGroupLayout.clampDelta(group, 0, 0, screenW, screenH);
-            for (var member : members) placed.put(member, HudGroupLayout.translate(measured.get(member), delta));
-        }
+        HudAnchors.place(measured, screenW, screenH, hotbar);
+        if (!settings.getGroups().isEmpty()) HudGroupLayout.matchDockedWidths(measured);
+        HudAnchors.clamp(measured, screenW, screenH);
         // Keep original draw order even when nonadjacent elements belong to one rigid group.
-        for (var element : measured.keySet()) {
+        for (var entry : measured.entrySet()) {
+            var element = entry.getKey();
             if (!element.isEnabled()) continue;
             if (exemptFilter != null && isExempt(element) != exemptFilter) continue;
-            var bounds = placed.get(element);
-            element.renderAt(g, bounds.x(), bounds.y(), false);
+            element.placed(g, entry.getValue());
+            lastPlaced.put(element.getModuleName(), entry.getValue());
+            element.renderAt(g, entry.getValue().x(), entry.getValue().y(), false);
         }
+    }
+
+    /** The HUD a saved anchor docks this one to, or null (the screen, the hotbar). */
+    private static String holder(String name) {
+        var anchor = HudSettings.getInstance().getAnchor(name);
+        return anchor == null || anchor.to() == null || anchor.to().equals(HudSettings.HOTBAR) ? null : anchor.to();
+    }
+
+    /**
+     * Anchors positions saved without one where they show now (HudAnchors.adopt), once. Docking is judged at the editor's
+     * sizes (sample content), as the layout was arranged there.
+     */
+    private void adopt(LadsGraphics g, int screenW, int screenH, HudGroupLayout.Rect hotbar) {
+        var shown = new LinkedHashMap<HudElement, HudGroupLayout.Rect>();
+        for (var element : elements) if (element.isAvailable() && (element.isEnabled() || HudAnchors.legacy(element))) shown.put(element, element.measureBounds(g, true));
+        HudAnchors.place(shown, screenW, screenH, hotbar);
+        HudAnchors.clamp(shown, screenW, screenH);
+        HudAnchors.adopt(shown, HudElement::isEnabled, g);
+    }
+
+    /** Where a HUD was drawn last (Lads HUD units), or null; a HUD switched off since keeps its old entry. */
+    public HudGroupLayout.Rect lastBounds(String name) {
+        return lastPlaced.get(name);
     }
 
     public List<HudElement> getElements() {

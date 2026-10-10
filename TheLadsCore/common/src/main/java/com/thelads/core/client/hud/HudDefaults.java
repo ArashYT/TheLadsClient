@@ -3,7 +3,8 @@ package com.thelads.core.client.hud;
 /** GUI-space layout matching the editor reference; saved positions always win. */
 public final class HudDefaults {
     private HudDefaults() {}
-    public static int[] origin(String name,int w,int h,int ew,int eh) {
+    /** hotbar: the vanilla hotbar's box (HudAnchors.hotbar); what sits beside it lines up with its bottom and follows its lift. */
+    public static int[] origin(String name,int w,int h,int ew,int eh,HudGroupLayout.Rect hotbar) {
         if(name==null)return null;
         int x=5,y=40;
         switch(name){
@@ -33,12 +34,12 @@ public final class HudDefaults {
             case "BossBar" -> {x=(w-ew)/2;y=8;}
             case "Scoreboard" -> {x=w-ew-5;y=(h-eh)/2;}
             case "Potion Effects" -> y=h*3/5;
-            case "ArmorHUD" -> {x=w/2+98;y=h-eh-6;}
+            case "ArmorHUD" -> {x=hotbar.right()+7;y=hotbar.bottom()-eh;}
             case "Health" -> {x=w/2-190;y=h-eh-42;}
             case "Hunger" -> {x=w-ew-5;y=h-eh-42;}
             case "XP" -> {x=w-ew-5;y=h-eh-22;}
             case "TexturePacks" -> {x=w-ew-5;y=h-eh-5;}
-            case "Voice Chat" -> {x=w/2+99;y=h-eh-1;}
+            case "Voice Chat" -> {x=hotbar.right()+6;y=hotbar.bottom()-eh;}
             case "Voice Chat Group" -> {x=4;y=4;}
             case com.thelads.core.modules.ToggleSprintModule.NAME -> {x=5;y=h-eh-64;}
             default -> {return null;}

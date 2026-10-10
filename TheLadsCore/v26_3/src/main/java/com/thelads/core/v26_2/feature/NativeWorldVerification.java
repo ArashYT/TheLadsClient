@@ -21,7 +21,7 @@ public final class NativeWorldVerification {
     private static boolean initialized, verified, failed, opened, readyLogged, closing, originalPause, syntheticInput;
     private static long titleSince, openedAt, nextStopCheck;
     private static Path gameDirectory;
-    private static long captureAfter;
+    private static long captureAfter, slimesClearedAt;
     private static boolean captureStarted;
     private static int chatCaptureStep;
     private static long chatCaptureAt;
@@ -29,6 +29,10 @@ public final class NativeWorldVerification {
     /** The title screen and its More screen photographed before the world opens (verify133, or LADS_VERIFY_CAPTURE_TITLE). */
     private static final boolean TITLE_CAPTURE = Boolean.getBoolean("thelads.verify133") || Boolean.getBoolean("thelads.verifyTitleCapture");
     private static int titleTrip; // verify133: 1 More is open, 2 back on the title, 3 captured again
+    /** verifyVersionSwitch (with the title capture): the title's Switch Versions pressed, its list and a version's confirmation photographed, Relaunch Now pressed. */
+    private static final boolean VERSION_SWITCH = Boolean.getBoolean("thelads.verifyVersionSwitch");
+    private static int versionTrip; // 0 not started, 1 list open, 2 list photographed, 3 confirmation open, 4 photographed, 5 done
+    private static long versionTripAt;
     private static long titleTripAt;
     private static Screen menuScreen;
     private static String captureKind = "menu";
@@ -94,6 +98,7 @@ public final class NativeWorldVerification {
         mc.options.pauseOnLostFocus = false;
         try {
             if (!opened && titleCaptured && titleTrip < 2 && now >= titleTripAt) titleRoundTrip(mc, now);
+            if (VERSION_SWITCH && !opened && titleTrip == 3 && versionTrip < 5 && now >= versionTripAt) versionSwitchTrip(mc, now);
             if (!opened) {
                 if (mc.level != null) throw new IllegalStateException("A world was loaded before the isolated QA request");
                 boolean title = mc.gui.screen() instanceof TitleScreen
@@ -143,6 +148,15 @@ public final class NativeWorldVerification {
                     LOGGER.info("Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted");
                 }
             }
+            // The QA world is a Normal superflat (the probes need hostile mobs), where slimes spawn at any light and killed QA players
+            // mid-run (owner, 2026-10-10): none is ever kept. No probe uses slimes.
+            if (readyLogged && now - slimesClearedAt > 500_000_000L && mc.getSingleplayerServer() instanceof net.minecraft.server.MinecraftServer server) {
+                slimesClearedAt = now;
+                server.execute(() -> {
+                    for (var level : server.getAllLevels())
+                        for (var slime : level.getEntities(net.minecraft.world.entity.EntityTypes.SLIME, entity -> true)) slime.discard();
+                });
+            }
             boolean captureReady = readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null;
             // In-world captures run one at a time: each may tick while it is the one running or none is.
             KillBannerCapture.tick(gameDirectory, captureReady && (KillBannerCapture.busy() || !captureBusy()));
@@ -164,6 +178,7 @@ public final class NativeWorldVerification {
             ChatHeadsCapture.tick(captureReady && chatCaptureStep >= 2 && !NativeRenderScaleProbe.pending() && (ChatHeadsCapture.busy() || !captureBusy()));
             F3FovCapture.tick(gameDirectory, captureReady && (F3FovCapture.busy() || !captureBusy()));
             RaisedDollCapture.tick(gameDirectory, captureReady && (RaisedDollCapture.busy() || !captureBusy()));
+            HudLayoutCapture.tick(gameDirectory, captureReady && (HudLayoutCapture.busy() || !captureBusy()));
             MouseTweaksCapture.tick(gameDirectory, captureReady && (MouseTweaksCapture.busy() || !captureBusy()));
             ResolutionCapture.tick(gameDirectory, captureReady && (ResolutionCapture.busy() || !captureBusy()));
             DynamicLightsCapture.tick(gameDirectory, captureReady && (DynamicLightsCapture.busy() || !captureBusy()));
@@ -215,6 +230,25 @@ public final class NativeWorldVerification {
             titleTrip = 2;
             titleTripAt = now + 2_500_000_000L;
         }
+    }
+
+    /** verifyVersionSwitch: Switch Versions on the title, the first listed version, then Relaunch Now (the launcher's request is written and the game quits). */
+    private static void versionSwitchTrip(Minecraft mc, long now) {
+        Screen screen = mc.gui.screen();
+        String label = switch (versionTrip) { case 0 -> "Switch Versions"; case 2 -> "Lads Client "; case 4 -> "Relaunch Now"; default -> null; };
+        if (label == null || screen == null) return;
+        for (var child : screen.children()) {
+            if (!(child instanceof net.minecraft.client.gui.components.Button button) || !button.visible) continue;
+            String text = button.getMessage().getString();
+            if (versionTrip == 2 ? !text.startsWith(label) : !text.equals(label)) continue;
+            LOGGER.info("Lads version switch: pressing '{}' on {}", text, screen.getClass().getSimpleName());
+            versionTrip++;
+            versionTripAt = now + 2_500_000_000L;
+            button.onPress(null);
+            if (versionTrip == 5) LOGGER.info("Lads version switch END: Relaunch Now pressed; request file written={}", Files.isRegularFile(gameDirectory.resolve("lads_next_version.json")));
+            return;
+        }
+        if (versionTrip == 0) { versionTrip = 5; LOGGER.info("Lads version switch skipped: no Switch Versions button on {}", screen.getClass().getName()); }
     }
 
     /** QA: a screen's visible buttons as "label@x,y wxh", for the capture log. */
@@ -274,6 +308,18 @@ public final class NativeWorldVerification {
                 net.minecraft.client.Screenshot.takeScreenshot(target,image->{try{image.writeToFile(output);LOGGER.info("Lads title More capture END: 1 passed, 0 failed; buttons {}; {}",labels,output);}catch(Exception e){fail("title More capture",e);}finally{image.close();}});
             }catch(Exception e){fail("title More capture",e);}
         }
+        if((versionTrip==1||versionTrip==3)&&System.nanoTime()>=versionTripAt-700_000_000L
+            &&Minecraft.getInstance().gui.screen() instanceof com.thelads.core.v26_2.gui.VersionSwitchScreen26 list&&Minecraft.getInstance().gui.overlay()==null) {
+            String kind=versionTrip==1?"list":"confirm";
+            versionTrip++;
+            try {
+                Path output=gameDirectory.resolve("screenshots").resolve("native-version-"+kind+"-"+System.currentTimeMillis()+".png");
+                Files.createDirectories(output.getParent());
+                String labels=titleLabels(list);
+                net.minecraft.client.Screenshot.takeScreenshot(target,image->{try{image.writeToFile(output);LOGGER.info("Lads version switch {} capture END: 1 passed, 0 failed; buttons {}; {}",kind,labels,output);}catch(Exception e){fail("version switch capture",e);}finally{image.close();}});
+                versionTripAt=System.nanoTime()+1_000_000_000L;
+            }catch(Exception e){fail("version switch capture",e);}
+        }
         if(titleTrip==2&&System.nanoTime()>=titleTripAt&&Minecraft.getInstance().gui.screen() instanceof TitleScreen&&Minecraft.getInstance().gui.overlay()==null) {
             titleTrip=3;
             try {
@@ -298,6 +344,7 @@ public final class NativeWorldVerification {
         ChatHeadsCapture.frame(target, gameDirectory);
         F3FovCapture.frame(target, gameDirectory);
         RaisedDollCapture.frame(target, gameDirectory);
+        HudLayoutCapture.frame(target, gameDirectory);
         MouseTweaksCapture.frame(target, gameDirectory);
         ResolutionCapture.frame(target, gameDirectory);
         com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.frame(target, gameDirectory);
@@ -439,7 +486,7 @@ public final class NativeWorldVerification {
     /** True while any in-world QA capture is running. */
     static boolean captureBusy() {
         return HudInfoCapture.busy() || KillBannerCapture.busy() || KillStreakCapture.busy() || OldAnimationsCapture.busy() || Anim172Capture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
-            ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || MouseTweaksCapture.busy() ||
+            ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || HudLayoutCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
             SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ParticleCoreCapture.busy();
     }

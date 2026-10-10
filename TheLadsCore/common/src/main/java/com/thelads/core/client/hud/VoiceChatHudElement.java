@@ -20,14 +20,14 @@ public class VoiceChatHudElement extends HudElement {
         if (icon == null && editor) icon = SAMPLE;
         label = icon == null || !optBool("Show label", true) ? null : label(icon);
         width = 20 + (label == null ? 0 : g.textWidth(label) + 4);
-        height = 20;
+        height = 22; // the hotbar's height, so beside it the two line up top and bottom
     }
 
     @Override
     public void render(LadsGraphics g) {
         if (icon == null) return;
         drawBackground(g);
-        g.drawSprite(icon, x + 2, y + 2, 16);
+        g.drawSprite(icon, x + 2, y + 3, 16);
         if (label != null) g.drawText(label, x + 20, y + (height - g.fontHeight()) / 2 + 1, resolveColor(), com.thelads.core.config.HudSettings.getInstance().isTextShadow());
     }
 

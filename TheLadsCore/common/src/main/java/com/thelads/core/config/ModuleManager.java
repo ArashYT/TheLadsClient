@@ -21,7 +21,7 @@ public class ModuleManager {
         autohide.addOption(new BoolOption("Show when swinging or placing", false));
         autohide.addOption(new BoolOption("Fade vanilla HUD", true));
         autohide.addOption(new BoolOption("Fade Lads HUD", true));
-        autohide.setEnabled(true);register(autohide,Module.Category.HUD);
+        autohide.setEnabled(false);register(autohide,Module.Category.HUD);
         Module jade=new Module("Jade", "Identify blocks and entities using the source-integrated Jade API and addon providers.");
         jade.addOption(new ActionOption("Settings and addons", "Open Jade settings"));jade.setEnabled(true);register(jade,Module.Category.HUD);
 
@@ -143,6 +143,7 @@ public class ModuleManager {
         tp.addOption(new SliderOption("Size", 100, 50, 200, 25));
         tp.addOption(new ColorOption("Background", true, 0x80000000));
         tp.addOption(new DropdownOption("Color mode", 0, "Static", "Chroma", "Chroma Fast", "Fade"));
+        tp.addOption(new BoolOption("Show Icons", true));
         tp.addOption(new BoolOption("Show All", false));
         tp.addOption(new DropdownOption("Max Packs", 2, "1", "2", "3", "4", "5", "6", "7", "8"));
         register(tp, Module.Category.HUD);

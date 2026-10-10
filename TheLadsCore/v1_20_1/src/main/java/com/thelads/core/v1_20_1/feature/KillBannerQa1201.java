@@ -6,6 +6,7 @@ import com.thelads.core.client.killbanner.KillBannerPlayer;
 import com.thelads.core.client.killbanner.KillBannerStyle;
 import com.thelads.core.client.killbanner.KillBannerTemplate;
 import com.thelads.core.client.killbanner.KillBanners;
+import com.thelads.core.client.killbanner.KillDetector;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
 import com.thelads.core.modules.KillBannerModule;
@@ -17,6 +18,11 @@ import java.util.List;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +42,67 @@ final class KillBannerQa1201 {
     private KillBannerQa1201() {}
 
     static void register() {
-        if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null) QaProbe1201.registerStep("kbcap", KillBannerQa1201::tick);
+        if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null) {
+            QaProbe1201.registerStep("kbcap", KillBannerQa1201::tick);
+            QaProbe1201.registerStep("aim", KillBannerQa1201::aim);
+        }
+    }
+
+    /**
+     * {@code aim head|body|back [type]} or {@code aim part <name> [type]}: the nearest living mob whose id contains {@code type}
+     * (32 blocks), seen from 1.6 blocks in front of it (in front of the part, for a part) through a server /tp with a rotation:
+     * the crosshair on its eyes, a quarter up its body, the back half of its top (looked down at from the front), or the middle
+     * of the part its mob holds in the field {@code name} (Forge PartEntity mobs, the dragon). A {@code click left} then hits it
+     * there; NativeKillBanner1201 logs the verdict ("Lads killbanner QA hit").
+     */
+    private static boolean aim(String[] args) {
+        Minecraft mc = Minecraft.getInstance();
+        String mode = args[1].toLowerCase(java.util.Locale.ROOT), name = mode.equals("part") ? args[2] : null;
+        String type = args.length > (name != null ? 3 : 2) ? args[name != null ? 3 : 2].toLowerCase(java.util.Locale.ROOT) : "";
+        LivingEntity mob = null;
+        for (Entity entity : mc.level.entitiesForRendering())
+            if (entity instanceof LivingEntity living && living != mc.player && living.isAlive() && mc.player.distanceTo(living) < 32
+                && EntityType.getKey(living.getType()).toString().contains(type)
+                && (mob == null || mc.player.distanceToSqr(living) < mc.player.distanceToSqr(mob))) mob = living;
+        if (mob == null) throw new IllegalStateException("aim: no living " + type + " within 32 blocks");
+        AABB box = mob.getBoundingBox();
+        double yaw = Math.toRadians(mob.yBodyRot), facingX = -Math.sin(yaw), facingZ = Math.cos(yaw);
+        if (name != null) {
+            Entity part = null;
+            for (Entity candidate : parts(mob)) if (KillDetector.partName(mob, candidate).equalsIgnoreCase(name)
+                || candidate instanceof net.minecraft.world.entity.boss.EnderDragonPart dragon && dragon.name.equalsIgnoreCase(name)) part = candidate;
+            if (part == null) throw new IllegalStateException("aim: " + EntityType.getKey(mob.getType()) + " has no part " + name);
+            double dx = part.getBoundingBox().getCenter().x - box.getCenter().x, dz = part.getBoundingBox().getCenter().z - box.getCenter().z;
+            if (dx * dx + dz * dz > .01) { double length = Math.sqrt(dx * dx + dz * dz); facingX = dx / length; facingZ = dz / length; }
+            box = part.getBoundingBox();
+        }
+        double half = Math.abs(facingX) >= Math.abs(facingZ) ? box.getXsize() / 2 : box.getZsize() / 2;
+        Vec3 centre = box.getCenter();
+        // The face toward the player, 5 cm in; "back": the top, a quarter of the box behind the middle.
+        Vec3 point = switch (mode) {
+            case "head" -> new Vec3(centre.x + facingX * (half - .05), Math.min(mob.getEyeY(), box.maxY - .05), centre.z + facingZ * (half - .05));
+            case "back" -> new Vec3(centre.x - facingX * half / 2, box.maxY - .02, centre.z - facingZ * half / 2);
+            default -> new Vec3(centre.x + facingX * (half - .05), name != null ? centre.y : box.minY + box.getYsize() * .25, centre.z + facingZ * (half - .05));
+        };
+        double standX = centre.x + facingX * (half + 1.6), standZ = centre.z + facingZ * (half + 1.6), standY = mob.getBoundingBox().minY;
+        double eyeY = standY + mc.player.getEyeHeight(net.minecraft.world.entity.Pose.STANDING);
+        double dx = point.x - standX, dy = point.y - eyeY, dz = point.z - standZ;
+        float lookYaw = (float) Math.toDegrees(Math.atan2(-dx, dz)), lookPitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+        LOGGER.info("Lads qa aim {}{} at {} (box {}, eyes {}, body yaw {}): point {}, from ({}, {}, {}) yaw {} pitch {}", mode, name != null ? " " + name : "",
+            EntityType.getKey(mob.getType()), box, mob.getEyeY(), mob.yBodyRot, point, standX, standY, standZ, lookYaw, lookPitch);
+        mc.player.connection.sendCommand(String.format(java.util.Locale.ROOT, "tp @s %.4f %.4f %.4f %.3f %.3f", standX, standY, standZ, lookYaw, lookPitch));
+        return true;
+    }
+
+    /** A multipart mob's parts: the dragon's, or Forge's getParts() (PartEntity mobs under Connector). */
+    private static List<Entity> parts(LivingEntity mob) {
+        if (mob instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon dragon) return Arrays.asList(dragon.getSubEntities());
+        try {
+            Object parts = mob.getClass().getMethod("getParts").invoke(mob);
+            return parts instanceof Entity[] array ? Arrays.asList(array) : List.of();
+        } catch (ReflectiveOperationException | RuntimeException none) {
+            return List.of();
+        }
     }
 
     private static KillBannerModule module() { return (KillBannerModule) ModuleManager.getInstance().getModule("KillBanner"); }
