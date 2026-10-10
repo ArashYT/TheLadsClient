@@ -315,7 +315,10 @@ public static class GameOptionsService
         var text = Encoding.Latin1.GetString(bytes);
         if (ParseOptions(text).ContainsKey("version")
             || DataVersion(Path.Combine(gameDirectory, "versions", mcVersion, mcVersion + ".jar")) is not { } version) return;
-        var line = Encoding.ASCII.GetBytes("version:" + version + (text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n"));
+        // The old-file fixes this line now skips also switched the first-start accessibility screen off: keep it off, as before.
+        string newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var line = Encoding.ASCII.GetBytes("version:" + version + newline
+            + (ParseOptions(text).ContainsKey("onboardAccessibility") ? "" : "onboardAccessibility:false" + newline));
         LockFiles.WriteAtomicallyAsync(file, line.Concat(bytes).ToArray()).GetAwaiter().GetResult();
     }
 

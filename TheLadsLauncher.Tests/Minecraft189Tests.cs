@@ -437,6 +437,7 @@ public class Minecraft189Tests
             GameSession.Configure(new System.Diagnostics.ProcessStartInfo("java"), game, l.Global, version); // after the install, before the start
             Assert.StartsWith($"version:{dataVersion}\n", File.ReadAllText(Path.Combine(game, "options.txt")));
             Assert.Equal("key.keyboard.v", Options(Path.Combine(game, "options.txt"))["key_key.jump"]);
+            Assert.Equal("false", Options(Path.Combine(game, "options.txt"))["onboardAccessibility"]); // as the old-file fixes left it
             GameSession.Configure(new System.Diagnostics.ProcessStartInfo("java"), game, l.Global, version);
             Assert.Single(File.ReadAllLines(Path.Combine(game, "options.txt")), line => line.StartsWith("version:", StringComparison.Ordinal));
         }
