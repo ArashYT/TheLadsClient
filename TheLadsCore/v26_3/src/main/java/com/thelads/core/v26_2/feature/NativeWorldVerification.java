@@ -21,7 +21,7 @@ public final class NativeWorldVerification {
     private static boolean initialized, verified, failed, opened, readyLogged, closing, originalPause, syntheticInput;
     private static long titleSince, openedAt, nextStopCheck;
     private static Path gameDirectory;
-    private static long captureAfter;
+    private static long captureAfter, slimesClearedAt;
     private static boolean captureStarted;
     private static int chatCaptureStep;
     private static long chatCaptureAt;
@@ -142,6 +142,15 @@ public final class NativeWorldVerification {
                     chatCaptureAt = now + 7_000_000_000L;
                     LOGGER.info("Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted");
                 }
+            }
+            // The QA world is a Normal superflat (the probes need hostile mobs), where slimes spawn at any light and killed QA players
+            // mid-run (owner, 2026-10-10): none is ever kept. No probe uses slimes.
+            if (readyLogged && now - slimesClearedAt > 500_000_000L && mc.getSingleplayerServer() instanceof net.minecraft.server.MinecraftServer server) {
+                slimesClearedAt = now;
+                server.execute(() -> {
+                    for (var level : server.getAllLevels())
+                        for (var slime : level.getEntities(net.minecraft.world.entity.EntityTypes.SLIME, entity -> true)) slime.discard();
+                });
             }
             boolean captureReady = readyLogged && worldReady() && menuScreen == null && mc.gui.screen() == null;
             // In-world captures run one at a time: each may tick while it is the one running or none is.
