@@ -31,8 +31,8 @@ public final class CrosshairDrawingScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Cancel"),b->onClose()).bounds(28+width,bottom+26,width,20).build());
         addRenderableWidget(Button.builder(Component.literal("Save drawing"),b->saveDrawing()).bounds(36+width*2,bottom+26,width,20).build());
     }
-    boolean hasPreview(){return width>=600&&height>=330;}
-    private void layout(){int availableWidth=hasPreview()?this.width-210:this.width-40;cell=Math.max(1,Math.min(availableWidth/draft.width(),Math.max(1,(height-144)/draft.height())));gridX=(availableWidth-draft.width()*cell)/2+20;gridY=70+Math.max(0,(height-144-draft.height()*cell)/2);}
+    boolean hasPreview(){return CrosshairDesign.previewBox(width,height)!=null;}
+    private void layout(){var box=CrosshairDesign.previewBox(width,height);int availableWidth=box!=null?box.left()-44:this.width-40;cell=Math.max(1,Math.min(availableWidth/draft.width(),Math.max(1,(height-144)/draft.height())));gridX=(availableWidth-draft.width()*cell)/2+20;gridY=70+Math.max(0,(height-144-draft.height()*cell)/2);}
     private void checkpoint(){history.push(draft.copy());while(history.size()>32)history.removeLast();}
     void undo(){if(!history.isEmpty()){draft=history.pop();layout();}}
     private void resizeDrawing(){checkpoint();int[] sizes={9,17,25,33,49,64};int index=0;while(index<sizes.length&&sizes[index]<=draft.width())index++;draft=draft.resized(sizes[index%sizes.length],sizes[index%sizes.length]);layout();}
@@ -49,7 +49,16 @@ public final class CrosshairDrawingScreen extends Screen {
             if(draft.get(x,y))graphics.fill(left,top,left+cell,top+cell,0xffdccfff);
             if(cell>=5){graphics.fill(left,top,left+1,top+cell,0x77000000);graphics.fill(left,top,left+cell,top+1,0x77000000);}
         }
-        if(hasPreview()){int x=width-160;graphics.text(font,"LIVE PREVIEW",x,82,0xffa9afbd);graphics.fill(x,102,x+120,222,0xff697986);NativeCrosshair.draw(graphics,x+60,162,NativeCrosshair.number("Gap"),1,false,draft);graphics.text(font,"Uses your color,",x,236,0xffa9afbd);graphics.text(font,"scale and rotation.",x,248,0xffa9afbd);}
+        var box=CrosshairDesign.previewBox(width,height);
+        if(box!=null){
+            graphics.text(font,"LIVE PREVIEW",box.left(),box.top()-14,0xffa9afbd);
+            graphics.enableScissor(box.left(),box.top(),box.right(),box.bottom());
+            graphics.fill(box.left(),box.top(),box.right(),box.bottom(),CrosshairDesign.BACKDROP_DARK);
+            for(var tile:CrosshairDesign.checker(box.right()-box.left(),box.bottom()-box.top()))graphics.fill(box.left()+tile.left(),box.top()+tile.top(),box.left()+tile.right(),box.top()+tile.bottom(),CrosshairDesign.BACKDROP_LIGHT);
+            NativeCrosshair.draw(graphics,(box.left()+box.right())/2,(box.top()+box.bottom())/2,NativeCrosshair.number("Gap"),1,false,draft);
+            graphics.disableScissor();
+            if(box.bottom()+30<=height-62){graphics.text(font,"Uses your color,",box.left(),box.bottom()+8,0xffa9afbd);graphics.text(font,"scale and rotation.",box.left(),box.bottom()+20,0xffa9afbd);}
+        }
         if(!error.isEmpty())graphics.centeredText(font,error,width/2,height-72,0xffff7777);
         super.extractRenderState(graphics,mouseX,mouseY,partial);
     }
