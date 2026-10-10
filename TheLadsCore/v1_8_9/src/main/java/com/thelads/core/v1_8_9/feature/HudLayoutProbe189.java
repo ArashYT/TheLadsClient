@@ -44,7 +44,7 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
         server.addScheduledTask(() -> server.getCommandManager().executeCommand(server, command));
     }
 
-    @Override public void effect(String name, int id) { command(name == null ? "effect @p clear" : "effect @p " + id + " 300 0 true"); }
+    @Override public void effect(String name, int id) { command(name == null ? "effect @a clear" : "effect @a " + id + " 300 0 true"); }
 
     @Override public void shot(String name) { CoreProbe.screenshot(Minecraft.getMinecraft(), name); }
 

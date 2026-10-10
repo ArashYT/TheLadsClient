@@ -35,9 +35,12 @@ final class HudLayoutQa1201 implements HudLayoutQa.Driver {
         mc.resizeDisplay();
     }
 
-    @Override public void command(String command) { Minecraft.getInstance().player.connection.sendCommand(command); }
+    @Override public void command(String command) {
+        var server = Minecraft.getInstance().getSingleplayerServer();
+        server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command));
+    }
 
-    @Override public void effect(String name, int id) { command(name == null ? "effect clear @s" : "effect give @s minecraft:" + name + " 300 0 true"); }
+    @Override public void effect(String name, int id) { command(name == null ? "effect clear @a" : "effect give @a minecraft:" + name + " 300 0 true"); }
 
     @Override public void shot(String name) {
         try { QaProbe1201.shot(Minecraft.getInstance(), name); }

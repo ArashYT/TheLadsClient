@@ -33,7 +33,7 @@ public final class HudLayoutQa {
         void window(int width, int height);
         /** Vanilla's GUI scale option, applied at once. */
         void guiScale(int scale);
-        /** A chat command as the player, without the slash. */
+        /** A command run by the integrated server (no chat feedback; target the player with @a), without the slash. */
         void command(String command);
         /** Gives the player a potion effect for 5 minutes (name as 1.20.1 has it, id as 1.8.9 has it); null clears them all. */
         void effect(String name, int id);
@@ -68,8 +68,9 @@ public final class HudLayoutQa {
     /** Each client tick of the probe: starts the sequence, then steps it; true once it has ended. */
     public static boolean tick(Driver d) {
         try {
-            if (step < 0) { begin(d); step = 0; wait = 60; return false; }
+            if (step < 0) { begin(d); step = -2; wait = 40; return false; }
             if (wait > 0) { wait--; return false; }
+            if (step == -2) { d.guiScale(3); step = 0; wait = 40; return false; } // once the window has its new size
             switch (step++) {
                 case 0 -> { afterFrame("loading the layout", HudLayoutQa::load); wait = 20; }
                 case 1 -> check("GUI scale 3, as saved before 1.9.0", 5);
@@ -142,15 +143,19 @@ public final class HudLayoutQa {
             ENABLED_WERE.put(module, module.isEnabled());
             module.setEnabled(ours.contains(module.getName()));
         }
+        // Auto Hide would fade the whole Lads HUD out while the QA player stands still.
+        Module autohide = ModuleManager.getInstance().getModule("Autohide");
+        if (autohide != null) { ENABLED_WERE.put(autohide, autohide.isEnabled()); autohide.setEnabled(false); }
         settings.clearPositions();
         settings.setHudScale(0);
-        d.window(1600, 900);
-        d.guiScale(3);
+        d.window(1600, 900); // GUI scale 3 needs at least 960 x 720 pixels
+        // No chat lines over the HUD (the game rules' names before and after 26.x; the other spelling fails quietly).
+        for (String rule : new String[] {"sendCommandFeedback", "send_command_feedback", "logAdminCommands", "log_admin_commands"}) d.command("gamerule " + rule + " false");
         d.command("gamemode creative @a"); // nothing in the QA world hurts the player meanwhile
         d.effect(null, 0);
         d.effect("speed", 1);
         d.effect("haste", 3);
-        d.command("scoreboard objectives add ladsqa dummy LadsQA");
+        d.command("scoreboard objectives add ladsqa dummy");
         d.command("scoreboard objectives setdisplay sidebar ladsqa");
         d.command("scoreboard players set Alpha ladsqa 3");
         d.command("scoreboard players set Beta ladsqa 2");
@@ -171,6 +176,7 @@ public final class HudLayoutQa {
         settings.setPosition(top, width - held.width() - 5, 5);
         settings.setPosition("Scoreboard", width - board.width() - 5, 5 + held.height() + 2);
         LOGGER.info("Lads hud layout saved at {}x{} (GUI scale {}): {}", width, g.getScaledHeight(), g.guiScale(), describe(settings.getPositions()));
+        expect("loading the layout", "the layout is saved at GUI scale 3", g.guiScale() == 3, "GUI scale " + g.guiScale());
     }
 
     private static Rect editorBox(String name, LadsGraphics g) {
@@ -197,8 +203,8 @@ public final class HudLayoutQa {
         var hud = HudManager.getInstance();
         Rect hotbar = HudAnchors.hotbar(g), day = hud.lastBounds("Day"), cps = hud.lastBounds("CPS"), potion = hud.lastBounds("Potion Effects"),
             coords = hud.lastBounds("Coordinates"), held = hud.lastBounds(top), board = hud.lastBounds("Scoreboard");
-        LOGGER.info("Lads hud layout {}: {}x{} Lads HUD scale {} (vanilla {}), hotbar {}, Day {} [{}], CPS {} [{}], Potion Effects {}, Coordinates {} [{}], {} {}, Scoreboard {} [{}]",
-            label, g.getScaledWidth(), g.getScaledHeight(), HudScale.of(g), g.guiScale(), hotbar, day, HudAnchors.holder("Day"), cps, HudAnchors.holder("CPS"),
+        LOGGER.info("Lads hud layout {}: {}x{} at Lads HUD scale {} ({} vanilla GUI units per Lads unit), hotbar {}, Day {} [{}], CPS {} [{}], Potion Effects {}, Coordinates {} [{}], {} {}, Scoreboard {} [{}]",
+            label, g.getScaledWidth(), g.getScaledHeight(), g.guiScale(), 1 / g.hudUnit(), hotbar, day, HudAnchors.holder("Day"), cps, HudAnchors.holder("CPS"),
             potion, coords, HudAnchors.holder("Coordinates"), top, held, board, HudAnchors.holder("Scoreboard"));
         if (onHotbar) expect(label, "Day sits on top of the hotbar, centred", day.bottom() == hotbar.y() && Math.abs(day.x() + day.width() / 2 - (hotbar.x() + hotbar.width() / 2)) <= 1, day + " hotbar " + hotbar);
         else expect(label, "Day is 6 px right of the hotbar, bottoms lined up", day.x() == hotbar.right() + 6 && day.bottom() == hotbar.bottom(), day + " hotbar " + hotbar);
@@ -238,6 +244,7 @@ public final class HudLayoutQa {
             ENABLED_WERE.forEach(Module::setEnabled);
             d.effect(null, 0);
             d.command("scoreboard objectives remove ladsqa");
+            for (String rule : new String[] {"sendCommandFeedback", "send_command_feedback", "logAdminCommands", "log_admin_commands"}) d.command("gamerule " + rule + " true");
             d.guiScale(2);
             d.window(0, 0);
         } catch (RuntimeException failure) {
