@@ -33,8 +33,10 @@ import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.monster.ElderGuardian;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Kill banners the moment the client sees a kill (KillDetector): the death of a player, mob or boss the local player hit last,
@@ -72,23 +74,30 @@ public final class NativeKillBanner {
         }
     }
 
-    /** MultiPlayerGameMode.attack: a hit whose crosshair point lands on the top quarter of the target's box is a head hit. */
+    /** MultiPlayerGameMode.attack: where the crosshair's point lands on the target says whether it is a head hit (headHit). */
     public static void attacked(Entity target) {
         if (!eligible()) return;
         boolean head = Minecraft.getInstance().hitResult instanceof EntityHitResult hit && hit.getType() == HitResult.Type.ENTITY
-            && hit.getEntity() == target && KillDetector.headHit(hit.getLocation().y, target.getY(), target.getBbHeight());
+            && hit.getEntity() == target && headHit(target, Minecraft.getInstance().player.getEyePosition(), hit.getLocation());
         LivingEntity victim = victim(target);
         // A click on a body still falling over is no new hit: the death already counted.
         if (victim != null && !victim.isDeadOrDying()) KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
     }
 
-    /** One of the local player's arrows crossed {@code target}'s box at {@code hitY} (KillBannerArrows): a hit, in the head when up top. */
-    static void arrowHit(Entity target, double hitY) {
+    /** One of the local player's arrows, coming from {@code from}, crossed {@code target}'s box at {@code at} (KillBannerArrows): a hit, in the head or not. */
+    static void arrowHit(Entity target, Vec3 from, Vec3 at) {
         if (!eligible()) return;
         LivingEntity victim = victim(target);
         if (victim == null || victim.isDeadOrDying()) return;
-        boolean head = KillDetector.headHit(hitY, target.getY(), target.getBbHeight());
-        KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
+        KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), headHit(target, from, at), System.nanoTime());
+    }
+
+    /** A hit from {@code from} through {@code at} on {@code target}: on the Ender Dragon, its "head" part; on anything else, the head about its eyes (KillDetector.headHit). */
+    static boolean headHit(Entity target, Vec3 from, Vec3 at) {
+        if (target instanceof EnderDragonPart part) return KillDetector.headPart(part.name);
+        AABB box = target.getBoundingBox();
+        float yaw = target instanceof LivingEntity living ? living.yBodyRot : target.getYRot();
+        return KillDetector.headHit(from.x, from.y, from.z, at.x, at.y, at.z, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ, target.getEyeY(), yaw);
     }
 
     /** A damage event: its cause (the attacker, or a projectile's owner) is the local player, someone else, or nobody. */
@@ -97,7 +106,7 @@ public final class NativeKillBanner {
         if (!eligible() || causeId < 0) return;
         if (causeId == minecraft.player.getId()) {
             if (victim(minecraft.level.getEntity(entityId)) instanceof LivingEntity victim)
-                KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), false, System.nanoTime());
+                KillBanners.DETECTOR.damagedByMe(victim.getId(), names(victim), kind(victim), System.nanoTime());
         } else KillBanners.DETECTOR.hitByOther(entityId, System.nanoTime());
     }
 

@@ -301,10 +301,147 @@ class KillDetectorTest {
         assertEquals(KillBannerModule.HEADSHOTS_HEAD_HITS, module.headshots.getIndex(), "headshots mean head hits");
     }
 
-    @Test void headHitsAreTheTopQuarterOfTheBox() {
-        assertTrue(KillDetector.headHit(65.5, 64, 1.8), "the top quarter of a player");
-        assertFalse(KillDetector.headHit(65.3, 64, 1.8), "the chest");
-        assertTrue(KillDetector.headHit(64.4, 64, .5), "a short mob's top");
+    /** A hit at (x, y, z) from the feet of a mob {@code w} wide and {@code h} tall, eyes {@code eye} up, standing at (100.5, 64, -20.5) and facing {@code yaw}. */
+    private static boolean head(double w, double h, double eye, float yaw, double x, double y, double z) {
+        return head(w, h, eye, yaw, x, y, z, x, y, z);
+    }
+
+    /** The same, the hit coming from (fx, fy, fz) through (x, y, z). */
+    private static boolean head(double w, double h, double eye, float yaw, double fx, double fy, double fz, double x, double y, double z) {
+        double cx = 100.5, cz = -20.5, foot = 64;
+        return KillDetector.headHit(cx + fx, foot + fy, cz + fz, cx + x, foot + y, cz + z, cx - w / 2, foot, cz - w / 2, cx + w / 2, foot + h, cz + w / 2, foot + eye, yaw);
+    }
+
+    @Test void uprightBodiesWearTheHeadOnTopAllRound() {
+        // A player (0.6 x 1.8, eyes 1.62) facing south (+z): its top quarter, as before, from any side.
+        assertTrue(head(.6, 1.8, 1.62, 0, 0, 1.6, .3), "the face");
+        assertTrue(head(.6, 1.8, 1.62, 0, 0, 1.4, .3), "the chin");
+        assertFalse(head(.6, 1.8, 1.62, 0, 0, 1.3, .3), "the chest");
+        assertFalse(head(.6, 1.8, 1.62, 0, 0, .5, .3), "the legs");
+        assertTrue(head(.6, 1.8, 1.62, 0, 0, 1.5, -.3), "the back of the head");
+        assertTrue(head(.6, 1.8, 1.62, 0, .3, 1.45, 0), "its side");
+        assertTrue(head(.6, 1.8, 1.62, 0, .1, 1.8, -.1), "its top, from above");
+        assertFalse(head(.6, 1.8, 1.62, 0, 0, 1.0, -.3), "its back");
+        assertTrue(head(.6, 1.95, 1.74, 90, 0, 1.8, .3), "a zombie's head, whichever way it faces");
+        assertFalse(head(.6, 1.95, 1.74, 0, 0, 1.3, .3), "a zombie's chest");
+        assertTrue(head(.6, 2.9, 2.55, 0, 0, 2.85, .3), "an enderman's head");
+        assertFalse(head(.6, 2.9, 2.55, 0, 0, 2.2, .3), "an enderman's shoulders (they were its top quarter)");
+        assertTrue(head(.4, 3, 2.7, 0, 0, 2.95, .2), "a tall thin modded mob's top");
+        assertFalse(head(.4, 3, 2.7, 0, 0, 2.4, .2), "and its neck");
+    }
+
+    @Test void anyOtherBodyWearsTheHeadAtItsFront() {
+        // A pig (0.9 x 0.9, eyes 0.765) facing south (+z): the old top quarter made every hit on its back from above a headshot.
+        assertTrue(head(.9, .9, .765, 0, 0, .7, .45), "its face");
+        assertTrue(head(.9, .9, .765, 0, .1, .9, .35), "the top of its head, from above");
+        assertFalse(head(.9, .9, .765, 0, 0, .9, -.1), "its back, from above");
+        assertFalse(head(.9, .9, .765, 0, 0, .9, -.4), "its rump, from above");
+        assertFalse(head(.9, .9, .765, 0, 0, .6, -.45), "its rear");
+        assertFalse(head(.9, .9, .765, 0, 0, .2, .45), "its front legs");
+        assertFalse(head(.9, .9, .765, 0, .45, .8, 0), "its flank");
+        assertTrue(head(.9, .9, .765, 90, -.45, .7, 0), "facing west (yaw 90, toward -x): its face is the west side");
+        assertFalse(head(.9, .9, .765, 90, .45, .7, 0), "and the east side its rear");
+        assertTrue(head(.9, .9, .765, 45, -.4, .8, .4), "turned half way: the box's corner it faces");
+        // A spider (1.4 x 0.9, eyes 0.65): the head between the front legs, not the legs' ends at the sides.
+        assertTrue(head(1.4, .9, .65, 0, 0, .6, .7), "a spider's face");
+        assertFalse(head(1.4, .9, .65, 0, .7, .6, .5), "its legs");
+        assertFalse(head(1.4, .9, .65, 0, 0, .9, 0), "its back");
+        // A cow (0.9 x 1.4, eyes 1.19): stocky, not upright.
+        assertTrue(head(.9, 1.4, 1.19, 0, 0, 1.2, .45), "a cow's face");
+        assertFalse(head(.9, 1.4, 1.19, 0, 0, 1.4, -.2), "its back");
+    }
+
+    @Test void moddedBoxesWideFlatBigAndTiny() {
+        // A wide flat crawler (2 x 0.5, eyes 0.425): its whole top was a head; now only its snout end.
+        assertFalse(head(2, .5, .425, 0, 0, .5, 0), "the middle of its top");
+        assertFalse(head(2, .5, .425, 0, .6, .5, .9), "its front corner");
+        assertTrue(head(2, .5, .425, 0, 0, .4, 1), "its snout");
+        assertFalse(head(2, .5, .425, 0, 0, .1, 1), "under its snout");
+        // A bear-sized beast (1.6 x 1.8, eyes 1.53) and a boss (4 x 5, eyes 4.25).
+        assertTrue(head(1.6, 1.8, 1.53, 180, 0, 1.4, -.8), "a bear facing north: its face");
+        assertFalse(head(1.6, 1.8, 1.53, 180, 0, 1.8, .6), "its back, from above");
+        assertFalse(head(1.6, 1.8, 1.53, 180, 0, .8, -.8), "its chest");
+        assertTrue(head(4, 5, 4.25, 0, 0, 4, 2), "a boss's face");
+        assertFalse(head(4, 5, 4.25, 0, 0, 2, 2), "its belly");
+        assertFalse(head(4, 5, 4.25, 0, 1.8, 4.5, 0), "its shoulder");
+        // A tiny bug (0.3 x 0.3): only its front top.
+        assertTrue(head(.3, .3, .25, 0, 0, .25, .15), "a bug's head");
+        assertFalse(head(.3, .3, .25, 0, 0, .3, -.1), "its back");
+        // Eyes outside the box (a mod's odd eye height) stay within the box.
+        assertTrue(head(.9, .9, 3, 0, 0, .8, .45), "eyes above the box: its top front");
+        assertFalse(head(.9, .9, -1, 0, 0, .8, .45), "eyes under it: only its bottom");
+    }
+
+    @Test void uncertainHitsAreNoHeadshots() {
+        assertFalse(KillDetector.headHit(0, 3, -5, 0, 1, 0, 0, 0, 0, 0, 0, 0, .5, 0), "no box");
+        assertFalse(KillDetector.headHit(0, 3, -5, Double.NaN, 1, 0, -1, 0, -1, 1, 2, 1, 1.7, 0), "no point");
+        assertFalse(KillDetector.headHit(0, 3, -5, 0, 1.9, 0, -1, 0, -1, 1, 2, 1, Double.NaN, 0), "no eyes");
+        assertTrue(head(.6, 1.8, 1.62, 0, 0, 2.1, .3), "a point just over a player's head (its box grown by 0.3) is on its top");
+        assertFalse(head(.9, .9, .765, 0, 0, 1.2, -.3), "a point just over a pig's back is on its back");
+    }
+
+    @Test void theHitIsWhereItsLineEntersTheBoxItself() {
+        // 1.8.9's crosshair point lies on the box grown by 0.1: looking down at a pig's back from 2.5 blocks in front of it
+        // (it faces the player), the line meets the grown top 0.37 blocks nearer than the pig's own top, over its head.
+        double ex = 0, ey = 1.62, ez = 2.5, tz = -.225, ty = .88; // eyes, and the aim: its back, behind its middle
+        double t = (ey - 1.0) / (ey - ty), gz = ez + (tz - ez) * t; // where the line meets the grown top (y 1.0)
+        assertTrue(head(.9, .9, .765, 0, 0, 1.0, gz), "that point, moved onto the box, would be over its head");
+        assertFalse(head(.9, .9, .765, 0, ex, ey, ez, 0, 1.0, gz), "the line enters the pig's back");
+        assertTrue(head(.9, .9, .765, 0, ex, ey, ez, 0, .75, .55), "a face hit through the grown front stays a face hit");
+        // An arrow coming down onto a pig's back crosses its box grown by 0.3 well in front of where it hits.
+        assertFalse(head(.9, .9, .765, 0, 0, 2.2, 1.5, 0, 1.2, .3), "an arrow dropping onto its back");
+        assertTrue(head(.6, 1.8, 1.62, 0, 0, 2.6, 2, 0, 2.1, .6), "an arrow dropping onto a player's head");
+        assertTrue(head(.6, 1.8, 1.62, 0, 0, 2.6, 2, 0, 2.1, .5), "a line that only grazes the grown box: its point, on the box (the top of the head)");
+        assertFalse(head(.6, 1.8, 1.62, 0, 0, 1.0, 0, 0, 1.0, 0), "the eye inside the box: its own height (the chest)");
+    }
+
+    @Test void multipartMobsCountTheirHeadPartOnly() {
+        assertTrue(KillDetector.headPart("head"), "the ender dragon's head");
+        assertTrue(KillDetector.headPart("headPart"), "Alex's Mobs' cachalot head part");
+        for (String part : new String[] {"neck", "body", "tail1", "wing1", "neckPart1", "tail1Part", "bodyFrontPart", "", null})
+            assertFalse(KillDetector.headPart(part), part);
+        Whale whale = new Whale();
+        assertTrue(KillDetector.part(whale.headPart));
+        assertFalse(KillDetector.part(whale), "the mob itself is no part");
+        assertFalse(KillDetector.part("a string"));
+        assertSame(whale, KillDetector.parentOf(whale.headPart));
+        assertEquals("headPart", KillDetector.partName(whale, whale.headPart));
+        assertEquals("tail1Part", KillDetector.partName(whale, whale.tail1Part));
+        assertEquals("", KillDetector.partName(whale, new Part(whale)), "a part it holds in no field of its own");
+        Part segment = new Part(null); // Alex's Mobs' snake segments only know their mob on the server
+        assertTrue(KillDetector.part(segment));
+        assertNull(KillDetector.parentOf(segment));
+        assertFalse(KillDetector.headPart(KillDetector.partName(KillDetector.parentOf(segment), segment)), "an unknown part is body");
+        assertNull(KillDetector.parentOf(whale));
+    }
+
+    public static final class Part {
+        private final Object parent;
+        Part(Object parent) { this.parent = parent; }
+        public Object getParent() { return parent; }
+    }
+
+    public static final class Whale {
+        public final Part headPart = new Part(this), tail1Part = new Part(this);
+        public final Part[] allParts = {headPart, tail1Part};
+    }
+
+    @Test void theKillingHitDecidesTheHeadshot() {
+        var d = new KillDetector();
+        d.hitByMe(1, List.of(), Kind.MOB, true, S);
+        d.damagedByMe(1, List.of(), Kind.MOB, S + S / 20);
+        d.hitByMe(1, List.of(), Kind.MOB, false, S + S * 6 / 10); // a body hit a cooldown later
+        d.damagedByMe(1, List.of(), Kind.MOB, S + S * 7 / 10);
+        assertFalse(d.died(1, S + S * 7 / 10).headshot(), "a head hit earlier in a quick chain no longer sticks to a body-shot kill");
+        d.hitByMe(2, List.of(), Kind.MOB, false, S);
+        d.hitByMe(2, List.of(), Kind.MOB, true, S + S / 2);
+        d.damagedByMe(2, List.of(), Kind.MOB, S + S * 6 / 10);
+        assertTrue(d.died(2, S + S * 6 / 10).headshot(), "the damage event confirms the killing head hit");
+        d.damagedByMe(3, List.of(), Kind.MOB, S);
+        assertFalse(d.died(3, S).headshot(), "a damage event alone does not know where it landed");
+        d.hitByMe(4, List.of(), Kind.MOB, true, S);
+        d.damagedByMe(4, List.of(), Kind.MOB, 3 * S);
+        assertFalse(d.died(4, 3 * S).headshot(), "nor does one long after the last head hit (fire, an unseen arrow)");
     }
 
     @Test void everyKillCanBeAHeadshot() {

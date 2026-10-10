@@ -43,11 +43,13 @@ import org.slf4j.LoggerFactory;
  * frames, a picture of each banner 0.2 s in: screenshots/killstreak/ks-&lt;run&gt;-&lt;n&gt;-k&lt;count&gt;.png). Then server kill messages in
  * many servers' formats through the real chat packet handler (each counts, the decoys do not), the streak timer typed as 3 s
  * (a kill 3.5 s later starts again at 1), Unlimited (4 s later still counts) and the player's death (the next kill starts at 1).
- * Module options, pigs and stand-ins are put back.
+ * Then headshots by the player's own crosshair (LocalPlayer.raycastHitResult, MultiPlayerGameMode.attack): a villager (upright)
+ * and a pig (its head at its front) facing the player, each hit at its eyes, low on its body and, for the pig, on its back seen
+ * from above (the old top quarter of the box called that a headshot). Module options, pigs and stand-ins are put back.
  */
 final class KillStreakCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private static final int FIRST_ID = Integer.MAX_VALUE - 96, LAST = 22;
+    private static final int FIRST_ID = Integer.MAX_VALUE - 96, LAST = 22 + 3 * 5;
     private static final List<String> FAILURES = new ArrayList<>();
     private static final List<JsonElement> OPTIONS = new ArrayList<>();
     private static final List<Integer> PIGS = Collections.synchronizedList(new ArrayList<>());
@@ -202,7 +204,70 @@ final class KillStreakCapture {
                 end(List.of(3, 1), "the death run's banners");
                 wait = 5;
             }
-            default -> finish(game);
+            default -> {
+                if (at >= LAST) { finish(game); return; }
+                headshot(mc, banner, HEADSHOTS[(at - 22) / 3], (at - 22) % 3);
+            }
+        }
+    }
+
+    /** Headshot runs: the mob, where the crosshair goes on it, and whether that is a headshot. */
+    private static final Object[][] HEADSHOTS = {
+        {EntityTypes.VILLAGER, "head", true}, {EntityTypes.VILLAGER, "body", false},
+        {EntityTypes.PIG, "head", true}, {EntityTypes.PIG, "back", false}, {EntityTypes.PIG, "body", false}};
+
+    /** One headshot run's phase: 0 the mob, 2.5 blocks south facing the player; 1 the aim and the blow; 2 the verdict on the banner. */
+    @SuppressWarnings("unchecked")
+    private static void headshot(Minecraft mc, KillBannerTimeline banner, Object[] spec, int phase) {
+        String name = "hs-" + net.minecraft.world.entity.EntityType.getKey((net.minecraft.world.entity.EntityType<?>) spec[0]).getPath() + "-" + spec[1];
+        switch (phase) {
+            case 0 -> {
+                banner.clear();
+                platform();
+                PIGS.clear();
+                pigsWanted = 1;
+                server(sp -> {
+                    var mob = ((net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.Mob>) spec[0]).create(sp.level(), EntitySpawnReason.COMMAND);
+                    mob.setPos(sp.getX(), sp.getY(), sp.getZ() + 2.5);
+                    mob.setYRot(180);
+                    mob.setYHeadRot(180);
+                    mob.setYBodyRot(180);
+                    mob.setNoAi(true);
+                    mob.setHealth(.1f);
+                    sp.level().addFreshEntity(mob);
+                    PIGS.add(mob.getId());
+                    ALL_PIGS.add(mob.getId());
+                });
+                wait = 20;
+            }
+            case 1 -> {
+                if (!(mc.level.getEntity(PIGS.get(0)) instanceof LivingEntity mob)) { fail(name + ": the mob is not in the client world"); return; }
+                var box = mob.getBoundingBox();
+                double yaw = Math.toRadians(mob.yBodyRot), facingX = -Math.sin(yaw), facingZ = Math.cos(yaw), half = box.getZsize() / 2;
+                Vec3 centre = box.getCenter();
+                Vec3 point = switch ((String) spec[1]) {
+                    case "head" -> new Vec3(centre.x + facingX * (half - .05), Math.min(mob.getEyeY(), box.maxY - .05), centre.z + facingZ * (half - .05));
+                    case "back" -> new Vec3(centre.x - facingX * half / 2, box.maxY - .02, centre.z - facingZ * half / 2);
+                    default -> new Vec3(centre.x + facingX * (half - .05), box.minY + box.getYsize() * .25, centre.z + facingZ * (half - .05));
+                };
+                mc.player.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, point);
+                mc.player.xRotO = mc.player.getXRot();
+                mc.player.yRotO = mc.player.getYRot();
+                mc.hitResult = mc.player.raycastHitResult(1f, mc.player);
+                boolean onIt = mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult hit && hit.getEntity() == mob;
+                LOGGER.info("Lads headshot {}: mob box {} eyes {} body yaw {}; crosshair on it {} at {}; verdict head={}", name, box, mob.getEyeY(), mob.yBodyRot,
+                    onIt, mc.hitResult.getLocation(), onIt && NativeKillBanner.headHit(mob, mc.player.getEyePosition(), mc.hitResult.getLocation()));
+                check(onIt, name + ": the crosshair is on the mob");
+                start(name);
+                if (onIt) mc.gameMode.attack(mc.player, mob); // the player's own blow (KillBannerAttackMixin)
+                wait = 40;
+            }
+            default -> {
+                check(!SHOWN.isEmpty(), name + ": the kill shows a banner (" + SHOWN + ")");
+                check(banner.headshot() == (boolean) spec[2], name + ": " + (banner.headshot() ? "HEADSHOT" : "no headshot") + ", expected " + ((boolean) spec[2] ? "HEADSHOT" : "none"));
+                run = null;
+                wait = 5;
+            }
         }
     }
 

@@ -23,6 +23,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.GuiGameOver;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.passive.EntityPig;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.network.play.server.S02PacketChat;
@@ -153,6 +154,72 @@ final class Probe172KillStreak {
         });
         steps.add(Probe172KillStreak::finish);
         return steps;
+    }
+
+    /**
+     * LADS_VERIFY_189_ONLY=headshot (CoreProbe): a villager (upright) and a pig (its head at its front) on the server, 2.5 blocks south of the player and
+     * facing it, hit through the crosshair (EntityRenderer.getMouseOver, then the player's own blow): at its eyes, low on its body
+     * and, for the pig, on its back seen from above (the old top quarter of the box called that a headshot). The banner's HEADSHOT
+     * must follow (lads-qa/screenshots/ks-hs-&lt;mob&gt;-&lt;where&gt;-1-k1.png).
+     */
+    static List<CoreProbe.Step> headshots() {
+        List<CoreProbe.Step> steps = new ArrayList<CoreProbe.Step>();
+        steps.add(Probe172KillStreak::start);
+        steps.add(mc -> { banner().bannerStyle.setIndex(KillBannerModule.REAVER); banner().streakReset.setValue("1"); return true; });
+        Object[][] runs = {{"villager", "head", true}, {"villager", "body", false}, {"pig", "head", true}, {"pig", "back", false}, {"pig", "body", false}};
+        for (final Object[] spec : runs) {
+            final String name = "hs-" + spec[0] + "-" + spec[1];
+            steps.add(mc -> { KillBanners.TIMELINE.clear(); return mob(mc, "pig".equals(spec[0])); });
+            steps.add(mc -> {
+                Entity mob = mc.theWorld.getEntityByID(PIGS.get(0));
+                check(mob instanceof EntityLivingBase, "Headshot: " + name + ": the mob is in the client world");
+                EntityLivingBase living = (EntityLivingBase) mob;
+                net.minecraft.util.AxisAlignedBB box = mob.getEntityBoundingBox();
+                double yaw = Math.toRadians(living.renderYawOffset), facingX = -Math.sin(yaw), facingZ = Math.cos(yaw), half = (box.maxZ - box.minZ) / 2;
+                double cx = (box.minX + box.maxX) / 2, cz = (box.minZ + box.maxZ) / 2, eyeY = mob.posY + mob.getEyeHeight(), x, y, z;
+                if ("back".equals(spec[1])) { x = cx - facingX * half / 2; y = box.maxY - .02; z = cz - facingZ * half / 2; }
+                else { x = cx + facingX * (half - .05); y = "head".equals(spec[1]) ? Math.min(eyeY, box.maxY - .05) : box.minY + (box.maxY - box.minY) * .25; z = cz + facingZ * (half - .05); }
+                double dx = x - mc.thePlayer.posX, dy = y - (mc.thePlayer.posY + mc.thePlayer.getEyeHeight()), dz = z - mc.thePlayer.posZ;
+                mc.thePlayer.rotationYaw = mc.thePlayer.prevRotationYaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+                mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+                mc.entityRenderer.getMouseOver(1f);
+                net.minecraft.util.MovingObjectPosition hit = mc.objectMouseOver;
+                boolean onIt = hit != null && hit.entityHit == mob;
+                LOG.info("Lads 1.8.9 headshot {}: mob box {} eyes {} body yaw {}; crosshair on it {} at {}", name, box, eyeY, living.renderYawOffset, onIt, hit != null ? hit.hitVec : null);
+                check(onIt, "Headshot: " + name + ": the crosshair is on the mob");
+                begin(name);
+                mc.playerController.attackEntity(mc.thePlayer, mob);
+                return true;
+            });
+            steps.add(mc -> sample(mc, 30));
+            steps.add(mc -> {
+                boolean head = KillBanners.TIMELINE.headshot();
+                LOG.info("Lads 1.8.9 headshot {}: banners {}, HEADSHOT {}", name, SHOWN, head);
+                check(!SHOWN.isEmpty(), "Headshot: " + name + ": the kill shows a banner (" + SHOWN + ")");
+                check(head == (Boolean) spec[2], "Headshot: " + name + ": " + (head ? "HEADSHOT" : "no headshot") + ", expected " + ((Boolean) spec[2] ? "HEADSHOT" : "none"));
+                run = null;
+                return after(5);
+            });
+        }
+        steps.add(Probe172KillStreak::finish);
+        return steps;
+    }
+
+    /** One mob (no AI, half a heart) on the server 2.5 blocks south of the player, facing it (north). */
+    private static boolean mob(Minecraft mc, final boolean pig) {
+        PIGS.clear();
+        final UUID id = mc.thePlayer.getUniqueID();
+        mc.getIntegratedServer().addScheduledTask(() -> {
+            EntityPlayerMP player = mc.getIntegratedServer().getConfigurationManager().getPlayerByUUID(id);
+            net.minecraft.entity.EntityLiving mob = pig ? new EntityPig(player.worldObj) : new net.minecraft.entity.passive.EntityVillager(player.worldObj);
+            mob.setLocationAndAngles(player.posX, player.posY, player.posZ + 2.5, 180, 0);
+            mob.rotationYawHead = mob.renderYawOffset = 180;
+            mob.setNoAI(true);
+            player.worldObj.spawnEntityInWorld(mob);
+            mob.setHealth(.5F);
+            PIGS.add(mob.getEntityId());
+        });
+        return after(30);
     }
 
     private static KillBannerModule banner() { return (KillBannerModule) ModuleManager.getInstance().getModule("KillBanner"); }

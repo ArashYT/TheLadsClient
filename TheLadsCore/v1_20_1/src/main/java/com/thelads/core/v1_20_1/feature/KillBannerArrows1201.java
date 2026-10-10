@@ -53,7 +53,7 @@ final class KillBannerArrows1201 {
             }
             if (victim != null) {
                 landed.add(id);
-                NativeKillBanner1201.arrowHit(victim, where.y);
+                NativeKillBanner1201.arrowHit(victim, from, where);
             }
         }
         flying.keySet().retainAll(seen);
