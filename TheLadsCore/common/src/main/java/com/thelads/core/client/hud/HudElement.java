@@ -145,6 +145,8 @@ public abstract class HudElement {
     public void matchLayoutWidth(int pixels) { if(naturalWidth<0)naturalWidth=width; width = Math.max(width, (int)Math.ceil(pixels / getScale())); }
 
     public int getRenderWidth() { return Math.max(1, (int) Math.ceil(width * (double) getScale())); }
+    /** The render width before matchLayoutWidth widened it this frame: the width the layout places (HudAnchors). */
+    public int getNaturalRenderWidth() { return naturalWidth < 0 ? getRenderWidth() : Math.max(1, (int) Math.ceil(naturalWidth * (double) getScale())); }
     public int getRenderHeight() { return Math.max(1, (int) Math.ceil(height * (double) getScale())); }
 
     protected int resolveColor() {

@@ -18,9 +18,9 @@ class Version134HudTest {
     private DraggableHudScreen editor;
     /** Content size is recomputed each frame, like real HUDs whose text or rows change. */
     private static class Box extends HudElement {
-        int w,h;
+        int w,h;float scale=1;
         Box(String name,int x,int y,int width,int height){setModuleName(name);setPosition(x,y);w=width;h=height;this.width=width;this.height=height;}
-        @Override public float getScale(){return 1;}
+        @Override public float getScale(){return scale;}
         @Override public void prepareRender(LadsGraphics g,boolean editor){width=w;height=h;}
         @Override public void render(LadsGraphics g){g.fill(x,y,x+width,y+height,moduleName.hashCode());}
     }
@@ -98,6 +98,13 @@ class Version134HudTest {
         var f=editor.boundsFor("FPS");click(f.x()+1,f.y()+1,1,0);context("stack");
         assertEquals(editor.boundsFor("FPS").bottom()+2,editor.boundsFor("PingHUD").y());assertEquals(100,editor.boundsFor("PingHUD").x());
         assertEquals(Set.of("Coordinates","FPS","PingHUD"),HudSettings.getInstance().getGroupMembers("FPS"));
+    }
+    @Test void centerStackSavesWhereAWidenedScaledMemberShows(){
+        // CPS at 150% (87 px) in Day's 88 px column is widened to 89 px; anchored on that width it showed 1 px off its saved place.
+        graphics.width=472;graphics.height=250;var cps=add("CPS",114,47,58,16,true);add("Day",114,65,88,20,true);
+        render();select("CPS");select("Day");var b=editor.boundsFor("CPS");click(b.x()+1,b.y()+1,1,0);context("group");
+        cps.scale=1.5f;render();b=editor.boundsFor("CPS");click(b.x()+1,b.y()+1,1,0);context("stack");render();
+        for(String name:List.of("CPS","Day"))assertEquals(HudSettings.getInstance().getPosition(name)[0],editor.boundsFor(name).x(),name);
     }
     @Test void switchedOffMemberNeitherReservesARowNorSetsTheSharedWidth(){
         add("FPS",20,30,40,15,true);add("Memory",20,60,200,15,false);add("PingHUD",20,100,50,15,true);

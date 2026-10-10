@@ -160,6 +160,11 @@ public final class HudAnchors {
         HudSettings settings = HudSettings.getInstance();
         int width = g.getScaledWidth(), height = g.getScaledHeight();
         Rect hotbar = hotbar(g);
+        // Fitted on the widths place() lays out, not those a group column widened them to (matchDockedWidths): a widened member
+        // pinned at its centre or end would show off its saved place, and move again at every save.
+        var natural = new IdentityHashMap<HudElement, Rect>();
+        for (var entry : shown.entrySet()) { Rect r = entry.getValue(); natural.put(entry.getKey(), new Rect(r.x(), r.y(), entry.getKey().getNaturalRenderWidth(), r.height())); }
+        shown = natural;
         var anchoring = new java.util.ArrayList<HudElement>();
         for (HudElement element : which) {
             String name = element.getModuleName();
