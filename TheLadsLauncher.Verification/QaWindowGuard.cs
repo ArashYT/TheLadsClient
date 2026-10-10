@@ -23,8 +23,10 @@ static class QaWindowGuard
     public static Rectangle Tile(int slot)
     {
         var area = Screen.PrimaryScreen!.Bounds;
+        if (QaShared.PlayingMonitor is { } monitor) // owner playing: the one QA game goes to the named monitor's top-left quarter
+            area = (Screen.AllScreens.FirstOrDefault(s => s.DeviceName.Equals(monitor, StringComparison.OrdinalIgnoreCase)) ?? Screen.PrimaryScreen!).Bounds;
         int w = area.Width / 2, h = area.Height / 2;
-        if (slot >= 5) return new Rectangle(area.X + w / 2, area.Y + h / 2, w, h); // 5th game: centred over the 2 x 2 grid (occluded windows still render)
+        if (slot >= 5 && QaShared.PlayingMonitor == null) return new Rectangle(area.X + w / 2, area.Y + h / 2, w, h); // 5th game: centred over the 2 x 2 grid (occluded windows still render)
         int i = Math.Clamp(slot, 1, 4) - 1;
         return new Rectangle(area.X + i % 2 * w, area.Y + i / 2 * h, w, h);
     }
@@ -43,7 +45,7 @@ static class QaWindowGuard
     {
         bool resize = Environment.GetEnvironmentVariable("LADS_VERIFY_NO_RESIZE") != "1";
         Rectangle target = focus || playing ? Rectangle.Empty : Tile(slot);
-        ProcessPriorityClass wanted = playing ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High;
+        ProcessPriorityClass wanted = playing || QaShared.PlayingMonitor != null ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High;
         var firstSeen = new Dictionary<IntPtr, long>();
         IntPtr owners = GameWindow(GetForegroundWindow()) ? IntPtr.Zero : GetForegroundWindow();
         try
