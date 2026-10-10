@@ -24,8 +24,10 @@ import static org.junit.jupiter.api.Assertions.*;
 class HudAnchorsTest {
     private static class Element extends HudElement {
         Element(String name, int w, int h) { width = w; height = h; setModuleName(name); }
+        boolean room = true;
         void size(int w, int h) { width = w; height = h; }
         @Override public boolean isEnabled() { return true; }
+        @Override public boolean keepsRoom() { return room; }
         @Override public void render(LadsGraphics graphics) { graphics.fill(x, y, x + width, y + height, 0xffffffff); }
     }
     /** A screen with vanilla's GUI scale, as the versions' adapters report it. */
@@ -145,7 +147,7 @@ class HudAnchorsTest {
 
     @Test void aScoreboardUnderTheMinimapStaysUnderIt() {
         screen.at(640, 360, 3);
-        saved("Map", 535, 44, 100, 100);
+        var map = saved("Map", 535, 44, 100, 100);
         var board = saved("Board", 535, 200, 100, 50);
         editor.keyPressed(71);
         drag("Board", 0, -54); // top 2 px under the map
@@ -155,6 +157,9 @@ class HudAnchorsTest {
         screen.at(960, 540, 2);
         assertEquals(new Rect(855, 146, 100, 160), frame("Board"));
         assertEquals(new Rect(855, 44, 100, 100), frame("Map"));
+        map.room = false; // Xaero's map: a fixed number of pixels, smaller in GUI units at a larger GUI scale
+        map.size(66, 66);
+        assertEquals(new Rect(855, 112, 100, 160), frame("Board"), "under the map as it is now, not the room it had");
     }
 
     @Test void theHotbarIsASnapTargetInTheEditor() {
