@@ -61,6 +61,8 @@ public final class QaProbe1201 {
     /** The QA world's folder name: -Dthelads.qaWorld (the harness gives each QA game folder its own), else LadsQA-<game folder name>. */
     public static String save = "LadsQA-1_20_1";
     private static final long TITLE_TIMEOUT = 300_000_000_000L, WORLD_TIMEOUT = 150_000_000_000L;
+    private static final boolean JOIN = Boolean.getBoolean("thelads.qaJoin");
+    private static int joinTicks;
 
     private enum Phase { TITLE, LOADING, SETUP, SCRIPT, DONE }
 
@@ -164,6 +166,14 @@ public final class QaProbe1201 {
     }
 
     private static void title(Minecraft mc, long now) throws Exception {
+        // -Dthelads.qaJoin (Zero SMP "Auto-join server" QA, aimed at a closed local port): the game leaves the title for the connect screen at once.
+        if (JOIN && (mc.screen instanceof net.minecraft.client.gui.screens.ConnectScreen || mc.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen)) {
+            if (++joinTicks == 40) {
+                shot(mc, "qa-join");
+                LOGGER.info("Lads qa join screen: {} photographed (screenshots/qa-join.png)", mc.screen.getClass().getSimpleName());
+            }
+            return;
+        }
         // Supplementaries opens a welcome screen over the title when part of the pack is missing (QA subsets): leave it so the script can start.
         if (mc.getOverlay() == null && mc.screen != null && mc.screen.getClass().getSimpleName().equals("WelcomeMessageScreen")) mc.setScreen(new TitleScreen());
         if (!(mc.screen instanceof TitleScreen) || mc.getOverlay() != null) {
@@ -293,6 +303,7 @@ public final class QaProbe1201 {
             case "chat" -> { needWorld(mc); mc.player.connection.sendChat(rest(s, 1)); }
             case "shot" -> { pendingShot = arg(s, 1); waitTicks = 3; }
             case "screen" -> openScreen(mc, arg(s, 1).toLowerCase(Locale.ROOT));
+            case "press" -> pressButton(mc, rest(s, 1));
             case "key" -> pressKey(mc, arg(s, 1));
             case "hold" -> hold(mc, arg(s, 1), !"off".equalsIgnoreCase(s.length > 2 ? s[2] : "on"));
             case "click" -> { InputConstants.Key k = InputConstants.Type.MOUSE.getOrCreate(mouse(arg(s, 1))); KeyMapping.click(k); }
@@ -360,6 +371,16 @@ public final class QaProbe1201 {
 
     private static int mouse(String v) {
         return switch (v.toLowerCase(Locale.ROOT)) { case "left" -> 0; case "right" -> 1; case "middle" -> 2; default -> throw new IllegalArgumentException("mouse button " + v); };
+    }
+
+    /** "press <label>": the visible button of the open screen with that label (case-insensitive), through its own onPress. */
+    private static void pressButton(Minecraft mc, String label) {
+        if (mc.screen != null) for (var child : mc.screen.children())
+            if (child instanceof net.minecraft.client.gui.components.Button button && button.visible && button.getMessage().getString().equalsIgnoreCase(label)) {
+                button.onPress();
+                return;
+            }
+        throw new IllegalStateException("no button '" + label + "' on " + describeScreen(mc));
     }
 
     private static void openScreen(Minecraft mc, String name) {

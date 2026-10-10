@@ -783,6 +783,8 @@ try
         if (renderScaleVerification) AddJvm("-Dthelads.verifyRenderScale=true");
         if (Env("LADS_VERIFY_V133") == "1") AddJvm("-Dthelads.verify133=true");
         if (titleCaptureVerification) AddJvm("-Dthelads.verifyTitleCapture=true");
+        // 26.x: with LADS_VERIFY_CAPTURE_TITLE=1, the title's Switch Versions button pressed and the screen photographed (NativeWorldVerification), then the game stops.
+        if (titleCaptureVerification && Env("LADS_VERIFY_VERSION_SWITCH") == "1") AddJvm("-Dthelads.verifyVersionSwitch=true");
         if (Env("LADS_VERIFY_V134") == "1") { AddJvm("-Dthelads.verify134=true"); AddJvm("-Dthelads.verifyRenderer=" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan")); }
         if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
         if (flashbackVerification) AddJvm("-Dthelads.verifyFlashback=true");
@@ -799,6 +801,7 @@ try
     process.StartInfo.RedirectStandardOutput = true;
     process.StartInfo.RedirectStandardError = true;
     GameSession.Configure(process.StartInfo, directory, shared.Root);
+    VersionSwitch.Prepare(directory, version); // as the launcher does before every start: the list the in-game Switch Versions screen reads
     // The Core's shared config (ClientPaths.getGlobalBaseDir) is THELADS_GLOBAL_DIR, else the owner's REAL %APPDATA%\\.theladsclient\\shared\\thelads_config.json
     // (read and saved: the owner's HUD layout and Discord RPC in QA games, QA module changes in the owner's config). QA games get their own folder: the game
     // folder, whose thelads_config.json QaDiscord.ForceOff prepared; the shared copy is dropped so every launch re-seeds from it.

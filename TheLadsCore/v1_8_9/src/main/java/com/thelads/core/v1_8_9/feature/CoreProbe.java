@@ -15,6 +15,7 @@ import com.thelads.core.v1_8_9.gui.LadsPauseButton;
 import com.thelads.core.v1_8_9.gui.LadsSettingsScreen189;
 import com.thelads.core.v1_8_9.gui.LadsTitleScreen189;
 import com.thelads.core.v1_8_9.gui.TitleExtrasScreen189;
+import com.thelads.core.v1_8_9.gui.VersionSwitchScreen189;
 import com.thelads.core.v1_8_9.log.Log4jServiceProvider;
 import java.io.File;
 import java.lang.reflect.Field;
@@ -80,8 +81,9 @@ public final class CoreProbe {
             STEPS.add(CoreProbe::titleShown);
             STEPS.add(CoreProbe::focused);
             STEPS.addAll(Probe170Misc.steps(FOCUS));
-        } else if ("title".equals(only)) { // only the title screen's layout at every GUI scale, and its More
+        } else if ("title".equals(only)) { // only the title screen's layout at every GUI scale, and its More, then Switch Versions
             STEPS.subList(3, STEPS.size()).clear();
+            STEPS.add(CoreProbe::versionSwitch);
         } else {
         if ("itemphysics".equals(only)) {
             STEPS.clear();
@@ -314,6 +316,35 @@ public final class CoreProbe {
 
     private static String rect(GuiButton button) {
         return "'" + button.displayString + "' " + button.xPosition + "," + button.yPosition + " " + button.width + "x" + button.height;
+    }
+
+    private static int versionPhase;
+
+    /** Switch Versions on the title: its list photographed, the first version picked and confirmed (Relaunch Now writes the launcher's request and quits). */
+    private static boolean versionSwitch(Minecraft mc) throws Exception {
+        if (versionPhase == 0) {
+            if (!(mc.currentScreen instanceof GuiMainMenu)) return retry(10);
+            GuiButton button = LadsTitleScreen189.INSTANCE.switchVersionButton();
+            click(button.xPosition + button.width / 2, button.yPosition + button.height / 2);
+            versionPhase = 1;
+            return retry(10);
+        }
+        if (!(mc.currentScreen instanceof VersionSwitchScreen189)) return retry(10);
+        VersionSwitchScreen189 screen = (VersionSwitchScreen189) mc.currentScreen;
+        GuiButton button;
+        if (versionPhase == 1) {
+            check(screen.button("Lads Client ") != null, "a click on Switch Versions opened the list");
+            screenshot(mc, "c1-version-switch");
+            button = screen.button("Lads Client ");
+            versionPhase = 2;
+        } else if (versionPhase == 2) {
+            screenshot(mc, "c1-version-switch-confirm");
+            button = screen.button("Relaunch Now");
+            check(button != null, "the confirmation offers Relaunch Now");
+            versionPhase = 3;
+        } else return true;
+        click(button.xPosition + button.width / 2, button.yPosition + button.height / 2);
+        return retry(10);
     }
 
     /** More, then its Language: the title screen's own Language button pressed from More (GuiLanguage, a list on the Lads backdrop). */

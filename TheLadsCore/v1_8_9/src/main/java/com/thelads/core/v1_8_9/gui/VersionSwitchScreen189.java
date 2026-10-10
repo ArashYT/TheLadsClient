@@ -16,6 +16,12 @@ public class VersionSwitchScreen189 extends GuiScreen {
         this.parent = parent;
     }
 
+    /** The screen's buttons by label, for the QA probe. */
+    public GuiButton button(String label) {
+        for (GuiButton b : buttonList) if (b.displayString.startsWith(label)) return b;
+        return null;
+    }
+
     @Override
     public void initGui() {
         buttonList.clear();
