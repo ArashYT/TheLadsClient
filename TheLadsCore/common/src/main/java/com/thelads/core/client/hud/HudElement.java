@@ -51,6 +51,12 @@ public abstract class HudElement {
     /** False while getDisplayX/Y place the element themselves (an anchor option of its own) and its saved position is not used. */
     public boolean usesSavedPosition() { return true; }
 
+    /**
+     * Whether what is docked under this element keeps the room it had in the editor when it shrinks (content such as potion
+     * effects comes and goes); false where the size only follows the GUI scale.
+     */
+    public boolean keepsRoom() { return true; }
+
     /** Called with where the element is drawn this frame (its own units), after the layout. */
     public void placed(LadsGraphics g, HudGroupLayout.Rect bounds) {}
 

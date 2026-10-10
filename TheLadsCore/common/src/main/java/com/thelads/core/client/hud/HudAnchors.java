@@ -109,7 +109,8 @@ public final class HudAnchors {
             // The holder keeps at least the room it had when the layout was saved, grown from the point it is pinned at.
             int pinX = own != null ? own.h().pin() : far(box.x(), box.width(), width) ? 2 : 0;
             int pinY = own != null ? own.v().pin() : far(box.y(), box.height(), height) ? 2 : 0;
-            int w = Math.max(box.width(), anchor.h().room()), h = Math.max(box.height(), anchor.v().room());
+            int w = holder.keepsRoom() ? Math.max(box.width(), anchor.h().room()) : box.width();
+            int h = holder.keepsRoom() ? Math.max(box.height(), anchor.v().room()) : box.height();
             return new Rect(box.x() - pinX * (w - box.width()) / 2, box.y() - pinY * (h - box.height()) / 2, w, h);
         }
     }

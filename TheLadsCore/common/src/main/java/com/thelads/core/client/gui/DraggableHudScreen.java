@@ -155,8 +155,8 @@ public class DraggableHudScreen {
             if(showGrid&&isDragging()){
                 for(int x=0;x<hudWidth;x+=GRID){int sx=(int)Math.round(screenX(x));g.fill(sx,p.y(),sx+1,p.bottom(),0x15FFFFFF);}
                 for(int y=0;y<hudHeight;y+=GRID){int sy=(int)Math.round(screenY(y));g.fill(p.x(),sy,p.right(),sy+1,0x15FFFFFF);}
-                // The hotbar is a snap target too: its box, so HUDs beside or above it line up with it.
-                border(g,toScreen(hotbar),0x88FFFFFF);
+                // The hotbar is a snap target too: its box (just outside vanilla's frame), so HUDs beside or above it line up with it.
+                Rect bar=toScreen(hotbar);border(g,new Rect(bar.x()-1,bar.y()-1,bar.width()+2,bar.height()+2),LadsPalette.ACCENT);
             }
             // Live HUD content, drawn in game coordinates under one translate and scale.
             g.pushPose();
@@ -596,10 +596,11 @@ public class DraggableHudScreen {
         var affected=new LinkedHashSet<HudElement>(moved);
         for(var entry:measuredBounds.entrySet()){
             var other=entry.getKey();
-            if(affected.contains(other)||other.getModuleName()==null||!isVisible(other))continue;
+            if(affected.contains(other)||other.getModuleName()==null)continue;
             var anchor=HudSettings.getInstance().getAnchor(other.getModuleName());
-            boolean touches=moved.stream().map(measuredBounds::get).anyMatch(box->box!=null&&HudAnchors.touching(box,entry.getValue()));
-            if(!(anchor!=null&&names.contains(anchor.to()))&&!touches)continue;
+            boolean docked=anchor!=null&&names.contains(anchor.to());
+            boolean touches=isVisible(other)&&moved.stream().map(measuredBounds::get).anyMatch(box->box!=null&&HudAnchors.touching(box,entry.getValue()));
+            if(!docked&&!touches)continue;
             if(HudSettings.getInstance().getPosition(other.getModuleName())==null&&other.usesSavedPosition()){
                 Rect bounds=entry.getValue();other.beginPositionEdit();
                 try{other.setDisplayPosition(bounds.x(),bounds.y());HudSettings.getInstance().setPosition(other.getModuleName(),other.getX(),other.getY());}finally{other.endPositionEdit();}

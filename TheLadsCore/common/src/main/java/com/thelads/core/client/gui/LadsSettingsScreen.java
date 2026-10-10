@@ -234,6 +234,15 @@ public final class LadsSettingsScreen {
         if (currentCategory.equals("HUD") && !modsView && !compact && w >= 280) { // compact: the header already has HUD FPS, and this row has the shortcuts
             String fpsStatus = "HUD FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
             button(g, "cat-hud-fps", fpsStatus, new Rect(x + w - 160, top - 4, 158, 18), this::openHudFpsDialog, true, mx, my, HudSettings.getInstance().isHudFpsCapEnabled());
+            if (w >= 400) { // the Lads HUD's own GUI scale (HudScale): Auto follows vanilla's; also in the HUD editor
+                int chosen = HudSettings.getInstance().getHudScale(), vanilla = g.guiScale();
+                String scale = "HUD scale: " + (chosen == 0 ? "Auto" : String.valueOf(com.thelads.core.client.hud.HudScale.of(g)));
+                button(g, "cat-hud-scale", scale, new Rect(x + w - 274, top - 4, 110, 18), () -> {
+                    int next = HudSettings.getInstance().getHudScale() + 1;
+                    HudSettings.getInstance().setHudScale(next > com.thelads.core.client.hud.HudScale.max(width * vanilla, height * vanilla) ? 0 : next);
+                    ConfigManager.save();
+                }, vanilla > 0, mx, my, chosen != 0);
+            }
         }
         top += dense ? 17 : 22;
         viewport = new Rect(x, top, w, Math.max(20, height - top - 28));
