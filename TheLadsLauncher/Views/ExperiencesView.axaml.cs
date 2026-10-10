@@ -138,6 +138,7 @@ public partial class ExperiencesView : UserControl
                 ZeroSmpStatusText.Text = code == 0 ? "Game closed." : $"Minecraft closed with exit code {code}. See logs in Open Folder.";
                 ZeroSmpProgressBar.IsVisible = false;
                 RefreshState();
+                host.ApplyNextVersionRequest(instance.GameDirectory); // closed from the in-game Switch Versions screen
             });
 
             Report($"Zero SMP started as {session.Username}!");
