@@ -1279,17 +1279,17 @@ bool parityGate = Env("LADS_VERIFY_PARITY") == "1" && !capabilities.Forge;
 if (!expectCoreDisabled && process != null && HasStarted(process))
 {
     var parityLines = new List<string>();
-    string? referencePath = version == "26.3"
-        ? Path.Combine(directory, "lads-core-catalog.json")
-        : (new[] {
+    // 26.3 is the reference itself; the others compare with the newest 26.3 (else 26.2) catalog a run left in this worktree.
+    string? referencePath = version == "26.3" ? null : new[] {
             Path.Combine(verificationRoot, "26.3-title", "lads-core-catalog.json"),
             Path.Combine(verificationRoot, "26.3", "lads-core-catalog.json"),
             Path.Combine(verificationRoot, "26.2-title", "lads-core-catalog.json")
-        }).FirstOrDefault(File.Exists);
+        }.FirstOrDefault(File.Exists);
 
-    if (referencePath == null || !File.Exists(referencePath))
+    if (referencePath == null)
     {
-        parityLines.Add($"Lads catalog parity: skipped on {version} (no 26.3 reference catalog found).");
+        parityLines.Add(version == "26.3" ? "Lads catalog parity: 26.3 is the reference version." : $"Lads catalog parity: skipped on {version} (no 26.3 reference catalog: run 26.3 in this worktree first).");
+        if (parityGate && version != "26.3") failures.Add(parityLines[^1]);
     }
     else
     {
