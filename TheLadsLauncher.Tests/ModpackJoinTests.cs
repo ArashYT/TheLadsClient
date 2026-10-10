@@ -79,6 +79,7 @@ public class ModpackJoinTests
     public void AutoJoinIsOffByDefaultAndTheServerIsTheExperiencesOwn()
     {
         Assert.False(new LauncherSettings().ZeroSmpAutoJoin);
+        Assert.True(System.Text.Json.JsonSerializer.Deserialize<LauncherSettings>("{\"ZeroSmpAutoJoin\":true}")!.ZeroSmpAutoJoin); // what settings.json keeps
         Assert.Equal("nikzerosmp.my.pebble.host", ExperiencesService.ZeroSmp.ServerAddress);
     }
 }
