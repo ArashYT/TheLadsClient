@@ -180,7 +180,7 @@
                     <Grid x:Name="HomePage" Margin="28,16,28,16" RowDefinitions="Auto,*">
                         <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,10">
                             <TextBlock Text="Play" FontSize="24" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,20,0" />
-                            <TabControl x:Name="PlaySubTabs" Grid.Column="1" SelectionChanged="PlaySubTabs_SelectionChanged" VerticalAlignment="Center" Margin="0,-4,0,0">
+                            <TabControl x:Name="PlaySubTabs" Classes="pills" Padding="0" Grid.Column="1" SelectionChanged="PlaySubTabs_SelectionChanged" VerticalAlignment="Center">
                                 <TabItem x:Name="PlayStandardTab" Header="Client" />
                                 <TabItem x:Name="PlayExperiencesTab" Header="Experiences" />
                             </TabControl>
