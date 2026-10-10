@@ -219,11 +219,14 @@ public final class HudLayoutQa {
         else { FAILURES.add(label + ": " + what + " (" + detail + ")"); LOGGER.error("Lads hud layout check FAIL: {}: {} ({})", label, what, detail); }
     }
 
-    /** Presses on Day in the editor and moves it to just above the hotbar's middle (held there), or releases it there. */
+    /**
+     * Presses on Day in the editor and moves it onto the hotbar's top, centred (held there: guides on the hotbar's top and centre),
+     * or releases it there. Snapping by itself pulls any edge within 4 px onto the nearest line of any HUD (unit tests: HudAnchorsTest).
+     */
     private static void drag(DraggableHudScreen ui, boolean release) {
         if (ui == null) throw new IllegalStateException("the HUD editor is not open");
         Rect day = ui.boundsFor("Day"), hotbar = ui.hotbarBounds();
-        int x = hotbar.x() + hotbar.width() / 2 - day.width() / 2 + 1, y = hotbar.y() - day.height() - 1 + 1;
+        int x = hotbar.x() + hotbar.width() / 2 - day.width() / 2 + 1, y = hotbar.y() - day.height() + 1;
         if (release) { ui.mouseReleased(ui.screenX(x), ui.screenY(y), 0, 0); return; }
         ui.mouseClicked(ui.screenX(day.x() + 1), ui.screenY(day.y() + 1), 0, 0);
         ui.mouseDragged(ui.screenX(x), ui.screenY(y), 0);
