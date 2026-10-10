@@ -914,7 +914,9 @@ try
     // The 1.8.9 benchmark alone runs uncapped (maxFps 260 is Unlimited) at its own render distance (perf189 above).
     bool ownerPlaying = Environment.GetEnvironmentVariable("LADS_VERIFY_PLAYING") == "1" || QaShared.PlayingMonitor != null; // 60 FPS cap while the owner plays and streams
     string[] qaForced = { "soundCategory_master:0.0", perf189 ? "maxFps:260" : ownerPlaying ? "maxFps:60" : "maxFps:120", "enableVsync:false", "renderDistance:" + perfRenderDistance,
-        "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false", "fullscreen:" + (qaFullscreen ? "true" : "false") };
+        "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false", "fullscreen:" + (qaFullscreen ? "true" : "false"),
+        // An options.txt with its data version skips the DataFixer that switches the first-start accessibility screen off for old files.
+        "onboardAccessibility:false" };
     string qaOptions = Path.Combine(directory, "options.txt");
     // LADS_VERIFY_OPTIONS_SYNC=1: the launcher's options.txt sync around the game, as ProfileService does for a profile that is not
     // isolated (the shared copy's controls; 1.8.9's other settings from Lunar's 1.8 profile when the Lunar sandbox has one, else the
