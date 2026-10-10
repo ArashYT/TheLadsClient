@@ -8,7 +8,9 @@ import net.minecraft.client.gui.GuiScreen;
 
 public class VersionSwitchScreen189 extends GuiScreen {
     private final GuiScreen parent;
+    private static final String RUNNING = "1.8.9";
     private String pendingVersion = null;
+    private String error = null;
 
     public VersionSwitchScreen189(GuiScreen parent) {
         this.parent = parent;
@@ -23,26 +25,16 @@ public class VersionSwitchScreen189 extends GuiScreen {
         int cardY = (height - cardHeight) / 2;
 
         if (pendingVersion == null) {
-            List<String> versions = VersionSwitch.available();
-            String current = "1.8.9";
+            // The launcher's versions without the running one (the supported ones when it wrote no list).
+            List<String> versions = VersionSwitch.available(RUNNING);
             int btnY = cardY + 60;
             int btnHeight = 24;
             int btnWidth = cardWidth - 32;
 
             int id = 10;
-            if (versions.isEmpty()) {
-                String[] defaults = new String[]{"26.3", "26.2", "1.8.9"};
-                for (String v : defaults) {
-                    if (!v.equals(current)) {
-                        buttonList.add(new GuiButton(id++, cardX + 16, btnY, btnWidth, btnHeight, "Lads Client " + v));
-                        btnY += btnHeight + 8;
-                    }
-                }
-            } else {
-                for (String v : versions) {
-                    buttonList.add(new GuiButton(id++, cardX + 16, btnY, btnWidth, btnHeight, "Lads Client " + v));
-                    btnY += btnHeight + 8;
-                }
+            for (String v : versions) {
+                buttonList.add(new GuiButton(id++, cardX + 16, btnY, btnWidth, btnHeight, "Lads Client " + v));
+                btnY += btnHeight + 8;
             }
 
             buttonList.add(new GuiButton(0, cardX + 16, cardY + cardHeight - 34, btnWidth, 22, "Cancel"));
@@ -61,9 +53,14 @@ public class VersionSwitchScreen189 extends GuiScreen {
             mc.displayGuiScreen(parent);
         } else if (button.id == 1) {
             pendingVersion = null;
+            error = null;
             initGui();
         } else if (button.id == 2) {
-            VersionSwitch.request(pendingVersion);
+            // The launcher starts the version once the game has closed; without the request that would only close it.
+            if (!VersionSwitch.request(pendingVersion)) {
+                error = "Could not save the request for the launcher.";
+                return;
+            }
             mc.shutdown();
         } else if (button.id >= 10) {
             String label = button.displayString;
@@ -86,11 +83,12 @@ public class VersionSwitchScreen189 extends GuiScreen {
 
         if (pendingVersion == null) {
             fontRendererObj.drawString("Switch Versions", cardX + 18, cardY + 16, LadsPalette.TEXT);
-            fontRendererObj.drawString("Running version: 1.8.9", cardX + 18, cardY + 34, LadsPalette.MUTED);
+            fontRendererObj.drawString("Running version: " + VersionSwitch.current(RUNNING), cardX + 18, cardY + 34, LadsPalette.MUTED);
         } else {
             fontRendererObj.drawString("Confirm Version Switch", cardX + 18, cardY + 16, LadsPalette.TEXT);
             fontRendererObj.drawString("Switch to Lads Client " + pendingVersion + "?", cardX + 18, cardY + 44, LadsPalette.TEXT);
             fontRendererObj.drawString("The game will close and relaunch in " + pendingVersion + ".", cardX + 18, cardY + 60, LadsPalette.MUTED);
+            if (error != null) fontRendererObj.drawString(error, cardX + 18, cardY + 82, LadsPalette.ACCENT);
         }
 
         super.drawScreen(mouseX, mouseY, partialTicks);
