@@ -143,6 +143,7 @@ public class ModuleManager {
         tp.addOption(new SliderOption("Size", 100, 50, 200, 25));
         tp.addOption(new ColorOption("Background", true, 0x80000000));
         tp.addOption(new DropdownOption("Color mode", 0, "Static", "Chroma", "Chroma Fast", "Fade"));
+        tp.addOption(new BoolOption("Show Icons", true));
         tp.addOption(new BoolOption("Show All", false));
         tp.addOption(new DropdownOption("Max Packs", 2, "1", "2", "3", "4", "5", "6", "7", "8"));
         register(tp, Module.Category.HUD);

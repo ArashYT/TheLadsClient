@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiChat;
+import net.minecraft.client.resources.ResourcePackRepository;
 import net.minecraft.entity.boss.BossStatus;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Items;
@@ -26,15 +27,17 @@ import net.minecraft.util.ChatComponentText;
 /**
  * QA only (1.7.0 HUD lane), run by CoreProbe in its QA world: the Hotbar Slots Armor HUD with a damaged helmet, no chestplate,
  * leggings and damaged boots; the Lads scoreboard in its own colours (a red team) with shadow; one boss bar with Boss Bar on;
- * 150 chat lines kept and scrolled past the old 100-line cap; Autohide hidden and half faded. Screenshots 170-*.
+ * 150 chat lines kept and scrolled past the old 100-line cap; the Pack module's icons (1.9.0); Autohide hidden and half faded. Screenshots 170-*.
  */
 final class Probe170Hud {
-    static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe170Hud::setup, Probe170Hud::hud, Probe170Hud::chat,
-        Probe170Hud::chatScrolled, Probe170Hud::chatShot, Probe170Hud::autohide, Probe170Hud::hidden, Probe170Hud::fading, Probe170Hud::restore);
+    static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe170Hud::setup, Probe170Hud::packs, Probe170Hud::packsAll,
+        Probe170Hud::packsPlain, Probe170Hud::packsFewer, Probe170Hud::packsEnd, Probe170Hud::hud, Probe170Hud::chat, Probe170Hud::chatScrolled,
+        Probe170Hud::chatShot, Probe170Hud::autohide, Probe170Hud::hidden, Probe170Hud::fading, Probe170Hud::restore);
     private static final String[] MODULES = {"ArmorHUD", "Scoreboard", "BossBar", "Autohide", "Chat"};
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<>();
     private static final Map<Module, Boolean> enabledWere = new LinkedHashMap<>();
     private static boolean started;
+    private static List<ResourcePackRepository.Entry> packsWere;
 
     private Probe170Hud() {}
 
@@ -101,6 +104,49 @@ final class Probe170Hud {
         return after(5);
     }
 
+    /** 1.9.0: the Pack module, on, lists the first pack with its icon (Show Icons is on by default); then every selected pack, then without icons. */
+    private static boolean packs(Minecraft mc) {
+        Module packs = Options189.module("TexturePacks");
+        enabledWere.put(packs, packs.isEnabled());
+        for (Option option : packs.getOptions()) optionsWere.put(option, option.save());
+        packs.getOptions().forEach(Option::reset);
+        packs.setEnabled(true);
+        check(((BoolOption) packs.getOption("Show Icons")).get(), "Pack: Show Icons is on by default");
+        return after(20);
+    }
+
+    private static boolean packsAll(Minecraft mc) {
+        screenshot(mc, "170-packs-default");
+        Module packs = Options189.module("TexturePacks");
+        ((BoolOption) packs.getOption("Show All")).set(true);
+        ((com.thelads.core.config.DropdownOption) packs.getOption("Max Packs")).setIndex(7);
+        return after(10);
+    }
+
+    private static boolean packsPlain(Minecraft mc) {
+        screenshot(mc, "170-packs-all");
+        ((BoolOption) Options189.module("TexturePacks").getOption("Show Icons")).set(false);
+        return after(10);
+    }
+
+    /** Then the pack list changes under the HUD (when the QA game has two packs of its own to choose from): down to two. */
+    private static boolean packsFewer(Minecraft mc) {
+        screenshot(mc, "170-packs-all-icons-off");
+        ((BoolOption) Options189.module("TexturePacks").getOption("Show Icons")).set(true);
+        ResourcePackRepository repository = mc.getResourcePackRepository();
+        packsWere = new java.util.ArrayList<>(repository.getRepositoryEntries());
+        if (packsWere.size() > 2) repository.setRepositories(packsWere.subList(0, 2));
+        return after(10);
+    }
+
+    private static boolean packsEnd(Minecraft mc) {
+        screenshot(mc, "170-packs-fewer");
+        mc.getResourcePackRepository().setRepositories(packsWere);
+        packsWere = null;
+        Options189.module("TexturePacks").setEnabled(false);
+        return after(5);
+    }
+
     private static boolean autohide(Minecraft mc) {
         Module autohide = Options189.module("Autohide");
         autohide.setEnabled(true);
@@ -137,6 +183,8 @@ final class Probe170Hud {
         enabledWere.forEach(Module::setEnabled);
         BossStatus.statusBarTime = 0;
         Minecraft mc = Minecraft.getMinecraft();
+        if (packsWere != null) mc.getResourcePackRepository().setRepositories(packsWere);
+        packsWere = null;
         if (mc.getIntegratedServer() == null || mc.thePlayer == null) return;
         for (String command : new String[] {"scoreboard objectives remove lads", "scoreboard teams remove qared"}) command(mc, command);
         onServer(mc, player -> Arrays.fill(player.inventory.armorInventory, null));

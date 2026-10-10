@@ -93,7 +93,7 @@ final class NativeImprovementsProbe {
             var selected = new ArrayList<>(repository.getSelectedIds());
             try {
                 repository.setSelected(List.of());
-                require(bridge.getActiveResourcePacks().equals(repository.getSelectedPacks().stream().map(net.minecraft.server.packs.repository.Pack::getId).toList()), "pack cache follows selection changes");
+                require(bridge.getActiveResourcePacks().isEmpty(), "pack cache follows selection changes: no pack of the player's left");
             } finally { repository.setSelected(selected); }
             require(bridge.getServerAddress().equals("Singleplayer"), "local connection HUD label");
             require(!ClientTools.portal(bridge.getDimensionId(), -1, -9).isBlank(), "dimension bridge supplies portal conversion");

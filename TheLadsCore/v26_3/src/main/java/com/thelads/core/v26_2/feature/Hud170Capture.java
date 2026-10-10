@@ -30,7 +30,8 @@ import org.slf4j.LoggerFactory;
  * world. hud170-hud: Hotbar Slots armour (damaged helmet, no chestplate, leggings, damaged boots), the scoreboard in its own
  * colours with a red team, one boss bar. hud170-chat-scrolled: 150 lines, scrolled 130 up. hud170-cap-1..3: the minimap under a
  * 30 FPS HUD cap. hud170-autohide-*: hidden and half faded, capped and not. hud170-voice-*: Simple Voice Chat's real state, then a
- * sample. Server-side changes (armour, scoreboard, team, boss bar) and every setting are put back.
+ * sample. hud170-packs-*: the Pack module's icons (1.9.0): the first pack, every pack, every pack without icons, two packs, none (Default). Server-side changes
+ * (armour, scoreboard, team, boss bar) and every setting are put back.
  */
 final class Hud170Capture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -45,6 +46,7 @@ final class Hud170Capture {
     private static String shot;
     private static boolean capturing, capWas;
     private static int limitWas;
+    private static java.util.Collection<String> packsWere;
     private static Object svcStates, svcOnboarded;
 
     private Hud170Capture() {}
@@ -183,6 +185,40 @@ final class Hud170Capture {
                             new VoiceMember("Alex", "ec561538-f3fd-461d-aff5-086b22154bce", false, true)));
                     at(800, "hud170-voice-sample");
                 }
+                case 10 -> {
+                    // 1.9.0: the Pack module, on, lists the first pack with its icon (Show Icons is on by default); then every selected pack, then without icons.
+                    VoiceChatIntegration.qa = null;
+                    Module packs = NativeQualityOfLife.module("TexturePacks");
+                    ENABLED.put(packs, packs.isEnabled());
+                    for (Option option : packs.getOptions()) OPTIONS.put(option, option.save().deepCopy());
+                    packs.getOptions().forEach(Option::reset);
+                    packs.setEnabled(true);
+                    check(((BoolOption) packs.getOption("Show Icons")).get(), "Pack: Show Icons is on by default");
+                    at(800, "hud170-packs-default");
+                }
+                case 11 -> {
+                    Module packs = NativeQualityOfLife.module("TexturePacks");
+                    ((BoolOption) packs.getOption("Show All")).set(true);
+                    ((com.thelads.core.config.DropdownOption) packs.getOption("Max Packs")).setIndex(7);
+                    at(600, "hud170-packs-all");
+                }
+                case 12 -> {
+                    ((BoolOption) NativeQualityOfLife.module("TexturePacks").getOption("Show Icons")).set(false);
+                    at(600, "hud170-packs-all-icons-off");
+                }
+                case 13 -> {
+                    // The selection changes under the HUD (no reload): two of the player's packs, then none (the HUD shows Default).
+                    ((BoolOption) NativeQualityOfLife.module("TexturePacks").getOption("Show Icons")).set(true);
+                    var repository = mc.getResourcePackRepository();
+                    packsWere = List.copyOf(repository.getSelectedIds());
+                    List<String> own = packsWere.stream().filter(id -> id.startsWith("file/")).toList();
+                    repository.setSelected(own.subList(0, Math.min(2, own.size()))); // none without LADS_VERIFY_RESOURCEPACKS
+                    at(600, "hud170-packs-fewer");
+                }
+                case 14 -> {
+                    mc.getResourcePackRepository().setSelected(List.of());
+                    at(600, "hud170-packs-none");
+                }
                 default -> finish();
             }
         } catch (Throwable failure) {
@@ -193,6 +229,7 @@ final class Hud170Capture {
 
     private static void finish() {
         step = 99;
+        if (packsWere != null) Minecraft.getInstance().getResourcePackRepository().setSelected(packsWere);
         VoiceChatIntegration.qa = null;
         restoreOnboarding();
         OPTIONS.forEach(Option::load);

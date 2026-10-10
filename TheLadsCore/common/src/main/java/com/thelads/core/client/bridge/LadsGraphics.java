@@ -94,6 +94,12 @@ public interface LadsGraphics {
     default void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) {}
 
     /**
+     * A resource pack's icon (its pack.png; the default pack's for a pack without one) as a size by size square. {@code pack} is a name
+     * from {@link LadsGameBridge#getActiveResourcePacks}. Where the version cannot draw it, a plain square keeps the layout.
+     */
+    default void drawPackIcon(String pack, int x, int y, int size) { fill(x, y, x + size, y + size, 0xFF555555); }
+
+    /**
      * HUD editor: this frame's game view (the world and the vanilla HUD, without the Lads HUD) scaled into the box.
      * False where no world is shown or the version cannot copy it; the editor then keeps its plain backdrop.
      */

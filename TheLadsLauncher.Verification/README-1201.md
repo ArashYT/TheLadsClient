@@ -90,6 +90,7 @@ and the run ends when it finishes (log: `Lads qa script END: N passed, M failed`
 | `look <yaw> <pitch>` | turns the player (client side) |
 | `module "ParticleBudget" off` | `on` / `off` / `toggle` a Lads module by name (case-insensitive) |
 | `option "Fullbright" "Gamma" 0.5` | sets a module option from JSON (`true`, `0.5`, `"text"`; a bare word is taken as a string) |
+| `packs vanilla,file/a.zip` | selects exactly these resource pack ids (comma separated, quote ids with spaces) without a reload and logs `Lads qa packs: [...]`; `packs` alone only logs the selected ones. The Pack HUD module follows the change |
 | `dump state` / `dump modules [filter]` / `dump all` | logs `Lads qa dump ...` lines: screen, FPS, window, FOV, position, health, gamemode, effects, time; every module's enabled flag, support kind and options |
 | `log text` | logs `Lads qa log: text` |
 | `ui open fps` (or `colors`, `mods`, `actions`), `ui module <name>`, `ui search <text>`, `ui click <control id>`, `ui ids [prefix]`, `ui key <glfw code>`, `ui type <text>`, `ui scroll <n>`, `ui scale 1` (or `2`) | drives the open Lads settings screen through its real input methods (`ui ids` logs the control ids on screen: `category:HUD`, `card:<module>`, `option:<name>`, `reset`, ...); `ui hud click <id>` and `ui hud ids` do the same in the HUD editor; `ui scale` switches the GUI scale (1 = the roomy layouts, 2 = the compact ones in the 944x501 QA window) |

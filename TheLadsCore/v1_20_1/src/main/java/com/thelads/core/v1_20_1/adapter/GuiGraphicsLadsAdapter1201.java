@@ -120,6 +120,16 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     }
 
     @Override
+    public void drawPackIcon(String pack, int x, int y, int size) {
+        fade(1);
+        try {
+            com.thelads.core.v1_20_1.gui.PackIcons1201.draw(guiGraphics, pack, x, y, size);
+        } finally {
+            endFade();
+        }
+    }
+
+    @Override
     public void drawBossBars(int x, int y, int max, boolean names, boolean preview) {
         try {
             var overlay = (BossBarAccessor1201) Minecraft.getInstance().gui.getBossOverlay();
