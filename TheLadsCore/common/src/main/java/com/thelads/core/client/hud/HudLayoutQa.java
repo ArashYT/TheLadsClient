@@ -68,7 +68,7 @@ public final class HudLayoutQa {
     /** Each client tick of the probe: starts the sequence, then steps it; true once it has ended. */
     public static boolean tick(Driver d) {
         try {
-            if (step < 0) { begin(d); step = -2; wait = 40; return false; }
+            if (step == -1) { begin(d); step = -2; wait = 40; return false; }
             if (wait > 0) { wait--; return false; }
             if (step == -2) { d.guiScale(3); step = 0; wait = 40; return false; } // once the window has its new size
             switch (step++) {
