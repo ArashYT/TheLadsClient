@@ -1269,33 +1269,49 @@ if (process != null && HasStarted(process))
 lock (logGate) { log?.Dispose(); log = null; }
 if (File.Exists(logPath)) File.Copy(logPath, Path.Combine(evidence, $"production-smoke-{scenario}.log"), overwrite: true);
 if (capabilities.Forge) CopyIfExists(gameLog, Path.Combine(evidence, $"latest-{scenario}.log"));
-// Catalog parity with 26.2, the 1.3.5 target: informational, or a failure with LADS_VERIFY_PARITY=1 (the release gate).
+// Catalog parity with 26.3 (or 26.2 reference if present): informational, or a failure with LADS_VERIFY_PARITY=1 (the release gate).
 // 1.8.9's first-release scope is deliberately smaller (artifacts\1.4.0\PLAN-1.4.0.md): there it is only reported.
 bool parityGate = Env("LADS_VERIFY_PARITY") == "1" && !capabilities.Forge;
 if (!expectCoreDisabled && process != null && HasStarted(process))
 {
     var parityLines = new List<string>();
-    if (capabilities.Forge)
-        parityLines.Add($"Lads catalog parity: report only on {version}, whose first-release scope is deliberately smaller than 26.2's; LADS_VERIFY_PARITY does not apply.");
-    try
+    string? referencePath = version == "26.3"
+        ? Path.Combine(directory, "lads-core-catalog.json")
+        : (new[] {
+            Path.Combine(verificationRoot, "26.3-title", "lads-core-catalog.json"),
+            Path.Combine(verificationRoot, "26.3", "lads-core-catalog.json"),
+            Path.Combine(verificationRoot, "26.2-title", "lads-core-catalog.json")
+        }).FirstOrDefault(File.Exists);
+
+    if (referencePath == null || !File.Exists(referencePath))
     {
-        var reference = CatalogSupport(Path.Combine(verificationRoot, "26.2-title", "lads-core-catalog.json"));
-        var current = CatalogSupport(Path.Combine(directory, "lads-core-catalog.json"));
-        var builtIn = reference.Where(module => module.Value.Support == "builtIn").Select(module => module.Key).ToList();
-        // Equivalent: built in, or an upstream mod this pack installs behind the module's Lads card.
-        var missing = builtIn.Where(name => !current.TryGetValue(name, out var here) || !(here.Support == "builtIn" || here.Support == "external" && here.Label == "Installed mod"))
-            .Select(name => current.TryGetValue(name, out var here) ? $"{name} ({here.Support}{(here.Support == "external" ? ": " + here.Label : "")})" : $"{name} (absent)").ToList();
-        parityLines.Add($"Lads catalog parity END: {builtIn.Count} checks, {missing.Count} missing");
-        if (missing.Count > 0)
-        {
-            parityLines.Add($"Lads catalog parity: built in on 26.2 but neither built in nor an installed external mod on {version}: {string.Join(", ", missing)}");
-            if (parityGate) failures.Add($"LADS_VERIFY_PARITY=1: {missing.Count} of {builtIn.Count} modules built in on 26.2 are missing on {version}.");
-        }
+        parityLines.Add($"Lads catalog parity: skipped on {version} (no 26.3 reference catalog found).");
     }
-    catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or KeyNotFoundException or NullReferenceException)
+    else
     {
-        parityLines.Add($"Lads catalog parity FAILED: {e.GetType().Name}: {e.Message}");
-        if (parityGate) failures.Add(parityLines[^1]);
+        string refVer = referencePath.Contains("26.3", StringComparison.Ordinal) ? "26.3" : "26.2";
+        if (capabilities.Forge)
+            parityLines.Add($"Lads catalog parity: report only on {version}, whose first-release scope is deliberately smaller than {refVer}'s; LADS_VERIFY_PARITY does not apply.");
+        try
+        {
+            var reference = CatalogSupport(referencePath);
+            var current = CatalogSupport(Path.Combine(directory, "lads-core-catalog.json"));
+            var builtIn = reference.Where(module => module.Value.Support == "builtIn").Select(module => module.Key).ToList();
+            // Equivalent: built in, or an upstream mod this pack installs behind the module's Lads card.
+            var missing = builtIn.Where(name => !current.TryGetValue(name, out var here) || !(here.Support == "builtIn" || here.Support == "external" && here.Label == "Installed mod"))
+                .Select(name => current.TryGetValue(name, out var here) ? $"{name} ({here.Support}{(here.Support == "external" ? ": " + here.Label : "")})" : $"{name} (absent)").ToList();
+            parityLines.Add($"Lads catalog parity END: {builtIn.Count} checks, {missing.Count} missing");
+            if (missing.Count > 0)
+            {
+                parityLines.Add($"Lads catalog parity: built in on {refVer} but neither built in nor an installed external mod on {version}: {string.Join(", ", missing)}");
+                if (parityGate) failures.Add($"LADS_VERIFY_PARITY=1: {missing.Count} of {builtIn.Count} modules built in on {refVer} are missing on {version}.");
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or KeyNotFoundException or NullReferenceException)
+        {
+            parityLines.Add($"Lads catalog parity FAILED: {e.GetType().Name}: {e.Message}");
+            if (parityGate) failures.Add(parityLines[^1]);
+        }
     }
     foreach (var line in parityLines) { Console.WriteLine(line); keyLines.Add(line); }
 }
