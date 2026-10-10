@@ -70,7 +70,7 @@ public final class CoreProbe {
         // doll, RaisedDollProbe189), =hudflicker (runs of frames with the HUD FPS cap off and on, Probe172HudFlicker), =perf (the 1.7.3
         // benchmark scenes in a fresh perf world, Probe173Perf), =cull (Entity Culling in a crowd behind a wall: views off and on, an
         // audited fast-motion run and uncapped frame times, Probe173Cull), =anim (swing while using items and damage tilt, Probe172Anim),
-        // =ui (the reset questions and Fullbright's slider, Probe172Ui), =title (the title screen at every GUI scale) or =leave (only the
+        // =ui (the reset questions and Fullbright's slider, Probe172Ui), =xhair (the Crosshair Tweaks page and editor previews), =title (the title screen at every GUI scale) or =leave (only the
         // final leave, the 1.7.0 freeze regression check);
         // -Dthelads.verifyChatHeads=true (ChatHeadsProbe189) and -Dthelads.verify189F3Fov=true (Probe170F3Fov).
         String only = System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY"));
@@ -141,6 +141,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe172Ui.STEPS);
+        } else if ("xhair".equals(only)) { // the Crosshair Tweaks settings page and drawing editor with their live previews (ProbeCrosshairPreview189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(ProbeCrosshairPreview189.STEPS);
         } else if ("ebe".equals(only)) { // built-in baked block entities: frames and frame times (BakedBlockEntitiesProbe189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady,
@@ -209,6 +213,7 @@ public final class CoreProbe {
         finished = true;
         HudProbe.stop();
         Probe172Ui.stop();
+        ProbeCrosshairPreview189.stop();
         Probe151.stop();
         Probe160.stop();
         ChatHeadsProbe189.stop(Minecraft.getMinecraft());
