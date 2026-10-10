@@ -47,10 +47,7 @@ public final class MinimapIntegration {
             if(lastEnabled==null||lastEnabled!=enabled){
                 map.getClass().getMethod("setActive",Class.forName("xaero.lib.client.config.ClientConfigManager"),boolean.class).invoke(map,manager,enabled);lastEnabled=enabled;
             }
-            if(mc.gui.screen() instanceof com.thelads.core.v26_2.gui.DraggableHudScreen26)return;
-            int[] saved=HudSettings.getInstance().getPosition("Minimap");
-            if(saved!=null)position(saved[0],saved[1]);
-            else{int[] size=size();position(Math.max(0,mc.getWindow().getGuiScaledWidth()-size[0]-5),44);}
+            // Where the map goes is the Lads HUD layout's (XaeroMinimapHudElement.placed): anchored, docked and scaled like the rest.
         }catch(ReflectiveOperationException failure){LoggerFactory.getLogger("TheLadsCore").warn("Xaero integration failed",failure);map=null;}
     }
     public static int[] size(){

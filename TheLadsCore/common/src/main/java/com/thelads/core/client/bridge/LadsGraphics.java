@@ -100,6 +100,12 @@ public interface LadsGraphics {
     /** Pixels the hotbar is lifted above the screen bottom (Raised, Hovering Hotbar); hotbar-attached elements follow it. */
     default int hotbarLift() { return 0; }
 
+    /** Vanilla's GUI scale factor (window pixels per GUI unit), or 0 where unknown (no separate Lads HUD scale then). */
+    default int guiScale() { return 0; }
+
+    /** One vanilla GUI unit in this graphics' units: 1, or the ratio of the two scales inside the Lads HUD's own scale (HudScale). */
+    default double hudUnit() { return 1; }
+
     default LadsGameBridge getGame() {
         return LadsGameBridge.get();
     }

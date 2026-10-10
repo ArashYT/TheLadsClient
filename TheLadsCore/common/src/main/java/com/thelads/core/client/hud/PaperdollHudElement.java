@@ -72,5 +72,7 @@ public class PaperdollHudElement extends HudElement {
         setPosition(displayX - (int) number("X Offset", 0), displayY - (int) number("Y Offset", 0));
     }
 
+    @Override public boolean usesSavedPosition() { return anchor() == 0; }
+
     @Override public boolean isAvailable() { return LadsGameBridge.get().hasPaperDollRenderer(); }
 }

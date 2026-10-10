@@ -123,13 +123,19 @@ public class ArmorHudElement extends HudElement {
     @Override
     public int getDisplayX(LadsGraphics g) {
         if (!optBool("Attach to hotbar", true)) return super.getDisplayX(g);
-        return slotsStyle() ? g.getScaledWidth() / 2 - 91 - 29 - 6 - getRenderWidth() : g.getScaledWidth() / 2 + 96;
+        HudGroupLayout.Rect hotbar = HudAnchors.hotbar(g);
+        return slotsStyle() ? hotbar.x() - (int) Math.round(35 * g.hudUnit()) - getRenderWidth() : hotbar.right() + 5;
     }
 
     @Override
     public int getDisplayY(LadsGraphics g) {
         if (!optBool("Attach to hotbar", true)) return super.getDisplayY(g);
-        return g.getScaledHeight() - getRenderHeight() - (slotsStyle() ? 0 : 4) - g.hotbarLift();
+        return HudAnchors.hotbar(g).bottom() - getRenderHeight() - (slotsStyle() ? 0 : 4);
+    }
+
+    @Override
+    public boolean usesSavedPosition() {
+        return !optBool("Attach to hotbar", true);
     }
 
     @Override

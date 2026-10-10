@@ -293,6 +293,11 @@ public class GuiLadsAdapter implements LadsGraphics {
     }
 
     @Override
+    public int guiScale() {
+        return resolution().getScaleFactor();
+    }
+
+    @Override
     public void drawBossBars(int x, int y, int max, boolean names, boolean preview) {
         Minecraft mc = Minecraft.getMinecraft();
         boolean hasBoss = net.minecraft.entity.boss.BossStatus.bossName != null && net.minecraft.entity.boss.BossStatus.statusBarTime > 0;

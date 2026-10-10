@@ -1,10 +1,12 @@
 package com.thelads.core.client.gui;
 
 import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.client.hud.HudAnchors;
 import com.thelads.core.client.hud.HudElement;
 import com.thelads.core.client.hud.HudGroupLayout;
 import com.thelads.core.client.hud.HudGroupLayout.Rect;
 import com.thelads.core.client.hud.HudManager;
+import com.thelads.core.client.hud.HudScale;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.HudSettings;
 import com.thelads.core.config.ModuleSupport;
@@ -22,8 +24,10 @@ import java.util.Set;
 
 /**
  * The HUD editor: the live game in a framed, scaled-down preview, with a list of HUD elements beside it and a toolbar above.
- * Element bounds, drags, snapping, guides and groups are in game GUI coordinates; the preview shows that whole viewport at one
- * scale, so a HUD dropped in the preview is exactly where it draws in game. Mouse input arrives in screen coordinates.
+ * Element bounds, drags, snapping, guides and groups are in the Lads HUD's GUI coordinates (its own GUI scale, HudScale); the
+ * preview shows that whole viewport at one scale, so a HUD dropped in the preview is exactly where it draws in game. Mouse input
+ * arrives in screen coordinates. A drop anchors what moved (HudAnchors): to the hotbar beside it, to a HUD it docks against,
+ * or to the nearest screen edge, so the layout keeps its shape at other GUI scales and window sizes.
  */
 public class DraggableHudScreen {
     public record Control(String id,String label,Rect bounds,boolean enabled) {}
@@ -49,6 +53,10 @@ public class DraggableHudScreen {
     private boolean dragMoved,editingSearch;
     private double downX,downY,marqueeX,marqueeY;
     private int viewportWidth,viewportHeight,focusedControl=-1,listScroll,maxListScroll;
+    /** The Lads HUD's viewport (its own GUI scale) and the vanilla hotbar's box in it; the toolbar and list use the screen's. */
+    private int hudWidth,hudHeight,vanillaScale;
+    private Rect hotbar=new Rect(0,0,0,0);
+    private LadsGraphics hud;
     /** The preview frame on screen and its scale: one game GUI pixel is {@code scale} screen pixels. */
     private Rect preview=new Rect(0,0,0,0),panel=new Rect(0,0,0,0),list=new Rect(0,0,0,0);
     private double scale=1;
@@ -78,6 +86,8 @@ public class DraggableHudScreen {
     /** Names in the element list, top to bottom (including rows scrolled out of view). */
     public List<String> listedNames(){return listed().stream().map(HudElement::getModuleName).toList();}
     public Rect previewBounds(){return preview;}
+    /** The vanilla hotbar's box in the HUD's coordinates (a snap target). */
+    public Rect hotbarBounds(){return hotbar;}
     public double previewScale(){return scale;}
     public boolean isShowingAll(){return showAll;}
     public boolean isDragging(){return !dragStart.isEmpty();}
@@ -98,17 +108,22 @@ public class DraggableHudScreen {
         int mouseX=modal?-100000:pointerX,mouseY=modal?-100000:pointerY;
         finishHiddenDrag();
         int width=graphics.getScaledWidth(),height=graphics.getScaledHeight();
-        if(viewportWidth>0&&(width!=viewportWidth||height!=viewportHeight)){finishDrag(false);marquee=false;}
-        viewportWidth=width;viewportHeight=height;
+        hud=HudScale.units(graphics);vanillaScale=graphics.guiScale();
+        int hw=hud.getScaledWidth(),hh=hud.getScaledHeight();
+        if(viewportWidth>0&&(width!=viewportWidth||height!=viewportHeight||hw!=hudWidth||hh!=hudHeight)){finishDrag(false);marquee=false;}
+        viewportWidth=width;viewportHeight=height;hudWidth=hw;hudHeight=hh;hotbar=HudAnchors.hotbar(hud);
         layout();
         measuredBounds.clear();renderedBounds.clear();controls.clear();rows.clear();
         graphics.fill(0,0,width,height,LadsPalette.BACKGROUND);
         graphics.fill(0,0,width,2,LadsPalette.ACCENT);
         List<HudElement> elements=HudManager.getInstance().getElements();
         // Hidden members are measured too: enabling a grouped HUD later must not reveal a split group.
-        for(var element:elements)if(element.isAvailable())measuredBounds.put(element,element.measureBounds(graphics,true));
+        for(var element:elements)if(element.isAvailable())measuredBounds.put(element,element.measureBounds(hud,true));
+        // Laid out as in game (HudManager): saved anchors, blocks kept on screen, and positions saved before 1.9.0 anchored where they show.
+        HudAnchors.place(measuredBounds,hudWidth,hudHeight,hotbar);
         HudGroupLayout.matchDockedWidths(measuredBounds);
-        clampGroups(elements);
+        HudAnchors.clamp(measuredBounds,hudWidth,hudHeight);
+        HudAnchors.adopt(measuredBounds,HudElement::isEnabled,hud);
         drawToolbar(graphics,mouseX,mouseY);
         drawPanel(graphics,mouseX,mouseY);
         drawPreview(graphics,mouseX,mouseY);
@@ -125,8 +140,8 @@ public class DraggableHudScreen {
         int side=viewportWidth>=560?150:viewportWidth>=400?132:112;
         panel=new Rect(GAP,TOP,side,Math.max(40,viewportHeight-TOP-STATUS));
         int ax=panel.right()+GAP+3,ay=TOP+3,aw=Math.max(16,viewportWidth-ax-GAP-3),ah=Math.max(16,viewportHeight-TOP-STATUS-6);
-        scale=Math.min(aw/(double)Math.max(1,viewportWidth),ah/(double)Math.max(1,viewportHeight));
-        int pw=(int)Math.round(viewportWidth*scale),ph=(int)Math.round(viewportHeight*scale);
+        scale=Math.min(aw/(double)Math.max(1,hudWidth),ah/(double)Math.max(1,hudHeight));
+        int pw=(int)Math.round(hudWidth*scale),ph=(int)Math.round(hudHeight*scale);
         preview=new Rect(ax+(aw-pw)/2,ay+(ah-ph)/2,pw,ph);
     }
 
@@ -138,8 +153,10 @@ public class DraggableHudScreen {
             g.fill(p.x(),p.y(),p.right(),p.bottom(),0xFF14101A);
             g.drawGameView(p.x(),p.y(),p.width(),p.height());
             if(showGrid&&isDragging()){
-                for(int x=0;x<viewportWidth;x+=GRID){int sx=(int)Math.round(screenX(x));g.fill(sx,p.y(),sx+1,p.bottom(),0x15FFFFFF);}
-                for(int y=0;y<viewportHeight;y+=GRID){int sy=(int)Math.round(screenY(y));g.fill(p.x(),sy,p.right(),sy+1,0x15FFFFFF);}
+                for(int x=0;x<hudWidth;x+=GRID){int sx=(int)Math.round(screenX(x));g.fill(sx,p.y(),sx+1,p.bottom(),0x15FFFFFF);}
+                for(int y=0;y<hudHeight;y+=GRID){int sy=(int)Math.round(screenY(y));g.fill(p.x(),sy,p.right(),sy+1,0x15FFFFFF);}
+                // The hotbar is a snap target too: its box, so HUDs beside or above it line up with it.
+                border(g,toScreen(hotbar),0x88FFFFFF);
             }
             // Live HUD content, drawn in game coordinates under one translate and scale.
             g.pushPose();
@@ -148,7 +165,7 @@ public class DraggableHudScreen {
                 for(var element:paintOrder()){
                     if(!isVisible(element))continue;
                     Rect bounds=measuredBounds.get(element);if(bounds==null)continue;
-                    element.renderAt(g,bounds.x(),bounds.y(),true);
+                    element.renderAt(hud,bounds.x(),bounds.y(),true);
                     renderedBounds.put(element,bounds);
                 }
             }finally{g.popPose();}
@@ -211,7 +228,7 @@ public class DraggableHudScreen {
         drawControl(g,new Control("previews","Show disabled",new Rect(x,y,w,16),true),mx,my,controls,showAll,false);
         y+=21;
         int footer=panel.bottom()-21;
-        list=new Rect(x,y,w,Math.max(ROW,footer-4-y));
+        list=new Rect(x,y,w,Math.max(ROW,footer-24-y));
         maxListScroll=Math.max(0,listed.size()*ROW-list.height());
         if(reveal!=null){int index=listed.indexOf(reveal);reveal=null;
             if(index>=0){int top=index*ROW;if(top<listScroll)listScroll=top;else if(top+ROW>listScroll+list.height())listScroll=top+ROW-list.height();}}
@@ -231,7 +248,10 @@ public class DraggableHudScreen {
             g.fill(list.right()-2,list.y(),list.right(),list.bottom(),LadsPalette.CARD);
             g.fill(list.right()-2,ty,list.right(),ty+thumb,LadsPalette.BORDER);
         }
-        int half=(w-4)/2;
+        int half=(w-4)/2,chosen=HudSettings.getInstance().getHudScale();
+        // The Lads HUD's own GUI scale: Auto follows vanilla's (shown in brackets), or a fixed one (HudScale).
+        String scaleLabel="HUD scale: "+(chosen==0?"Auto"+(vanillaScale>0?" ("+HudScale.of(g)+")":""):String.valueOf(HudScale.of(g)));
+        drawControl(g,new Control("hudscale",scaleLabel,new Rect(x,footer-20,w,16),vanillaScale>0),mx,my,controls,chosen!=0,false);
         drawControl(g,new Control("colors","Colors",new Rect(x,footer,half,16),true),mx,my,controls,false,false);
         drawControl(g,new Control("reset","Reset",new Rect(x+half+4,footer,w-half-4,16),true),mx,my,controls,false,false);
     }
@@ -260,16 +280,6 @@ public class DraggableHudScreen {
         rows.add(new Row(element,r,toggle,gear));
     }
 
-    private void clampGroups(List<HudElement> elements){
-        Set<HudElement> visited=new LinkedHashSet<>();
-        for(var element:elements){
-            if(!measuredBounds.containsKey(element)||!visited.add(element))continue;
-            Set<HudElement> members=groupElements(element);members.retainAll(measuredBounds.keySet());visited.addAll(members);
-            Rect union=HudGroupLayout.union(members.stream().map(measuredBounds::get).toList());
-            var delta=HudGroupLayout.clampDelta(union,0,0,viewportWidth,viewportHeight);
-            for(var member:members)measuredBounds.put(member,HudGroupLayout.translate(measuredBounds.get(member),delta));
-        }
-    }
     private void drawGroupOutlines(LadsGraphics graphics){
         Set<Integer> drawn=new LinkedHashSet<>();
         for(var element:selected){int group=HudSettings.getInstance().getGroupIndex(element.getModuleName());if(group<0||!drawn.add(group))continue;
@@ -305,8 +315,8 @@ public class DraggableHudScreen {
     private void center(boolean horizontal,boolean vertical){
         if(selected.isEmpty()||selected.stream().anyMatch(this::isLocked))return;
         Rect union=HudGroupLayout.union(selected.stream().filter(measuredBounds::containsKey).map(measuredBounds::get).toList());
-        int dx=horizontal?(viewportWidth-union.width())/2-union.x():0;
-        int dy=vertical?(viewportHeight-union.height())/2-union.y():0;
+        int dx=horizontal?(hudWidth-union.width())/2-union.x():0;
+        int dy=vertical?(hudHeight-union.height())/2-union.y():0;
         startDrag(0,0);boolean snap=showGrid;showGrid=false;dragTo(dx,dy);showGrid=snap;finishDrag(false);
     }
     private String selectionStatus(){
@@ -397,16 +407,25 @@ public class DraggableHudScreen {
     private void dragTo(double x,double y){
         Rect union=HudGroupLayout.union(dragStart.values());int dx=(int)Math.round(x-downX),dy=(int)Math.round(y-downY);
         if(!dragMoved&&dx==0&&dy==0)return;
-        var targets=renderedBounds.entrySet().stream().filter(entry->!dragStart.containsKey(entry.getKey())&&attracts(entry.getKey())).map(Map.Entry::getValue).toList();
-        var delta=showGrid?HudGroupLayout.snapDelta(union,dx,dy,GRID,SNAP,targets,viewportWidth,viewportHeight):HudGroupLayout.clampDelta(union,dx,dy,viewportWidth,viewportHeight);
-        Rect movedSelection=HudGroupLayout.translate(union,delta);int cx=movedSelection.x()+movedSelection.width()/2,cy=movedSelection.y()+movedSelection.height()/2;
-        guideX=cx==viewportWidth/2||targets.stream().anyMatch(target->target.x()+target.width()/2==cx)?cx:null;
-        guideY=cy==viewportHeight/2||targets.stream().anyMatch(target->target.y()+target.height()/2==cy)?cy:null;
+        var targets=new ArrayList<Rect>();targets.add(hotbar);
+        for(var entry:renderedBounds.entrySet())if(!dragStart.containsKey(entry.getKey())&&attracts(entry.getKey()))targets.add(entry.getValue());
+        var delta=showGrid?HudGroupLayout.snapDelta(union,dx,dy,GRID,SNAP,targets,hudWidth,hudHeight):HudGroupLayout.clampDelta(union,dx,dy,hudWidth,hudHeight);
+        Rect movedSelection=HudGroupLayout.translate(union,delta);
+        guideX=guide(movedSelection.x(),movedSelection.width(),hudWidth,targets,true);
+        guideY=guide(movedSelection.y(),movedSelection.height(),hudHeight,targets,false);
         if(!dragMoved){
             if(delta.x()==0&&delta.y()==0)return;
             dragMoved=true;for(var element:dragStart.keySet())element.beginPositionEdit();
         }
         for(var entry:dragStart.entrySet()){Rect moved=HudGroupLayout.translate(entry.getValue(),delta);entry.getKey().setDisplayPosition(moved.x(),moved.y());measuredBounds.put(entry.getKey(),moved);if(renderedBounds.containsKey(entry.getKey()))renderedBounds.put(entry.getKey(),moved);}
+    }
+    /** The line the moved selection lines up on along one axis: a shared edge or centre with a snap target, or the screen's centre. */
+    private static Integer guide(int start,int size,int screen,List<Rect> targets,boolean horizontal){
+        int center=start+size/2;
+        if(center==screen/2)return center;
+        for(Rect target:targets){int p=horizontal?target.x():target.y(),n=horizontal?target.width():target.height();
+            for(int line:new int[]{p,p+n/2,p+n})if(line==start||line==center||line==start+size)return line;}
+        return null;
     }
     public boolean mouseReleased(double x,double y,int button){return mouseReleased(x,y,button,0);}
     /** Shift held at the drop (modifier bit 1) groups the dropped HUDs with the HUDs they now touch; a plain drop never groups. */
@@ -458,14 +477,19 @@ public class DraggableHudScreen {
                 if(selected.stream().noneMatch(this::isLocked))stackSelection();
                 // Capture displayed origins now, including auto-anchored HUDs, so resizing before the first drag cannot change the group offsets.
                 for(var element:selected){Rect bounds=measuredBounds.get(element);if(bounds==null)continue;element.beginPositionEdit();try{element.setDisplayPosition(bounds.x(),bounds.y());HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());}finally{element.endPositionEdit();}}
-                saveConfig.run();notice=selected.stream().anyMatch(this::isLocked)?"Group created. Unlock its position to move together.":"Group created. Drag any member to move together.";
+                anchorAround(selected);saveConfig.run();notice=selected.stream().anyMatch(this::isLocked)?"Group created. Unlock its position to move together.":"Group created. Drag any member to move together.";
             }}
             // Re-stacks one existing group (e.g. after a member grew taller) without changing membership; Group joins HUDs.
-            case "stack"->{if(selected.size()>=2&&selected.stream().noneMatch(this::isLocked)){stackSelection();savePositions(selected);saveConfig.run();}}
+            case "stack"->{if(selected.size()>=2&&selected.stream().noneMatch(this::isLocked)){stackSelection();savePositions(selected);anchorAround(selected);saveConfig.run();}}
             case "toggle"->{var modules=selected.stream().filter(DraggableHudScreen::canToggle).toList();boolean enabled=modules.stream().anyMatch(element->!element.isEnabled());for(var element:modules)setEnabled(element,enabled);saveConfig.run();}
             case "ungroup"->{HudSettings.getInstance().ungroup(selectedNames());saveConfig.run();notice="Ungrouped. Each HUD can now be selected separately.";selected.clear();}
             case "lock","unlock"->{for(String name:selectedNames())HudSettings.getInstance().setLocked(name,id.equals("lock"));saveConfig.run();notice=id.equals("lock")?"Position locked. Select this HUD and use Unlock to move it.":"Position unlocked. Drag to move.";}
             case "snap"->showGrid=!showGrid;
+            case "hudscale"->{if(vanillaScale>0){
+                // Auto, then 1, 2, ... up to what the window allows, then Auto again.
+                int next=HudSettings.getInstance().getHudScale()+1;
+                HudSettings.getInstance().setHudScale(next>HudScale.max(viewportWidth*vanillaScale,viewportHeight*vanillaScale)?0:next);
+                selected.clear();saveConfig.run();}}
             case "previews"->{showAll=!showAll;listScroll=0;finishHiddenDrag();selected.removeIf(element->!isVisible(element)&&HudSettings.getInstance().getGroupIndex(element.getModuleName())<0);renderedBounds.clear();rows.clear();}
             case "search"->editingSearch=true;
             case "colors"->colorPicker.openGlobal();
@@ -485,7 +509,7 @@ public class DraggableHudScreen {
     private void stackSelection(){
         // Switched-off members are not drawn in game, so they neither reserve a row nor set the shared width.
         var bounds=new LinkedHashMap<HudElement,Rect>();for(var element:selected)if(element.isEnabled()&&measuredBounds.containsKey(element))bounds.put(element,measuredBounds.get(element));
-        var layout=HudGroupLayout.centeredStack(bounds,viewportWidth,viewportHeight);
+        var layout=HudGroupLayout.centeredStack(bounds,hudWidth,hudHeight);
         for(var entry:layout.entrySet()){
             var element=entry.getKey();Rect position=entry.getValue();element.beginPositionEdit();
             try{element.setDisplayPosition(position.x(),position.y());}finally{element.endPositionEdit();}
@@ -560,7 +584,28 @@ public class DraggableHudScreen {
             if(names.size()>members.size()){HudSettings.getInstance().addGroup(names);notice="Grouped: "+String.join(", ",names);}
             else notice="Nothing touching to group with. Drop against another HUD's edge while holding Shift.";
         }
-        try{for(var element:members)if(element.getModuleName()!=null)HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());saveConfig.run();}
+        try{for(var element:members)if(element.getModuleName()!=null)HudSettings.getInstance().setPosition(element.getModuleName(),element.getX(),element.getY());anchorAround(members);saveConfig.run();}
         finally{for(var element:members)element.endPositionEdit();}
+    }
+    /**
+     * Anchors what moved where it shows now (HudAnchors.anchor), with what was docked to it and what it now docks against: those
+     * get a saved position here if they had none, so the stack holds together in game.
+     */
+    private void anchorAround(Collection<HudElement> moved){
+        var names=new LinkedHashSet<String>();for(var element:moved)names.add(element.getModuleName());
+        var affected=new LinkedHashSet<HudElement>(moved);
+        for(var entry:measuredBounds.entrySet()){
+            var other=entry.getKey();
+            if(affected.contains(other)||other.getModuleName()==null||!isVisible(other))continue;
+            var anchor=HudSettings.getInstance().getAnchor(other.getModuleName());
+            boolean touches=moved.stream().map(measuredBounds::get).anyMatch(box->box!=null&&HudAnchors.touching(box,entry.getValue()));
+            if(!(anchor!=null&&names.contains(anchor.to()))&&!touches)continue;
+            if(HudSettings.getInstance().getPosition(other.getModuleName())==null&&other.usesSavedPosition()){
+                Rect bounds=entry.getValue();other.beginPositionEdit();
+                try{other.setDisplayPosition(bounds.x(),bounds.y());HudSettings.getInstance().setPosition(other.getModuleName(),other.getX(),other.getY());}finally{other.endPositionEdit();}
+            }
+            affected.add(other);
+        }
+        HudAnchors.anchor(affected,measuredBounds,this::attracts,hud);
     }
 }

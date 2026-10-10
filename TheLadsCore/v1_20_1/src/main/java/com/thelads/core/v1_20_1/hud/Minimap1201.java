@@ -1,7 +1,6 @@
 package com.thelads.core.v1_20_1.hud;
 
 import com.thelads.core.config.ActionOption;
-import com.thelads.core.config.HudSettings;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import java.util.function.Function;
@@ -58,13 +57,7 @@ public final class Minimap1201 {
                 map.getClass().getMethod("setActive", Class.forName("xaero.lib.client.config.ClientConfigManager"), boolean.class).invoke(map, manager, enabled);
                 lastEnabled = enabled;
             }
-            if (mc.screen instanceof com.thelads.core.v1_20_1.gui.DraggableHudScreen1201) return;
-            int[] saved = HudSettings.getInstance().getPosition("Minimap");
-            if (saved != null) position(saved[0], saved[1]);
-            else {
-                int[] size = size();
-                position(Math.max(0, mc.getWindow().getGuiScaledWidth() - size[0] - 5), 44);
-            }
+            // Where the map goes is the Lads HUD layout's (XaeroMinimapHudElement.placed): anchored, docked and scaled like the rest.
         } catch (ReflectiveOperationException failure) {
             LoggerFactory.getLogger("TheLadsCore").warn("Xaero integration failed", failure);
             map = null;

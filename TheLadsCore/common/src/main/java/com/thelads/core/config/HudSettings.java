@@ -13,7 +13,7 @@ import java.util.LinkedHashSet;
  * Global, client-side HUD preferences shared by every HUD element:
  *  - globalColor: the colour used by any HUD module set to "Global".
  *  - textShadow:  whether HUD text is drawn with a shadow.
- *  - positions:   saved x/y per HUD element (keyed by module name).
+ *  - positions:   saved x/y per HUD element (keyed by module name), and the anchor each one keeps across GUI scales.
  *
  * Lives in the config package and holds no client/render imports so it can be
  * serialized by ConfigManager without dragging in client-only classes.
@@ -27,6 +27,7 @@ public class HudSettings {
     private boolean backgrounds = true;
     private final List<Integer> favoriteColors = new ArrayList<>();
     private boolean softShadow = true;
+    private int hudScale = 0; // the Lads HUD's own GUI scale; 0 follows vanilla's (1.9.0)
     private boolean hudFpsCapEnabled = false; // the HUD redraws every frame unless the player opts in to a cap
     private int hudFpsLimit = 60; // 60 by default; 0 means Unlimited
     public static final int[] HUD_FPS_LEVELS = { 25, 30, 60, 75, 120, 144, 165, 180, 240, 0 };
@@ -53,12 +54,16 @@ public class HudSettings {
         int next = Math.max(0, Math.min(HUD_FPS_LEVELS.length - 1, currentIdx + direction));
         return HUD_FPS_LEVELS[next];
     }
+    /** The Lads HUD's GUI scale: 0 (Auto) follows vanilla's GUI scale, 1 and up is fixed (HudScale caps it at the window size). */
+    public int getHudScale() { return hudScale; }
+    public void setHudScale(int scale) { hudScale = Math.max(0, Math.min(16, scale)); }
     public boolean isSoftShadow() { return softShadow; }
     public void setSoftShadow(boolean value) { softShadow = value; }
     public boolean isBackgrounds() { return backgrounds; }
     public void setBackgrounds(boolean value) { backgrounds = value; }
     public List<Integer> getFavoriteColors() { return favoriteColors; }
     private final Map<String, int[]> positions = new HashMap<>();
+    private final Map<String, Anchor> anchors = new HashMap<>();
     private final List<Integer> fadePlaylist = new ArrayList<>();
     private final Set<String> locked = new HashSet<>();          // locked element names
     private final List<Set<String>> groups = new ArrayList<>();  // groups of element names
@@ -99,17 +104,47 @@ public class HudSettings {
     public boolean isTextShadow() { return textShadow; }
     public void setTextShadow(boolean textShadow) { this.textShadow = textShadow; }
 
-    public void clearPositions() { positions.clear(); groups.clear(); locked.clear(); }
+    public void clearPositions() { positions.clear(); anchors.clear(); groups.clear(); locked.clear(); }
 
     public Map<String, int[]> getPositions() { return positions; }
 
+    /** A position saved without an anchor; the next layout anchors it where it shows (HudAnchors). */
     public void setPosition(String name, int x, int y) {
         positions.put(name, new int[] { x, y });
+        anchors.remove(name);
     }
 
     public int[] getPosition(String name) {
         return positions.get(name);
     }
+
+    /**
+     * Where a saved HUD sits when the GUI scale, the window or a neighbour changes (HudAnchors, 1.9.0): {@code to} is null for the
+     * screen, {@link #HOTBAR} for the vanilla hotbar, or the HUD it is docked against; per axis a point of the HUD keeps an offset
+     * from a point of that box. It belongs to the saved position (x, y) it was made for, so a position changed without it is
+     * anchored again where it shows.
+     */
+    public record Anchor(int x, int y, String to, Axis h, Axis v) {}
+    /**
+     * One axis of an anchor: the HUD's point at pin/2 of its size sits off pixels from the box's point at ref/2 of its size
+     * (0 start, 1 centre, 2 end). room is the docked-to HUD's size when it was saved: it keeps at least that much room.
+     */
+    public record Axis(int ref, int pin, int off, int room) {}
+    public static final String HOTBAR = "#hotbar";
+
+    /** The anchor of a saved position, or null (none saved, or saved for another position). */
+    public Anchor getAnchor(String name) {
+        Anchor anchor = anchors.get(name);
+        int[] at = positions.get(name);
+        return anchor != null && at != null && at.length >= 2 && at[0] == anchor.x() && at[1] == anchor.y() ? anchor : null;
+    }
+
+    public void setAnchor(String name, Anchor anchor) {
+        if (!validName(name)) return;
+        if (anchor == null) anchors.remove(name); else anchors.put(name, anchor);
+    }
+
+    public Map<String, Anchor> getAnchors() { return anchors; }
 
     // --- Custom Fade colour playlist ---
 
