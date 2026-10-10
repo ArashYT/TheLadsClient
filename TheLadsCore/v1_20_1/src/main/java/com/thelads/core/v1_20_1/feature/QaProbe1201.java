@@ -302,6 +302,11 @@ public final class QaProbe1201 {
             case "option" -> option(arg(s, 1), arg(s, 2), rest(s, 3));
             case "dump" -> dump(mc, s.length > 1 ? s[1].toLowerCase(Locale.ROOT) : "state", s.length > 2 ? s[2] : null);
             case "reload" -> { reloadsLeft = s.length > 1 ? Integer.parseInt(s[1]) : 1; routine = QaProbe1201::reloadStep; routineStep = s; } // F3+T, N times back to back
+            case "packs" -> { // select exactly these resource pack ids ("vanilla,file/a.zip") without a reload, or just list the selected ones
+                var repository = mc.getResourcePackRepository();
+                if (s.length > 1) repository.setSelected(java.util.Arrays.asList(arg(s, 1).split(",")));
+                LOGGER.info("Lads qa packs: {}", repository.getSelectedIds());
+            }
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
             case "quit" -> {
                 LOGGER.info("Lads qa quit requested");

@@ -925,14 +925,15 @@ try
         : new List<string>();
     qaLines.AddRange(qaForced);
     // LADS_VERIFY_RESOURCEPACKS=a.zip,b.zip: those packs copied into the sandbox and enabled (e.g. Fresh Animations for the embedded EMF/ETF).
+    // 1.8.9 lists plain file names; the Fabric versions list pack ids.
     if (Env("LADS_VERIFY_RESOURCEPACKS") is { } packs)
     {
-        var enabled = new List<string> { "\"vanilla\"", "\"fabric\"" };
+        var enabled = capabilities.Forge ? new List<string>() : new List<string> { "\"vanilla\"", "\"fabric\"" };
         foreach (var pack in packs.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             Directory.CreateDirectory(Path.Combine(directory, "resourcepacks"));
             File.Copy(pack, Path.Combine(directory, "resourcepacks", Path.GetFileName(pack)), overwrite: true);
-            enabled.Add("\"file/" + Path.GetFileName(pack) + "\"");
+            enabled.Add("\"" + (capabilities.Forge ? "" : "file/") + Path.GetFileName(pack) + "\"");
         }
         qaLines.RemoveAll(l => l.StartsWith("resourcePacks:", StringComparison.Ordinal));
         qaLines.Add("resourcePacks:[" + string.Join(",", enabled) + "]");

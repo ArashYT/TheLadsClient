@@ -30,7 +30,8 @@ import org.slf4j.LoggerFactory;
  * world. hud170-hud: Hotbar Slots armour (damaged helmet, no chestplate, leggings, damaged boots), the scoreboard in its own
  * colours with a red team, one boss bar. hud170-chat-scrolled: 150 lines, scrolled 130 up. hud170-cap-1..3: the minimap under a
  * 30 FPS HUD cap. hud170-autohide-*: hidden and half faded, capped and not. hud170-voice-*: Simple Voice Chat's real state, then a
- * sample. Server-side changes (armour, scoreboard, team, boss bar) and every setting are put back.
+ * sample. hud170-packs-*: the Pack module's icons (1.9.0): the first pack, the first eight, those without icons, the game's own packs, one of them. Server-side changes
+ * (armour, scoreboard, team, boss bar) and every setting are put back.
  */
 final class Hud170Capture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -45,6 +46,8 @@ final class Hud170Capture {
     private static String shot;
     private static boolean capturing, capWas;
     private static int limitWas;
+    private static LadsGameBridge bridgeWas;
+    private static List<String> userPacks = List.of();
     private static Object svcStates, svcOnboarded;
 
     private Hud170Capture() {}
@@ -183,6 +186,43 @@ final class Hud170Capture {
                             new VoiceMember("Alex", "ec561538-f3fd-461d-aff5-086b22154bce", false, true)));
                     at(800, "hud170-voice-sample");
                 }
+                case 10 -> {
+                    // 1.9.0: the Pack module, on, lists the first pack with its icon (Show Icons is on by default); then every selected pack, then without icons.
+                    VoiceChatIntegration.qa = null;
+                    Module packs = NativeQualityOfLife.module("TexturePacks");
+                    ENABLED.put(packs, packs.isEnabled());
+                    for (Option option : packs.getOptions()) OPTIONS.put(option, option.save().deepCopy());
+                    packs.getOptions().forEach(Option::reset);
+                    packs.setEnabled(true);
+                    check(((BoolOption) packs.getOption("Show Icons")).get(), "Pack: Show Icons is on by default");
+                    at(800, "hud170-packs-default");
+                }
+                case 11 -> {
+                    Module packs = NativeQualityOfLife.module("TexturePacks");
+                    ((BoolOption) packs.getOption("Show All")).set(true);
+                    ((com.thelads.core.config.DropdownOption) packs.getOption("Max Packs")).setIndex(7);
+                    at(600, "hud170-packs-all");
+                }
+                case 12 -> {
+                    ((BoolOption) NativeQualityOfLife.module("TexturePacks").getOption("Show Icons")).set(false);
+                    at(600, "hud170-packs-all-icons-off");
+                }
+                case 13 -> {
+                    // The game's list has every mod's pack before the player's own (past the HUD's eight), so the HUD is handed vanilla and the selected
+                    // packs from the game's resourcepacks folder, then one of them: the icons of the real packs, and a list that changes.
+                    ((BoolOption) NativeQualityOfLife.module("TexturePacks").getOption("Show Icons")).set(true);
+                    bridgeWas = LadsGameBridge.get();
+                    userPacks = mc.getResourcePackRepository().getSelectedIds().stream().filter(id -> id.startsWith("file/")).toList();
+                    check(!userPacks.isEmpty(), "Pack: the QA game has resource packs of its own selected " + userPacks);
+                    List<String> own = new ArrayList<>(List.of("vanilla"));
+                    own.addAll(userPacks);
+                    LadsGameBridge.set(listing(bridgeWas, own));
+                    at(600, "hud170-packs-own");
+                }
+                case 14 -> {
+                    LadsGameBridge.set(listing(bridgeWas, List.of("vanilla", userPacks.get(0))));
+                    at(600, "hud170-packs-fewer");
+                }
                 default -> finish();
             }
         } catch (Throwable failure) {
@@ -193,6 +233,7 @@ final class Hud170Capture {
 
     private static void finish() {
         step = 99;
+        if (bridgeWas != null) LadsGameBridge.set(bridgeWas);
         VoiceChatIntegration.qa = null;
         restoreOnboarding();
         OPTIONS.forEach(Option::load);
@@ -218,6 +259,15 @@ final class Hud170Capture {
             var player = server.getPlayerList().getPlayer(id);
             if (player != null) for (int i = 0; i < ARMOUR.length; i++) player.setItemSlot(ARMOUR[i], pieces[i]);
         });
+    }
+
+    /** The game bridge, but its resource pack list is this one. */
+    private static LadsGameBridge listing(LadsGameBridge real, List<String> packs) {
+        return (LadsGameBridge) java.lang.reflect.Proxy.newProxyInstance(LadsGameBridge.class.getClassLoader(), new Class<?>[] {LadsGameBridge.class},
+            (proxy, method, args) -> {
+                if (method.getName().equals("getActiveResourcePacks")) return packs;
+                try { return method.invoke(real, args); } catch (java.lang.reflect.InvocationTargetException failure) { throw failure.getCause(); }
+            });
     }
 
     private static void command(String command) {
