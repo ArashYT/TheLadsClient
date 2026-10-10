@@ -181,6 +181,8 @@ public final class NativeWorldVerification {
                     || Files.isRegularFile(hudRequest, LinkOption.NOFOLLOW_LINKS))) {
                 boolean hud = Files.isRegularFile(hudRequest, LinkOption.NOFOLLOW_LINKS);
                 Files.delete(hud ? hudRequest : menuRequest);
+                // Superflat spawns slimes; a QA player slain while the screens are photographed stalls the run: peaceful from here on (the probes before need hostile mobs).
+                if (mc.getConnection() != null) mc.getConnection().sendCommand("difficulty peaceful");
                 previousScreen = mc.gui.screen();
                 captureKind = hud ? "HUD" : "pause";
                 if (hud) {

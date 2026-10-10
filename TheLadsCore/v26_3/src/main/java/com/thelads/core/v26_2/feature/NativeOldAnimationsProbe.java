@@ -142,7 +142,7 @@ final class NativeOldAnimationsProbe {
             float standing = player.getEyeHeight();
             float eased = sneakTick(false, camera, standing), instant = sneakTick(true, camera, standing);
             require(instant == player.getEyeHeight() && eased > instant && NativeOldAnimations.APPLIED.contains(Feature.INSTANT_SNEAK),
-                "Instant sneak camera drops within one tick");
+                "Instant sneak camera drops within one tick (instant=" + instant + ", eyeHeight=" + player.getEyeHeight() + ", eased=" + eased + ", standing=" + standing + ", applied=" + NativeOldAnimations.APPLIED + ", pose=" + player.getPose() + ", shift=" + player.isShiftKeyDown() + ")");
             // A crouch the server echoes after the sneak key is up (a quick tap): the 1.7 camera stays up; vanilla eases down.
             player.input.keyPresses = Input.EMPTY;
             NativeOldAnimations.module().setEnabled(true);

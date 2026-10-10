@@ -67,8 +67,8 @@ final class NativeKillBannerProbe {
             minecraft.getConnection().handleDamageEvent(new ClientboundDamageEventPacket(mine.getId(),
                 level.damageSources().generic().typeHolder(), minecraft.player.getId(), minecraft.player.getId(), Optional.empty()));
             death(mine);
-            require(NativeKillBanner.timeline().streak() == 2 && NativeKillBanner.timeline().queued() == 1,
-                "a projectile-style hit (damage event naming the player) credits the kill; its banner waits for the one opening"); passed++;
+            require(NativeKillBanner.timeline().streak() == 2 && NativeKillBanner.timeline().queued() == 0 && NativeKillBanner.timeline().sequence() == 2,
+                "a projectile-style hit (damage event naming the player) credits the kill; its banner replaces the one playing at once (no gap since 1.7.4)"); passed++;
 
             module.mobs.set(false);
             Entity skipped = spawn(EntityTypes.ZOMBIE, next++);
