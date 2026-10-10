@@ -199,6 +199,12 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 button("previews");
             }
             case 8 -> {
+                // The list is alphabetical and this window shows few rows: FPS's row is only drawn (and clickable) once scrolled into view.
+                if (controller.toggleBoundsFor("FPS") == null) {
+                    controller.revealRow("FPS");
+                    stage--;
+                    return;
+                }
                 check(controller.boundsFor("FPS") != null && controller.toggleBoundsFor("FPS") != null, "Show disabled lists FPS again to switch it on");
                 clickScreen(controller.toggleBoundsFor("FPS"));
                 check(ModuleManager.getInstance().getModule("FPS").isEnabled(), "the row switch turns FPS back on");
