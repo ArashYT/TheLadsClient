@@ -97,6 +97,8 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         }
     }
 
+    @Override public void drawPackIcon(String pack, int x, int y, int size) { com.thelads.core.v26_2.gui.PackIcons.draw(g, pack, x, y, size); }
+
     @Override public void drawHotbarSlots(int x, int y, int slots) {
         int width = 1 + slots * 20;
         g.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR, 182, 22, 0, 0, x, y, width, 22);

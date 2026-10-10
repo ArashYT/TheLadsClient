@@ -28,10 +28,17 @@ class HudBehaviorTest {
     private record SavedModule(Module module, boolean enabled) {}
     private record Fill(int left, int top, int right, int bottom) {}
     private record Text(String value, int x, int y, int color, boolean shadow) {}
+    private record PackIcon(String pack, int x, int y, int size) {}
 
     private static class RecordingGraphics extends LadsGraphicsTest.MockGraphics {
         final List<Fill> fills = new ArrayList<>();
         final List<Text> texts = new ArrayList<>();
+        final List<PackIcon> icons = new ArrayList<>();
+
+        @Override
+        public void drawPackIcon(String pack, int x, int y, int size) {
+            icons.add(new PackIcon(pack, x, y, size));
+        }
 
         @Override
         public void fill(int left, int top, int right, int bottom, int color) {
@@ -130,6 +137,10 @@ class HudBehaviorTest {
             assertTrue(text.x() + graphics.textWidth(text.value()) <= background.right(), text.value());
             assertTrue(text.y() >= background.top(), text.value());
             assertTrue(text.y() + graphics.fontHeight() <= background.bottom(), text.value());
+        }
+        for (PackIcon icon : graphics.icons) {
+            assertTrue(icon.x() >= background.left() && icon.x() + icon.size() <= background.right(), icon.pack());
+            assertTrue(icon.y() >= background.top() && icon.y() + icon.size() <= background.bottom(), icon.pack());
         }
     }
 
@@ -254,6 +265,49 @@ class HudBehaviorTest {
         element.render(graphics);
         assertEquals(List.of("Pack: vanilla", "Pack: file/Long resource pack name.zip"),
                 graphics.texts.stream().map(Text::value).toList());
+        assertBackgroundFits(element);
+    }
+
+    @Test
+    void packIconsAreOnByDefaultAndLeadEveryRow() {
+        flag("TexturePacks", "Show All", true);
+        choice("TexturePacks", "Max Packs", 2);
+        HudElement element = named(new TexturePackHudElement(), "TexturePacks");
+        element.render(graphics);
+        assertEquals(List.of("vanilla", "file/Long resource pack name.zip", "third pack"), graphics.icons.stream().map(PackIcon::pack).toList());
+        for (int row = 0; row < 3; row++) {
+            PackIcon icon = graphics.icons.get(row);
+            Text text = graphics.texts.get(row);
+            assertEquals(graphics.fontHeight() + 2, icon.size(), "icon is as tall as the row");
+            assertEquals(icon.x() + icon.size() + 4, text.x(), "text follows its icon");
+            assertTrue(text.y() >= icon.y() && text.y() + graphics.fontHeight() <= icon.y() + icon.size() + 1, "text level with its icon");
+            if (row > 0) assertTrue(icon.y() >= graphics.icons.get(row - 1).y() + icon.size(), "rows do not overlap");
+        }
+        assertBackgroundFits(element);
+    }
+
+    @Test
+    void lonePackAndItsIconAreCentredTogether() {
+        game.packs = List.of("vanilla");
+        HudElement element = named(new TexturePackHudElement(), "TexturePacks");
+        element.render(graphics);
+        PackIcon icon = graphics.icons.get(0);
+        Text text = graphics.texts.get(0);
+        int left = icon.x() - element.getX(), right = element.getX() + element.getWidth() - (text.x() + graphics.textWidth(text.value()));
+        assertTrue(Math.abs(left - right) <= 1, "margins " + left + " and " + right);
+        assertEquals(element.getY() + (element.getHeight() - icon.size()) / 2, icon.y());
+        assertBackgroundFits(element);
+    }
+
+    @Test
+    void packIconsCanBeSwitchedOffForThePlainLayout() {
+        flag("TexturePacks", "Show Icons", false);
+        game.packs = List.of("vanilla");
+        HudElement element = named(new TexturePackHudElement(), "TexturePacks");
+        element.render(graphics);
+        assertTrue(graphics.icons.isEmpty());
+        assertEquals(Math.max(80, graphics.textWidth("Pack: vanilla") + 12), element.getWidth());
+        assertEquals(element.getX() + (element.getWidth() - graphics.textWidth("Pack: vanilla")) / 2, graphics.texts.get(0).x());
         assertBackgroundFits(element);
     }
 

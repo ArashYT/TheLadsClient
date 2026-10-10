@@ -369,6 +369,7 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
         if (!packSelection.equals(selected)) {
             packSelection = List.copyOf(selected);
             packNames = selected.stream().map(net.minecraft.server.packs.repository.Pack::getId).toList();
+            com.thelads.core.v1_20_1.gui.PackIcons1201.retain(packNames);
         }
         return packNames;
     }
