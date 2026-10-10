@@ -14,7 +14,9 @@ using System.Text.Json.Nodes;
 /// </summary>
 static class QaShared
 {
-    public const int MaxGames = 5; // owner 2026-10-09: "maximum performance, 5 instances at a time is your limit for both AIs"
+    // owner 2026-10-10: "as many instances without crashing as possible, high priority, no limit unless you think it's too many": 6, and the
+    // free-RAM gate below (32 GB PC: ~4 GB per 1.20.1/26.3 game, ~7 GB Zero SMP) is what really keeps them from crashing.
+    public const int MaxGames = 6;
     private const string DevDirectory = @"C:\Users\Arash\Desktop\The Lads Client Dev";
 
     public static string? Env(string name) => Environment.GetEnvironmentVariable(name) is { Length: > 0 } v ? v.Trim() : null;
@@ -35,6 +37,18 @@ static class QaShared
         }
     }
     public static int EffectiveMaxGames => PlayingMonitor != null ? 1 : MaxGames;
+
+    /// <summary>The monitor QA games are tiled on (owner 2026-10-10: Claude app on the main monitor, Antigravity on one, the QA instances on
+    /// another): the owner-playing monitor, else the device name in &lt;shared root&gt;\.qa-monitor (e.g. \.\DISPLAY2), else the primary one.</summary>
+    public static string? QaMonitor
+    {
+        get
+        {
+            if (PlayingMonitor is { } playing) return playing;
+            try { string f = Path.Combine(Root, ".qa-monitor"); return File.Exists(f) && File.ReadAllText(f).Trim() is { Length: > 0 } m ? m : null; }
+            catch (IOException) { return null; }
+        }
+    }
     public static string RuntimeData => Path.Combine(CacheRoot, "runtime-data");
 
     public sealed class Slot : IDisposable
