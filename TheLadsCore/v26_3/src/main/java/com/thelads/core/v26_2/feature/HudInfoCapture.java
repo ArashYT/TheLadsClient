@@ -6,8 +6,10 @@ import com.thelads.core.config.ColorOption;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.Option;
+import com.thelads.core.v26_2.feature.crosshair.CrosshairDrawingScreen;
 import com.thelads.core.v26_2.feature.food.NativeFood;
 import com.thelads.core.v26_2.feature.food.mixin.FoodDataAccess;
+import com.thelads.core.v26_2.gui.LadsSettingsScreen26;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -34,12 +36,16 @@ import org.slf4j.LoggerFactory;
 /**
  * QA only (auto-world, ".lads-qa-capture-hudinfo" from the harness's LADS_VERIFY_CAPTURE_HUDINFO): photographs the AppleSkin
  * module's hunger, saturation, exhaustion and health previews in survival, food and durability tooltips through the real tooltip
- * path, and a few Crosshair Tweaks styles, as hudinfo-*.png. Game mode, difficulty, food, health, held items and every module
+ * path, a few Crosshair Tweaks styles, and the Crosshair Tweaks settings page and drawing editor with their live previews (the page
+ * stays open while its options change), as hudinfo-*.png. Game mode, difficulty, food, health, held items and every module
  * option touched are restored afterwards.
  */
 public final class HudInfoCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private record Shot(String name, Runnable setup, ItemStack tooltip) {}
+    private record Shot(String name, Runnable setup, ItemStack tooltip, java.util.function.Supplier<Screen> screen) {
+        Shot(String name, Runnable setup, ItemStack tooltip) { this(name, setup, tooltip, null); }
+    }
+    private static LadsSettingsScreen26 menu;
     private static final List<Shot> SHOTS = new ArrayList<>();
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
     private static final Map<Module, Boolean> ENABLED = new LinkedHashMap<>();
@@ -126,6 +132,14 @@ public final class HudInfoCapture {
         crosshair("triangle-rotated", 5, () -> slider("Rotation", 180));
         crosshair("arrow-thick", 6, () -> { slider("Rotation", 0); ((com.thelads.core.config.DoubleOption) NativeQualityOfLife.module("Crosshair Tweaks").getOption("Thickness")).set(2.0); });
         crosshair("vanilla-adaptive", 3, () -> {});
+        // The settings page with its live preview, open while the options change, then the drawing editor.
+        menu = new LadsSettingsScreen26(null);
+        menu.openModule("Crosshair Tweaks");
+        page("page-1-default", () -> NativeQualityOfLife.module("Crosshair Tweaks").getOptions().stream().filter(option -> !(option instanceof com.thelads.core.config.ActionOption)).forEach(Option::reset));
+        page("page-2-circle-green", () -> { choice("Shape", 4); slider("Gap", 4); slider("Width", 8); slider("Height", 8); color("Color", 0xff55ff55); });
+        page("page-3-vanilla-adaptive", () -> { choice("Shape", 3); option("Crosshair Tweaks", "Adaptive Color", true); color("Color", 0xffffffff); });
+        page("page-4-square-rotated-dot", () -> { choice("Shape", 2); option("Crosshair Tweaks", "Adaptive Color", false); option("Crosshair Tweaks", "Outline", false); option("Crosshair Tweaks", "Center Dot", true); slider("Rotation", 45); slider("Opacity First Person", 60); ((com.thelads.core.config.DoubleOption) NativeQualityOfLife.module("Crosshair Tweaks").getOption("Scale")).set(2.0); color("Color", 0xff55ff55); });
+        SHOTS.add(new Shot("editor", () -> held = new ItemStack(Items.DIAMOND), null, () -> new CrosshairDrawingScreen(null)));
         LOGGER.info("Lads HUD info capture BEGIN: {} frames", SHOTS.size());
         step = 0;
         start();
@@ -137,7 +151,7 @@ public final class HudInfoCapture {
         if (step < SHOTS.size()) { start(); return; }
         Minecraft mc = Minecraft.getInstance();
         try {
-            if (mc.gui.screen() instanceof TooltipScreen) mc.setScreenAndShow(null);
+            if (ours(mc.gui.screen())) mc.setScreenAndShow(null);
             NativeFood.qaPulse = null;
             OPTIONS.forEach(Option::load);
             ENABLED.forEach(Module::setEnabled);
@@ -153,6 +167,7 @@ public final class HudInfoCapture {
             });
         } catch (Exception failure) { fail("restore: " + failure); }
         held = ItemStack.EMPTY;
+        menu = null;
         if (FAILURES.isEmpty()) LOGGER.info("Lads HUD info capture END: {} frames saved, 0 failed", saved);
         else LOGGER.error("Lads HUD info capture FAILED: {}", String.join(" | ", FAILURES));
     }
@@ -162,8 +177,9 @@ public final class HudInfoCapture {
         Shot shot = SHOTS.get(step);
         try {
             shot.setup.run();
-            if (shot.tooltip != null) mc.setScreenAndShow(new TooltipScreen(shot.tooltip));
-            else if (mc.gui.screen() instanceof TooltipScreen) mc.setScreenAndShow(null);
+            Screen wanted = shot.tooltip != null ? new TooltipScreen(shot.tooltip) : shot.screen != null ? shot.screen.get() : null;
+            if (wanted != null && mc.gui.screen() != wanted) mc.setScreenAndShow(wanted);
+            else if (wanted == null && ours(mc.gui.screen())) mc.setScreenAndShow(null);
         } catch (Exception failure) { fail(shot.name + " setup: " + failure); }
         wait = 25;
     }
@@ -190,6 +206,11 @@ public final class HudInfoCapture {
             setup.run();
         }, null));
     }
+    private static boolean ours(Screen screen) { return screen instanceof TooltipScreen || screen instanceof LadsSettingsScreen26 || screen instanceof CrosshairDrawingScreen; }
+    private static void page(String name, Runnable setup) {
+        SHOTS.add(new Shot("crosshair-" + name, () -> { held = new ItemStack(Items.DIAMOND); setup.run(); }, null, () -> menu));
+    }
+    private static void choice(String name, int index) { ((DropdownOption) NativeQualityOfLife.module("Crosshair Tweaks").getOption(name)).setIndex(index); }
     private static void option(String module, String name, boolean value) { ((BoolOption) NativeQualityOfLife.module(module).getOption(name)).set(value); }
     private static void slider(String name, double value) { ((com.thelads.core.config.SliderOption) NativeQualityOfLife.module("Crosshair Tweaks").getOption(name)).setValue(value); }
     private static void color(String name, int argb) {

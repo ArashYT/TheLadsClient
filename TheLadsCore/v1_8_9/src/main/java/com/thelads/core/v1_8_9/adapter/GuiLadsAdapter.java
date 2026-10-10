@@ -185,6 +185,11 @@ public class GuiLadsAdapter implements LadsGraphics {
     }
 
     @Override
+    public boolean drawCrosshairPreview(int cx, int cy) {
+        return com.thelads.core.v1_8_9.feature.Crosshair189.preview(cx, cy);
+    }
+
+    @Override
     public void enableScissor(int minX, int minY, int maxX, int maxY) {
         int[] box = {minX, minY, maxX, maxY};
         int[] outer = scissors.peek();

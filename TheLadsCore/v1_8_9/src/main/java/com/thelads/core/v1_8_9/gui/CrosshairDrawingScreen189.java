@@ -11,8 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.ScaledResolution;
 import org.apache.logging.log4j.LogManager;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.opengl.GL11;
 
 /** Crosshair Tweaks' drawing editor, as 26.x CrosshairDrawingScreen: edits stay local until Save; Escape and Cancel discard them. */
 public final class CrosshairDrawingScreen189 extends GuiScreen {
@@ -64,10 +66,11 @@ public final class CrosshairDrawingScreen189 extends GuiScreen {
         }
     }
 
-    boolean hasPreview() { return width >= 600 && height >= 330; }
+    public boolean hasPreview() { return CrosshairDesign.previewBox(width, height) != null; }
 
     private void layout() {
-        int available = hasPreview() ? width - 210 : width - 40;
+        CrosshairDesign.Rect box = CrosshairDesign.previewBox(width, height);
+        int available = box != null ? box.left() - 44 : width - 40;
         cell = Math.max(1, Math.min(available / draft.width(), Math.max(1, (height - 144) / draft.height())));
         gridX = (available - draft.width() * cell) / 2 + 20;
         gridY = 70 + Math.max(0, (height - 144 - draft.height() * cell) / 2);
@@ -111,13 +114,21 @@ public final class CrosshairDrawingScreen189 extends GuiScreen {
                 drawRect(left, top, left + cell, top + 1, 0x77000000);
             }
         }
-        if (hasPreview()) {
-            int x = width - 160;
-            fontRendererObj.drawString("LIVE PREVIEW", x, 82, 0xffa9afbd);
-            drawRect(x, 102, x + 120, 222, 0xff697986);
-            Crosshair189.draw(x + 60, 162, Crosshair189.number("Gap"), 1, false, draft);
-            fontRendererObj.drawString("Uses your color,", x, 236, 0xffa9afbd);
-            fontRendererObj.drawString("scale and rotation.", x, 248, 0xffa9afbd);
+        CrosshairDesign.Rect box = CrosshairDesign.previewBox(width, height);
+        if (box != null) {
+            fontRendererObj.drawString("LIVE PREVIEW", box.left(), box.top() - 14, 0xffa9afbd);
+            int scale = new ScaledResolution(mc).getScaleFactor();
+            GL11.glEnable(GL11.GL_SCISSOR_TEST);
+            GL11.glScissor(box.left() * scale, mc.displayHeight - box.bottom() * scale, (box.right() - box.left()) * scale, (box.bottom() - box.top()) * scale);
+            drawRect(box.left(), box.top(), box.right(), box.bottom(), CrosshairDesign.BACKDROP_DARK);
+            for (CrosshairDesign.Rect tile : CrosshairDesign.checker(box.right() - box.left(), box.bottom() - box.top()))
+                drawRect(box.left() + tile.left(), box.top() + tile.top(), box.left() + tile.right(), box.top() + tile.bottom(), CrosshairDesign.BACKDROP_LIGHT);
+            Crosshair189.draw((box.left() + box.right()) / 2, (box.top() + box.bottom()) / 2, Crosshair189.number("Gap"), 1, false, draft);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            if (box.bottom() + 30 <= height - 62) {
+                fontRendererObj.drawString("Uses your color,", box.left(), box.bottom() + 8, 0xffa9afbd);
+                fontRendererObj.drawString("scale and rotation.", box.left(), box.bottom() + 20, 0xffa9afbd);
+            }
         }
         if (!error.isEmpty()) drawCenteredString(fontRendererObj, error, width / 2, height - 72, 0xffff7777);
         super.drawScreen(mouseX, mouseY, partialTicks);

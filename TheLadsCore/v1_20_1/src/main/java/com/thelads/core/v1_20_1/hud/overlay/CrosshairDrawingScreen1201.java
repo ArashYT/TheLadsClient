@@ -38,10 +38,11 @@ public final class CrosshairDrawingScreen1201 extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Save drawing"), b -> saveDrawing()).bounds(36 + width * 2, bottom + 26, width, 20).build());
     }
 
-    private boolean hasPreview() { return width >= 600 && height >= 330; }
+    private boolean hasPreview() { return CrosshairDesign.previewBox(width, height) != null; }
 
     private void layout() {
-        int availableWidth = hasPreview() ? this.width - 210 : this.width - 40;
+        var box = CrosshairDesign.previewBox(width, height);
+        int availableWidth = box != null ? box.left() - 44 : this.width - 40;
         cell = Math.max(1, Math.min(availableWidth / draft.width(), Math.max(1, (height - 144) / draft.height())));
         gridX = (availableWidth - draft.width() * cell) / 2 + 20;
         gridY = 70 + Math.max(0, (height - 144 - draft.height() * cell) / 2);
@@ -102,14 +103,20 @@ public final class CrosshairDrawingScreen1201 extends Screen {
                     graphics.fill(left, top, left + cell, top + 1, 0x77000000);
                 }
             }
-        if (hasPreview()) {
-            int x = width - 160;
-            graphics.drawString(font, "LIVE PREVIEW", x, 82, 0xffa9afbd);
-            graphics.fill(x, 102, x + 120, 222, 0xff697986);
-            Crosshair1201.draw(graphics, x + 60, 162, Crosshair1201.number("Gap"), 1, false, draft);
+        var box = CrosshairDesign.previewBox(width, height);
+        if (box != null) {
+            graphics.drawString(font, "LIVE PREVIEW", box.left(), box.top() - 14, 0xffa9afbd);
+            graphics.enableScissor(box.left(), box.top(), box.right(), box.bottom());
+            graphics.fill(box.left(), box.top(), box.right(), box.bottom(), CrosshairDesign.BACKDROP_DARK);
+            for (var tile : CrosshairDesign.checker(box.right() - box.left(), box.bottom() - box.top()))
+                graphics.fill(box.left() + tile.left(), box.top() + tile.top(), box.left() + tile.right(), box.top() + tile.bottom(), CrosshairDesign.BACKDROP_LIGHT);
+            Crosshair1201.draw(graphics, (box.left() + box.right()) / 2, (box.top() + box.bottom()) / 2, Crosshair1201.number("Gap"), 1, false, draft);
             com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
-            graphics.drawString(font, "Uses your color,", x, 236, 0xffa9afbd);
-            graphics.drawString(font, "scale and rotation.", x, 248, 0xffa9afbd);
+            graphics.disableScissor();
+            if (box.bottom() + 30 <= height - 62) {
+                graphics.drawString(font, "Uses your color,", box.left(), box.bottom() + 8, 0xffa9afbd);
+                graphics.drawString(font, "scale and rotation.", box.left(), box.bottom() + 20, 0xffa9afbd);
+            }
         }
         if (!error.isEmpty()) graphics.drawCenteredString(font, error, width / 2, height - 72, 0xffff7777);
         super.render(graphics, mouseX, mouseY, partial);
