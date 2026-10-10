@@ -80,33 +80,33 @@ public final class NativeKillBanner1201 {
     public static void attacked(Entity target) {
         if (!eligible()) return;
         boolean head = Minecraft.getInstance().hitResult instanceof EntityHitResult hit && hit.getType() == HitResult.Type.ENTITY
-            && hit.getEntity() == target && headHit(target, hit.getLocation());
+            && hit.getEntity() == target && headHit(target, Minecraft.getInstance().player.getEyePosition(), hit.getLocation());
         LivingEntity victim = victim(target);
         if (victim != null && !victim.isDeadOrDying()) {
             KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
         }
     }
 
-    /** One of the local player's arrows crossed {@code target}'s box at {@code at} (KillBannerArrows1201). */
-    static void arrowHit(Entity target, Vec3 at) {
+    /** One of the local player's arrows, coming from {@code from}, crossed {@code target}'s box at {@code at} (KillBannerArrows1201). */
+    static void arrowHit(Entity target, Vec3 from, Vec3 at) {
         if (!eligible()) return;
         LivingEntity victim = victim(target);
         if (victim == null || victim.isDeadOrDying()) return;
-        KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), headHit(target, at), System.nanoTime());
+        KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), headHit(target, from, at), System.nanoTime());
     }
 
     /**
-     * A hit at {@code at} on {@code target}: on a multipart mob's part, a head hit when the part is its head (the dragon's
+     * A hit coming from {@code from} through {@code at} on {@code target}: on a multipart mob's part, a head hit when the part is its head (the dragon's
      * "head", Alex's Mobs' and Caves' headPart, from the field the mob holds it in); on anything else, when it lands in the
      * head about the eyes of its box (KillDetector.headHit), wherever modded mobs keep their bodies.
      */
-    private static boolean headHit(Entity target, Vec3 at) {
+    private static boolean headHit(Entity target, Vec3 from, Vec3 at) {
         AABB box = target.getBoundingBox();
         float yaw = target instanceof LivingEntity living ? living.yBodyRot : target.getYRot();
         boolean head;
         if (target instanceof EnderDragonPart part) head = KillDetector.headPart(part.name);
         else if (KillDetector.part(target)) head = KillDetector.headPart(KillDetector.partName(KillDetector.parentOf(target), target));
-        else head = KillDetector.headHit(at.x, at.y, at.z, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ, target.getEyeY(), yaw);
+        else head = KillDetector.headHit(from.x, from.y, from.z, at.x, at.y, at.z, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ, target.getEyeY(), yaw);
         if (QaProbe1201.active()) com.thelads.core.v1_20_1.hud.Hud1201.LOG.info("Lads killbanner QA hit: {} at {} on {} eyes {} yaw {}: head={}",
             EntityType.getKey(target.getType()), at, box, target.getEyeY(), yaw, head);
         return head;

@@ -303,8 +303,13 @@ class KillDetectorTest {
 
     /** A hit at (x, y, z) from the feet of a mob {@code w} wide and {@code h} tall, eyes {@code eye} up, standing at (100.5, 64, -20.5) and facing {@code yaw}. */
     private static boolean head(double w, double h, double eye, float yaw, double x, double y, double z) {
+        return head(w, h, eye, yaw, x, y, z, x, y, z);
+    }
+
+    /** The same, the hit coming from (fx, fy, fz) through (x, y, z). */
+    private static boolean head(double w, double h, double eye, float yaw, double fx, double fy, double fz, double x, double y, double z) {
         double cx = 100.5, cz = -20.5, foot = 64;
-        return KillDetector.headHit(cx + x, foot + y, cz + z, cx - w / 2, foot, cz - w / 2, cx + w / 2, foot + h, cz + w / 2, foot + eye, yaw);
+        return KillDetector.headHit(cx + fx, foot + fy, cz + fz, cx + x, foot + y, cz + z, cx - w / 2, foot, cz - w / 2, cx + w / 2, foot + h, cz + w / 2, foot + eye, yaw);
     }
 
     @Test void uprightBodiesWearTheHeadOnTopAllRound() {
@@ -368,11 +373,26 @@ class KillDetectorTest {
     }
 
     @Test void uncertainHitsAreNoHeadshots() {
-        assertFalse(KillDetector.headHit(0, 1, 0, 0, 0, 0, 0, 0, 0, .5, 0), "no box");
-        assertFalse(KillDetector.headHit(Double.NaN, 1, 0, -1, 0, -1, 1, 2, 1, 1.7, 0), "no point");
-        assertFalse(KillDetector.headHit(0, 1.9, 0, -1, 0, -1, 1, 2, 1, Double.NaN, 0), "no eyes");
-        assertTrue(head(.6, 1.8, 1.62, 0, 0, 2.1, .3), "an arrow just over a player's head (its box grown by 0.3) is on its top");
-        assertFalse(head(.9, .9, .765, 0, 0, 1.2, -.3), "an arrow coming down onto a pig's back, just over it, is on its back");
+        assertFalse(KillDetector.headHit(0, 3, -5, 0, 1, 0, 0, 0, 0, 0, 0, 0, .5, 0), "no box");
+        assertFalse(KillDetector.headHit(0, 3, -5, Double.NaN, 1, 0, -1, 0, -1, 1, 2, 1, 1.7, 0), "no point");
+        assertFalse(KillDetector.headHit(0, 3, -5, 0, 1.9, 0, -1, 0, -1, 1, 2, 1, Double.NaN, 0), "no eyes");
+        assertTrue(head(.6, 1.8, 1.62, 0, 0, 2.1, .3), "a point just over a player's head (its box grown by 0.3) is on its top");
+        assertFalse(head(.9, .9, .765, 0, 0, 1.2, -.3), "a point just over a pig's back is on its back");
+    }
+
+    @Test void theHitIsWhereItsLineEntersTheBoxItself() {
+        // 1.8.9's crosshair point lies on the box grown by 0.1: looking down at a pig's back from 2.5 blocks in front of it
+        // (it faces the player), the line meets the grown top 0.37 blocks nearer than the pig's own top, over its head.
+        double ex = 0, ey = 1.62, ez = 2.5, tz = -.225, ty = .88; // eyes, and the aim: its back, behind its middle
+        double t = (ey - 1.0) / (ey - ty), gz = ez + (tz - ez) * t; // where the line meets the grown top (y 1.0)
+        assertTrue(head(.9, .9, .765, 0, 0, 1.0, gz), "that point, moved onto the box, would be over its head");
+        assertFalse(head(.9, .9, .765, 0, ex, ey, ez, 0, 1.0, gz), "the line enters the pig's back");
+        assertTrue(head(.9, .9, .765, 0, ex, ey, ez, 0, .75, .55), "a face hit through the grown front stays a face hit");
+        // An arrow coming down onto a pig's back crosses its box grown by 0.3 well in front of where it hits.
+        assertFalse(head(.9, .9, .765, 0, 0, 2.2, 1.5, 0, 1.2, .3), "an arrow dropping onto its back");
+        assertTrue(head(.6, 1.8, 1.62, 0, 0, 2.6, 2, 0, 2.1, .6), "an arrow dropping onto a player's head");
+        assertTrue(head(.6, 1.8, 1.62, 0, 0, 2.6, 2, 0, 2.1, .5), "a line that only grazes the grown box: its point, on the box (the top of the head)");
+        assertFalse(head(.6, 1.8, 1.62, 0, 0, 1.0, 0, 0, 1.0, 0), "the eye inside the box: its own height (the chest)");
     }
 
     @Test void multipartMobsCountTheirHeadPartOnly() {

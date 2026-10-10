@@ -136,7 +136,7 @@ public final class KillBanner189 {
         if (event.entityPlayer != mc.thePlayer || !eligible()) return;
         MovingObjectPosition hit = mc.objectMouseOver;
         boolean head = hit != null && hit.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && hit.entityHit == event.target
-            && hit.hitVec != null && headHit(event.target, hit.hitVec);
+            && hit.hitVec != null && headHit(event.target, mc.thePlayer.getPositionEyes(1f), hit.hitVec);
         EntityLivingBase victim = victim(event.target);
         // A click on a body still falling over is no new hit: the death already counted.
         if (victim != null && victim.getHealth() > 0) KillBanners.DETECTOR.hitByMe(victim.getEntityId(), names(victim), kind(victim), head, System.nanoTime());
@@ -185,7 +185,7 @@ public final class KillBanner189 {
                 landed.add(id);
                 EntityLivingBase target = victim(victim);
                 if (target != null && target.getHealth() > 0)
-                    KillBanners.DETECTOR.hitByMe(target.getEntityId(), names(target), kind(target), headHit(victim, where), System.nanoTime());
+                    KillBanners.DETECTOR.hitByMe(target.getEntityId(), names(target), kind(target), headHit(victim, from, where), System.nanoTime());
             }
         }
         flying.keySet().retainAll(seen);
@@ -241,12 +241,12 @@ public final class KillBanner189 {
         if (BANNER.age(System.nanoTime()) >= 0) KillBannerArt189.prefetch(KillBanners.shown(module), BANNER.sequence());
     }
 
-    /** A hit at {@code at} on {@code target}: on the Ender Dragon, its "head" part; on anything else, the head about its eyes (KillDetector.headHit). */
-    private static boolean headHit(Entity target, Vec3 at) {
+    /** A hit from {@code from} through {@code at} on {@code target}: on the Ender Dragon, its "head" part; on anything else, the head about its eyes (KillDetector.headHit). */
+    private static boolean headHit(Entity target, Vec3 from, Vec3 at) {
         if (target instanceof EntityDragonPart) return KillDetector.headPart(((EntityDragonPart) target).partName);
         AxisAlignedBB box = target.getEntityBoundingBox();
         float yaw = target instanceof EntityLivingBase ? ((EntityLivingBase) target).renderYawOffset : target.rotationYaw;
-        return KillDetector.headHit(at.xCoord, at.yCoord, at.zCoord, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ,
+        return KillDetector.headHit(from.xCoord, from.yCoord, from.zCoord, at.xCoord, at.yCoord, at.zCoord, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ,
             target.posY + target.getEyeHeight(), yaw);
     }
 

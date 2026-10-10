@@ -61,7 +61,7 @@ final class KillBannerArrows {
             }
             if (victim != null) {
                 landed.add(id);
-                NativeKillBanner.arrowHit(victim, where);
+                NativeKillBanner.arrowHit(victim, from, where);
             }
         }
         flying.keySet().retainAll(seen);

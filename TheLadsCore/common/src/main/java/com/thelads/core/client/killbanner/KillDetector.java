@@ -63,19 +63,38 @@ public final class KillDetector {
     public void reset() { byId.clear(); }
 
     /**
-     * Did a hit at ({@code x}, {@code y}, {@code z}) (the crosshair's point on the target, or where an arrow crossed it) land in the
-     * head of an entity with the box {@code minX}..{@code maxZ}, its eyes at {@code eyeY} and its body turned to {@code yaw} (degrees,
-     * 0 = south)? The head is as tall as a quarter of the body, or half its thickness for a stocky one, never more than the box is
+     * Did a hit coming from ({@code fromX}, {@code fromY}, {@code fromZ}) (the attacker's eyes, an arrow's last place) through
+     * ({@code x}, {@code y}, {@code z}) (the crosshair's point on the target, where an arrow crossed it) land in the head of an
+     * entity with the box {@code minX}..{@code maxZ}, its eyes at {@code eyeY} and its body turned to {@code yaw} (degrees, 0 =
+     * south)? The head is as tall as a quarter of the body, or half its thickness for a stocky one, never more than the box is
      * wide or tall, and reaches from the eyes up to three quarters of its size above them (the top of the box for nearly every mob:
      * players' top quarter, as before). An upright body (1.75 times as tall as wide or more: players, zombies, endermen) wears it on
      * top, all round; any other (animals, spiders, wide or flat modded mobs) at its front, so its back, rump and sides are body even
      * up top. Anything odd (no box) is no head hit.
      */
-    public static boolean headHit(double x, double y, double z, double minX, double minY, double minZ, double maxX, double maxY, double maxZ,
-                                  double eyeY, float yaw) {
+    public static boolean headHit(double fromX, double fromY, double fromZ, double x, double y, double z,
+                                  double minX, double minY, double minZ, double maxX, double maxY, double maxZ, double eyeY, float yaw) {
         double width = Math.min(maxX - minX, maxZ - minZ), height = maxY - minY;
-        if (!(width > 0 && height > 0) || Double.isNaN(x + y + z + eyeY)) return false;
-        // On the box: an arrow's point may lie just outside it, the crosshair's is the eye itself when inside it.
+        if (!(width > 0 && height > 0) || Double.isNaN(fromX + fromY + fromZ + x + y + z + eyeY)) return false;
+        // The point is on a grown box (1.8.9's crosshair 0.1, arrows 0.3), so a shallow hit lands too far forward on it: where the
+        // same line enters the box itself is where it hit (the origin when inside it). A line that only grazed the grown box, and
+        // a point with no line (the crosshair's eye inside the box), stay where they are, moved onto the box.
+        double[] from = {fromX, fromY, fromZ}, along = {x - fromX, y - fromY, z - fromZ}, low = {minX, minY, minZ}, high = {maxX, maxY, maxZ};
+        double enter = 0, leave = Double.MAX_VALUE;
+        for (int axis = 0; axis < 3 && enter <= leave; axis++) {
+            if (Math.abs(along[axis]) < 1e-9) {
+                if (from[axis] < low[axis] || from[axis] > high[axis]) enter = Double.POSITIVE_INFINITY;
+                continue;
+            }
+            double a = (low[axis] - from[axis]) / along[axis], b = (high[axis] - from[axis]) / along[axis];
+            enter = Math.max(enter, Math.min(a, b));
+            leave = Math.min(leave, Math.max(a, b));
+        }
+        if (enter <= leave) {
+            x = fromX + along[0] * enter;
+            y = fromY + along[1] * enter;
+            z = fromZ + along[2] * enter;
+        }
         x = Math.max(minX, Math.min(maxX, x));
         y = Math.max(minY, Math.min(maxY, y));
         z = Math.max(minZ, Math.min(maxZ, z));
