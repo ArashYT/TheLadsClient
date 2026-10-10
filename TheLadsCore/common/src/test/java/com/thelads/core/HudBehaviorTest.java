@@ -263,7 +263,7 @@ class HudBehaviorTest {
         choice("TexturePacks", "Max Packs", 1);
         HudElement element = named(new TexturePackHudElement(), "TexturePacks");
         element.render(graphics);
-        assertEquals(List.of("Pack: vanilla", "Pack: file/Long resource pack name.zip"),
+        assertEquals(List.of("Pack: vanilla", "Pack: Long resource pack name"),
                 graphics.texts.stream().map(Text::value).toList());
         assertBackgroundFits(element);
     }

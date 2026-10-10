@@ -25,7 +25,8 @@ public class TexturePackHudElement extends HudElement {
         int limit = optBool("Show All", false) ? Math.max(1, Math.min(8, optCycle("Max Packs", 2) + 1)) : 1;
         int count = Math.min(packs.size(), limit);
         names = List.copyOf(packs.subList(0, count));
-        lines = names.stream().map(pack -> "Pack: " + pack).toList();
+        // The id keeps the icon lookup; the label drops the "file/" source and the archive extension ("file/Faithful.zip" -> "Faithful").
+        lines = names.stream().map(pack -> "Pack: " + pack.replaceFirst("^file/", "").replaceFirst("(?i)\\.zip$", "")).toList();
         int lineHeight = g.fontHeight() + 3;
         boolean icons = optBool("Show Icons", true);
         iconSize = icons ? lineHeight - 1 : 0;
