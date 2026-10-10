@@ -32,12 +32,23 @@ abstract class MinecraftFastQuitMixin implements FastQuit1201.Pump {
     @Inject(method = "clearLevel(Lnet/minecraft/client/gui/screens/Screen;)V", at = @At("HEAD"))
     private void lads$quitStarts(Screen next, CallbackInfo ci) {
         lads$quitStart = singleplayerServer != null ? System.nanoTime() : 0L;
+        // No level: vanilla drops the server without stopping or waiting for it (its wait loop below needs a level).
+        if (singleplayerServer != null && ((Minecraft) (Object) this).level == null) FastQuit1201.stopInBackground((Minecraft) (Object) this, singleplayerServer);
     }
 
     @WrapOperation(method = "clearLevel(Lnet/minecraft/client/gui/screens/Screen;)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/server/IntegratedServer;isShutdown()Z"))
     private boolean lads$skipServerWait(IntegratedServer server, Operation<Boolean> original) {
-        return FastQuit1201.skipServerWait((Minecraft) (Object) this, server) || original.call(server);
+        return FastQuit1201.stopInBackground((Minecraft) (Object) this, server) || original.call(server);
+    }
+
+    /**
+     * doWorldLoad leaves the current world itself (a world opened while one is loaded, after the world storage wait): the new
+     * server starts once the last one has fully stopped, so that no mod ever sees two.
+     */
+    @Inject(method = "doWorldLoad", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;clearLevel()V", shift = At.Shift.AFTER))
+    private void lads$awaitLastServer(CallbackInfo ci) {
+        FastQuit1201.awaitSaves(false);
     }
 
     @Inject(method = "clearLevel(Lnet/minecraft/client/gui/screens/Screen;)V", at = @At("RETURN"))

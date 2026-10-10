@@ -12,7 +12,8 @@
     "DirectoryLockFastQuitMixin",
     "LevelStorageSourceFastQuitMixin",
     "LevelSummaryFastQuitMixin",
-    "MinecraftFastQuitMixin"
+    "MinecraftFastQuitMixin",
+    "MinecraftServerFastQuitAccessor"
   ],
   "injectors": { "defaultRequire": 1 }
 }

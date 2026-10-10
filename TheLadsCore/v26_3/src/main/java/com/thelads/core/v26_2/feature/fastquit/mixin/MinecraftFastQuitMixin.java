@@ -42,6 +42,15 @@ abstract class MinecraftFastQuitMixin implements FastQuit26.Pump {
         return FastQuit26.skipServerWait((Minecraft) (Object) this, server) || original.call(server);
     }
 
+    /**
+     * doWorldLoad leaves the current world itself (a world opened while one is loaded, after the world storage wait): the new
+     * server starts once the last one has fully stopped, so that no mod ever sees two.
+     */
+    @Inject(method = "doWorldLoad", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;disconnectWithProgressScreen()V", shift = At.Shift.AFTER))
+    private void lads$awaitLastServer(CallbackInfo ci) {
+        FastQuit26.awaitSaves(false);
+    }
+
     @Inject(method = "disconnect(Lnet/minecraft/client/gui/screens/Screen;ZZ)V", at = @At("RETURN"))
     private void lads$quitDone(Screen next, boolean keepResourcePacks, boolean b, CallbackInfo ci) {
         if (lads$quitStart == 0L) return;
