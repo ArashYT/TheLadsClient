@@ -8,7 +8,7 @@ namespace TheLadsLauncher.Tests;
 public class GameSessionPriorityTests
 {
     [Fact]
-    public async Task StartupYieldsToOtherAppsAndReturnsToNormalOnceLoaded()
+    public async Task GameRunsAtNormalPriorityWhileLoadingAndPlaying()
     {
         Assert.False(GameSession.StartupFinished(null));
         Assert.True(GameSession.StartupFinished("[12:00:00] [Sound Library Loader/INFO]: Sound engine started"));
@@ -22,8 +22,8 @@ public class GameSessionPriorityTests
         GameSession.Attach(process, game, Array.Empty<string>(), _ => { }, shared);
         process.BeginOutputReadLine();
         process.Refresh();
-        // Loading must not starve Discord and the desktop: below normal until the game has started.
-        Assert.Equal(ProcessPriorityClass.BelowNormal, process.PriorityClass);
+        // Owner, 2026-10-10: "just make it normal priority" (Realtime/High while loading froze Discord).
+        Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);
         await Task.Delay(4500);
         process.Refresh();
         Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);

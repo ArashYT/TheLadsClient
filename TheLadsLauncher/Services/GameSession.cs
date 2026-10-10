@@ -29,29 +29,6 @@ public static class GameSession
     /// <summary>The game log line every supported version prints once its startup resources are loaded.</summary>
     public static bool StartupFinished(string? line) => line != null && line.Contains("Sound engine started", StringComparison.Ordinal);
 
-    /// <summary>
-    /// Startup runs at BelowNormal priority, back to Normal once <see cref="StartupFinished"/> appears on stdout or after 3 minutes.
-    /// Loading a big modpack keeps every core busy; at Realtime/High (before 1.9.0) that froze Discord, audio and the rest of the
-    /// desktop (owner, 2026-10-10: "my discord keeps freezing and lagging when it's loading the game"). BelowNormal lets every other
-    /// app go first and costs the load almost nothing when the CPU is otherwise idle.
-    /// </summary>
-    private static void YieldDuringStartup(Process process)
-    {
-        try { process.PriorityClass = ProcessPriorityClass.BelowNormal; }
-        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return; }
-        var restored = 0;
-        void Restore()
-        {
-            if (System.Threading.Interlocked.Exchange(ref restored, 1) != 0) return;
-            try { if (!process.HasExited) process.PriorityClass = ProcessPriorityClass.Normal; }
-            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception) { }
-        }
-        DataReceivedEventHandler? watch = null;
-        watch = (_, e) => { if (StartupFinished(e.Data)) { process.OutputDataReceived -= watch; Restore(); } };
-        process.OutputDataReceived += watch;
-        _ = Task.Delay(TimeSpan.FromMinutes(3)).ContinueWith(_ => Restore(), TaskScheduler.Default);
-    }
-
     // Games the user stopped while they were starting. Weak: a finished Process is not kept alive.
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Process, object> Cancelled = new();
 
@@ -90,7 +67,6 @@ public static class GameSession
     {
         var shared = sharedContent ?? SharedContentService.Instance;
         var pid = process.Id;
-        YieldDuringStartup(process);
         try
         {
             RunningGameMarker.Write(gameDirectory, pid, process.StartTime.ToUniversalTime(), loadedMods);
