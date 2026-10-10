@@ -2594,7 +2594,7 @@ public partial class MainWindow : Window
     private const string IsolationText =
         "Keep this profile's game settings separate (options.txt, keybinds). Worlds, resource packs, shader packs and servers are always shared from the global .minecraft folder.";
     private const string LunarSettingsText =
-        "\nOtherwise its settings come from Lunar Client's 1.8 profile (Lunar's files are never changed).";
+        "\nOtherwise its controls are shared with the other versions and its other settings come from Lunar Client's 1.8 profile (Lunar's files are never changed).";
 
     private async void AddProfile_Click(object? sender, RoutedEventArgs e)
     {

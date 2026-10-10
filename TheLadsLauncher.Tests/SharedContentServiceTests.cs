@@ -826,19 +826,20 @@ public class SharedContentServiceTests
         var profiles = new ProfileService(paths, shared);
         var profile = profiles.CreateProfile("Custom", "26.3", 25, isolated, "0.19.5");
         var game = paths.GetProfileDirectory(profile);
-        Write(Path.Combine(game, "options.txt"), "fov:0.1\n");
+        Write(Path.Combine(game, "options.txt"), "gamma:0.1\n");
         File.SetLastWriteTimeUtc(Path.Combine(game, "options.txt"), new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc));
-        Write(paths.SharedOptionsFile, "fov:0.5\ngamma:1.0\n");
+        Write(paths.SharedOptionsFile, "gamma:0.5\nlang:en_us\n");
         WriteServers(Path.Combine(game, "servers.dat"), ("x.example", "X", false));
 
         var report = await profiles.PrepareProfileEnvironmentAsync(profile, null);
 
         Assert.True(LinksTo(Path.Combine(game, "saves"), shared.SavesDirectory));
         // Not isolated: missing settings come at once, and a setting changed in the shared copy since the last launch replaces the game's own.
-        Assert.Equal(isolated ? "fov:0.1\n" : "fov:0.1\ngamma:1.0\n", File.ReadAllText(Path.Combine(game, "options.txt")));
-        Write(paths.SharedOptionsFile, "fov:0.75\ngamma:1.0\n");
+        // (Controls are the shared ones from the first launch on: Minecraft189Tests.)
+        Assert.Equal(isolated ? "gamma:0.1\n" : "gamma:0.1\nlang:en_us\n", File.ReadAllText(Path.Combine(game, "options.txt")));
+        Write(paths.SharedOptionsFile, "gamma:0.75\nlang:en_us\n");
         await profiles.PrepareProfileEnvironmentAsync(profile, null);
-        Assert.Equal(isolated ? "fov:0.1\n" : "fov:0.75\ngamma:1.0\n", File.ReadAllText(Path.Combine(game, "options.txt")));
+        Assert.Equal(isolated ? "gamma:0.1\n" : "gamma:0.75\nlang:en_us\n", File.ReadAllText(Path.Combine(game, "options.txt")));
         Assert.Contains(ReadServers(shared.ServersFile), e => e.Ip == "x.example");
         Assert.False(File.Exists(Path.Combine(game, "servers.dat"))); // 26.3 + Fabric runs LadsCore, which reads the shared list
         Assert.Empty(report.Warnings);

@@ -912,13 +912,14 @@ try
         "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false", "fullscreen:" + (qaFullscreen ? "true" : "false") };
     string qaOptions = Path.Combine(directory, "options.txt");
     // LADS_VERIFY_OPTIONS_SYNC=1: the launcher's options.txt sync around the game, as ProfileService does for a profile that is not
-    // isolated (1.8.9: Lunar's 1.8 profile when the Lunar sandbox has one, else the shared copy; back to the shared copy after the
-    // exit); =prepare: only the one before the game, as when the launcher missed the game's exit.
+    // isolated (the shared copy's controls; 1.8.9's other settings from Lunar's 1.8 profile when the Lunar sandbox has one, else the
+    // shared copy; back to the shared copy after the exit, 1.8.9 with Lunar only the controls); =prepare: only the one before the
+    // game, as when the launcher missed the game's exit.
     if (optionsSync != null)
     {
-        GameOptionsService.SyncToInstance(lunarOptions ?? sharedOptions, qaOptions, version);
+        GameOptionsService.SyncToInstance(sharedOptions, qaOptions, version, lunarOptions);
         CopyIfExists(qaOptions, Path.Combine(evidence, "options-after-launcher-sync.txt"));
-        summary.Add($"Options sync ({optionsSync}): {lunarOptions ?? sharedOptions} -> {qaOptions}");
+        summary.Add($"Options sync ({optionsSync}): {sharedOptions}{(lunarOptions != null ? " (other settings: " + lunarOptions + ")" : "")} -> {qaOptions}");
     }
     var qaLines = File.Exists(qaOptions)
         ? File.ReadAllLines(qaOptions).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList()
@@ -1252,7 +1253,7 @@ if (Env("LADS_VERIFY_V133") == "1" && (process == null || !IsRunning(process)))
 if (process != null && HasStarted(process))
 {
     CopyIfExists(Path.Combine(directory, "options.txt"), Path.Combine(evidence, "options-after-game.txt"));
-    if (optionsSync == "1" && lunarOptions == null) GameOptionsService.SyncFromInstance(Path.Combine(directory, "options.txt"), sharedOptions, version);
+    if (optionsSync == "1") GameOptionsService.SyncFromInstance(Path.Combine(directory, "options.txt"), sharedOptions, version, controlsOnly: lunarOptions != null);
     CopyIfExists(sharedOptions, Path.Combine(evidence, "shared-options-after.txt"));
     bool handled = await Task.WhenAny(exitHandled.Task, Task.Delay(TimeSpan.FromSeconds(30))) == exitHandled.Task;
     if (!handled) failures.Add("GameSession's exit handler did not finish within 30 s (running marker removal and fallback server-list reconcile).");
