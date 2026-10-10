@@ -466,7 +466,7 @@ public final class QaProbe1201 {
     // ---- screenshots ------------------------------------------------------------------------------------------------
 
     /** Writes the main render target (the last finished frame, GUI included) to screenshots/name.png. */
-    private static void shot(Minecraft mc, String name) throws IOException {
+    static void shot(Minecraft mc, String name) throws IOException {
         if (!name.matches("[A-Za-z0-9._-]{1,80}")) throw new IllegalArgumentException("shot name must be [A-Za-z0-9._-]");
         Path dir = gameDir.resolve("screenshots");
         Files.createDirectories(dir);
