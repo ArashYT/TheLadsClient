@@ -164,6 +164,8 @@ public final class QaProbe1201 {
     }
 
     private static void title(Minecraft mc, long now) throws Exception {
+        // Supplementaries opens a welcome screen over the title when part of the pack is missing (QA subsets): leave it so the script can start.
+        if (mc.getOverlay() == null && mc.screen != null && mc.screen.getClass().getSimpleName().equals("WelcomeMessageScreen")) mc.setScreen(new TitleScreen());
         if (!(mc.screen instanceof TitleScreen) || mc.getOverlay() != null) {
             titleTicks = 0;
             if (now - phaseSince > TITLE_TIMEOUT) throw new IllegalStateException("no title screen within 300 s; screen=" + describeScreen(mc));
