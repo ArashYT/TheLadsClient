@@ -7,7 +7,7 @@ import net.minecraft.client.gui.screens.Screen;
 import org.slf4j.LoggerFactory;
 /** Public API adapter. Xaero retains terrain, waypoints, server protocol and fair-play ownership. */
 public final class MinimapIntegration {
-    private static Object map,manager,transform;
+    private static Object mod,map,manager,transform;
     private static Class<?> transformType;
     private static Boolean lastEnabled;
     private static int lastX=Integer.MIN_VALUE,lastY=Integer.MIN_VALUE;
@@ -23,7 +23,7 @@ public final class MinimapIntegration {
             attempted=true;
             if(!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("xaerominimap"))return;
             try{
-                Object mod=Class.forName("xaero.common.HudMod").getField("INSTANCE").get(null);
+                mod=Class.forName("xaero.common.HudMod").getField("INSTANCE").get(null);
                 map=Class.forName("xaero.hud.minimap.BuiltInHudModules").getField("MINIMAP").get(null);
                 manager=call(call(mod,"getHudConfigs"),"getClientConfigManager");
                 transformType=Class.forName("xaero.hud.module.ModuleTransform");
@@ -56,7 +56,7 @@ public final class MinimapIntegration {
             if(session!=null){double scale=Minecraft.getInstance().getWindow().getGuiScale();
                 int w=((Number)session.getClass().getMethod("getWidth",double.class).invoke(session,scale)).intValue();
                 int h=((Number)session.getClass().getMethod("getHeight",double.class).invoke(session,scale)).intValue();
-                return new int[]{Math.max(20,w),Math.max(20,h)};}
+                return new int[]{Math.max(20,w),Math.max(20,h)+com.thelads.core.client.hud.XaeroMinimapHudElement.infoLinesHeight(mod)};}
         }catch(ReflectiveOperationException ignored){}
         return new int[]{100,100};
     }
