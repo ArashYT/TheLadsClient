@@ -6,7 +6,7 @@ using System.Text;
 /// Places QA games for the owner (2026-10-08: "use the main monitor and you can do 3 instances at a time"): every game window goes
 /// to a tile of the PRIMARY monitor's work area (2 x 2 grid; slot 1 top left, 2 top right, 3 bottom left, so three games never
 /// overlap), resized to the tile unless LADS_VERIFY_NO_RESIZE=1, never activated, never left minimized. The slot comes from
-/// QaShared.AcquireAsync (.qa-slot-1..3). Games run at High priority (owner: "do high priority QA Tests"). When a new game window
+/// QaShared.AcquireAsync (.qa-slot-1..5). Games run at High priority (owner: "do high priority QA Tests"). When a new game window
 /// takes focus while the owner is using the PC, focus goes back to the window they were in. Runs that need the game in front
 /// (synthetic input, raw mouse, F11/borderless captures) set LADS_VERIFY_FOCUS=1: no placement or focus give-back.
 /// LADS_VERIFY_PLAYING=1 (the owner is playing and streaming, 2026-10-05): below-normal priority the whole run, no monitor
@@ -23,7 +23,9 @@ static class QaWindowGuard
     public static Rectangle Tile(int slot)
     {
         var area = Screen.PrimaryScreen!.Bounds;
-        int w = area.Width / 2, h = area.Height / 2, i = Math.Clamp(slot, 1, 4) - 1;
+        int w = area.Width / 2, h = area.Height / 2;
+        if (slot >= 5) return new Rectangle(area.X + w / 2, area.Y + h / 2, w, h); // 5th game: centred over the 2 x 2 grid (occluded windows still render)
+        int i = Math.Clamp(slot, 1, 4) - 1;
         return new Rectangle(area.X + i % 2 * w, area.Y + i / 2 * h, w, h);
     }
 
