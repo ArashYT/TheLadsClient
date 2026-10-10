@@ -99,7 +99,7 @@ Completed inside `common/client/hud/`, without changing bridge contracts, config
 - `HudElement.getScale` consumes the registered percentage slider (50–200%, including 125/175%), bounds the transform and retains the legacy dropdown path. Ping's latency color now reaches the text renderer through a color-aware centered-text helper.
 - Dynamic text HUDs compute their width **before** drawing the background, eliminating the prior frame's background dimensions. Coordinates measure all visible fragments and font line height, including world-border values and per-axis formatting.
 - Speed consumes the precision choice; time consumes the 12-hour choice, handles midnight/noon and preserves unknown time formats. Decimal formatting is locale-stable.
-- TexturePacks consumes Show All and Max Packs using real selected IDs in the native order; empty lists still show Default. It does not invent hidden-pack metadata or alter the resource repository.
+- TexturePacks consumes Show All and Max Packs using the real IDs of the packs the player picked, highest priority first (the top of the pack screen), without the required or built-in packs (vanilla, mods' own); with none picked it shows Default. Since 1.9.0 each row starts with the pack's icon (Show Icons, on by default). It does not invent hidden-pack metadata or alter the resource repository.
 - Potion Effects consumes Show duration for the native ` (Ns)` suffix, preserves unfamiliar effect strings, honors global text shadow, and resets its dimensions when effects expire.
 - Keystrokes reports bounds containing its mouse/space rows for every visibility combination. The space marker is drawn geometrically, avoiding an overheight font glyph. `HudManager` restores its pushed transform even if rendering throws.
 

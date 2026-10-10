@@ -368,10 +368,18 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
         var selected = repository.getSelectedPacks();
         if (!packSelection.equals(selected)) {
             packSelection = List.copyOf(selected);
-            packNames = selected.stream().map(net.minecraft.server.packs.repository.Pack::getId).toList();
+            packNames = ownPacks(selected);
             com.thelads.core.v1_20_1.gui.PackIcons1201.retain(packNames);
         }
         return packNames;
+    }
+
+    /** What the player picked, highest priority first (the top of the pack screen): not the required, fixed-position or built-in packs (vanilla, mods' own). */
+    private static List<String> ownPacks(java.util.Collection<net.minecraft.server.packs.repository.Pack> selected) {
+        var own = new java.util.ArrayList<String>();
+        for (var pack : selected)
+            if (!pack.isRequired() && !pack.isFixedPosition() && pack.getPackSource() != net.minecraft.server.packs.repository.PackSource.BUILT_IN) own.add(0, pack.getId());
+        return List.copyOf(own);
     }
 
     @Override

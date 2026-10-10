@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * world. hud170-hud: Hotbar Slots armour (damaged helmet, no chestplate, leggings, damaged boots), the scoreboard in its own
  * colours with a red team, one boss bar. hud170-chat-scrolled: 150 lines, scrolled 130 up. hud170-cap-1..3: the minimap under a
  * 30 FPS HUD cap. hud170-autohide-*: hidden and half faded, capped and not. hud170-voice-*: Simple Voice Chat's real state, then a
- * sample. hud170-packs-*: the Pack module's icons (1.9.0): the first pack, the first eight, those without icons, the game's own packs, one of them. Server-side changes
+ * sample. hud170-packs-*: the Pack module's icons (1.9.0): the first pack, every pack, every pack without icons, two packs, none (Default). Server-side changes
  * (armour, scoreboard, team, boss bar) and every setting are put back.
  */
 final class Hud170Capture {
@@ -46,8 +46,7 @@ final class Hud170Capture {
     private static String shot;
     private static boolean capturing, capWas;
     private static int limitWas;
-    private static LadsGameBridge bridgeWas;
-    private static List<String> userPacks = List.of();
+    private static java.util.Collection<String> packsWere;
     private static Object svcStates, svcOnboarded;
 
     private Hud170Capture() {}
@@ -208,19 +207,17 @@ final class Hud170Capture {
                     at(600, "hud170-packs-all-icons-off");
                 }
                 case 13 -> {
-                    // The game's list has every mod's pack before the player's own (past the HUD's eight), so the HUD is handed vanilla and the selected
-                    // packs from the game's resourcepacks folder, then one of them: the icons of the real packs, and a list that changes.
+                    // The selection changes under the HUD (no reload): two of the player's packs, then none (the HUD shows Default).
                     ((BoolOption) NativeQualityOfLife.module("TexturePacks").getOption("Show Icons")).set(true);
-                    bridgeWas = LadsGameBridge.get();
-                    userPacks = mc.getResourcePackRepository().getSelectedIds().stream().filter(id -> id.startsWith("file/")).toList();
-                    List<String> own = new ArrayList<>(List.of("vanilla"));
-                    own.addAll(userPacks);
-                    if (!userPacks.isEmpty()) LadsGameBridge.set(listing(bridgeWas, own)); // none without LADS_VERIFY_RESOURCEPACKS
-                    at(600, "hud170-packs-own");
+                    var repository = mc.getResourcePackRepository();
+                    packsWere = List.copyOf(repository.getSelectedIds());
+                    List<String> own = packsWere.stream().filter(id -> id.startsWith("file/")).toList();
+                    repository.setSelected(own.subList(0, Math.min(2, own.size()))); // none without LADS_VERIFY_RESOURCEPACKS
+                    at(600, "hud170-packs-fewer");
                 }
                 case 14 -> {
-                    if (!userPacks.isEmpty()) LadsGameBridge.set(listing(bridgeWas, List.of("vanilla", userPacks.get(0))));
-                    at(600, "hud170-packs-fewer");
+                    mc.getResourcePackRepository().setSelected(List.of());
+                    at(600, "hud170-packs-none");
                 }
                 default -> finish();
             }
@@ -232,7 +229,7 @@ final class Hud170Capture {
 
     private static void finish() {
         step = 99;
-        if (bridgeWas != null) LadsGameBridge.set(bridgeWas);
+        if (packsWere != null) Minecraft.getInstance().getResourcePackRepository().setSelected(packsWere);
         VoiceChatIntegration.qa = null;
         restoreOnboarding();
         OPTIONS.forEach(Option::load);
@@ -258,15 +255,6 @@ final class Hud170Capture {
             var player = server.getPlayerList().getPlayer(id);
             if (player != null) for (int i = 0; i < ARMOUR.length; i++) player.setItemSlot(ARMOUR[i], pieces[i]);
         });
-    }
-
-    /** The game bridge, but its resource pack list is this one. */
-    private static LadsGameBridge listing(LadsGameBridge real, List<String> packs) {
-        return (LadsGameBridge) java.lang.reflect.Proxy.newProxyInstance(LadsGameBridge.class.getClassLoader(), new Class<?>[] {LadsGameBridge.class},
-            (proxy, method, args) -> {
-                if (method.getName().equals("getActiveResourcePacks")) return packs;
-                try { return method.invoke(real, args); } catch (java.lang.reflect.InvocationTargetException failure) { throw failure.getCause(); }
-            });
     }
 
     private static void command(String command) {

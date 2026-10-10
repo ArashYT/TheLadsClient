@@ -147,6 +147,7 @@ public interface LadsGameBridge {
         return Collections.emptyList();
     }
 
+    /** The resource packs the player picked, highest priority first, without the required or built-in ones; empty when there are none. */
     default List<String> getActiveResourcePacks() {
         return Collections.emptyList();
     }
