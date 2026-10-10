@@ -90,6 +90,13 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         return com.thelads.core.v1_20_1.feature.NativeKillBanner1201.drawPreview(guiGraphics, skin, variant, x, y, width, height, clock);
     }
 
+    /** The crosshair draws directly: flush the batched fills (the backdrop) first so it lands on top. */
+    @Override
+    public boolean drawCrosshairPreview(int cx, int cy) {
+        guiGraphics.flush();
+        return com.thelads.core.v1_20_1.hud.overlay.Crosshair1201.preview(guiGraphics, cx, cy);
+    }
+
     @Override
     public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
         com.thelads.core.v1_20_1.hud.overlay.PaperDoll1201.render(guiGraphics, x, y, width, height, editor);

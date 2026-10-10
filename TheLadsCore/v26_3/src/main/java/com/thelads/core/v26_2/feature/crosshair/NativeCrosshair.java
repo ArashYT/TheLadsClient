@@ -92,6 +92,14 @@ public final class NativeCrosshair {
         if(!flag("Disable Attack Indicator")&&(!axes||flag("Debug Attack Indicator"))) attack(graphics,cx,cy,context.thirdPerson());
         if(!flag("Disable Crosshair")&&!axes) indicators(graphics,cx,cy,partial,alpha);
     }
+    private static boolean previewing;
+    /** Lads settings page: the configured crosshair as in game (first-person opacity, base colour, no dynamic gap) at cx, cy. False when another mod draws it. */
+    public static boolean preview(GuiGraphicsExtractor graphics,int cx,int cy) {
+        if(externalPresent()||module()==null)return false;
+        previewing=true;
+        try { draw(graphics,cx,cy,number("Gap"),number("Opacity First Person")/100,false,null); } finally { previewing=false; }
+        return true;
+    }
     public static void draw(GuiGraphicsExtractor graphics,int cx,int cy,double gap,double opacity,boolean third,CrosshairDrawing preview) {
         var module=module(); if(module==null)return;
         int shape=preview!=null?8:NativeQualityOfLife.choice("Crosshair Tweaks","Shape",0), main=targetColor();
@@ -120,6 +128,7 @@ public final class NativeCrosshair {
     static int targetColor() {
         var mc=Minecraft.getInstance(); int base=color("Color");
         if(flag("Rainbow")){float hue=(float)((System.nanoTime()/1e9*number("Rainbow Speed")/6+number("Rainbow Phase")/360)%1);base=(base&0xff000000)|(Color.HSBtoRGB(hue,1,1)&0xffffff);}
+        if(previewing)return base;
         if(mc.crosshairPickEntity instanceof Player&&flag("Highlight Players"))return color("Player Color");
         if((mc.crosshairPickEntity instanceof Enemy||mc.crosshairPickEntity instanceof net.minecraft.world.entity.NeutralMob)&&flag("Highlight Hostiles"))return color("Hostile Color");
         if(mc.crosshairPickEntity instanceof net.minecraft.world.entity.animal.Animal&&flag("Highlight Passives"))return color("Passive Color");

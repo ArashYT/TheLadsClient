@@ -1,5 +1,6 @@
 package com.thelads.core.client.gui;
 
+import com.thelads.core.client.CrosshairDesign;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.hud.HudElement;
 import com.thelads.core.client.hud.HudManager;
@@ -11,6 +12,7 @@ import com.thelads.core.mods.ModDependencyPlanner;
 import com.thelads.core.mods.ModInventoryModel;
 import com.thelads.core.mods.ModStateStore;
 import com.thelads.core.modules.BetterResolutionModule;
+import com.thelads.core.modules.CrosshairModule;
 import com.thelads.core.modules.KillBannerModule;
 import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.modules.ToggleSprintModule;
@@ -613,15 +615,21 @@ public final class LadsSettingsScreen {
                     g.fill(boxX + 6, boxY + bannerH + 1, boxX + boxW - 6, boxY + bannerH + 2, LadsPalette.BORDER);
                     variantTiles(g, banner, varSkin, boxX + 4, boxY + bannerH + 6, boxW - 8, mx, my);
                 }
-            } else if ("Crosshair".equalsIgnoreCase(name)) {
-                int chColor = m.isEnabled() ? ACCENT : TEXT;
-                int chSize = 7, chGap = 3;
-                g.fill(centerX - chSize - chGap, centerY - 1, centerX - chGap, centerY + 1, chColor);
-                g.fill(centerX + chGap, centerY - 1, centerX + chSize + chGap, centerY + 1, chColor);
-                g.fill(centerX - 1, centerY - chSize - chGap, centerX + 1, centerY - chGap, chColor);
-                g.fill(centerX - 1, centerY + chGap, centerX + 1, centerY + chSize + chGap, chColor);
-                g.fill(centerX, centerY, centerX + 1, centerY + 1, 0xFFFFFFFF);
-                g.drawCenteredText("Crosshair Reticle", centerX, centerY + 24, MUTED);
+            } else if (m instanceof CrosshairModule) {
+                // The crosshair as the game draws it with these options, over a checker (white, black and inverse-blended shapes all show);
+                // the scissor keeps a large Scale inside the box. Versions that cannot draw it keep a plain reticle.
+                int bx = boxX + 3, by = boxY + 3, bw = boxW - 6, bh = boxH - 6;
+                g.enableScissor(bx, by, bx + bw, by + bh);
+                g.fill(bx, by, bx + bw, by + bh, CrosshairDesign.BACKDROP_DARK);
+                for (CrosshairDesign.Rect tile : CrosshairDesign.checker(bw, bh))
+                    g.fill(bx + tile.left(), by + tile.top(), bx + tile.right(), by + tile.bottom(), CrosshairDesign.BACKDROP_LIGHT);
+                if (!g.drawCrosshairPreview(centerX, centerY)) {
+                    g.fill(centerX - 10, centerY - 1, centerX - 3, centerY + 1, 0xFFFFFFFF);
+                    g.fill(centerX + 3, centerY - 1, centerX + 10, centerY + 1, 0xFFFFFFFF);
+                    g.fill(centerX - 1, centerY - 10, centerX + 1, centerY - 3, 0xFFFFFFFF);
+                    g.fill(centerX - 1, centerY + 3, centerX + 1, centerY + 10, 0xFFFFFFFF);
+                }
+                g.disableScissor();
             } else if ("Fullbright".equalsIgnoreCase(name)) {
                 // The live world, so a change shows while it is made; versions that cannot copy it keep the card.
                 if (g.drawGameView(boxX + 2, boxY + 2, boxW - 4, boxH - 4)) {

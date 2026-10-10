@@ -178,6 +178,21 @@ public final class Crosshair1201 {
         }
     }
 
+    private static boolean previewing;
+
+    /** Lads settings page: the configured crosshair as in game (first-person opacity, base colour, no dynamic gap) at cx, cy. False when another mod draws it. */
+    public static boolean preview(GuiGraphics graphics, int cx, int cy) {
+        if (external || module() == null) return false;
+        previewing = true;
+        try {
+            draw(graphics, cx, cy, number("Gap"), number("Opacity First Person") / 100, false, null);
+        } finally {
+            previewing = false;
+            RenderSystem.defaultBlendFunc();
+        }
+        return true;
+    }
+
     /** The shape at (cx, cy); preview: the drawing editor's unsaved bitmap. */
     static void draw(GuiGraphics graphics, int cx, int cy, double gap, double opacity, boolean third, CrosshairDrawing preview) {
         CrosshairModule module = module();
@@ -229,6 +244,7 @@ public final class Crosshair1201 {
             float hue = (float) ((System.nanoTime() / 1e9 * number("Rainbow Speed") / 6 + number("Rainbow Phase") / 360) % 1);
             base = (base & 0xff000000) | (Mth.hsvToRgb(hue, 1, 1) & 0xffffff);
         }
+        if (previewing) return base;
         var target = mc.crosshairPickEntity;
         if (target instanceof Player && flag("Highlight Players")) return color("Player Color");
         if ((target instanceof Enemy || target instanceof NeutralMob) && flag("Highlight Hostiles")) return color("Hostile Color");

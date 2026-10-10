@@ -144,6 +144,20 @@ public final class Crosshair189 {
         frames++;
     }
 
+    private static boolean previewing;
+
+    /** Lads settings page: the configured crosshair as in game (first-person opacity, base colour, no dynamic gap) at cx, cy. */
+    public static boolean preview(int cx, int cy) {
+        if (module() == null) return false;
+        previewing = true;
+        try {
+            draw(cx, cy, number("Gap"), number("Opacity First Person") / 100, false, null);
+        } finally {
+            previewing = false;
+        }
+        return true;
+    }
+
     public static void draw(int cx, int cy, double gap, double opacity, boolean third, CrosshairDrawing preview) {
         CrosshairModule module = module();
         if (module == null) return;
@@ -195,6 +209,7 @@ public final class Crosshair189 {
             float hue = (float) ((System.nanoTime() / 1e9 * number("Rainbow Speed") / 6 + number("Rainbow Phase") / 360) % 1);
             base = (base & 0xff000000) | (Color.HSBtoRGB(hue, 1, 1) & 0xffffff);
         }
+        if (previewing) return base;
         Entity target = Minecraft.getMinecraft().pointedEntity;
         if (target instanceof EntityPlayer && flag("Highlight Players")) return color("Player Color");
         if (target instanceof IMob && flag("Highlight Hostiles")) return color("Hostile Color");

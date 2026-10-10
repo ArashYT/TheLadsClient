@@ -68,6 +68,12 @@ public interface LadsGraphics {
         return drawKillBanner(skin, variant, x, y, width, height);
     }
 
+    /**
+     * The Crosshair Tweaks settings preview: the crosshair as the game draws it with the current options (shape, size, gap,
+     * colours, outline, dot, rotation, scale, opacity), centred on cx, cy. False where the version draws none (the page then shows a plain reticle).
+     */
+    default boolean drawCrosshairPreview(int cx, int cy) { return false; }
+
     /** Render the actual local player with the native entity renderer, when available. */
     default void drawPlayerModel(int x, int y, int width, int height, boolean editor) {}
 
