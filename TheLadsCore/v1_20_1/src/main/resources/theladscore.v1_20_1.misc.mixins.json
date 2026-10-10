@@ -15,6 +15,7 @@
     "DynamicLightsEntityMixin",
     "SodiumDynamicLightsMixin",
     "EuphoriaClipboardMixin",
+    "MahouClipShaderCloseMixin",
     "MouseTweaksMixin",
     "MouseTweaksScrollMixin",
     "CreativeTabAccessor1201",
