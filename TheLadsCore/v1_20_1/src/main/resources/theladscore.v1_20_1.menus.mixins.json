@@ -17,6 +17,7 @@
     "WindowIconMixin",
     "SmoothScrollMixin",
     "ServerListBackgroundMixin",
+    "DirtBackgroundMixin",
     "GameRendererViewMixin",
     "KeyEntryAccessor",
     "CategoryEntryAccessor",
