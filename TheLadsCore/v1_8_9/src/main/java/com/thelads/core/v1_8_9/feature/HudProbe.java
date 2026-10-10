@@ -347,7 +347,8 @@ public final class HudProbe {
 
     private static boolean restacked(Minecraft mc) throws Exception {
         check(stacked() && PAIR.equals(HudSettings.getInstance().getGroupMembers("Day")), "context Center stack re-stacks the group");
-        check(saved("CPS", bounds("CPS")) && saved("Day", bounds("Day")), "and saves both positions");
+        check(saved("CPS", bounds("CPS")) && saved("Day", bounds("Day")), "and saves both positions: CPS " + bounds("CPS") + " saved "
+            + Arrays.toString(HudSettings.getInstance().getPosition("CPS")) + ", Day " + bounds("Day") + " saved " + Arrays.toString(HudSettings.getInstance().getPosition("Day")));
         rightClick(bounds("Day"));
         return after(2);
     }
