@@ -1,7 +1,7 @@
 {
   "packId": "zero-smp-1.20.1",
   "version": "1.1.2",
-  "description": "Zero SMP 1.9.1 performance: ModernFix dynamic resources on (models are baked when first used instead of all at startup and on every F3+T; overrides the explicit false of 1.1.1). Distant Horizons renderer on, tuned for low cost: LOD radius 128 chunks, 2 DH threads at half run time and below-normal priority, surface-only distant generation in singleplayer (no feature/structure generation next to the integrated server; the Zero SMP server runs no DH, so multiplayer LODs only come from chunks the client receives anyway), low horizontal quality, biome blending 1, single-pass vanilla fade, no DH SSAO. Client config only: the server needs nothing.",
+  "description": "Zero SMP 1.9.1 performance: ModernFix dynamic resources on (models are baked when first used instead of all at startup and on every F3+T; overrides the explicit false of 1.1.1). Distant Horizons renderer on, tuned for low cost: LOD radius 64 chunks (the owner's value), 2 DH threads at half run time and below-normal priority, surface-only distant generation in singleplayer (no feature/structure generation next to the integrated server; the Zero SMP server runs no DH, so multiplayer LODs only come from chunks the client receives anyway), low horizontal quality, biome blending 1, single-pass vanilla fade, no DH SSAO, flat-colour LODs (no textured LODs) and no LOD rebuilds when zooming. Client config only: the server needs nothing.",
   "mods": {
     "add": [],
     "remove": []
@@ -23,7 +23,7 @@
       "format": "toml",
       "keyValues": {
         "rendererMode": "\"DEFAULT\"",
-        "lodChunkRenderDistanceRadius": "128",
+        "lodChunkRenderDistanceRadius": "64",
         "numberOfThreads": "2",
         "threadRunTimeRatio": "\"0.5\"",
         "threadPriority": "3",
@@ -31,7 +31,9 @@
         "horizontalQuality": "\"LOW\"",
         "lodBiomeBlending": "1",
         "vanillaFadeMode": "\"SINGLE_PASS\"",
-        "enableSsao": "false"
+        "enableSsao": "false",
+        "enableTexturedLods": "false",
+        "increaseQualityWhenZoomedIn": "false"
       }
     }
   ]
