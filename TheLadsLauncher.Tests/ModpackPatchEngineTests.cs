@@ -212,18 +212,27 @@ public class ModpackPatchEngineTests : IDisposable
         Directory.CreateDirectory(config);
         File.Copy(Path.Combine(ZeroSmpFixtures, dhFixture), Path.Combine(config, "DistantHorizons.toml"));
         File.Copy(Path.Combine(ZeroSmpFixtures, "owner", "config", "modernfix-mixins.properties"), Path.Combine(config, "modernfix-mixins.properties"));
+        var ifJson = Path.Combine(config, "immediatelyfast.json");
+        File.Copy(Path.Combine(ZeroSmpFixtures, "owner", "config", "immediatelyfast.json"), ifJson);
+        var ifBefore = JsonNode.Parse(File.ReadAllText(ifJson))!.AsObject();
+        Assert.False(ifBefore["experimental_screen_batching"]!.GetValue<bool>());
         int dhLines = File.ReadAllLines(Path.Combine(config, "DistantHorizons.toml")).Length;
 
         await ModpackPatchEngine.ApplyPatchAsync(_tempDir, patch, null, null);
 
-        Assert.Equal(2, patch.ConfigPatches!.Count);
-        foreach (var cfg in patch.ConfigPatches)
+        Assert.Equal(3, patch.ConfigPatches!.Count);
+        foreach (var cfg in patch.ConfigPatches.Where(c => c.KeyValues != null))
         {
             var keys = KeyTable(Path.Combine(_tempDir, "minecraft", cfg.File));
             foreach (var (key, value) in cfg.KeyValues!)
                 Assert.True(keys.TryGetValue(key, out var values) && values.Count == 1 && values[0] == value,
                     $"{cfg.File}: {key} = [{string.Join(", ", values ?? new List<string>())}], expected {value}");
         }
+        // ImmediatelyFast: only experimental_screen_batching changes; every other key of the owner's file stays as it was.
+        var ifAfter = JsonNode.Parse(File.ReadAllText(ifJson))!.AsObject();
+        Assert.True(ifAfter["experimental_screen_batching"]!.GetValue<bool>());
+        ifBefore.Remove("experimental_screen_batching"); ifAfter.Remove("experimental_screen_batching");
+        Assert.True(JsonNode.DeepEquals(ifBefore, ifAfter));
         var dh = File.ReadAllLines(Path.Combine(config, "DistantHorizons.toml"));
         Assert.Equal(dhLines + insertedLines, dh.Length);
         Assert.Equal("_version = 5", dh[0]);
