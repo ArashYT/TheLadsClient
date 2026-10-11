@@ -94,6 +94,11 @@ internal static class ZeroSmpQa
             File.Copy(coreJar, Path.Combine(mods, "theladscore.jar"), overwrite: true);
             foreach (var line in QaShared.RemoveMods(mods, removeMods)) Say(line);
             foreach (var line in QaShared.AddMods(mods, QaShared.Env("LADS_VERIFY_ADD_MODS"))) Say(line);
+            // Forge's early loading window is drawn by a helper thread while the main thread scans/transforms mods without pumping
+            // window messages, so Windows greys it out as "Not Responding" for minutes (owner: "they are still freezing"). QA games start
+            // without it: the real game window appears once loading is done.
+            string fml = Path.Combine(gameDir, "config", "fml.toml");
+            if (File.Exists(fml)) File.WriteAllText(fml, System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(fml), @"(?m)^(\s*earlyWindowControl\s*=\s*)true", "${1}false"));
             QaShared.ConnectorCache(mods, save: false); // skip Connector's minutes-long re-transform (window "Not Responding")
             if (freshWorld) { string world = Path.Combine(gameDir, "saves", WorldName); if (Directory.Exists(world)) { SafeFileOps.DeleteTree(world); Say("Fresh world: deleted " + world); } }
             File.WriteAllLines(Path.Combine(evidence, "mods.txt"), Directory.EnumerateFiles(mods, "*.jar").Select(f => Path.GetFileName(f)).Order(StringComparer.OrdinalIgnoreCase));
