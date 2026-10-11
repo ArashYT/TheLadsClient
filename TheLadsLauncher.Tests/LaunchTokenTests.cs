@@ -42,6 +42,27 @@ public class LaunchTokenTests
     }
 
     [Fact]
+    public void ARelaunchWithTheSameStartInfoGetsTheTokenToo()
+    {
+        // The QA harness retries a mod-loading race with new Process { StartInfo = game.StartInfo }; without the token the game
+        // blocked on stdin forever (Arash-PC int QA 2026-10-11).
+        using var dir = new TestDirectory();
+        Core(dir.Path, readsStdin: true);
+        using var first = Game("eyJ.secret-token_2");
+        LaunchToken.Hide(first, dir.Path, "eyJ.secret-token_2");
+        first.Start();
+        LaunchToken.Send(first);
+        first.StandardOutput.ReadToEnd();
+        first.WaitForExit();
+
+        using var retry = new Process { StartInfo = first.StartInfo };
+        retry.Start();
+        LaunchToken.Send(retry);
+        Assert.Equal("eyJ.secret-token_2", retry.StandardOutput.ReadToEnd().Trim());
+        retry.WaitForExit();
+    }
+
+    [Fact]
     public void AnOfflineTokenGoesTheSameWay()
     {
         using var dir = new TestDirectory();
