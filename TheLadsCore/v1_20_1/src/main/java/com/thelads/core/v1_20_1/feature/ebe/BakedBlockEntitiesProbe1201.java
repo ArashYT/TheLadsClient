@@ -119,8 +119,10 @@ public final class BakedBlockEntitiesProbe1201 {
             }
             case 40 -> {
                 command(server, String.format(Locale.ROOT, "tp %s %.1f %d %.1f 0 35", name, origin.getX() + 0.5, origin.getY() + 5, origin.getZ() - 3.5));
-                JSON.append(",\"blockEntities\":").append(placed).append(",\"bakedStates\":").append(BakedBlockEntities1201.bakedStates());
-                LOG.info("Lads EBE probe: {} block entities placed, {} baked block states", placed, BakedBlockEntities1201.bakedStates());
+                JSON.append(",\"blockEntities\":").append(placed).append(",\"bakedStates\":").append(BakedBlockEntities1201.bakedStates())
+                    .append(",\"shaperBaked\":").append(shaperBaked(mc));
+                LOG.info("Lads EBE probe: {} block entities placed, {} baked block states, shaper returns the baked chest: {}", placed,
+                    BakedBlockEntities1201.bakedStates(), shaperBaked(mc));
             }
             case 260 -> shot(mc, "closed"); // the game-mode chat line has faded by now
             case 270 -> forced = 0.5f;
@@ -354,11 +356,16 @@ public final class BakedBlockEntitiesProbe1201 {
         LOG.info("Lads EBE probe bench {}: {}", phase, result);
     }
 
+    /** The model the chunk mesher gets for a chest is the baked one (also under ModernFix dynamic resources, which overwrites getBlockModel). */
+    private static boolean shaperBaked(Minecraft mc) {
+        return mc.getBlockRenderer().getBlockModel(Blocks.CHEST.defaultBlockState()) instanceof BakedBlockEntities1201.EbeModel;
+    }
+
     private static void finish(Minecraft mc) throws Exception {
         JSON.append(",\"shots\":").append(shots).append(",\"shotsSaved\":").append(shotsSaved).append('}');
         Files.writeString(mc.gameDirectory.toPath().resolve("lads-ebe-probe.json"), JSON, StandardCharsets.UTF_8);
         int failed = shots - shotsSaved;
-        if (BakedBlockEntities.active() && BakedBlockEntities1201.bakedStates() == 0) failed++;
+        if (BakedBlockEntities.active() && (BakedBlockEntities1201.bakedStates() == 0 || !shaperBaked(mc))) failed++;
         LOG.info("Lads EBE probe END: {} passed, {} failed {}", shotsSaved, failed, JSON);
         tick = Integer.MIN_VALUE / 2;
     }

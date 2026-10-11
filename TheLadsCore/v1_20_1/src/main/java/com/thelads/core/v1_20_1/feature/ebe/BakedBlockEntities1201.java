@@ -6,15 +6,16 @@ import com.mojang.math.Axis;
 import com.thelads.core.client.ebe.BakedBlockEntities;
 import com.thelads.core.client.ebe.BakedQuadOrder;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.renderer.block.BlockModelShaper;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.ItemOverrides;
 import net.minecraft.client.renderer.block.model.ItemTransforms;
@@ -30,6 +31,7 @@ import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.Material;
+import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
@@ -76,8 +78,10 @@ import org.slf4j.LoggerFactory;
  * 1.20.1 side of {@link BakedBlockEntities}: chests (normal, trapped, Christmas, ender; single and double), shulker
  * boxes, beds, signs, hanging signs and the bell body become baked block models. Geometry and UVs are captured from
  * vanilla's own entity models through the same transforms its renderers use, the textures are stitched into the block
- * atlas (assets/minecraft/atlases/blocks.json), and the models are put into the block-state model cache on every
- * resource reload. Those states then report {@code RenderShape.MODEL}, so vanilla, Sodium and Embeddium mesh them.
+ * atlas (assets/minecraft/atlases/blocks.json), and on every resource reload each model is stored on its block state,
+ * which {@code BlockModelShaper.getBlockModel} returns (so it also works with ModernFix's dynamic resources, which
+ * replaces the shaper's model cache). Those states then report {@code RenderShape.MODEL}, so vanilla, Sodium and
+ * Embeddium mesh them.
  * Neither Sodium 0.5 nor vanilla gives a model the block position, so the position comes from {@code getSeed(pos)},
  * which all three call on the meshing thread right before asking the model for quads.
  */
@@ -93,11 +97,13 @@ public final class BakedBlockEntities1201 {
 
     private BakedBlockEntities1201() {}
 
-    /** Implemented on BlockState by mixin: baked states report RenderShape.MODEL and publish their meshing position. */
+    /** Implemented on BlockState by mixin: baked states hold their model, report RenderShape.MODEL and publish their meshing position. */
     public interface Flag {
         boolean lads$baked();
 
-        void lads$setBaked(boolean baked);
+        @Nullable BakedModel lads$model();
+
+        void lads$setModel(@Nullable BakedModel model);
     }
 
     /** Client entrypoint. */
@@ -127,27 +133,30 @@ public final class BakedBlockEntities1201 {
 
     // ---- model reload (main thread, ModelManager.apply -> BlockModelShaper.replaceCache) ---------------------------
 
-    /** The block-state model cache vanilla just built; returns it with the baked models added. */
-    public static Map<BlockState, BakedModel> install(Map<BlockState, BakedModel> vanilla) {
+    /**
+     * Bakes the models into their block states. {@code cache} is the block-state model cache the shaper now holds: vanilla's
+     * full map, or under ModernFix dynamic resources an empty or on-demand one, so a missing entry is looked up by its model
+     * location, as ModernFix itself does. The cache is left untouched (no copy of the whole map per reload).
+     */
+    public static void install(Map<BlockState, BakedModel> cache, ModelManager models) {
         init();
-        for (BlockState state : installed.keySet()) ((Flag) state).lads$setBaked(false);
+        for (BlockState state : installed.keySet()) ((Flag) state).lads$setModel(null);
         installed = Map.of();
         BakedBlockEntities.clear();
-        if (!BakedBlockEntities.active()) return vanilla;
+        if (!BakedBlockEntities.active()) return;
         Map<BlockState, EbeModel> ours = new IdentityHashMap<>();
         try {
-            new Baker(vanilla, ours).run();
+            new Baker(state -> {
+                BakedModel model = cache.get(state);
+                return model != null ? model : models.getModel(BlockModelShaper.stateToModelLocation(state));
+            }, ours).run();
         } catch (Throwable t) {
             LOG.error("Baked block entities disabled for this reload", t);
-            return vanilla;
+            return;
         }
-        if (ours.isEmpty()) return vanilla;
-        Map<BlockState, BakedModel> merged = new HashMap<>(vanilla);
-        merged.putAll(ours);
-        for (BlockState state : ours.keySet()) ((Flag) state).lads$setBaked(true);
+        ours.forEach((state, model) -> ((Flag) state).lads$setModel(model));
         installed = ours;
         LOG.info("Baked block entities: {} block states", ours.size());
-        return merged;
     }
 
     // ---- block entity render path (main thread) ------------------------------------------------------------------
@@ -225,12 +234,12 @@ public final class BakedBlockEntities1201 {
     // ---- baking ----------------------------------------------------------------------------------------------------
 
     private static final class Baker {
-        private final Map<BlockState, BakedModel> vanilla;
+        private final Function<BlockState, BakedModel> vanilla;
         private final Map<BlockState, EbeModel> out;
         private final TextureAtlas atlas = Minecraft.getInstance().getModelManager().getAtlas(TextureAtlas.LOCATION_BLOCKS);
         private final Capture capture = new Capture();
 
-        Baker(Map<BlockState, BakedModel> vanilla, Map<BlockState, EbeModel> out) {
+        Baker(Function<BlockState, BakedModel> vanilla, Map<BlockState, EbeModel> out) {
             this.vanilla = vanilla;
             this.out = out;
         }
@@ -341,7 +350,7 @@ public final class BakedBlockEntities1201 {
                         capture.begin();
                         for (String name : new String[] {"front", "back", "left", "right"}) potSides.getChild(name).render(pose, capture, 0, 0);
                         quads.addAll(capture.quads(side));
-                        BakedModel original = vanilla.get(state);
+                        BakedModel original = vanilla.apply(state);
                         if (original != null) out.put(state, new EbeModel(original, state, List.copyOf(quads), false));
                         continue;
                     } else if (block instanceof BellBlock) {
@@ -353,7 +362,7 @@ public final class BakedBlockEntities1201 {
                     } else break;
                     TextureAtlasSprite sprite = sprite(material);
                     if (sprite == null) break;
-                    BakedModel original = vanilla.get(state);
+                    BakedModel original = vanilla.apply(state);
                     List<BakedQuad> quads = capture.quads(sprite);
                     if (original != null && !quads.isEmpty()) out.put(state, new EbeModel(original, state, quads, keepVanilla));
                 }
