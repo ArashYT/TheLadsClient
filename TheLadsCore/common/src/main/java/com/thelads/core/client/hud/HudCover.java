@@ -70,8 +70,8 @@ public final class HudCover {
      */
     public static boolean coveredBefore(double x1, double y1, double x2, double y2) {
         boolean debugOpen = com.thelads.core.client.bridge.LadsGameBridge.get().isDebugScreenOpen();
-        for (List<int[]> boxes : List.of(now, last))
-            for (int[] box : boxes) if ((box[0] != DEBUG || debugOpen) && overlaps(box, x1, y1, x2, y2)) return true;
+        for (int[] box : now) if ((box[0] != DEBUG || debugOpen) && overlaps(box, x1, y1, x2, y2)) return true;
+        for (int[] box : last) if ((box[0] != DEBUG || debugOpen) && overlaps(box, x1, y1, x2, y2)) return true;
         return false;
     }
 

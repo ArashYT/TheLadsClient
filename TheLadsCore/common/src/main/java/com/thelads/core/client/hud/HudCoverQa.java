@@ -126,7 +126,7 @@ public final class HudCoverQa {
         scaleWas = settings.getHudScale();
         capWas = settings.isHudFpsCapEnabled();
         limitWas = settings.getHudFpsLimit();
-        hideWas = com.thelads.core.modules.BetterF3Module.hidesLadsHud();
+        hideWas = ModuleManager.getInstance().getModule("BetterF3").getOption("Hide Lads HUD") instanceof BoolOption hide && hide.get();
         // Only the widgets of the sequence, so nothing else sits under the tab list or F3 by chance.
         for (HudElement element : HudManager.getInstance().getElements()) {
             Module module = element.getModuleName() == null ? null : ModuleManager.getInstance().getModule(element.getModuleName());
