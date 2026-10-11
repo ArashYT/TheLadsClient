@@ -9,6 +9,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.authlib.GameProfile;
+import com.thelads.core.client.hud.HudCover;
+import com.thelads.core.v26_2.feature.HudCapture;
 import com.thelads.core.v26_2.feature.tabtweaks.Head;
 import com.thelads.core.v26_2.feature.tabtweaks.Shifter;
 import com.thelads.core.v26_2.feature.tabtweaks.config.TabTweaksConfig;
@@ -23,6 +25,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
+import org.joml.Matrix3x2f;
+import org.joml.Vector2f;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -42,6 +46,20 @@ public class PlayerTabOverlayMixin {
     @Shadow @Final private Minecraft minecraft;
     @SuppressWarnings("InstantiationOfUtilityClass")
     @Unique PlayerFaceExtractor ladsTab$playerFaceRenderer = new PlayerFaceExtractor();
+    /** Where the list is drawn this frame (its move and scale on the GUI's pose); null outside its render. */
+    @Unique private Matrix3x2f lads$pose;
+
+    /**
+     * HudCover: the header, body and footer backgrounds are the list's box on screen; the Lads HUD widgets under it step aside. A
+     * capped HUD build (HudCapture) replays the box with the list.
+     */
+    @Unique
+    private void lads$cover(int left, int top, int right, int bottom) {
+        if (lads$pose == null) return;
+        Vector2f a = lads$pose.transformPosition(new Vector2f(left, top)), b = lads$pose.transformPosition(new Vector2f(right, bottom));
+        HudCapture.record(state -> HudCover.add(HudCover.TAB, a.x, a.y, b.x, b.y));
+        HudCover.add(HudCover.TAB, a.x, a.y, b.x, b.y);
+    }
 
     @ModifyExpressionValue(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Options;getBackgroundColor(I)I"))
     private int modifyTabPlayerWidgetColor(int color) {
@@ -49,17 +67,20 @@ public class PlayerTabOverlayMixin {
     }
 
     @ModifyArg(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V", ordinal = 0), index = 4)
-    private int modifyTabHeaderColor(int color) {
+    private int modifyTabHeaderColor(int left, int top, int right, int bottom, int color) {
+        lads$cover(left, top, right, bottom);
         return TabTweaksConfig.current().layout ? TabTweaksConfig.current().tabHeaderColor : color;
     }
 
     @ModifyArg(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V", ordinal = 1), index = 4)
-    private int modifyTabBodyColor(int color) {
+    private int modifyTabBodyColor(int left, int top, int right, int bottom, int color) {
+        lads$cover(left, top, right, bottom);
         return TabTweaksConfig.current().layout ? TabTweaksConfig.current().tabBodyColor : color;
     }
 
     @ModifyArg(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V", ordinal = 3), index = 4)
-    private int modifyTabFooterColor(int color) {
+    private int modifyTabFooterColor(int left, int top, int right, int bottom, int color) {
+        lads$cover(left, top, right, bottom);
         return TabTweaksConfig.current().layout ? TabTweaksConfig.current().tabFooterColor : color;
     }
 
@@ -109,8 +130,9 @@ public class PlayerTabOverlayMixin {
         try {
             graphics.pose().scale(scale, scale);
             graphics.pose().translate(distanceX, distanceY);
+            lads$pose = new Matrix3x2f(graphics.pose());
             original.call(graphics, (int) (screenWidth / scale), scoreboard, displayObjective);
-        } finally { graphics.pose().popMatrix(); }
+        } finally { lads$pose = null; graphics.pose().popMatrix(); }
     }
 
     @ModifyArg(method = "getPlayerInfos", at = @At(value = "INVOKE", target = "Ljava/util/stream/Stream;limit(J)Ljava/util/stream/Stream;"))

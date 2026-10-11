@@ -57,6 +57,31 @@ public final class ForgeOverlays1201 {
         } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
             Hud1201.LOG.warn("Lads HUD parts: Forge's overlay events are not available, Raised and Auto Hide only act on the Lads HUD", failure);
         }
+        try {
+            // ForgeGui draws the debug text itself (not DebugScreenOverlay.renderLines), from this event's lists once every listener has run.
+            Class<?> text = Class.forName("net.minecraftforge.client.event.CustomizeGuiOverlayEvent$DebugText");
+            Method left = text.getMethod("getLeft"), right = text.getMethod("getRight");
+            Object bus = Class.forName("net.minecraftforge.common.MinecraftForge").getField("EVENT_BUS").get(null);
+            Class<?> priority = Class.forName("net.minecraftforge.eventbus.api.EventPriority");
+            Consumer<Object> onText = event -> debugText(event, left, right);
+            Class.forName("net.minecraftforge.eventbus.api.IEventBus").getMethod("addListener", priority, boolean.class, Class.class, Consumer.class)
+                .invoke(bus, priority.getField("LOWEST").get(null), true, text, onText);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+            Hud1201.LOG.warn("Lads HUD parts: Forge's debug text event is not available, F3 does not cover the Lads HUD", failure);
+        }
+    }
+
+    /** HudCover: the debug text ForgeGui is about to draw covers the Lads HUD widgets under its lines. */
+    @SuppressWarnings("unchecked")
+    private static void debugText(Object event, Method left, Method right) {
+        try {
+            var mc = net.minecraft.client.Minecraft.getInstance();
+            int width = mc.getWindow().getGuiScaledWidth();
+            com.thelads.core.client.hud.HudCover.debugColumn((java.util.List<String>) left.invoke(event), true, width, mc.font::width);
+            com.thelads.core.client.hud.HudCover.debugColumn((java.util.List<String>) right.invoke(event), false, width, mc.font::width);
+        } catch (ReflectiveOperationException | RuntimeException failure) {
+            Hud1201.LOG.warn("Lads HUD parts: Forge's debug text could not be read", failure);
+        }
     }
 
     private static String path(Object event) throws ReflectiveOperationException {
@@ -83,6 +108,11 @@ public final class ForgeOverlays1201 {
             closeUnfinished(event);
             if (Boolean.TRUE.equals(cancelled.invoke(event))) return; // someone else already skipped it: no Post will come
             String name = path(event);
+            // Xaero's minimap (its overlay xaerominimap:xaero) steps aside with the Lads Minimap widget under the tab list or F3 (HudCover).
+            if ("xaero".equals(name) && com.thelads.core.client.hud.HudManager.getInstance().isCovered("Minimap")) {
+                cancel.invoke(event, true);
+                return;
+            }
             boolean group = GROUP.contains(name), record = name.contains("record");
             if (!group && !record) return;
             GuiGraphics graphics = (GuiGraphics) guiGraphics.invoke(event);

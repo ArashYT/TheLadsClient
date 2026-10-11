@@ -232,6 +232,8 @@ public final class JadeFeatures1201 {
         int screenW = Math.round(w * scale), screenH = Math.round(h * scale);
         int x = JadeMath1201.place(config.anchor % 3, g.guiWidth(), screenW, config.offsetX);
         int y = JadeMath1201.place(config.anchor / 3, g.guiHeight(), screenH, config.offsetY);
+        // Under the tab list or the debug text the panel steps aside with the Lads HUD (HudCover).
+        if (com.thelads.core.client.hud.HudCover.coveredBefore(x, y, x + screenW, y + screenH)) return;
         PoseStack pose = g.pose();
         pose.pushPose();
         pose.translate(x, y, 0);

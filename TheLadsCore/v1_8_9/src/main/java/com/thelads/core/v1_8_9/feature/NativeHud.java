@@ -2,6 +2,7 @@ package com.thelads.core.v1_8_9.feature;
 
 import com.thelads.core.client.CpsTracker;
 import com.thelads.core.client.FrameAnimation;
+import com.thelads.core.client.hud.HudCover;
 import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.client.hud.ScoreboardHudElement;
 import com.thelads.core.config.DropdownOption;
@@ -51,14 +52,18 @@ public final class NativeHud {
     @SubscribeEvent
     public void overlayStart(RenderGameOverlayEvent.Pre event) {
         if (event.type == RenderGameOverlayEvent.ElementType.BOSSHEALTH) {
-            // The Lads Boss Bar replaces vanilla's (two bars before 1.7.0). Vanilla counts the bar's lifetime down as it draws it.
-            if (!Options189.enabled("BossBar")) return;
+            // The Lads Boss Bar replaces vanilla's (two bars before 1.7.0), and under the tab list or the debug text vanilla's steps
+            // aside (HudCover). Vanilla counts the bar's lifetime down as it draws it.
+            if (!Options189.enabled("BossBar") && !HudCover.bossBarsCovered(event.resolution.getScaledWidth(), BossStatus.bossName != null && BossStatus.statusBarTime > 0 ? 1 : 0)) return;
             if (BossStatus.bossName != null && BossStatus.statusBarTime > 0) --BossStatus.statusBarTime;
             event.setCanceled(true);
             return;
         }
         if (event.type != RenderGameOverlayEvent.ElementType.ALL) return;
-        boolean hide = Minecraft.getMinecraft().currentScreen instanceof DraggableHudScreen189 || ScoreboardHudElement.shouldReplaceVanillaScoreboard();
+        HudCover.frame(); // the tab list and the debug text add what they cover as Forge draws them, before the Lads HUD (Post ALL)
+        Minecraft mc = Minecraft.getMinecraft();
+        boolean hide = mc.currentScreen instanceof DraggableHudScreen189 || ScoreboardHudElement.shouldReplaceVanillaScoreboard()
+            || HudCover.sidebarCovered(event.resolution.getScaledWidth(), event.resolution.getScaledHeight(), mc.fontRendererObj::getStringWidth);
         if (hide || hidSidebar) GuiIngameForge.renderObjective = !hide;
         hidSidebar = hide;
     }
