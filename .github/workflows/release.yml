@@ -53,7 +53,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           # Built into the launcher for CurseForge browsing (docs/CURSEFORGE_API_KEY.md); empty when the secret is not set.
           LADS_CURSEFORGE_API_KEY: ${{ secrets.LADS_CURSEFORGE_API_KEY }}
-        run: ./Publish-Release.ps1
+        # A draft only: the owner's PC signs it (tools/Sign-Release.ps1) and then publishes. Launchers from 1.9.0 on refuse unsigned updates.
+        run: ./Publish-Release.ps1 -Draft
       - name: Retain build artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
