@@ -116,7 +116,8 @@ public final class Screenshots189 {
         previewStart = System.nanoTime();
     }
 
-    private static void clearPreview() {
+    /** QA: CoreProbe clears the previous shot's preview so it does not cover the next one. */
+    static void clearPreview() {
         if (preview != null) Minecraft.getMinecraft().getTextureManager().deleteTexture(preview);
         preview = null;
     }
