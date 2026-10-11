@@ -149,6 +149,7 @@ public class ConfigManager {
         if (json.has("modules")) {
             JsonObject modulesJson = json.getAsJsonObject("modules");
             migrateChat(modulesJson);
+            migrateChatHeads(modulesJson);
             migrateDynamicLights(modulesJson);
             migrateDiscord(modulesJson);
             migrateDamageTilt(modulesJson);
@@ -347,6 +348,28 @@ public class ConfigManager {
         JsonObject options = chat.getAsJsonObject("options");
         if (stamps != null && !options.has("Timestamps")) options.add("Timestamps", stamps);
         if (indicators != null && !options.has("Hide Signing Indicators")) options.add("Hide Signing Indicators", indicators);
+    }
+
+    /**
+     * 1.9.0 folded the Chat Heads module into the Chat module's options: its on/off and its Position, Detect by name and Keep text
+     * aligned options carry over. The old entry is dropped once read; what Chat already saved wins, so a config an older client
+     * re-saved with the old entry does not undo it. An older client reading the new file finds no Chat Heads entry and uses its defaults.
+     */
+    static void migrateChatHeads(JsonObject modules) {
+        if (!(modules.remove("Chat Heads") instanceof JsonObject heads)) return;
+        if (!(modules.get("Chat") instanceof JsonObject)) modules.add("Chat", new JsonObject());
+        JsonObject chat = modules.getAsJsonObject("Chat");
+        if (!(chat.get("options") instanceof JsonObject)) chat.add("options", new JsonObject());
+        JsonObject options = chat.getAsJsonObject("options");
+        carry(heads.get("enabled"), options, com.thelads.core.client.ChatHeads.ENABLED);
+        if (!(heads.get("options") instanceof JsonObject old)) return;
+        carry(old.get("Position"), options, com.thelads.core.client.ChatHeads.POSITION);
+        carry(old.get("Detect by name"), options, com.thelads.core.client.ChatHeads.BY_NAME);
+        carry(old.get("Keep text aligned"), options, com.thelads.core.client.ChatHeads.ALIGNED);
+    }
+
+    private static void carry(JsonElement value, JsonObject options, String key) {
+        if (value != null && !options.has(key)) options.add(key, value);
     }
 
     /**

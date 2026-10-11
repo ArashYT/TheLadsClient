@@ -100,33 +100,87 @@ class ChatHeadsTest {
     @Test void positionBeforeNameIsTheDefaultAndIgnoresKeepTextAligned() {
         var before = ConfigManager.toJson();
         try {
-            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat Heads\":{\"enabled\":true,\"options\":{\"Keep text aligned\":true}}}}").getAsJsonObject());
-            com.thelads.core.config.ModuleManager.getInstance().getModule(ChatHeads.NAME).getOption(ChatHeads.POSITION).reset();
+            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat\":{\"options\":{\"Chat Heads\":true,\"Keep Text Aligned\":true}}}}").getAsJsonObject());
+            com.thelads.core.config.ModuleManager.getInstance().getModule(ChatHeads.MODULE).getOption(ChatHeads.POSITION).reset();
             ChatHeads.layoutChanged();
             assertTrue(ChatHeads.beforeName());
             assertEquals(ChatHeads.WIDTH, ChatHeads.offset(true));
             assertEquals(0, ChatHeads.offset(false), "Keep text aligned is for Start of line");
-            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat Heads\":{\"options\":{\"Position\":1}}}}").getAsJsonObject());
+            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat\":{\"options\":{\"Head Position\":1}}}}").getAsJsonObject());
             assertFalse(ChatHeads.beforeName());
             assertEquals(ChatHeads.WIDTH, ChatHeads.offset(false));
             assertTrue(ChatHeads.layoutChanged(), "a new position wraps chat again");
         } finally { ConfigManager.applyJson(before); }
     }
 
-    @Test void offsetFollowsTheModuleAndKeepTextAligned() {
+    @Test void offsetFollowsChatHeadsAndKeepTextAligned() {
         var before = ConfigManager.toJson();
         try {
-            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat Heads\":{\"enabled\":true,\"options\":{\"Keep text aligned\":false,\"Position\":1}}}}").getAsJsonObject());
+            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat\":{\"options\":{\"Chat Heads\":true,\"Keep Text Aligned\":false,\"Head Position\":1}}}}").getAsJsonObject());
             ChatHeads.layoutChanged();
             assertEquals(ChatHeads.WIDTH, ChatHeads.offset(true));
             assertEquals(0, ChatHeads.offset(false));
-            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat Heads\":{\"options\":{\"Keep text aligned\":true}}}}").getAsJsonObject());
+            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat\":{\"options\":{\"Keep Text Aligned\":true}}}}").getAsJsonObject());
             assertEquals(ChatHeads.WIDTH, ChatHeads.offset(false));
             assertTrue(ChatHeads.layoutChanged());
             assertFalse(ChatHeads.layoutChanged());
-            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat Heads\":{\"enabled\":false}}}").getAsJsonObject());
+            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat\":{\"options\":{\"Chat Heads\":false}}}}").getAsJsonObject());
             assertEquals(0, ChatHeads.offset(true));
             assertTrue(ChatHeads.layoutChanged());
         } finally { ConfigManager.applyJson(before); }
     }
+
+    private static com.thelads.core.config.Module chat() { return com.thelads.core.config.ModuleManager.getInstance().getModule(ChatHeads.MODULE); }
+
+    private static boolean option(String name) { return ((com.thelads.core.config.BoolOption) chat().getOption(name)).get(); }
+
+    @Test void theOldModuleIsGoneAndItsSettingsCarryIntoChatOnce() {
+        var before = ConfigManager.toJson();
+        try {
+            assertNull(com.thelads.core.config.ModuleManager.getInstance().getModule("Chat Heads"));
+            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat\":{\"enabled\":true,\"options\":{\"Chat Width\":200}},"
+                + "\"Chat Heads\":{\"enabled\":false,\"options\":{\"Position\":1,\"Detect by name\":false,\"Keep text aligned\":true}}}}").getAsJsonObject());
+            assertFalse(ChatHeads.enabled());
+            assertFalse(ChatHeads.beforeName());
+            assertFalse(ChatHeads.byName());
+            assertTrue(option(ChatHeads.ALIGNED));
+            var saved = ConfigManager.toJson().getAsJsonObject("modules");
+            assertFalse(saved.has("Chat Heads"), "the old entry is not written back");
+            assertFalse(saved.getAsJsonObject("Chat").getAsJsonObject("options").get(ChatHeads.ENABLED).getAsBoolean());
+        } finally { ConfigManager.applyJson(before); }
+    }
+
+    @Test void chatHeadsAlreadySavedInChatWinOverALeftoverOldEntry() {
+        var before = ConfigManager.toJson();
+        try {
+            ConfigManager.applyJson(JsonParser.parseString("{\"modules\":{\"Chat\":{\"options\":{\"Chat Heads\":true}},"
+                + "\"Chat Heads\":{\"enabled\":false,\"options\":{\"Keep text aligned\":true}}}}").getAsJsonObject());
+            assertTrue(ChatHeads.enabled());
+            assertTrue(option(ChatHeads.ALIGNED), "an option Chat has not saved still carries over");
+        } finally { ConfigManager.applyJson(before); }
+    }
+
+    @Test void chatHeadsKeepWorkingWhileTheChatModuleIsOffAndTheirOptionsHideWithThem() {
+        var before = ConfigManager.toJson();
+        try {
+            var module = (com.thelads.core.modules.ChatModule) chat();
+            module.setEnabled(false);
+            ConfigManager.applyJson(JsonParser.parseString(chatOptions("true")).getAsJsonObject());
+            assertTrue(ChatHeads.enabled(), "as when Chat Heads was a module of its own: Chat off does not turn the heads off");
+            assertFalse(module.hidden(module.getOption(ChatHeads.POSITION)));
+            ConfigManager.applyJson(JsonParser.parseString(chatOptions("false")).getAsJsonObject());
+            assertFalse(ChatHeads.enabled());
+            assertTrue(module.hidden(module.getOption(ChatHeads.POSITION)));
+            assertTrue(module.hidden(module.getOption(ChatHeads.BY_NAME)));
+            assertTrue(module.hidden(module.getOption(ChatHeads.ALIGNED)));
+            assertFalse(module.hidden(module.getOption(ChatHeads.ENABLED)));
+            assertFalse(module.hidden(module.getOption("Chat Width")));
+            ChatHeads.external(true);
+            ConfigManager.applyJson(JsonParser.parseString(chatOptions("true")).getAsJsonObject());
+            assertFalse(ChatHeads.enabled(), "a Chat Heads jar draws the heads: Lads' stand down");
+            assertTrue(module.hidden(module.getOption(ChatHeads.ENABLED)));
+        } finally { ChatHeads.external(false); ConfigManager.applyJson(before); }
+    }
+
+    private static String chatOptions(String heads) { return "{\"modules\":{\"Chat\":{\"options\":{\"Chat Heads\":" + heads + "}}}}"; }
 }

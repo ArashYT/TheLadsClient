@@ -1458,6 +1458,7 @@ public final class LadsSettingsScreen {
             .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
             .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o)))
             .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o)))
+            .filter(o -> !(detail instanceof com.thelads.core.modules.ChatModule chat && chat.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o)))
             .sorted((a, b) -> {
                 if ("Ignore HUD FPS Cap".equals(a.getName())) return 1;

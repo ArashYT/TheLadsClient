@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
 final class HudFlickerCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final String[] MODULES = {"FPS", "Coordinates", "Keystrokes", "CPS", "Paperdoll", "ArmorHUD", "Potion Effects", "Scoreboard",
-        "BossBar", "Voice Chat", "Voice Chat Group", "Minimap", "Jade", "KillBanner", "Item Physics", "Chat Heads", "Raised", "Autohide"};
+        "BossBar", "Voice Chat", "Voice Chat Group", "Minimap", "Jade", "KillBanner", "Item Physics", "Chat", "Raised", "Autohide"};
     private static final String[] PHASES = {"hud", "f3"};
     private static final int FRAMES = 36, HIDDEN = 4, CAP = 10;
     private static final SystemToast.SystemToastId TOAST = new SystemToast.SystemToastId(20_000L);

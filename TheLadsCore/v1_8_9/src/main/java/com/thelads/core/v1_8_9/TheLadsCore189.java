@@ -140,13 +140,12 @@ public class TheLadsCore189 {
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
     public static final String[][] LIMITED = {
         // Chat189 through GuiNewChatMixin, as 1.21.11 ChatMixin.
-        {"Chat", "Minecraft 1.8.9 chat is unsigned, so Hide Signing Indicators has nothing to hide."},
+        // Its Chat Heads options are ChatHeads189 through GuiNewChatMixin and ChatLineMixin, as 26.x NativeChatHeads.
+        {"Chat", "Minecraft 1.8.9 chat is unsigned, so Hide Signing Indicators has nothing to hide, and chat does not name its sender, "
+            + "so a Chat Heads head comes from the player names in the tab list: with Detect Heads by Name off no message has one."},
         // MessageDeserializerMixin and NetworkManagerMixin, as 26.x PacketDecodeGuardMixin and PacketErrorGuardMixin.
         {"IgnorePacketErrors", "Minecraft 1.8.9 already keeps playing when a packet fails on the game thread; this covers packets "
             + "that can't be decoded and handlers that fail on the network thread."},
-        // ChatHeads189 through GuiNewChatMixin and ChatLineMixin, as 26.x NativeChatHeads.
-        {"Chat Heads", "Minecraft 1.8.9 chat does not name its sender, so a head comes from the player names in the tab list: with "
-            + "Detect by name off no message has one."},
         // Crosshair189 through Forge's crosshair overlay event, as 26.x NativeCrosshair.
         {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Item Cooldown "
             + "and spyglass options have nothing to show; Dynamic Attack Gap follows the arm swing."},
@@ -183,6 +182,7 @@ public class TheLadsCore189 {
         for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
             ModuleSupport.registerUnavailable(voice, "Simple Voice Chat does not exist for Minecraft 1.8.9.");
         for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);
+        com.thelads.core.client.ChatHeads.external(net.minecraftforge.fml.common.Loader.isModLoaded("chat_heads"));
         com.thelads.core.v1_8_9.feature.DynamicLights189.register(); // unavailable without OptiFine
         // The launcher's 1.8.9 pack includes Resourcify (its own in-game browser, no Lads settings page).
         ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));
