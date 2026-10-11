@@ -153,6 +153,7 @@ public class BetterF3Module extends Module {
             int labelWidth = g.textWidth(line.label()), width = labelWidth + g.textWidth(line.value());
             int offset = (int) Math.round((1 - slide(since, i)) * (width + 4));
             int x = left ? 2 - offset : screenWidth - 2 - width + offset;
+            com.thelads.core.client.hud.HudCover.add(com.thelads.core.client.hud.HudCover.DEBUG, x - 1, y - 1, x + width + 1, y + 8);
             if (background >>> 24 != 0) g.fill(x - 1, y - 1, x + width + 1, y + 8, background);
             if (!line.label().isEmpty()) g.drawText(line.label(), x, y, line.labelColor(), shadow);
             g.drawText(line.value(), x + labelWidth, y, line.valueColor(), shadow);
