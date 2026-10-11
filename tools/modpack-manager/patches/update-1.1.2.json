@@ -1,7 +1,7 @@
 {
   "packId": "zero-smp-1.20.1",
   "version": "1.1.2",
-  "description": "Zero SMP 1.9.1 performance: ModernFix dynamic resources on (models are baked when first used instead of all at startup and on every F3+T; overrides the explicit false of 1.1.1). Distant Horizons renderer on, tuned for low cost: LOD radius 64 chunks (the owner's value), 2 DH threads at half run time and below-normal priority, surface-only distant generation in singleplayer (no feature/structure generation next to the integrated server; the Zero SMP server runs no DH, so multiplayer LODs only come from chunks the client receives anyway), low horizontal quality, biome blending 1, single-pass vanilla fade, no DH SSAO, flat-colour LODs (no textured LODs) and no LOD rebuilds when zooming. Client config only: the server needs nothing. DistantHorizons.toml keys name their [table]; _version = 5 keeps DH 3.3.3 from resetting an older (version 4) file to its defaults, which would drop these values (v4 and v5 only add/remove keys).",
+  "description": "Zero SMP 1.9.1 performance: ModernFix dynamic resources on (models are baked when first used instead of all at startup and on every F3+T; overrides the explicit false of 1.1.1). Distant Horizons renderer on, tuned for low cost: LOD radius 64 chunks (the owner's value), 2 DH threads at half run time and below-normal priority, surface-only distant generation in singleplayer (no feature/structure generation next to the integrated server; the Zero SMP server runs no DH, so multiplayer LODs only come from chunks the client receives anyway), low horizontal quality, biome blending 1, single-pass vanilla fade, no DH SSAO, flat-colour LODs (no textured LODs) and no LOD rebuilds when zooming. ImmediatelyFast experimental screen batching on (inventory/menu screens: +24.5% FPS, +11% 1% low on the laptop, no visual change in 19 GUI scenes). Client config only: the server needs nothing. DistantHorizons.toml keys name their [table]; _version = 5 keeps DH 3.3.3 from resetting an older (version 4) file to its defaults, which would drop these values (v4 and v5 only add/remove keys).",
   "mods": {
     "add": [],
     "remove": []
@@ -16,6 +16,13 @@
       "format": "properties",
       "keyValues": {
         "mixin.perf.dynamic_resources": "true"
+      }
+    },
+    {
+      "file": "config/immediatelyfast.json",
+      "format": "json",
+      "set": {
+        "experimental_screen_batching": true
       }
     },
     {

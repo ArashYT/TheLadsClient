@@ -35,14 +35,14 @@ public class ModpackJoinTests
         """;
 
     /// <summary>The Forge 1.20.1 command line the launcher builds (version files only, offline); nothing is started.</summary>
-    private async Task<System.Diagnostics.Process> Build(string? joinServer)
+    private async Task<System.Diagnostics.Process> Build(string? joinServer, Action<MLaunchOption>? configure = null)
     {
-        var process = await BuildForge1201(joinServer);
+        var process = await BuildForge1201(joinServer, configure: configure);
         output.WriteLine(process.StartInfo.Arguments);
         return process;
     }
 
-    internal static async Task<System.Diagnostics.Process> BuildForge1201(string? joinServer = null, MSession? session = null)
+    internal static async Task<System.Diagnostics.Process> BuildForge1201(string? joinServer = null, MSession? session = null, Action<MLaunchOption>? configure = null)
     {
         using var dir = new TestDirectory();
         var path = new MinecraftPath(dir.Path);
@@ -55,6 +55,7 @@ public class ModpackJoinTests
         parameters.VersionLoader = new LocalJsonVersionLoader(path);
         var options = new MLaunchOption { Session = session ?? MSession.CreateOfflineSession("QaPlayer"), JavaPath = "java", MaximumRamMb = 2048, MinimumRamMb = 512 };
         if (joinServer != null) ModpackLauncher.JoinServer(options, joinServer);
+        configure?.Invoke(options);
         return await new MinecraftLauncher(parameters).BuildProcessAsync("1.20.1-forge-47.4.10", options);
     }
 
@@ -69,6 +70,39 @@ public class ModpackJoinTests
         Assert.Equal(expected, ModpackLauncher.QuickPlayServer(process));
         Assert.Contains("--launchTarget forgeclient", process.StartInfo.Arguments); // Forge's own arguments stay
         Assert.DoesNotContain("--server ", process.StartInfo.Arguments); // 1.20.1 takes quick play, not the old --server/--port
+    }
+
+    [Theory]
+    [InlineData(12, 6)]
+    [InlineData(24, 12)]
+    [InlineData(2, 2)]
+    [InlineData(3, 2)]
+    public async Task ForgePackGetsHalfTheCpusAsBackgroundThreads_AtLeastTwo(int cpus, int expected)
+    {
+        var instance = new ModpackInstance { Loader = "forge", McVersion = "1.20.1" };
+
+        var process = await Build(null, o => ModpackLauncher.LimitBackgroundThreads(instance, o, cpus));
+
+        Assert.Contains($" -Dmax.bg.threads={expected} ", process.StartInfo.Arguments + " ");
+        Assert.Contains("-Dmax.bg.threads=", process.StartInfo.Arguments);
+        Assert.True(process.StartInfo.Arguments.IndexOf("-Dmax.bg.threads", StringComparison.Ordinal) < process.StartInfo.Arguments.IndexOf("BootstrapLauncher", StringComparison.Ordinal)); // a JVM argument, before the main class
+        Assert.DoesNotContain("ActiveProcessorCount", process.StartInfo.Arguments);
+    }
+
+    [Fact]
+    public async Task BackgroundThreadsKeepAValueAlreadySet_AndSkipOtherPacks()
+    {
+        var forge = new ModpackInstance { Loader = "forge", McVersion = "1.20.1" };
+        var set = await Build(null, o =>
+        {
+            o.ExtraJvmArguments = new[] { MArgument.FromCommandLine("-Dmax.bg.threads=3") };
+            ModpackLauncher.LimitBackgroundThreads(forge, o, 24);
+        });
+        Assert.Contains("-Dmax.bg.threads=3", set.StartInfo.Arguments);
+        Assert.DoesNotContain("-Dmax.bg.threads=12", set.StartInfo.Arguments);
+
+        foreach (var other in new[] { new ModpackInstance { Loader = "fabric", McVersion = "1.20.1" }, new ModpackInstance { Loader = "forge", McVersion = "1.8.9" } })
+            Assert.DoesNotContain("max.bg.threads", (await Build(null, o => ModpackLauncher.LimitBackgroundThreads(other, o, 24))).StartInfo.Arguments);
     }
 
     [Fact]
