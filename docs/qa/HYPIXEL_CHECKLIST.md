@@ -10,11 +10,12 @@ Jade, ShulkerBoxUtils.
 
 Use an alt account where possible. Note version, game mode and what happened for anything odd, and attach `logs/latest.log`.
 
-## Before release: rule risks found in the code
+## Rule notes found in the code
 
-| # | Risk | Rule | Suggested fix |
+Not planned for changes (owner, 2026-10-11). Toggle Sprint is kept: press-to-toggle sprint is not the "auto-sprint" Hypixel bans. Testers: report anything below that actually causes a problem.
+
+| # | Note | Rule | Possible change if it ever matters |
 |---|---|---|---|
-| 1 | Toggle Sprint has an "Always" sprint mode | "auto-sprint" is named as disallowed | Block the Always mode on Hypixel (keep press-to-toggle) |
 | 2 | Bundled Xaero's World Map (26.3, M key) and its waypoints/radar have no Hypixel gate; only the Lads modules are blocked | Minimaps not allowed | Disable the Xaero mods' keybinds/rendering on Hypixel, or confirm Xaero's own fair-play mode kicks in there |
 | 3 | Hypixel is detected only when the address ends in `hypixel.net`/`hypixel.io`; a raw IP or alias skips every block | — | Also match Hypixel's IP ranges / the server brand it sends |
 | 4 | A blocked module is hidden via `isEnabled()` but never turned off (`onDisable` not called); anything set once at enable time may stay active | — | Call the disable path when joining Hypixel |
@@ -30,7 +31,7 @@ Use an alt account where possible. Note version, game mode and what happened for
 - [ ] 26.3: press M (world map), check waypoints and the radar. Note anything that still shows (risk 2).
 - [ ] 26.3: ViaFabricPlus version is native (risk 5).
 - [ ] Join by a raw IP or another address (risk 3): note which blocked modules come back.
-- [ ] Turn on Zoom, Fullbright, Keystrokes/CPS, ArmorHUD, Potion Effects, 1.7 Animations, Item Physics, Toggle Sprint (toggle mode only). Play a few
+- [ ] Turn on Zoom, Fullbright, Keystrokes/CPS, ArmorHUD, Potion Effects, 1.7 Animations, Item Physics, Toggle Sprint. Play a few
   games: no Watchdog warnings, no kicks, no visual glitches.
 - [ ] Note FPS in a busy lobby and mid-game (F3 or the FPS HUD).
 - [ ] Leave and rejoin; switch lobbies 3 times; `/hub` from a game. No freezes, no "Signal lost" false alarms, chat history kept.
