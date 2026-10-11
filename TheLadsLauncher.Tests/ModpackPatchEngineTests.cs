@@ -174,4 +174,35 @@ public class ModpackPatchEngineTests : IDisposable
         applied = ModpackPatchEngine.GetAppliedPatches(_tempDir);
         Assert.Equal(new[] { "1.0.1", "1.0.2" }, applied);
     }
+    /// <summary>The shipped Zero SMP patch 1.1.2 against the real configs it targets (Fixtures/ZeroSmp: Distant Horizons 3.3.3's own
+    /// DistantHorizons.toml and ModernFix 5.27's properties, copied from the dev instance). The engine matches a bare key on the first
+    /// line and appends a missing key at the end of the file, which in TOML lands in the wrong table: every key must already be there, once.</summary>
+    [Fact]
+    public async Task ZeroSmpPatch112_SetsEveryKeyInPlace()
+    {
+        var fixtures = Path.Combine(AppContext.BaseDirectory, "Fixtures", "ZeroSmp");
+        var patch = JsonSerializer.Deserialize<ModpackPatch>(File.ReadAllText(Path.Combine(fixtures, "update-1.1.2.json")),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+        var config = Path.Combine(_tempDir, "minecraft", "config");
+        Directory.CreateDirectory(config);
+        File.Copy(Path.Combine(fixtures, "DistantHorizons.toml"), Path.Combine(config, "DistantHorizons.toml"));
+        File.Copy(Path.Combine(fixtures, "modernfix-mixins.properties"), Path.Combine(config, "modernfix-mixins.properties"));
+        int dhLines = File.ReadAllLines(Path.Combine(config, "DistantHorizons.toml")).Length;
+
+        await ModpackPatchEngine.ApplyPatchAsync(_tempDir, patch, null, null);
+
+        Assert.Equal(2, patch.ConfigPatches!.Count);
+        foreach (var cfg in patch.ConfigPatches)
+        {
+            var lines = File.ReadAllLines(Path.Combine(_tempDir, "minecraft", cfg.File));
+            foreach (var (key, value) in cfg.KeyValues!)
+            {
+                var keyLines = lines.Where(l => System.Text.RegularExpressions.Regex.IsMatch(l, $@"^\s*{System.Text.RegularExpressions.Regex.Escape(key)}\s*[=:]")).ToList();
+                Assert.True(keyLines.Count == 1, $"{cfg.File}: {key} is on {keyLines.Count} lines");
+                Assert.EndsWith(value, keyLines[0]);
+            }
+        }
+        Assert.Equal(dhLines, File.ReadAllLines(Path.Combine(config, "DistantHorizons.toml")).Length); // nothing appended
+        Assert.Contains("rendererMode = \"DEFAULT\"", File.ReadAllText(Path.Combine(config, "DistantHorizons.toml")));
+    }
 }
