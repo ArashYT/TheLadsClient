@@ -98,8 +98,8 @@ internal static class ModpackQa
                 // Muted, windowed, no first-run accessibility screen in front of the title.
                 string optionsFile = Path.Combine(instance.GameDirectory, "options.txt");
                 var lines = File.Exists(optionsFile) ? File.ReadAllLines(optionsFile).ToList() : new List<string>();
-                lines.RemoveAll(l => l.StartsWith("soundCategory_master:") || l.StartsWith("fullscreen:") || l.StartsWith("onboardAccessibility:"));
-                lines.AddRange(new[] { "soundCategory_master:0.0", "fullscreen:false", "onboardAccessibility:false" });
+                lines.RemoveAll(l => l.StartsWith("soundCategory_master:") || l.StartsWith("soundCategory_music:") || l.StartsWith("fullscreen:") || l.StartsWith("onboardAccessibility:"));
+                lines.AddRange(new[] { "soundCategory_master:0.1", "soundCategory_music:0.0", "fullscreen:false", "onboardAccessibility:false" });
                 File.WriteAllLines(optionsFile, lines);
                 QaDiscord.ForceOff(instance.GameDirectory); // never on the owner's Discord
                 string log = Path.Combine(instance.GameDirectory, "logs", "latest.log");

@@ -913,7 +913,7 @@ try
     // pauseOnLostFocus off: a pause menu when the owner clicks away would stop the integrated server and the probes' input.
     // The 1.8.9 benchmark alone runs uncapped (maxFps 260 is Unlimited) at its own render distance (perf189 above).
     bool ownerPlaying = Environment.GetEnvironmentVariable("LADS_VERIFY_PLAYING") == "1" || QaShared.PlayingMonitor != null; // 60 FPS cap while the owner plays and streams
-    string[] qaForced = { "soundCategory_master:0.0", perf189 ? "maxFps:260" : ownerPlaying ? "maxFps:60" : "maxFps:120", "enableVsync:false", "renderDistance:" + perfRenderDistance,
+    string[] qaForced = { "soundCategory_master:0.1", "soundCategory_music:0.0", perf189 ? "maxFps:260" : ownerPlaying ? "maxFps:60" : "maxFps:120", "enableVsync:false", "renderDistance:" + perfRenderDistance,
         "simulationDistance:4", "guiScale:2", "pauseOnLostFocus:false", "fullscreen:" + (qaFullscreen ? "true" : "false"),
         // An options.txt with its data version skips the DataFixer that switches the first-start accessibility screen off for old files.
         "onboardAccessibility:false" };

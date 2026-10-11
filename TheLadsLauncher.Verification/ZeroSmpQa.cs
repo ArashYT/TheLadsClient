@@ -113,7 +113,7 @@ internal static class ZeroSmpQa
             if (!perfOk) throw new ArgumentException("LADS_VERIFY_PERF_RD/_SIM must be 2..16, LADS_VERIFY_PERF_FPS one of 30 60 120 144 240 260.");
             // LADS_VERIFY_FULLSCREEN=1: started as the launcher does with "Fullscreen on launch" (its default): --fullscreen and fullscreen:true.
             bool fullscreen = QaShared.Env("LADS_VERIFY_FULLSCREEN") == "1";
-            string[] qaForced = { "soundCategory_master:0.0", "maxFps:" + perfFps, "enableVsync:false", "renderDistance:" + perfRd, "simulationDistance:" + perfSim, "guiScale:2",
+            string[] qaForced = { "soundCategory_master:0.1", "soundCategory_music:0.0", "maxFps:" + perfFps, "enableVsync:false", "renderDistance:" + perfRd, "simulationDistance:" + perfSim, "guiScale:2",
                 "pauseOnLostFocus:false", "fullscreen:" + (fullscreen ? "true" : "false"), "onboardAccessibility:false", "tutorialStep:none" };
             string options = Path.Combine(gameDir, "options.txt");
             var lines = File.Exists(options) ? File.ReadAllLines(options).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList() : new List<string>();
