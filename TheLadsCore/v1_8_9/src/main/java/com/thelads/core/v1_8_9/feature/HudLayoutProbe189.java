@@ -1,12 +1,14 @@
 package com.thelads.core.v1_8_9.feature;
 
 import com.thelads.core.client.gui.DraggableHudScreen;
+import com.thelads.core.client.hud.HudCoverQa;
 import com.thelads.core.client.hud.HudLayoutQa;
 import com.thelads.core.v1_8_9.gui.DraggableHudScreen189;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.IntBuffer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.shader.Framebuffer;
@@ -30,6 +32,12 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
     private HudLayoutProbe189() {}
 
     static boolean run(Minecraft mc) {
+        // LADS_QA_HUDCOVER=1: the 1.9.0 HUD cover sequence instead (HudCoverQa).
+        if (HudCoverQa.wanted()) {
+            if (!HudCoverQa.tick(DRIVER)) return false;
+            CoreProbe.check(HudCoverQa.failed() == 0, "every HUD cover check passed (Lads hud layout END)");
+            return true;
+        }
         if (!HudLayoutQa.tick(DRIVER)) return false;
         CoreProbe.check(HudLayoutQa.failed() == 0, "every HUD layout check passed (Lads hud layout END)");
         return true;
@@ -87,4 +95,8 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
     }
 
     @Override public void closeScreen() { Minecraft.getMinecraft().displayGuiScreen(null); }
+
+    @Override public void tab(boolean down) { KeyBinding.setKeyBindState(Minecraft.getMinecraft().gameSettings.keyBindPlayerList.getKeyCode(), down); }
+
+    @Override public void debug(boolean open) { Minecraft.getMinecraft().gameSettings.showDebugInfo = open; }
 }
