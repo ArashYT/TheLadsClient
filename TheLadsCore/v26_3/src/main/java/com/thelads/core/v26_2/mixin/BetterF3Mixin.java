@@ -20,5 +20,7 @@ public class BetterF3Mixin {
     @Inject(method = "extractLines", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$betterF3(GuiGraphicsExtractor graphics, List<String> lines, boolean left, int width, CallbackInfo ci) {
         if (NativeBetterF3.draw(graphics, font, lines, left, width)) ci.cancel();
+        // The game draws the plain text: the Lads HUD widgets under its lines step aside (HudCover).
+        else com.thelads.core.client.hud.HudCover.debugColumn(lines, left, width, font::width);
     }
 }

@@ -2,6 +2,7 @@
 // Corresponding source in META-INF/lads-sources/tabtweaks.
 package com.thelads.core.v1_8_9.mixin;
 
+import com.thelads.core.client.hud.HudCover;
 import com.thelads.core.v1_8_9.feature.TabTweaks189;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
@@ -43,12 +44,23 @@ public abstract class GuiPlayerTabOverlayMixin {
     @Shadow @Final private Minecraft mc;
     @Shadow private IChatComponent header, footer;
     @Unique private boolean ladsHeads, ladsNpc;
+    /** The list's move and scale this frame: a point p of the list is drawn at scale * (p + move). */
+    @Unique private float ladsScale = 1, ladsMoveX, ladsMoveY;
 
     @Inject(method = RENDER, at = @At("HEAD"), require = 1)
     private void ladsMoveTab(int width, Scoreboard scoreboard, ScoreObjective objective, CallbackInfo ci) {
+        ladsScale = TabTweaks189.tabScale;
+        ladsMoveX = TabTweaks189.moveTabHorizontal;
+        ladsMoveY = TabTweaks189.down();
         GlStateManager.pushMatrix();
-        GlStateManager.scale(TabTweaks189.tabScale, TabTweaks189.tabScale, 1.0F);
-        GlStateManager.translate(TabTweaks189.moveTabHorizontal, TabTweaks189.down(), 0.0F);
+        GlStateManager.scale(ladsScale, ladsScale, 1.0F);
+        GlStateManager.translate(ladsMoveX, ladsMoveY, 0.0F);
+    }
+
+    /** HudCover: the header, body and footer backgrounds are the list's box on screen; the Lads HUD widgets under it step aside. */
+    @Unique
+    private void ladsCover(int left, int top, int right, int bottom) {
+        HudCover.add(HudCover.TAB, ladsScale * (left + ladsMoveX), ladsScale * (top + ladsMoveY), ladsScale * (right + ladsMoveX), ladsScale * (bottom + ladsMoveY));
     }
 
     @Inject(method = RENDER, at = @At("RETURN"), require = 1)
@@ -83,16 +95,25 @@ public abstract class GuiPlayerTabOverlayMixin {
     }
 
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = RECT, ordinal = 0), index = 4, require = 1)
-    private int ladsHeaderColor(int color) { return TabTweaks189.layout ? TabTweaks189.tabHeaderColor : color; }
+    private int ladsHeaderColor(int left, int top, int right, int bottom, int color) {
+        ladsCover(left, top, right, bottom);
+        return TabTweaks189.layout ? TabTweaks189.tabHeaderColor : color;
+    }
 
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = RECT, ordinal = 1), index = 4, require = 1)
-    private int ladsBodyColor(int color) { return TabTweaks189.layout ? TabTweaks189.tabBodyColor : color; }
+    private int ladsBodyColor(int left, int top, int right, int bottom, int color) {
+        ladsCover(left, top, right, bottom);
+        return TabTweaks189.layout ? TabTweaks189.tabBodyColor : color;
+    }
 
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = RECT, ordinal = 2), index = 4, require = 1)
     private int ladsRowColor(int color) { return TabTweaks189.layout ? TabTweaks189.tabPlayerListColor : color; }
 
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = RECT, ordinal = 3), index = 4, require = 1)
-    private int ladsFooterColor(int color) { return TabTweaks189.layout ? TabTweaks189.tabFooterColor : color; }
+    private int ladsFooterColor(int left, int top, int right, int bottom, int color) {
+        ladsCover(left, top, right, bottom);
+        return TabTweaks189.layout ? TabTweaks189.tabFooterColor : color;
+    }
 
     /** Heads are drawn when the integrated server runs or the connection is encrypted; Hide Heads takes both away. */
     @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isIntegratedServerRunning()Z"), require = 1)

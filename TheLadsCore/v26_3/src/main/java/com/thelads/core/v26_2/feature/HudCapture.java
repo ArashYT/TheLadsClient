@@ -1,5 +1,6 @@
 package com.thelads.core.v26_2.feature;
 
+import com.thelads.core.client.hud.HudCover;
 import com.thelads.core.client.hud.HudFrameCap;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -111,6 +112,7 @@ public final class HudCapture {
         try {
             var mc = Minecraft.getInstance();
             if (mc.level == null || !HudFrameCap.enabled()) {
+                HudCover.frame();
                 HUD.clear();
                 DEFERRED.clear();
                 frames = 0;
@@ -125,7 +127,10 @@ public final class HudCapture {
             gameSum += frameSteps[frames - 1];
             realSum += mc.getDeltaTracker().getRealtimeDeltaTicks();
             var window = mc.getWindow();
-            if (!HudFrameCap.due(System.nanoTime(), window.getGuiScaledWidth(), window.getGuiScaledHeight())) {
+            // Due sees what covered the HUD on the last frame (HudManager.coverChanged); this frame's tab list adds its box again.
+            boolean due = HudFrameCap.due(System.nanoTime(), window.getGuiScaledWidth(), window.getGuiScaledHeight());
+            HudCover.frame();
+            if (!due) {
                 qaReplays++;
                 replaying = true;
                 replay(HUD, state);

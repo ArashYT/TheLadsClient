@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.callback.*;
 @Mixin(BossHealthOverlay.class)
 public class BossBarMixin {
     @Inject(method="extractRenderState",at=@At("HEAD"),cancellable=true,require=1)
-    private void ladsCustomBars(GuiGraphicsExtractor g,CallbackInfo ci){if(NativeQualityOfLife.enabled("BossBar"))ci.cancel();}
+    private void ladsCustomBars(GuiGraphicsExtractor g,CallbackInfo ci){if(NativeQualityOfLife.enabled("BossBar")||com.thelads.core.client.hud.HudCover.bossBarsCovered(g.guiWidth(),com.thelads.core.client.bridge.LadsGameBridge.get().bossBarCount()))ci.cancel();}
     @Inject(method="shouldDarkenScreen",at=@At("HEAD"),cancellable=true,require=1)
     private void ladsSky(CallbackInfoReturnable<Boolean> ci){if(NativeQualityOfLife.enabled("BossBar")&&!NativeQualityOfLife.bool("BossBar","Darken sky",true))ci.setReturnValue(false);}
     @Inject(method="shouldCreateWorldFog",at=@At("HEAD"),cancellable=true,require=1)

@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.thelads.core.client.hud.HudCover;
 import com.thelads.core.v1_20_1.hud.overlay.Nametags1201;
 import com.thelads.core.v1_20_1.hud.overlay.TabTweaks1201;
 import net.minecraft.client.Minecraft;
@@ -18,6 +19,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -43,6 +46,8 @@ public class TabOverlayMixin {
     @Shadow @Final private Minecraft minecraft;
     /** The row whose face is being drawn (its skin was just asked for). */
     @Unique private PlayerInfo lads$row;
+    /** Where the list is drawn this frame (its move and scale on the GUI's pose); null outside its render. */
+    @Unique private Matrix4f lads$pose;
 
     @WrapMethod(method = RENDER)
     private void lads$moveTab(GuiGraphics graphics, int screenWidth, Scoreboard scoreboard, Objective objective, Operation<Void> original) {
@@ -52,10 +57,20 @@ public class TabOverlayMixin {
         try {
             graphics.pose().scale(scale, scale, 1F);
             graphics.pose().translate(TabTweaks1201.moveTabHorizontal, TabTweaks1201.distanceY(), 0F);
+            lads$pose = new Matrix4f(graphics.pose().last().pose());
             original.call(graphics, (int) (screenWidth / scale), scoreboard, TabTweaks1201.removeObjectives ? null : objective);
         } finally {
+            lads$pose = null;
             graphics.pose().popPose();
         }
+    }
+
+    /** HudCover: the header, body and footer backgrounds are the list's box on screen; the Lads HUD widgets under it step aside. */
+    @Unique
+    private void lads$cover(int left, int top, int right, int bottom) {
+        if (lads$pose == null) return;
+        Vector3f a = lads$pose.transformPosition(new Vector3f(left, top, 0)), b = lads$pose.transformPosition(new Vector3f(right, bottom, 0));
+        HudCover.add(HudCover.TAB, a.x(), a.y(), b.x(), b.y());
     }
 
     @ModifyArg(method = "getPlayerInfos", at = @At(value = "INVOKE", target = "Ljava/util/stream/Stream;limit(J)Ljava/util/stream/Stream;"))
@@ -79,17 +94,20 @@ public class TabOverlayMixin {
     }
 
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = FILL, ordinal = 0), index = 4)
-    private int lads$headerColor(int color) {
+    private int lads$headerColor(int left, int top, int right, int bottom, int color) {
+        lads$cover(left, top, right, bottom);
         return TabTweaks1201.layout ? TabTweaks1201.tabHeaderColor : color;
     }
 
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = FILL, ordinal = 1), index = 4)
-    private int lads$bodyColor(int color) {
+    private int lads$bodyColor(int left, int top, int right, int bottom, int color) {
+        lads$cover(left, top, right, bottom);
         return TabTweaks1201.layout ? TabTweaks1201.tabBodyColor : color;
     }
 
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = FILL, ordinal = 3), index = 4)
-    private int lads$footerColor(int color) {
+    private int lads$footerColor(int left, int top, int right, int bottom, int color) {
+        lads$cover(left, top, right, bottom);
         return TabTweaks1201.layout ? TabTweaks1201.tabFooterColor : color;
     }
 

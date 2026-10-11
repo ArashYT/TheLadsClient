@@ -1,5 +1,6 @@
 package com.thelads.core.v1_8_9.feature;
 
+import com.thelads.core.client.hud.HudCover;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
@@ -32,12 +33,24 @@ public final class BetterF3189 {
     public void text(RenderGameOverlayEvent.Text event) {
         Minecraft mc = Minecraft.getMinecraft();
         Module module = ModuleManager.getInstance().getModule("BetterF3");
-        if (!mc.gameSettings.showDebugInfo || !(module instanceof BetterF3Module) || !module.isEnabled()) return;
+        if (!mc.gameSettings.showDebugInfo) return;
         int width = event.resolution.getScaledWidth();
+        if (!(module instanceof BetterF3Module) || !module.isEnabled()) {
+            // Forge draws the plain text itself (a null line takes no row): the Lads HUD widgets under its lines step aside (HudCover).
+            HudCover.debugColumn(rows(event.left), true, width, mc.fontRendererObj::getStringWidth);
+            HudCover.debugColumn(rows(event.right), false, width, mc.fontRendererObj::getStringWidth);
+            return;
+        }
         GuiLadsAdapter graphics = new GuiLadsAdapter(mc.fontRendererObj, width, event.resolution.getScaledHeight());
         ((BetterF3Module) module).draw(graphics, event.left, true, width, true);
         ((BetterF3Module) module).draw(graphics, event.right, false, width, true);
         event.left.clear();
         event.right.clear();
+    }
+
+    private static java.util.List<String> rows(java.util.List<String> lines) {
+        java.util.List<String> rows = new java.util.ArrayList<String>(lines);
+        rows.removeAll(java.util.Collections.singleton((String) null));
+        return rows;
     }
 }

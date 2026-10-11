@@ -20,6 +20,14 @@ public class HudManager {
     private int hudFrameCount = 0;
     private int measuredHudFps = 60;
     private long lastFpsMeasureTime = 0;
+    /** HudCover: the HUDs the last draw left out because the tab list or the debug text covers them; all of them under F3's "Hide Lads HUD". */
+    private final java.util.Set<String> covered = new HashSet<>();
+    private boolean allCovered;
+    /** A HUD was covered or uncovered in the last draw: what follows it (isCovered) drew before it knew, so the next frame builds again. */
+    private boolean coverMoved;
+    /** The game and one vanilla GUI unit in Lads HUD units, as last drawn (HudCover's boxes are in GUI units). */
+    private com.thelads.core.client.bridge.LadsGameBridge game;
+    private double unit = 1;
 
     public int getMeasuredHudFps() {
         return measuredHudFps > 0 ? measuredHudFps : HudSettings.getInstance().getHudFpsLimit();
@@ -81,10 +89,15 @@ public class HudManager {
 
     public void render(LadsGraphics g) {
         if (g == null || (g.getGame() != null && g.getGame().isHudHidden())) return;
+        game = g.getGame();
         // F3 hides the Lads HUD modules (Better F3's "Hide Lads HUD", on by default).
-        if (g.getGame() != null && g.getGame().isDebugScreenOpen() && com.thelads.core.modules.BetterF3Module.hidesLadsHud()) return;
+        if (hidesAll()) {
+            allCovered = true;
+            return;
+        }
         // The Lads HUD's own GUI scale (HudScale): laid out in its units, drawn under one pose scale.
         LadsGraphics hud = HudScale.units(g);
+        unit = hud.hudUnit();
         if (hud == g) renderScaled(g);
         else {
             g.pushPose();
@@ -120,6 +133,56 @@ public class HudManager {
         renderElements(g, null);
     }
 
+    private boolean hidesAll() {
+        return game != null && game.isDebugScreenOpen() && com.thelads.core.modules.BetterF3Module.hidesLadsHud();
+    }
+
+    /** Whether a HUD drawn at this box (Lads HUD units) is under the tab list or the debug text now (HudCover). */
+    private boolean covered(HudGroupLayout.Rect at) {
+        return HudCover.covered(at.x() / unit, at.y() / unit, at.right() / unit, at.bottom() / unit, game != null && game.isDebugScreenOpen());
+    }
+
+    /**
+     * Whether the tab list or the debug text now covers or uncovers a HUD where it was last drawn (HudFrameCap.due): a capped HUD is
+     * then built again at once, so a HUD goes and comes back on the frame the tab list or F3 does, not one cached build later.
+     */
+    public boolean coverChanged() {
+        if (game == null) return false;
+        if (coverMoved) {
+            coverMoved = false;
+            return true;
+        }
+        boolean all = hidesAll();
+        if (all || allCovered) return all != allCovered;
+        for (var element : elements) {
+            var at = lastPlaced.get(element.getModuleName());
+            if (at != null && element.isEnabled() && element.isAvailable() && covered(at) != covered.contains(element.getModuleName())) return true;
+        }
+        return false;
+    }
+
+    /** Whether the last draw left this HUD out under the tab list or the debug text: what another mod draws for it (Xaero's map) follows. */
+    public boolean isCovered(String name) {
+        return covered.contains(name);
+    }
+
+    /** QA: the HUDs the last draw left out under the tab list or the debug text. */
+    public java.util.Set<String> coveredHuds() {
+        return new java.util.TreeSet<>(covered);
+    }
+
+    /** Draws a HUD where the layout put it, unless the tab list or the debug text covers it there. */
+    private void draw(LadsGraphics g, HudElement element, HudGroupLayout.Rect at) {
+        element.placed(g, at);
+        lastPlaced.put(element.getModuleName(), at);
+        if (covered(at)) {
+            coverMoved |= covered.add(element.getModuleName());
+            return;
+        }
+        coverMoved |= covered.remove(element.getModuleName());
+        element.renderAt(g, at.x(), at.y(), false);
+    }
+
     private boolean isExempt(HudElement element) {
         String name = element.getModuleName();
         if (name == null) return false;
@@ -145,6 +208,7 @@ public class HudManager {
         int screenW = g.getScaledWidth();
         int screenH = g.getScaledHeight();
         HudSettings settings = HudSettings.getInstance();
+        allCovered = false;
 
         // Most players neither group nor move their HUDs. Keep the same measuring/clamping/draw order
         // without building maps, sets and stream pipelines for every rendered frame.
@@ -158,10 +222,7 @@ public class HudManager {
                     if (exemptFilter != null && isExempt(element) != exemptFilter) continue;
                     var bounds = element.measureBounds(g, false);
                     var delta = HudGroupLayout.clampDelta(bounds, 0, 0, screenW, screenH);
-                    var placed = HudGroupLayout.translate(bounds, delta);
-                    element.placed(g, placed);
-                    lastPlaced.put(element.getModuleName(), placed);
-                    element.renderAt(g, placed.x(), placed.y(), false);
+                    draw(g, element, HudGroupLayout.translate(bounds, delta));
                 }
                 return;
             }
@@ -198,9 +259,7 @@ public class HudManager {
             var element = entry.getKey();
             if (!element.isEnabled()) continue;
             if (exemptFilter != null && isExempt(element) != exemptFilter) continue;
-            element.placed(g, entry.getValue());
-            lastPlaced.put(element.getModuleName(), entry.getValue());
-            element.renderAt(g, entry.getValue().x(), entry.getValue().y(), false);
+            draw(g, element, entry.getValue());
         }
     }
 
