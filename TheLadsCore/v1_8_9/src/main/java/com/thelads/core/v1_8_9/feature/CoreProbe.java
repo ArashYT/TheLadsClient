@@ -325,7 +325,7 @@ public final class CoreProbe {
         check(problems.isEmpty(), placed.size() + " Lads title buttons (main, Switch, fullscreen, language, Essential's row) on the screen without overlaps" + at + " " + problems);
         GuiButton switchButton = lads.switchButton(), fullscreen = lads.fullscreenButton();
         check("Switch".equals(switchButton.displayString) && switchButton.xPosition > 16 && switchButton.yPosition > h * 3 / 4
-            && fullscreen.xPosition > w * 3 / 4 && fullscreen.yPosition < h / 8,
+            && fullscreen.xPosition > w / 2 && fullscreen.yPosition < h / 8 && fullscreen.displayString.matches("Fullscreen|Windowed"),
             "Switch sits after the account name at the bottom left " + rect(switchButton) + ", fullscreen top right " + rect(fullscreen) + at);
     }
 

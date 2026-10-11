@@ -44,7 +44,7 @@ public abstract class PauseScreenMixin extends Screen {
     @Unique private final List<AbstractWidget> ladsExtras = new ArrayList<>();
     @Unique private final List<AbstractWidget> ladsEssentialPending = new ArrayList<>();
     @Unique private Button ladsExtrasButton;
-    @Unique private Button ladsFullscreenButton;
+    @Unique private CompactButton1201 ladsFullscreenButton;
     @Unique private Button ladsHostOrInviteButton;
     @Unique private long ladsInitNanos;
     @Unique private boolean ladsLayoutReady;
@@ -180,8 +180,8 @@ public abstract class PauseScreenMixin extends Screen {
         ladsEssentialPending.clear();
         ladsInitNanos = System.nanoTime();
         if (showPauseMenu) {
-            ladsFullscreenButton = addRenderableWidget(new CompactButton1201(width - 26, 6, 20, 20, Component.translatable("options.fullscreen"),
-                () -> minecraft.options.fullscreen().get() ? "windowed" : "fullscreen", CompactButton1201::toggleFullscreen));
+            ladsFullscreenButton = addRenderableWidget(CompactButton1201.fullscreen());
+            ladsFullscreenButton.placeFullscreen(font, width);
         }
         for (var child : List.copyOf(children())) {
             if (child instanceof AbstractWidget widget) {

@@ -38,7 +38,9 @@ class TitleScreenThemeTest {
                 int buildLeft = w - 18 - g.textWidth(LadsVersion.clientName() + " (26.2)");
                 assertTrue(switchBox.x() >= 27 && switchBox.x() + switchBox.width() <= buildLeft, "Switch between the name and the build " + at);
                 var boxes = new java.util.ArrayList<>(layout.buttons());
-                boxes.add(new TitleScreenTheme.Rect(w - 26, 6, 20, 20));
+                int fsWidth = TitleScreenTheme.fullscreenWidth(w, Math.max(g.textWidth(TitleScreenTheme.FULLSCREEN), g.textWidth(TitleScreenTheme.WINDOWED)));
+                boxes.add(new TitleScreenTheme.Rect(TitleScreenTheme.fullscreenX(w, fsWidth), 6, fsWidth, 20));
+                boxes.add(new TitleScreenTheme.Rect(TitleScreenTheme.languageX(w, fsWidth), 6, 20, 20));
                 boxes.add(switchBox);
                 if (essential) boxes.add(new TitleScreenTheme.Rect(16, h - 53, TitleScreenTheme.essentialRowWidth(layout), 18));
                 for (int i = 0; i < boxes.size(); i++) {
