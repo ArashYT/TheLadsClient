@@ -26,6 +26,14 @@ public interface LadsGameBridge {
     default String getDimensionId() { return ""; }
     /** Kill Banner picker: plays a skin's one-kill sound ("reaver", "rogue"; "base" the plain chime) as a preview. */
     default void previewKillBannerSound(String skin, float volume) {}
+    /** The game's master volume, 0 to 1 (uploaded sounds play at their module's volume times this). */
+    default float getMasterVolume() { return 1f; }
+    /** An open-file dialog for an uploaded sound (.mp3/.wav); completes off the game thread, with null when cancelled. */
+    default java.util.concurrent.CompletableFuture<java.nio.file.Path> chooseSoundFile() {
+        return com.thelads.core.client.sound.CustomSounds.awtChooser("Choose a sound (MP3 or WAV)");
+    }
+    /** Combo Sounds' built-in sound when a step has no upload: a note block pling at {@code pitch}. */
+    default void playComboSound(float pitch, float volume) {}
     default String getServerAddress() { return "Singleplayer"; }
     default String getItemCountText(int selection) { return "Items: 0"; }
     default String getRecentReachText() { return "Reach: --"; }
