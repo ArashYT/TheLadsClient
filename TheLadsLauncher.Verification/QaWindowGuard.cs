@@ -46,7 +46,7 @@ static class QaWindowGuard
     {
         bool resize = Environment.GetEnvironmentVariable("LADS_VERIFY_NO_RESIZE") != "1";
         Rectangle target = focus || playing ? Rectangle.Empty : Tile(slot);
-        ProcessPriorityClass wanted = playing || QaShared.PlayingMonitor != null ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High;
+        ProcessPriorityClass wanted = QaShared.PriorityOverride ?? (playing || QaShared.PlayingMonitor != null ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High);
         var firstSeen = new Dictionary<IntPtr, long>();
         IntPtr owners = GameWindow(GetForegroundWindow()) ? IntPtr.Zero : GetForegroundWindow();
         try

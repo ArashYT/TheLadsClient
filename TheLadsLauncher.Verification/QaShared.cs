@@ -36,6 +36,16 @@ static class QaShared
             catch (IOException) { return null; }
         }
     }
+    /// <summary>Owner, 2026-10-10: "just use the normal amount of threads on normal priority for your tests, as if it was a normal game".
+    /// &lt;shared root&gt;\.qa-priority (Normal, BelowNormal, AboveNormal, High) overrides every other QA game priority rule.</summary>
+    public static System.Diagnostics.ProcessPriorityClass? PriorityOverride
+    {
+        get
+        {
+            try { string f = Path.Combine(Root, ".qa-priority"); return File.Exists(f) && Enum.TryParse(File.ReadAllText(f).Trim(), true, out System.Diagnostics.ProcessPriorityClass p) ? p : null; }
+            catch (IOException) { return null; }
+        }
+    }
     public static int EffectiveMaxGames => PlayingMonitor != null ? 1 : MaxGames;
 
     /// <summary>The monitor QA games are tiled on (owner 2026-10-10: Claude app on the main monitor, Antigravity on one, the QA instances on
