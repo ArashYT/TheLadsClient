@@ -94,7 +94,7 @@ public final class UiQa1201 {
             case "ids" -> LOGGER.info("Lads qa ui ids: {}", ui.controlIds().stream().filter(id -> id.startsWith(rest)).toList());
             case "key" -> { int code = Integer.parseInt(rest); screen.keyPressed(code, 0, 0); }
             case "type" -> rest.chars().forEach(c -> screen.charTyped((char) c, 0));
-            case "scroll" -> screen.mouseScrolled(80, 190, Double.parseDouble(rest)); // inside the options column of a module page (the preview is to its right)
+            case "scroll" -> screen.mouseScrolled(mc.getWindow().getGuiScaledWidth() * .28, mc.getWindow().getGuiScaledHeight() * .5, Double.parseDouble(rest)); // inside the options column of a module page at either GUI scale (the preview is to its right)
             default -> throw new IllegalArgumentException("unknown ui step '" + what + "'");
         }
         return true;

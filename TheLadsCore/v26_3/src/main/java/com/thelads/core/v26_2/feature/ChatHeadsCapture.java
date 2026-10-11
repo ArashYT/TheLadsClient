@@ -51,6 +51,9 @@ final class ChatHeadsCapture {
     private static final String[] SHOTS = {"chatheads-1-closed", "chatheads-2-open", "chatheads-3-startofline", "chatheads-4-hudcap", "chatheads-5-off",
         "chatheads-6-settings-on", "chatheads-7-settings-off", "chatheads-8-search"};
     private static final GameProfile TESTER = new GameProfile(UUID.fromString("6f3b2c1a-0d4e-4f5a-9b8c-7d6e5f4a3b2c"), "Lads_Tester");
+    /** The settings page is photographed at GUI scale 1 (roomy layout) and scrolled to the last options once. */
+    private static int guiScaleWas;
+    private static boolean scrolled;
     private static final List<String> FAILURES = new ArrayList<>();
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
     private static final Map<Module, Boolean> ENABLED = new LinkedHashMap<>();
@@ -112,6 +115,13 @@ final class ChatHeadsCapture {
     static void frame(RenderTarget target, Path game) {
         if (step < 0 || step >= SHOTS.length || capturing || System.nanoTime() < due) return;
         capturing = true;
+        if ((step == 5 || step == 6) && !scrolled && Minecraft.getInstance().gui.screen() instanceof com.thelads.core.v26_2.gui.LadsSettingsScreen26 page) {
+            scrolled = true;
+            page.ui().mouseScrolled(250, 250, -60);
+            due = System.nanoTime() + 1_200_000_000L;
+            capturing = false;
+            return;
+        }
         if (step == 0) checkHeads();
         String name = SHOTS[step];
         try {
@@ -156,6 +166,10 @@ final class ChatHeadsCapture {
                 }
                 case 4 -> {
                     ((BoolOption) heads.getOption(ChatHeads.ENABLED)).set(true);
+                    guiScaleWas = mc.options.guiScale().get();
+                    mc.options.guiScale().set(1);
+                    mc.resizeGui();
+                    scrolled = false;
                     mc.setScreenAndShow(new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null));
                     ((com.thelads.core.v26_2.gui.LadsSettingsScreen26) mc.gui.screen()).openModule("Chat");
                 }
@@ -256,6 +270,7 @@ final class ChatHeadsCapture {
         ENABLED.forEach(Module::setEnabled);
         HudSettings.getInstance().setHudFpsCapEnabled(hudCap);
         HudSettings.getInstance().setHudFpsLimit(hudLimit);
+        if (guiScaleWas != 0) { mc.options.guiScale().set(guiScaleWas); mc.resizeGui(); }
         step = SHOTS.length;
         if (FAILURES.isEmpty()) LOGGER.info("Lads chat heads capture END: {} frames saved, 0 failed", saved);
         else LOGGER.error("Lads chat heads capture FAILED: {}", String.join(" | ", FAILURES));

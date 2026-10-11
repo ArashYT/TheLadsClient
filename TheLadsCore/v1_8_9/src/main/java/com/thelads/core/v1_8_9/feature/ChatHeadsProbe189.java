@@ -48,11 +48,13 @@ import net.minecraft.util.IChatComponent;
 final class ChatHeadsProbe189 {
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(ChatHeadsProbe189::start, ChatHeadsProbe189::closed,
         ChatHeadsProbe189::open, ChatHeadsProbe189::aligned, ChatHeadsProbe189::noShadow, ChatHeadsProbe189::scrolledBack,
-        ChatHeadsProbe189::off, ChatHeadsProbe189::settingsOn, ChatHeadsProbe189::settingsOff, ChatHeadsProbe189::search, ChatHeadsProbe189::restored);
+        ChatHeadsProbe189::off, ChatHeadsProbe189::settingsScroll, ChatHeadsProbe189::settingsOn, ChatHeadsProbe189::settingsOff, ChatHeadsProbe189::search, ChatHeadsProbe189::restored);
     private static final GameProfile TESTER = new GameProfile(UUID.fromString("6f3b2c1a-0d4e-4f5a-9b8c-7d6e5f4a3b2c"), "Lads_Tester");
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<Option, JsonElement>();
     private static final Map<Module, Boolean> ENABLED = new LinkedHashMap<Module, Boolean>();
     private static NetworkPlayerInfo tester;
+    private static LadsSettingsScreen189 settingsPage;
+    private static int guiScaleWas;
     private ChatHeadsProbe189() {}
 
     private static Module module(String name) { return ModuleManager.getInstance().getModule(name); }
@@ -190,10 +192,18 @@ final class ChatHeadsProbe189 {
     private static boolean off(Minecraft mc) throws Exception {
         screenshot(mc, "170-chatheads-4-off");
         headsOn(true);
-        LadsSettingsScreen189 settings = new LadsSettingsScreen189(null);
-        mc.displayGuiScreen(settings);
-        settings.openModule("Chat");
+        guiScaleWas = mc.gameSettings.guiScale;
+        mc.gameSettings.guiScale = 1; // the roomy layout shows more options
+        settingsPage = new LadsSettingsScreen189(null);
+        mc.displayGuiScreen(settingsPage);
+        settingsPage.openModule("Chat");
         return after(20);
+    }
+
+    /** Down to the last options once the page has been drawn (it knows its scroll range then). */
+    private static boolean settingsScroll(Minecraft mc) throws Exception {
+        settingsPage.ui().mouseScrolled(250, 250, -60);
+        return after(25);
     }
 
     /** The Chat module's page shows the Chat Heads options; with Chat Heads off they are hidden. */
@@ -228,6 +238,7 @@ final class ChatHeadsProbe189 {
     /** Puts everything back (also when the probe fails part-way). */
     static void stop(Minecraft mc) {
         if (ENABLED.isEmpty()) return;
+        if (guiScaleWas != 0) { mc.gameSettings.guiScale = guiScaleWas; guiScaleWas = 0; }
         for (Map.Entry<Option, JsonElement> option : OPTIONS.entrySet()) option.getKey().load(option.getValue());
         for (Map.Entry<Module, Boolean> module : ENABLED.entrySet()) module.getKey().setEnabled(module.getValue());
         try { if (mc.getNetHandler() != null) tabList(mc).remove(TESTER.getId()); } catch (Exception ignored) {}
