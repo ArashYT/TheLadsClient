@@ -92,7 +92,8 @@ internal static class ZeroSmpQa
             await Task.Run(() => CopyInstance(Path.Combine(realSource, "minecraft"), gameDir), ct);
             string mods = Path.Combine(gameDir, "mods");
             File.Copy(coreJar, Path.Combine(mods, "theladscore.jar"), overwrite: true);
-            foreach (var line in QaShared.RemoveMods(mods, removeMods)) Say(line);
+            // LADS_VERIFY_REMOVE_MODS as in --mc1201 mode (tools/bench/research.py passes the env var; it was silently ignored here).
+            foreach (var line in QaShared.RemoveMods(mods, removeMods ?? QaShared.Env("LADS_VERIFY_REMOVE_MODS"))) Say(line);
             foreach (var line in QaShared.AddMods(mods, QaShared.Env("LADS_VERIFY_ADD_MODS"))) Say(line);
             // Forge's early loading window is drawn by a helper thread while the main thread scans/transforms mods without pumping
             // window messages, so Windows greys it out as "Not Responding" for minutes (owner: "they are still freezing"). QA games start
