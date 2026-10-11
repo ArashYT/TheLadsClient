@@ -35,7 +35,7 @@ class OverlayTest(unittest.TestCase):
         dh = (out / "DistantHorizons.toml").read_text().splitlines()
         self.assertEqual(len(dh), len((FIXTURES / "DistantHorizons.toml").read_text().splitlines()))
         self.assertIn('\t\t\trendererMode = "DEFAULT"', dh)
-        self.assertIn("\t\tnumberOfThreads = 2", dh)
+        self.assertIn("\t\tnumberOfThreads = 1", dh)
         self.assertIn("mixin.perf.dynamic_resources=true", (out / "modernfix-mixins.properties").read_text().splitlines())
         self.assertIn('rendererMode = "DISABLED"', (self.tmp / "inst" / "minecraft" / "config" / "DistantHorizons.toml").read_text())
 
