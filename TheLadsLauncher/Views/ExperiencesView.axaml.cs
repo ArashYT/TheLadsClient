@@ -21,6 +21,7 @@ public partial class ExperiencesView : UserControl
     private Process? _runningProcess;
     private CancellationTokenSource? _actionCts;
     private bool _syncingAutoJoin;
+    private bool _raceRetry; // the next ZeroSmpPlay_Click is the launcher's own one retry after a known mod-loading race
 
     public ExperiencesView()
     {
@@ -102,6 +103,8 @@ public partial class ExperiencesView : UserControl
     {
         if (Host is not { } host) return;
         if (_runningProcess is { HasExited: false }) return;
+        bool retry = _raceRetry;
+        _raceRetry = false;
 
         bool installed = ExperiencesService.IsInstalled(DataDirectory, ExperiencesService.ZeroSmp.Id);
         _actionCts = new CancellationTokenSource();
@@ -143,6 +146,7 @@ public partial class ExperiencesView : UserControl
 
             Report("Preparing Minecraft 1.20.1 & Forge 47.4.10...");
             string? joinServer = host.ModpackSettings.ZeroSmpAutoJoin ? ExperiencesService.ZeroSmp.ServerAddress : null;
+            var launchedUtc = DateTime.UtcNow;
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token, joinServer);
 
             _runningProcess = process;
@@ -157,6 +161,13 @@ public partial class ExperiencesView : UserControl
                 RefreshState();
                 host.ApplyNextAccountRequest(instance.GameDirectory); // in-game account switcher
                 host.ApplyNextVersionRequest(instance.GameDirectory); // closed from the in-game Switch Versions screen
+                // Forge's parallel mod loading lost a known race (ModLoadingRace): start once more rather than leave the player at a crash.
+                if (!retry && ModLoadingRace.FindSince(instance.GameDirectory, launchedUtc) is { } race)
+                {
+                    host.ModpackLog($"Zero SMP hit a known mod-loading race: {race}. Starting it once more.");
+                    _raceRetry = true;
+                    ZeroSmpPlay_Click(null, new RoutedEventArgs());
+                }
             });
 
             Report($"Zero SMP started as {session.Username}!");
