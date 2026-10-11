@@ -17,7 +17,9 @@ public static class LaunchToken
 {
     public const string Placeholder = "lads-stdin-token";
 
-    private static readonly ConditionalWeakTable<Process, string> Pending = new();
+    // Keyed by the start info, not the Process: a relaunch with the same start info (the QA harness's one retry after a mod-loading race)
+    // must get the token too, or the game waits on stdin forever (Arash-PC int QA, 2026-10-11).
+    private static readonly ConditionalWeakTable<ProcessStartInfo, string> Pending = new();
 
     /// <summary>Call on the built game process before Start; <see cref="Send"/> after Start. The token stays on the command
     /// line when no Core in the game's mods reads stdin.</summary>
@@ -31,14 +33,13 @@ public static class LaunchToken
         start.Arguments = arguments;
         start.RedirectStandardInput = true;
         start.StandardInputEncoding = new UTF8Encoding(false);
-        Pending.AddOrUpdate(process, accessToken);
+        Pending.AddOrUpdate(start, accessToken);
     }
 
     /// <summary>Writes the token <see cref="Hide"/> took off the command line to the started game, off the caller's thread.</summary>
     public static void Send(Process process)
     {
-        if (!Pending.TryGetValue(process, out var token)) return;
-        Pending.Remove(process);
+        if (!Pending.TryGetValue(process.StartInfo, out var token)) return;
         var input = process.StandardInput;
         _ = Task.Run(async () =>
         {
