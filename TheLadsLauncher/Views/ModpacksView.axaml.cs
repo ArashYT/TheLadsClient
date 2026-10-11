@@ -3041,7 +3041,13 @@ public partial class ModpacksView : UserControl
 
     private async void Play_Click(object? sender, RoutedEventArgs e)
     {
-        if (_selected is not { } instance || Host is not { } host) return;
+        if (_selected is { } instance) await PlayAsync(instance, retry: false);
+    }
+
+    /// <param name="retry">The launcher's own one retry after a known mod-loading race (ModLoadingRace).</param>
+    private async Task PlayAsync(ModpackInstance instance, bool retry)
+    {
+        if (Host is not { } host) return;
         if (_launching.TryGetValue(instance.Id, out var pending)) { pending.Cancel(); return; }
         if (!Idle(instance)) return;
         using var launch = new CancellationTokenSource();
@@ -3053,6 +3059,7 @@ public partial class ModpacksView : UserControl
         {
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(launch.Token);
+            var launchedUtc = DateTime.UtcNow;
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, launch.Token);
             _running[instance.Id] = process;
             process.EnableRaisingEvents = true;
@@ -3068,6 +3075,12 @@ public partial class ModpacksView : UserControl
                 RenderCards();
                 host.ApplyNextAccountRequest(instance.GameDirectory); // in-game account switcher
                 host.ApplyNextVersionRequest(instance.GameDirectory); // closed from the in-game Switch Versions screen
+                // Forge's parallel mod loading lost a known race (ModLoadingRace): start once more rather than leave the player at a crash.
+                if (!retry && ModLoadingRace.FindSince(instance.GameDirectory, launchedUtc) is { } race)
+                {
+                    host.ModpackLog($"{instance.Name} hit a known mod-loading race: {race}. Starting it once more.");
+                    _ = PlayAsync(instance, retry: true);
+                }
             });
             Report($"Minecraft {instance.McVersion} started as {session.Username}.");
             host.ModpackLog($"Started {instance.Name} ({instance.Loader} {instance.LoaderVersion}, Minecraft {instance.McVersion}) PID {process.Id}.");
