@@ -331,4 +331,20 @@ static class QaShared
         process.WaitForExit();
         if (process.ExitCode >= 8) throw new IOException($"robocopy {source} -> {target} failed (exit code {process.ExitCode}).");
     }
+
+    /// <summary>Sinytra Connector re-transforms every Fabric jar (a 20+ MB Lads Core takes minutes, during which Forge's loading
+    /// window shows "Not Responding") in each fresh sandbox. Its output in mods\.connector is kept machine-wide in the QA cache:
+    /// restored before a launch, newer files saved back after it.</summary>
+    public static void ConnectorCache(string modsDirectory, bool save)
+    {
+        string shared = Path.Combine(CacheRoot, "connector"), local = Path.Combine(modsDirectory, ".connector");
+        string from = save ? local : shared, to = save ? shared : local;
+        if (!Directory.Exists(from)) return;
+        Directory.CreateDirectory(to);
+        var start = new ProcessStartInfo("robocopy.exe") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true };
+        foreach (var arg in new[] { from, to, "/E", "/XO", "/XD", "temp", "/R:1", "/W:1", "/NFL", "/NDL", "/NJH", "/NJS", "/NP", "/MT:8" }) start.ArgumentList.Add(arg);
+        using var process = Process.Start(start)!;
+        process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+    }
 }

@@ -94,6 +94,7 @@ internal static class ZeroSmpQa
             File.Copy(coreJar, Path.Combine(mods, "theladscore.jar"), overwrite: true);
             foreach (var line in QaShared.RemoveMods(mods, removeMods)) Say(line);
             foreach (var line in QaShared.AddMods(mods, QaShared.Env("LADS_VERIFY_ADD_MODS"))) Say(line);
+            QaShared.ConnectorCache(mods, save: false); // skip Connector's minutes-long re-transform (window "Not Responding")
             if (freshWorld) { string world = Path.Combine(gameDir, "saves", WorldName); if (Directory.Exists(world)) { SafeFileOps.DeleteTree(world); Say("Fresh world: deleted " + world); } }
             File.WriteAllLines(Path.Combine(evidence, "mods.txt"), Directory.EnumerateFiles(mods, "*.jar").Select(f => Path.GetFileName(f)).Order(StringComparer.OrdinalIgnoreCase));
 
@@ -273,6 +274,7 @@ internal static class ZeroSmpQa
         finally
         {
             if (game is { HasExited: false }) { try { game.Kill(entireProcessTree: true); } catch (InvalidOperationException) { } }
+            try { if (gameDir.Length > 0) QaShared.ConnectorCache(Path.Combine(gameDir, "mods"), save: true); } catch (IOException) { }
             slot?.Dispose();
         }
         // Evidence: screenshots written by the probe, and the trip-wires.
