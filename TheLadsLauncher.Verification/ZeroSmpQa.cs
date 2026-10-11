@@ -277,16 +277,17 @@ internal static class ZeroSmpQa
                     }
                 }
                 // The pack's intermittent mod-loading races (~3 in 50 launches: Create / Create Deco registry lookups, Zeta's event bus via
-                // Supplementaries) crash it before the QA probe starts; one retry, as the research drivers did. A mixin problem is no race.
-                if (attempt == 1 && fastQuit == null && !begin && !stopSent && !failures.Any(f => f.StartsWith("MIXIN PROBLEM"))
+                // Supplementaries) crash it before the title screen; one retry, as the research drivers did. A mixin problem is no race.
+                // Not "before BEGIN": the probe logs BEGIN when the Core initializes, while Forge is still constructing the other mods.
+                if (attempt == 1 && fastQuit == null && !title && !stopSent && !failures.Any(f => f.StartsWith("MIXIN PROBLEM"))
                     && (seen.Contains("crash") || ReadShared(log).Contains("Crash report saved"))) // also when it exited between two log reads
                 {
-                    Say("WARNING (retrying once): the game crashed while loading mods, before the QA probe started (a pack mod-loading race); attempt 1's log: latest-attempt1.log");
+                    Say("WARNING (retrying once): the game crashed while loading mods, before the title screen (a pack mod-loading race); attempt 1's log: latest-attempt1.log");
                     if (!game.HasExited) { game.Kill(entireProcessTree: true); game.WaitForExit(30000); }
                     if (File.Exists(log)) File.Copy(log, Path.Combine(evidence, "latest-attempt1.log"), true);
                     failures.Clear();
                     seen.Clear();
-                    title = ready = worldDone = scriptDone = initialized = fastQuitDone = ebeDone = ebeAsked = false;
+                    begin = title = ready = worldDone = scriptDone = initialized = fastQuitDone = ebeDone = ebeAsked = false;
                     game = new Process { StartInfo = game.StartInfo };
                     await Task.Delay(10000, ct);
                     continue;
