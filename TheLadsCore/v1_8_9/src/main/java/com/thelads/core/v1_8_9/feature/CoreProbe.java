@@ -263,20 +263,30 @@ public final class CoreProbe {
             tap(Keyboard.KEY_ESCAPE, (char) 27); // Essential's modal takes the key (its own Escape handling closes it) before the screen sees it
             return retry(5);
         }
+        if (titleShot) { // Essential's previews of the shots (they grow with the window) take clicks: wait them out before More
+            if (System.nanoTime() - lastShot < QUIET_NANOS) return retry(10);
+            GuiButton more = LadsTitleScreen189.INSTANCE.moreButton();
+            click(more.xPosition + more.width / 2, more.yPosition + more.height / 2);
+            return after(10);
+        }
         if (titleScales == null) {
             titleScales = new java.util.ArrayList<>(Arrays.asList(1, 2, 3, 4, 0));
             titleScales.remove(Integer.valueOf(mc.gameSettings.guiScale));
             titleScales.add(mc.gameSettings.guiScale);
-        } else checkTitleLayout(mc, titleScales.get(titleScale));
-        if (++titleScale < titleScales.size()) {
+        } else if (!titleSettling) checkTitleLayout(mc, titleScales.get(titleScale));
+        if (!titleSettling && ++titleScale < titleScales.size()) {
             guiScale(mc, titleScales.get(titleScale));
             return retry(5); // frames lay the buttons out (and place Switch) at the new scale
         }
+        titleSettling = true;
+        if (System.nanoTime() - lastShot < QUIET_NANOS) return retry(10); // the picture below shows the title without the earlier shots' previews
         screenshot(mc, "c1-title");
-        GuiButton more = LadsTitleScreen189.INSTANCE.moreButton();
-        click(more.xPosition + more.width / 2, more.yPosition + more.height / 2);
-        return after(10);
+        titleShot = true;
+        return retry(10);
     }
+
+    private static boolean titleSettling, titleShot;
+    private static final long QUIET_NANOS = 12_000_000_000L;
 
     /**
      * QA only: the sandbox's offline account makes Essential open "Account authentication failed" over the title screen, and that
@@ -293,6 +303,7 @@ public final class CoreProbe {
 
     private static void guiScale(Minecraft mc, int scale) {
         mc.gameSettings.guiScale = scale;
+        Screenshots189.clearPreview(); // the last shot's preview would cover the top-right buttons
         net.minecraft.client.gui.ScaledResolution scaled = new net.minecraft.client.gui.ScaledResolution(mc);
         mc.currentScreen.setWorldAndResolution(mc, scaled.getScaledWidth(), scaled.getScaledHeight());
     }
@@ -608,6 +619,8 @@ public final class CoreProbe {
 
     private static boolean pauseClicked(Minecraft mc) throws Exception {
         check(mc.currentScreen == pause, "the pause menu is still open");
+        // Essential's previews of the shots so far cover the top right (the fullscreen toggle) for a few seconds.
+        if (System.nanoTime() - lastShot < QUIET_NANOS) return retry(10);
         screenshot(mc, "c1-pause-menu");
         GuiButton button = ((LadsPauseButton) pause).ladsButton();
         click(button.xPosition + button.width / 2, button.yPosition + button.height / 2);
@@ -830,7 +843,10 @@ public final class CoreProbe {
         return false;
     }
 
+    private static long lastShot;
+
     static void screenshot(Minecraft mc, String name) {
+        lastShot = System.nanoTime();
         File folder = new File(mc.mcDataDir, "lads-qa");
         new File(folder, "screenshots").mkdirs(); // ScreenShotHelper creates only the last folder
         ScreenShotHelper.saveScreenshot(folder, name + ".png", mc.displayWidth, mc.displayHeight, mc.getFramebuffer());
