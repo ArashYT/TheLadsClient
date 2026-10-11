@@ -92,7 +92,8 @@ internal static class ZeroSmpQa
             await Task.Run(() => CopyInstance(Path.Combine(realSource, "minecraft"), gameDir), ct);
             string mods = Path.Combine(gameDir, "mods");
             File.Copy(coreJar, Path.Combine(mods, "theladscore.jar"), overwrite: true);
-            foreach (var line in QaShared.RemoveMods(mods, removeMods)) Say(line);
+            // LADS_VERIFY_REMOVE_MODS as in --mc1201 mode (tools/bench/research.py passes the env var; it was silently ignored here).
+            foreach (var line in QaShared.RemoveMods(mods, removeMods ?? QaShared.Env("LADS_VERIFY_REMOVE_MODS"))) Say(line);
             foreach (var line in QaShared.AddMods(mods, QaShared.Env("LADS_VERIFY_ADD_MODS"))) Say(line);
             // Early loading window: QA games start as players' do, with the Lads window ModpackLauncher sets up (its jar on -cp, fml.toml).
             // LADS_VERIFY_EARLY_WINDOW=forge: the launcher's no-jar fallback (LADS_SKIP_EARLY_WINDOW=1), Forge's own window; =off: no early
@@ -231,48 +232,66 @@ internal static class ZeroSmpQa
             File.WriteAllText(Path.Combine(evidence, "command-line.txt"), game.StartInfo.FileName + " " + (args.Count > 0 ? string.Join(' ', args) : game.StartInfo.Arguments));
 
             string log = Path.Combine(gameDir, "logs", "latest.log");
-            if (File.Exists(log)) File.Delete(log);
             slot = await QaShared.AcquireAsync(7, "Zero SMP", ct);
-            var started = Stopwatch.StartNew();
-            game.Start();
-            LaunchToken.Send(game);
-            Say($"Started PID {game.Id}: {game.StartInfo.FileName}");
-            QaWindowGuard.Watch(game, slot.Number);
-
             bool begin = false, title = false, ready = false, worldDone = false, scriptDone = false, initialized = false, stopSent = false, fastQuitDone = false, ebeDone = false, ebeAsked = false;
             bool scripted = script != null || scriptText != null;
             var seen = new HashSet<string>();
-            while (!game.HasExited && started.Elapsed < TimeSpan.FromSeconds(timeoutSec))
+            for (int attempt = 1; ; attempt++)
             {
-                await Task.Delay(1000, ct);
-                string text = ReadShared(log);
-                foreach (var line in text.Split('\n'))
+                if (File.Exists(log)) File.Delete(log);
+                var started = Stopwatch.StartNew();
+                game.Start();
+                LaunchToken.Send(game);
+                Say($"Started PID {game.Id}: {game.StartInfo.FileName}");
+                QaWindowGuard.Watch(game, slot.Number);
+                while (!game.HasExited && started.Elapsed < TimeSpan.FromSeconds(timeoutSec))
                 {
-                    if (line.Contains("Lads auto-world QA BEGIN")) begin = true;
-                    if (line.Contains("Lads auto-world QA TITLE")) title = true;
-                    if (line.Contains("Lads auto-world QA READY")) ready = true;
-                    if (line.Contains("Lads world capture END:") && line.Contains(", 0 failed")) worldDone = true;
-                    if (line.Contains("Lads qa script END:") && line.Contains(", 0 failed")) scriptDone = true;
-                    if (line.Contains("TheLadsCore 1.20.1 initialized successfully")) initialized = true;
-                    if (line.Contains("Lads fast quit probe END:")) fastQuitDone = true;
-                    if (line.Contains("Lads fast quit probe FAILED") && seen.Add(line)) failures.Add(line.Trim());
-                    if (line.Contains("Lads EBE probe END:")) { ebeDone = true; if (!line.Contains(", 0 failed") && seen.Add(line)) failures.Add(line.Trim()); }
-                    if (line.Contains("Lads EBE probe FAILED") && seen.Add(line)) failures.Add(line.Trim());
-                    if ((line.Contains("Lads auto-world QA FAILED") || line.Contains("Lads qa script FAILED") || line.Contains("Lads qa step FAILED")) && seen.Add(line))
-                        failures.Add(line.Trim());
-                    if (QaShared.MixinProblem(line) && seen.Add(line)) failures.Add("MIXIN PROBLEM: " + line.Trim());
-                    if (line.Contains("Crash report saved") || line.Contains("---- Minecraft Crash Report")) { if (seen.Add("crash")) failures.Add("the game crashed (see latest.log / crash-reports)"); }
+                    await Task.Delay(1000, ct);
+                    string text = ReadShared(log);
+                    foreach (var line in text.Split('\n'))
+                    {
+                        if (line.Contains("Lads auto-world QA BEGIN")) begin = true;
+                        if (line.Contains("Lads auto-world QA TITLE")) title = true;
+                        if (line.Contains("Lads auto-world QA READY")) ready = true;
+                        if (line.Contains("Lads world capture END:") && line.Contains(", 0 failed")) worldDone = true;
+                        if (line.Contains("Lads qa script END:") && line.Contains(", 0 failed")) scriptDone = true;
+                        if (line.Contains("TheLadsCore 1.20.1 initialized successfully")) initialized = true;
+                        if (line.Contains("Lads fast quit probe END:")) fastQuitDone = true;
+                        if (line.Contains("Lads fast quit probe FAILED") && seen.Add(line)) failures.Add(line.Trim());
+                        if (line.Contains("Lads EBE probe END:")) { ebeDone = true; if (!line.Contains(", 0 failed") && seen.Add(line)) failures.Add(line.Trim()); }
+                        if (line.Contains("Lads EBE probe FAILED") && seen.Add(line)) failures.Add(line.Trim());
+                        if ((line.Contains("Lads auto-world QA FAILED") || line.Contains("Lads qa script FAILED") || line.Contains("Lads qa step FAILED")) && seen.Add(line))
+                            failures.Add(line.Trim());
+                        if (QaShared.MixinProblem(line) && seen.Add(line)) failures.Add("MIXIN PROBLEM: " + line.Trim());
+                        if (line.Contains("Crash report saved") || line.Contains("---- Minecraft Crash Report")) { if (seen.Add("crash")) failures.Add("the game crashed (see latest.log / crash-reports)"); }
+                    }
+                    if (failures.Count > 0 && !stopSent && (failures.Any(f => f.Contains("crashed")) || failures.Any(f => f.Contains("auto-world QA FAILED") || f.Contains("fast quit probe FAILED")))) break;
+                    if (ebe != null && worldDone && !ebeAsked) { File.WriteAllText(Path.Combine(gameDir, ".lads-qa-ebe"), "probe"); ebeAsked = true; }
+                    bool finished = fastQuit != null ? initialized && fastQuitDone : initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone) && (ebe == null || ebeDone);
+                    if (finished && !stopSent)
+                    {
+                        stopSent = true;
+                        Say($"Reached title{(noWorld ? "" : " and the QA world")}{(scripted ? " and finished the script" : "")} at {started.Elapsed.TotalSeconds:F0} s; asking the game to stop.");
+                        File.WriteAllText(Path.Combine(gameDir, ".lads-qa-stop"), "stop");
+                        break;
+                    }
                 }
-                if (failures.Count > 0 && !stopSent && (failures.Any(f => f.Contains("crashed")) || failures.Any(f => f.Contains("auto-world QA FAILED") || f.Contains("fast quit probe FAILED")))) break;
-                if (ebe != null && worldDone && !ebeAsked) { File.WriteAllText(Path.Combine(gameDir, ".lads-qa-ebe"), "probe"); ebeAsked = true; }
-                bool finished = fastQuit != null ? initialized && fastQuitDone : initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone) && (ebe == null || ebeDone);
-                if (finished && !stopSent)
+                // The pack's intermittent mod-loading races (~3 in 50 launches: Create / Create Deco registry lookups, Zeta's event bus via
+                // Supplementaries) crash it before the QA probe starts; one retry, as the research drivers did. A mixin problem is no race.
+                if (attempt == 1 && fastQuit == null && !begin && !stopSent && !failures.Any(f => f.StartsWith("MIXIN PROBLEM"))
+                    && (seen.Contains("crash") || ReadShared(log).Contains("Crash report saved"))) // also when it exited between two log reads
                 {
-                    stopSent = true;
-                    Say($"Reached title{(noWorld ? "" : " and the QA world")}{(scripted ? " and finished the script" : "")} at {started.Elapsed.TotalSeconds:F0} s; asking the game to stop.");
-                    File.WriteAllText(Path.Combine(gameDir, ".lads-qa-stop"), "stop");
-                    break;
+                    Say("WARNING (retrying once): the game crashed while loading mods, before the QA probe started (a pack mod-loading race); attempt 1's log: latest-attempt1.log");
+                    if (!game.HasExited) { game.Kill(entireProcessTree: true); game.WaitForExit(30000); }
+                    if (File.Exists(log)) File.Copy(log, Path.Combine(evidence, "latest-attempt1.log"), true);
+                    failures.Clear();
+                    seen.Clear();
+                    title = ready = worldDone = scriptDone = initialized = fastQuitDone = ebeDone = ebeAsked = false;
+                    game = new Process { StartInfo = game.StartInfo };
+                    await Task.Delay(10000, ct);
+                    continue;
                 }
+                break;
             }
             if (game.HasExited && !stopSent && !(fastQuit != null ? fastQuitDone : initialized && begin && (noWorld ? title : worldDone) && (!scripted || scriptDone)))
                 failures.Add($"the game exited early with code {game.ExitCode}");

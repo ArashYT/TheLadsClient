@@ -189,7 +189,10 @@ public final class InputLatency1201 {
     /** RenderSystem.limitDisplayFPS: true when this waited instead (no event pumping during the wait, input polled after it). */
     public static boolean limit(int fps) {
         if (!ixeris || qaVanilla) return false;
-        lastFrameEnd = PreciseWait.until(lastFrameEnd + 1_000_000_000L / Math.max(1, fps));
+        Minecraft mc = Minecraft.getInstance();
+        long deadline = lastFrameEnd + 1_000_000_000L / Math.max(1, fps);
+        // Loading (resource reload overlay, or no world yet: title, world loading screens): mostly sleep, spin only the last ~1 ms.
+        lastFrameEnd = mc.getOverlay() != null || mc.level == null ? PreciseWait.until(deadline, PreciseWait.LOADING_SPIN) : PreciseWait.until(deadline);
         RenderSystemInvoker1201.lads$pollEvents();
         return true;
     }
