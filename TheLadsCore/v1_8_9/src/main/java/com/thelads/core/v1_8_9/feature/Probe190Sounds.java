@@ -62,10 +62,11 @@ final class Probe190Sounds {
             return true;
         }
 
-        @Override public void openSettings(String module) {
+        @Override public com.thelads.core.client.gui.LadsSettingsScreen openSettings(String module) {
             LadsSettingsScreen189 menu = new LadsSettingsScreen189(null);
             Minecraft.getMinecraft().displayGuiScreen(menu);
             menu.openModule(module);
+            return menu.ui();
         }
 
         @Override public void closeScreen() { Minecraft.getMinecraft().displayGuiScreen(null); }

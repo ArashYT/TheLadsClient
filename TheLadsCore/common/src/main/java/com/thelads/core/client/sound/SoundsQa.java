@@ -29,7 +29,8 @@ public final class SoundsQa {
         void spawnTarget(boolean tough);
         /** The player's own attack on that mob through the version's attack path; false while the client does not have it yet. */
         boolean attackTarget();
-        void openSettings(String module);
+        /** The Lads settings at that module's page; returns the shared menu it shows. */
+        LadsSettingsScreen openSettings(String module);
         void closeScreen();
         void screenshot(String name) throws Exception;
     }
@@ -40,7 +41,7 @@ public final class SoundsQa {
     private final List<String> failures = new ArrayList<>();
     private final List<JsonElement> comboBefore = new ArrayList<>(), bannerBefore = new ArrayList<>();
     private boolean comboWas, bannerWas;
-    private int step, wait, passed, hit, lines;
+    private int step, wait, passed, hit, lines, patience;
 
     private SoundsQa(Path files) { this.files = files; }
 
@@ -90,13 +91,13 @@ public final class SoundsQa {
             }
             case 1 -> {
                 check(CustomSounds.linesOpened() > lines, "a sound line opened for the preview (" + CustomSounds.linesOpened() + " so far, last " + CustomSounds.lastPlayed() + ")");
-                game.openSettings(ComboSoundsModule.NAME);
+                game.openSettings(ComboSoundsModule.NAME).scrollBy(4 * 43); // past Players, Mobs, Volume, Combo Reset: the slots
                 wait = 30;
             }
             case 2 -> { game.screenshot("sounds-combo-settings"); wait = 10; }
             case 3 -> {
                 LadsSettingsScreen.openKillBannerSections("customsound");
-                game.openSettings("KillBanner");
+                game.openSettings("KillBanner").scrollBy(66); // the three section headers: Your sounds and its slots
                 wait = 30;
             }
             case 4 -> { game.screenshot("sounds-killbanner-your-sounds"); wait = 10; }
@@ -114,6 +115,12 @@ public final class SoundsQa {
             }
             case 7 -> {
                 String expected = "combo_" + Math.min(hit, 5) + ".mp3";
+                // The server's answer and the sound thread can lag a busy QA machine: up to 3 s for this hit to land and play.
+                if (!(combo.combo() == hit && CustomSounds.lastPlayed().equals(expected) && CustomSounds.linesOpened() > lines) && ++patience < 60) {
+                    step = 7;
+                    break;
+                }
+                patience = 0;
                 check(combo.combo() == hit && CustomSounds.lastPlayed().equals(expected) && CustomSounds.linesOpened() > lines,
                     "hit " + hit + ": combo step " + combo.combo() + ", played " + CustomSounds.lastPlayed() + " (expected " + expected + "), lines " + CustomSounds.linesOpened());
                 if (hit < 6) step = 6;
@@ -123,6 +130,11 @@ public final class SoundsQa {
                 if (game.attackTarget()) wait = 15;
             }
             case 9 -> {
+                if (combo.combo() != 1 && ++patience < 60) {
+                    step = 9;
+                    break;
+                }
+                patience = 0;
                 check(combo.combo() == 1, "a hit after Combo Reset starts again at step 1 (" + combo.combo() + ")");
                 combo.setEnabled(false); // the kill's own hit would play a combo step too
                 KillBanners.reset();
@@ -135,6 +147,10 @@ public final class SoundsQa {
                 wait = 12;
             }
             case 11 -> {
+                if (!(KillBanners.TIMELINE.sequence() == 1 && CustomSounds.lastPlayed().equals("kill_1.mp3")) && ++patience < 60) {
+                    step = 11;
+                    break;
+                }
                 check(KillBanners.TIMELINE.sequence() == 1 && CustomSounds.lastPlayed().equals("kill_1.mp3") && CustomSounds.linesOpened() > lines,
                     "the kill shows banner " + KillBanners.TIMELINE.sequence() + " and plays " + CustomSounds.lastPlayed() + " (expected kill_1.mp3)");
                 game.screenshot("sounds-kill-banner");

@@ -159,6 +159,8 @@ bool particlesOnly = particlesCaptureVerification && Env("LADS_VERIFY_PARTICLES_
 // 1.9.0: uploaded sounds (SoundsCapture, common SoundsQa): LADS_VERIFY_CAPTURE_SOUNDS=1 with LADS_VERIFY_SOUNDS=<folder of test MP3s>.
 // 1.8.9: LADS_VERIFY_189_ONLY=sounds; 1.20.1 (plain and Zero SMP): the script verb "sounds".
 bool soundsCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_SOUNDS") == "1";
+// LADS_VERIFY_SOUNDS_ONLY=1: that capture alone once the QA world is up, as LADS_VERIFY_PARTICLES_ONLY.
+bool soundsOnly = soundsCaptureVerification && Env("LADS_VERIFY_SOUNDS_ONLY") == "1";
 // Fabric versions: the player in a checkerboard-layered QA skin, from the front, SkinLayers on and off (SkinLayersCapture). 1.8.9's self-test does the same.
 bool skinLayersCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_SKINLAYERS") == "1";
 // Fabric versions: cheats turned on as World Options and Multiplayer Options do ("set"), "off", or what stayed after the
@@ -496,7 +498,7 @@ if (requestedFeaturesOnly)
     requiredWorldProbes = ["Lads native feature probe END:", "Lads improvements probe END:", "Lads font reload probe END:", "Lads world capture END:", "Lads shared content probe END:"];
     Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
 }
-if (particlesOnly) requiredWorldProbes = ["Lads world capture END:"];
+if (particlesOnly || soundsOnly) requiredWorldProbes = ["Lads world capture END:"];
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
 // 1.8.5 input lane, Fabric versions: input-latency pacing and synthetic mouse evidence in the QA world (InputProbe26 / InputProbe1201).
 bool inputVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_INPUT") == "1", inputProbeFailed = false;
@@ -513,7 +515,7 @@ if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
 // Every version: the Add Server screen names known servers (AddServerProbe), screenshots/addserver-*.png.
 bool addServerVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_ADDSERVER") == "1";
 if (addServerVerification) requiredCore.Add("Lads add-server probe END:");
-if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && fastQuitPhase == null) requiredCore.Add("Lads shared content probe END:");
+if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && fastQuitPhase == null) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",

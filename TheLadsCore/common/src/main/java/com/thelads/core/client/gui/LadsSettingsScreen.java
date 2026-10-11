@@ -1168,16 +1168,18 @@ public final class LadsSettingsScreen {
     private void soundRow(LadsGraphics g, SoundOption sound, int x, int y, int w, int mx, int my) {
         Module module = detail;
         round(g, x, y, w, 37, CARD);
-        int controlW = Math.min(170, w / 2), small = 40;
+        // Each button as wide as its label, so all three fit a narrow column (GUI scale 2 in a small window); the name takes the rest.
+        int uploadW = g.textWidth("Upload") + 14, playW = g.textWidth("Play") + 14, clearW = g.textWidth("Clear") + 14;
+        int controlW = uploadW + playW + clearW + 8;
         String fallback = module instanceof ComboSoundsModule ? "Built-in pling" : "Plain chime";
         g.drawText(fit(g, sound.getName(), w - controlW - 20), x + 9, y + 8, TEXT);
         g.drawText(fit(g, sound.isSet() ? sound.get() : fallback, w - controlW - 20), x + 9, y + 21, MUTED);
         String id = "option:" + sound.getName();
-        int rx = x + w - controlW - 6, ry = y + 7, uploadW = controlW - 2 * (small + 4);
+        int rx = x + w - controlW - 6, ry = y + 7;
         button(g, id + ":upload", "Upload", new Rect(rx, ry, uploadW, 23), () -> uploadSound(sound, module), true, mx, my, false);
-        button(g, id + ":play", "Play", new Rect(rx + uploadW + 4, ry, small, 23), () -> previewSound(sound, module),
+        button(g, id + ":play", "Play", new Rect(rx + uploadW + 4, ry, playW, 23), () -> previewSound(sound, module),
             sound.isSet() || module instanceof ComboSoundsModule, mx, my, false);
-        button(g, id + ":clear", "Clear", new Rect(rx + uploadW + small + 8, ry, small, 23),
+        button(g, id + ":clear", "Clear", new Rect(rx + uploadW + playW + 8, ry, clearW, 23),
             () -> { sound.set(""); changed(module); }, sound.isSet(), mx, my, false);
     }
     /** A finished upload, applied at the start of the next frame (the dialog completes on its own thread). */
@@ -1532,6 +1534,8 @@ public final class LadsSettingsScreen {
     public void openGlobalColors(){colorPicker.openGlobal();}
     public void openDisplayActions(){if(detail!=null)actions.open(detail.getOptions().stream().filter(o->o instanceof PlayerActionOption).map(o->(PlayerActionOption)o).toList(),()->changed(detail));}
     public void openModule(String name) { Module m=ModuleManager.getInstance().getModule(name); if(m!=null)openDetails(m); }
+    /** QA: scrolls the open page by this many pixels (kept within the page on the next frame). */
+    public void scrollBy(int pixels) { scrollOffset = Math.max(0, scrollOffset + pixels); }
     /** QA (kill banner captures): the Kill Banner picker's skin search, as typed. */
     public void searchKillBanners(String query) { kbSearch = query; }
     private void openDetails(Module m) {
