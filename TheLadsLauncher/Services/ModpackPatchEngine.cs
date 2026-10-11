@@ -202,26 +202,112 @@ public static class ModpackPatchEngine
 
             foreach (var (k, v) in patch.KeyValues)
             {
-                bool matched = false;
-                var pattern = $@"^(\s*{Regex.Escape(k)}\s*[=:]\s*).*$";
-                for (int i = 0; i < lines.Count; i++)
-                {
-                    if (Regex.IsMatch(lines[i], pattern))
-                    {
-                        var prefix = Regex.Match(lines[i], $@"^(\s*{Regex.Escape(k)}\s*[=:]\s*)").Groups[1].Value;
-                        lines[i] = prefix + v;
-                        matched = true;
-                        break;
-                    }
-                }
-                if (!matched)
-                {
+                var (index, insertAt, name, newTable) = FindKey(lines, k, fmt == "toml");
+                if (index >= 0)
+                    lines[index] = Regex.Match(lines[index], $@"^\s*{Regex.Escape(name)}\s*[=:]\s*").Value + v;
+                else if (newTable != null)
+                    lines.AddRange(new[] { newTable, $"{name} = {v}" });
+                else if (name != k) // inside its table, indented like the line above
+                    lines.Insert(insertAt, Regex.Match(insertAt > 0 ? lines[insertAt - 1] : "", @"^\s*").Value + $"{name} = {v}");
+                else
                     lines.Add($"{k}={v}");
-                }
             }
 
             File.WriteAllLines(filePath, lines);
         }
+    }
+
+    /// <summary>Where <paramref name="key"/> is in a key=value file: its line (-1 if missing) and where a missing one goes. A TOML key
+    /// written as "table.path.key" is only looked for inside [table.path] (up to the next [header]) and goes at the end of that table,
+    /// or into a new [table.path] at the end of the file; any other key matches the first line anywhere and goes at the end.</summary>
+    private static (int Index, int InsertAt, string Name, string? NewTable) FindKey(List<string> lines, string key, bool toml)
+    {
+        int from = 0, to = lines.Count;
+        var name = key;
+        if (toml && key.LastIndexOf('.') is var dot and > 0)
+        {
+            var header = "[" + key[..dot] + "]";
+            name = key[(dot + 1)..];
+            from = lines.FindIndex(l => l.Trim() == header) + 1;
+            if (from == 0) return (-1, lines.Count, name, header);
+            to = lines.FindIndex(from, l => l.TrimStart().StartsWith('[')) is var next and >= 0 ? next : lines.Count;
+        }
+        var pattern = new Regex($@"^\s*{Regex.Escape(name)}\s*[=:]");
+        for (int i = from; i < to; i++)
+            if (pattern.IsMatch(lines[i])) return (i, i, name, null);
+        while (to > from && string.IsNullOrWhiteSpace(lines[to - 1])) to--;
+        return (-1, to, name, null);
+    }
+
+    /// <summary>Whether an instance that never recorded its patches already has <paramref name="patch"/>: its config values (keys in
+    /// <paramref name="setAgainLater"/>, "file|key", are left to the later patch), every removed jar gone, at least one of its added
+    /// jars there, and for a keybind-only patch its keybind defaults/forces (the pack may drop an added mod later: Crawl on Demand came in 1.0.1 and left the
+    /// dev instance afterwards; "all added jars" would download it again).</summary>
+    public static bool IsReflected(string gameDir, ModpackPatch patch, ISet<string> setAgainLater)
+    {
+        foreach (var cfg in patch.ConfigPatches ?? new List<PatchConfig>())
+        {
+            var filePath = Path.Combine(gameDir, cfg.File);
+            if (!File.Exists(filePath)) return false;
+            if ((cfg.Format ?? "json").ToLowerInvariant() == "json" && cfg.Set != null)
+            {
+                JsonNode? root;
+                try { root = JsonNode.Parse(File.ReadAllText(filePath)); } catch (JsonException) { return false; }
+                foreach (var (path, element) in cfg.Set)
+                {
+                    if (setAgainLater.Contains(cfg.File + "|" + path)) continue;
+                    var node = root;
+                    foreach (var part in path.Split('.')) node = (node as JsonObject)?[part];
+                    if (!JsonNode.DeepEquals(node, JsonNode.Parse(element.GetRawText()))) return false;
+                }
+            }
+            else if (cfg.KeyValues != null)
+            {
+                var lines = File.ReadAllLines(filePath).ToList();
+                foreach (var (k, v) in cfg.KeyValues)
+                {
+                    if (setAgainLater.Contains(cfg.File + "|" + k)) continue;
+                    var (index, _, name, _) = FindKey(lines, k, (cfg.Format ?? "").ToLowerInvariant() == "toml");
+                    if (index < 0 || Regex.Replace(lines[index], $@"^\s*{Regex.Escape(name)}\s*[=:]\s*", "").Trim() != v.Trim()) return false;
+                }
+            }
+        }
+
+        // Keybinds only decide a keybind-only patch: Minecraft drops the keys of mods that left the pack from options.txt
+        // (1.0.1's Crawl on Demand keys are gone from the dev instance although its other changes are there).
+        bool hasOtherChanges = patch.ConfigPatches?.Count > 0 || patch.Mods?.Add?.Count > 0 || patch.Mods?.Remove?.Count > 0;
+        if (!hasOtherChanges && patch.Keybinds is { } keys && (keys.Defaults?.Count > 0 || keys.Force?.Count > 0))
+        {
+            var optionsFile = Path.Combine(gameDir, "options.txt");
+            var map = File.Exists(optionsFile) ? GameOptionsService.ParseOptions(File.ReadAllText(optionsFile)) : new Dictionary<string, string>();
+            if (keys.Defaults?.Keys.Any(k => !map.ContainsKey(k)) == true) return false;
+            if (keys.Force?.Any(f => !map.TryGetValue(f.Key, out var cur) || cur != f.Value) == true) return false;
+        }
+
+        var modsDir = Path.Combine(gameDir, "mods");
+        bool Has(string name) => File.Exists(Path.Combine(modsDir, name)) || File.Exists(Path.Combine(modsDir, name + ".disabled"));
+        if (patch.Mods?.Remove?.Any(n => IsPlainFileName(n) && Has(n)) == true) return false;
+        var added = patch.Mods?.Add?.Where(m => IsPlainFileName(m.FileName)).ToList();
+        return added is not { Count: > 0 } || added.Any(m => Has(m.FileName));
+    }
+
+    /// <summary>For an instance with no <c>.lads-applied-patches.json</c> (the dev instance, or one set up before patches): records the
+    /// oldest <paramref name="pending"/> patches it already reflects (<see cref="IsReflected"/>) as applied, stopping at the first it
+    /// lacks, and returns the rest. With a record nothing is adopted: the record decides.</summary>
+    public static List<ModpackPatch> AdoptReflectedPatches(string instanceDirectory, List<ModpackPatch> pending)
+    {
+        if (File.Exists(Path.Combine(instanceDirectory, AppliedPatchesFile))) return pending;
+        var gameDir = Path.Combine(instanceDirectory, "minecraft");
+        int adopted = 0;
+        for (; adopted < pending.Count; adopted++)
+        {
+            var later = pending.Skip(adopted + 1).SelectMany(p => p.ConfigPatches ?? new List<PatchConfig>())
+                .SelectMany(c => (c.KeyValues?.Keys ?? Enumerable.Empty<string>()).Concat(c.Set?.Keys ?? Enumerable.Empty<string>()).Select(k => c.File + "|" + k))
+                .ToHashSet();
+            if (!IsReflected(gameDir, pending[adopted], later)) break;
+            RecordAppliedPatch(instanceDirectory, pending[adopted].Version);
+        }
+        return pending.Skip(adopted).ToList();
     }
 
     private static void SetNestedJsonProperty(JsonObject root, string path, JsonNode? value)

@@ -165,6 +165,14 @@ internal static class ZeroSmpQa
             var java = new JavaService(new PathService(QaShared.RuntimeData));
             var session = AccountIdentity.CreateOfflineSession("LadsQA");
             using var http = new HttpClient();
+            // LADS_VERIFY_PACK_PATCHES=1: the Zero SMP Play button's patch step (ExperiencesService.ApplyPendingPatchesAsync with the launcher's
+            // bundled patches, as ExperiencesView does) on the copy before launch. The copy's config is mirrored from the source every run but
+            // its .lads-applied-patches.json (instance folder) stays, so a second run must apply nothing.
+            if (QaShared.Env("LADS_VERIFY_PACK_PATCHES") == "1")
+            {
+                int patched = await ExperiencesService.ApplyPendingPatchesAsync(data, InstanceId, http, Say, ct, ExperiencesService.BundledPatchesDirectory);
+                Say($"Pack patches applied: {patched}; recorded: {string.Join(", ", ModpackPatchEngine.GetAppliedPatches(instanceDir))}");
+            }
             long lastNote = 0;
             void Progress(string message)
             {
