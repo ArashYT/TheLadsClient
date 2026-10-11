@@ -31,9 +31,31 @@ public final class HudCover {
 
     /** A box drawn this frame over the HUD's place (any corner order). */
     public static void add(int source, double x1, double y1, double x2, double y2) {
+        int[] box = box(source, x1, y1, x2, y2);
+        if (box != null) now.add(box);
+    }
+
+    private static int[] box(int source, double x1, double y1, double x2, double y2) {
         int left = (int) Math.floor(Math.min(x1, x2)), top = (int) Math.floor(Math.min(y1, y2));
         int right = (int) Math.ceil(Math.max(x1, x2)), bottom = (int) Math.ceil(Math.max(y1, y2));
-        if (right > left && bottom > top) now.add(new int[] {source, left, top, right, bottom});
+        return right > left && bottom > top ? new int[] {source, left, top, right, bottom} : null;
+    }
+
+    /** How many boxes this frame has so far: mark it before drawing something under its own scale (see {@link #scaleSince}). */
+    public static int mark() {
+        return now.size();
+    }
+
+    /**
+     * The boxes added since {@code mark} were drawn under a scale and a move (26.x draws the debug screen at its own debug GUI
+     * scale): each corner goes to scale * corner + move, in GUI units.
+     */
+    public static void scaleSince(int mark, double scaleX, double scaleY, double moveX, double moveY) {
+        for (int i = now.size() - 1; i >= mark; i--) {
+            int[] b = now.get(i), scaled = box(b[0], scaleX * b[1] + moveX, scaleY * b[2] + moveY, scaleX * b[3] + moveX, scaleY * b[4] + moveY);
+            if (scaled != null) now.set(i, scaled);
+            else now.remove(i);
+        }
     }
 
     /**
@@ -70,8 +92,8 @@ public final class HudCover {
      */
     public static boolean coveredBefore(double x1, double y1, double x2, double y2) {
         boolean debugOpen = com.thelads.core.client.bridge.LadsGameBridge.get().isDebugScreenOpen();
-        for (List<int[]> boxes : List.of(now, last))
-            for (int[] box : boxes) if ((box[0] != DEBUG || debugOpen) && overlaps(box, x1, y1, x2, y2)) return true;
+        for (int[] box : now) if ((box[0] != DEBUG || debugOpen) && overlaps(box, x1, y1, x2, y2)) return true;
+        for (int[] box : last) if ((box[0] != DEBUG || debugOpen) && overlaps(box, x1, y1, x2, y2)) return true;
         return false;
     }
 

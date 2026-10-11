@@ -163,7 +163,7 @@ public class HudManager {
 
     /** Whether the last draw left this HUD out under the tab list or the debug text: what another mod draws for it (Xaero's map) follows. */
     public boolean isCovered(String name) {
-        return covered.contains(name);
+        return allCovered || covered.contains(name);
     }
 
     /** QA: the HUDs the last draw left out under the tab list or the debug text. */
@@ -175,11 +175,12 @@ public class HudManager {
     private void draw(LadsGraphics g, HudElement element, HudGroupLayout.Rect at) {
         element.placed(g, at);
         lastPlaced.put(element.getModuleName(), at);
+        String name = element.getModuleName();
         if (covered(at)) {
-            coverMoved |= covered.add(element.getModuleName());
+            if (name != null) coverMoved |= covered.add(name);
             return;
         }
-        coverMoved |= covered.remove(element.getModuleName());
+        if (name != null) coverMoved |= covered.remove(name);
         element.renderAt(g, at.x(), at.y(), false);
     }
 

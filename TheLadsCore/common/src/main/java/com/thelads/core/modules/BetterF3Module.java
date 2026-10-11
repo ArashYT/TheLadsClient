@@ -67,9 +67,12 @@ public class BetterF3Module extends Module {
         setEnabled(true);
     }
 
-    /** True while the debug screen is open and the Lads HUD modules should not be drawn (the "Hide Lads HUD" option, on by default). */
+    /**
+     * Whether the whole Lads HUD steps aside while the debug screen is open (the "Hide Lads HUD" option, on by default, of Better F3
+     * switched on). Otherwise only the widgets under the debug text do (HudCover).
+     */
     public static boolean hidesLadsHud() {
-        return com.thelads.core.config.ModuleManager.getInstance().getModule("BetterF3") instanceof BetterF3Module f3 ? f3.bool("Hide Lads HUD") : true;
+        return com.thelads.core.config.ModuleManager.getInstance().getModule("BetterF3") instanceof BetterF3Module f3 && f3.isEnabled() && f3.bool("Hide Lads HUD");
     }
 
     private boolean bool(String name) { return getOption(name) instanceof BoolOption option && option.get(); }
