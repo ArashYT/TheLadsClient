@@ -29,7 +29,8 @@ public final class SoundsQa {
         void spawnTarget(boolean tough);
         /** The player's own attack on that mob through the version's attack path; false while the client does not have it yet. */
         boolean attackTarget();
-        void openSettings(String module);
+        /** The Lads settings at that module's page; returns the shared menu it shows. */
+        LadsSettingsScreen openSettings(String module);
         void closeScreen();
         void screenshot(String name) throws Exception;
     }
@@ -90,13 +91,13 @@ public final class SoundsQa {
             }
             case 1 -> {
                 check(CustomSounds.linesOpened() > lines, "a sound line opened for the preview (" + CustomSounds.linesOpened() + " so far, last " + CustomSounds.lastPlayed() + ")");
-                game.openSettings(ComboSoundsModule.NAME);
+                game.openSettings(ComboSoundsModule.NAME).scrollBy(4 * 43); // past Players, Mobs, Volume, Combo Reset: the slots
                 wait = 30;
             }
             case 2 -> { game.screenshot("sounds-combo-settings"); wait = 10; }
             case 3 -> {
                 LadsSettingsScreen.openKillBannerSections("customsound");
-                game.openSettings("KillBanner");
+                game.openSettings("KillBanner").scrollBy(66); // the three section headers: Your sounds and its slots
                 wait = 30;
             }
             case 4 -> { game.screenshot("sounds-killbanner-your-sounds"); wait = 10; }

@@ -61,10 +61,11 @@ final class SoundsQa1201 {
             return true;
         }
 
-        @Override public void openSettings(String module) {
+        @Override public com.thelads.core.client.gui.LadsSettingsScreen openSettings(String module) {
             LadsSettingsScreen1201 menu = new LadsSettingsScreen1201(null);
             Minecraft.getInstance().setScreen(menu);
             menu.openModule(module);
+            return menu.ui();
         }
 
         @Override public void closeScreen() { Minecraft.getInstance().setScreen(null); }

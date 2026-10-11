@@ -98,10 +98,11 @@ final class SoundsCapture {
             return true;
         }
 
-        @Override public void openSettings(String module) {
+        @Override public com.thelads.core.client.gui.LadsSettingsScreen openSettings(String module) {
             LadsSettingsScreen26 menu = new LadsSettingsScreen26(null);
             Minecraft.getInstance().setScreenAndShow(menu);
             menu.openModule(module);
+            return menu.ui();
         }
 
         @Override public void closeScreen() { Minecraft.getInstance().setScreenAndShow(null); }

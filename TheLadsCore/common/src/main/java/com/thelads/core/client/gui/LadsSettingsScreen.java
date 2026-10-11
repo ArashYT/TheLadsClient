@@ -1531,6 +1531,8 @@ public final class LadsSettingsScreen {
     public void openGlobalColors(){colorPicker.openGlobal();}
     public void openDisplayActions(){if(detail!=null)actions.open(detail.getOptions().stream().filter(o->o instanceof PlayerActionOption).map(o->(PlayerActionOption)o).toList(),()->changed(detail));}
     public void openModule(String name) { Module m=ModuleManager.getInstance().getModule(name); if(m!=null)openDetails(m); }
+    /** QA: scrolls the open page by this many pixels (kept within the page on the next frame). */
+    public void scrollBy(int pixels) { scrollOffset = Math.max(0, scrollOffset + pixels); }
     /** QA (kill banner captures): the Kill Banner picker's skin search, as typed. */
     public void searchKillBanners(String query) { kbSearch = query; }
     private void openDetails(Module m) {
