@@ -9,33 +9,41 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * The Chat Heads module: the sender's face (with its hat layer) before a chat message. Signed player chat names its sender; for
+ * Chat Heads, a group of options of the Chat module: the sender's face (with its hat layer) before a chat message. Signed player chat names its sender; for
  * every other message (server and plugin chat, joins, 1.8.9 chat) the adapters ask {@link #sender} which tab-list player it is
  * from. The head and a 2 px gap take {@link #WIDTH} chat pixels, so the adapters wrap those messages that much narrower.
- * Position "Before name" (the default) draws the head inline before the sender's name on a message's first line, and the text
+ * Head Position "Before name" (the default) draws the head inline before the sender's name on a message's first line, and the text
  * after it moves right by {@link #WIDTH}; "Start of line" draws it before the first line and moves every line of the message.
  */
 public final class ChatHeads {
-    public static final String NAME = "Chat Heads";
-    public static final String BY_NAME = "Detect by name", ALIGNED = "Keep text aligned", POSITION = "Position";
+    /** The module whose options these are. 1.9.0 folded the Chat Heads module into it (ConfigManager.migrateChatHeads). */
+    public static final String MODULE = "Chat";
+    public static final String ENABLED = "Chat Heads", BY_NAME = "Detect Heads by Name", ALIGNED = "Keep Text Aligned", POSITION = "Head Position";
     /** Position choices; index 0, Before name, is the default. */
     public static final String[] POSITIONS = {"Before name", "Start of line"};
     public static final int WIDTH = 10;
     private static final Pattern FORMATTING = Pattern.compile("(?s)§.");
     private static int layout = -1;
+    private static boolean external;
     private ChatHeads() {}
 
-    public static boolean enabled() {
-        Module module = ModuleManager.getInstance().getModule(NAME);
-        return module != null && module.isEnabled();
-    }
+    /** A Chat Heads jar the player added keeps chat to itself: Lads' own heads stand down and the Chat module hides their options. */
+    public static void external(boolean loaded) { external = loaded; }
+
+    public static boolean external() { return external; }
+
+    /**
+     * The Chat Heads option. It does not follow the Chat module's own switch: chat heads were a module of their own before, so
+     * they keep working for players who turned the rest of Chat off.
+     */
+    public static boolean enabled() { return !external && option(ENABLED, true); }
 
     /** Messages without a signed sender get a head from the names in their text. */
     public static boolean byName() { return option(BY_NAME, true); }
 
-    /** Position "Before name": the head sits inline before the sender's name, on the message's first line only. */
+    /** Head Position "Before name": the head sits inline before the sender's name, on the message's first line only. */
     public static boolean beforeName() {
-        Module module = ModuleManager.getInstance().getModule(NAME);
+        Module module = ModuleManager.getInstance().getModule(MODULE);
         return module == null || !(module.getOption(POSITION) instanceof DropdownOption position) || position.getIndex() == 0;
     }
 
@@ -47,7 +55,7 @@ public final class ChatHeads {
         return enabled() && (head || !beforeName() && option(ALIGNED, false)) ? WIDTH : 0;
     }
 
-    /** True once after the module, Position or Keep text aligned changed: the adapter then wraps the chat's lines again. */
+    /** True once after Chat Heads, Head Position or Keep Text Aligned changed: the adapter then wraps the chat's lines again. */
     public static boolean layoutChanged() {
         int now = enabled() ? (option(ALIGNED, false) ? 2 : 1) + (beforeName() ? 2 : 0) : 0;
         boolean changed = layout >= 0 && layout != now;
@@ -141,7 +149,7 @@ public final class ChatHeads {
     private static boolean word(char c) { return Character.isLetterOrDigit(c) || c == '_'; }
 
     private static boolean option(String name, boolean fallback) {
-        Module module = ModuleManager.getInstance().getModule(NAME);
+        Module module = ModuleManager.getInstance().getModule(MODULE);
         return module != null && module.getOption(name) instanceof BoolOption bool ? bool.get() : fallback;
     }
 }

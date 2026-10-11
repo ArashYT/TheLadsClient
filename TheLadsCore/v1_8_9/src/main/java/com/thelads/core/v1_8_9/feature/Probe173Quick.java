@@ -28,7 +28,7 @@ import org.lwjgl.opengl.Display;
 final class Probe173Quick {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final String[] MODULES = {"FPS", "Coordinates", "Keystrokes", "CPS", "Paperdoll", "ArmorHUD", "Potion Effects", "Scoreboard",
-        "BossBar", "Item Physics", "Chat Heads", "Raised", "Biome", "Time", "Direction", "Speed", "Day", "XP"};
+        "BossBar", "Item Physics", "Chat", "Raised", "Biome", "Time", "Direction", "Speed", "Day", "XP"};
     private static final String[] RUNS = new String[12];
     static {
         String[] set = {"plain", "hud"}; // frame pacing as the build has it: on in 1.7.2, off in 1.7.3

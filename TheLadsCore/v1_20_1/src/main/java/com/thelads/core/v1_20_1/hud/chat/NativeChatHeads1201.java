@@ -4,7 +4,6 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.thelads.core.client.ChatHeads;
 import com.thelads.core.client.Nicknames;
-import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.v1_20_1.hud.Mods1201;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,11 +53,10 @@ public final class NativeChatHeads1201 {
 
     public static void register() {
         if (Mods1201.loaded("chat_heads")) {
-            ModuleSupport.registerExternal(ChatHeads.NAME, "Chat Heads", "chat_heads", true);
+            ChatHeads.external(true);
             return;
         }
         active = true;
-        ModuleSupport.registerBuiltIn(ChatHeads.NAME);
     }
 
     private static Data data(Object recordInstance) { return (Data) recordInstance; }
@@ -200,6 +198,6 @@ public final class NativeChatHeads1201 {
         return lines;
     }
 
-    /** Whether the module draws heads itself (false while a chat_heads jar is loaded). */
+    /** Whether Lads draws heads itself (false while a chat_heads jar is loaded). */
     public static boolean active() { return active; }
 }

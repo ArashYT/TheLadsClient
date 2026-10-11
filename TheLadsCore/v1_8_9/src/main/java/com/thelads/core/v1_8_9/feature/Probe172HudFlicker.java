@@ -63,7 +63,7 @@ import org.lwjgl.opengl.GL12;
 final class Probe172HudFlicker {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final String[] MODULES = {"FPS", "Coordinates", "Keystrokes", "CPS", "Paperdoll", "ArmorHUD", "Potion Effects", "Scoreboard",
-        "BossBar", "KillBanner", "Item Physics", "Chat Heads", "Raised", "Autohide", "PingHUD", "Memory", "Speed", "Day", "Time", "XP",
+        "BossBar", "KillBanner", "Item Physics", "Chat", "Raised", "Autohide", "PingHUD", "Memory", "Speed", "Day", "Time", "XP",
         "Biome", "Direction", "Health", "Hunger", "TexturePacks", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress",
         "PortalCoordinates"};
     private static final int FRAMES = 36, HIDDEN = 4, CAP = 10, BENCH_SECONDS = 5;
