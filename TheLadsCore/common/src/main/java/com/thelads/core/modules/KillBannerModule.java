@@ -9,6 +9,7 @@ import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Option;
+import com.thelads.core.config.SoundOption;
 import com.thelads.core.config.TextOption;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -54,6 +55,10 @@ public class KillBannerModule extends Module {
     /** Custom: the banner of one skin with the sound of another. */
     public final DropdownOption customVisual = new DropdownOption("Custom Banner", REAVER, createCustomChoices());
     public final DropdownOption customSound = new DropdownOption("Custom Sound", ROGUE, createCustomChoices());
+    /** Custom: the player's own uploaded sounds instead of a skin's (a separate switch, so Custom Sound's saved index never moves). */
+    public final BoolOption ownSounds = new BoolOption("Your Sounds", false);
+    /** Your sounds, one per kill of a streak (aces: Kill 5); an empty slot plays the plain chime. */
+    public final SoundOption[] killSounds = new SoundOption[5];
     public final DropdownOption randomize = new DropdownOption("Randomize", RANDOM_OFF, "Off", "Variant", "Skin and variant", "Chosen");
     /** The Chosen randomizer's pool: "reaver:0,rogue:3,..." (skin id and variant index). */
     public final TextOption randomPool = new TextOption("Random Pool", "reaver:0,reaver:1,reaver:2,reaver:3,rogue:0,rogue:1,rogue:2,rogue:3");
@@ -79,8 +84,13 @@ public class KillBannerModule extends Module {
     private final Random random = new Random();
     private Pick last;
 
-    /** What one kill shows and plays: {@code style} null is the Base banner, {@code soundStyle} null the plain chime. */
-    public record Pick(KillBannerStyle style, int variant, KillBannerStyle soundStyle) {}
+    /**
+     * What one kill shows and plays: {@code style} null is the Base banner, {@code soundStyle} null the plain chime;
+     * {@code ownSounds}: the player's uploaded Kill 1-5 sounds instead.
+     */
+    public record Pick(KillBannerStyle style, int variant, KillBannerStyle soundStyle, boolean ownSounds) {
+        public Pick(KillBannerStyle style, int variant, KillBannerStyle soundStyle) { this(style, variant, soundStyle, false); }
+    }
 
     public KillBannerModule() {
         super("KillBanner", "Valorant kill banners with animations, rings, pips and sounds, the moment you kill a player, mob or boss.");
@@ -89,6 +99,7 @@ public class KillBannerModule extends Module {
         addOption(rogueVariant);
         addOption(customVisual);
         addOption(customSound);
+        addOption(ownSounds);
         addOption(randomize);
         addOption(randomPool);
         addOption(skinVariants);
@@ -105,6 +116,7 @@ public class KillBannerModule extends Module {
         addOption(size);
         addOption(streakReset);
         addOption(unlimitedStreak);
+        for (int i = 0; i < killSounds.length; i++) killSounds[i] = addOption(new SoundOption("Kill " + (i + 1)));
     }
 
     /** How long a streak waits for its next kill, in nanoseconds; negative: forever (Unlimited Streak). */
@@ -116,7 +128,8 @@ public class KillBannerModule extends Module {
     public boolean pickerOption(Option option) {
         return option == bannerStyle || option == reaverVariant || option == rogueVariant || option == customVisual
             || option == customSound || option == randomize || option == randomPool || option == skinVariants
-            || option == players || option == mobs || option == bosses || option == textColor;
+            || option == players || option == mobs || option == bosses || option == textColor
+            || option == ownSounds || option instanceof SoundOption;
     }
 
     public boolean counts(KillDetector.Kind kind) {
@@ -196,7 +209,8 @@ public class KillBannerModule extends Module {
         int index = bannerStyle.getIndex();
         KillBannerStyle style = index == CUSTOM ? visualOrSoundSkin(customVisual.getIndex()) : skin(index);
         KillBannerStyle soundStyle = index == CUSTOM ? visualOrSoundSkin(customSound.getIndex()) : style;
-        return pick(style, getVariant(style), soundStyle);
+        Pick pick = pick(style, getVariant(style), soundStyle);
+        return index == CUSTOM && ownSounds.get() ? new Pick(pick.style(), pick.variant(), null, true) : pick;
     }
 
     /** A pick with a skin folded into another (an older saved choice) resolved to that skin and the matching variant. */
@@ -217,7 +231,8 @@ public class KillBannerModule extends Module {
         switch (randomize.getIndex()) {
             case RANDOM_VARIANT -> {
                 if (chosen.style() != null) for (int v = 0; v < chosen.style().variantNames.length; v++)
-                    pool.add(new Pick(chosen.style(), v, bannerStyle.getIndex() == CUSTOM ? chosen.soundStyle() : chosen.style()));
+                    pool.add(bannerStyle.getIndex() == CUSTOM ? new Pick(chosen.style(), v, chosen.soundStyle(), chosen.ownSounds())
+                        : new Pick(chosen.style(), v, chosen.style()));
             }
             case RANDOM_SKIN -> {
                 for (KillBannerStyle style : KillBannerStyle.shown())
@@ -239,6 +254,11 @@ public class KillBannerModule extends Module {
         if (pool.size() > 1 && last != null) pool.remove(last);
         last = pool.isEmpty() ? chosen : pool.get(random.nextInt(pool.size()));
         return last;
+    }
+
+    /** Your sound for the {@code kills}-th kill (1 to 5; aces use Kill 5): its file, or "" for the plain chime. */
+    public String killSound(int kills) {
+        return killSounds[Math.max(1, Math.min(killSounds.length, kills)) - 1].get();
     }
 
     public Set<String> pool() {

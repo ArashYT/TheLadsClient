@@ -49,7 +49,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "Voice Chat", "Voice Chat Group",
             // Gameplay & Visuals
             "Chat", "Crosshair Tweaks", "DynamicLights",
-            "Custom FOV", "Paperdoll", "KillBanner", com.thelads.core.client.DamageTilt.MODULE, "VerticalBobbing",
+            "Custom FOV", "Paperdoll", "KillBanner", com.thelads.core.modules.ComboSoundsModule.NAME, com.thelads.core.client.DamageTilt.MODULE, "VerticalBobbing",
             com.thelads.core.modules.OldAnimationsModule.NAME, "Item Physics", "Nametags",
             "BetterScreenshots", "AutoReconnect", "IgnorePacketErrors", "SmoothHotbar",
             "BorderlessFullscreen", "DisableNarrator", "Raised", "FarBlockEntities",

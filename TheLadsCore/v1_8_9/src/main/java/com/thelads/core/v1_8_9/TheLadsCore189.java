@@ -119,6 +119,8 @@ public class TheLadsCore189 {
         com.thelads.core.modules.MouseTweaksModule.NAME,
         // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC through Discord189, as 26.x NativeDiscordPresence.
         "Threads", "DiscordRPC",
+        // ComboSounds (common) through KillBanner189's attack event and NetHandlerPlayClientMixin's hurt status, as 26.x.
+        com.thelads.core.modules.ComboSoundsModule.NAME,
         // BetterF3189 (Forge's debug text event) and CustomFov189 (AbstractClientPlayerMixin and Forge's FOV event); each hands its
         // module back to an installed betterf3 or customfov jar.
         "BetterF3", com.thelads.core.modules.CustomFovModule.NAME,

@@ -12,7 +12,12 @@ public final class NativeFileDialogs {
     private static boolean registered;
     private NativeFileDialogs(){}
     public static CompletableFuture<Path> choose(boolean folder){return choose(folder,folder?"Add world save folder":"Add skin PNG");}
-    public static CompletableFuture<Path> choose(boolean folder,String title){
+    public static CompletableFuture<Path> choose(boolean folder,String title){return choose(folder,title,false);}
+    /** An uploaded sound: the dialog lists MP3 and WAV files. */
+    public static CompletableFuture<Path> chooseSound(){return choose(false,"Choose a sound (MP3 or WAV)",true);}
+    /** SDL reads the filter list until the callback runs, so it lives as long as the game (two short strings). */
+    private static SDL_DialogFileFilter.Buffer soundFilter;
+    private static CompletableFuture<Path> choose(boolean folder,String title,boolean sounds){
         if(!OPEN.compareAndSet(false,true))return CompletableFuture.failedFuture(new IllegalStateException("A file dialog is already open"));
         var result=new CompletableFuture<Path>();
         var mc=net.minecraft.client.Minecraft.getInstance();
@@ -34,6 +39,11 @@ public final class NativeFileDialogs {
                 try{
                     SDLProperties.SDL_SetPointerProperty(props,SDLDialog.SDL_PROP_FILE_DIALOG_WINDOW_POINTER,mc.getWindow().handle());
                     SDLProperties.SDL_SetStringProperty(props,SDLDialog.SDL_PROP_FILE_DIALOG_TITLE_STRING,title);
+                    if(sounds){
+                        if(soundFilter==null){soundFilter=SDL_DialogFileFilter.calloc(1);soundFilter.get(0).name(MemoryUtil.memUTF8("Sounds (MP3, WAV)")).pattern(MemoryUtil.memUTF8("mp3;wav"));}
+                        SDLProperties.SDL_SetPointerProperty(props,SDLDialog.SDL_PROP_FILE_DIALOG_FILTERS_POINTER,soundFilter.address());
+                        SDLProperties.SDL_SetNumberProperty(props,SDLDialog.SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER,1);
+                    }
                     SDLDialog.SDL_ShowFileDialogWithProperties(folder?SDLDialog.SDL_FILEDIALOG_OPENFOLDER:SDLDialog.SDL_FILEDIALOG_OPENFILE,holder[0],0,props);
                 }finally{SDLProperties.SDL_DestroyProperties(props);}
             }catch(Throwable e){holder[0].free();OPEN.set(false);result.completeExceptionally(e);}

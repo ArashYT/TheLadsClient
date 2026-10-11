@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.client.DamageTilt;
+import com.thelads.core.modules.ComboSoundsModule;
 import com.thelads.core.v1_8_9.feature.KillBanner189;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -33,6 +34,9 @@ public abstract class NetHandlerPlayClientMixin {
         Minecraft mc = Minecraft.getMinecraft();
         if (packet.getOpCode() == 2 && mc.thePlayer != null && packet.getEntity(mc.theWorld) == mc.thePlayer)
             DamageTilt.CLIENT.hurt(System.currentTimeMillis());
+        // Combo Sounds: the hurt that confirms your hit, or your own (it ends the combo).
+        Entity hurt = packet.getOpCode() == 2 && mc.thePlayer != null && mc.theWorld != null ? packet.getEntity(mc.theWorld) : null;
+        if (hurt != null) ComboSoundsModule.onHurt(hurt.getEntityId(), hurt == mc.thePlayer);
     }
 
     /** ...but sends the knockback that pushes the player away from the attacker in the same tick: its opposite is the direction. */

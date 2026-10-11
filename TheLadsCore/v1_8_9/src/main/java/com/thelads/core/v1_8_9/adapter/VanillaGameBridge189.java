@@ -94,6 +94,23 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public float getMasterVolume() {
+        return mc().gameSettings.getSoundLevel(net.minecraft.client.audio.SoundCategory.MASTER);
+    }
+
+    /** Combo Sounds' built-in sound; uploads go through CustomSounds, and the bridge's default file dialog (AWT) serves 1.8.9. */
+    @Override
+    public void playComboSound(final float tone, final float level) {
+        mc().getSoundHandler().playSound(new net.minecraft.client.audio.PositionedSound(new net.minecraft.util.ResourceLocation("note.pling")) {
+            {
+                volume = level;
+                pitch = tone;
+                attenuationType = net.minecraft.client.audio.ISound.AttenuationType.NONE;
+            }
+        });
+    }
+
+    @Override
     public String getServerAddress() {
         Minecraft mc = mc();
         return mc.isSingleplayer() || mc.getCurrentServerData() == null ? "Singleplayer" : mc.getCurrentServerData().serverIP;
