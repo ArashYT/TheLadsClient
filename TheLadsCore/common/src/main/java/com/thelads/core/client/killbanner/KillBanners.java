@@ -2,6 +2,7 @@ package com.thelads.core.client.killbanner;
 
 import com.thelads.core.client.KillBannerTimeline;
 import com.thelads.core.client.hud.HudFrameCap;
+import com.thelads.core.client.sound.CustomSounds;
 import com.thelads.core.modules.KillBannerModule;
 
 /** The Kill Banner state every version shares: kill detection, the banner on screen and the sound each kill plays. */
@@ -29,7 +30,8 @@ public final class KillBanners {
 
     /**
      * Each client tick (and right after a kill): starts the next queued banner when its turn has come. Returns its sound (each
-     * banner plays its own): "theladscore:&lt;skin&gt;_kill_&lt;n&gt;", "" for the plain chime, or null when nothing plays.
+     * banner plays its own): "theladscore:&lt;skin&gt;_kill_&lt;n&gt;", "" for the plain chime, or null when nothing (more) plays:
+     * the player's own uploaded sound has already started.
      */
     public static String poll(KillBannerModule module, long now) {
         if (!TIMELINE.next(now)) return null;
@@ -47,6 +49,13 @@ public final class KillBanners {
 
     private static String sound(KillBannerModule module, KillBannerModule.Pick pick) {
         if (!module.sound.get() || module.volume.getValue() <= 0) return null;
+        if (pick.ownSounds()) {
+            // Your sound plays here (CustomSounds, any version); an empty slot is the chime.
+            String file = module.killSound(TIMELINE.sequence());
+            if (file.isEmpty()) return "";
+            CustomSounds.play(file, module.volume.getValue());
+            return null;
+        }
         if (pick.soundStyle() == null) return "";
         int seq = Math.max(1, Math.min(pick.soundStyle().soundCount, TIMELINE.sequence()));
         return "theladscore:" + pick.soundStyle().soundId(pick.soundStyle() == pick.style() ? pick.variant() : 0) + "_kill_" + seq;

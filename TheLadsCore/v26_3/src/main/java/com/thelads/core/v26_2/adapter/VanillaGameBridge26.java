@@ -411,4 +411,10 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     }
 
     @Override public void previewKillBannerSound(String skin, float volume) { com.thelads.core.v26_2.feature.NativeKillBanner.previewSound(skin, volume); }
+    @Override public float getMasterVolume() { return net.minecraft.client.Minecraft.getInstance().options.getSoundSourceVolume(net.minecraft.sounds.SoundSource.MASTER); }
+    @Override public java.util.concurrent.CompletableFuture<java.nio.file.Path> chooseSoundFile() { return com.thelads.core.v26_2.gui.NativeFileDialogs.chooseSound(); }
+    @Override public void playComboSound(float pitch, float volume) {
+        net.minecraft.client.Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
+            net.minecraft.sounds.SoundEvents.NOTE_BLOCK_PLING.value(), pitch, volume));
+    }
 }

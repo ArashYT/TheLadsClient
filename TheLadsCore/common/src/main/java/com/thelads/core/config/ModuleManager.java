@@ -194,6 +194,7 @@ public class ModuleManager {
         register(new TitleScreenModule());
         register(new PaperdollModule());
         register(new KillBannerModule(), Module.Category.MECHANIC);
+        register(new ComboSoundsModule(), Module.Category.MECHANIC);
         register(new CrosshairModule(), Module.Category.MECHANIC);
 
         // Every chat feature lives here; ConfigManager migrates the old ClientTools timestamps and HideChatIndicators.

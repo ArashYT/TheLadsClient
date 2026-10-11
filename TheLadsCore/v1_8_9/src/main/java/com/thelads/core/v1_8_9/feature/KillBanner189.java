@@ -7,6 +7,7 @@ import com.thelads.core.client.killbanner.KillBannerStyle;
 import com.thelads.core.client.killbanner.KillBanners;
 import com.thelads.core.client.killbanner.KillDetector;
 import com.thelads.core.config.HudSettings;
+import com.thelads.core.modules.ComboSoundsModule;
 import com.thelads.core.modules.KillBannerModule;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -133,7 +134,10 @@ public final class KillBanner189 {
     @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
     public void attack(AttackEntityEvent event) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (event.entityPlayer != mc.thePlayer || !eligible()) return;
+        if (event.entityPlayer != mc.thePlayer) return;
+        EntityLivingBase struck = victim(event.target);
+        if (struck != null) ComboSoundsModule.onAttack(struck.getEntityId(), struck instanceof EntityPlayer); // Combo Sounds, with Kill Banner on or off
+        if (!eligible()) return;
         MovingObjectPosition hit = mc.objectMouseOver;
         boolean head = hit != null && hit.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && hit.entityHit == event.target
             && hit.hitVec != null && headHit(event.target, mc.thePlayer.getPositionEyes(1f), hit.hitVec);
