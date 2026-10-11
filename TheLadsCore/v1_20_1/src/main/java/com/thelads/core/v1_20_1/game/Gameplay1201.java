@@ -56,7 +56,15 @@ public final class Gameplay1201 {
         return qa && gameFolderIsQa();
     }
 
+    private static Boolean folderIsQa; // the game folder never changes: toRealPath once, not every frame (RenderScale1201 asks per frame)
+
     private static boolean gameFolderIsQa() {
+        Boolean cached = folderIsQa;
+        if (cached == null) folderIsQa = cached = gameFolderIsQa0();
+        return cached;
+    }
+
+    private static boolean gameFolderIsQa0() {
         try {
             String dir = FabricLoader.getInstance().getGameDir().toRealPath().toString().replace('\\', '/').toLowerCase(Locale.ROOT);
             return dir.contains("/artifacts/verification/");
