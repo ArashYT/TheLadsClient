@@ -1,5 +1,6 @@
 package com.thelads.core.v26_2.feature;
 
+import com.thelads.core.client.hud.HudCover;
 import com.thelads.core.client.hud.HudFrameCap;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,6 +43,8 @@ public final class HudCapture {
     private static List<Op> recording;
     /** This frame's HUD was built and recorded, or replayed: its deferred part does the same. */
     private static boolean built, replaying;
+    /** The player list key as the last frame saw it. */
+    private static boolean tabDown;
     /** The game-time step of each frame since the last build, this one included, and their game-time and real-time sums. */
     private static float[] frameSteps = new float[32];
     private static int frames, buildFrames;
@@ -111,6 +114,7 @@ public final class HudCapture {
         try {
             var mc = Minecraft.getInstance();
             if (mc.level == null || !HudFrameCap.enabled()) {
+                HudCover.frame();
                 HUD.clear();
                 DEFERRED.clear();
                 frames = 0;
@@ -125,7 +129,13 @@ public final class HudCapture {
             gameSum += frameSteps[frames - 1];
             realSum += mc.getDeltaTracker().getRealtimeDeltaTicks();
             var window = mc.getWindow();
-            if (!HudFrameCap.due(System.nanoTime(), window.getGuiScaledWidth(), window.getGuiScaledHeight())) {
+            // The tab list is part of the captured HUD: it opens and closes on the frame its key does, not one capped build later.
+            boolean tab = mc.options.keyPlayerList.isDown();
+            if (tab != tabDown) { tabDown = tab; HudFrameCap.reset(); }
+            // Due sees what covered the HUD on the last frame (HudManager.coverChanged); this frame's tab list adds its box again.
+            boolean due = HudFrameCap.due(System.nanoTime(), window.getGuiScaledWidth(), window.getGuiScaledHeight());
+            HudCover.frame();
+            if (!due) {
                 qaReplays++;
                 replaying = true;
                 replay(HUD, state);

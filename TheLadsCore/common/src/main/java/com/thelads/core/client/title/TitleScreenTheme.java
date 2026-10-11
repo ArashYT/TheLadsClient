@@ -257,7 +257,7 @@ public final class TitleScreenTheme {
 
     /**
      * A compact button with the same hover lift and glow: an icon, followed by its label when one is given (the Essential
-     * row), or the icon alone, centred (the pause menu's fullscreen toggle).
+     * row), or the icon alone, centred (a square button, e.g. the language globe).
      */
     public static void renderCompactButton(LadsGraphics g, int x, int y, int width, int height, String icon, String label,
                                            boolean focused, boolean active, float hoverProgress) {
@@ -282,6 +282,26 @@ public final class TitleScreenTheme {
 
     /** A compact button's width beyond its label: icon, gaps and edges. */
     public static final int COMPACT_PADDING = 26;
+
+    /**
+     * The top-right fullscreen toggle (title and pause menu): its two labels and its place. It is labelled while the
+     * screen is at least HEADER_LABEL_MIN wide, else a square icon; the title's language globe sits left of it.
+     */
+    public static final String FULLSCREEN = "Fullscreen", WINDOWED = "Windowed";
+    public static final int HEADER_SIZE = 20, HEADER_GAP = 4, HEADER_LABEL_MIN = 300;
+
+    /** The fullscreen toggle's width: the wider of its two labels (so it never resizes when toggled) plus icon and edges. */
+    public static int fullscreenWidth(int screenWidth, int widestLabel) {
+        return screenWidth >= HEADER_LABEL_MIN ? widestLabel + COMPACT_PADDING : HEADER_SIZE;
+    }
+
+    /** Its left edge: the right edge stays 6 from the screen's. */
+    public static int fullscreenX(int screenWidth, int width) { return screenWidth - 6 - width; }
+
+    /** The language globe's left edge, a gap left of the fullscreen toggle. */
+    public static int languageX(int screenWidth, int fullscreenWidth) {
+        return fullscreenX(screenWidth, fullscreenWidth) - HEADER_GAP - HEADER_SIZE;
+    }
 
     /** The pause menu's button icons: their size and gap to the label, centred together with it. */
     public static final int LABEL_ICON = 10, LABEL_ICON_GAP = 4;

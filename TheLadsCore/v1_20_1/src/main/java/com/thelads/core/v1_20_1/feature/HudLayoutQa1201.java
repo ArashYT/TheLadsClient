@@ -1,6 +1,7 @@
 package com.thelads.core.v1_20_1.feature;
 
 import com.thelads.core.client.gui.DraggableHudScreen;
+import com.thelads.core.client.hud.HudCoverQa;
 import com.thelads.core.client.hud.HudLayoutQa;
 import com.thelads.core.v1_20_1.gui.DraggableHudScreen1201;
 import net.minecraft.client.Minecraft;
@@ -18,6 +19,13 @@ final class HudLayoutQa1201 implements HudLayoutQa.Driver {
             QaProbe1201.registerStep("hudlayout", args -> {
                 if (!HudLayoutQa.tick(DRIVER)) return false;
                 if (HudLayoutQa.failed() > 0) throw new IllegalStateException(HudLayoutQa.failed() + " HUD layout checks failed (Lads hud layout FAILED)");
+                return true;
+            });
+        // "hudcover": the 1.9.0 HUD cover sequence (HudCoverQa).
+        if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null)
+            QaProbe1201.registerStep("hudcover", args -> {
+                if (!HudCoverQa.tick(DRIVER)) return false;
+                if (HudCoverQa.failed() > 0) throw new IllegalStateException(HudCoverQa.failed() + " HUD cover checks failed (Lads hud layout FAILED)");
                 return true;
             });
     }
@@ -52,4 +60,8 @@ final class HudLayoutQa1201 implements HudLayoutQa.Driver {
     @Override public DraggableHudScreen editor() { return Minecraft.getInstance().screen instanceof DraggableHudScreen1201 screen ? screen.ui() : null; }
 
     @Override public void closeScreen() { Minecraft.getInstance().setScreen(null); }
+
+    @Override public void tab(boolean down) { Minecraft.getInstance().options.keyPlayerList.setDown(down); }
+
+    @Override public void debug(boolean open) { Minecraft.getInstance().options.renderDebug = open; }
 }

@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
+import com.thelads.core.v1_8_9.gui.LadsSettingsScreen189;
 import net.minecraft.client.gui.ChatLine;
 import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.gui.GuiNewChat;
@@ -40,28 +41,41 @@ import net.minecraft.util.IChatComponent;
  * first). Each message's head and where it goes (Position Before name, the default: just before the sender's name) are checked
  * on its chat lines, then 170-chatheads-1-closed, -2-open (GuiChat), -3-startofline (Position Start of line, Keep text aligned),
  * -5-noshadow (the Chat module's Text Shadow off), -6-scrolledback (150 newer lines, a refresh, then Infinite History lays the
- * own messages out again as the chat scrolls back to them) and -4-off (module off: 1.8.9's own chat) are saved. Everything is put back.
+ * own messages out again as the chat scrolls back to them) and -4-off (Chat Heads off: 1.8.9's own chat) are saved, then the Chat
+ * module's page with the Chat Heads options (-7-settings-on), with Chat Heads off, which hides them (-8-settings-off), and the module
+ * search for "chat heads" (-9-search: no module of that name, only Chat). Everything is put back.
  */
 final class ChatHeadsProbe189 {
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(ChatHeadsProbe189::start, ChatHeadsProbe189::closed,
         ChatHeadsProbe189::open, ChatHeadsProbe189::aligned, ChatHeadsProbe189::noShadow, ChatHeadsProbe189::scrolledBack,
-        ChatHeadsProbe189::off, ChatHeadsProbe189::restored);
+        ChatHeadsProbe189::off, ChatHeadsProbe189::settingsScroll, ChatHeadsProbe189::settingsOn, ChatHeadsProbe189::settingsOff, ChatHeadsProbe189::search, ChatHeadsProbe189::restored);
     private static final GameProfile TESTER = new GameProfile(UUID.fromString("6f3b2c1a-0d4e-4f5a-9b8c-7d6e5f4a3b2c"), "Lads_Tester");
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<Option, JsonElement>();
     private static final Map<Module, Boolean> ENABLED = new LinkedHashMap<Module, Boolean>();
     private static NetworkPlayerInfo tester;
+    private static LadsSettingsScreen189 settingsPage;
+    private static int guiScaleWas;
     private ChatHeadsProbe189() {}
 
     private static Module module(String name) { return ModuleManager.getInstance().getModule(name); }
 
+    private static void headsOn(boolean on) { ((BoolOption) module("Chat").getOption(ChatHeads.ENABLED)).set(on); }
+
     private static boolean start(Minecraft mc) throws Exception {
-        for (String name : new String[] {ChatHeads.NAME, "Chat", "Nametags"}) {
+        for (String name : new String[] {"Chat", "Nametags"}) {
             Module module = module(name);
             ENABLED.put(module, module.isEnabled());
             for (Option option : module.getOptions()) OPTIONS.put(option, option.save()); // a new element each time
         }
-        for (Option option : module(ChatHeads.NAME).getOptions()) option.reset();
-        module(ChatHeads.NAME).setEnabled(true);
+        StringBuilder loaded = new StringBuilder();
+        for (String name : new String[] {ChatHeads.ENABLED, ChatHeads.POSITION, ChatHeads.BY_NAME, ChatHeads.ALIGNED}) {
+            loaded.append(loaded.length() == 0 ? "" : ", ").append(name).append('=').append(module("Chat").getOption(name).save());
+            module("Chat").getOption(name).reset();
+        }
+        check(true, "Chat Heads as loaded from the config (a migrated old module): " + loaded);
+        headsOn(true);
+        check(!module("Chat").getOptions().isEmpty() && module(ChatHeads.MODULE).getName().equals("Chat") && module("Chat Heads") == null,
+            "Chat Heads is options of the Chat module, not a module of its own");
         ((BoolOption) module("Chat").getOption("Timestamps")).set(true);
         ToggleNametagsModule tags = (ToggleNametagsModule) module("Nametags");
         tags.setEnabled(true);
@@ -125,8 +139,8 @@ final class ChatHeadsProbe189 {
     private static boolean open(Minecraft mc) {
         check(mc.currentScreen instanceof GuiChat, "the chat screen is open");
         screenshot(mc, "170-chatheads-2-open");
-        ((DropdownOption) module(ChatHeads.NAME).getOption(ChatHeads.POSITION)).setIndex(1);
-        ((BoolOption) module(ChatHeads.NAME).getOption(ChatHeads.ALIGNED)).set(true);
+        ((DropdownOption) module("Chat").getOption(ChatHeads.POSITION)).setIndex(1);
+        ((BoolOption) module("Chat").getOption(ChatHeads.ALIGNED)).set(true);
         return after(20);
     }
 
@@ -134,8 +148,8 @@ final class ChatHeadsProbe189 {
         screenshot(mc, "170-chatheads-3-startofline");
         List<ChatLine> lines = lines(mc.ingameGUI.getChatGUI());
         expect(lines, "a long plugin line from me", mc.getNetHandler().getPlayerInfo(mc.thePlayer.getUniqueID()));
-        ((DropdownOption) module(ChatHeads.NAME).getOption(ChatHeads.POSITION)).setIndex(0);
-        ((BoolOption) module(ChatHeads.NAME).getOption(ChatHeads.ALIGNED)).set(false);
+        ((DropdownOption) module("Chat").getOption(ChatHeads.POSITION)).setIndex(0);
+        ((BoolOption) module("Chat").getOption(ChatHeads.ALIGNED)).set(false);
         ((BoolOption) module("Chat").getOption("Text Shadow")).set(false);
         return after(20);
     }
@@ -171,18 +185,52 @@ final class ChatHeadsProbe189 {
         screenshot(mc, "170-chatheads-6-scrolledback");
         mc.ingameGUI.getChatGUI().resetScroll();
         mc.displayGuiScreen(null);
-        module(ChatHeads.NAME).setEnabled(false);
+        headsOn(false);
         return after(20);
     }
 
     private static boolean off(Minecraft mc) throws Exception {
         screenshot(mc, "170-chatheads-4-off");
+        headsOn(true);
+        guiScaleWas = mc.gameSettings.guiScale;
+        mc.gameSettings.guiScale = 1; // the roomy layout shows more options
+        settingsPage = new LadsSettingsScreen189(null);
+        mc.displayGuiScreen(settingsPage);
+        settingsPage.openModule("Chat");
+        return after(20);
+    }
+
+    /** Down to the last options once the page has been drawn (it knows its scroll range then). */
+    private static boolean settingsScroll(Minecraft mc) throws Exception {
+        settingsPage.ui().mouseScrolled(250, 250, -60);
+        return after(25);
+    }
+
+    /** The Chat module's page shows the Chat Heads options; with Chat Heads off they are hidden. */
+    private static boolean settingsOn(Minecraft mc) throws Exception {
+        screenshot(mc, "170-chatheads-7-settings-on");
+        headsOn(false);
+        return after(10);
+    }
+
+    private static boolean settingsOff(Minecraft mc) throws Exception {
+        screenshot(mc, "170-chatheads-8-settings-off");
+        LadsSettingsScreen189 settings = new LadsSettingsScreen189(null);
+        settings.ui().setSearchQuery("chat heads");
+        mc.displayGuiScreen(settings);
+        return after(10);
+    }
+
+    /** The module search for "chat heads" finds the Chat module only. */
+    private static boolean search(Minecraft mc) throws Exception {
+        screenshot(mc, "170-chatheads-9-search");
+        mc.displayGuiScreen(null);
         stop(mc);
         return after(10);
     }
 
     private static boolean restored(Minecraft mc) throws Exception {
-        check(!tabList(mc).containsKey(TESTER.getId()) && module(ChatHeads.NAME).isEnabled() == Boolean.TRUE.equals(ENABLED.get(module(ChatHeads.NAME))),
+        check(!tabList(mc).containsKey(TESTER.getId()) && ChatHeads.enabled() == OPTIONS.get(module("Chat").getOption(ChatHeads.ENABLED)).getAsBoolean(),
             "Lads_Tester left the tab list and Chat Heads, Chat and Nametags are as found");
         return true;
     }
@@ -190,6 +238,7 @@ final class ChatHeadsProbe189 {
     /** Puts everything back (also when the probe fails part-way). */
     static void stop(Minecraft mc) {
         if (ENABLED.isEmpty()) return;
+        if (guiScaleWas != 0) { mc.gameSettings.guiScale = guiScaleWas; guiScaleWas = 0; }
         for (Map.Entry<Option, JsonElement> option : OPTIONS.entrySet()) option.getKey().load(option.getValue());
         for (Map.Entry<Module, Boolean> module : ENABLED.entrySet()) module.getKey().setEnabled(module.getValue());
         try { if (mc.getNetHandler() != null) tabList(mc).remove(TESTER.getId()); } catch (Exception ignored) {}

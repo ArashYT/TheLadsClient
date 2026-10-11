@@ -169,8 +169,9 @@ public final class LadsTitleScreen189 {
             button.visible = true;
         }
 
-        place(fullscreenButton, targetW - 26, 6, 20, 20, ms);
-        place(languageButton, targetW - 50, 6, 20, 20, ms);
+        int fullscreenWidth = EssentialRow189.fullscreenWidth(targetW);
+        place(fullscreenButton, TitleScreenTheme.fullscreenX(targetW, fullscreenWidth), 6, fullscreenWidth, 20, ms);
+        place(languageButton, TitleScreenTheme.languageX(targetW, fullscreenWidth), 6, 20, 20, ms);
 
         row.clear();
         // In layout pixels like the rest, so the row keeps its place above the account card at every scale.

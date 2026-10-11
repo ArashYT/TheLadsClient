@@ -77,9 +77,13 @@ public final class HudFrameCap {
         drawing.clear();
     }
 
-    /** Whether this frame rebuilds the HUD: at the cap rate (60 FPS or more while animating), and at once after a resize or {@link #reset()}. */
+    /**
+     * Whether this frame rebuilds the HUD: at the cap rate (60 FPS or more while animating), and at once after a resize, a
+     * {@link #reset()}, or when the tab list or F3 covers or uncovers a Lads HUD (HudManager.coverChanged).
+     */
     public static boolean due(long now, int scaledWidth, int scaledHeight) {
         frames++;
+        if (HudManager.getInstance().coverChanged()) last = 0;
         long interval = 1_000_000_000L / Math.max(1, HudSettings.getInstance().getHudFpsLimit()), since = now - last;
         if (moved || now < animatingUntil) interval = Math.min(interval, ANIMATING);
         if (last != 0 && since < interval && scaledWidth == width && scaledHeight == height) return false;

@@ -7,6 +7,7 @@ import com.thelads.core.client.killbanner.KillBannerStyle;
 import com.thelads.core.client.killbanner.KillBanners;
 import com.thelads.core.client.killbanner.KillDetector;
 import com.thelads.core.config.HudSettings;
+import com.thelads.core.modules.ComboSoundsModule;
 import com.thelads.core.modules.KillBannerModule;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -76,6 +77,8 @@ public final class NativeKillBanner {
 
     /** MultiPlayerGameMode.attack: where the crosshair's point lands on the target says whether it is a head hit (headHit). */
     public static void attacked(Entity target) {
+        LivingEntity struck = victim(target);
+        if (struck != null) ComboSoundsModule.onAttack(struck.getId(), struck instanceof Player); // Combo Sounds, with Kill Banner on or off
         if (!eligible()) return;
         boolean head = Minecraft.getInstance().hitResult instanceof EntityHitResult hit && hit.getType() == HitResult.Type.ENTITY
             && hit.getEntity() == target && headHit(target, Minecraft.getInstance().player.getEyePosition(), hit.getLocation());
@@ -103,6 +106,7 @@ public final class NativeKillBanner {
     /** A damage event: its cause (the attacker, or a projectile's owner) is the local player, someone else, or nobody. */
     public static void damaged(int entityId, int causeId) {
         Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player != null) ComboSoundsModule.onHurt(entityId, entityId == minecraft.player.getId());
         if (!eligible() || causeId < 0) return;
         if (causeId == minecraft.player.getId()) {
             if (victim(minecraft.level.getEntity(entityId)) instanceof LivingEntity victim)

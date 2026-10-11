@@ -3,7 +3,6 @@ package com.thelads.core.v26_2.feature;
 import com.mojang.authlib.GameProfile;
 import com.thelads.core.client.ChatHeads;
 import com.thelads.core.client.Nicknames;
-import com.thelads.core.config.ModuleSupport;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -42,9 +41,12 @@ public final class NativeChatHeads {
     private NativeChatHeads() {}
 
     public static void register() {
-        if (active || FabricLoader.getInstance().isModLoaded("chat_heads")) return;
+        if (active) return;
+        if (FabricLoader.getInstance().isModLoaded("chat_heads")) {
+            ChatHeads.external(true);
+            return;
+        }
         active = true;
-        ModuleSupport.registerBuiltIn(ChatHeads.NAME);
     }
 
     /** A message about to be shown: its sender's skin, from signed chat or from the tab-list names in its text. */

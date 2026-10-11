@@ -44,7 +44,7 @@ public final class HudMixinPlugin implements IMixinConfigPlugin {
     @Override
     public List<String> getMixins() {
         if (forge()) return null;
-        if (mixinPackage.equals("com.thelads.core.v1_20_1.hud.mixin")) return List.of("GuiPartsMixin");
+        if (mixinPackage.equals("com.thelads.core.v1_20_1.hud.mixin")) return List.of("GuiPartsMixin", "XaeroHudMixin");
         if (mixinPackage.equals("com.thelads.core.v1_20_1.hud.items.mixin")) return List.of("FoodRowMixin");
         return null;
     }

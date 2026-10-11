@@ -67,9 +67,12 @@ public class BetterF3Module extends Module {
         setEnabled(true);
     }
 
-    /** True while the debug screen is open and the Lads HUD modules should not be drawn (the "Hide Lads HUD" option, on by default). */
+    /**
+     * Whether the whole Lads HUD steps aside while the debug screen is open (the "Hide Lads HUD" option, on by default, of Better F3
+     * switched on). Otherwise only the widgets under the debug text do (HudCover).
+     */
     public static boolean hidesLadsHud() {
-        return com.thelads.core.config.ModuleManager.getInstance().getModule("BetterF3") instanceof BetterF3Module f3 ? f3.bool("Hide Lads HUD") : true;
+        return com.thelads.core.config.ModuleManager.getInstance().getModule("BetterF3") instanceof BetterF3Module f3 && f3.isEnabled() && f3.bool("Hide Lads HUD");
     }
 
     private boolean bool(String name) { return getOption(name) instanceof BoolOption option && option.get(); }
@@ -153,6 +156,7 @@ public class BetterF3Module extends Module {
             int labelWidth = g.textWidth(line.label()), width = labelWidth + g.textWidth(line.value());
             int offset = (int) Math.round((1 - slide(since, i)) * (width + 4));
             int x = left ? 2 - offset : screenWidth - 2 - width + offset;
+            com.thelads.core.client.hud.HudCover.add(com.thelads.core.client.hud.HudCover.DEBUG, x - 1, y - 1, x + width + 1, y + 8);
             if (background >>> 24 != 0) g.fill(x - 1, y - 1, x + width + 1, y + 8, background);
             if (!line.label().isEmpty()) g.drawText(line.label(), x, y, line.labelColor(), shadow);
             g.drawText(line.value(), x + labelWidth, y, line.valueColor(), shadow);

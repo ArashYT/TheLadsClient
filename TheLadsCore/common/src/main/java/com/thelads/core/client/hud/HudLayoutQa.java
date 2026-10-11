@@ -43,6 +43,10 @@ public final class HudLayoutQa {
         /** The open HUD editor's controller, or null. */
         DraggableHudScreen editor();
         void closeScreen();
+        /** Holds the player list key down (true) or lets it go. */
+        void tab(boolean down);
+        /** Opens (true) or closes the debug screen (F3). */
+        void debug(boolean open);
     }
 
     private static int step = -1, wait, passed;

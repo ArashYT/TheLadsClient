@@ -41,13 +41,19 @@ import org.slf4j.LoggerFactory;
  * the own player (long enough to wrap), a similar unknown name and a plain server line. Each message's head and where it goes
  * (Position Before name, the default: just before the sender's name) are checked, then chatheads-1-closed, -2-open (chat
  * screen), -3-startofline (Position Start of line with Keep text aligned), -4-hudcap (HUD FPS cap 20: replayed HUD frames) and
- * -5-off (module off, vanilla chat) are saved. Everything is put back. With a chat_heads jar loaded it checks that Lads stood down.
+ * -5-off (Chat Heads off, vanilla chat) are saved, then the Chat module's page with the Chat Heads options (-6-settings-on), with
+ * Chat Heads off, which hides them (-7-settings-off), and the module search for "chat heads" (-8-search: no module of that name,
+ * only Chat). Everything is put back. With a chat_heads jar loaded it checks that Lads stood down.
  */
 final class ChatHeadsCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final long PHASE = 1_500_000_000L;
-    private static final String[] SHOTS = {"chatheads-1-closed", "chatheads-2-open", "chatheads-3-startofline", "chatheads-4-hudcap", "chatheads-5-off"};
+    private static final String[] SHOTS = {"chatheads-1-closed", "chatheads-2-open", "chatheads-3-startofline", "chatheads-4-hudcap", "chatheads-5-off",
+        "chatheads-6-settings-on", "chatheads-7-settings-off", "chatheads-8-search"};
     private static final GameProfile TESTER = new GameProfile(UUID.fromString("6f3b2c1a-0d4e-4f5a-9b8c-7d6e5f4a3b2c"), "Lads_Tester");
+    /** The settings page is photographed at GUI scale 1 (roomy layout) and scrolled to the last options once. */
+    private static int guiScaleWas;
+    private static boolean scrolled;
     private static final List<String> FAILURES = new ArrayList<>();
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
     private static final Map<Module, Boolean> ENABLED = new LinkedHashMap<>();
@@ -66,16 +72,19 @@ final class ChatHeadsCapture {
         if (step >= 0 || !ready || !requested()) return;
         Minecraft mc = Minecraft.getInstance();
         try {
-            for (String name : new String[] {ChatHeads.NAME, "Chat", "Nametags"}) {
+            for (String name : new String[] {"Chat", "Nametags"}) {
                 Module module = ModuleManager.getInstance().getModule(name);
                 ENABLED.put(module, module.isEnabled());
                 for (Option option : module.getOptions()) OPTIONS.put(option, option.save().deepCopy());
             }
             hudCap = HudSettings.getInstance().isHudFpsCapEnabled();
             hudLimit = HudSettings.getInstance().getHudFpsLimit();
-            Module heads = ModuleManager.getInstance().getModule(ChatHeads.NAME);
-            heads.getOptions().forEach(Option::reset);
-            heads.setEnabled(true);
+            Module heads = ModuleManager.getInstance().getModule(ChatHeads.MODULE);
+            LOGGER.info("Lads chat heads capture: Chat Heads as loaded from the config (a migrated old module): {}",
+                java.util.stream.Stream.of(ChatHeads.ENABLED, ChatHeads.POSITION, ChatHeads.BY_NAME, ChatHeads.ALIGNED)
+                    .map(name -> name + "=" + heads.getOption(name).save()).collect(java.util.stream.Collectors.joining(", ")));
+            for (String option : new String[] {ChatHeads.ENABLED, ChatHeads.POSITION, ChatHeads.BY_NAME, ChatHeads.ALIGNED}) heads.getOption(option).reset();
+            check(ModuleManager.getInstance().getModule("Chat Heads") == null, "Chat Heads is options of the Chat module, not a module of its own");
             ((BoolOption) ModuleManager.getInstance().getModule("Chat").getOption("Timestamps")).set(true);
             ToggleNametagsModule tags = (ToggleNametagsModule) ModuleManager.getInstance().getModule("Nametags");
             tags.setEnabled(true);
@@ -106,6 +115,13 @@ final class ChatHeadsCapture {
     static void frame(RenderTarget target, Path game) {
         if (step < 0 || step >= SHOTS.length || capturing || System.nanoTime() < due) return;
         capturing = true;
+        if ((step == 5 || step == 6) && !scrolled && Minecraft.getInstance().gui.screen() instanceof com.thelads.core.v26_2.gui.LadsSettingsScreen26 page) {
+            scrolled = true;
+            page.ui().mouseScrolled(250, 250, -60);
+            due = System.nanoTime() + 1_200_000_000L;
+            capturing = false;
+            return;
+        }
         if (step == 0) checkHeads();
         String name = SHOTS[step];
         try {
@@ -128,7 +144,7 @@ final class ChatHeadsCapture {
     private static void next() {
         capturing = false;
         Minecraft mc = Minecraft.getInstance();
-        Module heads = ModuleManager.getInstance().getModule(ChatHeads.NAME);
+        Module heads = ModuleManager.getInstance().getModule(ChatHeads.MODULE);
         try {
             switch (step) {
                 case 0 -> mc.setScreenAndShow(new ChatScreen("", false));
@@ -146,7 +162,22 @@ final class ChatHeadsCapture {
                 case 3 -> {
                     HudSettings.getInstance().setHudFpsCapEnabled(hudCap);
                     HudSettings.getInstance().setHudFpsLimit(hudLimit);
-                    heads.setEnabled(false);
+                    ((BoolOption) heads.getOption(ChatHeads.ENABLED)).set(false);
+                }
+                case 4 -> {
+                    ((BoolOption) heads.getOption(ChatHeads.ENABLED)).set(true);
+                    guiScaleWas = mc.options.guiScale().get();
+                    mc.options.guiScale().set(1);
+                    mc.resizeGui();
+                    scrolled = false;
+                    mc.setScreenAndShow(new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null));
+                    ((com.thelads.core.v26_2.gui.LadsSettingsScreen26) mc.gui.screen()).openModule("Chat");
+                }
+                case 5 -> ((BoolOption) heads.getOption(ChatHeads.ENABLED)).set(false);
+                case 6 -> {
+                    var settings = new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);
+                    settings.ui().setSearchQuery("chat heads");
+                    mc.setScreenAndShow(settings);
                 }
                 default -> { finish(); return; }
             }
@@ -233,12 +264,13 @@ final class ChatHeadsCapture {
 
     private static void finish() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.gui.screen() instanceof ChatScreen) mc.setScreenAndShow(null);
+        if (mc.gui.screen() instanceof ChatScreen || mc.gui.screen() instanceof com.thelads.core.v26_2.gui.LadsSettingsScreen26) mc.setScreenAndShow(null);
         try { if (mc.getConnection() != null) tabList(mc.getConnection(), false); } catch (Exception failure) { fail("tab list: " + failure); }
         OPTIONS.forEach(Option::load);
         ENABLED.forEach(Module::setEnabled);
         HudSettings.getInstance().setHudFpsCapEnabled(hudCap);
         HudSettings.getInstance().setHudFpsLimit(hudLimit);
+        if (guiScaleWas != 0) { mc.options.guiScale().set(guiScaleWas); mc.resizeGui(); }
         step = SHOTS.length;
         if (FAILURES.isEmpty()) LOGGER.info("Lads chat heads capture END: {} frames saved, 0 failed", saved);
         else LOGGER.error("Lads chat heads capture FAILED: {}", String.join(" | ", FAILURES));

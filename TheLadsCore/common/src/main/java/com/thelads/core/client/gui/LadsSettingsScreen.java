@@ -11,7 +11,10 @@ import com.thelads.core.config.Module;
 import com.thelads.core.mods.ModDependencyPlanner;
 import com.thelads.core.mods.ModInventoryModel;
 import com.thelads.core.mods.ModStateStore;
+import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.client.sound.CustomSounds;
 import com.thelads.core.modules.BetterResolutionModule;
+import com.thelads.core.modules.ComboSoundsModule;
 import com.thelads.core.modules.CrosshairModule;
 import com.thelads.core.modules.KillBannerModule;
 import com.thelads.core.modules.OldAnimationsModule;
@@ -132,6 +135,8 @@ public final class LadsSettingsScreen {
     public List<String> visibleModuleNames() { return getFilteredModules().stream().map(Module::getName).toList(); }
 
     public void render(LadsGraphics g, int pointerX, int pointerY) {
+        Runnable upload = uploaded;
+        if (upload != null) { uploaded = null; upload.run(); }
         refreshCapabilities();
         // A popup is modal: the screen under it neither highlights nor reacts to the pointer.
         boolean modal = colorPicker.isOpen() || actions.isOpen() || particleRates.isOpen() || fpsDialogOpen || confirm.isOpen();
@@ -356,6 +361,8 @@ public final class LadsSettingsScreen {
     /** Kill Banner settings as pictures: skin tiles with their one-kill art, their variants, Custom, Randomize and triggers. Returns its height. */
     /** The Kill Banner picker's open sections; the skins by default, the customising closed (kept for the session). */
     private static final java.util.Set<String> kbOpen = new java.util.HashSet<>(java.util.List.of("skins"));
+    /** QA: the Kill Banner picker with only these sections open ("skins", "custombanner", "customsound", "randomize", "kinds"). */
+    public static void openKillBannerSections(String... keys) { kbOpen.clear(); kbOpen.addAll(java.util.List.of(keys)); }
 
     /** Kill Banner settings as pictures: skin tiles with their one-kill art, Custom, Randomize and triggers, each section a
      * dropdown. The chosen skin's variants are under the preview on the right. Returns its height. */
@@ -434,15 +441,24 @@ public final class LadsSettingsScreen {
             }
             y = kbSection(g, "customsound", "CUSTOM SOUND (CLICK TO HEAR)", x, y, w, mx, my);
             if (kbOpen.contains("customsound")) {
+                // Your own files, one per kill of a streak; picking a skin's sound below turns them off.
+                button(g, "kb:sound:own", "Your sounds (upload MP3 or WAV)", new Rect(x, y, w, 20),
+                    () -> { banner.ownSounds.set(true); changed(detail); }, true, mx, my, banner.ownSounds.get());
+                y += 24;
+                if (banner.ownSounds.get()) {
+                    for (SoundOption slot : banner.killSounds) { soundRow(g, slot, x, y, w, mx, my); y += 43; }
+                    y += 4;
+                }
                 int sIdx = 0;
                 for (KillBannerStyle skin : visible) {
                     int col = sIdx % perRow, row = sIdx / perRow;
                     Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
                     int kIdx = skin.ordinal();
-                    boolean selected = banner.customSound.getIndex() == kIdx;
+                    boolean selected = banner.customSound.getIndex() == kIdx && !banner.ownSounds.get();
                     int v = banner.getVariant(skin);
                     tile(g, "kb:sound:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
                         banner.customSound.setIndex(kIdx);
+                        banner.ownSounds.set(false);
                         changed(detail);
                         g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
                     }, true);
@@ -617,7 +633,7 @@ public final class LadsSettingsScreen {
                 g.disableScissor();
                 if (!drawn) g.drawCenteredText("KILL BANNER", centerX, boxY + bannerH / 2 - 4, ACCENT);
                 String caption = pick.style() == null ? "Base" : pick.style().displayName + " · " + pick.style().variantNames[pick.variant()];
-                if (pick.soundStyle() != pick.style()) caption += " · " + (pick.soundStyle() == null ? "Chime" : pick.soundStyle().displayName) + " sound";
+                if (pick.soundStyle() != pick.style()) caption += " · " + (pick.ownSounds() ? "Your" : pick.soundStyle() == null ? "Chime" : pick.soundStyle().displayName) + " sound";
                 if (banner.randomize.getIndex() != KillBannerModule.RANDOM_OFF) caption += " · Randomized";
                 g.drawCenteredText(fit(g, caption, boxW - 8), centerX, boxY + bannerH - 18, TEXT);
                 if (varH > 0) {
@@ -1104,6 +1120,7 @@ public final class LadsSettingsScreen {
         if (!new ModStateStore(ClientPaths.getBaseDir()).stamp().equals(modsStamp)) reloadMods();
     }
     private void optionRow(LadsGraphics g, Option option, int x, int y, int w, int mx, int my) {
+        if (option instanceof SoundOption sound) { soundRow(g, sound, x, y, w, mx, my); return; }
         round(g, x, y, w, 37, CARD);
         int controlW = Math.min(155, w / 2);
         g.drawText(fit(g, option.getName(), w - controlW - 20), x + 9, y + 14, TEXT);
@@ -1146,6 +1163,52 @@ public final class LadsSettingsScreen {
         } else if (option instanceof ParticleReductionOption p) {
             button(g, id, p.changed() == 0 ? "Edit..." : p.changed() + " changed...", r, () -> particleRates.open(p, () -> changed(detail)), true, mx, my, p.changed() > 0);
         }
+    }
+    /** An uploaded-sound slot (SoundOption): its name and file, then Upload, Play and Clear. */
+    private void soundRow(LadsGraphics g, SoundOption sound, int x, int y, int w, int mx, int my) {
+        Module module = detail;
+        round(g, x, y, w, 37, CARD);
+        // Each button as wide as its label, so all three fit a narrow column (GUI scale 2 in a small window); the name takes the rest.
+        int uploadW = g.textWidth("Upload") + 14, playW = g.textWidth("Play") + 14, clearW = g.textWidth("Clear") + 14;
+        int controlW = uploadW + playW + clearW + 8;
+        String fallback = module instanceof ComboSoundsModule ? "Built-in pling" : "Plain chime";
+        g.drawText(fit(g, sound.getName(), w - controlW - 20), x + 9, y + 8, TEXT);
+        g.drawText(fit(g, sound.isSet() ? sound.get() : fallback, w - controlW - 20), x + 9, y + 21, MUTED);
+        String id = "option:" + sound.getName();
+        int rx = x + w - controlW - 6, ry = y + 7;
+        button(g, id + ":upload", "Upload", new Rect(rx, ry, uploadW, 23), () -> uploadSound(sound, module), true, mx, my, false);
+        button(g, id + ":play", "Play", new Rect(rx + uploadW + 4, ry, playW, 23), () -> previewSound(sound, module),
+            sound.isSet() || module instanceof ComboSoundsModule, mx, my, false);
+        button(g, id + ":clear", "Clear", new Rect(rx + uploadW + playW + 8, ry, clearW, 23),
+            () -> { sound.set(""); changed(module); }, sound.isSet(), mx, my, false);
+    }
+    /** A finished upload, applied at the start of the next frame (the dialog completes on its own thread). */
+    private volatile Runnable uploaded;
+    private void uploadSound(SoundOption sound, Module module) {
+        notice = "Choose an MP3 or WAV file...";
+        LadsGameBridge.get().chooseSoundFile().whenComplete((path, failure) -> {
+            String stored = null, message = "";
+            if (failure != null) message = "No file dialog: " + failure.getMessage();
+            else if (path != null) {
+                try {
+                    stored = CustomSounds.upload(path);
+                    message = sound.getName() + ": " + stored;
+                } catch (Exception e) {
+                    message = "Can't use that file: " + e.getMessage();
+                }
+            }
+            String file = stored, text = message;
+            uploaded = () -> {
+                if (file != null) { sound.set(file); changed(module); previewSound(sound, module); }
+                notice = text;
+            };
+        });
+    }
+    private static void previewSound(SoundOption sound, Module module) {
+        if (module instanceof ComboSoundsModule combo) {
+            int step = Arrays.asList(combo.steps).indexOf(sound) + 1;
+            combo.play(step);
+        } else if (sound.isSet()) CustomSounds.play(sound.get(), module instanceof KillBannerModule banner ? banner.volume.getValue() : 1);
     }
     private void button(LadsGraphics g, String id, String label, Rect r, Runnable action, boolean enabled, int mx, int my, boolean selected) {
         boolean content = contentControl(id);
@@ -1458,6 +1521,7 @@ public final class LadsSettingsScreen {
             .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
             .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o)))
             .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o)))
+            .filter(o -> !(detail instanceof com.thelads.core.modules.ChatModule chat && chat.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o)))
             .sorted((a, b) -> {
                 if ("Ignore HUD FPS Cap".equals(a.getName())) return 1;
@@ -1470,6 +1534,8 @@ public final class LadsSettingsScreen {
     public void openGlobalColors(){colorPicker.openGlobal();}
     public void openDisplayActions(){if(detail!=null)actions.open(detail.getOptions().stream().filter(o->o instanceof PlayerActionOption).map(o->(PlayerActionOption)o).toList(),()->changed(detail));}
     public void openModule(String name) { Module m=ModuleManager.getInstance().getModule(name); if(m!=null)openDetails(m); }
+    /** QA: scrolls the open page by this many pixels (kept within the page on the next frame). */
+    public void scrollBy(int pixels) { scrollOffset = Math.max(0, scrollOffset + pixels); }
     /** QA (kill banner captures): the Kill Banner picker's skin search, as typed. */
     public void searchKillBanners(String query) { kbSearch = query; }
     private void openDetails(Module m) {

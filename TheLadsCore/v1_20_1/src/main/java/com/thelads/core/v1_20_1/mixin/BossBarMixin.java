@@ -12,7 +12,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class BossBarMixin {
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void ladsCustomBars(GuiGraphics g, CallbackInfo ci) {
-        if (NativeFeatures1201.enabled("BossBar")) {
+        // The Lads Boss Bar replaces vanilla's; under the tab list or the debug text vanilla's steps aside (HudCover).
+        if (NativeFeatures1201.enabled("BossBar") || com.thelads.core.client.hud.HudCover.bossBarsCovered(g.guiWidth(), com.thelads.core.client.bridge.LadsGameBridge.get().bossBarCount())) {
             ci.cancel();
         }
     }

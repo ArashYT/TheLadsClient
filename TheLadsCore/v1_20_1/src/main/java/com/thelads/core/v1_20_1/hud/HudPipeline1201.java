@@ -14,6 +14,7 @@ public final class HudPipeline1201 {
 
     public static void beforeGui(GuiGraphics graphics) {
         com.thelads.core.v1_20_1.feature.UiQa1201.logPose("before the GUI", graphics);
+        com.thelads.core.client.hud.HudCover.frame(); // the tab list and the debug text add what they cover as the GUI draws them
         NativeAutohide1201.scopeOpacity = 1;
     }
 

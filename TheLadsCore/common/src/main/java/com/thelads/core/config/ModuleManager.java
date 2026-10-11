@@ -194,10 +194,11 @@ public class ModuleManager {
         register(new TitleScreenModule());
         register(new PaperdollModule());
         register(new KillBannerModule(), Module.Category.MECHANIC);
+        register(new ComboSoundsModule(), Module.Category.MECHANIC);
         register(new CrosshairModule(), Module.Category.MECHANIC);
 
         // Every chat feature lives here; ConfigManager migrates the old ClientTools timestamps and HideChatIndicators.
-        Module chatMod = new Module("Chat", "Chat size, background, message animations, timestamps, signing indicators and screenshot links.");
+        Module chatMod = new com.thelads.core.modules.ChatModule("Chat size, background, message animations, timestamps, signing indicators, screenshot links and Chat Heads (the sender's head before messages).");
         chatMod.addOption(new BoolOption("Chat Background", true));
         chatMod.addOption(new SliderOption("Chat Width", 320, 100, 600, 10));
         chatMod.addOption(new SliderOption("Chat Height", 180, 50, 400, 10));
@@ -208,15 +209,15 @@ public class ModuleManager {
         // 1.7.0, both on by default: no 100-line history cap (ChatHistory), and chat text with its shadow.
         chatMod.addOption(new BoolOption("Infinite History", true));
         chatMod.addOption(new BoolOption("Text Shadow", true));
+        // 1.9.0: Chat Heads, once a module of its own. The sender's head in chat, just before their name or at the start of the line:
+        // from signed chat, or from player names in the tab list. Keep Text Aligned applies to Start of line. The Chat module's
+        // own switch does not turn it off (ChatHeads.enabled); a Chat Heads jar the player added hides these (ChatModule.hidden).
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatHeads.ENABLED, true));
+        chatMod.addOption(new DropdownOption(com.thelads.core.client.ChatHeads.POSITION, 0, com.thelads.core.client.ChatHeads.POSITIONS));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatHeads.BY_NAME, true));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatHeads.ALIGNED, false));
         chatMod.setEnabled(true);
         register(chatMod, Module.Category.HUD);
-        Module chatHeads = new Module(com.thelads.core.client.ChatHeads.NAME, "The sender's head in chat, just before their name or at the start of the line: "
-            + "from signed chat, or from player names in the tab list. Keep text aligned applies to Start of line.");
-        chatHeads.addOption(new DropdownOption(com.thelads.core.client.ChatHeads.POSITION, 0, com.thelads.core.client.ChatHeads.POSITIONS));
-        chatHeads.addOption(new BoolOption(com.thelads.core.client.ChatHeads.BY_NAME, true));
-        chatHeads.addOption(new BoolOption(com.thelads.core.client.ChatHeads.ALIGNED, false));
-        chatHeads.setEnabled(true);
-        register(chatHeads, Module.Category.HUD);
 
         register(new AutoReconnectModule(), Module.Category.SERVER);
 
