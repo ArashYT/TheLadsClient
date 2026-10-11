@@ -212,6 +212,7 @@ public class ModpackPatchEngineTests : IDisposable
         Directory.CreateDirectory(config);
         File.Copy(Path.Combine(ZeroSmpFixtures, dhFixture), Path.Combine(config, "DistantHorizons.toml"));
         File.Copy(Path.Combine(ZeroSmpFixtures, "owner", "config", "modernfix-mixins.properties"), Path.Combine(config, "modernfix-mixins.properties"));
+        File.Copy(Path.Combine(ZeroSmpFixtures, "owner", "config", "fml.toml"), Path.Combine(config, "fml.toml")); // maxThreads = -1 there
         var ifJson = Path.Combine(config, "immediatelyfast.json");
         File.Copy(Path.Combine(ZeroSmpFixtures, "owner", "config", "immediatelyfast.json"), ifJson);
         var ifBefore = JsonNode.Parse(File.ReadAllText(ifJson))!.AsObject();
@@ -220,7 +221,7 @@ public class ModpackPatchEngineTests : IDisposable
 
         await ModpackPatchEngine.ApplyPatchAsync(_tempDir, patch, null, null);
 
-        Assert.Equal(3, patch.ConfigPatches!.Count);
+        Assert.Equal(4, patch.ConfigPatches!.Count);
         foreach (var cfg in patch.ConfigPatches.Where(c => c.KeyValues != null))
         {
             var keys = KeyTable(Path.Combine(_tempDir, "minecraft", cfg.File));
