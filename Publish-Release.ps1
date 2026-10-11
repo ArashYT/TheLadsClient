@@ -56,6 +56,8 @@ try {
             if (-not (Test-Path -LiteralPath (Join-Path $publish "game-mods/$gameVersion/$file"))) { throw "Missing $gameVersion/$file" }
         }
     }
+    # Forge 1.20.1 packs' Lads early loading window; without it players silently get Forge's (ModpackLauncher.UseEarlyWindow).
+    if (-not (Test-Path -LiteralPath (Join-Path $publish 'game-mods/1.20.1/lads-earlywindow.jar'))) { throw 'Missing 1.20.1/lads-earlywindow.jar' }
     if (-not (Test-Path -LiteralPath (Join-Path $publish "release-notes/$version.md"))) { throw 'Current release notes were not bundled.' }
     @{version=$version; commit=$commit; localChanges=($dirty.Count -gt 0); coreBuilt=(-not $SkipCoreBuild)} |
         ConvertTo-Json | Set-Content -LiteralPath (Join-Path $publish 'release-build.json')

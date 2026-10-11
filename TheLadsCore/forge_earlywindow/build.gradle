@@ -1,0 +1,56 @@
+plugins {
+    id 'java'
+}
+
+// The Lads early loading window for Forge 1.20.1 packs (Zero SMP): an ImmediateWindowProvider that Forge loads from the BOOT
+// module layer, so the launcher puts lads-earlywindow.jar on the game's -cp (never in mods/) and names it in config/fml.toml.
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+repositories {
+    maven { url = 'https://maven.minecraftforge.net/'; content { includeGroup 'net.minecraftforge' } }
+    mavenCentral()
+}
+
+dependencies {
+    // Exactly what Forge 1.20.1-47.4.10 puts on the boot classpath; all supplied by the game at runtime.
+    compileOnly('net.minecraftforge:fmlloader:1.20.1-47.4.10') { transitive = false }
+    compileOnly('net.minecraftforge:fmlearlydisplay:1.20.1-47.4.10') { transitive = false }
+    ['lwjgl', 'lwjgl-glfw', 'lwjgl-opengl', 'lwjgl-stb'].each { compileOnly "org.lwjgl:$it:3.3.1" }
+    compileOnly 'org.slf4j:slf4j-api:2.0.1'
+}
+
+// The Core's loading screen, relocated (package lines only) so the early window draws exactly what the in-game overlay draws.
+// Its own package is required: this jar is in the boot layer and the Core (through Connector) in the game layer, and one package
+// in two readable modules fails module resolution.
+def relocatedTheme = tasks.register('relocateTheme', Sync) {
+    into layout.buildDirectory.dir('generated/theme')
+    from('../common/src/main/java/com/thelads/core/client') {
+        include 'title/LoadingScreenTheme.java', 'gui/LadsPalette.java'
+        eachFile { path = 'com/thelads/earlywindow/theme/' + name }
+        filter { String line ->
+            line.startsWith('import com.thelads.core.client.') ? null
+                : line.replaceFirst(/^package com\.thelads\.core\.client\.[a-z]+;/, 'package com.thelads.earlywindow.theme;')
+        }
+    }
+    includeEmptyDirs = false
+}
+sourceSets.main.java.srcDir(relocatedTheme)
+
+processResources {
+    from('../common/src/main/resources/assets/theladscore/textures/gui/loading_logo.png') {
+        rename { 'lads_loading_logo.png' }
+    }
+}
+
+jar {
+    archiveFileName = 'lads-earlywindow.jar'
+}

@@ -21,23 +21,24 @@ public static class ModpackCoreSync
     /// its own build into the instance and the launcher must not swap it back for the bundled one).</summary>
     public const string SkipEnvironmentVariable = "LADS_SKIP_MODPACK_CORE_SYNC";
 
-    /// <summary>The bundled Core for <paramref name="mcVersion"/>: under <paramref name="bundleRoot"/> when given, else next to the
-    /// launcher (and, for a development build, in the repository folders above it). Null when this launcher has none.</summary>
-    public static string? FindBundledJar(string mcVersion, string? bundleRoot = null)
+    /// <summary>The bundled Core for <paramref name="mcVersion"/> (or another bundled jar of that version, <paramref name="fileName"/>):
+    /// under <paramref name="bundleRoot"/> when given, else next to the launcher (and, for a development build, in the repository
+    /// folders above it). Null when this launcher has none.</summary>
+    public static string? FindBundledJar(string mcVersion, string? bundleRoot = null, string fileName = BundledName)
     {
         if (!GameVersionPolicy.RequiresBundledCore(mcVersion)) return null;
         var candidates = new List<string>();
-        if (bundleRoot != null) candidates.Add(Path.Combine(bundleRoot, "game-mods", mcVersion, BundledName));
+        if (bundleRoot != null) candidates.Add(Path.Combine(bundleRoot, "game-mods", mcVersion, fileName));
         else
         {
-            candidates.Add(Path.Combine(AppContext.BaseDirectory, "game-mods", mcVersion, BundledName));
+            candidates.Add(Path.Combine(AppContext.BaseDirectory, "game-mods", mcVersion, fileName));
             for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is { Exists: true }; dir = dir.Parent)
             {
-                candidates.Add(Path.Combine(dir.FullName, "game-mods", mcVersion, BundledName));
-                candidates.Add(Path.Combine(dir.FullName, "TheLadsLauncher", "game-mods", mcVersion, BundledName));
-                candidates.Add(Path.Combine(dir.FullName, "artifacts", "client", "game-mods", mcVersion, BundledName));
-                candidates.Add(Path.Combine(dir.FullName, "Lads Client", "TheLadsLauncher", "game-mods", mcVersion, BundledName));
-                candidates.Add(Path.Combine(dir.FullName, "Lads Client", "artifacts", "client", "game-mods", mcVersion, BundledName));
+                candidates.Add(Path.Combine(dir.FullName, "game-mods", mcVersion, fileName));
+                candidates.Add(Path.Combine(dir.FullName, "TheLadsLauncher", "game-mods", mcVersion, fileName));
+                candidates.Add(Path.Combine(dir.FullName, "artifacts", "client", "game-mods", mcVersion, fileName));
+                candidates.Add(Path.Combine(dir.FullName, "Lads Client", "TheLadsLauncher", "game-mods", mcVersion, fileName));
+                candidates.Add(Path.Combine(dir.FullName, "Lads Client", "artifacts", "client", "game-mods", mcVersion, fileName));
             }
         }
         return candidates.Where(File.Exists).Select(Path.GetFullPath).FirstOrDefault();

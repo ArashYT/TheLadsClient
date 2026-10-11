@@ -94,11 +94,12 @@ internal static class ZeroSmpQa
             File.Copy(coreJar, Path.Combine(mods, "theladscore.jar"), overwrite: true);
             foreach (var line in QaShared.RemoveMods(mods, removeMods)) Say(line);
             foreach (var line in QaShared.AddMods(mods, QaShared.Env("LADS_VERIFY_ADD_MODS"))) Say(line);
-            // Forge's early loading window is drawn by a helper thread while the main thread scans/transforms mods without pumping
-            // window messages, so Windows greys it out as "Not Responding" for minutes (owner: "they are still freezing"). QA games start
-            // without it: the real game window appears once loading is done.
-            string fml = Path.Combine(gameDir, "config", "fml.toml");
-            if (File.Exists(fml)) File.WriteAllText(fml, System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(fml), @"(?m)^(\s*earlyWindowControl\s*=\s*)true", "${1}false"));
+            // Early loading window: QA games start as players' do, with the Lads window ModpackLauncher sets up (its jar on -cp, fml.toml).
+            // LADS_VERIFY_EARLY_WINDOW=forge: the launcher's no-jar fallback (LADS_SKIP_EARLY_WINDOW=1), Forge's own window; =off: no early
+            // window (earlyWindowControl=false, the QA default before 1.9.1: Forge's window greyed out "Not Responding" for minutes).
+            string earlyWindow = QaShared.Env("LADS_VERIFY_EARLY_WINDOW") ?? "lads";
+            if (earlyWindow is not ("lads" or "forge" or "off")) throw new ArgumentException("LADS_VERIFY_EARLY_WINDOW must be lads, forge or off.");
+            Environment.SetEnvironmentVariable(ModpackLauncher.SkipEarlyWindowVariable, earlyWindow == "lads" ? null : "1");
             QaShared.ConnectorCache(mods, save: false); // skip Connector's minutes-long re-transform (window "Not Responding")
             if (freshWorld) { string world = Path.Combine(gameDir, "saves", WorldName); if (Directory.Exists(world)) { SafeFileOps.DeleteTree(world); Say("Fresh world: deleted " + world); } }
             File.WriteAllLines(Path.Combine(evidence, "mods.txt"), Directory.EnumerateFiles(mods, "*.jar").Select(f => Path.GetFileName(f)).Order(StringComparer.OrdinalIgnoreCase));
@@ -184,6 +185,14 @@ internal static class ZeroSmpQa
                 File.Delete(Path.Combine(globalDir!, "shared", "thelads_config.json"));
             else throw new InvalidOperationException("THELADS_GLOBAL_DIR of the Zero SMP game is not inside the sandbox: " + globalDir);
             Say("Core global config dir (THELADS_GLOBAL_DIR): " + globalDir);
+            string fml = Path.Combine(gameDir, "config", "fml.toml");
+            if (earlyWindow == "off" && File.Exists(fml)) File.WriteAllText(fml, Regex.Replace(File.ReadAllText(fml), @"(?m)^(\s*earlyWindowControl\s*=\s*)true", "${1}false"));
+            bool ladsJar = (game.StartInfo.ArgumentList.Count > 0 ? string.Join(' ', game.StartInfo.ArgumentList) : game.StartInfo.Arguments).Contains(ModpackLauncher.EarlyWindowJar);
+            Say($"Early window: {earlyWindow} ({ModpackLauncher.EarlyWindowJar} on -cp: {ladsJar}; fml.toml: "
+                + string.Join(", ", (File.Exists(fml) ? File.ReadAllLines(fml) : []).Where(l => l.StartsWith("earlyWindowControl") || l.StartsWith("earlyWindowProvider"))) + ")");
+            if (ladsJar != (earlyWindow == "lads"))
+                throw new InvalidOperationException(ladsJar ? $"{ModpackLauncher.SkipEarlyWindowVariable}=1 but the launcher still put {ModpackLauncher.EarlyWindowJar} on -cp"
+                    : $"the launcher found no {ModpackLauncher.EarlyWindowJar}: build TheLadsCore :forge_earlywindow:jar and copy build\\libs\\{ModpackLauncher.EarlyWindowJar} to TheLadsLauncher\\game-mods\\1.20.1");
             var args = game.StartInfo.ArgumentList;
             var flags = new List<string> { "-Dfabric.noGui=true" };
             // LADS_VERIFY_FASTQUIT=run|verify|baseline|crash|cycles: the FastQuit probe (FastQuitProbe1201) drives the game from the title screen
@@ -211,7 +220,7 @@ internal static class ZeroSmpQa
                 foreach (var extra in new[] { "--width", size.Width.ToString(), "--height", size.Height.ToString() }) args.Add(extra);
             }
             Say("JVM QA flags: " + string.Join(' ', flags));
-            File.WriteAllText(Path.Combine(evidence, "command-line.txt"), game.StartInfo.FileName + " " + string.Join(' ', args));
+            File.WriteAllText(Path.Combine(evidence, "command-line.txt"), game.StartInfo.FileName + " " + (args.Count > 0 ? string.Join(' ', args) : game.StartInfo.Arguments));
 
             string log = Path.Combine(gameDir, "logs", "latest.log");
             if (File.Exists(log)) File.Delete(log);
@@ -268,8 +277,10 @@ internal static class ZeroSmpQa
             if (!game.HasExited) { Say("Stopping the Zero SMP game with Kill (it ignored the stop request)."); game.Kill(entireProcessTree: true); game.WaitForExit(30000); }
             if (File.Exists(log)) File.Copy(log, Path.Combine(evidence, "latest.log"), true);
             var logText = ReadShared(log).Split('\n');
+            string? expected = earlyWindow == "off" ? null : "Loading ImmediateWindowProvider " + (earlyWindow == "lads" ? "ladsearlywindow" : "fmlearlywindow");
+            if (expected != null && !logText.Any(l => l.Contains(expected))) failures.Add($"early window {earlyWindow}: latest.log has no '{expected}'");
             foreach (var line in logText.Where(l => l.Contains("Lads auto-world QA") || l.Contains("Lads world capture") || l.Contains("Lads qa ") || l.Contains("TheLadsCore")
-                || l.Contains("Lads EBE") || l.Contains("Baked block entities")))
+                || l.Contains("Lads EBE") || l.Contains("Baked block entities") || l.Contains("ImmediateWindowProvider") || l.Contains("Lads early loading") || l.Contains("ghosting")))
                 Say("log: " + line.TrimEnd());
         }
         catch (Exception error)

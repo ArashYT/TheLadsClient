@@ -37,6 +37,13 @@ public class ModpackJoinTests
     /// <summary>The Forge 1.20.1 command line the launcher builds (version files only, offline); nothing is started.</summary>
     private async Task<System.Diagnostics.Process> Build(string? joinServer)
     {
+        var process = await BuildForge1201(joinServer);
+        output.WriteLine(process.StartInfo.Arguments);
+        return process;
+    }
+
+    internal static async Task<System.Diagnostics.Process> BuildForge1201(string? joinServer = null, MSession? session = null)
+    {
         using var dir = new TestDirectory();
         var path = new MinecraftPath(dir.Path);
         foreach (var (id, json) in new[] { ("1.20.1", Vanilla), ("1.20.1-forge-47.4.10", Forge) })
@@ -46,11 +53,9 @@ public class ModpackJoinTests
         }
         var parameters = MinecraftLauncherParameters.CreateDefault(path);
         parameters.VersionLoader = new LocalJsonVersionLoader(path);
-        var options = new MLaunchOption { Session = MSession.CreateOfflineSession("QaPlayer"), JavaPath = "java", MaximumRamMb = 2048, MinimumRamMb = 512 };
+        var options = new MLaunchOption { Session = session ?? MSession.CreateOfflineSession("QaPlayer"), JavaPath = "java", MaximumRamMb = 2048, MinimumRamMb = 512 };
         if (joinServer != null) ModpackLauncher.JoinServer(options, joinServer);
-        var process = await new MinecraftLauncher(parameters).BuildProcessAsync("1.20.1-forge-47.4.10", options);
-        output.WriteLine(process.StartInfo.Arguments);
-        return process;
+        return await new MinecraftLauncher(parameters).BuildProcessAsync("1.20.1-forge-47.4.10", options);
     }
 
     [Theory]
