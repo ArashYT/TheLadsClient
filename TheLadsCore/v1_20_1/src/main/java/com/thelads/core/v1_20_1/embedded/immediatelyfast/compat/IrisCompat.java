@@ -40,6 +40,30 @@ public class IrisCompat {
             "net.irisshaders.iris.vertices"
     };
 
+    // The Lads: the package init() found, read by Handles; its two handles are static final so the JIT folds them into field accesses.
+    private static String irisPackage;
+
+    private static final class Handles {
+        static final MethodHandle IS_RENDERING_LEVEL;
+        static final MethodHandle SET_RENDER_WITH_EXTENDED_VERTEX_FORMAT;
+
+        static {
+            try {
+                final Class<?> immediateStateClass = Class.forName(irisPackage + ".ImmediateState");
+                final Field isRenderingLevelField = immediateStateClass.getDeclaredField("isRenderingLevel");
+                final Field renderWithExtendedVertexFormatField = immediateStateClass.getDeclaredField("renderWithExtendedVertexFormat");
+                isRenderingLevelField.setAccessible(true);
+                renderWithExtendedVertexFormatField.setAccessible(true);
+                // Exact static field types, so invokeExact below links: ()boolean and (boolean)void.
+                IS_RENDERING_LEVEL = MethodHandles.lookup().unreflectGetter(isRenderingLevelField).asType(MethodType.methodType(boolean.class));
+                SET_RENDER_WITH_EXTENDED_VERTEX_FORMAT = MethodHandles.lookup().unreflectSetter(renderWithExtendedVertexFormatField)
+                        .asType(MethodType.methodType(void.class, boolean.class));
+            } catch (ReflectiveOperationException e) {
+                throw new ExceptionInInitializerError(e);
+            }
+        }
+    }
+
     public static void init() {
         IRIS_LOADED = true;
         Throwable throwable = null;
@@ -50,31 +74,33 @@ public class IrisCompat {
                 final Class<?> immediateStateClass = Class.forName(packageName + ".ImmediateState");
                 final Class<?> extendingBufferBuilderClass = Class.forName(packageName + ".ExtendingBufferBuilder");
 
-                // The Lads: plain method handles instead of the Reflect library's FieldAccessor
+                // The Lads: plain method handles instead of the Reflect library's FieldAccessor (built in Handles)
                 final Field isRenderingLevelField = immediateStateClass.getDeclaredField("isRenderingLevel");
                 final Field renderWithExtendedVertexFormatField = immediateStateClass.getDeclaredField("renderWithExtendedVertexFormat");
                 isRenderingLevelField.setAccessible(true);
                 renderWithExtendedVertexFormatField.setAccessible(true);
-                final MethodHandle getter = lookup.unreflectGetter(isRenderingLevelField);
-                final MethodHandle setter = lookup.unreflectSetter(renderWithExtendedVertexFormatField);
+
+                final MethodHandle iris$beginWithoutExtendingMH = lookup.findVirtual(extendingBufferBuilderClass, "iris$beginWithoutExtending", MethodType.methodType(void.class, VertexFormat.Mode.class, VertexFormat.class));
+                final CallSite iris$beginWithoutExtendingCallSite = LambdaMetafactory.metafactory(lookup, "accept", MethodType.methodType(TriConsumer.class), MethodType.methodType(void.class, Object.class, Object.class, Object.class), iris$beginWithoutExtendingMH, iris$beginWithoutExtendingMH.type());
+                iris$beginWithoutExtending = (TriConsumer<BufferBuilder, VertexFormat.Mode, VertexFormat>) iris$beginWithoutExtendingCallSite.getTarget().invoke();
+
+                // The Lads: bind the static final handles only once this package fully resolved.
+                irisPackage = packageName;
+                Handles.IS_RENDERING_LEVEL.type();
                 isRenderingLevel = () -> {
                     try {
-                        return (boolean) getter.invoke();
+                        return (boolean) Handles.IS_RENDERING_LEVEL.invokeExact();
                     } catch (Throwable t) {
                         throw new RuntimeException(t);
                     }
                 };
                 renderWithExtendedVertexFormat = value -> {
                     try {
-                        setter.invoke(value);
+                        Handles.SET_RENDER_WITH_EXTENDED_VERTEX_FORMAT.invokeExact(value);
                     } catch (Throwable t) {
                         throw new RuntimeException(t);
                     }
                 };
-
-                final MethodHandle iris$beginWithoutExtendingMH = lookup.findVirtual(extendingBufferBuilderClass, "iris$beginWithoutExtending", MethodType.methodType(void.class, VertexFormat.Mode.class, VertexFormat.class));
-                final CallSite iris$beginWithoutExtendingCallSite = LambdaMetafactory.metafactory(lookup, "accept", MethodType.methodType(TriConsumer.class), MethodType.methodType(void.class, Object.class, Object.class, Object.class), iris$beginWithoutExtendingMH, iris$beginWithoutExtendingMH.type());
-                iris$beginWithoutExtending = (TriConsumer<BufferBuilder, VertexFormat.Mode, VertexFormat>) iris$beginWithoutExtendingCallSite.getTarget().invoke();
                 return;
             } catch (Throwable t) {
                 throwable = t;
