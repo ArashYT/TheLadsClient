@@ -1,7 +1,10 @@
 using System;
+using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Velopack;
+using Velopack.Locators;
 using Velopack.Sources;
 
 namespace TheLadsLauncher;
@@ -17,23 +20,51 @@ public interface ILauncherUpdateBackend
 public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
 {
     public const string RepositoryUrl = "https://github.com/ArashYT/TheLadsClient";
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
     private readonly UpdateManager _manager;
-    public VelopackUpdateBackend() : this(new UpdateManager(new GithubSource(RepositoryUrl, null, false))) { }
-    public VelopackUpdateBackend(UpdateManager manager) => _manager = manager;
+    private readonly Func<string, string, Task<byte[]>> _fetchSigned;
+    private readonly string _publicKey;
+    private string? _verified; // the downloaded version whose signature this process checked
+
+    public VelopackUpdateBackend() : this(new UpdateManager(new GithubSource(RepositoryUrl, null, false)),
+        (version, name) => Http.GetByteArrayAsync($"{RepositoryUrl}/releases/download/v{version}/{name}"), UpdateSignature.ReleasePublicKey) { }
+
+    /// <param name="fetchSigned">(version, file name) -> that release's signature file (see <see cref="UpdateSignature"/>).</param>
+    public VelopackUpdateBackend(UpdateManager manager, Func<string, string, Task<byte[]>> fetchSigned, string publicKey)
+    {
+        _manager = manager;
+        _fetchSigned = fetchSigned;
+        _publicKey = publicKey;
+    }
+
     public bool IsInstalled => _manager.IsInstalled;
-    public string? PendingVersion => _manager.UpdatePendingRestart?.Version.ToString();
+    /// <summary>A downloaded update counts only once its signature checked out.</summary>
+    public string? PendingVersion => _manager.UpdatePendingRestart?.Version.ToString() is { } v && v == _verified ? v : null;
 
     public async Task<bool> DownloadLatestAsync(Action<string> report)
     {
         var update = await _manager.CheckForUpdatesAsync();
         if (update == null) return false;
-        var version = update.TargetFullRelease.Version;
+        var asset = update.TargetFullRelease;
+        string version = asset.Version.ToString();
         await _manager.DownloadUpdatesAsync(update, percent => report($"Downloading v{version}: {percent}%"));
+        string package = Path.Combine(VelopackLocator.Current.PackagesDir!, asset.FileName);
+        try
+        {
+            UpdateSignature.Verify(await _fetchSigned(version, UpdateSignature.ManifestName),
+                await _fetchSigned(version, UpdateSignature.SignatureName), _publicKey, version, package);
+        }
+        catch
+        {
+            try { File.Delete(package); } catch (IOException) { } // never leave an unsigned package to be applied later
+            throw;
+        }
+        _verified = version;
         return true;
     }
 
-    public void ApplyAndRestart() => _manager.ApplyUpdatesAndRestart(_manager.UpdatePendingRestart
-        ?? throw new InvalidOperationException("No verified update is ready."));
+    public void ApplyAndRestart() => _manager.ApplyUpdatesAndRestart(PendingVersion != null ? _manager.UpdatePendingRestart!
+        : throw new InvalidOperationException("No verified update is ready."));
 }
 
 // Startup and the timer share this coordinator. Only verified packages are applied.

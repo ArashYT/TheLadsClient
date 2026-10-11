@@ -163,6 +163,7 @@ public class AuthService : IAuthService
                         _accounts.AddRange(list);
                         var selected = _accounts.FirstOrDefault(a => a.Selected);
                         _activeAccount = selected?.Username ?? _accounts[0].Username;
+                        if (json.Contains("\"accessToken\"")) SaveAccounts(); // drop tokens launchers before 1.2.1 saved in plain text
                         return;
                     }
                 }

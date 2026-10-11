@@ -112,6 +112,7 @@ internal static class ModpackQa
                 else game.StartInfo.Arguments = "-Dfabric.noGui=true " + game.StartInfo.Arguments;
                 slot = await QaShared.AcquireAsync(4, "modpack " + project, ct); // at most 3 QA games machine-wide (QaShared)
                 game.Start();
+            LaunchToken.Send(game);
                 instance.LastPlayedUtc = DateTime.UtcNow;
                 Modpacks.Save(instance);
                 Say($"Started PID {game.Id}: {game.StartInfo.FileName}");

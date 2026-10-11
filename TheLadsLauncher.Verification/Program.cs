@@ -431,7 +431,7 @@ var runStartUtc = DateTime.UtcNow;
 string logPath = Path.Combine(directory, "production-smoke.log");
 StreamWriter? log = null;
 var logGate = new object();
-bool initialized = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false, flashbackPassed = false, flashbackRequested = false;
+bool initialized = false, tokenReceived = false, settingsProbePassed = false, nativeProbeFailed = false, renderScaleProbePassed = false, version133ProbePassed = false, renderer134Passed = false, screenshots134Passed = false, replay134Passed = false, screenshots134Requested = false, replay134Requested = false, flashbackPassed = false, flashbackRequested = false;
 bool menuCaptureRequested = false, hudCaptureRequested = false, worldCapturesRequested = false, windowFound = false, snapshotInvalid = false;
 bool resolutionCaptureRequested = false, render185Requested = false;
 var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
@@ -807,6 +807,7 @@ try
     process.StartInfo.RedirectStandardOutput = true;
     process.StartInfo.RedirectStandardError = true;
     GameSession.Configure(process.StartInfo, directory, shared.Root, version);
+    LaunchToken.Hide(process, directory, session.AccessToken); // QA's offline token goes through the same stdin hand-off as players'
     VersionSwitch.Prepare(directory, version); // as the launcher does before every start: the list the in-game Switch Versions screen reads
     // The Core's shared config (ClientPaths.getGlobalBaseDir) is THELADS_GLOBAL_DIR, else the owner's REAL %APPDATA%\\.theladsclient\\shared\\thelads_config.json
     // (read and saved: the owner's HUD layout and Discord RPC in QA games, QA module changes in the owner's config). QA games get their own folder: the game
@@ -853,6 +854,7 @@ try
         {
             if (modList.Feed(line)) return;
             if (line.Contains($"TheLadsCore {version} initialized successfully")) initialized = true;
+            if (line.Contains("[Lads] Session token received from the launcher.")) tokenReceived = true;
             if (line.Contains("Lads integration write probe END:") && Passed(line)) settingsProbePassed = true;
             if (failureMarkers.Any(line.Contains)) nativeProbeFailed = true;
             if (line.Contains("Lads input probe FAILED")) inputProbeFailed = true;
@@ -959,6 +961,7 @@ try
         qaSlot = await QaShared.AcquireAsync(4, $"{version} {dirName}", ct);
     stopwatch.Restart();
     process.Start();
+    LaunchToken.Send(process);
     QaWindowGuard.Watch(process, qaSlot?.Number ?? 1);
     GameSession.Attach(process, directory, loadedMods, message => { lock (sessionMessages) sessionMessages.Add(message); }, shared,
         () => { exitHandled.TrySetResult(); return Task.CompletedTask; });
@@ -1132,6 +1135,7 @@ try
         else
         {
             Require(initialized, $"LadsCore did not log 'TheLadsCore {version} initialized successfully'.");
+            Require(tokenReceived || !process.StartInfo.Arguments.Contains(LaunchToken.Placeholder), "The access token went to the game's stdin but the Core did not log receiving it (SessionTokenMixin).");
             Require(requiredCore.All(passedMarkers.ContainsKey), "Missing passing END markers: " + string.Join(", ", requiredCore.Where(m => !passedMarkers.ContainsKey(m))));
             Require(capabilities.Forge || capabilities.Minimal || (inventorySnapshots.ContainsKey("title") && !snapshotInvalid), "The title-screen 'Lads mods inventory snapshot:' line was missing or not valid JSON.");
         }

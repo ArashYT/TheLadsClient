@@ -4417,6 +4417,7 @@ public partial class MainWindow : Window
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.CreateNoWindow = true;
             GameSession.Configure(process.StartInfo, gameDirectory, SharedContentService.Instance.Root, activeProfile.MinecraftVersion);
+            LaunchToken.Hide(process, gameDirectory, launchOpt.Session?.AccessToken);
 
             process.OutputDataReceived += (s, ev) => { if (GameSession.ReadableOutput(ev.Data) is { } line) Log($"[Game] {line}"); };
             process.ErrorDataReceived += (s, ev) => { if (GameSession.ReadableOutput(ev.Data) is { } line) Log($"[Game ERROR] {line}"); };
@@ -4451,6 +4452,7 @@ public partial class MainWindow : Window
             PrepareAccountSwitch(gameDirectory);
             EnforceEssentialSettings(gameDirectory);
             process.Start();
+            LaunchToken.Send(process);
             _runningProcesses[process] = gameDirectory;
             DiscordPresence.GameRunning(gameStarted = true);
             // Running marker now; on exit (once): marker removed, server list reconciled, then OnGameExitedAsync.

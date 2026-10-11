@@ -218,6 +218,7 @@ internal static class ZeroSmpQa
             slot = await QaShared.AcquireAsync(7, "Zero SMP", ct);
             var started = Stopwatch.StartNew();
             game.Start();
+            LaunchToken.Send(game);
             Say($"Started PID {game.Id}: {game.StartInfo.FileName}");
             QaWindowGuard.Watch(game, slot.Number);
 
