@@ -1,6 +1,7 @@
 /*
  * Vendored from JavaMP3 1.0.1 by delthas (https://github.com/delthas/JavaMP3, Maven fr.delthas:javamp3:1.0.1), moved to a Lads
- * package so no game ships a second copy; changes: the package name and an unused javax.swing import removed (Sound.java).
+ * package so no game ships a second copy; changes: the package name, an unused javax.swing import removed and the inverted
+ * loop in Sound.decodeFullyInto fixed (Sound.java).
  *
  * MIT License
  *
@@ -250,7 +251,7 @@ public final class Sound extends FilterInputStream {
       os.write(soundData.samplesBuffer, index, remaining);
     }
     int read = remaining;
-    while(!Decoder.decodeFrame(soundData)) {
+    while(Decoder.decodeFrame(soundData)) { // Lads: 1.0.1 had this condition inverted
       os.write(soundData.samplesBuffer);
       read += soundData.samplesBuffer.length;
     }

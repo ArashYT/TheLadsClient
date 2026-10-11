@@ -197,6 +197,7 @@ public final class CustomSounds {
         }
     }
     private static final java.util.Set<String> FAILED_LINES = ConcurrentHashMap.newKeySet();
+    private static final java.util.concurrent.atomic.AtomicBoolean DIALOG_OPEN = new java.util.concurrent.atomic.AtomicBoolean();
 
     /** QA: sound lines opened so far, and the last file played. */
     public static int linesOpened() { return OPENED.get(); }
@@ -214,18 +215,25 @@ public final class CustomSounds {
             result.completeExceptionally(new IllegalStateException("No file dialog in this game"));
             return result;
         }
+        if (!DIALOG_OPEN.compareAndSet(false, true)) {
+            result.completeExceptionally(new IllegalStateException("A file dialog is already open"));
+            return result;
+        }
         Thread thread = new Thread(() -> {
+            java.awt.FileDialog dialog = null;
             try {
-                java.awt.FileDialog dialog = new java.awt.FileDialog((java.awt.Frame) null, title, java.awt.FileDialog.LOAD);
+                dialog = new java.awt.FileDialog((java.awt.Frame) null, title, java.awt.FileDialog.LOAD);
                 dialog.setFile("*.mp3;*.wav"); // the Windows dialog's filter
                 dialog.setFilenameFilter((dir, name) -> supported(name));
                 dialog.setAlwaysOnTop(true);
                 dialog.setVisible(true);
-                String file = dialog.getFile();
-                result.complete(file == null ? null : Path.of(dialog.getDirectory(), file));
-                dialog.dispose();
+                String file = dialog.getFile(), directory = dialog.getDirectory();
+                result.complete(file == null ? null : directory == null ? Path.of(file) : Path.of(directory, file));
             } catch (Throwable failure) {
                 result.completeExceptionally(failure);
+            } finally {
+                if (dialog != null) dialog.dispose();
+                DIALOG_OPEN.set(false);
             }
         }, "Lads file dialog");
         thread.setDaemon(true);
