@@ -22,11 +22,13 @@ public class GameSessionPriorityTests
         GameSession.Attach(process, game, Array.Empty<string>(), _ => { }, shared);
         process.BeginOutputReadLine();
         process.Refresh();
-        // Owner, 2026-10-10: "just make it normal priority" (Realtime/High while loading froze Discord).
-        Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);
+        // Owner, 2026-10-10: "just make it normal priority" (Realtime/High while loading froze Discord). The launcher never changes it, so
+        // the game keeps the priority it inherits: Normal for players, BelowNormal on GitHub's CI runner, where the whole job runs lower.
+        var inherited = Process.GetCurrentProcess().PriorityClass;
+        Assert.Equal(inherited, process.PriorityClass);
         await Task.Delay(4500);
         process.Refresh();
-        Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);
+        Assert.Equal(inherited, process.PriorityClass);
         await process.WaitForExitAsync();
     }
 
