@@ -34,7 +34,9 @@ public static class ModLoadingRace
         if (!report.Contains("Description: Initializing game") && !report.Contains("Description: Mod loading error has occurred")) return null;
         if (report.Contains("Registry entry not present: ") && report.Contains("com.tterrag.registrate"))
             return "a Registrate entry was lost while mods loaded in parallel";
-        if (report.Contains("FMLModContainer.constructMod") && (report.Contains(".rehash(") || report.Contains("HashMap.resize(") || report.Contains("ConcurrentModificationException")))
+        // Zeta's bus map breaks mid-resize (rehash) or is read half-resized (find: ArrayIndexOutOfBoundsException, Arash-PC 2026-10-11).
+        if (report.Contains("FMLModContainer.constructMod") && (report.Contains(".rehash(") || report.Contains("HashMap.resize(") || report.Contains("ConcurrentModificationException")
+            || (report.Contains("ZetaEventBus") && report.Contains("OpenHashMap.find("))))
             return "a shared map broke while mods loaded in parallel";
         return null;
     }

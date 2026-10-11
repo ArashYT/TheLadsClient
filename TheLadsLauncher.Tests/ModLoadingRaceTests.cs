@@ -12,6 +12,7 @@ public class ModLoadingRaceTests
     [InlineData("registrate-chromatic-compound.txt")]
     [InlineData("registrate-potato-cannon.txt")]
     [InlineData("zeta-subscribe.txt")]
+    [InlineData("zeta-find.txt")] // Arash-PC int QA: the same Zeta race seen in Object2ObjectOpenHashMap.find, no rehash frame
     public void TheLaptopRacesAreKnown(string file) => Assert.NotNull(ModLoadingRace.Match(Fixture(file)));
 
     [Fact]
