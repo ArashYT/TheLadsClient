@@ -77,6 +77,9 @@ final class ChatHeadsCapture {
             hudCap = HudSettings.getInstance().isHudFpsCapEnabled();
             hudLimit = HudSettings.getInstance().getHudFpsLimit();
             Module heads = ModuleManager.getInstance().getModule(ChatHeads.MODULE);
+            LOGGER.info("Lads chat heads capture: Chat Heads as loaded from the config (a migrated old module): {}",
+                java.util.stream.Stream.of(ChatHeads.ENABLED, ChatHeads.POSITION, ChatHeads.BY_NAME, ChatHeads.ALIGNED)
+                    .map(name -> name + "=" + heads.getOption(name).save()).collect(java.util.stream.Collectors.joining(", ")));
             for (String option : new String[] {ChatHeads.ENABLED, ChatHeads.POSITION, ChatHeads.BY_NAME, ChatHeads.ALIGNED}) heads.getOption(option).reset();
             check(ModuleManager.getInstance().getModule("Chat Heads") == null, "Chat Heads is options of the Chat module, not a module of its own");
             ((BoolOption) ModuleManager.getInstance().getModule("Chat").getOption("Timestamps")).set(true);

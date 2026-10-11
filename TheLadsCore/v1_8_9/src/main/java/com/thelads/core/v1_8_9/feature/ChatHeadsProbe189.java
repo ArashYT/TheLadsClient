@@ -65,7 +65,12 @@ final class ChatHeadsProbe189 {
             ENABLED.put(module, module.isEnabled());
             for (Option option : module.getOptions()) OPTIONS.put(option, option.save()); // a new element each time
         }
-        for (String name : new String[] {ChatHeads.ENABLED, ChatHeads.POSITION, ChatHeads.BY_NAME, ChatHeads.ALIGNED}) module("Chat").getOption(name).reset();
+        StringBuilder loaded = new StringBuilder();
+        for (String name : new String[] {ChatHeads.ENABLED, ChatHeads.POSITION, ChatHeads.BY_NAME, ChatHeads.ALIGNED}) {
+            loaded.append(loaded.length() == 0 ? "" : ", ").append(name).append('=').append(module("Chat").getOption(name).save());
+            module("Chat").getOption(name).reset();
+        }
+        check(true, "Chat Heads as loaded from the config (a migrated old module): " + loaded);
         headsOn(true);
         check(!module("Chat").getOptions().isEmpty() && module(ChatHeads.MODULE).getName().equals("Chat") && module("Chat Heads") == null,
             "Chat Heads is options of the Chat module, not a module of its own");
