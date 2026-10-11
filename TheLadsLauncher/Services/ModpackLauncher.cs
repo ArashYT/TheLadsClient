@@ -192,11 +192,89 @@ public static class ModpackLauncher
         process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = dataDirectory;
         process.StartInfo.Environment["THELADS_DIR"] = instance.GameDirectory;
         LaunchToken.Hide(process, instance.GameDirectory, session.AccessToken); // the caller sends it after Start
+        if (instance.Loader == "forge" && instance.McVersion == "1.20.1")
+            UseEarlyWindow(process, dataDirectory, instance.GameDirectory,
+                Environment.GetEnvironmentVariable(SkipEarlyWindowVariable) == "1" ? null : ModpackCoreSync.FindBundledJar("1.20.1", fileName: EarlyWindowJar), status);
         try { VersionSwitch.Prepare(instance.GameDirectory, instance.Name); } // the in-game Switch Versions screen offers the Lads Client versions
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { status?.Invoke($"Could not write {VersionSwitch.VersionsFile}: {ex.Message}"); }
         try { AccountSwitch.Prepare(instance.GameDirectory); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { status?.Invoke($"Could not prepare {AccountSwitch.RequestFile}: {ex.Message}"); }
         return process;
+    }
+
+    /// <summary>The Lads early loading window for Forge 1.20.1 packs (TheLadsCore/forge_earlywindow), bundled in game-mods/1.20.1.</summary>
+    public const string EarlyWindowJar = "lads-earlywindow.jar";
+
+    /// <summary>Set to 1 to start Forge 1.20.1 packs with Forge's own early window, exactly as when this launcher has no
+    /// <see cref="EarlyWindowJar"/>.</summary>
+    public const string SkipEarlyWindowVariable = "LADS_SKIP_EARLY_WINDOW";
+
+    /// <summary>
+    /// Forge loads its early window provider from the boot module layer, before mods/ is scanned, so the Lads one goes on the
+    /// game's -cp and config/fml.toml names it. Without a jar (<paramref name="bundledJar"/> null) Forge keeps its own window: a
+    /// "ladsearlywindow" an earlier launch wrote is set back, since Forge shows no early window at all for a provider it cannot find.
+    /// </summary>
+    public static void UseEarlyWindow(Process process, string dataDirectory, string gameDirectory, string? bundledJar, Action<string>? status)
+    {
+        string? jar = null;
+        try { if (bundledJar != null) jar = StageEarlyWindowJar(dataDirectory, bundledJar); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { status?.Invoke($"Could not prepare the Lads loading screen ({e.Message}); Forge's is used."); }
+        if (jar != null && !AppendClassPath(process.StartInfo, jar)) jar = null;
+        var fml = Path.Combine(gameDirectory, "config", "fml.toml");
+        try
+        {
+            string? toml = File.Exists(fml) ? File.ReadAllText(fml) : null;
+            string? edited = WithEarlyWindow(toml, jar != null);
+            if (edited == null || edited == toml) return;
+            Directory.CreateDirectory(Path.GetDirectoryName(fml)!);
+            File.WriteAllText(fml, edited);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { status?.Invoke($"Could not write {fml}: {e.Message}"); }
+    }
+
+    /// <summary>The copy the game runs, in the modpack cache under its hash: a running game never holds a file of the launcher's
+    /// install folder open (an update replaces that folder), and a newer launcher's jar never overwrites one a running game uses.</summary>
+    private static string StageEarlyWindowJar(string dataDirectory, string bundledJar)
+    {
+        byte[] bytes = File.ReadAllBytes(bundledJar);
+        var staged = Path.Combine(CacheRoot(dataDirectory), "lads-earlywindow", Sha256(bytes)[..16], EarlyWindowJar);
+        if (File.Exists(staged)) return staged;
+        Directory.CreateDirectory(Path.GetDirectoryName(staged)!);
+        File.WriteAllBytes(staged + ".tmp", bytes);
+        File.Move(staged + ".tmp", staged, overwrite: true);
+        return staged;
+    }
+
+    /// <summary>fml.toml (null: no file yet) with the Lads early window on (<paramref name="lads"/>), or with Forge's own provider
+    /// back in place of a Lads one. Keys missing from the file go first (top level; Forge fills in the rest on its first start).</summary>
+    public static string? WithEarlyWindow(string? toml, bool lads)
+    {
+        if (!lads) return toml == null ? null : Regex.Replace(toml, @"(?m)^([ \t]*earlyWindowProvider[ \t]*=[ \t]*)""ladsearlywindow""", "${1}\"fmlearlywindow\"");
+        toml ??= "";
+        foreach (var (key, value) in new[] { ("earlyWindowControl", "true"), ("earlyWindowProvider", "\"ladsearlywindow\"") })
+        {
+            var line = new Regex($@"(?m)^([ \t]*{key}[ \t]*=[ \t]*)[^\r\n]*");
+            toml = line.IsMatch(toml) ? line.Replace(toml, "${1}" + value, 1) : $"{key} = {value}\n" + toml;
+        }
+        return toml;
+    }
+
+    /// <summary>Adds <paramref name="jar"/> to the game's -cp; false when the command line has none. CmlLib builds one Arguments
+    /// string (-cp "a;b;c" or -cp a;b;c); an ArgumentList is handled too.</summary>
+    public static bool AppendClassPath(ProcessStartInfo start, string jar)
+    {
+        var list = start.ArgumentList;
+        int cp = list.IndexOf("-cp");
+        if (cp >= 0 && cp + 1 < list.Count)
+        {
+            list[cp + 1] += Path.PathSeparator + jar;
+            return true;
+        }
+        if (list.Count > 0) return false;
+        var match = Regex.Match(start.Arguments, @"(?<=(^|\s)-cp\s+)(""[^""]*""|\S+)");
+        if (!match.Success) return false;
+        start.Arguments = start.Arguments[..match.Index] + "\"" + match.Value.Trim('"') + Path.PathSeparator + jar + "\"" + start.Arguments[(match.Index + match.Length)..];
+        return true;
     }
 
     /// <summary>The server the built game joins at start (its --quickPlayMultiplayer value), or null when it does not.</summary>
