@@ -10,7 +10,8 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="Fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../tools/modpack-manager/patches/update-1.1.2.json" Link="Fixtures/ZeroSmp/update-1.1.2.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Distant Horizons' old (version 4) config, as the 1.0.0 pack shipped it. -->
+    <None Include="../tools/modpack-manager/baseline-1.0.0/config/DistantHorizons.toml" Link="Fixtures/ZeroSmp/DistantHorizons-v4.toml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../TheLadsLauncher/TheLadsLauncher.csproj" />

@@ -134,9 +134,9 @@ public partial class ExperiencesView : UserControl
                 Modpacks.Save(instance);
             }
 
-            // Pack patches (new mods, retired mods, key defaults) not applied yet; the Lads Core in the pack is brought to this
+            // Pack patches (new mods, retired mods, key defaults, config) not applied yet, the launcher's bundled ones included; the Lads Core in the pack is brought to this
             // launcher's build by ModpackLauncher before the game starts.
-            await ExperiencesService.ApplyPendingPatchesAsync(DataDirectory, instance.Id, Http, Report, token);
+            await ExperiencesService.ApplyPendingPatchesAsync(DataDirectory, instance.Id, Http, Report, token, ExperiencesService.BundledPatchesDirectory);
 
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(token);

@@ -155,15 +155,23 @@ public static class ExperiencesService
         return exp != null && ModpackCoreSync.Sync(Path.Combine(InstanceDirectory(baseDirectory, experienceId), "minecraft"), exp.McVersion);
     }
 
-    /// <summary>Applies every pack patch (update-*.json in &lt;pack root&gt;/patches or the extracted archive) the instance has not
-    /// had yet, oldest first, before the game starts. A failing patch stops the run and is retried at the next launch.</summary>
-    public static async Task<int> ApplyPendingPatchesAsync(string baseDirectory, string experienceId, HttpClient? http, Action<string>? status, CancellationToken token)
+    /// <summary>The pack patches shipped with the launcher (tools/modpack-manager/patches, copied next to the exe): every launcher
+    /// update brings the newest ones to installed packs, as it brings the newest Lads Core.</summary>
+    public static string BundledPatchesDirectory => Path.Combine(AppContext.BaseDirectory, "modpack-patches");
+
+    /// <summary>Applies every pack patch (update-*.json in &lt;pack root&gt;/patches, the extracted archive or
+    /// <paramref name="bundledPatchesDirectory"/>) the instance has not had yet, oldest first, before the game starts. An instance
+    /// without a patch record first adopts the patches it already reflects (<see cref="ModpackPatchEngine.AdoptReflectedPatches"/>).
+    /// A failing patch stops the run and is retried at the next launch. Returns how many patches were applied.</summary>
+    public static async Task<int> ApplyPendingPatchesAsync(string baseDirectory, string experienceId, HttpClient? http, Action<string>? status, CancellationToken token,
+        string? bundledPatchesDirectory = null)
     {
         var instDir = InstanceDirectory(baseDirectory, experienceId);
-        var pending = new[] { Path.Combine(PackRoot(baseDirectory, experienceId), "patches"), Path.Combine(PackSourceDirectory(baseDirectory, experienceId), "patches") }
+        var dirs = new[] { Path.Combine(PackRoot(baseDirectory, experienceId), "patches"), Path.Combine(PackSourceDirectory(baseDirectory, experienceId), "patches"), bundledPatchesDirectory };
+        var pending = ModpackPatchEngine.AdoptReflectedPatches(instDir, dirs.OfType<string>()
             .SelectMany(dir => ModpackPatchEngine.PendingPatches(dir, instDir, experienceId))
             .GroupBy(p => p.Version, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
-            .OrderBy(p => Version.TryParse(p.Version, out var v) ? v : new Version(0, 0)).ToList();
+            .OrderBy(p => Version.TryParse(p.Version, out var v) ? v : new Version(0, 0)).ToList());
         foreach (var patch in pending)
         {
             token.ThrowIfCancellationRequested();

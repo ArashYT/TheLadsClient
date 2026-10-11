@@ -57,6 +57,10 @@ try {
         }
     }
     if (-not (Test-Path -LiteralPath (Join-Path $publish "release-notes/$version.md"))) { throw 'Current release notes were not bundled.' }
+    # Zero SMP pack patches: installed packs only get them through the launcher (ExperiencesService.BundledPatchesDirectory).
+    foreach ($patch in Get-ChildItem -LiteralPath 'tools/modpack-manager/patches' -Filter 'update-*.json') {
+        if (-not (Test-Path -LiteralPath (Join-Path $publish "modpack-patches/$($patch.Name)"))) { throw "Missing modpack-patches/$($patch.Name)" }
+    }
     @{version=$version; commit=$commit; localChanges=($dirty.Count -gt 0); coreBuilt=(-not $SkipCoreBuild)} |
         ConvertTo-Json | Set-Content -LiteralPath (Join-Path $publish 'release-build.json')
     & dotnet tool restore
