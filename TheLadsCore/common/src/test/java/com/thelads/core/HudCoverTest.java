@@ -63,6 +63,19 @@ class HudCoverTest {
         assertFalse(HudCover.effectsCovered(640, 1, 0), "two frames later the tab list is gone");
     }
 
+    @Test
+    void debugTextAtItsOwnScaleIsMeasuredInGuiUnits() {
+        HudCover.frame();
+        HudCover.add(HudCover.TAB, 0, 0, 10, 10);
+        int mark = HudCover.mark();
+        // 26.x: the debug text at GUI scale 1 under a GUI scale of 2, a 1600 wide column end on an 800 wide GUI.
+        HudCover.debugColumn(List.of("abcdefghij"), false, 1600, s -> s.length() * 6);
+        HudCover.scaleSince(mark, 0.5, 0.5, 0, 0);
+        assertTrue(HudCover.covered(780, 1, 800, 3, true), "the right column's line ends at the GUI's right edge");
+        assertFalse(HudCover.covered(810, 1, 900, 3, true));
+        assertTrue(HudCover.covered(5, 5, 6, 6, false), "boxes before the mark are kept as they were");
+    }
+
     /** A widget of its own (no game state of its own, so other tests' widgets are not touched). */
     private static final class Probe extends HudElement {
         Probe() {
