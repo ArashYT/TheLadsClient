@@ -84,6 +84,21 @@ public class AuthenticationTests
     }
 
     [Fact]
+    public void PlainTextTokensFromOldLaunchersAreScrubbedOnLoad()
+    {
+        using var dir = new TestDirectory();
+        var paths = new PathService(dir.Path);
+        paths.EnsureDirectories();
+        File.WriteAllText(paths.AccountsFile, """[{"uuid":"b50ad385-829d-3141-a216-7e7d7539ba7f","username":"Notch","accessToken":"OLD-LIVE-TOKEN","type":"microsoft","selected":true}]""");
+
+        var service = new AuthService(paths);
+
+        Assert.Equal("Notch", service.ActiveAccount);
+        Assert.DoesNotContain("OLD-LIVE-TOKEN", File.ReadAllText(paths.AccountsFile));
+        Assert.DoesNotContain("accessToken", File.ReadAllText(paths.AccountsFile));
+    }
+
+    [Fact]
     public async Task DefaultAccountPersistsAndRemovalSelectsExactlyOneRemainingAccount()
     {
         using var dir = new TestDirectory();

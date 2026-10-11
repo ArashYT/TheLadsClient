@@ -20,21 +20,28 @@ var result = Path.Combine(root, "result.json");
 try
 {
     File.AppendAllText(Path.Combine(root, "probe.log"), $"Started {version}, PID {Environment.ProcessId}\n");
-    bool corrupt = Environment.GetEnvironmentVariable("LADS_UPDATE_PROBE_CORRUPT") == "1";
-    var manager = new UpdateManager(Path.Combine(root, corrupt ? "bad-feed" : "feed"));
+    // LADS_UPDATE_PROBE_CORRUPT: "1" = a damaged package, "unsigned" = signed with a key other than the probe's.
+    string? corrupt = Environment.GetEnvironmentVariable("LADS_UPDATE_PROBE_CORRUPT");
+    string feed = Path.Combine(root, corrupt == "1" ? "bad-feed" : "feed");
+    var manager = new UpdateManager(feed);
     if (!manager.IsInstalled) throw new InvalidOperationException("The probe is not packaged.");
-    if (corrupt)
+    VelopackUpdateBackend Backend() => new(manager, (_, name) => File.ReadAllBytesAsync(Path.Combine(feed, name)),
+        Environment.GetEnvironmentVariable("LADS_UPDATE_PROBE_KEY") ?? throw new InvalidOperationException("No probe key."));
+    if (corrupt != null)
     {
         var messages = new List<string>();
-        await new AutoUpdater(new VelopackUpdateBackend(manager)).PollAsync(() => false, messages.Add);
-        if (manager.UpdatePendingRestart != null || !messages.Any(message => message.Contains("failed; will retry")))
-            throw new InvalidOperationException("Corrupt package was not rejected.");
-        File.WriteAllText(Path.Combine(root, "corrupt-result.json"), JsonSerializer.Serialize(new { passed = true, version, messages }));
+        var backend = Backend();
+        await new AutoUpdater(backend).PollAsync(() => false, messages.Add);
+        if (backend.PendingVersion != null || !messages.Any(message => message.Contains("failed; will retry")))
+            throw new InvalidOperationException($"A {(corrupt == "1" ? "corrupt" : "wrongly signed")} package was not rejected.");
+        if (corrupt == "unsigned" && Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "..", "packages"), "*.nupkg").Any())
+            throw new InvalidOperationException("The wrongly signed package was left for a later install.");
+        File.WriteAllText(Path.Combine(root, $"corrupt-{corrupt}-result.json"), JsonSerializer.Serialize(new { passed = true, version, messages }));
         return;
     }
     if (version == "0.0.1")
     {
-        var updater = new AutoUpdater(new VelopackUpdateBackend(manager));
+        var updater = new AutoUpdater(Backend());
         // Use the actual coordinator, including deferred apply, then automatic restart.
         await updater.PollAsync(() => true, Log);
         if (manager.UpdatePendingRestart == null) throw new InvalidOperationException("Package was not downloaded.");

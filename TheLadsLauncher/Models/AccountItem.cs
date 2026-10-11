@@ -10,7 +10,8 @@ public class AccountItem
     [JsonPropertyName("username")]
     public string Username { get; set; } = "";
 
-    [JsonPropertyName("accessToken")]
+    // Never read from or written to disk: launchers before 1.2.1 saved live tokens here in plain text, and the next save drops them.
+    [JsonIgnore]
     public string AccessToken { get; set; } = "";
 
     [JsonPropertyName("type")]

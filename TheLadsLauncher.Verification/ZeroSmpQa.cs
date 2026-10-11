@@ -132,8 +132,8 @@ internal static class ZeroSmpQa
                 Say("Shaders on in the copy: " + shaderPack);
             }
             string scriptFile = Path.Combine(gameDir, ".lads-qa-script.txt");
-            if (script != null || scriptText != null)
-                File.WriteAllText(scriptFile, script != null ? File.ReadAllText(script) : string.Join('\n', scriptText!.Split(';', StringSplitOptions.TrimEntries)));
+            // Always a script file (empty = title only): with --no-world and no script the probe otherwise never registers (no BEGIN/TITLE, stop request ignored).
+            File.WriteAllText(scriptFile, script != null ? File.ReadAllText(script) : scriptText != null ? string.Join('\n', scriptText.Split(';', StringSplitOptions.TrimEntries)) : "");
             File.Delete(Path.Combine(gameDir, ".lads-qa-stop"));
 
             // Launcher caches shared machine-wide (assets, libraries, Forge, Java), seeded once from the owner's launcher (read-only source).
@@ -190,7 +190,7 @@ internal static class ZeroSmpQa
             // instead of the auto-world QA (both at once open worlds over each other).
             string? fastQuit = QaShared.Env("LADS_VERIFY_FASTQUIT");
             if (!noWorld && fastQuit == null) { flags.Add("-Dthelads.verifyAutoWorld=true"); flags.Add("-Dthelads.qaWorld=" + WorldName); }
-            if (script != null || scriptText != null) flags.Add("-Dthelads.qaScript=" + scriptFile);
+            if (fastQuit == null || script != null || scriptText != null) flags.Add("-Dthelads.qaScript=" + scriptFile);
             if (join != null) flags.Add("-Dthelads.qaJoin=true");
             if (fastQuit != null) flags.Add("-Dthelads.verifyFastQuit=" + fastQuit);
             if (fastQuit == "baseline") flags.Add("-Dlads.fastquit=false");
@@ -218,6 +218,7 @@ internal static class ZeroSmpQa
             slot = await QaShared.AcquireAsync(7, "Zero SMP", ct);
             var started = Stopwatch.StartNew();
             game.Start();
+            LaunchToken.Send(game);
             Say($"Started PID {game.Id}: {game.StartInfo.FileName}");
             QaWindowGuard.Watch(game, slot.Number);
 

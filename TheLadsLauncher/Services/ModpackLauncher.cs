@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -100,6 +101,7 @@ public static class ModpackLauncher
         process.EnableRaisingEvents = true;
         process.Exited += (_, _) => SyncLadsConfigFromInstance(instance.GameDirectory, dataDirectory);
         process.Start();
+        LaunchToken.Send(process);
         instance.LastPlayedUtc = DateTime.UtcNow;
         Modpacks.Save(instance);
         return process;
@@ -189,6 +191,7 @@ public static class ModpackLauncher
         process.StartInfo.CreateNoWindow = true;
         process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = dataDirectory;
         process.StartInfo.Environment["THELADS_DIR"] = instance.GameDirectory;
+        LaunchToken.Hide(process, instance.GameDirectory, session.AccessToken); // the caller sends it after Start
         try { VersionSwitch.Prepare(instance.GameDirectory, instance.Name); } // the in-game Switch Versions screen offers the Lads Client versions
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { status?.Invoke($"Could not write {VersionSwitch.VersionsFile}: {ex.Message}"); }
         try { AccountSwitch.Prepare(instance.GameDirectory); }
@@ -248,6 +251,28 @@ public static class ModpackLauncher
         }
     }
 
+    /// <summary>Installer jars run on players' PCs, so each is checked before it is kept: builds Lads ships (Zero SMP) against a
+    /// SHA-256 pinned here, any other build against the SHA-1 its maven publishes beside it.</summary>
+    public static readonly Dictionary<string, string> PinnedInstallerSha256 = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["forge-1.20.1-47.4.10-installer.jar"] = "1912760b4cb6b803d8a826de603c9076b1da71ec2765e9a1f8c1ca78f65278e3",
+    };
+
+    private static string Sha256(byte[] bytes) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
+
+    public static async Task VerifyInstallerAsync(HttpClient http, string url, byte[] bytes, CancellationToken token)
+    {
+        string name = Path.GetFileName(new Uri(url).AbsolutePath);
+        if (PinnedInstallerSha256.TryGetValue(name, out var pinned))
+        {
+            if (Sha256(bytes) != pinned) throw new InvalidDataException($"{name} does not match its pinned SHA-256, so it was not run.");
+            return;
+        }
+        string published = (await http.GetStringAsync(url + ".sha1", token)).Trim().Split(' ')[0].ToLowerInvariant();
+        if (Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(bytes)).ToLowerInvariant() != published)
+            throw new InvalidDataException($"{name} does not match the checksum its maven publishes, so it was not run.");
+    }
+
     /// <summary>
     /// Forge and NeoForge from their official installer jar (kept in the cache). Installers with processors (Forge 1.13+,
     /// NeoForge) run headless with --installClient into the cache; older Forge installers carry the version manifest and the
@@ -260,6 +285,8 @@ public static class ModpackLauncher
         var installers = Path.Combine(cache, "installers");
         Directory.CreateDirectory(installers);
         var jar = Path.Combine(installers, Path.GetFileName(new Uri(urls[0]).AbsolutePath));
+        if (File.Exists(jar) && PinnedInstallerSha256.TryGetValue(Path.GetFileName(jar), out var pinned) && Sha256(await File.ReadAllBytesAsync(jar, token)) != pinned)
+            File.Delete(jar); // a cached copy that is not the pinned build is fetched again
         if (!File.Exists(jar))
         {
             byte[]? bytes = null;
@@ -269,6 +296,7 @@ public static class ModpackLauncher
                 if (response.StatusCode == HttpStatusCode.NotFound) continue;
                 response.EnsureSuccessStatusCode();
                 bytes = await response.Content.ReadAsByteArrayAsync(token);
+                await VerifyInstallerAsync(http, url, bytes, token);
                 break;
             }
             if (bytes == null) throw new InvalidOperationException($"The loader installer was not found at {urls[0]}. This loader version may not exist.");

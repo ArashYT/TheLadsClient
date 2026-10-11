@@ -35,6 +35,22 @@ try {
     $env:LADS_UPDATE_PROBE_ROOT = $probeRoot
     $exe = Get-ChildItem -LiteralPath $portable -Recurse -Filter UpdateProbe.exe | Select-Object -First 1
     if (-not $exe) { throw 'Packaged probe executable missing.' }
+    # Sign 0.0.2 as tools/Sign-Release.ps1 does, with a throwaway key whose public half the probe trusts.
+    $probeKey = [Security.Cryptography.ECDsa]::Create([Security.Cryptography.ECCurve+NamedCurves]::nistP256)
+    $fullPackage = Get-ChildItem -LiteralPath (Join-Path $probeRoot 'feed') -Filter '*-0.0.2-full.nupkg' | Select-Object -First 1
+    $sha = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($fullPackage.FullName)))
+    $manifest = [Text.Encoding]::UTF8.GetBytes((ConvertTo-Json -Compress ([ordered]@{ version = '0.0.2'; package = $fullPackage.Name; sha256 = $sha })))
+    [IO.File]::WriteAllBytes((Join-Path $probeRoot 'feed/lads-update.json'), $manifest)
+    [IO.File]::WriteAllBytes((Join-Path $probeRoot 'feed/lads-update.json.sig'), $probeKey.SignData($manifest, [Security.Cryptography.HashAlgorithmName]::SHA256))
+    $oldKey = $env:LADS_UPDATE_PROBE_KEY
+    # A release signed by someone else's key (here: the probe trusts a different one) must be refused and its package removed.
+    $env:LADS_UPDATE_PROBE_KEY = [Convert]::ToBase64String([Security.Cryptography.ECDsa]::Create([Security.Cryptography.ECCurve+NamedCurves]::nistP256).ExportSubjectPublicKeyInfo())
+    $env:LADS_UPDATE_PROBE_CORRUPT = 'unsigned'
+    $unsignedProcess = Start-Process -FilePath $exe.FullName -WorkingDirectory $exe.DirectoryName -WindowStyle Hidden -PassThru
+    if (-not $unsignedProcess.WaitForExit(30000)) { throw "Unsigned-package probe timed out: $probeRoot" }
+    $unsignedResult = Join-Path $probeRoot 'corrupt-unsigned-result.json'
+    if (-not (Test-Path -LiteralPath $unsignedResult) -or -not (Get-Content -LiteralPath $unsignedResult -Raw | ConvertFrom-Json).passed) { throw "Wrongly signed package was not safely rejected: $probeRoot" }
+    $env:LADS_UPDATE_PROBE_KEY = [Convert]::ToBase64String($probeKey.ExportSubjectPublicKeyInfo())
     $badFeed = Join-Path $probeRoot 'bad-feed'
     Copy-Item -LiteralPath (Join-Path $probeRoot 'feed') -Destination $badFeed -Recurse
     $badPackage = Get-ChildItem -LiteralPath $badFeed -Filter '*-full.nupkg' | Select-Object -First 1
@@ -43,7 +59,7 @@ try {
     $env:LADS_UPDATE_PROBE_CORRUPT = '1'
     $badProcess = Start-Process -FilePath $exe.FullName -WorkingDirectory $exe.DirectoryName -WindowStyle Hidden -PassThru
     if (-not $badProcess.WaitForExit(30000)) { throw "Corrupt-package probe timed out: $probeRoot" }
-    $badResult = Join-Path $probeRoot 'corrupt-result.json'
+    $badResult = Join-Path $probeRoot 'corrupt-1-result.json'
     if (-not (Test-Path -LiteralPath $badResult) -or -not (Get-Content -LiteralPath $badResult -Raw | ConvertFrom-Json).passed) { throw "Corrupt package was not safely rejected: $probeRoot" }
     $env:LADS_UPDATE_PROBE_CORRUPT = $null
     $process = Start-Process -FilePath $exe.FullName -WorkingDirectory $exe.DirectoryName -WindowStyle Hidden -PassThru
@@ -54,9 +70,10 @@ try {
     $result = Get-Content -LiteralPath $resultFile -Raw | ConvertFrom-Json
     if (-not $result.passed -or $result.pid -eq $process.Id) { throw "Automatic update failed: $(Get-Content -LiteralPath $resultFile -Raw)" }
     if (-not (Test-Path -LiteralPath (Join-Path $probeRoot 'deferred.txt'))) { throw 'Idle deferral was not exercised.' }
-    Write-Output "PASS: corrupt-package rejection, real full-package replacement, deferred install, automatic restart, file removal, preserved user data, and offline notes. Evidence: $resultFile"
+    Write-Output "PASS: corrupt-package rejection, wrongly signed package rejection, real full-package replacement, deferred install, automatic restart, file removal, preserved user data, and offline notes. Evidence: $resultFile"
 } finally {
     $env:LADS_UPDATE_PROBE_ROOT = $oldProbeRoot
     $env:LADS_UPDATE_PROBE_CORRUPT = $oldCorrupt
+    $env:LADS_UPDATE_PROBE_KEY = $oldKey
     Pop-Location
 }
