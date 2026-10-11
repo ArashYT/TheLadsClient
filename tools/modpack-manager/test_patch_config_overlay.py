@@ -12,7 +12,7 @@ HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("patch_config_overlay", HERE / "patch-config-overlay.py")
 pco = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pco)
-FIXTURES = HERE.parent.parent / "TheLadsLauncher.Tests" / "Fixtures" / "ZeroSmp"
+FIXTURES = HERE.parent.parent / "TheLadsLauncher.Tests" / "Fixtures" / "ZeroSmp" / "owner" / "config"
 PATCH = HERE / "patches" / "update-1.1.2.json"
 
 
@@ -38,6 +38,16 @@ class OverlayTest(unittest.TestCase):
         self.assertIn("\t\tnumberOfThreads = 2", dh)
         self.assertIn("mixin.perf.dynamic_resources=true", (out / "modernfix-mixins.properties").read_text().splitlines())
         self.assertIn('rendererMode = "DISABLED"', (self.tmp / "inst" / "minecraft" / "config" / "DistantHorizons.toml").read_text())
+
+    def test_version4_file_gets_the_missing_key_inside_its_table(self):
+        shutil.copy(HERE / "baseline-1.0.0" / "config" / "DistantHorizons.toml", self.tmp / "inst" / "minecraft" / "config" / "DistantHorizons.toml")
+        out = self.tmp / "out"
+        pco.main([str(self.tmp / "inst"), str(out), str(PATCH)])
+        dh = [l.strip() for l in (out / "DistantHorizons.toml").read_text().splitlines()]
+        self.assertEqual(dh[0], "_version = 5")
+        plan = dh.index('generatorPlan = "SURFACE_ONLY"')
+        table = [l for l in dh[:plan] if l.startswith("[")][-1]
+        self.assertEqual(table, "[common.worldGenerator]")
 
     def test_skip_and_json_paths(self):
         out = self.tmp / "out"

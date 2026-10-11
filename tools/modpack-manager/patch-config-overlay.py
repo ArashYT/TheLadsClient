@@ -4,7 +4,7 @@
   python -I tools/modpack-manager/patch-config-overlay.py <instance dir> <out dir> <update-x.json> [...] [--skip config/<file>]
 
 Pass <out dir> to the QA harness as LADS_VERIFY_CONFIG_FROM. The edits follow ModpackPatchEngine.ApplyConfigPatch (first line with the
-bare key gets the value, a missing key is appended; json "set" paths split on dots); --skip leaves a file as the instance has it.
+key gets the value; a TOML "table.key" only inside [table], a missing one at the end of its table; json "set" paths split on dots); --skip leaves a file as the instance has it.
 """
 import argparse
 import json
@@ -34,13 +34,27 @@ def apply(config, patch, skip=()):
         elif c.get("keyValues") is not None:
             lines = f.read_text(encoding="utf-8").splitlines() if f.exists() else []
             for key, value in c["keyValues"].items():
-                pattern = re.compile(r"^(\s*" + re.escape(key) + r"\s*[=:]\s*)")
-                for i, line in enumerate(lines):
-                    if m := pattern.match(line):
+                start, end, name = 0, len(lines), key
+                table = key.rpartition(".")[0] if c.get("format") == "toml" else ""
+                if table:  # "table.path.key": only inside [table.path], else a new table at the end
+                    name, header = key.rpartition(".")[2], f"[{table}]"
+                    start = next((i + 1 for i, l in enumerate(lines) if l.strip() == header), None)
+                    if start is None:
+                        lines += [header, f"{name} = {value}"]
+                        continue
+                    end = next((i for i in range(start, len(lines)) if lines[i].lstrip().startswith("[")), len(lines))
+                pattern = re.compile(r"^(\s*" + re.escape(name) + r"\s*[=:]\s*)")
+                for i in range(start, end):
+                    if m := pattern.match(lines[i]):
                         lines[i] = m.group(1) + value
                         break
                 else:
-                    lines.append(f"{key}={value}")
+                    while end > start and not lines[end - 1].strip():
+                        end -= 1
+                    if table:
+                        lines.insert(end, re.match(r"\s*", lines[end - 1] if end else "").group() + f"{name} = {value}")
+                    else:
+                        lines.append(f"{key}={value}")
             f.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

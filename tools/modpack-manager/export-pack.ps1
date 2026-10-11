@@ -50,8 +50,21 @@ if (-not $PackVersion) {
     $PackVersion = if ($patches.Count) { ($patches | Sort-Object { Version-Of $_.Version } | Select-Object -Last 1).Version } else { "1.0.0" }
 }
 
-# Why a patch's config is not in the instance yet ($null when it is), checked the way ModpackPatchEngine applies it (first line with
-# the bare key; dotted json paths). A key a later patch sets again is checked there. Mods are not checked: the archive carries the instance's jars, which are the pack's. Keybinds
+# A key's value the way ModpackPatchEngine finds it: a TOML "table.path.key" only inside [table.path], any other key on its first line.
+function Key-Value([string[]]$lines, [string]$key, [bool]$toml) {
+    $from = 0; $to = $lines.Count; $name = $key; $dot = $key.LastIndexOf('.')
+    if ($toml -and $dot -gt 0) {
+        $header = "[" + $key.Substring(0, $dot) + "]"; $name = $key.Substring($dot + 1)
+        $from = [array]::IndexOf(@($lines | ForEach-Object { $_.Trim() }), $header) + 1
+        if ($from -eq 0) { return $null }
+        for ($to = $from; $to -lt $lines.Count -and -not $lines[$to].TrimStart().StartsWith('['); $to++) { }
+    }
+    for ($i = $from; $i -lt $to; $i++) { if ($lines[$i] -match "^\s*$([regex]::Escape($name))\s*[=:]\s*(.*)$") { return $matches[1].Trim() } }
+    return $null
+}
+
+# Why a patch's config is not in the instance yet ($null when it is), checked the way ModpackPatchEngine applies it (Key-Value;
+# dotted json paths). A key a later patch sets again is checked there. Mods are not checked: the archive carries the instance's jars, which are the pack's. Keybinds
 # neither: options.txt is never exported.
 function Patch-Missing($patch, $lastSetter) {
     foreach ($c in @($patch.configPatches)) {
@@ -59,11 +72,10 @@ function Patch-Missing($patch, $lastSetter) {
         $file = Join-Path $gameDir $c.file
         if (!(Test-Path -LiteralPath $file)) { return "$($c.file) does not exist" }
         if ($c.keyValues) {
-            $lines = Get-Content -LiteralPath $file
+            $lines = @(Get-Content -LiteralPath $file)
             foreach ($kv in $c.keyValues.PSObject.Properties) {
                 if ($lastSetter["$($c.file)|$($kv.Name)"] -ne $patch.version) { continue }
-                $line = $lines | Where-Object { $_ -match "^\s*$([regex]::Escape($kv.Name))\s*[=:]" } | Select-Object -First 1
-                $value = if ($line) { ($line -replace "^\s*$([regex]::Escape($kv.Name))\s*[=:]\s*", "").Trim() }
+                $value = Key-Value $lines $kv.Name ($c.format -eq "toml")
                 if ($value -ne $kv.Value) { return "$($c.file): $($kv.Name) is '$value', the patch sets '$($kv.Value)'" }
             }
         }
