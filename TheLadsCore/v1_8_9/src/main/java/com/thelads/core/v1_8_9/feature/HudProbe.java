@@ -251,6 +251,8 @@ public final class HudProbe {
     }
 
     private static boolean gearOpened(Minecraft mc) throws Exception {
+        // Done is top right, under the previews of the shots just taken (they took the click in a fullscreen window).
+        if (CoreProbe.previewsShowing()) return retry(10);
         check(mc.currentScreen instanceof LadsSettingsScreen189 && ((LadsSettingsScreen189) mc.currentScreen).parent() == editor,
             "a click on CPS's gear opens the Lads menu over the editor");
         LadsSettingsScreen settings = ((LadsSettingsScreen189) mc.currentScreen).ui();

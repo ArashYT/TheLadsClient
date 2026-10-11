@@ -288,6 +288,9 @@ public final class CoreProbe {
     private static boolean titleSettling, titleShot;
     private static final long QUIET_NANOS = 12_000_000_000L;
 
+    /** QA: the last shots' previews (Essential's, top right; they grow with the window) may still cover the top-right buttons. */
+    static boolean previewsShowing() { return System.nanoTime() - lastShot < QUIET_NANOS; }
+
     /**
      * QA only: the sandbox's offline account makes Essential open "Account authentication failed" over the title screen, and that
      * popup takes every click. False when Essential is not loaded or its overlay cannot be read.
