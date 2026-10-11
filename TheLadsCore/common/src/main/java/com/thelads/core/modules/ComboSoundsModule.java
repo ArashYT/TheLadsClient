@@ -58,6 +58,11 @@ public class ComboSoundsModule extends Module {
         return combo;
     }
 
+    /** The hits in the combo now (0: none yet, or it ended on your damage). */
+    public int combo() {
+        return combo;
+    }
+
     public SoundOption slot(int step) {
         return steps[Math.max(1, Math.min(steps.length, step)) - 1];
     }

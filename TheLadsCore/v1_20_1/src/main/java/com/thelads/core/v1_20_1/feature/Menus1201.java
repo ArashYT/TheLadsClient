@@ -20,6 +20,7 @@ public final class Menus1201 {
         UiQa1201.register();
         KillBannerQa1201.register();
         HudLayoutQa1201.register();
+        SoundsQa1201.register();
         LOGGER.info("Lads menus (title, pause, loading, settings) registered for 1.20.1");
     }
 }

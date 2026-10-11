@@ -361,6 +361,8 @@ public final class LadsSettingsScreen {
     /** Kill Banner settings as pictures: skin tiles with their one-kill art, their variants, Custom, Randomize and triggers. Returns its height. */
     /** The Kill Banner picker's open sections; the skins by default, the customising closed (kept for the session). */
     private static final java.util.Set<String> kbOpen = new java.util.HashSet<>(java.util.List.of("skins"));
+    /** QA: the Kill Banner picker with only these sections open ("skins", "custombanner", "customsound", "randomize", "kinds"). */
+    public static void openKillBannerSections(String... keys) { kbOpen.clear(); kbOpen.addAll(java.util.List.of(keys)); }
 
     /** Kill Banner settings as pictures: skin tiles with their one-kill art, Custom, Randomize and triggers, each section a
      * dropdown. The chosen skin's variants are under the preview on the right. Returns its height. */
