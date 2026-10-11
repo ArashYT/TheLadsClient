@@ -49,7 +49,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private int ladsLayoutHeight;
     @Unique private Button ladsSettingsButton;
     @Unique private Button ladsSwitchButton;
-    @Unique private Button ladsFullscreenButton;
+    @Unique private CompactButton1201 ladsFullscreenButton;
     @Unique private Button ladsLanguageButton;
     @Unique private Button ladsReplaysButton;
     @Unique private Button ladsFriendsButton;
@@ -101,8 +101,8 @@ public abstract class TitleScreenMixin extends Screen {
         ladsSwitchButton.setTabOrderGroup(200);
 
         // Header controls (top right)
-        ladsFullscreenButton = addRenderableWidget(new CompactButton1201(width - 26, 6, 20, 20, Component.translatable("options.fullscreen"),
-            () -> minecraft.options.fullscreen().get() ? "windowed" : "fullscreen", CompactButton1201::toggleFullscreen));
+        ladsFullscreenButton = addRenderableWidget(CompactButton1201.fullscreen());
+        ladsFullscreenButton.placeFullscreen(font, width);
         ladsFullscreenButton.setTabOrderGroup(201);
 
         ladsLanguageButton = addRenderableWidget(new CompactButton1201(width - 50, 6, 20, 20, Component.translatable("options.language"),
@@ -208,8 +208,8 @@ public abstract class TitleScreenMixin extends Screen {
         ladsLayoutWidth = targetW;
         ladsLayoutHeight = targetH;
 
-        ((CompactButton1201) ladsFullscreenButton).setBounds(targetW - 26, 6, 20, 20);
-        ((CompactButton1201) ladsLanguageButton).setBounds(targetW - 50, 6, 20, 20);
+        int fullscreenWidth = ladsFullscreenButton.placeFullscreen(font, targetW);
+        ((CompactButton1201) ladsLanguageButton).setBounds(TitleScreenTheme.languageX(targetW, fullscreenWidth), 6, 20, 20);
 
         boolean primaryAssigned = false;
         for (AbstractWidget widget : ladsTitleWidgets) removeWidget(widget);

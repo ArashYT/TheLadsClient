@@ -20,7 +20,7 @@ public abstract class PauseScreenMixin extends Screen {
     @Unique private final java.util.List<net.minecraft.client.gui.components.AbstractWidget> ladsExtras=new java.util.ArrayList<>();
     @Unique private final java.util.List<net.minecraft.client.gui.components.AbstractWidget> ladsEssentialPending = new java.util.ArrayList<>();
     @Unique private Button ladsExtrasButton;
-    @Unique private Button ladsFullscreenButton;
+    @Unique private com.thelads.core.v26_2.gui.CompactButton26 ladsFullscreenButton;
     @Unique private Button ladsHostOrInviteButton;
     @Unique private long ladsInitNanos;
     @Unique private boolean ladsLayoutReady;
@@ -146,8 +146,7 @@ public abstract class PauseScreenMixin extends Screen {
         ladsLayoutReady=false;ladsExtras.clear();ladsExtrasButton=null;ladsFullscreenButton=null;
         ladsHostOrInviteButton=null;ladsEssentialPending.clear();ladsInitNanos=System.nanoTime();
         if(((PauseScreen)(Object)this).showsPauseMenu())
-            ladsFullscreenButton=addRenderableWidget(new com.thelads.core.v26_2.gui.CompactButton26(width-26,6,20,20,Component.translatable("options.fullscreen"),
-                ()->minecraft.options.fullscreen().get()?"windowed":"fullscreen",com.thelads.core.v26_2.gui.CompactButton26::toggleFullscreen));
+            {ladsFullscreenButton=addRenderableWidget(com.thelads.core.v26_2.gui.CompactButton26.fullscreen());ladsFullscreenButton.placeFullscreen(font,width);}
         for(var child:java.util.List.copyOf(children()))if(child instanceof net.minecraft.client.gui.components.AbstractWidget widget){
             String text=widget.getMessage().getString();
             if(widget instanceof net.minecraft.client.gui.components.StringWidget){removeWidget(widget);continue;}

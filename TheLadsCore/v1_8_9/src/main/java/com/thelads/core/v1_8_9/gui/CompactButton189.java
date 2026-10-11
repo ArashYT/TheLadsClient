@@ -15,6 +15,8 @@ import net.minecraft.client.renderer.GlStateManager;
 public final class CompactButton189 extends GuiButton {
     private final Supplier<String> icon;
     private final Runnable press;
+    /** Optional: the label follows this each frame (the fullscreen toggle's "Fullscreen" / "Windowed"). */
+    Supplier<String> dynamicLabel;
 
     public CompactButton189(int id, int x, int y, int width, int height, String label, Supplier<String> icon, Runnable press) {
         super(id, x, y, width, height, label);
@@ -32,6 +34,7 @@ public final class CompactButton189 extends GuiButton {
     /** Drawn at {@code scale} screen pixels per GUI pixel (LadsTitleScreen189's layout scale): icon and label grow with the box. */
     public void drawButton(Minecraft mc, int mouseX, int mouseY, float scale) {
         if (!visible) return;
+        if (dynamicLabel != null) displayString = dynamicLabel.get();
         hovered = mouseX >= xPosition && mouseY >= yPosition && mouseX < xPosition + width && mouseY < yPosition + height;
         int x = Math.round(xPosition / scale), y = Math.round(yPosition / scale);
         int w = Math.round((xPosition + width) / scale) - x, h = Math.round((yPosition + height) / scale) - y;
