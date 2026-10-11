@@ -24,7 +24,9 @@ import org.slf4j.LoggerFactory;
  */
 public final class HudCoverQa {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private static final List<String> OURS = List.of("Day", "CPS", "Memory", "FPS");
+    private static final List<String> OURS = new ArrayList<>(List.of("Day", "CPS", "Memory", "FPS"));
+    /** Xaero's map (Zero SMP, 26.3 when it is there): placed under the tab list too, beside Day. */
+    private static boolean minimap;
     private static int step = -1, wait, passed, pass;
     private static final List<String> FAILURES = new ArrayList<>();
     private static final Map<String, int[]> POSITIONS_WERE = new HashMap<>();
@@ -57,25 +59,25 @@ public final class HudCoverQa {
                     if (pass == 0) afterFrame("placing the widgets", HudCoverQa::place);
                     wait = 20;
                 }
-                case 1 -> { check("nothing open, HUD FPS cap " + cap, Set.of()); wait = 10; }
+                case 1 -> { check("nothing open, HUD FPS cap " + cap, Set.of(), true); wait = 10; }
                 case 2 -> shot(d, "cover-" + pass + "1-closed-" + cap);
                 // The first Lads HUD frame after the key: the tab list covers Day at once (a capped HUD is rebuilt for it).
-                case 3 -> { d.tab(true); check("tab list open, first frame, cap " + cap, Set.of("Day")); wait = 10; }
-                case 4 -> { check("tab list open, cap " + cap, Set.of("Day")); wait = 5; }
+                case 3 -> { d.tab(true); check("tab list open, first frame, cap " + cap, underTab(), true); wait = 10; }
+                case 4 -> { check("tab list open, cap " + cap, underTab(), true); wait = 5; }
                 case 5 -> shot(d, "cover-" + pass + "2-tab-" + cap);
-                case 6 -> { d.tab(false); check("tab list closed, first frame, cap " + cap, Set.of()); wait = 10; }
+                case 6 -> { d.tab(false); check("tab list closed, first frame, cap " + cap, Set.of(), true); wait = 10; }
                 case 7 -> {
                     module("BetterF3", true);
                     option("BetterF3", "Hide Lads HUD", false);
                     d.debug(true);
                     wait = 50; // Better F3's lines slide in
                 }
-                case 8 -> { check("F3 (Better F3, Hide Lads HUD off), cap " + cap, Set.of("CPS", "Memory")); wait = 5; }
+                case 8 -> { check("F3 (Better F3, Hide Lads HUD off), cap " + cap, Set.of("CPS", "Memory"), false); wait = 5; }
                 case 9 -> shot(d, "cover-" + pass + "3-f3-betterf3-" + cap);
                 case 10 -> { module("BetterF3", false); wait = 10; }
-                case 11 -> { check("F3 (the game's own text), cap " + cap, Set.of("CPS", "Memory")); wait = 5; }
+                case 11 -> { check("F3 (the game's own text), cap " + cap, Set.of("CPS", "Memory"), false); wait = 5; }
                 case 12 -> shot(d, "cover-" + pass + "4-f3-plain-" + cap);
-                case 13 -> { d.debug(false); check("F3 closed, first frame, cap " + cap, Set.of()); wait = 10; }
+                case 13 -> { d.debug(false); check("F3 closed, first frame, cap " + cap, Set.of(), true); wait = 10; }
                 case 14 -> {
                     module("BetterF3", true);
                     option("BetterF3", "Hide Lads HUD", true);
@@ -85,7 +87,7 @@ public final class HudCoverQa {
                 case 15 -> shot(d, "cover-" + pass + "5-f3-hide-lads-hud-" + cap);
                 case 16 -> {
                     d.debug(false);
-                    check("F3 closed after Hide Lads HUD, first frame, cap " + cap, Set.of());
+                    check("F3 closed after Hide Lads HUD, first frame, cap " + cap, Set.of(), true);
                     wait = 10;
                     if (pass == 0) { pass = 1; step = 0; }
                 }
@@ -127,6 +129,8 @@ public final class HudCoverQa {
         capWas = settings.isHudFpsCapEnabled();
         limitWas = settings.getHudFpsLimit();
         hideWas = ModuleManager.getInstance().getModule("BetterF3").getOption("Hide Lads HUD") instanceof BoolOption hide && hide.get();
+        minimap = HudManager.getInstance().getElements().stream().anyMatch(e -> "Minimap".equals(e.getModuleName()) && e.isAvailable());
+        if (minimap && !OURS.contains("Minimap")) OURS.add("Minimap");
         // Only the widgets of the sequence, so nothing else sits under the tab list or F3 by chance.
         for (HudElement element : HudManager.getInstance().getElements()) {
             Module module = element.getModuleName() == null ? null : ModuleManager.getInstance().getModule(element.getModuleName());
@@ -159,27 +163,34 @@ public final class HudCoverQa {
     private static void place(LadsGraphics g) {
         HudSettings settings = HudSettings.getInstance();
         int width = g.getScaledWidth(), height = g.getScaledHeight();
-        settings.setPosition("Day", width / 2 - 20, 12);
+        settings.setPosition("Day", width / 2 - 60, 12);
+        if (minimap) settings.setPosition("Minimap", width / 2 + 5, 12);
         settings.setPosition("CPS", 6, 40);
         settings.setPosition("Memory", width - 70, 40);
         settings.setPosition("FPS", width / 2 - 25, height / 2 + 20);
         LOGGER.info("Lads hud layout cover widgets placed at {}x{}: {}", width, height, settings.getPositions().keySet());
     }
 
-    /** On the next Lads HUD frame: exactly these of the sequence's widgets are left out. */
-    private static void check(String label, Set<String> covered) {
+    private static Set<String> underTab() {
+        return minimap ? Set.of("Day", "Minimap") : Set.of("Day");
+    }
+
+    /** On the next Lads HUD frame: exactly these of the sequence's widgets are left out (the map's state only where {@code mapKnown}). */
+    private static void check(String label, Set<String> covered, boolean mapKnown) {
         HudManager.afterRender = g -> {
             try {
                 var hud = HudManager.getInstance();
                 Set<String> now = new java.util.TreeSet<>(hud.coveredHuds());
                 now.retainAll(OURS);
+                Set<String> compared = new java.util.TreeSet<>(now);
+                if (!mapKnown) compared.remove("Minimap");
                 StringBuilder boxes = new StringBuilder();
                 for (int[] box : HudCover.boxes())
                     boxes.append(box[0] == HudCover.TAB ? "tab" : "f3").append('[').append(box[1]).append(',').append(box[2]).append(',').append(box[3]).append(',').append(box[4]).append("] ");
                 StringBuilder at = new StringBuilder();
                 for (String name : OURS) at.append(name).append('=').append(hud.lastBounds(name)).append(' ');
                 LOGGER.info("Lads hud cover {}: covered {} (HUD builds {}), widgets {}, boxes {}", label, now, HudFrameCap.builds, at.toString().trim(), boxes.toString().trim());
-                expect(label, "covered widgets are " + covered, now.equals(covered), "covered " + now);
+                expect(label, "covered widgets are " + covered + (mapKnown ? "" : " (the map not checked)"), compared.equals(covered), "covered " + now);
             } catch (RuntimeException failure) {
                 FAILURES.add(label + ": " + failure);
                 LOGGER.error("Lads hud layout check FAIL: cover: {}", label, failure);
