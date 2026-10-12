@@ -53,6 +53,8 @@ public final class CrosshairBackground {
     static final String FOLDER = "/assets/theladscore/crosshair_backgrounds/";
     /** Longest side a picture is kept at (your own image is scaled down to it). */
     static final int MAX_SIDE = 1024;
+    /** Your own picture: at most 20 MB (as an uploaded sound) and 100 megapixels. */
+    static final long MAX_FILE_BYTES = 20L << 20, MAX_PIXELS = 100_000_000L;
     private static final Set<String> UNREADABLE = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
     /** The Choose image button's state while the dialog is open or after a bad pick; the picked copy waits for the next frame. */
     private static volatile String status = "", picked;
@@ -154,17 +156,40 @@ public final class CrosshairBackground {
      * Null (and logged) when it cannot be read; the versions keep only the last one they uploaded.
      */
     public static Picture read(String source) {
-        try (InputStream in = source.startsWith("/assets/") ? CrosshairBackground.class.getResourceAsStream(source) : Files.newInputStream(new File(source).toPath())) {
+        boolean resource = source.startsWith("/assets/");
+        try (InputStream in = resource ? CrosshairBackground.class.getResourceAsStream(source) : Files.newInputStream(new File(source).toPath())) {
             if (in == null) throw new IOException("missing");
-            BufferedImage image = ImageIO.read(in);
-            if (image == null) throw new IOException("not a PNG or JPG picture");
-            image = fit(image);
+            if (!resource && new File(source).length() > MAX_FILE_BYTES) throw new IOException("over 20 MB");
+            BufferedImage image = fit(decode(in));
             int w = image.getWidth(), h = image.getHeight();
             return new Picture(w, h, image.getRGB(0, 0, w, h, null, 0, w));
-        } catch (Exception | LinkageError failure) {
+        } catch (Exception | LinkageError | OutOfMemoryError failure) { // a huge picture must not take the game down
             LOG.warn("Crosshair background {} unavailable: {}", source, failure.toString());
             UNREADABLE.add(source);
             return null;
+        }
+    }
+
+    /**
+     * Decodes a PNG or JPG, refusing more than {@link #MAX_PIXELS} and reading big ones with every n-th pixel (n so that the
+     * decoded side stays near 2 x {@link #MAX_SIDE}), so a photo never needs its full size in memory.
+     */
+    private static BufferedImage decode(InputStream in) throws IOException {
+        try (javax.imageio.stream.ImageInputStream stream = ImageIO.createImageInputStream(in)) {
+            java.util.Iterator<javax.imageio.ImageReader> readers = stream == null ? null : ImageIO.getImageReaders(stream);
+            if (readers == null || !readers.hasNext()) throw new IOException("not a PNG or JPG picture");
+            javax.imageio.ImageReader reader = readers.next();
+            try {
+                reader.setInput(stream, true, true);
+                long w = reader.getWidth(0), h = reader.getHeight(0);
+                if (w <= 0 || h <= 0 || w * h > MAX_PIXELS) throw new IOException("picture too large (" + w + "x" + h + ")");
+                javax.imageio.ImageReadParam param = reader.getDefaultReadParam();
+                int every = (int) Math.max(1, Math.max(w, h) / (2L * MAX_SIDE));
+                param.setSourceSubsampling(every, every, 0, 0);
+                return reader.read(0, param);
+            } finally {
+                reader.dispose();
+            }
         }
     }
 
@@ -188,7 +213,10 @@ public final class CrosshairBackground {
     // ---- Your Image ----
 
     /** Where a chosen picture is kept: a scaled copy in the shared Lads folder, so moving the original does not lose it. */
-    public static File imageFile(String name) { return ClientPaths.getSharedDir().resolve("backgrounds").resolve(name).toFile(); }
+    public static File imageFile(String name) {
+        // Only a file name, so a hand-edited config cannot point the reads (or the delete in adopt) outside the folder.
+        return ClientPaths.getSharedDir().resolve("backgrounds").resolve(new File(name).getName()).toFile();
+    }
 
     /** The Choose image button's label: the dialog's state or the last problem, else what to do. */
     public static String chooseLabel(CrosshairModule m) {
@@ -238,7 +266,7 @@ public final class CrosshairBackground {
         m.image.setValue(name);
         m.background.setIndex(IMAGE);
         ConfigManager.save();
-        try { if (!old.isEmpty() && !old.equals(name)) Files.deleteIfExists(imageFile(old).toPath()); }
+        try { if (old.matches("crosshair-[0-9]+[.]png") && !old.equals(name)) Files.deleteIfExists(imageFile(old).toPath()); } // only our own copies
         catch (IOException failure) { LOG.warn("Crosshair background: old copy {} stays", old, failure); }
     }
 }
