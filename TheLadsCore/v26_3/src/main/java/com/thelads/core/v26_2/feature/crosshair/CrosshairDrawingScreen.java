@@ -1,5 +1,6 @@
 package com.thelads.core.v26_2.feature.crosshair;
 
+import com.thelads.core.client.CrosshairBackground;
 import com.thelads.core.client.CrosshairDesign;
 import com.thelads.core.client.CrosshairDrawing;
 import com.thelads.core.config.ConfigManager;
@@ -53,8 +54,10 @@ public final class CrosshairDrawingScreen extends Screen {
         if(box!=null){
             graphics.text(font,"LIVE PREVIEW",box.left(),box.top()-14,0xffa9afbd);
             graphics.enableScissor(box.left(),box.top(),box.right(),box.bottom());
-            graphics.fill(box.left(),box.top(),box.right(),box.bottom(),CrosshairDesign.BACKDROP_DARK);
-            for(var tile:CrosshairDesign.checker(box.right()-box.left(),box.bottom()-box.top()))graphics.fill(box.left()+tile.left(),box.top()+tile.top(),box.left()+tile.right(),box.top()+tile.bottom(),CrosshairDesign.BACKDROP_LIGHT);
+            // The background chosen on the settings page (a biome, gradient, colour, your image or the live game).
+            CrosshairBackground.draw(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics,font){
+                @Override public boolean drawGameView(int x,int y,int w,int h){return com.thelads.core.v26_2.feature.HudEditorView.draw(graphics,x,y,w,h,false);}
+            },NativeCrosshair.module(),box.left(),box.top(),box.right()-box.left(),box.bottom()-box.top());
             NativeCrosshair.draw(graphics,(box.left()+box.right())/2,(box.top()+box.bottom())/2,NativeCrosshair.number("Gap"),1,false,draft);
             graphics.disableScissor();
             if(box.bottom()+30<=height-62){graphics.text(font,"Uses your color,",box.left(),box.bottom()+8,0xffa9afbd);graphics.text(font,"scale and rotation.",box.left(),box.bottom()+20,0xffa9afbd);}
@@ -74,6 +77,7 @@ public final class CrosshairDrawingScreen extends Screen {
     @Override public boolean mouseReleased(MouseButtonEvent event){if(painting){painting=false;return true;}return super.mouseReleased(event);}
     @Override public boolean keyPressed(KeyEvent event){if(event.key()==InputConstants.KEY_Z&&(event.modifiers()&InputConstants.MOD_CONTROL)!=0){undo();return true;}return super.keyPressed(event);}
     @Override public void onClose(){minecraft.setScreenAndShow(parent);}
+    @Override public void removed(){com.thelads.core.v26_2.feature.HudEditorView.release();super.removed();}
     CrosshairDrawing draftForProbe(){return draft.copy();}
     int gridXForProbe(){return gridX;}int gridYForProbe(){return gridY;}int cellForProbe(){return cell;}
 }

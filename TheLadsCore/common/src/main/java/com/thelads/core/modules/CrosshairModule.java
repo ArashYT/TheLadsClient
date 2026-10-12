@@ -7,18 +7,44 @@ import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.ActionOption;
+import com.thelads.core.config.Option;
+import com.thelads.core.config.TextOption;
+import com.thelads.core.client.CrosshairBackground;
 
 public class CrosshairModule extends Module {
     public final ActionOption drawingEditor = new ActionOption("Drawing Editor", "Edit crosshair drawing");
     public final ColorOption color = new ColorOption("Color", false, 0xFFFFFFFF);
     public final DoubleOption scale = new DoubleOption("Scale", 1.0, 0.1, 5.0);
     public final DoubleOption thickness = new DoubleOption("Thickness", 1.0, 0.1, 10.0);
+    // What the previews (this page and the drawing editor) show behind the crosshair: CrosshairBackground.
+    public final DropdownOption background = new DropdownOption("Background", CrosshairBackground.BIOME, CrosshairBackground.MODES);
+    public final DropdownOption biome = new DropdownOption("Background Biome", CrosshairBackground.DEFAULT_BIOME, CrosshairBackground.biomeNames());
+    public final DropdownOption time = new DropdownOption("Time of Day", CrosshairBackground.DEFAULT_TIME, CrosshairBackground.TIMES);
+    public final ColorOption gradientStart = new ColorOption("Gradient Start", false, 0xff5aa0e6);
+    public final ColorOption gradientEnd = new ColorOption("Gradient End", false, 0xff1a1f2e);
+    public final DropdownOption gradientDirection = new DropdownOption("Gradient Direction", 0, CrosshairBackground.DIRECTIONS);
+    public final ColorOption solidColor = new ColorOption("Background Color", false, 0xff3c5a78);
+    /** The chosen picture's copy in the shared backgrounds folder ("" none); set through {@link #chooseImage}, never shown. */
+    public final TextOption image = new TextOption("Background Image", "");
+    public final ActionOption chooseImage = new ActionOption("Your Image", "Choose image...");
 
     public CrosshairModule() {
         super("Crosshair Tweaks", "Design your crosshair, visibility, aiming feedback and item indicators.");
         addOption(color);
         addOption(scale);
         addOption(thickness);
+        // The preview backgrounds first: they change what the preview beside this list shows.
+        addOption(background);
+        addOption(biome);
+        addOption(time);
+        addOption(gradientStart);
+        addOption(gradientEnd);
+        addOption(gradientDirection);
+        addOption(solidColor);
+        addOption(chooseImage);
+        addOption(image);
+        chooseImage.setAction(CrosshairBackground::choose);
+        chooseImage.setLabel(() -> CrosshairBackground.chooseLabel(this));
         // Existing saved shape indices remain stable.
         addOption(new DropdownOption("Shape", 0, "Cross", "Dot", "Square", "Vanilla", "Circle", "Triangle", "Arrow", "Debug", "Drawn"));
         addOption(new SliderOption("Gap", 2, 0, 12, 1));
@@ -70,5 +96,17 @@ public class CrosshairModule extends Module {
         addOption(new SliderOption("Attack Opacity Third Person", 100, 0, 100, 1).percent());
         addOption(new BoolOption("Debug Attack Indicator", false));
         addOption(drawingEditor);
+    }
+
+    /** The settings page shows only the background options of the chosen kind (Live Game: its biome stands in outside a world). */
+    public boolean hidden(Option option) {
+        int mode = background.getIndex();
+        if (option == image) return true;
+        if (option == biome) return mode != CrosshairBackground.BIOME && mode != CrosshairBackground.LIVE;
+        if (option == time) return mode != CrosshairBackground.BIOME && mode != CrosshairBackground.LIVE || CrosshairBackground.timeless(biome.getIndex());
+        if (option == gradientStart || option == gradientEnd || option == gradientDirection) return mode != CrosshairBackground.GRADIENT;
+        if (option == solidColor) return mode != CrosshairBackground.SOLID;
+        if (option == chooseImage) return mode != CrosshairBackground.IMAGE;
+        return false;
     }
 }

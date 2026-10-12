@@ -1,9 +1,11 @@
 package com.thelads.core.v1_8_9.gui;
 
+import com.thelads.core.client.CrosshairBackground;
 import com.thelads.core.client.CrosshairDesign;
 import com.thelads.core.client.CrosshairDrawing;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.DropdownOption;
+import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import com.thelads.core.v1_8_9.feature.Crosshair189;
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -20,6 +22,7 @@ import org.lwjgl.opengl.GL11;
 public final class CrosshairDrawingScreen189 extends GuiScreen {
     private static final int[] SIZES = {9, 17, 25, 33, 49, 64};
     private final GuiScreen parent;
+    private final GameView189 view = new GameView189();
     private CrosshairDrawing draft = Crosshair189.drawing();
     private final ArrayDeque<CrosshairDrawing> history = new ArrayDeque<>();
     private int gridX, gridY, cell, lastX, lastY;
@@ -40,6 +43,9 @@ public final class CrosshairDrawingScreen189 extends GuiScreen {
         buttonList.add(new GuiButton(4, 28 + w, bottom + 26, w, 20, "Cancel"));
         buttonList.add(new GuiButton(5, 36 + w * 2, bottom + 26, w, 20, "Save drawing"));
     }
+
+    @Override
+    public void onGuiClosed() { view.release(); }
 
     @Override
     protected void actionPerformed(GuiButton button) {
@@ -101,6 +107,8 @@ public final class CrosshairDrawingScreen189 extends GuiScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        // Live Game: the world is copied before the screen paints over it.
+        final boolean captured = Crosshair189.module().background.getIndex() == CrosshairBackground.LIVE && view.capture(mc);
         drawRect(0, 0, width, height, 0xf510131a);
         drawRect(0, 0, width, 2, 0xffa98aff);
         fontRendererObj.drawString("CROSSHAIR / DRAWING", 20, 18, 0xffb99bff);
@@ -120,9 +128,10 @@ public final class CrosshairDrawingScreen189 extends GuiScreen {
             int scale = new ScaledResolution(mc).getScaleFactor();
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
             GL11.glScissor(box.left() * scale, mc.displayHeight - box.bottom() * scale, (box.right() - box.left()) * scale, (box.bottom() - box.top()) * scale);
-            drawRect(box.left(), box.top(), box.right(), box.bottom(), CrosshairDesign.BACKDROP_DARK);
-            for (CrosshairDesign.Rect tile : CrosshairDesign.checker(box.right() - box.left(), box.bottom() - box.top()))
-                drawRect(box.left() + tile.left(), box.top() + tile.top(), box.left() + tile.right(), box.top() + tile.bottom(), CrosshairDesign.BACKDROP_LIGHT);
+            // The background chosen on the settings page (a biome, gradient, colour, your image or the live game).
+            CrosshairBackground.draw(new GuiLadsAdapter(fontRendererObj, width, height) {
+                @Override public boolean drawGameView(int x, int y, int w, int h) { return captured && view.draw(x, y, w, h); }
+            }, Crosshair189.module(), box.left(), box.top(), box.right() - box.left(), box.bottom() - box.top());
             Crosshair189.draw((box.left() + box.right()) / 2, (box.top() + box.bottom()) / 2, Crosshair189.number("Gap"), 1, false, draft);
             GL11.glDisable(GL11.GL_SCISSOR_TEST);
             if (box.bottom() + 30 <= height - 62) {
