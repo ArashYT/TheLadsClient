@@ -35,6 +35,13 @@ class TntTimerModuleTest {
         assertFalse(module.shows(64 * 64 + 1));
         module.throughBlocks.set(true);
         assertTrue(module.shows(1e9));
+        com.thelads.core.client.HypixelSafetyManager.qaOverride = true; // on Hypixel: never through walls (it would be ESP)
+        try {
+            assertFalse(module.seeThrough());
+            assertFalse(module.shows(64 * 64 + 1));
+        } finally {
+            com.thelads.core.client.HypixelSafetyManager.qaOverride = false;
+        }
         assertEquals(0.025f, module.scale(), 1e-7);
         module.size.setValue(150);
         assertEquals(0.0375f, module.scale(), 1e-7);

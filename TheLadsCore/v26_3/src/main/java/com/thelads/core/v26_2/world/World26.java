@@ -94,7 +94,7 @@ public final class World26 {
         float scale = module.scale();
         pose.scale(scale, -scale, scale);
         // background and text submitted as vanilla's text displays do (a background inside the text submit hid the text)
-        Font.DisplayMode mode = module.throughBlocks.get() ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.POLYGON_OFFSET;
+        Font.DisplayMode mode = module.seeThrough() ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.POLYGON_OFFSET;
         float x = -mc.font.width(text) / 2f;
         if (module.background.get())
             collector.submitTextBackground(pose, x - 1, -1, -x, 9, mc.options.getBackgroundColor(0.25f), mode, LightCoordsUtil.FULL_BRIGHT);

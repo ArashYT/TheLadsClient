@@ -84,7 +84,7 @@ public final class World1201 {
         pose.scale(-scale, -scale, -scale);
         Matrix4f matrix = pose.last().pose();
         Font font = mc.font;
-        boolean through = module.throughBlocks.get();
+        boolean through = module.seeThrough();
         float x = -font.width(text) / 2f, right = -x;
         if (module.background.get()) { // drawn apart from the text, as text displays do, so it never covers the shadow
             int color = (int) (mc.options.getBackgroundOpacity(0.25f) * 255) << 24;

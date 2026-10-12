@@ -69,7 +69,7 @@ public final class World189 {
         String text = TntTimerModule.label(ticksLeft);
         FontRenderer font = manager.getFontRenderer();
         float scale = module.scale() * (0.016666668F * 1.6F / 0.025F); // 1.8.9's name tags are a little larger than 26.x's
-        boolean through = module.throughBlocks.get();
+        boolean through = module.seeThrough();
         GlStateManager.pushMatrix();
         GlStateManager.translate((float) x, (float) y + entity.height + 0.5F, (float) z);
         GL11.glNormal3f(0, 1, 0);

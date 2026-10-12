@@ -38,7 +38,10 @@ public final class TntTimerModule extends Module {
     public float scale() { return 0.025f * size.getIntValue() / 100f; }
 
     /** Drawn at this squared distance from the camera: within name tag range, or anywhere with Through blocks. */
-    public boolean shows(double distanceSq) { return throughBlocks.get() || distanceSq <= RANGE * RANGE; }
+    public boolean shows(double distanceSq) { return seeThrough() || distanceSq <= RANGE * RANGE; }
+
+    /** Through blocks, except on Hypixel: there a timer seen through walls would count as ESP, so it is depth tested like a name tag. */
+    public boolean seeThrough() { return throughBlocks.get() && !com.thelads.core.client.HypixelSafetyManager.isHypixel(); }
 
     /** "3.45s": the ticks left as seconds with two decimals, never below 0. */
     public static String label(float ticksLeft) {
