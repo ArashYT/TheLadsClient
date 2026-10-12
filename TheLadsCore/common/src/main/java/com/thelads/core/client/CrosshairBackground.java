@@ -53,6 +53,7 @@ public final class CrosshairBackground {
     static final String FOLDER = "/assets/theladscore/crosshair_backgrounds/";
     /** Longest side a picture is kept at (your own image is scaled down to it). */
     static final int MAX_SIDE = 1024;
+    private static final Set<String> UNREADABLE = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
     /** The Choose image button's state while the dialog is open or after a bad pick; the picked copy waits for the next frame. */
     private static volatile String status = "", picked;
 
@@ -90,7 +91,9 @@ public final class CrosshairBackground {
         if (mode == LIVE && g.drawGameView(x, y, w, h)) return;
         if (mode == GRADIENT) { gradient(g, x, y, w, h, color(m.gradientStart), color(m.gradientEnd), m.gradientDirection.getIndex() == 1); return; }
         if (mode == SOLID) { g.fill(x, y, x + w, y + h, color(m.solidColor) | 0xFF000000); return; }
-        if (mode == IMAGE && !m.image.getValue().isEmpty() && g.drawImage(imageFile(m.image.getValue()).getPath(), x, y, w, h)) return;
+        String own = m.image.getValue().isEmpty() ? null : imageFile(m.image.getValue()).getPath();
+        // An unreadable picture is not tried again each frame (the versions keep one texture: it would flip with the biome's).
+        if (mode == IMAGE && own != null && !UNREADABLE.contains(own) && g.drawImage(own, x, y, w, h)) return;
         if (g.drawImage(picture(m.biome.getIndex(), m.time.getIndex()), x, y, w, h)) return;
         g.fill(x, y, x + w, y + h, CrosshairDesign.BACKDROP_DARK);
         for (CrosshairDesign.Rect tile : CrosshairDesign.checker(w, h))
@@ -160,6 +163,7 @@ public final class CrosshairBackground {
             return new Picture(w, h, image.getRGB(0, 0, w, h, null, 0, w));
         } catch (Exception | LinkageError failure) {
             LOG.warn("Crosshair background {} unavailable: {}", source, failure.toString());
+            UNREADABLE.add(source);
             return null;
         }
     }
