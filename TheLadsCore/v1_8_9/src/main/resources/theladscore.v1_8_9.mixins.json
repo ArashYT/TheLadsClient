@@ -87,6 +87,7 @@
     "EssentialFirewallMixin189",
     "GuiMultiplayerMixin189",
     "GuiConnectingMixin189",
-    "ScoreboardMixin"
+    "ScoreboardMixin",
+    "RenderItemMixin"
   ]
 }
