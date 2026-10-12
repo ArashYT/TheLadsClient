@@ -47,8 +47,13 @@ public final class KillDetector {
     private static final Pattern PASSIVE = Pattern.compile("\\b(by|was|were|got)\\b");
     // The Pit: "KILL! on [120] Bob", "DOUBLE KILL! on [120] Bob", "MULTI KILL! (6) on [120] Bob"
     private static final Pattern KILL_TAG = Pattern.compile("^\\W*((double|triple|quad|penta|multi)\\s+)?kill!?\\s*(\\(\\d+\\)\\s*)?(on\\s+)?(\\[[^\\]]*\\]\\s*)*$");
-    // Lines about players that are no kill (nor the player's death) whatever their shape: guild, party and friend notices, tips
-    // ("You were tipped by 5 players in the last minute!"), revives, a bed destroyed.
+    // "Bob was killed by Carl whilst escaping Me": Carl's kill. Only vanilla's "by magic / lightning / a ... whilst" name no one.
+    private static final Pattern OTHER_KILLER = Pattern.compile("\\bby (?!(a|an|the|magic|lightning)\\b)[a-z0-9_]{3,16}\\s+(whilst|while)\\b");
+    // "Steve » Bob was killed by Me": a player's chat line on servers that write "Name »" (or ">") instead of "Name:".
+    private static final Pattern CHATTER = Pattern.compile("[a-z0-9_]\\s*[»>]");
+    // Lines about players that are no kill (nor the player's death) whatever their shape, the players' own names left out (a
+    // player called Gift still dies): guild, party and friend notices, tips ("You were tipped by 5 players in the last
+    // minute!"), revives, a bed destroyed.
     private static final Pattern SOCIAL = Pattern.compile("\\b(guild|party|partied|friend|friends|invited|kicked|promoted|demoted|muted"
         + "|transferred|request|gift|gifted|tipped|revived|healed|saved|rescued|cured|found|teleported|warped|summoned|joined|lobby|destruction)\\b");
     // What may follow the killer in a cosmetic kill message: "'s Iron Golem", "with AK-47", "using [Bow]", "FINAL KILL!".
@@ -223,7 +228,6 @@ public final class KillDetector {
         String text = strip(message);
         var reward = REWARD.matcher(text);
         if (reward.find()) return reward(reward.group(1), now);
-        if (SOCIAL.matcher(text).find()) return null;
         Set<String> me = lower(myNames);
         for (Victim victim : byId.values()) {
             if (victim.kind != Kind.PLAYER || since(now, victim.mine) > CHAT || !named(text, victim.names, me)) continue;
@@ -248,10 +252,11 @@ public final class KillDetector {
         if (message == null || message.isBlank()) return false;
         String text = strip(message);
         if (DEATH_TAG.matcher(text).find()) return true;
-        if (SOCIAL.matcher(text).find()) return false;
+        Set<String> me = lower(myNames);
+        // The killer's name (after "by") left out too: "Me was killed by Gift" is a death, "You were tipped by 5 players" none.
+        if (social(BRACKETS.matcher(text).replaceAll(" ").replaceAll("\\bby\\s+[a-z0-9_]{3,16}", " "), Set.of(), me)) return false;
         var lead = LEAD.matcher(text);
         String rest = lead.lookingAt() ? text.substring(lead.end()) : text;
-        Set<String> me = lower(myNames);
         me.add("you");
         for (String name : me) {
             if (word(rest, name, 0) != 0) continue;
@@ -280,8 +285,15 @@ public final class KillDetector {
 
     /** Does {@code text} report one of {@code names} killed by one of {@code me}? */
     private static boolean named(String text, Set<String> names, Set<String> me) {
-        for (String name : names) if (!me.contains(name) && killMessage(text, name, me)) return true;
+        for (String name : names) if (!me.contains(name) && killMessage(text, name, me)) return !social(text, names, me);
         return false;
+    }
+
+    /** Is {@code text}, its players' own names left out, a guild, party, friend, tip or revive notice ({@link #SOCIAL})? */
+    private static boolean social(String text, Set<String> names, Set<String> me) {
+        for (String name : names) text = text.replaceAll("(?<![a-z0-9_])" + Pattern.quote(name) + "(?![a-z0-9_])", " ");
+        for (String name : me) text = text.replaceAll("(?<![a-z0-9_])" + Pattern.quote(name) + "(?![a-z0-9_])", " ");
+        return SOCIAL.matcher(text).find();
     }
 
     private Kill claim(Victim victim, long now) {
@@ -336,7 +348,7 @@ public final class KillDetector {
         if (v < 0) return false;
         String before = text.substring(0, v);
         // "Name: ..." and "<Name> ..." are chat lines, whatever they say.
-        if (before.contains(":") || before.contains("<")) return false;
+        if (before.contains(":") || before.contains("<") || CHATTER.matcher(before).find()) return false;
         if (KILL_TAG.matcher(before).find()) return true;
         Set<String> subjects = new LinkedHashSet<>(me);
         subjects.add("you");
@@ -356,7 +368,8 @@ public final class KillDetector {
 
     /** The words between a victim and the local player tie them as victim and killer: the killer right after "by", "fighting"... */
     private static boolean linked(String between) {
-        if (BRACKETS.matcher(between).replaceAll("").length() > 64 || between.contains(":") || between.contains("assist")) return false;
+        if (BRACKETS.matcher(between).replaceAll("").length() > 64 || between.contains(":") || between.contains("assist")
+            || OTHER_KILLER.matcher(between).find()) return false;
         // The killer named right after "by" / "fighting" is the local player, not someone else first.
         var link = LINK.matcher(between);
         int end = -1;

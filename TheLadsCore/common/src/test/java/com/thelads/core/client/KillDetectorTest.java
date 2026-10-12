@@ -241,6 +241,23 @@ class KillDetectorTest {
         assertEquals(Seen.DEATH, seen("Arash lost the draw to Bob.", none, world), "the player's own death in a cosmetic pack's words");
     }
 
+    /** Lines from the 1.9.1 review: another killer named first, "Name »" chat, players called like notice words. */
+    @Test void reviewedLines() {
+        java.util.function.Consumer<KillDetector> hit = d -> d.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+        assertEquals(Seen.NONE, seen("Bob was killed by Carl whilst escaping Arash", hit, Map.of()), "Carl's kill");
+        assertEquals(Seen.NONE, seen("Bob was blown up by Carl while fighting with Arash", hit, Map.of()));
+        assertEquals(Seen.KILL, seen("Bob was killed by magic whilst trying to escape Arash", hit, Map.of()), "vanilla: no one after 'by'");
+        assertEquals(Seen.KILL, seen("Bob was struck by lightning whilst fighting Arash", hit, Map.of()));
+        assertEquals(Seen.NONE, seen("Steve » Bob was killed by Arash", hit, Map.of()), "player chat written 'Name »'");
+        assertEquals(Seen.NONE, seen("[VIP] Steve > Bob was killed by Arash.", hit, Map.of()));
+        Map<Integer, Set<String>> world = Map.of(3, Set.of("Gift"), 4, Set.of("Lobby"));
+        java.util.function.Consumer<KillDetector> none = d -> {};
+        assertEquals(Seen.KILL, seen("Gift was killed by Arash.", none, world), "a player called Gift");
+        assertEquals(Seen.KILL, seen("Lobby was spooked by Arash.", none, world));
+        assertEquals(Seen.NONE, seen("Gift was kicked from the guild by Arash!", none, world));
+        assertEquals(Seen.DEATH, seen("Arash was killed by Gift.", none, world));
+    }
+
     /** The Pit's multi kills, after a hit. */
     @Test void pitMultiKills() {
         java.util.function.Consumer<KillDetector> hit = d -> d.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);

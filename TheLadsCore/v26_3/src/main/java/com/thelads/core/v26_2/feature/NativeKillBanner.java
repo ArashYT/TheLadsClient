@@ -134,7 +134,7 @@ public final class NativeKillBanner {
             text = KillDetector.deathLine(death.getKey(), args);
         }
         if (text == null) text = message.getString();
-        if (KillDetector.myDeath(text, me)) BANNER.endStreak();
+        if (KillDetector.myDeath(text, me)) { BANNER.endStreak(); return; } // the player's own death is never also a kill
         kill(KillBanners.DETECTOR.chat(text, me, NativeKillBanner::players, System.nanoTime()));
     }
 
