@@ -40,10 +40,12 @@ public class ComboSoundsModule extends Module {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     /** The server's hurt answers your attack within this (ping included); a hurt later is someone else's hit. */
     static final long CONFIRM_NANOS = 1_000_000_000L;
-    /** An arrow's crossing and the server's word on that hit pair up within this. */
+    /** A player your arrow crossed this recently can be the one the arrow-hit-player event is about (ping and lag included). */
     static final long ARROW_NANOS = 1_000_000_000L;
+    /** A mob's hurt and your arrow crossing it pair up within this, either first (a closer pairing: other hits are around). */
+    static final long PAIR_NANOS = 500_000_000L;
     /** The arrow-hit-player event follows its victim's hurt in the same server tick: a hurt this recent names the victim. */
-    static final long HURT_NANOS = 250_000_000L;
+    static final long HURT_NANOS = 100_000_000L;
     public static final int AFTER_RANDOM = 0, AFTER_IN_ORDER = 1, AFTER_SHUFFLE = 2;
     /** Bow sounds to play (a bit set). */
     public static final int LONG_SHOT = 1, HEADSHOT = 2;
@@ -192,7 +194,7 @@ public class ComboSoundsModule extends Module {
     public int arrowCrossed(int id, boolean player, boolean head, double distance, long now) {
         if (!player && !bowMobs.get()) return 0;
         crossings.values().removeIf(crossing -> now - crossing.at() > ARROW_NANOS);
-        if (id == waitId && now - waitAt <= ARROW_NANOS) { // the server confirmed this hit first
+        if (id == waitId && now - waitAt <= (waitHeadOnly ? ARROW_NANOS : PAIR_NANOS)) { // the server confirmed this hit first
             waitId = -1;
             return waitHeadOnly ? headshots.get() && head ? HEADSHOT : 0 : landed(waitDistance, head);
         }
@@ -208,31 +210,35 @@ public class ComboSoundsModule extends Module {
         hurtAt = now;
         if (player || !bowMobs.get()) return 0; // players: the arrow-hit-player event says whose arrow it was
         Crossing crossing = crossings.get(id);
-        if (crossing != null && now - crossing.at() <= ARROW_NANOS) {
+        if (crossing != null && now - crossing.at() <= PAIR_NANOS) {
             crossings.remove(id);
             return landed(distance, crossing.head());
         }
-        wait(id, distance, now, false); // your arrow's, if its crossing follows
+        wait(id, distance, now, false); // your arrow's, if its crossing follows at once
         return 0;
     }
 
     /** The server's word that your arrow hit a player (its arrow-hit-player event). Returns the sounds to play. */
     public int arrowHitPlayer(long now) {
+        // The player your arrow crossed (the one hurt just now first, else the latest); only when the client saw no crossing at all
+        // (an arrow quicker than its tracking), the player hurt just before the event: the server sends that hurt first.
+        boolean hurtNow = hurtPlayer && hurtId >= 0 && now - hurtAt <= HURT_NANOS;
         int id = -1;
         double distance = 0;
-        if (hurtPlayer && hurtId >= 0 && now - hurtAt <= HURT_NANOS) {
+        long best = Long.MIN_VALUE;
+        for (Map.Entry<Integer, Crossing> entry : crossings.entrySet()) {
+            Crossing crossing = entry.getValue();
+            boolean hurt = hurtNow && entry.getKey() == hurtId;
+            long rank = hurt ? Long.MAX_VALUE : crossing.at();
+            if (crossing.player() && now - crossing.at() <= ARROW_NANOS && rank > best) {
+                best = rank;
+                id = entry.getKey();
+                distance = hurt ? hurtDistance : crossing.distance();
+            }
+        }
+        if (id < 0 && hurtNow) {
             id = hurtId;
             distance = hurtDistance;
-        } else { // no hurt seen: the player your latest arrow crossed
-            long latest = Long.MIN_VALUE;
-            for (Map.Entry<Integer, Crossing> entry : crossings.entrySet()) {
-                Crossing crossing = entry.getValue();
-                if (crossing.player() && now - crossing.at() <= ARROW_NANOS && crossing.at() > latest) {
-                    latest = crossing.at();
-                    id = entry.getKey();
-                    distance = crossing.distance();
-                }
-            }
         }
         hurtId = -1;
         if (id < 0) return 0;

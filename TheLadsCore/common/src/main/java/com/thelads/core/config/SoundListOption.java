@@ -21,7 +21,7 @@ public class SoundListOption extends Option {
     public void add(String file) { if (file != null && !file.isEmpty()) files.add(file); }
     public void remove(int index) { if (index >= 0 && index < files.size()) files.remove(index); }
     /** Every entry of {@code file} (a deleted sound). */
-    public void removeAll(String file) { files.removeIf(file::equals); }
+    public void removeAll(String file) { files.removeIf(f -> f.equals(file)); }
     /** On if off, off if on (favourites). */
     public void toggle(String file) { if (files.contains(file)) removeAll(file); else add(file); }
     /** Moves entry {@code index} one place up ({@code -1}) or down ({@code 1}). */

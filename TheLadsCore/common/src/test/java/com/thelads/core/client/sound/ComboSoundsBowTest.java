@@ -128,6 +128,28 @@ class ComboSoundsBowTest {
         combo.bowHurt(10, true, 90, t + 8000 * MS);
         assertEquals(0, combo.arrowHitPlayer(t + 8001 * MS), "Long Shots off");
         assertEquals(0, combo.arrowHitPlayer(t + 9000 * MS), "no victim known: nothing");
+
+        // Someone else hurt just before the event, while your arrow crossed another player: the event is about yours.
+        combo.longShots.set(true);
+        combo.arrowCrossed(11, true, true, 70, t + 10_000 * MS);
+        combo.bowHurt(12, true, 5, t + 10_010 * MS);
+        assertEquals(LONG | HEAD, combo.arrowHitPlayer(t + 10_020 * MS), "the crossed player at 70 blocks, not the bystander at 5");
+        combo.bowHurt(13, true, 80, t + 12_000 * MS);
+        assertEquals(0, combo.arrowHitPlayer(t + 12_200 * MS), "a hurt 200 ms before the event is not its victim");
+    }
+
+    @Test
+    void theCacheKeepsTheLatestSoundsOnlyAndReadsOnlyTheSoundsFolder(@TempDir Path base) throws Exception {
+        ClientPaths.setBaseDir(base);
+        try {
+            Files.write(base.resolve("outside.wav"), wav(new AudioFormat(8000, 16, 1, true, false), new byte[1600]));
+            assertNull(CustomSounds.decoded("../outside.wav"), "a name from the config is a file in sounds/, nothing else");
+            for (int i = 0; i < 40; i++) CustomSounds.decoded("missing" + i + ".mp3");
+            assertTrue(CustomSounds.cached() <= CustomSounds.CACHED, "the library can play any number of sounds: " + CustomSounds.cached());
+            assertTrue(CustomSounds.CACHED >= 12, "Combo 1-5, the bow sounds and Kill 1-5 stay decoded together");
+        } finally {
+            ClientPaths.setBaseDir(null);
+        }
     }
 
     @Test

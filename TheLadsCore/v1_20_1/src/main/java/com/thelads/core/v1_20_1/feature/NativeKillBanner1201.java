@@ -131,9 +131,11 @@ public final class NativeKillBanner1201 {
 
     public static void damaged(int entityId, int causeId) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player != null) { // Combo Sounds: a combo hit, your hurt, or a bow hit (who, how far)
+        if (minecraft.player != null) { // Combo Sounds: a combo hit, your hurt, or a bow hit (who, how far; never a hit the server says is someone else's)
             Entity hurt = minecraft.level == null ? null : minecraft.level.getEntity(entityId);
-            ComboSoundsModule.onHurt(entityId, entityId == minecraft.player.getId(), hurt instanceof Player, hurt == null ? 0 : minecraft.player.distanceTo(hurt));
+            boolean self = entityId == minecraft.player.getId();
+            if (causeId >= 0 && causeId != minecraft.player.getId()) ComboSoundsModule.onHurt(entityId, self);
+            else ComboSoundsModule.onHurt(entityId, self, hurt instanceof Player, hurt == null ? 0 : minecraft.player.distanceTo(hurt));
         }
         if (!eligible() || causeId < 0 || minecraft.player == null || minecraft.level == null) return;
         if (causeId == minecraft.player.getId()) {

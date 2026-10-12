@@ -17,6 +17,8 @@ import net.minecraft.world.phys.Vec3;
 
 final class KillBannerArrows1201 {
     private static final Map<Integer, Vec3> flying = new HashMap<>();
+    /** Each arrow in flight by entity id: how it moved last tick. */
+    private static final Map<Integer, Vec3> moving = new HashMap<>();
     private static final Set<Integer> landed = new HashSet<>();
 
     private KillBannerArrows1201() {}
@@ -26,6 +28,7 @@ final class KillBannerArrows1201 {
         Player me = minecraft.player;
         if (level == null || me == null) {
             flying.clear();
+            moving.clear();
             landed.clear();
             return;
         }
@@ -36,9 +39,11 @@ final class KillBannerArrows1201 {
             seen.add(id);
             if (landed.contains(id)) continue;
             Vec3 at = arrow.position(), motion = arrow.getDeltaMovement();
-            Vec3 before = flying.put(id, at);
+            Vec3 before = flying.put(id, at), was = moving.put(id, motion);
             if (motion.lengthSqr() < 1e-6) continue;
             Vec3 from = before != null ? before : at, to = at.add(motion.scale(1.5));
+            // Turned back: the client's own copy bounced off what it hit this tick (only the server hurts), on last tick's path.
+            if (before != null && was != null && was.dot(motion) < 0) to = before.add(was.scale(1.5));
             LivingEntity victim = null;
             Vec3 where = null;
             double nearest = Double.MAX_VALUE;
@@ -59,6 +64,7 @@ final class KillBannerArrows1201 {
             }
         }
         flying.keySet().retainAll(seen);
+        moving.keySet().retainAll(seen);
         landed.retainAll(seen);
     }
 }

@@ -152,6 +152,8 @@ public final class KillBanner189 {
 
     /** Each arrow of the local player's in flight by entity id: where it was last tick (KillBannerArrows on 26.x). */
     private static final Map<Integer, Vec3> flying = new HashMap<Integer, Vec3>();
+    /** Each arrow in flight by entity id: how it moved last tick. */
+    private static final Map<Integer, Vec3> moving = new HashMap<Integer, Vec3>();
     /** Arrows that already hit someone: one hit an arrow. */
     private static final Set<Integer> landed = new HashSet<Integer>();
 
@@ -169,10 +171,13 @@ public final class KillBanner189 {
             seen.add(id);
             if (landed.contains(id)) continue;
             Vec3 at = new Vec3(arrow.posX, arrow.posY, arrow.posZ);
-            Vec3 before = flying.put(id, at);
-            if (arrow.motionX * arrow.motionX + arrow.motionY * arrow.motionY + arrow.motionZ * arrow.motionZ < 1e-6) continue; // stuck in the ground, or not moving yet
+            Vec3 motion = new Vec3(arrow.motionX, arrow.motionY, arrow.motionZ);
+            Vec3 before = flying.put(id, at), was = moving.put(id, motion);
+            if (motion.lengthVector() < 1e-3) continue; // stuck in the ground, or not moving yet
             Vec3 from = before != null ? before : at;
             Vec3 to = at.addVector(arrow.motionX * 1.5, arrow.motionY * 1.5, arrow.motionZ * 1.5);
+            // Turned back: the client's own copy bounced off what it hit this tick (only the server hurts), on last tick's path.
+            if (before != null && was != null && was.dotProduct(motion) < 0) to = before.addVector(was.xCoord * 1.5, was.yCoord * 1.5, was.zCoord * 1.5);
             AxisAlignedBB sweep = new AxisAlignedBB(Math.min(from.xCoord, to.xCoord), Math.min(from.yCoord, to.yCoord), Math.min(from.zCoord, to.zCoord),
                 Math.max(from.xCoord, to.xCoord), Math.max(from.yCoord, to.yCoord), Math.max(from.zCoord, to.zCoord)).expand(.5, .5, .5);
             EntityLivingBase victim = null;
@@ -200,6 +205,7 @@ public final class KillBanner189 {
             }
         }
         flying.keySet().retainAll(seen);
+        moving.keySet().retainAll(seen);
         landed.retainAll(seen);
     }
 

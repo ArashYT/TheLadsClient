@@ -47,7 +47,12 @@ public final class CustomSounds {
     static final int MAX_TRIM_SECONDS = 300;
     static final int VOICES = 8;
     private static final Pcm FAILED = new Pcm(null, new byte[0]);
-    private static final Map<String, Pcm> CACHE = new ConcurrentHashMap<>();
+    /** Decoded sounds, the least recently played dropped past {@link #CACHED} (the library plays any number of them). */
+    private static final Map<String, Pcm> CACHE = java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<String, Pcm>(16, .75f, true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<String, Pcm> eldest) { return size() > CACHED; }
+    });
+    /** 24 sounds of at most 12 s: up to ~55 MB at 48 kHz stereo, a few MB for usual hit sounds. */
+    static final int CACHED = 24;
     private static final AtomicInteger PLAYING = new AtomicInteger();
     private static final ExecutorService POOL = Executors.newCachedThreadPool(task -> {
         Thread thread = new Thread(task, "Lads custom sound");
@@ -196,20 +201,30 @@ public final class CustomSounds {
         return (float) Math.max(0, Math.min(1, volume * LadsGameBridge.get().getMasterVolume()));
     }
 
-    /** The cached sound, decoded now if new; FAILED (logged once) when it can't be read. */
+    /** The cached sound, decoded now if new (outside the cache's lock: the game thread asks it too); FAILED (logged once) when it can't be read. */
     static Pcm load(String file) {
-        return CACHE.computeIfAbsent(file, name -> {
-            Path path = folder().resolve(name);
-            try (InputStream in = new BufferedInputStream(Files.newInputStream(path))) {
-                Pcm pcm = decode(name, in);
-                LOGGER.info("Custom sound {}: {} frames, {} s, {} Hz, {} channel(s)", name, pcm.frames(),
-                    String.format(Locale.ROOT, "%.2f", pcm.seconds()), (int) pcm.format().getSampleRate(), pcm.format().getChannels());
-                return pcm;
-            } catch (Exception | LinkageError failure) {
-                LOGGER.warn("Custom sound {} can't be played ({}): {}", name, path, failure.toString());
-                return FAILED;
-            }
-        });
+        Pcm cached = CACHE.get(file);
+        if (cached != null) return cached;
+        Pcm pcm = read(file);
+        CACHE.put(file, pcm);
+        return pcm;
+    }
+
+    private static Pcm read(String name) {
+        Path folder = folder().normalize(), path = folder.resolve(name).normalize();
+        if (!folder.equals(path.getParent())) { // a name from the config is a file in sounds/, nothing else
+            LOGGER.warn("Custom sound {} is not in {}", name, folder);
+            return FAILED;
+        }
+        try (InputStream in = new BufferedInputStream(Files.newInputStream(path))) {
+            Pcm pcm = decode(name, in);
+            LOGGER.info("Custom sound {}: {} frames, {} s, {} Hz, {} channel(s)", name, pcm.frames(),
+                String.format(Locale.ROOT, "%.2f", pcm.seconds()), (int) pcm.format().getSampleRate(), pcm.format().getChannels());
+            return pcm;
+        } catch (Exception | LinkageError failure) {
+            LOGGER.warn("Custom sound {} can't be played ({}): {}", name, path, failure.toString());
+            return FAILED;
+        }
     }
 
     /** Decodes an MP3 or WAV (by name) to 16-bit little-endian PCM, at most {@link #MAX_SECONDS}. */
@@ -299,6 +314,8 @@ public final class CustomSounds {
     public static String lastPlayed() { return lastPlayed; }
     /** QA: how many times {@code file} started playing. */
     public static int plays(String file) { AtomicInteger n = PLAYS.get(file); return n == null ? 0 : n.get(); }
+    /** Tests: sounds in the cache now. */
+    static int cached() { return CACHE.size(); }
     /** QA/preview: the decoded sound (null when it can't be read). */
     public static Pcm decoded(String file) { Pcm pcm = load(file); return pcm == FAILED ? null : pcm; }
 

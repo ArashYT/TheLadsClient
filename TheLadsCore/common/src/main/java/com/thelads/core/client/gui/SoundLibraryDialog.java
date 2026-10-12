@@ -92,6 +92,7 @@ public final class SoundLibraryDialog {
 
     void close() {
         CustomSounds.stopPreview();
+        previewAt = 0;
         trimToken++;
         open = trimming = false;
         pcm = null;
@@ -138,6 +139,7 @@ public final class SoundLibraryDialog {
     /** Opens the trimmer on {@code source}: {@code file} is its library name, or null for a new file. */
     public void trim(Path source, String file) {
         CustomSounds.stopPreview();
+        previewAt = 0;
         trimming = true;
         trimSource = source;
         trimFile = file;
@@ -212,6 +214,7 @@ public final class SoundLibraryDialog {
 
     private void cancelTrim() {
         CustomSounds.stopPreview();
+        previewAt = 0;
         trimToken++;
         pcm = null;
         peaks = null;

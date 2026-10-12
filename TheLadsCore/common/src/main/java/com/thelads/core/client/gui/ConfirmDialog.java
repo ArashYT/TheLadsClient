@@ -23,7 +23,7 @@ public final class ConfirmDialog {
 
     /** Asks {@code title} (a delete, say) the same way. */
     public void open(String title, String message, Runnable onConfirm) {
-        this.title = title;
+        this.title = title == null ? TITLE : title;
         this.message = message == null ? "" : message;
         this.onConfirm = java.util.Objects.requireNonNull(onConfirm);
     }
