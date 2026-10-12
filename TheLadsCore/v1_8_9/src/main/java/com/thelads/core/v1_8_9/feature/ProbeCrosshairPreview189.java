@@ -5,6 +5,7 @@ import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.screenshot;
 
 import com.google.gson.JsonElement;
+import com.thelads.core.client.CrosshairBackground;
 import com.thelads.core.config.ActionOption;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.ColorOption;
@@ -80,6 +81,35 @@ final class ProbeCrosshairPreview189 {
             choice("Shape", 2); flag("Adaptive Color", false); flag("Outline", false); flag("Center Dot", true);
             slider("Rotation", 45); slider("Opacity First Person", 60); module().scale.set(2.0); green();
         });
+        // 1.9.1: the backgrounds behind the preview (CrosshairBackground): a biome at sunset, a gradient, a solid colour, your
+        // own image (a picture made here, through the same copy the file dialog's pick takes) and the live game.
+        page("xhair-bg-1-biome-meadow-sunset", () -> { reset(); background(CrosshairBackground.BIOME); biome("meadow"); choice("Time of Day", 3); });
+        page("xhair-bg-2-gradient", () -> { background(CrosshairBackground.GRADIENT); choice("Gradient Direction", 1); });
+        page("xhair-bg-3-solid", () -> background(CrosshairBackground.SOLID));
+        STEPS.add(mc -> {
+            try {
+                java.io.File file = new java.io.File(mc.mcDataDir, "lads-qa/qa-background.png");
+                file.getParentFile().mkdirs();
+                java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(1600, 900, java.awt.image.BufferedImage.TYPE_INT_RGB);
+                java.awt.Graphics2D g = image.createGraphics();
+                for (int i = 0; i < 16; i++) { g.setColor(java.awt.Color.getHSBColor(i / 16f, .6f, .9f)); g.fillRect(i * 100, 0, 100, 900); }
+                g.dispose();
+                javax.imageio.ImageIO.write(image, "png", file);
+                CrosshairBackground.use(file.toPath()); // the preview's next frame takes it
+            } catch (Exception failure) { check(false, "your own image: " + failure); }
+            return after(20);
+        });
+        page("xhair-bg-4-your-image", () -> check(module().background.getIndex() == CrosshairBackground.IMAGE
+            && CrosshairBackground.imageFile(module().image.getValue()).isFile(), "your own image: chosen and kept in the shared folder"));
+        page("xhair-bg-5-live", () -> background(CrosshairBackground.LIVE));
+        STEPS.add(mc -> {
+            editor = new CrosshairDrawingScreen189(null);
+            mc.displayGuiScreen(editor);
+            return after(30);
+        });
+        STEPS.add(mc -> { screenshot(mc, "xhair-bg-6-editor-live"); return after(120); });
+        STEPS.add(mc -> { background(CrosshairBackground.BIOME); biome("nether_wastes"); return after(20); });
+        STEPS.add(mc -> { screenshot(mc, "xhair-bg-7-editor-nether"); return after(10); });
         STEPS.add(mc -> { stop(); LOG.info("Lads crosshair preview capture END: frames saved"); return after(5); });
     }
 
@@ -107,6 +137,8 @@ final class ProbeCrosshairPreview189 {
     }
 
     private static CrosshairModule module() { return (CrosshairModule) Options189.module("Crosshair Tweaks"); }
+    private static void background(int mode) { module().background.setIndex(mode); }
+    private static void biome(String id) { module().biome.setIndex(java.util.Arrays.asList(CrosshairBackground.biomeIds()).indexOf(id)); }
     private static void choice(String name, int index) { ((DropdownOption) module().getOption(name)).setIndex(index); }
     private static void slider(String name, double value) { ((SliderOption) module().getOption(name)).setValue(value); }
     private static void flag(String name, boolean value) { ((BoolOption) module().getOption(name)).set(value); }

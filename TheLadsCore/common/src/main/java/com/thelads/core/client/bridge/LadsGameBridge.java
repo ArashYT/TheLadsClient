@@ -36,6 +36,13 @@ public interface LadsGameBridge {
     default java.util.concurrent.CompletableFuture<java.nio.file.Path> gameFileDialog(String title, boolean folder, String filterName, String... extensions) {
         return com.thelads.core.client.util.FileDialogs.awt(title, folder, filterName, extensions);
     }
+    /**
+     * An open-file dialog for a picture (.png/.jpg), Crosshair Tweaks' own background; completes off the game thread, with null when
+     * cancelled. Each version opens the same dialog its sound upload uses.
+     */
+    default java.util.concurrent.CompletableFuture<java.nio.file.Path> chooseImageFile() {
+        return com.thelads.core.client.util.FileDialogs.openFile("Choose a picture (PNG or JPG)", "Pictures (PNG, JPG)", "png", "jpg", "jpeg");
+    }
     /** Combo Sounds' built-in sound when a step has no upload: a note block pling at {@code pitch}. */
     default void playComboSound(float pitch, float volume) {}
     /** Combo Sounds' built-in bow sounds when none is picked: the level-up chime for a long shot, a high anvil clink for a headshot. */

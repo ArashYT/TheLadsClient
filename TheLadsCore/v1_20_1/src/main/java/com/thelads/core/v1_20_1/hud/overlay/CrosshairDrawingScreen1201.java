@@ -1,5 +1,6 @@
 package com.thelads.core.v1_20_1.hud.overlay;
 
+import com.thelads.core.client.CrosshairBackground;
 import com.thelads.core.client.CrosshairDesign;
 import com.thelads.core.client.CrosshairDrawing;
 import com.thelads.core.config.ConfigManager;
@@ -107,9 +108,13 @@ public final class CrosshairDrawingScreen1201 extends Screen {
         if (box != null) {
             graphics.drawString(font, "LIVE PREVIEW", box.left(), box.top() - 14, 0xffa9afbd);
             graphics.enableScissor(box.left(), box.top(), box.right(), box.bottom());
-            graphics.fill(box.left(), box.top(), box.right(), box.bottom(), CrosshairDesign.BACKDROP_DARK);
-            for (var tile : CrosshairDesign.checker(box.right() - box.left(), box.bottom() - box.top()))
-                graphics.fill(box.left() + tile.left(), box.top() + tile.top(), box.left() + tile.right(), box.top() + tile.bottom(), CrosshairDesign.BACKDROP_LIGHT);
+            // The background chosen on the settings page (a biome, gradient, colour, your image or the live game).
+            CrosshairBackground.draw(new com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201(graphics, font) {
+                @Override
+                public boolean drawGameView(int x, int y, int w, int h) {
+                    return com.thelads.core.v1_20_1.feature.HudEditorView1201.draw(graphics, x, y, w, h, false);
+                }
+            }, Crosshair1201.module(), box.left(), box.top(), box.right() - box.left(), box.bottom() - box.top());
             Crosshair1201.draw(graphics, (box.left() + box.right()) / 2, (box.top() + box.bottom()) / 2, Crosshair1201.number("Gap"), 1, false, draft);
             com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
             graphics.disableScissor();
@@ -166,4 +171,10 @@ public final class CrosshairDrawingScreen1201 extends Screen {
 
     @Override
     public void onClose() { minecraft.setScreen(parent); }
+
+    @Override
+    public void removed() {
+        com.thelads.core.v1_20_1.feature.HudEditorView1201.release();
+        super.removed();
+    }
 }
