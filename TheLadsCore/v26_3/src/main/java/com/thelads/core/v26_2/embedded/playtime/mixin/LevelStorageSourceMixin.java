@@ -65,6 +65,8 @@ public class LevelStorageSourceMixin {
 			}
 
 			Path stats = levelDirectory.resourcePath(LevelResource.PLAYER_STATS_DIR);
+			// Lads: a world last played on an older version (1.8.9 / 1.20.1 share the world list) keeps its stats in "stats" until it is opened here.
+			if (!Files.isDirectory(stats)) stats = levelDirectory.path().resolve("stats");
 			File statsFile = stats.toFile();
 
 			if (statsFile.isDirectory()) {
@@ -115,6 +117,7 @@ public class LevelStorageSourceMixin {
 		try (FileReader fileReader = new FileReader(file)) {
 			JsonObject jsonObject = JsonParser.parseReader(fileReader).getAsJsonObject();
 
+			if (jsonObject.has("stat.playOneMinute")) return jsonObject.get("stat.playOneMinute").getAsInt(); // Lads: a 1.8.9 world's stats (ticks too)
 			if (jsonObject.has("stats")) {
 				JsonObject statsObject = jsonObject.getAsJsonObject("stats");
 

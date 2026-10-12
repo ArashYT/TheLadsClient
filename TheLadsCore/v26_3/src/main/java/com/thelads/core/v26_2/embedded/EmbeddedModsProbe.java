@@ -69,11 +69,9 @@ public final class EmbeddedModsProbe {
                 "Fix Book GUI moves the book page buttons to y=" + expected + " (vanilla 159), found " + buttons.stream().map(b -> b.getY()).toList());
         }
         if (EmbeddedMods.active("worldplaytimereborn")) {
+            // A QA world made in this run has no level.dat or stats until its first save, so the world list leaves it out: save it (as /save-all).
             var server = mc.getSingleplayerServer();
-            if (server != null) {
-                var player = server.getPlayerList().getPlayer(mc.player.getUUID());
-                if (player != null) server.getPlayerList().getPlayerStats(player).save();
-            }
+            if (server != null) server.submit(() -> server.saveEverything(true, false, true)).get(30, TimeUnit.SECONDS);
             List<LevelSummary> summaries = titleWorlds == null ? List.of() : titleWorlds.get(30, TimeUnit.SECONDS);
             if (summaries.isEmpty() || summaries.stream().noneMatch(s -> ((com.thelads.core.v26_2.embedded.playtime.util.IWithPlayTime) s).getPlayTimeTicks() > 0)) {
                 var storage = mc.getLevelSource();
