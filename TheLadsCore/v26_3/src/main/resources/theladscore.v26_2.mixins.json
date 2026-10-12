@@ -59,6 +59,7 @@
     "ShulkerTooltipMixin",
     "ShulkerTooltipFactoryMixin",
     "ShulkerInventoryMixin",
+    "TooltipFitMixin",
     "ShulkerBlockChangesMixin",
     "RenderScaleMixin",
     "RenderScaleTargetsAccessorMixin",
