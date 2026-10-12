@@ -83,6 +83,7 @@ public class ConfigManager {
         hud.addProperty("textShadow", HudSettings.getInstance().isTextShadow());
         hud.addProperty("softShadow", HudSettings.getInstance().isSoftShadow());
         hud.addProperty("shadowOnDefault", true); // marks the 1.9.1 migration of the old Soft default (applyJson)
+        hud.addProperty("hudFpsCapOnDefault", true); // marks the 1.9.2 migration of the old uncapped default (applyJson)
         hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
         hud.addProperty("hudFpsCapOptIn", HudSettings.getInstance().isHudFpsCapEnabled());
         hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled()); // read by 1.4.4 and older
@@ -235,11 +236,35 @@ public class ConfigManager {
             if (hud.has("hudFpsLimit")) {
                 HudSettings.getInstance().setHudFpsLimit(hud.get("hudFpsLimit").getAsInt());
             }
-            if (hud.has("hudFpsCapOptIn")) {
-                HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapOptIn").getAsBoolean());
-            } else if (hud.has("hudFpsCapEnabled")) {
-                // 1.4.1-1.4.4 saved their default (on, 60) in every config: only a changed limit was the player's choice.
-                HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapEnabled").getAsBoolean() && HudSettings.getInstance().getHudFpsLimit() != 60);
+            if (hud.has("hudFpsCapOnDefault")) {
+                if (hud.has("hudFpsCapOptIn")) {
+                    HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapOptIn").getAsBoolean());
+                } else if (hud.has("hudFpsCapEnabled")) {
+                    HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapEnabled").getAsBoolean());
+                }
+            } else {
+                // 1.9.2: HUD FPS cap is on by default at 60. Configs from 1.9.1 and older had hudFpsCapOptIn=false
+                // written by default; turn the cap on at 60 for configs that never changed it from the old default.
+                if (hud.has("hudFpsCapOptIn")) {
+                    boolean optIn = hud.get("hudFpsCapOptIn").getAsBoolean();
+                    if (optIn) {
+                        HudSettings.getInstance().setHudFpsCapEnabled(true);
+                    } else if (HudSettings.getInstance().getHudFpsLimit() == 60) {
+                        HudSettings.getInstance().setHudFpsCapEnabled(true);
+                    } else {
+                        HudSettings.getInstance().setHudFpsCapEnabled(false);
+                    }
+                } else if (hud.has("hudFpsCapEnabled")) {
+                    // 1.4.1-1.4.4 saved their default (on, 60) in every config; uncapped was not an explicit choice.
+                    if (HudSettings.getInstance().getHudFpsLimit() == 60) {
+                        HudSettings.getInstance().setHudFpsCapEnabled(true);
+                    } else {
+                        HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapEnabled").getAsBoolean());
+                    }
+                } else {
+                    HudSettings.getInstance().setHudFpsCapEnabled(true);
+                    HudSettings.getInstance().setHudFpsLimit(60);
+                }
             }
             if (hud.has("backgrounds")) HudSettings.getInstance().setBackgrounds(hud.get("backgrounds").getAsBoolean());
             if (hud.has("favoriteColors")) {
