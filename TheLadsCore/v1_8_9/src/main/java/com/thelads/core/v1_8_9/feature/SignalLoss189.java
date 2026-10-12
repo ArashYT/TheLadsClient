@@ -66,7 +66,7 @@ public final class SignalLoss189 {
         boolean blend = GlState189.blend();
         if (module.background.get()) Gui.drawRect(x - 6, y - 6, x + width + 6, y + height + 6,
             module.backgroundColor.isUseGlobal() ? HudSettings.getInstance().getGlobalBackground() : module.backgroundColor.getColor());
-        font.drawStringWithShadow(warning, x, y, module.textColor.isUseGlobal() ? HudSettings.getInstance().getGlobalColor() : module.textColor.getColor());
+        font.drawString(warning, x, y, module.textColor.isUseGlobal() ? HudSettings.getInstance().getGlobalColor() : module.textColor.getColor(), HudSettings.getInstance().isTextShadow());
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
         if (blend) GlStateManager.enableBlend(); else GlStateManager.disableBlend();
     }

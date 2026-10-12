@@ -294,7 +294,7 @@ public final class Crosshair1201 {
         RenderSystem.defaultBlendFunc();
         if (flag("Tool Durability Indicator") && held.isDamageableItem()) {
             graphics.renderItem(held, x, y);
-            graphics.drawString(mc.font, Integer.toString(Math.max(0, held.getMaxDamage() - held.getDamageValue())), x + 18, y + 4, CrosshairDesign.alpha(0xffffffff, opacity));
+            graphics.drawString(mc.font, Integer.toString(Math.max(0, held.getMaxDamage() - held.getDamageValue())), x + 18, y + 4, CrosshairDesign.alpha(0xffffffff, opacity), com.thelads.core.config.HudSettings.getInstance().isTextShadow());
             y += 18;
         }
         if (flag("Projectile Indicator")) {
@@ -302,7 +302,7 @@ public final class Crosshair1201 {
             Ammo ammo = projectiles(weapon);
             if (ammo != null) {
                 graphics.renderItem(ammo.icon(), x, y);
-                graphics.drawString(mc.font, ammo.infinite() ? "∞" : Integer.toString(ammo.count()), x + 18, y + 4, CrosshairDesign.alpha(0xffffffff, opacity));
+                graphics.drawString(mc.font, ammo.infinite() ? "∞" : Integer.toString(ammo.count()), x + 18, y + 4, CrosshairDesign.alpha(0xffffffff, opacity), com.thelads.core.config.HudSettings.getInstance().isTextShadow());
             }
         }
     }

@@ -108,7 +108,7 @@ public final class SignalLoss1201 {
         if (module.background.get()) graphics.fill(x - 6, y - 6, x + width + 6, y + height + 6,
             module.backgroundColor.isUseGlobal() ? HudSettings.getInstance().getGlobalBackground() : module.backgroundColor.getColor());
         graphics.drawString(minecraft.font, warning, x, y,
-            module.textColor.isUseGlobal() ? HudSettings.getInstance().getGlobalColor() : module.textColor.getColor(), true);
+            module.textColor.isUseGlobal() ? HudSettings.getInstance().getGlobalColor() : module.textColor.getColor(), HudSettings.getInstance().isTextShadow());
     }
 
     // ----- /signalloss reload | /signalloss config <setting> <value> | /signalloss config reset

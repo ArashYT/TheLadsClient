@@ -354,7 +354,7 @@ public class GuiLadsAdapter implements LadsGraphics {
         }
         if (names && name != null) {
             int textX = x + (barW - font.getStringWidth(name)) / 2;
-            font.drawStringWithShadow(name, textX, y, 0xFFFFFFFF);
+            font.drawString(name, textX, y, 0xFFFFFFFF, com.thelads.core.config.HudSettings.getInstance().isTextShadow());
         }
     }
 

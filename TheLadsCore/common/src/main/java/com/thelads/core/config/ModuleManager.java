@@ -90,6 +90,7 @@ public class ModuleManager {
         coords.addOption(new DropdownOption("Format", 2, "X Y Z", "Coords: X, Y, Z", "Labeled X/Y/Z"));
         coords.addOption(new BoolOption("Vertical", true));
         coords.addOption(new BoolOption("Show Biome", false));
+        coords.addOption(new BoolOption("Show Direction", true)); // 1.9.1: where you face (N, NE... and the axes), on the right
         coords.addOption(new BoolOption("Per-axis colors", false));
         coords.addOption(new ColorOption("X Color", false, 0xFFFF5555));
         coords.addOption(new ColorOption("Y Color", false, 0xFF55FF55));
@@ -219,6 +220,8 @@ public class ModuleManager {
         // 1.7.0, both on by default: no 100-line history cap (ChatHistory), and chat text with its shadow.
         chatMod.addOption(new BoolOption("Infinite History", true));
         chatMod.addOption(new BoolOption("Text Shadow", true));
+        // 1.9.1: chat sits above the armor row of the survival HUD, so a message never covers it (ChatLift).
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatLift.OPTION, true));
         // 1.9.0: Chat Heads, once a module of its own. The sender's head in chat, just before their name or at the start of the line:
         // from signed chat, or from player names in the tab list. Keep Text Aligned applies to Start of line. The Chat module's
         // own switch does not turn it off (ChatHeads.enabled); a Chat Heads jar the player added hides these (ChatModule.hidden).

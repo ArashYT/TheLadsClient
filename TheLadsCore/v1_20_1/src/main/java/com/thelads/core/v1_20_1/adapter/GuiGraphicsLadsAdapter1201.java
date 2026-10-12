@@ -172,7 +172,7 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
                     int yy = y + row++ * 19;
                     overlay.ladsDrawBar(guiGraphics, x, yy + 10, event);
                     if (names) {
-                        guiGraphics.drawString(font, event.getName(), x + (182 - font.width(event.getName())) / 2, yy, tint(0xFFFFFFFF), true);
+                        guiGraphics.drawString(font, event.getName(), x + (182 - font.width(event.getName())) / 2, yy, tint(0xFFFFFFFF), com.thelads.core.config.HudSettings.getInstance().isTextShadow());
                     }
                 }
             } finally {
