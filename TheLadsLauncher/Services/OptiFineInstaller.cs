@@ -20,14 +20,20 @@ namespace TheLadsLauncher.Services;
 public static class OptiFineInstaller
 {
     public const string ModId = "optifine";
-    public const string Version = "1.8.9_HD_U_M5";
+    public const string Version = "1.8.9_HD_U_M6_pre2";
 
     /// <summary>The one jar the launcher accepts. Tests and the sandbox forced-failure run pass another.</summary>
     public sealed record Pin(string FileName, string Sha256, long Size);
 
     /// <summary>OptiFine 1.8.9 HD U M5, as fetched and checked in spike S2 (artifacts\1.4.0\spikes\s2\REPORT.md).</summary>
-    public static readonly Pin M5 = new("OptiFine_" + Version + ".jar",
+    public static readonly Pin M5 = new("OptiFine_1.8.9_HD_U_M5.jar",
         "2739760a70fca6ae5c7dc817bcc6283f18f55e38fa23778da7f387a6b724b2c4", 2_585_014);
+
+    /// <summary>OptiFine 1.8.9 HD U M6_pre2, as fetched from optifine.net.</summary>
+    public static readonly Pin M6Pre2 = new("preview_OptiFine_1.8.9_HD_U_M6_pre2.jar",
+        "d57b7fd7bd519bbe4fdbf36cceebfb64d459b7713e1afb0bf6549c21b476a028", 2_584_186);
+
+    public static readonly Pin DefaultPin = M6Pre2;
 
     private static readonly HttpClient Http = CreateClient();
 
@@ -38,9 +44,11 @@ public static class OptiFineInstaller
         return client;
     }
 
-    /// <summary>Whether a file in Mods has the launcher's OptiFine name (enabled or switched off).</summary>
-    public static bool IsLaunchersFile(string fileName) =>
-        fileName.Equals(M5.FileName, StringComparison.OrdinalIgnoreCase) || fileName.Equals(M5.FileName + ".disabled", StringComparison.OrdinalIgnoreCase);
+    /// <summary>Whether a file in Mods has a launcher-managed OptiFine name (enabled or switched off).</summary>
+    public static bool IsLaunchersFile(string fileName, Pin? currentPin = null) =>
+        fileName.Equals(currentPin?.FileName, StringComparison.OrdinalIgnoreCase) || fileName.Equals((currentPin?.FileName) + ".disabled", StringComparison.OrdinalIgnoreCase)
+        || fileName.Equals(DefaultPin.FileName, StringComparison.OrdinalIgnoreCase) || fileName.Equals(DefaultPin.FileName + ".disabled", StringComparison.OrdinalIgnoreCase)
+        || fileName.Equals(M5.FileName, StringComparison.OrdinalIgnoreCase) || fileName.Equals(M5.FileName + ".disabled", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Makes the profile load the verified OptiFine, unless it is switched off or an OptiFine jar of your own is enabled.
@@ -50,7 +58,7 @@ public static class OptiFineInstaller
     public static async Task<string?> InstallAsync(string launcherDirectory, string gameDirectory, Pin? pin = null,
         Action<string>? status = null, CancellationToken cancellationToken = default, HttpClient? httpClient = null)
     {
-        pin ??= M5;
+        pin ??= DefaultPin;
         string? target = null;
         try
         {
@@ -72,7 +80,15 @@ public static class OptiFineInstaller
                 return null;
             }
             // An enabled OptiFine jar of your own (any other name) is used instead: Forge must never get two.
-            var own = enabled.FirstOrDefault(p => !SafeFileOps.PathsEqual(p, target));
+            var own = enabled.FirstOrDefault(p => !SafeFileOps.PathsEqual(p, target) && !IsLaunchersFile(Path.GetFileName(p), pin));
+            // Move aside any older or alternative launcher OptiFine copies (e.g. M5 when migrating to M6_pre2, or disabled/extra copies).
+            foreach (var copy in copies.Where(c => !SafeFileOps.PathsEqual(c, target) && IsLaunchersFile(Path.GetFileName(c), pin)))
+            {
+                var backup = ClientModInstaller.SafeChild(game, Path.Combine(game, ".lads-mod-cache", $"previous-{ModId}-{Guid.NewGuid():N}.jar"));
+                Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
+                File.Move(copy, backup);
+                status?.Invoke($"Moved older '{Path.GetFileName(copy)}' out of Mods to '{backup}'.");
+            }
             if (own == null && await VerifiedAsync(target, pin, cancellationToken))
             {
                 status?.Invoke($"{pin.FileName} is installed (SHA-256 verified).");

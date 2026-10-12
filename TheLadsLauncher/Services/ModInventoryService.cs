@@ -221,7 +221,7 @@ public sealed class ModInventoryService
         {
             var requested = Requested(OptiFineInstaller.ModId, null);
             var note = requested ? "Downloaded from optifine.net at the next launch" : "Disabled — not downloaded";
-            entries.Add(new(OptiFineInstaller.ModId, "OptiFine", null, OptiFineInstaller.Version, OptiFineInstaller.M5.FileName, null,
+            entries.Add(new(OptiFineInstaller.ModId, "OptiFine", null, OptiFineInstaller.Version, OptiFineInstaller.DefaultPin.FileName, null,
                 ModOwnership.Pack, requested ? ModEntryStatus.PendingDownload : ModEntryStatus.NotDownloaded, false, requested,
                 running ? false : null, running && requested, true, null, null, null, null, new[] { "sp614x" }, Array.Empty<string>(),
                 Array.Empty<string>(), false, note, null, Array.Empty<ModInventoryEntry>()));

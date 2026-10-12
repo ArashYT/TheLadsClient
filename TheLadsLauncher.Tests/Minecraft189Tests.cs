@@ -651,7 +651,7 @@ public class Minecraft189Tests
         // Forge never loads these: a Fabric mod whose dependency is missing, and a jar that is not a zip.
         File.WriteAllBytes(box.Mod("fabricmod.jar"), ModSandbox.Jar("fabricmod", depends: new() { ["fabric-api"] = "*" }));
         File.WriteAllBytes(box.Mod("broken.jar"), new byte[] { 1, 2, 3 });
-        File.WriteAllBytes(box.Mod(OptiFineInstaller.M5.FileName), OptiFineJar());
+        File.WriteAllBytes(box.Mod(OptiFineInstaller.DefaultPin.FileName), OptiFineJar());
         box.Choose((OptiFineInstaller.ModId, false)); // saved while the game was running: applied at the next launch
 
         await box.Install("1.8.9");
@@ -659,7 +659,7 @@ public class Minecraft189Tests
         Assert.Equal(forgeMod, File.ReadAllBytes(box.Mod("examplemod-1.0.0.jar")));
         Assert.Equal(ModSandbox.Sha(forgeMod), box.ReadReceipt()["examplemod"]);
         Assert.True(File.Exists(box.Mod("fabricmod.jar")) && File.Exists(box.Mod("broken.jar")));
-        Assert.True(File.Exists(box.Mod(OptiFineInstaller.M5.FileName + ".disabled")));
+        Assert.True(File.Exists(box.Mod(OptiFineInstaller.DefaultPin.FileName + ".disabled")));
         var inventory = await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "1.8.9");
         var example = inventory.Entries.Single(e => e.Id == "examplemod");
         Assert.Equal((ModOwnership.Pack, ModEntryStatus.Installed), (example.Ownership, example.Status));
@@ -687,7 +687,7 @@ public class Minecraft189Tests
         var inventory = await new ModInventoryService().BuildAsync(bundle, box.Game, "1.8.9");
         var pending = Assert.Single(inventory.Entries, e => e.Status == ModEntryStatus.PendingDownload && e.Ownership != ModOwnership.Core);
         Assert.Equal((OptiFineInstaller.ModId, "OptiFine", ModOwnership.Pack, true), (pending.Id, pending.DisplayName, pending.Ownership, pending.CanToggle));
-        Assert.Equal(OptiFineInstaller.M5.FileName, pending.FileName);
+        Assert.Equal(OptiFineInstaller.DefaultPin.FileName, pending.FileName);
 
         // The Core that TheLadsCore's deploy staged, when it did: the Forge mod, installed the way a 1.8.9 launch installs it.
         var staged = Path.Combine(bundle, "game-mods", "1.8.9", "theladscore.jar");
@@ -727,12 +727,12 @@ public class Minecraft189Tests
         File.WriteAllBytes(box.Mod("theladscore-1.3.9.jar"), older);
         File.WriteAllBytes(box.Mod("theladscore.jar.disabled"), ForgeCore("1.3.8"));
         File.WriteAllBytes(box.Mod("examplemod.jar"), ForgeJar("[{\"modid\": \"examplemod\", \"mcversion\": \"1.8.9\"}]"));
-        File.WriteAllBytes(box.Mod(OptiFineInstaller.M5.FileName), OptiFineJar());
+        File.WriteAllBytes(box.Mod(OptiFineInstaller.DefaultPin.FileName), OptiFineJar());
 
         Assert.True(await BundledModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9"));
 
         Assert.Equal(core, File.ReadAllBytes(box.Mod("theladscore.jar")));
-        Assert.Equal(new[] { OptiFineInstaller.M5.FileName, "examplemod.jar", "theladscore.jar" }, Names(box.Mods));
+        Assert.Equal(new[] { "examplemod.jar", OptiFineInstaller.DefaultPin.FileName, "theladscore.jar" }, Names(box.Mods));
         var backups = Directory.GetFiles(Path.Combine(box.Game, "mods-disabled"), "*", SearchOption.AllDirectories);
         Assert.Equal(new[] { "theladscore-1.3.9.jar", "theladscore.jar.disabled" }, backups.Select(Path.GetFileName).Order(StringComparer.Ordinal));
         Assert.Equal(older, File.ReadAllBytes(backups.Single(b => b.EndsWith("1.3.9.jar", StringComparison.Ordinal))));
@@ -877,6 +877,10 @@ public class Minecraft189Tests
             "<td><a href='downloadx?f=OptiFine_1.8.9_HD_U_M5.jar&x=0ab5fb1afb34102740d65d8e87bc754b' onclick='onDownload()'>Download</a></td>", file));
         Assert.Equal("https://optifine.net/downloadx?f=OptiFine_1.8.9_HD_U_M5.jar&x=ABC123",
             OptiFineInstaller.DownloadUrl("<a href=\"downloadx?f=OptiFine_1.8.9_HD_U_M5.jar&amp;x=ABC123\">", file));
+        // And for M6_pre2:
+        const string fileM6 = "preview_OptiFine_1.8.9_HD_U_M6_pre2.jar";
+        Assert.Equal("https://optifine.net/downloadx?f=preview_OptiFine_1.8.9_HD_U_M6_pre2.jar&x=0ab5fb1afb34102740d65d8e87bc754b", OptiFineInstaller.DownloadUrl(
+            "<td><a href='downloadx?f=preview_OptiFine_1.8.9_HD_U_M6_pre2.jar&x=0ab5fb1afb34102740d65d8e87bc754b' onclick='onDownload()'>Download</a></td>", fileM6));
         // Another file, a link elsewhere, a token that is not one, or no link at all: nothing.
         Assert.Null(OptiFineInstaller.DownloadUrl("<a href='downloadx?f=OptiFine_1.8.9_HD_U_L5.jar&x=0ab5'>", file));
         Assert.Null(OptiFineInstaller.DownloadUrl("<a href='https://example.test/downloadx?f=OptiFine_1.8.9_HD_U_M5.jar&x=0ab5'>", file));
@@ -891,8 +895,8 @@ public class Minecraft189Tests
         var jar = OptiFineJar();
         var site = new OptiFineNet(jar);
         var launcher = Path.Combine(box.Root, "launcher");
-        var cached = Path.Combine(launcher, "cache", "optifine", OptiFineInstaller.M5.FileName);
-        var installed = box.Mod(OptiFineInstaller.M5.FileName);
+        var cached = Path.Combine(launcher, "cache", "optifine", OptiFineInstaller.DefaultPin.FileName);
+        var installed = box.Mod(OptiFineInstaller.DefaultPin.FileName);
         var messages = new List<string>();
         Task<string?> Install() => OptiFineInstaller.InstallAsync(launcher, box.Game, Pin(jar), messages.Add, default, new HttpClient(site));
 
@@ -922,7 +926,7 @@ public class Minecraft189Tests
         // The Mods page lists it as the launcher's OptiFine, and the snapshot records it as loaded.
         var inventory = await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "1.8.9");
         var row = inventory.Entries.Single(e => e.Id == OptiFineInstaller.ModId);
-        Assert.Equal(("OptiFine", "1.8.9_HD_U_M5", ModOwnership.Pack, ModEntryStatus.Installed), (row.DisplayName, row.Version, row.Ownership, row.Status));
+        Assert.Equal(("OptiFine", OptiFineInstaller.Version, ModOwnership.Pack, ModEntryStatus.Installed), (row.DisplayName, row.Version, row.Ownership, row.Status));
         Assert.Contains("optifine.net", row.Note);
         Assert.Contains(OptiFineInstaller.ModId, ModInventoryView.EnabledJarIds(inventory));
     }
@@ -939,7 +943,7 @@ public class Minecraft189Tests
         var jar = OptiFineJar();
         var site = new OptiFineNet(jar) { Failure = failure };
         var launcher = Path.Combine(box.Root, "launcher");
-        File.WriteAllBytes(box.Mod(OptiFineInstaller.M5.FileName), new byte[] { 1 }); // damaged
+        File.WriteAllBytes(box.Mod(OptiFineInstaller.DefaultPin.FileName), new byte[] { 1 }); // damaged
 
         var warning = await OptiFineInstaller.InstallAsync(launcher, box.Game, Pin(jar), httpClient: new HttpClient(site));
 
@@ -961,13 +965,13 @@ public class Minecraft189Tests
     {
         using var box = new ModSandbox();
         var jar = OptiFineJar();
-        File.WriteAllBytes(box.Mod(OptiFineInstaller.M5.FileName), new byte[] { 1 }); // damaged
+        File.WriteAllBytes(box.Mod(OptiFineInstaller.DefaultPin.FileName), new byte[] { 1 }); // damaged
         File.WriteAllText(box.Cache, "a file where the backup folder goes");
         var warning = await OptiFineInstaller.InstallAsync(Path.Combine(box.Root, "launcher"), box.Game, Pin(jar),
             httpClient: new HttpClient(new OptiFineNet(jar)));
-        Assert.Contains($"'{OptiFineInstaller.M5.FileName}' could not be checked or moved out of Mods", warning);
+        Assert.Contains($"'{OptiFineInstaller.DefaultPin.FileName}' could not be checked or moved out of Mods", warning);
         Assert.DoesNotContain("starts without it", warning);
-        Assert.True(File.Exists(box.Mod(OptiFineInstaller.M5.FileName)));
+        Assert.True(File.Exists(box.Mod(OptiFineInstaller.DefaultPin.FileName)));
     }
 
     [Fact]
@@ -996,12 +1000,12 @@ public class Minecraft189Tests
 
         await Switch(true);
         Assert.Null(await Install());
-        Assert.True(File.Exists(box.Mod(OptiFineInstaller.M5.FileName)));
+        Assert.True(File.Exists(box.Mod(OptiFineInstaller.DefaultPin.FileName)));
 
         // Switched off once installed: the jar is renamed and stays off at the next launch.
         await Switch(false);
         Assert.Null(await Install());
-        Assert.Equal(new[] { box.Mod(OptiFineInstaller.M5.FileName + ".disabled") }, Directory.GetFiles(box.Mods));
+        Assert.Equal(new[] { box.Mod(OptiFineInstaller.DefaultPin.FileName + ".disabled") }, Directory.GetFiles(box.Mods));
         Assert.Equal(2, site.Requests.Count);
 
         // Your own OptiFine (another build, another name) is used instead: the launcher's leaves Mods, so Forge never gets two.
@@ -1016,7 +1020,7 @@ public class Minecraft189Tests
         // Without it, the launcher's comes back from the cache.
         File.Delete(mine);
         Assert.Null(await Install());
-        Assert.Equal(new[] { box.Mod(OptiFineInstaller.M5.FileName) }, Directory.GetFiles(box.Mods));
+        Assert.Equal(new[] { box.Mod(OptiFineInstaller.DefaultPin.FileName) }, Directory.GetFiles(box.Mods));
         Assert.Equal(2, site.Requests.Count);
 
         // Forge also loads mods/1.8.9/: your own OptiFine there is used the same way.
@@ -1028,6 +1032,22 @@ public class Minecraft189Tests
 
         // A Fabric profile never lists OptiFine.
         Assert.DoesNotContain((await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "26.3")).Entries, e => e.Id == OptiFineInstaller.ModId);
+    }
+
+    [Fact]
+    public async Task OlderM5IsMovedAsideWhenMigratingToM6Pre2()
+    {
+        using var box = new ModSandbox();
+        var jar = OptiFineJar();
+        var site = new OptiFineNet(jar);
+        var launcher = Path.Combine(box.Root, "launcher");
+        File.WriteAllBytes(box.Mod(OptiFineInstaller.M5.FileName), OptiFineJar("OptiFine 1.8.9_HD_U_M5"));
+
+        var warning = await OptiFineInstaller.InstallAsync(launcher, box.Game, Pin(jar), httpClient: new HttpClient(site));
+        Assert.Null(warning);
+        Assert.True(File.Exists(box.Mod(OptiFineInstaller.DefaultPin.FileName)));
+        Assert.False(File.Exists(box.Mod(OptiFineInstaller.M5.FileName)));
+        Assert.Single(Directory.GetFiles(box.Cache, "previous-optifine-*.jar"));
     }
 
     // ------------------------------------------------------------------ release
@@ -1104,10 +1124,11 @@ public class Minecraft189Tests
     /// optifine.net as spike S2 found it: every adloadx page links the jar with a new x token, the jar answers only the newest
     /// token, and any other token still gets 200 with a short web page. <see cref="Failure"/> breaks one step.
     /// </summary>
-    internal sealed class OptiFineNet(byte[] jar) : HttpMessageHandler
+    internal sealed class OptiFineNet(byte[] jar, string? fileName = null) : HttpMessageHandler
     {
-        public string Page => "https://optifine.net/adloadx?f=" + OptiFineInstaller.M5.FileName;
-        public string JarUrl(int token) => $"https://optifine.net/downloadx?f={OptiFineInstaller.M5.FileName}&x={token:x8}";
+        private readonly string _fileName = fileName ?? OptiFineInstaller.DefaultPin.FileName;
+        public string Page => "https://optifine.net/adloadx?f=" + _fileName;
+        public string JarUrl(int token) => $"https://optifine.net/downloadx?f={_fileName}&x={token:x8}";
         public List<string> Requests { get; } = new();
         public string? Failure { get; init; }
         private int pages;
@@ -1133,8 +1154,9 @@ public class Minecraft189Tests
     }
 
     /// <summary>A stand-in for the OptiFine jar: its Forge tweaker and a changelog naming the version (never the real jar).</summary>
-    internal static byte[] OptiFineJar(string changelog = "OptiFine 1.8.9_HD_U_M5")
+    internal static byte[] OptiFineJar(string? changelog = null)
     {
+        changelog ??= "OptiFine " + OptiFineInstaller.Version;
         using var bytes = new MemoryStream();
         using (var zip = new ZipArchive(bytes, ZipArchiveMode.Create, true))
         {
@@ -1148,7 +1170,7 @@ public class Minecraft189Tests
 
     /// <summary>The launcher's OptiFine file name, pinned to a stand-in jar.</summary>
     internal static OptiFineInstaller.Pin Pin(byte[] jar) =>
-        OptiFineInstaller.M5 with { Sha256 = Convert.ToHexString(SHA256.HashData(jar)), Size = jar.Length };
+        OptiFineInstaller.DefaultPin with { Sha256 = Convert.ToHexString(SHA256.HashData(jar)), Size = jar.Length };
 
     /// <summary>A stand-in for the 1.8.9 Lads Core: mcmod.info as TheLadsCore/v1_8_9 writes it.</summary>
     private static byte[] ForgeCore(string version = "1.4.0", string mcversion = "1.8.9") => ForgeJar(

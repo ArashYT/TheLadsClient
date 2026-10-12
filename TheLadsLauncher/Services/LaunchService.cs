@@ -45,7 +45,7 @@ public class LaunchService : ILaunchService
         _authService = authService;
         _sharedContent = sharedContent ?? SharedContentService.Instance;
         _bundleRoot = bundleRoot ?? AppContext.BaseDirectory;
-        _optiFine = optiFine ?? OptiFineInstaller.M5;
+        _optiFine = optiFine ?? OptiFineInstaller.DefaultPin;
     }
 
     public async Task<Process?> LaunchAsync(
