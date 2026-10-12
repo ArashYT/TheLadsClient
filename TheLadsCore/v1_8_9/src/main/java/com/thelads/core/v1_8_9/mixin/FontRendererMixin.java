@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -47,5 +48,19 @@ public abstract class FontRendererMixin implements FontCache189.Holder {
     private void ladsReload(IResourceManager manager, CallbackInfo ci) {
         if (ladsPlain != null) ladsPlain.clear();
         if (ladsUnicode != null) ladsUnicode.clear();
+    }
+
+    @Unique private static int[] ladsCharIndices;
+
+    @Redirect(method = "getCharWidth", at = @At(value = "INVOKE", target = "Ljava/lang/String;indexOf(I)I", remap = false), require = 0)
+    private int ladsFastCharWidthIndexOf(String s, int ch) {
+        int[] table = ladsCharIndices;
+        if (table == null) {
+            table = ladsCharIndices = new int[256];
+            for (int i = 0; i < 256; i++) {
+                table[i] = s.indexOf(i);
+            }
+        }
+        return (ch >= 0 && ch < 256) ? table[ch] : s.indexOf(ch);
     }
 }

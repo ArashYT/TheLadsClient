@@ -1,9 +1,12 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.v1_8_9.feature.NativeHud;
+import com.thelads.core.v1_8_9.feature.ResolutionCache189;
 import java.util.Collection;
 import java.util.List;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiIngame;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.scoreboard.Score;
 import org.spongepowered.asm.mixin.Mixin;
@@ -80,5 +83,15 @@ public abstract class GuiIngameMixin {
         java.util.ArrayList<Score> skipped = com.google.common.collect.Lists.newArrayList(elements);
         ladsCachedSkippedScores = skipped;
         return skipped;
+    }
+
+    @Redirect(method = "renderBossHealth", at = @At(value = "NEW", target = "net/minecraft/client/gui/ScaledResolution"), require = 1)
+    private ScaledResolution ladsBossResolution(Minecraft mc) {
+        return ResolutionCache189.get(mc);
+    }
+
+    @Redirect(method = "renderGameOverlay", at = @At(value = "NEW", target = "net/minecraft/client/gui/ScaledResolution"), require = 1)
+    private ScaledResolution ladsOverlayResolution(Minecraft mc) {
+        return ResolutionCache189.get(mc);
     }
 }

@@ -12,9 +12,12 @@ public abstract class ChatLineMixin implements ChatHeads189.Line {
     @Unique private NetworkPlayerInfo ladsHead;
     @Unique private int ladsAt;
     @Unique private boolean ladsFirst;
+    @Unique private String ladsFormattedText;
 
     @Override public NetworkPlayerInfo ladsHead() { return ladsHead; }
     @Override public int ladsAt() { return ladsAt; }
     @Override public boolean ladsFirst() { return ladsFirst; }
     @Override public void ladsHead(NetworkPlayerInfo head, int at, boolean first) { ladsHead = head; ladsAt = at; ladsFirst = first; }
+    @Override public String ladsFormatted() { return ladsFormattedText; }
+    @Override public void ladsFormatted(String text) { ladsFormattedText = text; }
 }

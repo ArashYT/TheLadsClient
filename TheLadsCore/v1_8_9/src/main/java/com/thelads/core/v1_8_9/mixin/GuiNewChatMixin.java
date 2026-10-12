@@ -108,7 +108,7 @@ public abstract class GuiNewChatMixin implements Chat189.History {
     /** Raised moves chat up (Raised189, Forge's chat event); the line under the pointer is that much lower in screen pixels. */
     @ModifyVariable(method = "getChatComponent", at = @At("HEAD"), argsOnly = true, ordinal = 1, require = 1)
     private int ladsRaisedChat(int mouseY) {
-        return mouseY - com.thelads.core.v1_8_9.feature.Raised189.chatLift() * new net.minecraft.client.gui.ScaledResolution(net.minecraft.client.Minecraft.getMinecraft()).getScaleFactor();
+        return mouseY - com.thelads.core.v1_8_9.feature.Raised189.chatLift() * com.thelads.core.v1_8_9.feature.ResolutionCache189.get(net.minecraft.client.Minecraft.getMinecraft()).getScaleFactor();
     }
 
     @Inject(method = "setChatLine", at = @At("HEAD"), require = 1)
@@ -201,6 +201,20 @@ public abstract class GuiNewChatMixin implements Chat189.History {
             Chat189.animated++;
         }
         if (!Options189.enabled("Chat") || Options189.bool("Chat", "Chat Background", true)) Gui.drawRect(left, top, right, bottom, ladsFaded(color));
+    }
+
+    @Redirect(method = "drawChat", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/IChatComponent;getFormattedText()Ljava/lang/String;"), require = 1)
+    private String ladsFormattedChatText(IChatComponent component) {
+        if (ladsDrawn instanceof ChatHeads189.Line) {
+            ChatHeads189.Line line = (ChatHeads189.Line) ladsDrawn;
+            String formatted = line.ladsFormatted();
+            if (formatted == null) {
+                formatted = component.getFormattedText();
+                line.ladsFormatted(formatted);
+            }
+            return formatted;
+        }
+        return component.getFormattedText();
     }
 
     @Redirect(method = "drawChat", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/FontRenderer;drawStringWithShadow(Ljava/lang/String;FFI)I"), require = 1)

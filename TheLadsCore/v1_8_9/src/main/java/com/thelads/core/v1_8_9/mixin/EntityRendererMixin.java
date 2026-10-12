@@ -6,7 +6,10 @@ import com.thelads.core.config.ModuleManager;
 import com.thelads.core.v1_8_9.feature.Crosshair189;
 import com.thelads.core.v1_8_9.feature.OldAnimations189;
 import com.thelads.core.v1_8_9.feature.Probe172Anim;
+import com.thelads.core.v1_8_9.feature.ResolutionCache189;
 import com.thelads.core.v1_8_9.feature.Zoom189;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -61,5 +64,15 @@ public abstract class EntityRendererMixin {
     @Inject(method = "hurtCameraEffect", at = @At("TAIL"), require = 1)
     private void ladsQaTilt(float partialTicks, CallbackInfo ci) {
         if (Probe172Anim.recording) Probe172Anim.tiltFrame();
+    }
+
+    @Redirect(method = "updateCameraAndRender", at = @At(value = "NEW", target = "net/minecraft/client/gui/ScaledResolution"), require = 0)
+    private ScaledResolution ladsUpdateCameraResolution(Minecraft mc) {
+        return ResolutionCache189.get(mc);
+    }
+
+    @Redirect(method = "setupOverlayRendering", at = @At(value = "NEW", target = "net/minecraft/client/gui/ScaledResolution"), require = 0)
+    private ScaledResolution ladsSetupOverlayResolution(Minecraft mc) {
+        return ResolutionCache189.get(mc);
     }
 }
