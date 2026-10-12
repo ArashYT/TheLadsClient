@@ -192,10 +192,10 @@ if (focus189 != null && !Regex.IsMatch(focus189, @"\A[a-z0-9-]{1,40}\z")) throw 
 // 1.8.9 benchmark (LADS_VERIFY_189_ONLY=perf, Probe173Perf): the one QA run allowed uncapped (FPS unlimited, VSync off) at render
 // distance LADS_VERIFY_PERF_RD, 8 or 12 (user-approved exception, sandbox only, run alone); LADS_VERIFY_PERF_SECONDS per scene
 // (default 60, at most 90); LADS_VERIFY_PERF_JFR=1 also records lads-qa\perf\perf.jfr.
-bool perf189 = autoWorldVerification && capabilities.Forge && Env("LADS_VERIFY_189_ONLY") == "perf";
+bool perf189 = autoWorldVerification && capabilities.Forge && Env("LADS_VERIFY_189_ONLY") is "perf" or "players";
 string perfRenderDistance = perf189 ? Env("LADS_VERIFY_PERF_RD") ?? "8" : "4";
 if (perfRenderDistance is not ("4" or "8" or "12")) throw new ArgumentException("LADS_VERIFY_PERF_RD must be 8 or 12 (or 4, the QA default).");
-if (!perf189 && (Env("LADS_VERIFY_PERF_RD") ?? Env("LADS_VERIFY_PERF_SECONDS") ?? Env("LADS_VERIFY_PERF_JFR")) != null)
+if (!perf189 && (Env("LADS_VERIFY_PERF_RD") ?? Env("LADS_VERIFY_PERF_SECONDS") ?? Env("LADS_VERIFY_PERF_JFR") ?? Env("LADS_VERIFY_PERF_SCENES")) != null)
     throw new ArgumentException("LADS_VERIFY_PERF_* needs a 1.8.9 --title run with LADS_VERIFY_AUTO_WORLD=1 and LADS_VERIFY_189_ONLY=perf.");
 string? perfSeconds = perf189 ? Env("LADS_VERIFY_PERF_SECONDS") : null;
 if (perfSeconds != null && !Regex.IsMatch(perfSeconds, @"\A[1-9][0-9]?\z")) throw new ArgumentException("LADS_VERIFY_PERF_SECONDS must be 1 to 99.");
@@ -798,13 +798,16 @@ try
         // =anim: only swing while using items and the damage tilt (Probe172Anim).
         // =keybinds: side mouse buttons and lasting key binds, the phase in <game>\.lads-qa-keybinds (Probe172Keybinds).
         // =ui: only the reset questions and Fullbright's slider (Probe172Ui). =title: only the title layout at every GUI scale and More.
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "particles" or "anim" or "keybinds" or "ui" or "render185" or "title") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "particles" or "anim" or "keybinds" or "ui" or "render185" or "title" or "players") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
         if (perf189)
         {
             string perfFolder = Path.Combine(directory, "lads-qa", "perf");
             Directory.CreateDirectory(perfFolder);
             File.Delete(Path.Combine(perfFolder, "perf.json")); // only this run's results
             if (perfSeconds != null) AddJvm("-Dthelads.perfSeconds=" + perfSeconds);
+            if (Env("LADS_VERIFY_PERF_SCENES") != null) AddJvm("-Dthelads.perfScenes=" + Env("LADS_VERIFY_PERF_SCENES"));
+            if (Env("LADS_VERIFY_SKINLAYERS") != null) AddJvm("-Dthelads.skinlayers=" + Env("LADS_VERIFY_SKINLAYERS"));
+            if (Env("LADS_VERIFY_SKINLAYERS_LOD") != null) AddJvm("-Dthelads.skinlayersLod=" + Env("LADS_VERIFY_SKINLAYERS_LOD"));
             if (Env("LADS_VERIFY_PERF_JFR") == "1") AddJvm("-XX:StartFlightRecording=settings=profile,filename=" + Path.Combine(perfFolder, "perf.jfr"));
         }
     }

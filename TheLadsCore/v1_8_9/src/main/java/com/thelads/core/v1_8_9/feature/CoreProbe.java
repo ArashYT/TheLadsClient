@@ -122,7 +122,7 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe172HudFlicker.STEPS);
-        } else if ("perf".equals(only)) {
+        } else if ("perf".equals(only) || "players".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, Probe173Perf::open, CoreProbe::worldReady));
             STEPS.addAll(Probe173Perf.STEPS);
