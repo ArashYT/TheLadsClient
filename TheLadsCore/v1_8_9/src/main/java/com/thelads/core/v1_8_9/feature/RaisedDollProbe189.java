@@ -100,14 +100,18 @@ final class RaisedDollProbe189 {
         return after(10);
     }
 
-    /** The newest chat line, drawn 24 px higher, answers a pointer on it there and not where vanilla would draw it. */
+    /**
+     * The newest chat line, drawn higher (Raised's 24 px, or more: 1.9.1's Chat "Above Armor Bar" clears the armor row over the
+     * raised hotbar), answers a pointer on it there and not where vanilla would draw it.
+     */
     private static boolean chatClick(Minecraft mc) {
         ScaledResolution resolution = new ScaledResolution(mc);
         int scale = resolution.getScaleFactor();
-        IChatComponent raisedLine = mc.ingameGUI.getChatGUI().getChatComponent(10 * scale, (27 + 24 + 4) * scale);
+        int lift = Raised189.chatLift();
+        IChatComponent raisedLine = mc.ingameGUI.getChatGUI().getChatComponent(10 * scale, (27 + lift + 4) * scale);
         IChatComponent vanillaLine = mc.ingameGUI.getChatGUI().getChatComponent(10 * scale, (27 + 4) * scale);
-        check(raisedLine != null && raisedLine.getUnformattedText().contains("Lads Raised QA") && vanillaLine == null,
-            "Raised: the pointer finds the raised chat line where it is drawn (" + raisedLine + "), nothing where it was (" + vanillaLine + ")");
+        check(lift >= 24 && raisedLine != null && raisedLine.getUnformattedText().contains("Lads Raised QA") && vanillaLine == null,
+            "Raised: the pointer finds the raised chat line where it is drawn, " + lift + " px up (" + raisedLine + "), nothing where it was (" + vanillaLine + ")");
         mc.displayGuiScreen(null);
         raised().getOptions().forEach(Option::reset);
         doll().getOptions().forEach(Option::reset);
