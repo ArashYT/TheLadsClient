@@ -648,21 +648,6 @@
       "projectUrl": "https://modrinth.com/mod/simple-voice-chat"
     },
     {
-      "projectId": "kYuIpRLv",
-      "projectSlug": "wavey-capes",
-      "name": "Wavey Capes",
-      "modId": "waveycapes",
-      "versionId": "JunWGyYI",
-      "version": "1.11.2",
-      "fileName": "waveycapes-fabric-1.11.2-mc1.20.1.jar",
-      "url": "https://cdn.modrinth.com/data/kYuIpRLv/versions/JunWGyYI/waveycapes-fabric-1.11.2-mc1.20.1.jar",
-      "sha512": "937ef84ecac2aa1e57eb748ddc6f2d60ae59e158d4f868ee9b2d83c82778b6c2342dc6d30938e3e32bc76d4f12691ea80e69de474aee1da8b3d8a3a26803e037",
-      "size": 1787074,
-      "license": "LicenseRef-tr7zw-Protective-License",
-      "sourceUrl": "https://github.com/tr7zw/WaveyCapes",
-      "projectUrl": "https://modrinth.com/mod/wavey-capes"
-    },
-    {
       "projectId": "1bokaNcj",
       "projectSlug": "xaeros-minimap",
       "name": "Xaero's Minimap",
@@ -735,6 +720,15 @@
         "2ad40e742409fc8a829d209e9c8e973a73fc1d0716d583c9fe98df1dcd2de23c38f75670199b9f3aeaf80e7fc448f604ee0555994c05cf15f975eaf21d0ef047"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.8.5 (SkinLayers module)."
+    },
+    {
+      "modId": "waveycapes",
+      "projectId": "kYuIpRLv",
+      "name": "Wavey Capes",
+      "sha512": [
+        "937ef84ecac2aa1e57eb748ddc6f2d60ae59e158d4f868ee9b2d83c82778b6c2342dc6d30938e3e32bc76d4f12691ea80e69de474aee1da8b3d8a3a26803e037"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.9.1 (Wavy Capes module)."
     }
   ]
 }

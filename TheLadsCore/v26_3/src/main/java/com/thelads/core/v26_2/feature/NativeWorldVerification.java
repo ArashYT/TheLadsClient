@@ -186,6 +186,7 @@ public final class NativeWorldVerification {
             SoundsCapture.tick(gameDirectory, captureReady && (SoundsCapture.busy() || !captureBusy()));
             HypixelCapture.tick(gameDirectory, captureReady && (HypixelCapture.busy() || !captureBusy()));
             ActionBarCapture.tick(gameDirectory, captureReady && (ActionBarCapture.busy() || !captureBusy()));
+            WorldCapture.tick(gameDirectory, captureReady && (WorldCapture.busy() || !captureBusy()));
             com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.tick(gameDirectory, captureReady && (com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() || !captureBusy()));
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
@@ -356,6 +357,7 @@ public final class NativeWorldVerification {
         com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.frame(target, gameDirectory);
         DynamicLightsCapture.frame(target, gameDirectory);
         ParticleCoreCapture.frame(target, gameDirectory);
+        WorldCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter || ChatHeadsCapture.pending()) return;
         captureStarted = true;
         try {
@@ -495,7 +497,8 @@ public final class NativeWorldVerification {
             ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || HudLayoutCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
             SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ParticleCoreCapture.busy() || SoundsCapture.busy() || HypixelCapture.busy()
-            || ActionBarCapture.busy();
+            || ActionBarCapture.busy()
+            || WorldCapture.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();

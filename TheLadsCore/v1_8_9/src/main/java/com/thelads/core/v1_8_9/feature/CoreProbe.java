@@ -173,6 +173,10 @@ public final class CoreProbe {
         } else if ("actionbar".equals(only)) { // 1.9.1 Action Bar module and kill banners above the action bar (Probe191ActionBar)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe191ActionBar::run));
+        } else if ("world191".equals(only)) { // 1.9.1 Wavy Capes and TNT Timer (Probe191World)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe191World.STEPS);
         } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
