@@ -36,4 +36,13 @@ public final class UnfocusedFpsCap189 {
         if (module == null || !module.isEnabled()) return vanilla;
         return Math.min(vanilla, (int) Options189.number(NAME, LIMIT, 60));
     }
+
+    /** Whether world 3D rendering should be skipped (e.g. while window is minimized/iconified). */
+    public static boolean shouldSkipWorldRender(boolean vanillaSkip) {
+        if (vanillaSkip) return true;
+        if (bypass) return false;
+        Module module = ModuleManager.getInstance().getModule(NAME);
+        if (module == null || !module.isEnabled()) return false;
+        return !Display.isVisible();
+    }
 }
