@@ -194,6 +194,9 @@ public class LaunchService : ILaunchService
             FullScreen = settings.FullscreenOnLaunch
         };
 
+        var jvmArgs = launchOption.ExtraJvmArguments ?? Array.Empty<MArgument>();
+        launchOption.ExtraJvmArguments = jvmArgs.Append(MArgument.FromCommandLine("-XX:+DisableExplicitGC"));
+
         if (!string.IsNullOrEmpty(settings.QuickLaunchServerIp))
         {
             launchOption.ServerIp = settings.QuickLaunchServerIp;
@@ -293,7 +296,14 @@ public class LaunchService : ILaunchService
         if (install.GetProperty("target").GetString() != versionId || install.GetProperty("path").GetString() != "net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9")
             throw new InvalidDataException("The Forge installer describes a different version.");
         Directory.CreateDirectory(Path.GetDirectoryName(library)!);
-        System.IO.Compression.ZipFileExtensions.ExtractToFile(zip.GetEntry(install.GetProperty("filePath").GetString()!)!, library, overwrite: true);
+        if (!File.Exists(library) || new FileInfo(library).Length == 0)
+        {
+            try
+            {
+                System.IO.Compression.ZipFileExtensions.ExtractToFile(zip.GetEntry(install.GetProperty("filePath").GetString()!)!, library, overwrite: true);
+            }
+            catch (IOException) when (File.Exists(library) && new FileInfo(library).Length > 0) { }
+        }
         // The manifest last: InstallForgeAsync takes an existing manifest as an installed Forge.
         var versionDir = Path.Combine(gameDir, "versions", versionId);
         Directory.CreateDirectory(versionDir);

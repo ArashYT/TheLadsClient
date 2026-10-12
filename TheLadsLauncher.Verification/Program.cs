@@ -763,6 +763,7 @@ try
             process.StartInfo.Arguments = formatted + " " + process.StartInfo.Arguments;
         }
     }
+    AddJvm("-XX:+DisableExplicitGC");
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
     if (fastQuitPhase != null) AddJvm("-Dthelads.verifyFastQuit=" + fastQuitPhase);
