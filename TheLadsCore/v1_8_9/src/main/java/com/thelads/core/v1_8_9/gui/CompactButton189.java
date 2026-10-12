@@ -5,11 +5,13 @@ import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import java.util.function.Supplier;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.resources.I18n;
 
 /**
- * A Lads-drawn compact button on the title and pause screens (Essential's row, the fullscreen toggle): icon and label, or
+ * A Lads-drawn compact button on the title and pause screens (the fullscreen toggle): icon and label, or
  * the icon alone when the button is square (CompactButton121 on the other versions). Its screen calls press() when clicked.
  */
 public final class CompactButton189 extends GuiButton {
@@ -25,6 +27,28 @@ public final class CompactButton189 extends GuiButton {
     }
 
     public void press() { press.run(); }
+
+    /** The fullscreen toggle's label: what pressing it does. */
+    public static String fullscreenLabel() {
+        return Minecraft.getMinecraft().isFullScreen() ? TitleScreenTheme.WINDOWED : I18n.format("options.fullscreen");
+    }
+
+    /** Its width on a screen screenWidth wide: sized to its label, or square on a narrow screen (see TitleScreenTheme). */
+    public static int fullscreenWidth(int screenWidth) {
+        FontRenderer font = Minecraft.getMinecraft().fontRendererObj;
+        return TitleScreenTheme.fullscreenWidth(screenWidth,
+            Math.max(font.getStringWidth(I18n.format("options.fullscreen")), font.getStringWidth(TitleScreenTheme.WINDOWED)));
+    }
+
+    /** The title and pause menus' top-right fullscreen toggle: Minecraft's own F11. */
+    public static CompactButton189 fullscreen(int id, int screenWidth) {
+        Minecraft mc = Minecraft.getMinecraft();
+        int width = fullscreenWidth(screenWidth);
+        CompactButton189 button = new CompactButton189(id, TitleScreenTheme.fullscreenX(screenWidth, width), 6, width, TitleScreenTheme.HEADER_SIZE,
+            fullscreenLabel(), () -> mc.isFullScreen() ? "windowed" : "fullscreen", mc::toggleFullscreen);
+        button.dynamicLabel = CompactButton189::fullscreenLabel;
+        return button;
+    }
 
     @Override
     public void drawButton(Minecraft mc, int mouseX, int mouseY) {

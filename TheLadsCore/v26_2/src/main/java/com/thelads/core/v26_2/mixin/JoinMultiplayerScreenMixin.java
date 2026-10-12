@@ -1,6 +1,5 @@
 package com.thelads.core.v26_2.mixin;
 
-import com.thelads.core.v26_2.gui.EssentialActions;
 import com.thelads.core.v26_2.gui.ServerDiscoveryScreen;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -36,7 +35,6 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
 
     @Inject(method = "extractRenderState", at = @At("HEAD"))
     private void ladsSuppressEssential(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
-        EssentialActions.suppressOverlay(this);
         ladsPurgeEssential();
     }
 

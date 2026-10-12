@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 final class ZoomCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final long PHASE = 1_100_000_000L; // Smooth Zoom lands exactly within 0.8 s
-    private static final String[] SHOTS = {"zoom-1-off", "zoom-2-in", "zoom-3-scroll", "zoom-4-out", "zoom-5-essential-key", "zoom-6-essential-alone"};
+    private static final String[] SHOTS = {"zoom-1-off", "zoom-2-in", "zoom-3-scroll", "zoom-4-out"};
     private static final ZoomTrace TRACE = new ZoomTrace();
     private static final List<String> FAILURES = new ArrayList<>();
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
@@ -41,7 +41,6 @@ final class ZoomCapture {
     private static long due, modifiedBefore;
     private static boolean capturing, enabledBefore;
     private static float base;
-    private static Object essential;
     private ZoomCapture() {}
 
     static boolean busy() { return step >= 0 && step < SHOTS.length; }
@@ -70,7 +69,6 @@ final class ZoomCapture {
         if (!busy() || capturing) return;
         TRACE.frame(NativeFeatures.lastWorldFov, NativeFeatures.lastWorldNanos);
         if (System.nanoTime() < due) return;
-        if (step >= 4 && essential == null) { finish(game); return; }
         capturing = true;
         String name = SHOTS[step];
         try {
@@ -116,16 +114,6 @@ final class ZoomCapture {
                 }
                 case 3 -> {
                     TRACE.finish();
-                    essential = essentialZoom();
-                    if (essential == null) LOGGER.info("Lads zoom capture: Essential is not loaded; its zoom check is skipped");
-                    else essentialKey().setDown(true);
-                }
-                case 4 -> {
-                    check(Math.abs(fov - base) < 1e-4 && !essentialActive(), "Essential's zoom key does nothing while Lads Zoom is on (FOV " + fov + " of " + base + ")");
-                    zoom().setEnabled(false); // the control: Essential's own zoom still works when Lads Zoom is off
-                }
-                case 5 -> {
-                    check(fov < base * 0.5f, "with Lads Zoom off, Essential's zoom key zooms (FOV " + fov + " of " + base + "): the check above is real");
                     finish(game);
                     return;
                 }
@@ -142,7 +130,6 @@ final class ZoomCapture {
         Minecraft mc = Minecraft.getInstance();
         if (step <= 3) TRACE.finish();
         try {
-            if (essential != null) essentialKey().setDown(false);
             key(false);
         } catch (Exception failure) { fail("release: " + failure); }
         ZoomModule zoom = zoom();
@@ -167,19 +154,6 @@ final class ZoomCapture {
             press.invoke(mc.keyboardHandler, mc.getWindow().handle(), down ? InputConstants.PRESS : InputConstants.RELEASE,
                 new KeyEvent(key, 0, 0)); // 26.3 (SDL): the physical key and no character
         } catch (ReflectiveOperationException failure) { throw new IllegalStateException(failure); }
-    }
-
-    private static Object essentialZoom() {
-        try {
-            Class<?> handler = Class.forName("gg.essential.handlers.ZoomHandler", true, ZoomCapture.class.getClassLoader());
-            return handler.getMethod("getInstance").invoke(null);
-        } catch (ReflectiveOperationException | LinkageError absent) { return null; }
-    }
-    private static KeyMapping essentialKey() throws ReflectiveOperationException {
-        return (KeyMapping) essential.getClass().getField("zoomKeybinding").get(essential);
-    }
-    private static boolean essentialActive() throws ReflectiveOperationException {
-        return essential.getClass().getField("isZoomActive").getBoolean(essential);
     }
 
     private static ZoomModule zoom() { return (ZoomModule) ModuleManager.getInstance().getModule("Zoom"); }

@@ -45,11 +45,11 @@ public final class TitleExtrasScreen189 extends GuiScreen {
         return of(owner, buttons, button -> button.displayString);
     }
 
-    /** Each native button pressed on its owner screen (labelled by label). Essential's actions have their own row (EssentialRow189). */
+    /** Each native button pressed on its owner screen (labelled by label). */
     public static List<Action> of(GuiScreen owner, List<GuiButton> buttons, Function<GuiButton, String> label) {
         List<Action> actions = new ArrayList<>();
         for (GuiButton button : buttons) {
-            if (EssentialActions189.isEssential(button)) continue;
+            if (button.getClass().getName().startsWith("gg.essential.")) continue;
             String text = label.apply(button);
             actions.add(new Action(text == null || text.trim().isEmpty() ? "Extra settings" : text,
                 () -> ((LadsButtonPress) owner).ladsPress(button), button.enabled));

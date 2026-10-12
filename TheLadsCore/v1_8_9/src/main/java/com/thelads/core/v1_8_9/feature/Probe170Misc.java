@@ -560,10 +560,9 @@ final class Probe170Misc {
         IntegratedServer server = mc.getIntegratedServer();
         boolean world = server.worldServers[0].getWorldInfo().areCommandsAllowed();
         boolean host = server.getConfigurationManager().canSendCommands(mc.thePlayer.getGameProfile());
-        Boolean essential = WorldCheats.essential();
-        LOG.info("Lads 1.8.9 core probe: '{}': world Allow Cheats {}, host may use commands {}, Essential's switch {}",
-            server.getFolderName(), world, host, essential);
-        check(world && host && (essential == null || essential), what);
+        LOG.info("Lads 1.8.9 core probe: '{}': world Allow Cheats {}, host may use commands {}",
+            server.getFolderName(), world, host);
+        check(world && host, what);
         return after(5);
     }
 
@@ -608,7 +607,6 @@ final class Probe170Misc {
     private static boolean reset(Minecraft mc) {
         IntegratedServer server = mc.getIntegratedServer();
         server.worldServers[0].getWorldInfo().setAllowCommands(false);
-        WorldCheats.essential(false);
         WorldCheats.guests(new File(WorldBackup189.savesDir(mc), QA).toPath(), false);
         check(!server.getConfigurationManager().canSendCommands(mc.thePlayer.getGameProfile()), "the QA world is back to no cheats");
         return after(5);

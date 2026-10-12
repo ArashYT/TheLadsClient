@@ -24,7 +24,6 @@
     "BetterF3Mixin",
     "CustomFovPlayerMixin",
     "CustomFovCameraMixin",
-    "EssentialZoomMixin",
     "ScoreboardMixin",
     "NativeHudMixin",
     "CrosshairHudMixin",

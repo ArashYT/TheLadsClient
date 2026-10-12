@@ -21,10 +21,10 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
 
 /**
- * The Lads title screen on 1.8.9 (TitleScreenMixin on the other versions), through Forge's screen events so Essential's and
+ * The Lads title screen on 1.8.9 (TitleScreenMixin on the other versions), through Forge's screen events so
  * OptiFine's GuiMainMenu changes keep working: themed artwork, Singleplayer, Multiplayer, Lads Mods, Forge's Mods, Options,
- * Screenshots, Replays, Friends, More, Quit, and Switch Versions as Lads buttons; Essential's actions in a row above the
- * account name, Switch (accounts) beside it, and language + fullscreen toggles top right. Virtual scaling ensures UI parity
+ * Screenshots, Replays, More, Quit, and Switch Versions as Lads buttons; Switch (accounts) beside the
+ * account name, and language + fullscreen toggles top right. Virtual scaling ensures UI parity
  * matching GUI scale 3.0 across all resolutions.
  */
 public final class LadsTitleScreen189 {
@@ -32,11 +32,9 @@ public final class LadsTitleScreen189 {
     private static final int LADS_ID = 0x4C414453 + 1; // the pause menu's Lads button is 0x4C414453; vanilla and Forge use 0-14
     private GuiMainMenu screen;
     private List<GuiButton> buttons;
-    private GuiButton ladsButton, moreButton, screenshotsButton, switchVersionButton, friendsButton, replaysButton;
+    private GuiButton ladsButton, moreButton, screenshotsButton, switchVersionButton, replaysButton;
     private CompactButton189 switchButton, fullscreenButton, languageButton;
     private final List<GuiButton> seen = new ArrayList<>(), main = new ArrayList<>(), extras = new ArrayList<>();
-    private final List<GuiButton> pending = new ArrayList<>(), row = new ArrayList<>();
-    private final List<TitleExtrasScreen189.Action> essential = new ArrayList<>();
     private long initNanos;
     private TitleScreenTheme.Layout layout;
     private int layoutWidth, layoutHeight;
@@ -53,13 +51,12 @@ public final class LadsTitleScreen189 {
     public GuiButton switchVersionButton() { return switchVersionButton; }
     public GuiButton switchButton() { return switchButton; }
     public GuiButton fullscreenButton() { return fullscreenButton; }
-    /** QA: every button the Lads layout places (main, Switch, fullscreen, language and Essential's row). */
+    /** QA: every button the Lads layout places (main, Switch, fullscreen, language). */
     public List<GuiButton> placedButtons() {
         List<GuiButton> placed = new ArrayList<>(main);
         placed.add(switchButton);
         placed.add(fullscreenButton);
         placed.add(languageButton);
-        placed.addAll(row);
         return placed;
     }
 
@@ -102,9 +99,6 @@ public final class LadsTitleScreen189 {
         screen = (GuiMainMenu) event.gui;
         buttons = event.buttonList;
         extras.clear();
-        pending.clear();
-        row.clear();
-        essential.clear();
         initNanos = System.nanoTime();
 
         buttons.add(ladsButton = new GuiButton(LADS_ID, 0, 0, 1, 1, "Lads Mods"));
@@ -113,7 +107,6 @@ public final class LadsTitleScreen189 {
         if (screenshotsButton != null) buttons.add(screenshotsButton);
 
         buttons.add(switchVersionButton = new GuiButton(LADS_ID + 6, 0, 0, 1, 1, "Switch Versions"));
-        buttons.add(friendsButton = new GuiButton(LADS_ID + 7, 0, 0, 1, 1, "Friends"));
         replaysButton = Loader.isModLoaded("replaymod") ? new GuiButton(LADS_ID + 8, 0, 0, 1, 1, "Replays") : null;
         if (replaysButton != null) buttons.add(replaysButton);
 
@@ -121,44 +114,36 @@ public final class LadsTitleScreen189 {
         GuiMainMenu title = screen;
         buttons.add(switchButton = new CompactButton189(LADS_ID + 1, 0, 0, 1, 1, TitleScreenTheme.SWITCH, () -> "switch",
             () -> Minecraft.getMinecraft().displayGuiScreen(new AccountSwitcherScreen189(title))));
-        buttons.add(fullscreenButton = EssentialRow189.fullscreen(LADS_ID + 3, screen.width));
+        buttons.add(fullscreenButton = CompactButton189.fullscreen(LADS_ID + 3, screen.width));
         buttons.add(languageButton = new CompactButton189(LADS_ID + 5, screen.width - 50, 6, 20, 20, "Language", () -> "globe",
             () -> Minecraft.getMinecraft().displayGuiScreen(new GuiLanguage(title, Minecraft.getMinecraft().gameSettings, Minecraft.getMinecraft().getLanguageManager()))));
 
         lastFrame = 0;
     }
 
-    /** Lays the buttons out on the first frame, when Essential and other mods have added theirs, and again when they change. */
+    /** Lays the buttons out on the first frame, and again when they change. */
     private void ensureLayout() {
-        boolean bound = false;
-        if (!pending.isEmpty() && System.nanoTime() - initNanos < 5_000_000_000L)
-            for (GuiButton proxy : new ArrayList<>(pending))
-                if (EssentialRow189.collect(proxy, essential)) {
-                    pending.remove(proxy);
-                    bound = true;
-                }
         int targetW = targetWidth();
         int targetH = targetHeight();
         float ms = matrixScale();
 
-        if (!bound && layout != null && layoutWidth == targetW && layoutHeight == targetH && seen.equals(buttons)) return;
-        buttons.removeAll(row);
+        if (layout != null && layoutWidth == targetW && layoutHeight == targetH && seen.equals(buttons)) return;
         main.clear();
         for (GuiButton button : new ArrayList<>(buttons)) {
             if (button == switchButton || button == fullscreenButton || button == languageButton) continue;
             if (button == ladsButton || button == moreButton || button == screenshotsButton
-                || button == switchVersionButton || button == friendsButton || button == replaysButton
+                || button == switchVersionButton || button == replaysButton
                 || vanilla(button, 1, 11, 2, 0, 4, 6)) main.add(button);
             else {
                 buttons.remove(button);
                 button.visible = false;
-                if (EssentialActions189.isEssential(button)) {
-                    if (!EssentialRow189.collect(button, essential) && !pending.contains(button)) pending.add(button);
+                if (button.getClass().getName().startsWith("gg.essential.")) {
+                    // Ignore Essential buttons if installed
                 } else if (!extras.contains(button)) extras.add(button);
             }
         }
         main.sort(Comparator.comparingInt(this::order));
-        layout = TitleScreenTheme.layout(targetW, targetH, main.size(), !essential.isEmpty());
+        layout = TitleScreenTheme.layout(targetW, targetH, main.size(), false);
         layoutWidth = targetW;
         layoutHeight = targetH;
 
@@ -169,17 +154,10 @@ public final class LadsTitleScreen189 {
             button.visible = true;
         }
 
-        int fullscreenWidth = EssentialRow189.fullscreenWidth(targetW);
+        int fullscreenWidth = CompactButton189.fullscreenWidth(targetW);
         place(fullscreenButton, TitleScreenTheme.fullscreenX(targetW, fullscreenWidth), 6, fullscreenWidth, 20, ms);
         place(languageButton, TitleScreenTheme.languageX(targetW, fullscreenWidth), 6, 20, 20, ms);
 
-        row.clear();
-        // In layout pixels like the rest, so the row keeps its place above the account card at every scale.
-        for (GuiButton button : EssentialRow189.place(essential, LADS_ID + 10, layout.height(), TitleScreenTheme.essentialRowWidth(layout))) {
-            place(button, button.xPosition, button.yPosition, button.width, button.height, ms);
-            row.add(button);
-        }
-        buttons.addAll(row);
         seen.clear();
         seen.addAll(buttons);
         if (!logged) {
@@ -191,7 +169,6 @@ public final class LadsTitleScreen189 {
     private int order(GuiButton button) {
         if (button == ladsButton) return 2;
         if (button == replaysButton) return 6;
-        if (button == friendsButton) return 7;
         if (button == moreButton) return 8;
         if (button.id == 4) return 9; // Quit Game
         if (button == switchVersionButton) return 10;
@@ -215,7 +192,6 @@ public final class LadsTitleScreen189 {
         if (button.id == LADS_ID + 2) return "dots";
         if (button.id == LADS_ID + 4) return "camera";
         if (button.id == LADS_ID + 6) return "switch";
-        if (button.id == LADS_ID + 7) return "friends";
         if (button.id == LADS_ID + 8) return "replay";
         switch (button.id) {
             case 1: case 11: return "play";
@@ -243,7 +219,6 @@ public final class LadsTitleScreen189 {
     @SubscribeEvent
     public void draw(GuiScreenEvent.DrawScreenEvent.Post event) {
         if (screen == null || event.gui != screen || layout == null) return;
-        EssentialActions189.suppressOverlay(screen);
         long now = System.nanoTime();
         float elapsed = lastFrame == 0 ? 0 : (float) Math.min(0.1, (now - lastFrame) / 1e9);
         lastFrame = now;
@@ -275,7 +250,6 @@ public final class LadsTitleScreen189 {
 
         if (switchBox != null) place(switchButton, switchBox.x(), switchBox.y(), switchBox.width(), switchBox.height(), ms);
 
-        for (GuiButton button : row) ((CompactButton189) button).drawButton(mc, event.mouseX, event.mouseY, ms);
         switchButton.drawButton(mc, event.mouseX, event.mouseY, ms);
         fullscreenButton.drawButton(mc, event.mouseX, event.mouseY, ms);
         if (languageButton != null) languageButton.drawButton(mc, event.mouseX, event.mouseY, ms);
@@ -287,17 +261,6 @@ public final class LadsTitleScreen189 {
         button.yPosition = Math.round(y * ms);
         button.width = Math.round((x + width) * ms) - button.xPosition;
         button.height = Math.round((y + height) * ms) - button.yPosition;
-    }
-
-    private static void openFriends(GuiMainMenu parent) {
-        try {
-            Class<?> util = Class.forName("gg.essential.util.GuiUtil");
-            Object inst = util.getField("INSTANCE").get(null);
-            Class<?> screenCls = Class.forName("gg.essential.gui.friends.SocialScreen");
-            Object scr = screenCls.getConstructor().newInstance();
-            util.getMethod("openScreen", net.minecraft.client.gui.GuiScreen.class).invoke(inst, scr);
-            return;
-        } catch (Throwable ignored) {}
     }
 
     private static void openReplays(GuiMainMenu parent) {
@@ -318,10 +281,9 @@ public final class LadsTitleScreen189 {
         else if (event.button == screenshotsButton) Screenshots189.open(screen);
         else if (event.button == moreButton) mc.displayGuiScreen(new TitleExtrasScreen189(screen, TitleExtrasScreen189.of(screen, extras, LadsTitleScreen189::label)));
         else if (event.button == switchVersionButton) mc.displayGuiScreen(new VersionSwitchScreen189(screen));
-        else if (event.button == friendsButton) openFriends(screen);
         else if (event.button == replaysButton) openReplays(screen);
         else if (event.button.id == 4) mc.displayGuiScreen(new QuitConfirmScreen189(screen));
-        else if (event.button == switchButton || event.button == fullscreenButton || event.button == languageButton || row.contains(event.button)) ((CompactButton189) event.button).press();
+        else if (event.button == switchButton || event.button == fullscreenButton || event.button == languageButton) ((CompactButton189) event.button).press();
         else return;
         if (clicked) event.button.playPressSound(mc.getSoundHandler());
         event.setCanceled(true);

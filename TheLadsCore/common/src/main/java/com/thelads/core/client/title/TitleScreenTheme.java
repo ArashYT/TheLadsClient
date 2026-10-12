@@ -21,7 +21,6 @@ public final class TitleScreenTheme {
 
     public static Layout layout(int width, int height, int buttonCount) { return layout(width, height, buttonCount, false); }
 
-    /** {@code bottomRow}: Essential's row sits above the account card, so a narrow menu ends higher. */
     public static Layout layout(int width, int height, int buttonCount, boolean bottomRow) {
         width = Math.max(240, width);
         height = Math.max(180, height);
@@ -32,8 +31,7 @@ public final class TitleScreenTheme {
         int columns = buttonCount > 14 ? 3 : 2;
         int heroCount = Math.min(2, buttonCount);
         int gap = height < 220 ? 3 : height < 260 ? 5 : 6;
-        int reserved = bottomRow && !wide ? ROW_SPACE : 0;
-        int available = height - (wide ? 78 : height < 220 ? 71 : 104) - reserved;
+        int available = height - (wide ? 78 : height < 220 ? 71 : 104);
         int smallRows = (Math.max(0, buttonCount - heroCount) + columns - 1) / columns;
         while (columns < 4 && heroCount * 18 + smallRows * 14 + Math.max(0, heroCount + smallRows - 1) * gap > available) {
             columns++;
@@ -42,7 +40,7 @@ public final class TitleScreenTheme {
         int smallHeight = Math.max(14, Math.min(27, (available - heroCount * 32 - gap * (heroCount + smallRows - 1)) / Math.max(1, smallRows)));
         int heroHeight = Math.max(18, Math.min(36, (available - smallRows * smallHeight - gap * (heroCount + smallRows - 1)) / Math.max(1, heroCount)));
         int menuHeight = heroCount * heroHeight + smallRows * smallHeight + Math.max(0, heroCount + smallRows - 1) * gap;
-        int menuY = wide ? (height - menuHeight) / 2 + 4 : height < 220 ? 42 : Math.max(66, (height - reserved - menuHeight) / 2 + 14);
+        int menuY = wide ? (height - menuHeight) / 2 + 4 : height < 220 ? 42 : Math.max(66, (height - menuHeight) / 2 + 14);
         List<Rect> buttons = new ArrayList<>(buttonCount);
         for (int i = 0; i < buttonCount; i++) {
             if (i < heroCount) buttons.add(new Rect(menuX, menuY + i * (heroHeight + gap), menuWidth, heroHeight));
@@ -153,44 +151,6 @@ public final class TitleScreenTheme {
         return 18 + Math.round((name.isEmpty() ? 9 : 15 + g.textWidth(name)) * accountScale);
     }
 
-    /** Height a bottom row of Essential actions takes above the account card. */
-    public static final int ROW_SPACE = 24;
-
-    /**
-     * Essential's actions in one row at the bottom left, just above the account card: labelled buttons, or square
-     * icon buttons when the labels would not fit {@code maxWidth}.
-     */
-    public static List<Rect> essentialRow(int height, int maxWidth, int[] labelWidths) {
-        int size = 18, gap = 4, total = gap * Math.max(0, labelWidths.length - 1);
-        for (int width : labelWidths) total += width + COMPACT_PADDING;
-        boolean compact = total > maxWidth;
-        List<Rect> row = new ArrayList<>(labelWidths.length);
-        int x = 16, y = height - 35 - size;
-        for (int width : labelWidths) {
-            int w = compact ? size : width + COMPACT_PADDING;
-            row.add(new Rect(x, y, w, size));
-            x += w + gap;
-        }
-        return row;
-    }
-
-    /** Room for Essential's row on the title screen: the whole width below the menu, or left of a menu that reaches down. */
-    public static int essentialRowWidth(Layout l) {
-        Rect last = l.buttons().isEmpty() ? null : l.buttons().get(l.buttons().size() - 1);
-        boolean clear = !l.wide() || last == null || last.y() + last.height() + 16 <= l.height() - 35 - 18;
-        return clear ? l.width() - 32 : l.menuX() - 40;
-    }
-
-    /** The icon for one of Essential's actions, by the label EssentialActions gives it. */
-    public static String essentialIcon(String label) {
-        return switch (label) {
-            case "Social" -> "social";
-            case "Wardrobe" -> "wardrobe";
-            case "Pictures" -> "pictures";
-            case "Host world" -> "host";
-            default -> "essential";
-        };
-    }
 
     public static void renderButtonSurface(LadsGraphics g,int x,int y,int width,int height,boolean hovered,boolean focused,boolean active,float opacity) {
         renderButtonSurface(g,x,y,width,height,hovered,focused,active,opacity,0);
@@ -447,12 +407,6 @@ public final class TitleScreenTheme {
             case "host" -> {
                 for (int i = 0; i < 5; i++) g.fill(x + 4 - i, y + i, x + 6 + i, y + i + 1, c);
                 g.fill(x + 1, y + 5, x + 9, y + 10, c);
-            }
-            case "essential" -> {
-                g.fill(x + 1, y, x + 3, y + 10, c);
-                g.fill(x + 3, y, x + 9, y + 2, c);
-                g.fill(x + 3, y + 4, x + 8, y + 6, c);
-                g.fill(x + 3, y + 8, x + 9, y + 10, c);
             }
             default -> {
                 for (int row = 0; row < 2; row++) for (int col = 0; col < 2; col++)

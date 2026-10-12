@@ -25,17 +25,6 @@ public final class Cheats189 {
 
     /** Every client tick. */
     public static void tick(Minecraft mc) {
-        IntegratedServer server = mc.getIntegratedServer();
-        if (server == null || mc.thePlayer == null) { opened = null; return; }
-        if (server != opened) { opened = server; agreed = false; }
-        if (agreed) return;
-        Boolean essential = WorldCheats.essential();
-        if (essential == null) return;
-        if (essential != own) {
-            WorldCheats.essential(own);
-            info(server).setAllowCommands(own);
-        }
-        agreed = true;
     }
 
     /** GuiShareToLan's Start LAN World: Allow Cheats keeps the host's cheats with the world, and the choice is kept for next time. */
@@ -46,7 +35,6 @@ public final class Cheats189 {
         if (!cheats) return;
         own = true;
         info(server).setAllowCommands(true);
-        WorldCheats.essential(true);
     }
 
     /** The host's last Allow Cheats on the LAN screen for this world, or null. */

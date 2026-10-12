@@ -5,8 +5,6 @@ import com.thelads.core.client.title.PauseMenuLayout;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import com.thelads.core.v1_8_9.gui.CompactButton189;
-import com.thelads.core.v1_8_9.gui.EssentialActions189;
-import com.thelads.core.v1_8_9.gui.EssentialRow189;
 import com.thelads.core.v1_8_9.gui.LadsPauseButton;
 import com.thelads.core.v1_8_9.gui.LadsSettingsScreen189;
 import com.thelads.core.v1_8_9.gui.PauseMultiplayer189;
@@ -26,8 +24,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * The Lads pause menu, as on the other versions: Lads theme and logo, the buttons in groups (PauseMenuLayout), "Lads Client" and
- * Multiplayer rows, Essential's actions in a row above the account name, other small buttons behind "Extras...", and a
- * top-right fullscreen toggle.
+ * Multiplayer rows, other small buttons behind "Extras...", and a top-right fullscreen toggle.
  */
 @Mixin(GuiIngameMenu.class)
 public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseButton {
@@ -36,10 +33,7 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
     @Unique private GuiButton ladsButton, ladsMultiplayerButton, ladsExtrasButton;
     @Unique private List<GuiButton> ladsExtras;
     @Unique private int ladsLaidOut;
-    @Unique private List<TitleExtrasScreen189.Action> ladsEssential;
-    @Unique private List<GuiButton> ladsEssentialPending, ladsRow;
     @Unique private GuiButton ladsFullscreenButton;
-    @Unique private long ladsInitNanos;
 
     @Inject(method = "initGui", at = @At("TAIL"), require = 1)
     private void ladsAddPauseButtons(CallbackInfo ci) {
@@ -50,11 +44,7 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         ladsExtras = new ArrayList<>();
         ladsExtrasButton = null;
         ladsLaidOut = -1;
-        ladsEssential = new ArrayList<>();
-        ladsEssentialPending = new ArrayList<>();
-        ladsRow = new ArrayList<>();
-        ladsInitNanos = System.nanoTime();
-        ladsFullscreenButton = EssentialRow189.fullscreen(LADS_BUTTON_ID + 6, width);
+        ladsFullscreenButton = CompactButton189.fullscreen(LADS_BUTTON_ID + 6, width);
         buttonList.add(ladsFullscreenButton);
         if (!ladsLogged) {
             ladsLogged = true;
@@ -62,26 +52,16 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         }
     }
 
-    /** On the first frame, when Forge mods and Essential have added their buttons, and again when the button list changes. */
+    /** On the first frame, when Forge mods have added their buttons, and again when the button list changes. */
     @Unique
     private void ladsLayout() {
         boolean changed = ladsLaidOut != buttonList.size();
-        // Essential binds its buttons a moment after the screen opens; the row is rebuilt once they are ready.
-        if (!ladsEssentialPending.isEmpty() && System.nanoTime() - ladsInitNanos < 5_000_000_000L)
-            for (GuiButton proxy : new ArrayList<>(ladsEssentialPending))
-                if (EssentialRow189.collect(proxy, ladsEssential)) {
-                    ladsEssentialPending.remove(proxy);
-                    changed = true;
-                }
         for (GuiButton button : new ArrayList<>(buttonList)) {
-            if (button == ladsExtrasButton || button == ladsFullscreenButton || ladsRow.contains(button)) continue;
-            // Off the screen, as the other versions remove them (Essential's proxies override mousePressed).
-            if (EssentialActions189.isEssential(button)) {
+            if (button == ladsExtrasButton || button == ladsFullscreenButton) continue;
+            if (button.getClass().getName().startsWith("gg.essential.")) {
                 buttonList.remove(button);
                 button.visible = false;
                 changed = true;
-                // Essential's actions get their own row above the account name.
-                if (!EssentialRow189.collect(button, ladsEssential) && !ladsEssentialPending.contains(button)) ladsEssentialPending.add(button);
             } else if (button.width <= 30) {
                 buttonList.remove(button);
                 button.visible = false;
@@ -92,16 +72,13 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         if (!changed) return;
         if (!ladsExtras.isEmpty() && ladsExtrasButton == null)
             buttonList.add(ladsExtrasButton = new GuiButton(LADS_BUTTON_ID + 5, 0, 0, 204, 20, "Extras..."));
-        buttonList.removeAll(ladsRow);
-        ladsRow = EssentialRow189.place(ladsEssential, LADS_BUTTON_ID + 10, height, width - 32);
-        buttonList.addAll(ladsRow);
         ladsLaidOut = buttonList.size();
         List<GuiButton> grid = new ArrayList<>();
         List<PauseMenuLayout.Slot> slots = new ArrayList<>();
         for (GuiButton button : buttonList)
-            if (button != ladsFullscreenButton && !ladsRow.contains(button)) { grid.add(button); slots.add(ladsSlot(button)); }
+            if (button != ladsFullscreenButton) { grid.add(button); slots.add(ladsSlot(button)); }
         // In groups: Back to Game, then Achievements/Statistics, Options/Lads Client, Multiplayer/LAN, Extras, Save and Quit apart.
-        int bottom = height - 32 - (ladsEssential.isEmpty() ? 0 : TitleScreenTheme.ROW_SPACE);
+        int bottom = height - 32;
         int top = Math.max(62, 12 + Math.min(64, height / 6) + 18);
         List<PauseMenuLayout.Box> boxes = PauseMenuLayout.arrange(slots, width, top, bottom);
         for (int i = 0; i < grid.size(); i++) {
@@ -134,7 +111,6 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
 
     @Inject(method = "drawScreen", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsDrawPause(int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
-        EssentialActions189.suppressOverlay(this);
         ladsLayout();
         // The "Game menu" caption would sit under the grid: the Lads logo and theme replace it, then the buttons draw.
         drawDefaultBackground();

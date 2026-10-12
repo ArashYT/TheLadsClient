@@ -17,12 +17,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class CheatsMixin {
     @Unique private static boolean ladsPublishing;
 
-    /** World Options' Allow Commands (and NativeCheats): Essential's switch first, so the permissions sent next already use it. */
-    @Inject(method = "setWorldAllowCommands", at = @At("HEAD"), require = 1)
-    private void ladsEssentialFollows(boolean allowCommands, CallbackInfo ci) {
-        WorldCheats.essential(allowCommands);
-    }
-
     /** /publish and Essential's world hosting choose joined players' commands for that session only. */
     @Inject(method = "publishServer(Lnet/minecraft/server/MinecraftServer$MultiplayerScope;Lnet/minecraft/world/level/GameType;ZI)Z",
         at = @At("HEAD"), require = 1)

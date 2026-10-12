@@ -50,10 +50,9 @@ final class CheatsProbe {
                 return;
             }
             done = true;
-            Boolean essential = WorldCheats.essential();
             boolean pass = server.getWorldData().isAllowCommands() == on && NativeCheats.own(server) == on
                 && mc.player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) == on
-                && server.getGuestCommandAccess() == on && (essential == null || essential == on);
+                && server.getGuestCommandAccess() == on;
             String line = phase + "; " + state(mc, server);
             if (pass) LOGGER.info("Lads cheats probe END: 1 passed, 0 failed; {}", line);
             else LOGGER.error("Lads cheats probe FAILED: cheats did not stay {}; {}", on ? "on" : "off", line);
@@ -65,7 +64,7 @@ final class CheatsProbe {
 
     private static String state(Minecraft mc, IntegratedServer server) {
         return "world switch " + NativeCheats.own(server) + ", answered " + server.getWorldData().isAllowCommands()
-            + ", Essential " + WorldCheats.essential() + ", host commands " + mc.player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)
+            + ", host commands " + mc.player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)
             + ", other players " + server.getGuestCommandAccess()
             + ", kept choice for them " + WorldCheats.guests(server.getWorldPath(LevelResource.ROOT));
     }
