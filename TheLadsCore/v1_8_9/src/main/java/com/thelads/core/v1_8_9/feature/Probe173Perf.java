@@ -130,13 +130,13 @@ public final class Probe173Perf {
         return true;
     }
 
-    private static boolean setup(Minecraft mc) {
-        for (String c : new String[] {"gamerule doDaylightCycle false", "gamerule doMobSpawning false", "time set 6000", "weather clear 1000000",
-            "difficulty 0", "kill @e[type=!Player]", "tp @p " + X + " " + Y + " " + Z + " 0 0"}) command(mc, c);
+    private static Boolean originalSkinLayersEnabled = null;
+    private static Integer originalSkinLayersLod = null;
+
+    private static void applyBenchmarkSkinLayers() {
         String sl = System.getProperty("thelads.skinlayers", System.getenv("LADS_VERIFY_SKINLAYERS"));
         if (sl != null) {
             boolean on = !"0".equals(sl) && !"false".equalsIgnoreCase(sl) && !"off".equalsIgnoreCase(sl);
-            remember(mc, SkinLayersModule.NAME);
             Module m = Options189.module(SkinLayersModule.NAME);
             if (m != null) m.setEnabled(on);
         }
@@ -146,6 +146,17 @@ public final class Probe173Perf {
                 setSkinLayersLod(Integer.parseInt(lod.trim()));
             } catch (NumberFormatException ignored) {}
         }
+    }
+
+    private static boolean setup(Minecraft mc) {
+        for (String c : new String[] {"gamerule doDaylightCycle false", "gamerule doMobSpawning false", "time set 6000", "weather clear 1000000",
+            "difficulty 0", "kill @e[type=!Player]", "tp @p " + X + " " + Y + " " + Z + " 0 0"}) command(mc, c);
+        if (originalSkinLayersEnabled == null) {
+            Module m = Options189.module(SkinLayersModule.NAME);
+            originalSkinLayersEnabled = m != null ? m.isEnabled() : null;
+            originalSkinLayersLod = getSkinLayersLod();
+        }
+        applyBenchmarkSkinLayers();
         report.addProperty("seconds", SECONDS);
         report.addProperty("renderDistance", mc.gameSettings.renderDistanceChunks);
         report.addProperty("maxFps", mc.gameSettings.limitFramerate);
@@ -207,6 +218,7 @@ public final class Probe173Perf {
     }
 
     private static void build(Minecraft mc, String name) {
+        applyBenchmarkSkinLayers();
         if (name.endsWith("_noskin")) {
             remember(mc, SkinLayersModule.NAME);
             if (Options189.module(SkinLayersModule.NAME) != null) Options189.module(SkinLayersModule.NAME).setEnabled(false);
@@ -607,6 +619,15 @@ public final class Probe173Perf {
 
     private static boolean write(Minecraft mc) throws Exception {
         profilingRequested = false;
+        if (originalSkinLayersEnabled != null) {
+            Module m = Options189.module(SkinLayersModule.NAME);
+            if (m != null) m.setEnabled(originalSkinLayersEnabled);
+            originalSkinLayersEnabled = null;
+        }
+        if (originalSkinLayersLod != null && originalSkinLayersLod >= 0) {
+            setSkinLayersLod(originalSkinLayersLod);
+            originalSkinLayersLod = null;
+        }
         File folder = new File(mc.mcDataDir, "lads-qa/perf");
         check(folder.isDirectory() || folder.mkdirs(), "perf folder " + folder);
         Files.write(new File(folder, "perf.json").toPath(), new GsonBuilder().setPrettyPrinting().create().toJson(report).getBytes(StandardCharsets.UTF_8));
