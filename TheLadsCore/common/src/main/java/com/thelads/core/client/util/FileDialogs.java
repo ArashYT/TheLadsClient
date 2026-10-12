@@ -44,11 +44,15 @@ public final class FileDialogs {
             Path picked;
             try {
                 picked = Explorer.pick(title, folder, filterName, extensions);
-            } catch (Throwable failure) { // no JNA or no COM: the game's own dialog
+            } catch (Throwable failure) { // no JNA or no COM: the game's own dialog (FileDialogs.awt takes OPEN itself)
                 OPEN.set(false);
                 LOGGER.warn("Lads file dialog: the Windows dialog did not open ({}); using the game's own", failure.toString());
-                LadsGameBridge.get().gameFileDialog(title, folder, filterName, extensions)
-                    .whenComplete((path, error) -> { if (error != null) result.completeExceptionally(error); else result.complete(path); });
+                try {
+                    LadsGameBridge.get().gameFileDialog(title, folder, filterName, extensions)
+                        .whenComplete((path, error) -> { if (error != null) result.completeExceptionally(error); else result.complete(path); });
+                } catch (Throwable fallback) {
+                    result.completeExceptionally(fallback);
+                }
                 return;
             }
             OPEN.set(false);

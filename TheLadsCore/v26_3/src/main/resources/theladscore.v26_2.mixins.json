@@ -137,6 +137,7 @@
     "DisconnectedScreenAccess",
     "ReconnectTargetMixin",
     "ConnectLeavesWorldMixin",
+    "PauseWithoutWorldMixin",
     "ReconnectRealmsMixin",
     "PacketDecodeGuardMixin",
     "PacketErrorGuardMixin",
