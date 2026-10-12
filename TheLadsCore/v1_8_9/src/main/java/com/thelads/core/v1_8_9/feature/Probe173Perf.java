@@ -574,19 +574,31 @@ public final class Probe173Perf {
 
     static int getSkinLayersLod() {
         try {
-            Class<?> modBase = Class.forName("dev.tr7zw.skinlayers.versionless.ModBase");
+            Class<?> modBase = Class.forName("dev.tr7zw.skinlayers.SkinLayersModBase");
             Object cfg = modBase.getField("config").get(null);
             if (cfg != null) return cfg.getClass().getField("renderDistanceLOD").getInt(cfg);
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+            try {
+                Class<?> modBase = Class.forName("dev.tr7zw.skinlayers.versionless.ModBase");
+                Object cfg = modBase.getField("config").get(null);
+                if (cfg != null) return cfg.getClass().getField("renderDistanceLOD").getInt(cfg);
+            } catch (Throwable ignored2) {}
+        }
         return -1;
     }
 
     static void setSkinLayersLod(int lod) {
         try {
-            Class<?> modBase = Class.forName("dev.tr7zw.skinlayers.versionless.ModBase");
+            Class<?> modBase = Class.forName("dev.tr7zw.skinlayers.SkinLayersModBase");
             Object cfg = modBase.getField("config").get(null);
             if (cfg != null) cfg.getClass().getField("renderDistanceLOD").setInt(cfg, lod);
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+            try {
+                Class<?> modBase = Class.forName("dev.tr7zw.skinlayers.versionless.ModBase");
+                Object cfg = modBase.getField("config").get(null);
+                if (cfg != null) cfg.getClass().getField("renderDistanceLOD").setInt(cfg, lod);
+            } catch (Throwable ignored2) {}
+        }
     }
 
     private static String getResultName(net.minecraft.profiler.Profiler.Result res) {
