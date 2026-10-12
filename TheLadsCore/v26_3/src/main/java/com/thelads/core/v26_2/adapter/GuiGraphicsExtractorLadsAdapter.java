@@ -63,7 +63,7 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
             int row=0;
             for(var event:events){if(row>=max)break;int yy=y+row++*19;
                 overlay.ladsDrawBar(g,x,yy+10,event);
-                if(names)g.text(font,event.getName(),x+(182-font.width(event.getName()))/2,yy,0xFFFFFFFF);
+                if(names)g.text(font,event.getName(),x+(182-font.width(event.getName()))/2,yy,0xFFFFFFFF,com.thelads.core.config.HudSettings.getInstance().isTextShadow());
             }
         } catch (Throwable ignored) {}
     }

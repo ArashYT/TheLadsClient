@@ -307,9 +307,9 @@ public final class Food1201 {
                 boolean half = point + 1 == nutrition;
                 graphics.blit(ICONS, left, y, rotten ? (half ? ROTTEN_HALF_U : ROTTEN_FULL_U) : half ? HALF_U : FULL_U, FOOD_V, ICON, ICON);
             }
-            left = graphics.drawString(font, points(), left, y + 1, GRAY, false);
+            left = graphics.drawString(font, points(), left, y + 1, GRAY, true);
             for (int icon = 0; icon < saturationIcons(); icon++, left += ICON) graphics.blit(SATURATION, left, y, 0, 0, ICON, ICON, ICON, ICON);
-            graphics.drawString(font, saturationText(), left, y + 1, GOLD, false);
+            graphics.drawString(font, saturationText(), left, y + 1, GOLD, true);
         }
     }
 

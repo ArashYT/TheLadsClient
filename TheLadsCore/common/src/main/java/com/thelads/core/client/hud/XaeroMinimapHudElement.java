@@ -13,7 +13,7 @@ public class XaeroMinimapHudElement extends HudElement {
     @Override public void renderEditor(LadsGraphics g){
         if(!isAvailable())return;
         // Xaero owns its terrain render pass; editor uses its exact measured bounds.
-        g.drawCenteredText("Minimap",x+width/2,y+height/2,0xFFFFFFFF,true);
+        g.drawCenteredText("Minimap",x+width/2,y+height/2,0xFFFFFFFF);
     }
     /** Xaero's map goes where the Lads layout puts it (anchored, docked, clamped), every layout. */
     @Override public void placed(LadsGraphics g,HudGroupLayout.Rect bounds){position(bounds.x(),bounds.y());}

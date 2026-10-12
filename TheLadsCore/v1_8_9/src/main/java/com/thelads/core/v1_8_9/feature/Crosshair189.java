@@ -236,13 +236,13 @@ public final class Crosshair189 {
         int x = cx + 14, y = cy + 18;
         if (flag("Tool Durability Indicator") && held != null && held.isItemStackDamageable()) {
             item(held, x, y);
-            mc.fontRendererObj.drawStringWithShadow(Integer.toString(Math.max(0, held.getMaxDamage() - held.getItemDamage())), x + 18, y + 4, CrosshairDesign.alpha(0xffffffff, opacity));
+            mc.fontRendererObj.drawString(Integer.toString(Math.max(0, held.getMaxDamage() - held.getItemDamage())), x + 18, y + 4, CrosshairDesign.alpha(0xffffffff, opacity), com.thelads.core.config.HudSettings.getInstance().isTextShadow());
             y += 18;
         }
         Ammo ammo = flag("Projectile Indicator") ? projectiles(mc.thePlayer, held) : null;
         if (ammo != null) {
             item(ammo.icon, x, y);
-            mc.fontRendererObj.drawStringWithShadow(ammo.infinite ? "∞" : Integer.toString(ammo.count), x + 18, y + 4, CrosshairDesign.alpha(0xffffffff, opacity));
+            mc.fontRendererObj.drawString(ammo.infinite ? "∞" : Integer.toString(ammo.count), x + 18, y + 4, CrosshairDesign.alpha(0xffffffff, opacity), com.thelads.core.config.HudSettings.getInstance().isTextShadow());
         }
     }
 

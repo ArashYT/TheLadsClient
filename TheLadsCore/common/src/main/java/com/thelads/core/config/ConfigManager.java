@@ -82,6 +82,7 @@ public class ConfigManager {
         hud.addProperty("globalBackground", HudSettings.getInstance().getGlobalBackground());
         hud.addProperty("textShadow", HudSettings.getInstance().isTextShadow());
         hud.addProperty("softShadow", HudSettings.getInstance().isSoftShadow());
+        hud.addProperty("shadowOnDefault", true); // marks the 1.9.1 migration of the old Soft default (applyJson)
         hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
         hud.addProperty("hudFpsCapOptIn", HudSettings.getInstance().isHudFpsCapEnabled());
         hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled()); // read by 1.4.4 and older
@@ -227,7 +228,9 @@ public class ConfigManager {
                 HudSettings.getInstance().setTextShadow(hud.get("textShadow").getAsBoolean());
             }
             if (hud.has("softShadow")) {
-                HudSettings.getInstance().setSoftShadow(hud.get("softShadow").getAsBoolean());
+                // 1.9.1 makes On the default shadow. Soft was the shipped default, so a Soft saved without the marker below was never
+                // a choice: it becomes On, once. Saved with the marker, Soft is the player's own pick and stays.
+                HudSettings.getInstance().setSoftShadow(hud.get("softShadow").getAsBoolean() && hud.has("shadowOnDefault"));
             }
             if (hud.has("hudFpsLimit")) {
                 HudSettings.getInstance().setHudFpsLimit(hud.get("hudFpsLimit").getAsInt());

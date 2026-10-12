@@ -155,8 +155,8 @@ public final class NativeCrosshair {
         if(opacity<=0)return;
         var mc=Minecraft.getInstance(); var held=mc.player.getMainHandItem(); int x=cx+14,y=cy+18;
         if(flag("Item Cooldown"))cooldowns(graphics,cx,cy,partial,opacity);
-        if(flag("Tool Durability Indicator")&&held.isDamageableItem()){graphics.item(held,x,y);graphics.text(mc.font,Integer.toString(Math.max(0,held.getMaxDamage()-held.getDamageValue())),x+18,y+4,CrosshairDesign.alpha(0xffffffff,opacity));y+=18;}
-        if(flag("Projectile Indicator")){var weapon=held.getItem() instanceof ProjectileWeaponItem||throwable(held)?held:mc.player.getOffhandItem();var ammo=projectiles(weapon);if(ammo!=null){graphics.item(ammo.icon,x,y);graphics.text(mc.font,ammo.infinite?"∞":Integer.toString(ammo.count),x+18,y+4,CrosshairDesign.alpha(0xffffffff,opacity));}}
+        if(flag("Tool Durability Indicator")&&held.isDamageableItem()){graphics.item(held,x,y);graphics.text(mc.font,Integer.toString(Math.max(0,held.getMaxDamage()-held.getDamageValue())),x+18,y+4,CrosshairDesign.alpha(0xffffffff,opacity),com.thelads.core.config.HudSettings.getInstance().isTextShadow());y+=18;}
+        if(flag("Projectile Indicator")){var weapon=held.getItem() instanceof ProjectileWeaponItem||throwable(held)?held:mc.player.getOffhandItem();var ammo=projectiles(weapon);if(ammo!=null){graphics.item(ammo.icon,x,y);graphics.text(mc.font,ammo.infinite?"∞":Integer.toString(ammo.count),x+18,y+4,CrosshairDesign.alpha(0xffffffff,opacity),com.thelads.core.config.HudSettings.getInstance().isTextShadow());}}
     }
     public record Ammo(ItemStack icon,int count,boolean infinite) {}
     public static Ammo projectiles(ItemStack held) {

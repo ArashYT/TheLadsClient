@@ -26,7 +26,7 @@ public class HudSettings {
     private boolean textShadow = true;
     private boolean backgrounds = true;
     private final List<Integer> favoriteColors = new ArrayList<>();
-    private boolean softShadow = true;
+    private boolean softShadow = false; // 1.9.1: the global shadow is On by default (it was Soft)
     private int hudScale = 0; // the Lads HUD's own GUI scale; 0 follows vanilla's (1.9.0)
     private boolean hudFpsCapEnabled = false; // the HUD redraws every frame unless the player opts in to a cap
     private int hudFpsLimit = 60; // 60 by default; 0 means Unlimited
