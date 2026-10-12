@@ -65,6 +65,8 @@ class CustomSoundsTest {
         assertThrows(IOException.class, () -> CustomSounds.decode("x.mp3", new ByteArrayInputStream(new byte[0])));
         assertThrows(IOException.class, () -> CustomSounds.decode("x.mp3", new ByteArrayInputStream(new byte[2048])));
         assertThrows(IOException.class, () -> CustomSounds.decode("x.wav", new ByteArrayInputStream("not a wav".getBytes())));
+        // broken.mp3: 2 KB of noise, where the MP3 decoder ran off its own buffer (ArrayIndexOutOfBoundsException) before 1.9.1.
+        assertThrows(IOException.class, () -> CustomSounds.decode("broken.mp3", getClass().getResourceAsStream("/sounds/broken.mp3")));
     }
 
     @Test

@@ -12,12 +12,18 @@ import static com.thelads.core.client.gui.MenuGraphics.*;
  */
 public final class ConfirmDialog {
     public static final String TITLE = "Are you sure you want to reset?";
-    private String message = "";
+    private String title = TITLE, message = "";
     private Runnable onConfirm;
     private Rect box = new Rect(0, 0, 0, 0), confirm = box, cancel = box;
 
     /** Asks about this reset; {@code message} says what it resets. */
     public void open(String message, Runnable onConfirm) {
+        open(TITLE, message, onConfirm);
+    }
+
+    /** Asks {@code title} (a delete, say) the same way. */
+    public void open(String title, String message, Runnable onConfirm) {
+        this.title = title == null ? TITLE : title;
         this.message = message == null ? "" : message;
         this.onConfirm = java.util.Objects.requireNonNull(onConfirm);
     }
@@ -44,7 +50,7 @@ public final class ConfirmDialog {
         round(g, dx, dy, dw, dh, LadsPalette.BORDER);
         round(g, dx + 1, dy + 1, dw - 2, dh - 2, PANEL);
         g.fill(dx + 1, dy, dx + dw - 1, dy + 2, ACCENT);
-        g.drawText(fit(g, TITLE, dw - 24), dx + 12, dy + 12, ACCENT);
+        g.drawText(fit(g, title, dw - 24), dx + 12, dy + 12, ACCENT);
         for (int i = 0; i < lines.size(); i++) g.drawText(lines.get(i), dx + 12, dy + 30 + i * 12, TEXT);
 
         boolean hoverConfirm = confirm.contains(mx, my), hoverCancel = cancel.contains(mx, my);

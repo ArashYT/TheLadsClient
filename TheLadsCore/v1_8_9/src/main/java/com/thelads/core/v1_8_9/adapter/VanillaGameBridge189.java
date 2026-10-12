@@ -113,6 +113,17 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public void playBowSound(final boolean headshot, final float level) {
+        mc().getSoundHandler().playSound(new net.minecraft.client.audio.PositionedSound(new net.minecraft.util.ResourceLocation(headshot ? "random.anvil_land" : "random.levelup")) {
+            {
+                volume = headshot ? level * .5F : level;
+                pitch = headshot ? 1.8F : 1.0F;
+                attenuationType = net.minecraft.client.audio.ISound.AttenuationType.NONE;
+            }
+        });
+    }
+
+    @Override
     public String getServerAddress() {
         Minecraft mc = mc();
         return mc.isSingleplayer() || mc.getCurrentServerData() == null ? "Singleplayer" : mc.getCurrentServerData().serverIP;

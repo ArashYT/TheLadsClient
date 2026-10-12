@@ -91,7 +91,11 @@ public final class KillBanner189 {
         if (event.phase != TickEvent.Phase.END) return;
         KillBannerArt189.sweep();
         Minecraft mc = Minecraft.getMinecraft();
-        if (!eligible()) { reset(); return; }
+        if (!eligible()) {
+            reset();
+            if (mc.theWorld != null && mc.thePlayer != null && ComboSoundsModule.bowActive()) arrows(mc); // Combo Sounds' bow sounds, Kill Banner off
+            return;
+        }
         if (trackedConnection != mc.getNetHandler() || trackedWorld != mc.theWorld) {
             reset();
             trackedConnection = mc.getNetHandler();
@@ -146,12 +150,14 @@ public final class KillBanner189 {
 
     /** Each arrow of the local player's in flight by entity id: where it was last tick (KillBannerArrows on 26.x). */
     private static final Map<Integer, Vec3> flying = new HashMap<Integer, Vec3>();
+    /** Each arrow in flight by entity id: how it moved last tick. */
+    private static final Map<Integer, Vec3> moving = new HashMap<Integer, Vec3>();
     /** Arrows that already hit someone: one hit an arrow. */
     private static final Set<Integer> landed = new HashSet<Integer>();
 
     /**
      * Headshots from arrows: where one of the local player's arrows crosses a living entity's box this tick is where it hit,
-     * in the head or not (1.8.9 sends no damage events, so this is the only word on it).
+     * in the head or not (1.8.9 sends no damage events, so this is the only word on it). Combo Sounds' bow sounds hear it too.
      */
     private static void arrows(Minecraft mc) {
         Set<Integer> seen = new HashSet<Integer>();
@@ -163,10 +169,13 @@ public final class KillBanner189 {
             seen.add(id);
             if (landed.contains(id)) continue;
             Vec3 at = new Vec3(arrow.posX, arrow.posY, arrow.posZ);
-            Vec3 before = flying.put(id, at);
-            if (arrow.motionX * arrow.motionX + arrow.motionY * arrow.motionY + arrow.motionZ * arrow.motionZ < 1e-6) continue; // stuck in the ground, or not moving yet
+            Vec3 motion = new Vec3(arrow.motionX, arrow.motionY, arrow.motionZ);
+            Vec3 before = flying.put(id, at), was = moving.put(id, motion);
+            if (motion.lengthVector() < 1e-3) continue; // stuck in the ground, or not moving yet
             Vec3 from = before != null ? before : at;
             Vec3 to = at.addVector(arrow.motionX * 1.5, arrow.motionY * 1.5, arrow.motionZ * 1.5);
+            // Turned back: the client's own copy bounced off what it hit this tick (only the server hurts), on last tick's path.
+            if (before != null && was != null && was.dotProduct(motion) < 0) to = before.addVector(was.xCoord * 1.5, was.yCoord * 1.5, was.zCoord * 1.5);
             AxisAlignedBB sweep = new AxisAlignedBB(Math.min(from.xCoord, to.xCoord), Math.min(from.yCoord, to.yCoord), Math.min(from.zCoord, to.zCoord),
                 Math.max(from.xCoord, to.xCoord), Math.max(from.yCoord, to.yCoord), Math.max(from.zCoord, to.zCoord)).expand(.5, .5, .5);
             EntityLivingBase victim = null;
@@ -186,12 +195,66 @@ public final class KillBanner189 {
             if (victim != null) {
                 landed.add(id);
                 EntityLivingBase target = victim(victim);
-                if (target != null && target.getHealth() > 0)
-                    KillBanners.DETECTOR.hitByMe(target.getEntityId(), names(target), kind(target), headHit(victim, from, where), System.nanoTime());
+                boolean head = headHit(victim, from, where);
+                if (target != null && target.getHealth() > 0) {
+                    if (eligible()) KillBanners.DETECTOR.hitByMe(target.getEntityId(), names(target), kind(target), head, System.nanoTime());
+                    ComboSoundsModule.onArrowCrossed(target.getEntityId(), target instanceof EntityPlayer, head, mc.thePlayer.getDistanceToEntity(target));
+                }
             }
         }
         flying.keySet().retainAll(seen);
+        moving.keySet().retainAll(seen);
         landed.retainAll(seen);
+    }
+
+    /**
+     * The server just hurt {@code entity} (NetHandlerPlayClientMixin): the client's copies of your arrows run a tick or two behind
+     * the server's, so the arrow that hit may not have crossed it here yet and is about to be removed. The first of your arrows whose
+     * path (followed for a few ticks, falling as arrows do; for one that bounced off on this client, last tick's path) meets its
+     * box is where it hit.
+     */
+    public static void reach(Entity entity) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.theWorld == null || mc.thePlayer == null || !(entity instanceof EntityLivingBase) || entity == mc.thePlayer
+            || !(eligible() || ComboSoundsModule.bowActive())) return;
+        AxisAlignedBB box = entity.getEntityBoundingBox().expand(.3, .3, .3);
+        for (Object o : mc.theWorld.loadedEntityList) {
+            if (!(o instanceof EntityArrow) || ((EntityArrow) o).shootingEntity != mc.thePlayer || landed.contains(((EntityArrow) o).getEntityId())) continue;
+            EntityArrow arrow = (EntityArrow) o;
+            int id = arrow.getEntityId();
+            Vec3 at = new Vec3(arrow.posX, arrow.posY, arrow.posZ), motion = new Vec3(arrow.motionX, arrow.motionY, arrow.motionZ), was = moving.get(id);
+            if (was != null && was.dotProduct(motion) < 0 && flying.containsKey(id)) {
+                at = flying.get(id);
+                motion = was;
+            }
+            for (int tick = 0; tick < 6 && motion.lengthVector() > 1e-3; tick++) {
+                Vec3 next = at.add(motion);
+                MovingObjectPosition hit = box.isVecInside(at) ? new MovingObjectPosition(entity, at) : box.calculateIntercept(at, next);
+                if (hit != null && hit.hitVec != null) {
+                    landed.add(id);
+                    EntityLivingBase target = victim(entity);
+                    boolean head = headHit(entity, at, hit.hitVec);
+                    if (target != null && target.getHealth() > 0) {
+                        if (eligible()) KillBanners.DETECTOR.hitByMe(target.getEntityId(), names(target), kind(target), head, System.nanoTime());
+                        ComboSoundsModule.onArrowCrossed(target.getEntityId(), target instanceof EntityPlayer, head, mc.thePlayer.getDistanceToEntity(target));
+                    }
+                    return;
+                }
+                at = next;
+                motion = new Vec3(motion.xCoord * .99, motion.yCoord * .99 - .05, motion.zCoord * .99);
+            }
+        }
+    }
+
+    /**
+     * The server's arrow-hit-player event (NetHandlerPlayClientMixin, change game state 6): your arrows are looked at once more
+     * first (the one landing may not have crossed its victim on the client yet), then Combo Sounds hears it.
+     */
+    public static void arrowHitPlayer() {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.theWorld == null || mc.thePlayer == null || !ComboSoundsModule.bowActive()) return;
+        arrows(mc);
+        ComboSoundsModule.onArrowHitPlayer();
     }
 
     /** A death status, or a health update to zero (NetHandlerPlayClientMixin). */

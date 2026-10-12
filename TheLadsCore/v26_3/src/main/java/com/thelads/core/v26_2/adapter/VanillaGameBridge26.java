@@ -443,4 +443,9 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         net.minecraft.client.Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
             net.minecraft.sounds.SoundEvents.NOTE_BLOCK_PLING.value(), pitch, volume));
     }
+    @Override public void playBowSound(boolean headshot, float volume) {
+        net.minecraft.client.Minecraft.getInstance().getSoundManager().play(headshot
+            ? net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.ANVIL_LAND, 1.8f, volume * .5f)
+            : net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, 1f, volume));
+    }
 }

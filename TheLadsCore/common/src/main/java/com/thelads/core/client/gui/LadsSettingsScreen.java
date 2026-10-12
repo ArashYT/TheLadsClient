@@ -50,6 +50,8 @@ public final class LadsSettingsScreen {
     private final ActionDropdown actions = new ActionDropdown();
     private final ParticleRatesDialog particleRates = new ParticleRatesDialog();
     private final ConfirmDialog confirm = new ConfirmDialog();
+    /** The sound library and trimmer every uploaded-sound slot opens (Choose, Add). */
+    private final SoundLibraryDialog library = new SoundLibraryDialog(confirm, () -> changed(ModuleManager.getInstance().getModule(ComboSoundsModule.NAME)));
     private double displayedScroll;
     private int renderScroll;
     private int catalogScrollOffset;
@@ -112,12 +114,17 @@ public final class LadsSettingsScreen {
     public void setClipboardReader(Supplier<String> reader) { clipboardReader = reader; }
     public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; catalogScrollOffset = 0; catalogDisplayedScroll = 0; catalogRenderScroll = 0; }
     public String getSearchQuery() { return searchQuery; }
-    public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || particleRates.isOpen() || colorPicker.isOpen() || fpsDialogOpen; }
+    public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || particleRates.isOpen() || colorPicker.isOpen() || fpsDialogOpen || library.isOpen(); }
     public String getCurrentCategory() { return currentCategory; }
     public String getCurrentTab() { return "MODS"; }
     public List<Rect> getControlBounds() { return controls.stream().map(Control::rect).toList(); }
     /** Bounds of a control drawn by the last render (e.g. "search", "option:Size"), or null; QA drives real input at them. */
     public Rect controlBounds(String id) { return controls.stream().filter(c -> c.id.equals(id)).map(Control::rect).findFirst().orElse(null); }
+    /** QA: the control was drawn whole inside the page's scrolling area by the last render (a click at its middle reaches it). */
+    public boolean revealed(String id) {
+        Rect r = controlBounds(id);
+        return r != null && (!contentControl(id) || r.y >= viewport.y && r.y + r.height <= viewport.y + viewport.height);
+    }
     /** Ids of the controls drawn by the last render (QA scripts click them by id). */
     public List<String> controlIds() { return controls.stream().map(c -> c.id).toList(); }
     public int getScrollOffset() { return scrollOffset; }
@@ -132,14 +139,14 @@ public final class LadsSettingsScreen {
     public boolean showsGameView() { return detail != null && "Fullbright".equalsIgnoreCase(detail.getName()); }
     /** The reset confirmation (QA reads its bounds and clicks them). */
     public ConfirmDialog confirmDialog() { return confirm; }
+    /** The sound library (QA reads its bounds and clicks them). */
+    public SoundLibraryDialog soundLibrary() { return library; }
     public List<String> visibleModuleNames() { return getFilteredModules().stream().map(Module::getName).toList(); }
 
     public void render(LadsGraphics g, int pointerX, int pointerY) {
-        Runnable upload = uploaded;
-        if (upload != null) { uploaded = null; upload.run(); }
         refreshCapabilities();
         // A popup is modal: the screen under it neither highlights nor reacts to the pointer.
-        boolean modal = colorPicker.isOpen() || actions.isOpen() || particleRates.isOpen() || fpsDialogOpen || confirm.isOpen();
+        boolean modal = colorPicker.isOpen() || actions.isOpen() || particleRates.isOpen() || fpsDialogOpen || confirm.isOpen() || library.isOpen();
         int mouseX = modal ? -100000 : pointerX, mouseY = modal ? -100000 : pointerY;
         long now = System.nanoTime();
         double elapsed = previousFrameNanos == 0 ? 0 : Math.min(.1, (now - previousFrameNanos) / 1e9);
@@ -183,6 +190,7 @@ public final class LadsSettingsScreen {
         g.overlay(() -> actions.render(g, pointerX, pointerY));
         g.overlay(() -> particleRates.render(g, pointerX, pointerY));
         g.overlay(() -> renderHudFpsDialog(g, pointerX, pointerY));
+        g.overlay(() -> library.render(g, pointerX, pointerY));
         g.overlay(() -> confirm.render(g, pointerX, pointerY));
         if (tip.update(modal || tipModule == null ? null : tipModule.getName(), now)) {
             String desc = tipModule.getDescription();
@@ -337,14 +345,16 @@ public final class LadsSettingsScreen {
         g.enableScissor(x, top, x + leftW, top + viewport.height);
         // The Kill Banner picker scrolls with the options, above them.
         int picker = detail instanceof KillBannerModule banner ? killBannerPicker(g, banner, x, top - renderScroll, leftW - 8, mx, my) : 0;
-        maxScroll = Math.max(0, picker + (options.size() + 1) * rowH - viewport.height);
+        int rows = 0;
+        for (Option option : options) rows += rowHeight(option);
+        maxScroll = Math.max(0, picker + rows + rowH - viewport.height);
         scrollOffset = Math.min(scrollOffset, maxScroll);
-        for (int i = 0; i < options.size(); i++) {
-            int y = top + picker + i * rowH - renderScroll;
-            if (y + rowH <= top || y >= top + viewport.height) continue;
-            optionRow(g, options.get(i), x, y, leftW - 8, mx, my);
+        int resetY = top + picker - renderScroll;
+        for (Option option : options) {
+            int height = rowHeight(option);
+            if (resetY + height > top && resetY < top + viewport.height) optionRow(g, option, x, resetY, leftW - 8, mx, my);
+            resetY += height;
         }
-        int resetY = top + picker + options.size() * rowH - renderScroll;
         if (resetY < top + viewport.height && resetY + 24 > top)
             button(g, "reset", "Reset options", new Rect(x, resetY + 4, Math.min(130, leftW - 8), 24),
                 () -> {
@@ -1120,8 +1130,16 @@ public final class LadsSettingsScreen {
         modsCheckedNanos = now;
         if (!new ModStateStore(ClientPaths.getBaseDir()).stamp().equals(modsStamp)) reloadMods();
     }
+    /** An option row is 43 px; a sound list, and Combo Sounds' sets, add 24 px for each entry. */
+    private int rowHeight(Option option) {
+        if (option instanceof SoundListOption list) return 43 + list.size() * 24;
+        if (option instanceof ComboSoundsModule.SoundSets && detail instanceof ComboSoundsModule combo) return 43 + combo.soundSets().size() * 24;
+        return 43;
+    }
     private void optionRow(LadsGraphics g, Option option, int x, int y, int w, int mx, int my) {
         if (option instanceof SoundOption sound) { soundRow(g, sound, x, y, w, mx, my); return; }
+        if (option instanceof SoundListOption list) { soundListRow(g, list, x, y, w, mx, my); return; }
+        if (option instanceof ComboSoundsModule.SoundSets && detail instanceof ComboSoundsModule combo) { setsRow(g, combo, x, y, w, mx, my); return; }
         round(g, x, y, w, 37, CARD);
         int controlW = Math.min(155, w / 2);
         g.drawText(fit(g, option.getName(), w - controlW - 20), x + 9, y + 14, TEXT);
@@ -1165,51 +1183,112 @@ public final class LadsSettingsScreen {
             button(g, id, p.changed() == 0 ? "Edit..." : p.changed() + " changed...", r, () -> particleRates.open(p, () -> changed(detail)), true, mx, my, p.changed() > 0);
         }
     }
-    /** An uploaded-sound slot (SoundOption): its name and file, then Upload, Play and Clear. */
+    /** An uploaded-sound slot (SoundOption): its name and file, then Choose (the sound library), Play and Clear. */
     private void soundRow(LadsGraphics g, SoundOption sound, int x, int y, int w, int mx, int my) {
         Module module = detail;
         round(g, x, y, w, 37, CARD);
         // Each button as wide as its label, so all three fit a narrow column (GUI scale 2 in a small window); the name takes the rest.
-        int uploadW = g.textWidth("Upload") + 14, playW = g.textWidth("Play") + 14, clearW = g.textWidth("Clear") + 14;
-        int controlW = uploadW + playW + clearW + 8;
-        String fallback = module instanceof ComboSoundsModule ? "Built-in pling" : "Plain chime";
+        int chooseW = g.textWidth("Choose") + 14, playW = g.textWidth("Play") + 14, clearW = g.textWidth("Clear") + 14;
+        int controlW = chooseW + playW + clearW + 8;
         g.drawText(fit(g, sound.getName(), w - controlW - 20), x + 9, y + 8, TEXT);
-        g.drawText(fit(g, sound.isSet() ? sound.get() : fallback, w - controlW - 20), x + 9, y + 21, MUTED);
+        g.drawText(fit(g, sound.isSet() ? sound.get() : builtInSound(module, sound), w - controlW - 20), x + 9, y + 21, MUTED);
         String id = "option:" + sound.getName();
         int rx = x + w - controlW - 6, ry = y + 7;
-        button(g, id + ":upload", "Upload", new Rect(rx, ry, uploadW, 23), () -> uploadSound(sound, module), true, mx, my, false);
-        button(g, id + ":play", "Play", new Rect(rx + uploadW + 4, ry, playW, 23), () -> previewSound(sound, module),
+        button(g, id + ":choose", "Choose", new Rect(rx, ry, chooseW, 23), () -> library.open(sound.getName(), sound.get(), soundVolume(module), file -> {
+            sound.set(file);
+            changed(module);
+            notice = sound.getName() + ": " + file;
+            previewSound(sound, module);
+        }), true, mx, my, false);
+        button(g, id + ":play", "Play", new Rect(rx + chooseW + 4, ry, playW, 23), () -> previewSound(sound, module),
             sound.isSet() || module instanceof ComboSoundsModule, mx, my, false);
-        button(g, id + ":clear", "Clear", new Rect(rx + uploadW + playW + 8, ry, clearW, 23),
+        button(g, id + ":clear", "Clear", new Rect(rx + chooseW + playW + 8, ry, clearW, 23),
             () -> { sound.set(""); changed(module); }, sound.isSet(), mx, my, false);
     }
-    /** A finished upload, applied at the start of the next frame (the dialog completes on its own thread). */
-    private volatile Runnable uploaded;
-    private void uploadSound(SoundOption sound, Module module) {
-        notice = "Choose an MP3 or WAV file...";
-        LadsGameBridge.get().chooseSoundFile().whenComplete((path, failure) -> {
-            String stored = null, message = "";
-            if (failure != null) message = "No file dialog: " + failure.getMessage();
-            else if (path != null) {
-                try {
-                    stored = CustomSounds.upload(path);
-                    message = sound.getName() + ": " + stored;
-                } catch (Exception e) {
-                    message = "Can't use that file: " + e.getMessage();
-                }
-            }
-            String file = stored, text = message;
-            uploaded = () -> {
-                if (file != null) { sound.set(file); changed(module); previewSound(sound, module); }
-                notice = text;
-            };
-        });
+    private static String builtInSound(Module module, SoundOption sound) {
+        if (!(module instanceof ComboSoundsModule combo)) return "Plain chime";
+        return sound == combo.longShotSound ? "Built-in level-up chime" : sound == combo.headshotSound ? "Built-in helmet clink" : "Built-in pling";
+    }
+    private static double soundVolume(Module module) {
+        return module instanceof ComboSoundsModule combo ? combo.volume.getValue() : module instanceof KillBannerModule banner ? banner.volume.getValue() : 1;
     }
     private static void previewSound(SoundOption sound, Module module) {
-        if (module instanceof ComboSoundsModule combo) {
-            int step = Arrays.asList(combo.steps).indexOf(sound) + 1;
-            combo.play(step);
-        } else if (sound.isSet()) CustomSounds.play(sound.get(), module instanceof KillBannerModule banner ? banner.volume.getValue() : 1);
+        if (module instanceof ComboSoundsModule combo) combo.preview(sound);
+        else if (sound.isSet()) CustomSounds.play(sound.get(), soundVolume(module));
+    }
+    /** A list of sounds (After Combo 5): Add (the sound library), then each file with up, down, Play and remove. */
+    private void soundListRow(LadsGraphics g, SoundListOption list, int x, int y, int w, int mx, int my) {
+        Module module = detail;
+        List<String> files = list.get();
+        round(g, x, y, w, 37 + files.size() * 24, CARD);
+        int addW = g.textWidth("Add...") + 14;
+        g.drawText(fit(g, list.getName(), w - addW - 20), x + 9, y + 8, TEXT);
+        String summary = files.isEmpty() ? module instanceof ComboSoundsModule ? "Empty: Combo 5 again" : "Empty" : files.size() + (files.size() == 1 ? " sound" : " sounds");
+        g.drawText(fit(g, summary, w - addW - 20), x + 9, y + 21, MUTED);
+        String id = "option:" + list.getName();
+        button(g, id + ":add", "Add...", new Rect(x + w - addW - 6, y + 7, addW, 23), () -> library.open(list.getName(), "", soundVolume(module), file -> {
+            list.add(file);
+            changed(module);
+            notice = list.getName() + ": added " + file;
+        }), true, mx, my, false);
+        int upW = g.textWidth("^") + 10, downW = g.textWidth("v") + 10, playW = g.textWidth("Play") + 10, removeW = g.textWidth("x") + 10;
+        for (int i = 0; i < files.size(); i++) {
+            int index = i, ry = y + 37 + i * 24;
+            String file = files.get(i);
+            round(g, x + 6, ry - 1, w - 9, 22, PANEL); // each entry a darker strip, so its buttons show
+            Rect remove = new Rect(x + w - 6 - removeW, ry, removeW, 20), play = new Rect(remove.x - 3 - playW, ry, playW, 20);
+            Rect down = new Rect(play.x - 3 - downW, ry, downW, 20), up = new Rect(down.x - 3 - upW, ry, upW, 20);
+            g.drawText(fit(g, (i + 1) + ". " + file, up.x - x - 20), x + 15, ry + 6, TEXT);
+            button(g, id + ":up:" + i, "^", up, () -> { list.move(index, -1); changed(module); }, i > 0, mx, my, false);
+            button(g, id + ":down:" + i, "v", down, () -> { list.move(index, 1); changed(module); }, i < files.size() - 1, mx, my, false);
+            button(g, id + ":play:" + i, "Play", play, () -> CustomSounds.play(file, soundVolume(module)), true, mx, my, false);
+            button(g, id + ":remove:" + i, "x", remove, () -> { list.remove(index); changed(module); }, true, mx, my, false);
+        }
+    }
+    /** The set being renamed (a text field whose value renames it) and its index among the player's sets. */
+    private TextOption renaming;
+    private int renamingIndex = -1;
+    /** Combo Sounds' Sound Sets: Save current, then each set (click: Combo 1-5 at once; the one in use is lit), Rename and Delete for yours. */
+    private void setsRow(LadsGraphics g, ComboSoundsModule combo, int x, int y, int w, int mx, int my) {
+        List<ComboSoundsModule.SoundSet> sets = combo.soundSets();
+        round(g, x, y, w, 37 + sets.size() * 24, CARD);
+        int saveW = g.textWidth("Save current") + 14;
+        String id = "option:" + combo.sets.getName();
+        g.drawText(fit(g, combo.sets.getName(), w - saveW - 20), x + 9, y + 8, TEXT);
+        g.drawText(fit(g, "Click one to fill Combo 1-5", w - saveW - 20), x + 9, y + 21, MUTED);
+        button(g, id + ":save", "Save current", new Rect(x + w - saveW - 6, y + 7, saveW, 23), () -> {
+            int index = combo.saveSet();
+            changed(combo);
+            renameSet(combo, index);
+        }, true, mx, my, false);
+        int renameW = g.textWidth("Rename") + 10, deleteW = g.textWidth("Delete") + 10;
+        for (int i = 0; i < sets.size(); i++) {
+            ComboSoundsModule.SoundSet set = sets.get(i);
+            int own = i - 1, ry = y + 37 + i * 24, right = x + w - 6; // own: the index among the player's sets (Default pling: -1)
+            round(g, x + 6, ry - 1, w - 9, 22, PANEL); // each set a darker strip, so its buttons show
+            Rect delete = new Rect(right - deleteW, ry, deleteW, 20), rename = new Rect(delete.x - 3 - renameW, ry, renameW, 20);
+            Rect name = new Rect(x + 9, ry, (own < 0 ? right : rename.x - 3) - x - 9, 20);
+            boolean editing = renaming != null && editingOption == renaming && renamingIndex == own;
+            button(g, id + ":use:" + i, editing ? inputWindow(g, name.width - 10) : set.name(), name, editing ? () -> {} : () -> {
+                combo.use(set);
+                changed(combo);
+                notice = "Sound set: " + set.name();
+            }, true, mx, my, editing || combo.using(set));
+            if (own < 0) continue;
+            button(g, id + ":rename:" + i, "Rename", rename, () -> renameSet(combo, own), true, mx, my, false);
+            button(g, id + ":delete:" + i, "Delete", delete, () -> confirm.open("Delete this sound set?",
+                set.name() + " goes; its sounds stay in your library.", () -> { combo.deleteSet(own); changed(combo); }), true, mx, my, false);
+        }
+    }
+    private void renameSet(ComboSoundsModule combo, int index) {
+        renamingIndex = index;
+        renaming = new TextOption("Set name", combo.sets.get().get(index).name()) {
+            @Override public void setValue(String value) {
+                super.setValue(value);
+                combo.renameSet(index, value);
+            }
+        };
+        startEdit(renaming);
     }
     private void button(LadsGraphics g, String id, String label, Rect r, Runnable action, boolean enabled, int mx, int my, boolean selected) {
         boolean content = contentControl(id);
@@ -1262,6 +1341,7 @@ public final class LadsSettingsScreen {
     public boolean mouseClicked(double x, double y, int button) {
         tip.dismiss();
         if (confirm.isOpen()) return confirm.click(x, y, button);
+        if (library.click(x, y, button)) return true;
         if (actions.click(x,y,button)) return true;
         if (particleRates.click(x, y, button)) return true;
         if (colorPicker.click(x, y, button)) return true;
@@ -1339,6 +1419,7 @@ public final class LadsSettingsScreen {
     }
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
         if (confirm.isOpen()) return true;
+        if (library.drag(x)) return true;
         if (particleRates.drag(x)) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); return true; }
         if (colorPicker.move(x, y)) return true;
@@ -1349,6 +1430,7 @@ public final class LadsSettingsScreen {
     }
     public boolean mouseReleased(double x, double y, int button) {
         if (confirm.isOpen()) return true;
+        if (library.release()) return true;
         if (particleRates.release()) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); draggingFpsSlider = false; return true; }
         if (colorPicker.release()) return true;
@@ -1367,6 +1449,7 @@ public final class LadsSettingsScreen {
     }
     public boolean mouseScrolled(double x, double y, double amount) {
         if (confirm.isOpen()) return true;
+        if (library.wheel(x, amount)) return true;
         if (actions.wheel(amount)) return true;
         if (particleRates.wheel(amount)) return true;
         if (colorPicker.isOpen() || fpsDialogOpen) return true;
@@ -1375,6 +1458,7 @@ public final class LadsSettingsScreen {
     }
     public boolean keyPressed(int key, int modifiers) {
         if (confirm.isOpen()) return confirm.key(key);
+        if (library.key(key, modifiers)) return true;
         if (actions.key(key,modifiers)) return true;
         if (particleRates.key(key, modifiers)) return true;
         if (colorPicker.key(key)) return true;
@@ -1455,6 +1539,7 @@ public final class LadsSettingsScreen {
     }
     public boolean charTyped(int codePoint) {
         if (confirm.isOpen()) return true;
+        if (library.type(codePoint)) return true;
         if (actions.type(codePoint)) return true;
         if (particleRates.type(codePoint)) return true;
         if (colorPicker.type(codePoint)) return true;
@@ -1524,6 +1609,7 @@ public final class LadsSettingsScreen {
             .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.ChatModule chat && chat.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o)))
+            .filter(o -> !(detail instanceof ComboSoundsModule combo && combo.hidden(o)))
             .sorted((a, b) -> {
                 if ("Ignore HUD FPS Cap".equals(a.getName())) return 1;
                 if ("Ignore HUD FPS Cap".equals(b.getName())) return -1;

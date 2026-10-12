@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundDamageEventPacket;
 import net.minecraft.network.protocol.game.ClientboundEntityEventPacket;
+import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.world.entity.EntityEvent;
@@ -32,6 +33,12 @@ public class KillBannerPacketsMixin {
     private void lads$health(ClientboundSetEntityDataPacket packet, CallbackInfo callback) {
         if (Minecraft.getInstance().level != null && Minecraft.getInstance().level.getEntity(packet.id()) instanceof LivingEntity living
             && living.getHealth() <= 0) NativeKillBanner.died(living);
+    }
+
+    /** Combo Sounds: your arrow hit a player (the server's arrow-hit event). */
+    @Inject(method = "handleGameEvent", at = @At("TAIL"), require = 1)
+    private void lads$arrowHitPlayer(ClientboundGameEventPacket packet, CallbackInfo callback) {
+        if (packet.getEvent() == ClientboundGameEventPacket.PLAY_ARROW_HIT_SOUND) NativeKillBanner.arrowHitPlayer();
     }
 
     @Inject(method = "handleSystemChat", at = @At("TAIL"), require = 1)

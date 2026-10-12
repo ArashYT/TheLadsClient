@@ -1,12 +1,22 @@
 package com.thelads.core.v26_2.feature;
 
+import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.thelads.core.client.sound.SoundsQa;
 import com.thelads.core.v26_2.gui.LadsSettingsScreen26;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.UUID;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.network.protocol.game.ClientboundDamageEventPacket;
+import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.projectile.arrow.Arrow;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
@@ -22,7 +32,9 @@ final class SoundsCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static SoundsQa qa;
     private static boolean running, done;
-    private static volatile int target = -1;
+    private static volatile int target = -1, archer = -1;
+    /** The stand-in player's id (client only). */
+    private static final int STAND_IN = Integer.MAX_VALUE - 7;
     private static String pendingShot;
     private static Path gameDir;
 
@@ -108,5 +120,85 @@ final class SoundsCapture {
         @Override public void closeScreen() { Minecraft.getInstance().setScreenAndShow(null); }
 
         @Override public void screenshot(String name) { pendingShot = name; }
+
+        @Override public void spawnArcheryTarget(double distance, boolean player) {
+            removeArcheryTarget();
+            Minecraft mc = Minecraft.getInstance();
+            double yaw = Math.toRadians(mc.player.getYRot());
+            double x = mc.player.getX() - Math.sin(yaw) * distance, y = mc.player.getY(), z = mc.player.getZ() + Math.cos(yaw) * distance;
+            float facing = mc.player.getYRot() + 180;
+            if (player) {
+                RemotePlayer standIn = new RemotePlayer(mc.level, new GameProfile(UUID.randomUUID(), "LadsArcheryTarget"));
+                standIn.setId(STAND_IN);
+                standIn.snapTo(x, y, z, facing, 0);
+                standIn.yHeadRot = standIn.yBodyRot = facing;
+                mc.level.addEntity(standIn);
+                archer = STAND_IN;
+                return;
+            }
+            var server = mc.getSingleplayerServer();
+            var id = mc.player.getUUID();
+            server.execute(() -> {
+                var sp = server.getPlayerList().getPlayer(id);
+                if (sp == null) return;
+                // A clear range: other mobs of the QA world (earlier probes') would take arrows meant for the target.
+                sp.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, sp.getBoundingBox().inflate(48)).forEach(Entity::discard);
+                var villager = EntityTypes.VILLAGER.create(sp.level(), EntitySpawnReason.COMMAND);
+                villager.snapTo(x, y, z, facing, 0);
+                villager.setYHeadRot(facing);
+                villager.setNoAi(true);
+                villager.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000);
+                sp.level().addFreshEntity(villager);
+                villager.setHealth(1000);
+                archer = villager.getId();
+            });
+        }
+
+        @Override public boolean archeryTargetReady() {
+            Minecraft mc = Minecraft.getInstance();
+            return archer >= 0 && mc.level.getEntity(archer) != null;
+        }
+
+        @Override public void shootTarget(boolean head) {
+            Minecraft mc = Minecraft.getInstance();
+            Entity target = mc.level.getEntity(archer);
+            // From 12 blocks to the target's side (seen in flight a few ticks, as a real shot is, and never near the player),
+            // aimed 0.3 above the mark (an arrow falls about that much on the way), a head shot 0.45: the middle of the head.
+            Vec3 at = new Vec3(target.getX(), head ? target.getEyeY() : target.getY() + target.getBbHeight() * .45, target.getZ());
+            Vec3 away = new Vec3(at.x - mc.player.getX(), 0, at.z - mc.player.getZ()).normalize();
+            Vec3 start = at.add(-away.z * 12, 0, away.x * 12), aim = at.add(0, head ? .45 : .3, 0);
+            var server = mc.getSingleplayerServer();
+            var id = mc.player.getUUID();
+            server.execute(() -> {
+                var sp = server.getPlayerList().getPlayer(id);
+                if (sp == null) return;
+                Arrow arrow = new Arrow(sp.level(), sp, new ItemStack(Items.ARROW), null);
+                arrow.setPos(start);
+                arrow.shoot(aim.x - start.x, aim.y - start.y, aim.z - start.z, 3f, 0f);
+                sp.level().addFreshEntity(arrow);
+            });
+        }
+
+        @Override public void arrowHitPlayerPackets() {
+            Minecraft mc = Minecraft.getInstance();
+            Entity standIn = mc.level.getEntity(archer);
+            if (standIn != null) mc.getConnection().handleDamageEvent(new ClientboundDamageEventPacket(standIn, mc.level.damageSources().generic()));
+            mc.getConnection().handleGameEvent(new ClientboundGameEventPacket(ClientboundGameEventPacket.PLAY_ARROW_HIT_SOUND, 0));
+        }
+
+        @Override public void removeArcheryTarget() {
+            Minecraft mc = Minecraft.getInstance();
+            int old = archer;
+            archer = -1;
+            if (old == STAND_IN) mc.level.removeEntity(STAND_IN, Entity.RemovalReason.DISCARDED);
+            else if (old >= 0) {
+                var server = mc.getSingleplayerServer();
+                var id = mc.player.getUUID();
+                server.execute(() -> {
+                    var sp = server.getPlayerList().getPlayer(id);
+                    if (sp != null && sp.level().getEntity(old) != null) sp.level().getEntity(old).discard();
+                });
+            }
+        }
     };
 }

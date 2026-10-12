@@ -8,9 +8,11 @@ import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import net.minecraft.network.play.server.S19PacketEntityStatus;
 import net.minecraft.network.play.server.S1CPacketEntityMetadata;
+import net.minecraft.network.play.server.S2BPacketChangeGameState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -36,7 +38,8 @@ public abstract class NetHandlerPlayClientMixin {
             DamageTilt.CLIENT.hurt(System.currentTimeMillis());
         // Combo Sounds: the hurt that confirms your hit, or your own (it ends the combo).
         Entity hurt = packet.getOpCode() == 2 && mc.thePlayer != null && mc.theWorld != null ? packet.getEntity(mc.theWorld) : null;
-        if (hurt != null) ComboSoundsModule.onHurt(hurt.getEntityId(), hurt == mc.thePlayer);
+        if (hurt != null && hurt != mc.thePlayer) KillBanner189.reach(hurt); // an arrow of yours, a tick behind the server's
+        if (hurt != null) ComboSoundsModule.onHurt(hurt.getEntityId(), hurt == mc.thePlayer, hurt instanceof EntityPlayer, mc.thePlayer.getDistanceToEntity(hurt));
     }
 
     /** ...but sends the knockback that pushes the player away from the attacker in the same tick: its opposite is the direction. */
@@ -45,6 +48,12 @@ public abstract class NetHandlerPlayClientMixin {
         EntityPlayerSP player = Minecraft.getMinecraft().thePlayer;
         if (player != null && packet.getEntityID() == player.getEntityId()) DamageTilt.CLIENT.direction(
             DamageTilt.sourceYaw(packet.getMotionX() / 8000.0, packet.getMotionZ() / 8000.0, player.rotationYaw), System.currentTimeMillis());
+    }
+
+    /** Combo Sounds: your arrow hit a player (change game state 6, the server's arrow-hit sound). */
+    @Inject(method = "handleChangeGameState", at = @At("TAIL"), require = 1)
+    private void ladsArrowHitPlayer(S2BPacketChangeGameState packet, CallbackInfo ci) {
+        if (packet.getGameState() == 6) KillBanner189.arrowHitPlayer();
     }
 
     @Inject(method = "handleEntityMetadata", at = @At("TAIL"), require = 1)
