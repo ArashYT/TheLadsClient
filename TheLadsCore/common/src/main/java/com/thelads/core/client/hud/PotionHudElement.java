@@ -18,6 +18,11 @@ public class PotionHudElement extends HudElement {
     private List<String> legacyEffects = List.of();
     private static final Pattern DURATION_SUFFIX = Pattern.compile(" \\([0-9]+s\\)$");
 
+    private final List<String> renderedLines = new java.util.ArrayList<>();
+    private List<PotionEffectInfo> lastActivePotions = null;
+    private List<String> lastLegacyEffects = null;
+    private boolean lastShowDur = false;
+
     public PotionHudElement() {
         this.x = 10;
         this.y = 220;
@@ -41,6 +46,9 @@ public class PotionHudElement extends HudElement {
         int iconGap = showIcon ? 4 : 0;
 
         if (activePotions.isEmpty() && legacyEffects.isEmpty()) {
+            renderedLines.clear();
+            lastActivePotions = null;
+            lastLegacyEffects = null;
             this.width = optBool("Show when empty", false) ? Math.max(90, g.textWidth("No Effects") + 12) : 90;
             this.height = Math.max(16, g.fontHeight() + 6);
             return;
@@ -51,16 +59,37 @@ public class PotionHudElement extends HudElement {
         this.height = count * lineH + 4;
         int maxW = 80;
 
-        if (!activePotions.isEmpty()) {
-            for (PotionEffectInfo p : activePotions) {
-                String line = p.name() + (showDur && p.duration() != null && !p.duration().isEmpty() ? " (" + p.duration() + ")" : "");
-                maxW = Math.max(maxW, iconSize + iconGap + g.textWidth(line) + 8);
+        boolean needRebuild = showDur != lastShowDur;
+        if (!needRebuild) {
+            if (!activePotions.isEmpty()) {
+                needRebuild = !activePotions.equals(lastActivePotions);
+            } else {
+                needRebuild = !legacyEffects.equals(lastLegacyEffects);
             }
-        } else {
-            for (String eff : legacyEffects) {
-                String line = showDur ? eff : DURATION_SUFFIX.matcher(eff).replaceFirst("");
-                maxW = Math.max(maxW, iconSize + iconGap + g.textWidth(line) + 8);
+        }
+
+        if (needRebuild) {
+            renderedLines.clear();
+            lastShowDur = showDur;
+            if (!activePotions.isEmpty()) {
+                lastActivePotions = activePotions;
+                lastLegacyEffects = null;
+                for (PotionEffectInfo p : activePotions) {
+                    String line = p.name() + (showDur && p.duration() != null && !p.duration().isEmpty() ? " (" + p.duration() + ")" : "");
+                    renderedLines.add(line);
+                }
+            } else {
+                lastActivePotions = null;
+                lastLegacyEffects = legacyEffects;
+                for (String eff : legacyEffects) {
+                    String line = showDur ? eff : DURATION_SUFFIX.matcher(eff).replaceFirst("");
+                    renderedLines.add(line);
+                }
             }
+        }
+
+        for (String line : renderedLines) {
+            maxW = Math.max(maxW, iconSize + iconGap + g.textWidth(line) + 8);
         }
         this.width = maxW;
     }
@@ -102,21 +131,22 @@ public class PotionHudElement extends HudElement {
         boolean shadow = HudSettings.getInstance().isTextShadow();
 
         if (!activePotions.isEmpty()) {
-            for (PotionEffectInfo p : activePotions) {
+            for (int i = 0; i < activePotions.size() && i < renderedLines.size(); i++) {
+                PotionEffectInfo p = activePotions.get(i);
                 int contentX = x + 4;
                 if (showIcon) {
                     g.drawPotionIcon(p.effectId(), p.iconIndex(), contentX, ty + (lineH - iconSize) / 2, iconSize);
                     contentX += iconSize + iconGap;
                 }
-                String line = p.name() + (showDur && p.duration() != null && !p.duration().isEmpty() ? " (" + p.duration() + ")" : "");
+                String line = renderedLines.get(i);
                 int textY = ty + (lineH - g.fontHeight()) / 2;
                 g.drawText(line, contentX, textY, color, shadow);
                 ty += lineH;
             }
         } else {
-            for (String eff : legacyEffects) {
+            for (int i = 0; i < legacyEffects.size() && i < renderedLines.size(); i++) {
                 int contentX = x + 4;
-                String line = showDur ? eff : DURATION_SUFFIX.matcher(eff).replaceFirst("");
+                String line = renderedLines.get(i);
                 int textY = ty + (lineH - g.fontHeight()) / 2;
                 g.drawText(line, contentX, textY, color, shadow);
                 ty += lineH;

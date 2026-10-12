@@ -42,7 +42,11 @@ public abstract class HudElement {
             int[] origin=HudDefaults.origin(moduleName,g.getScaledWidth(),g.getScaledHeight(),getRenderWidth(),getRenderHeight(),HudAnchors.hotbar(g));
             if(origin!=null){dx=origin[0];dy=origin[1];}
         }
-        return new HudGroupLayout.Rect(dx,dy,getRenderWidth(),getRenderHeight());
+        int rw = getRenderWidth(), rh = getRenderHeight();
+        if (lastMeasuredBounds != null && lastMeasuredBounds.x() == dx && lastMeasuredBounds.y() == dy && lastMeasuredBounds.width() == rw && lastMeasuredBounds.height() == rh) {
+            return lastMeasuredBounds;
+        }
+        return lastMeasuredBounds = new HudGroupLayout.Rect(dx, dy, rw, rh);
     }
 
     /** False while the element places itself by default (getDisplayX/Y) instead of at its HudDefaults origin. */
@@ -192,8 +196,15 @@ public abstract class HudElement {
     public int getWidth() { return width; }
     public int getHeight() { return height; }
 
+    private Module cachedModule;
+    private final java.util.Map<String, Option> cachedOptions = new java.util.HashMap<>();
+    private HudGroupLayout.Rect lastMeasuredBounds;
+
     public void setModuleName(String moduleName) {
         this.moduleName = moduleName;
+        cachedModule = null;
+        cachedOptions.clear();
+        lastMeasuredBounds = null;
         defaultX = x;
         defaultY = y;
         restoredX = null;
@@ -202,9 +213,26 @@ public abstract class HudElement {
     }
     public String getModuleName() { return moduleName; }
 
+    private Module module() {
+        if (cachedModule != null) return cachedModule;
+        if (moduleName != null) return cachedModule = ModuleManager.getInstance().getModule(moduleName);
+        return null;
+    }
+
+    private Option option(String name) {
+        Module m = module();
+        if (m == null) return null;
+        Option o = cachedOptions.get(name);
+        if (o == null && !cachedOptions.containsKey(name)) {
+            o = m.getOption(name);
+            cachedOptions.put(name, o);
+        }
+        return o;
+    }
+
     public boolean isEnabled() {
         if (moduleName != null) {
-            Module m = ModuleManager.getInstance().getModule(moduleName);
+            Module m = module();
             return m != null && m.isEnabled();
         }
         return enabled;
@@ -213,40 +241,21 @@ public abstract class HudElement {
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
 
     protected boolean optBool(String name, boolean def) {
-        if (moduleName != null) {
-            Module m = ModuleManager.getInstance().getModule(moduleName);
-            if (m != null) {
-                Option o = m.getOption(name);
-                if (o instanceof BoolOption b) {
-                    return b.get();
-                }
-            }
-        }
+        Option o = option(name);
+        if (o instanceof BoolOption b) return b.get();
         return def;
     }
 
     protected int optCycle(String name, int def) {
-        if (moduleName != null) {
-            Module m = ModuleManager.getInstance().getModule(moduleName);
-            if (m != null) {
-                Option o = m.getOption(name);
-                if (o instanceof DropdownOption d) {
-                    return d.getIndex();
-                }
-            }
-        }
+        Option o = option(name);
+        if (o instanceof DropdownOption d) return d.getIndex();
         return def;
     }
 
     protected int optColor(String name, int def) {
-        if (moduleName != null) {
-            Module m = ModuleManager.getInstance().getModule(moduleName);
-            if (m != null) {
-                Option o = m.getOption(name);
-                if (o instanceof ColorOption co) {
-                    return co.isUseGlobal() ? resolveColor() : (co.getColor() | 0xFF000000);
-                }
-            }
+        Option o = option(name);
+        if (o instanceof ColorOption co) {
+            return co.isUseGlobal() ? resolveColor() : (co.getColor() | 0xFF000000);
         }
         return def;
     }

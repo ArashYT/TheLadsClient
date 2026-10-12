@@ -4,6 +4,12 @@ import com.thelads.core.client.CpsTracker;
 import com.thelads.core.client.bridge.LadsGraphics;
 
 public class CpsHudElement extends TextHudElement {
+    private int lastShow = -1;
+    private boolean lastLabel = false;
+    private int lastLeft = -1;
+    private int lastRight = -1;
+    private String cachedText = "";
+
     public CpsHudElement() {
         super(50);
         this.x = 10;
@@ -20,15 +26,23 @@ public class CpsHudElement extends TextHudElement {
         int left = CpsTracker.get().leftCps();
         int right = CpsTracker.get().rightCps();
 
-        String text;
-        if (show == 1) {
-            text = (label ? "CPS: " : "") + left;
-        } else if (show == 2) {
-            text = (label ? "CPS: " : "") + right;
-        } else {
-            text = (label ? "CPS: " : "") + left + " | " + right;
+        if (show == lastShow && label == lastLabel && left == lastLeft && right == lastRight) {
+            return cachedText;
         }
 
-        return text;
+        lastShow = show;
+        lastLabel = label;
+        lastLeft = left;
+        lastRight = right;
+
+        if (show == 1) {
+            cachedText = (label ? "CPS: " : "") + left;
+        } else if (show == 2) {
+            cachedText = (label ? "CPS: " : "") + right;
+        } else {
+            cachedText = (label ? "CPS: " : "") + left + " | " + right;
+        }
+
+        return cachedText;
     }
 }

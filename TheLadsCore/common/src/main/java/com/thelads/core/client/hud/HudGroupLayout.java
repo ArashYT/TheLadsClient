@@ -65,9 +65,16 @@ public final class HudGroupLayout {
         for(Rect value:bounds){left=Math.min(left,value.x);top=Math.min(top,value.y);right=Math.max(right,value.right());bottom=Math.max(bottom,value.bottom());}
         return new Rect(left,top,(int)Math.min(Integer.MAX_VALUE,(long)right-left),(int)Math.min(Integer.MAX_VALUE,(long)bottom-top));
     }
-    public static Rect translate(Rect bounds,Delta delta){return new Rect(add(bounds.x,delta.x),add(bounds.y,delta.y),bounds.width,bounds.height);}
+    public static final Delta ZERO = new Delta(0, 0);
+    public static Rect translate(Rect bounds,Delta delta){
+        if (delta == ZERO || (delta.x == 0 && delta.y == 0)) return bounds;
+        return new Rect(add(bounds.x,delta.x),add(bounds.y,delta.y),bounds.width,bounds.height);
+    }
     public static Delta clampDelta(Rect bounds,int dx,int dy,int viewportWidth,int viewportHeight){
-        return new Delta(clampAxis(bounds.x,bounds.width,dx,viewportWidth),clampAxis(bounds.y,bounds.height,dy,viewportHeight));
+        int cx = clampAxis(bounds.x,bounds.width,dx,viewportWidth);
+        int cy = clampAxis(bounds.y,bounds.height,dy,viewportHeight);
+        if (cx == 0 && cy == 0) return ZERO;
+        return new Delta(cx, cy);
     }
     private static int clampAxis(int origin,int size,int delta,int viewport){
         long first=-(long)origin,second=(long)Math.max(0,viewport)-origin-size;
