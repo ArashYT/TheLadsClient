@@ -86,6 +86,7 @@
     "OldServerPingerMixin",
     "EssentialFirewallMixin189",
     "GuiMultiplayerMixin189",
-    "GuiConnectingMixin189"
+    "GuiConnectingMixin189",
+    "ScoreboardMixin"
   ]
 }

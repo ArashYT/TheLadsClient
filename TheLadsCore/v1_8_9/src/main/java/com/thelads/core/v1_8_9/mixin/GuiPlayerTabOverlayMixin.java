@@ -2,8 +2,12 @@
 // Corresponding source in META-INF/lads-sources/tabtweaks.
 package com.thelads.core.v1_8_9.mixin;
 
+import com.google.common.collect.Ordering;
 import com.thelads.core.client.hud.HudCover;
+import com.thelads.core.v1_8_9.feature.TabListCache189;
 import com.thelads.core.v1_8_9.feature.TabTweaks189;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -46,6 +50,26 @@ public abstract class GuiPlayerTabOverlayMixin {
     @Unique private boolean ladsHeads, ladsNpc;
     /** The list's move and scale this frame: a point p of the list is drawn at scale * (p + move). */
     @Unique private float ladsScale = 1, ladsMoveX, ladsMoveY;
+    @Unique private static List<NetworkPlayerInfo> ladsCachedSortedPlayers = null;
+    @Unique private static int ladsCachedSortedVersion = -1;
+    @Unique private static int ladsCachedMapSize = -1;
+    @Unique private static Iterable<NetworkPlayerInfo> ladsCachedElementsRef = null;
+
+    @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lcom/google/common/collect/Ordering;sortedCopy(Ljava/lang/Iterable;)Ljava/util/List;", remap = false), require = 1)
+    private List<NetworkPlayerInfo> ladsSortedCopy(Ordering<NetworkPlayerInfo> ordering, Iterable<NetworkPlayerInfo> elements) {
+        int currentVersion = TabListCache189.getVersion();
+        int currentSize = (elements instanceof Collection) ? ((Collection<?>) elements).size() : -1;
+        if (ladsCachedSortedPlayers == null
+                || currentVersion != ladsCachedSortedVersion
+                || currentSize != ladsCachedMapSize
+                || elements != ladsCachedElementsRef) {
+            ladsCachedSortedPlayers = ordering.sortedCopy(elements);
+            ladsCachedSortedVersion = currentVersion;
+            ladsCachedMapSize = currentSize;
+            ladsCachedElementsRef = elements;
+        }
+        return ladsCachedSortedPlayers;
+    }
 
     @Inject(method = RENDER, at = @At("HEAD"), require = 1)
     private void ladsMoveTab(int width, Scoreboard scoreboard, ScoreObjective objective, CallbackInfo ci) {
