@@ -80,6 +80,7 @@ public class ModuleManager {
         coords.addOption(new DropdownOption("Format", 2, "X Y Z", "Coords: X, Y, Z", "Labeled X/Y/Z"));
         coords.addOption(new BoolOption("Vertical", true));
         coords.addOption(new BoolOption("Show Biome", false));
+        coords.addOption(new BoolOption("Show Direction", true)); // 1.9.1: where you face (N, NE... and the axes), on the right
         coords.addOption(new BoolOption("Per-axis colors", false));
         coords.addOption(new ColorOption("X Color", false, 0xFFFF5555));
         coords.addOption(new ColorOption("Y Color", false, 0xFF55FF55));

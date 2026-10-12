@@ -62,6 +62,8 @@ class HudBehaviorTest {
         @Override public int getPlayerX() { return -29999999; }
         @Override public int getPlayerY() { return -64; }
         @Override public int getPlayerZ() { return 29999999; }
+        float yaw = -1;
+        @Override public float getYaw() { return yaw; }
         @Override public int getPing() { return ping; }
         @Override public double getSpeed() { return 12.345; }
         @Override public String getGameTime() { return time; }
@@ -239,6 +241,86 @@ class HudBehaviorTest {
         for (Text text : graphics.texts) {
             assertTrue(text.y() + graphics.fontHeight() <= element.getY() + element.getHeight());
         }
+    }
+
+    /** 1.9.1: the bounds are the drawn keys' outer edges, A and D, the mouse buttons and the space bar sitting on them, at every Size. */
+    @ParameterizedTest
+    @CsvSource({"false,false", "false,true", "true,false", "true,true"})
+    void keystrokesBoundsAreExactlyTheKeysOuterEdges(boolean cps, boolean space) {
+        flag("Keystrokes", "Show CPS", cps);
+        flag("Keystrokes", "Show space bar", space);
+        HudElement element = named(new KeystrokesHudElement(), "Keystrokes");
+        for (int percent = 50; percent <= 200; percent += 25) {
+            ((SliderOption) module("Keystrokes").getOption("Size")).setValue(percent);
+            graphics.fills.clear();
+            element.measureBounds(graphics, false);
+            element.render(graphics);
+            int left = Integer.MAX_VALUE, top = Integer.MAX_VALUE, right = Integer.MIN_VALUE, bottom = Integer.MIN_VALUE;
+            for (Fill fill : graphics.fills) {
+                left = Math.min(left, fill.left());
+                top = Math.min(top, fill.top());
+                right = Math.max(right, fill.right());
+                bottom = Math.max(bottom, fill.bottom());
+            }
+            String at = (cps ? "cps " : "") + (space ? "space " : "") + percent + "%";
+            assertEquals(element.getX(), left, at);
+            assertEquals(element.getY(), top, at);
+            assertEquals(element.getX() + element.getWidth(), right, at);
+            assertEquals(element.getY() + element.getHeight(), bottom, at);
+            float scale = element.getScale();
+            assertEquals(element.getWidth() * scale, element.getRenderWidth(), 1e-4, at + ": a whole number of pixels wide");
+            assertEquals(element.getHeight() * scale, element.getRenderHeight(), 1e-4, at + ": a whole number of pixels high");
+        }
+    }
+
+    @Test
+    void keystrokesRowsLineUpOnBothEdges() {
+        HudElement element = named(new KeystrokesHudElement(), "Keystrokes");
+        element.render(graphics);
+        int x = element.getX(), right = x + element.getWidth();
+        // A, LMB and the space bar start on the left edge; D, RMB and the space bar end on the right one.
+        assertEquals(3, graphics.fills.stream().filter(fill -> fill.left() == x).count());
+        assertEquals(3, graphics.fills.stream().filter(fill -> fill.right() == right).count());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0,S,+Z", "22.4,S,+Z", "22.5,SW,-X +Z", "90,W,-X", "135,NW,-X -Z", "180,N,-Z", "225,NE,+X -Z", "270,E,+X", "315,SE,+X +Z", "337.4,SE,+X +Z", "337.5,S,+Z"})
+    void coordinatesShowWhereYouFaceOnTheRight(float yaw, String compass, String axes) {
+        game.yaw = yaw;
+        HudElement element = named(new CoordinatesHudElement(), "Coordinates");
+        element.render(graphics);
+        assertBackgroundFits(element);
+        Text direction = graphics.texts.stream().filter(text -> text.value().equals(compass)).findFirst().orElseThrow();
+        Text axis = graphics.texts.stream().filter(text -> text.value().equals(axes)).findFirst().orElseThrow();
+        assertEquals(element.getX() + element.getWidth() - 4, direction.x() + graphics.textWidth(compass), "right aligned");
+        assertEquals(element.getX() + element.getWidth() - 4, axis.x() + graphics.textWidth(axes), "right aligned");
+        Text lastCoordinate = graphics.texts.stream().filter(text -> text.value().startsWith("X: ")).findFirst().orElseThrow();
+        assertTrue(lastCoordinate.x() + graphics.textWidth(lastCoordinate.value()) < direction.x(), "beside the coordinates, not over them");
+    }
+
+    @Test
+    void coordinatesDirectionFollowsTheFacingNameWithoutYawAndCanBeSwitchedOff() {
+        HudElement element = named(new CoordinatesHudElement(), "Coordinates");
+        element.render(graphics); // the default bridge faces "North (Facing -Z)" and has no yaw
+        assertTrue(graphics.texts.stream().anyMatch(text -> text.value().equals("N")));
+        assertTrue(graphics.texts.stream().anyMatch(text -> text.value().equals("-Z")));
+        flag("Coordinates", "Show Direction", false);
+        graphics.texts.clear();
+        graphics.fills.clear();
+        element.render(graphics);
+        assertTrue(graphics.texts.stream().noneMatch(text -> text.value().equals("N") || text.value().equals("-Z")));
+        assertBackgroundFits(element);
+    }
+
+    @Test
+    void coordinatesDirectionEndsTheHorizontalLayoutAndFitsItsBackground() {
+        flag("Coordinates", "Vertical", false);
+        flag("Coordinates", "Show Biome", true);
+        game.yaw = 225;
+        HudElement element = named(new CoordinatesHudElement(), "Coordinates");
+        element.render(graphics);
+        assertBackgroundFits(element);
+        assertEquals(" NE (+X -Z)", graphics.texts.get(graphics.texts.size() - 1).value());
     }
 
     @ParameterizedTest
