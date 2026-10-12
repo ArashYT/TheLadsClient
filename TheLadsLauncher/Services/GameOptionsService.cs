@@ -227,13 +227,19 @@ public static class GameOptionsService
             sharedMap = settings;
         }
         bool targetIs18 = IsLegacy18(mcVersion);
-        var instanceMap = File.Exists(instanceFile) ? ParseOptions(File.ReadAllText(instanceFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        bool instanceExisted = File.Exists(instanceFile);
+        var instanceMap = instanceExisted ? ParseOptions(File.ReadAllText(instanceFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var takenFile = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(instanceFile))!, TakenOptionsFile);
         // None yet (the first launch since 1.7.2, a new or no longer isolated profile): the game's own settings stay, the controls
         // become the shared ones. So too after a session that could not load its options.txt: the game saved its defaults over them.
         var taken = File.Exists(takenFile) && !OptionsFailedToLoad(Path.GetDirectoryName(takenFile)!) ? ParseOptions(File.ReadAllText(takenFile)) : null;
 
         bool updated = false;
+        if (targetIs18 && !instanceExisted && !instanceMap.ContainsKey("useVbo"))
+        {
+            instanceMap["useVbo"] = "true";
+            updated = true;
+        }
         foreach (var kvp in sharedMap)
         {
             // Another version's data version would make Minecraft run the wrong option fixes; 1.8.9 has none (EnsureDataVersion).
@@ -335,8 +341,15 @@ public static class GameOptionsService
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or JsonException) { return null; }
     }
 
+    /// <summary>Writes default OptiFine options (Render Regions and Smart Animations) for a new 1.8.9 instance when optionsof.txt does not exist.</summary>
+    public static void EnsureDefaultOptiFine18(string optiFineFile)
+    {
+        if (!File.Exists(optiFineFile))
+            WriteAtomically(optiFineFile, "ofRenderRegions:true\nofSmartAnimations:true\n");
+    }
+
     // A crash or a closed launcher mid-write leaves the old file whole, never a cut-off one. An unchanged file is not rewritten.
-    private static void WriteAtomically(string file, string text)
+    public static void WriteAtomically(string file, string text)
     {
         if (!File.Exists(file) || File.ReadAllText(file) != text)
             LockFiles.WriteAtomicallyAsync(file, Encoding.UTF8.GetBytes(text)).GetAwaiter().GetResult();

@@ -292,6 +292,37 @@ public class Minecraft189Tests
         Assert.Equal(shared, Options(l.Paths.SharedOptionsFile));
     }
 
+    /// <summary>New 1.8.9 installs default useVbo:true, ofRenderRegions:true, ofSmartAnimations:true; existing player settings are never overwritten.</summary>
+    [Fact]
+    public async Task NewInstall189DefaultsVboAndOptiFineOptionsWithoutOverwritingExistingChoice()
+    {
+        using var l = new Launcher();
+        var profile = l.Profiles.GetProfile("1.8.9")!;
+        var options = Path.Combine(l.Game189, "options.txt");
+        var optiFine = Path.Combine(l.Game189, "optionsof.txt");
+
+        // Fresh profile: no options.txt, no optionsof.txt
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        var instance = Options(options);
+        Assert.Equal("true", instance["useVbo"]);
+        Assert.True(File.Exists(optiFine));
+        var ofOptions = Options(optiFine);
+        Assert.Equal("true", ofOptions["ofRenderRegions"]);
+        Assert.Equal("true", ofOptions["ofSmartAnimations"]);
+
+        // Existing player's choice: set useVbo:false, ofRenderRegions:false, ofSmartAnimations:false
+        File.WriteAllText(options, "useVbo:false\n");
+        File.WriteAllText(optiFine, "ofRenderRegions:false\nofSmartAnimations:false\n");
+
+        // Prepare again (subsequent launch)
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        instance = Options(options);
+        Assert.Equal("false", instance["useVbo"]);
+        ofOptions = Options(optiFine);
+        Assert.Equal("false", ofOptions["ofRenderRegions"]);
+        Assert.Equal("false", ofOptions["ofSmartAnimations"]);
+    }
+
     /// <summary>A launch never undoes the game's own key binds: not when the launcher missed the game's exit (closed, killed or
     /// crashed meanwhile), not for mouse buttons, and not for key codes without a key name. Another version's later change still
     /// comes, and nothing 26.x cannot read reaches its options.txt.</summary>
