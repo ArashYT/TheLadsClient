@@ -1664,8 +1664,11 @@ sealed class ForgeModList : LoadedModList
         else if (Loaded.Match(line) is { Success: true } loaded) LoadedMods = int.Parse(loaded.Groups[1].Value);
         else if (Tweaker.IsMatch(line)) OptiFineTweaker = true;
         else if (Detected.Match(line) is { Success: true } detected) OptiFine = detected.Groups[1].Value;
-        // Mixin 0.8 (Essential's) names a config without "minVersion" at ERROR level, as 3D Skin Layers' is; it still loads.
-        else if (Error.IsMatch(line) && !line.Contains("does not specify \"minVersion\"", StringComparison.Ordinal)) Errors.Add(line.Trim());
+        // Mixin 0.8 names a config without "minVersion" at ERROR level. Without Essential, Resourcify logs
+        // "Mixin apply failed ... OptifineGuiOFMixin" (harmless optional mixin; Resourcify functions normally).
+        else if (Error.IsMatch(line) && !line.Contains("does not specify \"minVersion\"", StringComparison.Ordinal)
+            && !line.Contains("OptifineGuiOFMixin", StringComparison.Ordinal)
+            && !line.Contains("OptifineGuiShadersAccessor", StringComparison.Ordinal)) Errors.Add(line.Trim());
         else if (Versions.Match(line) is { Success: true } versions)
             foreach (var part in versions.Groups[1].Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 if (part.Split('@') is [var id, var version] && Top.ContainsKey(id)) Top[id] = version;
