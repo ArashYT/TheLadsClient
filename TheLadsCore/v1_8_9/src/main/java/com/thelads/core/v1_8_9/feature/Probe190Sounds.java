@@ -120,7 +120,7 @@ final class Probe190Sounds {
             final Minecraft mc = Minecraft.getMinecraft();
             Entity target = mc.theWorld.getEntityByID(archer);
             // From 12 blocks to the target's side (seen in flight a few ticks, as a real shot is: the server moves an arrow once
-            // before the client hears of it), aimed 0.3 above the mark: an arrow falls about that much on the way.
+            // before the client hears of it), aimed 0.3 above the mark (an arrow falls about that much on the way), a head shot 0.45.
             final double ax = target.posX, ay = head ? target.posY + target.getEyeHeight() : target.posY + target.height * .45, az = target.posZ;
             double dx = ax - mc.thePlayer.posX, dz = az - mc.thePlayer.posZ, length = Math.sqrt(dx * dx + dz * dz);
             final double sx = ax - dz / length * 12, sz = az + dx / length * 12;
@@ -130,7 +130,7 @@ final class Probe190Sounds {
                 if (sp == null) return;
                 EntityArrow arrow = new EntityArrow(sp.worldObj, sp, 1F);
                 arrow.setLocationAndAngles(sx, ay, sz, 0, 0);
-                arrow.setThrowableHeading(ax - sx, .3, az - sz, 3F, 0F);
+                arrow.setThrowableHeading(ax - sx, head ? .45 : .3, az - sz, 3F, 0F);
                 sp.worldObj.spawnEntityInWorld(arrow);
             });
         }
