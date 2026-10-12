@@ -70,6 +70,7 @@ public class TheLadsCore189 {
         LadsGameBridge.set(new VanillaGameBridge189());
         com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189.register();
         ConfigManager.load();
+        com.thelads.core.v1_8_9.feature.LocalSkins189.initialize(); // the Skin changer's saved skin
         com.thelads.core.v1_8_9.render.Render189.init();
         registerStatuses();
         com.thelads.core.v1_8_9.feature.Nametags189.register();
@@ -191,7 +192,7 @@ public class TheLadsCore189 {
         ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));
         // ... and 3D Skin Layers, which the SkinLayers module switches (SkinLayers189).
         ModuleSupport.registerExternal("SkinLayers", "3D Skin Layers", "skinlayers3d", SkinLayers189.LOADED);
-        if (SkinLayers189.LOADED) ModuleSupport.registerBuiltInLimited("SkinLayers", "Minecraft 1.8.9 has no skin preview, so 3D Preview has nothing to show.");
+        if (SkinLayers189.LOADED) ModuleSupport.registerBuiltIn("SkinLayers"); // its 3D Preview option is Skin Customization's 3D layers button
     }
 
     @SubscribeEvent
@@ -244,5 +245,6 @@ public class TheLadsCore189 {
     @SubscribeEvent
     public void open(net.minecraftforge.client.event.GuiOpenEvent event) {
         event.gui = com.thelads.core.v1_8_9.gui.ControlsScreen189.replace(event.gui);
+        event.gui = com.thelads.core.v1_8_9.gui.SkinCustomizationScreen189.replace(event.gui);
     }
 }
