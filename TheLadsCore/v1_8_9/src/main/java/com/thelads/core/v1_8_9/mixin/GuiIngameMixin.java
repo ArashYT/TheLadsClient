@@ -2,6 +2,7 @@ package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.v1_8_9.feature.NativeHud;
 import com.thelads.core.v1_8_9.feature.ResolutionCache189;
+import com.thelads.core.v1_8_9.feature.ScoreboardCache189;
 import java.util.Collection;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -46,14 +47,10 @@ public abstract class GuiIngameMixin {
         GlStateManager.popMatrix();
     }
 
-    @Unique private static Collection<Score> ladsLastSortedScoresRef = null;
-    @Unique private static java.util.ArrayList<Score> ladsCachedFilteredScores = null;
-    @Unique private static java.util.ArrayList<Score> ladsCachedSkippedScores = null;
-
     @Redirect(method = "renderScoreboard", at = @At(value = "INVOKE", target = "Lcom/google/common/collect/Iterables;filter(Ljava/lang/Iterable;Lcom/google/common/base/Predicate;)Ljava/lang/Iterable;", remap = false), require = 1)
     private Iterable<Score> ladsFilterScoreboard(Iterable<Score> scores, com.google.common.base.Predicate<Score> predicate) {
-        if (scores == ladsLastSortedScoresRef && ladsCachedFilteredScores != null) {
-            return ladsCachedFilteredScores;
+        if (scores == ScoreboardCache189.lastSortedScoresRef && ScoreboardCache189.cachedFilteredScores != null) {
+            return ScoreboardCache189.cachedFilteredScores;
         }
         java.util.ArrayList<Score> filtered = new java.util.ArrayList<>();
         for (Score score : scores) {
@@ -61,9 +58,9 @@ public abstract class GuiIngameMixin {
                 filtered.add(score);
             }
         }
-        ladsLastSortedScoresRef = (Collection<Score>) scores;
-        ladsCachedFilteredScores = filtered;
-        ladsCachedSkippedScores = null;
+        ScoreboardCache189.lastSortedScoresRef = (Collection<Score>) scores;
+        ScoreboardCache189.cachedFilteredScores = filtered;
+        ScoreboardCache189.cachedSkippedScores = null;
         return filtered;
     }
 
@@ -77,11 +74,11 @@ public abstract class GuiIngameMixin {
 
     @Redirect(method = "renderScoreboard", at = @At(value = "INVOKE", target = "Lcom/google/common/collect/Lists;newArrayList(Ljava/lang/Iterable;)Ljava/util/ArrayList;", ordinal = 1, remap = false), require = 1)
     private java.util.ArrayList<Score> ladsScoreboardSkippedList(Iterable<Score> elements) {
-        if (ladsCachedSkippedScores != null) {
-            return ladsCachedSkippedScores;
+        if (ScoreboardCache189.cachedSkippedScores != null) {
+            return ScoreboardCache189.cachedSkippedScores;
         }
         java.util.ArrayList<Score> skipped = com.google.common.collect.Lists.newArrayList(elements);
-        ladsCachedSkippedScores = skipped;
+        ScoreboardCache189.cachedSkippedScores = skipped;
         return skipped;
     }
 

@@ -1,12 +1,12 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.google.common.collect.Lists;
+import com.thelads.core.v1_8_9.feature.ScoreObjectiveCache189;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
 import net.minecraft.scoreboard.Score;
 import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.Scoreboard;
@@ -24,12 +24,17 @@ public abstract class ScoreboardMixin {
     @Shadow @Final private Map<String, Map<ScoreObjective, Score>> entitiesScoreObjectives;
 
     @Unique private int ladsScoreboardVersion = 0;
-    @Unique private final Map<ScoreObjective, List<Score>> ladsSortedScoresCache = new WeakHashMap<>();
-    @Unique private final Map<ScoreObjective, Integer> ladsSortedScoresVersion = new WeakHashMap<>();
 
     @Inject(method = {"func_96536_a", "func_96516_a", "func_178820_a", "removeObjectiveFromEntity", "removeObjective", "onScoreObjectiveAdded", "onScoreObjectiveRemoved", "setObjectiveInDisplaySlot"}, at = @At("HEAD"))
     private void ladsOnScoreboardModified(CallbackInfo ci) {
         ladsScoreboardVersion++;
+    }
+
+    @Inject(method = "removeObjective", at = @At("HEAD"))
+    private void ladsOnObjectiveRemoved(ScoreObjective objective, CallbackInfo ci) {
+        if (objective instanceof ScoreObjectiveCache189) {
+            ((ScoreObjectiveCache189) objective).ladsClearCachedScores();
+        }
     }
 
     @Inject(method = "getValueFromObjective", at = @At(value = "INVOKE", target = "Ljava/util/Map;put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", ordinal = 1))
@@ -39,9 +44,8 @@ public abstract class ScoreboardMixin {
 
     @Inject(method = "getSortedScores", at = @At("HEAD"), cancellable = true)
     private void ladsGetSortedScores(ScoreObjective objective, CallbackInfoReturnable<Collection<Score>> cir) {
-        Integer ver = ladsSortedScoresVersion.get(objective);
-        if (ver != null && ver == ladsScoreboardVersion) {
-            List<Score> cached = ladsSortedScoresCache.get(objective);
+        if (objective instanceof ScoreObjectiveCache189) {
+            List<Score> cached = ((ScoreObjectiveCache189) objective).ladsGetCachedScores(ladsScoreboardVersion);
             if (cached != null) {
                 cir.setReturnValue(cached);
                 return;
@@ -56,8 +60,9 @@ public abstract class ScoreboardMixin {
         }
         Collections.sort(list, Score.scoreComparator);
         List<Score> immutable = Collections.unmodifiableList(list);
-        ladsSortedScoresCache.put(objective, immutable);
-        ladsSortedScoresVersion.put(objective, ladsScoreboardVersion);
+        if (objective instanceof ScoreObjectiveCache189) {
+            ((ScoreObjectiveCache189) objective).ladsSetCachedScores(immutable, ladsScoreboardVersion);
+        }
         cir.setReturnValue(immutable);
     }
 }

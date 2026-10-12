@@ -16,6 +16,7 @@ import net.minecraft.network.play.server.S2BPacketChangeGameState;
 import net.minecraft.network.play.server.S38PacketPlayerListItem;
 import net.minecraft.network.play.server.S3EPacketTeams;
 import net.minecraft.util.IChatComponent;
+import com.thelads.core.v1_8_9.feature.ScoreboardCache189;
 import com.thelads.core.v1_8_9.feature.TabListCache189;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -73,6 +74,7 @@ public abstract class NetHandlerPlayClientMixin {
 
     @Inject(method = {"cleanup", "onDisconnect"}, at = @At("HEAD"), require = 1)
     private void ladsResetTabList(CallbackInfo ci) {
-        TabListCache189.invalidate();
+        TabListCache189.reset();
+        ScoreboardCache189.reset();
     }
 }

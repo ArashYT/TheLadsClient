@@ -50,25 +50,20 @@ public abstract class GuiPlayerTabOverlayMixin {
     @Unique private boolean ladsHeads, ladsNpc;
     /** The list's move and scale this frame: a point p of the list is drawn at scale * (p + move). */
     @Unique private float ladsScale = 1, ladsMoveX, ladsMoveY;
-    @Unique private static List<NetworkPlayerInfo> ladsCachedSortedPlayers = null;
-    @Unique private static int ladsCachedSortedVersion = -1;
-    @Unique private static int ladsCachedMapSize = -1;
-    @Unique private static Iterable<NetworkPlayerInfo> ladsCachedElementsRef = null;
-
     @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lcom/google/common/collect/Ordering;sortedCopy(Ljava/lang/Iterable;)Ljava/util/List;", remap = false), require = 1)
     private List<NetworkPlayerInfo> ladsSortedCopy(Ordering<NetworkPlayerInfo> ordering, Iterable<NetworkPlayerInfo> elements) {
         int currentVersion = TabListCache189.getVersion();
         int currentSize = (elements instanceof Collection) ? ((Collection<?>) elements).size() : -1;
-        if (ladsCachedSortedPlayers == null
-                || currentVersion != ladsCachedSortedVersion
-                || currentSize != ladsCachedMapSize
-                || elements != ladsCachedElementsRef) {
-            ladsCachedSortedPlayers = ordering.sortedCopy(elements);
-            ladsCachedSortedVersion = currentVersion;
-            ladsCachedMapSize = currentSize;
-            ladsCachedElementsRef = elements;
+        if (TabListCache189.cachedSortedPlayers == null
+                || currentVersion != TabListCache189.cachedSortedVersion
+                || currentSize != TabListCache189.cachedMapSize
+                || elements != TabListCache189.cachedElementsRef) {
+            TabListCache189.cachedSortedPlayers = ordering.sortedCopy(elements);
+            TabListCache189.cachedSortedVersion = currentVersion;
+            TabListCache189.cachedMapSize = currentSize;
+            TabListCache189.cachedElementsRef = elements;
         }
-        return ladsCachedSortedPlayers;
+        return TabListCache189.cachedSortedPlayers;
     }
 
     @Inject(method = RENDER, at = @At("HEAD"), require = 1)

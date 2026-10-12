@@ -88,6 +88,7 @@
     "GuiMultiplayerMixin189",
     "GuiConnectingMixin189",
     "ScoreboardMixin",
+    "ScoreObjectiveMixin",
     "RenderItemMixin"
   ]
 }
