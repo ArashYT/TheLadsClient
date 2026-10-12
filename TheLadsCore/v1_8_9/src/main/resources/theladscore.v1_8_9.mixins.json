@@ -85,6 +85,7 @@
     "TileEntityCullMixin",
     "WorldCullMixin",
     "WorldSwitchMixin",
+    "WorldEntitiesMixin",
     "ServerListEntryNormalMixin",
     "OldServerPingerMixin",
     "GuiMultiplayerMixin189",
