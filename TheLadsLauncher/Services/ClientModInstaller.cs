@@ -348,6 +348,20 @@ public static class ClientModInstaller
             // There is no portable atomic rename of multiple files. Finish or roll back this bounded
             // commit before observing cancellation; never leave a cancelled install with a stale receipt.
             await Commit(game, cache, changes, status);
+
+            // Essential cache cleanup: if Lads-installed Essential was retired and not kept, clean up downloaded stage jars
+            // in <gameDir>\essential\loader (leaving user config/onboarding/screenshots intact).
+            if (changes.Any(c => c.BackupName.StartsWith("retired-essential", StringComparison.OrdinalIgnoreCase)))
+            {
+                var loaderDir = SafeChild(game, Path.Combine(game, "essential", "loader"));
+                if (Directory.Exists(loaderDir))
+                {
+                    try { Directory.Delete(loaderDir, true); }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
+                }
+            }
+
             status?.Invoke($"Client mods ready for Minecraft {minecraftVersion}.");
 
             // A rename is a Change whose staged side is the existing jar; that path is never registered for cleanup.
