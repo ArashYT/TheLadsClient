@@ -122,7 +122,7 @@ class KillDetectorTest {
         {Seen.KILL, "\u00a7c[RED] \u00a7cBob \u00a77was killed by \u00a79[BLUE] \u00a79Arash\u00a77. \u00a7b\u00a7lFINAL KILL!"},
         {Seen.NONE, "Bob fell into the void."},
         {Seen.NONE, "BED DESTRUCTION > Red Bed was destroyed by Arash!"},
-        {Seen.NONE, "+10 coins! (Final Kill)"},
+        {Seen.KILL, "+10 coins! (Final Kill)"}, // the killer's own reward line (KillDetector.reward)
         {Seen.NONE, "[MVP+] Bob: gg Arash"},
         {Seen.DEATH, "Arash was killed by Bob."},
         {Seen.DEATH, "Arash fell into the void."},
@@ -199,10 +199,144 @@ class KillDetectorTest {
         assertEquals(Seen.KILL, seen("Bob was shot by Arash.", none, world));
         assertEquals(Seen.KILL, seen("Bob was knocked into the void by Arash. FINAL KILL!", none, world));
         assertEquals(Seen.KILL, seen("Carl was slain by Arash using [Bow]", none, world));
-        assertEquals(Seen.NONE, seen("Bob was spooked by Arash.", none, world), "a themed line needs a hit first");
+        assertEquals(Seen.KILL, seen("Bob was spooked by Arash.", none, world), "a cosmetic line shaped like a kill counts too");
+        assertEquals(Seen.NONE, seen("Bob was spooked by Arash. You have 3 kills", none, world), "but only with nothing after the killer");
         assertEquals(Seen.NONE, seen("Bob was kicked from the guild by Arash!", none, world));
         assertEquals(Seen.NONE, seen("Dave was shot by Arash.", none, world), "not a player in the world");
         assertEquals(Seen.NONE, seen("Bob was shot by Arash.", none, Map.of()));
+    }
+
+    /**
+     * Hypixel kill lines about a player the client saw no hit on (a fireball, a rod, a snowball, a long fall): every cosmetic
+     * kill-message pack's wording counts when the line is shaped like a kill (the victim first, the player last after a
+     * linking word); lines about players that are no kill do not, whatever their shape.
+     */
+    @Test void hypixelCosmeticKillsWithoutAHit() {
+        Map<Integer, Set<String>> world = Map.of(3, Set.of("Bob"), 4, Set.of("Carl"));
+        java.util.function.Consumer<KillDetector> none = d -> {};
+        String[] kills = {
+            "Bob was filled full of lead by Arash.", "Bob lost the draw to Arash.", "Bob was sent to the undertaker by Arash.",
+            "Bob was struck down by Arash.", "Bob was turned to ash by Arash.", "Bob was melted by Arash. FINAL KILL!",
+            "Bob was struck with Cupid's arrow by Arash.", "Bob was given the cold shoulder by Arash.",
+            "Bob was hit off by a love bomb from Arash. FINAL KILL!", "Bob fell in honorable combat to Arash.",
+            "Bob fell to the superior marksmanship of Arash.", "Bob was conceded to the abyss by Arash.",
+            "Bob was glazed in BBQ sauce by Arash.", "Bob was skewered on the spit by Arash.", "Bob was tossed into the fire pit by Arash.",
+            "Bob was frightened into the void by Arash.", "Bob was made to walk the plank by Arash.", "Bob was broadsided by Arash.",
+            "Bob was sent to Davy Jones' locker by Arash.", "Bob was bitten by Arash.", "Bob was out-squealed by Arash.",
+            "Bob was vaporized by Arash.", "Bob was lost in deep space by Arash.",
+            "§cBob §7was killed by §9Arash§7's Iron Golem. §b§lFINAL KILL!", // Bed Wars golem / bed bug
+            "Bob disconnected while fighting with Arash. FINAL KILL!", "Bob was sniped by Arash.",
+            "[ZOM] Bob was killed by [HUN] Arash", "Bob was killed by Arash with AK-47.", "Bob was headshot by Arash with AK-47.", // Mega Walls, Cops and Crims
+            "Bob was critically killed by Arash!", "Bob was smashed by Arash!", "Bob was knocked off the map by Arash!", // Warlords, Smash Heroes
+            "Bob was assassinated by Arash (+50 Points)", "Bob was knocked into water by Arash.", "Bob was obliterated by Arash's Blitz Star!",
+        };
+        for (String line : kills) assertEquals(Seen.KILL, seen(line, none, world), line);
+        String[] others = {
+            "Bob was kicked from the guild by Arash!", "Bob was revived by Arash!", "Bob was promoted to Officer by Arash",
+            "Bob joined Arash's party!", "Bob was found by Arash!", "Bob was spooked by Steve.", "Bob: was spooked by Arash",
+            "Arash was spooked by Bob.", "Bob was spooked by Arash, assisted by Carl", "Dave was spooked by Arash.",
+            "BED DESTRUCTION > Bob Bed was destroyed by Arash!", "Carl killed Bob, assisted by Arash", "Bob fell into the void.",
+        };
+        for (String line : others) assertNotEquals(Seen.KILL, seen(line, none, world), line);
+        assertEquals(Seen.DEATH, seen("Arash lost the draw to Bob.", none, world), "the player's own death in a cosmetic pack's words");
+    }
+
+    /** The Pit's multi kills, after a hit. */
+    @Test void pitMultiKills() {
+        java.util.function.Consumer<KillDetector> hit = d -> d.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+        for (String line : new String[] {"DOUBLE KILL! on [120] Bob +15.00XP +10.00g", "TRIPLE KILL! on [I-45] Bob +12XP +9.5g",
+            "§a§lMULTI KILL! §7(6) on §7[§b120§7] §7Bob §b+15XP §6+11.50g"})
+            assertEquals(Seen.KILL, seen(line, hit, Map.of()), line);
+        assertEquals(Seen.NONE, seen("BOUNTY CLAIMED! on [120] Bob +250g", hit, Map.of()), "a bounty claimed rides on the KILL! line");
+        assertEquals(Seen.NONE, seen("STREAK! of 5 kills by Arash", hit, Map.of()));
+    }
+
+    /**
+     * Reward lines only the killer gets: a kill of their own when nothing else counted it, else that kill's; a kill's coins and
+     * experience lines are one kill, two kills' lines two; a message after its reward line is the same kill.
+     */
+    @Test void rewardLinesConfirmOrMakeKills() {
+        var d = new KillDetector();
+        Map<Integer, Set<String>> world = Map.of(3, Set.of("Bob"), 4, Set.of("Carl"), 5, Set.of("Dave"));
+        assertNotNull(d.chat("§6+10 coins! (Kill)", ME, () -> world, S), "a reward line alone is a kill");
+        assertNull(d.chat("+10 Bed Wars Experience (Kill)", ME, () -> world, S + 10), "the same kill's experience line");
+        assertNull(d.chat("Bob was killed by Arash.", ME, () -> world, S + 20), "and its message, after it");
+
+        assertNotNull(d.chat("Carl was killed by Arash. FINAL KILL!", ME, () -> world, 10 * S));
+        assertNull(d.chat("+20 coins! (Bob's Network Booster) (Final Kill)", ME, () -> world, 10 * S + 1), "the kill's reward line");
+        assertNull(d.chat("+25 Bed Wars Experience (Final Kill)", ME, () -> world, 10 * S + 2));
+
+        // Two kills at once (a fireball): two messages, each with coins and experience.
+        int kills = 0;
+        for (String line : new String[] {"Bob was blown up by Arash.", "Dave was blown up by Arash.", "+10 coins! (Kill)",
+            "+10 Bed Wars Experience (Kill)", "+10 coins! (Kill)", "+10 Bed Wars Experience (Kill)"})
+            if (d.chat(line, ME, () -> world, 20 * S) != null) kills++;
+        assertEquals(2, kills, "two kills, two banners");
+        // Two kills whose messages say nothing known: their reward lines are two kills.
+        kills = 0;
+        for (String line : new String[] {"+10 coins! (Kill)", "+10 SkyWars Experience (Kill)", "+10 coins! (Kill)", "+10 SkyWars Experience (Kill)"})
+            if (d.chat(line, ME, () -> world, 30 * S) != null) kills++;
+        assertEquals(2, kills);
+
+        assertNull(d.chat("+5 coins! (Assist)", ME, () -> world, 40 * S), "an assist");
+        assertNull(d.chat("+50 coins! (Win)", ME, () -> world, 40 * S));
+        assertNull(d.chat("[MVP+] Bob: +10 coins! (Kill)", ME, () -> world, 40 * S), "player chat");
+        assertNotNull(d.chat("Bob was killed by Arash.", ME, () -> world, 50 * S));
+        assertNotNull(d.chat("+10 coins! (Kill)", ME, () -> world, 53 * S + 1), "a reward line long after is another kill's");
+    }
+
+    /** One kill is one banner, whichever records name the player: their entity hit, their tab-list entry, a record forgotten. */
+    @Test void oneKillAcrossRecords() {
+        var d = new KillDetector();
+        d.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+        Map<Integer, Set<String>> tab = Map.of(Integer.MIN_VALUE + 7, Set.of("Bob"));
+        assertNotNull(d.chat("Bob was killed by Arash.", ME, () -> tab, 2 * S));
+        assertNull(d.chat("Bob was killed by Arash.", ME, () -> tab, 2 * S + 1), "the tab-list record is the same player");
+        assertNull(d.died(3, 2 * S + 2), "and the entity's death event");
+
+        var e = new KillDetector();
+        assertNotNull(e.chat("Bob was shot by Arash.", ME, () -> tab, S));
+        e.hitByMe(9, List.of("Zed"), Kind.PLAYER, false, S + S / 2); // a hit cleans up records no hit made
+        assertNull(e.chat("Bob was shot by Arash.", ME, () -> tab, 2 * S), "the counted record outlives the clean-up");
+    }
+
+    /**
+     * Antigravity's Hypixel chat lines (test resource killbanner/hypixel-chat-fixtures.json, local player "Arash"; leads, not
+     * ground truth): every kill of Arash's counts, after a hit on the victim and with no hit (the victim only in the world),
+     * every death of Arash's ends the streak, and nothing else is a kill: other players' kills, chat, game ends, tips, lobby
+     * lines. Reward lines (their "spam" group) are kills by design (rewardLinesConfirmOrMakeKills). Left out, with the reason:
+     */
+    private static final Map<String, String> FIXTURE_SKIPS = Map.of(
+        "Arash harvested Steve_42's head!", "UHC's golden head harvest comes after a death, it is not the kill line",
+        "Steve_42 was infected!", "names no killer",
+        "You killed an innocent player! You died!", "Murder Mystery's misfire: no kill and no streak to keep",
+        "Boom! Arash blew up!", "TNT Tag: no kills to banner");
+
+    @Test void hypixelChatFixtures() throws Exception {
+        com.google.gson.JsonArray fixtures;
+        try (var in = KillDetectorTest.class.getResourceAsStream("/killbanner/hypixel-chat-fixtures.json")) {
+            fixtures = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonArray();
+        }
+        List<String> wrong = new ArrayList<>();
+        int checked = 0;
+        for (var element : fixtures) {
+            var fixture = element.getAsJsonObject();
+            String raw = fixture.get("raw").getAsString(), plain = fixture.get("plain").getAsString(), kind = fixture.getAsJsonObject("expect").get("kind").getAsString();
+            if (FIXTURE_SKIPS.containsKey(plain) || plain.startsWith("+")) continue;
+            Seen want = kind.equals("kill") || kind.equals("final_kill") ? Seen.KILL : kind.equals("death") ? Seen.DEATH : Seen.NONE;
+            Map<Integer, Set<String>> world = Map.of(3, Set.of("Steve_42"), 4, Set.of("Bob"), 5, Set.of("xX_Nick_Xx"));
+            java.util.function.Consumer<KillDetector> hit = d -> d.hitByMe(3, List.of("Steve_42"), Kind.PLAYER, false, S), none = d -> {};
+            for (var setup : List.of(hit, none)) {
+                var d = new KillDetector();
+                setup.accept(d);
+                boolean kill = d.chat(raw, Set.of("Arash"), () -> world, 2 * S) != null, death = KillDetector.myDeath(raw, Set.of("Arash"));
+                Seen got = kill && death ? null : kill ? Seen.KILL : death ? Seen.DEATH : Seen.NONE;
+                if (got != want) wrong.add(plain + (setup == hit ? " (after a hit)" : " (no hit)") + " -> " + got + ", expected " + want);
+                checked++;
+            }
+        }
+        assertTrue(checked > 250, "fixtures read: " + checked);
+        assertEquals(List.of(), wrong);
     }
 
     /** Every kill counts once: the same death's signals once, a new death after a new hit again, five deaths at once five times. */

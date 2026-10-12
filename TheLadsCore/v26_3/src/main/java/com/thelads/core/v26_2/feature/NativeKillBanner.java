@@ -138,11 +138,21 @@ public final class NativeKillBanner {
         kill(KillBanners.DETECTOR.chat(text, me, NativeKillBanner::players, System.nanoTime()));
     }
 
-    /** The other players in the world: a kill message may name one the client saw no hit on (a knock into the void). */
+    /**
+     * The other players in the world, and in the tab list those the world does not hold: a kill message may name one the client
+     * saw no hit on (a knock into the void, a player already gone).
+     */
     private static Map<Integer, Set<String>> players() {
+        Minecraft mc = Minecraft.getInstance();
         Map<Integer, Set<String>> players = new HashMap<>();
-        for (Player player : Minecraft.getInstance().level.players())
-            if (player != Minecraft.getInstance().player) players.put(player.getId(), names(player));
+        for (Player player : mc.level.players())
+            if (player != mc.player) players.put(player.getId(), names(player));
+        for (var info : mc.getConnection().getOnlinePlayers()) {
+            java.util.UUID id = info.getProfile().id();
+            if (id == null || id.equals(mc.player.getUUID()) || mc.level.getPlayerByUUID(id) != null) continue;
+            players.put(KillDetector.tabId(id), KillDetector.names(info.getProfile().name(),
+                info.getTabListDisplayName() != null ? info.getTabListDisplayName().getString() : null));
+        }
         return players;
     }
 
@@ -163,11 +173,14 @@ public final class NativeKillBanner {
             ? KillDetector.Kind.BOSS : KillDetector.Kind.MOB;
     }
 
+    /** A player's account name and the names the tab list gives them (the local player's /nick on Hypixel is only there). */
     private static Set<String> names(LivingEntity entity) {
         if (!(entity instanceof Player player)) return Set.of();
         var info = Minecraft.getInstance().getConnection().getPlayerInfo(player.getUUID());
-        return KillDetector.names(player.getGameProfile().name(),
+        Set<String> names = KillDetector.names(player.getGameProfile().name(),
             info != null && info.getTabListDisplayName() != null ? info.getTabListDisplayName().getString() : player.getDisplayName().getString());
+        if (info != null && info.getProfile().name() != null && !info.getProfile().name().isEmpty()) names.add(info.getProfile().name());
+        return names;
     }
 
     private static boolean eligible() {

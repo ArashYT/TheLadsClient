@@ -223,12 +223,21 @@ public final class KillBanner189 {
         kill(KillBanners.DETECTOR.chat(text, me, KillBanner189::players, System.nanoTime()));
     }
 
-    /** The other players in the world: a kill message may name one the client saw no hit on (an arrow, a knock into the void). */
+    /**
+     * The other players in the world, and in the tab list those the world does not hold: a kill message may name one the client
+     * saw no hit on (an arrow, a knock into the void, a player already gone).
+     */
     private static Map<Integer, Set<String>> players() {
         Minecraft mc = Minecraft.getMinecraft();
         Map<Integer, Set<String>> players = new HashMap<Integer, Set<String>>();
         for (EntityPlayer player : mc.theWorld.playerEntities)
             if (player != mc.thePlayer) players.put(player.getEntityId(), names(player));
+        for (NetworkPlayerInfo info : mc.getNetHandler().getPlayerInfoMap()) {
+            java.util.UUID id = info.getGameProfile().getId();
+            if (id == null || id.equals(mc.thePlayer.getUniqueID()) || mc.theWorld.getPlayerEntityByUUID(id) != null) continue;
+            players.put(KillDetector.tabId(id), KillDetector.names(info.getGameProfile().getName(),
+                info.getDisplayName() != null ? info.getDisplayName().getUnformattedText() : null));
+        }
         return players;
     }
 
@@ -268,13 +277,15 @@ public final class KillBanner189 {
             ? KillDetector.Kind.BOSS : KillDetector.Kind.MOB;
     }
 
-    /** A player's account name and the name the tab list shows. */
+    /** A player's account name and the names the tab list gives them (the local player's /nick on Hypixel is only there). */
     private static Set<String> names(EntityLivingBase entity) {
         if (!(entity instanceof EntityPlayer)) return Collections.emptySet();
         EntityPlayer player = (EntityPlayer) entity;
         NetworkPlayerInfo info = Minecraft.getMinecraft().getNetHandler().getPlayerInfo(player.getUniqueID());
-        return KillDetector.names(player.getGameProfile().getName(),
+        Set<String> names = KillDetector.names(player.getGameProfile().getName(),
             info != null && info.getDisplayName() != null ? info.getDisplayName().getUnformattedText() : player.getDisplayName().getUnformattedText());
+        if (info != null && info.getGameProfile().getName() != null && !info.getGameProfile().getName().isEmpty()) names.add(info.getGameProfile().getName());
+        return names;
     }
 
     static void reset() {

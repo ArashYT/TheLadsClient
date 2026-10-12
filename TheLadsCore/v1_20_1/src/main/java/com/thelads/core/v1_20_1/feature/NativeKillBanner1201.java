@@ -150,12 +150,19 @@ public final class NativeKillBanner1201 {
         kill(KillBanners.DETECTOR.chat(text, me, NativeKillBanner1201::players, System.nanoTime()));
     }
 
+    /** The other players in the world, and in the tab list those the world does not hold (out of sight, already gone). */
     private static Map<Integer, Set<String>> players() {
         Map<Integer, Set<String>> players = new HashMap<>();
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null) {
             for (Player player : mc.level.players()) {
                 if (player != mc.player) players.put(player.getId(), names(player));
+            }
+            if (mc.getConnection() != null) for (var info : mc.getConnection().getOnlinePlayers()) {
+                java.util.UUID id = info.getProfile().getId();
+                if (id == null || id.equals(mc.player.getUUID()) || mc.level.getPlayerByUUID(id) != null) continue;
+                players.put(KillDetector.tabId(id), KillDetector.names(info.getProfile().getName(),
+                    info.getTabListDisplayName() != null ? info.getTabListDisplayName().getString() : null));
             }
         }
         return players;
@@ -181,12 +188,15 @@ public final class NativeKillBanner1201 {
             ? KillDetector.Kind.BOSS : KillDetector.Kind.MOB;
     }
 
+    /** A player's account name and the names the tab list gives them (the local player's /nick on Hypixel is only there). */
     private static Set<String> names(LivingEntity entity) {
         if (!(entity instanceof Player player)) return Set.of();
         var conn = Minecraft.getInstance().getConnection();
         var info = conn != null ? conn.getPlayerInfo(player.getUUID()) : null;
-        return KillDetector.names(player.getGameProfile().getName(),
+        Set<String> names = KillDetector.names(player.getGameProfile().getName(),
             info != null && info.getTabListDisplayName() != null ? info.getTabListDisplayName().getString() : player.getDisplayName().getString());
+        if (info != null && info.getProfile().getName() != null && !info.getProfile().getName().isEmpty()) names.add(info.getProfile().getName());
+        return names;
     }
 
     private static boolean eligible() {
