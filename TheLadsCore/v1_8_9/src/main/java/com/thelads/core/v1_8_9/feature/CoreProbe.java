@@ -702,6 +702,11 @@ public final class CoreProbe {
         for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.LIMITED) expected.add(module[0]);
         if (SkinLayers189.LOADED) expected.add("SkinLayers");
         expected.add(com.thelads.core.client.ParticleCore.MODULE); // ParticleCore189 (1.8.5)
+        // 1.9.1: World189 (Wavy Capes, TNT Timer) and Hypixel189 (the Hypixel modules) register theirs as built in too.
+        expected.addAll(Arrays.asList(com.thelads.core.modules.WavyCapesModule.NAME, com.thelads.core.modules.TntTimerModule.NAME,
+            com.thelads.core.client.hypixel.HypixelMods.AUTO_GG, com.thelads.core.client.hypixel.HypixelMods.AUTO_FRIEND,
+            com.thelads.core.client.hypixel.HypixelMods.AUTO_TIP, com.thelads.core.client.hypixel.HypixelMods.PLAY_AGAIN,
+            com.thelads.core.client.hypixel.HypixelMods.AUTO_WHO, com.thelads.core.client.hypixel.HypixelMods.CLEANUP));
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
         check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 5 /* DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
