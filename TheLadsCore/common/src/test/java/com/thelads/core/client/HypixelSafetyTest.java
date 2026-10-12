@@ -113,4 +113,34 @@ public class HypixelSafetyTest {
         // Should not be due or pending
         assertFalse(session.due(new Object(), System.nanoTime() + 10_000_000_000L));
     }
+
+    @Test
+    public void testCachedHypixelAddress() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+
+        bridge.setServer("mc.hypixel.net:25565");
+        assertTrue(HypixelSafetyManager.isHypixel());
+        assertTrue(HypixelSafetyManager.isHypixelAddress("mc.hypixel.net:25565"));
+        // Second call hits cache
+        assertTrue(HypixelSafetyManager.isHypixel());
+        assertTrue(HypixelSafetyManager.isHypixelAddress("mc.hypixel.net:25565"));
+
+        bridge.setServer("pvp.customserver.net");
+        assertFalse(HypixelSafetyManager.isHypixel());
+        assertFalse(HypixelSafetyManager.isHypixelAddress("pvp.customserver.net"));
+        // Second call hits cache
+        assertFalse(HypixelSafetyManager.isHypixel());
+        assertFalse(HypixelSafetyManager.isHypixelAddress("pvp.customserver.net"));
+
+        // qaOverride forces isHypixel() even on non-Hypixel server
+        HypixelSafetyManager.qaOverride = true;
+        try {
+            assertTrue(HypixelSafetyManager.isHypixel());
+            // isHypixelAddress itself still correctly reports false for the address
+            assertFalse(HypixelSafetyManager.isHypixelAddress("pvp.customserver.net"));
+        } finally {
+            HypixelSafetyManager.qaOverride = false;
+        }
+    }
 }

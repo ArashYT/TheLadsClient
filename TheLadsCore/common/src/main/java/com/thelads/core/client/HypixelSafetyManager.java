@@ -34,6 +34,10 @@ public final class HypixelSafetyManager {
     /** QA only (the Hypixel QA routines set it for their run): the singleplayer QA world counts as Hypixel. */
     public static volatile boolean qaOverride;
 
+    private static final java.util.Map<String, Boolean> CACHED_ADDRESSES = new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile String lastAddress;
+    private static volatile boolean lastAddressIsHypixel;
+
     private HypixelSafetyManager() {}
 
     /**
@@ -50,6 +54,24 @@ public final class HypixelSafetyManager {
         if (addr == null || addr.isEmpty() || addr.equalsIgnoreCase("Singleplayer")) {
             return false;
         }
+        String last = lastAddress;
+        if (addr.equals(last)) {
+            return lastAddressIsHypixel;
+        }
+        Boolean cached = CACHED_ADDRESSES.get(addr);
+        if (cached != null) {
+            lastAddress = addr;
+            lastAddressIsHypixel = cached;
+            return cached;
+        }
+        boolean isHypixel = computeIsHypixelAddress(addr);
+        CACHED_ADDRESSES.put(addr, isHypixel);
+        lastAddress = addr;
+        lastAddressIsHypixel = isHypixel;
+        return isHypixel;
+    }
+
+    private static boolean computeIsHypixelAddress(String addr) {
         String clean = addr.trim().toLowerCase(Locale.ROOT);
         int colon = clean.indexOf(':');
         if (colon != -1) {
