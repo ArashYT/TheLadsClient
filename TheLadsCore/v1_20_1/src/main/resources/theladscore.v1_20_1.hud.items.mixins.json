@@ -8,6 +8,7 @@
     "defaultRequire": 1
   },
   "client": [
+    "CreativeMenuMixin",
     "FoodDebugMixin",
     "FoodForgeGuiMixin",
     "FoodGuiMixin",
@@ -20,6 +21,7 @@
     "ShulkerPlacedMixin",
     "ShulkerRemovedMixin",
     "ShulkerRendererMixin",
-    "TooltipFactoryMixin"
+    "TooltipFactoryMixin",
+    "TooltipFitMixin"
   ]
 }

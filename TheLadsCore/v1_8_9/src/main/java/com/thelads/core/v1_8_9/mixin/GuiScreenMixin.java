@@ -3,7 +3,9 @@ package com.thelads.core.v1_8_9.mixin;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.v1_8_9.gui.LadsButtonPress;
 import java.io.IOException;
+import com.thelads.core.v1_8_9.feature.Tooltips189;
 import java.util.List;
+import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -21,6 +23,12 @@ public abstract class GuiScreenMixin extends Gui implements LadsButtonPress {
     @Shadow public int width, height;
     @Shadow protected List<GuiButton> buttonList;
     @Shadow protected abstract void actionPerformed(GuiButton button) throws IOException;
+
+    /** Tooltips too big for the screen are drawn smaller (Tooltips189.drawFitted). Forge's overload, which every tooltip goes through. */
+    @Inject(method = "drawHoveringText(Ljava/util/List;IILnet/minecraft/client/gui/FontRenderer;)V", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    private void ladsFitTooltip(List<String> lines, int x, int y, FontRenderer font, CallbackInfo ci) {
+        if (Tooltips189.drawFitted(lines, x, y, width, height, font)) ci.cancel();
+    }
 
     @Inject(method = "drawBackground", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBackdrop(int tint, CallbackInfo ci) {

@@ -167,6 +167,9 @@ public final class CoreProbe {
         } else if ("kb191".equals(only)) { // 1.9.1 kill banners: Hypixel lines, a real kill, the sound sliders, loudness (Probe191KillBanner)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe191KillBanner::run));
+        } else if ("items".equals(only)) { // 1.9.1 items: block entity items drawn everywhere, hotbar keys in inventories, tooltips fitted (ItemsProbe189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, ItemsProbe189::title, CoreProbe::quickWorld, CoreProbe::worldReady, ItemsProbe189::run));
         } else if ("sounds".equals(only)) { // 1.9.0 uploaded sounds: Combo Sounds and Kill Banner "Your sounds" (Probe190Sounds)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe190Sounds::run));

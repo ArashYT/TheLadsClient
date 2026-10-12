@@ -172,6 +172,7 @@ public final class NativeWorldVerification {
             UiCapture.tick(gameDirectory, captureReady && (UiCapture.busy() || !captureBusy()));
             ItemPhysicsCapture.tick(gameDirectory, captureReady && (ItemPhysicsCapture.busy() || !captureBusy()));
             InventoryCapture.tick(gameDirectory, captureReady && (InventoryCapture.busy() || !captureBusy()));
+            ItemsCapture.tick(gameDirectory, captureReady && (ItemsCapture.busy() || !captureBusy()));
             CheatsProbe.tick(gameDirectory, captureReady);
             ServerFeaturesCapture.tick(gameDirectory, captureReady && (ServerFeaturesCapture.busy() || !captureBusy()));
             // After the Chat module's own capture, so its message does not land among the heads, and after the render scale probe,
@@ -349,6 +350,7 @@ public final class NativeWorldVerification {
         UiCapture.frame(target, gameDirectory);
         ItemPhysicsCapture.frame(target, gameDirectory);
         InventoryCapture.frame(target, gameDirectory);
+        ItemsCapture.frame(target, gameDirectory);
         ServerFeaturesCapture.frame(target, gameDirectory);
         ChatHeadsCapture.frame(target, gameDirectory);
         F3FovCapture.frame(target, gameDirectory);
@@ -500,7 +502,8 @@ public final class NativeWorldVerification {
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
             SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ParticleCoreCapture.busy() || SoundsCapture.busy() || HypixelCapture.busy()
             || ActionBarCapture.busy()
-            || WorldCapture.busy();
+            || WorldCapture.busy()
+            || ItemsCapture.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();

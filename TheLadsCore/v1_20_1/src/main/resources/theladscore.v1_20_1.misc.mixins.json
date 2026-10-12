@@ -16,6 +16,7 @@
     "SodiumDynamicLightsMixin",
     "EuphoriaClipboardMixin",
     "MahouClipShaderCloseMixin",
+    "QuarkBackButtonMixin",
     "MouseTweaksMixin",
     "MouseTweaksScrollMixin",
     "CreativeTabAccessor1201",

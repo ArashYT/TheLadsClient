@@ -142,6 +142,7 @@ public final class BakedBlockEntities263 {
     public static boolean skipRenderer(BlockEntity entity) {
         Map<BlockState, BakedModel> map = installed;
         if (map.isEmpty() || !map.containsKey(entity.getBlockState())) return false;
+        if (entity.getLevel() == null || entity.getLevel() != Minecraft.getInstance().level) return false; // only the client level's sections hold baked models (not item, preview or mod levels)
         BlockPos pos = entity.getBlockPos();
         long key = pos.asLong();
         if (BakedBlockEntities.setAnimating(key, animating(entity))) markDirty(pos);

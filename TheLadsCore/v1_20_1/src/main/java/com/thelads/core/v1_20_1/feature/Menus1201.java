@@ -22,6 +22,7 @@ public final class Menus1201 {
         HudLayoutQa1201.register();
         SoundsQa1201.register();
         ActionBarQa1201.register();
+        ItemsQa1201.register();
         LOGGER.info("Lads menus (title, pause, loading, settings) registered for 1.20.1");
     }
 }

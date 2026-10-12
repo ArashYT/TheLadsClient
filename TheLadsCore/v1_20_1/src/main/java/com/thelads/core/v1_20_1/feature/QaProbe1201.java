@@ -540,7 +540,14 @@ public final class QaProbe1201 {
             }
             LOGGER.info(s.toString());
         }
-        if (!what.equals("modules") && !what.equals("state") && !what.equals("all")) throw new IllegalArgumentException("dump modules [filter] | state | all");
+        if (what.equals("inventory") && mc.player != null) { // the client's open menu and the item in every player inventory slot
+            StringBuilder s = new StringBuilder("Lads qa dump inventory: menu=" + mc.player.containerMenu.getClass().getSimpleName() + "#" + mc.player.containerMenu.containerId);
+            for (int i = 0; i < mc.player.getInventory().getContainerSize(); i++)
+                if (!mc.player.getInventory().getItem(i).isEmpty()) s.append(' ').append(i).append('=').append(mc.player.getInventory().getItem(i));
+            LOGGER.info(s.toString());
+            return;
+        }
+        if (!what.equals("modules") && !what.equals("state") && !what.equals("all")) throw new IllegalArgumentException("dump modules [filter] | state | inventory | all");
     }
 
     private static String describeScreen(Minecraft mc) { return mc.screen == null ? "none" : mc.screen.getClass().getSimpleName(); }
