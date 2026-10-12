@@ -215,6 +215,8 @@ final class ItemsQa1201 implements ItemsQa.Driver {
 
     @Override public boolean offhand() { return true; }
 
+    @Override public boolean wrapsWideTooltips() { return com.thelads.core.v1_20_1.compat.ModPresence1201.onForge(); }
+
     @Override public void shot(String name) {
         try { QaProbe1201.shot(mc(), name); }
         catch (java.io.IOException failure) { throw new IllegalStateException("shot " + name, failure); }

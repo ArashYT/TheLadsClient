@@ -66,6 +66,8 @@ public final class ItemsQa {
         /** Hotbar slot 0-8 (-1: Swap Item With Offhand) bound to "mouse4", "mouse5" or a key name; null: every bind back as it was. */
         void bind(int hotbar, String key);
         boolean offhand();
+        /** Forge on 1.20.1 wraps tooltip lines wider than the screen before they are drawn (so a wide one fits unscaled). */
+        default boolean wrapsWideTooltips() { return false; }
         /** Writes the next finished frame to screenshots/name.png. */
         void shot(String name);
     }
@@ -186,7 +188,7 @@ public final class ItemsQa {
         add(x -> { d.openInventory(); return 30; });
         tooltip(d, 0, "items-8-tooltip-tall", true);
         tooltip(d, 1, "items-9-tooltip-normal", false);
-        tooltip(d, 2, "items-10-tooltip-wide", true);
+        tooltip(d, 2, "items-10-tooltip-wide", d.wrapsWideTooltips() ? null : true);
         add(x -> { d.closeScreen(); d.effects(true); return 40; });
         add(x -> { d.openInventory(); return 30; });
         tooltip(d, 0, "items-11-tooltip-tall-effects", true);
@@ -203,13 +205,13 @@ public final class ItemsQa {
         };
     }
 
-    /** Hovers player inventory slot {@code slot} and checks the tooltip drawn there (scaled down or not) in a frame. */
-    private static void tooltip(Driver d, int slot, String shot, boolean scaled) {
+    /** Hovers player inventory slot {@code slot} and checks the tooltip drawn there (scaled down, as it is, or null: either) in a frame. */
+    private static void tooltip(Driver d, int slot, String shot, Boolean scaled) {
         add(x -> { TooltipFit.last = -1F; d.hoverInventory(slot); return 10; });
         add(x -> {
             float scale = TooltipFit.last;
-            check(scaled ? scale >= 0.5F && scale < 1F : scale == 1F, shot + ": the tooltip is drawn at scale " + scale
-                + (scaled ? " (smaller, to fit the screen)" : " (as it is)"));
+            check(scaled == null ? scale >= 0.5F && scale <= 1F : scaled ? scale >= 0.5F && scale < 1F : scale == 1F, shot + ": the tooltip is drawn at scale "
+                + scale + (scaled == null ? " (Forge wrapped its lines to the screen first)" : scaled ? " (smaller, to fit the screen)" : " (as it is)"));
             return shot(d, shot);
         });
     }
