@@ -38,6 +38,7 @@
     "GuiScreenAddServerAccessor",
     "GuiShareToLanMixin",
     "GuiScreenMixin",
+    "GuiScreenOptionsSoundsMixin",
     "GuiSlotMixin",
     "GuiSlotAccessor",
     "FoodStatsAccessor",

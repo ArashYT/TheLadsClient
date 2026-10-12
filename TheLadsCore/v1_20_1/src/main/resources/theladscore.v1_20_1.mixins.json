@@ -15,6 +15,7 @@
     "BossBarAccessor1201",
 
     "KillBannerAttackMixin",
-    "KillBannerPacketsMixin"
+    "KillBannerPacketsMixin",
+    "SoundOptionsScreenMixin"
   ]
 }
