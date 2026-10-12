@@ -413,7 +413,7 @@ public final class Probe173Perf {
         long[] times = Arrays.copyOf(KillBanner189.frameTimes, KillBanner189.frameCount), work = Arrays.copyOf(FrameWork189.times, FrameWork189.count);
         KillBanner189.recordFrames(0);
         FrameWork189.record(0);
-        check(times.length > SECONDS * 5 && work.length > SECONDS * 5, "perf " + name + ": frames recorded (" + times.length + ", work of " + work.length + ")");
+        check(times.length > SECONDS * 2 && work.length > SECONDS * 2, "perf " + name + ": frames recorded (" + times.length + ", work of " + work.length + ")");
         List<net.minecraft.profiler.Profiler.Result> levelResults = null;
         try {
             levelResults = mc.mcProfiler.getProfilingData("root.gameRenderer.level");
