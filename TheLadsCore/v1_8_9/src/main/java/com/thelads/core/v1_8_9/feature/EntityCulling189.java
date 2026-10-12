@@ -410,7 +410,7 @@ public final class EntityCulling189 {
     }
 
     /** OptiFine's shadow pass draws entities from the sun: the camera's culling must not apply there. */
-    private static boolean inShadowPass() {
+    public static boolean inShadowPass() {
         if (!shadowLooked) {
             shadowLooked = true;
             try { shadowPass = Class.forName("net.optifine.shaders.Shaders").getField("isShadowPass"); }
