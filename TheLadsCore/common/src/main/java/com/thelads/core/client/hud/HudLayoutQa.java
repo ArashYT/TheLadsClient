@@ -47,6 +47,8 @@ public final class HudLayoutQa {
         void tab(boolean down);
         /** Opens (true) or closes the debug screen (F3). */
         void debug(boolean open);
+        /** Opens (true) or closes the chat screen (only the 1.9.1 HUD text sequence uses it). */
+        default void chat(boolean open) {}
     }
 
     private static int step = -1, wait, passed;

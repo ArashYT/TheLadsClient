@@ -3,6 +3,7 @@ package com.thelads.core.v1_8_9.feature;
 import com.thelads.core.client.gui.DraggableHudScreen;
 import com.thelads.core.client.hud.HudCoverQa;
 import com.thelads.core.client.hud.HudLayoutQa;
+import com.thelads.core.client.hud.HudTextQa;
 import com.thelads.core.v1_8_9.gui.DraggableHudScreen189;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -32,6 +33,12 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
     private HudLayoutProbe189() {}
 
     static boolean run(Minecraft mc) {
+        // LADS_QA_HUDTEXT=1: the 1.9.1 HUD text sequence instead (HudTextQa).
+        if (HudTextQa.wanted()) {
+            if (!HudTextQa.tick(DRIVER)) return false;
+            CoreProbe.check(HudTextQa.failed() == 0, "every HUD text step passed (Lads hud layout END)");
+            return true;
+        }
         // LADS_QA_HUDCOVER=1: the 1.9.0 HUD cover sequence instead (HudCoverQa).
         if (HudCoverQa.wanted()) {
             if (!HudCoverQa.tick(DRIVER)) return false;
@@ -99,4 +106,6 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
     @Override public void tab(boolean down) { KeyBinding.setKeyBindState(Minecraft.getMinecraft().gameSettings.keyBindPlayerList.getKeyCode(), down); }
 
     @Override public void debug(boolean open) { Minecraft.getMinecraft().gameSettings.showDebugInfo = open; }
+
+    @Override public void chat(boolean open) { Minecraft.getMinecraft().displayGuiScreen(open ? new net.minecraft.client.gui.GuiChat() : null); }
 }

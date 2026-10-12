@@ -4,6 +4,7 @@ import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.thelads.core.client.gui.DraggableHudScreen;
 import com.thelads.core.client.hud.HudCoverQa;
 import com.thelads.core.client.hud.HudLayoutQa;
+import com.thelads.core.client.hud.HudTextQa;
 import com.thelads.core.v26_2.gui.DraggableHudScreen26;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -42,7 +43,8 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
             game = gameDirectory;
         }
         // LADS_QA_HUDCOVER=1: the 1.9.0 HUD cover sequence instead, with the same markers.
-        done = HudCoverQa.wanted() ? HudCoverQa.tick(DRIVER) : HudLayoutQa.tick(DRIVER);
+        // LADS_QA_HUDTEXT=1: the 1.9.1 HUD text sequence (HudTextQa).
+        done = HudTextQa.wanted() ? HudTextQa.tick(DRIVER) : HudCoverQa.wanted() ? HudCoverQa.tick(DRIVER) : HudLayoutQa.tick(DRIVER);
     }
 
     /** Each completed game frame (NativeWorldVerification.renderedFrame): writes a requested shot. */
@@ -99,4 +101,6 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
     @Override public void tab(boolean down) { Minecraft.getInstance().options.keyPlayerList.setDown(down); }
 
     @Override public void debug(boolean open) { Minecraft.getInstance().debugEntries.setOverlayVisible(open); }
+
+    @Override public void chat(boolean open) { Minecraft.getInstance().setScreenAndShow(open ? new net.minecraft.client.gui.screens.ChatScreen("", false) : null); }
 }
