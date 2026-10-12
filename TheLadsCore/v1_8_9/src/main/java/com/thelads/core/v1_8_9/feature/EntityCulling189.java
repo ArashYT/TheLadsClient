@@ -87,11 +87,204 @@ public final class EntityCulling189 {
     private static volatile int frame;
     /**
      * Blocks that changed lately (their new state may not be drawn yet) count as open air for a second: whole chunk sections
-     * when a chunk's data arrives, single blocks when one is placed or broken. SECTIONS: section key -> time, and whether only
-     * some of its blocks (in BLOCKS) changed.
+     * when a chunk's data arrives, single blocks when one is placed or broken.
+     *
+     * Main thread writes in place into ConcurrentHashMap and increments changeVersion.
+     * Culling thread snapshots into primitive LongIntTable and LongSet only when changeVersion changes,
+     * ensuring zero allocation and zero boxed lookups during raymarching passes.
      */
     private static final Map<Long, long[]> SECTIONS = new ConcurrentHashMap<Long, long[]>();
     private static final Map<Long, Long> BLOCKS = new ConcurrentHashMap<Long, Long>();
+    private static volatile long changeVersion = 0;
+
+    private static final class LongIntTable {
+        private long[] keys;
+        private int[] values;
+        private boolean[] occupied;
+        private int mask;
+        private int size;
+
+        LongIntTable(int capacity) {
+            int cap = Math.max(16, Integer.highestOneBit(capacity * 2 - 1) << 1);
+            this.keys = new long[cap];
+            this.values = new int[cap];
+            this.occupied = new boolean[cap];
+            this.mask = cap - 1;
+            this.size = 0;
+        }
+
+        void put(long key, int value) {
+            if ((size + 1) * 2 > keys.length) resize();
+            int idx = hash(key) & mask;
+            while (occupied[idx]) {
+                if (keys[idx] == key) {
+                    values[idx] = value;
+                    return;
+                }
+                idx = (idx + 1) & mask;
+            }
+            occupied[idx] = true;
+            keys[idx] = key;
+            values[idx] = value;
+            size++;
+        }
+
+        private void resize() {
+            int oldCap = keys.length;
+            int newCap = oldCap << 1;
+            long[] oldKeys = keys;
+            int[] oldValues = values;
+            boolean[] oldOccupied = occupied;
+
+            keys = new long[newCap];
+            values = new int[newCap];
+            occupied = new boolean[newCap];
+            mask = newCap - 1;
+            for (int i = 0; i < oldCap; i++) {
+                if (oldOccupied[i]) {
+                    int idx = hash(oldKeys[i]) & mask;
+                    while (occupied[idx]) {
+                        idx = (idx + 1) & mask;
+                    }
+                    occupied[idx] = true;
+                    keys[idx] = oldKeys[i];
+                    values[idx] = oldValues[i];
+                }
+            }
+        }
+
+        int get(long key, int defaultVal) {
+            int idx = hash(key) & mask;
+            int limit = keys.length;
+            while (occupied[idx] && limit-- > 0) {
+                if (keys[idx] == key) return values[idx];
+                idx = (idx + 1) & mask;
+            }
+            return defaultVal;
+        }
+
+        private static int hash(long key) {
+            long h = key ^ (key >>> 32);
+            h = (h ^ (h >>> 16)) * 0x85ebca6b;
+            h = (h ^ (h >>> 13)) * 0xc2b2ae35;
+            return (int) (h ^ (h >>> 16));
+        }
+    }
+
+    private static final class LongSet {
+        private long[] keys;
+        private boolean[] occupied;
+        private int mask;
+        private int size;
+
+        LongSet(int capacity) {
+            int cap = Math.max(16, Integer.highestOneBit(capacity * 2 - 1) << 1);
+            this.keys = new long[cap];
+            this.occupied = new boolean[cap];
+            this.mask = cap - 1;
+            this.size = 0;
+        }
+
+        void add(long key) {
+            if ((size + 1) * 2 > keys.length) resize();
+            int idx = hash(key) & mask;
+            while (occupied[idx]) {
+                if (keys[idx] == key) return;
+                idx = (idx + 1) & mask;
+            }
+            occupied[idx] = true;
+            keys[idx] = key;
+            size++;
+        }
+
+        private void resize() {
+            int oldCap = keys.length;
+            int newCap = oldCap << 1;
+            long[] oldKeys = keys;
+            boolean[] oldOccupied = occupied;
+
+            keys = new long[newCap];
+            occupied = new boolean[newCap];
+            mask = newCap - 1;
+            for (int i = 0; i < oldCap; i++) {
+                if (oldOccupied[i]) {
+                    int idx = hash(oldKeys[i]) & mask;
+                    while (occupied[idx]) {
+                        idx = (idx + 1) & mask;
+                    }
+                    occupied[idx] = true;
+                    keys[idx] = oldKeys[i];
+                }
+            }
+        }
+
+        boolean contains(long key) {
+            int idx = hash(key) & mask;
+            int limit = keys.length;
+            while (occupied[idx] && limit-- > 0) {
+                if (keys[idx] == key) return true;
+                idx = (idx + 1) & mask;
+            }
+            return false;
+        }
+
+        private static int hash(long key) {
+            long h = key ^ (key >>> 32);
+            h = (h ^ (h >>> 16)) * 0x85ebca6b;
+            h = (h ^ (h >>> 13)) * 0xc2b2ae35;
+            return (int) (h ^ (h >>> 16));
+        }
+    }
+
+    static boolean selfTestTables() {
+        LongIntTable table = new LongIntTable(4);
+        for (int i = 0; i < 200; i++) {
+            table.put(i * 1000L, i);
+        }
+        for (int i = 0; i < 200; i++) {
+            if (table.get(i * 1000L, -1) != i) return false;
+        }
+        if (table.get(999999L, -1) != -1) return false;
+
+        LongSet set = new LongSet(4);
+        for (int i = 0; i < 200; i++) {
+            set.add(i * 1000L);
+        }
+        for (int i = 0; i < 200; i++) {
+            if (!set.contains(i * 1000L)) return false;
+        }
+        if (set.contains(999999L)) return false;
+
+        return true;
+    }
+
+    private static volatile LongIntTable sectionSnap = new LongIntTable(16);
+    private static volatile LongSet blockSnap = new LongSet(16);
+    private static long localChangeVersion = -1;
+
+    private static void updateCullSnapshots() {
+        long v = changeVersion;
+        if (v == localChangeVersion) return;
+        int secSize = SECTIONS.size();
+        LongIntTable newSections = new LongIntTable(Math.max(16, secSize * 2));
+        for (Map.Entry<Long, long[]> entry : SECTIONS.entrySet()) {
+            Long k = entry.getKey();
+            long[] val = entry.getValue();
+            if (k != null && val != null) {
+                newSections.put(k.longValue(), (int) val[1]);
+            }
+        }
+        int blkSize = BLOCKS.size();
+        LongSet newBlocks = new LongSet(Math.max(16, blkSize * 2));
+        for (Long k : BLOCKS.keySet()) {
+            if (k != null) {
+                newBlocks.add(k.longValue());
+            }
+        }
+        sectionSnap = newSections;
+        blockSnap = newBlocks;
+        localChangeVersion = v;
+    }
     // Culling thread -> render thread.
     private static volatile Pass done, running;
     // Render thread only.
@@ -139,6 +332,7 @@ public final class EntityCulling189 {
             FIRST_SEEN.clear();
             SECTIONS.clear();
             BLOCKS.clear();
+            changeVersion++;
         }
         long now = System.nanoTime();
         int size = RADIUS * 2 + 1, x0 = (int) Math.floor(view.posX / 16) - RADIUS, z0 = (int) Math.floor(view.posZ / 16) - RADIUS;
@@ -151,8 +345,20 @@ public final class EntityCulling189 {
             else if (now - seen > CHUNK_SETTLE) chunks[i * size + j] = chunk;
         }
         snapshot = new Snapshot(world, chunks, x0, z0, size, opaque);
-        for (Map.Entry<Long, long[]> entry : SECTIONS.entrySet()) if (now - entry.getValue()[0] > CHANGED_FOR) SECTIONS.remove(entry.getKey());
-        for (Map.Entry<Long, Long> entry : BLOCKS.entrySet()) if (now - entry.getValue() > CHANGED_FOR) BLOCKS.remove(entry.getKey());
+        boolean changed = false;
+        for (Map.Entry<Long, long[]> entry : SECTIONS.entrySet()) {
+            if (now - entry.getValue()[0] > CHANGED_FOR) {
+                SECTIONS.remove(entry.getKey());
+                changed = true;
+            }
+        }
+        for (Map.Entry<Long, Long> entry : BLOCKS.entrySet()) {
+            if (now - entry.getValue() > CHANGED_FOR) {
+                BLOCKS.remove(entry.getKey());
+                changed = true;
+            }
+        }
+        if (changed) changeVersion++;
     }
 
     /** World.markBlockRangeForRenderUpdate on the client for a whole chunk (its data arrived): its sections count as open air. */
@@ -162,6 +368,7 @@ public final class EntityCulling189 {
         long now = System.nanoTime();
         for (int x = x1 >> 4; x <= x2 >> 4; x++) for (int y = Math.max(0, y1 >> 4); y <= Math.min(15, y2 >> 4); y++)
             for (int z = z1 >> 4; z <= z2 >> 4; z++) SECTIONS.put(section(x, y, z), new long[] {now, 1});
+        changeVersion++;
     }
 
     /** World.markBlockForUpdate on the client (a block placed, broken or changed): that block counts as open air. */
@@ -172,6 +379,7 @@ public final class EntityCulling189 {
         BLOCKS.put(cell(x, y, z), now);
         long[] was = SECTIONS.get(section(x >> 4, y >> 4, z >> 4));
         SECTIONS.put(section(x >> 4, y >> 4, z >> 4), new long[] {Math.max(now, was == null ? 0 : was[0]), was != null && was[1] == 1 && now - was[0] <= CHANGED_FOR ? 1 : 0});
+        changeVersion++;
     }
 
     /** RenderManager.renderEntityStatic: true to draw only the name tag. {@code originX..} is where the world is drawn from. */
@@ -256,7 +464,8 @@ public final class EntityCulling189 {
                 Pass pass = new Pass(gen, eye, now);
                 running = pass;
                 grid.snap = snap;
-                grid.sx = Integer.MIN_VALUE;
+                grid.clearCache();
+                updateCullSnapshots();
                 pass(grid, snap, eye, Occlusion.eyes(grid, eye[0], eye[1], eye[2], EYE_CUBE, eyes), eyes, gen);
                 done = pass;
                 passNanos += System.nanoTime() - now;
@@ -350,32 +559,64 @@ public final class EntityCulling189 {
     private static long section(int x, int y, int z) { return ((long) x & 0x3FFFFFF) << 30 | ((long) z & 0x3FFFFFF) << 4 | (y & 15); }
     private static long cell(int x, int y, int z) { return ((long) x & 0x3FFFFFF) << 34 | ((long) z & 0x3FFFFFF) << 8 | (y & 255); }
 
-    /** The snapshot's cells, one 16x16x16 section cached at a time. Unknown, unsettled or changed sections are open air. */
+    /** The snapshot's cells, with direct-mapped section cache. Unknown, unsettled or changed sections are open air. */
     private static final class Grid implements Occlusion.Grid {
         Snapshot snap;
-        int sx, sy, sz;
+        int sx = Integer.MIN_VALUE, sy, sz;
         char[] data;
         /** The cached section has single changed blocks (looked up in BLOCKS). */
         boolean someChanged;
+
+        private final int[] cacheKeys = new int[64];
+        private final char[][] cacheData = new char[64][];
+        private final boolean[] cacheSomeChanged = new boolean[64];
+        private int cacheEpoch = 1;
+        private final int[] cacheEpochs = new int[64];
+
+        void clearCache() {
+            cacheEpoch++;
+            if (cacheEpoch == Integer.MAX_VALUE) {
+                cacheEpoch = 1;
+                java.util.Arrays.fill(cacheEpochs, 0);
+            }
+            sx = Integer.MIN_VALUE;
+            data = null;
+            someChanged = false;
+        }
 
         public boolean opaque(int x, int y, int z) {
             if (y < 0 || y > 255) return false;
             int cx = x >> 4, cy = y >> 4, cz = z >> 4;
             if (cx != sx || cy != sy || cz != sz) { sx = cx; sy = cy; sz = cz; data = load(cx, cy, cz); }
-            if (data == null || someChanged && BLOCKS.containsKey(cell(x, y, z))) return false;
+            if (data == null || someChanged && blockSnap.contains(cell(x, y, z))) return false;
             int id = data[(y & 15) << 8 | (z & 15) << 4 | (x & 15)];
             return snap.opaque[id];
         }
 
         private char[] load(int cx, int cy, int cz) {
+            int slot = ((cx * 31 + cz) * 31 + cy) & 63;
+            int key = ((cx & 0x3FFF) << 18) | ((cz & 0x3FFF) << 4) | (cy & 0xF);
+            if (cacheEpochs[slot] == cacheEpoch && cacheKeys[slot] == key) {
+                someChanged = cacheSomeChanged[slot];
+                return cacheData[slot];
+            }
             int i = cx - snap.x0, j = cz - snap.z0;
-            if (i < 0 || j < 0 || i >= snap.size || j >= snap.size) return null;
-            Chunk chunk = snap.chunks[i * snap.size + j];
-            long[] changed = SECTIONS.get(EntityCulling189.section(cx, cy, cz));
-            someChanged = changed != null && changed[1] == 0;
-            if (chunk == null || changed != null && changed[1] == 1) return null;
-            ExtendedBlockStorage storage = chunk.getBlockStorageArray()[cy];
-            return storage == null ? null : storage.getData();
+            char[] res = null;
+            someChanged = false;
+            if (i >= 0 && j >= 0 && i < snap.size && j < snap.size) {
+                Chunk chunk = snap.chunks[i * snap.size + j];
+                int flag = sectionSnap.get(EntityCulling189.section(cx, cy, cz), -1);
+                someChanged = flag == 0;
+                if (chunk != null && flag != 1) {
+                    ExtendedBlockStorage storage = chunk.getBlockStorageArray()[cy];
+                    if (storage != null) res = storage.getData();
+                }
+            }
+            cacheEpochs[slot] = cacheEpoch;
+            cacheKeys[slot] = key;
+            cacheData[slot] = res;
+            cacheSomeChanged[slot] = someChanged;
+            return res;
         }
     }
 
@@ -388,7 +629,8 @@ public final class EntityCulling189 {
         if (snap == null || eye == null) return;
         Grid grid = new Grid();
         grid.snap = snap;
-        grid.sx = Integer.MIN_VALUE;
+        grid.clearCache();
+        updateCullSnapshots();
         double[] one = new double[27];
         int n = Occlusion.eyes(grid, eye[0], eye[1], eye[2], 0, one);
         if (n == 0) { wrong++; return; }
@@ -428,7 +670,8 @@ public final class EntityCulling189 {
         if (eye != null && snap != null) {
             Grid grid = new Grid();
             grid.snap = snap;
-            grid.sx = Integer.MIN_VALUE;
+            grid.clearCache();
+            updateCullSnapshots();
             double[] eyes = new double[27];
             int n = Occlusion.eyes(grid, eye[0], eye[1], eye[2], EYE_CUBE, eyes);
             out.append("; eyes ").append(n).append(", hidden now ").append(n > 0 && hidden(grid, entity, eye, eyes, n));

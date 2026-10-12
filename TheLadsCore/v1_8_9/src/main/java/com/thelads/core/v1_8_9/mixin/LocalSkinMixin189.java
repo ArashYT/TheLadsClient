@@ -30,10 +30,23 @@ public abstract class LocalSkinMixin189 {
         if (LocalSkins189.current() != null && ladsIsLocalAccount()) cir.setReturnValue(true);
     }
 
+    @Unique private static net.minecraft.util.Session ladsLastSession;
+    @Unique private static java.util.UUID ladsSessionId;
+
     @Unique
     private boolean ladsIsLocalAccount() {
         AbstractClientPlayer player = (AbstractClientPlayer) (Object) this;
         Minecraft mc = Minecraft.getMinecraft();
-        return player == mc.thePlayer || player.getUniqueID().equals(mc.getSession().getProfile().getId());
+        if (player == mc.thePlayer) return true;
+        net.minecraft.util.Session session = mc.getSession();
+        if (session != ladsLastSession) {
+            ladsLastSession = session;
+            try {
+                ladsSessionId = session != null && session.getProfile() != null ? session.getProfile().getId() : null;
+            } catch (Throwable ignored) {
+                ladsSessionId = null;
+            }
+        }
+        return ladsSessionId != null && ladsSessionId.equals(player.getUniqueID());
     }
 }
