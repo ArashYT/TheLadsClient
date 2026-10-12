@@ -29,7 +29,8 @@ public final class NativeHud {
     /** The HUD modules drawn here with VanillaGameBridge189 data: built in, as on the other versions. */
     public static final String[] MODULES = {"FPS", "Coordinates", "PingHUD", "Memory", "Speed", "Day", "Time", "XP", "Potion Effects",
         "CPS", "Keystrokes", "Biome", "Direction", "Health", "Hunger", "TexturePacks", "ArmorHUD", "Scoreboard",
-        "Paperdoll", "BossBar", "Autohide", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates"};
+        "Paperdoll", "BossBar", "Autohide", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates",
+        com.thelads.core.client.hud.ActionBar.MODULE};
     /** QA only (CoreProbe): frames in which HudManager drew the Lads HUD. */
     public static long frames;
     private static final GuiLadsAdapter graphics = new GuiLadsAdapter(null, 0, 0);
@@ -72,6 +73,7 @@ public final class NativeHud {
     public void overlayEnd(RenderGameOverlayEvent.Post event) {
         Minecraft mc = Minecraft.getMinecraft();
         if (event.type != RenderGameOverlayEvent.ElementType.ALL || mc.currentScreen instanceof DraggableHudScreen189) return;
+        com.thelads.core.v1_8_9.adapter.VanillaGameBridge189.partialTicks = event.partialTicks;
         // 2D over everything, as on the other versions. Blending and depth go back as found, the rest to the state Forge ends its overlay with.
         boolean blend = GlState189.blend(), depth = GlState189.depth();
         GlStateManager.disableDepth();

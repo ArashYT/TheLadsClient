@@ -271,9 +271,13 @@ public final class NativeKillBanner1201 {
         if (age < 0) return;
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
+        graphics.pose().pushPose();
         try {
             KillBannerModule.Pick pick = KillBanners.shown(module);
             KillBannerStyle style = pick != null ? pick.style() : null;
+            // Above an action bar that showed over it as it started, for its whole animation (KillBanners.lift).
+            graphics.pose().translate(0, -KillBanners.lift(new com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201(graphics), style,
+                (float) module.size.getValue() / 100f), 0);
             if (style == null) {
                 renderBase(graphics, minecraft, module, age);
                 return;
@@ -290,6 +294,7 @@ public final class NativeKillBanner1201 {
                 if (layers != null) KillBannerArt1201.draw(graphics, style, variant, BANNER.sequence(), layers, size, mark, label);
             }
         } finally {
+            graphics.pose().popPose();
             RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         }
     }

@@ -68,6 +68,18 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         } catch (Throwable ignored) {}
     }
 
+    @Override public int actionBarWidth(Object text) {
+        return text instanceof net.minecraft.network.chat.Component message ? font.width(message) : LadsGraphics.super.actionBarWidth(text);
+    }
+
+    @Override public void drawActionBar(Object text, int x, int y, int color, boolean shadow, boolean plain) {
+        if (!(text instanceof net.minecraft.network.chat.Component message)) { LadsGraphics.super.drawActionBar(text, x, y, color, shadow, plain); return; }
+        if (!plain) { g.text(font, message, x, y, color, shadow); return; }
+        // Its own colours left out (formatting codes in its text included, as the font reads them): the rest of its style stays.
+        net.minecraft.util.FormattedCharSequence styled = message.getVisualOrderText();
+        g.text(font, (net.minecraft.util.FormattedCharSequence) sink -> styled.accept((i, style, c) -> sink.accept(i, style.withColor((net.minecraft.network.chat.TextColor) null), c)), x, y, color, shadow);
+    }
+
     @Override public void drawArmorItem(int index,int x,int y,boolean preview) {
         var player=Minecraft.getInstance().player;
         var slots=new net.minecraft.world.entity.EquipmentSlot[]{net.minecraft.world.entity.EquipmentSlot.FEET,net.minecraft.world.entity.EquipmentSlot.LEGS,net.minecraft.world.entity.EquipmentSlot.CHEST,net.minecraft.world.entity.EquipmentSlot.HEAD};

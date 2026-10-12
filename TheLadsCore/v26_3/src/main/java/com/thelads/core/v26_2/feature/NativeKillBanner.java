@@ -248,20 +248,27 @@ public final class NativeKillBanner {
         if (age < 0) return;
         KillBannerModule.Pick pick = KillBanners.shown(module);
         KillBannerStyle style = pick.style();
-        if (style == null) {
-            renderBase(graphics, minecraft, module, age);
-            return;
-        }
-        // As the game: the kill mark and its flicker belong to a headshot; the HEADSHOT label is the client's option on top.
-        boolean headshot = BANNER.headshot(), mark = headshot && module.killMark.get(), label = module.headshotBanner.get();
         float size = (float) module.size.getValue() / 100f;
-        if (style.isAnimated()) {
-            KillBannerStrip strip = style.strip(BANNER.sequence());
-            KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot, BANNER.cutAge());
-            if (frame != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), strip, frame, size, mark, label);
-        } else {
-            KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot, BANNER.cutAge());
-            if (layers != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), layers, size, mark, label);
+        // Above an action bar that showed over it as it started, for its whole animation (KillBanners.lift).
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(0, -KillBanners.lift(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics), style, size));
+        try {
+            if (style == null) {
+                renderBase(graphics, minecraft, module, age);
+                return;
+            }
+            // As the game: the kill mark and its flicker belong to a headshot; the HEADSHOT label is the client's option on top.
+            boolean headshot = BANNER.headshot(), mark = headshot && module.killMark.get(), label = module.headshotBanner.get();
+            if (style.isAnimated()) {
+                KillBannerStrip strip = style.strip(BANNER.sequence());
+                KillBannerPlayer.Frame frame = KillBannerPlayer.at(style, strip, age, module.duration.getValue(), headshot, BANNER.cutAge());
+                if (frame != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), strip, frame, size, mark, label);
+            } else {
+                KillBannerPlayer.Layers layers = KillBannerPlayer.layers(style, BANNER.sequence(), age, module.duration.getValue(), headshot, BANNER.cutAge());
+                if (layers != null) KillBannerArt.draw(graphics, style, pick.variant(), BANNER.sequence(), layers, size, mark, label);
+            }
+        } finally {
+            graphics.pose().popMatrix();
         }
     }
 

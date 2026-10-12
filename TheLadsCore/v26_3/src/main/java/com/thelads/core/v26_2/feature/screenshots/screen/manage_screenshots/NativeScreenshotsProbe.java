@@ -37,6 +37,8 @@ public final class NativeScreenshotsProbe {
     private static int width, height;
     /** True while the gallery screen is open for the probe. */
     public static boolean running() { return state == 1; }
+    /** True while the probe is still to run or running (a world capture that photographs the HUD waits for it). */
+    public static boolean pending() { return state >= 0 && Boolean.getBoolean("thelads.verifyIntegrations") && ScreenshotViewer.available(); }
 
     public static void tick() {
         if (state < 0 || !Boolean.getBoolean("thelads.verifyIntegrations") || !ScreenshotViewer.available()) return;

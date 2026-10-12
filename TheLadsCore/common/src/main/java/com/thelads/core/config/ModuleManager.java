@@ -76,6 +76,16 @@ public class ModuleManager {
         boss.addOption(new BoolOption("Boss fog", true));
         boss.addOption(new BoolOption("Boss music", true));
 
+        // 1.9.1: the action bar as a HUD (ActionBarHudElement); off, vanilla draws it unchanged. Its defaults are vanilla's look,
+        // with a text shadow; Custom Text Color uses Text Color and Color mode instead of the server's colours.
+        HudModule actionBar = hud(com.thelads.core.client.hud.ActionBar.MODULE, "Move, resize and restyle the action bar (server messages above the hotbar, \"Now playing\"), or hide it.");
+        actionBar.addOption(new BoolOption("Text Shadow", true));
+        actionBar.addOption(new BoolOption("Show Background", false));
+        actionBar.addOption(new BoolOption("Custom Text Color", false));
+        actionBar.addOption(new SliderOption("Duration", 3, 1, 10, .5).suffix("s"));
+        actionBar.addOption(new BoolOption("Fade Out", true));
+        actionBar.addOption(new BoolOption("Hide Action Bar", false));
+
         HudModule coords = hud("Coordinates", "Show your XYZ coordinates.");
         coords.addOption(new DropdownOption("Format", 2, "X Y Z", "Coords: X, Y, Z", "Labeled X/Y/Z"));
         coords.addOption(new BoolOption("Vertical", true));
