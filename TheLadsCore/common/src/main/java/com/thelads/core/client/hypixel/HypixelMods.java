@@ -35,7 +35,7 @@ public final class HypixelMods {
     private static final Map<String, Long> FRIENDS = new HashMap<>();
     private static Object connection, world;
     private static boolean gameOver, started, tipOff;
-    private static long lastSent, tipAt;
+    private static long lastSent, tipAt, tipSent, locrawSent;
     private static String lastCommand = "";
     private static String[] location;
     /** QA only: the lines sent (the first 64), in order, and how many server messages were hidden. */
@@ -54,9 +54,7 @@ public final class HypixelMods {
         gg.addOption(new SliderOption("Second Message seconds", 2, 0, 10, 0.5));
         gg.setEnabled(true);
         modules.add(gg);
-        Module friend = new Module(AUTO_FRIEND, "Hypixel: accepts friend requests as they arrive.");
-        friend.setEnabled(true);
-        modules.add(friend);
+        modules.add(new Module(AUTO_FRIEND, "Hypixel: accepts every friend request as it arrives. Off by default: anyone could then add you."));
         Module tip = new Module(AUTO_TIP, "Hypixel: tips every active network booster (/tip all) on a timer while you play. Stops for the session if the server "
             + "does not know the command.");
         tip.addOption(new SliderOption("Every minutes", 15, 5, 60, 5));
@@ -129,6 +127,8 @@ public final class HypixelMods {
         QUEUE.remove(next);
         lastSent = now;
         lastCommand = next.text();
+        if (lastCommand.equals("/tip all")) tipSent = now;
+        if (lastCommand.equals("/locraw")) locrawSent = now;
         if (SENT.size() < 64) SENT.add(next.text());
         LOGGER.info("Lads Hypixel: sending {}", next.text());
         game.sendChatLine(next.text());
@@ -146,12 +146,14 @@ public final class HypixelMods {
      */
     public static boolean chat(String message, long now) {
         if (message == null || connection == null || !HypixelSafetyManager.isHypixel()) return false;
-        if (lastCommand.equals("/tip all") && now - lastSent < 5 * SECOND && HypixelChat.unknownCommand(message)) {
+        // Answers to our own commands, by when each was sent (another command may have gone out since).
+        if (tipSent != 0 && now - tipSent < 5 * SECOND && HypixelChat.unknownCommand(message)) {
             tipOff = true;
             LOGGER.info("Lads Hypixel: the server does not know /tip, Auto Tip is off until you reconnect");
         }
         String[] where = HypixelChat.location(message);
-        if (where != null && lastCommand.equals("/locraw") && now - lastSent < 5 * SECOND) {
+        if (where != null && locrawSent != 0 && now - locrawSent < 5 * SECOND) {
+            locrawSent = 0;
             location = where;
             hidden++;
             return true; // our own question's answer
@@ -196,6 +198,6 @@ public final class HypixelMods {
     public static void tipNow(long now) { tipAt = now; }
     static void resetForTest() {
         QUEUE.clear(); FRIENDS.clear(); SENT.clear(); connection = world = null; gameOver = started = tipOff = false;
-        lastSent = 0; lastCommand = ""; location = null;
+        lastSent = tipSent = locrawSent = 0; lastCommand = ""; location = null;
     }
 }

@@ -13,6 +13,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,8 +42,14 @@ public final class RealPing {
     /** 5 s, doubled (up to a minute) while Hypixel answers "rate limited". */
     private static volatile long interval = INTERVAL;
     private static long nextAt, checkedAt;
-    private static int misses;
-    private static boolean modApiOff;
+    // Written by the answer on the network thread, read by the client tick.
+    private static volatile int misses;
+    private static volatile boolean modApiOff;
+    private static final ExecutorService STATUS = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "Lads Real Ping");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private RealPing() {}
 
@@ -75,6 +83,7 @@ public final class RealPing {
         if (result == 1 && sent != 0) {
             measured((nanos - sent) / 1_000_000L, nanos);
             sentAt = 0;
+            misses = 0;
             interval = INTERVAL;
         } else if (result < 0) {
             sentAt = 0;
@@ -129,7 +138,7 @@ public final class RealPing {
         if (address != null && !statusBusy) {
             statusBusy = true;
             String host = host(game.getServerAddress(), address);
-            Thread thread = new Thread(() -> {
+            STATUS.execute(() -> {
                 try {
                     int ms = statusPing(address, host, 3000);
                     if (connection == current) measured(ms, System.nanoTime());
@@ -138,9 +147,7 @@ public final class RealPing {
                 } finally {
                     statusBusy = false;
                 }
-            }, "Lads Real Ping");
-            thread.setDaemon(true);
-            thread.start();
+            });
         }
     }
 

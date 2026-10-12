@@ -47,6 +47,7 @@ public final class Hypixel189 {
         if (!RealPing.CHANNEL.equals(packet.getChannelName())) return;
         long arrived = System.nanoTime();
         ByteBuf buf = packet.getBufferData();
+        if (buf == null) return;
         byte[] data = new byte[buf.readableBytes()];
         buf.getBytes(buf.readerIndex(), data);
         RealPing.receive(RealPing.CHANNEL, data, arrived);

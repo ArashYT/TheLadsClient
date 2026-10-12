@@ -91,7 +91,7 @@ public class PlayerTabOverlayMixin {
             return;
         }
         // 1.9.1: Hypixel lists everyone at 1 ms: your own row shows the measured ping, the others no number (RealPing).
-        int ping = com.thelads.core.client.hypixel.RealPing.row(info.getLatency(), minecraft.player != null && info.getProfile().id().equals(minecraft.player.getUUID()));
+        int ping = com.thelads.core.client.hypixel.RealPing.row(info.getLatency(), minecraft.player != null && minecraft.player.getUUID().equals(info.getProfile().id()));
         int color = ping == com.thelads.core.client.hypixel.RealPing.NONE ? 0xFF808080 : -5636096;
         if (ping >= 0 && ping < 75) color = TabTweaksConfig.current().pingColorOne;
         else if (ping >= 75 && ping < 145) color = TabTweaksConfig.current().pingColorTwo;

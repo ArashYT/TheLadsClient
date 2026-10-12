@@ -41,6 +41,7 @@ class HypixelModsTest {
     };
 
     @BeforeEach void setUp() {
+        ModuleManager.getInstance().getModule(HypixelMods.AUTO_FRIEND).setEnabled(true);
         LadsGameBridge.set(game);
         HypixelMods.resetForTest();
         for (String name : new String[] {HypixelMods.AUTO_GG, HypixelMods.AUTO_FRIEND, HypixelMods.AUTO_TIP, HypixelMods.PLAY_AGAIN, HypixelMods.AUTO_WHO, HypixelMods.CLEANUP}) {
@@ -56,6 +57,39 @@ class HypixelModsTest {
         ModuleManager.getInstance().getModule(HypixelMods.PLAY_AGAIN).setEnabled(false);
         ModuleManager.getInstance().getModule(HypixelMods.AUTO_WHO).setEnabled(false);
         ModuleManager.getInstance().getModule(HypixelMods.AUTO_TIP).setEnabled(true);
+        ModuleManager.getInstance().getModule(HypixelMods.AUTO_FRIEND).setEnabled(false);
+    }
+
+    @Test void defaults() {
+        java.util.Map<String, Boolean> on = new java.util.HashMap<>();
+        for (Module m : HypixelMods.modules()) on.put(m.getName(), m.isEnabled());
+        assertEquals(java.util.Map.of(HypixelMods.AUTO_GG, true, HypixelMods.AUTO_TIP, true, HypixelMods.CLEANUP, true,
+            HypixelMods.AUTO_FRIEND, false, HypixelMods.PLAY_AGAIN, false, HypixelMods.AUTO_WHO, false), on, "Auto Friend: anyone could add you, opt in");
+    }
+
+    @Test void locrawAnswerAfterAnotherCommandAndPingMissesReset() {
+        ModuleManager.getInstance().getModule(HypixelMods.PLAY_AGAIN).setEnabled(true);
+        ModuleManager.getInstance().getModule(HypixelMods.AUTO_FRIEND).setEnabled(true);
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        HypixelMods.chat("Friend request from Steve", 2 * S);
+        HypixelMods.tick(game, world, connection, 4 * S);
+        assertEquals(List.of("/locraw", "/friend accept Steve"), sent);
+        assertTrue(HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"SKYWARS\",\"mode\":\"solo_insane\"}", 5 * S),
+            "still our /locraw's answer though /friend went out after it");
+        assertArrayEquals(new String[] {"SKYWARS", "solo_insane"}, HypixelMods.location());
+        // Mod API: two misses, then an answer, then two more misses: still on the Mod API (three in a row would end it).
+        payloads.clear();
+        Object c = new Object();
+        long t = 0;
+        RealPing.tick(game, c, t);
+        for (int i = 0; i < 3; i++) { t += 6 * S; RealPing.tick(game, c, t); }
+        RealPing.receive(RealPing.CHANNEL, new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'}, t + 1);
+        for (int i = 0; i < 2; i++) { t += 6 * S; RealPing.tick(game, c, t); }
+        int before = payloads.size();
+        t += 6 * S;
+        RealPing.tick(game, c, t);
+        assertEquals(before + 1, payloads.size(), "an answer resets the miss count: " + payloads.size());
     }
 
     @Test void gameEndInEveryModeButNotFromPlayers() {
