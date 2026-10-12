@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -27,9 +28,16 @@ public class JavaService : IJavaService
         _httpClient = httpClient ?? new HttpClient();
     }
 
+    private readonly ConcurrentDictionary<int, string> _detectedJavaCache = new();
+
     public async Task<string?> DetectInstalledJavaAsync(int majorVersion)
     {
-        return await Task.Run(() =>
+        if (_detectedJavaCache.TryGetValue(majorVersion, out var cached) && File.Exists(cached))
+        {
+            return cached;
+        }
+
+        var result = await Task.Run(() =>
         {
             // 1. Check managed runtime directory first
             var runtimeDir = _pathService.GetJavaRuntimeDirectory(majorVersion);
@@ -61,6 +69,12 @@ public class JavaService : IJavaService
 
             return null;
         });
+
+        if (result != null)
+        {
+            _detectedJavaCache[majorVersion] = result;
+        }
+        return result;
     }
 
     public async Task<string> EnsureJavaAsync(
