@@ -105,8 +105,9 @@ final class Probe173Perf {
 
     private static boolean setup(Minecraft mc) {
         if (Boolean.getBoolean("thelads.perfTerrain")) {
-            int top = mc.theWorld.getHeight(new net.minecraft.util.BlockPos(0, 0, 0)).getY();
-            Y = Math.max(4, top + 1);
+            Y = 80;
+            command(mc, "fill -16 " + (int)(Y - 1) + " -5 16 " + (int)(Y - 1) + " 25 barrier");
+            command(mc, "fill -16 " + (int)Y + " -5 16 " + (int)(Y + 10) + " 25 air");
         } else {
             Y = 4;
         }
@@ -307,10 +308,12 @@ final class Probe173Perf {
 
     /** The player stands still at the scene's pose. */
     private static void pin(Minecraft mc) {
-        mc.thePlayer.setPosition(X, mc.thePlayer.posY, Z);
+        mc.thePlayer.setPosition(X, Y, Z);
         mc.thePlayer.prevPosX = mc.thePlayer.lastTickPosX = X;
+        mc.thePlayer.prevPosY = mc.thePlayer.lastTickPosY = Y;
         mc.thePlayer.prevPosZ = mc.thePlayer.lastTickPosZ = Z;
-        mc.thePlayer.motionX = mc.thePlayer.motionZ = 0;
+        mc.thePlayer.motionX = mc.thePlayer.motionY = mc.thePlayer.motionZ = 0;
+        mc.thePlayer.fallDistance = 0;
         mc.thePlayer.capabilities.isFlying = false;
         mc.thePlayer.rotationYaw = mc.thePlayer.prevRotationYaw = 0;
         mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = pitch;
@@ -439,7 +442,12 @@ final class Probe173Perf {
             return retry(0);
         }
         if (phase == 2) { // in the world, no loading screen
+            if (mc.thePlayer != null && (mc.thePlayer.isDead || mc.currentScreen instanceof net.minecraft.client.gui.GuiGameOver)) {
+                mc.thePlayer.respawnPlayer();
+                mc.displayGuiScreen(null);
+            }
             if (mc.theWorld == null || mc.thePlayer == null || mc.currentScreen != null) return retry(0);
+            pin(mc);
             JsonObject cycle = new JsonObject();
             cycle.addProperty("leaveMs", leaveMs);
             cycle.addProperty("joinMs", (System.nanoTime() - since) / 1_000_000L);
