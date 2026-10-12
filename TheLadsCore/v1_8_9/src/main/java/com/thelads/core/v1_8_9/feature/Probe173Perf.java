@@ -38,6 +38,7 @@ import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityArmorStand;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
@@ -373,8 +374,12 @@ final class Probe173Perf {
             int count = Probe192Players.countFor(name);
             check(mc.theWorld.loadedEntityList.size() >= count + 1, "perf " + name + ": at least " + (count + 1) + " entities in the world (" + mc.theWorld.loadedEntityList.size() + ")");
         }
-        mc.mcProfiler.clearProfiling();
         mc.mcProfiler.profilingEnabled = true;
+        try {
+            Field mapField = ReflectionHelper.findField(net.minecraft.profiler.Profiler.class, "profilingMap", "field_76324_e");
+            mapField.setAccessible(true);
+            ((Map<?, ?>) mapField.get(mc.mcProfiler)).clear();
+        } catch (Throwable ignored) {}
         KillBanner189.recordFrames(SECONDS * 3000); // up to 3000 FPS uncapped
         FrameWork189.record(SECONDS * 3000);
         gpu = new Probe170r.GpuTimer();
@@ -396,11 +401,13 @@ final class Probe173Perf {
         KillBanner189.recordFrames(0);
         FrameWork189.record(0);
         check(times.length > SECONDS * 5 && work.length > SECONDS * 5, "perf " + name + ": frames recorded (" + times.length + ", work of " + work.length + ")");
-        mc.mcProfiler.profilingEnabled = false;
-        List<net.minecraft.profiler.Profiler.Result> levelResults = mc.mcProfiler.getProfilingData("root.gameRenderer.level");
-        if (levelResults == null || levelResults.isEmpty()) {
-            levelResults = mc.mcProfiler.getProfilingData("gameRenderer.level");
-        }
+        List<net.minecraft.profiler.Profiler.Result> levelResults = null;
+        try {
+            levelResults = mc.mcProfiler.getProfilingData("root.gameRenderer.level");
+            if (levelResults == null || levelResults.isEmpty()) {
+                levelResults = mc.mcProfiler.getProfilingData("gameRenderer.level");
+            }
+        } catch (Throwable ignored) {}
         double entitiesPct = 0, terrainPct = 0, particlesPct = 0;
         if (levelResults != null) {
             for (net.minecraft.profiler.Profiler.Result res : levelResults) {
@@ -411,7 +418,6 @@ final class Probe173Perf {
                 else if ("particles".equals(sName)) particlesPct = use;
             }
         }
-        mc.mcProfiler.clearProfiling();
 
         JsonObject s = stats(times, work);
         s.addProperty("cpuMs", round(cpu / 1e6 / times.length));
@@ -599,6 +605,7 @@ final class Probe173Perf {
     }
 
     private static boolean write(Minecraft mc) throws Exception {
+        mc.mcProfiler.profilingEnabled = false;
         File folder = new File(mc.mcDataDir, "lads-qa/perf");
         check(folder.isDirectory() || folder.mkdirs(), "perf folder " + folder);
         Files.write(new File(folder, "perf.json").toPath(), new GsonBuilder().setPrettyPrinting().create().toJson(report).getBytes(StandardCharsets.UTF_8));

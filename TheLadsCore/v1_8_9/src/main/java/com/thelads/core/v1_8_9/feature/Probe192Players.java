@@ -135,7 +135,7 @@ public final class Probe192Players {
     @SuppressWarnings("unchecked")
     private static Map<UUID, NetworkPlayerInfo> getPlayerInfoMap(Minecraft mc) {
         try {
-            Field f = ReflectionHelper.findField(NetHandlerPlayClient.class, "playerInfoMap", "field_175107_d");
+            Field f = ReflectionHelper.findField(NetHandlerPlayClient.class, "playerInfoMap", "field_147310_i");
             f.setAccessible(true);
             return (Map<UUID, NetworkPlayerInfo>) f.get(mc.getNetHandler());
         } catch (Throwable t) {
@@ -153,21 +153,14 @@ public final class Probe192Players {
         baseZ = new double[count];
         baseYaw = new float[count];
 
-        Scoreboard sb = mc.theWorld.getScoreboard();
-        for (int t = 0; t < 4; t++) {
-            command(mc, "scoreboard teams add " + TEAMS[t]);
-            command(mc, "scoreboard teams option " + TEAMS[t] + " prefix " + PREFIXES[t]);
-            if (sb != null) {
+        Scoreboard sb = mc.theWorld != null ? mc.theWorld.getScoreboard() : null;
+        if (sb != null) {
+            for (int t = 0; t < 4; t++) {
                 ScorePlayerTeam team = sb.getTeam(TEAMS[t]);
                 if (team == null) team = sb.createTeam(TEAMS[t]);
                 team.setNamePrefix(PREFIXES[t]);
             }
-        }
-        command(mc, "scoreboard objectives add lads_health dummy \u00a7c\u2764");
-        command(mc, "scoreboard objectives setdisplay belowName lads_health");
-        ScoreObjective healthObj = null;
-        if (sb != null) {
-            healthObj = sb.getObjective("lads_health");
+            ScoreObjective healthObj = sb.getObjective("lads_health");
             if (healthObj == null) healthObj = sb.addScoreObjective("lads_health", IScoreObjectiveCriteria.DUMMY);
             healthObj.setDisplayName("\u00a7c\u2764");
             sb.setObjectiveInDisplaySlot(2, healthObj);
@@ -271,12 +264,12 @@ public final class Probe192Players {
             mc.theWorld.addEntityToWorld(entityId, player);
 
             String teamName = TEAMS[i % 4];
-            command(mc, "scoreboard teams join " + teamName + " " + name);
-            command(mc, "scoreboard players set " + name + " lads_health 20");
             if (sb != null) {
-                sb.addPlayerToTeam(name, teamName);
-                if (healthObj != null) {
-                    Score sc = sb.getValueFromObjective(name, healthObj);
+                ScorePlayerTeam team = sb.getTeam(teamName);
+                if (team != null) sb.addPlayerToTeam(name, teamName);
+                ScoreObjective hObj = sb.getObjective("lads_health");
+                if (hObj != null) {
+                    Score sc = sb.getValueFromObjective(name, hObj);
                     sc.setScorePoints(20);
                 }
             }
@@ -326,8 +319,6 @@ public final class Probe192Players {
                 if (team != null) sb.removeTeam(team);
             }
         }
-        command(mc, "scoreboard objectives remove lads_health");
-        for (String t : TEAMS) command(mc, "scoreboard teams remove " + t);
 
         activeCount = 0;
         LOG.info("Lads 1.8.9 perf: Probe192Players torn down scene {}", sceneName);
