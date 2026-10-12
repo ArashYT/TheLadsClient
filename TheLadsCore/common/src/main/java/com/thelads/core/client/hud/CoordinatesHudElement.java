@@ -11,6 +11,7 @@ public class CoordinatesHudElement extends HudElement {
     private LadsGraphics preparedGraphics;
     private boolean hasPlayer, vertical, showBiome;
     private String px, py, pz, prefix, separator, biomeText, compass, axes, directionText;
+    private String cachedDirectionText;
     private int lastPosX = Integer.MIN_VALUE, lastPosY = Integer.MIN_VALUE, lastPosZ = Integer.MIN_VALUE;
     private int lastFormat = -1;
     private String pxSep, pySep;
@@ -31,7 +32,7 @@ public class CoordinatesHudElement extends HudElement {
         preparedGraphics = g;
         hasPlayer = g.getGame().hasPlayer();
         showBiome = optBool("Show Biome", false);
-        compass = axes = directionText = null;
+        compass = axes = null;
         int facing = -1;
         if (hasPlayer && optBool("Show Direction", true)) {
             facing = facing(g.getGame().getYaw(), g.getGame().getPlayerDirection());
@@ -53,6 +54,8 @@ public class CoordinatesHudElement extends HudElement {
         if (format != lastFormat) {
             lastFormat = format;
             lastPosX = lastPosY = lastPosZ = Integer.MIN_VALUE;
+            pxSep = pySep = null;
+            cachedDirectionText = null;
         }
         if (posX != lastPosX) {
             lastPosX = posX;
@@ -97,10 +100,15 @@ public class CoordinatesHudElement extends HudElement {
         if (pySep == null || !separator.equals(lastSep)) pySep = py + separator;
         if (biomeHoriz == null || !separator.equals(lastSep)) biomeHoriz = separator + "(" + biomeText + ")";
         if (compass != null) {
-            if (facing != lastFacing || !separator.equals(lastSep)) {
-                directionText = separator + compass + " (" + axes + ")";
+            if (facing != lastFacing || !separator.equals(lastSep) || cachedDirectionText == null) {
+                cachedDirectionText = separator + compass + " (" + axes + ")";
                 lastFacing = facing;
             }
+            directionText = cachedDirectionText;
+        } else {
+            directionText = null;
+            cachedDirectionText = null;
+            lastFacing = -2;
         }
         lastSep = separator;
 
