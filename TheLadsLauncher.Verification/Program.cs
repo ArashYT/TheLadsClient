@@ -508,14 +508,21 @@ if (ebeVerification && capabilities.Minimal) requiredWorldProbes = [.. requiredW
 if (capabilities.Minimal && !autoWorldVerification) requiredWorldProbes = scripted ? ["Lads qa script END:"] : []; // --no-world: the title screen and the script are the whole run (its END marker ends the run)
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
 // The 1.8.9 Core has neither report: its runs are checked from logs\latest.log (Forge's mod list, OptiFine, the title screen).
+// 1.9.1: LADS_VERIFY_CAPTURE_BIOMES=<shard>/<shards> (26.3): every biome photographed at six times of day for the Crosshair
+// Tweaks preview backgrounds (BiomeCapture, its own normal-terrain world) without the title-screen probes; the run ends at its END marker.
+// =ui: no captures; that page and the drawing editor photographed with every background (title screen, then in the world).
+string? biomeCapture = Env("LADS_VERIFY_CAPTURE_BIOMES");
+if (biomeCapture != null && (version != "26.3" || !Regex.IsMatch(biomeCapture, @"\A([0-9]/[1-9]|ui)\z")))
+    throw new ArgumentException("LADS_VERIFY_CAPTURE_BIOMES takes <shard>/<shards> (e.g. 0/2) or ui and runs on 26.3 only.");
 var requiredCore = new List<string>();
+if (biomeCapture != null) requiredCore.Add("Lads biome capture END:");
 if (fastQuitPhase != null) requiredCore.Add("Lads fast quit probe END:");
 bool welcomeVerification = Env("LADS_VERIFY_WELCOME") == "1";
 if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
 // Every version: the Add Server screen names known servers (AddServerProbe), screenshots/addserver-*.png.
 bool addServerVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_ADDSERVER") == "1";
 if (addServerVerification) requiredCore.Add("Lads add-server probe END:");
-if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && fastQuitPhase == null) requiredCore.Add("Lads shared content probe END:");
+if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && fastQuitPhase == null && biomeCapture == null) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
@@ -528,7 +535,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads hud layout FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
     "Lads AppleSkin sync capture FAILED", "Lads qa script FAILED", "Lads qa step FAILED", "Lads render 1.8.5 capture FAILED", "Lads input probe FAILED", "Lads fast quit probe FAILED",
-    "Mod resolution encountered an incompatible mod set", "Incompatible mods found"];
+    "Mod resolution encountered an incompatible mod set", "Incompatible mods found", "Lads biome capture FAILED"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || capabilities.Minimal || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
 bool CatalogWritten() => File.Exists(catalogFile) && File.GetLastWriteTimeUtc(catalogFile) >= runStartUtc;
@@ -780,15 +787,15 @@ try
         AddJvm("-Dfabric.noGui=true");
         // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
         if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
-        else if (fastQuitPhase == null) AddJvm("-Dthelads.verifyIntegrations=true"); // the FastQuit probe opens its own worlds
-        if (!autoWorldVerification) { if (fastQuitPhase == null) AddJvm("-Dthelads.verifyInput=true"); }
+        else if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyIntegrations=true"); // the FastQuit probe opens its own worlds
+        if (!autoWorldVerification) { if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyInput=true"); }
         else
         {
             AddJvm("-Dthelads.verifyAutoWorld=true");
             AddJvm("-Dthelads.verifyDurabilityTooltip=true");
             AddJvm(requestedFeaturesOnly ? "-Dthelads.verifyRequestedFeaturesOnly=true" : "-Dthelads.verifyCrosshair=true");
         }
-        if (titleVerification && !autoWorldVerification && fastQuitPhase == null) AddJvm("-Dthelads.verifyKillBannerPreview=true");
+        if (titleVerification && !autoWorldVerification && fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyKillBannerPreview=true");
         if (settingsVerification)
         {
             AddJvm("-Dthelads.verifyAllIntegrationWrites=true");
@@ -803,11 +810,12 @@ try
         if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
         if (flashbackVerification) AddJvm("-Dthelads.verifyFlashback=true");
         if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
-        if (fastQuitPhase == null) AddJvm("-Dthelads.verifySharedContent=true"); // it opens the world list at the title screen, as the FastQuit probe does
+        if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifySharedContent=true"); // it opens the world list at the title screen, as the FastQuit probe does
         if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
         if (runId != null) AddJvm("-Dthelads.sharedContentRunId=" + runId);
         AddJvm("-Dthelads.verifyModInventory=true");
         if (modRequest != null) AddJvm("-Dthelads.verifyModRequest=" + modRequest);
+        if (biomeCapture != null) AddJvm("-Dthelads.verifyBiomeCapture=" + biomeCapture);
         if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
     }
     process.StartInfo.UseShellExecute = false;
