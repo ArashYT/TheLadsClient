@@ -1,7 +1,9 @@
 package com.thelads.core.v1_8_9.mixin;
 
+import com.thelads.core.client.NametagDepth;
 import com.thelads.core.v1_8_9.feature.Nametags189;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,12 +28,18 @@ public abstract class NametagRenderMixin {
         return Nametags189.background() ? alpha : 0;
     }
 
-    /** A shadowed draw just before vanilla's normal pass, which redraws the same text on top; the see-through pass stays flat. */
+    /**
+     * A shadowed draw just before vanilla's normal pass, which redraws the same text on top; the see-through pass stays flat. The
+     * shadow lies in the text's plane, so it writes no depth: with it, the shadow won the depth test over parts of the text (black
+     * lines through the tag that flickered as the camera moved).
+     */
     @Inject(method = "renderLivingLabel", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/gui/FontRenderer;drawString(Ljava/lang/String;III)I", ordinal = 1), require = 0)
     private void ladsShadow(Entity entity, String str, double x, double y, double z, int maxDistance, CallbackInfo ci) {
         if (!Nametags189.shadow()) return;
         FontRenderer font = getFontRendererFromRenderManager();
+        if (!NametagDepth.qaVanilla) GlStateManager.depthMask(false);
         font.drawString(str, -font.getStringWidth(str) / 2, "deadmau5".equals(str) ? -10 : 0, -1, true);
+        GlStateManager.depthMask(true); // vanilla's normal pass writes depth
     }
 }
