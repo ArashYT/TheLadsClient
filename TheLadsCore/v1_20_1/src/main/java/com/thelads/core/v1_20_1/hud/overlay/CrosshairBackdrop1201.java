@@ -18,6 +18,7 @@ public final class CrosshairBackdrop1201 {
 
     /** A direct draw: the caller flushes batched fills first. */
     public static boolean draw(GuiGraphics g, String picture, int x, int y, int w, int h) {
+        if (picture == null) return false;
         if (!picture.equals(source)) load(picture);
         if (!ready) return false;
         int[] part = CrosshairBackground.cover(width, height, w, h);

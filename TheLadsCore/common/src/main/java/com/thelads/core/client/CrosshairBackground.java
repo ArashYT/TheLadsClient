@@ -163,6 +163,7 @@ public final class CrosshairBackground {
      * Null (and logged) when it cannot be read; the versions keep only the last one they uploaded.
      */
     public static Picture read(String source) {
+        if (source == null || source.isEmpty()) return null;
         boolean resource = source.startsWith("/assets/");
         try (InputStream in = resource ? CrosshairBackground.class.getResourceAsStream(source) : Files.newInputStream(new File(source).toPath())) {
             if (in == null) throw new IOException("missing");
@@ -258,7 +259,7 @@ public final class CrosshairBackground {
             picked = name;
             status = "";
             LOG.info("Crosshair background: {} ({}x{}) from {}", name, picture.width, picture.height, path.getFileName());
-        } catch (Exception failure) {
+        } catch (Throwable failure) {
             status = "Can't use that file";
             LOG.warn("Crosshair background: {} unusable", path, failure);
         }

@@ -552,7 +552,7 @@ if (capabilities.Minimal && !autoWorldVerification) requiredWorldProbes = script
 // Tweaks preview backgrounds (BiomeCapture, its own normal-terrain world) without the title-screen probes; the run ends at its END marker.
 // =ui: no captures; that page and the drawing editor photographed with every background (title screen, then in the world).
 string? biomeCapture = Env("LADS_VERIFY_CAPTURE_BIOMES");
-if (biomeCapture != null && (version != "26.3" || !Regex.IsMatch(biomeCapture, @"\A([0-9]/[1-9]|ui)\z")))
+if (biomeCapture != null && (version != "26.3" || !Regex.IsMatch(biomeCapture, @"\A([0-9]+/[1-9][0-9]*|ui)\z")))
     throw new ArgumentException("LADS_VERIFY_CAPTURE_BIOMES takes <shard>/<shards> (e.g. 0/2) or ui and runs on 26.3 only.");
 var requiredCore = new List<string>();
 if (biomeCapture != null) requiredCore.Add("Lads biome capture END:");

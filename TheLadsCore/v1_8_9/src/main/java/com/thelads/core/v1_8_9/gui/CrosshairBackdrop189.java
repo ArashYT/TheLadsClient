@@ -17,6 +17,7 @@ public final class CrosshairBackdrop189 {
     private CrosshairBackdrop189() {}
 
     public static boolean draw(String picture, int x, int y, int w, int h) {
+        if (picture == null) return false;
         if (!picture.equals(source)) load(picture);
         if (texture == null) return false;
         int[] part = CrosshairBackground.cover(width, height, w, h);
