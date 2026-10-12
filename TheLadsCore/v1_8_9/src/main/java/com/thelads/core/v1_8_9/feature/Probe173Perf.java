@@ -66,11 +66,12 @@ import org.lwjgl.opengl.GL11;
  * Results in lads-qa/perf/perf.json, a screenshot per scene in lads-qa/screenshots/perf-*.png; every setting the scenes change
  * is put back.
  */
-final class Probe173Perf {
+public final class Probe173Perf {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     static final String WORLD = "Lads Perf 1_8_9";
     private static final int SECONDS = Math.min(90, Integer.getInteger("thelads.perfSeconds", 60)), WARM = 10, SWAPS = 10;
     private static final double X = 0.5, Y = 4, Z = 0.5; // the grass top of the "2;7,2x3,2;1;" preset is y 3
+    public static volatile boolean profilingRequested = false;
     static final List<CoreProbe.Step> STEPS = initSteps();
 
     private static List<CoreProbe.Step> initSteps() {
@@ -374,7 +375,7 @@ final class Probe173Perf {
             int count = Probe192Players.countFor(name);
             check(mc.theWorld.loadedEntityList.size() >= count + 1, "perf " + name + ": at least " + (count + 1) + " entities in the world (" + mc.theWorld.loadedEntityList.size() + ")");
         }
-        mc.mcProfiler.profilingEnabled = true;
+        profilingRequested = true;
         try {
             Field mapField = ReflectionHelper.findField(net.minecraft.profiler.Profiler.class, "profilingMap", "field_76324_e");
             mapField.setAccessible(true);
@@ -605,7 +606,7 @@ final class Probe173Perf {
     }
 
     private static boolean write(Minecraft mc) throws Exception {
-        mc.mcProfiler.profilingEnabled = false;
+        profilingRequested = false;
         File folder = new File(mc.mcDataDir, "lads-qa/perf");
         check(folder.isDirectory() || folder.mkdirs(), "perf folder " + folder);
         Files.write(new File(folder, "perf.json").toPath(), new GsonBuilder().setPrettyPrinting().create().toJson(report).getBytes(StandardCharsets.UTF_8));

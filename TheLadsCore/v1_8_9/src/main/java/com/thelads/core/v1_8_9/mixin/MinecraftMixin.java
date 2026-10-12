@@ -34,6 +34,7 @@ public abstract class MinecraftMixin {
     @Shadow public net.minecraft.client.multiplayer.WorldClient theWorld;
     @Shadow public net.minecraft.client.gui.GuiScreen currentScreen;
     @Shadow public net.minecraft.client.settings.GameSettings gameSettings;
+    @Shadow public net.minecraft.profiler.Profiler mcProfiler;
 
     /** Unfocused FPS cap: vanilla's limit (30 in a menu without a world, else the option), lowered while the window is not focused. */
     @Inject(method = "getLimitFramerate", at = @At("HEAD"), cancellable = true, require = 1)
@@ -82,6 +83,11 @@ public abstract class MinecraftMixin {
     @Inject(method = "runGameLoop", at = @At("HEAD"), require = 0)
     private void ladsFrameStart(CallbackInfo ci) {
         FrameWork189.start();
+        if (com.thelads.core.v1_8_9.feature.Probe173Perf.profilingRequested) {
+            if (mcProfiler != null && !mcProfiler.profilingEnabled) mcProfiler.profilingEnabled = true;
+        } else if (mcProfiler != null && mcProfiler.profilingEnabled && (gameSettings == null || !gameSettings.showDebugProfilerChart)) {
+            mcProfiler.profilingEnabled = false;
+        }
     }
 
     @Inject(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;updateDisplay()V"), require = 0)
