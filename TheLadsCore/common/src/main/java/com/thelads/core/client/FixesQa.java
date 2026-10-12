@@ -168,7 +168,7 @@ public final class FixesQa {
             case 106 -> { NametagDepth.qaVanilla = true; wait = 5; }
             case 107 -> { pendingShot = game.screenshot("gui-chat-vanilla"); wait = 5; }
             case 108 -> {
-                if (!sameText(guiShot, pendingShot, 0, 55, 50, 88, "the chat's text")) return retry();
+                if (!sameText(guiShot, pendingShot, 0, 70, 50, 88, "the chat's text")) return retry(); // its lines, below HUD counters (FPS)
                 NametagDepth.qaVanilla = false;
                 step = 11;
             }
