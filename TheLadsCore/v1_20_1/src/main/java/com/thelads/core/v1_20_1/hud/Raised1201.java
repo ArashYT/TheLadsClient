@@ -3,6 +3,7 @@ package com.thelads.core.v1_20_1.hud;
 import com.thelads.core.client.ChatLift;
 import com.thelads.core.modules.RaisedModule;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.client.gui.screens.ChatScreen;
 
 /**
@@ -31,6 +32,8 @@ public final class Raised1201 {
     /** GUI pixels chat is drawn, hovered and clicked higher: {@link #chat()}, or more to clear the survival HUD's armor row (ChatLift). */
     public static int chatLift() {
         var minecraft = Minecraft.getInstance();
-        return ChatLift.lift(chat(), minecraft.gameMode != null && minecraft.gameMode.canHurtPlayer(), hotbar(), 40);
+        var player = minecraft.player;
+        int rows = player == null ? 1 : ChatLift.healthRows((float) player.getAttributeValue(Attributes.MAX_HEALTH), player.getHealth(), player.getAbsorptionAmount());
+        return ChatLift.lift(chat(), minecraft.gameMode != null && minecraft.gameMode.canHurtPlayer(), hotbar(), 40, rows);
     }
 }

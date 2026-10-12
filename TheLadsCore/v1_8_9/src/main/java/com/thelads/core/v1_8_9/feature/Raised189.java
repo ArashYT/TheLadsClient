@@ -5,6 +5,7 @@ import com.thelads.core.modules.RaisedModule;
 import java.util.EnumSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiChat;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
@@ -40,8 +41,11 @@ public final class Raised189 {
 
     /** GUI pixels chat is drawn, hovered and clicked higher: {@link #chat()}, or more to clear the survival HUD's armor row (ChatLift). */
     public static int chatLift() {
-        PlayerControllerMP controller = Minecraft.getMinecraft().playerController;
-        return ChatLift.lift(chat(), controller != null && controller.shouldDrawHUD(), hotbar(), 28);
+        Minecraft mc = Minecraft.getMinecraft();
+        PlayerControllerMP controller = mc.playerController;
+        EntityPlayerSP player = mc.thePlayer;
+        int rows = player == null ? 1 : ChatLift.healthRows(player.getMaxHealth(), player.getHealth(), player.getAbsorptionAmount());
+        return ChatLift.lift(chat(), controller != null && controller.shouldDrawHUD(), hotbar(), 28, rows);
     }
 
     /** Starts drawing a hotbar part raised; {@link GlStateManager#popMatrix()} ends it. */

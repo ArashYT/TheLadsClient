@@ -284,7 +284,7 @@ class HudBehaviorTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"0,S,+Z", "22.4,S,+Z", "22.5,SW,-X +Z", "90,W,-X", "135,NW,-X -Z", "180,N,-Z", "225,NE,+X -Z", "270,E,+X", "315,SE,+X +Z", "337.4,SE,+X +Z", "337.5,S,+Z"})
+    @CsvSource({"0,S,+Z", "22.4,S,+Z", "22.5,SW,-X +Z", "90,W,-X", "135,NW,-X -Z", "180,N,-Z", "225,NE,+X -Z", "270,E,+X", "315,SE,+X +Z", "337.4,SE,+X +Z", "337.5,S,+Z", "-45,SE,+X +Z", "-90,E,+X", "-180,N,-Z"})
     void coordinatesShowWhereYouFaceOnTheRight(float yaw, String compass, String axes) {
         game.yaw = yaw;
         HudElement element = named(new CoordinatesHudElement(), "Coordinates");

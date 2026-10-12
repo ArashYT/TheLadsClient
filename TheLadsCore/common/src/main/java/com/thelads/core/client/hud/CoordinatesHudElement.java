@@ -117,7 +117,7 @@ public class CoordinatesHudElement extends HudElement {
 
     /** Which of the eight directions the player faces (an index into COMPASS), by yaw (0 = south), else by the facing's name; -1 when neither says. */
     static int facing(float yaw, String name) {
-        if (Float.isFinite(yaw) && yaw >= 0) return (int) ((yaw % 360 + 22.5f) / 45) % 8;
+        if (Float.isFinite(yaw) && yaw != -1f) return (int) (((yaw % 360 + 360) % 360 + 22.5f) / 45) % 8; // -1: the bridge has no yaw
         String facing = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
         return facing.startsWith("south") ? 0 : facing.startsWith("west") ? 2 : facing.startsWith("north") ? 4 : facing.startsWith("east") ? 6 : -1;
     }

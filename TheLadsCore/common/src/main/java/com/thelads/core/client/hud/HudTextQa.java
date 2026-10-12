@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  * -Dthelads.qaHudText=true): the 1.9.1 HUD text sequence. Photographs the Lads HUD with the global text shadow On and Off,
  * Coordinates with the direction on its right (vertical facing NW, horizontal with the biome facing E, then switched off), the HUD editor with
  * Keystrokes selected between other HUDs placed flush against its edges, and chat in survival with armor on (Above Armor Bar on,
- * off, open and closed, and in creative). Frames go to screenshots/text-*.png; lines "Lads hud layout frame ..." and a closing "Lads hud layout END:
+ * off, open and closed, in creative, and with absorption hearts). Frames go to screenshots/text-*.png; lines "Lads hud layout frame ..." and a closing "Lads hud layout END:
  * N passed, M failed" (the HUD layout probe's markers, so the harness waits for it the same way).
  */
 public final class HudTextQa {
@@ -78,6 +78,9 @@ public final class HudTextQa {
                 case 23 -> shot(d, "text-10-chat-open-above-armor-off");
                 case 24 -> { d.chat(false); option("Chat", "Above Armor Bar", true); d.command("gamemode creative @a"); chat(d); wait = 30; }
                 case 25 -> shot(d, "text-11-chat-creative");
+                // Absorption hearts make a second row; the armor row rises above it and chat with it.
+                case 26 -> { survival(d); d.effect("absorption", 22); chat(d); wait = 50; }
+                case 27 -> shot(d, "text-12-chat-absorption-above-armor-on");
                 default -> { end(d); return true; }
             }
         } catch (RuntimeException failure) {

@@ -66,7 +66,9 @@ public final class Raised26 {
     /** GUI pixels chat is drawn higher: {@link #chat()}, or more to clear the survival HUD's armor row (ChatLift). */
     public static int chatLift() {
         var minecraft = Minecraft.getInstance();
-        return com.thelads.core.client.ChatLift.lift(chat(), minecraft.gameMode != null && minecraft.gameMode.canHurtPlayer(), hotbar(), 40);
+        var player = minecraft.player;
+        int rows = player == null ? 1 : com.thelads.core.client.ChatLift.healthRows((float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH), player.getHealth(), player.getAbsorptionAmount());
+        return com.thelads.core.client.ChatLift.lift(chat(), minecraft.gameMode != null && minecraft.gameMode.canHurtPlayer(), hotbar(), 40, rows);
     }
 
     /**
