@@ -101,6 +101,24 @@ public final class FileDialogsQa {
         return false;
     }
 
+    /** A picker opened by a screen's own button (1.8.9's Skin changer): a dialog of this process shows now. */
+    public static boolean showing() {
+        return findDialog() != null;
+    }
+
+    /** That dialog photographed into {@code shot} and closed (a cancel); true when it is the modern one, owned by the game window. */
+    public static boolean photographAndClose(Path shot) throws Exception {
+        Pointer dialog = findDialog();
+        boolean modern = hasDescendant(dialog, "DUIViewWndClassName"), owned = FileDialogs.Explorer.pointer("user32", "GetWindow", dialog, 4) != null;
+        LOGGER.info("Lads dialogs capture {}: modern Explorer dialog {}, owned by the game window {}, title '{}'", shot.getFileName(), modern, owned, text(dialog));
+        try {
+            capture(dialog, shot);
+        } finally {
+            FileDialogs.Explorer.call("user32", "PostMessageW", dialog, 0x10, Pointer.NULL, Pointer.NULL); // WM_CLOSE: a cancel
+        }
+        return modern && owned;
+    }
+
     /** This process's visible dialog-class (#32770) top-level window. */
     private static Pointer findDialog() {
         int pid = FileDialogs.Explorer.call("kernel32", "GetCurrentProcessId");

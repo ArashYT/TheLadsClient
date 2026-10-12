@@ -1,15 +1,8 @@
 package com.thelads.core.v1_8_9.gui;
 
+import com.thelads.core.client.util.FileDialogs;
 import com.thelads.core.v1_8_9.feature.LocalSkins189;
-import java.awt.FileDialog;
-import java.awt.Frame;
-import java.awt.GraphicsEnvironment;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
@@ -19,7 +12,6 @@ import org.lwjgl.input.Keyboard;
 public final class SkinChangerScreen189 extends GuiScreen {
     private static final int LOAD = 1, ADD_FILE = 2, MODEL = 3, ACCOUNT = 4, DONE = 199;
     private static final String HINT = "Username, UUID or URL";
-    private static final AtomicBoolean DIALOG_OPEN = new AtomicBoolean();
     private final GuiScreen parent;
     private GuiTextField source;
     private SkinPreview189 preview;
@@ -75,7 +67,7 @@ public final class SkinChangerScreen189 extends GuiScreen {
                 if (busy) return;
                 busy = true;
                 status = "Choose a skin PNG in the file dialog";
-                chooseFile().whenComplete((file, error) -> mc.addScheduledTask(() -> {
+                FileDialogs.openFile("Add skin PNG", "Skins (PNG)", "png").whenComplete((file, error) -> mc.addScheduledTask(() -> {
                     busy = false;
                     if (error != null) status = "File dialog failed";
                     else if (file != null) load(file.toString());
@@ -106,39 +98,6 @@ public final class SkinChangerScreen189 extends GuiScreen {
             busy = false;
             status = error == null ? message : "Could not load skin: " + (error.getMessage() != null ? error.getMessage() : error.toString());
         }));
-    }
-
-    /** The open-file dialog (AWT's: 1.8.9 has no native one), on its own thread so the game keeps drawing. Completes with null when cancelled. */
-    private static CompletableFuture<Path> chooseFile() {
-        CompletableFuture<Path> result = new CompletableFuture<>();
-        if (GraphicsEnvironment.isHeadless()) {
-            result.completeExceptionally(new IllegalStateException("No file dialog in this game"));
-            return result;
-        }
-        if (!DIALOG_OPEN.compareAndSet(false, true)) {
-            result.completeExceptionally(new IllegalStateException("A file dialog is already open"));
-            return result;
-        }
-        Thread thread = new Thread(() -> {
-            FileDialog dialog = null;
-            try {
-                dialog = new FileDialog((Frame) null, "Add skin PNG", FileDialog.LOAD);
-                dialog.setFile("*.png"); // the Windows dialog's filter
-                dialog.setFilenameFilter((dir, name) -> name.toLowerCase(Locale.ROOT).endsWith(".png"));
-                dialog.setAlwaysOnTop(true);
-                dialog.setVisible(true);
-                String file = dialog.getFile(), directory = dialog.getDirectory();
-                result.complete(file == null ? null : directory == null ? Paths.get(file) : Paths.get(directory, file));
-            } catch (Throwable failure) {
-                result.completeExceptionally(failure);
-            } finally {
-                if (dialog != null) dialog.dispose();
-                DIALOG_OPEN.set(false);
-            }
-        }, "Lads file dialog");
-        thread.setDaemon(true);
-        thread.start();
-        return result;
     }
 
     @Override

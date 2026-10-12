@@ -41,7 +41,7 @@ public interface LadsGraphics {
     /**
      * Draws a modal layer (dialog, popup, tooltip) so it sits in front of everything drawn before it, text and items included.
      * Versions that paint in call order just run it; 1.20.1 depth-tests its GUI (text is 0.03 and items 150 in front of the fill
-     * they sit on), so the layer is lifted by 400 like vanilla's tooltips.
+     * they sit on), so each layer is lifted 400 (vanilla's tooltip depth) in front of the one before it.
      */
     default void overlay(Runnable draw) { draw.run(); }
 

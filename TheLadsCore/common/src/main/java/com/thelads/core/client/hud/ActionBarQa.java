@@ -47,6 +47,8 @@ public final class ActionBarQa {
     /**
      * Server lines (artifacts-agy/1.9.1/actionbar-lines.json): long, hex colours, bold, obfuscated, a health bar. Each is photographed
      * as vanilla shows it and as the module does with its defaults: the two must match (1.8.9: plus the module's shadow).
+     * Line 4's §k (obfuscated) bookends are random glyphs every frame, vanilla's too (any glyph of the same width, Devanagari
+     * included): only its middle can match.
      */
     static final String[][] LINES = {
         {"§c§lWARNING: §7An intruder has invaded your base defense! Protect your bed or face elimination!",

@@ -9,6 +9,7 @@ import com.thelads.core.client.util.FileDialogsQa;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.OldAnimationsModule;
+import com.thelads.core.v1_8_9.gui.SkinChangerScreen189;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -37,7 +38,8 @@ import org.apache.logging.log4j.Logger;
  * clicks a second, in survival, at the sky and at the ground, with vanilla's swing rule (OldAnimations189.qaVanillaSwing) and with the
  * fix, with LegacySwing, and on a blocking sword with 1.7 Animations: every click must start a swing (counted the tick after it);
  * then the common FixesQa routine (Fullbright, name tags, the pause menu's Multiplayer) with 1.8.9's world and screens.
- * LADS_VERIFY_189_ONLY=dialogs: the common FileDialogsQa (a machine nobody watches). Screenshots: lads-qa/screenshots.
+ * LADS_VERIFY_189_ONLY=dialogs: the common FileDialogsQa (a machine nobody watches), then the Skin changer's Add File (the modern
+ * dialog, closed: "Selection canceled"). Screenshots: lads-qa/screenshots.
  */
 final class Probe191Fixes {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
@@ -73,6 +75,30 @@ final class Probe191Fixes {
             if (dialogs == null) dialogs = new FileDialogsQa(new File(mc.mcDataDir, "lads-qa/screenshots").toPath());
             if (!dialogs.tick()) return retry(0);
             check(dialogs.failures().isEmpty(), "file dialogs: " + dialogs.failures());
+            mc.displayGuiScreen(new SkinChangerScreen189(null)); // its Add File: the same modern dialog, and closing it is a cancel
+            return after(10);
+        }, mc -> {
+            GuiButton add = ((SkinChangerScreen189) mc.currentScreen).button("Add File");
+            CoreProbe.click(add.xPosition + add.width / 2, add.yPosition + add.height / 2);
+            clicks = 0;
+            return after(20);
+        }, mc -> {
+            if (!FileDialogsQa.showing()) {
+                check(++clicks < 40, "the Skin changer's Add File opens a dialog within 10 s");
+                return retry(5);
+            }
+            return after(40); // let it paint
+        }, mc -> {
+            check(FileDialogsQa.photographAndClose(new File(mc.mcDataDir, "lads-qa/screenshots/dialog-skin-add-file.png").toPath()),
+                "the Skin changer's Add File opens the modern Windows dialog, owned by the game window");
+            clicks = 0;
+            return after(10);
+        }, mc -> {
+            String status = ((SkinChangerScreen189) mc.currentScreen).status();
+            if (!"Selection canceled".equals(status) && ++clicks < 40) return retry(5);
+            CoreProbe.screenshot(mc, "dialog-skin-canceled");
+            check("Selection canceled".equals(status), "closing it is a cancel: " + status);
+            mc.displayGuiScreen(null);
             return after(5);
         });
     }
