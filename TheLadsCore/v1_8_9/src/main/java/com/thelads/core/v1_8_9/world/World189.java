@@ -34,12 +34,7 @@ public final class World189 {
 
     /** Instead of the cape layer: false leaves it to vanilla. */
     public static boolean cape(AbstractClientPlayer player, float partial, RenderPlayer renderer) {
-        Minecraft mc = Minecraft.getMinecraft();
-        if (player == mc.thePlayer && mc.gameSettings.thirdPersonView == 0) return false;
-        if (com.thelads.core.v1_8_9.feature.EntityCulling189.inShadowPass()) return false;
-        Entity view = mc.getRenderViewEntity();
-        if (view != null && !player.isInRangeToRender3d(view.posX, view.posY, view.posZ)) return false;
-        WavyCapesModule settings = WavyCapesModule.active(player == mc.thePlayer);
+        WavyCapesModule settings = WavyCapesModule.active(player == Minecraft.getMinecraft().thePlayer);
         if (settings == null || !player.hasPlayerInfo() || player.isInvisible() || !player.isWearing(EnumPlayerModelParts.CAPE)) return false;
         ResourceLocation texture = player.getLocationCape();
         if (texture == null) return false;
