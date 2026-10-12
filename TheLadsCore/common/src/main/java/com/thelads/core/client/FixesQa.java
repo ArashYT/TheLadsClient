@@ -237,24 +237,32 @@ public final class FixesQa {
     }
 
     /**
-     * The two frames' region (percent of width and height) differs in at most 0.5% of its pixels; false while either is still being
-     * written. The fixed frame must be the same as vanilla's: the depth fix only touches text drawn in the world.
+     * The text in the two frames' region (percent of width and height) is the same: its white text pixels match, all but 1% (the
+     * world behind keeps moving: mobs, clouds, the sun). False while either is still being written. The fixed frame must be the same
+     * as vanilla's: the depth fix only touches text drawn in the world.
      */
     private boolean sameText(Path fixed, Path vanilla, int x0, int y0, int x1, int y1, String what) {
         try {
             if (!Files.isRegularFile(fixed) || !Files.isRegularFile(vanilla)) return false;
             BufferedImage a = ImageIO.read(fixed.toFile()), b = ImageIO.read(vanilla.toFile());
             if (a == null || b == null) return false;
-            int width = a.getWidth(), height = a.getHeight(), differ = 0, total = 0;
+            int width = a.getWidth(), height = a.getHeight(), differ = 0, text = 0;
             for (int y = height * y0 / 100; y < height * y1 / 100; y++)
-                for (int x = width * x0 / 100; x < width * x1 / 100; x++, total++)
-                    if (a.getRGB(x, y) != b.getRGB(x, y)) differ++;
+                for (int x = width * x0 / 100; x < width * x1 / 100; x++) {
+                    boolean inA = white(a.getRGB(x, y)), inB = white(b.getRGB(x, y));
+                    if (inA || inB) text++;
+                    if (inA != inB) differ++;
+                }
             patience = 0;
-            check(differ <= total / 200, what + " is the same with the fix as without it (" + differ + " of " + total + " pixels differ)");
+            check(text > 50 && differ <= text / 100, what + " is the same with the fix as without it (" + differ + " of " + text + " text pixels differ)");
             return true;
         } catch (Exception partial) {
             return false; // still being written
         }
+    }
+
+    private static boolean white(int rgb) {
+        return ((rgb >> 16) & 255) > 200 && ((rgb >> 8) & 255) > 200 && (rgb & 255) > 200;
     }
 
     /** Puts both modules back as the run found them (also after a failure). */
