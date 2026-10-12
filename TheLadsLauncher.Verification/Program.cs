@@ -161,6 +161,14 @@ bool particlesOnly = particlesCaptureVerification && Env("LADS_VERIFY_PARTICLES_
 bool soundsCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_SOUNDS") == "1";
 // LADS_VERIFY_SOUNDS_ONLY=1: that capture alone once the QA world is up, as LADS_VERIFY_PARTICLES_ONLY.
 bool soundsOnly = soundsCaptureVerification && Env("LADS_VERIFY_SOUNDS_ONLY") == "1";
+// 1.9.1 fixes lane (FixesCapture, common FixesQa): Fullbright at midnight and in a stone room, name tags with Text Shadow, the pause
+// menu's Multiplayer (it leaves the QA world at its end, so it runs alone once the world is up). 1.8.9: LADS_VERIFY_189_ONLY=fixes;
+// 1.20.1 (plain and Zero SMP): the script verb "fixes".
+bool fixesCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_FIXES") == "1";
+// 1.9.1: every file picker opened, checked (modern Explorer dialog, owned by the game) and photographed (common FileDialogsQa). It opens
+// dialogs on the desktop: only on a machine nobody watches (the Legion QA box). 1.8.9: LADS_VERIFY_189_ONLY=dialogs; 1.20.1: "dialogs".
+bool dialogsCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_DIALOGS") == "1";
+bool fixesOnly = fixesCaptureVerification || dialogsCaptureVerification;
 // Fabric versions: the player in a checkerboard-layered QA skin, from the front, SkinLayers on and off (SkinLayersCapture). 1.8.9's self-test does the same.
 bool skinLayersCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_SKINLAYERS") == "1";
 // Fabric versions: cheats turned on as World Options and Multiplayer Options do ("set"), "off", or what stayed after the
@@ -378,6 +386,8 @@ if (autoWorldVerification && File.Exists(zoomCaptureRequest)) File.Delete(zoomCa
 string particlesCaptureRequest = Path.Combine(directory, ".lads-qa-capture-particles");
 string soundsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-sounds");
 if (autoWorldVerification && File.Exists(soundsCaptureRequest)) File.Delete(soundsCaptureRequest);
+string fixesCaptureRequest = Path.Combine(directory, ".lads-qa-capture-fixes"), dialogsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-dialogs");
+foreach (var request in new[] { fixesCaptureRequest, dialogsCaptureRequest }) if (autoWorldVerification && File.Exists(request)) File.Delete(request);
 if (autoWorldVerification && File.Exists(particlesCaptureRequest)) File.Delete(particlesCaptureRequest);
 string skinLayersCaptureRequest = Path.Combine(directory, ".lads-qa-capture-skinlayers");
 if (autoWorldVerification && File.Exists(skinLayersCaptureRequest)) File.Delete(skinLayersCaptureRequest);
@@ -449,7 +459,8 @@ string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:",
     "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
     "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads hud layout END:", "Lads mouse tweaks capture END:",
-    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:", "Lads sounds capture END:"];
+    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:", "Lads sounds capture END:",
+    "Lads fixes capture END:", "Lads dialogs capture END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
 bool Settled(bool requested, params string[] ends) => !requested || ends.All(passedMarkers.ContainsKey) || ends.Any(failedCaptures.ContainsKey);
 bool CapturesSettled(bool resolutionRequested) =>
@@ -480,6 +491,8 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(appleSkinSyncVerification, "Lads AppleSkin sync capture END:")
     && Settled(particlesCaptureVerification, "Lads particle core capture END:")
     && Settled(soundsCaptureVerification, "Lads sounds capture END:")
+    && Settled(fixesCaptureVerification, "Lads fixes capture END:")
+    && Settled(dialogsCaptureVerification, "Lads dialogs capture END:")
     && Settled(render185Requested, "Lads render 1.8.5 capture END:");
 var inventorySnapshots = new Dictionary<string, JsonNode>(StringComparer.Ordinal);
 var keyLines = new List<string>();
@@ -498,7 +511,7 @@ if (requestedFeaturesOnly)
     requiredWorldProbes = ["Lads native feature probe END:", "Lads improvements probe END:", "Lads font reload probe END:", "Lads world capture END:", "Lads shared content probe END:"];
     Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
 }
-if (particlesOnly || soundsOnly) requiredWorldProbes = ["Lads world capture END:"];
+if (particlesOnly || soundsOnly || fixesOnly) requiredWorldProbes = ["Lads world capture END:"];
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
 // 1.8.5 input lane, Fabric versions: input-latency pacing and synthetic mouse evidence in the QA world (InputProbe26 / InputProbe1201).
 bool inputVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_INPUT") == "1", inputProbeFailed = false;
@@ -515,7 +528,7 @@ if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
 // Every version: the Add Server screen names known servers (AddServerProbe), screenshots/addserver-*.png.
 bool addServerVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_ADDSERVER") == "1";
 if (addServerVerification) requiredCore.Add("Lads add-server probe END:");
-if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && fastQuitPhase == null) requiredCore.Add("Lads shared content probe END:");
+if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && !fixesOnly && fastQuitPhase == null) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
@@ -803,7 +816,7 @@ try
         if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
         if (flashbackVerification) AddJvm("-Dthelads.verifyFlashback=true");
         if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
-        if (fastQuitPhase == null) AddJvm("-Dthelads.verifySharedContent=true"); // it opens the world list at the title screen, as the FastQuit probe does
+        if (fastQuitPhase == null && !fixesOnly) AddJvm("-Dthelads.verifySharedContent=true"); // it opens the world list at the title screen, as the FastQuit probe does
         if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
         if (runId != null) AddJvm("-Dthelads.sharedContentRunId=" + runId);
         AddJvm("-Dthelads.verifyModInventory=true");
@@ -1055,6 +1068,8 @@ try
                     (zoomCaptureVerification, zoomCaptureRequest, "Drive Lads Zoom in the QA world and capture its frames."),
                     (particlesCaptureVerification, particlesCaptureRequest, "Run Particle Core in a heavy particle scene in the QA world and photograph its pages."),
                     (soundsCaptureVerification, soundsCaptureRequest, "Upload test sounds, land a combo on a pig and kill one with your own kill sound."),
+                    (fixesCaptureVerification, fixesCaptureRequest, "Photograph Fullbright, name tags and the pause menu's Multiplayer, then leave the world through it."),
+                    (dialogsCaptureVerification, dialogsCaptureRequest, "Open, check, photograph and close every file picker."),
                     (skinLayersCaptureVerification, skinLayersCaptureRequest, "Photograph the player's 3D skin layers with SkinLayers on and off."),
                     (sprintCaptureVerification, sprintCaptureRequest, "Walk Toggle Sprint & Sneak through the QA world and log every tick's sprint packets."),
                     (hud170CaptureVerification, hud170CaptureRequest, "Capture the 1.7.0 HUD changes in the QA world."),
@@ -1203,6 +1218,10 @@ try
             "The requested Lads Zoom capture did not pass. Inspect production-smoke.log.");
         Require(!soundsCaptureVerification || passedMarkers.ContainsKey("Lads sounds capture END:"),
             "The requested uploaded-sounds capture did not pass. Inspect production-smoke.log.");
+        Require(!fixesCaptureVerification || passedMarkers.ContainsKey("Lads fixes capture END:"),
+            "The requested 1.9.1 fixes capture did not pass. Inspect production-smoke.log.");
+        Require(!dialogsCaptureVerification || passedMarkers.ContainsKey("Lads dialogs capture END:"),
+            "The requested file dialogs capture did not pass. Inspect production-smoke.log.");
         Require(!particlesCaptureVerification || passedMarkers.ContainsKey("Lads particle core capture END:"),
             "The requested Particle Core capture did not pass. Inspect production-smoke.log.");
         Require(!skinLayersCaptureVerification || passedMarkers.ContainsKey("Lads skin layers capture END:"),

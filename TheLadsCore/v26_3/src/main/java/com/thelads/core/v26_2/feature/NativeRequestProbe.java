@@ -33,11 +33,11 @@ public final class NativeRequestProbe {
             var multiplayer=pause.children().stream().filter(c->c instanceof Button b&&b.getMessage().getString().equals(Component.translatable("menu.multiplayer").getString())).map(c->(Button)c).findFirst().orElseThrow();
             require(multiplayer.active,"pause exposes Multiplayer action");passed++;
             if(mc.allowsMultiplayer()&&mc.level!=null) {
+                FixesCapture.localServersOnly(); // the list pings every entry
                 var levelBefore=mc.level;multiplayer.onPress(null);
-                require(mc.gui.screen() instanceof ConfirmScreen,"Multiplayer asks before leaving the world");passed++;
-                require(mc.level==levelBefore,"opening Multiplayer confirmation preserves the loaded world");passed++;
-                var stay=mc.gui.screen().children().stream().filter(c->c instanceof Button b&&b.getMessage().getString().equals("Stay in game")).map(c->(Button)c).findFirst().orElseThrow();
-                stay.onPress(null);require(mc.level==levelBefore&&mc.gui.screen()==pause,"cancel returns to pause without disconnecting");passed++;
+                require(mc.gui.screen() instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen,"Multiplayer opens the server list over the world (1.9.1)");passed++;
+                require(mc.level==levelBefore,"the server list keeps the loaded world");passed++;
+                mc.gui.screen().onClose();require(mc.level==levelBefore&&mc.gui.screen()==pause,"Back returns to pause without disconnecting");passed++;
             }
             passed += NativeImprovementsProbe.run();
             if(Boolean.getBoolean("thelads.verify133"))passed+=Version133Probe.run();

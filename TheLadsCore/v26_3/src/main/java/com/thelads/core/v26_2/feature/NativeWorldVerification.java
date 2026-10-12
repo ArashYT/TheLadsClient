@@ -139,7 +139,7 @@ public final class NativeWorldVerification {
                     mc.setScreenAndShow(null);
                 }
                 // Remove only Minecraft's ordinary pause screen. Never accept confirmation, error or upgrade dialogs.
-                if (mc.gui.screen() != null && mc.gui.screen().getClass() == PauseScreen.class && menuScreen == null) mc.setScreenAndShow(null);
+                if (mc.gui.screen() != null && mc.gui.screen().getClass() == PauseScreen.class && menuScreen == null && !FixesCapture.busy()) mc.setScreenAndShow(null);
                 if (worldReady() && !readyLogged) {
                     readyLogged = true;
                     NativeImprovementsProbe.prepareCapture();
@@ -184,6 +184,7 @@ public final class NativeWorldVerification {
             DynamicLightsCapture.tick(gameDirectory, captureReady && (DynamicLightsCapture.busy() || !captureBusy()));
             ParticleCoreCapture.tick(gameDirectory, captureReady && (ParticleCoreCapture.busy() || !captureBusy()));
             SoundsCapture.tick(gameDirectory, captureReady && (SoundsCapture.busy() || !captureBusy()));
+            FixesCapture.tick(gameDirectory, captureReady && !captureBusy());
             com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.tick(gameDirectory, captureReady && (com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() || !captureBusy()));
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
@@ -288,6 +289,7 @@ public final class NativeWorldVerification {
     public static void renderedFrame(com.mojang.blaze3d.pipeline.RenderTarget target) {
         if (hudProbe != null && active() && !failed) hudProbe.frame(target, gameDirectory);
         if (SoundsCapture.busy()) SoundsCapture.frame(target, gameDirectory);
+        if (FixesCapture.busy()) FixesCapture.frame(target);
         renderMenuCapture(target);
         if(TITLE_CAPTURE&&active()&&!opened&&!titleCaptured&&titleSince>0
             &&System.nanoTime()-titleSince>2_000_000_000L&&Minecraft.getInstance().gui.screen() instanceof TitleScreen&&Minecraft.getInstance().gui.overlay()==null) {
@@ -445,10 +447,11 @@ public final class NativeWorldVerification {
             else LOGGER.info("Lads {} capture END: actual framebuffer at {}",captureKind,menuOutput);
             menuScreen=switch(captureKind){
                 case "pause"->{
-                    // Essential's actions are a row above the account name; its settings open from there.
+                    // Since 1.8.0's Essential lockdown the pause menu keeps only Essential's Host World / Invite Friends (PauseScreenMixin);
+                    // its other actions (and the old row above the account name, EssentialRow26) are gone by design.
                     var settings=menuScreen.children().stream().filter(c->c instanceof com.thelads.core.v26_2.gui.CompactButton26 b&&b.getMessage().getString().equals("Essential")).map(c->(net.minecraft.client.gui.components.Button)c).findFirst();
                     if(settings.isPresent())settings.get().onPress(null);
-                    else if(FabricLoader.getInstance().isModLoaded("essential"))throw new IllegalStateException("Essential's settings action missing from the pause menu row");
+                    else LOGGER.info("Lads menu capture: no Essential row on the pause menu (Essential lockdown, 1.8.0)");
                     yield menuScreen;
                 }
                 case "essential-settings"->new net.minecraft.client.gui.screens.options.SkinCustomizationScreen(null,mc.options);
@@ -490,7 +493,7 @@ public final class NativeWorldVerification {
         return HudInfoCapture.busy() || KillBannerCapture.busy() || KillStreakCapture.busy() || OldAnimationsCapture.busy() || Anim172Capture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
             ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || HudLayoutCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
-            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ParticleCoreCapture.busy() || SoundsCapture.busy();
+            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ParticleCoreCapture.busy() || SoundsCapture.busy() || FixesCapture.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();
