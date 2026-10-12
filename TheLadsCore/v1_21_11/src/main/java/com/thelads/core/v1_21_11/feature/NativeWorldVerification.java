@@ -58,7 +58,7 @@ public final class NativeWorldVerification {
     private static boolean titleCaptureStarted;
     private static volatile boolean titleCaptured;
     /** U4: the 26.x menu capture chain; the menu request starts at "pause" and ends with the Lads menu and its mods view. */
-    private static final java.util.Set<String> CHAIN = java.util.Set.of("pause", "essential", "essential-settings", "packs", "controls", "menu", "chat");
+    private static final java.util.Set<String> CHAIN = java.util.Set.of("pause", "packs", "controls", "menu", "chat");
     private NativeWorldVerification() {}
 
     /** Client init: nothing is registered unless the QA flag is set. */
@@ -234,14 +234,11 @@ public final class NativeWorldVerification {
         try {
             if (mc.screen.children().size() != titleChildren)
                 throw new IllegalStateException("The Lads title keeps changing: " + titleChildren + " -> " + mc.screen.children().size() + " children in 3 frames");
-            // The Essential overlap fix holds after the title was re-opened by the title checks (Essential re-adds its menu).
-            if (NativeMenuAccessProbe.essentialOverlayShown(mc.screen))
-                throw new IllegalStateException("Essential's menu layer is drawn over the Lads title screen");
             Path output = screenshot("native-title-");
             Screenshot.takeScreenshot(target, image -> {
                 try {
                     image.writeToFile(output);
-                    LOGGER.info("Lads title capture END: 3 passed, 0 failed; a stable Lads title with no Essential menu layer over it; actual completed title frame at {}", output);
+                    LOGGER.info("Lads title capture END: 3 passed, 0 failed; a stable Lads title; actual completed title frame at {}", output);
                     titleCaptured = true;
                 } catch (Exception failure) { fail("title capture", failure); }
                 finally { image.close(); }
@@ -256,9 +253,6 @@ public final class NativeWorldVerification {
     }
     private static void updateMenuCapture(Minecraft mc, long now) {
         if (menuCaptureFinished) { finishMenuCapture(mc, menuCaptureFailure); return; }
-        // Essential opens its settings screen on its own schedule after the relocated Lads action was pressed.
-        if ("essential-settings".equals(captureKind) && menuScreen instanceof net.minecraft.client.gui.screens.PauseScreen && mc.screen != menuScreen
-            && mc.screen != null && mc.screen.getClass().getName().startsWith("gg.essential.")) essentialOpened(mc, now);
         if (hudProbe != null) hudProbe.tick();
         if (mc.level == null || mc.player == null || mc.player.isDeadOrDying() || mc.screen != menuScreen) {
             finishMenuCapture(mc, new IllegalStateException("The requested QA menu was replaced before capture by " + (mc.screen == null ? "no screen" : mc.screen.getClass().getName())));
@@ -271,7 +265,6 @@ public final class NativeWorldVerification {
         // worldReady intentionally requires screen == null; this path instead requires our exact real menu.
         if (!active() || failed || menuScreen == null || menuCaptureStarted || mc.screen != menuScreen
             || mc.getOverlay() != null || mc.level == null || mc.player == null || mc.player.isDeadOrDying()) return;
-        if ("essential-settings".equals(captureKind) && menuScreen instanceof net.minecraft.client.gui.screens.PauseScreen) return;
         long now = System.nanoTime();
         if (menuFirstFrame == 0) menuFirstFrame = now;
         menuFrames++;
@@ -299,27 +292,16 @@ public final class NativeWorldVerification {
             if ("menu".equals(captureKind))
                 LOGGER.info("Lads menu capture END: 1 passed, 0 failed; {} completed frames; actual framebuffer at {}", menuFrames, menuOutput);
             else LOGGER.info("Lads {} capture END: 1 passed, 0 failed; {} completed frames; actual framebuffer at {}", captureKind, menuFrames, menuOutput);
-            boolean essential = FabricLoader.getInstance().isModLoaded("essential");
             try {
                 Screen next = switch (captureKind) {
-                    case "pause" -> {
-                        // Essential's actions are a row above the account name; its settings open from there.
-                        if (!essential) yield packsScreen(mc);
-                        var settings = button(menuScreen, "Essential");
-                        if (!(settings instanceof com.thelads.core.v1_21_11.gui.CompactButton12111))
-                            throw new IllegalStateException("Essential's settings action missing from the pause menu row");
-                        settings.onPress(null);
-                        yield menuScreen;
-                    }
-                    case "essential-settings" -> packsScreen(mc);
+                    case "pause" -> packsScreen(mc);
                     case "packs" -> new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null, mc.options);
                     case "controls" -> new LadsSettingsScreen12111(null);
                     case "menu" -> { var view = new LadsSettingsScreen12111(null); view.ui().openModule("Chat"); yield view; }
                     default -> { var view = new LadsSettingsScreen12111(null); view.ui().openMods(); yield view; }
                 };
                 captureKind = switch (captureKind) {
-                    case "pause" -> essential ? "essential-settings" : "packs";
-                    case "essential-settings" -> "packs";
+                    case "pause" -> "packs";
                     case "packs" -> "controls";
                     case "controls" -> "menu";
                     case "menu" -> "chat";
@@ -327,14 +309,9 @@ public final class NativeWorldVerification {
                 };
                 menuOpenedAt = System.nanoTime(); menuFirstFrame = 0; menuFrames = 0;
                 menuCaptureStarted = false; menuCaptureFinished = false; menuCaptureFailure = null; menuOutput = null;
-                if ("essential-settings".equals(captureKind)) {
-                    menuScreen = next;
-                    if (mc.screen != next && mc.screen != null && mc.screen.getClass().getName().startsWith("gg.essential.")) essentialOpened(mc, menuOpenedAt);
-                } else {
-                    // Controls is swapped for the native Lads controls screen on the way in: capture what is really shown.
-                    mc.setScreen(next);
-                    menuScreen = mc.screen;
-                }
+                // Controls is swapped for the native Lads controls screen on the way in: capture what is really shown.
+                mc.setScreen(next);
+                menuScreen = mc.screen;
                 return;
             } catch (Exception chainFailure) { failure = chainFailure; }
         }
@@ -352,11 +329,6 @@ public final class NativeWorldVerification {
             LOGGER.error("Lads " + captureKind + " capture FAILED", failure);
             fail("menu screenshot", failure);
         }
-    }
-    /** The relocated "Essential settings" Lads button opened Essential's own screen: capture that screen next (26.x). */
-    private static void essentialOpened(Minecraft mc, long now) {
-        menuScreen = mc.screen; menuOpenedAt = now;
-        LOGGER.info("Lads Essential action probe END: 1 passed, 0 failed; pause row's Essential action opened {}", menuScreen.getClass().getName());
     }
     private static Screen packsScreen(Minecraft mc) {
         return new net.minecraft.client.gui.screens.packs.PackSelectionScreen(mc.getResourcePackRepository(), repository -> {},

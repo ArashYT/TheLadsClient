@@ -18,55 +18,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PauseScreenMixin extends Screen {
     @Unique private GridLayout.RowHelper ladsPauseRows;
     @Unique private final java.util.List<net.minecraft.client.gui.components.AbstractWidget> ladsExtras=new java.util.ArrayList<>();
-    @Unique private final java.util.List<net.minecraft.client.gui.components.AbstractWidget> ladsEssentialPending = new java.util.ArrayList<>();
     @Unique private Button ladsExtrasButton;
-    @Unique private com.thelads.core.v26_2.gui.CompactButton26 ladsFullscreenButton;
-    @Unique private Button ladsHostOrInviteButton;
-    @Unique private long ladsInitNanos;
+    @Unique private Button ladsFullscreenButton;
     @Unique private boolean ladsLayoutReady;
 
     @Unique private void ladsLayout() {
         if(!((PauseScreen)(Object)this).showsPauseMenu())return;
         boolean changed=!ladsLayoutReady;
 
-        if (!ladsEssentialPending.isEmpty() && System.nanoTime() - ladsInitNanos < 5_000_000_000L) {
-            for (var pending : java.util.List.copyOf(ladsEssentialPending)) {
-                var action = com.thelads.core.v26_2.gui.EssentialActions.capture(this, pending);
-                if (action != null) {
-                    ladsEssentialPending.remove(pending);
-                    String lbl = action.label().toLowerCase(java.util.Locale.ROOT);
-                    if (ladsHostOrInviteButton == null && (lbl.contains("host") || lbl.contains("invite"))) {
-                        String title = lbl.contains("invite") ? "Invite Friends" : "Host World";
-                        ladsHostOrInviteButton = addRenderableWidget(Button.builder(Component.literal(title), b -> action.press().run()).bounds(0, 0, 204, 20).build());
-                        changed = true;
-                    }
-                }
-            }
-        }
-
         for(var child:java.util.List.copyOf(children()))if(child instanceof net.minecraft.client.gui.components.AbstractWidget widget
             &&widget!=ladsFullscreenButton) {
             if(widget.getClass().getName().startsWith("gg.essential.")) {
-                var action = com.thelads.core.v26_2.gui.EssentialActions.capture(this, widget);
-                if (action != null) {
-                    String lbl = action.label().toLowerCase(java.util.Locale.ROOT);
-                    if (ladsHostOrInviteButton == null && (lbl.contains("host") || lbl.contains("invite"))) {
-                        String title = lbl.contains("invite") ? "Invite Friends" : "Host World";
-                        ladsHostOrInviteButton = addRenderableWidget(Button.builder(Component.literal(title), b -> action.press().run()).bounds(0, 0, 204, 20).build());
-                    }
-                } else if (!ladsEssentialPending.contains(widget)) {
-                    ladsEssentialPending.add(widget);
-                }
                 widget.visible=false;removeWidget(widget);changed=true;
-            } else if(widget instanceof Button&&widget!=ladsExtrasButton&&widget!=ladsHostOrInviteButton&&widget.getWidth()<=30) {
+            } else if(widget instanceof Button&&widget!=ladsExtrasButton&&widget.getWidth()<=30) {
                 if(!ladsExtras.contains(widget))ladsExtras.add(widget);widget.visible=false;removeWidget(widget);changed=true;
             }
-        }
-
-        // Singleplayer fallback if Essential is present but didn't provide a proxy button
-        if (ladsHostOrInviteButton == null && net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("essential") && minecraft != null && minecraft.hasSingleplayerServer()) {
-            ladsHostOrInviteButton = addRenderableWidget(Button.builder(Component.literal("Host World"), b -> openEssentialHost()).bounds(0, 0, 204, 20).build());
-            changed = true;
         }
 
         if(!changed)return;
@@ -84,34 +50,9 @@ public abstract class PauseScreenMixin extends Screen {
         }
     }
 
-    @Unique
-    private void openEssentialHost() {
-        try {
-            Class<?> util = Class.forName("gg.essential.util.GuiUtil");
-            Object inst = util.getField("INSTANCE").get(null);
-            Class<?> screenCls = Class.forName("gg.essential.gui.world.HostWorldScreen");
-            Object scr = screenCls.getConstructor().newInstance();
-            util.getMethod("openScreen", net.minecraft.client.gui.screens.Screen.class).invoke(inst, scr);
-            return;
-        } catch (Throwable ignored) {}
-        for (String fallbackName : new String[]{
-            "net.minecraft.client.gui.screens.WorldOptionsScreen",
-            "net.minecraft.client.gui.screens.MultiplayerOptionsScreen",
-            "net.minecraft.client.gui.screens.ShareToLanScreen"
-        }) {
-            try {
-                Class<?> cls = Class.forName(fallbackName);
-                Object scr = cls.getConstructor(net.minecraft.client.gui.screens.Screen.class).newInstance(this);
-                minecraft.setScreenAndShow((net.minecraft.client.gui.screens.Screen) scr);
-                return;
-            } catch (Throwable ignored) {}
-        }
-    }
-
     @Unique private com.thelads.core.client.title.PauseMenuLayout.Slot ladsSlot(Button button){
         String text=button.getMessage().getString();
         if(button==ladsExtrasButton)return com.thelads.core.client.title.PauseMenuLayout.Slot.EXTRAS;
-        if(button==ladsHostOrInviteButton)return com.thelads.core.client.title.PauseMenuLayout.Slot.WORLD;
         if(text.equals("Lads Client"))return com.thelads.core.client.title.PauseMenuLayout.Slot.LADS;
         if(text.equals("Replays"))return com.thelads.core.client.title.PauseMenuLayout.Slot.REPLAYS;
         if(text.contains("Host")||text.contains("Invite"))return com.thelads.core.client.title.PauseMenuLayout.Slot.WORLD;
@@ -125,7 +66,6 @@ public abstract class PauseScreenMixin extends Screen {
     @Inject(method="extractRenderState",at=@At("HEAD"),cancellable=true,require=1)
     private void ladsPauseTheme(net.minecraft.client.gui.GuiGraphicsExtractor g,int mx,int my,float dt,CallbackInfo ci){
         if(!((PauseScreen)(Object)this).showsPauseMenu())return;
-        com.thelads.core.v26_2.gui.EssentialActions.suppressOverlay(this);
         ladsLayout();
         g.fill(0,0,width,height,0xB8100B10);
         g.fill(0,0,width,2,0xFFCF1535);
@@ -144,9 +84,9 @@ public abstract class PauseScreenMixin extends Screen {
     @Inject(method="init",at=@At("TAIL"),require=1)
     private void ladsRemoveReportButtons(CallbackInfo ci){
         ladsLayoutReady=false;ladsExtras.clear();ladsExtrasButton=null;ladsFullscreenButton=null;
-        ladsHostOrInviteButton=null;ladsEssentialPending.clear();ladsInitNanos=System.nanoTime();
         if(((PauseScreen)(Object)this).showsPauseMenu())
-            {ladsFullscreenButton=addRenderableWidget(com.thelads.core.v26_2.gui.CompactButton26.fullscreen());ladsFullscreenButton.placeFullscreen(font,width);}
+            ladsFullscreenButton=addRenderableWidget(new com.thelads.core.v26_2.gui.CompactButton26(width-26,6,20,20,Component.translatable("options.fullscreen"),
+                ()->minecraft.options.fullscreen().get()?"windowed":"fullscreen",com.thelads.core.v26_2.gui.CompactButton26::toggleFullscreen));
         for(var child:java.util.List.copyOf(children()))if(child instanceof net.minecraft.client.gui.components.AbstractWidget widget){
             String text=widget.getMessage().getString();
             if(widget instanceof net.minecraft.client.gui.components.StringWidget){removeWidget(widget);continue;}

@@ -351,7 +351,7 @@ public final class CoreProbe {
             "Lads Mods", I18n.format("fml.menu.mods"), I18n.format("menu.options")));
         if (com.thelads.core.v1_8_9.feature.Screenshots189.active()) expected.add("Screenshots");
         if (Loader.isModLoaded("replaymod")) expected.add("Replays");
-        expected.addAll(Arrays.asList("Friends", "More...", I18n.format("menu.quit"), "Switch Versions"));
+        expected.addAll(Arrays.asList("More...", I18n.format("menu.quit"), "Switch Versions"));
         check(labels.equals(expected), "the main title actions in order " + labels + at);
         List<String> problems = new java.util.ArrayList<>();
         List<GuiButton> placed = lads.placedButtons();
@@ -364,7 +364,7 @@ public final class CoreProbe {
                     && button.yPosition < other.yPosition + other.height && other.yPosition < button.yPosition + button.height)
                     problems.add(rect(button) + " overlaps " + rect(other));
         }
-        check(problems.isEmpty(), placed.size() + " Lads title buttons (main, Switch, fullscreen, language, Essential's row) on the screen without overlaps" + at + " " + problems);
+        check(problems.isEmpty(), placed.size() + " Lads title buttons (main, Switch, fullscreen, language) on the screen without overlaps" + at + " " + problems);
         GuiButton switchButton = lads.switchButton(), fullscreen = lads.fullscreenButton();
         check("Switch".equals(switchButton.displayString) && switchButton.xPosition > 16 && switchButton.yPosition > h * 3 / 4
             && fullscreen.xPosition > w / 2 && fullscreen.yPosition < h / 8 && fullscreen.displayString.matches("Fullscreen|Windowed"),

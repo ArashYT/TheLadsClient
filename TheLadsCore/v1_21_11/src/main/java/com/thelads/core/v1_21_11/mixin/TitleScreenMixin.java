@@ -38,10 +38,6 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private Button ladsAccountsButton;
     @Unique private Button ladsMoreButton;
     @Unique private List<AbstractWidget> ladsExtraWidgets = new ArrayList<>();
-    @Unique private List<com.thelads.core.v1_21_11.gui.EssentialActions.Action> ladsEssentialActions = new ArrayList<>();
-    @Unique private List<AbstractWidget> ladsEssentialRow = new ArrayList<>();
-    @Unique private List<AbstractWidget> ladsEssentialPending = new ArrayList<>();
-    @Unique private long ladsInitNanos;
     @Unique private long ladsLastFrameNanos;
     @Unique private double ladsAnimationSeconds;
 
@@ -58,10 +54,6 @@ public abstract class TitleScreenMixin extends Screen {
         ladsTitleWidgets = new ArrayList<>();
         ladsTitleLayout = null;
         ladsExtraWidgets = new ArrayList<>();
-        ladsEssentialActions = new ArrayList<>();
-        ladsEssentialRow = new ArrayList<>();
-        ladsEssentialPending = new ArrayList<>();
-        ladsInitNanos = System.nanoTime();
         ladsCustomTitle = com.thelads.core.v1_21_11.feature.NativeFeatures.enabled("TitleScreen");
         if (!ladsCustomTitle) return;
         ladsSettingsButton = addRenderableWidget(Button.builder(Component.literal("Lads Mods"),
@@ -84,7 +76,7 @@ public abstract class TitleScreenMixin extends Screen {
         if (!changed) {
             int index = 0;
             for (GuiEventListener child : children()) {
-                if (!(child instanceof AbstractWidget widget) || ladsOverlayTool(widget) || ladsEssentialRow.contains(widget)) continue;
+                if (!(child instanceof AbstractWidget widget) || ladsOverlayTool(widget)) continue;
                 if (index >= ladsTitleWidgets.size() || ladsTitleWidgets.get(index) != widget) {
                     changed = true;
                     break;
@@ -98,7 +90,7 @@ public abstract class TitleScreenMixin extends Screen {
         ladsTitleWidgets = new ArrayList<>();
         // Reuse every original widget, including restricted multiplayer, demo and late mod actions.
         for (GuiEventListener child : children()) {
-            if (child instanceof AbstractWidget widget && !ladsOverlayTool(widget) && !ladsEssentialRow.contains(widget)) ladsTitleWidgets.add(widget);
+            if (child instanceof AbstractWidget widget && !ladsOverlayTool(widget)) ladsTitleWidgets.add(widget);
         }
         // Keep the home screen focused. All secondary native/mod actions remain in More.
         for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
@@ -112,18 +104,12 @@ public abstract class TitleScreenMixin extends Screen {
                 // The Lads theme draws its own artwork: FancyMenu's widgetified vanilla logo, splash, branding and Realms icons go.
                 if (ladsVanillaArtwork(widget)) { widget.visible = false; continue; }
                 if (widget.getClass().getName().startsWith("gg.essential.")) {
-                    // Essential's actions get their own row above the account card; its proxies stay hidden.
                     widget.visible = false;
-                    if (!com.thelads.core.v1_21_11.gui.EssentialRow12111.collect(this, widget, ladsEssentialActions)
-                        && !ladsEssentialPending.contains(widget)) ladsEssentialPending.add(widget);
                 } else if (!ladsExtraWidgets.contains(widget)) ladsExtraWidgets.add(widget);
             }
         }
         ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
-        ladsTitleLayout = TitleScreenTheme.layout(width, height, ladsTitleWidgets.size(), !ladsEssentialActions.isEmpty());
-        ladsEssentialRow.forEach(w->removeWidget(w));
-        ladsEssentialRow = com.thelads.core.v1_21_11.gui.EssentialRow12111.place(w -> addRenderableWidget(w), ladsEssentialActions,
-            height, TitleScreenTheme.essentialRowWidth(ladsTitleLayout));
+        ladsTitleLayout = TitleScreenTheme.layout(width, height, ladsTitleWidgets.size(), false);
         ladsLayoutWidth = width;
         ladsLayoutHeight = height;
         boolean primaryAssigned = false;
@@ -215,12 +201,7 @@ public abstract class TitleScreenMixin extends Screen {
         at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsRenderTitle(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (!ladsCustomTitle) return;
-        com.thelads.core.v1_21_11.gui.EssentialActions.suppressOverlay(this);
         long now = System.nanoTime();
-        // Essential binds its buttons a moment after the screen opens; the row is rebuilt once they are ready.
-        if (!ladsEssentialPending.isEmpty() && now - ladsInitNanos < 5_000_000_000L
-            && ladsEssentialPending.removeIf(w -> com.thelads.core.v1_21_11.gui.EssentialRow12111.collect(this, w, ladsEssentialActions)))
-            ladsTitleLayout = null;
         ladsEnsureTitleLayout();
         float elapsed = ladsLastFrameNanos == 0 ? 0 : (float) Math.clamp((now - ladsLastFrameNanos) / 1.0e9, 0.0, 0.1);
         ladsLastFrameNanos = now;

@@ -21,10 +21,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PauseScreenMixin extends Screen {
     @Unique private GridLayout.RowHelper ladsPauseRows;
     @Unique private final java.util.List<AbstractWidget> ladsExtras=new java.util.ArrayList<>();
-    @Unique private final java.util.List<com.thelads.core.v1_21_11.gui.EssentialActions.Action> ladsEssentialActions=new java.util.ArrayList<>();
-    @Unique private java.util.List<AbstractWidget> ladsEssentialRow=new java.util.ArrayList<>();
-    @Unique private final java.util.List<AbstractWidget> ladsEssentialPending=new java.util.ArrayList<>();
-    @Unique private long ladsInitNanos;
     @Unique private Button ladsExtrasButton;
     @Unique private Button ladsFullscreenButton;
     @Unique private boolean ladsLayoutReady;
@@ -36,15 +32,10 @@ public abstract class PauseScreenMixin extends Screen {
     @Unique private void ladsLayout() {
         if(!((PauseScreen)(Object)this).showsPauseMenu())return;
         boolean changed=!ladsLayoutReady;
-        // Essential binds its buttons a moment after the screen opens; the row is rebuilt once they are ready.
-        if(!ladsEssentialPending.isEmpty()&&System.nanoTime()-ladsInitNanos<5_000_000_000L
-            &&ladsEssentialPending.removeIf(w->com.thelads.core.v1_21_11.gui.EssentialRow12111.collect(this,w,ladsEssentialActions)))changed=true;
         for(var child:java.util.List.copyOf(children()))if(child instanceof AbstractWidget widget
-            &&widget!=ladsFullscreenButton&&!ladsEssentialRow.contains(widget)) {
+            &&widget!=ladsFullscreenButton) {
             if(widget.getClass().getName().startsWith("gg.essential.")) {
-                // Essential's actions get their own row above the account name; its proxies stay hidden.
                 widget.visible=false;removeWidget(widget);changed=true;
-                if(!com.thelads.core.v1_21_11.gui.EssentialRow12111.collect(this,widget,ladsEssentialActions)&&!ladsEssentialPending.contains(widget))ladsEssentialPending.add(widget);
             } else if(widget instanceof Button&&widget!=ladsExtrasButton&&widget.getWidth()<=30) {
                 if(!ladsExtras.contains(widget))ladsExtras.add(widget);widget.visible=false;removeWidget(widget);changed=true;
             }
@@ -52,11 +43,9 @@ public abstract class PauseScreenMixin extends Screen {
         if(!changed)return;
         ladsLayoutReady=true;
         if(!ladsExtras.isEmpty()&&ladsExtrasButton==null)ladsExtrasButton=addRenderableWidget(Button.builder(Component.literal("Extras..."),b->minecraft.setScreen(new com.thelads.core.v1_21_11.gui.TitleExtrasScreen12111(this,ladsExtras))).bounds(0,0,204,20).build());
-        ladsEssentialRow.forEach(w->removeWidget(w));
-        ladsEssentialRow=com.thelads.core.v1_21_11.gui.EssentialRow12111.place(w->addRenderableWidget(w),ladsEssentialActions,height,width-32);
-        var buttons=children().stream().filter(c->c instanceof Button&&c!=ladsFullscreenButton&&!ladsEssentialRow.contains(c)).map(c->(Button)c).toList();
+        var buttons=children().stream().filter(c->c instanceof Button&&c!=ladsFullscreenButton).map(c->(Button)c).toList();
         // In groups: Back to Game, then Advancements/Statistics, Options/Lads Client, Multiplayer/world options, Replays/Extras, Save and Quit apart.
-        int bottom=height-32-(ladsEssentialActions.isEmpty()?0:com.thelads.core.client.title.TitleScreenTheme.ROW_SPACE);
+        int bottom=height-32;
         int top=Math.max(62,12+Math.min(64,height/6)+18);
         var boxes=com.thelads.core.client.title.PauseMenuLayout.arrange(buttons.stream().map(this::ladsSlot).toList(),width,top,bottom);
         for(int i=0;i<buttons.size();i++) {
@@ -79,7 +68,6 @@ public abstract class PauseScreenMixin extends Screen {
     @Inject(method="render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V",at=@At("HEAD"),cancellable=true,require=1)
     private void ladsPauseTheme(GuiGraphics g,int mx,int my,float dt,CallbackInfo ci){
         if(!((PauseScreen)(Object)this).showsPauseMenu())return;
-        com.thelads.core.v1_21_11.gui.EssentialActions.suppressOverlay(this);
         ladsLayout();
         g.fill(0,0,width,height,0xB8100B10);
         g.fill(0,0,width,2,0xFFCF1535);
@@ -94,8 +82,7 @@ public abstract class PauseScreenMixin extends Screen {
     @Inject(method="init",at=@At("TAIL"),require=1)
     private void ladsRemoveReportButtons(CallbackInfo ci){
         ladsLayoutReady=false;ladsExtras.clear();ladsExtrasButton=null;
-        ladsEssentialActions.clear();ladsEssentialRow=new java.util.ArrayList<>();ladsFullscreenButton=null;
-        ladsEssentialPending.clear();ladsInitNanos=System.nanoTime();
+        ladsFullscreenButton=null;
         if(((PauseScreen)(Object)this).showsPauseMenu())
             ladsFullscreenButton=addRenderableWidget(new com.thelads.core.v1_21_11.gui.CompactButton12111(width-26,6,20,20,Component.translatable("options.fullscreen"),
                 ()->minecraft.options.fullscreen().get()?"windowed":"fullscreen",com.thelads.core.v1_21_11.gui.CompactButton12111::toggleFullscreen));

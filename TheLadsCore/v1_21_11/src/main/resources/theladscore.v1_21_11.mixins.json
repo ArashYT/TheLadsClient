@@ -20,7 +20,6 @@
     "MouseHandlerMixin",
     "FullbrightMixin",
     "ZoomMixin",
-    "EssentialZoomMixin",
     "ScoreboardMixin",
     "ServerListAccessor",
     "ServerDataAccessor",

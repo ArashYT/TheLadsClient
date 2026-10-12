@@ -276,10 +276,7 @@ public final class GameProbe1201 {
                 Boolean guests = server == null ? null : com.thelads.core.client.WorldCheats.guests(com.thelads.core.v1_20_1.game.cheats.Cheats1201.folder(server));
                 yield guests == null ? -1 : guests ? 1 : 0;
             }
-            case "essentialswitch" -> {
-                Boolean essential = com.thelads.core.client.WorldCheats.essential();
-                yield essential == null ? -1 : essential ? 1 : 0;
-            }
+            case "essentialswitch" -> -1;
             case "fps" -> mc.getFps();
             case "rawmouse" -> GLFW.glfwGetInputMode(mc.getWindow().getWindow(), GLFW.GLFW_RAW_MOUSE_MOTION) == GLFW.GLFW_TRUE ? 1 : 0;
             case "swinging" -> p.swinging ? 1 : 0;

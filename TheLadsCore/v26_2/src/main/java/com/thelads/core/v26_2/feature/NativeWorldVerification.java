@@ -323,11 +323,6 @@ public final class NativeWorldVerification {
     }
     private static void updateMenuCapture(Minecraft mc, long now) {
         if (menuCaptureFinished) { finishMenuCapture(mc, menuCaptureFailure); return; }
-        if("essential-settings".equals(captureKind) && menuScreen instanceof PauseScreen
-            &&mc.gui.screen()!=menuScreen&&mc.gui.screen()!=null&&mc.gui.screen().getClass().getName().startsWith("gg.essential.")){
-            menuScreen=mc.gui.screen();menuOpenedAt=now;
-            LOGGER.info("Lads Essential action probe END: 1 passed, 0 failed; pause row's Essential action opened {}",menuScreen.getClass().getName());
-        }
         if (hudProbe != null) hudProbe.tick();
         if (mc.level == null || mc.player == null || mc.player.isDeadOrDying()
             || mc.gui.screen() != menuScreen && (hudProbe == null || !hudProbe.inGame())) {
@@ -341,7 +336,6 @@ public final class NativeWorldVerification {
         // worldReady intentionally requires screen == null; this path instead requires our exact real menu.
         if (!active() || failed || menuScreen == null || menuCaptureStarted || mc.gui.screen() != menuScreen
             || mc.gui.overlay() != null || mc.level == null || mc.player == null || mc.player.isDeadOrDying()) return;
-        if("essential-settings".equals(captureKind)&&menuScreen instanceof PauseScreen)return;
         long now = System.nanoTime();
         if (menuFirstFrame == 0) menuFirstFrame = now;
         menuFrames++;
@@ -371,19 +365,12 @@ public final class NativeWorldVerification {
         if (failure == null && "mods".equals(captureKind)
             && !(menuScreen instanceof com.thelads.core.v26_2.gui.LadsSettingsScreen26 mods && mods.isModsViewOpen()))
             failure = new IllegalStateException("The Installed mods view was not open when its frame was captured");
-        if(failure==null && java.util.Set.of("pause","essential-settings","colors","actions","chat","skin-changer","skin","packs","controls","worlds","folders","menu").contains(captureKind)){
+        if(failure==null && java.util.Set.of("pause","colors","actions","chat","skin-changer","skin","packs","controls","worlds","folders","menu").contains(captureKind)){
             if ("menu".equals(captureKind))
                 LOGGER.info("Lads menu capture END: 1 passed, 0 failed; {} completed frames; actual framebuffer at {}", menuFrames, menuOutput);
             else LOGGER.info("Lads {} capture END: actual framebuffer at {}",captureKind,menuOutput);
             menuScreen=switch(captureKind){
-                case "pause"->{
-                    // Essential's actions are a row above the account name; its settings open from there.
-                    var settings=menuScreen.children().stream().filter(c->c instanceof com.thelads.core.v26_2.gui.CompactButton26 b&&b.getMessage().getString().equals("Essential")).map(c->(net.minecraft.client.gui.components.Button)c).findFirst();
-                    if(settings.isPresent())settings.get().onPress(null);
-                    else if(FabricLoader.getInstance().isModLoaded("essential"))throw new IllegalStateException("Essential's settings action missing from the pause menu row");
-                    yield menuScreen;
-                }
-                case "essential-settings"->new net.minecraft.client.gui.screens.options.SkinCustomizationScreen(null,mc.options);
+                case "pause"->new net.minecraft.client.gui.screens.options.SkinCustomizationScreen(null,mc.options);
                 case "skin-changer"->new net.minecraft.client.gui.screens.packs.PackSelectionScreen(mc.getResourcePackRepository(),repository->{},mc.getResourcePackDirectory(),net.minecraft.network.chat.Component.literal("Resource packs"));
                 case "skin"->new com.thelads.core.v26_2.gui.SkinChangerScreen(null);
                 case "packs"->new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(null,mc.options);
@@ -395,10 +382,10 @@ public final class NativeWorldVerification {
                 case "actions"->{var view=new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null);view.openModule("Chat");yield view;}
                 default->{ var view=new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null); view.openMods(); yield view; }
             };
-            captureKind=switch(captureKind){case "pause"->"essential-settings";case "essential-settings"->"skin";case "skin"->"skin-changer";case "skin-changer"->"packs";case "packs"->"controls";case "controls"->"worlds";case "worlds"->"folders";case "folders"->"menu";case "menu"->"colors";case "colors"->"actions";case "actions"->"chat";default->"mods";};
+            captureKind=switch(captureKind){case "pause"->"skin";case "skin"->"skin-changer";case "skin-changer"->"packs";case "packs"->"controls";case "controls"->"worlds";case "worlds"->"folders";case "folders"->"menu";case "menu"->"colors";case "colors"->"actions";case "actions"->"chat";default->"mods";};
             menuOpenedAt=System.nanoTime();menuFirstFrame=0;menuFrames=0;
             menuCaptureStarted=false;menuCaptureFinished=false;menuCaptureFailure=null;menuOutput=null;
-            if(!"essential-settings".equals(captureKind))mc.setScreenAndShow(menuScreen);menuScreen=mc.gui.screen();return;
+            mc.setScreenAndShow(menuScreen);menuScreen=mc.gui.screen();return;
         }
         if (mc.gui.screen() == menuScreen) mc.setScreenAndShow(previousScreen);
         menuScreen = null; previousScreen = null;

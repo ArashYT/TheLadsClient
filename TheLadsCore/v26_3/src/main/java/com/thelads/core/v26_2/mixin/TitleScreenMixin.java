@@ -38,15 +38,13 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private int ladsLayoutHeight;
     @Unique private Button ladsSettingsButton;
     @Unique private Button ladsSwitchButton;
-    @Unique private CompactButton26 ladsFullscreenButton;
+    @Unique private Button ladsFullscreenButton;
     @Unique private Button ladsLanguageButton;
     @Unique private Button ladsReplaysButton;
-    @Unique private Button ladsFriendsButton;
     @Unique private Button ladsMoreButton;
     @Unique private Button ladsQuitButton;
     @Unique private Button ladsSwitchVersionButton;
     @Unique private List<AbstractWidget> ladsExtraWidgets = new ArrayList<>();
-    @Unique private com.thelads.core.v26_2.gui.EssentialActions.Action ladsCapturedFriendsAction;
     @Unique private long ladsLastFrameNanos;
     @Unique private double ladsAnimationSeconds;
 
@@ -62,7 +60,6 @@ public abstract class TitleScreenMixin extends Screen {
         ladsTitleWidgets = new ArrayList<>();
         ladsTitleLayout = null;
         ladsExtraWidgets = new ArrayList<>();
-        ladsCapturedFriendsAction = null;
         ladsCustomTitle = com.thelads.core.v26_2.feature.NativeFeatures.enabled("TitleScreen");
         if (!ladsCustomTitle) return;
 
@@ -72,8 +69,6 @@ public abstract class TitleScreenMixin extends Screen {
             button -> minecraft.setScreenAndShow(new TitleExtrasScreen26(this, ladsExtraWidgets))).bounds(0, 0, 1, 1).build());
         ladsReplaysButton = addRenderableWidget(Button.builder(Component.literal("Replays"),
             button -> com.thelads.core.v26_2.gui.FlashbackScreens.open(this)).bounds(0, 0, 1, 1).build());
-        ladsFriendsButton = addRenderableWidget(Button.builder(Component.literal("Friends"),
-            button -> ladsOpenFriends()).bounds(0, 0, 1, 1).build());
         ladsQuitButton = addRenderableWidget(Button.builder(Component.translatable("menu.quit"),
             button -> minecraft.setScreenAndShow(new com.thelads.core.v26_2.gui.QuitConfirmScreen26(this))).bounds(0, 0, 1, 1).build());
         ladsSwitchVersionButton = addRenderableWidget(Button.builder(Component.literal("Switch Versions"),
@@ -86,8 +81,8 @@ public abstract class TitleScreenMixin extends Screen {
         ladsSwitchButton.setTabOrderGroup(200);
 
         // Header controls (top right)
-        ladsFullscreenButton = addRenderableWidget(CompactButton26.fullscreen());
-        ladsFullscreenButton.placeFullscreen(font, width);
+        ladsFullscreenButton = addRenderableWidget(new CompactButton26(width - 26, 6, 20, 20, Component.translatable("options.fullscreen"),
+            () -> minecraft.options.fullscreen().get() ? "windowed" : "fullscreen", CompactButton26::toggleFullscreen));
         ladsFullscreenButton.setTabOrderGroup(201);
 
         ladsLanguageButton = addRenderableWidget(new CompactButton26(width - 50, 6, 20, 20, Component.translatable("options.language"),
@@ -98,27 +93,6 @@ public abstract class TitleScreenMixin extends Screen {
         ladsLastFrameNanos = 0;
         com.thelads.core.config.BuiltInIntegrations.verifyLoadedAdapters();
         com.thelads.core.config.IntegrationRuntimeProbe.run();
-    }
-
-    @Unique
-    private void ladsOpenFriends() {
-        if (ladsCapturedFriendsAction != null) {
-            try {
-                ladsCapturedFriendsAction.press().run();
-                return;
-            } catch (Throwable ignored) {}
-        }
-        try {
-            Class<?> util = Class.forName("gg.essential.util.GuiUtil");
-            Object inst = util.getField("INSTANCE").get(null);
-            Class<?> screenCls = Class.forName("gg.essential.gui.friends.SocialScreen");
-            Object scr = screenCls.getConstructor().newInstance();
-            util.getMethod("openScreen", net.minecraft.client.gui.screens.Screen.class).invoke(inst, scr);
-            return;
-        } catch (Throwable ignored) {}
-        try {
-            minecraft.setScreenAndShow(new net.minecraft.client.gui.screens.social.SocialInteractionsScreen());
-        } catch (Throwable ignored) {}
     }
 
     @Unique
@@ -169,7 +143,7 @@ public abstract class TitleScreenMixin extends Screen {
         for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
             String key = ladsMessageKey(widget);
             boolean main = widget == ladsSettingsButton || widget == ladsMoreButton
-                || widget == ladsReplaysButton || widget == ladsFriendsButton
+                || widget == ladsReplaysButton
                 || widget == ladsQuitButton || widget == ladsSwitchVersionButton
                 || ladsIsModMenuWidget(widget)
                 || key.equals("menu.singleplayer") || key.equals("menu.playdemo") || key.equals("menu.multiplayer")
@@ -179,10 +153,6 @@ public abstract class TitleScreenMixin extends Screen {
                 removeWidget(widget);
                 if (widget.getClass().getName().startsWith("gg.essential.")) {
                     widget.visible = false;
-                    var action = com.thelads.core.v26_2.gui.EssentialActions.capture(this, widget);
-                    if (action != null && (action.label().equalsIgnoreCase("Social") || action.label().equalsIgnoreCase("Friends"))) {
-                        ladsCapturedFriendsAction = action;
-                    }
                 } else if (!ladsExtraWidgets.contains(widget) && !key.startsWith("fancymenu.widgetified_screens.") && !key.equals("menu.quit")) {
                     ladsExtraWidgets.add(widget);
                 }
@@ -193,8 +163,8 @@ public abstract class TitleScreenMixin extends Screen {
         ladsLayoutWidth = targetW;
         ladsLayoutHeight = targetH;
 
-        int fullscreenWidth = ladsFullscreenButton.placeFullscreen(font, targetW);
-        ladsLanguageButton.setRectangle(20, 20, TitleScreenTheme.languageX(targetW, fullscreenWidth), 6);
+        ladsFullscreenButton.setRectangle(20, 20, targetW - 26, 6);
+        ladsLanguageButton.setRectangle(20, 20, targetW - 50, 6);
 
         boolean primaryAssigned = false;
         for (AbstractWidget widget : ladsTitleWidgets) removeWidget(widget);
@@ -232,7 +202,6 @@ public abstract class TitleScreenMixin extends Screen {
         if (widget == ladsSettingsButton) return 2;
         if (ladsIsModMenuWidget(widget)) return 3;
         if (widget == ladsReplaysButton) return 6;
-        if (widget == ladsFriendsButton) return 7;
         if (widget == ladsMoreButton) return 8;
         if (widget == ladsQuitButton || "menu.quit".equals(ladsMessageKey(widget))) return 9;
         if (widget == ladsSwitchVersionButton) return 10;
@@ -250,7 +219,6 @@ public abstract class TitleScreenMixin extends Screen {
         if (widget == ladsSettingsButton) return "lads";
         if (widget == ladsMoreButton) return "dots";
         if (widget == ladsReplaysButton) return "replay";
-        if (widget == ladsFriendsButton) return "friends";
         if (widget == ladsQuitButton) return "quit";
         if (widget == ladsSwitchVersionButton) return "switch";
         if (ladsIsModMenuWidget(widget)) return "mods";
@@ -275,7 +243,6 @@ public abstract class TitleScreenMixin extends Screen {
         at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsRenderTitle(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (!ladsCustomTitle) return;
-        com.thelads.core.v26_2.gui.EssentialActions.suppressOverlay(this);
         long now = System.nanoTime();
         ladsEnsureTitleLayout();
         float elapsed = ladsLastFrameNanos == 0 ? 0 : (float) Math.clamp((now - ladsLastFrameNanos) / 1.0e9, 0.0, 0.1);

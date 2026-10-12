@@ -1,6 +1,5 @@
 package com.thelads.core.v1_8_9.mixin;
 
-import com.thelads.core.v1_8_9.gui.EssentialActions189;
 import com.thelads.core.v1_8_9.gui.ServerDiscoveryScreen189;
 import java.util.ArrayList;
 import net.minecraft.client.gui.GuiButton;
@@ -25,7 +24,6 @@ public abstract class GuiMultiplayerMixin189 extends GuiScreen {
 
     @Inject(method = "drawScreen", at = @At("HEAD"))
     private void ladsSuppressEssential(int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
-        EssentialActions189.suppressOverlay(this);
         ladsPurgeEssential();
     }
 
@@ -40,7 +38,7 @@ public abstract class GuiMultiplayerMixin189 extends GuiScreen {
     @Unique
     private void ladsPurgeEssential() {
         for (GuiButton btn : new ArrayList<>(buttonList)) {
-            if (btn != ladsDiscoverButton && EssentialActions189.isEssential(btn)) {
+            if (btn != ladsDiscoverButton && btn.getClass().getName().startsWith("gg.essential.")) {
                 btn.visible = false;
                 btn.enabled = false;
                 buttonList.remove(btn);

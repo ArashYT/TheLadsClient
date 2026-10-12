@@ -15,8 +15,6 @@ import net.minecraft.world.level.storage.PrimaryLevelData;
  */
 public final class NativeCheats {
     private static IntegratedServer opened;
-    private static boolean agreed;
-    private static int ticks;
     private NativeCheats() {}
 
     public static void register() {
@@ -28,16 +26,9 @@ public final class NativeCheats {
         if (server == null || mc.player == null) { opened = null; return; }
         if (server != opened) {
             opened = server;
-            agreed = false;
             Boolean guests = WorldCheats.guests(folder(server));
             if (guests != null) server.setCommandsAllowedForOtherPlayers(guests);
         }
-        if (agreed && ++ticks % 20 != 0) return; // after the world opened, Essential's switch is looked at once a second
-        Boolean essential = WorldCheats.essential();
-        if (essential == null) return;
-        boolean own = own(server);
-        if (essential != own) server.setWorldAllowCommands(agreed ? essential : own);
-        agreed = true;
     }
 
     public static Path folder(IntegratedServer server) { return server.getWorldPath(LevelResource.ROOT); }

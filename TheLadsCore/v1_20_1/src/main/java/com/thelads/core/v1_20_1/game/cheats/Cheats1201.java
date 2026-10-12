@@ -36,37 +36,20 @@ public final class Cheats1201 {
         if (server == null || mc.player == null) { opened = null; return; }
         if (server != opened) {
             opened = server;
-            agreed = false;
-            ticks = 0;
             Boolean guests = WorldCheats.guests(folder(server));
             if (guests != null) server.execute(() -> server.getPlayerList().setAllowCheatsForAllPlayers(guests));
         }
-        if (agreed && ++ticks % 20 != 0) return; // after the world opened, Essential's switch is looked at once a second
-        Boolean essential = WorldCheats.essential();
-        if (essential == null) {
-            lastState = "no Essential switch";
-            return;
-        }
-        Boolean own = own(server);
-        if (own == null) return;
-        if (essential != own.booleanValue()) {
-            boolean target = agreed ? essential : own;
-            lastState = "Essential " + essential + ", world " + own + " -> " + target + (agreed ? " (the world follows Essential)" : " (Essential follows the world)");
-            setWorldAllowCommands(server, target);
-        } else lastState = "Essential and the world agree: " + own;
-        agreed = true;
     }
 
     public static Path folder(IntegratedServer server) { return server.getWorldPath(LevelResource.ROOT); }
 
-    /** The world's own switch (level.dat's), which Essential's answer for allowCommands() hides. */
+    /** The world's own switch (level.dat's). */
     static Boolean own(IntegratedServer server) {
         return server.getWorldData() instanceof PrimaryLevelData data ? ((LevelSettingsAccessor) (Object) ((PrimaryLevelDataAccessor) data).ladsSettings()).ladsAllowCommands() : null;
     }
 
-    /** The world's switch and Essential's both become {@code allow}, and every player is told what they may do. */
+    /** The world's switch becomes {@code allow}, and every player is told what they may do. */
     static void setWorldAllowCommands(IntegratedServer server, boolean allow) {
-        WorldCheats.essential(allow);
         if (!(server.getWorldData() instanceof PrimaryLevelData data)) return;
         server.execute(() -> {
             PrimaryLevelDataAccessor access = (PrimaryLevelDataAccessor) data;

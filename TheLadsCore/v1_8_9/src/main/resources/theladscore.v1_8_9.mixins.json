@@ -19,7 +19,6 @@
     "EntityFXAccessor",
     "EffectRendererMixin",
     "EntityRendererMixin",
-    "EssentialZoomMixin189",
     "FontRendererMixin",
     "GlStateManagerMixin",
     "GameSettingsMixin",
@@ -62,7 +61,6 @@
     "NetworkManagerMixin",
     "NetHandlerPlayClientMixin",
     "NetworkPlayerInfoAccessor",
-    "NametagEssentialMixin",
     "NametagLivingMixin",
     "NametagRenderMixin",
     "OpenGlHelperMixin",
@@ -84,7 +82,6 @@
     "WorldSwitchMixin",
     "ServerListEntryNormalMixin",
     "OldServerPingerMixin",
-    "EssentialFirewallMixin189",
     "GuiMultiplayerMixin189",
     "GuiConnectingMixin189"
   ]

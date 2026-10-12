@@ -25,16 +25,15 @@ class TitleScreenThemeTest {
         }
     }
 
-    /** The title's own controls (menu, fullscreen top right, Switch after the account name, Essential's row) never overlap. */
+    /** The title's own controls (menu, fullscreen top right, Switch after the account name) never overlap. */
     @Test void titleControlsStayApartFromSmallWindowsToLargeOnes() {
         for (int w = 240; w <= 1000; w += 20)
           for (int h = 180; h <= 560; h += 20)
-            for (int count : new int[] {6, 7, 8})
-              for (boolean essential : new boolean[] {false, true}) {
-                var layout = TitleScreenTheme.layout(w, h, count, essential);
+            for (int count : new int[] {6, 7, 8}) {
+                var layout = TitleScreenTheme.layout(w, h, count);
                 var g = new LadsGraphicsTest.MockGraphics();
                 var switchBox = TitleScreenTheme.renderBackground(g, layout, "Sixteen_Letters1", "26.2", false, 0, true);
-                String at = count + " buttons at " + w + "x" + h + (essential ? " with Essential" : "");
+                String at = count + " buttons at " + w + "x" + h;
                 int buildLeft = w - 18 - g.textWidth(LadsVersion.clientName() + " (26.2)");
                 assertTrue(switchBox.x() >= 27 && switchBox.x() + switchBox.width() <= buildLeft, "Switch between the name and the build " + at);
                 var boxes = new java.util.ArrayList<>(layout.buttons());
@@ -42,7 +41,6 @@ class TitleScreenThemeTest {
                 boxes.add(new TitleScreenTheme.Rect(TitleScreenTheme.fullscreenX(w, fsWidth), 6, fsWidth, 20));
                 boxes.add(new TitleScreenTheme.Rect(TitleScreenTheme.languageX(w, fsWidth), 6, 20, 20));
                 boxes.add(switchBox);
-                if (essential) boxes.add(new TitleScreenTheme.Rect(16, h - 53, TitleScreenTheme.essentialRowWidth(layout), 18));
                 for (int i = 0; i < boxes.size(); i++) {
                     var a = boxes.get(i);
                     assertTrue(a.x() >= 0 && a.y() >= 0 && a.x() + a.width() <= w && a.y() + a.height() <= h, "box " + i + " on screen, " + at);
@@ -52,7 +50,7 @@ class TitleScreenThemeTest {
                             "boxes " + i + " and " + j + " overlap, " + at);
                     }
                 }
-              }
+            }
         // Roomy: Switch is labelled; cramped: its icon alone.
         var g = new LadsGraphicsTest.MockGraphics();
         assertEquals(g.textWidth("Switch") + TitleScreenTheme.COMPACT_PADDING,
