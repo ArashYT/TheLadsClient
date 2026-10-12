@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import com.thelads.core.modules.ComboSoundsModule;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
@@ -54,6 +55,7 @@ final class KillBannerArrows1201 {
             if (victim != null) {
                 landed.add(id);
                 NativeKillBanner1201.arrowHit(victim, from, where);
+                ComboSoundsModule.onArrowCrossed(victim.getId(), victim instanceof Player, NativeKillBanner1201.headHit(victim, from, where), me.distanceTo(victim));
             }
         }
         flying.keySet().retainAll(seen);

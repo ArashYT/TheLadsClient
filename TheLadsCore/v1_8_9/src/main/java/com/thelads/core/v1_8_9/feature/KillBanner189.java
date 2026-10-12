@@ -93,7 +93,11 @@ public final class KillBanner189 {
         if (event.phase != TickEvent.Phase.END) return;
         KillBannerArt189.sweep();
         Minecraft mc = Minecraft.getMinecraft();
-        if (!eligible()) { reset(); return; }
+        if (!eligible()) {
+            reset();
+            if (mc.theWorld != null && mc.thePlayer != null && ComboSoundsModule.bowActive()) arrows(mc); // Combo Sounds' bow sounds, Kill Banner off
+            return;
+        }
         if (trackedConnection != mc.getNetHandler() || trackedWorld != mc.theWorld) {
             reset();
             trackedConnection = mc.getNetHandler();
@@ -153,7 +157,7 @@ public final class KillBanner189 {
 
     /**
      * Headshots from arrows: where one of the local player's arrows crosses a living entity's box this tick is where it hit,
-     * in the head or not (1.8.9 sends no damage events, so this is the only word on it).
+     * in the head or not (1.8.9 sends no damage events, so this is the only word on it). Combo Sounds' bow sounds hear it too.
      */
     private static void arrows(Minecraft mc) {
         Set<Integer> seen = new HashSet<Integer>();
@@ -188,12 +192,26 @@ public final class KillBanner189 {
             if (victim != null) {
                 landed.add(id);
                 EntityLivingBase target = victim(victim);
-                if (target != null && target.getHealth() > 0)
-                    KillBanners.DETECTOR.hitByMe(target.getEntityId(), names(target), kind(target), headHit(victim, from, where), System.nanoTime());
+                boolean head = headHit(victim, from, where);
+                if (target != null && target.getHealth() > 0) {
+                    if (eligible()) KillBanners.DETECTOR.hitByMe(target.getEntityId(), names(target), kind(target), head, System.nanoTime());
+                    ComboSoundsModule.onArrowCrossed(target.getEntityId(), target instanceof EntityPlayer, head, mc.thePlayer.getDistanceToEntity(target));
+                }
             }
         }
         flying.keySet().retainAll(seen);
         landed.retainAll(seen);
+    }
+
+    /**
+     * The server's arrow-hit-player event (NetHandlerPlayClientMixin, change game state 6): your arrows are looked at once more
+     * first (the one landing may not have crossed its victim on the client yet), then Combo Sounds hears it.
+     */
+    public static void arrowHitPlayer() {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.theWorld == null || mc.thePlayer == null || !ComboSoundsModule.bowActive()) return;
+        arrows(mc);
+        ComboSoundsModule.onArrowHitPlayer();
     }
 
     /** A death status, or a health update to zero (NetHandlerPlayClientMixin). */

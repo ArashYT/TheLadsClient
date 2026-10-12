@@ -61,7 +61,11 @@ public final class NativeKillBanner1201 {
     public static void tick() {
         KillBannerArt1201.sweep();
         Minecraft minecraft = Minecraft.getInstance();
-        if (!eligible()) { reset(); return; }
+        if (!eligible()) {
+            reset();
+            if (ComboSoundsModule.bowActive()) KillBannerArrows1201.tick(minecraft); // Combo Sounds' bow sounds, Kill Banner off
+            return;
+        }
         if (trackedConnection != minecraft.getConnection() || trackedLevel != minecraft.level) {
             reset();
             trackedConnection = minecraft.getConnection();
@@ -103,7 +107,7 @@ public final class NativeKillBanner1201 {
      * "head", Alex's Mobs' and Caves' headPart, from the field the mob holds it in); on anything else, when it lands in the
      * head about the eyes of its box (KillDetector.headHit), wherever modded mobs keep their bodies.
      */
-    private static boolean headHit(Entity target, Vec3 from, Vec3 at) {
+    static boolean headHit(Entity target, Vec3 from, Vec3 at) {
         AABB box = target.getBoundingBox();
         float yaw = target instanceof LivingEntity living ? living.yBodyRot : target.getYRot();
         boolean head;
@@ -115,9 +119,22 @@ public final class NativeKillBanner1201 {
         return head;
     }
 
+    /**
+     * The server's arrow-hit-player event (KillBannerPacketsMixin): your arrows are looked at once more first (the one landing may
+     * not have crossed its victim on the client yet), then Combo Sounds hears it.
+     */
+    public static void arrowHitPlayer() {
+        if (!ComboSoundsModule.bowActive()) return;
+        KillBannerArrows1201.tick(Minecraft.getInstance());
+        ComboSoundsModule.onArrowHitPlayer();
+    }
+
     public static void damaged(int entityId, int causeId) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player != null) ComboSoundsModule.onHurt(entityId, entityId == minecraft.player.getId());
+        if (minecraft.player != null) { // Combo Sounds: a combo hit, your hurt, or a bow hit (who, how far)
+            Entity hurt = minecraft.level == null ? null : minecraft.level.getEntity(entityId);
+            ComboSoundsModule.onHurt(entityId, entityId == minecraft.player.getId(), hurt instanceof Player, hurt == null ? 0 : minecraft.player.distanceTo(hurt));
+        }
         if (!eligible() || causeId < 0 || minecraft.player == null || minecraft.level == null) return;
         if (causeId == minecraft.player.getId()) {
             LivingEntity victim = victim(minecraft.level.getEntity(entityId));

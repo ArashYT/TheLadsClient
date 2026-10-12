@@ -60,7 +60,11 @@ public final class NativeKillBanner {
         KillBannerArt.sweep();
         if (NativeKillBannerPreview.tick()) return;
         Minecraft minecraft = Minecraft.getInstance();
-        if (!eligible()) { reset(); return; }
+        if (!eligible()) {
+            reset();
+            if (ComboSoundsModule.bowActive()) KillBannerArrows.tick(minecraft); // Combo Sounds' bow sounds, Kill Banner off
+            return;
+        }
         if (trackedConnection != minecraft.getConnection() || trackedLevel != minecraft.level) {
             reset();
             trackedConnection = minecraft.getConnection();
@@ -106,12 +110,25 @@ public final class NativeKillBanner {
     /** A damage event: its cause (the attacker, or a projectile's owner) is the local player, someone else, or nobody. */
     public static void damaged(int entityId, int causeId) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player != null) ComboSoundsModule.onHurt(entityId, entityId == minecraft.player.getId());
+        if (minecraft.player != null) { // Combo Sounds: a combo hit, your hurt, or a bow hit (who, how far)
+            Entity hurt = minecraft.level == null ? null : minecraft.level.getEntity(entityId);
+            ComboSoundsModule.onHurt(entityId, entityId == minecraft.player.getId(), hurt instanceof Player, hurt == null ? 0 : minecraft.player.distanceTo(hurt));
+        }
         if (!eligible() || causeId < 0) return;
         if (causeId == minecraft.player.getId()) {
             if (victim(minecraft.level.getEntity(entityId)) instanceof LivingEntity victim)
                 KillBanners.DETECTOR.damagedByMe(victim.getId(), names(victim), kind(victim), System.nanoTime());
         } else KillBanners.DETECTOR.hitByOther(entityId, System.nanoTime());
+    }
+
+    /**
+     * The server's arrow-hit-player event (KillBannerPacketsMixin): your arrows are looked at once more first (the one landing may
+     * not have crossed its victim on the client yet), then Combo Sounds hears it.
+     */
+    public static void arrowHitPlayer() {
+        if (!ComboSoundsModule.bowActive()) return;
+        KillBannerArrows.tick(Minecraft.getInstance());
+        ComboSoundsModule.onArrowHitPlayer();
     }
 
     /** A death event, or a health update to zero. */
