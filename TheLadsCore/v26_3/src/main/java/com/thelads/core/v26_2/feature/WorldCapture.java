@@ -35,8 +35,9 @@ import org.slf4j.LoggerFactory;
  * QA only (auto-world, ".lads-qa-capture-world191" from the harness's LADS_VERIFY_CAPTURE_WORLD191): the 1.9.1 world lane. The QA
  * player gets a test cape (common WavyCape.qaPixel, through LocalSkins as an offline account's own skin does) and is photographed in
  * third person standing, sprinting, strafing, from the front, Blocky, sneaking, with a chestplate, glowing, with an elytra and with Wavy
- * Capes off (screenshots/world191-*.png); then three primed TNT (fuse 80, 50, 20) and a TNT minecart lit by a powered activator rail are
- * photographed with their timers, behind a stone wall with Through blocks off and on, and removed before they explode. Modules,
+ * Capes off (screenshots/world191-*.png); then three primed TNT (fuse 80, 50, 26) and a TNT minecart lit by a powered activator rail are
+ * photographed with their timers (the server's ticks frozen for each shot), behind a stone wall with Through blocks off and on, and
+ * removed before they explode. Modules,
  * skin, camera, keys, game mode, items and blocks are put back.
  */
 final class WorldCapture {
@@ -51,7 +52,7 @@ final class WorldCapture {
     private static Object skinBefore;
     private static CameraType cameraBefore;
     private static BlockPos base;
-    private static int capesAt, timersAt;
+    private static int capesAt, timersAt, waited;
 
     private WorldCapture() {}
 
@@ -197,9 +198,11 @@ final class WorldCapture {
             command("time set noon");
             mc.player.setYRot(0);
             mc.player.setXRot(10);
+            mc.player.getAbilities().flying = false;
             capesAt = World26.capesDrawn;
-            return 40;
+            return 2;
         });
+        steps.add(mc -> mc.player.onGround() || ++waited > 200 ? 40 : -1); // on the ground (an earlier probe may have left it in the air)
         steps.add(mc -> {
             check(mc.player.getSkin().cape() != null, "the QA player wears the test cape: " + mc.player.getSkin().cape());
             check(World26.capesDrawn > capesAt, "the cape is drawn as a wavy cape (" + (World26.capesDrawn - capesAt) + " frames)");
@@ -251,18 +254,31 @@ final class WorldCapture {
             timersAt = World26.timersDrawn;
             command("summon tnt " + at(-2, 0.5, 6) + " {fuse:80s,NoGravity:1b}");
             command("summon tnt " + at(0.5, 0.5, 6) + " {fuse:50s,NoGravity:1b}");
-            command("summon tnt " + at(2.5, 0.5, 6) + " {fuse:20s,NoGravity:1b}");
+            command("summon tnt " + at(2.5, 0.5, 6) + " {fuse:26s,NoGravity:1b}");
             command("summon tnt_minecart " + at(4.5, 0, 6.5));
+            waited = 0;
+            return 1;
+        });
+        steps.add(mc -> { // as soon as this client has all four (a busy server sends them a few ticks late)
+            List<String> labels = timers(mc);
+            if (labels.size() < 4 && ++waited < 40) return -1;
+            LOGGER.info("Lads world191 timers a: {}", labels);
+            check(labels.size() == 4, "three primed TNT and one lit minecart carry timers: " + labels);
+            command("tick freeze"); // each shot of a frozen world, however long the frame takes to write
             return 2;
         });
-        steps.add(mc -> { LOGGER.info("Lads world191 timers a: {}", timers(mc)); return 0; });
         steps.add(shot("tnt-a"));
-        steps.add(mc -> 5);
+        steps.add(mc -> { command("tick unfreeze"); return 1; });
+        steps.add(mc -> { // the 26-tick one about a quarter second from 0
+            float least = Float.MAX_VALUE;
+            for (Entity entity : mc.level.entitiesForRendering()) if (entity instanceof PrimedTnt tnt) least = Math.min(least, tnt.getFuse());
+            if (least > 6) return -1;
+            command("tick freeze");
+            return 2;
+        });
         steps.add(mc -> { LOGGER.info("Lads world191 timers b: {}", timers(mc)); return 0; });
         steps.add(shot("tnt-b"));
-        steps.add(mc -> { // the primed TNT go before the 20-tick one explodes; two fresh ones behind a stone wall
-            List<String> labels = timers(mc);
-            check(labels.size() == 4, "three primed TNT and one lit minecart carry timers: " + labels);
+        steps.add(mc -> { // the primed TNT go before the 26-tick one explodes; two fresh ones behind a stone wall
             check(World26.timersDrawn > timersAt, "the timers are drawn (" + (World26.timersDrawn - timersAt) + ")");
             command("kill @e[type=tnt]");
             command("summon tnt " + at(-2, 0.5, 6) + " {fuse:80s,NoGravity:1b}");
@@ -276,6 +292,7 @@ final class WorldCapture {
         steps.add(mc -> { // long before the 80-tick ones explode
             command("kill @e[type=tnt]");
             command("kill @e[type=tnt_minecart]");
+            command("tick unfreeze");
             return 3;
         });
         steps.add(mc -> { // put everything back
@@ -286,6 +303,7 @@ final class WorldCapture {
                 command("setblock " + block(4, -1, 6) + " grass_block");
                 command("kill @e[type=item]");
             }
+            command("tick unfreeze");
             command("gamemode survival " + mc.player.getGameProfile().name());
             if (cameraBefore != null) mc.options.setCameraType(cameraBefore);
             try {
