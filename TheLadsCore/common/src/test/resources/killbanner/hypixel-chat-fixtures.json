@@ -1,0 +1,2108 @@
+[
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was killed by §aArash§7.",
+    "plain": "Steve_42 was killed by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was killed by §aArash§7. §b§lFINAL KILL!",
+    "plain": "Steve_42 was killed by Arash. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "final_kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§c[RED] §cSteve_42 §7was killed by §9[BLUE] §9Arash§7. §b§lFINAL KILL!",
+    "plain": "[RED] Steve_42 was killed by [BLUE] Arash. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "final_kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was knocked into the void by §aArash§7.",
+    "plain": "Steve_42 was knocked into the void by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was knocked into the void by §aArash§7. §b§lFINAL KILL!",
+    "plain": "Steve_42 was knocked into the void by Arash. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "final_kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was shot by §aArash§7.",
+    "plain": "Steve_42 was shot by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was shot by §aArash§7. §b§lFINAL KILL!",
+    "plain": "Steve_42 was shot by Arash. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "final_kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was blown up by §aArash§7.",
+    "plain": "Steve_42 was blown up by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was killed by §aArash§7's Iron Golem.",
+    "plain": "Steve_42 was killed by Arash's Iron Golem.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was killed by §aArash§7's Bed Bug.",
+    "plain": "Steve_42 was killed by Arash's Bed Bug.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 disconnected while fighting with §aArash§7.",
+    "plain": "Steve_42 disconnected while fighting with Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Arash was killed by §cSteve_42§7.",
+    "plain": "Arash was killed by Steve_42.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Arash fell into the void.",
+    "plain": "Arash fell into the void.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": null
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Arash was knocked into the void by §cSteve_42§7. §b§lFINAL KILL!",
+    "plain": "Arash was knocked into the void by Steve_42. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was killed by §9xX_Nick_Xx§7.",
+    "plain": "Steve_42 was killed by xX_Nick_Xx.",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was knocked into the void by §9xX_Nick_Xx§7. §b§lFINAL KILL!",
+    "plain": "Steve_42 was knocked into the void by xX_Nick_Xx. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was filled full of lead by §aArash§7.",
+    "plain": "Steve_42 was filled full of lead by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 lost the draw to §aArash§7.",
+    "plain": "Steve_42 lost the draw to Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was struck down by §aArash§7.",
+    "plain": "Steve_42 was struck down by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was struck with Cupid's arrow by §aArash§7.",
+    "plain": "Steve_42 was struck with Cupid's arrow by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was hit off by a love bomb from §aArash§7.",
+    "plain": "Steve_42 was hit off by a love bomb from Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 fell in honorable combat to §aArash§7.",
+    "plain": "Steve_42 fell in honorable combat to Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was glazed in BBQ sauce by §aArash§7.",
+    "plain": "Steve_42 was glazed in BBQ sauce by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§9Steve_42 §7was spooked by §cArash§7. §b§lFINAL KILL!",
+    "plain": "Steve_42 was spooked by Arash. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "final_kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was made to walk the plank by §aArash§7.",
+    "plain": "Steve_42 was made to walk the plank by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was bitten by §aArash§7.",
+    "plain": "Steve_42 was bitten by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§7Steve_42 was vaporized by §aArash§7.",
+    "plain": "Steve_42 was vaporized by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-bed-wars-cosmetics.1511222/",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "   §cRed §f- §6§lWINNER!  ",
+    "plain": "   Red - WINNER!  ",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/data/providers/LanguageData.kt",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "   §aWinners: §6[MVP+] Arash§e, §a[VIP] Steve_42",
+    "plain": "   Winners: [MVP+] Arash, [VIP] Steve_42",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was killed by §aArash§7.",
+    "plain": "Steve_42 was killed by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was slain by §aArash§7.",
+    "plain": "Steve_42 was slain by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was thrown into the void by §aArash§7.",
+    "plain": "Steve_42 was thrown into the void by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was knocked off a cliff by §aArash§7.",
+    "plain": "Steve_42 was knocked off a cliff by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was shot by §aArash§7.",
+    "plain": "Steve_42 was shot by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was sniped by §aArash§7.",
+    "plain": "Steve_42 was sniped by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cArash§7 was slain by §aSteve_42§7.",
+    "plain": "Arash was slain by Steve_42.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cArash§7 fell into the void.",
+    "plain": "Arash fell into the void.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was thrown into the void by §axX_Nick_Xx§7.",
+    "plain": "Steve_42 was thrown into the void by xX_Nick_Xx.",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was given the cold shoulder by §aArash§7.",
+    "plain": "Steve_42 was given the cold shoulder by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was turned to ash by §aArash§7.",
+    "plain": "Steve_42 was turned to ash by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was sent to the undertaker by §aArash§7.",
+    "plain": "Steve_42 was sent to the undertaker by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 fell to the superior marksmanship of §aArash§7.",
+    "plain": "Steve_42 fell to the superior marksmanship of Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was tossed into the fire pit by §aArash§7.",
+    "plain": "Steve_42 was tossed into the fire pit by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was sent to Davy Jones' locker by §aArash§7.",
+    "plain": "Steve_42 was sent to Davy Jones' locker by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§cSteve_42§7 was frightened into the void by §aArash§7.",
+    "plain": "Steve_42 was frightened into the void by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "   §6Winner #1 (4 Kills): §aArash §e(Warrior)",
+    "plain": "   Winner #1 (4 Kills): Arash (Warrior)",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "§cSteve_42§7 was killed by §aArash§7.",
+    "plain": "Steve_42 was killed by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-duels.1685322/",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "§cSteve_42§7 was shot by §aArash§7.",
+    "plain": "Steve_42 was shot by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-duels.1685322/",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "§cSteve_42§7 was knocked into water by §aArash§7.",
+    "plain": "Steve_42 was knocked into water by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-duels.1685322/",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "§cSteve_42§7 was knocked into the void by §aArash§7.",
+    "plain": "Steve_42 was knocked into the void by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-duels.1685322/",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "§cArash§7 was killed by §aSteve_42§7.",
+    "plain": "Arash was killed by Steve_42.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/guide-duels.1685322/",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "§cArash§7 hit the ground too hard.",
+    "plain": "Arash hit the ground too hard.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-duels.1685322/",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "§cSteve_42§7 was knocked into the void by §axX_Nick_Xx§7.",
+    "plain": "Steve_42 was knocked into the void by xX_Nick_Xx.",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/guide-duels.1685322/",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "   §eClassic Duel §7- §b0:42",
+    "plain": "   Classic Duel - 0:42",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "   §bPlayer of the match: §aArash §e(5 Goals)",
+    "plain": "   Player of the match: Arash (5 Goals)",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/data/providers/LanguageData.kt",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "   §eSumo Duel §7- §b0:18",
+    "plain": "   Sumo Duel - 0:18",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "uhc",
+    "raw": "§cSteve_42§7 was slain by §aArash§7.",
+    "plain": "Steve_42 was slain by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-uhc-champions.1011502/",
+    "verified": true
+  },
+  {
+    "mode": "uhc",
+    "raw": "§cSteve_42§7 was shot by §aArash§7.",
+    "plain": "Steve_42 was shot by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-uhc-champions.1011502/",
+    "verified": true
+  },
+  {
+    "mode": "uhc",
+    "raw": "§aArash§e harvested §cSteve_42§e's head!",
+    "plain": "Arash harvested Steve_42's head!",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-uhc-champions.1011502/",
+    "verified": true
+  },
+  {
+    "mode": "uhc",
+    "raw": "§cArash§7 was slain by §aSteve_42§7.",
+    "plain": "Arash was slain by Steve_42.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/guide-uhc-champions.1011502/",
+    "verified": true
+  },
+  {
+    "mode": "uhc",
+    "raw": "§cArash§7 suffocated in a wall.",
+    "plain": "Arash suffocated in a wall.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-uhc-champions.1011502/",
+    "verified": true
+  },
+  {
+    "mode": "uhc",
+    "raw": "§cSteve_42§7 was slain by §axX_Nick_Xx§7.",
+    "plain": "Steve_42 was slain by xX_Nick_Xx.",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/guide-uhc-champions.1011502/",
+    "verified": true
+  },
+  {
+    "mode": "uhc",
+    "raw": "   §aWinners: §eArash, Steve_42",
+    "plain": "   Winners: Arash, Steve_42",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "megawalls",
+    "raw": "§c[ZOM] Steve_42§7 was killed by §a[HUN] Arash",
+    "plain": "[ZOM] Steve_42 was killed by [HUN] Arash",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/mega-walls-full-guide.523821/",
+    "verified": true
+  },
+  {
+    "mode": "megawalls",
+    "raw": "§c[ZOM] Steve_42§7 was killed by §a[HUN] Arash§7. §b§lFINAL KILL!",
+    "plain": "[ZOM] Steve_42 was killed by [HUN] Arash. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "final_kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/mega-walls-full-guide.523821/",
+    "verified": true
+  },
+  {
+    "mode": "megawalls",
+    "raw": "§c[HUN] Arash§7 was killed by §a[ZOM] Steve_42",
+    "plain": "[HUN] Arash was killed by [ZOM] Steve_42",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/mega-walls-full-guide.523821/",
+    "verified": true
+  },
+  {
+    "mode": "megawalls",
+    "raw": "§c[HUN] Arash§7 was killed by §a[ZOM] Steve_42§7. §b§lFINAL KILL!",
+    "plain": "[HUN] Arash was killed by [ZOM] Steve_42. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/mega-walls-full-guide.523821/",
+    "verified": true
+  },
+  {
+    "mode": "megawalls",
+    "raw": "§c[ZOM] Steve_42§7 was killed by §a[HUN] xX_Nick_Xx",
+    "plain": "[ZOM] Steve_42 was killed by [HUN] xX_Nick_Xx",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/mega-walls-full-guide.523821/",
+    "verified": true
+  },
+  {
+    "mode": "megawalls",
+    "raw": "§c[ZOM] Steve_42§7 was killed by §a[HUN] xX_Nick_Xx§7. §b§lFINAL KILL!",
+    "plain": "[ZOM] Steve_42 was killed by [HUN] xX_Nick_Xx. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/mega-walls-full-guide.523821/",
+    "verified": true
+  },
+  {
+    "mode": "megawalls",
+    "raw": "   §6[MVP+] Arash §7- §e5 Final Kills",
+    "plain": "   [MVP+] Arash - 5 Final Kills",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "blitz",
+    "raw": "§cSteve_42§7 was killed by §aArash§7.",
+    "plain": "Steve_42 was killed by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-blitz-survival-games.842823/",
+    "verified": true
+  },
+  {
+    "mode": "blitz",
+    "raw": "§cSteve_42§7 was slain by §aArash§7.",
+    "plain": "Steve_42 was slain by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-blitz-survival-games.842823/",
+    "verified": true
+  },
+  {
+    "mode": "blitz",
+    "raw": "§cSteve_42§7 was shot by §aArash§7.",
+    "plain": "Steve_42 was shot by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-blitz-survival-games.842823/",
+    "verified": true
+  },
+  {
+    "mode": "blitz",
+    "raw": "§cSteve_42§7 was obliterated by §aArash§7's Blitz Star!",
+    "plain": "Steve_42 was obliterated by Arash's Blitz Star!",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-blitz-survival-games.842823/",
+    "verified": true
+  },
+  {
+    "mode": "blitz",
+    "raw": "§cArash§7 was killed by §aSteve_42§7.",
+    "plain": "Arash was killed by Steve_42.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/guide-blitz-survival-games.842823/",
+    "verified": true
+  },
+  {
+    "mode": "blitz",
+    "raw": "§cSteve_42§7 was killed by §axX_Nick_Xx§7.",
+    "plain": "Steve_42 was killed by xX_Nick_Xx.",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/guide-blitz-survival-games.842823/",
+    "verified": true
+  },
+  {
+    "mode": "blitz",
+    "raw": "   §6Winner #1 (8 Kills): §aArash §7(Knight)",
+    "plain": "   Winner #1 (8 Kills): Arash (Knight)",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "murdermystery",
+    "raw": "§cSteve_42§7 was killed by §aArash§7.",
+    "plain": "Steve_42 was killed by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-murder-mystery.1396821/",
+    "verified": true
+  },
+  {
+    "mode": "murdermystery",
+    "raw": "§cSteve_42§e was infected!",
+    "plain": "Steve_42 was infected!",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-murder-mystery.1396821/",
+    "verified": true
+  },
+  {
+    "mode": "murdermystery",
+    "raw": "§cYou killed an innocent player! You died!",
+    "plain": "You killed an innocent player! You died!",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-murder-mystery.1396821/",
+    "verified": true
+  },
+  {
+    "mode": "murdermystery",
+    "raw": "§cArash§7 was killed by §aSteve_42§7.",
+    "plain": "Arash was killed by Steve_42.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/guide-murder-mystery.1396821/",
+    "verified": true
+  },
+  {
+    "mode": "murdermystery",
+    "raw": "§cSteve_42§7 was killed by §axX_Nick_Xx§7.",
+    "plain": "Steve_42 was killed by xX_Nick_Xx.",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/guide-murder-mystery.1396821/",
+    "verified": true
+  },
+  {
+    "mode": "murdermystery",
+    "raw": "   §cMurderer: §eSteve_42 §7(6 Kills)",
+    "plain": "   Murderer: Steve_42 (6 Kills)",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "murdermystery",
+    "raw": "   §cAlpha Infected: §exX_Nick_Xx §7(4 infections)",
+    "plain": "   Alpha Infected: xX_Nick_Xx (4 infections)",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "tntgames",
+    "raw": "§cSteve_42§7 was slain by §aArash§7.",
+    "plain": "Steve_42 was slain by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-the-tnt-games.922114/",
+    "verified": true
+  },
+  {
+    "mode": "tntgames",
+    "raw": "§cSteve_42§7 was killed by §aArash§7's Fireball!",
+    "plain": "Steve_42 was killed by Arash's Fireball!",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-the-tnt-games.922114/",
+    "verified": true
+  },
+  {
+    "mode": "tntgames",
+    "raw": "§7Boom! §cArash§7 blew up!",
+    "plain": "Boom! Arash blew up!",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-the-tnt-games.922114/",
+    "verified": true
+  },
+  {
+    "mode": "tntgames",
+    "raw": "§7Boom! §cSteve_42§7 blew up!",
+    "plain": "Boom! Steve_42 blew up!",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-the-tnt-games.922114/",
+    "verified": true
+  },
+  {
+    "mode": "tntgames",
+    "raw": "   §aWinner: §eArash",
+    "plain": "   Winner: Arash",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/data/providers/LanguageData.kt",
+    "verified": true
+  },
+  {
+    "mode": "thepit",
+    "raw": "§a§lKILL! §7on §6[120] Steve_42 §b+15.00XP §6+10.00g",
+    "plain": "KILL! on [120] Steve_42 +15.00XP +10.00g",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-the-pit.1574921/",
+    "verified": true
+  },
+  {
+    "mode": "thepit",
+    "raw": "§c§lDEATH! §7by §6[100] Steve_42",
+    "plain": "DEATH! by [100] Steve_42",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/guide-the-pit.1574921/",
+    "verified": true
+  },
+  {
+    "mode": "thepit",
+    "raw": "§cSteve_42§7 was killed by §axX_Nick_Xx§7.",
+    "plain": "Steve_42 was killed by xX_Nick_Xx.",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/guide-the-pit.1574921/",
+    "verified": true
+  },
+  {
+    "mode": "thepit",
+    "raw": "§6§lPIT EVENT ENDED: §eSQUAD §b[INFO]",
+    "plain": "PIT EVENT ENDED: SQUAD [INFO]",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "thepit",
+    "raw": "§e§lMINOR EVENT! §fCare Package in Central ended",
+    "plain": "MINOR EVENT! Care Package in Central ended",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "arcade",
+    "raw": "§cSteve_42§7 was killed by §aArash§7.",
+    "plain": "Steve_42 was killed by Arash.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-arcade-games.411425/",
+    "verified": true
+  },
+  {
+    "mode": "arcade",
+    "raw": "§cSteve_42§7 was killed by §aArash§7. §b§lFINAL KILL!",
+    "plain": "Steve_42 was killed by Arash. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "final_kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-arcade-games.411425/",
+    "verified": true
+  },
+  {
+    "mode": "arcade",
+    "raw": "§cSteve_42§7 was assassinated by §aArash§7 (+10 Points)",
+    "plain": "Steve_42 was assassinated by Arash (+10 Points)",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-arcade-games.411425/",
+    "verified": true
+  },
+  {
+    "mode": "arcade",
+    "raw": "§cArash§7 was eaten by a Zombie!",
+    "plain": "Arash was eaten by a Zombie!",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-arcade-games.411425/",
+    "verified": true
+  },
+  {
+    "mode": "arcade",
+    "raw": "§cSteve_42§7 was assassinated by §axX_Nick_Xx§7 (+10 Points)",
+    "plain": "Steve_42 was assassinated by xX_Nick_Xx (+10 Points)",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/guide-arcade-games.411425/",
+    "verified": true
+  },
+  {
+    "mode": "arcade",
+    "raw": "   §cZombies §7- §e12:45 §7(Round 20)",
+    "plain": "   Zombies - 12:45 (Round 20)",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "arcade",
+    "raw": "   §aYou survived §e15 §arounds!",
+    "plain": "   You survived 15 rounds!",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "arcade",
+    "raw": "   §aThey captured all wools!",
+    "plain": "   They captured all wools!",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "arcade",
+    "raw": "   §61st Killer §7- §6[MVP+] Arash §7- §e25 Kills",
+    "plain": "   1st Killer - [MVP+] Arash - 25 Kills",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "cvc",
+    "raw": "§cSteve_42§7 was killed by §aArash§7 with §eAK-47§7.",
+    "plain": "Steve_42 was killed by Arash with AK-47.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-cops-and-crims.682131/",
+    "verified": true
+  },
+  {
+    "mode": "cvc",
+    "raw": "§cSteve_42§7 was headshot by §aArash§7 with §eSniper§7.",
+    "plain": "Steve_42 was headshot by Arash with Sniper.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-cops-and-crims.682131/",
+    "verified": true
+  },
+  {
+    "mode": "cvc",
+    "raw": "§cSteve_42§7 was blown up by §aArash§7's HE Grenade.",
+    "plain": "Steve_42 was blown up by Arash's HE Grenade.",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-cops-and-crims.682131/",
+    "verified": true
+  },
+  {
+    "mode": "cvc",
+    "raw": "§cArash§7 was killed by §aSteve_42§7 with §eM4A1§7.",
+    "plain": "Arash was killed by Steve_42 with M4A1.",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/guide-cops-and-crims.682131/",
+    "verified": true
+  },
+  {
+    "mode": "cvc",
+    "raw": "§cSteve_42§7 was killed by §axX_Nick_Xx§7 with §eAK-47§7.",
+    "plain": "Steve_42 was killed by xX_Nick_Xx with AK-47.",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/guide-cops-and-crims.682131/",
+    "verified": true
+  },
+  {
+    "mode": "cvc",
+    "raw": "   §cCriminals won the game!",
+    "plain": "   Criminals won the game!",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "cvc",
+    "raw": "   §9Cops won the game!",
+    "plain": "   Cops won the game!",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "warlords",
+    "raw": "§cSteve_42§7 was killed by §aArash§7!",
+    "plain": "Steve_42 was killed by Arash!",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-warlords.279822/",
+    "verified": true
+  },
+  {
+    "mode": "warlords",
+    "raw": "§cSteve_42§7 was critically killed by §aArash§7!",
+    "plain": "Steve_42 was critically killed by Arash!",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-warlords.279822/",
+    "verified": true
+  },
+  {
+    "mode": "warlords",
+    "raw": "§cArash§7 was killed by §aSteve_42§7!",
+    "plain": "Arash was killed by Steve_42!",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/guide-warlords.279822/",
+    "verified": true
+  },
+  {
+    "mode": "warlords",
+    "raw": "§cSteve_42§7 was killed by §axX_Nick_Xx§7!",
+    "plain": "Steve_42 was killed by xX_Nick_Xx!",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/guide-warlords.279822/",
+    "verified": true
+  },
+  {
+    "mode": "warlords",
+    "raw": "   §e52.4k/31.2k §cBerserker",
+    "plain": "   52.4k/31.2k Berserker",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "smashheroes",
+    "raw": "§cSteve_42§7 was smashed by §aArash§7!",
+    "plain": "Steve_42 was smashed by Arash!",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-smash-heroes.558231/",
+    "verified": true
+  },
+  {
+    "mode": "smashheroes",
+    "raw": "§cSteve_42§7 was knocked off the map by §aArash§7!",
+    "plain": "Steve_42 was knocked off the map by Arash!",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-smash-heroes.558231/",
+    "verified": true
+  },
+  {
+    "mode": "smashheroes",
+    "raw": "§cSteve_42§7 was eliminated by §aArash§7!",
+    "plain": "Steve_42 was eliminated by Arash!",
+    "me": "Arash",
+    "expect": {
+      "kind": "kill",
+      "victim": "Steve_42",
+      "killer": "Arash"
+    },
+    "source": "https://hypixel.net/threads/guide-smash-heroes.558231/",
+    "verified": true
+  },
+  {
+    "mode": "smashheroes",
+    "raw": "§cArash§7 was smashed by §aSteve_42§7!",
+    "plain": "Arash was smashed by Steve_42!",
+    "me": "Arash",
+    "expect": {
+      "kind": "death",
+      "victim": "Arash",
+      "killer": "Steve_42"
+    },
+    "source": "https://hypixel.net/threads/guide-smash-heroes.558231/",
+    "verified": true
+  },
+  {
+    "mode": "smashheroes",
+    "raw": "§cSteve_42§7 was smashed by §axX_Nick_Xx§7!",
+    "plain": "Steve_42 was smashed by xX_Nick_Xx!",
+    "me": "Arash",
+    "expect": {
+      "kind": "other_kill",
+      "victim": "Steve_42",
+      "killer": "xX_Nick_Xx"
+    },
+    "source": "https://hypixel.net/threads/guide-smash-heroes.558231/",
+    "verified": true
+  },
+  {
+    "mode": "smashheroes",
+    "raw": " 1st Place: [MVP+] Arash (Bulk) - 3 Kills",
+    "plain": " 1st Place: [MVP+] Arash (Bulk) - 3 Kills",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "buildbattle",
+    "raw": " 1st Place: [MVP+] Arash",
+    "plain": " 1st Place: [MVP+] Arash",
+    "me": "Arash",
+    "expect": {
+      "kind": "game_end",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§m-----------------------------------------------------\n§9Friend request from §b[MVP+] Steve_42\n§a§l[ACCEPT] §7- §c§l[DENY] §7- §4§l[BLOCK]\n§m-----------------------------------------------------",
+    "plain": "-----------------------------------------------------\nFriend request from [MVP+] Steve_42\n[ACCEPT] - [DENY] - [BLOCK]\n-----------------------------------------------------",
+    "me": "Arash",
+    "expect": {
+      "kind": "friend_request",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/features/chat/modules/triggers/AutoFriend.kt",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§9Friend request from §7xX_Nick_Xx",
+    "plain": "Friend request from xX_Nick_Xx",
+    "me": "Arash",
+    "expect": {
+      "kind": "friend_request",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/features/chat/modules/triggers/AutoFriend.kt",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§aYou tipped §e3 players §ain §e2 different games!§r",
+    "plain": "You tipped 3 players in 2 different games!",
+    "me": "Arash",
+    "expect": {
+      "kind": "tip",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/features/chat/modules/blockers/TipMessageRemover.kt",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§aYou tipped §eSteve_42 §ain §eBed Wars!§r",
+    "plain": "You tipped Steve_42 in Bed Wars!",
+    "me": "Arash",
+    "expect": {
+      "kind": "tip",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/features/chat/modules/blockers/TipMessageRemover.kt",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§aYou were tipped by §e5 players §ain the last minute!§r",
+    "plain": "You were tipped by 5 players in the last minute!",
+    "me": "Arash",
+    "expect": {
+      "kind": "tip",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/features/chat/modules/blockers/TipMessageRemover.kt",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§cYou already tipped everyone that has boosters active, so there isn't anybody to be tipped right now!",
+    "plain": "You already tipped everyone that has boosters active, so there isn't anybody to be tipped right now!",
+    "me": "Arash",
+    "expect": {
+      "kind": "tip",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/features/chat/modules/blockers/TipMessageRemover.kt",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§cNo one has a network booster active right now! Try again later.",
+    "plain": "No one has a network booster active right now! Try again later.",
+    "me": "Arash",
+    "expect": {
+      "kind": "tip",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/features/chat/modules/blockers/TipMessageRemover.kt",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§cSlow down! You can only use /tip every few seconds.",
+    "plain": "Slow down! You can only use /tip every few seconds.",
+    "me": "Arash",
+    "expect": {
+      "kind": "tip",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn/blob/main/src/main/kotlin/org/polyfrost/hytils/client/features/chat/modules/blockers/TipMessageRemover.kt",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§6[MVP§c++§6] Arash §7slid into the lobby!§r",
+    "plain": "[MVP++] Arash slid into the lobby!",
+    "me": "Arash",
+    "expect": {
+      "kind": "lobby_join",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-hypixel-lobby-features.1203921/",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§6[MVP§c++§6] Steve_42 §7joined the lobby!§r",
+    "plain": "[MVP++] Steve_42 joined the lobby!",
+    "me": "Arash",
+    "expect": {
+      "kind": "lobby_join",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-hypixel-lobby-features.1203921/",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§6[MVP§c++§6] xX_Nick_Xx §7spooked into the lobby!§r",
+    "plain": "[MVP++] xX_Nick_Xx spooked into the lobby!",
+    "me": "Arash",
+    "expect": {
+      "kind": "lobby_join",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-hypixel-lobby-features.1203921/",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§6[MVP§c++§6] Alex_99 §7sled into the lobby!§r",
+    "plain": "[MVP++] Alex_99 sled into the lobby!",
+    "me": "Arash",
+    "expect": {
+      "kind": "lobby_join",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-hypixel-lobby-features.1203921/",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§6[MVP+] Steve_42§f: party join Steve_42 bedwars 4s any stats",
+    "plain": "[MVP+] Steve_42: party join Steve_42 bedwars 4s any stats",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§7Steve_42: Lowballing 500m budget /visit Steve_42 my ah",
+    "plain": "Steve_42: Lowballing 500m budget /visit Steve_42 my ah",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§7Steve_42: pls buy me vip or mvp rank upgrade please",
+    "plain": "Steve_42: pls buy me vip or mvp rank upgrade please",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§7Steve_42: Join our active guild discord.gg/hypixelguild",
+    "plain": "Steve_42: Join our active guild discord.gg/hypixelguild",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§7Steve_42: duel me classic duel /duel Steve_42",
+    "plain": "Steve_42: duel me classic duel /duel Steve_42",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§dThey have gifted 5 ranks so far!",
+    "plain": "They have gifted 5 ranks so far!",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/W-OVERFLOW/Hytils-Reborn",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§aSteve_42 §ehas found §6Legendary Knight Kit §ein the Soul Well!",
+    "plain": "Steve_42 has found Legendary Knight Kit in the Soul Well!",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "lobby",
+    "raw": "§d+5 Karma!",
+    "plain": "+5 Karma!",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/Sk1erLLC/AutoGG",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§6+10 coins! (Kill)",
+    "plain": "+10 coins! (Kill)",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§6+20 coins! (Final Kill)",
+    "plain": "+20 coins! (Final Kill)",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§b+10 BedWars Experience Received (Regular Kill).",
+    "plain": "+10 BedWars Experience Received (Regular Kill).",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "skywars",
+    "raw": "§b+1 Soul!",
+    "plain": "+1 Soul!",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-skywars-cosmetics.2482631/",
+    "verified": true
+  },
+  {
+    "mode": "blitz",
+    "raw": "§6+100 coins! (Taunt Kill)",
+    "plain": "+100 coins! (Taunt Kill)",
+    "me": "Arash",
+    "expect": {
+      "kind": "spam",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-blitz-survival-games.842823/",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§f<Steve_42> §7Arash was killed by Steve_42.",
+    "plain": "<Steve_42> Arash was killed by Steve_42.",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§6[MVP+] Steve_42§f: §7Bob was killed by Arash. FINAL KILL!",
+    "plain": "[MVP+] Steve_42: Bob was killed by Arash. FINAL KILL!",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§6[MVP+] Steve_42§f: §7gg Arash",
+    "plain": "[MVP+] Steve_42: gg Arash",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§f<Steve_42> §7Arash ez",
+    "plain": "<Steve_42> Arash ez",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§cSteve_42§7 was killed by §aArash2§7.",
+    "plain": "Steve_42 was killed by Arash2.",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§cSteve_42§7 was slain by §aArashi§7.",
+    "plain": "Steve_42 was slain by Arashi.",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§cArash2§7 was knocked into the void by §aSteve_42§7.",
+    "plain": "Arash2 was knocked into the void by Steve_42.",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§9Party > §6[MVP+] Steve_42§f: Arash was killed by Bob",
+    "plain": "Party > [MVP+] Steve_42: Arash was killed by Bob",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§2Guild > §7Steve_42§f: I just killed Arash in duels",
+    "plain": "Guild > Steve_42: I just killed Arash in duels",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§dFrom §a[VIP] Steve_42§7: you killed me Arash",
+    "plain": "From [VIP] Steve_42: you killed me Arash",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  },
+  {
+    "mode": "bedwars",
+    "raw": "§c§lBED DESTRUCTION > §cRed Bed §7was destroyed by §aArash§7!",
+    "plain": "BED DESTRUCTION > Red Bed was destroyed by Arash!",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/andrei1058/BedWars1058/blob/master/bedwars-plugin/src/main/java/com/andrei1058/bedwars/language/English.java",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "§aArash §escored a goal! §7(1-0)",
+    "plain": "Arash scored a goal! (1-0)",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-duels.1685322/",
+    "verified": true
+  },
+  {
+    "mode": "duels",
+    "raw": "§eYour stats did not change because you /duel'ed your opponent!",
+    "plain": "Your stats did not change because you /duel'ed your opponent!",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-duels.1685322/",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§cYou were spawned in Limbo.",
+    "plain": "You were spawned in Limbo.",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://hypixel.net/threads/guide-hypixel-lobby-features.1203921/",
+    "verified": true
+  },
+  {
+    "mode": "general",
+    "raw": "§2Bob was kicked from the guild by Arash!",
+    "plain": "Bob was kicked from the guild by Arash!",
+    "me": "Arash",
+    "expect": {
+      "kind": "none",
+      "victim": null,
+      "killer": null
+    },
+    "source": "https://github.com/thelads/LadsClient/tests",
+    "verified": true
+  }
+]

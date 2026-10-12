@@ -17,8 +17,6 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.audio.ISound;
-import net.minecraft.client.audio.PositionedSound;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -219,16 +217,25 @@ public final class KillBanner189 {
             text = KillDetector.deathLine(death.getKey(), args);
         }
         if (text == null) text = event.message.getUnformattedText();
-        if (KillDetector.myDeath(text, me)) BANNER.endStreak();
+        if (KillDetector.myDeath(text, me)) { BANNER.endStreak(); return; } // the player's own death is never also a kill
         kill(KillBanners.DETECTOR.chat(text, me, KillBanner189::players, System.nanoTime()));
     }
 
-    /** The other players in the world: a kill message may name one the client saw no hit on (an arrow, a knock into the void). */
+    /**
+     * The other players in the world, and in the tab list those the world does not hold: a kill message may name one the client
+     * saw no hit on (an arrow, a knock into the void, a player already gone).
+     */
     private static Map<Integer, Set<String>> players() {
         Minecraft mc = Minecraft.getMinecraft();
         Map<Integer, Set<String>> players = new HashMap<Integer, Set<String>>();
         for (EntityPlayer player : mc.theWorld.playerEntities)
             if (player != mc.thePlayer) players.put(player.getEntityId(), names(player));
+        for (NetworkPlayerInfo info : mc.getNetHandler().getPlayerInfoMap()) {
+            java.util.UUID id = info.getGameProfile().getId();
+            if (id == null || id.equals(mc.thePlayer.getUniqueID()) || mc.theWorld.getPlayerEntityByUUID(id) != null) continue;
+            players.put(KillDetector.tabId(id), KillDetector.names(info.getGameProfile().getName(),
+                info.getDisplayName() != null ? info.getDisplayName().getUnformattedText() : null));
+        }
         return players;
     }
 
@@ -268,13 +275,15 @@ public final class KillBanner189 {
             ? KillDetector.Kind.BOSS : KillDetector.Kind.MOB;
     }
 
-    /** A player's account name and the name the tab list shows. */
+    /** A player's account name and the names the tab list gives them (the local player's /nick on Hypixel is only there). */
     private static Set<String> names(EntityLivingBase entity) {
         if (!(entity instanceof EntityPlayer)) return Collections.emptySet();
         EntityPlayer player = (EntityPlayer) entity;
         NetworkPlayerInfo info = Minecraft.getMinecraft().getNetHandler().getPlayerInfo(player.getUniqueID());
-        return KillDetector.names(player.getGameProfile().getName(),
+        Set<String> names = KillDetector.names(player.getGameProfile().getName(),
             info != null && info.getDisplayName() != null ? info.getDisplayName().getUnformattedText() : player.getDisplayName().getUnformattedText());
+        if (info != null && info.getGameProfile().getName() != null && !info.getGameProfile().getName().isEmpty()) names.add(info.getGameProfile().getName());
+        return names;
     }
 
     static void reset() {
@@ -324,17 +333,11 @@ public final class KillBanner189 {
         BANNER.freeze(age);
     }
 
-    /** "theladscore:<skin>_kill_<n>" from the Kill Banner sounds.json, "" the plain chime (1.8.9's orb pickup), at the module's volume. */
-    private static void play(String sound, final float level) {
+    /** "theladscore:<skin>_kill_<n>" from the Kill Banner sounds.json, "" the plain chime (1.8.9's orb pickup), at the module's volume, in both ears. */
+    private static void play(String sound, float level) {
         if (sound == null) return;
-        final ResourceLocation id = new ResourceLocation(sound.isEmpty() ? "random.orb" : sound);
-        Minecraft.getMinecraft().getSoundHandler().playSound(new PositionedSound(id) {
-            {
-                volume = level;
-                pitch = 1.0F;
-                attenuationType = ISound.AttenuationType.NONE;
-            }
-        });
+        Minecraft.getMinecraft().getSoundHandler().playSound(new ListenerSound189(new ResourceLocation(sound.isEmpty() ? "random.orb" : sound),
+            KillBanners.volume(sound, level), 1.0F));
     }
 
     /** Kill Banner picker: a skin's one-kill sound. */

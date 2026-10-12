@@ -80,13 +80,16 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         guiGraphics.setColor(1, 1, 1, 1);
     }
 
+    /** The banner art blits directly: flush the batched fills (the tile behind it) first, or they cover it (blank tiles). */
     @Override
     public boolean drawKillBanner(String skin, int variant, int x, int y, int width, int height) {
+        guiGraphics.flush();
         return com.thelads.core.v1_20_1.feature.NativeKillBanner1201.drawThumb(guiGraphics, skin, variant, x, y, width, height);
     }
 
     @Override
     public boolean drawKillBannerPreview(String skin, int variant, int x, int y, int width, int height, double clock) {
+        guiGraphics.flush();
         return com.thelads.core.v1_20_1.feature.NativeKillBanner1201.drawPreview(guiGraphics, skin, variant, x, y, width, height, clock);
     }
 

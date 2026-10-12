@@ -45,6 +45,7 @@ final class KillBannerQa1201 {
         if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null) {
             QaProbe1201.registerStep("kbcap", KillBannerQa1201::tick);
             QaProbe1201.registerStep("aim", KillBannerQa1201::aim);
+            QaProbe1201.registerStep("kb191", KillBanner191Qa1201::tick);
         }
     }
 
