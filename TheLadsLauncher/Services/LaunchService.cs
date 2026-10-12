@@ -195,7 +195,10 @@ public class LaunchService : ILaunchService
         };
 
         var jvmArgs = launchOption.ExtraJvmArguments ?? Array.Empty<MArgument>();
-        launchOption.ExtraJvmArguments = jvmArgs.Append(MArgument.FromCommandLine("-XX:+DisableExplicitGC"));
+        if (!jvmArgs.Any(a => a.Values.Any(v => v.Contains("DisableExplicitGC", StringComparison.OrdinalIgnoreCase))))
+        {
+            launchOption.ExtraJvmArguments = jvmArgs.Append(MArgument.FromCommandLine("-XX:+DisableExplicitGC"));
+        }
 
         if (!string.IsNullOrEmpty(settings.QuickLaunchServerIp))
         {
