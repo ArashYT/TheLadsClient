@@ -93,13 +93,20 @@ public final class CrosshairBackground {
         if (mode == LIVE && g.drawGameView(x, y, w, h)) return;
         if (mode == GRADIENT) { gradient(g, x, y, w, h, color(m.gradientStart), color(m.gradientEnd), m.gradientDirection.getIndex() == 1); return; }
         if (mode == SOLID) { g.fill(x, y, x + w, y + h, color(m.solidColor) | 0xFF000000); return; }
-        String own = m.image.getValue().isEmpty() ? null : imageFile(m.image.getValue()).getPath();
+        String own = mode == IMAGE ? ownPicture(m) : null;
         // An unreadable picture is not tried again each frame (the versions keep one texture: it would flip with the biome's).
-        if (mode == IMAGE && own != null && !UNREADABLE.contains(own) && g.drawImage(own, x, y, w, h)) return;
+        if (own != null && g.drawImage(own, x, y, w, h)) return;
         if (g.drawImage(picture(m.biome.getIndex(), m.time.getIndex()), x, y, w, h)) return;
         g.fill(x, y, x + w, y + h, CrosshairDesign.BACKDROP_DARK);
         for (CrosshairDesign.Rect tile : CrosshairDesign.checker(w, h))
             g.fill(x + tile.left(), y + tile.top(), x + tile.right(), y + tile.bottom(), CrosshairDesign.BACKDROP_LIGHT);
+    }
+
+    /** The chosen picture's file, or null when none is chosen or it cannot be read (the biome stands in). */
+    private static String ownPicture(CrosshairModule m) {
+        if (m.image.getValue().isEmpty()) return null;
+        String path = imageFile(m.image.getValue()).getPath();
+        return UNREADABLE.contains(path) ? null : path;
     }
 
     /** A colour option's colour; Global follows the HUD's global background colour. */
@@ -112,7 +119,7 @@ public final class CrosshairBackground {
         int mode = m.background.getIndex();
         String biome = biomeNames()[clamp(m.biome.getIndex())] + (timeless(m.biome.getIndex()) ? "" : " · " + m.time.getValue());
         if (mode == LIVE) return live ? "Live game" : "Live game in a world · " + biome;
-        if (mode == IMAGE) return m.image.getValue().isEmpty() ? "Choose your image · " + biome : "Your image";
+        if (mode == IMAGE) return ownPicture(m) == null ? "Choose your image · " + biome : "Your image";
         return mode == BIOME ? biome : "";
     }
 
