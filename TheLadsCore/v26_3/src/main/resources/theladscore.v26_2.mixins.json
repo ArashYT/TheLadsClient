@@ -134,6 +134,7 @@
     "SodiumItemModelGapsMixin",
     "DisconnectedScreenAccess",
     "ReconnectTargetMixin",
+    "ConnectLeavesWorldMixin",
     "ReconnectRealmsMixin",
     "PacketDecodeGuardMixin",
     "PacketErrorGuardMixin",
