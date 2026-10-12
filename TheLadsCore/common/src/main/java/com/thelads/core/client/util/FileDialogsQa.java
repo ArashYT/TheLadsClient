@@ -36,7 +36,7 @@ public final class FileDialogsQa {
     /** One client tick (any screen); true once finished. */
     public boolean tick() {
         if (wait > 0) { wait--; return false; }
-        int which = step / 3;
+        int which = step / 4;
         if (which >= NAMES.length) {
             if (failures.isEmpty()) LOGGER.info("Lads dialogs capture END: {} passed, 0 failed", passed);
             else LOGGER.error("Lads dialogs capture FAILED: {} passed, {} failed: {}", passed, failures.size(), failures);
@@ -45,7 +45,7 @@ public final class FileDialogsQa {
         String name = NAMES[which];
         boolean lads = which < 2, isFolder = which % 2 == 1;
         try {
-            switch (step % 3) {
+            switch (step % 4) {
                 case 0 -> {
                     open = lads ? (isFolder ? FileDialogs.openFolder("Lads QA folder dialog") : FileDialogs.openFile("Lads QA file dialog", "Images (PNG)", "png"))
                         : LadsGameBridge.get().gameFileDialog("Game QA " + (isFolder ? "folder" : "file") + " dialog", isFolder, "Images (PNG)", "png");
@@ -58,7 +58,7 @@ public final class FileDialogsQa {
                     if (open.isDone()) { // refused (AWT has no folder dialog) or failed before showing
                         String why = open.isCompletedExceptionally() ? open.handle((p, e) -> e.toString()).join() : "completed with " + open.join();
                         check(!lads, name + ": no dialog showed (" + why + ")");
-                        step += 2;
+                        step += 3;
                         return false;
                     }
                     if (dialog == null) dialog = findDialog();
@@ -77,7 +77,15 @@ public final class FileDialogsQa {
                     if (lads) check(modern && owned, name + ": the modern dialog, on top of the game window (modern " + modern + ", owned " + owned + ")");
                     else check(true, name + ": the game's own dialog is " + (modern ? "the modern one" : "the old one") + (owned ? ", owned" : ", unowned"));
                     FileDialogs.Explorer.call("user32", "PostMessageW", dialog, 0x10, Pointer.NULL, Pointer.NULL); // WM_CLOSE: a cancel
-                    Path picked = open.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                    patience = 0;
+                    step++;
+                }
+                case 3 -> { // never block this thread on it: the closing dialog hands focus back to the game window, owned by this thread
+                    if (!open.isDone()) {
+                        if (++patience > 400) throw new IllegalStateException(name + ": still open 20 s after it was closed");
+                        return false;
+                    }
+                    Path picked = open.get();
                     check(picked == null, name + ": closing it cancels (null: " + picked + ")");
                     step++;
                     wait = 20;
@@ -87,7 +95,7 @@ public final class FileDialogsQa {
         } catch (Exception | Error failure) {
             check(false, name + ": " + failure);
             if (dialog != null) FileDialogs.Explorer.call("user32", "PostMessageW", dialog, 0x10, Pointer.NULL, Pointer.NULL);
-            step = (which + 1) * 3;
+            step = (which + 1) * 4;
             wait = 40;
         }
         return false;
