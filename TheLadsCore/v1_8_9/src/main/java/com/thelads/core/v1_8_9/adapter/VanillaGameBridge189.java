@@ -3,6 +3,7 @@ package com.thelads.core.v1_8_9.adapter;
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.mods.LoadedMod;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -307,35 +308,81 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         }
     }
 
+    private long lastPotionHash = Long.MIN_VALUE;
+    private Object lastPotionPlayer = null;
+    private List<PotionEffectInfo> cachedDetailedPotions = Collections.emptyList();
+    private List<String> cachedPotionEffects = Collections.emptyList();
+
+    private static String formatPotionDuration(int totalSec) {
+        if (totalSec < 60) return totalSec + "s";
+        int m = totalSec / 60;
+        int s = totalSec % 60;
+        return s < 10 ? (m + ":0" + s) : (m + ":" + s);
+    }
+
+    private long computePotionSignature(Collection<PotionEffect> effects) {
+        if (effects == null || effects.isEmpty()) return 0L;
+        long h = 1L;
+        for (PotionEffect effect : effects) {
+            h = 31L * h + effect.getPotionID();
+            h = 31L * h + effect.getAmplifier();
+            h = 31L * h + (effect.getDuration() / 20);
+        }
+        return h;
+    }
+
     @Override
     public List<PotionEffectInfo> getActivePotions() {
         if (mc().thePlayer == null) return Collections.emptyList();
-        List<PotionEffectInfo> detailed = new ArrayList<>();
-        for (PotionEffect effect : mc().thePlayer.getActivePotionEffects()) {
-            net.minecraft.potion.Potion potion = effect.getPotionID() < net.minecraft.potion.Potion.potionTypes.length
-                ? net.minecraft.potion.Potion.potionTypes[effect.getPotionID()] : null;
-            String name = effectName(effect.getEffectName());
-            if (effect.getAmplifier() > 0) {
-                name += " " + romanNumeral(effect.getAmplifier() + 1);
-            }
-            int totalSec = effect.getDuration() / 20;
-            String dur = totalSec >= 60 ? String.format("%d:%02d", totalSec / 60, totalSec % 60) : totalSec + "s";
-            int iconIndex = potion != null && potion.hasStatusIcon() ? potion.getStatusIconIndex() : -1;
-            String effectId = potion != null ? potion.getName().replace("potion.", "") : "";
-            int color = potion != null ? potion.getLiquidColor() : 0xFFFFFFFF;
-            detailed.add(new PotionEffectInfo(name, dur, iconIndex, effectId, color));
+        Collection<PotionEffect> effects = mc().thePlayer.getActivePotionEffects();
+        long sig = computePotionSignature(effects);
+        if (mc().thePlayer == lastPotionPlayer && sig == lastPotionHash) {
+            return cachedDetailedPotions;
         }
-        return detailed;
+        updatePotionCaches(effects, sig);
+        return cachedDetailedPotions;
     }
 
     /** Localized effect names ("Speed (30s)"), as on the other versions. */
     @Override
     public List<String> getActivePotionEffects() {
         if (mc().thePlayer == null) return Collections.emptyList();
-        List<String> effects = new ArrayList<>();
-        for (PotionEffect effect : mc().thePlayer.getActivePotionEffects())
-            effects.add(effectName(effect.getEffectName()) + " (" + (effect.getDuration() / 20) + "s)");
-        return effects;
+        Collection<PotionEffect> effects = mc().thePlayer.getActivePotionEffects();
+        long sig = computePotionSignature(effects);
+        if (mc().thePlayer == lastPotionPlayer && sig == lastPotionHash) {
+            return cachedPotionEffects;
+        }
+        updatePotionCaches(effects, sig);
+        return cachedPotionEffects;
+    }
+
+    private void updatePotionCaches(Collection<PotionEffect> effects, long sig) {
+        if (effects == null || effects.isEmpty()) {
+            cachedDetailedPotions = Collections.emptyList();
+            cachedPotionEffects = Collections.emptyList();
+        } else {
+            List<PotionEffectInfo> detailed = new ArrayList<>(effects.size());
+            List<String> legacy = new ArrayList<>(effects.size());
+            for (PotionEffect effect : effects) {
+                net.minecraft.potion.Potion potion = effect.getPotionID() < net.minecraft.potion.Potion.potionTypes.length
+                    ? net.minecraft.potion.Potion.potionTypes[effect.getPotionID()] : null;
+                String name = effectName(effect.getEffectName());
+                if (effect.getAmplifier() > 0) {
+                    name += " " + romanNumeral(effect.getAmplifier() + 1);
+                }
+                int totalSec = effect.getDuration() / 20;
+                String dur = formatPotionDuration(totalSec);
+                int iconIndex = potion != null && potion.hasStatusIcon() ? potion.getStatusIconIndex() : -1;
+                String effectId = potion != null ? potion.getName().replace("potion.", "") : "";
+                int color = potion != null ? potion.getLiquidColor() : 0xFFFFFFFF;
+                detailed.add(new PotionEffectInfo(name, dur, iconIndex, effectId, color));
+                legacy.add(effectName(effect.getEffectName()) + " (" + totalSec + "s)");
+            }
+            cachedDetailedPotions = Collections.unmodifiableList(detailed);
+            cachedPotionEffects = Collections.unmodifiableList(legacy);
+        }
+        lastPotionHash = sig;
+        lastPotionPlayer = mc().thePlayer;
     }
 
     /** The player's packs, highest priority first (the top of the pack screen; the repository lists the lowest first). */

@@ -86,6 +86,9 @@
     "ServerListEntryNormalMixin",
     "OldServerPingerMixin",
     "GuiMultiplayerMixin189",
-    "GuiConnectingMixin189"
+    "GuiConnectingMixin189",
+    "ScoreboardMixin",
+    "ScoreObjectiveMixin",
+    "RenderItemMixin"
   ]
 }

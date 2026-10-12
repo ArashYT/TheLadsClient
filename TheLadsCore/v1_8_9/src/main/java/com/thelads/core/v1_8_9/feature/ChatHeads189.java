@@ -25,6 +25,8 @@ public final class ChatHeads189 {
         int ladsAt();
         boolean ladsFirst();
         void ladsHead(NetworkPlayerInfo head, int at, boolean first);
+        String ladsFormatted();
+        void ladsFormatted(String text);
     }
 
     private static Boolean active;
