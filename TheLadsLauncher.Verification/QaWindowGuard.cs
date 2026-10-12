@@ -49,12 +49,19 @@ static class QaWindowGuard
         ProcessPriorityClass wanted = QaShared.PriorityOverride ?? (playing || QaShared.PlayingMonitor != null ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High);
         var firstSeen = new Dictionary<IntPtr, long>();
         IntPtr owners = GameWindow(GetForegroundWindow()) ? IntPtr.Zero : GetForegroundWindow();
+        long lastMute = 0;
+        uint gamePid = (uint)game.Id;
         try
         {
             while (!game.HasExited)
             {
                 // GameSession sets Realtime for startup, then Normal: a QA game runs at High (below normal while the owner plays) the whole time.
                 if (game.PriorityClass != wanted) game.PriorityClass = wanted;
+                if (Environment.TickCount64 - lastMute >= 2000)
+                {
+                    lastMute = Environment.TickCount64;
+                    QaAudioMute.MuteProcess(gamePid);
+                }
                 if (focus) { Thread.Sleep(250); continue; }
                 foreach (IntPtr window in Windows(game.Id))
                 {
