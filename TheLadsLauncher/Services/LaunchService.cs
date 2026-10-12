@@ -293,16 +293,13 @@ public class LaunchService : ILaunchService
         if (install.GetProperty("target").GetString() != versionId || install.GetProperty("path").GetString() != "net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9")
             throw new InvalidDataException("The Forge installer describes a different version.");
         Directory.CreateDirectory(Path.GetDirectoryName(library)!);
-        if (!File.Exists(library))
+        try
         {
-            try
-            {
-                System.IO.Compression.ZipFileExtensions.ExtractToFile(zip.GetEntry(install.GetProperty("filePath").GetString()!)!, library, overwrite: true);
-            }
-            catch (IOException) when (File.Exists(library))
-            {
-                // Another concurrent launcher or QA run is already reading/using the existing library jar.
-            }
+            System.IO.Compression.ZipFileExtensions.ExtractToFile(zip.GetEntry(install.GetProperty("filePath").GetString()!)!, library, overwrite: true);
+        }
+        catch (IOException) when (File.Exists(library))
+        {
+            // Another launcher or QA game has the library open. Always rewriting it (above) still repairs a partly written copy.
         }
         // The manifest last: InstallForgeAsync takes an existing manifest as an installed Forge.
         var versionDir = Path.Combine(gameDir, "versions", versionId);
