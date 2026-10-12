@@ -210,6 +210,8 @@ public class ModuleManager {
         // 1.7.0, both on by default: no 100-line history cap (ChatHistory), and chat text with its shadow.
         chatMod.addOption(new BoolOption("Infinite History", true));
         chatMod.addOption(new BoolOption("Text Shadow", true));
+        // 1.9.1: chat sits above the armor row of the survival HUD, so a message never covers it (ChatLift).
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatLift.OPTION, true));
         // 1.9.0: Chat Heads, once a module of its own. The sender's head in chat, just before their name or at the start of the line:
         // from signed chat, or from player names in the tab list. Keep Text Aligned applies to Start of line. The Chat module's
         // own switch does not turn it off (ChatHeads.enabled); a Chat Heads jar the player added hides these (ChatModule.hidden).

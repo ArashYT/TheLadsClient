@@ -167,14 +167,14 @@ public abstract class ChatComponentMixin {
         return ChatHistory.shadow() ? original.call(graphics, font, text, x, y, color) : graphics.drawString(font, text, x, y, color, false);
     }
 
-    /** Raised: chat lays out above a shorter screen, so it is drawn, hovered and clicked that much higher. */
+    /** Raised, and Above Armor Bar: chat lays out above a shorter screen, so it is drawn, hovered and clicked that much higher. */
     @ModifyExpressionValue(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;guiHeight()I"), require = 1)
     private int lads$raiseChat(int height) {
-        return height - Raised1201.chat();
+        return height - Raised1201.chatLift();
     }
 
     @ModifyExpressionValue(method = {"screenToChatY", "handleChatQueueClicked"}, at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/Window;getGuiScaledHeight()I"), require = 2)
     private int lads$raiseChatPointer(int height) {
-        return height - Raised1201.chat();
+        return height - Raised1201.chatLift();
     }
 }

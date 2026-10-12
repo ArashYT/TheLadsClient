@@ -1,9 +1,11 @@
 package com.thelads.core.v1_8_9.feature;
 
+import com.thelads.core.client.ChatLift;
 import com.thelads.core.modules.RaisedModule;
 import java.util.EnumSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiChat;
+import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
@@ -34,6 +36,12 @@ public final class Raised189 {
     public static int chat() {
         RaisedModule raised = RaisedModule.get();
         return raised == null ? 0 : Math.max(raised.chatLift(), hotbar() - 4);
+    }
+
+    /** GUI pixels chat is drawn, hovered and clicked higher: {@link #chat()}, or more to clear the survival HUD's armor row (ChatLift). */
+    public static int chatLift() {
+        PlayerControllerMP controller = Minecraft.getMinecraft().playerController;
+        return ChatLift.lift(chat(), controller != null && controller.shouldDrawHUD(), hotbar(), 28);
     }
 
     /** Starts drawing a hotbar part raised; {@link GlStateManager#popMatrix()} ends it. */
@@ -69,6 +77,6 @@ public final class Raised189 {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void chat(RenderGameOverlayEvent.Chat event) {
-        event.posY -= chat();
+        event.posY -= chatLift();
     }
 }

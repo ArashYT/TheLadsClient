@@ -63,6 +63,12 @@ public final class Raised26 {
         return MOD || raised == null ? 0 : raised.chatLift();
     }
 
+    /** GUI pixels chat is drawn higher: {@link #chat()}, or more to clear the survival HUD's armor row (ChatLift). */
+    public static int chatLift() {
+        var minecraft = Minecraft.getInstance();
+        return com.thelads.core.client.ChatLift.lift(chat(), minecraft.gameMode != null && minecraft.gameMode.canHurtPlayer(), hotbar(), 40);
+    }
+
     /**
      * Vanilla's selection frame is one row shorter than the 24 it surrounds, which only shows once the hotbar leaves the bottom
      * edge: draw the frame's top row again as its bottom row. A frame already drawn 24 tall (Hovering Hotbar) is complete.
