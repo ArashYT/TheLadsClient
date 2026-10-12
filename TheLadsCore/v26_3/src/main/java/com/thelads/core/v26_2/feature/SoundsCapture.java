@@ -160,9 +160,11 @@ final class SoundsCapture {
         @Override public void shootTarget(boolean head) {
             Minecraft mc = Minecraft.getInstance();
             Entity target = mc.level.getEntity(archer);
+            // From 12 blocks to the target's side (seen in flight a few ticks, as a real shot is, and never near the player),
+            // aimed 0.3 above the mark: an arrow falls about that much on the way.
             Vec3 at = new Vec3(target.getX(), head ? target.getEyeY() : target.getY() + target.getBbHeight() * .45, target.getZ());
             Vec3 away = new Vec3(at.x - mc.player.getX(), 0, at.z - mc.player.getZ()).normalize();
-            Vec3 start = at.subtract(away.scale(4));
+            Vec3 start = at.add(-away.z * 12, 0, away.x * 12), aim = at.add(0, .3, 0);
             var server = mc.getSingleplayerServer();
             var id = mc.player.getUUID();
             server.execute(() -> {
@@ -170,7 +172,7 @@ final class SoundsCapture {
                 if (sp == null) return;
                 Arrow arrow = new Arrow(sp.level(), sp, new ItemStack(Items.ARROW), null);
                 arrow.setPos(start);
-                arrow.shoot(at.x - start.x, at.y - start.y, at.z - start.z, 3f, 0f);
+                arrow.shoot(aim.x - start.x, aim.y - start.y, aim.z - start.z, 3f, 0f);
                 sp.level().addFreshEntity(arrow);
             });
         }

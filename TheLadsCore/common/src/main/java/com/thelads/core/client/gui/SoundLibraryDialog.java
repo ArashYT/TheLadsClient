@@ -261,7 +261,8 @@ public final class SoundLibraryDialog {
 
     private void button(LadsGraphics g, String id, String label, Rect r, Runnable action, boolean enabled, boolean primary, int mx, int my) {
         boolean hover = enabled && r.contains(mx, my);
-        int color = !enabled ? CARD : primary ? hover ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY : hover ? LadsPalette.HOVER : CARD;
+        // Idle: a dark tint, so a button shows on the panel and on a list row alike.
+        int color = !enabled ? 0x30000000 : primary ? hover ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY : hover ? LadsPalette.HOVER : 0x50000000;
         round(g, r.x(), r.y(), r.width(), r.height(), color);
         g.drawCenteredText(fit(g, label, r.width() - 6), r.x() + r.width() / 2, r.y() + (r.height() - g.fontHeight()) / 2 + 1, enabled ? TEXT : LadsPalette.DISABLED);
         if (enabled) hits.add(new Hit(id, r, action));
@@ -289,8 +290,8 @@ public final class SoundLibraryDialog {
             round(g, row.x(), row.y(), row.width(), row.height(), chosen ? LadsPalette.PRIMARY : hover ? LadsPalette.HOVER : CARD);
             boolean star = favourite(file);
             Rect starRect = new Rect(row.x() + 3, ry + 2, 16, 16);
-            round(g, starRect.x(), starRect.y(), 16, 16, starRect.contains(mx, my) ? 0x40FFFFFF : 0x30000000);
-            g.drawCenteredText(star ? "*" : "+", starRect.x() + 8, starRect.y() + 5, star ? 0xFFFFD24A : MUTED);
+            round(g, starRect.x(), starRect.y(), 16, 16, star ? 0xFFE0B040 : starRect.contains(mx, my) ? 0x40FFFFFF : 0x50000000); // a favourite: gold
+            g.drawCenteredText(star ? "*" : "+", starRect.x() + 8, starRect.y() + 5, star ? 0xFF2A1800 : MUTED);
             int right = row.x() + row.width() - 3;
             Rect del = new Rect(right - delW, ry + 2, delW, 16), cut = new Rect(del.x() - 3 - trimW, ry + 2, trimW, 16), play = new Rect(cut.x() - 3 - playW, ry + 2, playW, 16);
             g.drawText(fit(g, file, play.x() - row.x() - 30), row.x() + 24, ry + 6, TEXT);

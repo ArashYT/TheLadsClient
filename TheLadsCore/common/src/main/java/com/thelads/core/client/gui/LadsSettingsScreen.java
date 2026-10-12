@@ -1234,6 +1234,7 @@ public final class LadsSettingsScreen {
         for (int i = 0; i < files.size(); i++) {
             int index = i, ry = y + 37 + i * 24;
             String file = files.get(i);
+            round(g, x + 6, ry - 1, w - 9, 22, PANEL); // each entry a darker strip, so its buttons show
             Rect remove = new Rect(x + w - 6 - removeW, ry, removeW, 20), play = new Rect(remove.x - 3 - playW, ry, playW, 20);
             Rect down = new Rect(play.x - 3 - downW, ry, downW, 20), up = new Rect(down.x - 3 - upW, ry, upW, 20);
             g.drawText(fit(g, (i + 1) + ". " + file, up.x - x - 20), x + 15, ry + 6, TEXT);
@@ -1263,6 +1264,7 @@ public final class LadsSettingsScreen {
         for (int i = 0; i < sets.size(); i++) {
             ComboSoundsModule.SoundSet set = sets.get(i);
             int own = i - 1, ry = y + 37 + i * 24, right = x + w - 6; // own: the index among the player's sets (Default pling: -1)
+            round(g, x + 6, ry - 1, w - 9, 22, PANEL); // each set a darker strip, so its buttons show
             Rect delete = new Rect(right - deleteW, ry, deleteW, 20), rename = new Rect(delete.x - 3 - renameW, ry, renameW, 20);
             Rect name = new Rect(x + 9, ry, (own < 0 ? right : rename.x - 3) - x - 9, 20);
             boolean editing = renaming != null && editingOption == renaming && renamingIndex == own;
