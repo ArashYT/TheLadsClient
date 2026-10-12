@@ -184,6 +184,7 @@ public final class NativeWorldVerification {
             DynamicLightsCapture.tick(gameDirectory, captureReady && (DynamicLightsCapture.busy() || !captureBusy()));
             ParticleCoreCapture.tick(gameDirectory, captureReady && (ParticleCoreCapture.busy() || !captureBusy()));
             SoundsCapture.tick(gameDirectory, captureReady && (SoundsCapture.busy() || !captureBusy()));
+            WorldCapture.tick(gameDirectory, captureReady && (WorldCapture.busy() || !captureBusy()));
             com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.tick(gameDirectory, captureReady && (com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() || !captureBusy()));
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
@@ -352,6 +353,7 @@ public final class NativeWorldVerification {
         com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.frame(target, gameDirectory);
         DynamicLightsCapture.frame(target, gameDirectory);
         ParticleCoreCapture.frame(target, gameDirectory);
+        WorldCapture.frame(target, gameDirectory);
         if (!worldReady() || !readyLogged || captureStarted || System.nanoTime() < captureAfter || ChatHeadsCapture.pending()) return;
         captureStarted = true;
         try {
@@ -490,7 +492,8 @@ public final class NativeWorldVerification {
         return HudInfoCapture.busy() || KillBannerCapture.busy() || KillStreakCapture.busy() || OldAnimationsCapture.busy() || Anim172Capture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
             ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || HudLayoutCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
-            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ParticleCoreCapture.busy() || SoundsCapture.busy();
+            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ParticleCoreCapture.busy() || SoundsCapture.busy() ||
+            WorldCapture.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();

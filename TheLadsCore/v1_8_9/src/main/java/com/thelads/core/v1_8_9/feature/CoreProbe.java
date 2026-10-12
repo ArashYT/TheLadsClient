@@ -161,6 +161,10 @@ public final class CoreProbe {
         } else if ("sounds".equals(only)) { // 1.9.0 uploaded sounds: Combo Sounds and Kill Banner "Your sounds" (Probe190Sounds)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe190Sounds::run));
+        } else if ("world191".equals(only)) { // 1.9.1 Wavy Capes and TNT Timer (Probe191World)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe191World.STEPS);
         } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
