@@ -197,6 +197,7 @@ public final class SoundsQa {
                 for (int i = 0; i < options.size(); i++) options.get(i).load(bannerBefore.get(i));
                 combo.setEnabled(comboWas);
                 banner.setEnabled(bannerWas);
+                com.thelads.core.config.ConfigManager.save(); // the settings clicks saved QA values: the restored ones replace them
                 if (failures.isEmpty()) LOGGER.info("Lads sounds capture END: {} passed, 0 failed", passed);
                 else LOGGER.error("Lads sounds capture FAILED: {} passed, {} failed: {}", passed, failures.size(), failures);
                 return true;
@@ -253,6 +254,7 @@ public final class SoundsQa {
         steps.add(() -> {
             combo.setEnabled(true);
             combo.favourites.set(List.of());
+            combo.sets.load(new com.google.gson.JsonArray()); // no sets of an earlier run (all are put back at the end)
             Path scratch = Files.createDirectories(CustomSounds.folder().resolveSibling("qa-sounds"));
             // Antigravity's 45 s MP3 (a beep a second, rising) when the folder has it, else a 30 s WAV made here.
             boolean mp3 = Files.isRegularFile(files.resolve("long_45s.mp3"));
