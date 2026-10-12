@@ -763,6 +763,12 @@ try
             process.StartInfo.Arguments = formatted + " " + process.StartInfo.Arguments;
         }
     }
+    if (!jvmFlags.Any(f => f.Contains("DisableExplicitGC", StringComparison.OrdinalIgnoreCase)) &&
+        !process.StartInfo.Arguments.Contains("DisableExplicitGC", StringComparison.OrdinalIgnoreCase) &&
+        !process.StartInfo.ArgumentList.Any(a => a.Contains("DisableExplicitGC", StringComparison.OrdinalIgnoreCase)))
+    {
+        AddJvm("-XX:+DisableExplicitGC");
+    }
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
     if (fastQuitPhase != null) AddJvm("-Dthelads.verifyFastQuit=" + fastQuitPhase);

@@ -43,6 +43,14 @@ public final class Borderless189 {
         return active;
     }
 
+    /** True if the user enabled true 1:1 borderless without the capture-safe extra row. */
+    public static boolean trueBorderless() {
+        Module module = ModuleManager.getInstance().getModule("BorderlessFullscreen");
+        if (module == null) return false;
+        com.thelads.core.config.Option opt = module.getOption("True borderless");
+        return opt instanceof com.thelads.core.config.BoolOption && ((com.thelads.core.config.BoolOption) opt).get();
+    }
+
     /** Rows of the borderless window that lie below the monitor; the GUI is laid out without them. */
     public static int extraRows() {
         return active ? extraRows : 0;
@@ -87,10 +95,12 @@ public final class Borderless189 {
         height = monitor.getHeight();
         extraRows = 0;
         if (System.getProperty("os.name", "").startsWith("Windows")) {
+            boolean trueBorderless = trueBorderless();
+            int add = trueBorderless ? 0 : BorderlessWindow.EXTRA_HEIGHT;
             try {
                 // SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE
-                User32.INSTANCE.SetWindowPos(hwnd(), null, 0, 0, width, height + BorderlessWindow.EXTRA_HEIGHT, 0x16);
-                extraRows = BorderlessWindow.EXTRA_HEIGHT;
+                User32.INSTANCE.SetWindowPos(hwnd(), null, 0, 0, width, height + add, 0x16);
+                extraRows = add;
                 height += extraRows;
             } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
                 LOGGER.error("Couldn't add the capture-safe row to the borderless window; it covers exactly the monitor", e);

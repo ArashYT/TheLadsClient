@@ -35,6 +35,7 @@ public abstract class MinecraftMixin {
     @Shadow public net.minecraft.client.gui.GuiScreen currentScreen;
     @Shadow public net.minecraft.client.settings.GameSettings gameSettings;
     @Shadow public net.minecraft.profiler.Profiler mcProfiler;
+    @Shadow public boolean skipRenderWorld;
 
     /** Unfocused FPS cap: vanilla's limit (30 in a menu without a world, else the option), lowered while the window is not focused. */
     @Inject(method = "getLimitFramerate", at = @At("HEAD"), cancellable = true, require = 1)
@@ -42,6 +43,11 @@ public abstract class MinecraftMixin {
         int vanilla = theWorld == null && currentScreen != null ? 30 : gameSettings.limitFramerate;
         int limit = UnfocusedFpsCap189.limit(vanilla);
         if (limit != vanilla) cir.setReturnValue(limit);
+    }
+
+    @Redirect(method = "runGameLoop", at = @At(value = "FIELD", target = "Lnet/minecraft/client/Minecraft;skipRenderWorld:Z"), require = 1)
+    private boolean ladsSkipWorldRender(Minecraft mc) {
+        return UnfocusedFpsCap189.shouldSkipWorldRender(mc.skipRenderWorld);
     }
 
     @Inject(method = "toggleFullscreen", at = @At("HEAD"), cancellable = true, require = 1)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -161,11 +162,27 @@ public static class OptiFineInstaller
         }
     }
 
+    private static readonly ConcurrentDictionary<string, (long Size, DateTime MtimeUtc, bool Verified)> _optiFineVerifyCache = new(StringComparer.OrdinalIgnoreCase);
+
     // Size first, then the SHA-256 of the bytes.
     private static async Task<bool> VerifiedAsync(string path, Pin pin, CancellationToken token)
     {
-        if (!File.Exists(path) || new FileInfo(path).Length != pin.Size) return false;
+        if (!File.Exists(path)) return false;
+        var info = new FileInfo(path);
+        if (info.Length != pin.Size) return false;
+
+        string cacheKey = path + "|" + pin.Sha256;
+        if (_optiFineVerifyCache.TryGetValue(cacheKey, out var entry) && entry.Size == info.Length && entry.MtimeUtc == info.LastWriteTimeUtc)
+        {
+            return entry.Verified;
+        }
+
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, 81920, true);
-        return Convert.ToHexString(await SHA256.HashDataAsync(stream, token)).Equals(pin.Sha256, StringComparison.OrdinalIgnoreCase);
+        bool verified = Convert.ToHexString(await SHA256.HashDataAsync(stream, token)).Equals(pin.Sha256, StringComparison.OrdinalIgnoreCase);
+        if (verified)
+        {
+            _optiFineVerifyCache[cacheKey] = (info.Length, info.LastWriteTimeUtc, true);
+        }
+        return verified;
     }
 }

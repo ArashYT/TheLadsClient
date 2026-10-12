@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -698,10 +699,31 @@ public static class ClientModInstaller
     internal static bool SameHash(string left, string right) => left.Equals(right, StringComparison.OrdinalIgnoreCase);
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA512.HashData(bytes)).ToLowerInvariant();
 
+    private static readonly ConcurrentDictionary<string, (long Size, DateTime MtimeUtc, string Hash)> _hashCache = new(StringComparer.OrdinalIgnoreCase);
+
     private static async Task<string> HashAsync(string game, string path, CancellationToken token)
     {
-        await using var stream = new FileStream(SafeChild(game, path), FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
-        return Convert.ToHexString(await SHA512.HashDataAsync(stream, token)).ToLowerInvariant();
+        var fullPath = SafeChild(game, path);
+        try
+        {
+            var info = new FileInfo(fullPath);
+            if (info.Exists)
+            {
+                var length = info.Length;
+                var mtime = info.LastWriteTimeUtc;
+                if (_hashCache.TryGetValue(fullPath, out var cached) && cached.Size == length && cached.MtimeUtc == mtime)
+                {
+                    return cached.Hash;
+                }
+                await using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+                var hash = Convert.ToHexString(await SHA512.HashDataAsync(stream, token)).ToLowerInvariant();
+                _hashCache[fullPath] = (length, mtime, hash);
+                return hash;
+            }
+        }
+        catch (IOException) { }
+        await using var fallbackStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+        return Convert.ToHexString(await SHA512.HashDataAsync(fallbackStream, token)).ToLowerInvariant();
     }
 
     private static async Task Expect(string game, string path, string? expected, CancellationToken token)

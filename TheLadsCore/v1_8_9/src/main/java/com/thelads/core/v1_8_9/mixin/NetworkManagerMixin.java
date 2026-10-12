@@ -3,6 +3,7 @@ package com.thelads.core.v1_8_9.mixin;
 import com.thelads.core.client.PacketErrorPolicy;
 import com.thelads.core.v1_8_9.feature.ConnectionTweaks189;
 import com.thelads.core.v1_8_9.feature.SignalLoss189;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.network.EnumPacketDirection;
@@ -54,4 +55,11 @@ public abstract class NetworkManagerMixin implements SignalLoss189.PacketActivit
 
     @Override
     public long ladsLastPacketNanos() { return ladsLastPacketNanos; }
+
+    /** Fast multiplayer disconnect: allows Netty to close the channel asynchronously without freezing the UI thread. */
+    @Redirect(method = "closeChannel", at = @At(value = "INVOKE",
+        target = "Lio/netty/channel/ChannelFuture;awaitUninterruptibly()Lio/netty/channel/ChannelFuture;", remap = false), require = 1)
+    private ChannelFuture ladsAsyncClose(ChannelFuture future) {
+        return future;
+    }
 }

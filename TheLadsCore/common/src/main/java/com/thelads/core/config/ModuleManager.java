@@ -310,6 +310,7 @@ public class ModuleManager {
         rawInput.setEnabled(true);
         register(rawInput, Module.Category.MECHANIC);
         Module borderless = new Module("BorderlessFullscreen", "Borderless windowed fullscreen mode.");
+        borderless.addOption(new BoolOption("True borderless", false));
         borderless.setEnabled(true);
         register(borderless, Module.Category.MECHANIC);
     }

@@ -163,6 +163,7 @@ public final class LadsTitleScreen189 {
         if (!logged) {
             logged = true;
             LogManager.getLogger("TheLadsCore-1.8.9").info("custom title initialized for Minecraft 1.8.9: {} native widgets, {} more", main.size(), extras.size());
+            com.thelads.core.v1_8_9.TheLadsCore189.wipeLaunchClassLoader();
         }
     }
 
