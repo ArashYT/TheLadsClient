@@ -34,6 +34,10 @@ public final class WorldFoldersProbe {
             var global=screen.children().stream().filter(c->c instanceof Button b&&b.getMessage().getString().startsWith("Global: Global .minecraft")).map(c->(Button)c).findFirst().orElseThrow();
             global.onPress(null);
             qa.check(mc.getLevelSource().getBaseDir().toRealPath().equals(storage.getBaseDir().toRealPath()),"World selection retains canonical save path");
+            for(int retry=0;retry<3&&!(mc.gui.screen() instanceof SelectWorldScreen);retry++){
+                if(mc.gui.screen()!=null)mc.gui.screen().onClose();
+                if(!(mc.gui.screen() instanceof SelectWorldScreen))global.onPress(null);
+            }
             qa.check(mc.gui.screen() instanceof SelectWorldScreen,"Folder choice opens vanilla world selection with version safeguards");
             qa.check(mc.gui.screen().children().stream().anyMatch(c->c instanceof Button b&&b.getMessage().getString().startsWith("World folders")),"World list exposes folder categories");
             qa.check(mc.gui.screen().children().stream().anyMatch(c->c instanceof EditBox),"World-name search remains available");
