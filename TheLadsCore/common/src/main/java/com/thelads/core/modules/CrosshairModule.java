@@ -33,6 +33,18 @@ public class CrosshairModule extends Module {
         addOption(color);
         addOption(scale);
         addOption(thickness);
+        // The preview backgrounds first: they change what the preview beside this list shows.
+        addOption(background);
+        addOption(biome);
+        addOption(time);
+        addOption(gradientStart);
+        addOption(gradientEnd);
+        addOption(gradientDirection);
+        addOption(solidColor);
+        addOption(chooseImage);
+        addOption(image);
+        chooseImage.setAction(CrosshairBackground::choose);
+        chooseImage.setLabel(() -> CrosshairBackground.chooseLabel(this));
         // Existing saved shape indices remain stable.
         addOption(new DropdownOption("Shape", 0, "Cross", "Dot", "Square", "Vanilla", "Circle", "Triangle", "Arrow", "Debug", "Drawn"));
         addOption(new SliderOption("Gap", 2, 0, 12, 1));
@@ -83,17 +95,6 @@ public class CrosshairModule extends Module {
         addOption(new SliderOption("Attack Opacity First Person", 100, 0, 100, 1).percent());
         addOption(new SliderOption("Attack Opacity Third Person", 100, 0, 100, 1).percent());
         addOption(new BoolOption("Debug Attack Indicator", false));
-        addOption(background);
-        addOption(biome);
-        addOption(time);
-        addOption(gradientStart);
-        addOption(gradientEnd);
-        addOption(gradientDirection);
-        addOption(solidColor);
-        addOption(chooseImage);
-        addOption(image);
-        chooseImage.setAction(CrosshairBackground::choose);
-        chooseImage.setLabel(() -> CrosshairBackground.chooseLabel(this));
         addOption(drawingEditor);
     }
 
