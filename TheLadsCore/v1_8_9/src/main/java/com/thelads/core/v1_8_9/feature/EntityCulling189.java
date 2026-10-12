@@ -84,83 +84,53 @@ public final class EntityCulling189 {
     private static volatile Snapshot snapshot;
     private static volatile boolean enabled;
     private static volatile int frame;
-    private static final class SectionEntry {
-        final long time;
-        final int flag;
-        SectionEntry(long time, int flag) { this.time = time; this.flag = flag; }
-    }
+    /**
+     * Blocks that changed lately (their new state may not be drawn yet) count as open air for a second: whole chunk sections
+     * when a chunk's data arrives, single blocks when one is placed or broken.
+     *
+     * Main thread writes in place into ConcurrentHashMap and increments changeVersion.
+     * Culling thread snapshots into primitive LongIntTable and LongSet only when changeVersion changes,
+     * ensuring zero allocation and zero boxed lookups during raymarching passes.
+     */
+    private static final Map<Long, long[]> SECTIONS = new ConcurrentHashMap<Long, long[]>();
+    private static final Map<Long, Long> BLOCKS = new ConcurrentHashMap<Long, Long>();
+    private static volatile long changeVersion = 0;
 
-    private static final class SectionTable {
-        static final SectionTable EMPTY = new SectionTable(new long[0], new SectionEntry[0], 0);
+    private static final class LongIntTable {
         final long[] keys;
-        final SectionEntry[] values;
+        final int[] values;
+        final boolean[] occupied;
         final int mask;
-        final int size;
 
-        private SectionTable(long[] keys, SectionEntry[] values, int size) {
-            this.keys = keys;
-            this.values = values;
-            this.mask = keys.length - 1;
-            this.size = size;
+        LongIntTable(int capacity) {
+            int cap = Math.max(16, Integer.highestOneBit(capacity * 2 - 1) << 1);
+            this.keys = new long[cap];
+            this.values = new int[cap];
+            this.occupied = new boolean[cap];
+            this.mask = cap - 1;
         }
 
-        SectionEntry get(long key) {
-            if (size == 0) return null;
+        void put(long key, int value) {
             int idx = hash(key) & mask;
-            while (values[idx] != null) {
+            while (occupied[idx]) {
+                if (keys[idx] == key) {
+                    values[idx] = value;
+                    return;
+                }
+                idx = (idx + 1) & mask;
+            }
+            occupied[idx] = true;
+            keys[idx] = key;
+            values[idx] = value;
+        }
+
+        int get(long key, int defaultVal) {
+            int idx = hash(key) & mask;
+            while (occupied[idx]) {
                 if (keys[idx] == key) return values[idx];
                 idx = (idx + 1) & mask;
             }
-            return null;
-        }
-
-        SectionTable put(long key, long time, int flag) {
-            SectionEntry entry = new SectionEntry(time, flag);
-            int newCap = (size + 1) * 2 > keys.length ? Math.max(16, keys.length * 2) : Math.max(16, keys.length);
-            long[] k = new long[newCap];
-            SectionEntry[] v = new SectionEntry[newCap];
-            int m = newCap - 1;
-            int count = 0;
-            boolean updated = false;
-            for (int i = 0; i < keys.length; i++) {
-                if (values[i] != null) {
-                    long ek = keys[i];
-                    SectionEntry ev = (ek == key) ? entry : values[i];
-                    if (ek == key) updated = true;
-                    int idx = hash(ek) & m;
-                    while (v[idx] != null) idx = (idx + 1) & m;
-                    k[idx] = ek;
-                    v[idx] = ev;
-                    count++;
-                }
-            }
-            if (!updated) {
-                int idx = hash(key) & m;
-                while (v[idx] != null) idx = (idx + 1) & m;
-                k[idx] = key;
-                v[idx] = entry;
-                count++;
-            }
-            return new SectionTable(k, v, count);
-        }
-
-        SectionTable purge(long now, long maxAge) {
-            if (size == 0) return this;
-            int newCap = Math.max(16, keys.length);
-            long[] k = new long[newCap];
-            SectionEntry[] v = new SectionEntry[newCap];
-            int m = newCap - 1;
-            int count = 0;
-            for (int i = 0; i < keys.length; i++) {
-                if (values[i] != null && now - values[i].time <= maxAge) {
-                    int idx = hash(keys[i]) & m;
-                    while (v[idx] != null) idx = (idx + 1) & m;
-                    k[idx] = keys[i];
-                    v[idx] = values[i];
-                    count++;
-                }
-            }
-            return count == 0 ? EMPTY : new SectionTable(k, v, count);
+            return defaultVal;
         }
 
         private static int hash(long key) {
@@ -171,24 +141,29 @@ public final class EntityCulling189 {
         }
     }
 
-    private static final class BlockTable {
-        static final BlockTable EMPTY = new BlockTable(new long[0], new long[0], new boolean[0], 0);
+    private static final class LongSet {
         final long[] keys;
-        final long[] times;
         final boolean[] occupied;
         final int mask;
-        final int size;
 
-        private BlockTable(long[] keys, long[] times, boolean[] occupied, int size) {
-            this.keys = keys;
-            this.times = times;
-            this.occupied = occupied;
-            this.mask = keys.length - 1;
-            this.size = size;
+        LongSet(int capacity) {
+            int cap = Math.max(16, Integer.highestOneBit(capacity * 2 - 1) << 1);
+            this.keys = new long[cap];
+            this.occupied = new boolean[cap];
+            this.mask = cap - 1;
         }
 
-        boolean containsKey(long key) {
-            if (size == 0) return false;
+        void add(long key) {
+            int idx = hash(key) & mask;
+            while (occupied[idx]) {
+                if (keys[idx] == key) return;
+                idx = (idx + 1) & mask;
+            }
+            occupied[idx] = true;
+            keys[idx] = key;
+        }
+
+        boolean contains(long key) {
             int idx = hash(key) & mask;
             while (occupied[idx]) {
                 if (keys[idx] == key) return true;
@@ -197,59 +172,6 @@ public final class EntityCulling189 {
             return false;
         }
 
-        BlockTable put(long key, long time) {
-            int newCap = (size + 1) * 2 > keys.length ? Math.max(16, keys.length * 2) : Math.max(16, keys.length);
-            long[] k = new long[newCap];
-            long[] t = new long[newCap];
-            boolean[] occ = new boolean[newCap];
-            int m = newCap - 1;
-            int count = 0;
-            boolean updated = false;
-            for (int i = 0; i < keys.length; i++) {
-                if (occupied[i]) {
-                    long ek = keys[i];
-                    long et = (ek == key) ? time : times[i];
-                    if (ek == key) updated = true;
-                    int idx = hash(ek) & m;
-                    while (occ[idx]) idx = (idx + 1) & m;
-                    k[idx] = ek;
-                    t[idx] = et;
-                    occ[idx] = true;
-                    count++;
-                }
-            }
-            if (!updated) {
-                int idx = hash(key) & m;
-                while (occ[idx]) idx = (idx + 1) & m;
-                k[idx] = key;
-                t[idx] = time;
-                occ[idx] = true;
-                count++;
-            }
-            return new BlockTable(k, t, occ, count);
-        }
-
-        BlockTable purge(long now, long maxAge) {
-            if (size == 0) return this;
-            int newCap = Math.max(16, keys.length);
-            long[] k = new long[newCap];
-            long[] t = new long[newCap];
-            boolean[] occ = new boolean[newCap];
-            int m = newCap - 1;
-            int count = 0;
-            for (int i = 0; i < keys.length; i++) {
-                if (occupied[i] && now - times[i] <= maxAge) {
-                    int idx = hash(keys[i]) & m;
-                    while (occ[idx]) idx = (idx + 1) & m;
-                    k[idx] = keys[i];
-                    t[idx] = times[i];
-                    occ[idx] = true;
-                    count++;
-                }
-            }
-            return count == 0 ? EMPTY : new BlockTable(k, t, occ, count);
-        }
-
         private static int hash(long key) {
             long h = key ^ (key >>> 32);
             h = (h ^ (h >>> 16)) * 0x85ebca6b;
@@ -258,13 +180,33 @@ public final class EntityCulling189 {
         }
     }
 
-    /**
-     * Blocks that changed lately (their new state may not be drawn yet) count as open air for a second: whole chunk sections
-     * when a chunk's data arrives, single blocks when one is placed or broken.
-     */
-    private static final Object MUTATION_LOCK = new Object();
-    private static volatile SectionTable sections = SectionTable.EMPTY;
-    private static volatile BlockTable blocks = BlockTable.EMPTY;
+    private static volatile LongIntTable sectionSnap = new LongIntTable(16);
+    private static volatile LongSet blockSnap = new LongSet(16);
+    private static long localChangeVersion = -1;
+
+    private static void updateCullSnapshots() {
+        long v = changeVersion;
+        if (v == localChangeVersion) return;
+        int secSize = SECTIONS.size();
+        LongIntTable newSections = new LongIntTable(Math.max(16, secSize * 2));
+        for (Map.Entry<Long, long[]> entry : SECTIONS.entrySet()) {
+            Long k = entry.getKey();
+            long[] val = entry.getValue();
+            if (k != null && val != null) {
+                newSections.put(k.longValue(), (int) val[1]);
+            }
+        }
+        int blkSize = BLOCKS.size();
+        LongSet newBlocks = new LongSet(Math.max(16, blkSize * 2));
+        for (Long k : BLOCKS.keySet()) {
+            if (k != null) {
+                newBlocks.add(k.longValue());
+            }
+        }
+        sectionSnap = newSections;
+        blockSnap = newBlocks;
+        localChangeVersion = v;
+    }
     // Culling thread -> render thread.
     private static volatile Pass done, running;
     // Render thread only.
@@ -310,10 +252,9 @@ public final class EntityCulling189 {
             tableWorld = world;
             opaque = opaqueTable();
             FIRST_SEEN.clear();
-            synchronized (MUTATION_LOCK) {
-                sections = SectionTable.EMPTY;
-                blocks = BlockTable.EMPTY;
-            }
+            SECTIONS.clear();
+            BLOCKS.clear();
+            changeVersion++;
         }
         long now = System.nanoTime();
         int size = RADIUS * 2 + 1, x0 = (int) Math.floor(view.posX / 16) - RADIUS, z0 = (int) Math.floor(view.posZ / 16) - RADIUS;
@@ -326,10 +267,20 @@ public final class EntityCulling189 {
             else if (now - seen > CHUNK_SETTLE) chunks[i * size + j] = chunk;
         }
         snapshot = new Snapshot(world, chunks, x0, z0, size, opaque);
-        synchronized (MUTATION_LOCK) {
-            sections = sections.purge(now, CHANGED_FOR);
-            blocks = blocks.purge(now, CHANGED_FOR);
+        boolean changed = false;
+        for (Map.Entry<Long, long[]> entry : SECTIONS.entrySet()) {
+            if (now - entry.getValue()[0] > CHANGED_FOR) {
+                SECTIONS.remove(entry.getKey());
+                changed = true;
+            }
         }
+        for (Map.Entry<Long, Long> entry : BLOCKS.entrySet()) {
+            if (now - entry.getValue() > CHANGED_FOR) {
+                BLOCKS.remove(entry.getKey());
+                changed = true;
+            }
+        }
+        if (changed) changeVersion++;
     }
 
     /** World.markBlockRangeForRenderUpdate on the client for a whole chunk (its data arrived): its sections count as open air. */
@@ -337,12 +288,9 @@ public final class EntityCulling189 {
         if (!enabled) return;
         if (traceChanges) lastChange = new Throwable("blocks changed " + x1 + " " + y1 + " " + z1 + " .. " + x2 + " " + y2 + " " + z2);
         long now = System.nanoTime();
-        synchronized (MUTATION_LOCK) {
-            SectionTable cur = sections;
-            for (int x = x1 >> 4; x <= x2 >> 4; x++) for (int y = Math.max(0, y1 >> 4); y <= Math.min(15, y2 >> 4); y++)
-                for (int z = z1 >> 4; z <= z2 >> 4; z++) cur = cur.put(section(x, y, z), now, 1);
-            sections = cur;
-        }
+        for (int x = x1 >> 4; x <= x2 >> 4; x++) for (int y = Math.max(0, y1 >> 4); y <= Math.min(15, y2 >> 4); y++)
+            for (int z = z1 >> 4; z <= z2 >> 4; z++) SECTIONS.put(section(x, y, z), new long[] {now, 1});
+        changeVersion++;
     }
 
     /** World.markBlockForUpdate on the client (a block placed, broken or changed): that block counts as open air. */
@@ -350,14 +298,10 @@ public final class EntityCulling189 {
         if (!enabled || y < 0 || y > 255) return;
         if (traceChanges) lastChange = new Throwable("block changed " + x + " " + y + " " + z);
         long now = System.nanoTime();
-        synchronized (MUTATION_LOCK) {
-            blocks = blocks.put(cell(x, y, z), now);
-            long sk = section(x >> 4, y >> 4, z >> 4);
-            SectionEntry was = sections.get(sk);
-            long wasTime = was == null ? 0 : was.time;
-            int flag = was != null && was.flag == 1 && now - was.time <= CHANGED_FOR ? 1 : 0;
-            sections = sections.put(sk, Math.max(now, wasTime), flag);
-        }
+        BLOCKS.put(cell(x, y, z), now);
+        long[] was = SECTIONS.get(section(x >> 4, y >> 4, z >> 4));
+        SECTIONS.put(section(x >> 4, y >> 4, z >> 4), new long[] {Math.max(now, was == null ? 0 : was[0]), was != null && was[1] == 1 && now - was[0] <= CHANGED_FOR ? 1 : 0});
+        changeVersion++;
     }
 
     /** RenderManager.renderEntityStatic: true to draw only the name tag. {@code originX..} is where the world is drawn from. */
@@ -443,6 +387,7 @@ public final class EntityCulling189 {
                 running = pass;
                 grid.snap = snap;
                 grid.clearCache();
+                updateCullSnapshots();
                 pass(grid, snap, eye, Occlusion.eyes(grid, eye[0], eye[1], eye[2], EYE_CUBE, eyes), eyes, gen);
                 done = pass;
                 passNanos += System.nanoTime() - now;
@@ -565,7 +510,7 @@ public final class EntityCulling189 {
             if (y < 0 || y > 255) return false;
             int cx = x >> 4, cy = y >> 4, cz = z >> 4;
             if (cx != sx || cy != sy || cz != sz) { sx = cx; sy = cy; sz = cz; data = load(cx, cy, cz); }
-            if (data == null || someChanged && blocks.containsKey(cell(x, y, z))) return false;
+            if (data == null || someChanged && blockSnap.contains(cell(x, y, z))) return false;
             int id = data[(y & 15) << 8 | (z & 15) << 4 | (x & 15)];
             return snap.opaque[id];
         }
@@ -582,10 +527,9 @@ public final class EntityCulling189 {
             someChanged = false;
             if (i >= 0 && j >= 0 && i < snap.size && j < snap.size) {
                 Chunk chunk = snap.chunks[i * snap.size + j];
-                SectionTable s = sections;
-                SectionEntry changed = s.size == 0 ? null : s.get(EntityCulling189.section(cx, cy, cz));
-                someChanged = changed != null && changed.flag == 0;
-                if (chunk != null && (changed == null || changed.flag != 1)) {
+                int flag = sectionSnap.get(EntityCulling189.section(cx, cy, cz), -1);
+                someChanged = flag == 0;
+                if (chunk != null && flag != 1) {
                     ExtendedBlockStorage storage = chunk.getBlockStorageArray()[cy];
                     if (storage != null) res = storage.getData();
                 }
@@ -608,6 +552,7 @@ public final class EntityCulling189 {
         Grid grid = new Grid();
         grid.snap = snap;
         grid.clearCache();
+        updateCullSnapshots();
         double[] one = new double[27];
         int n = Occlusion.eyes(grid, eye[0], eye[1], eye[2], 0, one);
         if (n == 0) { wrong++; return; }
@@ -648,10 +593,11 @@ public final class EntityCulling189 {
             Grid grid = new Grid();
             grid.snap = snap;
             grid.clearCache();
+            updateCullSnapshots();
             double[] eyes = new double[27];
             int n = Occlusion.eyes(grid, eye[0], eye[1], eye[2], EYE_CUBE, eyes);
             out.append("; eyes ").append(n).append(", hidden now ").append(n > 0 && hidden(grid, entity, eye, eyes, n));
-            out.append("; changed sections ").append(sections.size).append(", blocks ").append(blocks.size);
+            out.append("; changed sections ").append(SECTIONS.size()).append(", blocks ").append(BLOCKS.size());
             int settled = 0;
             for (Chunk chunk : snap.chunks) if (chunk != null) settled++;
             out.append(", settled chunks ").append(settled).append('/').append(snap.chunks.length);
