@@ -79,7 +79,7 @@ final class Probe145 {
         return after(60);
     }
 
-    /** The Lads HUD with the HUD FPS cap as configured (off by default): rebuilt in every frame, not every second one. */
+    /** The Lads HUD with the HUD FPS cap as configured (on at 60 by default since 1.9.2): rebuilt about 60 times a second, not every frame. */
     private static boolean rate(Minecraft mc) {
         float drawn = fps();
         int built = HudManager.getInstance().getMeasuredHudFps();
@@ -87,8 +87,9 @@ final class Probe145 {
         LOG.info("Lads 1.8.9 core probe: HUD rate: drawn in {} frames/s, rebuilt {} times/s, game {} FPS (debug), cap {} at {}, vsync {}, limit {}",
             drawn, built, Minecraft.getDebugFPS(), settings.isHudFpsCapEnabled(), settings.getHudFpsLimit(), mc.gameSettings.enableVsync,
             mc.gameSettings.limitFramerate);
-        check(!settings.isHudFpsCapEnabled() && built >= drawn * 0.8f, "the HUD FPS cap is off by default (the sandbox config was "
-            + "saved by 1.4.4 with its default on at 60) and the Lads HUD is rebuilt in every frame: " + built + " of " + drawn + " frames/s");
+        check(settings.isHudFpsCapEnabled() && settings.getHudFpsLimit() == 60 && built >= 45 && built <= 75 && built < drawn * 0.8f,
+            "the HUD FPS cap is on at 60 (the 1.9.2 migration turned the sandbox config's old default on) and the Lads HUD is rebuilt about "
+            + "60 times a second: " + built + " of " + drawn + " frames/s");
         return after(1);
     }
 
