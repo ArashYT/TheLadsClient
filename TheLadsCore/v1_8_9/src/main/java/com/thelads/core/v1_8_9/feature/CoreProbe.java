@@ -158,6 +158,12 @@ public final class CoreProbe {
         } else if ("hudlayout".equals(only)) { // 1.9.0 HUD layout across GUI scales, docked HUDs, the hotbar snap (HudLayoutProbe189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, HudLayoutProbe189::run));
+        } else if ("skin".equals(only)) { // 1.9.1 Skin Customization and Skin changer: from the title screen, then from the pause menu (Probe191Skin)
+            STEPS.clear();
+            STEPS.add(CoreProbe::titleShown);
+            STEPS.addAll(Probe191Skin.TITLE);
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(Probe191Skin.WORLD);
         } else if ("sounds".equals(only)) { // 1.9.0 uploaded sounds: Combo Sounds and Kill Banner "Your sounds" (Probe190Sounds)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe190Sounds::run));
@@ -233,6 +239,7 @@ public final class CoreProbe {
         LightsProbe189.stop();
         Probe160s.stop();
         Probe170Skin.stop();
+        Probe191Skin.stop();
         Probe170Sprint.stop();
         Probe170Hud.stop();
         Probe170ItemPhysics.stop();
@@ -295,7 +302,7 @@ public final class CoreProbe {
      * QA only: the sandbox's offline account makes Essential open "Account authentication failed" over the title screen, and that
      * popup takes every click. False when Essential is not loaded or its overlay cannot be read.
      */
-    private static boolean essentialModalOpen() {
+    static boolean essentialModalOpen() {
         try {
             Class<?> overlays = Class.forName("gg.essential.gui.overlay.OverlayManagerImpl");
             return (Boolean) overlays.getMethod("hasOpenModals").invoke(overlays.getField("INSTANCE").get(null));
