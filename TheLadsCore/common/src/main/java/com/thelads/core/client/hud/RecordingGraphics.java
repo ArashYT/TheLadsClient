@@ -51,6 +51,7 @@ final class RecordingGraphics implements LadsGraphics {
     @Override public boolean drawKillBannerPreview(String skin, int variant, int x, int y, int width, int height, double clock) { mark("bannerPreview", Arrays.asList(skin, variant), x, y, width, height, clock); ops.add(g -> g.drawKillBannerPreview(skin, variant, x, y, width, height, clock)); return true; }
     @Override public boolean drawCrosshairPreview(int cx, int cy) { mark("crosshair", null, cx, cy); ops.add(g -> g.drawCrosshairPreview(cx, cy)); return true; }
     @Override public boolean drawGameView(int x, int y, int width, int height) { mark("view", null, x, y, width, height); ops.add(g -> g.drawGameView(x, y, width, height)); return true; }
+    @Override public boolean drawImage(String source, int x, int y, int width, int height) { mark("image", source, x, y, width, height); ops.add(g -> g.drawImage(source, x, y, width, height)); return true; }
 
     @Override public int textWidth(String text) { return target.textWidth(text); }
     @Override public Object textMetricsKey() { return target.textMetricsKey(); }

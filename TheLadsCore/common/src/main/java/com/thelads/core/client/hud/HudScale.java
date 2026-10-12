@@ -75,6 +75,7 @@ public final class HudScale {
         @Override public void drawSprite(String sprite, int x, int y, int size) { target.drawSprite(sprite, x, y, size); }
         @Override public void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) { target.drawPotionIcon(effectId, iconIndex, x, y, size); }
         @Override public boolean drawGameView(int x, int y, int width, int height) { return target.drawGameView(x, y, width, height); }
+        @Override public boolean drawImage(String source, int x, int y, int width, int height) { return target.drawImage(source, x, y, width, height); }
         @Override public LadsGameBridge getGame() { return target.getGame(); }
     }
 }
