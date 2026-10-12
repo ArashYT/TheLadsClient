@@ -183,21 +183,6 @@
       "projectUrl": "https://modrinth.com/mod/effectual"
     },
     {
-      "projectId": "k2ZPuTBm",
-      "projectSlug": "essential",
-      "name": "Essential Mod",
-      "modId": "essential-container",
-      "versionId": "CdelwE95",
-      "version": "1.5.0.1",
-      "fileName": "Essential_1-5-0-1_fabric_26-2.jar",
-      "url": "https://cdn.modrinth.com/data/k2ZPuTBm/versions/CdelwE95/Essential_1-5-0-1_fabric_26-2.jar",
-      "sha512": "0f20ff1c4b2cac42cc73b69a3b3ba7c4338ba841f1d9ac671c5809c7c7e2ebf07436db5d9be4a2cc6206f4001bd1d093dc329faf6c9f2008d7c648bdc1c69745",
-      "size": 52696199,
-      "license": "LicenseRef-All-Rights-Reserved",
-      "sourceUrl": "https://github.com/EssentialGG/Essential",
-      "projectUrl": "https://modrinth.com/mod/essential"
-    },
-    {
       "projectId": "4H6sumDB",
       "projectSlug": "euphoria-patches",
       "name": "Euphoria Patches",
@@ -1220,6 +1205,15 @@
         "d0a769f366fb44e0ec96060fd26b9e389997a59463d09dba38d2485c34d1aae05250ff1941d96ce13aeff5f91c7230520e90a69783e8644d616aecebc449f900"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.4.6."
+    },
+    {
+      "modId": "essential-container",
+      "projectId": "k2ZPuTBm",
+      "name": "Essential Mod",
+      "sha512": [
+        "0f20ff1c4b2cac42cc73b69a3b3ba7c4338ba841f1d9ac671c5809c7c7e2ebf07436db5d9be4a2cc6206f4001bd1d093dc329faf6c9f2008d7c648bdc1c69745"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.9.2."
     }
   ]
 }

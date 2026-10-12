@@ -168,21 +168,6 @@
       "projectUrl": "https://modrinth.com/mod/effectual"
     },
     {
-      "projectId": "k2ZPuTBm",
-      "projectSlug": "essential",
-      "name": "Essential Mod",
-      "modId": "essential-container",
-      "versionId": "NWE2l2zJ",
-      "version": "1.5.0.1",
-      "fileName": "Essential_1-5-0-1_fabric_26-3.jar",
-      "url": "https://cdn.modrinth.com/data/k2ZPuTBm/versions/NWE2l2zJ/Essential_1-5-0-1_fabric_26-3.jar",
-      "sha512": "fff815d5be04f46db6cdda702cff914ce3d9de7f42e52c1907d7658a55d59130b84630a157bb4ff06dae9a345dd27bcbf7413f58df99a70ce4c86d5bca98e912",
-      "size": 52598638,
-      "license": "LicenseRef-All-Rights-Reserved",
-      "sourceUrl": "https://github.com/EssentialGG/Essential",
-      "projectUrl": "https://modrinth.com/mod/essential"
-    },
-    {
       "projectId": "4H6sumDB",
       "projectSlug": "euphoria-patches",
       "name": "Euphoria Patches",
@@ -1121,6 +1106,15 @@
         "37258922ea1fc332f43612e14f8dbc6cc8b60cb3341adc6a6b9b49422ccd1c661607f84c6dad9ae07e24eb70d48ca0e6034f02e4b0e0abe80c108172d890d2b4"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.9.1 (Wavy Capes module)."
+    },
+    {
+      "modId": "essential-container",
+      "projectId": "k2ZPuTBm",
+      "name": "Essential Mod",
+      "sha512": [
+        "fff815d5be04f46db6cdda702cff914ce3d9de7f42e52c1907d7658a55d59130b84630a157bb4ff06dae9a345dd27bcbf7413f58df99a70ce4c86d5bca98e912"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.9.2."
     }
   ]
 }

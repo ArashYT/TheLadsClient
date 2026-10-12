@@ -69,7 +69,7 @@ KNOWN = {'autoreconnectrf': 'PRy8Khga', 'clientsort': 'K0AkAin6',
 # (No Resource Pack Warnings covers it) from 26.2 and 26.3.
 REMOVED = {'goodmc': 'hwir46QE', 'gammautils': 'wdLuzzEP', 'motionblur': 'fWundlde', 'motionblurplus': 'Qbkde6rq',
            'satin': 'fRbqPLg4', 'sound_physics_remastered': 'qyVF9oeo', 'clientsort': 'K0AkAin6',
-           'nopackcompatcheck': '1agMh8Z8'}
+           'nopackcompatcheck': '1agMh8Z8', 'essential': 'k2ZPuTBm', 'essential-container': 'k2ZPuTBm'}
 # A frozen pack keeps a mod that left the others (1.21.11 has been frozen since 1.6.0).
 KEPT = {'1.21.11': {'nopackcompatcheck'}}
 

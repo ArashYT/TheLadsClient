@@ -548,6 +548,145 @@ public sealed class ClientModInstallerTests : IDisposable
         if (disable) { Assert.False(File.Exists(Destination)); Assert.Equal(first, File.ReadAllBytes(Destination + ".disabled")); }
         else Assert.Equal(changed, File.ReadAllBytes(Destination));
     }
+
+    private static byte[] ForgeEssentialJar(string content = "")
+    {
+        using var bytes = new MemoryStream();
+        using (var zip = new ZipArchive(bytes, ZipArchiveMode.Create, true))
+        {
+            var entry = zip.CreateEntry("gg/essential/loader/stage0/EssentialSetupTweaker.class");
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write(content);
+        }
+        return bytes.ToArray();
+    }
+
+    [Fact]
+    public async Task ExistingInstallWithLadsEssentialRetiresJarOnNextLaunchFor189AndCleansLoaderCache()
+    {
+        var ladsEssential = ForgeEssentialJar("lads-pinned-189");
+        var ladsHash = Sha(ladsEssential);
+        var dir189 = Path.Combine(root, "game-mods", "1.8.9"); Directory.CreateDirectory(dir189);
+        var manifest = new ClientModInstaller.Manifest("1.8.9", new(), Retired: new() {
+            new ClientModInstaller.RetiredEntry("essential", "k2ZPuTBm", "Essential", new() { ladsHash }, "Removed in 1.9.2")
+        });
+        File.WriteAllText(Path.Combine(dir189, "client-mods.json"), JsonSerializer.Serialize(manifest));
+
+        Directory.CreateDirectory(Mods);
+        var jarPath = Path.Combine(Mods, "Essential_1-5-0-1_forge_1-8-9.jar");
+        File.WriteAllBytes(jarPath, ladsEssential);
+
+        // Essential loader cache directory with dynamic stage jar
+        var loaderDir = Path.Combine(Game, "essential", "loader"); Directory.CreateDirectory(loaderDir);
+        var stageJar = Path.Combine(loaderDir, "stage1.jar");
+        File.WriteAllText(stageJar, "stage1-bytes");
+
+        // User files in essential/ that MUST be preserved
+        var configFile = Path.Combine(Game, "essential", "config.toml");
+        File.WriteAllText(configFile, "user-config = true");
+
+        using var client = new HttpClient();
+        await ClientModInstaller.InstallAsync(root, Game, "1.8.9", httpClient: client);
+
+        // Pinned Lads jar is retired to .lads-mod-cache\retired\essential\
+        Assert.False(File.Exists(jarPath));
+        var retiredJar = Path.Combine(Cache, "retired", "essential", "Essential_1-5-0-1_forge_1-8-9.jar");
+        Assert.True(File.Exists(retiredJar));
+        Assert.Equal(ladsEssential, File.ReadAllBytes(retiredJar));
+
+        // Essential loader cache is cleaned up
+        Assert.False(Directory.Exists(loaderDir));
+
+        // User config is preserved
+        Assert.True(File.Exists(configFile));
+        Assert.Equal("user-config = true", File.ReadAllText(configFile));
+    }
+
+    [Fact]
+    public async Task UserAddedOrModifiedEssentialOn189IsKeptAndNotRetired()
+    {
+        var ladsEssential = ForgeEssentialJar("lads-pinned-189");
+        var ladsHash = Sha(ladsEssential);
+        var dir189 = Path.Combine(root, "game-mods", "1.8.9"); Directory.CreateDirectory(dir189);
+        var manifest = new ClientModInstaller.Manifest("1.8.9", new(), Retired: new() {
+            new ClientModInstaller.RetiredEntry("essential", "k2ZPuTBm", "Essential", new() { ladsHash }, "Removed in 1.9.2")
+        });
+        File.WriteAllText(Path.Combine(dir189, "client-mods.json"), JsonSerializer.Serialize(manifest));
+
+        Directory.CreateDirectory(Mods);
+        // User provides their own Essential jar with a different hash
+        var userEssential = ForgeEssentialJar("user-custom-essential-189");
+        var userJarPath = Path.Combine(Mods, "my-essential.jar");
+        File.WriteAllBytes(userJarPath, userEssential);
+
+        var loaderDir = Path.Combine(Game, "essential", "loader"); Directory.CreateDirectory(loaderDir);
+        var stageJar = Path.Combine(loaderDir, "stage1.jar");
+        File.WriteAllText(stageJar, "stage1-bytes");
+
+        using var client = new HttpClient();
+        await ClientModInstaller.InstallAsync(root, Game, "1.8.9", httpClient: client);
+
+        // User jar is kept in mods/
+        Assert.True(File.Exists(userJarPath));
+        Assert.Equal(userEssential, File.ReadAllBytes(userJarPath));
+        Assert.False(Directory.Exists(Path.Combine(Cache, "retired", "essential")));
+
+        // Loader directory is NOT deleted because user's Essential was kept
+        Assert.True(Directory.Exists(loaderDir));
+        Assert.True(File.Exists(stageJar));
+    }
+
+    [Fact]
+    public async Task ExistingInstallWithLadsEssentialRetiresJarOnNextLaunchFor263()
+    {
+        var ladsEssential = FabricJar("essential-container");
+        var ladsHash = Sha(ladsEssential);
+        var dir263 = Path.Combine(root, "game-mods", "26.3"); Directory.CreateDirectory(dir263);
+        var manifest = new ClientModInstaller.Manifest("26.3", new(), Retired: new() {
+            new ClientModInstaller.RetiredEntry("essential-container", "k2ZPuTBm", "Essential Mod", new() { ladsHash }, "Removed in 1.9.2")
+        });
+        File.WriteAllText(Path.Combine(dir263, "client-mods.json"), JsonSerializer.Serialize(manifest));
+
+        Directory.CreateDirectory(Mods);
+        var jarPath = Path.Combine(Mods, "Essential_1-5-0-1_fabric_26-3.jar");
+        File.WriteAllBytes(jarPath, ladsEssential);
+
+        using var client = new HttpClient();
+        await ClientModInstaller.InstallAsync(root, Game, "26.3", httpClient: client);
+
+        // Pinned jar is retired
+        Assert.False(File.Exists(jarPath));
+        var retiredJar = Path.Combine(Cache, "retired", "essential-container", "Essential_1-5-0-1_fabric_26-3.jar");
+        Assert.True(File.Exists(retiredJar));
+        Assert.Equal(ladsEssential, File.ReadAllBytes(retiredJar));
+    }
+
+    [Fact]
+    public async Task UserAddedOrModifiedEssentialOn263IsKeptAndNotRetired()
+    {
+        var ladsEssential = FabricJar("essential-container");
+        var ladsHash = Sha(ladsEssential);
+        var dir263 = Path.Combine(root, "game-mods", "26.3"); Directory.CreateDirectory(dir263);
+        var manifest = new ClientModInstaller.Manifest("26.3", new(), Retired: new() {
+            new ClientModInstaller.RetiredEntry("essential-container", "k2ZPuTBm", "Essential Mod", new() { ladsHash }, "Removed in 1.9.2")
+        });
+        File.WriteAllText(Path.Combine(dir263, "client-mods.json"), JsonSerializer.Serialize(manifest));
+
+        Directory.CreateDirectory(Mods);
+        // User's own Essential jar (has custom provides / different hash)
+        var userEssential = FabricJar("essential-container", provides: new[] { "custom-essential" });
+        var userJarPath = Path.Combine(Mods, "custom-essential.jar");
+        File.WriteAllBytes(userJarPath, userEssential);
+
+        using var client = new HttpClient();
+        await ClientModInstaller.InstallAsync(root, Game, "26.3", httpClient: client);
+
+        // User jar is kept in mods/
+        Assert.True(File.Exists(userJarPath));
+        Assert.Equal(userEssential, File.ReadAllBytes(userJarPath));
+        Assert.False(Directory.Exists(Path.Combine(Cache, "retired", "essential-container")));
+    }
+
     [System.Runtime.InteropServices.DllImport("kernel32.dll", EntryPoint = "CreateHardLinkW", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
     [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
     private static extern bool CreateHardLink(string link, string target, IntPtr reserved);

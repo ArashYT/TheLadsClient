@@ -18,21 +18,6 @@
       "projectUrl": "https://modrinth.com/mod/resourcify"
     },
     {
-      "projectId": "k2ZPuTBm",
-      "projectSlug": "essential",
-      "name": "Essential",
-      "modId": "essential",
-      "versionId": "RLvvZ6Nn",
-      "version": "1.5.0.1",
-      "fileName": "Essential_1-5-0-1_forge_1-8-9.jar",
-      "url": "https://cdn.modrinth.com/data/k2ZPuTBm/versions/RLvvZ6Nn/Essential_1-5-0-1_forge_1-8-9.jar",
-      "sha512": "5be2e432d21ef7621becd83a476a445702b665cb30dcbb60eb7672660c54b647c471f228149fedcac180729af1de915c091ab8eddbfab79c900239d9a8119132",
-      "size": 55735363,
-      "license": "LicenseRef-All-Rights-Reserved",
-      "sourceUrl": "https://github.com/SparkUniverse/EssentialClient",
-      "projectUrl": "https://modrinth.com/mod/essential"
-    },
-    {
       "projectId": "zV5r3pPn",
       "projectSlug": "3dskinlayers",
       "name": "3D Skin Layers",
@@ -48,5 +33,15 @@
       "projectUrl": "https://modrinth.com/mod/3dskinlayers"
     }
   ],
-  "retired": []
+  "retired": [
+    {
+      "modId": "essential",
+      "projectId": "k2ZPuTBm",
+      "name": "Essential",
+      "sha512": [
+        "5be2e432d21ef7621becd83a476a445702b665cb30dcbb60eb7672660c54b647c471f228149fedcac180729af1de915c091ab8eddbfab79c900239d9a8119132"
+      ],
+      "reason": "Removed from The Lads Client pack in 1.9.2."
+    }
+  ]
 }

@@ -4450,7 +4450,6 @@ public partial class MainWindow : Window
             Log("[Launcher] Starting game process...");
             PrepareVersionSwitch(gameDirectory, activeProfile.MinecraftVersion);
             PrepareAccountSwitch(gameDirectory);
-            EnforceEssentialSettings(gameDirectory);
             process.Start();
             LaunchToken.Send(process);
             _runningProcesses[process] = gameDirectory;
@@ -4725,86 +4724,6 @@ public partial class MainWindow : Window
         {
             Log($"[Launcher] Could not apply version switch: {ex.Message}");
             return false;
-        }
-    }
-
-    private void EnforceEssentialSettings(string gameDirectory)
-    {
-        try
-        {
-            string essentialDir = Path.Combine(gameDirectory, "essential");
-            string configFile = Path.Combine(essentialDir, "config.toml");
-            string onboardingFile = Path.Combine(essentialDir, "onboarding.json");
-
-            if (File.Exists(configFile))
-            {
-                string text = File.ReadAllText(configFile);
-                string updated = text;
-                var list = new (string Section, string Key, string Value)[]
-                {
-                    ("privacy.general", "display_current_server", "true"),
-                    ("general.general", "streamer_mode", "false"),
-                    ("general.general", "telemetry", "false"),
-                    ("general.online_status", "show_essential_indicator_on_nametags", "false"),
-                    ("general.online_status", "show_essential_indicator_on_tab", "false"),
-                    ("general.experience", "show_nameplate_in_third_person", "false"),
-                    ("quality_of_life.nameplate", "show_my_nameplate_in_third-person", "false"),
-                    ("quality_of_life.screenshots", "essential_screenshots", "false"),
-                    ("quality_of_life.screenshots", "vanilla_screenshot_message", "true"),
-                    ("emotes.general", "disable_emotes", "true"),
-                    ("cosmetics.general", "disable_cosmetics", "true"),
-                    ("quality_of_life.discord_integration", "set_activity_status_on_discord", "false")
-                };
-
-                foreach (var (section, key, val) in list)
-                {
-                    string keyPattern = $@"(?m)^([\t ]*{Regex.Escape(key)}[\t ]*=[\t ]*)[^\r\n]*";
-                    if (Regex.IsMatch(updated, keyPattern))
-                    {
-                        updated = Regex.Replace(updated, keyPattern, $"${{1}}{val}");
-                    }
-                    else
-                    {
-                        string newline = updated.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
-                        var table = Regex.Match(updated, $@"(?m)^[\t ]*\[[\t ]*{Regex.Escape(section)}[\t ]*\][^\r\n]*");
-                        if (table.Success)
-                        {
-                            updated = updated.Insert(table.Index + table.Length, newline + "\t\t" + $"{key} = {val}");
-                        }
-                        else
-                        {
-                            string separator = updated.Length == 0 || updated.EndsWith('\n') ? "" : newline;
-                            updated = updated + separator + $"[{section}]" + newline + $"\t{key} = {val}" + newline;
-                        }
-                    }
-                }
-                if (updated != text) File.WriteAllText(configFile, updated);
-            }
-
-            if (File.Exists(onboardingFile))
-            {
-                string text = File.ReadAllText(onboardingFile);
-                var root = JsonNode.Parse(text) as JsonObject;
-                if (root != null)
-                {
-                    bool changed = false;
-                    if (root["sent_auto_update_telemetry"]?.GetValue<bool>() != false)
-                    {
-                        root["sent_auto_update_telemetry"] = false;
-                        changed = true;
-                    }
-                    if (root["allow_telemetry"]?.GetValue<bool>() != false)
-                    {
-                        root["allow_telemetry"] = false;
-                        changed = true;
-                    }
-                    if (changed) File.WriteAllText(onboardingFile, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log($"[Launcher] Could not enforce Essential settings: {ex.Message}");
         }
     }
 
