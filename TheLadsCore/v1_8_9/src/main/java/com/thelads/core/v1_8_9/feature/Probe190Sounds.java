@@ -99,6 +99,8 @@ final class Probe190Sounds {
             mc.getIntegratedServer().addScheduledTask(() -> {
                 EntityPlayerMP sp = mc.getIntegratedServer().getConfigurationManager().getPlayerByUUID(id);
                 if (sp == null) return;
+                // A clear range: other mobs of the QA world (earlier probes') would take arrows meant for the target.
+                for (net.minecraft.entity.EntityLiving mob : sp.worldObj.getEntitiesWithinAABB(net.minecraft.entity.EntityLiving.class, sp.getEntityBoundingBox().expand(48, 48, 48))) mob.setDead();
                 EntityVillager villager = new EntityVillager(sp.worldObj);
                 villager.setLocationAndAngles(x, y, z, facing, 0);
                 villager.rotationYawHead = villager.renderYawOffset = facing;

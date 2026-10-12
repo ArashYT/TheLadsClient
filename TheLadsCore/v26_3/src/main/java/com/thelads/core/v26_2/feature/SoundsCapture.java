@@ -141,6 +141,8 @@ final class SoundsCapture {
             server.execute(() -> {
                 var sp = server.getPlayerList().getPlayer(id);
                 if (sp == null) return;
+                // A clear range: other mobs of the QA world (earlier probes') would take arrows meant for the target.
+                sp.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, sp.getBoundingBox().inflate(48)).forEach(Entity::discard);
                 var villager = EntityTypes.VILLAGER.create(sp.level(), EntitySpawnReason.COMMAND);
                 villager.snapTo(x, y, z, facing, 0);
                 villager.setYHeadRot(facing);

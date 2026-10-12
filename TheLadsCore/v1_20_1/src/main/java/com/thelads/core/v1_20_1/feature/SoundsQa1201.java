@@ -102,6 +102,8 @@ final class SoundsQa1201 {
             server.execute(() -> {
                 var sp = server.getPlayerList().getPlayer(id);
                 if (sp == null) return;
+                // A clear range: other mobs of the QA world (earlier probes') would take arrows meant for the target.
+                sp.serverLevel().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, sp.getBoundingBox().inflate(48)).forEach(Entity::discard);
                 var villager = EntityType.VILLAGER.create(sp.serverLevel());
                 villager.moveTo(x, y, z, facing, 0);
                 villager.setYHeadRot(facing);
