@@ -164,12 +164,21 @@ final class Probe191KillBanner implements KillBanner191Qa.Driver {
 
     private interface Server { void run(MinecraftServer server, EntityPlayerMP player); }
 
+    private static final AtomicInteger PENDING = new AtomicInteger();
+
+    @Override public boolean serverCaughtUp() { return PENDING.get() == 0; }
+
     private static void server(final Server action) {
         final MinecraftServer server = Minecraft.getMinecraft().getIntegratedServer();
         final UUID id = Minecraft.getMinecraft().thePlayer.getUniqueID();
+        PENDING.incrementAndGet();
         server.addScheduledTask(new Runnable() { public void run() {
-            EntityPlayerMP player = server.getConfigurationManager().getPlayerByUUID(id);
-            if (player != null) action.run(server, player);
+            try {
+                EntityPlayerMP player = server.getConfigurationManager().getPlayerByUUID(id);
+                if (player != null) action.run(server, player);
+            } finally {
+                PENDING.decrementAndGet();
+            }
         }});
     }
 }

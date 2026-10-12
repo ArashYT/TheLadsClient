@@ -49,6 +49,8 @@ public final class KillBanner191Qa {
          * where the game has it (QA windows are never focused, and it turns an unfocused or hidden game's volume down or off).
          */
         void mute(boolean on);
+        /** The integrated server has run every task this driver gave it (a busy QA machine's server can lag seconds). */
+        default boolean serverCaughtUp() { return true; }
         /** Ticks to wait before the loudness run: unfocused Fabric QA games stay silent for their first minute or so. */
         default int settleTicks() { return 0; }
         /** 1.8.9: stands the player 1000 blocks east of the world's origin, facing south (or back where it was). */
@@ -137,8 +139,9 @@ public final class KillBanner191Qa {
                 JsonObject text = new JsonObject();
                 text.addProperty("text", line[0].replace("ME", driver.me()));
                 driver.tellraw(text.toString());
-                return 8;
+                return 1;
             });
+            steps.add(() -> awaited(driver::serverCaughtUp, 200, 6)); // the line, then a few ticks for its packet
             if (line[2].startsWith("a cosmetic")) { steps.add(() -> 8); steps.add(() -> { driver.shot("kb191-themed"); return 4; }); }
             steps.add(() -> {
                 int made = KillBanners.TIMELINE.streak() - before[0];
@@ -151,8 +154,10 @@ public final class KillBanner191Qa {
     /** A pig the player kills with a blow of their own (Mobs on). */
     private void realKill() {
         int[] before = new int[1];
-        steps.add(() -> { driver.spawnPig(); return 20; });
-        steps.add(() -> { before[0] = KillBanners.TIMELINE.streak(); check(driver.attackPig(), "the player hits the pig"); return 16; });
+        steps.add(() -> { driver.spawnPig(); return 1; });
+        steps.add(() -> awaited(driver::serverCaughtUp, 200, 10));
+        steps.add(() -> { before[0] = KillBanners.TIMELINE.streak(); check(driver.attackPig(), "the player hits the pig"); return 1; });
+        steps.add(() -> awaited(() -> KillBanners.TIMELINE.streak() != before[0], 200, 12));
         steps.add(() -> { driver.shot("kb191-real-kill"); return 10; });
         steps.add(() -> { check(KillBanners.TIMELINE.streak() == before[0] + 1, "a real kill (a pig, Mobs on) by the player's blow shows a banner"); return 1; });
     }
@@ -210,15 +215,27 @@ public final class KillBanner191Qa {
         return 0;
     }
 
+    private int polled;
+
+    /** A step that waits: -1 (run it again next tick) until {@code done} or {@code timeout} ticks, then {@code after} ticks. */
+    private int awaited(java.util.function.BooleanSupplier done, int timeout, int after) {
+        if (!done.getAsBoolean() && ++polled < timeout) return -1;
+        polled = 0;
+        return after;
+    }
+
     /** Each client tick; true once the run is over. */
     public boolean tick() {
         if (step >= steps.size()) return true;
         if (wait-- > 0) return false;
         try {
-            wait = steps.get(step++).getAsInt();
+            int next = steps.get(step).getAsInt();
+            if (next < 0) return false;
+            step++;
+            wait = next;
         } catch (RuntimeException failure) {
-            fail("step " + (step - 1) + ": " + failure);
-            LOGGER.error("Lads kb191 step {} failed", step - 1, failure);
+            fail("step " + step + ": " + failure);
+            LOGGER.error("Lads kb191 step {} failed", step, failure);
             step = steps.size() - 1; // finish: put everything back
             wait = 0;
         }

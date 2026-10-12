@@ -203,13 +203,22 @@ final class KillBanner191Capture implements KillBanner191Qa.Driver {
         }
     }
 
+    private static final AtomicInteger PENDING = new AtomicInteger();
+
+    @Override public boolean serverCaughtUp() { return PENDING.get() == 0; }
+
     private static void server(Consumer<ServerPlayer> action) {
         Minecraft mc = Minecraft.getInstance();
         var server = mc.getSingleplayerServer();
         var id = mc.player.getUUID();
+        PENDING.incrementAndGet();
         server.execute(() -> {
-            ServerPlayer sp = server.getPlayerList().getPlayer(id);
-            if (sp != null) action.accept(sp);
+            try {
+                ServerPlayer sp = server.getPlayerList().getPlayer(id);
+                if (sp != null) action.accept(sp);
+            } finally {
+                PENDING.decrementAndGet();
+            }
         });
     }
 }
