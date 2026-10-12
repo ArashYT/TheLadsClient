@@ -42,7 +42,7 @@ public final class Nametags189 {
     private static void updateOptions() {
         Minecraft mc = Minecraft.getMinecraft();
         long tick = mc.theWorld != null ? mc.theWorld.getTotalWorldTime() : -1;
-        if (tick != lastOptionTick) {
+        if (tick != lastOptionTick || tick == -1) { // no world (menus, previews): no tick to cache by
             lastOptionTick = tick;
             cachedOwnNametag = queryOption("Show Own Nametag in Third Person", false);
             cachedBackground = !queryEnabled() || queryOption("Render Background", true);
@@ -66,8 +66,11 @@ public final class Nametags189 {
                 return cache.ladsRenamed();
             }
             String renamed = Nicknames.rename(text, names);
-            cache.ladsNickGen(nickGen);
-            cache.ladsRenamed(renamed);
+            // Only the entity's own tag text is cached: the tab list asks here too, while currentEntity is still the last tag drawn.
+            if (text.equals(cache.ladsFormattedName())) {
+                cache.ladsNickGen(nickGen);
+                cache.ladsRenamed(renamed);
+            }
             return renamed;
         }
         return Nicknames.rename(text, names);
