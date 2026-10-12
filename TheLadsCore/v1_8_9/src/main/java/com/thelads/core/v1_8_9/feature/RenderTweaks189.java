@@ -134,9 +134,26 @@ public final class RenderTweaks189 {
 
     // ---- Name tags (NametagLivingMixin) ----
 
+    /** Current entity whose name tag is being rendered on the render thread. */
+    public static EntityLivingBase currentEntity;
+
     /** In place of entity.getDisplayName() in RendererLivingEntity.renderName: a marker whose text formattedName gives. */
     public static IChatComponent displayName(EntityLivingBase entity) {
-        String fast = enabled && !namesOff ? formattedName(entity) : null;
+        currentEntity = entity;
+        if (!enabled || namesOff) return entity.getDisplayName();
+        NametagCache189 cache = entity instanceof NametagCache189 ? (NametagCache189) entity : null;
+        int tick = entity.ticksExisted;
+        String fast = null;
+        if (cache != null && cache.ladsNameTick() == tick && cache.ladsFormattedName() != null) {
+            fast = cache.ladsFormattedName();
+        } else {
+            fast = formattedName(entity);
+            if (cache != null) {
+                cache.ladsNameTick(tick);
+                cache.ladsFormattedName(fast);
+                cache.ladsRenamed(null);
+            }
+        }
         if (fast == null) return entity.getDisplayName();
         if ((++names & 255) == 0) {
             String real = entity.getDisplayName().getFormattedText();

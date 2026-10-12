@@ -6,9 +6,11 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.IChatComponent;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
@@ -18,22 +20,57 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 /**
  * Nametags on 1.8.9, as on 26.x: own tag in third person, background, text shadow and display-only renames. The name-tag
  * mixins (NametagRenderMixin, NametagLivingMixin, NametagEssentialMixin) and NicknameTabMixin ask here; chat is renamed
- * once as it arrives (Forge's ClientChatReceivedEvent).
+ * once as it arrives (Forge's ClientChatReceivedEvent). Options and renames are cached per tick to eliminate per-tag
+ * reflection and map lookups.
  */
 public final class Nametags189 {
+    private static int nickGen;
+    private static Map<String, String> cachedNames = Collections.emptyMap();
+    private static long lastNamesTick = -1;
+
+    private static long lastOptionTick = -1;
+    private static boolean cachedBackground = true;
+    private static boolean cachedShadow = true;
+    private static boolean cachedOwnNametag = false;
+
     private Nametags189() {}
 
     public static void register() {
         MinecraftForge.EVENT_BUS.register(new Nametags189());
     }
 
-    public static boolean ownNametag() { return option("Show Own Nametag in Third Person", false); }
-    public static boolean background() { return !enabled() || option("Render Background", true); }
-    public static boolean shadow() { return option("Text Shadow", true); }
+    private static void updateOptions() {
+        Minecraft mc = Minecraft.getMinecraft();
+        long tick = mc.theWorld != null ? mc.theWorld.getTotalWorldTime() : -1;
+        if (tick != lastOptionTick) {
+            lastOptionTick = tick;
+            cachedOwnNametag = queryOption("Show Own Nametag in Third Person", false);
+            cachedBackground = !queryEnabled() || queryOption("Render Background", true);
+            cachedShadow = queryOption("Text Shadow", true);
+        }
+    }
+
+    public static boolean ownNametag() { updateOptions(); return cachedOwnNametag; }
+    public static boolean background() { updateOptions(); return cachedBackground; }
+    public static boolean shadow() { updateOptions(); return cachedShadow; }
 
     /** Formatted text (name tags, tab list) with renamed players; unchanged when nothing matched. */
     public static String rename(String text) {
-        return text == null ? null : Nicknames.rename(text, names());
+        if (text == null) return null;
+        Map<String, String> names = names();
+        if (names.isEmpty()) return text;
+        EntityLivingBase entity = RenderTweaks189.currentEntity;
+        if (entity instanceof NametagCache189) {
+            NametagCache189 cache = (NametagCache189) entity;
+            if (cache.ladsNickGen() == nickGen && cache.ladsRenamed() != null && text.equals(cache.ladsFormattedName())) {
+                return cache.ladsRenamed();
+            }
+            String renamed = Nicknames.rename(text, names);
+            cache.ladsNickGen(nickGen);
+            cache.ladsRenamed(renamed);
+            return renamed;
+        }
+        return Nicknames.rename(text, names);
     }
 
     /** A chat message with renamed players, each piece keeping its style; the same instance when nothing matched. */
@@ -62,15 +99,26 @@ public final class Nametags189 {
     }
 
     private static Map<String, String> names() {
-        return Nicknames.active(Minecraft.getMinecraft().getSession().getUsername());
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.theWorld == null) return Collections.emptyMap();
+        long tick = mc.theWorld.getTotalWorldTime();
+        if (tick != lastNamesTick) {
+            lastNamesTick = tick;
+            Map<String, String> current = Nicknames.active(mc.getSession().getUsername());
+            if (current != cachedNames) {
+                cachedNames = current;
+                nickGen++;
+            }
+        }
+        return cachedNames != null ? cachedNames : Collections.emptyMap();
     }
 
-    private static boolean enabled() {
+    private static boolean queryEnabled() {
         Module module = ModuleManager.getInstance().getModule("Nametags");
         return module != null && module.isEnabled();
     }
 
-    private static boolean option(String name, boolean fallback) {
+    private static boolean queryOption(String name, boolean fallback) {
         Module module = ModuleManager.getInstance().getModule("Nametags");
         if (module == null || !module.isEnabled()) return false;
         return module.getOption(name) instanceof BoolOption ? ((BoolOption) module.getOption(name)).get() : fallback;
