@@ -32,8 +32,8 @@ public final class HudDefaults {
             }
             case "Minimap", "XaeroMinimap", "XaeroWorldmap" -> {x=w-ew-5;y=44;}
             case "BossBar" -> {x=(w-ew)/2;y=8;}
-            // Vanilla's place: centred, its backdrop's bottom 61 px above the screen bottom (over the hotbar's lift).
-            case ActionBar.MODULE -> {x=(w-ew)/2;y=hotbar.bottom()-61*hotbar.height()/22-eh;}
+            // Vanilla's place: its text at w/2 - width/2, its backdrop's bottom 61 px above the screen bottom (over the hotbar's lift).
+            case ActionBar.MODULE -> {x=w/2-(ew-4)/2-2;y=hotbar.bottom()-61*hotbar.height()/22-eh;}
             case "Scoreboard" -> {x=w-ew-5;y=(h-eh)/2;}
             case "Potion Effects" -> y=h*3/5;
             case "ArmorHUD" -> {x=hotbar.right()+7;y=hotbar.bottom()-eh;}
