@@ -375,7 +375,7 @@ public final class SoundLibraryDialog {
         int by = y + h - 26, gap = 4, bw = (w - 20 - 3 * gap) / 4;
         button(g, "play", "Play selection", new Rect(x + 10, by, bw, 20), this::playSelection, true, false, mx, my);
         button(g, "save", "Save", new Rect(x + 10 + bw + gap, by, bw, 20), this::save, true, true, mx, my);
-        button(g, "whole", total > CustomSounds.MAX_SECONDS ? "Use whole (first 12 s)" : "Use whole file", new Rect(x + 10 + 2 * (bw + gap), by, bw, 20), this::useWhole, true, false, mx, my);
+        button(g, "whole", total > CustomSounds.MAX_SECONDS ? "Use first 12 s" : "Use whole file", new Rect(x + 10 + 2 * (bw + gap), by, bw, 20), this::useWhole, true, false, mx, my);
         button(g, "back", trimFile == null ? "Cancel" : "Back", new Rect(x + 10 + 3 * (bw + gap), by, bw, 20), this::cancelTrim, true, false, mx, my);
         String hint = notice.isEmpty() ? "Drag the handles or the selection. Wheel zooms. Space plays, Enter saves." : notice;
         g.drawText(fit(g, hint, w - 24), x + 12, by - 12, notice.isEmpty() ? MUTED : ACCENT);

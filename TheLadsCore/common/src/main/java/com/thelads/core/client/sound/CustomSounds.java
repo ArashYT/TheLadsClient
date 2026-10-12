@@ -222,6 +222,8 @@ public final class CustomSounds {
             in = skipId3(in);
             try (Sound sound = new Sound(in)) {
                 return new Pcm(sound.getAudioFormat(), readCapped(sound, sound.getAudioFormat(), seconds));
+            } catch (RuntimeException corrupt) { // the decoder's own failures on a damaged file (an index out of its buffer)
+                throw new IOException("Not a playable MP3: " + corrupt, corrupt);
             }
         }
         try (AudioInputStream source = AudioSystem.getAudioInputStream(in.markSupported() ? in : new BufferedInputStream(in))) {

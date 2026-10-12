@@ -63,7 +63,8 @@ public final class SoundsQa {
     private List<Step> extra;
     private int extraAt;
     private LadsSettingsScreen menu;
-    private String trimmed = "";
+    private String trimmed = "", longName = "";
+    private double longSeconds;
     private int longBefore, headBefore, bowBefore;
 
     private SoundsQa(Path files) { this.files = files; }
@@ -253,7 +254,11 @@ public final class SoundsQa {
             combo.setEnabled(true);
             combo.favourites.set(List.of());
             Path scratch = Files.createDirectories(CustomSounds.folder().resolveSibling("qa-sounds"));
-            check(CustomSounds.upload(longWav(scratch)).equals("qa-long.wav"), "a 30 s WAV is in the library");
+            // Antigravity's 45 s MP3 (a beep a second, rising) when the folder has it, else a 30 s WAV made here.
+            boolean mp3 = Files.isRegularFile(files.resolve("long_45s.mp3"));
+            longName = CustomSounds.upload(mp3 ? files.resolve("long_45s.mp3") : longWav(scratch));
+            longSeconds = mp3 ? 45 : 30;
+            check(CustomSounds.list().contains(longName), "a " + (int) longSeconds + " s sound is in the library: " + longName);
             Path doomed = scratch.resolve("qa-delete.wav");
             Files.copy(files.resolve("kill_3.wav").toFile().exists() ? files.resolve("kill_3.wav") : files.resolve("kill_3.mp3"), doomed, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             combo.steps[1].set(CustomSounds.upload(doomed));
@@ -290,14 +295,14 @@ public final class SoundsQa {
             return true;
         });
         steps.add(() -> {
-            check(clickLibrary("trim:qa-long.wav"), "qa-long.wav has a Trim button");
+            check(clickLibrary("trim:" + longName), longName + " has a Trim button");
             return true;
         });
         steps.add(() -> {
             if (!menu.soundLibrary().trimmerReady()) return false;
             double[] sel = menu.soundLibrary().selection();
-            check(Math.abs(sel[2] - 30) < .1 && sel[0] == 0 && Math.abs(sel[1] - 12) < .01, String.format(java.util.Locale.ROOT,
-                "the trimmer reads all 30 s and starts on the first 12: %.2f-%.2f of %.2f", sel[0], sel[1], sel[2]));
+            check(Math.abs(sel[2] - longSeconds) < .5 && sel[0] == 0 && Math.abs(sel[1] - 12) < .01, String.format(java.util.Locale.ROOT,
+                "the trimmer reads all %.0f s and starts on the first 12: %.2f-%.2f of %.2f", longSeconds, sel[0], sel[1], sel[2]));
             LadsSettingsScreen.Rect wave = menu.soundLibrary().bounds("wave");
             double y = wave.y() + wave.height() / 2.0;
             double total = sel[2];
@@ -330,7 +335,7 @@ public final class SoundsQa {
             if (menu.soundLibrary().isOpen()) return false;
             trimmed = combo.steps[0].get();
             CustomSounds.Pcm pcm = CustomSounds.decoded(trimmed);
-            check(trimmed.startsWith("qa-long ") && trimmed.endsWith(".wav") && pcm != null && Math.abs(pcm.seconds() - 11) < .4,
+            check(trimmed.startsWith(longName.substring(0, longName.lastIndexOf('.')) + " ") && trimmed.endsWith(".wav") && pcm != null && Math.abs(pcm.seconds() - 11) < .4,
                 "Save puts the part in Combo 1 as a WAV: " + trimmed + " (" + (pcm == null ? "unreadable" : pcm.seconds() + " s") + ")");
             CustomSounds.stopPreview();
             return true;
