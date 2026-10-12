@@ -38,6 +38,7 @@ public abstract class NetHandlerPlayClientMixin {
             DamageTilt.CLIENT.hurt(System.currentTimeMillis());
         // Combo Sounds: the hurt that confirms your hit, or your own (it ends the combo).
         Entity hurt = packet.getOpCode() == 2 && mc.thePlayer != null && mc.theWorld != null ? packet.getEntity(mc.theWorld) : null;
+        if (hurt != null && hurt != mc.thePlayer) KillBanner189.reach(hurt); // an arrow of yours, a tick behind the server's
         if (hurt != null) ComboSoundsModule.onHurt(hurt.getEntityId(), hurt == mc.thePlayer, hurt instanceof EntityPlayer, mc.thePlayer.getDistanceToEntity(hurt));
     }
 

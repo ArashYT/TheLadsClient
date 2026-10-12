@@ -75,4 +75,36 @@ final class KillBannerArrows {
         moving.keySet().retainAll(seen);
         landed.retainAll(seen);
     }
+
+    /**
+     * The server just hurt {@code victim}: the client's copies of your arrows run a tick or two behind the server's, so the arrow
+     * that hit may not have crossed it here yet and is about to be removed. The first of your arrows whose path (followed for a few
+     * ticks, falling as arrows do; for one that bounced off on this client, last tick's path) meets its box is where it hit.
+     */
+    static void reach(Minecraft minecraft, Entity victim) {
+        ClientLevel level = minecraft.level;
+        Player me = minecraft.player;
+        if (level == null || me == null || !(victim instanceof LivingEntity) || victim == me) return;
+        AABB box = victim.getBoundingBox().inflate(.3);
+        for (Entity entity : level.entitiesForRendering()) {
+            if (!(entity instanceof AbstractArrow arrow) || arrow.getOwner() != me || landed.contains(arrow.getId())) continue;
+            Vec3 at = arrow.position(), motion = arrow.getDeltaMovement(), was = moving.get(arrow.getId());
+            if (was != null && was.dot(motion) < 0 && flying.containsKey(arrow.getId())) {
+                at = flying.get(arrow.getId());
+                motion = was;
+            }
+            for (int tick = 0; tick < 6 && motion.lengthSqr() > 1e-6; tick++) {
+                Vec3 next = at.add(motion);
+                Optional<Vec3> hit = box.contains(at) ? Optional.of(at) : box.clip(at, next);
+                if (hit.isPresent()) {
+                    landed.add(arrow.getId());
+                    NativeKillBanner.arrowHit(victim, at, hit.get());
+                    ComboSoundsModule.onArrowCrossed(victim.getId(), victim instanceof Player, NativeKillBanner.headHit(victim, at, hit.get()), me.distanceTo(victim));
+                    return;
+                }
+                at = next;
+                motion = motion.scale(.99).add(0, -.05, 0);
+            }
+        }
+    }
 }

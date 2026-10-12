@@ -135,7 +135,10 @@ public final class NativeKillBanner1201 {
             Entity hurt = minecraft.level == null ? null : minecraft.level.getEntity(entityId);
             boolean self = entityId == minecraft.player.getId();
             if (causeId >= 0 && causeId != minecraft.player.getId()) ComboSoundsModule.onHurt(entityId, self);
-            else ComboSoundsModule.onHurt(entityId, self, hurt instanceof Player, hurt == null ? 0 : minecraft.player.distanceTo(hurt));
+            else {
+                if (hurt != null && !self && (eligible() || ComboSoundsModule.bowActive())) KillBannerArrows1201.reach(minecraft, hurt); // an arrow of yours, a tick behind
+                ComboSoundsModule.onHurt(entityId, self, hurt instanceof Player, hurt == null ? 0 : minecraft.player.distanceTo(hurt));
+            }
         }
         if (!eligible() || causeId < 0 || minecraft.player == null || minecraft.level == null) return;
         if (causeId == minecraft.player.getId()) {
