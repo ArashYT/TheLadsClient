@@ -83,8 +83,8 @@ class HudShadowTest {
                 for (boolean editor : new boolean[] {false, true}) {
                     for (String draw : drawn(element, editor)) {
                         checked++;
-                        // The Scoreboard has its own Text Shadow option, on by default whatever the global one.
-                        boolean expected = element.getModuleName().equals("Scoreboard") || shadow;
+                        // The Scoreboard and the Action Bar have their own Text Shadow option, on by default whatever the global one.
+                        boolean expected = ModuleManager.getInstance().getModule(element.getModuleName()).getOption("Text Shadow") != null || shadow;
                         assertEquals(expected, draw.startsWith("true:"), element.getModuleName() + " drew '" + draw + "' with global shadow " + shadow);
                     }
                 }
