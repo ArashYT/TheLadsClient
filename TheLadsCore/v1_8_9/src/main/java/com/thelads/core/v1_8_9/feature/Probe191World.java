@@ -44,6 +44,7 @@ final class Probe191World {
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<Option, JsonElement>();
     private static boolean capesOn, timerOn;
     private static int cameraWas;
+    private static net.minecraft.entity.player.EntityPlayer.EnumChatVisibility chatWas;
     private static ResourceLocation capeWas;
     private static BlockPos base;
 
@@ -57,6 +58,9 @@ final class Probe191World {
         final MinecraftServer server = mc.getIntegratedServer();
         server.addScheduledTask(() -> server.getCommandManager().executeCommand(server, command));
     }
+
+    /** A block position (setblock and fill take whole numbers) this many blocks from base. */
+    private static String block(int x, int y, int z) { return (base.getX() + x) + " " + (base.getY() + y) + " " + (base.getZ() + z); }
 
     private static String at(double x, double y, double z) {
         return String.format(Locale.ROOT, "%.2f %.2f %.2f", base.getX() + x, base.getY() + y, base.getZ() + z);
@@ -119,6 +123,8 @@ final class Probe191World {
             info(mc).ladsSetCape(CAPE);
             cameraWas = mc.gameSettings.thirdPersonView;
             mc.gameSettings.thirdPersonView = 1;
+            chatWas = mc.gameSettings.chatVisibility;
+            mc.gameSettings.chatVisibility = net.minecraft.entity.player.EntityPlayer.EnumChatVisibility.HIDDEN; // command feedback covers the shots
             base = new BlockPos(mc.thePlayer);
             command(mc, "time set 6000");
             mc.thePlayer.rotationYaw = 0;
@@ -174,8 +180,8 @@ final class Probe191World {
             base = new BlockPos(mc.thePlayer);
             mc.thePlayer.rotationYaw = 0;
             mc.thePlayer.rotationPitch = 5;
-            command(mc, "setblock " + at(4, -1, 6) + " redstone_block");
-            command(mc, "setblock " + at(4, 0, 6) + " activator_rail");
+            command(mc, "setblock " + block(4, -1, 6) + " redstone_block");
+            command(mc, "setblock " + block(4, 0, 6) + " activator_rail");
             command(mc, "summon PrimedTnt " + at(-2, 0, 6));
             return after(20);
         },
@@ -186,14 +192,14 @@ final class Probe191World {
             LOG.info("Lads world191 timers a: {}", labels);
             check(labels.size() == 4, "three primed TNT and a lit minecart carry timers: " + labels);
             screenshot(mc, "world191-tnt-a");
-            command(mc, "fill " + at(-4, 0, 3) + " " + at(6, 3, 3) + " stone");
+            command(mc, "fill " + block(-4, 0, 3) + " " + block(6, 3, 3) + " stone");
             return after(3);
         },
         mc -> { screenshot(mc, "world191-tnt-wall-hidden"); timer().throughBlocks.set(true); return after(2); },
         mc -> {
             screenshot(mc, "world191-tnt-wall-through-blocks");
             timer().throughBlocks.set(false);
-            command(mc, "fill " + at(-4, 0, 3) + " " + at(6, 3, 3) + " air");
+            command(mc, "fill " + block(-4, 0, 3) + " " + block(6, 3, 3) + " air");
             return after(20);
         },
         mc -> { // the first TNT a third of a second from 0; all of them go before it explodes
@@ -208,11 +214,12 @@ final class Probe191World {
         keys(mc, false, false, false, false);
         command(mc, "kill @e[type=PrimedTnt]");
         command(mc, "kill @e[type=MinecartTNT]");
-        command(mc, "fill " + at(-4, 0, 3) + " " + at(6, 3, 3) + " air");
-        command(mc, "setblock " + at(4, 0, 6) + " air");
-        command(mc, "setblock " + at(4, -1, 6) + " grass");
+        command(mc, "fill " + block(-4, 0, 3) + " " + block(6, 3, 3) + " air");
+        command(mc, "setblock " + block(4, 0, 6) + " air");
+        command(mc, "setblock " + block(4, -1, 6) + " grass");
         command(mc, "kill @e[type=Item]");
         mc.gameSettings.thirdPersonView = cameraWas;
+        if (chatWas != null) mc.gameSettings.chatVisibility = chatWas;
         info(mc).ladsSetCape(capeWas);
         for (Map.Entry<Option, JsonElement> entry : OPTIONS.entrySet()) entry.getKey().load(entry.getValue());
         capes().setEnabled(capesOn);

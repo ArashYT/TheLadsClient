@@ -1122,7 +1122,9 @@ try
             && (Settled(ebeVerification, "Lads EBE probe END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(480))
             && (!worldCapturesRequested || (CapturesSettled(resolutionCaptureRequested) && (!flashbackRequested || flashbackPassed || failedCaptures.ContainsKey("Lads Flashback probe END:"))))
             // The input probe's measurements run on after an unrelated probe failed (they need the world for a few minutes).
-            && (!inputVerification || inputProbeFailed || passedMarkers.ContainsKey("Lads input probe END:"))) break;
+            && (!inputVerification || inputProbeFailed || passedMarkers.ContainsKey("Lads input probe END:"))
+            // A world191-only run still gets its own capture after an unrelated probe failed (26.3's World Play Time check is flaky).
+            && (!world191Only || worldCapturesRequested || stopwatch.Elapsed > TimeSpan.FromSeconds(300))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed && (!scripted || passedMarkers.ContainsKey("Lads qa script END:"))
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
             && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;

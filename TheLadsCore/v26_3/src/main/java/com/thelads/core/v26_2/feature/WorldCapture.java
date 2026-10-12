@@ -34,8 +34,8 @@ import org.slf4j.LoggerFactory;
 /**
  * QA only (auto-world, ".lads-qa-capture-world191" from the harness's LADS_VERIFY_CAPTURE_WORLD191): the 1.9.1 world lane. The QA
  * player gets a test cape (common WavyCape.qaPixel, through LocalSkins as an offline account's own skin does) and is photographed in
- * third person standing, sprinting, strafing, from the front, Blocky, sneaking, with a chestplate, with an elytra and with Wavy Capes
- * off (screenshots/world191-*.png); then three primed TNT (fuse 80, 50, 20) and a TNT minecart lit by a powered activator rail are
+ * third person standing, sprinting, strafing, from the front, Blocky, sneaking, with a chestplate, glowing, with an elytra and with Wavy
+ * Capes off (screenshots/world191-*.png); then three primed TNT (fuse 80, 50, 20) and a TNT minecart lit by a powered activator rail are
  * photographed with their timers, behind a stone wall with Through blocks off and on, and removed before they explode. Modules,
  * skin, camera, keys, game mode, items and blocks are put back.
  */
@@ -111,6 +111,20 @@ final class WorldCapture {
         server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command));
     }
 
+    /** The chest item on this client's player and the integrated server's (1.20.1's QA saw a command's change not reach the client). */
+    private static void chest(Minecraft mc, net.minecraft.world.item.Item item) {
+        mc.player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new net.minecraft.world.item.ItemStack(item));
+        var server = mc.getSingleplayerServer();
+        var id = mc.player.getUUID();
+        server.execute(() -> {
+            var player = server.getPlayerList().getPlayer(id);
+            if (player != null) player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST, new net.minecraft.world.item.ItemStack(item));
+        });
+    }
+
+    /** A block position (setblock and fill take whole numbers) this many blocks from base. */
+    private static String block(int x, int y, int z) { return (base.getX() + x) + " " + (base.getY() + y) + " " + (base.getZ() + z); }
+
     private static String at(double x, double y, double z) {
         return String.format(Locale.ROOT, "%.2f %.2f %.2f", base.getX() + x, base.getY() + y, base.getZ() + z);
     }
@@ -142,7 +156,7 @@ final class WorldCapture {
         return max;
     }
 
-    private static Step shot(String name) { return mc -> { pendingFrame = name; return 2; }; }
+    private static Step shot(String name) { return mc -> { mc.gui.hud.getChat().clearMessages(false); pendingFrame = name; return 2; }; }
 
     /** Logs every primed TNT and lit TNT minecart with its fuse and the timer text; returns the labels. */
     private static List<String> timers(Minecraft mc) {
@@ -211,13 +225,16 @@ final class WorldCapture {
         steps.add(mc -> { capes().style.setIndex(0); keys(mc, false, false, false, true); return 20; });
         steps.add(mc -> { LOGGER.info("Lads world191 cape sneaking: {}", links(mc)); return 0; });
         steps.add(shot("cape-sneaking"));
-        steps.add(mc -> { keys(mc, false, false, false, false); command("item replace entity " + mc.player.getGameProfile().name() + " armor.chest with iron_chestplate"); return 20; });
+        steps.add(mc -> { keys(mc, false, false, false, false); chest(mc, net.minecraft.world.item.Items.IRON_CHESTPLATE); return 20; });
         steps.add(shot("cape-chestplate"));
-        steps.add(mc -> { command("item replace entity " + mc.player.getGameProfile().name() + " armor.chest with elytra"); return 20; });
+        steps.add(mc -> { command("effect give " + mc.player.getGameProfile().name() + " minecraft:glowing 10 0 true"); return 10; });
+        steps.add(shot("cape-glowing-outline"));
+        steps.add(mc -> { command("effect clear " + mc.player.getGameProfile().name() + " minecraft:glowing"); return 2; });
+        steps.add(mc -> { chest(mc, net.minecraft.world.item.Items.ELYTRA); return 20; });
         steps.add(mc -> { capesAt = World26.capesDrawn; return 5; });
         steps.add(mc -> { check(World26.capesDrawn == capesAt, "with an elytra the cape is not drawn (vanilla's rule)"); return 0; });
         steps.add(shot("cape-elytra"));
-        steps.add(mc -> { command("item replace entity " + mc.player.getGameProfile().name() + " armor.chest with air"); capes().setEnabled(false); keys(mc, true, false, true, false); return 25; });
+        steps.add(mc -> { chest(mc, net.minecraft.world.item.Items.AIR); capes().setEnabled(false); keys(mc, true, false, true, false); return 25; });
         steps.add(shot("cape-module-off-sprinting"));
         steps.add(mc -> { // TNT: first person, three primed TNT and a lit TNT minecart in front
             keys(mc, false, false, false, false);
@@ -226,8 +243,8 @@ final class WorldCapture {
             base = mc.player.blockPosition();
             mc.player.setYRot(0);
             mc.player.setXRot(5);
-            command("setblock " + at(4, -1, 6) + " redstone_block");
-            command("setblock " + at(4, 0, 6) + " activator_rail");
+            command("setblock " + block(4, -1, 6) + " redstone_block");
+            command("setblock " + block(4, 0, 6) + " activator_rail");
             return 5;
         });
         steps.add(mc -> {
@@ -240,7 +257,7 @@ final class WorldCapture {
         });
         steps.add(mc -> { LOGGER.info("Lads world191 timers a: {}", timers(mc)); return 0; });
         steps.add(shot("tnt-a"));
-        steps.add(mc -> 7);
+        steps.add(mc -> 5);
         steps.add(mc -> { LOGGER.info("Lads world191 timers b: {}", timers(mc)); return 0; });
         steps.add(shot("tnt-b"));
         steps.add(mc -> { // the primed TNT go before the 20-tick one explodes; two fresh ones behind a stone wall
@@ -250,7 +267,7 @@ final class WorldCapture {
             command("kill @e[type=tnt]");
             command("summon tnt " + at(-2, 0.5, 6) + " {fuse:80s,NoGravity:1b}");
             command("summon tnt " + at(1, 0.5, 6) + " {fuse:80s,NoGravity:1b}");
-            command("fill " + at(-4, 0, 3) + " " + at(6, 3, 3) + " stone");
+            command("fill " + block(-4, 0, 3) + " " + block(6, 3, 3) + " stone");
             return 3;
         });
         steps.add(shot("tnt-wall-hidden"));
@@ -264,9 +281,9 @@ final class WorldCapture {
         steps.add(mc -> { // put everything back
             keys(mc, false, false, false, false);
             if (base != null) {
-                command("fill " + at(-4, 0, 3) + " " + at(6, 3, 3) + " air");
-                command("setblock " + at(4, 0, 6) + " air");
-                command("setblock " + at(4, -1, 6) + " grass_block");
+                command("fill " + block(-4, 0, 3) + " " + block(6, 3, 3) + " air");
+                command("setblock " + block(4, 0, 6) + " air");
+                command("setblock " + block(4, -1, 6) + " grass_block");
                 command("kill @e[type=item]");
             }
             command("gamemode survival " + mc.player.getGameProfile().name());
