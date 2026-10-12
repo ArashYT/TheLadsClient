@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -58,7 +57,7 @@ public final class CustomSounds {
     /** QA: lines opened since start, and the last file played. */
     private static final AtomicInteger OPENED = new AtomicInteger();
     private static volatile String lastPlayed = "";
-    private static final ArrayDeque<String> RECENT = new ArrayDeque<>();
+    private static final Map<String, AtomicInteger> PLAYS = new ConcurrentHashMap<>();
     /** The trimmer's preview: a newer one (or stopPreview) cuts it off. */
     private static final AtomicInteger PREVIEW = new AtomicInteger();
 
@@ -273,10 +272,7 @@ public final class CustomSounds {
             line.start();
             OPENED.incrementAndGet();
             lastPlayed = file;
-            synchronized (RECENT) {
-                RECENT.addLast(file);
-                if (RECENT.size() > 32) RECENT.removeFirst();
-            }
+            PLAYS.computeIfAbsent(file, key -> new AtomicInteger()).incrementAndGet();
             byte[] data = pcm.data(), chunk = new byte[4096];
             for (int at = 0; at < data.length; at += chunk.length) {
                 if (preview != 0 && PREVIEW.get() != preview) return; // closing the line stops it
@@ -299,8 +295,8 @@ public final class CustomSounds {
     /** QA: sound lines opened so far, and the last file played. */
     public static int linesOpened() { return OPENED.get(); }
     public static String lastPlayed() { return lastPlayed; }
-    /** QA: the files played most recently, oldest first. */
-    public static List<String> recent() { synchronized (RECENT) { return List.copyOf(RECENT); } }
+    /** QA: how many times {@code file} started playing. */
+    public static int plays(String file) { AtomicInteger n = PLAYS.get(file); return n == null ? 0 : n.get(); }
     /** QA/preview: the decoded sound (null when it can't be read). */
     public static Pcm decoded(String file) { Pcm pcm = load(file); return pcm == FAILED ? null : pcm; }
 

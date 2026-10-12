@@ -4,15 +4,21 @@ import static com.thelads.core.v1_8_9.feature.CoreProbe.after;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.retry;
 
+import com.mojang.authlib.GameProfile;
 import com.thelads.core.client.sound.SoundsQa;
 import com.thelads.core.v1_8_9.gui.LadsSettingsScreen189;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.passive.EntityPig;
+import net.minecraft.entity.passive.EntityVillager;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.entity.projectile.EntityArrow;
+import net.minecraft.network.play.server.S19PacketEntityStatus;
+import net.minecraft.network.play.server.S2BPacketChangeGameState;
 
 /**
  * QA only (LADS_VERIFY_189_ONLY=sounds, files from LADS_VERIFY_SOUNDS): the common uploaded-sounds routine (SoundsQa) with 1.8.9's
@@ -21,7 +27,9 @@ import net.minecraft.entity.player.EntityPlayerMP;
  */
 final class Probe190Sounds {
     private static SoundsQa qa;
-    private static volatile int target = -1;
+    private static volatile int target = -1, archer = -1;
+    /** The stand-in player's id (client only). */
+    private static final int STAND_IN = Integer.MAX_VALUE - 7;
 
     private Probe190Sounds() {}
 
@@ -72,5 +80,77 @@ final class Probe190Sounds {
         @Override public void closeScreen() { Minecraft.getMinecraft().displayGuiScreen(null); }
 
         @Override public void screenshot(String name) { CoreProbe.screenshot(Minecraft.getMinecraft(), name); }
+
+        @Override public void spawnArcheryTarget(final double distance, final boolean player) {
+            removeArcheryTarget();
+            final Minecraft mc = Minecraft.getMinecraft();
+            double yaw = Math.toRadians(mc.thePlayer.rotationYaw);
+            final double x = mc.thePlayer.posX - Math.sin(yaw) * distance, y = mc.thePlayer.posY, z = mc.thePlayer.posZ + Math.cos(yaw) * distance;
+            final float facing = mc.thePlayer.rotationYaw + 180;
+            if (player) {
+                EntityOtherPlayerMP standIn = new EntityOtherPlayerMP(mc.theWorld, new GameProfile(UUID.randomUUID(), "LadsArcheryTarget"));
+                standIn.setPositionAndRotation(x, y, z, facing, 0);
+                standIn.rotationYawHead = standIn.renderYawOffset = facing;
+                mc.theWorld.addEntityToWorld(STAND_IN, standIn);
+                archer = STAND_IN;
+                return;
+            }
+            final UUID id = mc.thePlayer.getUniqueID();
+            mc.getIntegratedServer().addScheduledTask(() -> {
+                EntityPlayerMP sp = mc.getIntegratedServer().getConfigurationManager().getPlayerByUUID(id);
+                if (sp == null) return;
+                EntityVillager villager = new EntityVillager(sp.worldObj);
+                villager.setLocationAndAngles(x, y, z, facing, 0);
+                villager.rotationYawHead = villager.renderYawOffset = facing;
+                villager.setNoAI(true);
+                villager.getEntityAttribute(SharedMonsterAttributes.maxHealth).setBaseValue(1000);
+                sp.worldObj.spawnEntityInWorld(villager);
+                villager.setHealth(1000);
+                archer = villager.getEntityId();
+            });
+        }
+
+        @Override public boolean archeryTargetReady() {
+            return archer >= 0 && Minecraft.getMinecraft().theWorld.getEntityByID(archer) != null;
+        }
+
+        @Override public void shootTarget(boolean head) {
+            final Minecraft mc = Minecraft.getMinecraft();
+            Entity target = mc.theWorld.getEntityByID(archer);
+            final double ax = target.posX, ay = head ? target.posY + target.getEyeHeight() : target.posY + target.height * .45, az = target.posZ;
+            double dx = ax - mc.thePlayer.posX, dz = az - mc.thePlayer.posZ, length = Math.sqrt(dx * dx + dz * dz);
+            final double sx = ax - dx / length * 4, sz = az - dz / length * 4;
+            final UUID id = mc.thePlayer.getUniqueID();
+            mc.getIntegratedServer().addScheduledTask(() -> {
+                EntityPlayerMP sp = mc.getIntegratedServer().getConfigurationManager().getPlayerByUUID(id);
+                if (sp == null) return;
+                EntityArrow arrow = new EntityArrow(sp.worldObj, sp, 1F);
+                arrow.setLocationAndAngles(sx, ay, sz, 0, 0);
+                arrow.setThrowableHeading(ax - sx, 0, az - sz, 3F, 0F);
+                sp.worldObj.spawnEntityInWorld(arrow);
+            });
+        }
+
+        @Override public void arrowHitPlayerPackets() {
+            Minecraft mc = Minecraft.getMinecraft();
+            Entity standIn = mc.theWorld.getEntityByID(archer);
+            if (standIn != null) mc.getNetHandler().handleEntityStatus(new S19PacketEntityStatus(standIn, (byte) 2));
+            mc.getNetHandler().handleChangeGameState(new S2BPacketChangeGameState(6, 0F));
+        }
+
+        @Override public void removeArcheryTarget() {
+            final Minecraft mc = Minecraft.getMinecraft();
+            final int old = archer;
+            archer = -1;
+            if (old == STAND_IN) mc.theWorld.removeEntityFromWorld(STAND_IN);
+            else if (old >= 0) {
+                final UUID id = mc.thePlayer.getUniqueID();
+                mc.getIntegratedServer().addScheduledTask(() -> {
+                    EntityPlayerMP sp = mc.getIntegratedServer().getConfigurationManager().getPlayerByUUID(id);
+                    Entity entity = sp == null ? null : sp.worldObj.getEntityByID(old);
+                    if (entity != null) entity.setDead();
+                });
+            }
+        }
     };
 }

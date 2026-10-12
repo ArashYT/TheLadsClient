@@ -120,6 +120,11 @@ public final class LadsSettingsScreen {
     public List<Rect> getControlBounds() { return controls.stream().map(Control::rect).toList(); }
     /** Bounds of a control drawn by the last render (e.g. "search", "option:Size"), or null; QA drives real input at them. */
     public Rect controlBounds(String id) { return controls.stream().filter(c -> c.id.equals(id)).map(Control::rect).findFirst().orElse(null); }
+    /** QA: the control was drawn whole inside the page's scrolling area by the last render (a click at its middle reaches it). */
+    public boolean revealed(String id) {
+        Rect r = controlBounds(id);
+        return r != null && (!contentControl(id) || r.y >= viewport.y && r.y + r.height <= viewport.y + viewport.height);
+    }
     /** Ids of the controls drawn by the last render (QA scripts click them by id). */
     public List<String> controlIds() { return controls.stream().map(c -> c.id).toList(); }
     public int getScrollOffset() { return scrollOffset; }

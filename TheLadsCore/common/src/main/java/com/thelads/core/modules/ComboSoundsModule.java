@@ -261,7 +261,12 @@ public class ComboSoundsModule extends Module {
         if ((sounds & HEADSHOT) != 0) playBow(headshotSound, true);
     }
 
+    /** QA: bow sounds played, built-in ones included. */
+    public int bowPlayed() { return bowPlayed; }
+    private int bowPlayed;
+
     private void playBow(SoundOption sound, boolean headshot) {
+        bowPlayed++;
         if (sound.isSet()) CustomSounds.play(sound.get(), volume.getValue());
         else LadsGameBridge.get().playBowSound(headshot, (float) volume.getValue());
     }

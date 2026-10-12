@@ -1,11 +1,19 @@
 package com.thelads.core.v1_20_1.feature;
 
+import com.mojang.authlib.GameProfile;
 import com.thelads.core.client.sound.SoundsQa;
 import com.thelads.core.v1_20_1.gui.LadsSettingsScreen1201;
+import java.util.UUID;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.network.protocol.game.ClientboundDamageEventPacket;
+import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.projectile.Arrow;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * QA only: the script verb {@code sounds} runs the common uploaded-sounds routine (SoundsQa, files from LADS_VERIFY_SOUNDS) with
@@ -13,7 +21,9 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
  */
 final class SoundsQa1201 {
     private static SoundsQa qa;
-    private static volatile int target = -1;
+    private static volatile int target = -1, archer = -1;
+    /** The stand-in player's id (client only). */
+    private static final int STAND_IN = Integer.MAX_VALUE - 7;
 
     private SoundsQa1201() {}
 
@@ -71,5 +81,81 @@ final class SoundsQa1201 {
         @Override public void closeScreen() { Minecraft.getInstance().setScreen(null); }
 
         @Override public void screenshot(String name) throws Exception { QaProbe1201.shot(Minecraft.getInstance(), name); }
+
+        @Override public void spawnArcheryTarget(double distance, boolean player) {
+            removeArcheryTarget();
+            Minecraft mc = Minecraft.getInstance();
+            double yaw = Math.toRadians(mc.player.getYRot());
+            double x = mc.player.getX() - Math.sin(yaw) * distance, y = mc.player.getY(), z = mc.player.getZ() + Math.cos(yaw) * distance;
+            float facing = mc.player.getYRot() + 180;
+            if (player) {
+                RemotePlayer standIn = new RemotePlayer(mc.level, new GameProfile(UUID.randomUUID(), "LadsArcheryTarget"));
+                standIn.setId(STAND_IN);
+                standIn.moveTo(x, y, z, facing, 0);
+                standIn.yHeadRot = standIn.yBodyRot = facing;
+                mc.level.addPlayer(STAND_IN, standIn);
+                archer = STAND_IN;
+                return;
+            }
+            var server = mc.getSingleplayerServer();
+            var id = mc.player.getUUID();
+            server.execute(() -> {
+                var sp = server.getPlayerList().getPlayer(id);
+                if (sp == null) return;
+                var villager = EntityType.VILLAGER.create(sp.serverLevel());
+                villager.moveTo(x, y, z, facing, 0);
+                villager.setYHeadRot(facing);
+                villager.setNoAi(true);
+                villager.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000);
+                sp.serverLevel().addFreshEntity(villager);
+                villager.setHealth(1000);
+                archer = villager.getId();
+            });
+        }
+
+        @Override public boolean archeryTargetReady() {
+            Minecraft mc = Minecraft.getInstance();
+            return archer >= 0 && mc.level.getEntity(archer) != null;
+        }
+
+        @Override public void shootTarget(boolean head) {
+            Minecraft mc = Minecraft.getInstance();
+            Entity target = mc.level.getEntity(archer);
+            Vec3 at = new Vec3(target.getX(), head ? target.getEyeY() : target.getY() + target.getBbHeight() * .45, target.getZ());
+            Vec3 away = new Vec3(at.x - mc.player.getX(), 0, at.z - mc.player.getZ()).normalize();
+            Vec3 start = at.subtract(away.scale(4));
+            var server = mc.getSingleplayerServer();
+            var id = mc.player.getUUID();
+            server.execute(() -> {
+                var sp = server.getPlayerList().getPlayer(id);
+                if (sp == null) return;
+                Arrow arrow = new Arrow(sp.serverLevel(), sp);
+                arrow.setPos(start);
+                arrow.shoot(at.x - start.x, at.y - start.y, at.z - start.z, 3f, 0f);
+                sp.serverLevel().addFreshEntity(arrow);
+            });
+        }
+
+        @Override public void arrowHitPlayerPackets() {
+            Minecraft mc = Minecraft.getInstance();
+            Entity standIn = mc.level.getEntity(archer);
+            if (standIn != null) mc.getConnection().handleDamageEvent(new ClientboundDamageEventPacket(standIn, mc.level.damageSources().generic()));
+            mc.getConnection().handleGameEvent(new ClientboundGameEventPacket(ClientboundGameEventPacket.ARROW_HIT_PLAYER, 0));
+        }
+
+        @Override public void removeArcheryTarget() {
+            Minecraft mc = Minecraft.getInstance();
+            int old = archer;
+            archer = -1;
+            if (old == STAND_IN) mc.level.removeEntity(STAND_IN, Entity.RemovalReason.DISCARDED);
+            else if (old >= 0) {
+                var server = mc.getSingleplayerServer();
+                var id = mc.player.getUUID();
+                server.execute(() -> {
+                    var sp = server.getPlayerList().getPlayer(id);
+                    if (sp != null && sp.serverLevel().getEntity(old) != null) sp.serverLevel().getEntity(old).discard();
+                });
+            }
+        }
     };
 }

@@ -19,8 +19,13 @@ import org.slf4j.LoggerFactory;
  * routine driven each client tick by the version (1.8.9 CoreProbe "sounds", 1.20.1 script verb "sounds", 26.3 auto-world capture).
  * Uploads the files (copied into the sandbox's shared sounds folder), decodes and plays one, photographs the Combo Sounds and Kill
  * Banner "Your sounds" rows, lands six hits on a tough no-AI mob through the version's real attack path (each must be the next
- * combo step and play its file), waits out Combo Reset, then kills a weak mob (its banner plays Kill 1). Options are put back.
- * Logs "Lads sounds capture END: n passed, m failed" (or FAILED).
+ * combo step and play its file; hits 6 to 8 play After Combo 5 in order), waits out Combo Reset, then kills a weak mob (its banner
+ * plays Kill 1). 1.9.1: the sound library (search, a favourite first, its picture), the trimmer on a 30 s file (handles dragged by
+ * real mouse events, zoom, preview, Save: a WAV of the part in Combo 1), Sound Sets (save, rename, swap), After Combo 5's Add and
+ * reorder, a delete with its question; then the bow sounds: real arrows of the player's at a villager 30 blocks away (head: long
+ * shot and headshot) and 8 blocks away (chest: neither), and at a stand-in player only the client knows, with the hurt and
+ * arrow-hit-player packets a server sends through the client's own handlers (uploaded and built-in sounds). Options are put
+ * back. Logs "Lads sounds capture END: n passed, m failed" (or FAILED).
  */
 public final class SoundsQa {
     /** What the routine needs from a game version. */
@@ -33,6 +38,18 @@ public final class SoundsQa {
         LadsSettingsScreen openSettings(String module);
         void closeScreen();
         void screenshot(String name) throws Exception;
+        /**
+         * A no-AI villager {@code distance} blocks in front of the player, on the server (the last target goes), or with {@code player}
+         * a stand-in player only the client knows (no server entity: arrows fly through it there).
+         */
+        void spawnArcheryTarget(double distance, boolean player);
+        /** The client has the target. */
+        boolean archeryTargetReady();
+        /** A real arrow of the player's (spawned by the server, so the client tracks it as yours) 4 blocks before the target, at its head or chest. */
+        void shootTarget(boolean head);
+        /** What a server sends when your arrow hits a player, through the client's packet handlers: the stand-in's hurt, then the arrow-hit-player event. */
+        void arrowHitPlayerPackets();
+        void removeArcheryTarget();
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -42,6 +59,12 @@ public final class SoundsQa {
     private final List<JsonElement> comboBefore = new ArrayList<>(), bannerBefore = new ArrayList<>();
     private boolean comboWas, bannerWas;
     private int step, wait, passed, hit, lines, patience;
+    private interface Step { boolean run() throws Exception; }
+    private List<Step> extra;
+    private int extraAt;
+    private LadsSettingsScreen menu;
+    private String trimmed = "";
+    private int longBefore, headBefore, bowBefore;
 
     private SoundsQa(Path files) { this.files = files; }
 
@@ -77,6 +100,8 @@ public final class SoundsQa {
                 banner.ownSounds.set(true);
                 for (int i = 0; i < 5; i++) combo.steps[i].set(upload("combo_" + (i + 1) + ".mp3"));
                 banner.killSounds[0].set(upload("kill_1.mp3"));
+                combo.after.set(List.of(upload("kill_4.mp3"), upload("kill_5.mp3")));
+                combo.afterOrder.setIndex(ComboSoundsModule.AFTER_IN_ORDER);
                 try {
                     CustomSounds.upload(files.resolve("broken.mp3"));
                     check(false, "broken.mp3 is refused at upload");
@@ -91,7 +116,7 @@ public final class SoundsQa {
             }
             case 1 -> {
                 check(CustomSounds.linesOpened() > lines, "a sound line opened for the preview (" + CustomSounds.linesOpened() + " so far, last " + CustomSounds.lastPlayed() + ")");
-                game.openSettings(ComboSoundsModule.NAME).scrollBy(4 * 43); // past Players, Mobs, Volume, Combo Reset: the slots
+                game.openSettings(ComboSoundsModule.NAME).scrollBy(4 * 43 + 67); // past Players, Mobs, Volume, Combo Reset, Sound Sets: the slots
                 wait = 30;
             }
             case 2 -> { game.screenshot("sounds-combo-settings"); wait = 10; }
@@ -107,14 +132,14 @@ public final class SoundsQa {
                 game.spawnTarget(true);
                 wait = 40;
             }
-            case 6 -> { // six hits, 15 ticks apart (past the 10-tick hurt immunity)
+            case 6 -> { // eight hits, 15 ticks apart (past the 10-tick hurt immunity)
                 if (!game.attackTarget()) { check(false, "the tough mob is in the client world"); step = 9; break; }
                 hit++;
                 lines = CustomSounds.linesOpened();
                 wait = 15;
             }
             case 7 -> {
-                String expected = "combo_" + Math.min(hit, 5) + ".mp3";
+                String expected = hit <= 5 ? "combo_" + hit + ".mp3" : hit % 2 == 0 ? "kill_4.mp3" : "kill_5.mp3"; // After Combo 5, In Order
                 // The server's answer and the sound thread can lag a busy QA machine: up to 3 s for this hit to land and play.
                 if (!(combo.combo() == hit && CustomSounds.lastPlayed().equals(expected) && CustomSounds.linesOpened() > lines) && ++patience < 60) {
                     step = 7;
@@ -123,7 +148,7 @@ public final class SoundsQa {
                 patience = 0;
                 check(combo.combo() == hit && CustomSounds.lastPlayed().equals(expected) && CustomSounds.linesOpened() > lines,
                     "hit " + hit + ": combo step " + combo.combo() + ", played " + CustomSounds.lastPlayed() + " (expected " + expected + "), lines " + CustomSounds.linesOpened());
-                if (hit < 6) step = 6;
+                if (hit < 8) step = 6;
                 else wait = 60; // past Combo Reset (2 s)
             }
             case 8 -> {
@@ -156,6 +181,14 @@ public final class SoundsQa {
                 game.screenshot("sounds-kill-banner");
                 wait = 10;
             }
+            case 12 -> { // 1.9.1: the library, trimmer, sets and bow sounds, one step a tick until each is done
+                if (extra == null) extra = extraSteps(game, combo);
+                if (extraAt < extra.size()) {
+                    if (extra.get(extraAt).run()) { extraAt++; patience = 0; }
+                    else if (++patience > 400) { check(false, "1.9.1 step " + extraAt + " finished in time"); extraAt++; patience = 0; }
+                    step = 12;
+                }
+            }
             default -> {
                 List<Option> options = combo.getOptions();
                 for (int i = 0; i < options.size(); i++) options.get(i).load(comboBefore.get(i));
@@ -169,6 +202,285 @@ public final class SoundsQa {
             }
         }
         return false;
+    }
+
+    private boolean clickScreen(String id) {
+        LadsSettingsScreen.Rect r = menu.controlBounds(id);
+        if (r == null) return false;
+        menu.mouseClicked(r.x() + r.width() / 2.0, r.y() + r.height() / 2.0, 0);
+        return true;
+    }
+
+    private boolean clickLibrary(String id) {
+        LadsSettingsScreen.Rect r = menu.soundLibrary().bounds(id);
+        if (r == null) return false;
+        menu.mouseClicked(r.x() + r.width() / 2.0, r.y() + r.height() / 2.0, 0);
+        return true;
+    }
+
+    /** Scrolls the page from the top until the control is whole on screen (one frame between steps); true once it is. */
+    private boolean reveal(String id) {
+        if (menu.revealed(id)) return true;
+        if (patience == 0) menu.scrollBy(-100000);
+        else menu.scrollBy(20);
+        return false;
+    }
+
+    private void type(String text) { text.codePoints().forEach(menu::charTyped); }
+
+    /** 30 s of 22.05 kHz mono: a short beep each second, a semitone higher each time, so a cut is easy to see and hear. */
+    private static Path longWav(Path folder) throws java.io.IOException {
+        int rate = 22050;
+        byte[] data = new byte[30 * rate * 2];
+        for (int i = 0; i < data.length / 2; i++) {
+            int second = i / rate, at = i % rate;
+            double level = at < rate / 4 ? Math.sin(Math.PI * at / (rate / 4.0)) : 0;
+            int v = (int) (level * (6000 + 800 * second) * Math.sin(2 * Math.PI * 440 * Math.pow(2, second / 12.0) * i / rate));
+            data[2 * i] = (byte) v;
+            data[2 * i + 1] = (byte) (v >> 8);
+        }
+        Path wav = folder.resolve("qa-long.wav");
+        javax.sound.sampled.AudioFormat format = new javax.sound.sampled.AudioFormat(rate, 16, 1, true, false);
+        javax.sound.sampled.AudioSystem.write(new javax.sound.sampled.AudioInputStream(new java.io.ByteArrayInputStream(data), format, data.length / 2),
+            javax.sound.sampled.AudioFileFormat.Type.WAVE, wav.toFile());
+        return wav;
+    }
+
+    private List<Step> extraSteps(Game game, ComboSoundsModule combo) {
+        List<Step> steps = new ArrayList<>();
+        // The library: Combo 1's Choose, a search, a favourite (first in the list), its picture.
+        steps.add(() -> {
+            combo.setEnabled(true);
+            combo.favourites.set(List.of());
+            Path scratch = Files.createDirectories(CustomSounds.folder().resolveSibling("qa-sounds"));
+            check(CustomSounds.upload(longWav(scratch)).equals("qa-long.wav"), "a 30 s WAV is in the library");
+            Path doomed = scratch.resolve("qa-delete.wav");
+            Files.copy(files.resolve("kill_3.wav").toFile().exists() ? files.resolve("kill_3.wav") : files.resolve("kill_3.mp3"), doomed, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            combo.steps[1].set(CustomSounds.upload(doomed));
+            menu = game.openSettings(ComboSoundsModule.NAME);
+            wait = 20;
+            return true;
+        });
+        steps.add(() -> reveal("option:Combo 1:choose"));
+        steps.add(() -> {
+            clickScreen("option:Combo 1:choose");
+            check(menu.soundLibrary().isOpen(), "Choose opens the sound library");
+            type("combo");
+            wait = 3;
+            return true;
+        });
+        steps.add(() -> {
+            check(menu.soundLibrary().listed().stream().allMatch(f -> f.contains("combo")), "the search keeps the combo sounds: " + menu.soundLibrary().listed());
+            clickLibrary("star:combo_3.mp3");
+            wait = 3;
+            return true;
+        });
+        steps.add(() -> {
+            List<String> listed = menu.soundLibrary().listed();
+            check(combo.favourites.contains("combo_3.mp3") && listed.get(0).equals("combo_3.mp3"), "the starred sound is a favourite, listed first: " + listed);
+            game.screenshot("sounds-library");
+            wait = 10;
+            return true;
+        });
+        // The trimmer: the 30 s file's Trim, the start handle to 5 s and the end one to 16 s by mouse, a zoom, a preview, Save.
+        steps.add(() -> {
+            menu.keyPressed(65, 2); // Ctrl+A clears the search
+            type("long");
+            wait = 3;
+            return true;
+        });
+        steps.add(() -> {
+            check(clickLibrary("trim:qa-long.wav"), "qa-long.wav has a Trim button");
+            return true;
+        });
+        steps.add(() -> {
+            if (!menu.soundLibrary().trimmerReady()) return false;
+            double[] sel = menu.soundLibrary().selection();
+            check(Math.abs(sel[2] - 30) < .1 && sel[0] == 0 && Math.abs(sel[1] - 12) < .01, String.format(java.util.Locale.ROOT,
+                "the trimmer reads all 30 s and starts on the first 12: %.2f-%.2f of %.2f", sel[0], sel[1], sel[2]));
+            LadsSettingsScreen.Rect wave = menu.soundLibrary().bounds("wave");
+            double y = wave.y() + wave.height() / 2.0;
+            double total = sel[2];
+            java.util.function.DoubleUnaryOperator x = t -> wave.x() + t / total * wave.width();
+            menu.mouseClicked(x.applyAsDouble(0), y, 0);
+            menu.mouseDragged(x.applyAsDouble(5), y, 0, 0, 0);
+            menu.mouseReleased(x.applyAsDouble(5), y, 0);
+            menu.mouseClicked(x.applyAsDouble(12), y, 0);
+            menu.mouseDragged(x.applyAsDouble(16), y, 0, 0, 0);
+            menu.mouseReleased(x.applyAsDouble(16), y, 0);
+            sel = menu.soundLibrary().selection();
+            check(Math.abs(sel[0] - 5) < .3 && Math.abs(sel[1] - 16) < .3, String.format(java.util.Locale.ROOT, "dragging the handles selects %.2f-%.2f s (wanted 5-16)", sel[0], sel[1]));
+            menu.mouseScrolled(x.applyAsDouble(10), y, 1); // one notch of zoom about 10 s
+            lines = CustomSounds.linesOpened();
+            menu.charTyped(' '); // Space plays the selection
+            wait = 12;
+            return true;
+        });
+        steps.add(() -> {
+            check(CustomSounds.linesOpened() > lines, "Space previews the selection (" + CustomSounds.lastPlayed() + ")");
+            game.screenshot("sounds-trimmer");
+            wait = 10;
+            return true;
+        });
+        steps.add(() -> {
+            check(clickLibrary("save"), "the trimmer has Save");
+            return true;
+        });
+        steps.add(() -> {
+            if (menu.soundLibrary().isOpen()) return false;
+            trimmed = combo.steps[0].get();
+            CustomSounds.Pcm pcm = CustomSounds.decoded(trimmed);
+            check(trimmed.startsWith("qa-long ") && trimmed.endsWith(".wav") && pcm != null && Math.abs(pcm.seconds() - 11) < .4,
+                "Save puts the part in Combo 1 as a WAV: " + trimmed + " (" + (pcm == null ? "unreadable" : pcm.seconds() + " s") + ")");
+            CustomSounds.stopPreview();
+            return true;
+        });
+        steps.add(() -> reveal("option:Combo 1:choose"));
+        steps.add(() -> { game.screenshot("sounds-trimmed-slot"); wait = 10; return true; });
+        // Sound Sets: Save current (then typed name), Default pling empties the slots, the saved set fills them again.
+        steps.add(() -> reveal("option:Sound Sets:save"));
+        steps.add(() -> {
+            clickScreen("option:Sound Sets:save");
+            type("QA set");
+            menu.keyPressed(257, 0);
+            check(combo.sets.get().size() == 1 && combo.sets.get().get(0).name().equals("QA set"), "Save current makes a set, named as typed: " + combo.sets.get());
+            wait = 3;
+            return true;
+        });
+        steps.add(() -> reveal("option:Sound Sets:use:1"));
+        steps.add(() -> {
+            clickScreen("option:Sound Sets:use:0");
+            check(!combo.steps[0].isSet() && combo.after.size() == 0, "Default pling empties Combo 1-5 and After Combo 5");
+            wait = 3;
+            return true;
+        });
+        steps.add(() -> {
+            clickScreen("option:Sound Sets:use:1");
+            check(combo.steps[0].get().equals(trimmed) && combo.after.size() == 2, "QA set fills them again: " + combo.steps[0].get() + ", " + combo.after.get());
+            wait = 5;
+            return true;
+        });
+        steps.add(() -> { game.screenshot("sounds-sets"); wait = 5; return true; });
+        // After Combo 5: Add from the library, then move it up.
+        steps.add(() -> reveal("option:After Combo 5:add"));
+        steps.add(() -> {
+            clickScreen("option:After Combo 5:add");
+            wait = 3;
+            return true;
+        });
+        steps.add(() -> {
+            check(clickLibrary("row:combo_1.mp3"), "the library lists combo_1.mp3 for After Combo 5");
+            check(combo.after.get().equals(List.of("kill_4.mp3", "kill_5.mp3", "combo_1.mp3")), "Add appends it: " + combo.after.get());
+            wait = 3;
+            return true;
+        });
+        steps.add(() -> reveal("option:After Combo 5:up:2"));
+        steps.add(() -> {
+            clickScreen("option:After Combo 5:up:2");
+            check(combo.after.get().equals(List.of("kill_4.mp3", "combo_1.mp3", "kill_5.mp3")), "^ moves it up: " + combo.after.get());
+            wait = 3;
+            return true;
+        });
+        steps.add(() -> reveal("option:After Combo 5:remove:2"));
+        steps.add(() -> { game.screenshot("sounds-after-combo5"); wait = 5; return true; });
+        // A delete: Combo 2's sound, asked first, gone from the folder and the slot.
+        steps.add(() -> reveal("option:Combo 2:choose"));
+        steps.add(() -> {
+            clickScreen("option:Combo 2:choose");
+            type("qa-delete");
+            wait = 3;
+            return true;
+        });
+        steps.add(() -> {
+            check(clickLibrary("delete:qa-delete.wav"), "the library has Delete for qa-delete.wav");
+            check(menu.confirmDialog().isOpen(), "Delete asks first");
+            wait = 3;
+            return true;
+        });
+        steps.add(() -> { game.screenshot("sounds-delete-confirm"); wait = 5; return true; });
+        steps.add(() -> {
+            var ok = menu.confirmDialog().confirmBounds();
+            menu.mouseClicked(ok.x() + ok.width() / 2.0, ok.y() + ok.height() / 2.0, 0);
+            check(!Files.exists(CustomSounds.folder().resolve("qa-delete.wav")) && !combo.steps[1].isSet() && !menu.soundLibrary().listed().contains("qa-delete.wav"),
+                "the deleted sound leaves the folder, the list and Combo 2");
+            menu.keyPressed(256, 0); // Esc closes the library
+            game.closeScreen();
+            return true;
+        });
+        // Bow sounds: a villager 30 blocks away, an arrow in its head.
+        steps.add(() -> {
+            combo.setEnabled(true);
+            combo.bowMobs.set(true);
+            combo.longShots.set(true);
+            combo.headshots.set(true);
+            combo.longShotDistance.setValue(20);
+            combo.longShotSound.set(upload("kill_2.mp3"));
+            combo.headshotSound.set(upload("kill_3.mp3"));
+            game.spawnArcheryTarget(30, false);
+            wait = 40;
+            return true;
+        });
+        steps.add(() -> {
+            if (!game.archeryTargetReady()) return false;
+            bowShot(game, combo, true);
+            return true;
+        });
+        steps.add(() -> bowCheck(combo, true, true, "an arrow in the head of a villager 30 blocks away: long shot (kill_2) and headshot (kill_3)"));
+        steps.add(() -> { game.spawnArcheryTarget(8, false); wait = 40; return true; });
+        steps.add(() -> {
+            if (!game.archeryTargetReady()) return false;
+            bowShot(game, combo, false);
+            wait = 60;
+            return true;
+        });
+        steps.add(() -> bowCheck(combo, false, false, "an arrow in the chest of a villager 8 blocks away: no bow sound"));
+        // A player: the stand-in 30 blocks away, the arrow at its head, then the server's packets for a player hit.
+        steps.add(() -> { game.spawnArcheryTarget(30, true); wait = 10; return true; });
+        steps.add(() -> {
+            if (!game.archeryTargetReady()) return false;
+            bowShot(game, combo, true);
+            wait = 4; // the client sees the arrow cross the stand-in
+            return true;
+        });
+        steps.add(() -> { game.arrowHitPlayerPackets(); wait = 5; return true; });
+        steps.add(() -> bowCheck(combo, true, true, "the arrow-hit-player event after a head hit on a player 30 blocks away: long shot and headshot"));
+        steps.add(() -> {
+            combo.longShotSound.set("");
+            combo.headshotSound.set("");
+            game.spawnArcheryTarget(30, true);
+            wait = 10;
+            return true;
+        });
+        steps.add(() -> {
+            if (!game.archeryTargetReady()) return false;
+            bowShot(game, combo, true);
+            wait = 4;
+            return true;
+        });
+        steps.add(() -> { game.arrowHitPlayerPackets(); wait = 5; return true; });
+        steps.add(() -> {
+            if (combo.bowPlayed() < bowBefore + 2 && patience < 60) return false;
+            check(combo.bowPlayed() == bowBefore + 2, "with no sound picked, the built-in level-up chime and anvil clink play (" + (combo.bowPlayed() - bowBefore) + " played)");
+            game.removeArcheryTarget();
+            return true;
+        });
+        return steps;
+    }
+
+    private void bowShot(Game game, ComboSoundsModule combo, boolean head) {
+        longBefore = CustomSounds.plays("kill_2.mp3");
+        headBefore = CustomSounds.plays("kill_3.mp3");
+        bowBefore = combo.bowPlayed();
+        game.shootTarget(head);
+    }
+
+    /** Waits up to 3 s for the expected bow sounds (none expected: the whole wait), then checks exactly those played. */
+    private boolean bowCheck(ComboSoundsModule combo, boolean longShot, boolean headshot, String what) {
+        int longs = CustomSounds.plays("kill_2.mp3") - longBefore, heads = CustomSounds.plays("kill_3.mp3") - headBefore;
+        boolean done = (longs > 0) == longShot && (heads > 0) == headshot;
+        if ((!done || !longShot && !headshot) && patience < 60) return false;
+        check(done && longs <= 1 && heads <= 1, what + " (long " + longs + ", head " + heads + ")");
+        return true;
     }
 
     private String upload(String name) throws java.io.IOException {
