@@ -336,7 +336,8 @@ public final class KillBanner189 {
     /** "theladscore:<skin>_kill_<n>" from the Kill Banner sounds.json, "" the plain chime (1.8.9's orb pickup), at the module's volume, in both ears. */
     private static void play(String sound, float level) {
         if (sound == null) return;
-        Minecraft.getMinecraft().getSoundHandler().playSound(new ListenerSound189(new ResourceLocation(sound.isEmpty() ? "random.orb" : sound), level, 1.0F));
+        Minecraft.getMinecraft().getSoundHandler().playSound(new ListenerSound189(new ResourceLocation(sound.isEmpty() ? "random.orb" : sound),
+            KillBanners.volume(sound, level), 1.0F));
     }
 
     /** Kill Banner picker: a skin's one-kill sound. */

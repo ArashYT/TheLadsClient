@@ -61,7 +61,18 @@ public final class KillBanners {
         return "theladscore:" + pick.soundStyle().soundId(pick.soundStyle() == pick.style() ? pick.variant() : 0) + "_kill_" + seq;
     }
 
-    /** What the banner on screen shows: its kill's pick, else the module's current choice. */
+    /**
+     * The volume {@code sound} plays at for the module's {@code volume}: the plain chime ("": the game's orb pickup, for the Base
+     * banner and an empty "Your sounds" slot) sits 4.4 dB under the game's own hit, hurt and level-up sounds at the same volume
+     * (measured in 1.9.1 QA recordings), so it plays that much louder, up to full volume; skin sounds play as set.
+     */
+    public static float volume(String sound, double volume) {
+        return (float) (sound != null && sound.isEmpty() ? Math.min(1, volume * CHIME_GAIN) : volume);
+    }
+
+    static final double CHIME_GAIN = 1.66; // +4.4 dB
+
+        /** What the banner on screen shows: its kill's pick, else the module's current choice. */
     public static KillBannerModule.Pick shown(KillBannerModule module) {
         return TIMELINE.pick() != null ? TIMELINE.pick() : module.chosen();
     }

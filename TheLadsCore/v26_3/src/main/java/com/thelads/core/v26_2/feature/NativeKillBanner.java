@@ -220,7 +220,7 @@ public final class NativeKillBanner {
     private static void play(KillBannerModule module, String sound) {
         if (sound == null) return;
         SoundEvent event = sound.isEmpty() ? SoundEvents.EXPERIENCE_ORB_PICKUP : SoundEvent.createVariableRangeEvent(Identifier.parse(sound));
-        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(event, 1, (float) module.volume.getValue()));
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(event, 1, KillBanners.volume(sound, module.volume.getValue())));
     }
 
     /** Kill Banner picker art (LadsGraphics.drawKillBanner). */
