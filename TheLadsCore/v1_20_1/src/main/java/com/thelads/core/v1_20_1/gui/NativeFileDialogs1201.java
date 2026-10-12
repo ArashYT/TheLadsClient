@@ -31,7 +31,7 @@ public final class NativeFileDialogs1201 {
                     patterns.flip();
                 }
                 String picked = folder
-                    ? TinyFileDialogs.tinyfd_selectFolderDialog(title, (CharSequence) null)
+                    ? TinyFileDialogs.tinyfd_selectFolderDialog(title, "") // LWJGL refuses a null default path
                     : TinyFileDialogs.tinyfd_openFileDialog(title, (CharSequence) null, patterns, extensions.length > 0 ? filterName : null, false);
                 result.complete(picked == null ? null : Path.of(picked));
             } catch (Throwable failure) {

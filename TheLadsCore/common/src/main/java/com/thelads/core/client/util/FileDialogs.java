@@ -194,12 +194,14 @@ public final class FileDialogs {
             return owner.getInt(0) == pid;
         }
 
+        // C_CONVENTION: 64-bit Windows has one calling convention, and ALT_CONVENTION's value differs between JNA 3.4 (1) and 5.x (63),
+        // so a constant compiled against one fails on the other ("Unrecognized calling convention").
         static int call(String library, String name, Object... args) {
-            return Function.getFunction(library, name, Function.ALT_CONVENTION).invokeInt(args);
+            return Function.getFunction(library, name, Function.C_CONVENTION).invokeInt(args);
         }
 
         static Pointer pointer(String library, String name, Object... args) {
-            return Function.getFunction(library, name, Function.ALT_CONVENTION).invokePointer(args);
+            return Function.getFunction(library, name, Function.C_CONVENTION).invokePointer(args);
         }
 
         /** A COM method: slot {@code index} of the object's vtable, the object first. */
@@ -208,7 +210,7 @@ public final class FileDialogs {
             all[0] = object;
             System.arraycopy(args, 0, all, 1, args.length);
             Pointer method = object.getPointer(0).getPointer((long) index * Native.POINTER_SIZE);
-            return Function.getFunction(method, Function.ALT_CONVENTION).invokeInt(all);
+            return Function.getFunction(method, Function.C_CONVENTION).invokeInt(all);
         }
 
         static void check(String what, int hresult) {
