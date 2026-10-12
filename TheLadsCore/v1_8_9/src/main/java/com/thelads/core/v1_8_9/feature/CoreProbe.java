@@ -158,6 +158,9 @@ public final class CoreProbe {
         } else if ("hudlayout".equals(only)) { // 1.9.0 HUD layout across GUI scales, docked HUDs, the hotbar snap (HudLayoutProbe189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, HudLayoutProbe189::run));
+        } else if ("kb191".equals(only)) { // 1.9.1 kill banners: Hypixel lines, a real kill, the sound sliders, loudness (Probe191KillBanner)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe191KillBanner::run));
         } else if ("sounds".equals(only)) { // 1.9.0 uploaded sounds: Combo Sounds and Kill Banner "Your sounds" (Probe190Sounds)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe190Sounds::run));

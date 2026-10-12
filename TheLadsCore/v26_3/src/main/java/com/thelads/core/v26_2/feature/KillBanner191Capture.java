@@ -1,0 +1,215 @@
+package com.thelads.core.v26_2.feature;
+
+import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.platform.InputConstants;
+import com.thelads.core.client.killbanner.KillBanner191Qa;
+import com.thelads.core.modules.KillBannerModule;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.OptionsList;
+import net.minecraft.client.gui.components.events.ContainerEventHandler;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.options.SoundOptionsScreen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.player.RemotePlayer;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityTypes;
+import org.slf4j.LoggerFactory;
+
+/** QA only (LADS_VERIFY_KB191=1 with the auto-world run): the 1.9.1 kill banner run (common KillBanner191Qa) on 26.3. */
+final class KillBanner191Capture implements KillBanner191Qa.Driver {
+    private static final int FIRST_ID = Integer.MAX_VALUE - 300;
+    private static KillBanner191Qa run;
+    private static boolean done;
+    private static String pendingShot;
+    private static Path game;
+    private final AtomicInteger pig = new AtomicInteger(-1);
+    private final Map<SoundSource, Double> volumes = new EnumMap<>(SoundSource.class);
+    private int standIns;
+    private boolean dynamicFpsBefore;
+
+    private KillBanner191Capture() {}
+
+    static boolean busy() { return run != null && !done; }
+
+    /** Each client tick: starts once the QA world is ready (and no other capture runs), then runs to its end whatever is on screen. */
+    static void tick(Path gameDirectory, boolean ready) {
+        if (done || System.getenv("LADS_VERIFY_KB191") == null) return;
+        if (run == null) {
+            if (!ready) return;
+            game = gameDirectory;
+            run = new KillBanner191Qa(new KillBanner191Capture());
+        }
+        if (Minecraft.getInstance().level != null && run.tick()) done = true;
+    }
+
+    static void frame(RenderTarget target, Path gameDirectory) {
+        if (pendingShot == null) return;
+        String name = pendingShot;
+        pendingShot = null;
+        try {
+            Path output = gameDirectory.resolve("screenshots").resolve("kb191").resolve(name + ".png");
+            Files.createDirectories(output.getParent());
+            net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
+                try { image.writeToFile(output); LoggerFactory.getLogger("TheLadsCore").info("Lads kb191 frame {}", output); }
+                catch (Exception failure) { LoggerFactory.getLogger("TheLadsCore").warn("Lads kb191 frame {} not saved", name, failure); }
+                finally { image.close(); }
+            });
+        } catch (Exception failure) {
+            LoggerFactory.getLogger("TheLadsCore").warn("Lads kb191 frame {} not saved", name, failure);
+        }
+    }
+
+    @Override public int settleTicks() { return 1800; }
+
+    @Override public String me() { return Minecraft.getInstance().player.getGameProfile().name(); }
+
+    @Override public void standIns(List<String> names) {
+        Minecraft mc = Minecraft.getInstance();
+        for (String name : names) {
+            RemotePlayer player = new RemotePlayer(mc.level, new GameProfile(UUID.randomUUID(), name));
+            player.setId(FIRST_ID + standIns++);
+            player.setPos(mc.player.getX() + standIns, mc.player.getY(), mc.player.getZ() + 4);
+            mc.level.addEntity(player);
+        }
+    }
+
+    @Override public void removeStandIns() {
+        for (int i = 0; i < standIns; i++) Minecraft.getInstance().level.removeEntity(FIRST_ID + i, Entity.RemovalReason.DISCARDED);
+        standIns = 0;
+        int id = pig.getAndSet(-1);
+        if (id >= 0) server(sp -> { if (sp.level().getEntity(id) instanceof Entity entity) entity.discard(); });
+    }
+
+    @Override public void tellraw(String json) {
+        server(sp -> sp.level().getServer().getCommands().performPrefixedCommand(sp.createCommandSourceStack(), "tellraw @s " + json));
+    }
+
+    @Override public void spawnPig() {
+        server(sp -> {
+            var mob = EntityTypes.PIG.create(sp.level(), EntitySpawnReason.COMMAND);
+            mob.setPos(sp.getX(), sp.getY(), sp.getZ() + 1.5);
+            mob.setNoAi(true);
+            mob.setHealth(.1f);
+            sp.level().addFreshEntity(mob);
+            pig.set(mob.getId());
+        });
+    }
+
+    @Override public boolean attackPig() {
+        Minecraft mc = Minecraft.getInstance();
+        Entity target = pig.get() < 0 ? null : mc.level.getEntity(pig.get());
+        if (target == null) return false;
+        mc.gameMode.attack(mc.player, target); // the player's own blow (KillBannerAttackMixin)
+        return true;
+    }
+
+    @Override public void openSoundScreen() {
+        Minecraft mc = Minecraft.getInstance();
+        mc.gui.setScreen(new SoundOptionsScreen(null, mc.options));
+        // Ours is the row under the game's volumes: scrolled into the 944x501 QA window's view.
+        for (GuiEventListener child : mc.gui.screen().children())
+            if (child instanceof OptionsList list) list.setScrollAmount(list.maxScrollAmount() - 70);
+    }
+
+    @Override public boolean clickSlider(String label, double fraction) {
+        var screen = Minecraft.getInstance().gui.screen();
+        List<AbstractWidget> found = new ArrayList<>();
+        widgets(screen, found);
+        for (AbstractWidget widget : found) {
+            if (!(widget instanceof AbstractSliderButton) || !widget.getMessage().getString().startsWith(label)) continue;
+            double x = widget.getX() + 4 + fraction * (widget.getWidth() - 8), y = widget.getY() + widget.getHeight() / 2.0;
+            MouseButtonEvent event = new MouseButtonEvent(x, y, new MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0));
+            boolean clicked = screen.mouseClicked(event, false);
+            screen.mouseReleased(event);
+            LoggerFactory.getLogger("TheLadsCore").info("Lads kb191 slider '{}' at ({}, {}): clicked {}, now '{}'", label, x, y, clicked, widget.getMessage().getString());
+            return clicked;
+        }
+        return false;
+    }
+
+    private static void widgets(GuiEventListener parent, List<AbstractWidget> out) {
+        if (parent instanceof AbstractWidget widget) out.add(widget);
+        if (parent instanceof ContainerEventHandler container) for (GuiEventListener child : container.children()) widgets(child, out);
+    }
+
+    @Override public void closeScreen() { Minecraft.getInstance().gui.setScreen(null); }
+
+    @Override public void shot(String name) { pendingShot = name; }
+
+    @Override public List<String> references() {
+        return List.of("minecraft:entity.player.attack.strong 1", "minecraft:entity.player.hurt 1", "minecraft:entity.player.levelup 0.75",
+            "minecraft:block.note_block.pling 1");
+    }
+
+    @Override public void playReference(String reference) {
+        Minecraft mc = Minecraft.getInstance();
+        String[] parts = reference.split(" ");
+        var event = BuiltInRegistries.SOUND_EVENT.getValue(Identifier.parse(parts[0]));
+        mc.level.playLocalSound(mc.player.getX(), mc.player.getEyeY(), mc.player.getZ(), event, SoundSource.PLAYERS, Float.parseFloat(parts[1]), 1f, false);
+        diagnose(reference);
+    }
+
+    /** What decides whether the recording hears it: pause, the volumes the engine multiplies (Dynamic FPS's included), the listener. */
+    private static void diagnose(String what) {
+        Minecraft mc = Minecraft.getInstance();
+        var options = mc.options;
+        LoggerFactory.getLogger("TheLadsCore").info("Lads kb191 sound state for {}: paused {}, master {} (final players {}, ui {}), Dynamic FPS {} , channels {}, listener {} / eyes {}",
+            what, mc.isPaused(), options.getSoundSourceVolume(SoundSource.MASTER), options.getFinalSoundSourceVolume(SoundSource.PLAYERS),
+            options.getFinalSoundSourceVolume(SoundSource.UI), com.thelads.core.v26_2.feature.dynamicfps.DynamicFPSMod.powerState(),
+            mc.getSoundManager().getChannelDebugString(), mc.getSoundManager().getListenerTransform().position(), mc.player.getEyePosition());
+    }
+
+    @Override public void banner(KillBannerModule.Pick pick) {
+        NativeKillBanner.bindCurrent();
+        NativeKillBanner.trigger(1, false, false, pick);
+        diagnose("banner");
+    }
+
+    @Override public void mute(boolean on) {
+        var options = Minecraft.getInstance().options;
+        var dynamicFps = com.thelads.core.config.ModuleManager.getInstance().getModule("DynamicFPS");
+        if (dynamicFps != null) {
+            if (on) dynamicFpsBefore = dynamicFps.isEnabled();
+            dynamicFps.setEnabled(!on && dynamicFpsBefore);
+            com.thelads.core.v26_2.feature.dynamicfps.DynamicFPSMod.onStatusChanged(false); // its power state now, volume multipliers included
+        }
+        if (on) {
+            for (SoundSource source : SoundSource.values()) {
+                if (source == SoundSource.MASTER || source == SoundSource.PLAYERS || source == SoundSource.UI) continue;
+                volumes.put(source, options.getSoundSourceOptionInstance(source).get());
+                options.getSoundSourceOptionInstance(source).set(0.0);
+            }
+        } else {
+            volumes.forEach((source, volume) -> options.getSoundSourceOptionInstance(source).set(volume));
+            volumes.clear();
+        }
+    }
+
+    private static void server(Consumer<ServerPlayer> action) {
+        Minecraft mc = Minecraft.getInstance();
+        var server = mc.getSingleplayerServer();
+        var id = mc.player.getUUID();
+        server.execute(() -> {
+            ServerPlayer sp = server.getPlayerList().getPlayer(id);
+            if (sp != null) action.accept(sp);
+        });
+    }
+}
