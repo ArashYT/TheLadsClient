@@ -182,11 +182,11 @@ final class Probe191World {
             mc.thePlayer.rotationPitch = 5;
             command(mc, "setblock " + block(4, -1, 6) + " redstone_block");
             command(mc, "setblock " + block(4, 0, 6) + " activator_rail");
-            command(mc, "summon PrimedTnt " + at(-2, 0, 6));
+            command(mc, "summon PrimedTnt " + at(-2, 0, 6) + " {Fuse:80}"); // without the tag a summoned one has fuse 0
             return after(20);
         },
-        mc -> { command(mc, "summon PrimedTnt " + at(0.5, 0, 6)); command(mc, "summon MinecartTNT " + at(4.5, 0, 6.5)); return after(20); },
-        mc -> { command(mc, "summon PrimedTnt " + at(2.5, 0, 6)); return after(3); },
+        mc -> { command(mc, "summon PrimedTnt " + at(0.5, 0, 6) + " {Fuse:80}"); command(mc, "summon MinecartTNT " + at(4.5, 0, 6.5)); return after(20); },
+        mc -> { command(mc, "summon PrimedTnt " + at(2.5, 0, 6) + " {Fuse:80}"); return after(3); },
         mc -> {
             List<String> labels = timers(mc);
             LOG.info("Lads world191 timers a: {}", labels);
