@@ -237,8 +237,8 @@ public final class FixesQa {
     }
 
     /**
-     * The text in the two frames' region (percent of width and height) is the same: its white text pixels match, all but 1% (the
-     * world behind keeps moving: mobs, clouds, the sun). False while either is still being written. The fixed frame must be the same
+     * The text in the two frames' region (percent of width and height) is the same: its white text pixels match, all but 2% (the
+     * world behind keeps moving, and 1.20.1's Mods button has an animated gem). False while either is still being written. The fixed frame must be the same
      * as vanilla's: the depth fix only touches text drawn in the world.
      */
     private boolean sameText(Path fixed, Path vanilla, int x0, int y0, int x1, int y1, String what) {
@@ -254,7 +254,7 @@ public final class FixesQa {
                     if (inA != inB) differ++;
                 }
             patience = 0;
-            check(text > 50 && differ <= text / 100, what + " is the same with the fix as without it (" + differ + " of " + text + " text pixels differ)");
+            check(text > 50 && differ <= text / 50, what + " is the same with the fix as without it (" + differ + " of " + text + " text pixels differ)");
             return true;
         } catch (Exception partial) {
             return false; // still being written
