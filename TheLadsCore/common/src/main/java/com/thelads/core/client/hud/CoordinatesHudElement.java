@@ -13,7 +13,7 @@ public class CoordinatesHudElement extends HudElement {
     private String px, py, pz, prefix, separator, biomeText, compass, axes, directionText;
     private int lastX = Integer.MIN_VALUE, lastY = Integer.MIN_VALUE, lastZ = Integer.MIN_VALUE;
     private int lastFormat = -1;
-    private String pxSep = "", pySep = "";
+    private String pxSep = null, pySep = null;
     private String lastBiomeName = null;
     private String biomeVerticalText = "Biome: Plains";
     private String biomeHorizText = " (Plains)";
@@ -32,7 +32,7 @@ public class CoordinatesHudElement extends HudElement {
         preparedGraphics = g;
         hasPlayer = g.getGame().hasPlayer();
         showBiome = optBool("Show Biome", false);
-        compass = axes = directionText = null;
+        compass = axes = null;
         int facing = -1;
         if (hasPlayer && optBool("Show Direction", true)) {
             facing = facing(g.getGame().getYaw(), g.getGame().getPlayerDirection());
