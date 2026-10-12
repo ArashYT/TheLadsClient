@@ -7,7 +7,9 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
 import net.minecraft.resources.Identifier;
+import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -17,6 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Hud.class)
 public class NativeHudMixin {
+    @Shadow private int overlayMessageTime;
     @Unique private final FrameAnimation lads$selection = new FrameAnimation();
 
     @Redirect(method = "extractItemHotbar", at = @At(value = "INVOKE", ordinal = 1,
@@ -67,5 +70,18 @@ public class NativeHudMixin {
     @Inject(method = "extractOverlayMessage", at = @At("RETURN"), require = 1)
     private void lads$restoreOverlay(GuiGraphicsExtractor graphics, DeltaTracker delta, CallbackInfo callback) {
         graphics.pose().popMatrix();
+    }
+
+    // The Action Bar module (ActionBar): every message the server or a record sends; with the module on it shows it, not vanilla.
+    @Inject(method = "setOverlayMessage", at = @At("HEAD"), cancellable = true, require = 1)
+    private void lads$actionBar(Component message, boolean animate, CallbackInfo callback) {
+        if (!com.thelads.core.client.hud.ActionBar.set(message, animate)) return;
+        overlayMessageTime = 0;
+        callback.cancel();
+    }
+
+    @Inject(method = "tick()V", at = @At("HEAD"), require = 1)
+    private void lads$actionBarTick(CallbackInfo callback) {
+        com.thelads.core.client.hud.ActionBar.tick();
     }
 }

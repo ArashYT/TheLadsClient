@@ -130,6 +130,27 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     }
 
     @Override
+    public int actionBarWidth(Object text) {
+        return text instanceof net.minecraft.network.chat.Component message ? font.width(message) : LadsGraphics.super.actionBarWidth(text);
+    }
+
+    @Override
+    public void drawActionBar(Object text, int x, int y, int color, boolean shadow, boolean plain) {
+        if (!(text instanceof net.minecraft.network.chat.Component message)) {
+            LadsGraphics.super.drawActionBar(text, x, y, color, shadow, plain);
+            return;
+        }
+        if (!plain) {
+            guiGraphics.drawString(font, message, x, y, tint(color), shadow);
+            return;
+        }
+        // Its own colours left out (formatting codes in its text included, as the font reads them): the rest of its style stays.
+        net.minecraft.util.FormattedCharSequence styled = message.getVisualOrderText();
+        guiGraphics.drawString(font, (net.minecraft.util.FormattedCharSequence) sink -> styled.accept((i, style, c) ->
+            sink.accept(i, style.withColor((net.minecraft.network.chat.TextColor) null), c)), x, y, tint(color), shadow);
+    }
+
+    @Override
     public void drawBossBars(int x, int y, int max, boolean names, boolean preview) {
         try {
             var overlay = (BossBarAccessor1201) Minecraft.getInstance().gui.getBossOverlay();

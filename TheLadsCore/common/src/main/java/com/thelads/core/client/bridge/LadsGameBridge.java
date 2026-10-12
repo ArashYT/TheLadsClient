@@ -165,6 +165,9 @@ public interface LadsGameBridge {
     /** True while the F3 debug screen is open. */
     default boolean isDebugScreenOpen() { return false; }
 
+    /** How far the game is into its current tick (0 to 1) this frame, as vanilla's HUD reads it (paused: where it stopped). */
+    default float partialTick() { return 0; }
+
     /** Every mod container Fabric loaded in this process, nested jars included; empty without a loader. */
     default List<com.thelads.core.mods.LoadedMod> loadedMods() {
         return List.of();

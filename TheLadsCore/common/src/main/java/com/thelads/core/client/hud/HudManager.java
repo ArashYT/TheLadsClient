@@ -72,6 +72,7 @@ public class HudManager {
         scoreboardElement = new ScoreboardHudElement();
         add(scoreboardElement, "Scoreboard");
         add(new ToggleSprintHudElement(), com.thelads.core.modules.ToggleSprintModule.NAME);
+        add(new ActionBarHudElement(), ActionBar.MODULE);
     }
 
     private void add(HudElement element, String moduleName) {

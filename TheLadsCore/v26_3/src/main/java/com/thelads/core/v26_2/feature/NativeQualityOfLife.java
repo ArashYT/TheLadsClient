@@ -27,6 +27,7 @@ public final class NativeQualityOfLife {
         if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("durabilitytooltip")) ModuleSupport.registerBuiltIn("EnhancedToolbars");
         Raised26.register();
         ModuleSupport.registerBuiltIn(com.thelads.core.modules.MouseTweaksModule.NAME); // NativeMouseTweaks
+        ModuleSupport.registerBuiltIn(com.thelads.core.client.hud.ActionBar.MODULE); // NativeHudMixin, ActionBarHudElement
         ((com.thelads.core.config.ActionOption)module("Jade").getOption("Settings and addons")).setAction(()->{
             var mc=Minecraft.getInstance();mc.setScreenAndShow(new snownee.jade.gui.HomeConfigScreen(mc.gui.screen()));
         });

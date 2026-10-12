@@ -46,6 +46,8 @@ final class RecordingGraphics implements LadsGraphics {
     @Override public void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) { mark("potionIcon", Arrays.asList(effectId, iconIndex), x, y, size); ops.add(g -> g.drawPotionIcon(effectId, iconIndex, x, y, size)); }
     @Override public void drawPackIcon(String pack, int x, int y, int size) { mark("packIcon", pack, x, y, size); ops.add(g -> g.drawPackIcon(pack, x, y, size)); }
     @Override public void drawBossBars(int x, int y, int max, boolean names, boolean preview) { mark("bossBars", Arrays.asList(max, names, preview), x, y); ops.add(g -> g.drawBossBars(x, y, max, names, preview)); }
+    @Override public void drawActionBar(Object text, int x, int y, int color, boolean shadow, boolean plain) { mark("actionBar", text, x, y, color, shadow, plain); ops.add(g -> g.drawActionBar(text, x, y, color, shadow, plain)); }
+    @Override public int actionBarWidth(Object text) { return target.actionBarWidth(text); }
     // Screen-only art (the Kill Banner picker, the HUD editor backdrop): recorded like the rest, assumed drawn.
     @Override public boolean drawKillBanner(String skin, int variant, int x, int y, int width, int height) { mark("banner", Arrays.asList(skin, variant), x, y, width, height); ops.add(g -> g.drawKillBanner(skin, variant, x, y, width, height)); return true; }
     @Override public boolean drawKillBannerPreview(String skin, int variant, int x, int y, int width, int height, double clock) { mark("bannerPreview", Arrays.asList(skin, variant), x, y, width, height, clock); ops.add(g -> g.drawKillBannerPreview(skin, variant, x, y, width, height, clock)); return true; }

@@ -4,15 +4,33 @@ import com.thelads.core.v1_8_9.feature.NativeHud;
 import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.renderer.GlStateManager;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * SmoothHotbar: renderTooltip's second texture draw, the selected-slot frame, glides to the slot (NativeHud.selectionOffset).
  * Raised: vanilla draws 22 of the frame's 24 rows; off the bottom edge the last two show, so all 24 are drawn.
+ * The Action Bar module (ActionBar) takes the action bar where it is set (a server's, as the text it shows, and a record's).
  */
 @Mixin(GuiIngame.class)
 public abstract class GuiIngameMixin {
+    @Shadow private int recordPlayingUpFor;
+
+    @Inject(method = "setRecordPlaying(Ljava/lang/String;Z)V", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsActionBar(String message, boolean playing, CallbackInfo ci) {
+        if (!com.thelads.core.client.hud.ActionBar.set(message, playing)) return;
+        recordPlayingUpFor = 0;
+        ci.cancel();
+    }
+
+    @Inject(method = "updateTick", at = @At("HEAD"), require = 1)
+    private void ladsActionBarTick(CallbackInfo ci) {
+        com.thelads.core.client.hud.ActionBar.tick();
+    }
+
     @Redirect(method = "renderTooltip", at = @At(value = "INVOKE", ordinal = 1,
         target = "Lnet/minecraft/client/gui/GuiIngame;drawTexturedModalRect(IIIIII)V"), require = 1)
     private void ladsSelection(GuiIngame gui, int x, int y, int u, int v, int width, int height) {

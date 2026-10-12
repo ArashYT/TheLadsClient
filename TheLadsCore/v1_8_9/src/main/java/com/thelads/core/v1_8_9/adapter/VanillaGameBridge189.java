@@ -98,6 +98,14 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         return mc().gameSettings.getSoundLevel(net.minecraft.client.audio.SoundCategory.MASTER);
     }
 
+    /** This frame's partial tick, as Forge hands it to the HUD (NativeHud). */
+    public static float partialTicks;
+
+    @Override
+    public float partialTick() {
+        return partialTicks;
+    }
+
     /** Combo Sounds' built-in sound; uploads go through CustomSounds, and the bridge's default file dialog (AWT) serves 1.8.9. */
     @Override
     public void playComboSound(final float tone, final float level) {

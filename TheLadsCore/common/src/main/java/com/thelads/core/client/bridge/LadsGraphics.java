@@ -87,6 +87,19 @@ public interface LadsGraphics {
 
     default void drawBossBars(int x,int y,int max,boolean names,boolean preview) {}
 
+    /** The action bar's text width (ActionBar's message: a version's chat component, or a string with formatting codes). */
+    default int actionBarWidth(Object text) { return textWidth(String.valueOf(text)); }
+
+    /**
+     * Draws the action bar's text as vanilla does, in {@code color} where the message sets none (its alpha for all of it);
+     * {@code plain}: the message's own colours left out.
+     */
+    default void drawActionBar(Object text, int x, int y, int color, boolean shadow, boolean plain) {
+        String s = String.valueOf(text);
+        // A colour code also ends bold, italic and the rest: a reset (to the given colour) does the same.
+        drawText(plain ? s.replaceAll("§[0-9a-fA-F]", "§r") : s, x, y, color, shadow);
+    }
+
     /** A GUI atlas sprite such as "voicechat:icons/microphone", size by size; nothing where the version has no such sprite. */
     default void drawSprite(String sprite, int x, int y, int size) {}
 

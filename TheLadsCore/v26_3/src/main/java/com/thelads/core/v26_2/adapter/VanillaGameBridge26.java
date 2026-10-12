@@ -382,6 +382,11 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     }
 
     @Override
+    public float partialTick() {
+        return Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+    }
+
+    @Override
     public List<com.thelads.core.mods.LoadedMod> loadedMods() {
         List<com.thelads.core.mods.LoadedMod> mods = new ArrayList<>();
         for (net.fabricmc.loader.api.ModContainer container : net.fabricmc.loader.api.FabricLoader.getInstance().getAllMods()) {

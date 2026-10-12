@@ -72,6 +72,8 @@ public final class HudScale {
         @Override public void drawHotbarSlots(int x, int y, int slots) { target.drawHotbarSlots(x, y, slots); }
         @Override public void drawArmorSlot(int slot, int x, int y, boolean preview) { target.drawArmorSlot(slot, x, y, preview); }
         @Override public void drawBossBars(int x, int y, int max, boolean names, boolean preview) { target.drawBossBars(x, y, max, names, preview); }
+        @Override public int actionBarWidth(Object text) { return target.actionBarWidth(text); }
+        @Override public void drawActionBar(Object text, int x, int y, int color, boolean shadow, boolean plain) { target.drawActionBar(text, x, y, color, shadow, plain); }
         @Override public void drawSprite(String sprite, int x, int y, int size) { target.drawSprite(sprite, x, y, size); }
         @Override public void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) { target.drawPotionIcon(effectId, iconIndex, x, y, size); }
         @Override public boolean drawGameView(int x, int y, int width, int height) { return target.drawGameView(x, y, width, height); }

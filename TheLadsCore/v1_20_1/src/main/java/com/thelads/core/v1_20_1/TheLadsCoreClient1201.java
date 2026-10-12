@@ -37,6 +37,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
                 com.thelads.core.v1_20_1.feature.fastquit.FastQuitProbe1201.initialize();
 
         ModuleSupport.registerBuiltIn("Threads");
+        ModuleSupport.registerBuiltIn(com.thelads.core.client.hud.ActionBar.MODULE); // OverlayGuiMixin, ActionBarHudElement
         ModuleSupport.registerBuiltInRestart("Jasione");
         ModuleSupport.registerBuiltIn(
             // HUD Modules
