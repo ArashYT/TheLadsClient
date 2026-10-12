@@ -48,15 +48,15 @@ public final class World26 {
     }
 
     /** This entity's cape (QA logs). */
-    public static WavyCape capeOf(Entity entity) { return CAPES.computeIfAbsent(entity, key -> new Emitter()).cape; }
+    public static WavyCape capeOf(Entity entity) { return CAPES.computeIfAbsent(entity, key -> new Emitter(new WavyCape())).cape; }
 
     /** In place of the cape model's submitModel: false leaves the cape to vanilla. */
-    public static boolean cape(SubmitNodeCollector collector, AvatarRenderState state, PoseStack pose, RenderType type, int light, int overlay) {
+    public static boolean cape(SubmitNodeCollector collector, AvatarRenderState state, PoseStack pose, RenderType type, int light, int overlay, int outline) {
         Minecraft mc = Minecraft.getInstance();
         if (external || mc.level == null || !(mc.level.getEntity(state.id) instanceof Avatar avatar)) return false; // previews of made-up players
         WavyCapesModule settings = WavyCapesModule.active(avatar == mc.player);
         if (settings == null) return false;
-        Emitter emitter = CAPES.computeIfAbsent(avatar, key -> new Emitter());
+        Emitter emitter = CAPES.computeIfAbsent(avatar, key -> new Emitter(new WavyCape()));
         emitter.cape.update(settings, avatar.tickCount, avatar.getX() - avatar.xo, avatar.getY() - avatar.yo, avatar.getZ() - avatar.zo,
             avatar.yBodyRotO, 0); // sneaking tilts the body, and the cape with it, below
         emitter.quads = emitter.cape.build(settings, Math.max(0, Math.min(1, state.ageInTicks - avatar.tickCount)));
@@ -69,6 +69,14 @@ public final class World26 {
         }
         pose.translate(0, 0, 0.125f); // the cape's pivot, 2 pixels behind the body's centre
         collector.submitCustomGeometry(pose, type, emitter);
+        if (outline != 0 && type.outline().isPresent()) { // glowing: the same mesh in the outline pass, as submitModel does for models
+            if (emitter.outline == null) emitter.outline = new Emitter(emitter.cape);
+            emitter.outline.quads = emitter.quads;
+            emitter.outline.light = LightCoordsUtil.FULL_BRIGHT;
+            emitter.outline.overlay = overlay;
+            emitter.outline.color = outline;
+            collector.submitCustomGeometry(pose, type.outline().get(), emitter.outline);
+        }
         pose.popPose();
         capesDrawn++;
         return true;
@@ -85,17 +93,24 @@ public final class World26 {
         pose.rotate(camera.orientation);
         float scale = module.scale();
         pose.scale(scale, -scale, scale);
-        collector.submitText(pose, -mc.font.width(text) / 2f, 0, FormattedCharSequence.forward(text, Style.EMPTY), module.shadow.get(),
-            module.throughBlocks.get() ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL, LightCoordsUtil.FULL_BRIGHT,
-            TntTimerModule.color(ticksLeft), module.background.get() ? mc.options.getBackgroundColor(0.25f) : 0, 0);
+        // background and text submitted as vanilla's text displays do (a background inside the text submit hid the text)
+        Font.DisplayMode mode = module.throughBlocks.get() ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.POLYGON_OFFSET;
+        float x = -mc.font.width(text) / 2f;
+        if (module.background.get())
+            collector.submitTextBackground(pose, x - 1, -1, -x, 9, mc.options.getBackgroundColor(0.25f), mode, LightCoordsUtil.FULL_BRIGHT);
+        collector.submitText(pose, x, 0, FormattedCharSequence.forward(text, Style.EMPTY), module.shadow.get(), mode, LightCoordsUtil.FULL_BRIGHT,
+            TntTimerModule.color(ticksLeft), 0, 0);
         pose.popPose();
         timersDrawn++;
     }
 
-    /** Writes a cape's mesh when the submitted geometry is drawn (later in the frame). */
+    /** Writes a cape's mesh when the submitted geometry is drawn (later in the frame); its outline twin draws the glowing outline. */
     private static final class Emitter implements SubmitNodeCollector.CustomGeometryRenderer {
-        final WavyCape cape = new WavyCape();
-        int quads, light, overlay;
+        final WavyCape cape;
+        int quads, light, overlay, color = -1;
+        Emitter outline;
+
+        Emitter(WavyCape cape) { this.cape = cape; }
 
         @Override
         public void render(PoseStack.Pose pose, VertexConsumer buffer) {
@@ -104,7 +119,7 @@ public final class World26 {
             for (int at = 0, end = quads * 4 * WavyCape.STRIDE; at < end; at += WavyCape.STRIDE) {
                 matrix.transformPosition(mesh[at], mesh[at + 1], mesh[at + 2], POS);
                 pose.transformNormal(mesh[at + 5], mesh[at + 6], mesh[at + 7], NORMAL);
-                buffer.addVertex(POS.x, POS.y, POS.z, -1, mesh[at + 3], mesh[at + 4], overlay, light, NORMAL.x, NORMAL.y, NORMAL.z);
+                buffer.addVertex(POS.x, POS.y, POS.z, color, mesh[at + 3], mesh[at + 4], overlay, light, NORMAL.x, NORMAL.y, NORMAL.z);
             }
         }
     }

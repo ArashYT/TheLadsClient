@@ -18,7 +18,7 @@ public class CapeLayerWavyMixin {
     @WrapOperation(method = "submit*", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/SubmitNodeCollector;submitModel(Lnet/minecraft/client/model/Model;Ljava/lang/Object;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/rendertype/RenderType;III)V"))
     private void lads$wavyCape(SubmitNodeCollector collector, Model<?> model, Object state, PoseStack pose, RenderType type, int light, int overlay,
                                int outline, Operation<Void> original) {
-        if (!(state instanceof AvatarRenderState avatar) || !World26.cape(collector, avatar, pose, type, light, overlay))
+        if (!(state instanceof AvatarRenderState avatar) || !World26.cape(collector, avatar, pose, type, light, overlay, outline))
             original.call(collector, model, state, pose, type, light, overlay, outline);
     }
 }

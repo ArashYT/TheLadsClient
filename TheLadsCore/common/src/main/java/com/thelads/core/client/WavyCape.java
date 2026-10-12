@@ -122,6 +122,7 @@ public final class WavyCape {
     /** Builds the mesh at this partial tick in the module's style; returns the quad count. */
     public int build(WavyCapesModule settings, float partial) {
         int n = segments;
+        if (n == 0) return quads = 0; // never updated
         boolean blocky = settings.blocky();
         for (int j = 0; j <= n; j++) {
             jd[j] = (pd[j] + (d[j] - pd[j]) * partial) * 16;
@@ -190,7 +191,7 @@ public final class WavyCape {
 
     /**
      * QA only: the pixels (ARGB) of a 64x32 test cape each version's QA gives its player. The outer face has a band of colour every two
-     * rows and a white centre line, so the bends show; the inner face is dark, the edges grey.
+     * rows and a white centre line, so the bends show; the inner face is dark, the edges grey, the elytra part checkered grey.
      */
     public static int qaPixel(int x, int y) {
         if (y >= 1 && y <= 16 && x >= 1 && x <= 10) {
@@ -201,6 +202,7 @@ public final class WavyCape {
         if (y >= 1 && y <= 16 && x >= 12 && x <= 21) return (y - 1) / 4 % 2 == 0 ? 0xFF303030 : 0xFF484848;
         if (y >= 1 && y <= 16 && (x == 0 || x == 11)) return 0xFF808080;
         if (y == 0 && x >= 1 && x <= 20) return 0xFFC0C0C0;
+        if (x >= 22 && x <= 45 && y <= 21) return (x + y) % 4 < 2 ? 0xFF9E9E9E : 0xFF6D6D6D; // vanilla draws an elytra with the cape texture
         return 0;
     }
 
