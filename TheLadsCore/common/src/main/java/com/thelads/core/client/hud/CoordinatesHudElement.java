@@ -11,6 +11,14 @@ public class CoordinatesHudElement extends HudElement {
     private LadsGraphics preparedGraphics;
     private boolean hasPlayer, vertical, showBiome;
     private String px, py, pz, prefix, separator, biomeText, compass, axes, directionText;
+    private int lastPosX = Integer.MIN_VALUE, lastPosY = Integer.MIN_VALUE, lastPosZ = Integer.MIN_VALUE;
+    private int lastFormat = -1;
+    private String pxSep, pySep;
+    private String lastBiomeName;
+    private String biomeLine, biomeHoriz;
+    private int lastFacing = -2;
+    private String lastSep;
+
     public CoordinatesHudElement() {
         this.x = 5;
         this.y = 25;
@@ -24,8 +32,9 @@ public class CoordinatesHudElement extends HudElement {
         hasPlayer = g.getGame().hasPlayer();
         showBiome = optBool("Show Biome", false);
         compass = axes = directionText = null;
+        int facing = -1;
         if (hasPlayer && optBool("Show Direction", true)) {
-            int facing = facing(g.getGame().getYaw(), g.getGame().getPlayerDirection());
+            facing = facing(g.getGame().getYaw(), g.getGame().getPlayerDirection());
             if (facing >= 0) {
                 compass = COMPASS[facing];
                 axes = AXES[facing];
@@ -41,20 +50,41 @@ public class CoordinatesHudElement extends HudElement {
         int posZ = g.getGame().getPlayerZ();
 
         int format = optCycle("Format", 2); // 0 = X Y Z, 1 = Coords: X, Y, Z, 2 = Labeled
-        vertical = optBool("Vertical", true);
-        px = (format == 2 ? "X: " : "") + posX;
-        py = (format == 2 ? "Y: " : "") + posY;
-        pz = (format == 2 ? "Z: " : "") + posZ;
+        if (format != lastFormat) {
+            lastFormat = format;
+            lastPosX = lastPosY = lastPosZ = Integer.MIN_VALUE;
+        }
+        if (posX != lastPosX) {
+            lastPosX = posX;
+            px = (format == 2 ? "X: " : "") + posX;
+            pxSep = null;
+        }
+        if (posY != lastPosY) {
+            lastPosY = posY;
+            py = (format == 2 ? "Y: " : "") + posY;
+            pySep = null;
+        }
+        if (posZ != lastPosZ) {
+            lastPosZ = posZ;
+            pz = (format == 2 ? "Z: " : "") + posZ;
+        }
 
+        vertical = optBool("Vertical", true);
         String bName = g.getGame().getBiomeName();
-        biomeText = (bName != null && !bName.isEmpty()) ? bName : "Plains";
+        if (bName == null || bName.isEmpty()) bName = "Plains";
+        if (!bName.equals(lastBiomeName)) {
+            lastBiomeName = bName;
+            biomeText = bName;
+            biomeLine = "Biome: " + bName;
+            biomeHoriz = null;
+        }
 
         if (vertical) {
             int lineHeight = g.fontHeight() + 2;
             int maxTextW = Math.max(g.textWidth(px), Math.max(g.textWidth(py), g.textWidth(pz)));
             if (compass != null) maxTextW += DIRECTION_GAP + Math.max(g.textWidth(compass), g.textWidth(axes));
             if (showBiome) {
-                maxTextW = Math.max(maxTextW, g.textWidth("Biome: " + biomeText));
+                maxTextW = Math.max(maxTextW, g.textWidth(biomeLine));
             }
             this.width = Math.max(70, maxTextW + 8);
             this.height = (showBiome ? 4 : 3) * lineHeight + 5;
@@ -63,13 +93,23 @@ public class CoordinatesHudElement extends HudElement {
 
         prefix = format == 1 ? "Coords: " : "";
         separator = format == 1 ? ", " : " ";
-        int horizW = g.textWidth(prefix) + g.textWidth(px + separator)
-                + g.textWidth(py + separator) + g.textWidth(pz);
-        if (showBiome) {
-            horizW += g.textWidth(separator + "(" + biomeText + ")");
-        }
+        if (pxSep == null || !separator.equals(lastSep)) pxSep = px + separator;
+        if (pySep == null || !separator.equals(lastSep)) pySep = py + separator;
+        if (biomeHoriz == null || !separator.equals(lastSep)) biomeHoriz = separator + "(" + biomeText + ")";
         if (compass != null) {
-            directionText = separator + compass + " (" + axes + ")";
+            if (facing != lastFacing || !separator.equals(lastSep)) {
+                directionText = separator + compass + " (" + axes + ")";
+                lastFacing = facing;
+            }
+        }
+        lastSep = separator;
+
+        int horizW = g.textWidth(prefix) + g.textWidth(pxSep)
+                + g.textWidth(pySep) + g.textWidth(pz);
+        if (showBiome) {
+            horizW += g.textWidth(biomeHoriz);
+        }
+        if (directionText != null) {
             horizW += g.textWidth(directionText);
         }
         this.width = Math.max(120, horizW + 8);
@@ -94,7 +134,7 @@ public class CoordinatesHudElement extends HudElement {
             g.drawText(py, x + 4, y + 3 + lineHeight, cy, shadow);
             g.drawText(pz, x + 4, y + 3 + 2 * lineHeight, cz, shadow);
             if (showBiome) {
-                g.drawText("Biome: " + biomeText, x + 4, y + 3 + 3 * lineHeight, base, shadow);
+                g.drawText(biomeLine, x + 4, y + 3 + 3 * lineHeight, base, shadow);
             }
             if (compass != null) { // on the right, level with the first two lines
                 g.drawText(compass, x + width - 4 - g.textWidth(compass), y + 3, base, shadow);
@@ -106,11 +146,11 @@ public class CoordinatesHudElement extends HudElement {
         int tx = x + 4;
         int ty = y + (height - g.fontHeight()) / 2 + 1;
         if (!prefix.isEmpty()) tx = draw(g, prefix, tx, ty, base, shadow);
-        tx = draw(g, px + separator, tx, ty, cx, shadow);
-        tx = draw(g, py + separator, tx, ty, cy, shadow);
+        tx = draw(g, pxSep, tx, ty, cx, shadow);
+        tx = draw(g, pySep, tx, ty, cy, shadow);
         tx = draw(g, pz, tx, ty, cz, shadow);
         if (showBiome) {
-            tx = draw(g, separator + "(" + biomeText + ")", tx, ty, base, shadow);
+            tx = draw(g, biomeHoriz, tx, ty, base, shadow);
         }
         if (directionText != null) draw(g, directionText, tx, ty, base, shadow);
     }

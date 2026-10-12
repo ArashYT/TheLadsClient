@@ -11,22 +11,33 @@ public class MemoryHudElement extends TextHudElement {
         this.height = 16;
     }
 
+    private long lastUsed = -1;
+    private long lastMax = -1;
+    private int lastMode = -1;
+    private String cachedText = "";
+
     @Override
     protected String updateText(LadsGraphics g) {
         long used = g.getGame().getUsedMemoryMb();
         long max = g.getGame().getMaxMemoryMb();
-        long pct = max > 0 ? (used * 100 / max) : 0;
-
         int mode = optCycle("Display", 1); // 0 = Used / Max, 1 = Used / Max + %, 2 = Percent only
-        String text;
+
+        if (used == lastUsed && max == lastMax && mode == lastMode) {
+            return cachedText;
+        }
+        lastUsed = used;
+        lastMax = max;
+        lastMode = mode;
+
+        long pct = max > 0 ? (used * 100 / max) : 0;
         if (mode == 2) {
-            text = "Mem: " + pct + "%";
+            cachedText = "Mem: " + pct + "%";
         } else if (mode == 0) {
-            text = used + "/" + max + "MB";
+            cachedText = used + "/" + max + "MB";
         } else {
-            text = used + "/" + max + "MB (" + pct + "%)";
+            cachedText = used + "/" + max + "MB (" + pct + "%)";
         }
 
-        return text;
+        return cachedText;
     }
 }

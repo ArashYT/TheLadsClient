@@ -17,6 +17,11 @@ public class FPSHudElement extends TextHudElement {
         this.height = 16;
     }
 
+    private int lastMode = -1;
+    private int lastGameVal = -1;
+    private int lastHudVal = -1;
+    private String cachedText = "";
+
     @Override
     protected String updateText(LadsGraphics g) {
         int fps = g.getGame().getFps();
@@ -36,8 +41,14 @@ public class FPSHudElement extends TextHudElement {
         int mode = optCycle("Display", 0);
         int gameVal = (int) Math.round(displayed);
         int hudVal = HudManager.getInstance().getMeasuredHudFps();
-        if (mode == 1) return hudVal + " HUD FPS";
-        if (mode == 2) return gameVal + " FPS · " + hudVal + " HUD";
-        return gameVal + " FPS";
+        if (mode == lastMode && gameVal == lastGameVal && hudVal == lastHudVal) {
+            return cachedText;
+        }
+        lastMode = mode;
+        lastGameVal = gameVal;
+        lastHudVal = hudVal;
+        if (mode == 1) return cachedText = hudVal + " HUD FPS";
+        if (mode == 2) return cachedText = gameVal + " FPS · " + hudVal + " HUD";
+        return cachedText = gameVal + " FPS";
     }
 }

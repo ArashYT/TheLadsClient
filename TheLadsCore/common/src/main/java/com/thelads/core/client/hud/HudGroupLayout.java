@@ -65,7 +65,7 @@ public final class HudGroupLayout {
         for(Rect value:bounds){left=Math.min(left,value.x);top=Math.min(top,value.y);right=Math.max(right,value.right());bottom=Math.max(bottom,value.bottom());}
         return new Rect(left,top,(int)Math.min(Integer.MAX_VALUE,(long)right-left),(int)Math.min(Integer.MAX_VALUE,(long)bottom-top));
     }
-    public static Rect translate(Rect bounds,Delta delta){return new Rect(add(bounds.x,delta.x),add(bounds.y,delta.y),bounds.width,bounds.height);}
+    public static Rect translate(Rect bounds,Delta delta){return (delta.x == 0 && delta.y == 0) ? bounds : new Rect(add(bounds.x,delta.x),add(bounds.y,delta.y),bounds.width,bounds.height);}
     public static Delta clampDelta(Rect bounds,int dx,int dy,int viewportWidth,int viewportHeight){
         return new Delta(clampAxis(bounds.x,bounds.width,dx,viewportWidth),clampAxis(bounds.y,bounds.height,dy,viewportHeight));
     }

@@ -1,8 +1,6 @@
 package com.thelads.core.client.hud;
 
 import com.thelads.core.config.HudSettings;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * The HUD FPS cap's schedule. A capped HUD is rebuilt only on due frames and its last build is drawn on every frame in between,
@@ -21,8 +19,84 @@ public final class HudFrameCap {
     private static int width, height, frames, steps = 1;
     /** The last build moved something: the next one comes at the animation rate to see whether it keeps moving. */
     private static boolean moved;
+    /** Primitive open-addressing table to record what is drawn in each build without boxing or allocations. */
+    private static final class DrawTracker {
+        int[] keys = new int[64];
+        int[] counts = new int[64];
+        int[] hashes = new int[64];
+        boolean[] occupied = new boolean[64];
+        int mask = 63;
+        int size = 0;
+
+        void clear() {
+            if (size > 0) {
+                java.util.Arrays.fill(occupied, false);
+                size = 0;
+            }
+        }
+
+        void record(int what, int how) {
+            if ((size + 1) * 2 > keys.length) resize();
+            int idx = hash(what) & mask;
+            while (occupied[idx]) {
+                if (keys[idx] == what) {
+                    counts[idx]++;
+                    hashes[idx] = 31 * hashes[idx] + how;
+                    return;
+                }
+                idx = (idx + 1) & mask;
+            }
+            occupied[idx] = true;
+            keys[idx] = what;
+            counts[idx] = 1;
+            hashes[idx] = how;
+            size++;
+        }
+
+        int find(int what) {
+            if (size == 0) return -1;
+            int idx = hash(what) & mask;
+            while (occupied[idx]) {
+                if (keys[idx] == what) return idx;
+                idx = (idx + 1) & mask;
+            }
+            return -1;
+        }
+
+        private void resize() {
+            int newCap = keys.length * 2;
+            int[] nk = new int[newCap];
+            int[] nc = new int[newCap];
+            int[] nh = new int[newCap];
+            boolean[] no = new boolean[newCap];
+            int nm = newCap - 1;
+            for (int i = 0; i < keys.length; i++) {
+                if (occupied[i]) {
+                    int idx = hash(keys[i]) & nm;
+                    while (no[idx]) idx = (idx + 1) & nm;
+                    no[idx] = true;
+                    nk[idx] = keys[i];
+                    nc[idx] = counts[i];
+                    nh[idx] = hashes[i];
+                }
+            }
+            keys = nk;
+            counts = nc;
+            hashes = nh;
+            occupied = no;
+            mask = nm;
+        }
+
+        private static int hash(int h) {
+            h ^= (h >>> 16);
+            h *= 0x85ebca6b;
+            h ^= (h >>> 13);
+            return h;
+        }
+    }
+
     /** For each thing drawn (by what it is) in this build and the last: how many times, and where and how, as one number. */
-    private static Map<Integer, int[]> drawing = new HashMap<Integer, int[]>(), drawn = new HashMap<Integer, int[]>();
+    private static DrawTracker drawing = new DrawTracker(), drawn = new DrawTracker();
     /** QA: builds, and builds in which something kept on the HUD moved, resized, turned, faded or changed colour. */
     public static int builds, changes;
     /** True while a version rebuilds the whole HUD under this cap. */
@@ -48,10 +122,7 @@ public final class HudFrameCap {
      * rotation, colour and opacity).
      */
     public static void draw(int what, int how) {
-        int[] seen = drawing.get(what);
-        if (seen == null) drawing.put(what, seen = new int[2]);
-        seen[0]++;
-        seen[1] = 31 * seen[1] + how;
+        drawing.record(what, how);
     }
 
     /**
@@ -62,16 +133,24 @@ public final class HudFrameCap {
      */
     public static void built(long now) {
         boolean moving = false;
-        for (Map.Entry<Integer, int[]> thing : drawing.entrySet()) {
-            int[] before = drawn.get(thing.getKey());
-            if (before != null && (before[0] != thing.getValue()[0] || before[1] != thing.getValue()[1])) { moving = true; break; }
+        if (drawn.size > 0 && drawing.size > 0) {
+            for (int i = 0; i < drawing.keys.length; i++) {
+                if (drawing.occupied[i]) {
+                    int what = drawing.keys[i];
+                    int bIdx = drawn.find(what);
+                    if (bIdx >= 0 && (drawn.counts[bIdx] != drawing.counts[i] || drawn.hashes[bIdx] != drawing.hashes[i])) {
+                        moving = true;
+                        break;
+                    }
+                }
+            }
         }
         if (moving) {
             changes++;
             if (moved || now < animatingUntil) animatingUntil = now + HOLD;
         }
         moved = moving;
-        Map<Integer, int[]> previous = drawn;
+        DrawTracker previous = drawn;
         drawn = drawing;
         drawing = previous;
         drawing.clear();

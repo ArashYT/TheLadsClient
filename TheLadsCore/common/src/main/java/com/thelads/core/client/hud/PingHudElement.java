@@ -13,13 +13,22 @@ public class PingHudElement extends TextHudElement {
         this.height = 16;
     }
 
+    private int lastPing = Integer.MIN_VALUE;
+    private boolean lastLabel;
+    private String cachedText = "";
+
     @Override
     protected String updateText(LadsGraphics g) {
         // 1.9.1: where the tab list's ping is fake (Hypixel's 1 ms) this is the measured one, "-" until there is one.
         int ping = RealPing.own(g.getGame().getPing());
         preparedPing = ping;
         boolean label = optBool("Show label", true);
-        return (label ? "Ping: " : "") + (ping == RealPing.NONE ? "-" : ping + "ms");
+        if (ping == lastPing && label == lastLabel) {
+            return cachedText;
+        }
+        lastPing = ping;
+        lastLabel = label;
+        return cachedText = (label ? "Ping: " : "") + (ping == RealPing.NONE ? "-" : ping + "ms");
     }
 
     @Override protected int textColor() {
