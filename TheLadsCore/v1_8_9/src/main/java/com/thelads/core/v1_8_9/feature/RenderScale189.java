@@ -132,9 +132,33 @@ public final class RenderScale189 {
         mc.getFramebuffer().bindFramebuffer(true);
     }
 
+    private static BetterResolutionModule module;
+    private static RenderScalePolicy.Settings cachedSettings;
+    private static double lastScale = -1, lastMin = -1;
+    private static int lastPreset = -1, lastMethod = -1, lastTargetFps = -1;
+    private static boolean lastEnabled, lastDynamic;
+
     /** Better Resolution has no 1.8.9 release of its own, so there is no upstream jar to stand down for. */
     private static RenderScalePolicy.Settings settings() {
-        return ((BetterResolutionModule) Options189.module(BetterResolutionModule.NAME)).settings(false);
+        if (module == null) {
+            Object m = Options189.module(BetterResolutionModule.NAME);
+            if (m instanceof BetterResolutionModule) module = (BetterResolutionModule) m;
+        }
+        if (module == null) return new RenderScalePolicy.Settings(false, 0, 100, 0, false, 60, 50);
+        boolean en = module.isEnabled();
+        int pr = module.preset.getIndex();
+        double sc = module.scale.getValue();
+        int me = module.method.getIndex();
+        boolean dy = module.dynamic.get();
+        int tf = module.targetFps.getIndex();
+        double mn = module.minimum.getValue();
+        if (cachedSettings == null || en != lastEnabled || pr != lastPreset || sc != lastScale || me != lastMethod
+            || dy != lastDynamic || tf != lastTargetFps || mn != lastMin) {
+            lastEnabled = en; lastPreset = pr; lastScale = sc; lastMethod = me;
+            lastDynamic = dy; lastTargetFps = tf; lastMin = mn;
+            cachedSettings = module.settings(false);
+        }
+        return cachedSettings;
     }
 
     /** The method's program, built on first use; 0 for Linear and Nearest (the framebuffer's own filter) and where it cannot run. */

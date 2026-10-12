@@ -31,7 +31,11 @@ public final class Zoom189 {
     static long lastWorldNanos;
     private static Object player;
 
-    static ZoomModule zoom() { return (ZoomModule) ModuleManager.getInstance().getModule("Zoom"); }
+    private static ZoomModule zoomModule;
+    static ZoomModule zoom() {
+        if (zoomModule == null) zoomModule = (ZoomModule) ModuleManager.getInstance().getModule("Zoom");
+        return zoomModule;
+    }
 
     private static boolean gameplay(Minecraft mc) {
         return mc.currentScreen == null && mc.thePlayer != null && mc.theWorld != null && mc.thePlayer.getHealth() > 0
