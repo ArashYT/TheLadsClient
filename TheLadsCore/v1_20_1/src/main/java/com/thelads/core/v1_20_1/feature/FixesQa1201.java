@@ -89,6 +89,8 @@ final class FixesQa1201 {
 
         @Override public void openPause() { Minecraft.getInstance().setScreen(new PauseScreen(true)); }
 
+        @Override public void closeScreen() { Minecraft.getInstance().setScreen(null); }
+
         @Override public void press(String label) {
             for (var child : current().children())
                 if (child instanceof Button button && button.visible && button.getMessage().getString().equalsIgnoreCase(label)) { button.onPress(); return; }

@@ -195,6 +195,8 @@ final class Probe191Fixes {
 
         @Override public void openPause() { Minecraft.getMinecraft().displayGuiScreen(new GuiIngameMenu()); }
 
+        @Override public void closeScreen() { Minecraft.getMinecraft().displayGuiScreen(null); }
+
         @Override public void press(String label) {
             GuiScreen screen = Minecraft.getMinecraft().currentScreen;
             for (GuiButton button : buttons(screen))

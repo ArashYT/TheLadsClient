@@ -132,6 +132,8 @@ final class FixesCapture {
 
         @Override public void openPause() { Minecraft.getInstance().setScreenAndShow(new PauseScreen(true)); }
 
+        @Override public void closeScreen() { Minecraft.getInstance().setScreenAndShow(null); }
+
         @Override public void press(String label) {
             for (var child : current().children())
                 if (child instanceof Button button && button.visible && button.getMessage().getString().equalsIgnoreCase(label)) { button.onPress(null); return; }

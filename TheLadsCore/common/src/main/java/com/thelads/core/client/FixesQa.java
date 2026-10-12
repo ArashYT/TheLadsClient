@@ -45,6 +45,7 @@ public final class FixesQa {
         void press(String label);
         /** Back on the open screen (its Back, Cancel or "Back to ..." button). */
         void back();
+        void closeScreen();
         /** The open screen: pause, servers, connect, failed, title, none, or its class name. */
         String screen();
         /** Refuses a server list with a non-local entry and gives an empty one two local entries nobody listens on (and skips the multiplayer warning). */
@@ -63,7 +64,7 @@ public final class FixesQa {
     private int step, wait, passed, patience, frame, mode;
     private double[] home;
     private double nightOff, nightOn, caveOn, caveOff;
-    private Path pendingShot;
+    private Path pendingShot, guiShot;
     private FileTime savedBefore;
     private Path levelDat;
     private boolean looking;
@@ -144,7 +145,32 @@ public final class FixesQa {
                 wait = 6;
                 if (++frame < 4) step = 9;
                 else if (++mode < MODES.length) { frame = 0; step = 9; }
-                else { NametagDepth.qaVanilla = false; game.removeTags(); check(true, "name tags photographed: 3 modes x 4 frames (nt-<mode>-<frame>.png)"); }
+                else {
+                    NametagDepth.qaVanilla = false;
+                    game.removeTags();
+                    check(true, "name tags photographed: 3 modes x 4 frames (nt-<mode>-<frame>.png)");
+                    step = 100; // the GUI text check, then the pause menu
+                }
+            }
+            // GUI text is untouched by the name-tag depth fix: a shadowed menu and the chat, as fixed and as vanilla, pixel for pixel.
+            case 100 -> { game.command("say Lads QA: shadowed chat text"); game.openPause(); wait = 30; }
+            case 101 -> { guiShot = game.screenshot("gui-menu-fixed"); wait = 5; }
+            case 102 -> { NametagDepth.qaVanilla = true; wait = 5; }
+            case 103 -> { pendingShot = game.screenshot("gui-menu-vanilla"); wait = 5; }
+            case 104 -> {
+                if (!sameText(guiShot, pendingShot, 25, 20, 75, 95, "the pause menu's text")) return retry();
+                NametagDepth.qaVanilla = false;
+                game.closeScreen();
+                game.command("say Lads QA: shadowed chat text");
+                wait = 20;
+            }
+            case 105 -> { guiShot = game.screenshot("gui-chat-fixed"); wait = 5; }
+            case 106 -> { NametagDepth.qaVanilla = true; wait = 5; }
+            case 107 -> { pendingShot = game.screenshot("gui-chat-vanilla"); wait = 5; }
+            case 108 -> {
+                if (!sameText(guiShot, pendingShot, 0, 55, 50, 88, "the chat's text")) return retry();
+                NametagDepth.qaVanilla = false;
+                step = 11;
             }
             case 11 -> {
                 restoreModules(fullbright, nametags);
@@ -199,6 +225,8 @@ public final class FixesQa {
                 pendingShot = game.screenshot("pm-5-title");
                 wait = 10;
             }
+            case 25 -> { game.openPause(); wait = 20; } // any path back to the pause menu (Discover Servers' Back) without a world
+            case 26 -> check("title".equals(game.screen()), "a pause menu asked for without a world is the title screen (" + game.screen() + ")");
             default -> {
                 if (failures.isEmpty()) LOGGER.info("Lads fixes capture END: {} passed, 0 failed", passed);
                 else LOGGER.error("Lads fixes capture FAILED: {} passed, {} failed: {}", passed, failures.size(), failures);
@@ -206,6 +234,27 @@ public final class FixesQa {
             }
         }
         return false;
+    }
+
+    /**
+     * The two frames' region (percent of width and height) differs in at most 0.5% of its pixels; false while either is still being
+     * written. The fixed frame must be the same as vanilla's: the depth fix only touches text drawn in the world.
+     */
+    private boolean sameText(Path fixed, Path vanilla, int x0, int y0, int x1, int y1, String what) {
+        try {
+            if (!Files.isRegularFile(fixed) || !Files.isRegularFile(vanilla)) return false;
+            BufferedImage a = ImageIO.read(fixed.toFile()), b = ImageIO.read(vanilla.toFile());
+            if (a == null || b == null) return false;
+            int width = a.getWidth(), height = a.getHeight(), differ = 0, total = 0;
+            for (int y = height * y0 / 100; y < height * y1 / 100; y++)
+                for (int x = width * x0 / 100; x < width * x1 / 100; x++, total++)
+                    if (a.getRGB(x, y) != b.getRGB(x, y)) differ++;
+            patience = 0;
+            check(differ <= total / 200, what + " is the same with the fix as without it (" + differ + " of " + total + " pixels differ)");
+            return true;
+        } catch (Exception partial) {
+            return false; // still being written
+        }
     }
 
     /** Puts both modules back as the run found them (also after a failure). */
