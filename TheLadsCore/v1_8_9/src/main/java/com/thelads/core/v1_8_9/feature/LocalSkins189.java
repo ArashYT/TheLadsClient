@@ -211,6 +211,6 @@ public final class LocalSkins189 {
             if (type != MinecraftProfileTexture.Type.SKIN) return;
             accountSlim = "slim".equals(texture.getMetadata("model"));
             accountSkin = location;
-        }, true);
+        }, false); // not only skins Mojang signed (as 1.20.1 and 26.3 ask): accounts of other login servers have their skin here too
     }
 }

@@ -1,11 +1,13 @@
 package com.thelads.core.v1_8_9.gui;
 
 import com.thelads.core.v1_8_9.feature.GlState189;
+import com.thelads.core.v1_8_9.feature.SkinLayers189;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelPlayer;
+import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.entity.player.EnumPlayerModelParts;
@@ -20,6 +22,8 @@ final class SkinPreview189 {
     private final Supplier<ResourceLocation> texture;
     private final BooleanSupplier slim;
     private final ModelPlayer wide = new ModelPlayer(0.0F, false), slender = new ModelPlayer(0.0F, true);
+    private final SkinVoxels189 wideVoxels = new SkinVoxels189(wide), slenderVoxels = new SkinVoxels189(slender);
+    private int boxesShown;
     private float yaw = -25f;
     private boolean dragging;
     private int lastX;
@@ -37,8 +41,21 @@ final class SkinPreview189 {
         return yaw;
     }
 
+    /** QA: how many 3D layer boxes the last frame drew (0: the flat layers, 3D layers off or nothing on the skin's outer layers). */
+    int boxesShown() {
+        return boxesShown;
+    }
+
+    /** The screen closes: the layers' display lists go. */
+    void release() {
+        wideVoxels.release();
+        slenderVoxels.release();
+    }
+
     void draw(Minecraft mc) {
-        ModelPlayer model = slim.getAsBoolean() ? slender : wide;
+        boolean slimArms = slim.getAsBoolean();
+        ModelPlayer model = slimArms ? slender : wide;
+        SkinVoxels189 voxels = slimArms ? slenderVoxels : wideVoxels;
         Set<EnumPlayerModelParts> parts = mc.gameSettings.getModelParts();
         model.bipedHeadwear.showModel = parts.contains(EnumPlayerModelParts.HAT);
         model.bipedBodyWear.showModel = parts.contains(EnumPlayerModelParts.JACKET);
@@ -50,7 +67,10 @@ final class SkinPreview189 {
         model.isRiding = false;
         float scale = Math.min(height / 2.1f, width / 1.1f); // a player is 2 blocks high and, arms out, 1 wide
         boolean blend = GlState189.blend(), alpha = GlState189.alpha(), depth = GlState189.depth();
-        mc.getTextureManager().bindTexture(texture.get());
+        ResourceLocation skin = texture.get();
+        boolean threeD = SkinLayers189.previewOn() && voxels.prepare(mc, skin); // the skin's outer layers as boxes, or the flat ones
+        boxesShown = threeD ? voxels.boxes() : 0;
+        mc.getTextureManager().bindTexture(skin);
         GlStateManager.enableDepth();
         GlStateManager.enableAlpha(); // the outer layers' empty pixels are cut out, not drawn black
         GlStateManager.alphaFunc(516, 0.1f);
@@ -74,12 +94,17 @@ final class SkinPreview189 {
         model.bipedLeftArm.render(unit);
         model.bipedRightLeg.render(unit);
         model.bipedLeftLeg.render(unit);
-        model.bipedHeadwear.render(unit);
-        model.bipedLeftLegwear.render(unit);
-        model.bipedRightLegwear.render(unit);
-        model.bipedLeftArmwear.render(unit);
-        model.bipedRightArmwear.render(unit);
-        model.bipedBodyWear.render(unit);
+        for (int layer = 0; layer < 6; layer++) {
+            ModelRenderer part = voxels.layer(layer);
+            if (!threeD) {
+                part.render(unit);
+            } else if (part.showModel) {
+                GlStateManager.pushMatrix();
+                part.postRender(unit); // the layer's place and turn, as the flat one has
+                GlStateManager.callList(voxels.list(layer));
+                GlStateManager.popMatrix();
+            }
+        }
         GlStateManager.popMatrix();
         RenderHelper.disableStandardItemLighting();
         GlStateManager.disableRescaleNormal();

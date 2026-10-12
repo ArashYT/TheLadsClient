@@ -56,6 +56,7 @@ public final class SkinChangerScreen189 extends GuiScreen {
 
     @Override
     public void onGuiClosed() {
+        preview.release();
         Keyboard.enableRepeatEvents(false);
     }
 

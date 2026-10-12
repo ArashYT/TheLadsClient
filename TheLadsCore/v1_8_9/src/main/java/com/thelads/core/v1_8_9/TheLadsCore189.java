@@ -191,7 +191,7 @@ public class TheLadsCore189 {
         ModuleSupport.registerExternal("Resourcify", "Resourcify", "resourcify", net.minecraftforge.fml.common.Loader.isModLoaded("resourcify"));
         // ... and 3D Skin Layers, which the SkinLayers module switches (SkinLayers189).
         ModuleSupport.registerExternal("SkinLayers", "3D Skin Layers", "skinlayers3d", SkinLayers189.LOADED);
-        if (SkinLayers189.LOADED) ModuleSupport.registerBuiltInLimited("SkinLayers", "The skin preview in Skin Customization draws the flat outer layers, so 3D Preview does not change it.");
+        if (SkinLayers189.LOADED) ModuleSupport.registerBuiltIn("SkinLayers"); // its 3D Preview option is Skin Customization's 3D layers button
     }
 
     @SubscribeEvent

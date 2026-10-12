@@ -1,5 +1,10 @@
 package com.thelads.core.v1_8_9.feature;
 
+import com.thelads.core.config.BoolOption;
+import com.thelads.core.config.ConfigManager;
+import com.thelads.core.config.Module;
+import com.thelads.core.config.ModuleManager;
+import com.thelads.core.config.Option;
 import com.thelads.core.modules.SkinLayersModule;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
@@ -14,6 +19,24 @@ public final class SkinLayers189 {
 
     /** Vanilla's flat layers must be shown: the mod is there and the module is off. */
     public static boolean flatLayers() { return LOADED && !SkinLayersModule.layersOn(); }
+
+    /** Skin Customization's preview shows the outer layers in 3D: SkinLayers' "3D Preview" option (26.3's PreviewSkinLayers.enabled). */
+    public static boolean previewOn() {
+        Option option = previewOption();
+        return !(option instanceof BoolOption) || ((BoolOption) option).get();
+    }
+
+    public static void togglePreview() {
+        Option option = previewOption();
+        if (!(option instanceof BoolOption)) return;
+        ((BoolOption) option).set(!((BoolOption) option).get());
+        ConfigManager.save();
+    }
+
+    private static Option previewOption() {
+        Module module = ModuleManager.getInstance().getModule(SkinLayersModule.NAME);
+        return module == null ? null : module.getOption("3D Preview");
+    }
 
     /** Each client tick: switching the module off drops the 3D layers already made; switched on, the mod makes them as players render. */
     public static void tick(Minecraft mc) {
